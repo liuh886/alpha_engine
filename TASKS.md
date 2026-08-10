@@ -340,3 +340,27 @@
   - **Issue**: `validate_all.ps1` fails at Gate 1 (Ruff lint). 73 errors remain across 11 files in `scripts/` and `src/research/` (mostly `E702` semicolon usage, `F841` unused variables, and `F821` undefined names like `XGBNativeCalibration`).
   - **Goal**: Surgically fix syntax issues without altering quantitative research logic.
   - **Status**: Recorded as an issue. Blocked waiting for user execution approval.
+
+- [ ] **T51: Fix 41 Test Failures Introduced in BYD Update (d556f436)**
+  - **Issue**: Pytest suite currently has 41 failures mostly around `yfinance_ohlc_adjustment`, `real_market_acceptance`, `selected_pool_governance`, and `frontend_api_audit`.
+  - **Goal**: Resolve test failures that broke the data alignment and system governance logic, as well as two frontend audit failures (artifacts.ts and routes.ts) which violate the artifact-only boundary.
+  - **Status**: Recorded as an issue for next sprint.
+
+- [ ] **T52: Fix duplicate QQQ in baseline options**
+  - **Issue**: Sometimes the frontend baseline selector shows two "QQQ" options.
+  - **Goal**: Deduplicate baseline options generated from the report fields (`bench` vs `bench_qqq` etc.) when their labels and series are identical.
+  - **Status**: Recorded as an issue for next sprint.
+
+- [ ] **T53: Add Chinese names to CN model holdings (A-shares)**
+  - **Issue**: When viewing holdings for the CN model, A-share stocks are displayed only as numeric codes (e.g., `300408`), which is not user-friendly.
+  - **Goal**: Implement a stock metadata lookup or mapping so the frontend can display the company's Chinese name alongside the code (e.g., `300408 三环集团`).
+  - **Status**: Recorded as an issue for next sprint.
+
+- [ ] **T54: Evaluate and resolve frontend missing data fallbacks**
+  - **Issue**: Various frontend components display fallbacks (e.g., `N/A`, `—`, `Unknown`, `Unavailable`) due to missing data in the payload. Identified areas:
+    1. **Attribution & Holdings**: Missing `semantics` (attribution context), missing valid `value` (causes chart exclusions), missing `turnover`.
+    2. **Core Metrics**: Some legacy or partially-retained bundles lack derived metrics (e.g., Information Ratio, Max Drawdown), displaying `Unavailable`.
+    3. **Model Metadata**: Legacy models (pre-T48) lack `Data Snapshot ID`, `latest_completed_session`, and `digest` signatures.
+  - **Goal**: Review the missing data inventory. Ensure the backend correctly populates high-value fields for new models. For legacy models, decide whether to backfill, hide unused fields, or improve the fallback UI to reduce confusion.
+  - **Status**: Recorded as an issue for evaluation.
+
