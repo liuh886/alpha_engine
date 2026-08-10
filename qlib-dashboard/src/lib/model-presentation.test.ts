@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { publicModelDisplayName, QQQR_DISPLAY_NAME } from './model-presentation';
+import { publicModelDisplayName } from './model-presentation';
 
 describe('public model presentation', () => {
-  it('presents every QQQ Rotation version as QQQR without changing its identity', () => {
-    expect(publicModelDisplayName('QQQ Rotation v4.3', { modelId: 'qqqi_qqq_tqqq_v4_3' })).toBe(QQQR_DISPLAY_NAME);
-    expect(publicModelDisplayName('Future verbose name', { modelFamilyId: 'qqq_rotation', modelVersionId: 'future-version' })).toBe(QQQR_DISPLAY_NAME);
+  it('keeps the formal QQQ Rotation version in the public QQQR name', () => {
+    expect(publicModelDisplayName('QQQ Rotation v4.3', { modelId: 'qqqi_qqq_tqqq_v4_3' })).toBe('QQQR v4.3');
+    expect(publicModelDisplayName('QQQ Rotation v4.4', { modelFamilyId: 'qqq_rotation', modelVersionId: 'qqqi_qqq_tqqq_v4_4' })).toBe('QQQR v4.4');
   });
 
   it('preserves other public aliases and fallback names', () => {
