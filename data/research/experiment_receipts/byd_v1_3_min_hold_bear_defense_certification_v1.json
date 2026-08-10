@@ -1,0 +1,154 @@
+{
+  "baseline": {
+    "bundle_id": "a28519df32797e0a135736e8626b6cf1fb9a1ba950d01248bc48a45b7fc540f9",
+    "evidence_cutoff": "2026-08-07",
+    "manifest_sha256": "149b3becabd6dbdc1d2e24abeca4a4350362f33f829d965173a3207d61ce8c2d",
+    "model_family_id": "byd_allocation",
+    "model_kind": "rules_based_allocation",
+    "model_version_id": "byd_v1_2_convex_momentum_budget_v1",
+    "run_id": "byd_v1_2_convex_momentum_budget_v1-through-2026_08_07"
+  },
+  "baseline_performance_sha256": "f0e24803bc777bc115e266006929363026a2e6d8fcd84d48fb2ea62dc72f2501",
+  "baseline_trace_reproduction": {
+    "comparison_end": "2026-07-31",
+    "exact": true,
+    "formal_rows": 1609,
+    "index_equal": true,
+    "max_absolute_difference": {
+      "cost": 0.0,
+      "financing_cost": 0.0,
+      "net_return": 0.0,
+      "position_byd_weight": 0.0,
+      "position_cash_weight": 0.0,
+      "position_etf_weight": 0.0,
+      "turnover_units": 0.0
+    },
+    "reproduced_rows": 1609
+  },
+  "candidate": {
+    "candidate_id": "byd_v1_3_min_hold_bear_defense",
+    "executor": "byd_v1_3_min_hold_bear_defense_v1",
+    "parameters": {
+      "bear_defense_byd_weight": 0.55,
+      "bear_defense_etf_weight": 0.45,
+      "convex_power": 2.0,
+      "full_increment_momentum": 0.15,
+      "max_financed_increment": 0.15,
+      "min_hold_risk_eligible_sessions": 20
+    }
+  },
+  "candidate_diagnostics": {
+    "bear_days": 567,
+    "financed_sessions_primary": 86,
+    "mean_financed_increment": 0.0035673253691327618,
+    "risk_on_days": 948
+  },
+  "data_identity": {
+    "byd_snapshot_sha256": "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179",
+    "etf_decoded_sha256": "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f"
+  },
+  "decision": "not_supported",
+  "diagnostics": {
+    "fixed_validation_cagr_improvement": 0.03101003059475249,
+    "primary_full_cagr_improvement": -0.0026861572650633825,
+    "primary_full_calmar_improvement": 0.06672889950864758,
+    "primary_full_drawdown_improvement": 0.044664620513973574,
+    "primary_full_sharpe_improvement": 0.004621750840449357,
+    "retrospective_2025_plus_cagr_improvement": 0.003936058441263324,
+    "stress_full_cagr_improvement": -0.004899426988713262,
+    "stress_full_calmar_improvement": 0.059124756954299085,
+    "stress_full_drawdown_improvement": 0.044921174372547945
+  },
+  "experiment_id": "byd_v1_3_min_hold_bear_defense_certification_v1",
+  "fresh_holdout": false,
+  "gates": {
+    "baseline_identity_and_trace": true,
+    "fixed_validation_cagr_not_below": true,
+    "positive_period_concentration": false,
+    "primary_full_cagr_floor": true,
+    "primary_full_calmar_not_below": true,
+    "primary_full_drawdown_improvement": true,
+    "primary_full_sharpe_not_below": true,
+    "retrospective_2025_plus_cagr_not_below": true,
+    "round_trips_cap": true,
+    "stress_full_cagr_floor": true,
+    "stress_full_calmar_not_below": true,
+    "stress_full_drawdown_improvement": true
+  },
+  "governance": {
+    "automatic_promotion": false,
+    "formal_baseline_source": "current_model_run_bundle_v2",
+    "post_selection_historical_search_consumed": true,
+    "promotion_authority": "explicit_user_direction_2026_08_10",
+    "prospective_confirmation_required": true,
+    "v12_local_reimplementation_forbidden": true
+  },
+  "historical_cutoff": "2026-08-03",
+  "historical_evidence_consumed": true,
+  "historically_supported": false,
+  "largest_positive_period_share": 0.9084049756659324,
+  "metrics": {
+    "fixed_validation": {
+      "v1_2_cagr": 0.08156043457000539,
+      "v1_3_cagr": 0.11257046516475788
+    },
+    "primary_full": {
+      "v1_2": {
+        "cagr": 0.35843544390055615,
+        "calmar": 0.7284934275396024,
+        "max_drawdown": -0.4920228932073253,
+        "round_trips_per_year": 1.3127110028123785,
+        "sharpe": 0.9266135973913004,
+        "total_return": 6.070391877325108
+      },
+      "v1_3": {
+        "cagr": 0.35574928663549277,
+        "calmar": 0.79522232704825,
+        "max_drawdown": -0.4473582726933517,
+        "round_trips_per_year": 1.7086247503866963,
+        "sharpe": 0.9312353482317498,
+        "total_return": 5.981598669439219
+      }
+    },
+    "retrospective_2025_plus": {
+      "v1_2_cagr": 0.06159917236123835,
+      "v1_3_cagr": 0.06553523080250168
+    },
+    "stress_full": {
+      "v1_2": {
+        "cagr": 0.3512124157802543,
+        "calmar": 0.7053281097629241,
+        "max_drawdown": -0.4979418952950908,
+        "round_trips_per_year": 1.3127110028123785,
+        "sharpe": 0.9142134938028981,
+        "total_return": 5.833764123330512
+      },
+      "v1_3": {
+        "cagr": 0.34631298879154104,
+        "calmar": 0.7644528667172232,
+        "max_drawdown": -0.45302072092254286,
+        "round_trips_per_year": 1.7086247503866963,
+        "sharpe": 0.9146025487123878,
+        "total_return": 5.677089361189581
+      }
+    }
+  },
+  "promotion_authorized": false,
+  "relative_terminal_wealth_by_period": {
+    "development": -0.06997228005117162,
+    "fixed_validation": 0.05579384596160453,
+    "retrospective_2025_plus": 0.005625727308239403
+  },
+  "research_only": true,
+  "runner": "rules_based_allocation_v1",
+  "schema_version": "1.0",
+  "status": "completed",
+  "trade_ready": false,
+  "workflow_evidence": {
+    "artifact_id": 9054868191,
+    "artifact_receipt_sha256": "95b0542e40bb449d8cae72fd22951545746c15008784f37484d4e1070578f5ba",
+    "artifact_zip_sha256": "deeb6607bfb0571a934ae3492a43c91886adac3d3f31a7e82719d6a7a0cdf4b2",
+    "source_head_sha": "01e28433197e5d35420edebc1bb9f00186bae49a",
+    "workflow_run_id": 31367718264
+  }
+}
