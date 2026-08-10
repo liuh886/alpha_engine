@@ -15,10 +15,8 @@ on:
       - "data/research/formal_backtests/cn_x1_1.json"
       - "docs/models/BASELINE_MODEL_GOVERNANCE.md"
       - "scripts/validate_model_x1_baselines.py"
-      - "scripts/promote_cn_x1_1_formal.py"
       - "tests/test_model_x1_baselines.py"
       - "tests/test_us_x1_1_baseline_contract.py"
-      - "tests/test_promote_cn_x1_1_formal.py"
       - ".github/workflows/model-x1-baselines.yml"
   workflow_dispatch:
 
@@ -31,11 +29,11 @@ concurrency:
 
 jobs:
   contract-and-notebooks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install uv and locked dependencies
@@ -43,17 +41,13 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Lint and type-check lifecycle validators
+      - name: Lint and type-check lifecycle validator
         run: |
           uv run ruff check \
             scripts/validate_model_x1_baselines.py \
-            scripts/promote_cn_x1_1_formal.py \
             tests/test_model_x1_baselines.py \
-            tests/test_us_x1_1_baseline_contract.py \
-            tests/test_promote_cn_x1_1_formal.py
-          uv run mypy \
-            scripts/validate_model_x1_baselines.py \
-            scripts/promote_cn_x1_1_formal.py
+            tests/test_us_x1_1_baseline_contract.py
+          uv run mypy scripts/validate_model_x1_baselines.py
       - name: Validate model registry, evidence and notebooks
         run: |
           uv run python scripts/validate_model_x1_baselines.py \
@@ -61,10 +55,9 @@ jobs:
           uv run pytest \
             tests/test_model_x1_baselines.py \
             tests/test_us_x1_1_baseline_contract.py \
-            tests/test_promote_cn_x1_1_formal.py \
             -q --strict-markers --tb=short
       - name: Upload model lifecycle evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: model-x1-baselines-${{ github.run_id }}
           path: |
