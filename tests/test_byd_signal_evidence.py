@@ -1,35 +1,23 @@
-"""Production-contract tests for BYD signal evidence binding."""
+"""Production-contract tests for BYD v1.3 signal evidence binding."""
 
 from __future__ import annotations
 
 from copy import deepcopy
 
-from src.research.byd_signal_evidence import (
-    bind_final_signal_identity,
-    close_evidence_is_current,
-)
+from src.research.byd_signal_evidence import bind_final_signal_identity, close_evidence_is_current
+from src.research.byd_v1_3_low_vol_recovery import MODEL_ID
 
 
-def _sources(*, open_eligible: bool) -> tuple[dict, dict, dict]:
-    shadow = {
-        "signal_date": "2026-08-07",
-        "prospective_eligible": True,
-        "open_research_eligible": open_eligible,
-        "data_version": "shadow-v1",
-    }
-    paired = {
-        "signal_date": "2026-08-07",
-        "data_version": "paired-v1",
-        "common_open_eligible": open_eligible,
-        "prospective_eligible": open_eligible,
-        "byd": {"prospective_eligible": True},
-        "etf": {"independent_raw_confirmed": True},
-    }
-    expansion = {
-        "signal_date": "2026-08-07",
-        "data_version": "expansion-v1",
-        "common_open_eligible": open_eligible,
-        "prospective_eligible": open_eligible,
+def _observation() -> dict:
+    return {
+        "schema_version": "byd_v1_3_low_vol_prospective_v1",
+        "candidate_model_id": MODEL_ID,
+        "signal_date": "2026-08-10",
+        "data_version": "v1-3-2026-08-10",
+        "common_open_eligible": True,
+        "source": {"recovery_event_observation_sha256": "a" * 64},
+        "targets": {MODEL_ID: {"byd_weight": 0.75, "etf_weight": 0.25, "cash_weight": 0.0}},
+        "champion": {"model_id": "byd_v1_2_convex_momentum_budget_v1"},
         "factors": {
             "market_state": "bear",
             "vol_state": "high",
@@ -38,7 +26,6 @@ def _sources(*, open_eligible: bool) -> tuple[dict, dict, dict]:
             "drawdown_252": -0.20,
         },
     }
-    return shadow, paired, expansion
 
 
 def _alert() -> dict:
@@ -46,9 +33,8 @@ def _alert() -> dict:
         "fingerprint": "decision-identity",
         "markdown": "<!-- signal-fingerprint:decision-identity -->\n",
         "data_provenance": {
-            "shadow_manifest_sha256": "a" * 64,
-            "paired_manifest_sha256": "b" * 64,
-            "expansion_manifest_sha256": "c" * 64,
+            "v1_3_source_manifest_sha256": "a" * 64,
+            "source_observation_sha256": "b" * 64,
             "source_workflow": "byd-daily-signal-alert",
         },
         "factor_evidence": {
@@ -58,15 +44,23 @@ def _alert() -> dict:
     }
 
 
-def test_quarantined_same_session_open_does_not_make_close_data_stale() -> None:
-    shadow, paired, expansion = _sources(open_eligible=False)
-    assert close_evidence_is_current(shadow, paired, expansion) is True
+def test_formal_close_freshness_uses_final_governed_observation_not_forward_label() -> None:
+    observation = _observation()
+    observation["prospective_eligible"] = False
+    observation["prelaunch_seed"] = True
+    assert close_evidence_is_current(observation) is True
 
 
-def test_close_freshness_fails_when_independent_etf_evidence_is_missing() -> None:
-    shadow, paired, expansion = _sources(open_eligible=True)
-    paired["etf"]["independent_raw_confirmed"] = False
-    assert close_evidence_is_current(shadow, paired, expansion) is False
+def test_close_freshness_fails_when_final_source_identity_is_missing() -> None:
+    observation = _observation()
+    observation["source"] = {}
+    assert close_evidence_is_current(observation) is False
+
+
+def test_close_freshness_fails_on_wrong_model_identity() -> None:
+    observation = _observation()
+    observation["candidate_model_id"] = "wrong"
+    assert close_evidence_is_current(observation) is False
 
 
 def test_final_fingerprint_binds_factor_and_source_identity() -> None:
