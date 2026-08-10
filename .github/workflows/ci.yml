@@ -85,6 +85,7 @@ jobs:
           scripts/evaluate_byd_recovery_satellite.py
           scripts/diagnose_byd_recovery_lifecycle.py
           scripts/evaluate_byd_recovery_event_lifecycle.py
+          scripts/evaluate_byd_recovery_event_low_vol_confirmation.py
           scripts/check_legacy_web_boundary.py
           scripts/check_ci_governance.py
           tests/test_formal_baseline_onboarding.py
