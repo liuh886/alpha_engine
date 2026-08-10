@@ -9,12 +9,19 @@ on:
       - ".github/workflows/us-x1-2-certification.yml"
       - "scripts/certify_us_x1_2.py"
       - "configs/research_experiments/us_x1_2_certification_v1.yaml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/us-x1-2-certification.yml"
+      - "scripts/certify_us_x1_2.py"
+      - "configs/research_experiments/us_x1_2_certification_v1.yaml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: us-x1-2-certification
+  group: us-x1-2-certification-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
