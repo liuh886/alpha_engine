@@ -48,18 +48,17 @@ def _close(provider_dir: Path, instrument: str, calendar: pd.DatetimeIndex) -> p
     return pd.Series(values, index=calendar, dtype=float, name=instrument)
 
 
-def _formal_signal_date(package: Mapping[str, Any]) -> str:
-    positions = package.get("positions")
-    if not isinstance(positions, list) or not positions:
-        raise RankerProvisionalMtmError("formal ranker package has no positions")
-    dates = sorted(
-        str(row.get("date") or "")
-        for row in positions
-        if isinstance(row, Mapping) and row.get("date")
-    )
-    if not dates:
-        raise RankerProvisionalMtmError("formal ranker positions have no signal date")
-    return dates[-1]
+def _last_settled_signal_date(package: Mapping[str, Any]) -> str:
+    report = package.get("report")
+    if not isinstance(report, list) or not report:
+        raise RankerProvisionalMtmError("formal ranker package has no settled report")
+    latest = report[-1]
+    if not isinstance(latest, Mapping):
+        raise RankerProvisionalMtmError("latest settled performance row is invalid")
+    signal_date = str(latest.get("date") or "")
+    if not signal_date:
+        raise RankerProvisionalMtmError("latest settled performance row has no signal date")
+    return signal_date
 
 
 def _valid_target(signal: Mapping[str, Any]) -> dict[str, float]:
@@ -190,16 +189,16 @@ def attach_ranker_provisional_mtm(
     if not isinstance(report, list) or not report:
         raise RankerProvisionalMtmError(f"{model_id} formal report is empty")
 
-    formal_signal = _formal_signal_date(package)
+    settled_signal = _last_settled_signal_date(package)
     calendar = _calendar(provider_dir)
     signal = _latest_governed_signal(
         model_id=model_id,
-        formal_signal_date=formal_signal,
+        formal_signal_date=settled_signal,
         cutoff=cutoff,
         ledger_dir=ledger_dir,
     )
     if signal is None:
-        due = next_due_session(anchor=formal_signal, sessions=calendar)
+        due = next_due_session(anchor=settled_signal, sessions=calendar)
         if due is None or pd.Timestamp(due) > pd.Timestamp(cutoff):
             write_object(package_path, package)
             return None
