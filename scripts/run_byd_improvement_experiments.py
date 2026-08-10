@@ -2,8 +2,8 @@
 """Reproduce the BYD architecture experiments merged in PR #588.
 
 This runner is diagnostic only. Every surviving experiment module uses the same
-explicit ``(results, state_or_decisions)`` execution contract and never
-authorizes model promotion.
+explicit ``(results, state_or_none)`` execution contract and never authorizes
+model promotion.
 """
 
 from __future__ import annotations
@@ -45,7 +45,10 @@ from src.research.byd_vol_target import period_contribution as vt_pc
 from src.research.byd_vol_target import run_candidates as vt_run
 
 BASELINE = "byd_v1_1"
-RunCandidates = Callable[..., tuple[dict[str, AllocationResult], pd.DataFrame]]
+RunCandidates = Callable[
+    ...,
+    tuple[dict[str, AllocationResult], pd.DataFrame | None],
+]
 
 
 def parse_args() -> argparse.Namespace:
@@ -138,7 +141,7 @@ def run_simple(
     contribution_fn: Callable[[dict[str, AllocationResult]], pd.DataFrame],
     governed_fn: Callable[[pd.DataFrame, pd.DataFrame], Any],
 ) -> tuple[dict[str, Any], pd.DataFrame]:
-    primary_results, primary_extra = run_fn(
+    primary_results, primary_state = run_fn(
         common,
         signals,
         cost_bps=PRIMARY_COST_BPS,
@@ -159,7 +162,7 @@ def run_simple(
         governed,
         primary_results,
         stress_results,
-        primary_extra,
+        primary_state,
     )
 
 
@@ -171,7 +174,7 @@ def _save(
     governed: Any,
     primary_results: dict[str, AllocationResult],
     stress_results: dict[str, AllocationResult],
-    extra: pd.DataFrame | None = None,
+    state: pd.DataFrame | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
     sub = output / name
     sub.mkdir(parents=True, exist_ok=True)
@@ -201,8 +204,8 @@ def _save(
             float_format="%.12f",
             lineterminator="\n",
         )
-    if extra is not None:
-        extra.to_csv(
+    if state is not None:
+        state.to_csv(
             sub / "state_ledger.csv",
             index=True,
             float_format="%.12f",
