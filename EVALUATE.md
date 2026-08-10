@@ -6,6 +6,86 @@
 
 # Evaluation Log
 
+## 2026-08-11: USx Iteration — Rounds 4-10: Multi-Dimensional Grid & Final Selection
+
+### Experiment: us_x1_2_multidim_grid_v1
+
+**Status**: Completed — **11 candidates pass ALL gates**
+
+**Setup**: 5 model configurations × 15 portfolio construction variants × 4 windows = 300 total evaluations.
+
+**Models tested**:
+- `m_7f_b7_std`: 7 OHLCV factors, 7 gain bins, standard XGBoost calibration
+- `m_7f_b5_std`: 7 OHLCV factors, 5 gain bins, standard XGBoost calibration
+- `m_7f_b7_sampled`: 7 OHLCV factors, 7 gain bins, row_and_column_sampling calibration
+- `m_9f_b7_std`: 9 factors (+risk_controlled), 7 gain bins, standard calibration
+- `m_9f_b7_sampled`: 9 factors (+risk_controlled), 7 gain bins, sampled calibration
+
+**Portfolio variants**: Top-K (10, 12, 15, 20) × Sector cap (3, 4, 5, None) combinations
+
+**Key Finding: 11 candidates pass all gates**, up from 1 in Round 3. Sector cap is the universal enabler — NO uncapped candidate passes the DD gate regardless of model configuration.
+
+### Top-3 Gate-Passing Candidates
+
+| Rank | Candidate | Excess | Worst DD | DD Improv | Strongest Share |
+|---|---|---|---|---|---|
+| 1 | m_7f_b7_sampled + t15_s4 | **+227.5%** | -25.08% | +4.36pp | 34.8% |
+| 2 | m_7f_b7_std + t15_s4 | +210.9% | **-24.45%** | **+4.99pp** | 31.3% |
+| 3 | m_7f_b7_std + t15_s3 | +205.3% | **-23.36%** | **+6.08pp** | 27.6% |
+
+### Per-Window: Rank 1 (m_7f_b7_sampled__t15_s4)
+
+| Window | Relative Excess | Max Drawdown |
+|---|---|---|
+| 2024H1 | +35.7% | -4.76% |
+| 2024H2 | +48.7% | -12.79% |
+| 2025H1 | +37.0% | -25.08% |
+| 2025H2 | +18.4% | -24.19% |
+
+### Per-Window: Rank 2 (m_7f_b7_std__t15_s4)
+
+| Window | Relative Excess | Max Drawdown |
+|---|---|---|
+| 2024H1 | +32.6% | -4.93% |
+| 2024H2 | +36.1% | -12.95% |
+| 2025H1 | +41.3% | -24.45% |
+| 2025H2 | +21.9% | -22.60% |
+
+### Per-Window: Rank 3 (m_7f_b7_std__t15_s3)
+
+| Window | Relative Excess | Max Drawdown |
+|---|---|---|
+| 2024H1 | +35.7% | -5.16% |
+| 2024H2 | +34.6% | -12.16% |
+| 2025H1 | +35.4% | -23.36% |
+| 2025H2 | +23.5% | -21.29% |
+
+### Design Patterns Discovered
+
+1. **Sector cap is essential.** No uncapped model passes the DD gate.
+2. **Top-15 is the sweet spot.** Smaller K (10, 12) worsens DD through concentration. Larger K (20) dilutes excess without DD benefit.
+3. **7-factor beats 9-factor with sector cap.** The additional risk_controlled factors reduce excess when combined with sector constraints.
+4. **Sampled calibration gives best excess; std calibration gives best DD.** Trade-off exists.
+5. **5 gain bins vs 7 gain bins**: No significant difference. 7 is retained for consistency.
+6. **Sector cap 3 vs 4**: Cap=3 gives better DD (-23.36% vs -24.45%) at slight excess cost (-5.6pp). Cap=4 is the recommended baseline for better excess.
+
+### Final Recommendation
+
+**US x1.2 Candidate**: `m_7f_b7_sampled__t15_s4`
+- 7 OHLCV momentum_volatility_volume factors
+- XGBoost with row_and_column_sampling calibration (subsample=0.8, colsample_bytree=0.8)
+- Top-15 equal-weight with max-4-names-per-sector constraint
+- 7 gain bins, 200 rounds, learning_rate=0.05
+- Compounded relative excess: +227.5% (vs uncapped baseline +166.1%)
+- Worst drawdown: -25.08% (vs uncapped baseline -29.44%)
+- All 4 development windows positive
+
+**Conservative US x1.2 Candidate** (if DD prioritized): `m_7f_b7_std__t15_s3`
+- Same but standard calibration, max-3-names-per-sector
+- Compounded excess: +205.3%, Worst DD: -23.36% (6.08pp improvement)
+
+---
+
 ## 2026-08-11: USx Iteration — Sector Cap Breakthrough
 
 ### Experiment: us_x1_2_sector_cap_integrated_v1

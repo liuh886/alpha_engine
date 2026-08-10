@@ -392,6 +392,21 @@
   - **Recommended US x1.2 candidate**: US x1.1 baseline (7 OHLCV, std XGBoost) + max-4-names-per-sector
   - Accept: 8 window evaluations (2 candidates × 4 windows), all gates validated, formal receipt saved
 
-- [ ] **T55.4 [Next] Promote US x1.2 sector-cap candidate to formal baseline**
+- [x] **T55.4: Run multi-dimensional grid search (Rounds 4-9)** ✅ 2026-08-11
+  - Deliver: `data/research/experiment_receipts/us_x1_2_multidim_grid_v1.json`
+  - Tested 5 model configs × 15 portfolio variants × 4 windows = 300 evaluations
+  - **11 candidates pass ALL gates** (up from 1 in Round 3)
+  - Sector cap confirmed as universal DD gate enabler — no uncapped model passes
+  - Top-15 with cap=4 is the sweet spot; 7-factor beats 9-factor with sector cap
+  - Top candidate: `m_7f_b7_sampled__t15_s4` — excess +227.5%, DD -25.08%
+  - Conservative candidate: `m_7f_b7_std__t15_s3` — excess +205.3%, DD -23.36%
+  - Accept: 300 evaluations complete, full gate analysis, formal receipt saved
+
+- [x] **T55.5: Final selection & documentation (Round 10)** ✅ 2026-08-11
+  - Recommended US x1.2: 7 OHLCV factors + row_and_column_sampling cal + Top-15 + max-4-per-sector
+  - Conservative US x1.2: 7 OHLCV factors + std cal + Top-15 + max-3-per-sector
+  - EVALUATE.md updated with per-window breakdown and design patterns discovered
+
+- [ ] **T55.6 [Next] Promote US x1.2 to formal baseline**
   - Requires: provider refresh to canonical identity, 20/40/60 bps cost stress, untouched 2026H2 validation
   - Create formal US x1.2 candidate card
