@@ -67,11 +67,11 @@ def test_completed_record_validation_does_not_resolve_current_catalog(monkeypatc
         ("us_x1_1", "cross_sectional_ranker", "us_ranker", "us", "QQQ"),
         ("cn_x1_1", "cross_sectional_ranker", "cn_ranker", "cn", "000300"),
         (
-            "byd_v1_2_convex_momentum_budget_v1",
+            "byd_v1_3_recovery_event_low_vol_confirmation_v1",
             "rules_based_allocation",
             "byd_allocation",
             "cn",
-            "BYD v1.1",
+            "BYD v1.2",
         ),
         (
             "qqqi_qqq_tqqq_v4_3",
