@@ -49,6 +49,8 @@ def active_specs() -> list[Path]:
 
 def run_spec(path: Path) -> dict[str, Any]:
     payload = _load(path)
+    if payload.get("active") is not True:
+        raise ValueError(f"research experiment {path} must be active")
     runner = str(payload.get("runner", ""))
     if runner == CROSS_SECTIONAL_RUNNER:
         receipt = run_cross_sectional_experiment(path)
