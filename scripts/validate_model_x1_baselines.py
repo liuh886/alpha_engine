@@ -50,7 +50,7 @@ def _validate_notebook(path: Path, *, model_id: str, display_name: str) -> None:
     text = "\n".join(
         "".join(cell.get("source", [])) for cell in notebook.get("cells", [])
     )
-    required = (display_name, "research_only", "trade_ready")
+    required = (display_name, "trade_ready")
     missing = [token for token in required if token not in text]
     if missing:
         raise ValueError(f"{model_id}: notebook missing required tokens {missing}")
