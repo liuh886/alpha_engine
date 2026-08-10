@@ -62,55 +62,15 @@ jobs:
           uv run python scripts/check_ci_governance.py --output artifacts/ci-workflow-inventory.json --enforce
           uv run python scripts/check_legacy_web_boundary.py
 
-      - name: Ruff lint ratcheted production paths
-        run: >-
-          uv run ruff check
-          src/release
-          src/models/metric_contract.py
-          src/research/experiment_harness.py
-          src/research/cross_sectional_experiment_runner.py
-          src/research/formal_baseline.py
-          src/research/formal_baseline_onboarding.py
-          src/research/rules_based_allocation_experiment_runner.py
-          src/research/byd_v1_3_candidate.py
-          src/research/ranker_current_target.py
-          src/research/drift_monitor.py
-          src/factors/ranker_snapshot.py
-          src/artifacts/strategy_operations.py
-          scripts/run_research_experiment.py
-          scripts/run_active_research_experiments.py
-          scripts/run_ranker_current_target.py
-          scripts/diagnose_byd_activity_decay.py
-          scripts/screen_byd_successor_states.py
-          scripts/check_legacy_web_boundary.py
-          scripts/check_ci_governance.py
-          tests/test_formal_baseline_onboarding.py
-          tests/test_rules_based_allocation_experiment_runner.py
-          tests/test_ranker_current_target.py
-          tests/test_strategy_operations.py
-          tests/test_t47_drift_monitor.py
+      - name: Ruff lint repository
+        run: uv run ruff check .
 
       - name: Mypy type check
         run: uv run mypy src/release src/models/metric_contract.py
 
-      - name: Core release-contract tests
+      - name: Backend tests
         run: >-
-          uv run pytest
-          tests/test_release_candidate_generation.py
-          tests/test_release_candidate_gate.py
-          tests/test_walk_forward.py
-          tests/test_vectorized_backtest.py
-          tests/test_architecture_contract.py
-          tests/test_model_signal_identity.py
-          tests/test_data_runtime_truth.py
-          tests/test_experiment_harness.py
-          tests/test_cross_sectional_experiment_runner.py
-          tests/test_formal_baseline_onboarding.py
-          tests/test_rules_based_allocation_experiment_runner.py
-          tests/test_ranker_current_target.py
-          tests/test_strategy_operations.py
-          tests/test_t47_drift_monitor.py
-          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+          uv run pytest tests -q --strict-markers --tb=short --disable-warnings
 
       - name: Package build
         if: github.event_name != 'pull_request'
