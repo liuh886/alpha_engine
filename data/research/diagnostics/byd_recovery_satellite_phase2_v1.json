@@ -1,0 +1,123 @@
+{
+  "schema_version": "1.0",
+  "issue": 732,
+  "challenger": "byd_recovery_satellite_drawdown252_rebound60_v1",
+  "status": "retrospective_not_supported",
+  "research_only": true,
+  "historical_evidence_consumed": true,
+  "automatic_promotion": false,
+  "source_run": {
+    "workflow_run_id": 31391972749,
+    "artifact_id": 9064084752,
+    "artifact_zip_sha256": "062189dd403b3483cb7bf7e48a777b70e3106d22036680188993546ee7d8de62"
+  },
+  "frozen_contract": {
+    "threshold": 0.026937,
+    "state": "base_byd_weight == 0.75 AND drawdown252_x_rebound60 >= threshold",
+    "action": "75% BYD / 25% 515180 -> 100% BYD / 0% 515180 while state is true",
+    "existing_v1_2_expansion_changed": false,
+    "vol_1_15_combined": false,
+    "shorter_sma_combined": false,
+    "min_hold_or_hysteresis_added": false
+  },
+  "baseline": {
+    "model_id": "byd_v1_2_convex_momentum_budget_v1",
+    "formal_trace_exact": true,
+    "rebuilt_decision_trace_exact": true
+  },
+  "decision_state_sessions": 129,
+  "primary": {
+    "development": {
+      "champion_cagr": 0.788849,
+      "challenger_cagr": 0.764334,
+      "cagr_delta": -0.024515,
+      "champion_sharpe": 1.362797,
+      "challenger_sharpe": 1.326566,
+      "relative_terminal_wealth": -0.039868
+    },
+    "fixed_validation": {
+      "champion_cagr": 0.081560,
+      "challenger_cagr": 0.103233,
+      "cagr_delta": 0.021673,
+      "champion_sharpe": 0.403219,
+      "challenger_sharpe": 0.463261,
+      "relative_terminal_wealth": 0.038842
+    },
+    "retrospective_2025_plus": {
+      "champion_cagr": 0.061599,
+      "challenger_cagr": 0.044811,
+      "cagr_delta": -0.016789,
+      "champion_sharpe": 0.344552,
+      "challenger_sharpe": 0.295258,
+      "relative_terminal_wealth": -0.023875
+    },
+    "full_overlap": {
+      "champion_cagr": 0.358435,
+      "challenger_cagr": 0.352758,
+      "cagr_delta": -0.005678,
+      "champion_sharpe": 0.926614,
+      "challenger_sharpe": 0.910613,
+      "sharpe_delta": -0.016001,
+      "champion_max_drawdown": -0.492023,
+      "challenger_max_drawdown": -0.494277,
+      "max_drawdown_delta": -0.002255,
+      "champion_calmar": 0.728493,
+      "challenger_calmar": 0.713683,
+      "relative_terminal_wealth": -0.026388,
+      "champion_turnover_units": 16.763111,
+      "challenger_turnover_units": 38.763111
+    }
+  },
+  "stress": {
+    "development_relative_terminal_wealth": -0.070052,
+    "fixed_validation_relative_terminal_wealth": 0.036778,
+    "retrospective_2025_plus_relative_terminal_wealth": -0.033621,
+    "full_overlap_relative_terminal_wealth": -0.068267,
+    "full_overlap_cagr_delta": -0.014881,
+    "full_overlap_sharpe_delta": -0.031708
+  },
+  "annual_attribution": [
+    {"year": 2020, "executed_recovery_sessions": 4, "relative_terminal_wealth": -0.005374},
+    {"year": 2021, "executed_recovery_sessions": 23, "relative_terminal_wealth": 0.009881},
+    {"year": 2022, "executed_recovery_sessions": 47, "relative_terminal_wealth": -0.044126},
+    {"year": 2023, "executed_recovery_sessions": 14, "relative_terminal_wealth": 0.010325},
+    {"year": 2024, "executed_recovery_sessions": 20, "relative_terminal_wealth": 0.028225},
+    {"year": 2025, "executed_recovery_sessions": 0, "relative_terminal_wealth": 0.0},
+    {"year": 2026, "executed_recovery_sessions": 20, "relative_terminal_wealth": -0.023875}
+  ],
+  "attribution": {
+    "period_positive_contribution_share": {
+      "development": 0.0,
+      "fixed_validation": 1.0,
+      "retrospective_2025_plus": 0.0
+    },
+    "max_period_positive_contribution_share": 1.0,
+    "episode_count": 34,
+    "max_positive_episode_contribution_share": 0.356383,
+    "largest_positive_episode": {
+      "start": "2021-05-17",
+      "end": "2021-06-08",
+      "sessions": 17,
+      "relative_terminal_wealth": 0.058923
+    }
+  },
+  "retrospective_gates": {
+    "passed": 3,
+    "total": 10,
+    "all_pass": false,
+    "gates": {
+      "full_cagr_delta_ge_minus_50bp": false,
+      "full_sharpe_delta_nonnegative": false,
+      "mdd_deterioration_le_100bp": true,
+      "fixed_validation_relative_wealth_nonnegative": true,
+      "recent_relative_wealth_nonnegative": false,
+      "stress_full_relative_wealth_nonnegative": false,
+      "stress_recent_relative_wealth_nonnegative": false,
+      "period_positive_concentration_le_60pct": false,
+      "largest_positive_episode_share_le_50pct": true,
+      "turnover_le_1_5x_champion": false
+    }
+  },
+  "conclusion": "The Phase 1 recovery factor contains useful conditional forward-return information, but a pointwise full re-risk from 75/25 to 100/0 is not a valid portfolio mapping. Benefits concentrate in 2023-24, while 2022 and 2026 are harmed and turnover more than doubles. Stop this challenger without threshold rescue, min-hold, hysteresis, vol relaxation, or SMA changes.",
+  "next_research_question": "Separate recovery detection from allocation lifecycle: diagnose whether entry timing, persistence/exit timing, or re-risk magnitude causes the 2022/2026 failures before defining any new challenger."
+}
