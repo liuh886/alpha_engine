@@ -6,6 +6,7 @@ from pathlib import Path
 
 from scripts.migrate_formal_v1_to_bundle_v2 import MODEL_MAP, migrate
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+from src.research.byd_v1_3_low_vol_recovery import MODEL_ID as BYD_V13
 
 SOURCE = Path("data/research/formal_backtests")
 
@@ -28,7 +29,7 @@ def _section(root: Path, manifest: dict, section_id: str):
     return row, payload
 
 
-def test_migration_preserves_retained_evidence_and_unavailability(tmp_path: Path) -> None:
+def test_migration_preserves_current_accepted_evidence(tmp_path: Path) -> None:
     output = tmp_path / "formal_model_runs"
     receipt = migrate(SOURCE, output)
     catalog = _read(output / "catalog.json")
@@ -36,7 +37,7 @@ def test_migration_preserves_retained_evidence_and_unavailability(tmp_path: Path
     assert catalog["channel"] == "formal"
     assert catalog["research_only"] is True
     assert catalog["trade_ready"] is False
-    assert len(catalog["records"]) == 3
+    assert len(catalog["records"]) == 4
     assert receipt["status"] == "formal_v1_migrated_byte_preserving"
 
     v1_catalog = _read(SOURCE / "catalog.json")
@@ -45,6 +46,7 @@ def test_migration_preserves_retained_evidence_and_unavailability(tmp_path: Path
         for row in v1_catalog["records"]
         if row["model_id"] in MODEL_MAP
     }
+    assert set(v1_paths) == set(MODEL_MAP)
     for record in catalog["records"]:
         manifest_path = output / record["manifest_path"]
         manifest = _read(manifest_path)
@@ -63,7 +65,7 @@ def test_migration_preserves_retained_evidence_and_unavailability(tmp_path: Path
         _, robustness = _section(bundle_root, manifest, "robustness")
         assert robustness["window_summary"] == source["window_summary"]
         _, lineage = _section(bundle_root, manifest, "lineage")
-        assert lineage["source_sha256"] == _sha(v1_paths[model_id])
+        assert lineage["source_package_sha256"] == _sha(v1_paths[model_id])
         assert lineage["historical_evidence_recomputed"] is False
         assert lineage["model_selection_reopened"] is False
 
@@ -83,7 +85,7 @@ def test_migration_preserves_retained_evidence_and_unavailability(tmp_path: Path
             assert attribution is None
 
 
-def test_migration_is_deterministic_and_cn_does_not_gain_ledgers(tmp_path: Path) -> None:
+def test_migration_is_deterministic_and_does_not_synthesize_decisions(tmp_path: Path) -> None:
     first = tmp_path / "first"
     second = tmp_path / "second"
     receipt_a = migrate(SOURCE, first)
@@ -95,13 +97,23 @@ def test_migration_is_deterministic_and_cn_does_not_gain_ledgers(tmp_path: Path)
     assert receipt_a == receipt_b
 
     catalog = _read(first / "catalog.json")
-    cn = next(row for row in catalog["records"] if row["model_version_id"] == "cn_x1_0")
-    manifest_path = first / cn["manifest_path"]
+    for record in catalog["records"]:
+        manifest = _read(first / record["manifest_path"])
+        declarations = {row["section_id"]: row for row in manifest["sections"]}
+        assert declarations["decision"]["availability_status"] == "not_retained"
+
+
+def test_byd_v1_3_retained_benchmark_and_excess_metrics_are_projected(tmp_path: Path) -> None:
+    output = tmp_path / "formal"
+    migrate(SOURCE, output)
+    catalog = _read(output / "catalog.json")
+    byd = next(row for row in catalog["records"] if row["model_version_id"] == BYD_V13)
+    manifest_path = output / byd["manifest_path"]
     manifest = _read(manifest_path)
-    declarations = {row["section_id"]: row for row in manifest["sections"]}
-    assert declarations["trades"]["availability_status"] == "not_retained"
-    assert declarations["attribution"]["availability_status"] == "not_retained"
-    assert declarations["decision"]["availability_status"] == "not_retained"
+    _, summary = _section(manifest_path.parent, manifest, "summary")
+    metrics = {row["metric_id"]: row for row in summary["metrics"]}
+    assert metrics["benchmark_return"]["availability_status"] == "available"
+    assert metrics["excess_return"]["availability_status"] == "available"
 
 
 def test_summary_aliases_without_recomputation(tmp_path: Path) -> None:

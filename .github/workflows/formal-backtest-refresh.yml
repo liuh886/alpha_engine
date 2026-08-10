@@ -22,6 +22,9 @@ on:
       - "src/data/adapters/**"
       - "src/data/validation/**"
       - "src/research/selected_pool_guard.py"
+      - "src/research/byd_515180_allocation.py"
+      - "src/research/byd_v1_2_recovery_state.py"
+      - "src/research/byd_v1_3_low_vol_recovery.py"
       - "scripts/build_market_providers.py"
       - "scripts/dump_bin.py"
       - "scripts/build_market_evidence.py"
@@ -30,14 +33,15 @@ on:
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/ranker_provisional_mtm.py"
       - "scripts/refresh_ranker_formal.py"
-      - "scripts/refresh_allocation_formal.py"
+      - "scripts/byd_formal_refresh_common.py"
+      - "scripts/byd_v1_3_formal_builder.py"
+      - "scripts/refresh_byd_v1_3_formal.py"
       - "scripts/refresh_qqq_v4_3_formal.py"
-      - "scripts/promote_byd_v1_2_formal.py"
+      - "scripts/promote_byd_v1_3_formal.py"
       - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "scripts/data/build_etf_reference_bundle.py"
       - "src/data/etf_reference_bundle.py"
-      - "src/research/byd_515180_allocation.py"
       - "scripts/sync_formal_bundle_v2.py"
       - "configs/factor_libraries/ohlcv.yaml"
       - "configs/pools/selected_pool_registry_v1.yaml"
@@ -48,7 +52,7 @@ on:
       - "uv.lock"
       - "tests/test_formal_refresh.py"
       - "tests/test_ranker_provisional_mtm.py"
-      - "tests/test_refresh_allocation_formal.py"
+      - "tests/test_refresh_byd_v1_3_formal.py"
       - "tests/test_refresh_qqq_v4_3_formal.py"
       - "tests/test_market_evidence.py"
       - "tests/test_formal_provider_cache.py"
@@ -136,19 +140,22 @@ jobs:
             src/data/router.py \
             src/data/provider_catalog.py \
             src/data/adapters \
+            src/research/byd_v1_3_low_vol_recovery.py \
             scripts/build_market_evidence.py \
             scripts/govern_formal_provider_cache.py \
             scripts/build_strategy_operations.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/ranker_provisional_mtm.py \
             scripts/refresh_ranker_formal.py \
-            scripts/refresh_allocation_formal.py \
+            scripts/byd_formal_refresh_common.py \
+            scripts/byd_v1_3_formal_builder.py \
+            scripts/refresh_byd_v1_3_formal.py \
             scripts/refresh_qqq_v4_3_formal.py \
             scripts/data/refresh_selected_pool_prices.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             tests/test_formal_refresh.py \
             tests/test_ranker_provisional_mtm.py \
-            tests/test_refresh_allocation_formal.py \
+            tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
@@ -156,7 +163,7 @@ jobs:
           uv run pytest \
             tests/test_formal_refresh.py \
             tests/test_ranker_provisional_mtm.py \
-            tests/test_refresh_allocation_formal.py \
+            tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
@@ -429,8 +436,8 @@ jobs:
             --ledger-a "$LEDGER_A" --ledger-b "$LEDGER_B" \
             --cutoff "$CN_CUTOFF" --generated-at "$GENERATED_AT" \
             --output "$CANDIDATE_FORMAL_ROOT/cn_x1_1.json"
-      - name: Extend canonical inputs and refresh BYD v1.2
-        if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'byd_v1_2_convex_momentum_budget_v1')
+      - name: Extend canonical inputs and refresh BYD v1.3
+        if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'byd_v1_3_recovery_event_low_vol_confirmation_v1')
         env:
           CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
@@ -440,15 +447,16 @@ jobs:
           tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/formal-refresh/input/byd
           base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > artifacts/formal-refresh/515180.zip
           unzip -q artifacts/formal-refresh/515180.zip -d artifacts/formal-refresh/input/515180
-          uv run python scripts/refresh_allocation_formal.py byd \
-            --current-package "$CURRENT_FORMAL_ROOT/byd_v1_2_convex_momentum_budget_v1.json" \
+          uv run python scripts/refresh_byd_v1_3_formal.py \
+            --current-package "$CURRENT_FORMAL_ROOT/byd_v1_3_recovery_event_low_vol_confirmation_v1.json" \
+            --predecessor-package "$CURRENT_FORMAL_ROOT/byd_v1_2_convex_momentum_budget_v1.json" \
             --base-byd-dir artifacts/formal-refresh/input/byd \
             --base-etf-dir artifacts/formal-refresh/input/515180 \
             --shadow-store data/research/byd_prospective_shadow \
             --paired-store data/research/byd_515180_prospective \
-            --signal-ledger data/research/byd_v1_2_signal_ledger \
+            --signal-ledger data/research/strategy_signal_ledgers/byd_v1_3_recovery_event_low_vol_confirmation_v1 \
             --cutoff "$CN_CUTOFF" --generated-at "$GENERATED_AT" \
-            --output "$CANDIDATE_FORMAL_ROOT/byd_v1_2_convex_momentum_budget_v1.json"
+            --output "$CANDIDATE_FORMAL_ROOT/byd_v1_3_recovery_event_low_vol_confirmation_v1.json"
       - name: Seal formal v1 and build Bundle v2
         if: steps.plan.outputs.refresh_required == 'true'
         env:
@@ -519,7 +527,7 @@ jobs:
           set -euo pipefail
           uv run pytest \
             tests/test_formal_refresh.py \
-            tests/test_refresh_allocation_formal.py \
+            tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
             tests/test_formal_backtest_freshness.py \
@@ -574,6 +582,7 @@ jobs:
           - Generated at: \`${GENERATED_AT}\`
           - Accepted model membership: derived from the formal catalog
           - QQQ formal model: QQQ Rotation v4.3 append-only
+          - BYD formal model: BYD v1.3 append-only
           - Historical reports, positions and trades: immutable prefix verified
           - Formal v1, Bundle v2, Market Evidence and Strategy Operations: one reviewed publication
           - Model selection: not reopened
@@ -733,4 +742,4 @@ jobs:
             artifacts/formal-refresh/qqq-bundle/coverage.csv
             artifacts/formal-refresh/qqq-bundle/reconciliation.csv
           if-no-files-found: warn
-          retention-days: 90
+          retention-days: 30

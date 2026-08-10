@@ -21,7 +21,7 @@ FORMAL_CATALOG = Path("data/research/formal_model_runs/catalog.json")
 FACTOR_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
 QQQ_MODEL = "qqqi_qqq_tqqq_v4_3"
 QQQ_V43_MODEL = "qqqi_qqq_tqqq_v4_3"
-BYD_MODEL = "byd_v1_2_convex_momentum_budget_v1"
+BYD_MODEL = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
 US_MODEL = "us_x1_1"
 CN_MODEL = "cn_x1_1"
 

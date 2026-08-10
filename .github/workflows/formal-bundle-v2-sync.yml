@@ -6,8 +6,10 @@ on:
     paths:
       - .github/workflows/formal-bundle-v2-sync.yml
       - scripts/sync_formal_bundle_v2.py
+      - scripts/migrate_formal_v1_to_bundle_v2.py
       - scripts/build_strategy_operations.py
       - src/artifacts/strategy_operations.py
+      - tests/test_migrate_formal_v1_to_bundle_v2.py
       - tests/test_sync_formal_bundle_v2.py
       - tests/test_strategy_operations.py
       - data/research/formal_backtests/**
@@ -18,6 +20,7 @@ on:
       - qlib-dashboard/scripts/sync-strategy-operations.mjs
       - qlib-dashboard/public/data/formal-model-runs/**
       - qlib-dashboard/public/data/strategy-operations/**
+      - qlib-dashboard/src/**
   workflow_dispatch:
 
 permissions:
@@ -71,7 +74,7 @@ jobs:
           rm -rf data/research/formal_model_runs
           cp -a artifacts/bundle-a data/research/formal_model_runs
           rm -f data/research/formal_model_runs/formal-bundle-v2-sync-receipt.json
-      - name: Rebuild Strategy Operations against the projected formal identities
+      - name: Rebuild Strategy Operations against projected identities
         run: |
           set -euo pipefail
           generated_at="$(python - <<'PY'
@@ -96,24 +99,33 @@ jobs:
           cd qlib-dashboard
           npm run sync:formal-model-runs
           npm run sync:strategy-operations
-      - name: Validate projected publication
+      - name: Validate projected Python publication contracts
         run: |
           set -euo pipefail
           uv run ruff check \
+            scripts/migrate_formal_v1_to_bundle_v2.py \
             scripts/sync_formal_bundle_v2.py \
             scripts/build_strategy_operations.py \
             src/artifacts/strategy_operations.py \
+            tests/test_migrate_formal_v1_to_bundle_v2.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py
           uv run pytest \
+            tests/test_migrate_formal_v1_to_bundle_v2.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
             -q --strict-markers --tb=short
-          cd qlib-dashboard
+      - name: Validate projected frontend lint and types
+        working-directory: qlib-dashboard
+        run: |
           npm run lint
           npx tsc --noEmit
-          npm test -- --run
-          npm run build
+      - name: Validate projected frontend unit tests
+        working-directory: qlib-dashboard
+        run: npm test -- --run
+      - name: Validate projected frontend build
+        working-directory: qlib-dashboard
+        run: npm run build
       - name: Commit exact projected assets
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         run: |
@@ -142,4 +154,4 @@ jobs:
             artifacts/bundle-receipt-a.json
             artifacts/operations-a.json
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 30

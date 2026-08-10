@@ -1,26 +1,29 @@
-"""Decision-grade signals for the formal BYD v1.2 convex-momentum model.
+"""Decision-grade signals for the formal BYD v1.3 allocation model.
 
-The alert layer consumes the frozen base, paired and trend-state observations.
-It does not refit or search. The exact continuous target weight is reproduced
-from the formal model contract and evaluated for next eligible open execution.
+The alert layer does not reproduce model logic. It consumes the final immutable
+V1.3 prospective observation, which already binds the exact V1.2 core/expansion
+path to the frozen low-vol recovery lifecycle. This module only detects target
+changes and renders governed human-readable evidence.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
-from src.research.byd_v1_2_convex_momentum import (
-    CANDIDATE,
-    CONVEX_POWER,
-    FULL_INCREMENT_MOMENTUM,
-    MAX_FINANCED_INCREMENT,
-)
+from src.research.byd_v1_3_low_vol_recovery import MODEL_ID
 
 ASSETS = ("BYD", "515180", "CASH")
 TELEGRAM_MESSAGE_LIMIT = 4096
-MODEL_ID = CANDIDATE
+SCHEMA_VERSION = "byd_v1_3_signal_v1"
+
+
+def _mapping(value: object, label: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{label} must be an object")
+    return value
 
 
 def _normalise_weights(raw: Mapping[str, Any] | None) -> dict[str, float]:
@@ -29,32 +32,23 @@ def _normalise_weights(raw: Mapping[str, Any] | None) -> dict[str, float]:
     return {asset: float(raw.get(asset, 0.0)) for asset in ASSETS}
 
 
-def _momentum_scale(momentum_20: float) -> float:
-    normalized = max(float(momentum_20), 0.0) / FULL_INCREMENT_MOMENTUM
-    return min(normalized, 1.0) ** CONVEX_POWER
-
-
-def _target_weights(
-    *,
-    base_target: float,
-    expansion_active: bool,
-    momentum_20: float,
-) -> tuple[dict[str, float], float, float]:
-    scale = _momentum_scale(momentum_20)
-    increment = MAX_FINANCED_INCREMENT * scale if expansion_active else 0.0
-    byd_weight = float(base_target) + increment
-    etf_weight = 0.0 if increment > 0.0 else 1.0 - float(base_target)
-    cash_weight = 1.0 - byd_weight - etf_weight
-    weights = {
-        "BYD": byd_weight,
-        "515180": etf_weight,
-        "CASH": cash_weight,
+def _candidate_target(observation: Mapping[str, Any]) -> dict[str, float]:
+    if observation.get("schema_version") != "byd_v1_3_low_vol_prospective_v1":
+        raise ValueError("unsupported BYD v1.3 governed observation schema")
+    if observation.get("candidate_model_id") != MODEL_ID:
+        raise ValueError("BYD governed observation has the wrong model identity")
+    targets = _mapping(observation.get("targets"), "observation.targets")
+    raw = _mapping(targets.get(MODEL_ID), f"observation.targets.{MODEL_ID}")
+    target = {
+        "BYD": float(raw.get("byd_weight", 0.0)),
+        "515180": float(raw.get("etf_weight", 0.0)),
+        "CASH": float(raw.get("cash_weight", 0.0)),
     }
-    if abs(sum(weights.values()) - 1.0) > 1e-12:
-        raise ValueError("BYD v1.2 target weights do not sum to one")
-    if byd_weight > 1.125 + 1e-12:
-        raise ValueError("BYD v1.2 target exceeds the formal leverage cap")
-    return weights, scale, increment
+    if abs(sum(target.values()) - 1.0) > 1e-12:
+        raise ValueError("BYD v1.3 governed target weights do not sum to one")
+    if target["BYD"] > 1.125 + 1e-12:
+        raise ValueError("BYD v1.3 governed target exceeds the formal leverage cap")
+    return target
 
 
 def _orders(
@@ -78,22 +72,28 @@ def _orders(
     return rows
 
 
-def _weights_changed(
-    current: Mapping[str, float],
-    target: Mapping[str, float],
-) -> bool:
+def _weights_changed(current: Mapping[str, float], target: Mapping[str, float]) -> bool:
     return any(abs(float(target[a]) - float(current[a])) > 1e-12 for a in ASSETS)
 
 
-def _mode(base_target: float, increment: float) -> str:
-    if increment > 0.0:
+def _mode(
+    *,
+    target: Mapping[str, float],
+    champion: Mapping[str, Any],
+    lifecycle: Mapping[str, Any],
+) -> str:
+    if lifecycle.get("overlay_decision_active") is True:
+        return "low_vol_recovery"
+    if float(champion.get("financed_increment", 0.0)) > 0.0:
         return "convex_expansion"
-    if base_target >= 0.99:
+    if float(target["BYD"]) >= 0.99:
         return "offense"
     return "defense"
 
 
 def _mode_label(mode: str, target: Mapping[str, float]) -> str:
+    if mode == "low_vol_recovery":
+        return "低波动恢复再风险（100% BYD）"
     if mode == "convex_expansion":
         return f"凸动量扩张（BYD {float(target['BYD']):.1%}）"
     if mode == "offense":
@@ -108,33 +108,26 @@ def _fmt_pct(value: Any, digits: int = 2) -> str:
 
 
 def build_byd_signal_alert(
-    shadow_obs: Mapping[str, Any],
-    paired_obs: Mapping[str, Any],
-    expansion_obs: Mapping[str, Any],
+    observation: Mapping[str, Any],
     previous_alert: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    signal_dates = {
-        str(shadow_obs.get("signal_date", "")),
-        str(paired_obs.get("signal_date", "")),
-        str(expansion_obs.get("signal_date", "")),
-    }
-    if len(signal_dates) != 1 or "" in signal_dates:
-        raise ValueError("BYD signal source dates do not agree")
-    signal_date = next(iter(signal_dates))
-
-    factors = expansion_obs.get("factors", {})
-    if not isinstance(factors, Mapping):
-        raise ValueError("BYD expansion factors are missing")
-    base_target = float(shadow_obs.get("base_target_position", 0.75))
-    expansion_active = bool(expansion_obs.get("trend_expansion_active", False))
-    momentum_20 = float(factors.get("mom_20", 0.0))
-    target_weights, scale, increment = _target_weights(
-        base_target=base_target,
-        expansion_active=expansion_active,
-        momentum_20=momentum_20,
+    signal_date = str(observation.get("signal_date") or "")
+    if not signal_date:
+        raise ValueError("BYD v1.3 governed observation has no signal date")
+    target_weights = _candidate_target(observation)
+    factors = _mapping(observation.get("factors"), "observation.factors")
+    champion = _mapping(observation.get("champion"), "observation.champion")
+    lifecycle = _mapping(observation.get("lifecycle"), "observation.lifecycle")
+    detector = _mapping(observation.get("detector"), "observation.detector")
+    confirmation = _mapping(
+        observation.get("entry_confirmation"), "observation.entry_confirmation"
     )
 
-    prior_weights = None
+    required_factors = {"market_state", "vol_state", "mom_20", "mom_60", "drawdown_252"}
+    if not required_factors.issubset(factors):
+        raise ValueError("BYD v1.3 governed factor context is incomplete")
+
+    prior_weights: Mapping[str, Any] | None = None
     if previous_alert is not None:
         raw_prior = previous_alert.get("target_weights")
         if isinstance(raw_prior, Mapping):
@@ -143,22 +136,16 @@ def build_byd_signal_alert(
     changed = previous_alert is None or _weights_changed(current_weights, target_weights)
 
     data_freshness_ok = bool(
-        shadow_obs.get("prospective_eligible", False)
-        and paired_obs.get("prospective_eligible", False)
-        and expansion_obs.get("prospective_eligible", False)
+        observation.get("data_version")
+        and observation.get("source")
+        and observation.get("common_open_eligible") is not None
     )
-    open_eligible = bool(
-        shadow_obs.get("open_research_eligible", False)
-        and paired_obs.get("common_open_eligible", False)
-        and expansion_obs.get("common_open_eligible", False)
-    )
-    should_alert = bool(changed and data_freshness_ok and open_eligible)
-
-    mode = _mode(base_target, increment)
+    open_eligible = bool(observation.get("common_open_eligible", False))
+    mode = _mode(target=target_weights, champion=champion, lifecycle=lifecycle)
     previous_mode = str(previous_alert.get("target_mode")) if previous_alert is not None else None
     if previous_alert is None:
         transition_type = "initialize"
-        transition_label = "启用正式 BYD v1.2 信号"
+        transition_label = "启用正式 BYD v1.3 信号"
     elif changed:
         transition_type = "rebalance"
         transition_label = "调整目标仓位"
@@ -171,28 +158,22 @@ def build_byd_signal_alert(
     fingerprint_payload = {
         "model_id": MODEL_ID,
         "signal_date": signal_date,
+        "data_version": str(observation.get("data_version")),
         "target_weights": target_weights,
-        "momentum_scale": scale,
-        "financed_increment": increment,
+        "recovery_lifecycle_id": int(lifecycle.get("id", 0)),
+        "recovery_active": bool(lifecycle.get("overlay_decision_active", False)),
     }
     fingerprint = hashlib.sha256(
         json.dumps(fingerprint_payload, sort_keys=True).encode("utf-8")
     ).hexdigest()[:20]
 
-    chain = shadow_obs.get("chain_linked_adjusted_ohlcv", {})
-    primary = shadow_obs.get("primary_raw_ohlcv", {})
-    if not isinstance(chain, Mapping):
-        chain = {}
-    if not isinstance(primary, Mapping):
-        primary = {}
-
     alert: dict[str, Any] = {
-        "schema_version": "byd_v1_2_signal_v2",
+        "schema_version": SCHEMA_VERSION,
         "model_id": MODEL_ID,
         "experiment_id": MODEL_ID,
         "research_only": True,
         "trade_ready": False,
-        "should_alert": should_alert,
+        "should_alert": bool(changed and data_freshness_ok),
         "fingerprint": fingerprint,
         "signal_date": signal_date,
         "latest_data_date": signal_date,
@@ -204,10 +185,10 @@ def build_byd_signal_alert(
         "previous_mode": previous_mode,
         "target_mode": mode,
         "target_mode_label": _mode_label(mode, target_weights),
-        "base_target": base_target,
-        "expansion_active": expansion_active,
-        "momentum_scale": scale,
-        "financed_increment": increment,
+        "base_target": float(champion.get("base_byd_weight", 0.75)),
+        "expansion_active": bool(champion.get("trend_expansion_active", False)),
+        "momentum_scale": float(champion.get("momentum_scale", 0.0)),
+        "financed_increment": float(champion.get("financed_increment", 0.0)),
         "current_weights": current_weights,
         "target_weights": target_weights,
         "orders": order_rows,
@@ -215,28 +196,44 @@ def build_byd_signal_alert(
         "transaction_cost_bps": 20.0,
         "estimated_transaction_cost": turnover_units * 20.0 / 10_000.0,
         "price_context": {
-            "byd_close": float(chain.get("close", primary.get("close", 0.0))),
-            "byd_open": float(chain.get("open", primary.get("open", 0.0))),
+            "byd_open": float(_mapping(observation.get("prices"), "observation.prices").get("byd_open", 0.0)),
+            "etf_open": float(_mapping(observation.get("prices"), "observation.prices").get("etf_open", 0.0)),
         },
         "factor_context": {
             "market_state": str(factors.get("market_state", "")),
             "vol_state": str(factors.get("vol_state", "")),
             "drawdown_252": float(factors.get("drawdown_252", 0.0)),
-            "mom_20": momentum_20,
+            "mom_20": float(factors.get("mom_20", 0.0)),
             "mom_60": float(factors.get("mom_60", 0.0)),
-            "momentum_scale": scale,
-            "financed_increment": increment,
+            "momentum_scale": float(champion.get("momentum_scale", 0.0)),
+            "financed_increment": float(champion.get("financed_increment", 0.0)),
+        },
+        "recovery_context": {
+            "detector_active": bool(detector.get("active", False)),
+            "event_edge": bool(detector.get("event_edge", False)),
+            "recovery_factor": float(detector.get("drawdown252_x_rebound60", 0.0)),
+            "threshold": float(detector.get("threshold", 0.026937)),
+            "required_vol_state": str(confirmation.get("required_vol_state", "low")),
+            "observed_vol_state": str(confirmation.get("observed_vol_state", "")),
+            "entry_confirmed": bool(confirmation.get("passed_on_edge", False)),
+            "catch_up_allowed": bool(confirmation.get("catch_up_allowed", False)),
+            "lifecycle_active": bool(lifecycle.get("overlay_decision_active", False)),
+            "lifecycle_started": bool(lifecycle.get("started", False)),
+            "lifecycle_id": int(lifecycle.get("id", 0)),
+            "remaining_eligible_sessions": int(lifecycle.get("remaining_eligible_sessions", 0)),
         },
         "source_identity": {
-            "shadow_data_version": str(shadow_obs.get("data_version", "")),
-            "paired_data_version": str(paired_obs.get("data_version", "")),
-            "expansion_data_version": str(expansion_obs.get("data_version", "")),
+            "data_version": str(observation.get("data_version", "")),
+            "source": dict(_mapping(observation.get("source"), "observation.source")),
+            "prospective_evidence_eligible": bool(observation.get("prospective_eligible", False)),
+            "prelaunch_seed": bool(observation.get("prelaunch_seed", False)),
         },
     }
-    if should_alert:
-        alert["title"] = f"[BYD v1.2 信号] {signal_date} {_mode_label(mode, target_weights)}"
-    else:
-        alert["title"] = f"[BYD v1.2 评估] {signal_date} {_mode_label(mode, target_weights)}"
+    alert["title"] = (
+        f"[BYD v1.3 信号] {signal_date} {_mode_label(mode, target_weights)}"
+        if alert["should_alert"]
+        else f"[BYD v1.3 评估] {signal_date} {_mode_label(mode, target_weights)}"
+    )
     alert["markdown"] = _render_markdown(alert)
     alert["telegram_text"] = _render_telegram(alert)
     return alert
@@ -259,27 +256,26 @@ def _order_lines(alert: Mapping[str, Any], *, markdown: bool) -> list[str]:
             f"({float(item['from_weight']):.2%} → {float(item['to_weight']):.2%})"
         )
         rows.append(f"- **{text}**" if markdown else f"• {text}")
-    if rows:
-        return rows
-    return ["- 当前仓位与目标一致"] if markdown else ["• 当前仓位与目标一致"]
+    return rows or (["- 当前仓位与目标一致"] if markdown else ["• 当前仓位与目标一致"])
 
 
 def _render_markdown(alert: Mapping[str, Any]) -> str:
-    factors = alert["factor_context"]
-    target = alert["target_weights"]
-    freshness = "通过" if alert["data_freshness_ok"] else "失败：禁止执行"
-    eligibility = "通过" if alert["open_research_eligible"] else "隔离"
+    factors = _mapping(alert["factor_context"], "alert.factor_context")
+    recovery = _mapping(alert["recovery_context"], "alert.recovery_context")
+    target = _mapping(alert["target_weights"], "alert.target_weights")
+    freshness = "通过" if alert["data_freshness_ok"] else "失败：禁止发布"
+    eligibility = "已确认" if alert["open_research_eligible"] else "等待下一有效开盘"
     lines = [
         f"## {alert['title']}",
         "",
-        "> 研究信号，非自动订单。`research_only=true`，`trade_ready=false`。",
+        "> 正式 research baseline 信号，非自动订单。`research_only=true`，`trade_ready=false`。",
         "",
         "### 决策",
         "",
         f"- 信号时间：**{alert['signal_date']} A股收盘后**",
         "- 计划执行：**下一共同确认有效开盘**",
-        f"- 数据新鲜度：**{freshness}**",
-        f"- 开盘资格：**{eligibility}**",
+        f"- 决策证据：**{freshness}**",
+        f"- 最近开盘资格：**{eligibility}**",
         f"- 状态：**{alert['target_mode_label']}**",
         f"- BYD：**{float(target['BYD']):.2%}**",
         f"- 515180：**{float(target['515180']):.2%}**",
@@ -291,20 +287,22 @@ def _render_markdown(alert: Mapping[str, Any]) -> str:
         f"- 组合换手：**{float(alert['turnover_units']):.4f}**",
         f"- 估算交易成本：**{_fmt_pct(alert['estimated_transaction_cost'], 4)}**",
         "",
-        "### 凸动量预算",
+        "### V1.2 核心与恢复确认",
         "",
-        f"- 冻结趋势状态：**{'激活' if alert['expansion_active'] else '未激活'}**",
+        f"- 原核心状态：**{'趋势扩张' if alert['expansion_active'] else '常规核心'}**",
         f"- 20日动量：**{_fmt_pct(factors['mom_20'])}**",
         f"- 60日动量：**{_fmt_pct(factors['mom_60'])}**",
-        f"- 动量缩放：**{_fmt_pct(alert['momentum_scale'])}**",
         f"- 融资增量：**{_fmt_pct(alert['financed_increment'])}**",
         f"- 252日回撤：**{_fmt_pct(factors['drawdown_252'])}**",
         f"- 市场/波动状态：**{factors['market_state']} / {factors['vol_state']}**",
+        f"- Recovery factor：**{float(recovery['recovery_factor']):.4f}** / 阈值 **{float(recovery['threshold']):.4f}**",
+        f"- Recovery edge：**{'是' if recovery['event_edge'] else '否'}**；低波动确认：**{'通过' if recovery['entry_confirmed'] else '未通过'}**",
+        f"- Recovery lifecycle：**{'激活' if recovery['lifecycle_active'] else '未激活'}**",
         "",
         "### 执行纪律",
         "",
         "- 只按下一共同确认有效开盘执行；无效开盘保留待执行目标。",
-        "- 目标仓位是连续值，不得人工四舍五入为固定 110% 档位。",
+        "- 高波动 recovery edge 不允许在之后波动回落时补入；必须等待新的 edge。",
         "- 实际成交价格、滑点和融资成本可能与回测假设不同。",
         "",
         f"<!-- signal-fingerprint:{alert['fingerprint']} -->",
@@ -313,20 +311,19 @@ def _render_markdown(alert: Mapping[str, Any]) -> str:
 
 
 def _render_telegram(alert: Mapping[str, Any]) -> str:
-    target = alert["target_weights"]
-    factors = alert["factor_context"]
+    target = _mapping(alert["target_weights"], "alert.target_weights")
+    recovery = _mapping(alert["recovery_context"], "alert.recovery_context")
     lines = [
-        f"🔔 Alpha Engine BYD v1.2｜{alert['transition_label']}",
+        f"🔔 Alpha Engine BYD v1.3｜{alert['transition_label']}",
         "",
         f"信号：{alert['signal_date']} 收盘",
         "执行：下一共同确认有效开盘",
         f"状态：{alert['target_mode_label']}",
         f"目标：BYD {float(target['BYD']):.2%}｜515180 {float(target['515180']):.2%}｜现金 {float(target['CASH']):.2%}",
-        f"动量：20日 {float(factors['mom_20']):.2%}｜缩放 {float(alert['momentum_scale']):.2%}",
-        f"融资增量：{float(alert['financed_increment']):.2%}",
+        f"Recovery：edge {'是' if recovery['event_edge'] else '否'}｜低波动确认 {'通过' if recovery['entry_confirmed'] else '未通过'}",
         "",
         *_order_lines(alert, markdown=False),
         "",
-        "研究信号，不是自动订单。",
+        "正式研究信号，不是自动订单。",
     ]
     return "\n".join(lines)[:TELEGRAM_MESSAGE_LIMIT]

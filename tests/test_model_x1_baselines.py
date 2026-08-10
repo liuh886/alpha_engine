@@ -6,12 +6,14 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
-import yaml
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/validate_model_x1_baselines.py"
 REGISTRY = ROOT / "configs/models/model_registry_v1.yaml"
+BYD_V12 = "byd_v1_2_convex_momentum_budget_v1"
+BYD_V13 = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
 
 
 def _load_validator() -> ModuleType:
@@ -30,10 +32,7 @@ def test_registry_contains_governed_x1_baselines() -> None:
     assert payload["trade_ready"] is False
     assert payload["active_baselines"]["us"] == "us_x1_1"
     assert payload["active_baselines"]["cn"] == "cn_x1_1"
-    assert (
-        payload["active_baselines"]["byd"]
-        == "byd_v1_2_convex_momentum_budget_v1"
-    )
+    assert payload["active_baselines"]["byd"] == BYD_V13
     assert payload["models"]["us_x1_0"]["superseded_by"] == "us_x1_1"
     assert payload["models"]["cn_x1_0"]["superseded_by"] == "cn_x1_1"
     assert payload["models"]["cn_x1_1"]["display_name"] == "CN x1.1"
@@ -43,11 +42,23 @@ def test_registry_contains_governed_x1_baselines() -> None:
         payload["models"]["byd_dividend_sleeve_v1_0"]["status"]
         == "historical_baseline_superseded"
     )
-    byd_v12 = payload["models"]["byd_v1_2_convex_momentum_budget_v1"]
+
+    byd_v12 = payload["models"][BYD_V12]
     assert byd_v12["display_name"] == "BYD v1.2"
-    assert byd_v12["status"] == "accepted_formal_baseline"
+    assert byd_v12["status"] == "historical_baseline_superseded"
     assert byd_v12["promotion_authority"] == "explicit_user_direction_2026_08_06"
+    assert byd_v12["superseded_by"] == BYD_V13
     assert byd_v12["trade_ready"] is False
+
+    byd_v13 = payload["models"][BYD_V13]
+    assert byd_v13["display_name"] == "BYD v1.3"
+    assert byd_v13["status"] == "accepted_formal_baseline"
+    assert byd_v13["promotion_authority"] == "explicit_user_direction_2026_08_10"
+    assert byd_v13["fresh_historical_holdout"] is False
+    assert byd_v13["historical_evidence_consumed"] is True
+    assert byd_v13["automatic_promotion_allowed"] is False
+    assert byd_v13["trade_ready"] is False
+
     assert payload["versioning_policy"]["immutable_released_versions"] is True
     assert (
         payload["versioning_policy"]["final_holdout_reuse_for_selection_allowed"]
@@ -62,7 +73,7 @@ def test_model_configs_notebooks_and_frozen_specs_tie() -> None:
     assert result["active_baselines"] == {
         "us": "us_x1_1",
         "cn": "cn_x1_1",
-        "byd": "byd_v1_2_convex_momentum_budget_v1",
+        "byd": BYD_V13,
     }
     assert [item["model_id"] for item in result["models"]] == [
         "cn_x1_0",
@@ -74,7 +85,8 @@ def test_model_configs_notebooks_and_frozen_specs_tie() -> None:
     assert cn_x1_1["evidence_completeness"] == "complete"
     assert result["additional_registered_models"] == [
         "byd_dividend_sleeve_v1_0",
-        "byd_v1_2_convex_momentum_budget_v1",
+        BYD_V12,
+        BYD_V13,
     ]
     assert all(item["trade_ready"] is False for item in result["models"])
 

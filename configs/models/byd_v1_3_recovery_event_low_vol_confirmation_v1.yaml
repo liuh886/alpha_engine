@@ -1,0 +1,89 @@
+schema_version: '1.0'
+model_id: byd_v1_3_recovery_event_low_vol_confirmation_v1
+public_model_id: byd_v1_3
+display_name: BYD v1.3
+market: cn
+asset_class: single_equity_allocation
+status: accepted_formal_baseline
+source_candidate: byd_v1_3_recovery_event_low_vol_confirmation_v1
+source_research_issue: 744
+prospective_issue: 746
+promotion_issue: 752
+promotion_authority: explicit_user_direction_2026_08_10
+research_only: true
+trade_ready: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+automatic_promotion_allowed: false
+supersedes: byd_v1_2_convex_momentum_budget_v1
+implementation:
+  module: src/research/byd_v1_3_low_vol_recovery.py
+  core_module: src/research/byd_v1_2_convex_momentum.py
+  baseline_module: src/research/byd_515180_allocation.py
+  state_module: src/research/byd_v1_2_trend_expansion.py
+portfolio:
+  defense:
+    BYD: 0.75
+    515180.SH: 0.25
+    CASH: 0.0
+  offense:
+    BYD: 1.0
+    515180.SH: 0.0
+    CASH: 0.0
+  expansion:
+    maximum_BYD: 1.125
+    maximum_financed_increment: 0.125
+    ETF: 0.0
+    CASH: -0.125
+  recovery_overlay:
+    BYD: 1.0
+    515180.SH: 0.0
+    CASH: 0.0
+convex_momentum_budget:
+  inherited_from: byd_v1_2_convex_momentum_budget_v1
+  factor: mom_20
+  scale: min(1, max(mom_20, 0) / 0.15) ^ 4
+  full_increment_momentum: 0.15
+  convex_power: 4.0
+  maximum_financed_increment: 0.125
+  thresholds_mutable: false
+recovery_lifecycle:
+  factor: drawdown252_x_rebound60
+  detector:
+    base_BYD_weight: 0.75
+    factor_gte: 0.026937
+  trigger: false_to_true_edge
+  entry_confirmation:
+    vol_state: low
+    same_decision_date: true
+    catch_up_after_high_vol_edge: false
+  maximum_common_open_eligible_sessions: 20
+  detector_flicker_exits: false
+  early_termination: v1_2_core_returns_to_100pct_byd
+  thresholds_mutable: false
+execution:
+  signal_time: session_close_t
+  execution_time: next_common_independently_confirmed_eligible_open_t_plus_1
+  pending_target_survives_ineligible_open: true
+cost_contract:
+  primary_transaction_cost_bps: 20.0
+  stress_transaction_cost_bps: 40.0
+  primary_annual_financing_rate: 0.06
+  stress_annual_financing_rate: 0.10
+data_contract:
+  byd_snapshot: data/research/byd_canonical_v1_snapshot.tar.xz
+  byd_snapshot_sha256: 2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179
+  etf_artifact: data/research/515180_canonical_v1_artifact.zip.b64
+  etf_decoded_sha256: 7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f
+formal_publication:
+  package: data/research/formal_backtests/byd_v1_3_recovery_event_low_vol_confirmation_v1.json
+  publication_status: accepted_formal_baseline
+  performance_trace: exact_daily_open_to_open
+  frontend_bundle: data/research/formal_model_runs/byd_v1_3_recovery_event_low_vol_confirmation_v1
+  signal_ledger: data/research/strategy_signal_ledgers/byd_v1_3_recovery_event_low_vol_confirmation_v1
+interpretation:
+  promotion_basis: explicit user authorization after governed mechanism discovery
+  caveats:
+    - no fresh historical holdout
+    - forward validation gates were not completed before user-authorized promotion
+    - research_only remains true and trade_ready remains false

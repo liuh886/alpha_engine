@@ -359,14 +359,15 @@ def test_formal_refresh_frontend_validation_paths_are_complete() -> None:
     assert "npm run check:account" in live[preflight_start:clock_start]
 
 
-def test_production_refresh_runs_allocation_regressions_before_network_work() -> None:
+def test_production_refresh_runs_v1_3_regressions_before_network_work() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
     )
     start = workflow.index("      - name: Validate refresh implementation before network work")
     end = workflow.index("      - name: Resolve transaction timestamp")
     preflight = workflow[start:end]
-    assert "tests/test_refresh_allocation_formal.py" in preflight
+    assert "tests/test_refresh_byd_v1_3_formal.py" in preflight
+    assert "tests/test_refresh_allocation_formal.py" not in preflight
 
 
 def test_reviewed_refresh_dispatches_exact_merge_to_pages_before_current_status() -> None:

@@ -19,16 +19,19 @@ on:
       - "src/data/adapters/**"
       - "src/data/validation/**"
       - "src/research/selected_pool_guard.py"
-      - "scripts/build_market_providers.py"
-      - "scripts/dump_bin.py"
       - "src/research/byd_515180_allocation.py"
       - "src/research/byd_v1_2_recovery_state.py"
+      - "src/research/byd_v1_3_low_vol_recovery.py"
+      - "scripts/build_market_providers.py"
+      - "scripts/dump_bin.py"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/ranker_provisional_mtm.py"
       - "scripts/refresh_ranker_formal.py"
-      - "scripts/refresh_allocation_formal.py"
+      - "scripts/byd_formal_refresh_common.py"
+      - "scripts/byd_v1_3_formal_builder.py"
+      - "scripts/refresh_byd_v1_3_formal.py"
       - "scripts/refresh_qqq_v4_3_formal.py"
-      - "scripts/promote_byd_v1_2_formal.py"
+      - "scripts/promote_byd_v1_3_formal.py"
       - "scripts/build_market_evidence.py"
       - "scripts/govern_formal_provider_cache.py"
       - "scripts/build_strategy_operations.py"
@@ -38,7 +41,7 @@ on:
       - "tests/test_formal_refresh.py"
       - "tests/test_ranker_provisional_mtm.py"
       - "tests/test_formal_bundle_mtm_projection.py"
-      - "tests/test_refresh_allocation_formal.py"
+      - "tests/test_refresh_byd_v1_3_formal.py"
       - "tests/test_refresh_qqq_v4_3_formal.py"
       - "tests/test_market_evidence.py"
       - "tests/test_formal_provider_cache.py"
@@ -127,19 +130,22 @@ jobs:
             src/data/provider_catalog.py \
             src/data/adapters \
             src/research/byd_v1_2_recovery_state.py \
+            src/research/byd_v1_3_low_vol_recovery.py \
             scripts/build_market_evidence.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/ranker_provisional_mtm.py \
             scripts/govern_formal_provider_cache.py \
             scripts/refresh_ranker_formal.py \
-            scripts/refresh_allocation_formal.py \
+            scripts/byd_formal_refresh_common.py \
+            scripts/byd_v1_3_formal_builder.py \
+            scripts/refresh_byd_v1_3_formal.py \
             scripts/refresh_qqq_v4_3_formal.py \
             scripts/data/refresh_selected_pool_prices.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             tests/test_formal_refresh.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_formal_bundle_mtm_projection.py \
-            tests/test_refresh_allocation_formal.py \
+            tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
@@ -155,7 +161,7 @@ jobs:
             tests/test_formal_refresh.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_formal_bundle_mtm_projection.py \
-            tests/test_refresh_allocation_formal.py \
+            tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \

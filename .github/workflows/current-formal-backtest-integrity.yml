@@ -30,18 +30,21 @@ jobs:
           root = Path('data/research/formal_backtests')
           catalog = json.loads((root / 'catalog.json').read_text(encoding='utf-8'))
           freshness = json.loads((root / 'freshness.json').read_text(encoding='utf-8'))
+          byd_v1_3 = 'byd_v1_3_recovery_event_low_vol_confirmation_v1'
           expected = {
               'qqqi_qqq_tqqq_v4_3',
               'us_x1_1',
               'cn_x1_1',
-              'byd_v1_2_convex_momentum_budget_v1',
+              byd_v1_3,
           }
           records = catalog.get('records') or []
           ids = {str(row['model_id']) for row in records}
           assert ids == expected, (ids, expected)
           assert 'qqqi_qqq_tqqq_v4_2' not in ids
+          assert 'byd_v1_2_convex_momentum_budget_v1' not in ids
           assert set(freshness.get('required_models') or []) == expected
           assert 'qqqi_qqq_tqqq_v4_2' not in freshness.get('required_models', [])
+          assert 'byd_v1_2_convex_momentum_budget_v1' not in freshness.get('required_models', [])
 
           packages = {}
           for row in records:
@@ -67,6 +70,13 @@ jobs:
           assert qqq_freshness.get('research_only') is True
           assert qqq_freshness.get('trade_ready') is False
           assert qqq.get('evidence', {}).get('historical_economic_evidence_recomputed') is False
+
+          byd = packages[byd_v1_3]
+          byd_evidence = byd.get('evidence') or {}
+          assert byd_evidence.get('promotion_authority') == 'explicit_user_direction_2026_08_10'
+          assert byd_evidence.get('historical_evidence_consumed') is True
+          assert byd_evidence.get('fresh_historical_holdout') is False
+          assert byd.get('benchmark') == 'BYD v1.2'
 
           print('Current formal snapshot is structurally valid; cross-market temporal freshness remains the responsibility of Reviewed Formal Backtest Refresh.')
           PY

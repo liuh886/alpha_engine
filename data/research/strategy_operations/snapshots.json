@@ -1,160 +1,36 @@
 {
-  "generated_at": "2026-08-10T14:31:07Z",
+  "generated_at": "2026-08-10T15:45:22Z",
   "records": [
     {
-      "allocations": [
-        {
-          "asset": "515180",
-          "current": 0.25,
-          "delta": 0.0,
-          "target": 0.25
-        },
-        {
-          "asset": "BYD",
-          "current": 0.75,
-          "delta": 0.0,
-          "target": 0.75
-        },
-        {
-          "asset": "CASH",
-          "current": 0.0,
-          "delta": 0.0,
-          "target": 0.0
-        }
-      ],
-      "as_of": "2026-08-10",
-      "data_freshness": "current",
+      "allocations": [],
+      "as_of": null,
+      "data_freshness": "unknown",
       "decision_cadence": "Every completed CN market session",
-      "decision_reason": "目标仓位不变",
-      "delivery_status": "not_required",
-      "estimated_cost": 0.0,
-      "factor_evidence": [
-        {
-          "display_name": "BYD market state",
-          "effect": "neutral",
-          "factor_id": "strategy.byd.market_state",
-          "factor_version": "1.0",
-          "implementation_hash": "fc78c17face12fc28320bcb0e9c7a595f3d4ea2d9d918d527be27821df7a358a",
-          "information_family": "regime",
-          "observed_at": "2026-08-10",
-          "reason_code": "market_regime_context",
-          "reference": null,
-          "state": "bear",
-          "value": "bear"
-        },
-        {
-          "display_name": "BYD volatility state",
-          "effect": "neutral",
-          "factor_id": "strategy.byd.vol_state",
-          "factor_version": "1.0",
-          "implementation_hash": "b8a82be0ed185e00f5a0003b625cf592ff285e724101640c5877bd25d36d018c",
-          "information_family": "volatility_regime",
-          "observed_at": "2026-08-10",
-          "reason_code": "volatility_regime_context",
-          "reference": null,
-          "state": "high",
-          "value": "high"
-        },
-        {
-          "display_name": "BYD 20D momentum",
-          "effect": "neutral",
-          "factor_id": "strategy.byd.momentum_20d",
-          "factor_version": "1.0",
-          "implementation_hash": "760129ef96bd35c5b465ceead3702fb1046ed6b79b51c14750e81b96e9479c0e",
-          "information_family": "momentum",
-          "observed_at": "2026-08-10",
-          "reason_code": "momentum_20d_context",
-          "reference": 0.0,
-          "state": "positive",
-          "value": 0.05185647108265479
-        },
-        {
-          "display_name": "BYD 60D momentum",
-          "effect": "neutral",
-          "factor_id": "strategy.byd.momentum_60d",
-          "factor_version": "1.0",
-          "implementation_hash": "2aa62c9fbec92fba95e6bbfb6274c242cb8f733e67f5957215095acf445a2d55",
-          "information_family": "momentum",
-          "observed_at": "2026-08-10",
-          "reason_code": "momentum_60d_context",
-          "reference": 0.0,
-          "state": "negative",
-          "value": -0.04994313831527075
-        },
-        {
-          "display_name": "BYD 252D drawdown",
-          "effect": "neutral",
-          "factor_id": "strategy.byd.drawdown_252d",
-          "factor_version": "1.0",
-          "implementation_hash": "84431650ec2a57b315ad795e929e17bef8425e014c905016e36473b881156d62",
-          "information_family": "drawdown",
-          "observed_at": "2026-08-10",
-          "reason_code": "drawdown_252d_context",
-          "reference": 0.0,
-          "state": "drawdown",
-          "value": -0.1978741458554707
-        },
-        {
-          "display_name": "BYD momentum scale",
-          "effect": "neutral",
-          "factor_id": "strategy.byd.momentum_scale",
-          "factor_version": "1.0",
-          "implementation_hash": "6ff91d429a6f5756e351f3cc0e5d58ad4da58b76ef5602d9445ae750da618b45",
-          "information_family": "allocation_scale",
-          "observed_at": "2026-08-10",
-          "reason_code": "momentum_scale_context",
-          "reference": 1.0,
-          "state": "scaled",
-          "value": 0.014283899955950636
-        },
-        {
-          "display_name": "BYD financed increment",
-          "effect": "neutral",
-          "factor_id": "strategy.byd.financed_increment",
-          "factor_version": "1.0",
-          "implementation_hash": "41981e93565d3c1c1d450159717876f48cbd1a81a1b4277c2fa5e5dda4840335",
-          "information_family": "leverage_budget",
-          "observed_at": "2026-08-10",
-          "reason_code": "no_financed_increment",
-          "reference": 0.0,
-          "state": "inactive",
-          "value": 0.0
-        },
-        {
-          "display_name": "BYD convex expansion active",
-          "effect": "neutral",
-          "factor_id": "strategy.byd.expansion_active",
-          "factor_version": "1.0",
-          "implementation_hash": "c8d2253fb64e6c0c9348e86ae213bcd15a98393ed2563ca49f7ebc7947b85c52",
-          "information_family": "rule_state",
-          "observed_at": "2026-08-10",
-          "reason_code": "expansion_rule_inactive",
-          "reference": false,
-          "state": "inactive",
-          "value": false
-        }
-      ],
-      "factor_freshness": "current",
-      "latest_completed_session": "2026-08-10",
-      "model_version_id": "byd_v1_2_convex_momentum_budget_v1",
+      "decision_reason": "The signal publisher exists, but no cutoff-bound evaluation has been committed yet.",
+      "delivery_status": "not available",
+      "estimated_cost": null,
+      "factor_evidence": [],
+      "factor_freshness": "blocked",
+      "latest_completed_session": "2026-08-07",
+      "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
       "next_decision_policy": "Evaluate after the common close; target applies to the next independently confirmed eligible open.",
-      "note": "Latest governed evaluation retained the existing allocation.",
+      "note": "The signal publisher exists, but no cutoff-bound evaluation has been committed yet.",
       "source_href": null,
       "source_identity": {
-        "commit_sha": "2f6dcba89791fd874016495a129528691c8e1a79",
-        "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
-        "formal_bundle_id": "a28519df32797e0a135736e8626b6cf1fb9a1ba950d01248bc48a45b7fc540f9",
+        "commit_sha": null,
+        "factor_catalog_implementation_hash": null,
+        "formal_bundle_id": "9a577fd9bb740ad34b05dddfb7462a6b53671878b8a6776932a476abaf7c76e6",
         "formal_evidence_cutoff": "2026-08-07",
-        "formal_run_id": "byd_v1_2_convex_momentum_budget_v1-through-2026_08_07",
+        "formal_run_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1-formal-user-authorized-2026-08-10",
         "github_issue_number": null,
-        "ledger_fingerprint": "d7e3096017923a941a50",
-        "signal_sha256": "727fa70be9a24953db969b192851ee9230e8d44d2fcc37a5c30b1e3059aa14c1",
-        "workflow_run_id": "31398532645"
+        "ledger_fingerprint": null,
+        "signal_sha256": null,
+        "workflow_run_id": null
       },
-      "source_label": "Governed BYD signal ledger",
-      "state_label": "Defensive",
-      "status": "current_no_change",
-      "turnover": 0.0
+      "source_label": "Governed signal ledger",
+      "state_label": "Awaiting first governed evaluation",
+      "status": "awaiting_observation",
+      "turnover": null
     },
     {
       "allocations": [],
@@ -174,7 +50,7 @@
       "source_identity": {
         "commit_sha": null,
         "factor_catalog_implementation_hash": null,
-        "formal_bundle_id": "4fec6a37937acee0c39578ff051a0f7f77ba5620b416fe7e7d9b2cfc3205aecc",
+        "formal_bundle_id": "727d4ac5af1483edef6a9c43018c70306ade8fef2b6f2a755dcbd40c5dc3072f",
         "formal_evidence_cutoff": "2026-08-07",
         "formal_run_id": "cn_x1_1-through-2026_08_07",
         "github_issue_number": null,
@@ -341,7 +217,7 @@
       "source_identity": {
         "commit_sha": "f664d0c307edbcfb8d32e3a519fd0d7d6979a2e7",
         "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
-        "formal_bundle_id": "9f744ca76ff9f53b96835e9c99d624648c803fdc70aa3733b31b1b3ed9aad668",
+        "formal_bundle_id": "38d0611692c39e2d6f4aa404540e3204491ac0dc64a517f63e5caf5ac4d1db0c",
         "formal_evidence_cutoff": "2026-08-07",
         "formal_run_id": "qqqi_qqq_tqqq_v4_3-through-2026_08_07",
         "github_issue_number": null,
@@ -372,7 +248,7 @@
       "source_identity": {
         "commit_sha": null,
         "factor_catalog_implementation_hash": null,
-        "formal_bundle_id": "edd2854501fb5ff50e5d08a65f1cb17c3b0e1110812a4a6085be7c9d60e1b0b9",
+        "formal_bundle_id": "e38ef6db0dfc87bb6f20f1cdc20028d6db5d146c67ca6bb985f8fcaaae2cf0bd",
         "formal_evidence_cutoff": "2026-08-07",
         "formal_run_id": "us_x1_1-through-2026_08_07",
         "github_issue_number": null,

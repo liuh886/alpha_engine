@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the formal BYD v1.2 next-open signal decision card."""
+"""Generate the formal BYD v1.3 next-open signal decision card."""
 from __future__ import annotations
 
 import argparse
@@ -15,10 +15,7 @@ from src.research.byd_signal_alerts import (
     _render_telegram,
     build_byd_signal_alert,
 )
-from src.research.byd_signal_evidence import (
-    bind_final_signal_identity,
-    close_evidence_is_current,
-)
+from src.research.byd_signal_evidence import bind_final_signal_identity, close_evidence_is_current
 
 MODEL_FAMILY_ID = "byd_allocation"
 
@@ -61,25 +58,17 @@ def _write_outputs(path: Path, alert: dict[str, Any]) -> None:
         json.dumps(alert, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    (path / "signal_alert.md").write_text(
-        str(alert["markdown"]),
-        encoding="utf-8",
-    )
+    (path / "signal_alert.md").write_text(str(alert["markdown"]), encoding="utf-8")
     (path / "signal_alert_telegram.txt").write_text(
-        str(alert["telegram_text"]),
-        encoding="utf-8",
+        str(alert["telegram_text"]), encoding="utf-8"
     )
 
 
 def _github_outputs(path: Path, alert: dict[str, Any]) -> None:
     with path.open("a", encoding="utf-8") as handle:
         handle.write(f"should_alert={str(bool(alert['should_alert'])).lower()}\n")
-        handle.write(
-            f"data_freshness_ok={str(bool(alert['data_freshness_ok'])).lower()}\n"
-        )
-        handle.write(
-            f"factor_freshness_ok={str(bool(alert['factor_freshness_ok'])).lower()}\n"
-        )
+        handle.write(f"data_freshness_ok={str(bool(alert['data_freshness_ok'])).lower()}\n")
+        handle.write(f"factor_freshness_ok={str(bool(alert['factor_freshness_ok'])).lower()}\n")
         handle.write(
             f"open_research_eligible={str(bool(alert['open_research_eligible'])).lower()}\n"
         )
@@ -90,64 +79,32 @@ def _github_outputs(path: Path, alert: dict[str, Any]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--shadow-store", type=Path, required=True)
-    parser.add_argument("--paired-store", type=Path, required=True)
-    parser.add_argument("--expansion-store", type=Path, required=True)
+    parser.add_argument("--source-store", type=Path, required=True)
     parser.add_argument(
         "--state-store",
         type=Path,
         default=Path(
             "data/research/strategy_signal_ledgers/"
-            "byd_v1_2_convex_momentum_budget_v1"
+            "byd_v1_3_recovery_event_low_vol_confirmation_v1"
         ),
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("artifacts/signals/byd_v1_2"),
+        default=Path("artifacts/signals/byd_v1_3"),
     )
     parser.add_argument("--github-output", type=Path)
     args = parser.parse_args()
 
-    shadow = _latest_observation(args.shadow_store)
-    paired = _latest_observation(args.paired_store)
-    expansion = _latest_observation(args.expansion_store)
-    if shadow is None or paired is None or expansion is None:
-        missing = [
-            name
-            for name, value in (
-                ("shadow", shadow),
-                ("paired", paired),
-                ("expansion", expansion),
-            )
-            if value is None
-        ]
-        raise RuntimeError(f"missing BYD signal source observations: {missing}")
-
-    dates = {
-        str(shadow.get("signal_date", "")),
-        str(paired.get("signal_date", "")),
-        str(expansion.get("signal_date", "")),
-    }
-    if len(dates) != 1 or "" in dates:
-        raise RuntimeError(f"BYD signal source date mismatch: {sorted(dates)}")
+    observation = _latest_observation(args.source_store)
+    if observation is None:
+        raise RuntimeError("missing BYD v1.3 governed source observation")
 
     alert = build_byd_signal_alert(
-        shadow,
-        paired,
-        expansion,
+        observation,
         previous_alert=_previous_alert(args.state_store),
     )
-
-    # The latest observed open is historical by the time this close-time target is
-    # published. A quarantined past open blocks retrospective execution evidence,
-    # not the freshness of the current close/factor inputs. The target always waits
-    # for the next independently confirmed eligible open.
-    alert["data_freshness_ok"] = close_evidence_is_current(
-        shadow,
-        paired,
-        expansion,
-    )
+    alert["data_freshness_ok"] = close_evidence_is_current(observation)
     alert["execution_gate_status"] = (
         "latest_open_confirmed"
         if alert["open_research_eligible"]
@@ -159,9 +116,12 @@ def main() -> int:
     )
 
     alert["data_provenance"] = {
-        "shadow_manifest_sha256": _manifest_sha256(args.shadow_store),
-        "paired_manifest_sha256": _manifest_sha256(args.paired_store),
-        "expansion_manifest_sha256": _manifest_sha256(args.expansion_store),
+        "v1_3_source_manifest_sha256": _manifest_sha256(args.source_store),
+        "source_observation_sha256": hashlib.sha256(
+            json.dumps(observation, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+                "utf-8"
+            )
+        ).hexdigest(),
         "source_workflow": "byd-daily-signal-alert",
     }
     factor_evidence = build_strategy_factor_snapshot(
@@ -174,8 +134,6 @@ def main() -> int:
         alert["should_alert"] = False
 
     bind_final_signal_identity(alert)
-    # Rendering happens only after the final evidence identity and freshness state
-    # are known, so human delivery and machine evidence cannot disagree.
     alert["markdown"] = _render_markdown(alert)
     alert["telegram_text"] = _render_telegram(alert)
 
