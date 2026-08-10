@@ -9,6 +9,7 @@ on:
       - 'scripts/**'
       - 'configs/**'
       - 'data/**'
+      - 'docs/evidence/byd_v1_3_formal_challenge/**'
       - 'pyproject.toml'
       - 'uv.lock'
       - 'Makefile'
@@ -22,6 +23,7 @@ on:
       - 'scripts/**'
       - 'configs/**'
       - 'data/**'
+      - 'docs/evidence/byd_v1_3_formal_challenge/**'
       - 'pyproject.toml'
       - 'uv.lock'
       - 'Makefile'
@@ -110,7 +112,7 @@ jobs:
           tests/test_byd_v1_3_candidate.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-      - name: Certify frozen BYD v1.3 challenger
+      - name: Reproduce frozen BYD v1.3 formal decision
         run: |
           set -euo pipefail
           mkdir -p artifacts/input/byd artifacts/input/515180 artifacts/byd-v1-3-formal
@@ -124,8 +126,21 @@ jobs:
             --etf-dir artifacts/input/515180 \
             --contract configs/research_candidates/byd_v1_3_min_hold_bear_defense_v1.yaml \
             --formal-package data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json \
-            --output-dir artifacts/byd-v1-3-formal \
-            --require-supported
+            --output-dir artifacts/byd-v1-3-formal
+          cmp artifacts/byd-v1-3-formal/decision.json docs/evidence/byd_v1_3_formal_challenge/decision.json
+          cmp artifacts/byd-v1-3-formal/comparison.csv docs/evidence/byd_v1_3_formal_challenge/comparison.csv
+          cmp artifacts/byd-v1-3-formal/period_attribution.csv docs/evidence/byd_v1_3_formal_challenge/period_attribution.csv
+          cmp artifacts/byd-v1-3-formal/manifest.json docs/evidence/byd_v1_3_formal_challenge/manifest.json
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          decision = json.loads(
+              Path("artifacts/byd-v1-3-formal/decision.json").read_text(encoding="utf-8")
+          )
+          assert decision["decision"] == "byd_v1_3_not_supported"
+          assert decision["promotion_authorized"] is False
+          PY
 
       - name: Upload BYD v1.3 challenge evidence
         if: always()
