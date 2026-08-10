@@ -22,9 +22,9 @@
   "market_states": [
     "bear"
   ],
-  "observation_count": 4,
-  "prospective_days": 0,
-  "prospective_eligible_observation_count": 1,
+  "observation_count": 5,
+  "prospective_days": 6,
+  "prospective_eligible_observation_count": 2,
   "re_evaluation_gate": {
     "at_least_12_months": false,
     "at_least_1_etf_dividend_cycle": false,
