@@ -1,1 +1,47 @@
-{"excluded_record_classes":["exploratory_experiment","candidate_grid","rejected_candidate","shadow_strategy"],"publication_policy":"formal_named_baselines_only","published_at":"2026-08-10T03:52:40Z","records":[{"display_name":"QQQ Rotation v4.3","display_order":1,"model_id":"qqqi_qqq_tqqq_v4_3","path":"qqqi_qqq_tqqq_v4_3.json","publication_status":"accepted_formal_baseline","sha256":"d470954b350ab79df8af582502edcb683c01768ad103006f064003630457e6be"},{"display_name":"US x1.1","display_order":2,"model_id":"us_x1_1","path":"us_x1_1.json","publication_status":"accepted_formal_baseline","sha256":"7a0e390cdcf649a4ad0d73a182217feed966edcc1485bd60e70a42ff1f9a57ff"},{"display_name":"CN x1.1","display_order":3,"model_id":"cn_x1_1","path":"cn_x1_1.json","publication_status":"accepted_formal_baseline","sha256":"f747e11c0f2ac004a76972b3852215ed99f9f80f0978e864fc7bc7a75f114e67"},{"display_name":"BYD v1.2","display_order":4,"model_id":"byd_v1_2_convex_momentum_budget_v1","path":"byd_v1_2_convex_momentum_budget_v1.json","publication_status":"accepted_formal_baseline","sha256":"2db8a1a39833fd2be184ca19276043b1a3e0eeedef29cc5b6d8753be824b8a28"}],"research_only":true,"schema_version":"1.0.0","trade_ready":false}
+{
+  "excluded_record_classes": [
+    "exploratory_experiment",
+    "candidate_grid",
+    "rejected_candidate",
+    "shadow_strategy"
+  ],
+  "publication_policy": "formal_named_baselines_only",
+  "published_at": "2026-08-10T15:45:22Z",
+  "records": [
+    {
+      "display_name": "QQQ Rotation v4.3",
+      "display_order": 1,
+      "model_id": "qqqi_qqq_tqqq_v4_3",
+      "path": "qqqi_qqq_tqqq_v4_3.json",
+      "publication_status": "accepted_formal_baseline",
+      "sha256": "d470954b350ab79df8af582502edcb683c01768ad103006f064003630457e6be"
+    },
+    {
+      "display_name": "US x1.1",
+      "display_order": 2,
+      "model_id": "us_x1_1",
+      "path": "us_x1_1.json",
+      "publication_status": "accepted_formal_baseline",
+      "sha256": "7a0e390cdcf649a4ad0d73a182217feed966edcc1485bd60e70a42ff1f9a57ff"
+    },
+    {
+      "display_name": "CN x1.1",
+      "display_order": 3,
+      "model_id": "cn_x1_1",
+      "path": "cn_x1_1.json",
+      "publication_status": "accepted_formal_baseline",
+      "sha256": "f747e11c0f2ac004a76972b3852215ed99f9f80f0978e864fc7bc7a75f114e67"
+    },
+    {
+      "display_name": "BYD v1.3",
+      "display_order": 4,
+      "model_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+      "path": "byd_v1_3_recovery_event_low_vol_confirmation_v1.json",
+      "publication_status": "accepted_formal_baseline",
+      "sha256": "a0b08f50ae8e0853484c8dcd6fc11027345ebbb735e6452851f10ef45997ee09"
+    }
+  ],
+  "research_only": true,
+  "schema_version": "1.0.0",
+  "trade_ready": false
+}
