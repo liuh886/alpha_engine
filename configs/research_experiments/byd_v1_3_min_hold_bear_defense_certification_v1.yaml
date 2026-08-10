@@ -1,12 +1,18 @@
 schema_version: '1.0'
 experiment_id: byd_v1_3_min_hold_bear_defense_certification_v1
 runner: rules_based_allocation_v1
-active: true
-status: running
+active: false
+status: completed_not_supported
 issue: 724
 parent_model_id: byd_v1_2_convex_momentum_budget_v1
 research_only: true
 trade_ready: false
+result_decision: not_supported
+result_receipt: data/research/experiment_receipts/byd_v1_3_min_hold_bear_defense_certification_v1.json
+result_receipt_sha256: 95b0542e40bb449d8cae72fd22951545746c15008784f37484d4e1070578f5ba
+result_workflow_run_id: 31367718264
+result_artifact_id: 9054868191
+result_artifact_zip_sha256: deeb6607bfb0571a934ae3492a43c91886adac3d3f31a7e82719d6a7a0cdf4b2
 
 purpose: >-
   Certify the frozen BYD v1.3 min-hold + bear-defense challenger against the
