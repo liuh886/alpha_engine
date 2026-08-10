@@ -128,3 +128,27 @@ def test_champion_target_uses_convex_momentum_budget() -> None:
     assert np.isclose(targets.iloc[0]["cash_weight"], -expected_increment)
     assert np.isclose(targets.iloc[3]["byd_weight"], 0.75)
     assert np.isclose(targets.iloc[3]["etf_weight"], 0.25)
+
+
+def test_champion_target_treats_inactive_momentum_warmup_as_zero_increment() -> None:
+    index = pd.date_range("2019-01-01", periods=3, freq="D")
+    dataset = pd.DataFrame(
+        {
+            "market_state": ["sideways", "sideways", "bull"],
+            "vol_state": ["low", "low", "low"],
+            "drawdown_252": [np.nan, np.nan, -0.05],
+            "mom_20": [np.nan, np.nan, 0.075],
+            "mom_60": [np.nan, np.nan, 0.10],
+        },
+        index=index,
+    )
+    base = _series(index, [0.75, 0.75, 1.0], dtype="float64")
+
+    targets, diagnostics = build_champion_targets(dataset, base)
+
+    assert np.isclose(diagnostics.iloc[0]["momentum_scale"], 0.0)
+    assert np.isclose(diagnostics.iloc[1]["financed_increment"], 0.0)
+    assert np.isclose(targets.iloc[0]["byd_weight"], 0.75)
+    assert np.isclose(targets.iloc[0]["etf_weight"], 0.25)
+    assert np.isclose(targets.iloc[0]["cash_weight"], 0.0)
+    assert np.allclose(targets.sum(axis=1), 1.0)
