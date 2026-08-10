@@ -120,7 +120,11 @@ function benchmarkFields(report: ReportRow[]): string[] {
       if ((key === 'bench' || key.startsWith('bench_')) && !fields.includes(key)) fields.push(key);
     }
   }
-  return fields;
+  return fields.sort((left, right) => {
+    if (left === 'bench') return 1;
+    if (right === 'bench') return -1;
+    return 0;
+  });
 }
 
 export function discoverBenchmarkOptions(
