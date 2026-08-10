@@ -17,7 +17,7 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
   const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({});
   const [selectedBenchmarkKey, setSelectedBenchmarkKey] = useState<BenchmarkKey | null>(null);
 
-  const toggleVisibility = (entry: { dataKey?: string }) => {
+  const toggleVisibility = (entry: { dataKey?: string | number }) => {
     const key = String(entry?.dataKey ?? '');
     if (key) {
       setHiddenSeries(prev => ({ ...prev, [key]: !prev[key] }));
@@ -68,7 +68,7 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
       const posRatio = Number.isFinite(account) && account > 0 && Number.isFinite(value)
         ? value / account
         : null as unknown as number;
-      const benchmarkValues = Object.fromEntries(
+      const benchmarkValues: Record<string, number | null> = Object.fromEntries(
         benchmarkOptions.map(option => [option.key, option.series[index] ?? null]),
       );
       if (declaredBenchmark && !(declaredBenchmark.key in benchmarkValues)) {
