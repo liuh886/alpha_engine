@@ -13,7 +13,7 @@ export function StrategiesPage() {
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Formal strategy registry</p>
         <h1 className="mt-2 text-3xl font-black tracking-tight">Strategies</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          The accepted formal baselines are the product-level units of Alpha Engine. Open a strategy to move from its current operating state into performance, risk, holdings, drivers and retained evidence without switching mental models.
+          Compare accepted formal baselines by return and risk before opening a strategy. Historical performance is public; live holdings, target allocations and current signal drivers follow each strategy's account or Pro access policy.
         </p>
       </header>
       <StrategyFleet runs={formalRuns} snapshots={snapshots} loading={loading} />
