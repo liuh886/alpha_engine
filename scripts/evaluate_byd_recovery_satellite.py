@@ -117,8 +117,8 @@ def _build_challenger_decision(
         raise AssertionError("recovery challenger overlapped an existing financed expansion")
     if not np.allclose(challenger.sum(axis=1), 1.0, atol=1e-12):
         raise AssertionError("recovery challenger weights do not sum to one")
-    if challenger.lt(-EPS).any().any():
-        raise AssertionError("recovery challenger produced a negative long-only sleeve")
+    if challenger[["byd_weight", "etf_weight"]].lt(-EPS).any().any():
+        raise AssertionError("recovery challenger produced negative risky-asset weight")
     return challenger, state.astype(bool)
 
 
