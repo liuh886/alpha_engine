@@ -113,19 +113,6 @@ jobs:
           tests/test_t47_drift_monitor.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-      - name: Evaluate frozen BYD recovery satellite
-        if: github.event_name == 'pull_request'
-        run: uv run python scripts/evaluate_byd_recovery_satellite.py --output artifacts/byd-recovery-satellite-phase2.json
-
-      - name: Upload BYD recovery satellite evidence
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: byd-recovery-satellite-phase2-${{ github.run_id }}
-          path: artifacts/byd-recovery-satellite-phase2.json
-          if-no-files-found: error
-          retention-days: 14
-
       - name: Package build
         if: github.event_name != 'pull_request'
         run: uv build
