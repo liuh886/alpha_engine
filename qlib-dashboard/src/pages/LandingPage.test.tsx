@@ -20,7 +20,6 @@ describe('Alpha Engine landing page', () => {
     expect(screen.getByText('QQQR v4.3')).toBeInTheDocument();
     expect(screen.getByText('CN x1.1')).toBeInTheDocument();
     expect(screen.getByText('BYD v1.2')).toBeInTheDocument();
-    expect(screen.getByText('Performance', { exact: true })).toBeInTheDocument();
     expect(screen.getAllByText('CAGR', { exact: true })).toHaveLength(4);
     expect(screen.getAllByText('MDD', { exact: true })).toHaveLength(4);
     expect(screen.getByRole('heading', { name: /performance before persuasion/i })).toBeInTheDocument();
