@@ -177,7 +177,7 @@ test('QQQ operating evidence is rendered from the governed static read model', a
   await installProMembership(page);
 
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
-  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQR', exact: true, level: 1 })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQR v4.3', exact: true, level: 1 })).toBeVisible();
 
   const now = page.getByRole('region', { name: 'Current decision state' });
   await expect(now).toBeVisible();
