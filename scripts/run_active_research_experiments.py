@@ -20,6 +20,10 @@ from src.research.formal_baseline_onboarding import (
     run_formal_baseline_onboarding,
 )
 from src.research.research_receipt import write_research_receipt
+from src.research.rules_based_allocation_experiment_runner import (
+    RUNNER_ID as RULES_BASED_ALLOCATION_RUNNER,
+    run_rules_based_allocation_experiment,
+)
 
 EXPERIMENT_ROOT = PROJECT_ROOT / "configs" / "research_experiments"
 
@@ -45,11 +49,15 @@ def active_specs() -> list[Path]:
 
 def run_spec(path: Path) -> dict[str, Any]:
     payload = _load(path)
+    if payload.get("active") is not True:
+        raise ValueError(f"research experiment {path} must be active")
     runner = str(payload.get("runner", ""))
     if runner == CROSS_SECTIONAL_RUNNER:
         receipt = run_cross_sectional_experiment(path)
     elif runner == FORMAL_BASELINE_RUNNER:
         receipt = run_formal_baseline_onboarding(path)
+    elif runner == RULES_BASED_ALLOCATION_RUNNER:
+        receipt = run_rules_based_allocation_experiment(path)
     else:
         raise ValueError(f"active experiment {path} declares unsupported runner {runner!r}")
     return write_research_receipt(path, receipt)
