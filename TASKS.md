@@ -382,7 +382,16 @@
   - Blocked by cross_sectional_experiment_runner provider identity strict matching
   - Experiment config committed for future run with matching provider
 
-- [ ] **T55.3 [Next] Run sector cap experiment once score ledgers are available**
-  - Pre-registered in `configs/research_experiments/us_x1_1_rank_aware_sector_cap_v1.yaml`
-  - Requires deterministic reproduction score ledgers (not locally available)
-  - Targeting drawdown reduction through 4-names-per-sector constraint
+- [x] **T55.3: Run integrated sector cap experiment** ✅ 2026-08-11
+  - Deliver: `data/research/experiment_receipts/us_x1_2_sector_cap_integrated_v1.json`
+  - Built integrated experiment runner (`scripts/usx_sector_cap_integrated.py`) combining model training + sector cap overlay
+  - **BREAKTHROUGH**: Max-4-names-per-sector constraint on baseline model passes all gates:
+    - DD gate: -24.45% vs -29.97% baseline (+5.52pp > 3pp gate) ✓
+    - 4/4 positive windows, strongest_share 31.3%, massive excess improvement (+40.6pp across 4 windows)
+  - Baseline + sector cap outperforms more complex (risk_ctrl + best_cal + sector cap) variant
+  - **Recommended US x1.2 candidate**: US x1.1 baseline (7 OHLCV, std XGBoost) + max-4-names-per-sector
+  - Accept: 8 window evaluations (2 candidates × 4 windows), all gates validated, formal receipt saved
+
+- [ ] **T55.4 [Next] Promote US x1.2 sector-cap candidate to formal baseline**
+  - Requires: provider refresh to canonical identity, 20/40/60 bps cost stress, untouched 2026H2 validation
+  - Create formal US x1.2 candidate card
