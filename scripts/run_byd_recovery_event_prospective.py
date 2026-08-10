@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from src.research.byd_recovery_event_prospective import (
+    LAUNCH_AFTER,
     build_observations,
     persist_store,
 )
@@ -32,8 +33,23 @@ def _existing(store_dir: Path) -> list[dict[str, object]]:
     ]
 
 
+def _require_prelaunch_seed(byd_store: Path, paired_store: Path) -> None:
+    seed = LAUNCH_AFTER.strftime("%Y-%m-%d") + ".json"
+    required = (
+        byd_store / "observations" / seed,
+        paired_store / "observations" / seed,
+    )
+    missing = [str(path) for path in required if not path.is_file()]
+    if missing:
+        raise RuntimeError(
+            "recovery event prospective launch requires the immutable 2026-08-10 "
+            "prelaunch seed; missing: " + ", ".join(missing)
+        )
+
+
 def main() -> None:
     args = _parse_args()
+    _require_prelaunch_seed(args.byd_store, args.paired_store)
     existing = _existing(args.store_dir)
     new_observations = build_observations(
         baseline_dir=args.baseline_dir,
