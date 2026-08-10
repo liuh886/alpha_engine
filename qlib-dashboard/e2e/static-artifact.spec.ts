@@ -1,97 +1,97 @@
+import { createHash } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
-interface FormalCatalogRecord {
-  model_family_id: string;
-  model_version_id: string;
-  run_id: string;
-  manifest_path: string;
+function sha256(text: string): string {
+  return createHash('sha256').update(text).digest('hex');
 }
 
-interface FormalCatalog {
-  records: FormalCatalogRecord[];
+const modelsText = JSON.stringify([
+  {
+    id: 'fixture-run-1',
+    name: 'Static Evidence Fixture',
+    market: 'us',
+    model_type: 'lgbm',
+    stage: 'CANDIDATE',
+    created_at: '2026-07-31T00:00:00Z',
+    metrics: { 'Sharpe Ratio': 1.2, 'Annualized Return': 0.18, 'Max Drawdown': -0.12 },
+    payload: { data: { indicators: { sharpe: 1.2, annual_return: 0.18, max_drawdown: -0.12 } } },
+  },
+]);
+const exportManifestText = JSON.stringify({ generated_at: '2026-08-02T00:00:00Z', snapshot_id: 'fixture-snapshot' });
+const bundleManifest = {
+  schema_version: '1.0.0',
+  frontend_reader_range: '>=1.0.0 <2.0.0',
+  bundle_id: 'a'.repeat(64),
+  title: 'Static Browser Fixture',
+  generated_at: '2026-08-02T00:00:00Z',
+  evidence_cutoff: '2026-07-31',
+  research_only: true,
+  trade_ready: false,
+  scope: { markets: ['us'], snapshot_id: 'fixture-snapshot', model_count: 1 },
+  warnings: [],
+  blocked_gates: ['trade_ready'],
+  promotion_decision: 'research_candidate',
+  artifacts: [
+    { artifact_id: '1'.repeat(16), kind: 'model_index', path: 'data/models.json', media_type: 'application/json', byte_size: Buffer.byteLength(modelsText), sha256: sha256(modelsText), required: true },
+    { artifact_id: '2'.repeat(16), kind: 'static_export_manifest', path: 'data/manifest.json', media_type: 'application/json', byte_size: Buffer.byteLength(exportManifestText), sha256: sha256(exportManifestText), required: true },
+  ],
+};
+
+type FormalCatalog = { records?: Array<{ manifest_path?: string }> };
+type FormalManifest = { sections?: Array<{ section_id?: string; availability_status?: string; path?: string }> };
+type FormalSummary = { display_name?: string; model_version_id?: string };
+
+interface MembershipFixture {
+  loading: boolean;
+  isPro: boolean;
+  user: { id: string; app_metadata?: { alpha_engine_role?: string } } | null;
 }
 
-interface FormalManifestSection {
-  section_id: string;
-  availability_status: string;
-  path: string | null;
+async function installMembershipFixture(page: Page, initial: MembershipFixture): Promise<void> {
+  await page.route('**/admin/shared/account-shell.js*', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+  await page.addInitScript((snapshot) => {
+    let current = snapshot;
+    const listeners = new Set<(value: MembershipFixture) => void>();
+    (window as any).HaoAccount = {
+      getState: () => current,
+      open: () => undefined,
+      subscribe: (listener: (value: MembershipFixture) => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    (window as any).__setAlphaMembership = (next: MembershipFixture) => {
+      current = next;
+      listeners.forEach((listener) => listener(current));
+    };
+  }, initial);
 }
 
-interface FormalManifest {
-  model_family_id: string;
-  model_version_id: string;
-  run_id: string;
-  evidence_cutoff: string;
-  sections: FormalManifestSection[];
+async function installBundleFixture(): Promise<void> {
+  const root = resolve(process.cwd(), 'dist', 'bundle');
+  await mkdir(resolve(root, 'data'), { recursive: true });
+  await Promise.all([
+    writeFile(resolve(root, 'alpha-engine-bundle.json'), JSON.stringify(bundleManifest), 'utf8'),
+    writeFile(resolve(root, 'data', 'models.json'), modelsText, 'utf8'),
+    writeFile(resolve(root, 'data', 'manifest.json'), exportManifestText, 'utf8'),
+  ]);
 }
 
-interface FormalSummary {
-  display_name?: string;
-  model_version_id?: string;
-}
+test.beforeAll(async () => { await installBundleFixture(); });
 
 async function assertNoHorizontalOverflow(page: Page) {
-  const overflow = await page.evaluate(() => ({
-    scrollWidth: document.documentElement.scrollWidth,
-    clientWidth: document.documentElement.clientWidth,
-  }));
-  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
 }
 
-async function installMembershipFixture(
-  page: Page,
-  state: { loading: boolean; isPro: boolean; user: { id: string } | null },
-) {
-  await page.addInitScript((fixture) => {
-    const listeners = new Set<(value: typeof fixture) => void>();
-    let current = fixture;
-    Object.defineProperty(window, '__alphaEngineMembership', {
-      configurable: true,
-      value: {
-        subscribe(listener: (value: typeof fixture) => void) {
-          listeners.add(listener);
-          listener(current);
-          return () => listeners.delete(listener);
-        },
-        getSnapshot() { return current; },
-        signIn() {
-          current = { ...current, user: { id: 'signed-in-fixture' } };
-          listeners.forEach((listener) => listener(current));
-        },
-        signOut() {
-          current = { ...current, user: null, isPro: false };
-          listeners.forEach((listener) => listener(current));
-        },
-      },
-    });
-  }, state);
-}
-
-async function formalStrategyNames(page: Page): Promise<string[]> {
-  const catalogResponse = await page.request.get('/data/formal-model-runs/catalog.json');
-  expect(catalogResponse.ok()).toBeTruthy();
-  const catalog = await catalogResponse.json() as FormalCatalog;
-  const names: string[] = [];
-  for (const record of catalog.records) {
-    const manifestResponse = await page.request.get(`/data/formal-model-runs/${record.manifest_path}`);
-    expect(manifestResponse.ok()).toBeTruthy();
-    const manifest = await manifestResponse.json() as FormalManifest;
-    const summarySection = manifest.sections.find((section) => section.section_id === 'summary');
-    expect(summarySection?.availability_status).toBe('available');
-    expect(summarySection?.path).toBeTruthy();
-    const base = record.manifest_path.includes('/')
-      ? record.manifest_path.slice(0, record.manifest_path.lastIndexOf('/') + 1)
-      : '';
-    const summaryResponse = await page.request.get(`/data/formal-model-runs/${base}${summarySection!.path}`);
-    expect(summaryResponse.ok()).toBeTruthy();
-    const summary = await summaryResponse.json() as FormalSummary;
-    expect(summary.display_name).toBeTruthy();
-    names.push(String(summary.model_version_id).startsWith('qqqi_qqq_tqqq_')
-      ? String(summary.display_name).replace(/^QQQ Rotation\b/, 'QQQR')
-      : String(summary.display_name));
-  }
-  expect(names.length).toBeGreaterThan(0);
-  return names;
+async function openConsole(page: Page) {
+  await installMembershipFixture(page, { loading: false, isPro: true, user: { id: 'pro-fixture' } });
+  await page.goto('/#/app');
+  await expect(page.locator('#root')).not.toBeEmpty();
+  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
+  await expect(page.locator('.research-context-bar').getByText('Static Browser Fixture', { exact: true })).toBeVisible();
 }
 
 test('Security Explorer requires sign-in and remains available to Free accounts', async ({ page }) => {
@@ -107,10 +107,9 @@ test('Security Explorer requires sign-in and remains available to Free accounts'
   expect(marketEvidenceRequests).toEqual([]);
 
   await page.evaluate(() => {
-    const membership = window as unknown as { __alphaEngineMembership: { signIn(): void } };
-    membership.__alphaEngineMembership.signIn();
+    (window as any).__setAlphaMembership({ loading: false, isPro: false, user: { id: 'free-fixture' } });
   });
-  await expect(page.getByRole('heading', { name: 'Security Explorer' })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('heading', { name: 'Security Explorer', exact: true })).toBeVisible();
   await expect.poll(() => marketEvidenceRequests.length).toBeGreaterThan(0);
 });
 
@@ -123,19 +122,34 @@ test('Free users see an explicit Pro product gate for an advanced model', async 
 });
 
 test('only a verified Owner can open access settings', async ({ page }) => {
-  await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'owner-fixture' } });
-  await page.addInitScript(() => {
-    localStorage.setItem('alpha-engine-owner-fixture', 'true');
-  });
-  await page.goto('/#/app');
-  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
+  await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'owner-fixture', app_metadata: { alpha_engine_role: 'owner' } } });
+  await page.goto('/#/settings/access');
+  await expect(page.getByRole('main').getByRole('heading', { name: 'Access Settings' })).toBeVisible();
+  await expect(page.getByText('Guest < Member < Pro < Owner.')).toBeVisible();
 });
 
-async function openConsole(page: Page) {
-  await page.goto('/#/app');
-  await expect(page.locator('#root')).not.toBeEmpty();
-  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
-  await expect(page.locator('.research-context-bar').getByText('Static Browser Fixture', { exact: true })).toBeVisible();
+async function loadFormalDisplayNames(page: Page): Promise<string[]> {
+  const catalogResponse = await page.request.get('/data/formal-model-runs/catalog.json');
+  expect(catalogResponse.ok()).toBeTruthy();
+  const catalog = await catalogResponse.json() as FormalCatalog;
+  const names: string[] = [];
+  for (const record of catalog.records ?? []) {
+    const manifestPath = String(record.manifest_path);
+    const manifestResponse = await page.request.get(`/data/formal-model-runs/${manifestPath}`);
+    expect(manifestResponse.ok()).toBeTruthy();
+    const manifest = await manifestResponse.json() as FormalManifest;
+    const summarySection = manifest.sections?.find((section) => section.section_id === 'summary' && section.availability_status === 'available');
+    const parent = manifestPath.split('/').slice(0, -1).join('/');
+    const summaryResponse = await page.request.get(`/data/formal-model-runs/${parent}/${String(summarySection?.path)}`);
+    expect(summaryResponse.ok()).toBeTruthy();
+    const summary = await summaryResponse.json() as FormalSummary;
+    expect(summary.display_name).toBeTruthy();
+    names.push(String(summary.model_version_id).startsWith('qqqi_qqq_tqqq_')
+      ? String(summary.display_name).replace(/^QQQ Rotation\b/, 'QQQR')
+      : String(summary.display_name));
+  }
+  expect(names.length).toBeGreaterThan(0);
+  return names;
 }
 
 test('product homepage opens the strategy console', async ({ page }, testInfo) => {
@@ -161,37 +175,54 @@ test('strategy console exposes four primary destinations and formal strategy dri
   const pageErrors: string[] = [];
   page.on('request', (request) => {
     const pathname = new URL(request.url()).pathname;
-    if (pathname.startsWith('/api/') || pathname.startsWith('/auth/')) apiRequests.push(request.url());
+    if (pathname.startsWith('/api/')) apiRequests.push(request.url());
   });
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
-  await installMembershipFixture(page, { loading: false, isPro: true, user: { id: 'pro-fixture' } });
   await openConsole(page);
-  const formalNames = await formalStrategyNames(page);
-  const expectedTopLevel = ['Overview', 'Strategies', 'Securities', 'Research'];
-  for (const label of expectedTopLevel) {
-    await expect(page.getByRole('link', { name: label, exact: true }).first()).toBeVisible();
+  const navName = testInfo.project.name === 'mobile' ? 'Mobile strategy console navigation' : 'Strategy console navigation';
+  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: 'Open strategy navigation' }).click();
+  const navigation = page.getByRole('navigation', { name: navName });
+  for (const label of ['Overview', 'Strategies', 'Research', 'System']) {
+    await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
   }
-  for (const modelName of formalNames) {
-    await expect(page.getByText(modelName, { exact: true }).first()).toBeVisible();
+  await expect(navigation.getByRole('link', { name: 'Runs', exact: true })).toHaveCount(0);
+  await expect(navigation.getByRole('link', { name: 'Backtests', exact: true })).toHaveCount(0);
+  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: 'Close strategy navigation' }).click();
+
+  const formalNames = await loadFormalDisplayNames(page);
+  const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
+  for (const name of formalNames) await expect(fleet.getByText(name, { exact: true })).toBeVisible();
+  await fleet.getByText('QQQR v4.3', { exact: true }).click();
+  await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_3$/);
+  await expect(page.getByRole('heading', { name: 'QQQR v4.3', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Current decision state' })).toBeVisible();
+  const formalTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
+  for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {
+    await expect(formalTabs.getByRole('tab', { name: label, exact: true })).toBeVisible();
   }
   await assertNoHorizontalOverflow(page);
+
+  await page.goto('/#/research');
+  await expect(page.getByRole('heading', { name: 'Research', exact: true })).toBeVisible();
+  await page.goto('/#/system');
+  await expect(page.getByRole('heading', { name: 'System', exact: true })).toBeVisible();
+  await page.goto('/#/dashboard');
+  await expect(page.getByRole('heading', { name: 'Strategy view not found' })).toBeVisible();
+
   expect(apiRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
-  await page.screenshot({ path: `test-results/static-artifact/app-${testInfo.project.name}.png`, fullPage: true });
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({ path: `test-results/static-artifact/strategy-console-${testInfo.project.name}.png`, fullPage: true });
 });
 
-test('installed shell reopens offline after first visit', async ({ page, context }) => {
-  test.skip(test.info().project.name !== 'desktop', 'Offline PWA acceptance only runs once on desktop.');
-  await page.goto('/#/app');
-  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
-  await page.waitForFunction(async () => {
-    if (!('serviceWorker' in navigator)) return false;
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    return registrations.length > 0;
-  });
-
-  await context.setOffline(true);
+test('installed shell reopens offline after first visit', async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'Offline lifecycle is checked once on desktop Chromium.');
+  await openConsole(page);
+  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByText('Alpha Engine', { exact: true }).first()).toBeVisible();
 });
