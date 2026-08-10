@@ -9,6 +9,7 @@ on:
       - 'scripts/**'
       - 'configs/**'
       - 'data/**'
+      - 'docs/evidence/byd_v1_3_formal_challenge/**'
       - 'pyproject.toml'
       - 'uv.lock'
       - 'Makefile'
@@ -22,6 +23,7 @@ on:
       - 'scripts/**'
       - 'configs/**'
       - 'data/**'
+      - 'docs/evidence/byd_v1_3_formal_challenge/**'
       - 'pyproject.toml'
       - 'uv.lock'
       - 'Makefile'
@@ -73,17 +75,20 @@ jobs:
           src/research/formal_baseline_onboarding.py
           src/research/ranker_current_target.py
           src/research/drift_monitor.py
+          src/research/byd_v1_3_candidate.py
           src/factors/ranker_snapshot.py
           src/artifacts/strategy_operations.py
           scripts/run_research_experiment.py
           scripts/run_active_research_experiments.py
           scripts/run_ranker_current_target.py
+          scripts/validate_byd_v1_3_formal.py
           scripts/check_legacy_web_boundary.py
           scripts/check_ci_governance.py
           tests/test_formal_baseline_onboarding.py
           tests/test_ranker_current_target.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py
+          tests/test_byd_v1_3_candidate.py
 
       - name: Mypy type check
         run: uv run mypy src/release src/models/metric_contract.py
@@ -104,7 +109,47 @@ jobs:
           tests/test_ranker_current_target.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py
+          tests/test_byd_v1_3_candidate.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+      - name: Reproduce frozen BYD v1.3 formal decision
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/input/byd artifacts/input/515180 artifacts/byd-v1-3-formal
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/input/byd
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > artifacts/input/515180.zip
+          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  artifacts/input/515180.zip" | sha256sum --check --strict
+          unzip -q artifacts/input/515180.zip -d artifacts/input/515180
+          uv run python scripts/validate_byd_v1_3_formal.py \
+            --byd-dir artifacts/input/byd \
+            --etf-dir artifacts/input/515180 \
+            --contract configs/research_candidates/byd_v1_3_min_hold_bear_defense_v1.yaml \
+            --formal-package data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json \
+            --output-dir artifacts/byd-v1-3-formal
+          cmp artifacts/byd-v1-3-formal/decision.json docs/evidence/byd_v1_3_formal_challenge/decision.json
+          cmp artifacts/byd-v1-3-formal/comparison.csv docs/evidence/byd_v1_3_formal_challenge/comparison.csv
+          cmp artifacts/byd-v1-3-formal/period_attribution.csv docs/evidence/byd_v1_3_formal_challenge/period_attribution.csv
+          cmp artifacts/byd-v1-3-formal/manifest.json docs/evidence/byd_v1_3_formal_challenge/manifest.json
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          decision = json.loads(
+              Path("artifacts/byd-v1-3-formal/decision.json").read_text(encoding="utf-8")
+          )
+          assert decision["decision"] == "byd_v1_3_not_supported"
+          assert decision["promotion_authorized"] is False
+          PY
+
+      - name: Upload BYD v1.3 challenge evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-v1-3-formal-${{ github.run_id }}
+          path: artifacts/byd-v1-3-formal
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Package build
         if: github.event_name != 'pull_request'
