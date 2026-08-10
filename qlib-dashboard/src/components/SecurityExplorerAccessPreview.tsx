@@ -22,7 +22,7 @@ export function SecurityExplorerAccessPreview({ openAccount }: { openAccount: ()
           <p className="mt-3 text-xs text-muted-foreground">A free signed-in AlphaEngine account is sufficient. Pro is not required.</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl border bg-card shadow-sm" aria-label="Illustrative Security Explorer preview">
+        <div role="img" className="relative overflow-hidden rounded-2xl border bg-card shadow-sm" aria-label="Illustrative Security Explorer preview">
           <div className="flex items-center justify-between border-b bg-muted/20 px-4 py-3">
             <div>
               <p className="font-mono text-sm font-semibold">QQQ</p>
