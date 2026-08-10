@@ -70,6 +70,7 @@ jobs:
           src/research/experiment_harness.py
           src/research/cross_sectional_experiment_runner.py
           src/research/ranker_current_target.py
+          src/research/drift_monitor.py
           src/factors/ranker_snapshot.py
           src/artifacts/strategy_operations.py
           scripts/run_research_experiment.py
@@ -79,6 +80,7 @@ jobs:
           scripts/check_ci_governance.py
           tests/test_ranker_current_target.py
           tests/test_strategy_operations.py
+          tests/test_t47_drift_monitor.py
 
       - name: Mypy type check
         run: uv run mypy src/release src/models/metric_contract.py
@@ -97,6 +99,7 @@ jobs:
           tests/test_cross_sectional_experiment_runner.py
           tests/test_ranker_current_target.py
           tests/test_strategy_operations.py
+          tests/test_t47_drift_monitor.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Package build
