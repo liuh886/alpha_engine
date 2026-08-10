@@ -23,7 +23,7 @@ FORMAL_MODEL_ADAPTERS: dict[str, tuple[str, str]] = {
     "qqqi_qqq_tqqq_v4_3": ("qqq_rotation", "rules_based_allocation"),
     "us_x1_1": ("us_ranker", "cross_sectional_ranker"),
     "cn_x1_1": ("cn_ranker", "cross_sectional_ranker"),
-    "byd_v1_2_convex_momentum_budget_v1": (
+    "byd_v1_3_recovery_event_low_vol_confirmation_v1": (
         "byd_allocation",
         "rules_based_allocation",
     ),
