@@ -45,9 +45,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
       - name: Install locked environments
@@ -56,7 +56,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
           cd qlib-dashboard
-          npm ci
+          npm ci --no-audit --no-fund
       - name: Project accepted formal v1 into Bundle v2 twice
         run: |
           set -euo pipefail
@@ -146,7 +146,7 @@ jobs:
           fi
       - name: Upload projection evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: formal-bundle-v2-sync-${{ github.run_id }}
           path: |
