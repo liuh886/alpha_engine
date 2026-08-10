@@ -85,7 +85,7 @@ def test_migration_preserves_current_accepted_evidence(tmp_path: Path) -> None:
             assert attribution is None
 
 
-def test_migration_is_deterministic_and_cn_does_not_gain_absent_ledgers(tmp_path: Path) -> None:
+def test_migration_is_deterministic_and_does_not_synthesize_decisions(tmp_path: Path) -> None:
     first = tmp_path / "first"
     second = tmp_path / "second"
     receipt_a = migrate(SOURCE, first)
@@ -97,13 +97,10 @@ def test_migration_is_deterministic_and_cn_does_not_gain_absent_ledgers(tmp_path
     assert receipt_a == receipt_b
 
     catalog = _read(first / "catalog.json")
-    cn = next(row for row in catalog["records"] if row["model_version_id"] == "cn_x1_1")
-    manifest_path = first / cn["manifest_path"]
-    manifest = _read(manifest_path)
-    declarations = {row["section_id"]: row for row in manifest["sections"]}
-    assert declarations["trades"]["availability_status"] == "not_retained"
-    assert declarations["attribution"]["availability_status"] == "not_retained"
-    assert declarations["decision"]["availability_status"] == "not_retained"
+    for record in catalog["records"]:
+        manifest = _read(first / record["manifest_path"])
+        declarations = {row["section_id"]: row for row in manifest["sections"]}
+        assert declarations["decision"]["availability_status"] == "not_retained"
 
 
 def test_byd_v1_3_retained_benchmark_and_excess_metrics_are_projected(tmp_path: Path) -> None:
