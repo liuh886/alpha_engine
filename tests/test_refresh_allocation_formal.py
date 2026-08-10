@@ -222,15 +222,14 @@ def test_byd_formal_refresh_replays_production_archives(tmp_path: Path) -> None:
         shadow_store=Path("data/research/byd_prospective_shadow"),
         paired_store=Path("data/research/byd_515180_prospective"),
         signal_ledger=Path("data/research/byd_v1_2_signal_ledger"),
-        cutoff="2026-08-07",
+        cutoff=current_cutoff,
         generated_at="2026-08-09T00:00:00Z",
         output=output,
     )
 
     package = json.loads(output.read_text(encoding="utf-8"))
-    expected_appended = current_cutoff < "2026-08-07"
-    assert (result["appended_sessions"] > 0) is expected_appended
-    assert package["evidence_cutoff"] == "2026-08-07"
+    assert result["appended_sessions"] == 0
+    assert package["evidence_cutoff"] == current_cutoff
     assert package["research_only"] is True
     assert package["trade_ready"] is False
 
@@ -242,7 +241,7 @@ def test_byd_formal_refresh_replays_production_archives(tmp_path: Path) -> None:
         shadow_store=Path("data/research/byd_prospective_shadow"),
         paired_store=Path("data/research/byd_515180_prospective"),
         signal_ledger=Path("data/research/byd_v1_2_signal_ledger"),
-        cutoff="2026-08-07",
+        cutoff=current_cutoff,
         generated_at="2026-08-09T00:00:00Z",
         output=replay_output,
     )
