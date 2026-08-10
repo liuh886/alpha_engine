@@ -136,7 +136,8 @@ def _formal_section(
     if not isinstance(sections, list):
         raise EvidenceInvalid("formal baseline manifest sections are invalid")
     matches = [
-        row for row in sections
+        row
+        for row in sections
         if isinstance(row, dict) and row.get("section_id") == section_id
     ]
     if len(matches) != 1 or matches[0].get("availability_status") != "available":
@@ -159,8 +160,14 @@ def _formal_daily(path: Path, cutoff: str) -> pd.DataFrame:
         raise EvidenceInvalid("formal BYD performance report is missing")
     daily = pd.DataFrame(report)
     required = {
-        "date", "period_return", "turnover", "transaction_cost",
-        "financing_cost", "weight_BYD", "weight_515180", "weight_cash",
+        "date",
+        "period_return",
+        "turnover",
+        "transaction_cost",
+        "financing_cost",
+        "weight_BYD",
+        "weight_515180",
+        "weight_cash",
     }
     missing = sorted(required - set(daily.columns))
     if missing:
@@ -211,8 +218,13 @@ def _trace_reproduction(formal: pd.DataFrame, reproduced: pd.DataFrame) -> dict[
     formal = formal.loc[:end]
     reproduced = reproduced.loc[:end]
     columns = (
-        "net_return", "position_byd_weight", "position_etf_weight",
-        "position_cash_weight", "turnover_units", "cost", "financing_cost",
+        "net_return",
+        "position_byd_weight",
+        "position_etf_weight",
+        "position_cash_weight",
+        "turnover_units",
+        "cost",
+        "financing_cost",
     )
     index_equal = formal.index.equals(reproduced.index)
     exact = index_equal
@@ -277,63 +289,122 @@ def _evaluate(
         ):
             row = _window_metrics(daily, start, end)
             keyed[(scenario, model, window)] = row
-            comparisons.append({"scenario": scenario, "model": model, "window": window, **row})
+            comparisons.append(
+                {"scenario": scenario, "model": model, "window": window, **row}
+            )
 
     relative: dict[str, float] = {}
     for window, bounds in windows.items():
         if window == "full_overlap":
             continue
         start, end = str(bounds["start"]), str(bounds["end"])
-        relative[window] = _wealth(v13_primary, start, end) / _wealth(formal_primary, start, end) - 1.0
+        relative[window] = (
+            _wealth(v13_primary, start, end) / _wealth(formal_primary, start, end) - 1.0
+        )
     positives = [max(value, 0.0) for value in relative.values()]
     positive_total = sum(positives)
     strongest_share = max(positives) / positive_total if positive_total > 0.0 else 1.0
 
-    base = keyed[("primary", V12_MODEL_ID, "full_overlap")]
-    candidate = keyed[("primary", V13_MODEL_ID, "full_overlap")]
-    base_stress = keyed[("stress", V12_MODEL_ID, "full_overlap")]
-    candidate_stress = keyed[("stress", V13_MODEL_ID, "full_overlap")]
+    primary_base = keyed[("primary", V12_MODEL_ID, "full_overlap")]
+    primary_candidate = keyed[("primary", V13_MODEL_ID, "full_overlap")]
+    stress_base = keyed[("stress", V12_MODEL_ID, "full_overlap")]
+    stress_candidate = keyed[("stress", V13_MODEL_ID, "full_overlap")]
+    validation_base = keyed[("primary", V12_MODEL_ID, "fixed_validation")]
+    validation_candidate = keyed[("primary", V13_MODEL_ID, "fixed_validation")]
+    recent_base = keyed[("primary", V12_MODEL_ID, "retrospective_2025_plus")]
+    recent_candidate = keyed[("primary", V13_MODEL_ID, "retrospective_2025_plus")]
+
     evaluation = raw.get("evaluation")
     thresholds = evaluation.get("thresholds") if isinstance(evaluation, dict) else None
     if not isinstance(thresholds, dict):
         raise ValueError("rules-based mission requires evaluation.thresholds")
 
-    drawdown_gain = float(candidate["max_drawdown"]) - float(base["max_drawdown"])
-    cagr_gain = float(candidate["cagr"]) - float(base["cagr"])
-    risk_or_return = drawdown_gain >= float(thresholds["min_drawdown_improvement"]) or (
-        cagr_gain >= float(thresholds["min_cagr_improvement_for_return_path"])
-        and float(candidate["max_drawdown"]) >= float(base["max_drawdown"])
+    primary_drawdown_gain = (
+        float(primary_candidate["max_drawdown"])
+        - float(primary_base["max_drawdown"])
+    )
+    stress_drawdown_gain = (
+        float(stress_candidate["max_drawdown"])
+        - float(stress_base["max_drawdown"])
     )
     gates = {
         "baseline_identity_and_trace": bool(trace["exact"]),
-        "full_calmar_margin": float(candidate["calmar"]) - float(base["calmar"])
-        >= float(thresholds["min_calmar_improvement"]),
-        "full_cagr_floor": float(candidate["cagr"])
-        >= float(base["cagr"]) - float(thresholds["max_cagr_shortfall"]),
-        "risk_or_return_improvement": risk_or_return,
-        "stress_total_return_not_below_baseline": float(candidate_stress["total_return"])
-        >= float(base_stress["total_return"]),
-        "validation_and_recent_not_both_negative": relative.get("fixed_validation", -1.0) >= 0.0
-        or relative.get("retrospective_2025_plus", -1.0) >= 0.0,
-        "round_trips_cap": float(candidate["round_trips_per_year"])
-        <= float(thresholds["max_round_trips_per_year"]),
-        "positive_period_concentration": strongest_share
-        <= float(thresholds["max_positive_period_contribution_share"]),
+        "primary_full_cagr_floor": (
+            float(primary_candidate["cagr"])
+            >= float(primary_base["cagr"])
+            - float(thresholds["max_primary_cagr_shortfall"])
+        ),
+        "primary_full_sharpe_not_below": (
+            float(primary_candidate["sharpe"]) >= float(primary_base["sharpe"])
+        ),
+        "primary_full_calmar_not_below": (
+            float(primary_candidate["calmar"]) >= float(primary_base["calmar"])
+        ),
+        "primary_full_drawdown_improvement": (
+            primary_drawdown_gain
+            >= float(thresholds["min_primary_drawdown_improvement"])
+        ),
+        "fixed_validation_cagr_not_below": (
+            float(validation_candidate["cagr"]) >= float(validation_base["cagr"])
+        ),
+        "retrospective_2025_plus_cagr_not_below": (
+            float(recent_candidate["cagr"]) >= float(recent_base["cagr"])
+        ),
+        "round_trips_cap": (
+            float(primary_candidate["round_trips_per_year"])
+            <= float(thresholds["max_round_trips_per_year"])
+        ),
+        "stress_full_cagr_floor": (
+            float(stress_candidate["cagr"])
+            >= float(stress_base["cagr"])
+            - float(thresholds["max_stress_cagr_shortfall"])
+        ),
+        "stress_full_calmar_not_below": (
+            float(stress_candidate["calmar"]) >= float(stress_base["calmar"])
+        ),
+        "stress_full_drawdown_improvement": (
+            stress_drawdown_gain
+            >= float(thresholds["min_stress_drawdown_improvement"])
+        ),
+        "positive_period_concentration": (
+            strongest_share
+            <= float(thresholds["max_positive_period_contribution_share"])
+        ),
     }
     supported = all(gates.values())
     return {
-        "decision": "historically_supported_challenger" if supported else "not_supported",
+        "decision": (
+            "historically_supported_challenger" if supported else "not_supported"
+        ),
         "historically_supported": supported,
         "gates": gates,
         "comparison": comparisons,
         "relative_terminal_wealth_by_period": relative,
         "largest_positive_period_share": strongest_share,
         "diagnostics": {
-            "full_cagr_improvement": cagr_gain,
-            "full_drawdown_improvement": drawdown_gain,
-            "full_calmar_improvement": float(candidate["calmar"]) - float(base["calmar"]),
-            "stress_full_total_return_improvement": float(candidate_stress["total_return"])
-            - float(base_stress["total_return"]),
+            "primary_full_cagr_improvement": (
+                float(primary_candidate["cagr"]) - float(primary_base["cagr"])
+            ),
+            "primary_full_sharpe_improvement": (
+                float(primary_candidate["sharpe"]) - float(primary_base["sharpe"])
+            ),
+            "primary_full_calmar_improvement": (
+                float(primary_candidate["calmar"]) - float(primary_base["calmar"])
+            ),
+            "primary_full_drawdown_improvement": primary_drawdown_gain,
+            "fixed_validation_cagr_improvement": (
+                float(validation_candidate["cagr"]) - float(validation_base["cagr"])
+            ),
+            "retrospective_2025_plus_cagr_improvement": (
+                float(recent_candidate["cagr"]) - float(recent_base["cagr"])
+            ),
+            "stress_full_cagr_improvement": (
+                float(stress_candidate["cagr"]) - float(stress_base["cagr"])
+            ),
+            "stress_full_calmar_improvement": (
+                float(stress_candidate["calmar"]) - float(stress_base["calmar"])
+            ),
+            "stress_full_drawdown_improvement": stress_drawdown_gain,
         },
     }
 
@@ -382,29 +453,43 @@ def run_rules_based_allocation_experiment(spec_path: str | Path) -> dict[str, An
             stress_cost = float(execution["stress_cost_bps"])
             primary_financing = float(execution["primary_financing_rate"])
             stress_financing = float(execution["stress_financing_rate"])
-            if primary_financing != PRIMARY_FINANCING_RATE or stress_financing != STRESS_FINANCING_RATE:
+            if (
+                primary_financing != PRIMARY_FINANCING_RATE
+                or stress_financing != STRESS_FINANCING_RATE
+            ):
                 raise ValueError("financing rates drifted from maintained V1.2")
 
             v12_primary, _ = run_v12_candidates(
-                common, v12_signals, cost_bps=primary_cost,
+                common,
+                v12_signals,
+                cost_bps=primary_cost,
                 annual_financing_rate=primary_financing,
             )
             v12_stress, _ = run_v12_candidates(
-                common, v12_signals, cost_bps=stress_cost,
+                common,
+                v12_signals,
+                cost_bps=stress_cost,
                 annual_financing_rate=stress_financing,
             )
             v13_primary, diagnostics = run_v13_candidate(
-                common, v13_signals, cost_bps=primary_cost,
+                common,
+                v13_signals,
+                cost_bps=primary_cost,
                 annual_financing_rate=primary_financing,
             )
             v13_stress, _ = run_v13_candidate(
-                common, v13_signals, cost_bps=stress_cost,
+                common,
+                v13_signals,
+                cost_bps=stress_cost,
                 annual_financing_rate=stress_financing,
             )
             reproduced = v12_primary[V12_MODEL_ID].daily.loc[: pd.Timestamp(cutoff)]
             trace = _trace_reproduction(formal_primary, reproduced)
             if not trace["exact"]:
-                return _invalid(raw, "maintained V1.2 runner does not reproduce formal primary trace")
+                return _invalid(
+                    raw,
+                    "maintained V1.2 runner does not reproduce formal primary trace",
+                )
             end = pd.Timestamp(str(trace["comparison_end"]))
             evaluation = _evaluate(
                 raw,
@@ -427,14 +512,22 @@ def run_rules_based_allocation_experiment(spec_path: str | Path) -> dict[str, An
                 "historical_evidence_consumed": True,
                 "baseline": baseline.to_receipt(),
                 "baseline_performance_sha256": performance_sha,
-                "candidate": {"candidate_id": V13_MODEL_ID, "executor": _EXECUTOR_ID, "parameters": params},
+                "candidate": {
+                    "candidate_id": V13_MODEL_ID,
+                    "executor": _EXECUTOR_ID,
+                    "parameters": params,
+                },
                 "data_identity": data_identity,
                 "historical_cutoff": cutoff,
                 "candidate_diagnostics": {
                     "bear_days": int(v13_signals["is_bear"].sum()),
                     "risk_on_days": int(v13_signals["base_risk_on"].sum()),
-                    "financed_sessions_primary": int(v13_primary.daily["borrowed_weight"].gt(0.0).sum()),
-                    "mean_financed_increment": float(diagnostics["financed_increment"].mean()),
+                    "financed_sessions_primary": int(
+                        v13_primary.daily["borrowed_weight"].gt(0.0).sum()
+                    ),
+                    "mean_financed_increment": float(
+                        diagnostics["financed_increment"].mean()
+                    ),
                 },
                 "baseline_trace_reproduction": trace,
                 "governance": {
@@ -443,6 +536,7 @@ def run_rules_based_allocation_experiment(spec_path: str | Path) -> dict[str, An
                     "prospective_confirmation_required": True,
                     "formal_baseline_source": "current_model_run_bundle_v2",
                     "v12_local_reimplementation_forbidden": True,
+                    "promotion_authority": "explicit_user_direction_2026_08_10",
                 },
             }
     except EvidenceInvalid as exc:
