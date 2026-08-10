@@ -20,10 +20,10 @@ class RegimeGateSpec:
     long_ma_sessions: int = 200
     momentum_sessions: int = 40
     breadth_ma_sessions: int = 60
-    breadth_threshold: float = 0.55
+    breadth_threshold: float = 0.50
     rule: str = "momentum_and_breadth"
     votes_required: int = 2
-    sectors: int = 4
+    sectors: int = 2
     names_per_sector: int = 1
     rebalance_sessions: int = 10
     execution_delay_sessions: int = 1
