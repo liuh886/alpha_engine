@@ -3,7 +3,7 @@ experiment_id: byd_v1_3_min_hold_bear_defense_certification_v1
 runner: rules_based_allocation_v1
 active: true
 status: running
-issue: 726
+issue: 724
 parent_model_id: byd_v1_2_convex_momentum_budget_v1
 research_only: true
 trade_ready: false
@@ -69,11 +69,11 @@ execution:
 evaluation:
   decision_if_supported: historically_supported_challenger
   thresholds:
-    min_calmar_improvement: 0.03
-    max_cagr_shortfall: 0.005
-    min_drawdown_improvement: 0.01
-    min_cagr_improvement_for_return_path: 0.01
+    max_primary_cagr_shortfall: 0.005
+    min_primary_drawdown_improvement: 0.02
     max_round_trips_per_year: 4.0
+    max_stress_cagr_shortfall: 0.005
+    min_stress_drawdown_improvement: 0.02
     max_positive_period_contribution_share: 0.60
 
 governance:
@@ -85,6 +85,7 @@ governance:
   post_result_parameter_change_allowed: false
   automatic_promotion_allowed: false
   prospective_confirmation_required: true
+  promotion_authority: explicit_user_direction_2026_08_10
 
 stop_rules:
   - no_parameter_search
