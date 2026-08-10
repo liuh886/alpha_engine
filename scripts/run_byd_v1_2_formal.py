@@ -6,7 +6,8 @@ Produces the complete evidence bundle required for promotion evaluation.
 
 from __future__ import annotations
 
-import argparse, json
+import argparse
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -128,7 +129,7 @@ def main():
         "# BYD v1.2: Relaxed Trend Expansion Research",
         "",
         f"> **Decision**: `{gov.decision}`",
-        f"> Research only. `trade_ready=false`.",
+        "> Research only. `trade_ready=false`.",
         "",
         "## Summary",
         "",

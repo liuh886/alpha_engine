@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Run momentum-scaled expansion (minimal change)."""
 from __future__ import annotations
-import argparse, json
+import argparse
+import json
 from pathlib import Path
 import pandas as pd
 from src.research.byd_515180_allocation import PRIMARY_COST_BPS, STRESS_COST_BPS, prepare_common_dataset

@@ -333,3 +333,10 @@
 - [x] **T49.2 [P2] Migrate legacy Research Assistant timeline records** ✅ 2026-06-21
   - Deliver: `_safeFormatTime()` in AgentControlCenter.tsx prevents "Invalid Date"; `format_thought_stream_for_report()` normalizes legacy agent names to "ResearchAssistant", converts `id` from float timestamp to `%Y%m%d_%H%M%S_%f` format, and normalizes legacy entries on load.
   - Accept: 9 tests covering entry format, legacy normalization, corrupt-file recovery.
+
+## P0 — Syntax & Linting Bug Sweep (Recorded via Capability Router)
+
+- [ ] **T50: Fix 73 Ruff Linting Errors**
+  - **Issue**: `validate_all.ps1` fails at Gate 1 (Ruff lint). 73 errors remain across 11 files in `scripts/` and `src/research/` (mostly `E702` semicolon usage, `F841` unused variables, and `F821` undefined names like `XGBNativeCalibration`).
+  - **Goal**: Surgically fix syntax issues without altering quantitative research logic.
+  - **Status**: Recorded as an issue. Blocked waiting for user execution approval.
