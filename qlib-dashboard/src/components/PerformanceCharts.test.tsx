@@ -10,6 +10,7 @@ vi.mock("recharts", () => ({
     <div data-testid="chart-data" data-chart={JSON.stringify(data)}>{children}</div>
   ),
   Area: () => null,
+  Bar: () => null,
   Brush: () => null,
   CartesianGrid: () => null,
   Legend: () => null,
@@ -157,6 +158,39 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(data.every((row) => row.excess === null)).toBe(true);
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "unavailable");
     expect(screen.getByText("QQQ unavailable")).toBeInTheDocument();
+  });
+
+  it("supports quick time windows and rebases the visible-period summary", () => {
+    render(
+      <PerformanceCharts report={[
+        { date: "2024-01-01", account: 100 },
+        { date: "2025-01-01", account: 110 },
+        { date: "2026-01-01", account: 120 },
+        { date: "2026-08-01", account: 150 },
+      ]} />,
+    );
+
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-range", "all");
+    fireEvent.click(screen.getByRole("button", { name: "1Y" }));
+
+    const data = equityChartData();
+    expect(data.map(row => row.date)).toEqual(["2026-01-01", "2026-08-01"]);
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-range", "1y");
+    expect(screen.getByTestId("visible-strategy-return")).toHaveTextContent("25.00%");
+  });
+
+  it("retains turnover in the visualization data for capital-use analysis", () => {
+    render(
+      <PerformanceCharts report={[
+        { date: "2026-01-01", account: 100, value: 75, turnover: 0.1 },
+        { date: "2026-01-02", account: 101, value: 80, turnover: 0.25 },
+      ]} />,
+    );
+
+    const data = equityChartData();
+    expect(data[1].pos_ratio).toBeCloseTo(80 / 101, 10);
+    expect(data[1].turnover).toBeCloseTo(0.25, 10);
+    expect(screen.getByText("Capital Use")).toBeInTheDocument();
   });
 
   it("handles empty report gracefully", () => {
