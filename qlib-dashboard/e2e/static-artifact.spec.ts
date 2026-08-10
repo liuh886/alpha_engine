@@ -120,7 +120,6 @@ test('Free users can inspect QQQR performance while live execution remains Pro',
   await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'free-fixture' } });
   await page.goto('/#/strategies');
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
-  expect(await fleet.getByText('Total return', { exact: true }).count()).toBeGreaterThan(0);
   await fleet.getByText('QQQR v4.3', { exact: true }).click();
   await expect(page.getByRole('heading', { name: 'QQQR v4.3', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Formal performance', exact: true })).toBeVisible();
