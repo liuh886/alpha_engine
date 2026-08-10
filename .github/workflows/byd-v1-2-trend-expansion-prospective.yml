@@ -5,12 +5,16 @@ on:
     branches: [main]
     paths:
       - "src/research/byd_v1_2_trend_expansion_prospective.py"
+      - "src/research/byd_recovery_event_prospective.py"
       - "src/artifacts/append_only_store.py"
       - "scripts/run_byd_v1_2_trend_expansion_prospective.py"
+      - "scripts/run_byd_recovery_event_prospective.py"
       - "scripts/check_append_only_store_prefix.py"
       - "tests/test_byd_v1_2_trend_expansion_prospective.py"
+      - "tests/test_byd_recovery_event_prospective.py"
       - "tests/test_append_only_store.py"
       - "data/research/byd_v1_2_trend_expansion_prospective/**"
+      - "data/research/byd_recovery_event_prospective/**"
       - "docs/research/byd_v1_2_trend_expansion_prospective.md"
       - ".github/workflows/byd-v1-2-trend-expansion-prospective.yml"
   workflow_run:
@@ -59,26 +63,34 @@ jobs:
               assert payload["append_only"] is True, path
               assert payload["research_only"] is True, path
               assert payload["trade_ready"] is False, path
+          seed = Path("data/research/byd_515180_prospective/observations/2026-08-10.json")
+          assert seed.is_file(), "frozen recovery-event launch requires paired 2026-08-10 seed"
           PY
       - name: Validate prospective contracts
         run: |
           uv run ruff check \
             src/research/byd_v1_2_trend_expansion_prospective.py \
+            src/research/byd_recovery_event_prospective.py \
             src/artifacts/append_only_store.py \
             scripts/run_byd_v1_2_trend_expansion_prospective.py \
+            scripts/run_byd_recovery_event_prospective.py \
             scripts/check_append_only_store_prefix.py \
             tests/test_byd_v1_2_trend_expansion_prospective.py \
+            tests/test_byd_recovery_event_prospective.py \
             tests/test_append_only_store.py
           uv run mypy \
             src/research/byd_v1_2_trend_expansion_prospective.py \
+            src/research/byd_recovery_event_prospective.py \
             src/artifacts/append_only_store.py \
             scripts/run_byd_v1_2_trend_expansion_prospective.py \
+            scripts/run_byd_recovery_event_prospective.py \
             scripts/check_append_only_store_prefix.py
           uv run pytest \
             tests/test_byd_v1_2_trend_expansion_prospective.py \
+            tests/test_byd_recovery_event_prospective.py \
             tests/test_append_only_store.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: Reproduce ledger from immutable and append-only sources
+      - name: Reproduce strategy ledgers from immutable sources
         run: |
           set -euo pipefail
           mkdir -p artifacts/data/byd_canonical_v1
@@ -88,31 +100,54 @@ jobs:
             --byd-store data/research/byd_prospective_shadow \
             --paired-store data/research/byd_515180_prospective \
             --store-dir artifacts/research/byd_v1_2_trend_expansion_prospective
-      - name: Enforce append-only prospective prefix on review changes
+          uv run python scripts/run_byd_recovery_event_prospective.py \
+            --baseline-dir artifacts/data/byd_canonical_v1 \
+            --byd-store data/research/byd_prospective_shadow \
+            --paired-store data/research/byd_515180_prospective \
+            --store-dir artifacts/research/byd_recovery_event_prospective
+      - name: Enforce append-only prospective prefixes on review changes
         if: github.event_name == 'pull_request'
         run: |
           uv run python scripts/check_append_only_store_prefix.py \
             --current data/research/byd_v1_2_trend_expansion_prospective \
             --candidate artifacts/research/byd_v1_2_trend_expansion_prospective
+          if [[ -d data/research/byd_recovery_event_prospective ]]; then
+            uv run python scripts/check_append_only_store_prefix.py \
+              --current data/research/byd_recovery_event_prospective \
+              --candidate artifacts/research/byd_recovery_event_prospective
+          fi
           python - <<'PY'
           import json
           from pathlib import Path
 
-          root = Path("artifacts/research/byd_v1_2_trend_expansion_prospective")
-          manifest = json.loads((root / "manifest.json").read_text())
-          scorecard = json.loads((root / "scorecard.json").read_text())
-          assert manifest["append_only"] is True
-          assert manifest["research_only"] is True
-          assert manifest["trade_ready"] is False
-          assert scorecard["automatic_promotion_allowed"] is False
-          assert scorecard["research_only"] is True
-          assert scorecard["trade_ready"] is False
+          trend = Path("artifacts/research/byd_v1_2_trend_expansion_prospective")
+          trend_manifest = json.loads((trend / "manifest.json").read_text())
+          trend_scorecard = json.loads((trend / "scorecard.json").read_text())
+          assert trend_manifest["append_only"] is True
+          assert trend_manifest["research_only"] is True
+          assert trend_manifest["trade_ready"] is False
+          assert trend_scorecard["automatic_promotion_allowed"] is False
+
+          event = Path("artifacts/research/byd_recovery_event_prospective")
+          event_manifest = json.loads((event / "manifest.json").read_text())
+          event_scorecard = json.loads((event / "scorecard.json").read_text())
+          assert event_manifest["append_only"] is True
+          assert event_manifest["research_only"] is True
+          assert event_manifest["trade_ready"] is False
+          assert event_manifest["shadow_only"] is True
+          assert event_manifest["launch_after"] == "2026-08-10"
+          assert event_manifest["candidate_model_id"] == "byd_recovery_event_hold20_v1"
+          assert event_scorecard["automatic_promotion_allowed"] is False
+          assert event_scorecard["research_only"] is True
+          assert event_scorecard["trade_ready"] is False
           PY
-      - name: Upload reproduced prospective store
+      - name: Upload reproduced prospective stores
         uses: actions/upload-artifact@v4
         with:
-          name: byd-v1-2-trend-prospective-${{ github.run_id }}
-          path: artifacts/research/byd_v1_2_trend_expansion_prospective
+          name: byd-strategy-prospective-${{ github.run_id }}
+          path: |
+            artifacts/research/byd_v1_2_trend_expansion_prospective
+            artifacts/research/byd_recovery_event_prospective
           if-no-files-found: error
           retention-days: 90
 
@@ -143,17 +178,22 @@ jobs:
           echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
           mkdir -p artifacts/data/byd_canonical_v1
           tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
-      - name: Append immutable trend-expansion evidence
+      - name: Append immutable strategy evidence
         run: |
           uv run python scripts/run_byd_v1_2_trend_expansion_prospective.py \
             --baseline-dir artifacts/data/byd_canonical_v1 \
             --byd-store data/research/byd_prospective_shadow \
             --paired-store data/research/byd_515180_prospective \
             --store-dir data/research/byd_v1_2_trend_expansion_prospective
+          uv run python scripts/run_byd_recovery_event_prospective.py \
+            --baseline-dir artifacts/data/byd_canonical_v1 \
+            --byd-store data/research/byd_prospective_shadow \
+            --paired-store data/research/byd_515180_prospective \
+            --store-dir data/research/byd_recovery_event_prospective
       - name: Verify append-only scope
         run: |
           set -euo pipefail
-          unexpected="$(git status --porcelain | awk '{print $2}' | grep -v '^data/research/byd_v1_2_trend_expansion_prospective/' || true)"
+          unexpected="$(git status --porcelain | awk '{print $2}' | grep -Ev '^data/research/(byd_v1_2_trend_expansion_prospective|byd_recovery_event_prospective)/' || true)"
           if [[ -n "$unexpected" ]]; then
             echo "Unexpected prospective updater changes:"
             echo "$unexpected"
@@ -162,14 +202,15 @@ jobs:
       - name: Commit new prospective evidence
         run: |
           set -euo pipefail
-          root=data/research/byd_v1_2_trend_expansion_prospective
-          if git diff --quiet -- "$root" && [[ -z "$(git ls-files --others --exclude-standard "$root")" ]]; then
-            echo "No new trend-expansion prospective evidence"
+          trend=data/research/byd_v1_2_trend_expansion_prospective
+          event=data/research/byd_recovery_event_prospective
+          if git diff --quiet -- "$trend" "$event" && [[ -z "$(git ls-files --others --exclude-standard "$trend" "$event")" ]]; then
+            echo "No new BYD strategy prospective evidence"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$root"
-          git commit -m "research: append BYD v1.2 trend-expansion evidence"
+          git add "$trend" "$event"
+          git commit -m "research: append BYD strategy prospective evidence"
           git pull --rebase origin main
           git push origin HEAD:main
