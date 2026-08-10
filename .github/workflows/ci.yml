@@ -149,7 +149,7 @@ jobs:
           name: byd-v1-3-formal-${{ github.run_id }}
           path: artifacts/byd-v1-3-formal
           if-no-files-found: warn
-          retention-days: 90
+          retention-days: 14
 
       - name: Package build
         if: github.event_name != 'pull_request'
