@@ -1,0 +1,30 @@
+{
+  "append_only": true,
+  "automatic_promotion_allowed": false,
+  "candidate_model_id": "byd_recovery_event_hold20_v1",
+  "champion_model_id": "byd_v1_2_convex_momentum_budget_v1",
+  "detector_threshold": 0.026937,
+  "first_signal_date": "2026-08-10",
+  "historical_retuning_allowed": false,
+  "hold_common_open_eligible_sessions": 20,
+  "last_signal_date": "2026-08-10",
+  "launch_after": "2026-08-10",
+  "ledger_sha256": "5cf9bf74b77fa1941241736098d625b50fc6d83b8953a11d065a51b844611015",
+  "observation_count": 1,
+  "observation_sha256": {
+    "2026-08-10": "1c0672ec303115c8361979a2c3a01340d9f8e621446e0d805e74b2d4aacfd097"
+  },
+  "outcome_count": 0,
+  "outcome_sha256": {},
+  "prospective_observation_count": 0,
+  "provider_fallback": false,
+  "research_only": true,
+  "schema_version": "byd_recovery_event_prospective_v1",
+  "scorecard_sha256": "0f030edabf6efb435cd98ebbcf35dc7dae9c8da93bc868f2bebd667cae2727b5",
+  "shadow_only": true,
+  "source_stores": [
+    "data/research/byd_prospective_shadow",
+    "data/research/byd_515180_prospective"
+  ],
+  "trade_ready": false
+}
