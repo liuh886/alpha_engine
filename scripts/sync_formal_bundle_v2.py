@@ -54,6 +54,18 @@ LEGACY_PRODUCTION_SEMANTICS: dict[str, dict[str, Any]] = {
         "turnover_formula": "sum(abs(target_weight - previous_weight)); initial_entry=sum(abs(target_weight))",
         "net_return_formula": "gross_return - transaction_cost",
     },
+    US_X1_1: {
+        "session_unit": "provider_session",
+        "signal_time": "rebalance_session_close_t_score_rank",
+        "execution_time": "same_rebalance_session_close_t_research_measurement",
+        "return_measurement": "governed_close_t_to_governed_close_t_plus_10",
+        "price_basis": "governed_provider_close",
+        "execution_delay_sessions": 0,
+        "holding_end_offset_sessions": 10,
+        "performance_date_field": "holding_end_date",
+        "turnover_formula": "0.5 * sum(abs(target_weight - previous_weight))",
+        "net_return_formula": "gross_return - transaction_cost",
+    },
     "cn_x1_1": {
         "session_unit": "provider_session",
         "signal_time": "provider_close_t",
