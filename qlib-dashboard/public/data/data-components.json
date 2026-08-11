@@ -1,0 +1,63 @@
+[
+  {
+    "component_id": "prices.cn_selected_equities_v3",
+    "component_kind": "selected_pool_prices",
+    "coverage_ratio": 1.0,
+    "details": {
+      "benchmark": "000300",
+      "promotion_blocker": null,
+      "promotion_eligible": true,
+      "source_status": "selected_pool_price_refresh_ready"
+    },
+    "evidence_cutoff": "2026-08-11",
+    "expected_symbol_count": 130,
+    "first_date": "2021-01-04",
+    "invalid_symbols": [],
+    "last_date": "2026-08-11",
+    "manifest_path": "components/cn-selected-pool-prices.json",
+    "manifest_sha256": "ac257f3d1625f719ffb80be35cfc59ea6d2dd7d7b70b4cb8facbe2f2c4d0deb6",
+    "market": "cn",
+    "missing_symbols": [],
+    "pool_id": "cn_selected_equities_v3",
+    "professional_source_ready": null,
+    "providers": [
+      "AKSHARE_SINA",
+      "YFINANCE"
+    ],
+    "quarantined_symbols": [],
+    "ready_symbol_count": 130,
+    "research_only": true,
+    "status": "ready",
+    "trade_ready": false
+  },
+  {
+    "component_id": "prices.us_selected_equities_v2",
+    "component_kind": "selected_pool_prices",
+    "coverage_ratio": 1.0,
+    "details": {
+      "benchmark": "QQQ",
+      "promotion_blocker": null,
+      "promotion_eligible": true,
+      "source_status": "selected_pool_price_refresh_ready"
+    },
+    "evidence_cutoff": "2026-08-11",
+    "expected_symbol_count": 87,
+    "first_date": "2021-01-04",
+    "invalid_symbols": [],
+    "last_date": "2026-08-10",
+    "manifest_path": "components/us-selected-pool-prices.json",
+    "manifest_sha256": "bb3e052b1fc2f1a4cb562bde1e801c6b0d3a96e64869d830f1c71bf571f3728e",
+    "market": "us",
+    "missing_symbols": [],
+    "pool_id": "us_selected_equities_v2",
+    "professional_source_ready": null,
+    "providers": [
+      "YFINANCE"
+    ],
+    "quarantined_symbols": [],
+    "ready_symbol_count": 87,
+    "research_only": true,
+    "status": "ready",
+    "trade_ready": false
+  }
+]
