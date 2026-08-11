@@ -43,6 +43,7 @@ def test_model_run_bundle_and_market_evidence_changes_deploy(tmp_path: Path) -> 
         "data/research/formal_model_runs/us_ranker/us_x1_1/run/manifest.json",
         "data/research/market_evidence/us/catalog.json",
         "data/research/market_evidence/us/symbols/AAPL.json",
+        "data/research/model_data_bundle_v1/model-data-readiness.json",
         "data/research/model_runs/us_ranker/us_candidate/run/summary.json",
         "data/research/model_decisions/catalog.json",
     ):

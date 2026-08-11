@@ -8,8 +8,16 @@ from typing import Any
 
 import yaml
 
+from src.data.model_data_bundle import ModelDataBundleError, verify_model_data_bundle
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CATALOG = PROJECT_ROOT / "data" / "research" / "catalog.json"
+DEFAULT_MODEL_DATA_ROOT = PROJECT_ROOT / "data" / "research" / "model_data_bundle_v1"
+MODEL_DATA_INDEXES = (
+    "model-data-readiness.json",
+    "data-components.json",
+    "training-profiles.json",
+)
 
 
 class RepositoryResearchStoreError(ValueError):
@@ -210,6 +218,28 @@ def _verify_and_export_runs(
     return exported
 
 
+def _export_model_data_readiness(
+    output_dir: Path,
+    model_data_root: Path,
+) -> dict[str, Any] | None:
+    if not model_data_root.is_dir():
+        return None
+    try:
+        verified = set(verify_model_data_bundle(model_data_root))
+    except ModelDataBundleError as exc:
+        raise RepositoryResearchStoreError(
+            f"invalid model data readiness bundle: {model_data_root}"
+        ) from exc
+    expected = set(MODEL_DATA_INDEXES)
+    if verified != expected:
+        raise RepositoryResearchStoreError(
+            f"model data readiness index coverage mismatch: {sorted(verified)}"
+        )
+    for name in MODEL_DATA_INDEXES:
+        shutil.copy2(model_data_root / name, output_dir / name)
+    return _read_json(model_data_root / "model-data-readiness.json")
+
+
 def _normalize_model(
     model: dict[str, Any],
     source: str,
@@ -290,6 +320,7 @@ def export_repository_research_data(
     output_dir: Path,
     *,
     catalog_path: Path = DEFAULT_CATALOG,
+    model_data_root: Path = DEFAULT_MODEL_DATA_ROOT,
 ) -> dict[str, Any]:
     catalog = _read_json(catalog_path)
     if catalog.get("research_only") is not True or catalog.get("trade_ready") is not False:
@@ -377,9 +408,24 @@ def export_repository_research_data(
     _write_json(output_dir / "models.json", models)
     _write_json(output_dir / "reports.json", reports)
     _write_json(output_dir / "arena.json", {"arena_name": "N/A", "leaderboard": []})
+    model_data_readiness = _export_model_data_readiness(output_dir, model_data_root)
 
     blocked_gates: list[str] = []
     warnings = ["Only evidence explicitly allow-listed by data/research/catalog.json is published."]
+    if model_data_readiness is None:
+        blocked_gates.append("model_data_readiness_not_published")
+        warnings.append("No verified model data readiness bundle is published.")
+    else:
+        blocked_profiles = list(
+            (model_data_readiness.get("summary") or {}).get(
+                "blocked_training_profiles", []
+            )
+        )
+        if blocked_profiles:
+            blocked_gates.append("model_data_training_profiles_blocked")
+            warnings.append(
+                "Some training profiles remain blocked by missing or incomplete components."
+            )
     if not published_runs:
         blocked_gates.append("run_level_series_not_yet_promoted")
         warnings.append("No immutable repository runs are published.")
@@ -413,6 +459,11 @@ def export_repository_research_data(
             "total_models": len(models),
             "total_reports": len(reports),
             "total_runs": len(published_runs),
+            "model_data_components": int(
+                ((model_data_readiness or {}).get("summary") or {}).get(
+                    "component_count", 0
+                )
+            ),
             "primary_runs_with_curve": sum(
                 1 for run in primary_runs if run.get("curve_path") is not None
             ),

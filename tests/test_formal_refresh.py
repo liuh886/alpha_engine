@@ -333,6 +333,23 @@ def test_market_evidence_is_content_addressed_and_parallel() -> None:
     assert 'wait "$cn_pid" || status=1' in block
 
 
+def test_formal_refresh_publishes_one_shared_model_data_bundle() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    assert workflow.count("scripts/data/build_model_data_bundle.py") == 3
+    assert (
+        "prices.us_selected_equities_v2:selected_pool_prices:${CURRENT_MODEL_DATA_ROOT}"
+        in workflow
+    )
+    assert (
+        "prices.cn_selected_equities_v3:selected_pool_prices:${CURRENT_MODEL_DATA_ROOT}"
+        in workflow
+    )
+    assert "data/research/model_data_bundle_v1" in workflow
+    assert "cancel-in-progress: false" in workflow
+
+
 def test_formal_refresh_frontend_validation_paths_are_complete() -> None:
     required = (
         '"qlib-dashboard/scripts/**"',

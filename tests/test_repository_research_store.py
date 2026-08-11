@@ -10,6 +10,7 @@ from src.artifacts.repository_research_store import (
     RepositoryResearchStoreError,
     export_repository_research_data,
 )
+from src.data.model_data_bundle import build_model_data_bundle
 
 
 def test_repository_export_publishes_named_models_without_metadata_db(tmp_path: Path) -> None:
@@ -66,3 +67,34 @@ def test_repository_catalog_rejects_invalid_boundary(tmp_path: Path) -> None:
 
     with pytest.raises(RepositoryResearchStoreError, match="invalid research boundary"):
         export_repository_research_data(tmp_path / "site" / "data", catalog_path=catalog)
+
+
+def test_repository_export_publishes_verified_model_data_indexes(tmp_path: Path) -> None:
+    model_data_root = tmp_path / "model-data"
+    built = build_model_data_bundle(
+        root=Path.cwd(),
+        contract_path=Path("configs/data_contracts/model_data_bundle_v1.yaml"),
+        component_specs=[],
+        output_root=model_data_root,
+        evidence_cutoff="2026-07-31",
+    )
+    output = tmp_path / "site" / "data"
+
+    manifest = export_repository_research_data(
+        output,
+        catalog_path=DEFAULT_CATALOG,
+        model_data_root=model_data_root,
+    )
+
+    for name in (
+        "model-data-readiness.json",
+        "data-components.json",
+        "training-profiles.json",
+    ):
+        assert (output / name).is_file()
+    readiness = json.loads(
+        (output / "model-data-readiness.json").read_text(encoding="utf-8")
+    )
+    assert readiness["bundle_id"] == built["bundle_id"]
+    assert manifest["stats"]["model_data_components"] == 0
+    assert "model_data_readiness_not_published" not in manifest["blocked_gates"]

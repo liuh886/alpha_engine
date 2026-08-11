@@ -376,3 +376,35 @@ def test_verifier_rejects_modified_frontend_index(tmp_path: Path) -> None:
     path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
     with pytest.raises(ModelDataBundleError, match="hash mismatch"):
         verify_model_data_bundle(output)
+
+
+def test_bundle_keeps_embedded_component_paths_portable(tmp_path: Path) -> None:
+    output = tmp_path / "output"
+    prices = _price_manifest(
+        output / "components",
+        market="us",
+        pool_id="us_selected_equities_v2",
+        candidate_count=87,
+    )
+
+    manifest = build_model_data_bundle(
+        root=Path.cwd(),
+        contract_path=CONTRACT,
+        component_specs=[
+            ComponentSpec(
+                "prices.us_selected_equities_v2",
+                "selected_pool_prices",
+                prices,
+                "us",
+            )
+        ],
+        output_root=output,
+        evidence_cutoff="2026-06-18",
+    )
+
+    assert manifest["components"][0]["manifest_path"] == "components/us-prices.json"
+    assert verify_model_data_bundle(output) == [
+        "data-components.json",
+        "model-data-readiness.json",
+        "training-profiles.json",
+    ]

@@ -18,6 +18,7 @@ on:
       - "src/factors/panel.py"
       - "src/data/router.py"
       - "src/data/provider_catalog.py"
+      - "src/data/model_data_bundle.py"
       - "src/data/*.py"
       - "src/data/adapters/**"
       - "src/data/validation/**"
@@ -41,9 +42,11 @@ on:
       - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "scripts/data/build_etf_reference_bundle.py"
+      - "scripts/data/build_model_data_bundle.py"
       - "src/data/etf_reference_bundle.py"
       - "scripts/sync_formal_bundle_v2.py"
       - "configs/factor_libraries/ohlcv.yaml"
+      - "configs/data_contracts/model_data_bundle_v1.yaml"
       - "configs/pools/selected_pool_registry_v1.yaml"
       - "configs/pools/reference_instrument_registry_v1.yaml"
       - "configs/research_universes/us_selected_equities_v2.yaml"
@@ -58,15 +61,21 @@ on:
       - "tests/test_formal_provider_cache.py"
       - "tests/test_formal_backtest_freshness.py"
       - "tests/test_strategy_operations.py"
+      - "tests/test_model_data_bundle.py"
+      - "tests/test_repository_research_store.py"
       - "tests/test_sync_formal_bundle_v2.py"
       - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
       - "data/research/market_evidence/**"
       - "data/research/strategy_signal_ledgers/**"
       - "data/research/strategy_operations/**"
+      - "data/research/model_data_bundle_v1/**"
       - "qlib-dashboard/public/data/formal-model-runs/**"
       - "qlib-dashboard/public/data/market-evidence/**"
       - "qlib-dashboard/public/data/strategy-operations/**"
+      - "qlib-dashboard/public/data/model-data-readiness.json"
+      - "qlib-dashboard/public/data/data-components.json"
+      - "qlib-dashboard/public/data/training-profiles.json"
       - "qlib-dashboard/scripts/**"
       - "qlib-dashboard/src/**"
       - "qlib-dashboard/package.json"
@@ -82,13 +91,14 @@ permissions:
 
 concurrency:
   group: reviewed-formal-backtest-refresh-live
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   CURRENT_FORMAL_ROOT: data/research/formal_backtests
   CANDIDATE_FORMAL_ROOT: artifacts/formal-refresh/formal-v1
   CANDIDATE_V2_ROOT: artifacts/formal-refresh/formal-v2
   CANDIDATE_MARKET_EVIDENCE_ROOT: artifacts/formal-refresh/market-evidence
+  CURRENT_MODEL_DATA_ROOT: data/research/model_data_bundle_v1
   REFRESH_RECEIPT: artifacts/formal-refresh/formal-refresh-receipt.json
   REFRESH_BRANCH: automation/formal-backtest-refresh
 
@@ -115,7 +125,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -139,6 +149,7 @@ jobs:
             src/factors/panel.py \
             src/data/router.py \
             src/data/provider_catalog.py \
+            src/data/model_data_bundle.py \
             src/data/adapters \
             src/research/byd_v1_3_low_vol_recovery.py \
             scripts/build_market_evidence.py \
@@ -153,13 +164,16 @@ jobs:
             scripts/refresh_qqq_v4_3_formal.py \
             scripts/data/refresh_selected_pool_prices.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
+            scripts/data/build_model_data_bundle.py \
             tests/test_formal_refresh.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
-            tests/test_strategy_operations.py
+            tests/test_strategy_operations.py \
+            tests/test_model_data_bundle.py \
+            tests/test_repository_research_store.py
           uv run pytest \
             tests/test_formal_refresh.py \
             tests/test_ranker_provisional_mtm.py \
@@ -168,6 +182,8 @@ jobs:
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
             tests/test_strategy_operations.py \
+            tests/test_model_data_bundle.py \
+            tests/test_repository_research_store.py \
             -q --strict-markers --tb=short
           cd qlib-dashboard
           npm run check:account
@@ -501,6 +517,26 @@ jobs:
           wait "$cn_pid" || status=1
           cat artifacts/formal-refresh/market-evidence-us.log artifacts/formal-refresh/market-evidence-cn.log
           test "$status" -eq 0
+      - name: Build shared Model Data Bundle for training and frontend
+        if: steps.plan.outputs.refresh_required == 'true'
+        env:
+          US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
+          CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
+        run: |
+          set -euo pipefail
+          evidence_cutoff="$(printf '%s\n%s\n' "$US_CUTOFF" "$CN_CUTOFF" | sort | tail -1)"
+          rm -rf "$CURRENT_MODEL_DATA_ROOT"
+          mkdir -p "$CURRENT_MODEL_DATA_ROOT/components"
+          cp artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
+            "$CURRENT_MODEL_DATA_ROOT/components/us-selected-pool-prices.json"
+          cp artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json \
+            "$CURRENT_MODEL_DATA_ROOT/components/cn-selected-pool-prices.json"
+          uv run python scripts/data/build_model_data_bundle.py \
+            --component "prices.us_selected_equities_v2:selected_pool_prices:${CURRENT_MODEL_DATA_ROOT}/components/us-selected-pool-prices.json:us" \
+            --component "prices.cn_selected_equities_v3:selected_pool_prices:${CURRENT_MODEL_DATA_ROOT}/components/cn-selected-pool-prices.json:cn" \
+            --evidence-cutoff "$evidence_cutoff" \
+            --output-root "$CURRENT_MODEL_DATA_ROOT" \
+            --frontend-data-dir qlib-dashboard/public/data
       - name: Install candidate and rebuild Strategy Operations
         if: steps.plan.outputs.refresh_required == 'true'
         env:
@@ -533,6 +569,8 @@ jobs:
             tests/test_formal_backtest_freshness.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
+            tests/test_model_data_bundle.py \
+            tests/test_repository_research_store.py \
             tests/test_model_x1_baselines.py \
             -q --strict-markers --tb=short
           uv run python scripts/check_repository_model_runs.py
@@ -545,7 +583,22 @@ jobs:
           test -f dist/data/market-evidence/us/catalog.json
           test -f dist/data/market-evidence/cn/catalog.json
           test -f dist/data/strategy-operations/snapshots.json
+          test -f dist/data/model-data-readiness.json
+          test -f dist/data/data-components.json
+          test -f dist/data/training-profiles.json
           test ! -e dist/data/formal-backtests
+          cd ..
+          uv run python - <<'PY'
+          from pathlib import Path
+          from src.data.model_data_bundle import verify_model_data_bundle
+
+          expected = [
+              "data-components.json",
+              "model-data-readiness.json",
+              "training-profiles.json",
+          ]
+          assert verify_model_data_bundle(Path("data/research/model_data_bundle_v1")) == expected
+          PY
       - name: Open or update reviewed refresh PR
         id: pull_request
         if: steps.plan.outputs.refresh_required == 'true'
@@ -563,9 +616,13 @@ jobs:
             data/research/formal_model_runs \
             data/research/market_evidence \
             data/research/strategy_operations/snapshots.json \
+            data/research/model_data_bundle_v1 \
             qlib-dashboard/public/data/formal-model-runs \
             qlib-dashboard/public/data/market-evidence \
-            qlib-dashboard/public/data/strategy-operations
+            qlib-dashboard/public/data/strategy-operations \
+            qlib-dashboard/public/data/model-data-readiness.json \
+            qlib-dashboard/public/data/data-components.json \
+            qlib-dashboard/public/data/training-profiles.json
           if git diff --cached --quiet; then
             echo "No publication bytes changed after refresh validation."
             echo "pr_number=" >> "$GITHUB_OUTPUT"

@@ -16,6 +16,7 @@ on:
       - "src/factors/panel.py"
       - "src/data/router.py"
       - "src/data/provider_catalog.py"
+      - "src/data/model_data_bundle.py"
       - "src/data/*.py"
       - "src/data/adapters/**"
       - "src/data/validation/**"
@@ -38,6 +39,7 @@ on:
       - "scripts/build_strategy_operations.py"
       - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
+      - "scripts/data/build_model_data_bundle.py"
       - "scripts/sync_formal_bundle_v2.py"
       - "tests/test_formal_refresh.py"
       - "tests/test_ranker_provisional_mtm.py"
@@ -48,14 +50,20 @@ on:
       - "tests/test_formal_provider_cache.py"
       - "tests/test_formal_backtest_freshness.py"
       - "tests/test_strategy_operations.py"
+      - "tests/test_model_data_bundle.py"
+      - "tests/test_repository_research_store.py"
       - "tests/test_sync_formal_bundle_v2.py"
       - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
       - "data/research/market_evidence/**"
       - "data/research/strategy_operations/**"
+      - "data/research/model_data_bundle_v1/**"
       - "qlib-dashboard/public/data/formal-model-runs/**"
       - "qlib-dashboard/public/data/market-evidence/**"
       - "qlib-dashboard/public/data/strategy-operations/**"
+      - "qlib-dashboard/public/data/model-data-readiness.json"
+      - "qlib-dashboard/public/data/data-components.json"
+      - "qlib-dashboard/public/data/training-profiles.json"
       - "qlib-dashboard/scripts/**"
       - "qlib-dashboard/src/**"
       - "qlib-dashboard/package.json"
@@ -67,6 +75,7 @@ on:
       - "configs/research_universes/us_selected_equities_v2.yaml"
       - "configs/research_universes/cn_selected_equities_v3.yaml"
       - "configs/factor_libraries/ohlcv.yaml"
+      - "configs/data_contracts/model_data_bundle_v1.yaml"
       - "pyproject.toml"
       - "uv.lock"
   workflow_dispatch:
@@ -152,6 +161,7 @@ jobs:
             src/factors/panel.py \
             src/data/router.py \
             src/data/provider_catalog.py \
+            src/data/model_data_bundle.py \
             src/data/adapters \
             src/research/byd_v1_2_recovery_state.py \
             src/research/byd_v1_3_low_vol_recovery.py \
@@ -166,6 +176,7 @@ jobs:
             scripts/refresh_qqq_v4_3_formal.py \
             scripts/data/refresh_selected_pool_prices.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
+            scripts/data/build_model_data_bundle.py \
             tests/test_formal_refresh.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_formal_bundle_mtm_projection.py \
@@ -173,7 +184,9 @@ jobs:
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
-            tests/test_strategy_operations.py
+            tests/test_strategy_operations.py \
+            tests/test_model_data_bundle.py \
+            tests/test_repository_research_store.py
           uv run mypy \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
@@ -192,6 +205,8 @@ jobs:
             tests/test_formal_backtest_freshness.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
+            tests/test_model_data_bundle.py \
+            tests/test_repository_research_store.py \
             -q --strict-markers --tb=short
           cd qlib-dashboard
           npm run check:account
