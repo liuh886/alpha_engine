@@ -1,0 +1,443 @@
+# CN x1.2 systematic ranker grid — governed harness experiment
+# Explores factor groups × calibration combinations.
+# Score-level evaluation only; full CN x1.1 portfolio path required for final decision.
+schema_version: '1.0'
+experiment_id: cn_x1_2_ranker_grid_v1
+runner: cross_sectional_xgb_ranker_v1
+active: true
+status: pre_registered
+parent_model_id: cn_x1_1
+research_only: true
+trade_ready: false
+
+purpose: >-
+  Systematic exploration of factor group × calibration combinations
+  for CN x1.2 ranker improvement. Tests 5 factor groups × 4 calibrations
+  = 20 candidates. All use frozen CN130 pool, standard Top-15 evaluation.
+  Full CN x1.1 portfolio/regime/execution path needed for final validation.
+
+snapshot:
+  policy: exact_selected_pool_source_rebuild
+  source_dir: data/csv_source
+  provider_identity_sha256: fa92e3e88facf5908b9f6ec153f140e2505a9bce3ef693078cd001b58f607f40
+  cutoff: '2026-08-11'
+
+fixed_model:
+  model_id: cn_x1_1
+  frozen_spec: configs/research_paradigms/cn_10d_selected_pool_ranker_retest_v1.yaml
+
+factor_library:
+  source: configs/factor_libraries/ohlcv.yaml
+
+candidates:
+  # ---- Baseline: current CN x1.1 config ----
+  - candidate_id: baseline_cn_x1_1
+    role: baseline
+    factor_groups:
+      - cn_balanced_ohlcv
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 100
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 1.0
+      colsample_bytree: 1.0
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  # ---- Calibration-only variants (3) ----
+  - candidate_id: cal_lower_lr
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 300
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.03
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: cal_sampled
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: cal_regularized
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 300
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.03
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.1
+      reg_lambda: 2.0
+      seed: 42
+
+  # ---- Factor group expansion × lower_lr calibration (4) ----
+  - candidate_id: fg_pressure_lowlr
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_price_volume_pressure
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 300
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.03
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: fg_volrev_lowlr
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_volatility_reversal
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 300
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.03
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: fg_revliq_lowlr
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_short_reversal_liquidity
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 300
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.03
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: fg_all4_lowlr
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_volatility_reversal
+      - cn_price_volume_pressure
+      - cn_short_reversal_liquidity
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 300
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.03
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  # ---- Factor group expansion × sampled calibration (4) ----
+  - candidate_id: fg_pressure_sampled
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_price_volume_pressure
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: fg_volrev_sampled
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_volatility_reversal
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: fg_revliq_sampled
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_short_reversal_liquidity
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: fg_all4_sampled
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_volatility_reversal
+      - cn_price_volume_pressure
+      - cn_short_reversal_liquidity
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  # ---- Factor group expansion × baseline calibration (4) ----
+  - candidate_id: fg_pressure_baseline
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_price_volume_pressure
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 100
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 1.0
+      colsample_bytree: 1.0
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: fg_volrev_baseline
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_volatility_reversal
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 100
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 1.0
+      colsample_bytree: 1.0
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: fg_revliq_baseline
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_short_reversal_liquidity
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 100
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 1.0
+      colsample_bytree: 1.0
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: fg_all4_baseline
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_volatility_reversal
+      - cn_price_volume_pressure
+      - cn_short_reversal_liquidity
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 100
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 1.0
+      colsample_bytree: 1.0
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  # ---- Tighter calibration search (4) ----
+  - candidate_id: cal_deeper
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_short_reversal_liquidity
+    xgb_native:
+      n_gain_bins: 7
+      num_boost_round: 300
+      max_leaves: 63
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.03
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: cal_gain9_revliq
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_short_reversal_liquidity
+    xgb_native:
+      n_gain_bins: 9
+      num_boost_round: 300
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.03
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: cal_conservative
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 200
+      max_leaves: 15
+      max_depth: 0
+      min_child_weight: 5.0
+      learning_rate: 0.03
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.1
+      reg_lambda: 2.0
+      seed: 42
+
+  - candidate_id: cal_aggressive_revliq
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+      - cn_short_reversal_liquidity
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 400
+      max_leaves: 63
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.02
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+windows:
+  candidate_selection:
+    - 2024H1
+    - 2024H2
+    - 2025H1
+    - 2025H2
+  consumed_reporting_only: []
+  consumed_reporting_may_enter_selection: false
+  new_holdout_reserved: true
+
+execution:
+  base_cost_bps: 20
+  cost_stress_bps:
+    - 20
+    - 60
+
+evaluation:
+  schema_version: '1.0'
+  baseline_candidate_id: baseline_cn_x1_1
+  stress_cost_bps: 60
+  decision: cn_x1_2_ranker_candidate_supported
+  ranking:
+    - gate_pass_count
+    - worst_drawdown
+    - compounded_relative_excess
+  thresholds:
+    min_window_relative_excess: 0.0
+    min_worst_drawdown: -0.30
+    min_stress_compounded_relative_excess: 0.0
+    max_strongest_positive_window_share: 0.55
+    min_mean_rank_ic_improvement: 0.0
+    require_factor_baseline_dominance: false
+
+stop_rules:
+  - no_feature_search_beyond_declared_groups
+  - no_pool_changes
+  - no_portfolio_construction_changes
+  - no_automatic_baseline_update
+
+version_policy:
+  maximum_surviving_candidates: 3
+  may_propose_cn_x1_2_candidate: true
+  may_release_cn_x1_2_automatically: false
+  new_untouched_challenge_required: true

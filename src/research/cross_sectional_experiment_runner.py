@@ -347,8 +347,10 @@ def run_cross_sectional_experiment(
         last_test_year=int(walk_forward["last_test_year"]),
         min_complete_windows=int(walk_forward["min_windows"]),
         partial_window_policy=str(walk_forward["partial_window_policy"]),
-        min_partial_window_eligible_sessions=int(
-            walk_forward["min_partial_window_eligible_sessions"]
+        min_partial_window_eligible_sessions=(
+            int(walk_forward["min_partial_window_eligible_sessions"])
+            if "min_partial_window_eligible_sessions" in walk_forward
+            else None
         ),
         horizon_sessions=int(strategy["horizon_days"]),
         cadence_sessions=int(strategy["rebalance_days"]),
