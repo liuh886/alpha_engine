@@ -78,6 +78,7 @@ jobs:
           src/research/rules_based_allocation_experiment_runner.py
           src/research/byd_v1_3_candidate.py
           src/research/ranker_current_target.py
+          src/research/us_x1_2_current_target.py
           src/research/optimization_campaign.py
           src/research/drift_monitor.py
           src/factors/ranker_snapshot.py
@@ -88,6 +89,7 @@ jobs:
           scripts/refresh_ranker_formal.py
           scripts/sync_formal_bundle_v2.py
           scripts/run_ranker_current_target.py
+          scripts/run_us_x1_2_current_target.py
           scripts/diagnose_byd_activity_decay.py
           scripts/screen_byd_successor_states.py
           scripts/evaluate_byd_recovery_satellite.py
@@ -99,6 +101,7 @@ jobs:
           tests/test_formal_baseline_onboarding.py
           tests/test_rules_based_allocation_experiment_runner.py
           tests/test_ranker_current_target.py
+          tests/test_us_x1_2_current_target.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py
           tests/test_active_research_spec_validation.py
@@ -124,6 +127,7 @@ jobs:
           tests/test_formal_baseline_onboarding.py
           tests/test_rules_based_allocation_experiment_runner.py
           tests/test_ranker_current_target.py
+          tests/test_us_x1_2_current_target.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py
           tests/test_active_research_spec_validation.py
