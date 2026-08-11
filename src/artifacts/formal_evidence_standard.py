@@ -1,4 +1,4 @@
-"""Acceptance standard for native Model Run Bundle v2 formal evidence."""
+"""Production contract for accepted Model Run Bundle v2 formal evidence."""
 
 from __future__ import annotations
 
@@ -7,7 +7,13 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-from src.artifacts.model_run_bundle_v2 import validate_manifest, validate_metric
+from src.artifacts.model_run_bundle_v2 import (
+    validate_catalog,
+    validate_manifest,
+    validate_metric,
+)
+
+FORMAL_EVIDENCE_CONTRACT_ID = "native_formal_bundle_v2"
 
 CANONICAL_METRIC_IDS = {
     "total_return",
@@ -46,7 +52,7 @@ REQUIRED_PERFORMANCE_SEMANTICS = {
 
 
 class FormalEvidenceStandardError(ValueError):
-    """Raised when a native formal bundle is not decision-support complete."""
+    """Raised when an accepted formal bundle violates the production contract."""
 
 
 def _object(path: Path) -> dict[str, Any]:
@@ -57,6 +63,10 @@ def _object(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise FormalEvidenceStandardError(f"JSON root must be an object: {path}")
     return value
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _require(condition: bool, message: str) -> None:
@@ -72,7 +82,7 @@ def _declared_text(value: object) -> bool:
 
 
 def validate_formal_evidence_bundle(run_dir: Path) -> None:
-    """Validate the minimum evidence contract for a newly accepted formal model."""
+    """Validate the production evidence contract for an accepted formal model."""
 
     manifest_path = run_dir / "manifest.json"
     manifest = _object(manifest_path)
@@ -104,6 +114,10 @@ def validate_formal_evidence_bundle(run_dir: Path) -> None:
         )
 
     summary = _object(run_dir / str(sections["summary"]["path"]))
+    _require(
+        summary.get("evidence_contract") == FORMAL_EVIDENCE_CONTRACT_ID,
+        "formal evidence contract identity is missing",
+    )
     metrics = summary.get("metrics")
     _require(isinstance(metrics, list), "formal summary canonical metrics are missing")
     metric_ids: set[str] = set()
@@ -143,3 +157,36 @@ def validate_formal_evidence_bundle(run_dir: Path) -> None:
         if isinstance(payload, dict):
             _require(payload.get("research_only") is True, f"{section_id} research boundary changed")
             _require(payload.get("trade_ready") is False, f"{section_id} trade-ready boundary changed")
+
+
+def validate_formal_catalog_evidence(catalog_path: Path) -> list[str]:
+    """Require every active formal catalog record to satisfy the same evidence contract."""
+
+    catalog = _object(catalog_path)
+    validate_catalog(catalog)
+    _require(catalog.get("channel") == "formal", "formal evidence catalog channel is invalid")
+    _require(
+        catalog.get("research_only") is True and catalog.get("trade_ready") is False,
+        "formal evidence catalog research boundary is invalid",
+    )
+    records = catalog.get("records")
+    _require(isinstance(records, list) and bool(records), "formal evidence catalog is empty")
+
+    model_ids: list[str] = []
+    root = catalog_path.parent
+    for record in records:
+        _require(isinstance(record, Mapping), "formal evidence catalog record is invalid")
+        model_id = str(record.get("model_version_id") or "")
+        _require(bool(model_id) and model_id not in model_ids, f"duplicate formal model: {model_id!r}")
+        manifest_path = root / str(record.get("manifest_path") or "")
+        _require(manifest_path.is_file(), f"formal manifest is missing: {model_id}")
+        _require(
+            _sha256(manifest_path) == record.get("manifest_sha256"),
+            f"formal manifest digest mismatch: {model_id}",
+        )
+        manifest = _object(manifest_path)
+        _require(manifest.get("bundle_id") == record.get("bundle_id"), f"formal bundle id mismatch: {model_id}")
+        _require(manifest.get("model_version_id") == model_id, f"formal model identity mismatch: {model_id}")
+        validate_formal_evidence_bundle(manifest_path.parent)
+        model_ids.append(model_id)
+    return model_ids
