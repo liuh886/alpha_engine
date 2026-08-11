@@ -2,7 +2,7 @@ import type { ModelData } from '@/lib/data-parser';
 import { CheckCircle2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { evidenceAvailabilityLabel } from '@/lib/evidence-availability';
+import { evidenceAvailabilityLabel, formatDeclaredValue } from '@/lib/evidence-availability';
 import { modelKindLabel, projectFormalEvidence, projectFormalMetric } from '@/lib/formal-evidence';
 
 interface ModelSelectorProps {
@@ -44,7 +44,7 @@ export function ModelSelector({
             const formal = projection.formal;
             const rebalanceSessions = formal?.portfolio_contract.rebalance_sessions;
             const topk = formal?.portfolio_contract.topk;
-            const traceFrequency = String(formal?.trace_frequency ?? 'Not declared').split('_').join(' ');
+            const traceFrequency = formatDeclaredValue(formal?.trace_frequency).split('_').join(' ');
             return (
               <button
                 key={model.id}
@@ -74,16 +74,16 @@ export function ModelSelector({
                 <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
                   <div><dt className="text-muted-foreground">Annualized</dt><dd className="mt-0.5 font-mono font-semibold">{percentMetric(model, ['Annualized Return', 'CAGR'])}</dd></div>
                   <div><dt className="text-muted-foreground">Relative excess</dt><dd className="mt-0.5 font-mono font-semibold">{percentMetric(model, ['Compounded Relative Excess Return', 'Excess Return'])}</dd></div>
-                  <div><dt className="text-muted-foreground">Start</dt><dd className="mt-0.5 font-mono text-[11px]">{model.backtest.meta.start ?? 'Not declared'}</dd></div>
-                  <div><dt className="text-muted-foreground">End</dt><dd className="mt-0.5 font-mono text-[11px]">{model.backtest.meta.end ?? 'Not declared'}</dd></div>
+                  <div><dt className="text-muted-foreground">Start</dt><dd className="mt-0.5 font-mono text-[11px]">{formatDeclaredValue(model.backtest.meta.start)}</dd></div>
+                  <div><dt className="text-muted-foreground">End</dt><dd className="mt-0.5 font-mono text-[11px]">{formatDeclaredValue(model.backtest.meta.end)}</dd></div>
                 </dl>
 
                 <div className="mt-4 space-y-1 border-t pt-3 text-[11px] text-muted-foreground">
                   <div>Trace: {traceFrequency}</div>
                   <div>Rebalance: {typeof rebalanceSessions === 'number' ? `${rebalanceSessions} sessions` : 'Source-defined state'}</div>
                   <div>Top-K: {typeof topk === 'number' ? topk : 'Not applicable'}</div>
-                  <div title={projection.costAvailability}>Costs: {projection.costBps === null ? 'Not declared' : `${projection.costBps} bps`}</div>
-                  <div>Evidence: {formal?.evidence_completeness.status ?? 'Not declared'}</div>
+                  <div title={projection.costAvailability}>Costs: {projection.costBps === null ? evidenceAvailabilityLabel(undefined) : `${projection.costBps} bps`}</div>
+                  <div>Evidence: {formatDeclaredValue(formal?.evidence_completeness.status)}</div>
                 </div>
               </button>
             );
