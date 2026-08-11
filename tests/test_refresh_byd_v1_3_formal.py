@@ -189,6 +189,8 @@ def test_v1_3_formal_refresh_replays_and_appends_production_archives(tmp_path: P
     assert result["model_id"] == MODEL_ID
     assert result["appended_sessions"] >= 0
     assert package["evidence_cutoff"] == "2026-08-10"
+    assert package["freshness"]["required_cutoff"] == "2026-08-10"
+    assert package["freshness"]["latest_completed_session"] == "2026-08-10"
     assert package["freshness"]["model_selection_reopened"] is False
     assert package["evidence"]["refresh_adapter"] == "refresh_byd_v1_3_formal"
     assert package["research_only"] is True
