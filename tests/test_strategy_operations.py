@@ -363,6 +363,70 @@ def test_new_ledger_write_rejects_missing_factor_evidence(tmp_path: Path) -> Non
         )
 
 
+def test_repeated_workflow_evaluation_is_idempotent_for_same_decision(
+    tmp_path: Path,
+) -> None:
+    ledger = tmp_path / QQQ_MODEL
+    signal = _v43_signal()
+    first = append_signal_evaluation(
+        ledger_root=ledger,
+        model_version_id=QQQ_MODEL,
+        signal=signal,
+        delivery_status="sent",
+        workflow_run_id="first-run",
+        commit_sha="a" * 40,
+        created_at_utc="2026-08-08T00:00:00Z",
+    )
+    first_bytes = first.read_bytes()
+    repeated = dict(signal)
+    repeated.update(
+        {
+            "should_alert": False,
+            "transition_type": "no_change",
+            "transition_label": "Target unchanged",
+            "previous_mode": "base",
+            "title": "Repeated evaluation",
+        }
+    )
+
+    second = append_signal_evaluation(
+        ledger_root=ledger,
+        model_version_id=QQQ_MODEL,
+        signal=repeated,
+        delivery_status="not_required",
+        workflow_run_id="second-run",
+        commit_sha="b" * 40,
+        created_at_utc="2026-08-08T01:00:00Z",
+    )
+
+    assert second == first
+    assert second.read_bytes() == first_bytes
+    assert len(list((ledger / "records").glob("*.json"))) == 1
+
+
+def test_reused_fingerprint_still_rejects_changed_decision(tmp_path: Path) -> None:
+    ledger = tmp_path / QQQ_MODEL
+    _append(ledger, QQQ_MODEL, _v43_signal())
+    changed = _v43_signal()
+    changed["target_weights"] = {
+        "QQQI": 1.0,
+        "QQQ": 0.0,
+        "TQQQ": 0.0,
+        "SGOV": 0.0,
+    }
+
+    with pytest.raises(StrategySignalLedgerError, match="append-only signal drift"):
+        append_signal_evaluation(
+            ledger_root=ledger,
+            model_version_id=QQQ_MODEL,
+            signal=changed,
+            delivery_status="not_required",
+            workflow_run_id="second-run",
+            commit_sha="b" * 40,
+            created_at_utc="2026-08-08T01:00:00Z",
+        )
+
+
 def test_no_change_and_delivery_failure_are_distinct(tmp_path: Path) -> None:
     ledger = tmp_path / QQQ_MODEL
     _append(

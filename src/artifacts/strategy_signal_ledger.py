@@ -15,6 +15,24 @@ from src.factors.strategy_snapshot import (
 
 SCHEMA_VERSION = "strategy_signal_evaluation_v1"
 MANIFEST_SCHEMA_VERSION = "strategy_signal_ledger_v1"
+_DECISION_IDENTITY_FIELDS = (
+    "schema_version",
+    "model_id",
+    "model_family_id",
+    "experiment_id",
+    "signal_date",
+    "latest_data_date",
+    "target_weights",
+    "target_state",
+    "target_formal_state",
+    "target_mode",
+    "execution_time",
+    "data_provenance",
+    "data_identity",
+    "source_identity",
+    "evidence_identity",
+    "factor_evidence",
+)
 
 
 class StrategySignalLedgerError(ValueError):
@@ -44,6 +62,8 @@ def _optional_int(value: object, *, label: str) -> int | None:
     if value in (None, ""):
         return None
     if isinstance(value, bool):
+        raise StrategySignalLedgerError(f"{label} must be an integer")
+    if not isinstance(value, (str, int, float)):
         raise StrategySignalLedgerError(f"{label} must be an integer")
     try:
         return int(value)
@@ -79,6 +99,42 @@ def _validate_factor_evidence(signal: Mapping[str, Any], latest_data_date: str) 
         raise StrategySignalLedgerError(
             "fresh data cannot publish a stale or blocked factor snapshot"
         )
+
+
+def _existing_record_is_same_decision(
+    path: Path,
+    *,
+    model_version_id: str,
+    signal_date: str,
+    fingerprint: str,
+    signal: Mapping[str, Any],
+) -> bool:
+    try:
+        existing = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(existing, dict):
+        return False
+    if any(
+        (
+            existing.get("model_version_id") != model_version_id,
+            existing.get("signal_date") != signal_date,
+            existing.get("fingerprint") != fingerprint,
+            existing.get("research_only") is not True,
+            existing.get("trade_ready") is not False,
+        )
+    ):
+        return False
+    existing_signal = existing.get("signal")
+    if not isinstance(existing_signal, dict):
+        return False
+    observed_sha = hashlib.sha256(canonical_json_bytes(existing_signal)).hexdigest()
+    if existing.get("signal_sha256") != observed_sha:
+        return False
+    return all(
+        existing_signal.get(field) == signal.get(field)
+        for field in _DECISION_IDENTITY_FIELDS
+    )
 
 
 def append_signal_evaluation(
@@ -144,7 +200,21 @@ def append_signal_evaluation(
     records = ledger_root / "records"
     records.mkdir(parents=True, exist_ok=True)
     record_path = records / f"{signal_date}-{fingerprint}.json"
-    if record_path.exists() and record_path.read_bytes() != record_bytes:
+    if record_path.exists():
+        if record_path.read_bytes() == record_bytes:
+            return record_path
+        if _existing_record_is_same_decision(
+            record_path,
+            model_version_id=model_version_id,
+            signal_date=signal_date,
+            fingerprint=fingerprint,
+            signal=normalized_signal,
+        ):
+            # A workflow_run may re-evaluate the same close after its immutable
+            # decision was already delivered.  Transient alert/workflow fields
+            # can differ, but the fingerprint-owned decision must stay byte
+            # stable and must not create another ledger entry.
+            return record_path
         raise StrategySignalLedgerError(f"append-only signal drift: {record_path}")
     record_path.write_bytes(record_bytes)
 
