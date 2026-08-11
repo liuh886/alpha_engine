@@ -37,7 +37,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: strategy-operations-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
+  group: byd-v1-3-daily-signal-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
   cancel-in-progress: false
 
 permissions:

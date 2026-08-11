@@ -181,6 +181,33 @@ def next_due_session(
     return pd.Timestamp(dates[due_index]).strftime("%Y-%m-%d")
 
 
+def merge_governed_market_sessions(
+    *,
+    evidence_path: Path,
+    live_sessions: Sequence[pd.Timestamp],
+    as_of: str,
+) -> pd.DatetimeIndex:
+    """Join audited history with a bounded live increment for cadence checks."""
+
+    evidence = _json(evidence_path)
+    bars = evidence.get("bars")
+    if not isinstance(bars, list) or not bars:
+        raise RankerCurrentTargetError("governed benchmark evidence has no bars")
+    governed = [
+        str(row.get("time", "")) for row in bars if isinstance(row, dict) and row.get("time")
+    ]
+    if not governed:
+        raise RankerCurrentTargetError("governed benchmark evidence has no sessions")
+    dates = (
+        pd.DatetimeIndex(pd.to_datetime([*governed, *list(live_sessions)]))
+        .tz_localize(None)
+        .normalize()
+        .unique()
+        .sort_values()
+    )
+    return dates[dates <= pd.Timestamp(as_of).normalize()]
+
+
 def _turnover(previous: Mapping[str, float], target: Mapping[str, float]) -> float:
     names = set(previous) | set(target)
     return 0.5 * sum(abs(target.get(name, 0.0) - previous.get(name, 0.0)) for name in names)

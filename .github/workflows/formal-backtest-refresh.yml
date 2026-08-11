@@ -670,6 +670,15 @@ jobs:
             exit 0
           fi
           git commit -m "data: publish governed evidence through US ${US_CUTOFF} and CN ${CN_CUTOFF}"
+          # A provider rebuild can outlive unrelated merges to main. Fold the
+          # latest base into the candidate before validation so a clean update
+          # is validated at its exact SHA instead of failing only at release.
+          git fetch origin main
+          if ! git merge --no-edit origin/main; then
+            git merge --abort || true
+            echo "Reviewed refresh overlaps newer main changes; rerun from the latest main." >&2
+            exit 1
+          fi
           git push --force origin "HEAD:${REFRESH_BRANCH}"
           body_file="$(mktemp)"
           cat > "$body_file" <<EOF
