@@ -1,0 +1,24 @@
+{
+  "built_at": "2026-08-11T04:23:30+00:00",
+  "bundle_id": "30a5c34ee1d397e422df567cde9390c687c6ac0761a311ab9a7c4e746070447f",
+  "evidence_cutoff": "2026-08-10",
+  "research_only": true,
+  "schema_version": "1.1",
+  "summary": {
+    "blocked_component_count": 0,
+    "blocked_training_profiles": [
+      "cn_selected_alpha158_v1",
+      "cn_selected_price_only_v1",
+      "cn_selected_price_plus_fundamentals_v1",
+      "qqqi_qqq_tqqq_rotation_v1",
+      "us_selected_alpha158_v1",
+      "us_selected_price_only_v1",
+      "us_selected_price_plus_fundamentals_v1"
+    ],
+    "component_count": 2,
+    "partial_component_count": 0,
+    "ready_component_count": 2,
+    "ready_training_profiles": []
+  },
+  "trade_ready": false
+}

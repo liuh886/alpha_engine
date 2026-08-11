@@ -1,0 +1,569 @@
+{
+  "built_at": "2026-08-11T04:23:30+00:00",
+  "bundle_id": "30a5c34ee1d397e422df567cde9390c687c6ac0761a311ab9a7c4e746070447f",
+  "components": [
+    {
+      "component_id": "prices.cn_selected_equities_v3",
+      "component_kind": "selected_pool_prices",
+      "coverage_ratio": 1.0,
+      "details": {
+        "benchmark": "000300",
+        "promotion_blocker": null,
+        "promotion_eligible": true,
+        "source_status": "selected_pool_price_refresh_ready"
+      },
+      "evidence_cutoff": "2026-08-11",
+      "expected_symbol_count": 130,
+      "first_date": "2021-01-04",
+      "invalid_symbols": [],
+      "last_date": "2026-08-11",
+      "manifest_path": "components/cn-selected-pool-prices.json",
+      "manifest_sha256": "ac257f3d1625f719ffb80be35cfc59ea6d2dd7d7b70b4cb8facbe2f2c4d0deb6",
+      "market": "cn",
+      "missing_symbols": [],
+      "pool_id": "cn_selected_equities_v3",
+      "professional_source_ready": null,
+      "providers": [
+        "AKSHARE_SINA",
+        "YFINANCE"
+      ],
+      "quarantined_symbols": [],
+      "ready_symbol_count": 130,
+      "research_only": true,
+      "status": "ready",
+      "trade_ready": false
+    },
+    {
+      "component_id": "prices.us_selected_equities_v2",
+      "component_kind": "selected_pool_prices",
+      "coverage_ratio": 1.0,
+      "details": {
+        "benchmark": "QQQ",
+        "promotion_blocker": null,
+        "promotion_eligible": true,
+        "source_status": "selected_pool_price_refresh_ready"
+      },
+      "evidence_cutoff": "2026-08-11",
+      "expected_symbol_count": 87,
+      "first_date": "2021-01-04",
+      "invalid_symbols": [],
+      "last_date": "2026-08-10",
+      "manifest_path": "components/us-selected-pool-prices.json",
+      "manifest_sha256": "bb3e052b1fc2f1a4cb562bde1e801c6b0d3a96e64869d830f1c71bf571f3728e",
+      "market": "us",
+      "missing_symbols": [],
+      "pool_id": "us_selected_equities_v2",
+      "professional_source_ready": null,
+      "providers": [
+        "YFINANCE"
+      ],
+      "quarantined_symbols": [],
+      "ready_symbol_count": 87,
+      "research_only": true,
+      "status": "ready",
+      "trade_ready": false
+    }
+  ],
+  "contract_id": "model_data_bundle_v1",
+  "contract_path": "configs/data_contracts/model_data_bundle_v1.yaml",
+  "contract_sha256": "5b9d84e7c47ed261e32c6723c23f9ece0daf1a4207a6c5a7626196a8223a4d57",
+  "evidence_cutoff": "2026-08-10",
+  "frontend_indexes": {
+    "data_components": {
+      "path": "data-components.json",
+      "sha256": "4a7e6cc8fcdf24f7c643acbe29d309ee79a1145cc83e69e7e80e4a7cce566b8a"
+    },
+    "model_data_readiness": {
+      "path": "model-data-readiness.json",
+      "sha256": "4d41e353f7e04a601f1120acf53830b9d12c66944c6e179e568870eb37ab27fa"
+    },
+    "training_profiles": {
+      "path": "training-profiles.json",
+      "sha256": "5b52cad8441dc68b612bd19eae24b63bf86f1dbbc29962dc50e0bfa059d2c40e"
+    }
+  },
+  "research_only": true,
+  "schema_version": "1.1",
+  "summary": {
+    "blocked_component_count": 0,
+    "blocked_training_profiles": [
+      "cn_selected_alpha158_v1",
+      "cn_selected_price_only_v1",
+      "cn_selected_price_plus_fundamentals_v1",
+      "qqqi_qqq_tqqq_rotation_v1",
+      "us_selected_alpha158_v1",
+      "us_selected_price_only_v1",
+      "us_selected_price_plus_fundamentals_v1"
+    ],
+    "component_count": 2,
+    "partial_component_count": 0,
+    "ready_component_count": 2,
+    "ready_training_profiles": []
+  },
+  "trade_ready": false,
+  "training_profiles": [
+    {
+      "candidate_count": 130,
+      "candidate_pool_id": "cn_selected_equities_v3",
+      "failed_gates": [
+        "component:prices.cn_selected_equities_v3:component cutoff 2026-08-11 exceeds 2026-08-10",
+        "component:factors.qlib_alpha158.panel.cn.v1:required_component_missing"
+      ],
+      "market": "cn",
+      "profile_id": "cn_selected_alpha158_v1",
+      "references": [
+        "000300.SH"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "component_id": "prices.cn_selected_equities_v3",
+          "gate_reasons": [
+            "component cutoff 2026-08-11 exceeds 2026-08-10"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": {
+            "component_id": "prices.cn_selected_equities_v3",
+            "component_kind": "selected_pool_prices",
+            "coverage_ratio": 1.0,
+            "details": {
+              "benchmark": "000300",
+              "promotion_blocker": null,
+              "promotion_eligible": true,
+              "source_status": "selected_pool_price_refresh_ready"
+            },
+            "evidence_cutoff": "2026-08-11",
+            "expected_symbol_count": 130,
+            "first_date": "2021-01-04",
+            "invalid_symbols": [],
+            "last_date": "2026-08-11",
+            "manifest_path": "components/cn-selected-pool-prices.json",
+            "manifest_sha256": "ac257f3d1625f719ffb80be35cfc59ea6d2dd7d7b70b4cb8facbe2f2c4d0deb6",
+            "market": "cn",
+            "missing_symbols": [],
+            "pool_id": "cn_selected_equities_v3",
+            "professional_source_ready": null,
+            "providers": [
+              "AKSHARE_SINA",
+              "YFINANCE"
+            ],
+            "quarantined_symbols": [],
+            "ready_symbol_count": 130,
+            "research_only": true,
+            "status": "ready",
+            "trade_ready": false
+          }
+        },
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "component_id": "factors.qlib_alpha158.panel.cn.v1",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 130,
+      "candidate_pool_id": "cn_selected_equities_v3",
+      "failed_gates": [
+        "component:prices.cn_selected_equities_v3:component cutoff 2026-08-11 exceeds 2026-08-10"
+      ],
+      "market": "cn",
+      "profile_id": "cn_selected_price_only_v1",
+      "references": [
+        "000300.SH"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "component_id": "prices.cn_selected_equities_v3",
+          "gate_reasons": [
+            "component cutoff 2026-08-11 exceeds 2026-08-10"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": {
+            "component_id": "prices.cn_selected_equities_v3",
+            "component_kind": "selected_pool_prices",
+            "coverage_ratio": 1.0,
+            "details": {
+              "benchmark": "000300",
+              "promotion_blocker": null,
+              "promotion_eligible": true,
+              "source_status": "selected_pool_price_refresh_ready"
+            },
+            "evidence_cutoff": "2026-08-11",
+            "expected_symbol_count": 130,
+            "first_date": "2021-01-04",
+            "invalid_symbols": [],
+            "last_date": "2026-08-11",
+            "manifest_path": "components/cn-selected-pool-prices.json",
+            "manifest_sha256": "ac257f3d1625f719ffb80be35cfc59ea6d2dd7d7b70b4cb8facbe2f2c4d0deb6",
+            "market": "cn",
+            "missing_symbols": [],
+            "pool_id": "cn_selected_equities_v3",
+            "professional_source_ready": null,
+            "providers": [
+              "AKSHARE_SINA",
+              "YFINANCE"
+            ],
+            "quarantined_symbols": [],
+            "ready_symbol_count": 130,
+            "research_only": true,
+            "status": "ready",
+            "trade_ready": false
+          }
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 130,
+      "candidate_pool_id": "cn_selected_equities_v3",
+      "failed_gates": [
+        "component:prices.cn_selected_equities_v3:component cutoff 2026-08-11 exceeds 2026-08-10",
+        "component:fundamentals.cn_selected_equities_v3:required_component_missing",
+        "component:corporate_actions.cn_selected_equities_v3:required_component_missing"
+      ],
+      "market": "cn",
+      "profile_id": "cn_selected_price_plus_fundamentals_v1",
+      "references": [
+        "000300.SH"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "component_id": "prices.cn_selected_equities_v3",
+          "gate_reasons": [
+            "component cutoff 2026-08-11 exceeds 2026-08-10"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": {
+            "component_id": "prices.cn_selected_equities_v3",
+            "component_kind": "selected_pool_prices",
+            "coverage_ratio": 1.0,
+            "details": {
+              "benchmark": "000300",
+              "promotion_blocker": null,
+              "promotion_eligible": true,
+              "source_status": "selected_pool_price_refresh_ready"
+            },
+            "evidence_cutoff": "2026-08-11",
+            "expected_symbol_count": 130,
+            "first_date": "2021-01-04",
+            "invalid_symbols": [],
+            "last_date": "2026-08-11",
+            "manifest_path": "components/cn-selected-pool-prices.json",
+            "manifest_sha256": "ac257f3d1625f719ffb80be35cfc59ea6d2dd7d7b70b4cb8facbe2f2c4d0deb6",
+            "market": "cn",
+            "missing_symbols": [],
+            "pool_id": "cn_selected_equities_v3",
+            "professional_source_ready": null,
+            "providers": [
+              "AKSHARE_SINA",
+              "YFINANCE"
+            ],
+            "quarantined_symbols": [],
+            "ready_symbol_count": 130,
+            "research_only": true,
+            "status": "ready",
+            "trade_ready": false
+          }
+        },
+        {
+          "accepted_statuses": [
+            "partial",
+            "ready"
+          ],
+          "component_id": "fundamentals.cn_selected_equities_v3",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 0.8,
+          "observed": null
+        },
+        {
+          "accepted_statuses": [
+            "partial",
+            "ready"
+          ],
+          "component_id": "corporate_actions.cn_selected_equities_v3",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 3,
+      "candidate_pool_id": "qqqi_qqq_tqqq_reference_bundle_v1",
+      "failed_gates": [
+        "component:references.qqqi_qqq_tqqq_reference_bundle_v1:required_component_missing"
+      ],
+      "market": "us",
+      "profile_id": "qqqi_qqq_tqqq_rotation_v1",
+      "references": [
+        "VIX",
+        "VXN"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "component_id": "references.qqqi_qqq_tqqq_reference_bundle_v1",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 87,
+      "candidate_pool_id": "us_selected_equities_v2",
+      "failed_gates": [
+        "component:prices.us_selected_equities_v2:component cutoff 2026-08-11 exceeds 2026-08-10",
+        "component:factors.qlib_alpha158.panel.us.v1:required_component_missing"
+      ],
+      "market": "us",
+      "profile_id": "us_selected_alpha158_v1",
+      "references": [
+        "QQQ"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "component_id": "prices.us_selected_equities_v2",
+          "gate_reasons": [
+            "component cutoff 2026-08-11 exceeds 2026-08-10"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": {
+            "component_id": "prices.us_selected_equities_v2",
+            "component_kind": "selected_pool_prices",
+            "coverage_ratio": 1.0,
+            "details": {
+              "benchmark": "QQQ",
+              "promotion_blocker": null,
+              "promotion_eligible": true,
+              "source_status": "selected_pool_price_refresh_ready"
+            },
+            "evidence_cutoff": "2026-08-11",
+            "expected_symbol_count": 87,
+            "first_date": "2021-01-04",
+            "invalid_symbols": [],
+            "last_date": "2026-08-10",
+            "manifest_path": "components/us-selected-pool-prices.json",
+            "manifest_sha256": "bb3e052b1fc2f1a4cb562bde1e801c6b0d3a96e64869d830f1c71bf571f3728e",
+            "market": "us",
+            "missing_symbols": [],
+            "pool_id": "us_selected_equities_v2",
+            "professional_source_ready": null,
+            "providers": [
+              "YFINANCE"
+            ],
+            "quarantined_symbols": [],
+            "ready_symbol_count": 87,
+            "research_only": true,
+            "status": "ready",
+            "trade_ready": false
+          }
+        },
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "component_id": "factors.qlib_alpha158.panel.us.v1",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 87,
+      "candidate_pool_id": "us_selected_equities_v2",
+      "failed_gates": [
+        "component:prices.us_selected_equities_v2:component cutoff 2026-08-11 exceeds 2026-08-10"
+      ],
+      "market": "us",
+      "profile_id": "us_selected_price_only_v1",
+      "references": [
+        "QQQ"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "component_id": "prices.us_selected_equities_v2",
+          "gate_reasons": [
+            "component cutoff 2026-08-11 exceeds 2026-08-10"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": {
+            "component_id": "prices.us_selected_equities_v2",
+            "component_kind": "selected_pool_prices",
+            "coverage_ratio": 1.0,
+            "details": {
+              "benchmark": "QQQ",
+              "promotion_blocker": null,
+              "promotion_eligible": true,
+              "source_status": "selected_pool_price_refresh_ready"
+            },
+            "evidence_cutoff": "2026-08-11",
+            "expected_symbol_count": 87,
+            "first_date": "2021-01-04",
+            "invalid_symbols": [],
+            "last_date": "2026-08-10",
+            "manifest_path": "components/us-selected-pool-prices.json",
+            "manifest_sha256": "bb3e052b1fc2f1a4cb562bde1e801c6b0d3a96e64869d830f1c71bf571f3728e",
+            "market": "us",
+            "missing_symbols": [],
+            "pool_id": "us_selected_equities_v2",
+            "professional_source_ready": null,
+            "providers": [
+              "YFINANCE"
+            ],
+            "quarantined_symbols": [],
+            "ready_symbol_count": 87,
+            "research_only": true,
+            "status": "ready",
+            "trade_ready": false
+          }
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 87,
+      "candidate_pool_id": "us_selected_equities_v2",
+      "failed_gates": [
+        "component:prices.us_selected_equities_v2:component cutoff 2026-08-11 exceeds 2026-08-10",
+        "component:fundamentals.us_selected_equities_v2:required_component_missing",
+        "component:corporate_actions.us_selected_equities_v2:required_component_missing"
+      ],
+      "market": "us",
+      "profile_id": "us_selected_price_plus_fundamentals_v1",
+      "references": [
+        "QQQ"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "component_id": "prices.us_selected_equities_v2",
+          "gate_reasons": [
+            "component cutoff 2026-08-11 exceeds 2026-08-10"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": {
+            "component_id": "prices.us_selected_equities_v2",
+            "component_kind": "selected_pool_prices",
+            "coverage_ratio": 1.0,
+            "details": {
+              "benchmark": "QQQ",
+              "promotion_blocker": null,
+              "promotion_eligible": true,
+              "source_status": "selected_pool_price_refresh_ready"
+            },
+            "evidence_cutoff": "2026-08-11",
+            "expected_symbol_count": 87,
+            "first_date": "2021-01-04",
+            "invalid_symbols": [],
+            "last_date": "2026-08-10",
+            "manifest_path": "components/us-selected-pool-prices.json",
+            "manifest_sha256": "bb3e052b1fc2f1a4cb562bde1e801c6b0d3a96e64869d830f1c71bf571f3728e",
+            "market": "us",
+            "missing_symbols": [],
+            "pool_id": "us_selected_equities_v2",
+            "professional_source_ready": null,
+            "providers": [
+              "YFINANCE"
+            ],
+            "quarantined_symbols": [],
+            "ready_symbol_count": 87,
+            "research_only": true,
+            "status": "ready",
+            "trade_ready": false
+          }
+        },
+        {
+          "accepted_statuses": [
+            "partial",
+            "ready"
+          ],
+          "component_id": "fundamentals.us_selected_equities_v2",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 0.8,
+          "observed": null
+        },
+        {
+          "accepted_statuses": [
+            "partial",
+            "ready"
+          ],
+          "component_id": "corporate_actions.us_selected_equities_v2",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    }
+  ]
+}
