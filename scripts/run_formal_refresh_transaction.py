@@ -20,6 +20,7 @@ from src.artifacts.formal_refresh import (
     write_object,
 )
 from src.research.rules_formal_replay_gate import (
+    prepare_and_verify_active_rules_replay,
     verify_cn_current_allocation_replay,
     verify_cn_frozen_prefix,
     verify_qqq_professional_replay,
@@ -32,6 +33,7 @@ RANKER_MTM_MODELS = (
 QQQ_MODEL_ID = "qqqi_qqq_tqqq_v4_3"
 CN_MODEL_ID = "cn_x1_1"
 QQQ_BUNDLE_ROOT = Path("artifacts/formal-refresh/qqq-bundle")
+CN_REPLAY_OUTPUT_ROOT = Path("artifacts/formal-refresh/cn-replay-ledger")
 CN_LEDGER = Path(
     "artifacts/formal-refresh/cn-ledger-a/score_ledgers/"
     "2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
@@ -264,6 +266,13 @@ def main() -> None:
 
     cutoffs = _cutoffs(args.us_provider_manifest, args.cn_provider_manifest)
     if args.command == "plan":
+        active_rules_replay = prepare_and_verify_active_rules_replay(
+            Path.cwd(),
+            formal_root=args.formal_root,
+            cn_provider_dir=_provider_dir(args.cn_provider_manifest, "cn"),
+            qqq_bundle_dir=QQQ_BUNDLE_ROOT,
+            cn_replay_output_dir=CN_REPLAY_OUTPUT_ROOT,
+        )
         plan = build_plan(
             args.formal_root,
             target_cutoffs=cutoffs,
@@ -275,6 +284,7 @@ def main() -> None:
         )
         refresh_required = plan.refresh_required or bool(mtm_refresh_model_ids)
         plan_payload = plan.to_dict()
+        plan_payload["active_rules_replay"] = active_rules_replay
         plan_payload["mtm_refresh_model_ids"] = list(mtm_refresh_model_ids)
         plan_payload["refresh_required"] = refresh_required
         write_object(args.output, plan_payload)
