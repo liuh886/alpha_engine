@@ -4,7 +4,7 @@ import { AlertTriangle, Check, Crown, GitCompareArrows, LineChart as LineChartIc
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import type { ModelData } from '@/lib/data-parser';
-import { evidenceAvailabilityLabel } from '@/lib/evidence-availability';
+import { evidenceAvailabilityLabel, formatDeclaredValue } from '@/lib/evidence-availability';
 import { projectFormalEvidence, projectFormalMetric, type FormalMetricProjection } from '@/lib/formal-evidence';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 import { Badge } from '@/components/ui/badge';
@@ -52,19 +52,19 @@ function buildEquitySeries(models: ModelData[]) {
 }
 
 function contractValue(model: ModelData, key: 'benchmark' | 'start' | 'end'): string {
-  return String(model.backtest?.meta?.[key] ?? 'Not declared');
+  return formatDeclaredValue(model.backtest?.meta?.[key]);
 }
 
 function compareIdentity(models: ModelData[]) {
   const identityRows = [
-    { label: 'Market', values: models.map((model) => model.market ?? 'Not declared') },
+    { label: 'Market', values: models.map((model) => formatDeclaredValue(model.market)) },
     { label: 'Benchmark', values: models.map((model) => contractValue(model, 'benchmark')) },
     { label: 'Start', values: models.map((model) => contractValue(model, 'start')) },
     { label: 'End', values: models.map((model) => contractValue(model, 'end')) },
-    { label: 'Snapshot', values: models.map((model) => model.snapshot_id ?? 'Not declared') },
+    { label: 'Snapshot', values: models.map((model) => formatDeclaredValue(model.snapshot_id)) },
     { label: 'Costs', values: models.map((model) => {
       const projection = projectFormalEvidence(model);
-      return projection.costBps === null ? projection.costAvailability : `${projection.costBps} bps`;
+      return projection.costBps === null ? evidenceAvailabilityLabel(undefined) : `${projection.costBps} bps`;
     }) },
   ];
   return identityRows.map((row) => ({
