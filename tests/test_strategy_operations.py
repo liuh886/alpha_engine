@@ -6,10 +6,6 @@ from pathlib import Path
 import pytest
 
 from src.artifacts.strategy_operations import (
-    BYD_FAMILY,
-    BYD_V13_MODEL,
-    QQQ_FAMILY,
-    QQQ_V43_MODEL,
     build_operations_payload,
     validate_operations_payload,
     write_operations_payload,
@@ -18,204 +14,317 @@ from src.artifacts.strategy_signal_ledger import (
     StrategySignalLedgerError,
     append_signal_evaluation,
 )
+from src.factors.library import load_factor_library
+from src.factors.ranker_snapshot import build_ranker_factor_snapshot
+from src.factors.strategy_snapshot import build_strategy_factor_snapshot
 
 FORMAL_CATALOG = Path("data/research/formal_model_runs/catalog.json")
-QQQ_MODEL = QQQ_V43_MODEL
-
-
-def _catalog_with_v43(tmp_path: Path) -> Path:
-    path = tmp_path / "catalog.json"
-    path.write_text(
-        json.dumps(
-            {
-                "records": [
-                    {
-                        "model_family_id": QQQ_FAMILY,
-                        "model_version_id": QQQ_V43_MODEL,
-                        "run_id": "qqqi_qqq_tqqq_v4_3-through-2026_08_07",
-                        "bundle_id": "a" * 64,
-                        "manifest_sha256": "b" * 64,
-                        "evidence_cutoff": "2026-08-07",
-                    }
-                ]
-            }
-        ),
-        encoding="utf-8",
-    )
-    return path
+FACTOR_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
+QQQ_MODEL = "qqqi_qqq_tqqq_v4_3"
+QQQ_V43_MODEL = "qqqi_qqq_tqqq_v4_3"
+BYD_MODEL = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
+US_MODEL = "us_x1_2"
+CN_MODEL = "cn_x1_1"
 
 
 def _by_model(payload: dict[str, object]) -> dict[str, dict[str, object]]:
     records = payload["records"]
     assert isinstance(records, list)
-    return {str(row["model_version_id"]): row for row in records if isinstance(row, dict)}
+    return {str(row["model_version_id"]): row for row in records}
 
 
-def _factor(factor_id: str, value: float, *, role: str = "state_input") -> dict[str, object]:
+def _factorized(signal: dict[str, object], family: str) -> dict[str, object]:
+    factor_evidence = build_strategy_factor_snapshot(
+        model_family_id=family,
+        signal=signal,
+    )
     return {
-        "factor_id": factor_id,
-        "value": value,
-        "unit": "ratio",
-        "source": "test",
-        "source_date": "2026-08-07",
-        "freshness": "current",
-        "decision_role": role,
+        **signal,
+        "factor_evidence": factor_evidence,
+        "factor_freshness_ok": factor_evidence["freshness"] == "current",
     }
 
 
-def _qqq_signal() -> dict[str, object]:
-    return {
-        "schema_version": "strategy_signal_v1",
-        "model_version_id": QQQ_MODEL,
-        "model_family_id": QQQ_FAMILY,
-        "signal_date": "2026-08-07",
-        "market_cutoff": "US close 2026-08-07",
-        "current_weights": {"QQQ": 1.0},
-        "target_weights": {"QQQ": 1.0},
-        "changed": False,
-        "should_alert": False,
-        "turnover_units": 0.0,
-        "estimated_transaction_cost": 0.0,
-        "execution_time": "next_eligible_open",
-        "reason_code": "state1_qqq",
+def _qqq_signal(*, changed: bool = True) -> dict[str, object]:
+    signal: dict[str, object] = {
+        "schema_version": "2.0",
+        "model_id": QQQ_MODEL,
         "research_only": True,
         "trade_ready": False,
-        "factor_freshness_ok": True,
-        "factor_evidence": [
-            _factor("strategy.qqq.rsi14", 53.0),
-            _factor("strategy.qqq.strong_defense", 0.0),
-        ],
-        "model_identity": {"formal_model_id": QQQ_MODEL},
+        "should_alert": changed,
+        "fingerprint": "qqq-test-fingerprint",
+        "signal_date": "2026-08-07",
+        "latest_data_date": "2026-08-07",
+        "data_freshness_ok": True,
+        "execution_time": "next_session_open",
+        "current_state": 0,
+        "target_state": 1 if changed else 0,
+        "current_weights": {"QQQI": 1.0, "QQQ": 0.0, "TQQQ": 0.0},
+        "target_weights": (
+            {"QQQI": 0.5, "QQQ": 0.5, "TQQQ": 0.0}
+            if changed
+            else {"QQQI": 1.0, "QQQ": 0.0, "TQQQ": 0.0}
+        ),
+        "turnover_units": 1.0 if changed else 0.0,
+        "estimated_transaction_cost": 0.001 if changed else 0.0,
+        "decision_reason": (
+            "enter_qqq_early_repair_vix_easing" if changed else "hold"
+        ),
+        "decision_reason_label": (
+            "QQQ repair with easing volatility" if changed else "Hold"
+        ),
+        "price_context": {
+            "qqq_vs_ma20": 0.01,
+            "qqq_vs_ma200": 0.10,
+            "stress_price_failure": False,
+            "long_break": False,
+        },
+        "volatility_context": {
+            "vix_close": 16.0,
+            "vix_q_normal": 18.0,
+            "vix_q_stress": 22.0,
+            "vix_regime": "calm",
+            "vix_stress": False,
+            "vix_easing": True,
+            "vix_normalized": True,
+            "vxn_close": 24.0,
+            "vxn_q_normal": 25.0,
+            "vxn_q_stress": 29.0,
+            "vxn_regime": "calm",
+            "vxn_stress": False,
+        },
     }
+    return _factorized(signal, "qqq_rotation")
 
 
 def _v43_signal() -> dict[str, object]:
-    signal = _qqq_signal()
-    signal["model_version_id"] = QQQ_V43_MODEL
-    signal["target_weights"] = {"QQQ": 0.5, "SGOV": 0.5}
-    signal["changed"] = True
-    signal["should_alert"] = True
-    signal["reason_code"] = "state0_base_defense"
-    signal["model_identity"] = {"formal_model_id": QQQ_V43_MODEL}
-    return signal
-
-
-def _byd_signal() -> dict[str, object]:
-    return {
-        "schema_version": "strategy_signal_v1",
-        "model_version_id": BYD_V13_MODEL,
-        "model_family_id": BYD_FAMILY,
-        "signal_date": "2026-08-10",
-        "market_cutoff": "CN close 2026-08-10",
-        "current_weights": {"002594.SZ": 0.75, "515180.SH": 0.25},
-        "target_weights": {"002594.SZ": 0.75, "515180.SH": 0.25},
-        "changed": False,
-        "should_alert": False,
-        "turnover_units": 0.0,
-        "estimated_transaction_cost": 0.0,
-        "execution_time": "next_eligible_open",
-        "reason_code": "base_75_25",
+    signal: dict[str, object] = {
+        "schema_version": "1.0.0",
+        "model_id": QQQ_V43_MODEL,
         "research_only": True,
         "trade_ready": False,
+        "should_alert": True,
+        "fingerprint": "qqq-v43-test-fingerprint",
+        "signal_date": "2026-08-07",
+        "latest_data_date": "2026-08-07",
+        "data_freshness_ok": True,
+        "execution_time": "next_session_open",
+        "current_formal_state": 0,
+        "target_formal_state": 0,
+        "current_overlay": "strong_defense",
+        "target_overlay": "base",
+        "current_weights": {
+            "QQQI": 0.5,
+            "QQQ": 0.0,
+            "TQQQ": 0.0,
+            "SGOV": 0.5,
+        },
+        "target_weights": {
+            "QQQI": 0.5,
+            "QQQ": 0.5,
+            "TQQQ": 0.0,
+            "SGOV": 0.0,
+        },
+        "turnover_units": 1.0,
+        "estimated_transaction_cost": 0.001,
+        "panic_repair_active": False,
+        "strong_defense": False,
+        "ma200_falling": True,
+        "fast_price_vol_repair": True,
+        "rsi_14": 44.2,
+        "fear_greed_score": 38.0,
+        "price_context": {
+            "qqq_vs_ma20": 710.0 / 705.0 - 1.0,
+            "qqq_vs_ma200": 710.0 / 640.0 - 1.0,
+            "stress_price_failure": False,
+            "long_break": False,
+        },
+        "context": {
+            "qqq_close": 710.0,
+            "ma20": 705.0,
+            "ma200": 640.0,
+            "vix_close": 16.2,
+            "vxn_close": 24.1,
+            "vix_easing": True,
+            "vix_normalized": True,
+        },
+    }
+    return _factorized(signal, "qqq_rotation")
+
+
+def _ranker_signal(
+    *,
+    family: str,
+    group: str,
+    current: dict[str, float],
+    target: dict[str, float],
+    risk_on: bool | None = None,
+) -> dict[str, object]:
+    library = load_factor_library(FACTOR_LIBRARY)
+    factors = library.factors_for_groups([group])
+    factor_evidence = build_ranker_factor_snapshot(
+        model_family_id=family,
+        signal_date="2026-08-07",
+        latest_data_date="2026-08-07",
+        factor_values={
+            definition.factor_id: float(index + 1) / 100.0
+            for index, definition in enumerate(factors)
+        },
+        factor_references={},
+        data_freshness_ok=True,
+    )
+    changed = current != target
+    return {
+        "model_family_id": family,
+        "research_only": True,
+        "trade_ready": False,
+        "should_alert": changed,
+        "fingerprint": f"{family}-test-fingerprint",
+        "signal_date": "2026-08-07",
+        "latest_data_date": "2026-08-07",
+        "data_freshness_ok": True,
+        "current_weights": current,
+        "target_weights": target,
+        "turnover_units": 0.5 if changed else 0.0,
+        "estimated_transaction_cost": 0.001 if changed else 0.0,
+        "reason_code": f"{family}_10_session_rebalance",
+        "diagnostics": ({"risk_on": risk_on} if risk_on is not None else {}),
+        "factor_evidence": factor_evidence,
         "factor_freshness_ok": True,
-        "factor_evidence": [
-            _factor("strategy.byd.recovery_event", 0.0),
-            _factor("strategy.byd.low_vol_confirmation", 0.0),
-        ],
-        "model_identity": {"formal_model_id": BYD_V13_MODEL},
     }
 
 
-def _append(root: Path, model: str, signal: dict[str, object]) -> None:
+def _catalog_with_v43(tmp_path: Path) -> Path:
+    payload = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+    for record in payload["records"]:
+        if record["model_family_id"] != "qqq_rotation":
+            continue
+        record["model_version_id"] = QQQ_V43_MODEL
+        record["run_id"] = "qqqi_qqq_tqqq_v4_3-promotion-test"
+        record["manifest_path"] = (
+            "qqq_rotation/qqqi_qqq_tqqq_v4_3/"
+            "qqqi_qqq_tqqq_v4_3-promotion-test/manifest.json"
+        )
+    path = tmp_path / "catalog.json"
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return path
+
+
+def _append(
+    ledger: Path,
+    model: str,
+    signal: dict[str, object],
+    *,
+    delivery_status: str = "sent",
+    fingerprint_suffix: str = "",
+) -> None:
+    payload = dict(signal)
+    if fingerprint_suffix:
+        payload["fingerprint"] = f"{payload['fingerprint']}{fingerprint_suffix}"
     append_signal_evaluation(
-        ledger_root=root / model,
+        ledger_root=ledger,
         model_version_id=model,
-        signal=signal,
-        delivery_status="not_required",
+        signal=payload,
+        delivery_status=delivery_status,
         workflow_run_id="12345",
         commit_sha="a" * 40,
         created_at_utc="2026-08-08T00:00:00Z",
     )
 
 
-def test_operations_payload_matches_current_formal_catalog(tmp_path: Path) -> None:
+def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> None:
     payload = build_operations_payload(
         formal_catalog=FORMAL_CATALOG,
-        ledger_root=tmp_path / "ledgers",
+        ledger_root=tmp_path,
         generated_at="2026-08-08T00:00:00Z",
     )
     validate_operations_payload(payload)
-    catalog = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
-    assert set(_by_model(payload)) == {
-        str(row["model_version_id"]) for row in catalog["records"]
-    }
+    observed = _by_model(payload)
+    formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+    expected = {row["model_version_id"] for row in formal["records"]}
+    assert set(observed) == expected
+    assert observed[QQQ_MODEL]["status"] == "awaiting_observation"
+    assert observed[BYD_MODEL]["status"] == "awaiting_observation"
+    assert observed[US_MODEL]["status"] == "awaiting_observation"
+    assert observed[CN_MODEL]["status"] == "awaiting_observation"
+    assert observed[US_MODEL]["decision_cadence"] == "Every 10 provider sessions"
+    assert observed[CN_MODEL]["decision_cadence"] == "Every 10 provider sessions"
 
 
-def test_missing_supported_ledger_is_awaiting_observation(tmp_path: Path) -> None:
+def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
+    _append(
+        tmp_path / US_MODEL,
+        US_MODEL,
+        _ranker_signal(
+            family="us_ranker",
+            group="momentum_volatility_volume",
+            current={"A": 1.0},
+            target={"A": 0.5, "B": 0.5},
+        ),
+    )
+    _append(
+        tmp_path / CN_MODEL,
+        CN_MODEL,
+        _ranker_signal(
+            family="cn_ranker",
+            group="cn_balanced_ohlcv",
+            current={"000300": 1.0},
+            target={"000001": 0.25, "000002": 0.25, "000003": 0.25, "000004": 0.25},
+            risk_on=True,
+        ),
+    )
     payload = build_operations_payload(
         formal_catalog=FORMAL_CATALOG,
-        ledger_root=tmp_path / "ledgers",
-        generated_at="2026-08-08T00:00:00Z",
+        ledger_root=tmp_path,
+        generated_at="2026-08-08T00:00:01Z",
     )
-    by_model = _by_model(payload)
-    assert by_model["us_x1_2"]["status"] == "awaiting_observation"
-    assert by_model["cn_x1_1"]["status"] == "awaiting_observation"
-    assert by_model[BYD_V13_MODEL]["status"] == "awaiting_observation"
-    assert by_model[QQQ_V43_MODEL]["status"] == "awaiting_observation"
+    records = _by_model(payload)
+    us = records[US_MODEL]
+    cn = records[CN_MODEL]
+    assert us["status"] == "target_pending_execution"
+    assert us["state_label"] == "US Top-15 rebalance"
+    assert us["factor_freshness"] == "current"
+    assert us["source_label"] == "Governed 10-session ranker signal ledger"
+    assert cn["status"] == "target_pending_execution"
+    assert cn["state_label"] == "CN risk-on · sector 4×1"
+    assert cn["factor_freshness"] == "current"
 
 
-def test_ranker_family_adapter_accepts_current_formal_us_version_without_version_branch(
-    tmp_path: Path,
-) -> None:
-    catalog = tmp_path / "catalog.json"
-    catalog.write_text(
-        json.dumps(
-            {
-                "records": [
-                    {
-                        "model_family_id": "us_ranker",
-                        "model_version_id": "us_x1_2",
-                        "run_id": "us_x1_2-through-2026_08_10",
-                        "bundle_id": "c" * 64,
-                        "manifest_sha256": "d" * 64,
-                        "evidence_cutoff": "2026-08-10",
-                    }
-                ]
-            }
-        ),
-        encoding="utf-8",
+def test_qqq_ledger_projects_canonical_factor_snapshot(tmp_path: Path) -> None:
+    ledger = tmp_path / QQQ_MODEL
+    append_signal_evaluation(
+        ledger_root=ledger,
+        model_version_id=QQQ_MODEL,
+        signal=_qqq_signal(),
+        delivery_status="sent",
+        github_issue_number=493,
+        telegram_message_id=42,
+        workflow_run_id="12345",
+        commit_sha="a" * 40,
+        created_at_utc="2026-08-08T00:00:00Z",
     )
-    signal = {
-        "schema_version": "strategy_signal_v1",
-        "model_version_id": "us_x1_2",
-        "model_family_id": "us_ranker",
-        "signal_date": "2026-08-10",
-        "market_cutoff": "US close 2026-08-10",
-        "current_weights": {"AAPL": 0.5, "MSFT": 0.5},
-        "target_weights": {"AAPL": 0.5, "MSFT": 0.5},
-        "changed": False,
-        "should_alert": False,
-        "turnover_units": 0.0,
-        "estimated_transaction_cost": 0.0,
-        "execution_time": "next_eligible_open",
-        "reason_code": "formal_us_x1_2_10_session_rebalance",
-        "research_only": True,
-        "trade_ready": False,
-        "factor_freshness_ok": True,
-        "factor_evidence": [_factor("ohlcv.momentum_20", 0.1, role="selected_holding")],
-        "model_identity": {"formal_model_id": "us_x1_2"},
-    }
-    _append(tmp_path / "ledgers", "us_x1_2", signal)
-
     payload = build_operations_payload(
-        formal_catalog=catalog,
-        ledger_root=tmp_path / "ledgers",
-        generated_at="2026-08-10T00:00:01Z",
+        formal_catalog=FORMAL_CATALOG,
+        ledger_root=tmp_path,
+        generated_at="2026-08-08T00:00:01Z",
     )
-    record = _by_model(payload)["us_x1_2"]
-    assert record["status"] == "current_no_change"
-    assert record["factor_freshness"] == "current"
-    assert {row["asset"] for row in record["allocations"]} == {"AAPL", "MSFT"}
+    qqq = _by_model(payload)[QQQ_MODEL]
+    assert qqq["status"] == "target_pending_execution"
+    assert qqq["data_freshness"] == "current"
+    assert qqq["factor_freshness"] == "current"
+    assert qqq["delivery_status"] == "sent"
+    assert qqq["source_href"] == "https://github.com/liuh886/alpha_engine/issues/493"
+    factors = qqq["factor_evidence"]
+    assert isinstance(factors, list)
+    assert {row["factor_id"] for row in factors} == {
+        "strategy.qqq.vix_close",
+        "strategy.qqq.vxn_close",
+        "strategy.qqq.qqq_vs_ma20",
+        "strategy.qqq.qqq_vs_ma200",
+    }
+    assert all(len(row["implementation_hash"]) == 64 for row in factors)
 
 
 def test_qqq_family_adapter_accepts_new_formal_version_without_version_branch(
@@ -223,7 +332,7 @@ def test_qqq_family_adapter_accepts_new_formal_version_without_version_branch(
 ) -> None:
     catalog = _catalog_with_v43(tmp_path)
     ledger_root = tmp_path / "ledgers"
-    _append(ledger_root, QQQ_V43_MODEL, _v43_signal())
+    _append(ledger_root / QQQ_V43_MODEL, QQQ_V43_MODEL, _v43_signal())
 
     payload = build_operations_payload(
         formal_catalog=catalog,
@@ -264,3 +373,21 @@ def test_operations_payload_write_is_idempotent(tmp_path: Path) -> None:
     output = tmp_path / "operations.json"
     assert write_operations_payload(output, payload) is True
     assert write_operations_payload(output, payload) is False
+
+
+def test_committed_operations_identity_matches_formal_bundle_catalog() -> None:
+    formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+    operations = json.loads(
+        Path("data/research/strategy_operations/snapshots.json").read_text(encoding="utf-8")
+    )
+    formal_by_id = {row["model_version_id"]: row for row in formal["records"]}
+    operation_by_id = {
+        row["model_version_id"]: row for row in operations["records"]
+    }
+    assert set(operation_by_id) == set(formal_by_id)
+    for model_id, record in operation_by_id.items():
+        catalog_record = formal_by_id[model_id]
+        identity = record["source_identity"]
+        assert identity["formal_bundle_id"] == catalog_record["bundle_id"]
+        assert identity["formal_run_id"] == catalog_record["run_id"]
+        assert identity["formal_evidence_cutoff"] == catalog_record["evidence_cutoff"]
