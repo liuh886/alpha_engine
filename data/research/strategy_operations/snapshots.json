@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T04:58:52Z",
+  "generated_at": "2026-08-11T05:22:58Z",
   "records": [
     {
       "allocations": [
@@ -22,11 +22,11 @@
           "target": 0.0
         }
       ],
-      "as_of": "2026-08-10",
+      "as_of": "2026-08-11",
       "data_freshness": "current",
       "decision_cadence": "Every completed CN market session",
-      "decision_reason": "启用正式 BYD v1.3 信号",
-      "delivery_status": "sent",
+      "decision_reason": "目标仓位不变",
+      "delivery_status": "not_required",
       "estimated_cost": 0.0,
       "factor_evidence": [
         {
@@ -36,7 +36,7 @@
           "factor_version": "1.0",
           "implementation_hash": "fc78c17face12fc28320bcb0e9c7a595f3d4ea2d9d918d527be27821df7a358a",
           "information_family": "regime",
-          "observed_at": "2026-08-10",
+          "observed_at": "2026-08-11",
           "reason_code": "market_regime_context",
           "reference": null,
           "state": "bear",
@@ -49,7 +49,7 @@
           "factor_version": "1.0",
           "implementation_hash": "b8a82be0ed185e00f5a0003b625cf592ff285e724101640c5877bd25d36d018c",
           "information_family": "volatility_regime",
-          "observed_at": "2026-08-10",
+          "observed_at": "2026-08-11",
           "reason_code": "volatility_regime_context",
           "reference": null,
           "state": "high",
@@ -62,11 +62,11 @@
           "factor_version": "1.0",
           "implementation_hash": "760129ef96bd35c5b465ceead3702fb1046ed6b79b51c14750e81b96e9479c0e",
           "information_family": "momentum",
-          "observed_at": "2026-08-10",
+          "observed_at": "2026-08-11",
           "reason_code": "momentum_20d_context",
           "reference": 0.0,
           "state": "positive",
-          "value": 0.05185647108265479
+          "value": 0.006183973176442814
         },
         {
           "display_name": "BYD 60D momentum",
@@ -75,11 +75,11 @@
           "factor_version": "1.0",
           "implementation_hash": "2aa62c9fbec92fba95e6bbfb6274c242cb8f733e67f5957215095acf445a2d55",
           "information_family": "momentum",
-          "observed_at": "2026-08-10",
+          "observed_at": "2026-08-11",
           "reason_code": "momentum_60d_context",
           "reference": 0.0,
           "state": "negative",
-          "value": -0.04994313831527075
+          "value": -0.03991462637690413
         },
         {
           "display_name": "BYD 252D drawdown",
@@ -88,11 +88,11 @@
           "factor_version": "1.0",
           "implementation_hash": "84431650ec2a57b315ad795e929e17bef8425e014c905016e36473b881156d62",
           "information_family": "drawdown",
-          "observed_at": "2026-08-10",
+          "observed_at": "2026-08-11",
           "reason_code": "drawdown_252d_context",
           "reference": 0.0,
           "state": "drawdown",
-          "value": -0.1978741458554707
+          "value": -0.20447419391402832
         },
         {
           "display_name": "BYD momentum scale",
@@ -101,11 +101,11 @@
           "factor_version": "1.0",
           "implementation_hash": "6ff91d429a6f5756e351f3cc0e5d58ad4da58b76ef5602d9445ae750da618b45",
           "information_family": "allocation_scale",
-          "observed_at": "2026-08-10",
+          "observed_at": "2026-08-11",
           "reason_code": "momentum_scale_context",
           "reference": 1.0,
           "state": "scaled",
-          "value": 0.014283899955950636
+          "value": 2.8887193614442533e-06
         },
         {
           "display_name": "BYD financed increment",
@@ -114,7 +114,7 @@
           "factor_version": "1.0",
           "implementation_hash": "41981e93565d3c1c1d450159717876f48cbd1a81a1b4277c2fa5e5dda4840335",
           "information_family": "leverage_budget",
-          "observed_at": "2026-08-10",
+          "observed_at": "2026-08-11",
           "reason_code": "no_financed_increment",
           "reference": 0.0,
           "state": "inactive",
@@ -127,7 +127,7 @@
           "factor_version": "1.0",
           "implementation_hash": "c8d2253fb64e6c0c9348e86ae213bcd15a98393ed2563ca49f7ebc7947b85c52",
           "information_family": "rule_state",
-          "observed_at": "2026-08-10",
+          "observed_at": "2026-08-11",
           "reason_code": "expansion_rule_inactive",
           "reference": false,
           "state": "inactive",
@@ -135,21 +135,21 @@
         }
       ],
       "factor_freshness": "current",
-      "latest_completed_session": "2026-08-10",
+      "latest_completed_session": "2026-08-11",
       "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
       "next_decision_policy": "Evaluate after the common close; target applies to the next independently confirmed eligible open.",
       "note": "Latest governed evaluation retained the existing allocation.",
-      "source_href": "https://github.com/liuh886/alpha_engine/issues/788",
+      "source_href": null,
       "source_identity": {
-        "commit_sha": "deee7eff583f9df9e99aea934533c75e6632afa8",
+        "commit_sha": "3f7fd38dd975a03c5a25522a1ecb246f9af18f6d",
         "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
         "formal_bundle_id": "9b6fbca35816f72fc60785a403f9a22d65c808e3728b5f6239ba3d1fc238f15b",
         "formal_evidence_cutoff": "2026-08-10",
         "formal_run_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_08_10",
-        "github_issue_number": 788,
-        "ledger_fingerprint": "7b73b007eedeb80b7c01",
-        "signal_sha256": "e16233777cd945fda58505d3c4235aeb3ef97b5f61a476b069fba921832d6c21",
-        "workflow_run_id": "31458138722"
+        "github_issue_number": null,
+        "ledger_fingerprint": "e9dbb514650ff3b19ec9",
+        "signal_sha256": "44aab58a771265fcd14c8d761a176fe23afd072791cbe1c1e7da7a82073084f4",
+        "workflow_run_id": "31461421849"
       },
       "source_label": "Governed BYD signal ledger",
       "state_label": "Defensive",
