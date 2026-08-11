@@ -112,10 +112,13 @@ selection:
     reverse_positive_windows_min: 2
     historical_positive_windows_min: 5
     historical_max_drawdown_floor: -0.25
+    historical_relative_excess_min_improvement: 0.05
+    historical_max_drawdown_max_degradation: 0.03
     pressure_relative_excess_positive: true
     maximum_name_absolute_contribution_share: 0.35
     maximum_sector_absolute_contribution_share: 0.55
     reporting_relative_excess_floor: -0.05
+    reporting_relative_excess_max_degradation: 0.05
   ranking_order:
     - historical_relative_excess_desc
     - historical_max_drawdown_desc
