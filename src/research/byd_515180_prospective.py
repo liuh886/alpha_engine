@@ -67,6 +67,26 @@ def _normalise_dates(frame: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values("date").drop_duplicates("date", keep="last")
 
 
+def _required_finite_float(value: object, *, label: str) -> float:
+    number = float(value)
+    if not np.isfinite(number):
+        raise RuntimeError(f"{label} must be finite")
+    return number
+
+
+def _optional_finite_float(value: object) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if np.isfinite(number) else None
+
+
+def _action_value(value: object) -> float:
+    number = _optional_finite_float(value)
+    return 0.0 if number is None else number
+
+
 def read_paired_observations(store_root: str | Path) -> list[dict[str, Any]]:
     return _read_json_records(Path(store_root) / "observations")
 
@@ -172,23 +192,30 @@ def build_paired_observations(
                 "open_research_eligible": bool(etf_audit["open_research_eligible"]),
                 "independent_raw_confirmed": bool(etf_audit["independent_raw_confirmed"]),
                 "primary_raw_ohlcv": {
-                    column: float(etf_raw[column])
+                    column: _required_finite_float(
+                        etf_raw[column], label=f"etf.primary_raw_ohlcv.{column}"
+                    )
                     for column in ("open", "high", "low", "close", "volume")
                 },
                 "chain_linked_adjusted_ohlcv": {
-                    column: float(etf_adjusted[column])
+                    column: _required_finite_float(
+                        etf_adjusted[column],
+                        label=f"etf.chain_linked_adjusted_ohlcv.{column}",
+                    )
                     for column in ("open", "high", "low", "close", "volume")
                 },
                 "company_actions": {
-                    "dividend": float(provider_row.get("dividends", 0.0)),
-                    "stock_split": float(provider_row.get("stock_splits", 0.0)),
+                    "dividend": _action_value(provider_row.get("dividends", 0.0)),
+                    "stock_split": _action_value(
+                        provider_row.get("stock_splits", 0.0)
+                    ),
                 },
                 "independent_audit": {
                     "confirmed": bool(etf_audit["independent_raw_confirmed"]),
-                    "open_level_abs_pct_difference": float(
+                    "open_level_abs_pct_difference": _optional_finite_float(
                         etf_audit["open_level_abs_pct_difference"]
                     ),
-                    "close_level_abs_pct_difference": float(
+                    "close_level_abs_pct_difference": _optional_finite_float(
                         etf_audit["close_level_abs_pct_difference"]
                     ),
                 },

@@ -8,6 +8,7 @@ import pytest
 
 from src.research.byd_515180_prospective import (
     SCHEMA_VERSION,
+    _json_bytes,
     _observation_frame,
     build_paired_observations,
     execute_next_common_open,
@@ -232,4 +233,84 @@ def test_pairing_references_sealed_byd_observation() -> None:
         "byd_weight": 0.75,
         "etf_weight": 0.25,
         "cash_weight": 0.0,
+    }
+
+
+def test_quarantined_pairing_serializes_missing_audit_values() -> None:
+    date = pd.Timestamp("2026-08-04")
+    market_row = {
+        "date": date,
+        "open": 10.0,
+        "high": 10.2,
+        "low": 9.9,
+        "close": 10.1,
+        "volume": 1000.0,
+    }
+    extension = ChainLinkedExtension(
+        adjusted_new=pd.DataFrame([market_row]),
+        primary_raw_new=pd.DataFrame([market_row]),
+        provider_payload_sha256="provider-sha",
+        chain_scale=1.0,
+        anchor_provider_adjusted_close=9.8,
+        anchor_canonical_adjusted_close=9.8,
+    )
+    audit = IndependentAudit(
+        row_audit=pd.DataFrame(
+            [
+                {
+                    "date": date,
+                    "open_research_eligible": False,
+                    "independent_raw_confirmed": False,
+                    "open_level_abs_pct_difference": float("nan"),
+                    "close_level_abs_pct_difference": float("nan"),
+                }
+            ]
+        ),
+        secondary_payload_sha256="secondary-sha",
+        secondary_provider="secondary",
+    )
+    byd = {
+        "signal_date": "2026-08-04",
+        "observation_sha256": "sealed-byd-sha",
+        "data_version": "byd-v",
+        "observation_mode": "same_session_post_close",
+        "prospective_eligible": True,
+        "open_research_eligible": True,
+        "base_target_position": 0.75,
+        "primary_raw_ohlcv": {"open": 100.0},
+        "chain_linked_adjusted_ohlcv": {"open": 100.0},
+        "company_actions": {"dividend": 0.0, "stock_split": 0.0},
+        "factors": {"market_state": "bear", "vol_state": "high"},
+    }
+    provider_row = {
+        **market_row,
+        "adj_close": 10.1,
+        "dividends": float("nan"),
+        "stock_splits": float("nan"),
+    }
+
+    rows = build_paired_observations(
+        byd_observations=[byd],
+        extension=extension,
+        audit=audit,
+        provider_history=pd.DataFrame([provider_row]),
+        existing_dates=set(),
+        observed_at_utc="2026-08-04T10:00:00+00:00",
+        primary_provider="primary",
+        provider_parameters={},
+        secondary_attempts=[],
+        extended_adjusted_sha256="extended-sha",
+    )
+
+    assert len(rows) == 1
+    _json_bytes(rows[0])
+    assert rows[0]["status"] == "prospective_paired_open_quarantined"
+    assert rows[0]["etf"]["company_actions"] == {
+        "dividend": 0.0,
+        "stock_split": 0.0,
+    }
+    assert rows[0]["etf"]["independent_audit"] == {
+        "confirmed": False,
+        "open_level_abs_pct_difference": None,
+        "close_level_abs_pct_difference": None,
     }
