@@ -10,13 +10,18 @@ on:
     paths:
       - ".github/workflows/ranker-10d-current-target.yml"
       - "scripts/run_ranker_current_target.py"
+      - "scripts/run_us_x1_2_current_target.py"
       - "scripts/persist_strategy_signal_evaluation.py"
       - "scripts/build_strategy_operations.py"
       - "src/research/ranker_current_target.py"
+      - "src/research/us_x1_2_current_target.py"
       - "src/research/xgb_ranker_explainability.py"
       - "src/factors/ranker_snapshot.py"
       - "src/artifacts/strategy_signal_ledger.py"
       - "src/artifacts/strategy_operations.py"
+      - "configs/models/us_x1_2.yaml"
+      - "configs/research_universes/us_selected_equities_v2.yaml"
+      - "configs/research_classifications/us87_sector_industry_v1.yaml"
       - "configs/factor_libraries/ohlcv.yaml"
 
 permissions:
@@ -66,10 +71,9 @@ jobs:
           set -euo pipefail
           as_of="$(date -u +%F)"
           mkdir -p artifacts/ranker-current-target
-          uv run python scripts/run_ranker_current_target.py due \
-            --market us \
-            --formal-package data/research/formal_backtests/us_x1_1.json \
-            --ledger-dir data/research/strategy_signal_ledgers/us_x1_1 \
+          uv run python scripts/run_us_x1_2_current_target.py due \
+            --formal-root data/research/formal_model_runs \
+            --ledger-dir data/research/strategy_signal_ledgers/us_x1_2 \
             --as-of "$as_of" \
             --output artifacts/ranker-current-target/us_due.json
           uv run python scripts/run_ranker_current_target.py due \
@@ -87,7 +91,7 @@ jobs:
               print(f"{market}_date={payload.get('signal_date') or ''}")
           PY
 
-      - name: Build due US provider and current target
+      - name: Build due US x1.2 provider and current target
         if: steps.due.outputs.us_due == 'true'
         shell: bash
         run: |
@@ -101,11 +105,10 @@ jobs:
             --cutoff "$date" \
             --max-rounds 3 \
             --full-refresh
-          uv run python scripts/run_ranker_current_target.py build \
-            --market us \
+          uv run python scripts/run_us_x1_2_current_target.py build \
+            --formal-root data/research/formal_model_runs \
+            --ledger-dir data/research/strategy_signal_ledgers/us_x1_2 \
             --provider-dir artifacts/ranker-current-target/us_provider/data/providers/us \
-            --formal-package data/research/formal_backtests/us_x1_1.json \
-            --ledger-dir data/research/strategy_signal_ledgers/us_x1_1 \
             --signal-date "$date" \
             --market-cutoff "US close $date" \
             --output artifacts/ranker-current-target/us_signal.json
