@@ -245,6 +245,13 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
     formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
     expected = {row["model_version_id"] for row in formal["records"]}
     assert set(observed) == expected
+    assert {str(row["strategy_id"]) for row in observed.values()} == {
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "byd",
+    }
+    assert observed[QQQ_MODEL]["current_operations_access"] == "pro"
     assert observed[QQQ_MODEL]["status"] == "awaiting_observation"
     assert observed[BYD_MODEL]["status"] == "awaiting_observation"
     assert observed[US_MODEL]["status"] == "awaiting_observation"
@@ -283,10 +290,12 @@ def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
     records = _by_model(payload)
     us = records[US_MODEL]
     cn = records[CN_MODEL]
+    assert us["strategy_id"] == "us_x"
+    assert cn["strategy_id"] == "cn_x"
     assert us["status"] == "target_pending_execution"
     assert us["state_label"] == "US Top-15 rebalance"
     assert us["factor_freshness"] == "current"
-    assert us["source_label"] == "Governed 10-session ranker signal ledger"
+    assert us["source_label"] == "Governed 10-session ranker decision ledger"
     assert cn["status"] == "target_pending_execution"
     assert cn["state_label"] == "CN risk-on · sector 4×1"
     assert cn["factor_freshness"] == "current"
@@ -311,6 +320,8 @@ def test_qqq_ledger_projects_canonical_factor_snapshot(tmp_path: Path) -> None:
         generated_at="2026-08-08T00:00:01Z",
     )
     qqq = _by_model(payload)[QQQ_MODEL]
+    assert qqq["strategy_id"] == "qqq_rotation"
+    assert qqq["current_operations_access"] == "pro"
     assert qqq["status"] == "target_pending_execution"
     assert qqq["data_freshness"] == "current"
     assert qqq["factor_freshness"] == "current"
@@ -375,10 +386,12 @@ def test_operations_payload_write_is_idempotent(tmp_path: Path) -> None:
     assert write_operations_payload(output, payload) is False
 
 
-def test_committed_operations_identity_matches_formal_bundle_catalog() -> None:
+def test_generated_operations_identity_matches_formal_bundle_catalog(tmp_path: Path) -> None:
     formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
-    operations = json.loads(
-        Path("data/research/strategy_operations/snapshots.json").read_text(encoding="utf-8")
+    operations = build_operations_payload(
+        formal_catalog=FORMAL_CATALOG,
+        ledger_root=tmp_path / "ledgers",
+        generated_at="2026-08-08T00:00:00Z",
     )
     formal_by_id = {row["model_version_id"]: row for row in formal["records"]}
     operation_by_id = {
