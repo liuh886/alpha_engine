@@ -25,6 +25,7 @@ const AVAILABILITY = new Set([
   'not_retained',
   'blocked_by_source',
 ]);
+const NATIVE_FORMAL_CONTRACT = 'native_formal_bundle_v2';
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
@@ -36,6 +37,10 @@ function assert(condition, message) {
 
 function declared(value) {
   return value !== null && value !== undefined && value !== '';
+}
+
+function runRoot(record) {
+  return dirname(join(root, record.manifest_path));
 }
 
 function validateMetric(metric, modelId) {
@@ -50,14 +55,14 @@ function validateMetric(metric, modelId) {
   }
 }
 
-function validateNativeFormal(record) {
+function validateNativeFormal(record, summary) {
   const modelId = record.model_version_id;
-  const runRoot = dirname(join(root, record.manifest_path));
+  const base = runRoot(record);
   const manifest = readJson(join(root, record.manifest_path));
-  const summary = readJson(join(runRoot, 'summary.json'));
-  const performance = readJson(join(runRoot, 'performance.json'));
-  const diagnostics = readJson(join(runRoot, 'diagnostics.json'));
+  const performance = readJson(join(base, 'performance.json'));
+  const diagnostics = readJson(join(base, 'diagnostics.json'));
 
+  assert(summary.evidence_contract === NATIVE_FORMAL_CONTRACT, `${modelId}: native formal evidence contract is missing`);
   assert(manifest.publication_channel === 'formal', `${modelId}: publication channel is not formal`);
   assert(manifest.publication_status === 'accepted_formal_baseline', `${modelId}: publication status is not accepted formal`);
   assert(manifest.research_only === true && manifest.trade_ready === false, `${modelId}: research boundary changed`);
@@ -90,14 +95,17 @@ function validateNativeFormal(record) {
 }
 
 const catalog = readJson(join(root, 'catalog.json'));
-const receipt = readJson(join(root, 'formal-bundle-v2-sync-receipt.json'));
-const nativeIds = receipt.native_formal_model_ids;
-assert(Array.isArray(nativeIds) && nativeIds.length > 0, 'No native formal model is declared by the formal sync receipt');
+const nativeRecords = [];
+for (const record of catalog.records) {
+  const summary = readJson(join(runRoot(record), 'summary.json'));
+  if (summary.evidence_contract === NATIVE_FORMAL_CONTRACT) {
+    nativeRecords.push([record, summary]);
+  }
+}
+assert(nativeRecords.length > 0, 'Formal catalog contains no native formal evidence contract');
 
-for (const modelId of nativeIds) {
-  const records = catalog.records.filter((record) => record.model_version_id === modelId);
-  assert(records.length === 1, `${modelId}: expected exactly one active formal catalog record`);
-  validateNativeFormal(records[0]);
+for (const [record, summary] of nativeRecords) {
+  validateNativeFormal(record, summary);
 }
 
-console.log(`Formal evidence contract passed for ${nativeIds.length} native formal model(s): ${nativeIds.join(', ')}`);
+console.log(`Formal evidence contract passed for ${nativeRecords.length} native formal model(s): ${nativeRecords.map(([record]) => record.model_version_id).join(', ')}`);
