@@ -25,6 +25,7 @@ import pandas as pd
 import yaml
 
 from src.research.factor_library import load_factor_library, select_factor_groups
+from src.optimization.factor_library import FactorLibrary, get_factor_library
 from src.research.multi_market_readiness import normalize_market_symbols
 from src.research.qlib_execution_common import (
     load_window_benchmark_returns,
@@ -77,6 +78,7 @@ class DataFoundation:
     _sector_map: dict[str, str] = field(default_factory=dict, repr=False)
     _universe_config: dict[str, Any] = field(default_factory=dict, repr=False)
     _factor_library: Any = field(default=None, repr=False)
+    _unified_factor_library: FactorLibrary | None = field(default=None, repr=False)
 
     # Feature caches: (window_label, expr_tuple_hash) → DataFrame
     _feature_cache: dict[str, pd.DataFrame] = field(default_factory=dict, repr=False)
@@ -149,6 +151,8 @@ class DataFoundation:
 
     def _load_factor_library(self):
         self._factor_library = load_factor_library(Path(self.factor_library_path))
+        # Also load the unified factor library
+        self._unified_factor_library = get_factor_library()
 
     def _setup_windows(self):
         cal = self._runtime.calendar("2021-01-01", "2026-12-31")
@@ -180,6 +184,11 @@ class DataFoundation:
     @property
     def provider_identity(self) -> str:
         return self._provider_identity
+
+    @property
+    def factor_library(self) -> FactorLibrary | None:
+        """Unified factor library — all factors from all sources."""
+        return self._unified_factor_library
 
     @property
     def sector_map(self) -> dict[str, str]:
