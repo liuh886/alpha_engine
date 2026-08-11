@@ -1,18 +1,14 @@
 """Unified Data Foundation — shared data layer for offline optimization and online execution.
 
-Single source of truth for:
-- Provider data loading with identity verification
-- Factor expression resolution via canonical factor library
-- Feature/return caching with window awareness
-- Forward-walking support for online agents
-- Sector classification loading
+Aligns with the online data pipeline:
+  CSV source → build_market_providers.py → Qlib binary → provider manifest
+  → QlibUSExecutionRuntime → DataFoundation (with auto-refresh detection)
 
-Used by both:
-- src/optimization/ (offline parameter search)
-- src/execution/ (online signal generation)
-- Any agent doing model evaluation
-
-Design principle: same code path for backtest and live — no divergence.
+Key integration points:
+  - Detects provider identity changes via manifest SHA256
+  - Auto-invalidates cache when provider data is refreshed
+  - refresh() method for scheduled/CI-driven updates
+  - Tracks last_refresh timestamp for audit
 """
 from __future__ import annotations
 
@@ -85,6 +81,11 @@ class DataFoundation:
     _return_cache: dict[str, pd.DataFrame] = field(default_factory=dict, repr=False)
     _benchmark_cache: dict[str, pd.DataFrame] = field(default_factory=dict, repr=False)
 
+    # Refresh tracking
+    _last_provider_identity: str = field(default="", repr=False)
+    _last_refresh_time: str = field(default="", repr=False)
+    _initialized_at: str = field(default="", repr=False)
+
     # Window plan
     _window_plan: WindowSamplingPlan | None = field(default=None, repr=False)
     _eval_dates_by_window: dict[str, pd.DatetimeIndex] = field(default_factory=dict, repr=False)
@@ -94,13 +95,19 @@ class DataFoundation:
         """Initialize runtime, load metadata, set up window plan."""
         if self._initialized:
             return
+        self._initialize()
+        import datetime
+        self._initialized_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        self._last_refresh_time = self._initialized_at
+        self._initialized = True
 
+    def _initialize(self) -> None:
+        """Internal init steps."""
         self._init_runtime()
         self._load_universe()
         self._load_sectors()
         self._load_factor_library()
         self._setup_windows()
-        self._initialized = True
 
     # ---- Initialization steps ----
 
@@ -117,6 +124,7 @@ class DataFoundation:
         self._runtime.initialize(Path.cwd())
         meta = self._runtime.metadata()
         self._provider_identity = str(meta.get("provider_identity_sha256", ""))
+        self._last_provider_identity = self._provider_identity
 
     def _load_universe(self):
         paths = [
@@ -369,6 +377,50 @@ class DataFoundation:
         self._feature_cache.clear()
         self._return_cache.clear()
         self._benchmark_cache.clear()
+
+    # ---- Refresh API (for online data updates) ----
+
+    def needs_refresh(self) -> bool:
+        """Check if provider data has been updated since last initialization.
+
+        Compares current provider identity with the one recorded at init time.
+        Returns True if data has changed and cache should be invalidated.
+        """
+        if not self._runtime or not self._initialized:
+            return True
+        try:
+            meta = self._runtime.metadata()
+            current_id = str(meta.get("provider_identity_sha256", ""))
+        except Exception:
+            return True
+        return current_id != self._last_provider_identity
+
+    def refresh(self, force: bool = False) -> bool:
+        """Reinitialize if provider data has changed.
+
+        Called by scheduled CI jobs or online agents before signal generation.
+        Returns True if a refresh was performed.
+        """
+        if not force and not self.needs_refresh():
+            return False
+
+        import datetime
+        self.clear_cache()
+        was_init = self._initialized
+        self._initialized = False
+        self._initialize()
+        self._last_refresh_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        return True
+
+    @property
+    def last_refresh_time(self) -> str:
+        return self._last_refresh_time
+
+    @property
+    def initialized_at(self) -> str:
+        return self._initialized_at
+
+    # ---- Cache stats ----
 
     def cache_stats(self) -> dict[str, int]:
         return {
