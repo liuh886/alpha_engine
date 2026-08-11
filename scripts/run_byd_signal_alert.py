@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate the formal BYD v1.3 next-open signal decision card."""
+
 from __future__ import annotations
 
 import argparse
@@ -15,7 +16,11 @@ from src.research.byd_signal_alerts import (
     _render_telegram,
     build_byd_signal_alert,
 )
-from src.research.byd_signal_evidence import bind_final_signal_identity, close_evidence_is_current
+from src.research.byd_signal_evidence import (
+    bind_final_signal_identity,
+    bind_manifest_observation_identity,
+    close_evidence_is_current,
+)
 
 MODEL_FAMILY_ID = "byd_allocation"
 
@@ -24,10 +29,18 @@ def _latest_observation(store_dir: Path) -> dict[str, Any] | None:
     files = sorted((store_dir / "observations").glob("*.json"))
     if not files:
         return None
-    value = json.loads(files[-1].read_text(encoding="utf-8"))
+    raw = files[-1].read_bytes()
+    value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict):
         raise ValueError(f"observation root must be an object: {files[-1]}")
-    return value
+    manifest = json.loads((store_dir / "manifest.json").read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise ValueError("BYD source manifest root must be an object")
+    return bind_manifest_observation_identity(
+        value,
+        observation_sha256=hashlib.sha256(raw).hexdigest(),
+        manifest=manifest,
+    )
 
 
 def _previous_alert(state_store: Path) -> dict[str, Any] | None:
@@ -59,9 +72,7 @@ def _write_outputs(path: Path, alert: dict[str, Any]) -> None:
         encoding="utf-8",
     )
     (path / "signal_alert.md").write_text(str(alert["markdown"]), encoding="utf-8")
-    (path / "signal_alert_telegram.txt").write_text(
-        str(alert["telegram_text"]), encoding="utf-8"
-    )
+    (path / "signal_alert_telegram.txt").write_text(str(alert["telegram_text"]), encoding="utf-8")
 
 
 def _github_outputs(path: Path, alert: dict[str, Any]) -> None:
@@ -84,8 +95,7 @@ def main() -> int:
         "--state-store",
         type=Path,
         default=Path(
-            "data/research/strategy_signal_ledgers/"
-            "byd_v1_3_recovery_event_low_vol_confirmation_v1"
+            "data/research/strategy_signal_ledgers/byd_v1_3_recovery_event_low_vol_confirmation_v1"
         ),
     )
     parser.add_argument(
@@ -111,16 +121,15 @@ def main() -> int:
         else "awaiting_next_independently_confirmed_open"
     )
     alert["should_alert"] = bool(
-        alert["transition_type"] in {"initialize", "rebalance"}
-        and alert["data_freshness_ok"]
+        alert["transition_type"] in {"initialize", "rebalance"} and alert["data_freshness_ok"]
     )
 
     alert["data_provenance"] = {
         "v1_3_source_manifest_sha256": _manifest_sha256(args.source_store),
         "source_observation_sha256": hashlib.sha256(
-            json.dumps(observation, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
-                "utf-8"
-            )
+            json.dumps(
+                observation, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
         ).hexdigest(),
         "source_workflow": "byd-daily-signal-alert",
     }
