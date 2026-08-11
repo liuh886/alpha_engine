@@ -3,6 +3,7 @@ import { AlertTriangle, BarChart3, CheckCircle2, Clock3, ShieldCheck } from 'luc
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { FormalBacktestReview } from '@/components/FormalBacktestReview';
 import { Badge } from '@/components/ui/badge';
+import { formatCanonicalMetric } from '@/lib/evidence-availability';
 import {
   fetchFormalFreshness,
   type FormalFreshnessSnapshot,
@@ -21,9 +22,10 @@ function summaryMetrics(run: GovernedRunSummary): CanonicalMetricV2[] {
 
 function metricText(run: GovernedRunSummary, metricId: string): string {
   const metric = metricById(summaryMetrics(run), metricId);
-  if (!metric || metric.availability_status !== 'available' || metric.value === null) return 'Unavailable';
-  if (metricId === 'turnover') return metric.value.toFixed(3);
-  return `${(metric.value * 100).toFixed(2)}%`;
+  if (metricId === 'turnover' && metric?.availability_status === 'available' && metric.value !== null) {
+    return metric.value.toFixed(3);
+  }
+  return formatCanonicalMetric(metric);
 }
 
 function FormalRunCard({ run, selected, onSelect }: { run: GovernedRunSummary; selected: boolean; onSelect: () => void }) {
@@ -134,12 +136,12 @@ export function FormalBacktestsPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Governed evidence workspace</p>
             <h2 className="mt-1 text-2xl font-semibold">Model Backtests</h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              Review accepted formal baselines together with the active research baseline. Performance, holdings, trades, prices, normalized amount, outcome analytics, attribution and signals are loaded from hash-verified Bundle v2 sections; the browser never invents missing execution evidence.
+              Review accepted formal baselines together with any active research preview that has not yet been formally promoted. Performance, holdings, trades, prices, normalized amount, outcome analytics, attribution and signals are loaded from hash-verified Bundle v2 sections; the browser never invents missing execution evidence.
             </p>
           </div>
           <div className="flex items-start gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-            <div><div className="font-semibold">{governedRuns.length} governed runs</div><div className="mt-1 text-xs text-muted-foreground">formal + active research preview · trade_ready=false</div></div>
+            <div><div className="font-semibold">{governedRuns.length} governed runs</div><div className="mt-1 text-xs text-muted-foreground">formal + non-promoted preview · trade_ready=false</div></div>
           </div>
         </div>
       </section>
