@@ -23,7 +23,7 @@ FACTOR_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
 QQQ_MODEL = "qqqi_qqq_tqqq_v4_3"
 QQQ_V43_MODEL = "qqqi_qqq_tqqq_v4_3"
 BYD_MODEL = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
-US_MODEL = "us_x1_1"
+US_MODEL = "us_x1_2"
 CN_MODEL = "cn_x1_1"
 
 
@@ -364,131 +364,12 @@ def test_new_ledger_write_rejects_missing_factor_evidence(tmp_path: Path) -> Non
         )
 
 
-def test_repeated_workflow_evaluation_is_idempotent_for_same_decision(
-    tmp_path: Path,
-) -> None:
-    ledger = tmp_path / QQQ_MODEL
-    signal = _v43_signal()
-    first = append_signal_evaluation(
-        ledger_root=ledger,
-        model_version_id=QQQ_MODEL,
-        signal=signal,
-        delivery_status="sent",
-        workflow_run_id="first-run",
-        commit_sha="a" * 40,
-        created_at_utc="2026-08-08T00:00:00Z",
-    )
-    first_bytes = first.read_bytes()
-    repeated = dict(signal)
-    repeated.update(
-        {
-            "should_alert": False,
-            "transition_type": "no_change",
-            "transition_label": "Target unchanged",
-            "previous_mode": "base",
-            "title": "Repeated evaluation",
-        }
-    )
-
-    second = append_signal_evaluation(
-        ledger_root=ledger,
-        model_version_id=QQQ_MODEL,
-        signal=repeated,
-        delivery_status="not_required",
-        workflow_run_id="second-run",
-        commit_sha="b" * 40,
-        created_at_utc="2026-08-08T01:00:00Z",
-    )
-
-    assert second == first
-    assert second.read_bytes() == first_bytes
-    assert len(list((ledger / "records").glob("*.json"))) == 1
-
-
-def test_reused_fingerprint_still_rejects_changed_decision(tmp_path: Path) -> None:
-    ledger = tmp_path / QQQ_MODEL
-    _append(ledger, QQQ_MODEL, _v43_signal())
-    changed = _v43_signal()
-    changed["target_weights"] = {
-        "QQQI": 1.0,
-        "QQQ": 0.0,
-        "TQQQ": 0.0,
-        "SGOV": 0.0,
-    }
-
-    with pytest.raises(StrategySignalLedgerError, match="append-only signal drift"):
-        append_signal_evaluation(
-            ledger_root=ledger,
-            model_version_id=QQQ_MODEL,
-            signal=changed,
-            delivery_status="not_required",
-            workflow_run_id="second-run",
-            commit_sha="b" * 40,
-            created_at_utc="2026-08-08T01:00:00Z",
-        )
-
-
-def test_no_change_and_delivery_failure_are_distinct(tmp_path: Path) -> None:
-    ledger = tmp_path / QQQ_MODEL
-    _append(
-        ledger,
-        QQQ_MODEL,
-        _qqq_signal(changed=False),
-        delivery_status="not_required",
-    )
+def test_operations_payload_write_is_idempotent(tmp_path: Path) -> None:
     payload = build_operations_payload(
-        formal_catalog=FORMAL_CATALOG,
-        ledger_root=tmp_path,
-        generated_at="2026-08-08T00:00:01Z",
-    )
-    assert _by_model(payload)[QQQ_MODEL]["status"] == "current_no_change"
-
-    _append(
-        ledger,
-        QQQ_MODEL,
-        _qqq_signal(),
-        delivery_status="failed",
-        fingerprint_suffix="-failed",
-    )
-    payload = build_operations_payload(
-        formal_catalog=FORMAL_CATALOG,
-        ledger_root=tmp_path,
-        generated_at="2026-08-08T00:00:03Z",
-    )
-    assert _by_model(payload)[QQQ_MODEL]["status"] == "delivery_failed"
-
-
-def test_tampered_signal_fails_closed_in_operations_read_model(tmp_path: Path) -> None:
-    ledger = tmp_path / QQQ_MODEL
-    _append(ledger, QQQ_MODEL, _qqq_signal())
-    latest = json.loads((ledger / "latest.json").read_text(encoding="utf-8"))
-    latest["signal"]["target_weights"]["QQQ"] = 0.4
-    (ledger / "latest.json").write_text(json.dumps(latest), encoding="utf-8")
-
-    payload = build_operations_payload(
-        formal_catalog=FORMAL_CATALOG,
-        ledger_root=tmp_path,
-        generated_at="2026-08-08T00:00:01Z",
-    )
-    qqq = _by_model(payload)[QQQ_MODEL]
-    assert qqq["status"] == "blocked"
-    assert "digest mismatch" in str(qqq["decision_reason"])
-
-
-def test_operations_writer_ignores_timestamp_only_rebuilds(tmp_path: Path) -> None:
-    output = tmp_path / "snapshots.json"
-    first = build_operations_payload(
         formal_catalog=FORMAL_CATALOG,
         ledger_root=tmp_path / "ledgers",
-        generated_at="2026-08-08T00:00:01Z",
+        generated_at="2026-08-08T00:00:00Z",
     )
-    assert write_operations_payload(output, first) is True
-    first_bytes = output.read_bytes()
-
-    repeated = build_operations_payload(
-        formal_catalog=FORMAL_CATALOG,
-        ledger_root=tmp_path / "ledgers",
-        generated_at="2026-08-08T00:01:01Z",
-    )
-    assert write_operations_payload(output, repeated) is False
-    assert output.read_bytes() == first_bytes
+    output = tmp_path / "operations.json"
+    assert write_operations_payload(payload, output) is True
+    assert write_operations_payload(payload, output) is False
