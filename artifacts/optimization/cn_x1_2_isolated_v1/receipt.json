@@ -1,0 +1,189 @@
+{
+  "schema_version": "cn_x1_2_isolated_v1",
+  "experiment_id": "cn_x1_2_isolated_v1",
+  "generated_at": "2026-08-11T11:16:53.284319+00:00",
+  "methodology": {
+    "discipline": "one-layer-per-candidate",
+    "portfolio": "sector 4\u00d71, equal weight, no regime gate modification",
+    "cost_stress": "fixed scores, turnover-only recomputation",
+    "pool": "exact CN130, no silent drops",
+    "provider_identity": "b40087966235dc4ea8e097ccf2c9e353aea385a165ce1b79bab6ee6a97276df9",
+    "universe": "cn_selected_equities_v3",
+    "sectors": "cn130_sector_industry_v1"
+  },
+  "candidates": [
+    {
+      "id": "baseline_cn_x1_1_score",
+      "role": "baseline",
+      "description": "Current CN x1.1: balanced_ohlcv, 100r, lr=0.05",
+      "factor_groups": [
+        "cn_balanced_ohlcv"
+      ],
+      "calibration": {
+        "n_gain_bins": 5,
+        "num_boost_round": 100,
+        "max_leaves": 31,
+        "max_depth": 0,
+        "min_child_weight": 1.0,
+        "learning_rate": 0.05,
+        "subsample": 1.0,
+        "colsample_bytree": 1.0,
+        "reg_alpha": 0.0,
+        "reg_lambda": 1.0,
+        "seed": 42
+      }
+    },
+    {
+      "id": "cn_x1_2_calibration_only",
+      "role": "challenger",
+      "description": "Calibration only: 300r, lr=0.03, subsample/colsample=0.8",
+      "factor_groups": [
+        "cn_balanced_ohlcv"
+      ],
+      "calibration": {
+        "n_gain_bins": 5,
+        "num_boost_round": 300,
+        "max_leaves": 31,
+        "max_depth": 0,
+        "min_child_weight": 1.0,
+        "learning_rate": 0.03,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_alpha": 0.0,
+        "reg_lambda": 1.0,
+        "seed": 42
+      }
+    },
+    {
+      "id": "cn_x1_2_mean_reversion",
+      "role": "challenger",
+      "description": "Mean reversion: +cn_short_reversal_liquidity, same calibration as L2",
+      "factor_groups": [
+        "cn_balanced_ohlcv",
+        "cn_short_reversal_liquidity"
+      ],
+      "calibration": {
+        "n_gain_bins": 5,
+        "num_boost_round": 300,
+        "max_leaves": 31,
+        "max_depth": 0,
+        "min_child_weight": 1.0,
+        "learning_rate": 0.03,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_alpha": 0.0,
+        "reg_lambda": 1.0,
+        "seed": 42
+      }
+    }
+  ],
+  "results": [
+    {
+      "candidate": "cn_x1_2_calibration_only",
+      "role": "challenger",
+      "exc20": 0.6787789125676305,
+      "exc40": 0.4634651723809886,
+      "exc60": 0.27519616720024254,
+      "dd": -0.14541565689815159,
+      "pos": 4,
+      "strongest": 0.5877403793203043,
+      "avg_turnover": 1.509469696969697,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.33954661811787834,
+          "dd": -0.03319070980009742
+        },
+        "2024H2": {
+          "excess": 0.14091908195513914,
+          "dd": -0.1331679739952088
+        },
+        "2025H1": {
+          "excess": 0.08272217532885162,
+          "dd": -0.14541565689815159
+        },
+        "2025H2": {
+          "excess": 0.014527439156829303,
+          "dd": -0.05075625264644633
+        }
+      },
+      "score_identity": {
+        "2024H1": "16dc95d0e7cc55cf",
+        "2024H2": "c97acd8b667eda19",
+        "2025H1": "234ba08d0c4272fb",
+        "2025H2": "7471b89d4fe99735"
+      }
+    },
+    {
+      "candidate": "baseline_cn_x1_1_score",
+      "role": "baseline",
+      "exc20": 0.3413154317154734,
+      "exc40": 0.16424932407384807,
+      "exc60": 0.010090888892895,
+      "dd": -0.13989161634445194,
+      "pos": 3,
+      "strongest": 0.5365536306830286,
+      "avg_turnover": 1.5520833333333333,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.1432663724495069,
+          "dd": -0.09252255078816486
+        },
+        "2024H2": {
+          "excess": 0.20265450629809245,
+          "dd": -0.13989161634445194
+        },
+        "2025H1": {
+          "excess": 0.03177576648824565,
+          "dd": -0.11686044163814657
+        },
+        "2025H2": {
+          "excess": -0.054509247760250346,
+          "dd": -0.04628967896889792
+        }
+      },
+      "score_identity": {
+        "2024H1": "f4f7e341fc4246fd",
+        "2024H2": "ab08b9e67d3df206",
+        "2025H1": "af5036718590498f",
+        "2025H2": "4f76ed3f487e26e0"
+      }
+    },
+    {
+      "candidate": "cn_x1_2_mean_reversion",
+      "role": "challenger",
+      "exc20": 0.17876991904777517,
+      "exc40": 0.02977961106817495,
+      "exc60": -0.10076302845781981,
+      "dd": -0.14663422787189484,
+      "pos": 4,
+      "strongest": 0.7658767024818678,
+      "avg_turnover": 1.4763257575757576,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.1324774273426157,
+          "dd": -0.11119376326031558
+        },
+        "2024H2": {
+          "excess": 0.0002200017647879804,
+          "dd": -0.14663422787189484
+        },
+        "2025H1": {
+          "excess": 0.02603550251095177,
+          "dd": -0.11488167391026821
+        },
+        "2025H2": {
+          "excess": 0.01424194398931733,
+          "dd": -0.024235613604872037
+        }
+      },
+      "score_identity": {
+        "2024H1": "daf4397de438077a",
+        "2024H2": "3ac41239724e3eee",
+        "2025H1": "71156c6e9249fa04",
+        "2025H2": "b90d349c0c66348d"
+      }
+    }
+  ],
+  "baseline_dd": -0.13989161634445194,
+  "baseline_exc20": 0.3413154317154734
+}

@@ -52,6 +52,10 @@ coverage.xml
 # /data/
 /artifacts/
 !/artifacts/release_candidate/
+!/artifacts/optimization/
+!/artifacts/optimization/**
+!/artifacts/evidence/
+!/artifacts/evidence/**
 mlruns/
 output/
 site/
@@ -140,11 +144,3 @@ qlib_cache/
 
 # PM2 logs
 logs/
-
-# Handoff documents
-docs/research/HANDOFF_*.md
-docs/research/HANDOVER-*.md
-
-# Optimization experiment outputs
-artifacts/optimization/
-artifacts/evidence/
