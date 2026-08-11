@@ -66,7 +66,7 @@ export function StrategyFleet({
       <div className="divide-y">
         {runs.map((run) => {
           const snapshot = snapshots.get(run.modelVersionId);
-          const requiredTier = access.requiredTierForModel(run);
+          const requiredTier = snapshot?.currentOperationsAccess ?? 'public';
           const liveLocked = !access.canAccess(requiredTier);
           const label = snapshot ? STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading operations' : 'Operating status unavailable';
           return (
@@ -75,7 +75,7 @@ export function StrategyFleet({
               type="button"
               onClick={() => navigate(`/strategies/${encodeURIComponent(run.modelVersionId)}`)}
               className="group grid w-full gap-4 px-5 py-5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary lg:grid-cols-[minmax(220px,1.35fr)_112px_112px_88px_108px_minmax(210px,1fr)_36px] lg:items-center"
-              aria-label={liveLocked ? `${run.title}, performance public, live signals require ${requiredTier}` : run.title}
+              aria-label={liveLocked ? `${run.title}, historical evidence public, live operations require ${requiredTier}` : run.title}
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -99,7 +99,7 @@ export function StrategyFleet({
               {liveLocked ? (
                 <div className="rounded-lg border border-primary/15 bg-primary/[0.035] p-3 lg:border-0 lg:bg-transparent lg:p-0">
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-primary"><LockKeyhole className="h-4 w-4" />Live holdings & signals</p>
-                  <p className="mt-1 text-xs text-muted-foreground">AlphaEngine {requiredTier === 'pro' ? 'Pro' : requiredTier} unlocks the execution layer.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">AlphaEngine {requiredTier === 'pro' ? 'Pro' : requiredTier} unlocks the current-operations layer.</p>
                 </div>
               ) : (
                 <div>
