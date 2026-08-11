@@ -10,8 +10,14 @@ on:
       - "src/decision_support/us_low_turnover_decision_pipeline.py"
       - "scripts/build_low_turnover_multifactor.py"
       - "scripts/run_us_low_turnover_decision_pipeline.py"
+      - "scripts/setup_cron.py"
+      - "scripts/summarize_daily_us_decision_run.py"
       - "tests/test_low_turnover_multifactor.py"
       - "tests/test_us_low_turnover_decision_pipeline.py"
+      - "tests/test_daily_us_decision_operations.py"
+      - ".github/workflows/daily-us-low-turnover-decision.yml"
+      - "docs/operations/daily_us_low_turnover_decision.md"
+      - ".env.example"
       - ".github/workflows/us-low-turnover-decision-pipeline-ci.yml"
   pull_request:
     branches: [main]
@@ -22,8 +28,14 @@ on:
       - "src/decision_support/us_low_turnover_decision_pipeline.py"
       - "scripts/build_low_turnover_multifactor.py"
       - "scripts/run_us_low_turnover_decision_pipeline.py"
+      - "scripts/setup_cron.py"
+      - "scripts/summarize_daily_us_decision_run.py"
       - "tests/test_low_turnover_multifactor.py"
       - "tests/test_us_low_turnover_decision_pipeline.py"
+      - "tests/test_daily_us_decision_operations.py"
+      - ".github/workflows/daily-us-low-turnover-decision.yml"
+      - "docs/operations/daily_us_low_turnover_decision.md"
+      - ".env.example"
       - ".github/workflows/us-low-turnover-decision-pipeline-ci.yml"
   workflow_dispatch:
 
@@ -44,7 +56,7 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Ruff low-turnover path
+      - name: Ruff low-turnover and operations path
         run: >-
           uv run ruff check
           src/research/low_turnover_multifactor.py
@@ -52,15 +64,21 @@ jobs:
           src/decision_support/us_low_turnover_decision_pipeline.py
           scripts/build_low_turnover_multifactor.py
           scripts/run_us_low_turnover_decision_pipeline.py
+          scripts/setup_cron.py
+          scripts/summarize_daily_us_decision_run.py
           tests/test_low_turnover_multifactor.py
           tests/test_us_low_turnover_decision_pipeline.py
-      - name: Run low-turnover tests
+          tests/test_daily_us_decision_operations.py
+      - name: Run low-turnover and operations tests
         run: >-
           uv run pytest
           tests/test_low_turnover_multifactor.py
           tests/test_us_low_turnover_decision_pipeline.py
+          tests/test_daily_us_decision_operations.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: CLI import checks
         run: |
           uv run python scripts/build_low_turnover_multifactor.py --help
           uv run python scripts/run_us_low_turnover_decision_pipeline.py --help
+          uv run python -c "import scripts.setup_cron"
+          uv run python scripts/summarize_daily_us_decision_run.py --help
