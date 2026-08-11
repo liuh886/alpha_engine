@@ -16,12 +16,25 @@ from src.artifacts.formal_refresh import (
     common_provider_cutoff,
     finalize_candidate_tree,
     load_object,
+    sha256,
     write_object,
+)
+from src.research.rules_formal_replay_gate import (
+    verify_cn_current_allocation_replay,
+    verify_cn_frozen_prefix,
+    verify_qqq_professional_replay,
 )
 
 RANKER_MTM_MODELS = (
     ("us_x1_1", "us"),
     ("cn_x1_1", "cn"),
+)
+QQQ_MODEL_ID = "qqqi_qqq_tqqq_v4_3"
+CN_MODEL_ID = "cn_x1_1"
+QQQ_BUNDLE_ROOT = Path("artifacts/formal-refresh/qqq-bundle")
+CN_LEDGER = Path(
+    "artifacts/formal-refresh/cn-ledger-a/score_ledgers/"
+    "2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
 )
 
 
@@ -144,6 +157,80 @@ def _attach_ranker_mtm(
         )
 
 
+def _report_changed(current: Path, candidate: Path) -> bool:
+    if not current.is_file() or not candidate.is_file():
+        return False
+    return load_object(current).get("report") != load_object(candidate).get("report")
+
+
+def _verify_rules_replay_gates(
+    *,
+    current_root: Path,
+    candidate_root: Path,
+    cn_provider_manifest: Path,
+) -> dict[str, object]:
+    repository_root = Path.cwd().resolve()
+    receipts: dict[str, object] = {}
+
+    qqq_current = current_root / f"{QQQ_MODEL_ID}.json"
+    qqq_candidate = candidate_root / f"{QQQ_MODEL_ID}.json"
+    qqq_bundle_manifest = QQQ_BUNDLE_ROOT / "bundle_manifest.json"
+    qqq_changed = (
+        qqq_current.is_file()
+        and qqq_candidate.is_file()
+        and sha256(qqq_current) != sha256(qqq_candidate)
+    )
+    if qqq_changed or qqq_bundle_manifest.is_file():
+        if not qqq_bundle_manifest.is_file():
+            raise FormalRefreshError(
+                "QQQ formal candidate changed without the professional governed ETF bundle"
+            )
+        receipts[QQQ_MODEL_ID] = verify_qqq_professional_replay(
+            repository_root,
+            package_path=qqq_candidate,
+            bundle_dir=QQQ_BUNDLE_ROOT,
+        )
+
+    cn_current = current_root / f"{CN_MODEL_ID}.json"
+    cn_candidate = candidate_root / f"{CN_MODEL_ID}.json"
+    if cn_candidate.is_file():
+        candidate_package = load_object(cn_candidate)
+        frozen = verify_cn_frozen_prefix(repository_root, candidate_package)
+        ledger = (repository_root / CN_LEDGER).resolve()
+        settled_changed = _report_changed(cn_current, cn_candidate)
+        if ledger.is_file():
+            receipts[CN_MODEL_ID] = verify_cn_current_allocation_replay(
+                repository_root,
+                package_path=cn_candidate,
+                provider_dir=_provider_dir(cn_provider_manifest, "cn"),
+                ledger_path=ledger,
+            )
+        elif settled_changed:
+            raise FormalRefreshError(
+                "CN settled formal trace changed without the governed current R0 score ledger"
+            )
+        else:
+            receipts[CN_MODEL_ID] = {
+                "schema_version": "1.0",
+                "model_id": CN_MODEL_ID,
+                "decision": "exact_replay",
+                "frozen_prefix": frozen,
+                "current_allocation": "not_required_no_settled_trace_change",
+                "research_only": True,
+                "trade_ready": False,
+                "promotion_authorized": False,
+            }
+
+    return {
+        "schema_version": "rules_formal_replay_gates_v1",
+        "status": "exact_replay",
+        "models": receipts,
+        "research_only": True,
+        "trade_ready": False,
+        "promotion_authorized": False,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -216,6 +303,11 @@ def main() -> None:
         cn_provider_manifest=args.cn_provider_manifest,
         cutoffs=cutoffs,
     )
+    replay_gates = _verify_rules_replay_gates(
+        current_root=args.current_root,
+        candidate_root=args.candidate_root,
+        cn_provider_manifest=args.cn_provider_manifest,
+    )
     receipt = finalize_candidate_tree(
         args.current_root,
         args.candidate_root,
@@ -223,6 +315,8 @@ def main() -> None:
         generated_at=args.generated_at,
         receipt_path=args.receipt,
     )
+    receipt["rules_formal_replay_gates"] = replay_gates
+    write_object(args.receipt, receipt)
     print(json.dumps(receipt, indent=2, sort_keys=True))
 
 

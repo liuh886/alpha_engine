@@ -78,6 +78,8 @@ jobs:
           src/research/formal_baseline.py
           src/research/formal_baseline_onboarding.py
           src/research/rules_based_allocation_experiment_runner.py
+          src/research/rules_formal_replay_gate.py
+          src/research/cn_x1_1_regime_gated.py
           src/research/byd_v1_3_candidate.py
           src/research/ranker_current_target.py
           src/research/us_x1_2_current_target.py
@@ -88,6 +90,8 @@ jobs:
           src/artifacts/performance_semantics.py
           scripts/run_research_experiment.py
           scripts/run_active_research_experiments.py
+          scripts/run_formal_refresh_transaction.py
+          scripts/verify_rules_formal_replay.py
           scripts/refresh_ranker_formal.py
           scripts/sync_formal_bundle_v2.py
           scripts/run_ranker_current_target.py
@@ -102,6 +106,7 @@ jobs:
           scripts/check_ci_governance.py
           tests/test_formal_baseline_onboarding.py
           tests/test_rules_based_allocation_experiment_runner.py
+          tests/test_rules_formal_replay_gate.py
           tests/test_ranker_current_target.py
           tests/test_us_x1_2_current_target.py
           tests/test_strategy_operations.py
@@ -129,6 +134,7 @@ jobs:
           tests/test_cross_sectional_experiment_runner.py
           tests/test_formal_baseline_onboarding.py
           tests/test_rules_based_allocation_experiment_runner.py
+          tests/test_rules_formal_replay_gate.py
           tests/test_ranker_current_target.py
           tests/test_us_x1_2_current_target.py
           tests/test_strategy_operations.py
