@@ -7,6 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
+from src.artifacts.formal_evidence_standard import validate_formal_catalog_evidence
 from src.artifacts.strategy_operations import (
     build_operations_payload,
     validate_operations_payload,
@@ -34,6 +35,7 @@ def main() -> int:
     parser.add_argument("--generated-at", required=True)
     args = parser.parse_args()
 
+    contract_models = validate_formal_catalog_evidence(args.formal_catalog)
     payload = build_operations_payload(
         formal_catalog=args.formal_catalog,
         ledger_root=args.ledger_root,
@@ -41,7 +43,16 @@ def main() -> int:
     )
     validate_operations_payload(payload)
     changed = write_operations_payload(args.output, payload)
-    print(json.dumps({"path": str(args.output), "changed": changed}, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "path": str(args.output),
+                "changed": changed,
+                "formal_evidence_contract_models": contract_models,
+            },
+            sort_keys=True,
+        )
+    )
     return 0
 
 
