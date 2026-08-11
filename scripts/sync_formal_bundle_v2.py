@@ -38,14 +38,11 @@ FORMAL_MODEL_ADAPTERS: dict[str, tuple[str, str]] = {
     ),
 }
 
-NATIVE_FORMAL_PROMOTIONS: dict[str, str] = {
-    US_X1_2: US_X1_1,
-}
+NATIVE_FORMAL_PROMOTIONS: dict[str, str] = {US_X1_2: US_X1_1}
 
-# These are exact declarations of semantics already executed by the retained
-# active formal implementations. They enrich immutable v1 source evidence when
-# it is projected into the production Bundle v2 contract; they do not alter
-# returns, holdings, trades, costs, or model selection.
+# Exact declarations already executed by the retained implementations. They are
+# bound into the small formal summary envelope; retained performance/portfolio
+# evidence bytes are not rewritten just to carry metadata.
 LEGACY_PRODUCTION_SEMANTICS: dict[str, dict[str, Any]] = {
     "qqqi_qqq_tqqq_v4_3": {
         "session_unit": "trading_session",
@@ -115,18 +112,12 @@ def accepted_v1_models(source_root: Path) -> list[str]:
             raise FormalBundleV2SyncError("formal v1 catalog record is invalid")
         model_id = str(row.get("model_id") or "")
         if not model_id or model_id in model_ids:
-            raise FormalBundleV2SyncError(
-                f"duplicate or empty formal model id: {model_id!r}"
-            )
+            raise FormalBundleV2SyncError(f"duplicate or empty formal model id: {model_id!r}")
         if row.get("publication_status") != "accepted_formal_baseline":
-            raise FormalBundleV2SyncError(
-                f"non-accepted record entered formal catalog: {model_id}"
-            )
+            raise FormalBundleV2SyncError(f"non-accepted record entered formal catalog: {model_id}")
         package_path = source_root / str(row.get("path") or "")
         if not package_path.is_file() or _sha256(package_path) != row.get("sha256"):
-            raise FormalBundleV2SyncError(
-                f"formal v1 package digest mismatch: {model_id}"
-            )
+            raise FormalBundleV2SyncError(f"formal v1 package digest mismatch: {model_id}")
         package = _object(package_path)
         if (
             package.get("model_id") != model_id
@@ -134,9 +125,7 @@ def accepted_v1_models(source_root: Path) -> list[str]:
             or package.get("research_only") is not True
             or package.get("trade_ready") is not False
         ):
-            raise FormalBundleV2SyncError(
-                f"formal v1 package boundary mismatch: {model_id}"
-            )
+            raise FormalBundleV2SyncError(f"formal v1 package boundary mismatch: {model_id}")
         model_ids.append(model_id)
     return model_ids
 
@@ -170,9 +159,7 @@ def _with_provisional_mtm(plan, source_path: Path):
     if provisional is None:
         return plan
     if not isinstance(provisional, Mapping):
-        raise FormalBundleV2SyncError(
-            f"provisional_mtm must be an object: {source_path}"
-        )
+        raise FormalBundleV2SyncError(f"provisional_mtm must be an object: {source_path}")
     row = provisional.get("performance_row")
     as_of = str(provisional.get("as_of") or "")
     if (
@@ -185,9 +172,7 @@ def _with_provisional_mtm(plan, source_path: Path):
         or str(row.get("holding_end_date") or "") != as_of
         or as_of != plan.evidence_cutoff
     ):
-        raise FormalBundleV2SyncError(
-            f"invalid provisional MTM contract: {source_path}"
-        )
+        raise FormalBundleV2SyncError(f"invalid provisional MTM contract: {source_path}")
 
     sections = []
     projected = False
@@ -202,9 +187,7 @@ def _with_provisional_mtm(plan, source_path: Path):
         payload = dict(section.payload)
         report = payload.get("report")
         if not isinstance(report, list):
-            raise FormalBundleV2SyncError(
-                f"performance report is invalid: {source_path}"
-            )
+            raise FormalBundleV2SyncError(f"performance report is invalid: {source_path}")
         payload["report"] = [*report, dict(row)]
         payload["source_fields"] = ["report", "provisional_mtm.performance_row"]
         payload["provisional_mtm_projected"] = True
@@ -217,12 +200,12 @@ def _with_provisional_mtm(plan, source_path: Path):
     return replace(plan, sections=tuple(sections))
 
 
-def _production_portfolio_contract(source_path: Path) -> dict[str, Any] | None:
+def _production_portfolio_contract(source_path: Path) -> dict[str, Any]:
     package = _object(source_path)
     model_id = str(package.get("model_id") or "")
     declarations = LEGACY_PRODUCTION_SEMANTICS.get(model_id)
     if declarations is None:
-        return None
+        raise FormalBundleV2SyncError(f"production semantics are not declared: {model_id}")
     source_contract = package.get("portfolio_contract")
     if not isinstance(source_contract, Mapping):
         raise FormalBundleV2SyncError(f"formal portfolio contract is missing: {model_id}")
@@ -236,40 +219,12 @@ def _production_portfolio_contract(source_path: Path) -> dict[str, Any] | None:
     return contract
 
 
-def _with_production_semantics(plan, source_path: Path):
+def _with_evidence_contract(plan, source_path: Path):
     contract = _production_portfolio_contract(source_path)
-    if contract is None:
-        return plan
-    sections = []
-    portfolio_bound = False
-    performance_bound = False
-    for section in plan.sections:
-        if section.section_id == "portfolio":
-            if not isinstance(section.payload, Mapping):
-                raise FormalBundleV2SyncError("formal portfolio section is unavailable")
-            payload = dict(section.payload)
-            payload["portfolio_contract"] = contract
-            sections.append(replace(section, payload=payload))
-            portfolio_bound = True
-            continue
-        if section.section_id == "performance":
-            if not isinstance(section.payload, Mapping):
-                raise FormalBundleV2SyncError("formal performance section is unavailable")
-            payload = dict(section.payload)
-            payload["performance_semantics"] = build_performance_semantics(
-                contract,
-                trace_frequency=payload.get("trace_frequency") or plan.trace_frequency,
-            )
-            sections.append(replace(section, payload=payload))
-            performance_bound = True
-            continue
-        sections.append(section)
-    if not portfolio_bound or not performance_bound:
-        raise FormalBundleV2SyncError("formal production semantics could not be bound")
-    return replace(plan, sections=tuple(sections))
-
-
-def _with_evidence_contract(plan):
+    semantics = build_performance_semantics(
+        contract,
+        trace_frequency=plan.comparability_key.get("trace_frequency"),
+    )
     sections = []
     bound = False
     for section in plan.sections:
@@ -280,6 +235,8 @@ def _with_evidence_contract(plan):
             raise FormalBundleV2SyncError("formal summary section is unavailable")
         payload = dict(section.payload)
         payload["evidence_contract"] = FORMAL_EVIDENCE_CONTRACT_ID
+        payload["performance_semantics"] = semantics
+        payload["portfolio_contract"] = contract
         sections.append(replace(section, payload=payload))
         bound = True
     if not bound:
@@ -298,15 +255,11 @@ def _native_preview_manifest(native_root: Path, model_id: str) -> Path:
         if isinstance(row, Mapping) and row.get("model_version_id") == model_id
     ]
     if len(records) != 1:
-        raise FormalBundleV2SyncError(
-            f"native formal source identity is ambiguous: {model_id}"
-        )
+        raise FormalBundleV2SyncError(f"native formal source identity is ambiguous: {model_id}")
     record = records[0]
     manifest_path = native_root / str(record["manifest_path"])
     if not manifest_path.is_file() or _sha256(manifest_path) != record["manifest_sha256"]:
-        raise FormalBundleV2SyncError(
-            f"native formal source manifest digest mismatch: {model_id}"
-        )
+        raise FormalBundleV2SyncError(f"native formal source manifest digest mismatch: {model_id}")
     return manifest_path
 
 
@@ -323,11 +276,7 @@ def _publish_native_formals(native_root: Path, output_root: Path) -> list[str]:
         promoted.append(model_id)
 
     manifests = sorted(output_root.rglob("manifest.json"))
-    update_catalog(
-        manifests,
-        catalog_path=output_root / "catalog.json",
-        channel="formal",
-    )
+    update_catalog(manifests, catalog_path=output_root / "catalog.json", channel="formal")
     return promoted
 
 
@@ -361,13 +310,10 @@ def sync(
 
         def build_plan_with_mtm(source_path: Path):
             plan = _with_provisional_mtm(prior_build_plan(source_path), source_path)
-            plan = _with_production_semantics(plan, source_path)
-            return _with_evidence_contract(plan)
+            return _with_evidence_contract(plan, source_path)
 
         projector.build_plan = build_plan_with_mtm
-        migration_receipt = projector.project_formal_bundle_v2(
-            source_root, output_root
-        )
+        migration_receipt = projector.project_formal_bundle_v2(source_root, output_root)
     finally:
         projector.build_plan = prior_build_plan
         projector.MODEL_MAP.clear()
@@ -376,9 +322,7 @@ def sync(
     if mtm_models:
         migration_receipt["status"] = "formal_v1_projected_with_current_mtm"
         migration_receipt["provisional_mtm_models"] = mtm_models
-        (output_root / "migration-receipt.json").write_bytes(
-            canonical_json_bytes(migration_receipt)
-        )
+        (output_root / "migration-receipt.json").write_bytes(canonical_json_bytes(migration_receipt))
 
     promoted = _publish_native_formals(native_root, output_root)
     freshness_sha = _publish_freshness_policy(source_root, output_root)
@@ -427,21 +371,9 @@ def sync(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--source-root",
-        type=Path,
-        default=Path("data/research/formal_backtests"),
-    )
-    parser.add_argument(
-        "--output-root",
-        type=Path,
-        default=Path("data/research/formal_model_runs"),
-    )
-    parser.add_argument(
-        "--native-root",
-        type=Path,
-        default=Path("data/research/model_runs"),
-    )
+    parser.add_argument("--source-root", type=Path, default=Path("data/research/formal_backtests"))
+    parser.add_argument("--output-root", type=Path, default=Path("data/research/formal_model_runs"))
+    parser.add_argument("--native-root", type=Path, default=Path("data/research/model_runs"))
     parser.add_argument("--receipt", type=Path)
     args = parser.parse_args()
     receipt = sync(args.source_root, args.output_root, args.native_root)
