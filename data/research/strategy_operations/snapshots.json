@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T04:20:34Z",
+  "generated_at": "2026-08-11T04:24:58Z",
   "records": [
     {
       "allocations": [
@@ -904,7 +904,7 @@
           "target": 0.0
         }
       ],
-      "as_of": "2026-08-07",
+      "as_of": "2026-08-10",
       "data_freshness": "current",
       "decision_cadence": "Every completed US market session",
       "decision_reason": "formal_state_allocation → formal_state_allocation",
@@ -918,14 +918,14 @@
           "factor_version": "1.0",
           "implementation_hash": "d71008f4870da95f426257b0c17b78e0943fe9122783260101f51347fb7b817d",
           "information_family": "volatility",
-          "observed_at": "2026-08-07",
+          "observed_at": "2026-08-10",
           "reason_code": "vix_easing_supports_release",
           "reference": {
             "normal": null,
             "stress": null
           },
           "state": "calm",
-          "value": 14.899999618530273
+          "value": 15.460000038146973
         },
         {
           "display_name": "VXN close",
@@ -934,14 +934,14 @@
           "factor_version": "1.0",
           "implementation_hash": "c945dabaef82f50af15bb214da45e7bc706632b14289cfa4525d2d85b52c193c",
           "information_family": "volatility",
-          "observed_at": "2026-08-07",
+          "observed_at": "2026-08-10",
           "reason_code": "vxn_neutral",
           "reference": {
             "normal": null,
             "stress": null
           },
           "state": "calm",
-          "value": 22.81999969482422
+          "value": 23.040000915527344
         },
         {
           "display_name": "QQQ distance to SMA20",
@@ -950,11 +950,11 @@
           "factor_version": "1.0",
           "implementation_hash": "acdb7eea6c3f40c76e53a937f12136069a7389e3ace298b860a03901949ef3a1",
           "information_family": "trend",
-          "observed_at": "2026-08-07",
+          "observed_at": "2026-08-10",
           "reason_code": "price_repair_supports_release",
           "reference": 0.0,
           "state": "at_or_above",
-          "value": 0.03239928634612199
+          "value": 0.028644569889097582
         },
         {
           "display_name": "QQQ distance to SMA200",
@@ -963,11 +963,11 @@
           "factor_version": "1.0",
           "implementation_hash": "8ec5a93cdb620aab795f0092b0041692142e16810621509a4a21c88203612da5",
           "information_family": "trend",
-          "observed_at": "2026-08-07",
+          "observed_at": "2026-08-10",
           "reason_code": "long_trend_intact",
           "reference": 0.0,
           "state": "above_long_trend",
-          "value": 0.11802005039353447
+          "value": 0.11371819106523073
         },
         {
           "display_name": "RSI(14)",
@@ -976,11 +976,11 @@
           "factor_version": "1.0",
           "implementation_hash": "25b9d2baa3862b01d34e78576394e139989cf889643fce7b8329b31e9a9eee60",
           "information_family": "momentum",
-          "observed_at": "2026-08-07",
+          "observed_at": "2026-08-10",
           "reason_code": "rsi_not_panic",
           "reference": 30.0,
           "state": "normal",
-          "value": 57.177327102742204
+          "value": 56.211114857951195
         },
         {
           "display_name": "Fear & Greed",
@@ -989,11 +989,11 @@
           "factor_version": "1.0",
           "implementation_hash": "52cb49acbbe7b750bdb84504fd6be4d821469c1d3f53bbc166008030ff9242ae",
           "information_family": "sentiment",
-          "observed_at": "2026-08-07",
+          "observed_at": "2026-08-10",
           "reason_code": "fear_greed_not_extreme",
           "reference": 10.0,
           "state": "normal",
-          "value": 63.6857142857143
+          "value": 64.3714285714286
         },
         {
           "display_name": "SMA200 falling",
@@ -1002,7 +1002,7 @@
           "factor_version": "1.0",
           "implementation_hash": "7a2c3d06b1f5683199c19161f596e0f2ae9201f0a0977fee609aa0839ea73f5b",
           "information_family": "trend_state",
-          "observed_at": "2026-08-07",
+          "observed_at": "2026-08-10",
           "reason_code": "ma200_not_falling",
           "reference": false,
           "state": "not_falling",
@@ -1015,7 +1015,7 @@
           "factor_version": "1.0",
           "implementation_hash": "7cbbd3045eae0a1b20a40c7227850803ac86eeae76ebce01f19a8c6487b90302",
           "information_family": "rule_state",
-          "observed_at": "2026-08-07",
+          "observed_at": "2026-08-10",
           "reason_code": "strong_defense_inactive",
           "reference": false,
           "state": "inactive",
@@ -1023,21 +1023,21 @@
         }
       ],
       "factor_freshness": "current",
-      "latest_completed_session": "2026-08-07",
+      "latest_completed_session": "2026-08-10",
       "model_version_id": "qqqi_qqq_tqqq_v4_3",
       "next_decision_policy": "Evaluate at close; target applies to the next eligible open.",
       "note": "Latest governed evaluation retained the existing allocation.",
       "source_href": null,
       "source_identity": {
-        "commit_sha": "f664d0c307edbcfb8d32e3a519fd0d7d6979a2e7",
+        "commit_sha": "af74ca84055bbc2ae9d1cb53a12c824905554e1e",
         "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
         "formal_bundle_id": "2f588e219a851c839fc087e27be163739f811c7691cd7d109795ab9e226957c8",
         "formal_evidence_cutoff": "2026-08-07",
         "formal_run_id": "qqqi_qqq_tqqq_v4_3-through-2026_08_07",
         "github_issue_number": null,
-        "ledger_fingerprint": "d801a7315db76d5ab307",
-        "signal_sha256": "24841551127f1517421769dca7646e827e56b1e21df3c8753868048ab628f5b5",
-        "workflow_run_id": "31242990312"
+        "ledger_fingerprint": "6260a294e1869a128922",
+        "signal_sha256": "cd640cabc28585c87a726768ce387a4ab39b8eba8db93e1175763e3c620f3e73",
+        "workflow_run_id": "31458352843"
       },
       "source_label": "Governed QQQ signal ledger",
       "state_label": "Transition · formal_state_allocation",
