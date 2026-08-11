@@ -25,7 +25,8 @@ const AVAILABILITY = new Set([
   'not_retained',
   'blocked_by_source',
 ]);
-const NATIVE_FORMAL_CONTRACT = 'native_formal_bundle_v2';
+const FORMAL_CONTRACT = 'native_formal_bundle_v2';
+const PERFORMANCE_SCHEMA = 'formal_performance_semantics_v1';
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
@@ -36,7 +37,7 @@ function assert(condition, message) {
 }
 
 function declared(value) {
-  return value !== null && value !== undefined && value !== '';
+  return value !== null && value !== undefined && value !== '' && value !== 'not_declared' && value !== 'not declared';
 }
 
 function runRoot(record) {
@@ -55,14 +56,13 @@ function validateMetric(metric, modelId) {
   }
 }
 
-function validateNativeFormal(record, summary) {
+function validateFormal(record, summary) {
   const modelId = record.model_version_id;
   const base = runRoot(record);
   const manifest = readJson(join(root, record.manifest_path));
-  const performance = readJson(join(base, 'performance.json'));
   const diagnostics = readJson(join(base, 'diagnostics.json'));
 
-  assert(summary.evidence_contract === NATIVE_FORMAL_CONTRACT, `${modelId}: native formal evidence contract is missing`);
+  assert(summary.evidence_contract === FORMAL_CONTRACT, `${modelId}: formal evidence contract is missing`);
   assert(manifest.publication_channel === 'formal', `${modelId}: publication channel is not formal`);
   assert(manifest.publication_status === 'accepted_formal_baseline', `${modelId}: publication status is not accepted formal`);
   assert(manifest.research_only === true && manifest.trade_ready === false, `${modelId}: research boundary changed`);
@@ -74,8 +74,9 @@ function validateNativeFormal(record, summary) {
     validateMetric(metric, modelId);
   }
 
-  const semantics = performance.performance_semantics;
-  assert(semantics && typeof semantics === 'object', `${modelId}: performance semantics missing`);
+  const semantics = summary.performance_semantics;
+  assert(semantics && typeof semantics === 'object', `${modelId}: production performance semantics missing`);
+  assert(semantics.schema_version === PERFORMANCE_SCHEMA, `${modelId}: invalid production performance schema`);
   for (const key of ['signal_time', 'execution_time', 'return_measurement', 'price_basis', 'holding_end_offset_sessions']) {
     assert(declared(semantics[key]), `${modelId}: methodology field ${key} is undeclared`);
   }
@@ -85,27 +86,23 @@ function validateNativeFormal(record, summary) {
     assert(declared(cost[key]), `${modelId}: cost methodology field ${key} is undeclared`);
   }
 
+  const portfolio = summary.portfolio_contract;
+  assert(portfolio && typeof portfolio === 'object', `${modelId}: production portfolio contract missing`);
+  for (const key of ['signal_time', 'execution_time', 'price_basis', 'turnover_formula']) {
+    assert(declared(portfolio[key]), `${modelId}: portfolio methodology field ${key} is undeclared`);
+  }
+
   const completeness = summary.evidence_completeness;
   assert(completeness && completeness.status === 'complete', `${modelId}: formal evidence is not complete`);
   assert(Array.isArray(completeness.missing) && completeness.missing.length === 0, `${modelId}: formal evidence contains unresolved missing fields`);
-  assert(
-    diagnostics.evidence_completeness?.status === 'complete',
-    `${modelId}: diagnostics do not confirm complete evidence`,
-  );
+  assert(diagnostics.evidence_completeness?.status === 'complete', `${modelId}: diagnostics do not confirm complete evidence`);
 }
 
 const catalog = readJson(join(root, 'catalog.json'));
-const nativeRecords = [];
+assert(Array.isArray(catalog.records) && catalog.records.length > 0, 'Formal catalog is empty');
 for (const record of catalog.records) {
   const summary = readJson(join(runRoot(record), 'summary.json'));
-  if (summary.evidence_contract === NATIVE_FORMAL_CONTRACT) {
-    nativeRecords.push([record, summary]);
-  }
-}
-assert(nativeRecords.length > 0, 'Formal catalog contains no native formal evidence contract');
-
-for (const [record, summary] of nativeRecords) {
-  validateNativeFormal(record, summary);
+  validateFormal(record, summary);
 }
 
-console.log(`Formal evidence contract passed for ${nativeRecords.length} native formal model(s): ${nativeRecords.map(([record]) => record.model_version_id).join(', ')}`);
+console.log(`Formal evidence contract passed for ${catalog.records.length} active formal model(s): ${catalog.records.map((record) => record.model_version_id).join(', ')}`);
