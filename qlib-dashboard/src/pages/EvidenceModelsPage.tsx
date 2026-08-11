@@ -4,6 +4,7 @@ import type { ModelData } from '@/lib/data-parser';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { evidenceAvailabilityLabel } from '@/lib/evidence-availability';
 import {
   modelKindLabel,
   projectFormalEvidence,
@@ -12,7 +13,9 @@ import {
 
 function metric(model: ModelData, aliases: string[], percent = false): { text: string; reason: string } {
   const projected = projectFormalMetric(model, aliases);
-  if (projected.value === null) return { text: 'Unavailable', reason: projected.reason };
+  if (projected.value === null) {
+    return { text: evidenceAvailabilityLabel(projected.availability), reason: projected.reason };
+  }
   return {
     text: percent ? `${(projected.value * 100).toFixed(1)}%` : projected.value.toFixed(2),
     reason: '',
@@ -52,7 +55,7 @@ export function EvidenceModelsPage({ models }: { models: ModelData[] }) {
           return <button key={model.id} type="button" onClick={() => toggle(model.id)} className={`rounded-xl border bg-card p-4 text-left transition-colors ${active ? 'border-primary ring-1 ring-primary/25' : 'hover:border-primary/40'}`}>
             <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-semibold">{model.name || model.tag || model.id}</p><p className="mt-1 font-mono text-[10px] text-muted-foreground">{model.id}</p></div>{active && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}</div>
             <div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div><span className="text-muted-foreground">Sharpe</span><p className="mt-0.5 font-mono font-semibold" title={sharpe.reason}>{sharpe.text}</p></div><div><span className="text-muted-foreground">Ann. return</span><p className="mt-0.5 font-mono font-semibold" title={annualized.reason}>{annualized.text}</p></div></div>
-            <div className="mt-3 flex flex-wrap gap-1.5"><Badge variant="outline" className="text-[9px] uppercase">{model.market || 'unknown'}</Badge><Badge variant="secondary" className="text-[9px]">{modelKindLabel(projection.modelKind)}</Badge></div>
+            <div className="mt-3 flex flex-wrap gap-1.5"><Badge variant="outline" className="text-[9px] uppercase">{model.market ?? 'unknown'}</Badge><Badge variant="secondary" className="text-[9px]">{modelKindLabel(projection.modelKind)}</Badge></div>
           </button>;
         })}
       </section>
@@ -76,7 +79,7 @@ export function EvidenceModelsPage({ models }: { models: ModelData[] }) {
           })}</TableRow>)}
           <TableRow><TableCell className="font-medium">Declared costs</TableCell>{selected.map((model) => {
             const projection = projectFormalEvidence(model);
-            return <TableCell key={model.id} className="font-mono" title={projection.costAvailability}>{projection.costBps === null ? 'Unavailable' : `${projection.costBps} bps`}</TableCell>;
+            return <TableCell key={model.id} className="font-mono" title={projection.costAvailability}>{projection.costBps === null ? 'Not declared' : `${projection.costBps} bps`}</TableCell>;
           })}</TableRow>
         </TableBody></Table></div></CardContent>
       </Card>
@@ -84,7 +87,7 @@ export function EvidenceModelsPage({ models }: { models: ModelData[] }) {
       <Card className="research-surface overflow-hidden">
         <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><BarChart3 className="h-4 w-4 text-primary" /> Formal transaction evidence · {focus?.name || focus?.id}</CardTitle><p className="text-xs text-muted-foreground">This view reads the same retained formal transaction ledger used by Backtests. It does not infer trades from positions.</p></CardHeader>
         <CardContent className="p-0">
-          {ledger.length === 0 ? <div className="border-t p-6 text-sm text-muted-foreground">{focusProjection?.tradeAvailability || 'Formal transaction evidence is unavailable.'}</div> : <div className="max-h-[420px] overflow-auto"><Table><TableHeader className="sticky top-0 bg-card"><TableRow><TableHead>Date</TableHead><TableHead>Instrument</TableHead><TableHead>Action</TableHead><TableHead>Target</TableHead><TableHead>Reason / window</TableHead></TableRow></TableHeader><TableBody>{ledger.map((row, index) => <TableRow key={`${row.instrument}-${row.date}-${index}`}><TableCell className="font-mono text-xs">{row.date}</TableCell><TableCell>{row.instrument}</TableCell><TableCell>{row.action}</TableCell><TableCell className="font-mono">{typeof row.target_weight === 'number' ? `${(row.target_weight * 100).toFixed(1)}%` : 'Unavailable'}</TableCell><TableCell className="max-w-[280px] truncate text-xs text-muted-foreground" title={String(row.reason ?? row.window ?? '')}>{String(row.reason ?? row.window ?? '—')}</TableCell></TableRow>)}</TableBody></Table></div>}
+          {ledger.length === 0 ? <div className="border-t p-6 text-sm text-muted-foreground">{focusProjection?.tradeAvailability ?? 'No formal transaction evidence is declared.'}</div> : <div className="max-h-[420px] overflow-auto"><Table><TableHeader className="sticky top-0 bg-card"><TableRow><TableHead>Date</TableHead><TableHead>Instrument</TableHead><TableHead>Action</TableHead><TableHead>Target</TableHead><TableHead>Reason / window</TableHead></TableRow></TableHeader><TableBody>{ledger.map((row, index) => <TableRow key={`${row.instrument}-${row.date}-${index}`}><TableCell className="font-mono text-xs">{row.date}</TableCell><TableCell>{row.instrument}</TableCell><TableCell>{row.action}</TableCell><TableCell className="font-mono">{typeof row.target_weight === 'number' ? `${(row.target_weight * 100).toFixed(1)}%` : '—'}</TableCell><TableCell className="max-w-[280px] truncate text-xs text-muted-foreground" title={String(row.reason ?? row.window ?? '')}>{String(row.reason ?? row.window ?? '—')}</TableCell></TableRow>)}</TableBody></Table></div>}
         </CardContent>
       </Card>
     </div>
