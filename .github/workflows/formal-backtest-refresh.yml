@@ -646,10 +646,23 @@ jobs:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
           US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
           CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
+          REFRESH_REQUIRED: ${{ steps.plan.outputs.refresh_required }}
         run: |
           set -euo pipefail
           git config user.name "AlphaEngine Formal Refresh Agent"
           git config user.email "formal-refresh-agent@alphaengine.local"
+          git fetch origin main
+          if [[ "$REFRESH_REQUIRED" != "true" ]]; then
+            candidate_bundle_id="$(python -c 'import json; print(json.load(open("data/research/model_data_bundle_v1/model-data-bundle.json", encoding="utf-8"))["bundle_id"])')"
+            main_bundle_id="$(git show origin/main:data/research/model_data_bundle_v1/model-data-bundle.json 2>/dev/null \
+              | python -c 'import json, sys; print(json.load(sys.stdin)["bundle_id"])' \
+              || true)"
+            if [[ -n "$main_bundle_id" && "$candidate_bundle_id" == "$main_bundle_id" ]]; then
+              echo "Latest main already contains governed Model Data Bundle ${candidate_bundle_id}; no review PR is required."
+              echo "pr_number=" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
           git checkout -B "$REFRESH_BRANCH"
           git add \
             data/research/formal_backtests \
@@ -672,7 +685,6 @@ jobs:
           # A provider rebuild can outlive unrelated merges to main. Fold the
           # latest base into the candidate before validation so a clean update
           # is validated at its exact SHA instead of failing only at release.
-          git fetch origin main
           if ! git merge --no-edit origin/main; then
             git merge --abort || true
             echo "Reviewed refresh overlaps newer main changes; rerun from the latest main." >&2
