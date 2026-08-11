@@ -4,7 +4,8 @@ import { AlertTriangle, Check, Crown, GitCompareArrows, LineChart as LineChartIc
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import type { ModelData } from '@/lib/data-parser';
-import { projectFormalEvidence, projectFormalMetric } from '@/lib/formal-evidence';
+import { evidenceAvailabilityLabel } from '@/lib/evidence-availability';
+import { projectFormalEvidence, projectFormalMetric, type FormalMetricProjection } from '@/lib/formal-evidence';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,9 +28,9 @@ const METRICS: Array<{ aliases: string[]; label: string; format: 'pct' | 'number
 
 type EquityReportRow = { date?: unknown; account?: unknown };
 
-function formatMetric(value: number | null, format: 'pct' | 'number'): string {
-  if (value === null) return 'Unavailable';
-  return format === 'pct' ? `${(value * 100).toFixed(2)}%` : value.toFixed(3);
+function formatMetric(row: FormalMetricProjection, format: 'pct' | 'number'): string {
+  if (row.value === null) return evidenceAvailabilityLabel(row.availability);
+  return format === 'pct' ? `${(row.value * 100).toFixed(2)}%` : row.value.toFixed(3);
 }
 
 function buildEquitySeries(models: ModelData[]) {
@@ -51,16 +52,16 @@ function buildEquitySeries(models: ModelData[]) {
 }
 
 function contractValue(model: ModelData, key: 'benchmark' | 'start' | 'end'): string {
-  return String(model.backtest?.meta?.[key] || 'not declared');
+  return String(model.backtest?.meta?.[key] ?? 'Not declared');
 }
 
 function compareIdentity(models: ModelData[]) {
   const identityRows = [
-    { label: 'Market', values: models.map((model) => model.market || 'not declared') },
+    { label: 'Market', values: models.map((model) => model.market ?? 'Not declared') },
     { label: 'Benchmark', values: models.map((model) => contractValue(model, 'benchmark')) },
     { label: 'Start', values: models.map((model) => contractValue(model, 'start')) },
     { label: 'End', values: models.map((model) => contractValue(model, 'end')) },
-    { label: 'Snapshot', values: models.map((model) => model.snapshot_id || 'not declared') },
+    { label: 'Snapshot', values: models.map((model) => model.snapshot_id ?? 'Not declared') },
     { label: 'Costs', values: models.map((model) => {
       const projection = projectFormalEvidence(model);
       return projection.costBps === null ? projection.costAvailability : `${projection.costBps} bps`;
@@ -91,7 +92,7 @@ export function ComparePage({ models }: { models: ModelData[] }) {
 
   const initialIds = useMemo(() => {
     const params = new URLSearchParams(location.search);
-    const declared = (params.get('models') || '').split(',').filter(Boolean);
+    const declared = (params.get('models') ?? '').split(',').filter(Boolean);
     const valid = declared.filter((id) => accessibleModels.some((model) => model.id === id));
     return valid.length > 0
       ? valid.slice(0, MAX_COMPARE)
@@ -172,7 +173,7 @@ export function ComparePage({ models }: { models: ModelData[] }) {
               >
                 {active && <Check className="h-3.5 w-3.5" />}
                 <span className="truncate">{model.name || model.id}</span>
-                <span className="text-[9px] uppercase opacity-70">{model.market || 'n/a'}</span>
+                <span className="text-[9px] uppercase opacity-70">{model.market ?? 'n/a'}</span>
               </Button>
             );
           })}
@@ -223,7 +224,7 @@ export function ComparePage({ models }: { models: ModelData[] }) {
                         <TableCell><div className="font-medium">{metric.label}</div><div className="text-[10px] text-muted-foreground">{metric.aliases.join(' / ')}</div></TableCell>
                         {projected.map((row, index) => (
                           <TableCell key={`${metric.label}-${selected[index].id}`} className="font-mono" title={row.reason}>
-                            <span className={row.value !== null && best !== null && row.value === best ? 'font-bold text-primary' : ''}>{formatMetric(row.value, metric.format)}</span>
+                            <span className={row.value !== null && best !== null && row.value === best ? 'font-bold text-primary' : ''}>{formatMetric(row, metric.format)}</span>
                           </TableCell>
                         ))}
                       </TableRow>
