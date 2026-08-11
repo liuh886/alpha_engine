@@ -2,8 +2,17 @@ from __future__ import annotations
 
 import pandas as pd
 
+from scripts.run_qqq_v4_3_monitor import _effective_end_date
 from src.research.qqq_v4_3_monitor import latest_next_open_target
 from src.research.qqq_v4_3_signal_alerts import build_v4_3_signal_alert
+
+
+def test_monitor_uses_one_optional_cutoff_for_all_providers() -> None:
+    contract = {"data": {"end_date": "2026-08-08"}}
+
+    assert _effective_end_date("2026-08-11", contract) == "2026-08-11"
+    assert _effective_end_date("", contract) == "2026-08-08"
+    assert _effective_end_date(None, {"data": {"end_date": None}}) is None
 
 
 def test_latest_target_enters_sgov_defense_inside_same_formal_state() -> None:
