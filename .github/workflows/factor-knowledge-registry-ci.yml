@@ -4,16 +4,32 @@ on:
   push:
     branches: [main]
     paths:
+      - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
+      - "configs/factor_knowledge/relationship_map_v1.yaml"
       - "src/research/factor_knowledge_registry.py"
+      - "src/research/factor_history_backfill.py"
+      - "src/research/factor_relationship_map.py"
       - "scripts/migrate_factor_knowledge_registry.py"
+      - "scripts/backfill_factor_history_batch1.py"
+      - "scripts/build_factor_relationship_map.py"
       - "tests/test_factor_knowledge_registry.py"
+      - "tests/test_factor_history_backfill.py"
+      - "tests/test_factor_relationship_map.py"
       - ".github/workflows/factor-knowledge-registry-ci.yml"
   pull_request:
     branches: [main]
     paths:
+      - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
+      - "configs/factor_knowledge/relationship_map_v1.yaml"
       - "src/research/factor_knowledge_registry.py"
+      - "src/research/factor_history_backfill.py"
+      - "src/research/factor_relationship_map.py"
       - "scripts/migrate_factor_knowledge_registry.py"
+      - "scripts/backfill_factor_history_batch1.py"
+      - "scripts/build_factor_relationship_map.py"
       - "tests/test_factor_knowledge_registry.py"
+      - "tests/test_factor_history_backfill.py"
+      - "tests/test_factor_relationship_map.py"
       - ".github/workflows/factor-knowledge-registry-ci.yml"
   workflow_dispatch:
 
@@ -34,16 +50,27 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Ruff focused files
+      - name: Ruff factor knowledge path
         run: >-
           uv run ruff check
           src/research/factor_knowledge_registry.py
+          src/research/factor_history_backfill.py
+          src/research/factor_relationship_map.py
           scripts/migrate_factor_knowledge_registry.py
+          scripts/backfill_factor_history_batch1.py
+          scripts/build_factor_relationship_map.py
           tests/test_factor_knowledge_registry.py
-      - name: Run registry v2 tests
+          tests/test_factor_history_backfill.py
+          tests/test_factor_relationship_map.py
+      - name: Run factor knowledge tests
         run: >-
           uv run pytest
           tests/test_factor_knowledge_registry.py
+          tests/test_factor_history_backfill.py
+          tests/test_factor_relationship_map.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: Migration CLI import check
-        run: uv run python scripts/migrate_factor_knowledge_registry.py --help
+      - name: CLI import checks
+        run: |
+          uv run python scripts/migrate_factor_knowledge_registry.py --help
+          uv run python scripts/backfill_factor_history_batch1.py --help
+          uv run python scripts/build_factor_relationship_map.py --help

@@ -4,15 +4,25 @@ on:
   push:
     branches: [main]
     paths:
+      - "configs/factors/us_low_turnover_multifactor_v1.yaml"
+      - "src/research/low_turnover_multifactor.py"
+      - "src/research/low_turnover_multifactor_pipeline.py"
       - "src/decision_support/us_low_turnover_decision_pipeline.py"
+      - "scripts/build_low_turnover_multifactor.py"
       - "scripts/run_us_low_turnover_decision_pipeline.py"
+      - "tests/test_low_turnover_multifactor.py"
       - "tests/test_us_low_turnover_decision_pipeline.py"
       - ".github/workflows/us-low-turnover-decision-pipeline-ci.yml"
   pull_request:
     branches: [main]
     paths:
+      - "configs/factors/us_low_turnover_multifactor_v1.yaml"
+      - "src/research/low_turnover_multifactor.py"
+      - "src/research/low_turnover_multifactor_pipeline.py"
       - "src/decision_support/us_low_turnover_decision_pipeline.py"
+      - "scripts/build_low_turnover_multifactor.py"
       - "scripts/run_us_low_turnover_decision_pipeline.py"
+      - "tests/test_low_turnover_multifactor.py"
       - "tests/test_us_low_turnover_decision_pipeline.py"
       - ".github/workflows/us-low-turnover-decision-pipeline-ci.yml"
   workflow_dispatch:
@@ -34,16 +44,23 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Ruff focused files
+      - name: Ruff low-turnover path
         run: >-
           uv run ruff check
+          src/research/low_turnover_multifactor.py
+          src/research/low_turnover_multifactor_pipeline.py
           src/decision_support/us_low_turnover_decision_pipeline.py
+          scripts/build_low_turnover_multifactor.py
           scripts/run_us_low_turnover_decision_pipeline.py
+          tests/test_low_turnover_multifactor.py
           tests/test_us_low_turnover_decision_pipeline.py
-      - name: Run end-to-end pipeline tests
+      - name: Run low-turnover tests
         run: >-
           uv run pytest
+          tests/test_low_turnover_multifactor.py
           tests/test_us_low_turnover_decision_pipeline.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: CLI import check
-        run: uv run python scripts/run_us_low_turnover_decision_pipeline.py --help
+      - name: CLI import checks
+        run: |
+          uv run python scripts/build_low_turnover_multifactor.py --help
+          uv run python scripts/run_us_low_turnover_decision_pipeline.py --help
