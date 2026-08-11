@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import shutil
 from collections.abc import Mapping, Sequence
 from numbers import Integral, Real
 from pathlib import Path
@@ -11,6 +12,8 @@ import pandas as pd
 import yaml
 
 from scripts.promote_cn_x1_1_formal import build_package as build_cn_frozen_package
+from scripts.run_cn130_ranking_batch import WINDOWS as CN_WINDOWS
+from scripts.run_cn130_ranking_batch import run as run_cn_ranking_batch
 from scripts.run_cn_x1_1_sector_breadth import load_ledgers
 from src.artifacts.formal_refresh import load_object, sha256
 from src.artifacts.qqq_v4_3_formal import (
@@ -19,6 +22,7 @@ from src.artifacts.qqq_v4_3_formal import (
     build_formal_package as build_qqq_package,
 )
 from src.data.adapters.cnn_fear_greed import fetch_cnn_fear_greed
+from src.data.etf_reference_bundle import build_etf_reference_bundle
 from src.research.cn130_cross_sectional_ranking import forward_returns, load_provider_panel
 from src.research.cn_x1_1_regime_gated import (
     RegimeGateSpec,
@@ -32,6 +36,10 @@ from src.research.v4_33_ma200_ma20_vix_release import run_v4_33_comparison
 CN_MODEL_ID = "cn_x1_1"
 CN_FROZEN_EVIDENCE = Path("data/research/cn_x1_1_regime_gated_candidate_v1")
 CN_WINDOW = "2026H2_PARTIAL"
+CN_REPLAY_LEDGER_NAME = (
+    "2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
+)
+QQQ_REFERENCE_CONTRACT = Path("configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml")
 QQQ_BRIDGE_CONTRACT = Path(
     "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
 )
@@ -270,7 +278,7 @@ def verify_cn_current_allocation_replay(
         rule="two_of_three",
         rebalance_sessions=spec.rebalance_sessions,
         cost_bps=spec.cost_bps,
-        initial_weights=_weights_before(package, "2026-07-01"),
+        initial_weights=_weights_before(package, CN_WINDOWS[CN_WINDOW][0]),
     )
 
     computed_report = _cn_report_rows(periods)
@@ -299,8 +307,9 @@ def verify_cn_current_allocation_replay(
         "benchmark_hit",
     )
     report_expected = _project_fields(accepted_report, report_fields)
+    expected_dates = {row["date"] for row in report_expected}
     report_observed = _project_fields(
-        [row for row in computed_report if row["date"] in {x["date"] for x in report_expected}],
+        [row for row in computed_report if row["date"] in expected_dates],
         report_fields,
     )
     report_comparison = _compare_row_lists(report_expected, report_observed)
@@ -308,12 +317,11 @@ def verify_cn_current_allocation_replay(
         _raise_mismatch("CN x1.1 current allocation report", report_comparison)
 
     computed_positions = _cn_position_rows(periods, holdings)
-    accepted_dates = {row["date"] for row in report_expected}
     accepted_positions = sorted(
         [
             row
             for row in package.get("positions", [])
-            if isinstance(row, Mapping) and str(row.get("date") or "") in accepted_dates
+            if isinstance(row, Mapping) and str(row.get("date") or "") in expected_dates
         ],
         key=lambda row: (str(row.get("date")), str(row.get("instrument"))),
     )
@@ -332,7 +340,7 @@ def verify_cn_current_allocation_replay(
     )
     position_expected = _project_fields(accepted_positions, position_fields)
     position_observed = _project_fields(
-        [row for row in computed_positions if row["date"] in accepted_dates],
+        [row for row in computed_positions if row["date"] in expected_dates],
         position_fields,
     )
     position_comparison = _compare_row_lists(position_expected, position_observed)
@@ -356,7 +364,9 @@ def verify_cn_current_allocation_replay(
             "ledger_sha256": sha256(ledger_file),
             "provider_calendar_start": pd.Timestamp(close.index.min()).date().isoformat(),
             "provider_calendar_end": pd.Timestamp(close.index.max()).date().isoformat(),
-            "continuation_state_source": "accepted_formal_positions_before_2026_07_01",
+            "continuation_state_source": (
+                f"accepted_formal_positions_before_{CN_WINDOWS[CN_WINDOW][0]}"
+            ),
         },
         "research_only": True,
         "trade_ready": False,
@@ -430,6 +440,82 @@ def verify_qqq_professional_replay(
         "coverage_rows": int(len(coverage)),
         "retrospective_diagnostics_present": bool(diagnostics),
         "bundle_manifest_sha256": sha256(Path(bundle_dir).resolve() / "bundle_manifest.json"),
+        "research_only": True,
+        "trade_ready": False,
+        "promotion_authorized": False,
+    }
+
+
+def prepare_and_verify_active_rules_replay(
+    repository_root: str | Path,
+    *,
+    formal_root: str | Path,
+    cn_provider_dir: str | Path,
+    qqq_bundle_dir: str | Path,
+    cn_replay_output_dir: str | Path,
+) -> dict[str, Any]:
+    """Build bounded governed replay inputs and verify accepted QQQ/CN baselines."""
+
+    root = Path(repository_root).resolve()
+    formal = Path(formal_root).resolve()
+    qqq_bundle = Path(qqq_bundle_dir).resolve()
+    cn_output = Path(cn_replay_output_dir).resolve()
+
+    qqq_package = formal / f"{QQQ_MODEL_ID}.json"
+    cn_package = formal / f"{CN_MODEL_ID}.json"
+    if not qqq_package.is_file() or not cn_package.is_file():
+        raise RulesFormalReplayError(
+            "active formal QQQ/CN packages are required before replay planning"
+        )
+
+    qqq_cutoff = str(load_object(qqq_package).get("evidence_cutoff") or "")
+    if not qqq_cutoff:
+        raise RulesFormalReplayError("active QQQ package has no evidence cutoff")
+    if qqq_bundle.exists():
+        shutil.rmtree(qqq_bundle)
+    qqq_manifest = build_etf_reference_bundle(
+        contract_path=(root / QQQ_REFERENCE_CONTRACT).resolve(),
+        output_root=qqq_bundle,
+        end=qqq_cutoff,
+    )
+    if qqq_manifest.get("strategy_data_ready") is not True:
+        raise RulesFormalReplayError("QQQ governed ETF replay bundle is not strategy-ready")
+    if qqq_manifest.get("professional_source_ready") is not True:
+        raise RulesFormalReplayError(
+            "QQQ governed ETF replay bundle is not professionally reconciled"
+        )
+    qqq_replay = verify_qqq_professional_replay(
+        root,
+        package_path=qqq_package,
+        bundle_dir=qqq_bundle,
+    )
+
+    if cn_output.exists():
+        shutil.rmtree(cn_output)
+    run_cn_ranking_batch(
+        root,
+        Path(cn_provider_dir).resolve(),
+        cn_output,
+        CN_WINDOW,
+        "r0r1",
+    )
+    cn_ledger = cn_output / "score_ledgers" / CN_REPLAY_LEDGER_NAME
+    if not cn_ledger.is_file():
+        raise RulesFormalReplayError(f"CN replay ledger is missing: {cn_ledger}")
+    cn_replay = verify_cn_current_allocation_replay(
+        root,
+        package_path=cn_package,
+        provider_dir=cn_provider_dir,
+        ledger_path=cn_ledger,
+    )
+
+    return {
+        "schema_version": "active_rules_replay_v1",
+        "decision": "exact_replay",
+        "models": {
+            QQQ_MODEL_ID: qqq_replay,
+            CN_MODEL_ID: cn_replay,
+        },
         "research_only": True,
         "trade_ready": False,
         "promotion_authorized": False,
