@@ -79,6 +79,7 @@ jobs:
           src/research/formal_baseline_onboarding.py
           src/research/rules_based_allocation_experiment_runner.py
           src/research/rules_formal_replay_gate.py
+          src/research/qqq_authoritative_replay.py
           src/research/cn_x1_1_regime_gated.py
           src/research/byd_v1_3_candidate.py
           src/research/ranker_current_target.py

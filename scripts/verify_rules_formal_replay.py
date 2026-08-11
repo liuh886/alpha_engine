@@ -8,10 +8,10 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
+from src.research.qqq_authoritative_replay import verify_qqq_authoritative_replay
 from src.research.rules_formal_replay_gate import (
     RulesFormalReplayError,
     verify_cn_current_allocation_replay,
-    verify_qqq_professional_replay,
 )
 
 
@@ -41,7 +41,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.model == "qqq":
-            payload = verify_qqq_professional_replay(
+            payload = verify_qqq_authoritative_replay(
                 args.root,
                 package_path=args.package,
                 bundle_dir=args.bundle_dir,

@@ -8,12 +8,16 @@ import pandas as pd
 import pytest
 
 from src.artifacts.formal_refresh import load_object
+from src.research import qqq_authoritative_replay as qqq_replay
 from src.research import rules_formal_replay_gate as replay_gate
 from src.research.cn_x1_1_regime_gated import RegimeGateSpec, run_regime_portfolio
+from src.research.qqq_authoritative_replay import (
+    compare_qqq_authoritative_trace,
+    prepare_and_verify_active_rules_replay,
+)
 from src.research.rules_formal_replay_gate import (
     RulesFormalReplayError,
     assert_exact_formal_prefix,
-    prepare_and_verify_active_rules_replay,
     verify_cn_frozen_prefix,
 )
 
@@ -30,6 +34,58 @@ def _formal_package() -> dict:
             }
         ],
         "trades": [],
+    }
+
+
+def _qqq_package() -> dict:
+    report = {
+        "date": "2026-08-06",
+        "account": 1.2,
+        "bench_qqq": 1.1,
+        "bench_tqqq": 1.4,
+        "bench": 0.01,
+        "turnover": 0.0,
+        "period_return": 0.02,
+        "gross_return": 0.02,
+        "transaction_cost": 0.0,
+        "position_state": 1,
+        "position_label": "balanced",
+        "decision_state": 1,
+        "decision_reason": "hold",
+        "executed_reason": "hold",
+        "drawdown": -0.01,
+        "trace_frequency": "daily_open_to_open",
+        "panic_repair_active": False,
+        "slow_bear_defense_active": False,
+        "weight_QQQI": 0.5,
+        "weight_QQQ": 0.5,
+        "weight_TQQQ": 0.0,
+        "weight_SGOV": 0.0,
+    }
+    position = {
+        "date": "2026-08-06",
+        "instrument": "QQQ",
+        "weight": 0.5,
+        "price": 600.0,
+        "position_state": 1,
+        "position_label": "balanced",
+        "executed_reason": "hold",
+        "panic_repair_active": False,
+        "slow_bear_defense_active": False,
+    }
+    return {
+        "portfolio_contract": {"benchmark": "QQQ", "cost_bps": 10},
+        "report": [report],
+        "positions": [position],
+        "trades": [
+            {
+                "date": "2026-08-06",
+                "instrument": "QQQ",
+                "action": "BUY",
+                "previous_weight": 0.0,
+                "target_weight": 0.5,
+            }
+        ],
     }
 
 
@@ -53,6 +109,29 @@ def test_exact_prefix_rejects_historical_mutation() -> None:
 
     with pytest.raises(RulesFormalReplayError, match="exact replay mismatch"):
         assert_exact_formal_prefix(expected, observed, label="fixture")
+
+
+def test_qqq_authoritative_trace_separates_diagnostics_from_economics() -> None:
+    expected = _qqq_package()
+    observed = copy.deepcopy(expected)
+    observed["report"][0]["bench_tqqq"] = 9.9
+    observed["positions"][0]["price"] = 600.00002
+
+    comparison = compare_qqq_authoritative_trace(expected, observed)
+
+    assert comparison["exact"] is True
+    assert comparison["authority"]["source_identity_bound_separately"] is True
+
+
+def test_qqq_authoritative_trace_rejects_economic_drift() -> None:
+    expected = _qqq_package()
+    observed = copy.deepcopy(expected)
+    observed["report"][0]["period_return"] = 0.021
+
+    comparison = compare_qqq_authoritative_trace(expected, observed)
+
+    assert comparison["exact"] is False
+    assert comparison["sections"]["report"]["first_mismatch"]["field"] == "period_return"
 
 
 def test_cn_regime_portfolio_respects_continuation_weights() -> None:
@@ -147,18 +226,18 @@ def test_active_rules_replay_builds_governed_inputs_before_verification(
         ledger.write_bytes(b"ledger")
 
     monkeypatch.setattr(
-        replay_gate,
+        qqq_replay,
         "build_etf_reference_bundle",
         fake_build_etf_reference_bundle,
     )
-    monkeypatch.setattr(replay_gate, "run_cn_ranking_batch", fake_run_cn)
+    monkeypatch.setattr(qqq_replay, "run_cn_ranking_batch", fake_run_cn)
     monkeypatch.setattr(
-        replay_gate,
-        "verify_qqq_professional_replay",
+        qqq_replay,
+        "verify_qqq_authoritative_replay",
         lambda *args, **kwargs: {"decision": "exact_replay", "model_id": "qqq"},
     )
     monkeypatch.setattr(
-        replay_gate,
+        qqq_replay,
         "verify_cn_current_allocation_replay",
         lambda *args, **kwargs: {"decision": "exact_replay", "model_id": "cn"},
     )

@@ -19,11 +19,13 @@ from src.artifacts.formal_refresh import (
     sha256,
     write_object,
 )
-from src.research.rules_formal_replay_gate import (
+from src.research.qqq_authoritative_replay import (
     prepare_and_verify_active_rules_replay,
+    verify_qqq_authoritative_replay,
+)
+from src.research.rules_formal_replay_gate import (
     verify_cn_current_allocation_replay,
     verify_cn_frozen_prefix,
-    verify_qqq_professional_replay,
 )
 
 RANKER_MTM_MODELS = (
@@ -187,7 +189,7 @@ def _verify_rules_replay_gates(
             raise FormalRefreshError(
                 "QQQ formal candidate changed without the professional governed ETF bundle"
             )
-        receipts[QQQ_MODEL_ID] = verify_qqq_professional_replay(
+        receipts[QQQ_MODEL_ID] = verify_qqq_authoritative_replay(
             repository_root,
             package_path=qqq_candidate,
             bundle_dir=QQQ_BUNDLE_ROOT,
