@@ -75,6 +75,13 @@ def load_experiment_contract(path: str | Path) -> ExperimentContract:
         raise ValueError("evaluation.ranking must not be empty")
 
     snapshot = raw.get("snapshot") or {}
+    provider_id = str(snapshot.get("provider_identity_sha256", ""))
+    cutoff = str(snapshot.get("cutoff", ""))
+    if not provider_id:
+        raise ValueError("snapshot.provider_identity_sha256 is required and must be non-empty")
+    if not cutoff:
+        raise ValueError("snapshot.cutoff is required and must be non-empty")
+
     return ExperimentContract(
         experiment_id=str(raw["experiment_id"]),
         baseline_candidate_id=str(evaluation["baseline_candidate_id"]),
@@ -85,8 +92,8 @@ def load_experiment_contract(path: str | Path) -> ExperimentContract:
         decision=str(evaluation["decision"]),
         thresholds=dict(thresholds),
         ranking=ranking,
-        provider_identity_sha256=str(snapshot.get("provider_identity_sha256", "")),
-        cutoff=str(snapshot.get("cutoff", "")),
+        provider_identity_sha256=provider_id,
+        cutoff=cutoff,
     )
 
 
