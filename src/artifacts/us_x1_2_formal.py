@@ -9,7 +9,10 @@ import shutil
 from pathlib import Path
 from typing import Any, Mapping
 
-from src.artifacts.formal_evidence_standard import validate_formal_evidence_bundle
+from src.artifacts.formal_evidence_standard import (
+    FORMAL_EVIDENCE_CONTRACT_ID,
+    validate_formal_evidence_bundle,
+)
 from src.artifacts.model_run_bundle_v2 import (
     canonical_json_bytes,
     compute_bundle_id,
@@ -88,8 +91,70 @@ def _formal_metrics(value: object) -> list[dict[str, Any]]:
     return metrics
 
 
-def _rewrite_summary(path: Path) -> None:
+def _production_contract(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    performance = _object(run_dir / "performance.json")
+    raw = performance.get("performance_semantics")
+    if not isinstance(raw, Mapping):
+        raise USX12FormalPromotionError("US x1.2 performance semantics are missing")
+    cost = raw.get("cost")
+    if not isinstance(cost, Mapping):
+        raise USX12FormalPromotionError("US x1.2 cost semantics are missing")
+    for key in ("signal_time", "execution_time", "return_measurement", "price_basis"):
+        if not isinstance(raw.get(key), str) or not str(raw[key]).strip():
+            raise USX12FormalPromotionError(f"US x1.2 performance semantic is missing: {key}")
+    for key in ("rate_bps", "turnover_formula", "net_return_formula"):
+        if cost.get(key) is None:
+            raise USX12FormalPromotionError(f"US x1.2 cost semantic is missing: {key}")
+
+    semantics = {
+        "schema_version": PERFORMANCE_SEMANTICS_SCHEMA,
+        "trace_frequency": "non_overlapping_10_session",
+        "session_unit": "provider_session",
+        "signal_time": raw["signal_time"],
+        "execution_time": raw["execution_time"],
+        "return_measurement": raw["return_measurement"],
+        "price_basis": raw["price_basis"],
+        "execution_delay_sessions": 0,
+        "holding_period_sessions": 10,
+        "holding_end_offset_sessions": 10,
+        "performance_date_field": "holding_end_date",
+        "cost": {
+            "rate_bps": cost["rate_bps"],
+            "turnover_formula": cost["turnover_formula"],
+            "row_cost_field": "transaction_cost",
+            "net_return_formula": cost["net_return_formula"],
+            "browser_recomputation_permitted": False,
+        },
+        "source": "governed_us_x1_2_formal_evidence",
+        "research_only": True,
+        "trade_ready": False,
+    }
+
+    portfolio = _object(run_dir / "portfolio.json")
+    source_contract = portfolio.get("portfolio_contract")
+    if not isinstance(source_contract, Mapping):
+        raise USX12FormalPromotionError("US x1.2 portfolio contract is missing")
+    contract = dict(source_contract)
+    contract.update(
+        {
+            "session_unit": "provider_session",
+            "signal_time": raw["signal_time"],
+            "execution_time": raw["execution_time"],
+            "return_measurement": raw["return_measurement"],
+            "price_basis": raw["price_basis"],
+            "holding_sessions": 10,
+            "execution_delay_sessions": 0,
+            "holding_end_offset_sessions": 10,
+            "turnover_formula": cost["turnover_formula"],
+            "net_return_formula": cost["net_return_formula"],
+        }
+    )
+    return semantics, contract
+
+
+def _rewrite_summary(path: Path, source_run_dir: Path) -> None:
     source = _object(path)
+    semantics, portfolio_contract = _production_contract(source_run_dir)
     summary = {
         "schema_version": "2.0.0",
         "model_family_id": MODEL_FAMILY_ID,
@@ -103,44 +168,15 @@ def _rewrite_summary(path: Path) -> None:
         "formal_promotion_authority": PROMOTION_AUTHORITY,
         "trade_readiness_status": "prospective_gate_pending",
         "decision_status": "absent",
-        "evidence_contract": "native_formal_bundle_v2",
+        "evidence_contract": FORMAL_EVIDENCE_CONTRACT_ID,
+        "performance_semantics": semantics,
+        "portfolio_contract": portfolio_contract,
         "metrics": _formal_metrics(source.get("metrics")),
         "evidence_completeness": _formal_completeness(source.get("evidence_completeness")),
         "research_only": True,
         "trade_ready": False,
     }
     path.write_bytes(canonical_json_bytes(summary))
-
-
-def _rewrite_performance(path: Path) -> None:
-    """Normalize the accepted US x1.2 evidence onto the formal semantics schema."""
-
-    source = _object(path)
-    raw = source.get("performance_semantics")
-    if not isinstance(raw, Mapping):
-        raise USX12FormalPromotionError("US x1.2 performance semantics are missing")
-    cost = raw.get("cost")
-    if not isinstance(cost, Mapping):
-        raise USX12FormalPromotionError("US x1.2 cost semantics are missing")
-    source["performance_semantics"] = {
-        **dict(raw),
-        "schema_version": PERFORMANCE_SEMANTICS_SCHEMA,
-        "trace_frequency": "non_overlapping_10_session",
-        "session_unit": "provider_session",
-        "execution_delay_sessions": 0,
-        "holding_period_sessions": 10,
-        "holding_end_offset_sessions": 10,
-        "performance_date_field": "holding_end_date",
-        "cost": {
-            **dict(cost),
-            "row_cost_field": "transaction_cost",
-            "browser_recomputation_permitted": False,
-        },
-        "source": "governed_us_x1_2_formal_evidence",
-        "research_only": True,
-        "trade_ready": False,
-    }
-    path.write_bytes(canonical_json_bytes(source))
 
 
 def _rewrite_risk(path: Path) -> None:
@@ -222,8 +258,7 @@ def promote_preview_bundle(source_run_dir: Path, output_root: Path) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source_run_dir, target)
 
-    _rewrite_summary(target / "summary.json")
-    _rewrite_performance(target / "performance.json")
+    _rewrite_summary(target / "summary.json", source_run_dir)
     _rewrite_risk(target / "risk.json")
     _rewrite_robustness(target / "robustness.json")
     _rewrite_diagnostics(target / "diagnostics.json")
