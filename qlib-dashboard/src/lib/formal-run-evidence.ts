@@ -3,6 +3,8 @@ import { parseCanonicalMetricV2 } from './model-run-bundle-v2';
 import { loadRunSection, type GovernedRunSummary } from './governed-run';
 import type { Position, ReportRow } from './types';
 
+const FORMAL_EVIDENCE_CONTRACT = 'native_formal_bundle_v2';
+
 export interface FormalPerformanceEvidence {
   benchmark: string;
   dateRange: { start: string; end: string };
@@ -58,6 +60,11 @@ function record(value: unknown, label: string): Record<string, unknown> {
   if (value.research_only !== true || value.trade_ready !== false) {
     throw new Error(`${label} does not preserve the research-only boundary.`);
   }
+  return value;
+}
+
+function contractRecord(value: unknown, label: string): Record<string, unknown> {
+  if (!isRecord(value)) throw new Error(`${label} must be a JSON object.`);
   return value;
 }
 
@@ -210,6 +217,19 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
     parsedPositions,
   );
 
+  let productionSemantics: Record<string, unknown>;
+  let productionPortfolioContract: Record<string, unknown>;
+  if (run.channel === 'formal') {
+    if (summary.evidence_contract !== FORMAL_EVIDENCE_CONTRACT) {
+      throw new Error(`${run.modelVersionId} is missing the formal production evidence contract.`);
+    }
+    productionSemantics = record(summary.performance_semantics, 'summary.performance_semantics');
+    productionPortfolioContract = contractRecord(summary.portfolio_contract, 'summary.portfolio_contract');
+  } else {
+    productionSemantics = contractRecord(performance.performance_semantics ?? {}, 'performance.performance_semantics');
+    productionPortfolioContract = contractRecord(portfolio.portfolio_contract ?? {}, 'portfolio.portfolio_contract');
+  }
+
   return {
     run,
     metrics: canonicalMetrics(summary.metrics, 'summary.metrics'),
@@ -217,8 +237,8 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
       benchmark,
       dateRange: { start, end },
       report: parsedReport,
-      traceFrequency: String(performance.trace_frequency ?? run.manifest.comparability_key.trace_frequency),
-      semantics: isRecord(performance.performance_semantics) ? performance.performance_semantics : {},
+      traceFrequency: String(productionSemantics.trace_frequency ?? performance.trace_frequency ?? run.manifest.comparability_key.trace_frequency),
+      semantics: productionSemantics,
     },
     risk: {
       metrics: risk ? canonicalMetrics(risk.metrics, 'risk.metrics') : [],
@@ -229,7 +249,7 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
       interpretationLimit: String(robustness?.interpretation_limit ?? sectionReasons.robustness ?? ''),
     },
     portfolio: {
-      contract: isRecord(portfolio.portfolio_contract) ? portfolio.portfolio_contract : {},
+      contract: productionPortfolioContract,
       positions: parsedPositions,
       signals: Array.isArray(portfolio.signals) ? records(portfolio.signals, 'portfolio.signals') : [],
       latestSignal: isRecord(portfolio.latest_signal) ? portfolio.latest_signal : null,
