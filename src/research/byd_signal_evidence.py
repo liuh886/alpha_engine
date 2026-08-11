@@ -19,10 +19,37 @@ class BYDSignalEvidenceError(ValueError):
     """Raised when a BYD signal cannot be bound to current governed evidence."""
 
 
+LEGACY_PRELAUNCH_SEED_DATE = "2026-08-10"
+
+
 def _mapping(value: object, *, label: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise BYDSignalEvidenceError(f"{label} must be an object")
     return value
+
+
+def observation_has_governed_model_identity(observation: Mapping[str, Any]) -> bool:
+    """Validate the model identity, including the one immutable legacy seed.
+
+    The 2026-08-10 low-vol seed was committed before ``candidate_model_id`` was
+    added to newly generated observations.  It is append-only, so its identity
+    must be proven from the exact schema, launch boundary and target key rather
+    than by rewriting history.  Every other observation still requires the
+    explicit identity field and fails closed when it is missing or incorrect.
+    """
+
+    if "candidate_model_id" in observation:
+        return observation.get("candidate_model_id") == MODEL_ID
+    targets = observation.get("targets")
+    return bool(
+        observation.get("schema_version") == "byd_v1_3_low_vol_prospective_v1"
+        and observation.get("kind") == "v1_3_low_vol_recovery_observation"
+        and observation.get("prelaunch_seed") is True
+        and observation.get("signal_date") == LEGACY_PRELAUNCH_SEED_DATE
+        and observation.get("launch_after") == LEGACY_PRELAUNCH_SEED_DATE
+        and isinstance(targets, Mapping)
+        and MODEL_ID in targets
+    )
 
 
 def close_evidence_is_current(observation: Mapping[str, Any]) -> bool:
@@ -30,7 +57,7 @@ def close_evidence_is_current(observation: Mapping[str, Any]) -> bool:
 
     if observation.get("schema_version") != "byd_v1_3_low_vol_prospective_v1":
         return False
-    if observation.get("candidate_model_id") != MODEL_ID:
+    if not observation_has_governed_model_identity(observation):
         return False
     if not str(observation.get("signal_date") or ""):
         return False

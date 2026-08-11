@@ -13,6 +13,7 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
+from src.research.byd_signal_evidence import observation_has_governed_model_identity
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID
 
 ASSETS = ("BYD", "515180", "CASH")
@@ -35,7 +36,7 @@ def _normalise_weights(raw: Mapping[str, Any] | None) -> dict[str, float]:
 def _candidate_target(observation: Mapping[str, Any]) -> dict[str, float]:
     if observation.get("schema_version") != "byd_v1_3_low_vol_prospective_v1":
         raise ValueError("unsupported BYD v1.3 governed observation schema")
-    if observation.get("candidate_model_id") != MODEL_ID:
+    if not observation_has_governed_model_identity(observation):
         raise ValueError("BYD governed observation has the wrong model identity")
     targets = _mapping(observation.get("targets"), "observation.targets")
     raw = _mapping(targets.get(MODEL_ID), f"observation.targets.{MODEL_ID}")

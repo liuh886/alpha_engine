@@ -51,6 +51,33 @@ def test_formal_close_freshness_uses_final_governed_observation_not_forward_labe
     assert close_evidence_is_current(observation) is True
 
 
+def test_formal_close_freshness_accepts_exact_immutable_legacy_seed() -> None:
+    observation = _observation()
+    observation.pop("candidate_model_id")
+    observation.update(
+        {
+            "kind": "v1_3_low_vol_recovery_observation",
+            "launch_after": "2026-08-10",
+            "prelaunch_seed": True,
+        }
+    )
+    assert close_evidence_is_current(observation) is True
+
+
+def test_formal_close_freshness_rejects_missing_identity_after_legacy_seed() -> None:
+    observation = _observation()
+    observation.pop("candidate_model_id")
+    observation.update(
+        {
+            "kind": "v1_3_low_vol_recovery_observation",
+            "launch_after": "2026-08-10",
+            "prelaunch_seed": False,
+            "signal_date": "2026-08-11",
+        }
+    )
+    assert close_evidence_is_current(observation) is False
+
+
 def test_close_freshness_fails_when_final_source_identity_is_missing() -> None:
     observation = _observation()
     observation["source"] = {}
