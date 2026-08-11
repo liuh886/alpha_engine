@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatCanonicalMetric, formatDeclaredValue } from '@/lib/evidence-availability';
 import { formatEvidenceLabel } from '@/lib/format-evidence-label';
 import {
   loadFormalRunEvidence,
@@ -58,16 +59,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function formatMetric(metric: CanonicalMetricV2 | null): string {
-  if (!metric || metric.availability_status !== 'available' || metric.value === null) return 'Unavailable';
-  if (['total_return', 'annualized_return', 'benchmark_return', 'excess_return', 'annualized_volatility', 'max_drawdown', 'transaction_cost'].includes(metric.metric_id)) {
-    return `${(metric.value * 100).toFixed(2)}%`;
-  }
-  if (metric.unit === 'bps') return `${metric.value.toFixed(1)} bps`;
-  if (metric.unit === 'count') return metric.value.toLocaleString();
-  return metric.value.toFixed(3);
-}
-
 function MetricCard({ metricId, metrics }: { metricId: string; metrics: CanonicalMetricV2[] }) {
   const metric = metricById(metrics, metricId);
   const available = metric?.availability_status === 'available' && metric.value !== null;
@@ -78,12 +69,12 @@ function MetricCard({ metricId, metrics }: { metricId: string; metrics: Canonica
       </CardHeader>
       <CardContent>
         <div className={available ? 'text-xl font-semibold tabular-nums' : 'text-sm font-semibold text-muted-foreground'}>
-          {formatMetric(metric)}
+          {formatCanonicalMetric(metric)}
         </div>
         <p className="mt-1 line-clamp-2 min-h-8 text-[10px] leading-relaxed text-muted-foreground" title={metric?.unavailable_reason || metric?.scope || ''}>
           {available
             ? `Retained source metric${metric?.sample_count ? ` · ${metric.sample_count.toLocaleString()} observations` : ''}`
-            : metric?.unavailable_reason || 'The bundle does not declare this metric.'}
+            : metric?.unavailable_reason || 'The evidence contract does not declare this metric.'}
         </p>
       </CardContent>
     </Card>
@@ -159,8 +150,8 @@ function PerformancePanel({ evidence }: { evidence: FormalRunEvidence }) {
     ['Execution time', semantics.execution_time ?? semantics.execution_model],
     ['Return measurement', semantics.return_measurement ?? semantics.return_basis],
     ['Price basis', semantics.price_basis],
-    ['Holding-end offset', typeof semantics.holding_end_offset_sessions === 'number' ? `${semantics.holding_end_offset_sessions} sessions` : 'not declared'],
-    ['Cost rate', typeof cost.rate_bps === 'number' ? `${cost.rate_bps} bps` : typeof semantics.cost_bps === 'number' ? `${semantics.cost_bps} bps` : 'not declared'],
+    ['Holding-end offset', typeof semantics.holding_end_offset_sessions === 'number' ? `${semantics.holding_end_offset_sessions} sessions` : undefined],
+    ['Cost rate', typeof cost.rate_bps === 'number' ? `${cost.rate_bps} bps` : typeof semantics.cost_bps === 'number' ? `${semantics.cost_bps} bps` : undefined],
     ['Turnover formula', cost.turnover_formula],
     ['Net return', cost.net_return_formula],
   ];
@@ -179,13 +170,13 @@ function PerformancePanel({ evidence }: { evidence: FormalRunEvidence }) {
       <Card>
         <CardHeader className="border-b pb-3">
           <CardTitle className="text-sm">Governed performance methodology</CardTitle>
-          <p className="mt-1 text-xs text-muted-foreground">Read directly from the formal evidence contract; the browser does not supply timing or cost defaults.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Read directly from the evidence contract; the browser does not supply timing or cost defaults.</p>
         </CardHeader>
         <CardContent className="grid gap-x-6 pt-2 sm:grid-cols-2 lg:grid-cols-3">
           {methodologyRows.map(([label, value]) => (
             <div key={String(label)} className="flex items-start justify-between gap-4 border-b py-2 text-xs">
               <span className="text-muted-foreground">{label}</span>
-              <span className="max-w-[60%] break-words text-right font-mono">{String(value || 'not declared')}</span>
+              <span className="max-w-[60%] break-words text-right font-mono">{formatDeclaredValue(value)}</span>
             </div>
           ))}
         </CardContent>
@@ -249,7 +240,7 @@ function PortfolioPanel({ evidence }: { evidence: FormalRunEvidence }) {
               {contractRows.map(([key, value]) => (
                 <div key={key} className="flex items-start justify-between gap-4 py-2 text-xs">
                   <span className="text-muted-foreground">{formatEvidenceLabel(key)}</span>
-                  <span className="max-w-[55%] break-words text-right font-mono">{String(value)}</span>
+                  <span className="max-w-[55%] break-words text-right font-mono">{formatDeclaredValue(value)}</span>
                 </div>
               ))}
             </CardContent>
@@ -280,11 +271,11 @@ function TradesPanel({ evidence }: { evidence: FormalRunEvidence }) {
   const analytics = evidence.tradeAnalytics;
   const analyticsRows: Array<[string, string]> = [
     ['Completed holdings', Number(analytics.episode_count ?? 0).toLocaleString()],
-    ['Win rate', typeof analytics.win_rate === 'number' ? `${(analytics.win_rate * 100).toFixed(1)}%` : 'Unavailable'],
-    ['Alpha hit rate', typeof analytics.alpha_hit_rate === 'number' ? `${(analytics.alpha_hit_rate * 100).toFixed(1)}%` : 'Unavailable'],
-    ['Average winner', typeof analytics.average_winner === 'number' ? `${(analytics.average_winner * 100).toFixed(2)}%` : 'Unavailable'],
-    ['Average loser', typeof analytics.average_loser === 'number' ? `${(analytics.average_loser * 100).toFixed(2)}%` : 'Unavailable'],
-    ['Profit factor', typeof analytics.profit_factor === 'number' ? analytics.profit_factor.toFixed(2) : 'Unavailable'],
+    ['Win rate', typeof analytics.win_rate === 'number' ? `${(analytics.win_rate * 100).toFixed(1)}%` : 'Not computed'],
+    ['Alpha hit rate', typeof analytics.alpha_hit_rate === 'number' ? `${(analytics.alpha_hit_rate * 100).toFixed(1)}%` : 'Not computed'],
+    ['Average winner', typeof analytics.average_winner === 'number' ? `${(analytics.average_winner * 100).toFixed(2)}%` : 'Not computed'],
+    ['Average loser', typeof analytics.average_loser === 'number' ? `${(analytics.average_loser * 100).toFixed(2)}%` : 'Not computed'],
+    ['Profit factor', typeof analytics.profit_factor === 'number' ? analytics.profit_factor.toFixed(2) : 'Not computed'],
   ];
   return (
     <div className="space-y-4">
@@ -330,6 +321,9 @@ function EvidencePanel({ evidence }: { evidence: FormalRunEvidence }) {
   const missing = Array.isArray(evidence.diagnostics.completeness.missing)
     ? evidence.diagnostics.completeness.missing.map(String)
     : [];
+  const notApplicable = Array.isArray(evidence.diagnostics.completeness.not_applicable)
+    ? evidence.diagnostics.completeness.not_applicable.map(String)
+    : [];
   return (
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
@@ -364,10 +358,11 @@ function EvidencePanel({ evidence }: { evidence: FormalRunEvidence }) {
         </Card>
       </div>
       <Card>
-        <CardHeader className="border-b pb-3"><CardTitle className="flex items-center gap-2 text-sm"><ReceiptText className="h-4 w-4 text-primary" />Interpretation and missing evidence</CardTitle></CardHeader>
+        <CardHeader className="border-b pb-3"><CardTitle className="flex items-center gap-2 text-sm"><ReceiptText className="h-4 w-4 text-primary" />Interpretation and evidence boundary</CardTitle></CardHeader>
         <CardContent className="space-y-3 pt-4 text-sm text-muted-foreground">
           {evidence.diagnostics.interpretationNotes.map((note) => <p key={note}>• {note}</p>)}
           {missing.length > 0 && <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3"><strong className="text-foreground">Missing retained evidence:</strong> {missing.map(formatEvidenceLabel).join(', ')}</div>}
+          {notApplicable.length > 0 && <div className="rounded-lg border bg-muted/20 p-3"><strong className="text-foreground">Not applicable:</strong> {notApplicable.map(formatEvidenceLabel).join(', ')}</div>}
         </CardContent>
       </Card>
     </div>
