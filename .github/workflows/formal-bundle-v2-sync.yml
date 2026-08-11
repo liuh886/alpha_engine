@@ -6,12 +6,12 @@ on:
     paths:
       - .github/workflows/formal-bundle-v2-sync.yml
       - scripts/sync_formal_bundle_v2.py
-      - src/artifacts/formal_bundle_v2_projector.py
+      - src/artifacts/formal_bundle_v2_builder.py
       - src/cli/main.py
       - src/governance/active_strategy_catalog.py
       - configs/strategies/registry.json
       - src/artifacts/strategy_operations.py
-      - tests/test_formal_bundle_v2_projector.py
+      - tests/test_formal_bundle_v2_builder.py
       - tests/test_sync_formal_bundle_v2.py
       - tests/test_strategy_operations.py
       - tests/test_active_strategy_catalog.py
@@ -57,7 +57,7 @@ jobs:
           uv sync --frozen --extra dev
           cd qlib-dashboard
           npm ci --no-audit --no-fund
-      - name: Project accepted formal sources into Bundle v2 twice
+      - name: Build active formal Bundle v2 twice
         run: |
           set -euo pipefail
           rm -rf artifacts/bundle-a artifacts/bundle-b
@@ -74,7 +74,7 @@ jobs:
           rm -rf data/research/formal_model_runs
           cp -a artifacts/bundle-a data/research/formal_model_runs
           rm -f data/research/formal_model_runs/formal-bundle-v2-sync-receipt.json
-      - name: Rebuild generated Strategy Operations against projected identities
+      - name: Rebuild generated Strategy Operations against active identities
         run: |
           set -euo pipefail
           generated_at="$(python - <<'PY'
@@ -98,21 +98,21 @@ jobs:
           cd qlib-dashboard
           npm run sync:formal-model-runs
           npm run sync:strategy-operations
-      - name: Validate projected Python publication contracts
+      - name: Validate Python publication contracts
         run: |
           set -euo pipefail
           uv run ruff check \
-            src/artifacts/formal_bundle_v2_projector.py \
+            src/artifacts/formal_bundle_v2_builder.py \
             scripts/sync_formal_bundle_v2.py \
             src/cli/main.py \
             src/governance/active_strategy_catalog.py \
             src/artifacts/strategy_operations.py \
-            tests/test_formal_bundle_v2_projector.py \
+            tests/test_formal_bundle_v2_builder.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
             tests/test_active_strategy_catalog.py
           uv run pytest \
-            tests/test_formal_bundle_v2_projector.py \
+            tests/test_formal_bundle_v2_builder.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
             tests/test_active_strategy_catalog.py \
