@@ -20,6 +20,12 @@ from src.data.data_recipe import (
     prepare_data_recipe,
     run_research_recipe,
 )
+from src.research.formal_model_replay import (
+    BYD_REPLAY_ID,
+    QQQ_REPLAY_ID,
+    FormalModelReplayError,
+    replay_formal_models,
+)
 
 
 def _render(payload: dict[str, Any]) -> None:
@@ -88,6 +94,24 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--refresh", action="store_true")
     run.add_argument("--source-etf-bundle", type=Path, default=None)
 
+    replay = research_commands.add_parser(
+        "replay",
+        help="Exactly reproduce an accepted rules-based formal baseline locally.",
+    )
+    replay.add_argument(
+        "model",
+        choices=[QQQ_REPLAY_ID, BYD_REPLAY_ID, "all"],
+        help="Accepted formal baseline to replay.",
+    )
+    replay.add_argument(
+        "--refresh-data",
+        action="store_true",
+        help=(
+            "Rebuild the governed QQQ exact-cutoff data recipe instead of reusing "
+            "a verified local cache."
+        ),
+    )
+
     import_run = research_commands.add_parser(
         "import-run",
         help="Validate a local training/backtest run and copy it into data/research/runs.",
@@ -121,6 +145,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     root = args.root.resolve()
+    exit_code = 0
 
     try:
         if args.group == "data" and args.data_command == "list":
@@ -148,6 +173,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 refresh=args.refresh,
                 source_etf_bundle=args.source_etf_bundle,
             )
+        elif args.group == "research" and args.research_command == "replay":
+            payload = replay_formal_models(
+                args.model,
+                root=root,
+                refresh_data=args.refresh_data,
+            )
+            if payload.get("decision") != "exact_replay":
+                exit_code = 2
         elif args.group == "research" and args.research_command == "import-run":
             payload = import_local_run(
                 args.source,
@@ -165,6 +198,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 2
     except (
         DataRecipeError,
+        FormalModelReplayError,
         RepositoryRunStoreError,
         RepositoryMetadataCacheError,
     ) as exc:
@@ -179,7 +213,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     _render(payload)
-    return 0
+    return exit_code
 
 
 if __name__ == "__main__":

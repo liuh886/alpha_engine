@@ -93,3 +93,21 @@ Every durable run binds:
 7. `alpha research rebuild-index` reconstructs local SQLite indexes from the same Git data.
 
 Deleting `artifacts/` must not delete accepted research history.
+
+## Local formal replay contract
+
+An accepted model must not depend on GitHub Actions YAML as the only description of how its economic path is produced. CI may supply credentials or caches, but the maintained repository code must expose the same replay contract locally.
+
+The current rules-based baselines use:
+
+```bash
+uv run alpha research replay qqq_v4_3
+uv run alpha research replay byd_v1_3
+uv run alpha research replay all
+```
+
+QQQ v4.3 prepares or reuses the existing `qqq-rotation-sgov` governed data recipe at the accepted evidence cutoff and requires the professional ETF source identity. Set `TIINGO_API_TOKEN` before the first exact replay; use `--refresh-data` when an older non-professional cache must be replaced. The runner then executes the maintained v4.3 state/allocation implementation and compares `report`, `positions`, `trades`, and the portfolio contract against the accepted formal package.
+
+BYD v1.3 is offline-replayable from a clean checkout. The runner extracts the committed BYD/515180 canonical bases, extends them through the accepted cutoff from the committed prospective stores, executes the maintained v1.3 low-vol-recovery implementation, and performs the same formal trace comparison.
+
+A material mismatch returns `invalid_evidence`. Missing governed inputs or required provider access returns `data_blocked`. Neither state is repaired by a fallback provider, simplified evaluator, aggregate-return proxy, or compatibility runner.
