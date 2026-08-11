@@ -19,8 +19,6 @@ on:
   workflow_run:
     workflows: ["BYD 515180 Prospective Sleeve"]
     types: [completed]
-  schedule:
-    - cron: "15 12 * * 1-5"
   workflow_dispatch:
 
 permissions:
