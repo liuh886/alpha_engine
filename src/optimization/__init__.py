@@ -32,6 +32,7 @@ from src.optimization.metrics import (
 )
 from src.optimization.receipts import experiment_identity, save_receipt
 from src.optimization.cache import OptimizationDataCache
+from src.optimization.foundation import DataFoundation
 from src.optimization.runner import BaseOptimizationRunner
 from src.optimization.ranker_runner import RankerOptimizer
 from src.optimization.rotator_runner import RotatorOptimizer
@@ -45,7 +46,8 @@ __all__ = [
     "WindowResult", "CandidateResult", "GateResult",
     "aggregate_windows", "check_gates", "compound_returns", "relative_excess",
     # Infrastructure
-    "OptimizationDataCache", "experiment_identity", "save_receipt",
+    "OptimizationDataCache", "DataFoundation",
+    "experiment_identity", "save_receipt",
     # Runners
     "BaseOptimizationRunner", "RankerOptimizer", "RotatorOptimizer", "TimerOptimizer",
 ]
