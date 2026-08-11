@@ -65,7 +65,7 @@ def test_completed_record_validation_does_not_resolve_current_catalog(monkeypatc
 @pytest.mark.parametrize(
     ("model_version_id", "model_kind", "model_family_id", "market", "benchmark"),
     (
-        ("us_x1_1", "cross_sectional_ranker", "us_ranker", "us", "QQQ"),
+        ("us_x1_2", "cross_sectional_ranker", "us_ranker", "us", "QQQ"),
         ("cn_x1_1", "cross_sectional_ranker", "cn_ranker", "cn", "000300"),
         (
             "byd_v1_3_recovery_event_low_vol_confirmation_v1",
@@ -98,10 +98,6 @@ def test_current_formal_catalog_bundle_is_hash_verified(
 
     assert baseline.market == market
     assert baseline.benchmark == benchmark
-    # The formal catalog is refreshed independently of this contract test.  Pinning
-    # a copied cutoff here makes every valid refresh break backend CI even though
-    # ``load_formal_baseline`` already verifies catalog/manifest identity.  Keep
-    # this assertion structural so the test follows the accepted formal bundle.
     assert date.fromisoformat(baseline.evidence_cutoff).isoformat() == baseline.evidence_cutoff
     assert baseline.bundle_id
     assert baseline.manifest_sha256
