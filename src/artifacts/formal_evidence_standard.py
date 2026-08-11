@@ -90,6 +90,35 @@ def _declared_holding_end(value: object) -> bool:
     ) or _declared_text(value)
 
 
+def _validate_contract_envelope(summary: Mapping[str, Any]) -> None:
+    _require(
+        summary.get("evidence_contract") == FORMAL_EVIDENCE_CONTRACT_ID,
+        "formal evidence contract identity is missing",
+    )
+    semantics = summary.get("performance_semantics")
+    _require(isinstance(semantics, Mapping), "formal performance semantics are missing")
+    validate_performance_semantics(semantics)
+    for key in REQUIRED_PERFORMANCE_SEMANTICS:
+        _require(_declared_text(semantics.get(key)), f"performance semantics missing {key}")
+    _require(
+        _declared_holding_end(semantics.get("holding_end_offset_sessions")),
+        "holding-end semantics are not declared",
+    )
+    cost = semantics.get("cost")
+    _require(isinstance(cost, Mapping), "performance cost semantics are missing")
+    _require(
+        isinstance(cost.get("rate_bps"), (int, float)) and not isinstance(cost.get("rate_bps"), bool),
+        "performance cost rate is not declared",
+    )
+    _require(_declared_text(cost.get("turnover_formula")), "turnover formula is not declared")
+    _require(_declared_text(cost.get("net_return_formula")), "net-return formula is not declared")
+
+    portfolio_contract = summary.get("portfolio_contract")
+    _require(isinstance(portfolio_contract, Mapping), "formal portfolio contract is missing")
+    for key in ("signal_time", "execution_time", "price_basis", "turnover_formula"):
+        _require(_declared_text(portfolio_contract.get(key)), f"portfolio contract missing {key}")
+
+
 def validate_formal_evidence_bundle(run_dir: Path) -> None:
     """Validate the production evidence contract for an accepted formal model."""
 
@@ -123,10 +152,7 @@ def validate_formal_evidence_bundle(run_dir: Path) -> None:
         )
 
     summary = _object(run_dir / str(sections["summary"]["path"]))
-    _require(
-        summary.get("evidence_contract") == FORMAL_EVIDENCE_CONTRACT_ID,
-        "formal evidence contract identity is missing",
-    )
+    _validate_contract_envelope(summary)
     metrics = summary.get("metrics")
     _require(isinstance(metrics, list), "formal summary canonical metrics are missing")
     metric_ids: set[str] = set()
@@ -145,24 +171,13 @@ def validate_formal_evidence_bundle(run_dir: Path) -> None:
     not_applicable = completeness.get("not_applicable", [])
     _require(isinstance(not_applicable, list), "not_applicable must be an explicit list")
 
-    performance = _object(run_dir / str(sections["performance"]["path"]))
-    semantics = performance.get("performance_semantics")
-    _require(isinstance(semantics, Mapping), "performance semantics are missing")
-    validate_performance_semantics(semantics)
-    for key in REQUIRED_PERFORMANCE_SEMANTICS:
-        _require(_declared_text(semantics.get(key)), f"performance semantics missing {key}")
+    diagnostics = _object(run_dir / str(sections["diagnostics"]["path"]))
+    diagnostics_completeness = diagnostics.get("evidence_completeness")
+    _require(isinstance(diagnostics_completeness, Mapping), "diagnostics completeness is missing")
     _require(
-        _declared_holding_end(semantics.get("holding_end_offset_sessions")),
-        "holding-end semantics are not declared",
+        diagnostics_completeness.get("status") == "complete",
+        "diagnostics do not confirm complete evidence",
     )
-    cost = semantics.get("cost")
-    _require(isinstance(cost, Mapping), "performance cost semantics are missing")
-    _require(
-        isinstance(cost.get("rate_bps"), (int, float)) and not isinstance(cost.get("rate_bps"), bool),
-        "performance cost rate is not declared",
-    )
-    _require(_declared_text(cost.get("turnover_formula")), "turnover formula is not declared")
-    _require(_declared_text(cost.get("net_return_formula")), "net-return formula is not declared")
 
     for section_id in REQUIRED_AVAILABLE_SECTIONS:
         payload = json.loads((run_dir / str(sections[section_id]["path"])).read_text(encoding="utf-8"))
