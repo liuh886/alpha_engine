@@ -1,4 +1,4 @@
-"""Promote the complete governed US x1.2 Bundle v2 evidence into the formal channel."""
+"""Promote complete governed US x1.2 Bundle v2 evidence into the formal channel."""
 
 from __future__ import annotations
 
@@ -73,26 +73,54 @@ def _formal_completeness(value: object) -> dict[str, Any]:
     return completeness
 
 
+def _formal_metrics(value: object) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or not all(isinstance(row, Mapping) for row in value):
+        raise USX12FormalPromotionError("US x1.2 canonical metrics are invalid")
+    metrics = [copy.deepcopy(dict(row)) for row in value]
+    for metric in metrics:
+        if metric.get("estimator") == "governed_us_x1_2_preview_trace":
+            metric["estimator"] = "governed_us_x1_2_trace"
+        if metric.get("metric_id") == "ic" and metric.get("availability_status") == "not_computed":
+            metric["unavailable_reason"] = (
+                "The governed US x1.2 builder does not compute raw IC; Rank IC is retained."
+            )
+    return metrics
+
+
 def _rewrite_summary(path: Path) -> None:
-    summary = _object(path)
-    summary["baseline_status"] = "accepted_formal_baseline"
-    summary["formal_acceptance_status"] = "accepted_by_explicit_user_direction"
-    summary["formal_promotion_authority"] = PROMOTION_AUTHORITY
-    summary["trade_readiness_status"] = "prospective_gate_pending"
-    summary["decision_status"] = "absent"
-    summary["evidence_contract"] = "native_formal_bundle_v2"
-    summary["evidence_completeness"] = _formal_completeness(
-        summary.get("evidence_completeness")
-    )
+    source = _object(path)
+    summary = {
+        "schema_version": "2.0.0",
+        "model_family_id": MODEL_FAMILY_ID,
+        "model_version_id": MODEL_ID,
+        "run_id": source["run_id"],
+        "display_name": "US x1.2",
+        "market": "us",
+        "benchmark": "QQQ",
+        "baseline_status": "accepted_formal_baseline",
+        "formal_acceptance_status": "accepted_by_explicit_user_direction",
+        "formal_promotion_authority": PROMOTION_AUTHORITY,
+        "trade_readiness_status": "prospective_gate_pending",
+        "decision_status": "absent",
+        "evidence_contract": "native_formal_bundle_v2",
+        "metrics": _formal_metrics(source.get("metrics")),
+        "evidence_completeness": _formal_completeness(source.get("evidence_completeness")),
+        "research_only": True,
+        "trade_ready": False,
+    }
     path.write_bytes(canonical_json_bytes(summary))
 
 
 def _rewrite_risk(path: Path) -> None:
-    risk = _object(path)
-    risk["interpretation_limit"] = (
-        "Accepted formal research evidence. The untouched six-month prospective gate "
-        "remains a trade-readiness requirement and is not claimed as passed."
-    )
+    source = _object(path)
+    risk = {
+        **source,
+        "metrics": _formal_metrics(source.get("metrics")),
+        "interpretation_limit": (
+            "Accepted formal research evidence. The untouched six-month prospective gate "
+            "remains a trade-readiness requirement and is not claimed as passed."
+        ),
+    }
     path.write_bytes(canonical_json_bytes(risk))
 
 
@@ -106,37 +134,47 @@ def _rewrite_robustness(path: Path) -> None:
 
 
 def _rewrite_diagnostics(path: Path) -> None:
-    diagnostics = _object(path)
-    diagnostics["evidence_completeness"] = _formal_completeness(
-        diagnostics.get("evidence_completeness")
-    )
-    diagnostics["interpretation_notes"] = [
-        "US x1.2 is the accepted formal research baseline by explicit user direction dated 2026-08-12.",
-        "The untouched six-month prospective gate remains pending for trade readiness only; trade_ready=false.",
-        "Entry and exit prices are governed adjusted-close model evidence, not brokerage fills.",
-        "Normalized notional uses NAV=1 because no governed portfolio-capital or brokerage quantity contract exists.",
-        "Brokerage quantity and fill price are not applicable under this evidence contract and are never fabricated.",
-    ]
+    source = _object(path)
+    diagnostics = {
+        "schema_version": "2.0.0",
+        "evidence_completeness": _formal_completeness(source.get("evidence_completeness")),
+        "interpretation_notes": [
+            "US x1.2 is the accepted formal research baseline by explicit user direction dated 2026-08-12.",
+            "The untouched six-month prospective gate remains pending for trade readiness only; trade_ready=false.",
+            "Entry and exit prices are governed adjusted-close model evidence, not brokerage fills.",
+            "Normalized notional uses NAV=1 because no governed portfolio-capital or brokerage quantity contract exists.",
+            "Brokerage quantity and fill price are not applicable under this evidence contract and are never fabricated.",
+        ],
+        "research_only": True,
+        "trade_ready": False,
+    }
     path.write_bytes(canonical_json_bytes(diagnostics))
 
 
 def _rewrite_lineage(path: Path, source_manifest: Mapping[str, Any]) -> None:
-    lineage = _object(path)
-    lineage.pop("formal_acceptance_gate_passed", None)
-    lineage.pop("formal_baseline_superseded_for_research", None)
-    lineage.update(
-        {
-            "source_preview_bundle_id": source_manifest["bundle_id"],
-            "formal_promotion_authority": PROMOTION_AUTHORITY,
-            "formal_acceptance_basis": "explicit_user_direction",
-            "formal_baseline_superseded": SUPERSEDED_FORMAL_MODEL,
-            "prospective_gate_scope": "trade_readiness_only",
-            "prospective_gate_status": "pending",
-            "model_selection_reopened": False,
-            "research_only": True,
-            "trade_ready": False,
-        }
-    )
+    source = _object(path)
+    lineage = {
+        "schema_version": "2.0.0",
+        "source_preview_bundle_id": source_manifest["bundle_id"],
+        "source_model_config": source.get("source_model_config"),
+        "source_model_config_sha256": source.get("source_model_config_sha256"),
+        "evidence_builder_source_sha256": source.get("builder_source_sha256"),
+        "universe_config_sha256": source.get("universe_config_sha256"),
+        "classification_config_sha256": source.get("classification_config_sha256"),
+        "provider_identity_sha256": source.get("provider_identity_sha256"),
+        "calibration_identity": source.get("calibration_identity"),
+        "selected_candidate": source.get("selected_candidate"),
+        "certification_workflow_run_id": source.get("certification_workflow_run_id"),
+        "formal_promotion_authority": PROMOTION_AUTHORITY,
+        "formal_acceptance_basis": "explicit_user_direction",
+        "formal_baseline_superseded": SUPERSEDED_FORMAL_MODEL,
+        "prospective_gate_scope": "trade_readiness_only",
+        "prospective_gate_status": "pending",
+        "historical_evidence_recomputed": source.get("historical_evidence_recomputed") is True,
+        "model_selection_reopened": False,
+        "research_only": True,
+        "trade_ready": False,
+    }
     path.write_bytes(canonical_json_bytes(lineage))
 
 
@@ -146,12 +184,7 @@ def promote_preview_bundle(source_run_dir: Path, output_root: Path) -> Path:
     source_run_dir = source_run_dir.resolve()
     output_root = output_root.resolve()
     source_manifest = _verify_source_bundle(source_run_dir)
-    target = (
-        output_root
-        / MODEL_FAMILY_ID
-        / MODEL_ID
-        / str(source_manifest["run_id"])
-    )
+    target = output_root / MODEL_FAMILY_ID / MODEL_ID / str(source_manifest["run_id"])
     if target.exists():
         shutil.rmtree(target)
     target.parent.mkdir(parents=True, exist_ok=True)
