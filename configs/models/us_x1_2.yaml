@@ -76,6 +76,13 @@ strategy:
   fail_closed_if_unfillable: true
   cost_bps: 20
   benchmark_mode: reference_only
+evidence_observation:
+  settled_period: 10_sessions
+  current_unsettled_position: mark_to_evidence_cutoff
+  price_basis: governed_provider_close
+  performance_date_field: holding_end_date
+  summary_metrics_include_provisional_mtm: false
+  fail_closed_if_current_target_missing: true
 certification_evidence:
   development:
     period: 2024H1-2025H2
