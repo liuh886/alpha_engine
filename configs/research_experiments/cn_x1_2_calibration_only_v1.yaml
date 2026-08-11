@@ -1,0 +1,106 @@
+# CN x1.2 calibration-only experiment — governed rerun
+# Uses existing cross_sectional_experiment_runner infrastructure.
+# Layer 2 from the isolated experiment plan: same 14 factors, only change calibration.
+schema_version: '1.0'
+experiment_id: cn_x1_2_calibration_only_v1
+runner: cross_sectional_xgb_ranker_v1
+active: true
+status: pre_registered
+parent_model_id: cn_x1_1
+research_only: true
+trade_ready: false
+
+purpose: >-
+  Test ONE hypothesis: lower learning rate (0.03) with more rounds (300) and
+  row/column sampling improves CN x1.1 signal quality. Factor set, portfolio
+  construction, and universe are all frozen. This is the calibration-only
+  layer from the CN x1.2 isolated experiment plan.
+
+fixed_model:
+  model_id: cn_x1_1
+  frozen_spec: configs/research_paradigms/cn_10d_selected_pool_ranker_retest_v1.yaml
+
+factor_library:
+  source: configs/factor_libraries/ohlcv.yaml
+
+candidates:
+  - candidate_id: baseline_cn_x1_1
+    role: baseline
+    factor_groups:
+      - cn_balanced_ohlcv
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 100
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 1.0
+      colsample_bytree: 1.0
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: cn_x1_2_calibration_only
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 300
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.03
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+windows:
+  candidate_selection:
+    - 2024H1
+    - 2024H2
+    - 2025H1
+    - 2025H2
+  consumed_reporting_only:
+    - 2026H1
+  consumed_reporting_may_enter_selection: false
+  new_holdout_reserved: true
+
+execution:
+  base_cost_bps: 20
+  cost_stress_bps:
+    - 20
+    - 60
+
+evaluation:
+  schema_version: '1.0'
+  baseline_candidate_id: baseline_cn_x1_1
+  stress_cost_bps: 60
+  decision: calibration_only_candidate_supported
+  ranking:
+    - gate_pass_count
+    - worst_drawdown
+    - compounded_relative_excess
+  thresholds:
+    min_window_relative_excess: 0.0
+    min_worst_drawdown: -0.30
+    min_stress_compounded_relative_excess: 0.0
+    max_strongest_positive_window_share: 0.55
+    min_mean_rank_ic_improvement: 0.0
+    require_factor_baseline_dominance: false
+
+stop_rules:
+  - no_feature_search_beyond_declared_groups
+  - no_pool_changes
+  - no_portfolio_construction_changes
+  - no_2026H1_candidate_selection
+  - no_automatic_baseline_update
+
+version_policy:
+  maximum_surviving_candidates: 1
+  may_propose_cn_x1_2_candidate: true
+  may_release_cn_x1_2_automatically: false
+  new_untouched_challenge_required: true
