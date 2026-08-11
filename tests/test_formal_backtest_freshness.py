@@ -158,3 +158,23 @@ def test_rejects_model_selection_reopened(tmp_path: Path) -> None:
     _write(root / "catalog.json", catalog)
     with pytest.raises(FormalBacktestFreshnessError, match="reopened model selection"):
         verify(root)
+
+
+def test_committed_operations_identity_matches_formal_bundle_catalog() -> None:
+    catalog = json.loads(
+        Path("data/research/formal_model_runs/catalog.json").read_text(encoding="utf-8")
+    )
+    operations = json.loads(
+        Path("data/research/strategy_operations/snapshots.json").read_text(encoding="utf-8")
+    )
+    formal_by_id = {row["model_version_id"]: row for row in catalog["records"]}
+    operation_by_id = {
+        row["model_version_id"]: row for row in operations["records"]
+    }
+    assert set(operation_by_id) == set(formal_by_id)
+    for model_id, record in operation_by_id.items():
+        formal = formal_by_id[model_id]
+        identity = record["source_identity"]
+        assert identity["formal_bundle_id"] == formal["bundle_id"]
+        assert identity["formal_run_id"] == formal["run_id"]
+        assert identity["formal_evidence_cutoff"] == formal["evidence_cutoff"]
