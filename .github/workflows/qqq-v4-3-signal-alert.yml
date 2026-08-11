@@ -226,7 +226,7 @@ jobs:
             echo "status=failed" >> "$GITHUB_OUTPUT"
             echo "error_class=telegram_api_rejected" >> "$GITHUB_OUTPUT"
           fi
-      - name: Persist governed decision and rebuild operations read model
+      - name: Persist governed decision and materialize operations evidence
         env:
           SHOULD_ALERT: ${{ steps.alert.outputs.should_alert }}
           ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
@@ -261,16 +261,16 @@ jobs:
             --workflow-run-id "$GITHUB_RUN_ID" \
             --commit-sha "$GITHUB_SHA" \
             --created-at-utc "$created_at"
-          uv run alpha ops build --generated-at "$created_at"
+          uv run alpha ops build \
+            --generated-at "$created_at" \
+            --output artifacts/signals/qqq_rotation_v4_3/strategy-operations.json
           echo "delivery_status=$delivery_status" >> "$GITHUB_ENV"
-      - name: Commit durable decision and operations state
+      - name: Commit durable decision
         run: |
           set -euo pipefail
           git config user.name "AlphaEngine Signal Agent"
           git config user.email "signal-agent@alphaengine.local"
-          git add \
-            data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3 \
-            data/research/strategy_operations/snapshots.json
+          git add data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3
           if git diff --cached --quiet; then
             echo "Decision evaluation is already persisted."
           else
@@ -288,7 +288,6 @@ jobs:
             artifacts/evidence/qqq_rotation_v4_3_current_monitor/current_summary.json
             artifacts/signals/qqq_rotation_v4_3
             data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3
-            data/research/strategy_operations/snapshots.json
           if-no-files-found: warn
           retention-days: 90
       - name: Fail visibly after persisting required Telegram delivery failure
