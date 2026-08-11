@@ -140,3 +140,6 @@ qlib_cache/
 
 # PM2 logs
 logs/
+
+# Handoff documents
+docs/research/HANDOFF_*.md
