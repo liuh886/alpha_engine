@@ -24,6 +24,7 @@ CANDIDATE_MODEL_ID = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
 CHAMPION_MODEL_ID = "byd_v1_2_convex_momentum_budget_v1"
 EVENT_MODEL_ID = "byd_recovery_event_hold20_v1"
 LAUNCH_AFTER = pd.Timestamp("2026-08-10")
+LAST_MANIFEST_BOUND_IDENTITY_DATE = pd.Timestamp("2026-08-11")
 RECOVERY_THRESHOLD = 0.026937
 HOLD_ELIGIBLE_SESSIONS = 20
 ASSETS = ("byd", "etf", "cash")
@@ -62,8 +63,7 @@ def _read_records(directory: Path) -> list[dict[str, Any]]:
     if not directory.exists():
         return []
     return [
-        json.loads(path.read_text(encoding="utf-8"))
-        for path in sorted(directory.glob("*.json"))
+        json.loads(path.read_text(encoding="utf-8")) for path in sorted(directory.glob("*.json"))
     ]
 
 
@@ -144,15 +144,10 @@ def build_lifecycle(source: Iterable[dict[str, Any]]) -> pd.DataFrame:
     return pd.DataFrame(rows).set_index("date").sort_index()
 
 
-def _candidate_target(
-    champion: dict[str, Any], overlay: bool
-) -> dict[str, float]:
+def _candidate_target(champion: dict[str, Any], overlay: bool) -> dict[str, float]:
     if overlay:
         return {"byd_weight": 1.0, "etf_weight": 0.0, "cash_weight": 0.0}
-    return {
-        f"{asset}_weight": float(champion[f"{asset}_weight"])
-        for asset in ASSETS
-    }
+    return {f"{asset}_weight": float(champion[f"{asset}_weight"]) for asset in ASSETS}
 
 
 def build_observations(
@@ -180,9 +175,7 @@ def build_observations(
             champion_target,
             bool(state["overlay_decision_active"]),
         )
-        prospective = bool(source_row.get("prospective_eligible", False)) and (
-            date > LAUNCH_AFTER
-        )
+        prospective = bool(source_row.get("prospective_eligible", False)) and (date > LAUNCH_AFTER)
         record: dict[str, Any] = {
             "schema_version": SCHEMA_VERSION,
             "kind": "v1_3_low_vol_recovery_observation",
@@ -199,9 +192,7 @@ def build_observations(
             },
             "detector": {
                 "threshold": float(source_row["detector"]["threshold"]),
-                "drawdown252_x_rebound60": float(
-                    source_row["detector"]["drawdown252_x_rebound60"]
-                ),
+                "drawdown252_x_rebound60": float(source_row["detector"]["drawdown252_x_rebound60"]),
                 "active": bool(source_row["detector"]["active"]),
                 "event_edge": bool(source_row["detector"]["event_edge"]),
             },
@@ -215,26 +206,16 @@ def build_observations(
                 "hold_eligible_sessions": HOLD_ELIGIBLE_SESSIONS,
                 "started": bool(state["lifecycle_started"]),
                 "id": int(state["lifecycle_id"]),
-                "overlay_decision_active": bool(
-                    state["overlay_decision_active"]
-                ),
-                "remaining_eligible_sessions": int(
-                    state["remaining_eligible_sessions"]
-                ),
-                "termination_on_decision": str(
-                    state["termination_on_decision"]
-                ),
+                "overlay_decision_active": bool(state["overlay_decision_active"]),
+                "remaining_eligible_sessions": int(state["remaining_eligible_sessions"]),
+                "termination_on_decision": str(state["termination_on_decision"]),
             },
             "champion": dict(source_row["champion"]),
             "factors": dict(source_row["factors"]),
             "prices": dict(source_row["prices"]),
             "targets": {
-                CHAMPION_MODEL_ID: {
-                    key: float(value) for key, value in champion_target.items()
-                },
-                EVENT_MODEL_ID: {
-                    key: float(value) for key, value in event_target.items()
-                },
+                CHAMPION_MODEL_ID: {key: float(value) for key, value in champion_target.items()},
+                EVENT_MODEL_ID: {key: float(value) for key, value in event_target.items()},
                 CANDIDATE_MODEL_ID: candidate_target,
             },
             "cost_contract": SCENARIOS,
@@ -252,14 +233,15 @@ def build_observations(
                 else "non_prospective_source_observation"
             ),
         }
-        record["data_version"] = (
-            f"byd-v1-3-low-vol-{signal_date}-{source_row['source_sha256'][:8]}"
-        )
+        if date > LAST_MANIFEST_BOUND_IDENTITY_DATE:
+            record["candidate_model_id"] = CANDIDATE_MODEL_ID
+        record["data_version"] = f"byd-v1-3-low-vol-{signal_date}-{source_row['source_sha256'][:8]}"
         if signal_date in existing:
-            if _json_bytes(existing[signal_date]) != _json_bytes(record):
-                raise RuntimeError(
-                    f"existing low-vol observation drifted: {signal_date}"
-                )
+            comparable = dict(record)
+            if "candidate_model_id" not in existing[signal_date]:
+                comparable.pop("candidate_model_id")
+            if _json_bytes(existing[signal_date]) != _json_bytes(comparable):
+                raise RuntimeError(f"existing low-vol observation drifted: {signal_date}")
             continue
         output.append(record)
     return output
@@ -273,9 +255,7 @@ def _frame(records: Iterable[dict[str, Any]]) -> pd.DataFrame:
             "common_open_eligible": bool(record["common_open_eligible"]),
             "prospective_eligible": bool(record["prospective_eligible"]),
             "lifecycle_started": bool(record["lifecycle"]["started"]),
-            "overlay_decision_active": bool(
-                record["lifecycle"]["overlay_decision_active"]
-            ),
+            "overlay_decision_active": bool(record["lifecycle"]["overlay_decision_active"]),
             "market_state": str(record["factors"]["market_state"]),
             "byd_open": float(record["prices"]["byd_open"]),
             "etf_open": float(record["prices"]["etf_open"]),
@@ -300,17 +280,9 @@ def _execute(frame: pd.DataFrame, strategy: str) -> pd.DataFrame:
         if position > 0 and bool(row["common_open_eligible"]):
             previous = frame.iloc[position - 1]
             current = pd.Series(
-                {
-                    asset: float(previous[f"{strategy}_{asset}_weight"])
-                    for asset in ASSETS
-                }
+                {asset: float(previous[f"{strategy}_{asset}_weight"]) for asset in ASSETS}
             )
-        rows.append(
-            {
-                f"position_{asset}_weight": float(current[asset])
-                for asset in ASSETS
-            }
-        )
+        rows.append({f"position_{asset}_weight": float(current[asset]) for asset in ASSETS})
     return pd.DataFrame(rows, index=frame.index)
 
 
@@ -327,8 +299,7 @@ def strategy_daily(
     byd_return = frame["byd_open"].shift(-1) / frame["byd_open"] - 1.0
     etf_return = frame["etf_open"].shift(-1) / frame["etf_open"] - 1.0
     gross = (
-        executed["position_byd_weight"] * byd_return
-        + executed["position_etf_weight"] * etf_return
+        executed["position_byd_weight"] * byd_return + executed["position_etf_weight"] * etf_return
     )
     turnover = executed.diff().abs().sum(axis=1)
     turnover.iloc[0] = 0.0
@@ -405,9 +376,7 @@ def mature_lifecycle_outcomes(
         scenarios: dict[str, Any] = {}
         for scenario in SCENARIOS:
             blocks = {
-                strategy: daily[scenario][strategy].loc[
-                    episode.start : episode.end
-                ]
+                strategy: daily[scenario][strategy].loc[episode.start : episode.end]
                 for strategy in STRATEGIES
             }
             scenarios[scenario] = {
@@ -485,10 +454,7 @@ def build_scorecard(
         after_launch = daily[CANDIDATE_MODEL_ID].index[
             daily[CANDIDATE_MODEL_ID].index > LAUNCH_AFTER
         ]
-        blocks = {
-            strategy: daily[strategy].loc[after_launch]
-            for strategy in STRATEGIES
-        }
+        blocks = {strategy: daily[strategy].loc[after_launch] for strategy in STRATEGIES}
         scenario_summary[scenario] = {
             "candidate_vs_champion_relative_terminal_wealth": _relative_wealth(
                 blocks[CANDIDATE_MODEL_ID], blocks[CHAMPION_MODEL_ID]
@@ -501,15 +467,9 @@ def build_scorecard(
         if scenario == "primary":
             primary_daily = daily
 
-    completed = [
-        row for row in outcome_rows if row["kind"] == "v1_3_low_vol_lifecycle_outcome"
-    ]
+    completed = [row for row in outcome_rows if row["kind"] == "v1_3_low_vol_lifecycle_outcome"]
     lifecycle_returns = [
-        float(
-            row["scenarios"]["primary"][
-                "candidate_vs_champion_relative_terminal_wealth"
-            ]
-        )
+        float(row["scenarios"]["primary"]["candidate_vs_champion_relative_terminal_wealth"])
         for row in completed
     ]
     event_states = sorted(
@@ -524,11 +484,9 @@ def build_scorecard(
         candidate = primary_daily[CANDIDATE_MODEL_ID]
         champion = primary_daily[CHAMPION_MODEL_ID]
         common = candidate.index.intersection(champion.index)
-        relative = (
-            (1.0 + candidate.loc[common, "net_return"])
-            / (1.0 + champion.loc[common, "net_return"])
-            - 1.0
-        )
+        relative = (1.0 + candidate.loc[common, "net_return"]) / (
+            1.0 + champion.loc[common, "net_return"]
+        ) - 1.0
         relative = relative.loc[relative.index > LAUNCH_AFTER]
         if not relative.empty:
             quarter_values = [
@@ -540,50 +498,42 @@ def build_scorecard(
         "forward_time_12_months": prospective_days >= 365,
         "completed_10_low_vol_lifecycles": len(completed) >= 10,
         "at_least_2_event_market_states": len(event_states) >= 2,
-        "primary_relative_wealth_vs_champion_positive": scenario_summary[
-            "primary"
-        ]["candidate_vs_champion_relative_terminal_wealth"]
+        "primary_relative_wealth_vs_champion_positive": scenario_summary["primary"][
+            "candidate_vs_champion_relative_terminal_wealth"
+        ]
         > 0.0,
-        "primary_relative_wealth_vs_event_nonnegative": scenario_summary[
-            "primary"
-        ]["candidate_vs_event_relative_terminal_wealth"]
+        "primary_relative_wealth_vs_event_nonnegative": scenario_summary["primary"][
+            "candidate_vs_event_relative_terminal_wealth"
+        ]
         >= 0.0,
-        "stress_relative_wealth_vs_champion_nonnegative": scenario_summary[
-            "stress"
-        ]["candidate_vs_champion_relative_terminal_wealth"]
+        "stress_relative_wealth_vs_champion_nonnegative": scenario_summary["stress"][
+            "candidate_vs_champion_relative_terminal_wealth"
+        ]
         >= 0.0,
         "largest_positive_lifecycle_share_le_40pct": (
-            _positive_concentration(lifecycle_returns) <= 0.40
-            and len(completed) > 0
+            _positive_concentration(lifecycle_returns) <= 0.40 and len(completed) > 0
         ),
         "largest_positive_quarter_share_le_60pct": (
-            _positive_concentration(quarter_values) <= 0.60
-            and len(quarter_values) > 0
+            _positive_concentration(quarter_values) <= 0.60 and len(quarter_values) > 0
         ),
     }
     return {
         "schema_version": SCHEMA_VERSION,
         "status": (
-            "prospective_monitoring"
-            if prospective
-            else "awaiting_first_prospective_observation"
+            "prospective_monitoring" if prospective else "awaiting_first_prospective_observation"
         ),
         "launch_after": LAUNCH_AFTER.strftime("%Y-%m-%d"),
         "first_prospective_signal_date": (
             first.strftime("%Y-%m-%d") if first is not None else None
         ),
-        "last_prospective_signal_date": (
-            last.strftime("%Y-%m-%d") if last is not None else None
-        ),
+        "last_prospective_signal_date": (last.strftime("%Y-%m-%d") if last is not None else None),
         "prospective_days": prospective_days,
         "observation_count": len(ordered),
         "prospective_observation_count": len(prospective),
         "completed_low_vol_lifecycle_count": len(completed),
         "event_market_states": event_states,
         "scenarios": scenario_summary,
-        "largest_positive_lifecycle_share": _positive_concentration(
-            lifecycle_returns
-        ),
+        "largest_positive_lifecycle_share": _positive_concentration(lifecycle_returns),
         "largest_positive_quarter_share": _positive_concentration(quarter_values),
         "gates": gates,
         "all_observation_gates_passed": all(gates.values()),
@@ -621,25 +571,17 @@ def persist_store(
                 "observation_sha256": file_sha256(
                     observation_dir / f"{record['signal_date']}.json"
                 ),
-                "source_observation_sha256": record["source"][
-                    "recovery_event_observation_sha256"
-                ],
+                "source_observation_sha256": record["source"]["recovery_event_observation_sha256"],
                 "prelaunch_seed": record["prelaunch_seed"],
                 "prospective_eligible": record["prospective_eligible"],
                 "common_open_eligible": record["common_open_eligible"],
                 "event_edge": record["detector"]["event_edge"],
                 "vol_state": record["entry_confirmation"]["observed_vol_state"],
-                "low_vol_confirmed_edge": record["entry_confirmation"][
-                    "passed_on_edge"
-                ],
+                "low_vol_confirmed_edge": record["entry_confirmation"]["passed_on_edge"],
                 "lifecycle_started": record["lifecycle"]["started"],
                 "lifecycle_id": record["lifecycle"]["id"],
-                "overlay_decision_active": record["lifecycle"][
-                    "overlay_decision_active"
-                ],
-                "remaining_eligible_sessions": record["lifecycle"][
-                    "remaining_eligible_sessions"
-                ],
+                "overlay_decision_active": record["lifecycle"]["overlay_decision_active"],
+                "remaining_eligible_sessions": record["lifecycle"]["remaining_eligible_sessions"],
                 "market_state": record["factors"]["market_state"],
             }
         )
@@ -659,9 +601,7 @@ def persist_store(
     )
 
     observation_hashes = {
-        row["signal_date"]: file_sha256(
-            observation_dir / f"{row['signal_date']}.json"
-        )
+        row["signal_date"]: file_sha256(observation_dir / f"{row['signal_date']}.json")
         for row in observations
     }
     source_hashes = {

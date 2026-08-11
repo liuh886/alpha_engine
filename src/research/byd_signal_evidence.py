@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
+from copy import deepcopy
 from typing import Any
 
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID
@@ -50,6 +51,33 @@ def observation_has_governed_model_identity(observation: Mapping[str, Any]) -> b
         and isinstance(targets, Mapping)
         and MODEL_ID in targets
     )
+
+
+def bind_manifest_observation_identity(
+    observation: Mapping[str, Any],
+    *,
+    observation_sha256: str,
+    manifest: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Prove an immutable observation's identity through its sealed store manifest."""
+
+    if manifest.get("candidate_model_id") != MODEL_ID:
+        raise BYDSignalEvidenceError("BYD source manifest has the wrong model identity")
+    if manifest.get("schema_version") != observation.get("schema_version"):
+        raise BYDSignalEvidenceError("BYD source manifest schema does not match observation")
+    signal_date = str(observation.get("signal_date") or "")
+    hashes = _mapping(
+        manifest.get("observation_sha256"),
+        label="source_manifest.observation_sha256",
+    )
+    if not signal_date or hashes.get(signal_date) != observation_sha256:
+        raise BYDSignalEvidenceError("BYD observation is not sealed by its source manifest")
+    explicit = observation.get("candidate_model_id")
+    if explicit is not None and explicit != MODEL_ID:
+        raise BYDSignalEvidenceError("BYD observation has the wrong explicit model identity")
+    bound = deepcopy(dict(observation))
+    bound["candidate_model_id"] = MODEL_ID
+    return bound
 
 
 def close_evidence_is_current(observation: Mapping[str, Any]) -> bool:

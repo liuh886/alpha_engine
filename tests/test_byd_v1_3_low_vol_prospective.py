@@ -104,17 +104,13 @@ def test_hold_counter_advances_only_on_common_eligible_opens() -> None:
     rows = [_source_row("2026-08-10", prospective=False)]
     rows.append(_source_row("2026-08-11", edge=True, vol_state="low"))
     for offset in range(2, HOLD_ELIGIBLE_SESSIONS + 5):
-        date = (pd.Timestamp("2026-08-10") + pd.Timedelta(days=offset)).strftime(
-            "%Y-%m-%d"
-        )
+        date = (pd.Timestamp("2026-08-10") + pd.Timedelta(days=offset)).strftime("%Y-%m-%d")
         rows.append(_source_row(date, common=offset not in {5, 8}))
     state = build_lifecycle(rows)
     active = state["overlay_decision_active"].astype(bool)
     executed = 0
     for position in range(1, len(state)):
-        if bool(active.iloc[position - 1]) and bool(
-            rows[position]["common_open_eligible"]
-        ):
+        if bool(active.iloc[position - 1]) and bool(rows[position]["common_open_eligible"]):
             executed += 1
     assert executed >= HOLD_ELIGIBLE_SESSIONS
     termination = state["termination_on_decision"].eq("max_hold")
@@ -137,9 +133,25 @@ def test_build_observations_preserves_prelaunch_seed_and_source_hash(
 
     assert len(built) == 1
     row = built[0]
+    assert "candidate_model_id" not in row
     assert row["prelaunch_seed"] is True
     assert row["prospective_eligible"] is False
     assert row["status"] == "prelaunch_seed"
     assert row["entry_confirmation"]["passed_on_edge"] is False
     assert row["targets"][CANDIDATE_MODEL_ID] == row["targets"][CHAMPION_MODEL_ID]
     assert len(row["source"]["recovery_event_observation_sha256"]) == 64
+
+
+def test_new_observations_carry_explicit_candidate_identity(tmp_path: Path) -> None:
+    source_root = tmp_path / "source"
+    observations = source_root / "observations"
+    observations.mkdir(parents=True)
+    row = _source_row("2026-08-12", edge=False, vol_state="high", prospective=True)
+    (observations / "2026-08-12.json").write_text(
+        json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    built = build_observations(source_store=source_root, existing_records=[])
+
+    assert built[0]["candidate_model_id"] == CANDIDATE_MODEL_ID
