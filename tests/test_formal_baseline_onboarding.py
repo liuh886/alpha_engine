@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -97,7 +98,11 @@ def test_current_formal_catalog_bundle_is_hash_verified(
 
     assert baseline.market == market
     assert baseline.benchmark == benchmark
-    assert baseline.evidence_cutoff == "2026-08-07"
+    # The formal catalog is refreshed independently of this contract test.  Pinning
+    # a copied cutoff here makes every valid refresh break backend CI even though
+    # ``load_formal_baseline`` already verifies catalog/manifest identity.  Keep
+    # this assertion structural so the test follows the accepted formal bundle.
+    assert date.fromisoformat(baseline.evidence_cutoff).isoformat() == baseline.evidence_cutoff
     assert baseline.bundle_id
     assert baseline.manifest_sha256
     assert baseline.metrics
