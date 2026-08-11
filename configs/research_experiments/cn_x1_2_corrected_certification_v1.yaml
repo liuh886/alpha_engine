@@ -1,0 +1,136 @@
+schema_version: '1.0'
+experiment_id: cn_x1_2_corrected_certification_v1
+status: preregistered
+created_at: '2026-08-11'
+market: cn
+benchmark: '000300'
+research_only: true
+trade_ready: false
+automatic_promotion_allowed: false
+purpose: >-
+  Re-test the lower-learning-rate CN ranker and the V3 regime/portfolio proposal
+  under one corrected execution contract after invalidating PR #765 Phase C
+  sector selection, transaction-cost, and baseline shortcuts.
+
+provider:
+  universe: configs/research_universes/cn_selected_equities_v3.yaml
+  classification: configs/research_classifications/cn130_sector_industry_v1.yaml
+  start: '2021-01-01'
+  cutoff: '2026-08-10'
+  rebuild_policy: governed_selected_pool_provider
+
+rankers:
+  incumbent_r0:
+    feature_family: current_cn_ohlcv
+    feature_count: 14
+    n_gain_bins: 5
+    num_boost_round: 100
+    max_leaves: 31
+    max_depth: 0
+    min_child_weight: 1.0
+    learning_rate: 0.05
+    subsample: 1.0
+    colsample_bytree: 1.0
+    reg_alpha: 0.0
+    reg_lambda: 1.0
+    seed: 42
+  lower_lr:
+    feature_family: current_cn_ohlcv
+    feature_count: 14
+    n_gain_bins: 5
+    num_boost_round: 300
+    max_leaves: 31
+    max_depth: 0
+    min_child_weight: 1.0
+    learning_rate: 0.03
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 0.0
+    reg_lambda: 1.0
+    seed: 42
+
+portfolio_contracts:
+  incumbent:
+    regime_rule: two_of_three
+    long_ma_sessions: 200
+    momentum_sessions: 60
+    breadth_ma_sessions: 60
+    breadth_threshold: 0.50
+    sectors: 4
+    names_per_sector: 1
+  v3:
+    regime_rule: momentum_and_breadth
+    long_ma_sessions: 200
+    momentum_sessions: 40
+    breadth_ma_sessions: 60
+    breadth_threshold: 0.50
+    sectors: 2
+    names_per_sector: 1
+
+candidates:
+  D_incumbent:
+    ranker: incumbent_r0
+    portfolio: incumbent
+    role: control
+  A_lower_lr_current_regime:
+    ranker: lower_lr
+    portfolio: incumbent
+  B_incumbent_ranker_v3:
+    ranker: incumbent_r0
+    portfolio: v3
+  C_lower_lr_v3:
+    ranker: lower_lr
+    portfolio: v3
+
+execution:
+  label_horizon_sessions: 10
+  execution_delay_sessions: 1
+  holding_sessions: 10
+  rebalance_sessions: 10
+  weighting: equal_weight
+  risk_off_instrument: '000300'
+  costs_bps: [20, 40, 60]
+  transaction_cost_policy: actual_weight_turnover_times_bps
+  sector_selection_policy: canonical_sector_hierarchical_selector
+  empty_selection_policy: fail_closed
+
+windows:
+  reverse_history: [2022H2, 2023H1, 2023H2]
+  consumed_development: [2024H1, 2024H2, 2025H1, 2025H2]
+  reporting_only: [2026H1, 2026H2_PARTIAL]
+  candidate_selection_scope: consumed_development
+  note: >-
+    All candidate definitions are already influenced by prior research. Reverse
+    history and 2026 are therefore validation/reporting evidence, not a claim of
+    a pristine untouched holdout for formal acceptance.
+
+selection:
+  primary_cost_bps: 20
+  pressure_cost_bps: 60
+  hard_gates:
+    development_positive_windows_min: 3
+    reverse_positive_windows_min: 2
+    historical_positive_windows_min: 5
+    historical_max_drawdown_floor: -0.25
+    pressure_relative_excess_positive: true
+    maximum_name_absolute_contribution_share: 0.35
+    maximum_sector_absolute_contribution_share: 0.55
+    reporting_relative_excess_floor: -0.05
+  ranking_order:
+    - historical_relative_excess_desc
+    - historical_max_drawdown_desc
+    - pressure_relative_excess_desc
+  incumbent_reconstruction:
+    formal_relative_excess: 0.5493370449
+    formal_max_drawdown: -0.2444292842
+    absolute_tolerance: 0.03
+  promotion_policy: >-
+    The run may nominate one CN x1.2 research candidate only if the incumbent
+    reconstruction check passes and the candidate clears every hard gate. It
+    must not mark the candidate trade-ready or accepted formal baseline.
+
+invalidated_prior_claims:
+  - PR #765 Phase C sector portfolio may fall back to global Top-K because score values were treated as instrument identifiers.
+  - PR #765 cost stress scaled returns instead of charging cost from actual portfolio turnover.
+  - PR #765 baseline did not execute the full formal CN x1.1 regime/fallback contract.
+  - PR #765 drawdown-improvement sign was interpreted incorrectly for c_lower_lr__sp_s3_n1.
