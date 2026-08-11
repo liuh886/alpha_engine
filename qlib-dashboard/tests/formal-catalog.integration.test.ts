@@ -32,7 +32,7 @@ describe('published formal catalog', () => {
       BYD_V13,
       'cn_x1_1',
       'qqqi_qqq_tqqq_v4_3',
-      'us_x1_1',
+      'us_x1_2',
     ]);
 
     const evidenceByModel = new Map<string, Awaited<ReturnType<typeof loadFormalRunEvidence>>>();
