@@ -223,6 +223,7 @@ def _selected_pool_prices(
             "promotion_eligible": promotion_eligible,
             "promotion_blocker": payload.get("promotion_blocker"),
             "benchmark": payload.get("benchmark"),
+            "provider_identity_sha256": payload.get("provider_identity_sha256"),
         },
     )
 
