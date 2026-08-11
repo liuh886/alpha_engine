@@ -21,6 +21,19 @@ describe('shared performance benchmark discovery', () => {
     expect(options[0].series[1]).toBeCloseTo(0.01, 10);
   });
 
+  it('discovers retained QQQ and TQQQ baselines together', () => {
+    const report = [
+      { date: '2026-01-01', account: 1, bench_qqq: 100, bench_tqqq: 100 },
+      { date: '2026-01-02', account: 1.02, bench_qqq: 101, bench_tqqq: 103 },
+    ];
+
+    const options = discoverBenchmarkOptions(report);
+
+    expect(options.map(option => option.key)).toEqual(['benchmark_qqq', 'benchmark_tqqq']);
+    expect(options.map(option => option.label)).toEqual(['QQQ', 'TQQQ']);
+    expect(options[1].series[1]).toBeCloseTo(0.03, 10);
+  });
+
   it('keeps generic bench evidence secondary to named baselines', () => {
     const report = [
       { date: '2026-01-01', account: 1, bench: 0, bench_qqq: 100 },

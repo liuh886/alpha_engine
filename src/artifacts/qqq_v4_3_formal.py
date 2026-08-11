@@ -88,8 +88,10 @@ def _weights(daily: pd.DataFrame) -> pd.DataFrame:
 def _report(daily: pd.DataFrame) -> list[dict[str, Any]]:
     net = daily["net_return"].astype(float)
     benchmark_return = daily["QQQ_next_open_return"].astype(float)
+    tqqq_benchmark_return = daily["TQQQ_next_open_return"].astype(float)
     account = (1.0 + net).cumprod()
     benchmark = (1.0 + benchmark_return).cumprod()
+    tqqq_benchmark = (1.0 + tqqq_benchmark_return).cumprod()
     peak = account.cummax()
     rows: list[dict[str, Any]] = []
     for date, row in daily.iterrows():
@@ -97,6 +99,7 @@ def _report(daily: pd.DataFrame) -> list[dict[str, Any]]:
             "date": pd.Timestamp(date).date().isoformat(),
             "account": float(account.loc[date]),
             "bench_qqq": float(benchmark.loc[date]),
+            "bench_tqqq": float(tqqq_benchmark.loc[date]),
             "bench": float(benchmark_return.loc[date]),
             "turnover": float(row["turnover_units"]),
             "period_return": float(row["net_return"]),
