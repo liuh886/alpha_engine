@@ -156,9 +156,28 @@ jobs:
             --full-refresh
       - name: Run corrected CN x1.2 certification
         run: |
-          uv run python scripts/certify_cn_x1_2_candidates.py \
-            --provider-dir artifacts/cn-x1-2/provider-cn \
-            --output-dir artifacts/cn-x1-2/certification
+          uv run python - <<'PY'
+          import sys
+          import scripts.certify_cn_x1_2_candidates as certification
+          from src.research.daily_ranker import prepare_ranker_frame as canonical_prepare_ranker_frame
+
+          def prepare_with_explicit_return_contract(features, returns):
+              returns = returns.copy()
+              if returns.shape[1] != 1:
+                  raise ValueError("certification training returns must contain exactly one column")
+              returns.columns = ["raw_forward_return"]
+              return canonical_prepare_ranker_frame(features, returns)
+
+          certification.prepare_ranker_frame = prepare_with_explicit_return_contract
+          sys.argv = [
+              "certify_cn_x1_2_candidates.py",
+              "--provider-dir",
+              "artifacts/cn-x1-2/provider-cn",
+              "--output-dir",
+              "artifacts/cn-x1-2/certification",
+          ]
+          certification.main()
+          PY
       - name: Upload CN x1.2 certification evidence
         uses: actions/upload-artifact@v6
         with:
