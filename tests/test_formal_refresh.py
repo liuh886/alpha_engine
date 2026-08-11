@@ -380,6 +380,14 @@ def test_reviewed_refresh_dispatches_exact_merge_to_pages_before_current_status(
     status_start = workflow.index("      - name: Upsert refresh operating status")
     release = workflow[release_start:status_start]
 
+    assert 'CANDIDATE_SHA: ${{ steps.pull_request.outputs.candidate_sha }}' in release
+    assert "gh workflow run formal-backtest-refresh-ci.yml" in release
+    assert '--ref "$REFRESH_BRANCH"' in release
+    assert '-f "candidate_sha=${CANDIDATE_SHA}"' in release
+    assert 'select(.headSha == \\"${CANDIDATE_SHA}\\"' in release
+    assert 'gh run watch "$validation_run"' in release
+    assert 'test "$validation_conclusion" = "success"' in release
+    assert "gh pr checks" not in release
     assert 'current_main="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main"' in release
     assert 'if [[ "$current_main" != "$merge_sha" ]]' in release
     assert "actions/workflows/deploy-pages.yml/dispatches" in release
@@ -394,6 +402,19 @@ def test_reviewed_refresh_dispatches_exact_merge_to_pages_before_current_status(
     status = workflow[status_start:]
     assert "PAGES_RUN_ID: ${{ steps.release.outputs.pages_run_id }}" in status
     assert "Pages live acceptance: required before current/closed status" in status
+
+
+def test_formal_refresh_contract_can_validate_an_exact_dispatched_candidate() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh-ci.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "workflow_dispatch:" in workflow
+    assert "candidate_sha:" in workflow
+    assert "pr_number:" in workflow
+    assert "ref: ${{ inputs.candidate_sha || github.sha }}" in workflow
+    assert 'test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"' in workflow
+    assert "git diff --name-only origin/main...HEAD" in workflow
 
 
 def test_manual_pages_release_checks_out_and_verifies_target_sha() -> None:

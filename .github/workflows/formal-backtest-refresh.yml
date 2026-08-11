@@ -606,17 +606,56 @@ jobs:
           fi
           test -n "$number"
           echo "pr_number=$number" >> "$GITHUB_OUTPUT"
+          echo "candidate_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Wait for candidate checks, merge reviewed refresh, and verify Pages
         id: release
         if: steps.pull_request.outputs.pr_number != ''
         timeout-minutes: 120
         env:
           PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
+          CANDIDATE_SHA: ${{ steps.pull_request.outputs.candidate_sha }}
         run: |
           set -euo pipefail
           gh pr ready "$PR_NUMBER" --repo "$GITHUB_REPOSITORY"
-          echo "Waiting for all candidate PR checks before merge."
-          gh pr checks "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --watch --fail-fast --interval 10
+          test -n "$CANDIDATE_SHA"
+          before_run_id="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow formal-backtest-refresh-ci.yml \
+            --event workflow_dispatch \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId // 0')"
+          echo "Dispatching candidate contract validation for ${CANDIDATE_SHA}."
+          gh workflow run formal-backtest-refresh-ci.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$REFRESH_BRANCH" \
+            -f "candidate_sha=${CANDIDATE_SHA}" \
+            -f "pr_number=${PR_NUMBER}"
+          validation_run=""
+          for attempt in $(seq 1 30); do
+            validation_run="$(gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow formal-backtest-refresh-ci.yml \
+              --branch "$REFRESH_BRANCH" \
+              --event workflow_dispatch \
+              --limit 20 \
+              --json databaseId,headSha \
+              --jq ".[] | select(.headSha == \"${CANDIDATE_SHA}\" and .databaseId > ${before_run_id}) | .databaseId" \
+              | head -n 1)"
+            if [[ -n "$validation_run" ]]; then
+              break
+            fi
+            sleep 10
+          done
+          if [[ -z "$validation_run" ]]; then
+            echo "Candidate validation run did not appear for ${CANDIDATE_SHA}." >&2
+            exit 1
+          fi
+          echo "Watching candidate validation run ${validation_run}."
+          gh run watch "$validation_run" --repo "$GITHUB_REPOSITORY" --exit-status --interval 10
+          validation_conclusion="$(gh run view "$validation_run" \
+            --repo "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')"
+          test "$validation_conclusion" = "success"
           state="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json state --jq '.state')"
           if [[ "$state" == "CLOSED" ]]; then
             echo "Reviewed refresh PR closed without merge." >&2

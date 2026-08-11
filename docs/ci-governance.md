@@ -55,10 +55,14 @@ removing avoidable work from its critical path:
    manifest, formal packages, factor library and implementation identity match.
    Otherwise it rebuilds; US and CN builds remain isolated and can run together.
 5. The repository must explicitly allow the trusted main/schedule workflow to
-   create its reviewed refresh PR. The workflow still waits for required PR
-   checks before merging. GitHub does not expose this administrator setting to
-   the workflow token, so repository administration owns the setting and the
-   actual draft-PR creation remains the fail-closed enforcement point.
+   create its reviewed refresh PR. The workflow explicitly dispatches the
+   Formal Backtest Refresh contract on the exact candidate SHA and waits for
+   that run before merge. This avoids relying on pull-request events created by
+   `GITHUB_TOKEN`, which GitHub may leave awaiting approval. The workflow waits
+   for the explicitly dispatched candidate validation before merging. GitHub
+   does not expose the pull-request workflow approval setting to the workflow
+   token, so repository administration still owns that setting; the exact-SHA
+   dispatch is the fail-closed enforcement point for the automated publication.
 6. Changes to frontend validation scripts, application source, dependency locks
    and build/type configuration trigger both the PR contract gate and the
    reviewed main refresh.

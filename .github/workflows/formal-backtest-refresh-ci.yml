@@ -1,4 +1,5 @@
 name: Formal Backtest Refresh CI
+run-name: Formal refresh candidate ${{ inputs.candidate_sha || github.sha }}
 
 on:
   pull_request:
@@ -68,12 +69,22 @@ on:
       - "configs/factor_libraries/ohlcv.yaml"
       - "pyproject.toml"
       - "uv.lock"
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact reviewed-refresh candidate commit to validate
+        required: true
+        type: string
+      pr_number:
+        description: Reviewed-refresh PR carrying the candidate
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: formal-refresh-contract-${{ github.event.pull_request.number }}
+  group: formal-refresh-contract-${{ inputs.candidate_sha || github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -83,13 +94,26 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 2
+          ref: ${{ inputs.candidate_sha || github.sha }}
+          fetch-depth: 0
+          show-progress: false
+      - name: Verify candidate identity
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
       - name: Classify formal backend impact
         id: scope
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
-          git diff --name-only HEAD^1 HEAD^2 > changed-files.txt
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            git diff --name-only origin/main...HEAD > changed-files.txt
+          else
+            git diff --name-only HEAD^1 HEAD^2 > changed-files.txt
+          fi
           cat changed-files.txt
           if grep -Ev '^qlib-dashboard/src/' changed-files.txt | grep -q .; then
             echo "backend=true" >> "$GITHUB_OUTPUT"
