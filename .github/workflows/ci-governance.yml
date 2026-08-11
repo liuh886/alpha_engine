@@ -26,6 +26,8 @@ on:
       - '**/bun.lock*'
       - 'pyproject.toml'
       - 'uv.lock'
+  schedule:
+    - cron: '17 3 * * 0'
   workflow_dispatch:
 
 permissions:
@@ -55,3 +57,102 @@ jobs:
           path: artifacts/ci-policy-report.json
           if-no-files-found: error
           retention-days: 14
+
+  branch-gc:
+    name: Branch GC
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - name: Delete terminal and stale agent branches
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const repoFullName = `${owner}/${repo}`;
+            const defaultBranch = context.payload.repository?.default_branch || 'main';
+            const protectedNames = new Set([defaultBranch, 'gh-pages']);
+            const protectedPrefixes = ['archive/', 'backup/'];
+            const staleAgentBefore = Date.now() - 14 * 24 * 60 * 60 * 1000;
+
+            const branches = await github.paginate(github.rest.repos.listBranches, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const openPulls = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const closedPulls = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: 'closed',
+              per_page: 100,
+            });
+
+            const sameRepoHead = (pr) => pr.head?.repo?.full_name === repoFullName;
+            const openHeads = new Set(openPulls.filter(sameRepoHead).map((pr) => pr.head.ref));
+            const closedHeads = new Set(closedPulls.filter(sameRepoHead).map((pr) => pr.head.ref));
+            const deleted = [];
+            const retained = [];
+
+            for (const branch of branches) {
+              const name = branch.name;
+              if (
+                protectedNames.has(name) ||
+                branch.protected ||
+                protectedPrefixes.some((prefix) => name.startsWith(prefix)) ||
+                openHeads.has(name)
+              ) {
+                retained.push(name);
+                continue;
+              }
+
+              let reason = closedHeads.has(name) ? 'closed-pr-head' : null;
+              if (!reason && name.startsWith('agent/')) {
+                const commit = await github.rest.repos.getCommit({
+                  owner,
+                  repo,
+                  ref: branch.commit.sha,
+                });
+                const date = commit.data.commit.committer?.date || commit.data.commit.author?.date;
+                if (date && new Date(date).getTime() < staleAgentBefore) {
+                  reason = 'stale-agent-no-open-pr';
+                }
+              }
+
+              if (!reason) {
+                retained.push(name);
+                continue;
+              }
+
+              try {
+                await github.rest.git.deleteRef({ owner, repo, ref: `heads/${name}` });
+                deleted.push({ name, reason });
+              } catch (error) {
+                if (error.status === 404 || error.status === 422) {
+                  core.warning(`Branch not deleted (${error.status}): ${name}`);
+                  continue;
+                }
+                throw error;
+              }
+            }
+
+            await core.summary
+              .addHeading('Branch GC')
+              .addRaw(`Deleted ${deleted.length} branches; retained ${retained.length}.`)
+              .addEOL()
+              .addTable([
+                [{ data: 'Branch', header: true }, { data: 'Reason', header: true }],
+                ...deleted.slice(0, 200).map((item) => [item.name, item.reason]),
+              ])
+              .write();
