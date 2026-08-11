@@ -16,7 +16,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Mapping
 
-from scripts import migrate_formal_v1_to_bundle_v2 as migration
+from src.artifacts import formal_bundle_v2_projector as projector
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes, validate_catalog
 
 FORMAL_MODEL_ADAPTERS: dict[str, tuple[str, str]] = {
@@ -178,21 +178,23 @@ def sync(source_root: Path, output_root: Path) -> dict[str, Any]:
         if _object(source_root / f"{model_id}.json").get("provisional_mtm") is not None
     ]
 
-    prior_map = dict(migration.MODEL_MAP)
-    prior_build_plan = migration.build_plan
+    prior_map = dict(projector.MODEL_MAP)
+    prior_build_plan = projector.build_plan
     try:
-        migration.MODEL_MAP.clear()
-        migration.MODEL_MAP.update(FORMAL_MODEL_ADAPTERS)
+        projector.MODEL_MAP.clear()
+        projector.MODEL_MAP.update(FORMAL_MODEL_ADAPTERS)
 
         def build_plan_with_mtm(source_path: Path):
             return _with_provisional_mtm(prior_build_plan(source_path), source_path)
 
-        migration.build_plan = build_plan_with_mtm
-        migration_receipt = migration.migrate(source_root, output_root)
+        projector.build_plan = build_plan_with_mtm
+        migration_receipt = projector.project_formal_bundle_v2(
+            source_root, output_root
+        )
     finally:
-        migration.build_plan = prior_build_plan
-        migration.MODEL_MAP.clear()
-        migration.MODEL_MAP.update(prior_map)
+        projector.build_plan = prior_build_plan
+        projector.MODEL_MAP.clear()
+        projector.MODEL_MAP.update(prior_map)
 
     if mtm_models:
         migration_receipt["status"] = "formal_v1_projected_with_current_mtm"

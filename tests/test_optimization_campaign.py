@@ -27,6 +27,16 @@ def _sha256(path: Path) -> str:
 
 def _fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
     root = tmp_path / "repo"
+    for raw in (
+        "src/research/cross_sectional_experiment_runner.py",
+        "src/research/experiment_harness.py",
+        "src/research/xgb_native_calibration.py",
+        "src/research/optimization_campaign.py",
+        "uv.lock",
+    ):
+        runtime_file = root / raw
+        runtime_file.parent.mkdir(parents=True, exist_ok=True)
+        runtime_file.write_text(f"fixture runtime: {raw}\n", encoding="utf-8")
     factor = _write_yaml(root / "configs/factors.yaml", {"library_id": "fixture"})
     frozen = _write_yaml(root / "configs/frozen.yaml", {"model_id": "fixture"})
     base = _write_yaml(
@@ -268,6 +278,48 @@ def test_campaign_rejects_duplicate_computation(tmp_path: Path) -> None:
             campaign.relative_to(root),
             submissions.relative_to(root),
             tmp_path / "output",
+            repository_root=root,
+        )
+
+
+def test_campaign_rejects_candidate_identical_to_frozen_baseline(
+    tmp_path: Path,
+) -> None:
+    root, campaign, submissions, _ = _fixture(tmp_path)
+    payload = yaml.safe_load(submissions.read_text(encoding="utf-8"))
+    payload["candidates"] = [
+        {
+            "candidate_id": "agent_baseline_clone",
+            "factor_groups": ["core"],
+            "xgb_native": {"learning_rate": 0.05},
+        }
+    ]
+    _write_yaml(submissions, payload)
+
+    with pytest.raises(OptimizationCampaignError, match="waste computation"):
+        compile_optimization_campaign(
+            campaign.relative_to(root),
+            submissions.relative_to(root),
+            tmp_path / "output",
+            repository_root=root,
+        )
+
+
+def test_compiled_manifest_detects_optimizer_runtime_drift(tmp_path: Path) -> None:
+    root, campaign, submissions, _ = _fixture(tmp_path)
+    compiled = compile_optimization_campaign(
+        campaign.relative_to(root),
+        submissions.relative_to(root),
+        tmp_path / "output",
+        repository_root=root,
+    )
+    (root / "src/research/cross_sectional_experiment_runner.py").write_text(
+        "changed runtime\n", encoding="utf-8"
+    )
+
+    with pytest.raises(OptimizationCampaignError, match="runtime identity drift"):
+        verify_compiled_optimization_campaign(
+            compiled.manifest_path,
             repository_root=root,
         )
 

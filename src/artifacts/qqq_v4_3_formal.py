@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 
 from src.research.etf_rotation_experiment import StrategyResult, _normalise_bars, _return_metrics
+from src.artifacts.performance_semantics import build_performance_semantics
 
 MODEL_ID = "qqqi_qqq_tqqq_v4_3"
 DISPLAY_NAME = "QQQ Rotation v4.3"
@@ -307,6 +308,9 @@ def build_formal_package(
         },
         "trace_frequency": "daily_open_to_open",
         "portfolio_contract": portfolio_contract(),
+        "performance_semantics": build_performance_semantics(
+            portfolio_contract(), trace_frequency="daily_open_to_open"
+        ),
         "metrics": {
             "Total Return": float(metrics["total_return"]),
             "Benchmark Return": benchmark_total,

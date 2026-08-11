@@ -25,6 +25,13 @@ CAMPAIGN_SCHEMA_VERSION = "1.0"
 RUNNER_ID = "cross_sectional_xgb_ranker_v1"
 _CANDIDATE_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{2,63}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+RUNTIME_FILES = (
+    "src/research/cross_sectional_experiment_runner.py",
+    "src/research/experiment_harness.py",
+    "src/research/xgb_native_calibration.py",
+    "src/research/optimization_campaign.py",
+    "uv.lock",
+)
 
 
 class OptimizationCampaignError(ValueError):
@@ -128,6 +135,15 @@ def _verify_frozen_files(
             f"factor library and frozen model must be immutable_files: {missing}"
         )
     return dict(sorted(verified.items()))
+
+
+def _runtime_identity(root: Path) -> dict[str, str]:
+    """Bind optimizer receipts to the exact runner and dependency implementation."""
+
+    return {
+        raw: _sha256(_resolve_repo_path(root, raw, require_file=True))
+        for raw in RUNTIME_FILES
+    }
 
 
 def _verify_model_data(
@@ -251,7 +267,15 @@ def _materialize_candidates(
 
     result = [copy.deepcopy(matches[baseline_id])]
     trial_ids: dict[str, str] = {}
-    materialized_hashes: set[str] = set()
+    baseline = matches[baseline_id]
+    materialized_hashes = {
+        _canonical_sha256(
+            {
+                "factor_groups": baseline.get("factor_groups"),
+                "xgb_native": baseline.get("xgb_native"),
+            }
+        )
+    }
     seen_ids = {baseline_id}
     for row in rows:
         if not isinstance(row, dict):
@@ -354,6 +378,7 @@ def compile_optimization_campaign(
             "sha256": expected_base_sha,
         },
         "immutable_files": immutable_files,
+        "runtime_files": _runtime_identity(root),
         "model_data_bundle": {
             "root": bundle_root.relative_to(root).as_posix(),
             "bundle_id": readiness["bundle_id"],
@@ -460,6 +485,9 @@ def verify_compiled_optimization_campaign(
         frozen_path = _resolve_repo_path(root, raw_path, require_file=True)
         if _sha256(frozen_path) != expected:
             raise OptimizationCampaignError(f"compiled immutable file drift: {raw_path}")
+    runtime_files = context.get("runtime_files") or {}
+    if runtime_files != _runtime_identity(root):
+        raise OptimizationCampaignError("compiled optimizer runtime identity drift")
     bundle = context.get("model_data_bundle") or {}
     bundle_root = _resolve_repo_path(root, bundle.get("root", ""))
     verify_model_data_bundle(bundle_root)

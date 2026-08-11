@@ -62,6 +62,9 @@ jobs:
           uv run python scripts/check_ci_governance.py --output artifacts/ci-workflow-inventory.json --enforce
           uv run python scripts/check_legacy_web_boundary.py
 
+      - name: Validate active research mission without execution
+        run: uv run python scripts/run_active_research_experiments.py --validate-only
+
       - name: Ruff lint ratcheted production paths
         run: >-
           uv run ruff check
@@ -74,11 +77,15 @@ jobs:
           src/research/rules_based_allocation_experiment_runner.py
           src/research/byd_v1_3_candidate.py
           src/research/ranker_current_target.py
+          src/research/optimization_campaign.py
           src/research/drift_monitor.py
           src/factors/ranker_snapshot.py
           src/artifacts/strategy_operations.py
+          src/artifacts/performance_semantics.py
           scripts/run_research_experiment.py
           scripts/run_active_research_experiments.py
+          scripts/refresh_ranker_formal.py
+          scripts/sync_formal_bundle_v2.py
           scripts/run_ranker_current_target.py
           scripts/diagnose_byd_activity_decay.py
           scripts/screen_byd_successor_states.py
@@ -93,6 +100,9 @@ jobs:
           tests/test_ranker_current_target.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py
+          tests/test_active_research_spec_validation.py
+          tests/test_optimization_campaign.py
+          tests/test_refresh_ranker_formal.py
 
       - name: Mypy type check
         run: uv run mypy src/release src/models/metric_contract.py
@@ -114,6 +124,9 @@ jobs:
           tests/test_ranker_current_target.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py
+          tests/test_active_research_spec_validation.py
+          tests/test_optimization_campaign.py
+          tests/test_refresh_ranker_formal.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Package build

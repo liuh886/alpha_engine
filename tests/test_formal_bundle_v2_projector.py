@@ -4,7 +4,10 @@ import hashlib
 import json
 from pathlib import Path
 
-from scripts.migrate_formal_v1_to_bundle_v2 import MODEL_MAP, migrate
+from src.artifacts.formal_bundle_v2_projector import (
+    MODEL_MAP,
+    project_formal_bundle_v2,
+)
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID as BYD_V13
 
@@ -31,7 +34,7 @@ def _section(root: Path, manifest: dict, section_id: str):
 
 def test_migration_preserves_current_accepted_evidence(tmp_path: Path) -> None:
     output = tmp_path / "formal_model_runs"
-    receipt = migrate(SOURCE, output)
+    receipt = project_formal_bundle_v2(SOURCE, output)
     catalog = _read(output / "catalog.json")
     validate_catalog(catalog)
     assert catalog["channel"] == "formal"
@@ -88,8 +91,8 @@ def test_migration_preserves_current_accepted_evidence(tmp_path: Path) -> None:
 def test_migration_is_deterministic_and_does_not_synthesize_decisions(tmp_path: Path) -> None:
     first = tmp_path / "first"
     second = tmp_path / "second"
-    receipt_a = migrate(SOURCE, first)
-    receipt_b = migrate(SOURCE, second)
+    receipt_a = project_formal_bundle_v2(SOURCE, first)
+    receipt_b = project_formal_bundle_v2(SOURCE, second)
     files_a = sorted(path.relative_to(first) for path in first.rglob("*") if path.is_file())
     files_b = sorted(path.relative_to(second) for path in second.rglob("*") if path.is_file())
     assert files_a == files_b
@@ -105,7 +108,7 @@ def test_migration_is_deterministic_and_does_not_synthesize_decisions(tmp_path: 
 
 def test_byd_v1_3_retained_benchmark_and_excess_metrics_are_projected(tmp_path: Path) -> None:
     output = tmp_path / "formal"
-    migrate(SOURCE, output)
+    project_formal_bundle_v2(SOURCE, output)
     catalog = _read(output / "catalog.json")
     byd = next(row for row in catalog["records"] if row["model_version_id"] == BYD_V13)
     manifest_path = output / byd["manifest_path"]
@@ -118,7 +121,7 @@ def test_byd_v1_3_retained_benchmark_and_excess_metrics_are_projected(tmp_path: 
 
 def test_summary_aliases_without_recomputation(tmp_path: Path) -> None:
     output = tmp_path / "formal"
-    migrate(SOURCE, output)
+    project_formal_bundle_v2(SOURCE, output)
     catalog = _read(output / "catalog.json")
     for record in catalog["records"]:
         manifest_path = output / record["manifest_path"]

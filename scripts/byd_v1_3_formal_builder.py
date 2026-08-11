@@ -14,6 +14,8 @@ from typing import Any, Mapping
 
 import pandas as pd
 
+from src.artifacts.performance_semantics import build_performance_semantics
+
 from scripts.byd_formal_publication_common import (
     BYD_SNAPSHOT_SHA256,
     ETF_ADJUSTED_SHA256,
@@ -432,7 +434,7 @@ def build_package(
     )
     actual_end = pd.Timestamp(candidate.index.max()).strftime("%Y-%m-%d")
 
-    return {
+    package = {
         "schema_version": "1.0.0",
         "record_type": "formal_model_backtest",
         "backtest_id": f"{MODEL_ID}-through-{cutoff.replace('-', '_')}",
@@ -557,3 +559,7 @@ def build_package(
             "BYD v1.2 is retained as the exact predecessor benchmark in this package.",
         ],
     }
+    package["performance_semantics"] = build_performance_semantics(
+        package["portfolio_contract"], trace_frequency=package["trace_frequency"]
+    )
+    return package
