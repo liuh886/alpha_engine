@@ -21,6 +21,7 @@ from src.artifacts.formal_evidence_standard import (
 )
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes, validate_catalog
 from src.artifacts.model_run_exporter import update_catalog
+from src.artifacts.performance_semantics import build_performance_semantics
 from src.artifacts.us_x1_2_formal import (
     MODEL_ID as US_X1_2,
     SUPERSEDED_FORMAL_MODEL as US_X1_1,
@@ -39,6 +40,42 @@ FORMAL_MODEL_ADAPTERS: dict[str, tuple[str, str]] = {
 
 NATIVE_FORMAL_PROMOTIONS: dict[str, str] = {
     US_X1_2: US_X1_1,
+}
+
+# These are exact declarations of semantics already executed by the retained
+# active formal implementations. They enrich immutable v1 source evidence when
+# it is projected into the production Bundle v2 contract; they do not alter
+# returns, holdings, trades, costs, or model selection.
+LEGACY_PRODUCTION_SEMANTICS: dict[str, dict[str, Any]] = {
+    "qqqi_qqq_tqqq_v4_3": {
+        "session_unit": "trading_session",
+        "holding_sessions": 1,
+        "execution_delay_sessions": 1,
+        "holding_end_offset_sessions": 2,
+        "performance_date_field": "date",
+        "price_basis": "canonical_adjusted_open",
+        "turnover_formula": "sum(abs(target_weight - previous_weight)); initial_entry=sum(abs(target_weight))",
+        "net_return_formula": "gross_return - transaction_cost",
+    },
+    "cn_x1_1": {
+        "session_unit": "provider_session",
+        "signal_time": "provider_close_t",
+        "execution_time": "provider_close_t_plus_1",
+        "return_measurement": "provider_close_t_plus_1_to_provider_close_t_plus_11",
+        "price_basis": "governed_provider_close",
+        "turnover_formula": "0.5 * (sum(abs(target_weight - previous_weight)) + abs(target_cash - previous_cash))",
+        "net_return_formula": "gross_return - transaction_cost",
+    },
+    "byd_v1_3_recovery_event_low_vol_confirmation_v1": {
+        "session_unit": "common_market_session",
+        "holding_sessions": 1,
+        "holding_end_offset_sessions": "next_common_eligible_open_execution_then_next_common_session_open",
+        "performance_date_field": "date",
+        "return_measurement": "canonical_adjusted_open_to_next_canonical_adjusted_open",
+        "price_basis": "independently_validated_canonical_adjusted_open",
+        "turnover_formula": "sum(abs(target_weight - previous_weight)) across BYD, 515180.SH, and CASH",
+        "net_return_formula": "gross_return - transaction_cost - financing_cost",
+    },
 }
 
 
@@ -180,6 +217,58 @@ def _with_provisional_mtm(plan, source_path: Path):
     return replace(plan, sections=tuple(sections))
 
 
+def _production_portfolio_contract(source_path: Path) -> dict[str, Any] | None:
+    package = _object(source_path)
+    model_id = str(package.get("model_id") or "")
+    declarations = LEGACY_PRODUCTION_SEMANTICS.get(model_id)
+    if declarations is None:
+        return None
+    source_contract = package.get("portfolio_contract")
+    if not isinstance(source_contract, Mapping):
+        raise FormalBundleV2SyncError(f"formal portfolio contract is missing: {model_id}")
+    contract = dict(source_contract)
+    for key, value in declarations.items():
+        if key in contract and contract[key] != value:
+            raise FormalBundleV2SyncError(
+                f"formal production semantic conflicts with retained source: {model_id}/{key}"
+            )
+        contract[key] = value
+    return contract
+
+
+def _with_production_semantics(plan, source_path: Path):
+    contract = _production_portfolio_contract(source_path)
+    if contract is None:
+        return plan
+    sections = []
+    portfolio_bound = False
+    performance_bound = False
+    for section in plan.sections:
+        if section.section_id == "portfolio":
+            if not isinstance(section.payload, Mapping):
+                raise FormalBundleV2SyncError("formal portfolio section is unavailable")
+            payload = dict(section.payload)
+            payload["portfolio_contract"] = contract
+            sections.append(replace(section, payload=payload))
+            portfolio_bound = True
+            continue
+        if section.section_id == "performance":
+            if not isinstance(section.payload, Mapping):
+                raise FormalBundleV2SyncError("formal performance section is unavailable")
+            payload = dict(section.payload)
+            payload["performance_semantics"] = build_performance_semantics(
+                contract,
+                trace_frequency=payload.get("trace_frequency") or plan.trace_frequency,
+            )
+            sections.append(replace(section, payload=payload))
+            performance_bound = True
+            continue
+        sections.append(section)
+    if not portfolio_bound or not performance_bound:
+        raise FormalBundleV2SyncError("formal production semantics could not be bound")
+    return replace(plan, sections=tuple(sections))
+
+
 def _with_evidence_contract(plan):
     sections = []
     bound = False
@@ -272,6 +361,7 @@ def sync(
 
         def build_plan_with_mtm(source_path: Path):
             plan = _with_provisional_mtm(prior_build_plan(source_path), source_path)
+            plan = _with_production_semantics(plan, source_path)
             return _with_evidence_contract(plan)
 
         projector.build_plan = build_plan_with_mtm
