@@ -82,6 +82,18 @@ candidates:
     ranker: lower_lr
     portfolio: v3
 
+diagnostics:
+  legacy_c_lower_lr_sp_s3_n1_corrected:
+    ranker: lower_lr
+    regime: always_on
+    sectors: 3
+    names_per_sector: 1
+    selection_eligible: false
+    purpose: >-
+      Recompute the exact #766 c_lower_lr__sp_s3_n1 idea with the canonical
+      sector selector and actual turnover costs, solely to measure how much of
+      the previously reported +81.3% survives after fixing Phase C.
+
 execution:
   label_horizon_sessions: 10
   execution_delay_sessions: 1
