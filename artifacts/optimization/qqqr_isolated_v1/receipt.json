@@ -1,0 +1,32 @@
+{
+  "experiment_id": "qqqr_isolated_v1",
+  "generated_at": "2026-08-11T11:43:54.620476+00:00",
+  "status": "cannot_optimize",
+  "reason": "Formal backtest report lacks individual ETF daily returns (QQQ, QQQI, TQQQ, SGOV). Weight overlay approximations are unreliable for gate decisions.",
+  "baseline": {
+    "2024H1": {
+      "exc": -0.03017501557691471,
+      "dd": -0.07604244162270846,
+      "sc": 0.10945470369581778,
+      "bc": 0.14397414122692798
+    },
+    "2024H2": {
+      "exc": -0.1058554452428645,
+      "dd": -0.1690904072090007,
+      "sc": -0.03990752772072759,
+      "bc": 0.07375531973132632
+    },
+    "2025H1": {
+      "exc": 0.14092146656735327,
+      "dd": -0.21658197720414185,
+      "sc": 0.22491866113686365,
+      "bc": 0.07362224047044141
+    },
+    "2025H2": {
+      "exc": 0.01755727063219603,
+      "dd": -0.06733977024240989,
+      "sc": 0.158055699849734,
+      "bc": 0.13807422272187986
+    }
+  }
+}
