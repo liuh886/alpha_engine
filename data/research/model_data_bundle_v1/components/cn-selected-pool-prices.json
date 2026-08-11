@@ -532,7 +532,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-11",
       "rows": 1358,
-      "sha256": "c2d0260d502eb5049e3c55dc6a43ce089372ee95350919567e1e806fbb8fead9",
+      "sha256": "6ba1657ff30c72e28dbb3bf7cf9f96ca3b982fca91f44a67b0c1741d78f4a52c",
       "status": "ready",
       "symbol": "515180"
     },
@@ -2364,7 +2364,7 @@
     "schema_version": "1.2",
     "selection_mode": "credential_aware_fallback"
   },
-  "provider_identity_sha256": "06e0561562fb97ff0ff12d73d2996108198ca914a41e77c8ee576aebd87b1232",
+  "provider_identity_sha256": "15248fcc8ffe83bdc025d23f07b2ab0fa7cca71880583f5c2af1db75ae35c55d",
   "quarantined_symbols": [],
   "records": [
     {
@@ -10852,7 +10852,7 @@
         },
         {
           "circuit_breaker_open": false,
-          "error": "empty data for 515180",
+          "error": "efinance fetch failed for 515180: HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6%2Cf7%2Cf8%2Cf9%2Cf10%2Cf11%2Cf12%2Cf13&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57%2Cf58%2Cf59%2Cf60%2Cf61&beg=20210101&end=20260811&rtntype=6&secid=&klt=101&fqt=1 (Caused by ProtocolError('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')))",
           "first_date": null,
           "independent_group": "eastmoney",
           "last_date": null,
@@ -10920,7 +10920,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-11",
-      "output_sha256": "c2d0260d502eb5049e3c55dc6a43ce089372ee95350919567e1e806fbb8fead9",
+      "output_sha256": "6ba1657ff30c72e28dbb3bf7cf9f96ca3b982fca91f44a67b0c1741d78f4a52c",
       "promotion_status": "formal_auxiliary_governed_yahoo_fallback",
       "provider": "yfinance",
       "provider_contract": {
