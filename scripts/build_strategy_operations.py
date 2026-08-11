@@ -10,6 +10,7 @@ from pathlib import Path
 from src.artifacts.strategy_operations import (
     build_operations_payload,
     validate_operations_payload,
+    write_operations_payload,
 )
 
 
@@ -39,12 +40,8 @@ def main() -> int:
         generated_at=args.generated_at,
     )
     validate_operations_payload(payload)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    print(args.output)
+    changed = write_operations_payload(args.output, payload)
+    print(json.dumps({"path": str(args.output), "changed": changed}, sort_keys=True))
     return 0
 
 
