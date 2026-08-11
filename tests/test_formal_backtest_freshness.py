@@ -79,7 +79,7 @@ def _fixture(
     return root
 
 
-def test_accepts_before_next_session_close(tmp_path: Path) -> None:
+def test_accepts_provider_resolved_cutoff_before_next_session_close(tmp_path: Path) -> None:
     result = verify(
         _fixture(tmp_path),
         as_of="2026-08-03T02:16:00Z",
@@ -91,16 +91,14 @@ def test_accepts_before_next_session_close(tmp_path: Path) -> None:
     assert result["verified_models"][0]["required_cutoff"] == "2026-07-31"
 
 
-def test_rejects_at_next_session_close(tmp_path: Path) -> None:
-    root = _fixture(tmp_path)
-    with pytest.raises(FormalBacktestFreshnessError, match="declared cutoff.*stale"):
-        verify(root, as_of="2026-08-03T20:00:00Z")
-
-
-def test_rejects_after_next_session_close(tmp_path: Path) -> None:
-    root = _fixture(tmp_path)
-    with pytest.raises(FormalBacktestFreshnessError, match="next session closed"):
-        verify(root, as_of="2026-08-04T00:00:00Z")
+def test_accepts_provider_resolved_cutoff_after_market_close(tmp_path: Path) -> None:
+    result = verify(
+        _fixture(tmp_path),
+        as_of="2026-08-04T00:00:00Z",
+    )
+    assert result["status"] == "current"
+    assert result["as_of"] == "2026-08-04T00:00:00+00:00"
+    assert result["verified_models"][0]["required_cutoff"] == "2026-07-31"
 
 
 def test_rejects_naive_as_of_timestamp(tmp_path: Path) -> None:
