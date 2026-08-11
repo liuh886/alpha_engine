@@ -403,6 +403,7 @@ def test_bundle_keeps_embedded_component_paths_portable(tmp_path: Path) -> None:
     )
 
     assert manifest["components"][0]["manifest_path"] == "components/us-prices.json"
+    assert manifest["contract_path"] == CONTRACT.as_posix()
     assert verify_model_data_bundle(output) == [
         "data-components.json",
         "model-data-readiness.json",

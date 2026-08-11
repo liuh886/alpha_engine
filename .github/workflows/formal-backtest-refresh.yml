@@ -98,6 +98,7 @@ env:
   CANDIDATE_FORMAL_ROOT: artifacts/formal-refresh/formal-v1
   CANDIDATE_V2_ROOT: artifacts/formal-refresh/formal-v2
   CANDIDATE_MARKET_EVIDENCE_ROOT: artifacts/formal-refresh/market-evidence
+  CANDIDATE_MODEL_DATA_ROOT: artifacts/formal-refresh/model-data-bundle-v1
   CURRENT_MODEL_DATA_ROOT: data/research/model_data_bundle_v1
   REFRESH_RECEIPT: artifacts/formal-refresh/formal-refresh-receipt.json
   REFRESH_BRANCH: automation/formal-backtest-refresh
@@ -277,7 +278,7 @@ jobs:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
           key: ${{ steps.contract.outputs.cache_key }}-scheduled
       - name: Transfer verified provider to refresh job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: formal-provider-${{ matrix.market }}-${{ github.run_id }}
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
@@ -303,7 +304,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -316,12 +317,12 @@ jobs:
           cd qlib-dashboard
           npm ci
       - name: Download verified US provider
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: formal-provider-us-${{ github.run_id }}
           path: artifacts/formal-refresh/provider-us
       - name: Download verified CN provider
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: formal-provider-cn-${{ github.run_id }}
           path: artifacts/formal-refresh/provider-cn
@@ -518,25 +519,65 @@ jobs:
           cat artifacts/formal-refresh/market-evidence-us.log artifacts/formal-refresh/market-evidence-cn.log
           test "$status" -eq 0
       - name: Build shared Model Data Bundle for training and frontend
-        if: steps.plan.outputs.refresh_required == 'true'
+        id: model_data
         env:
           US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
           CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
         run: |
           set -euo pipefail
           evidence_cutoff="$(printf '%s\n%s\n' "$US_CUTOFF" "$CN_CUTOFF" | sort | tail -1)"
-          rm -rf "$CURRENT_MODEL_DATA_ROOT"
-          mkdir -p "$CURRENT_MODEL_DATA_ROOT/components"
+          rm -rf "$CANDIDATE_MODEL_DATA_ROOT"
+          mkdir -p "$CANDIDATE_MODEL_DATA_ROOT/components"
           cp artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
-            "$CURRENT_MODEL_DATA_ROOT/components/us-selected-pool-prices.json"
+            "$CANDIDATE_MODEL_DATA_ROOT/components/us-selected-pool-prices.json"
           cp artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json \
-            "$CURRENT_MODEL_DATA_ROOT/components/cn-selected-pool-prices.json"
+            "$CANDIDATE_MODEL_DATA_ROOT/components/cn-selected-pool-prices.json"
           uv run python scripts/data/build_model_data_bundle.py \
-            --component "prices.us_selected_equities_v2:selected_pool_prices:${CURRENT_MODEL_DATA_ROOT}/components/us-selected-pool-prices.json:us" \
-            --component "prices.cn_selected_equities_v3:selected_pool_prices:${CURRENT_MODEL_DATA_ROOT}/components/cn-selected-pool-prices.json:cn" \
+            --component "prices.us_selected_equities_v2:selected_pool_prices:${CANDIDATE_MODEL_DATA_ROOT}/components/us-selected-pool-prices.json:us" \
+            --component "prices.cn_selected_equities_v3:selected_pool_prices:${CANDIDATE_MODEL_DATA_ROOT}/components/cn-selected-pool-prices.json:cn" \
             --evidence-cutoff "$evidence_cutoff" \
-            --output-root "$CURRENT_MODEL_DATA_ROOT" \
-            --frontend-data-dir qlib-dashboard/public/data
+            --output-root "$CANDIDATE_MODEL_DATA_ROOT"
+          uv run python - <<'PY'
+          import json
+          import shutil
+          from pathlib import Path
+
+          from src.data.model_data_bundle import verify_model_data_bundle
+
+          candidate = Path("artifacts/formal-refresh/model-data-bundle-v1")
+          current = Path("data/research/model_data_bundle_v1")
+          verify_model_data_bundle(candidate)
+          candidate_id = json.loads(
+              (candidate / "model-data-bundle.json").read_text(encoding="utf-8")
+          )["bundle_id"]
+          current_id = None
+          if (current / "model-data-bundle.json").is_file():
+              verify_model_data_bundle(current)
+              current_id = json.loads(
+                  (current / "model-data-bundle.json").read_text(encoding="utf-8")
+              )["bundle_id"]
+          if current_id != candidate_id:
+              if current.exists():
+                  shutil.rmtree(current)
+              shutil.copytree(candidate, current)
+          frontend = Path("qlib-dashboard/public/data")
+          frontend.mkdir(parents=True, exist_ok=True)
+          for name in (
+              "model-data-readiness.json",
+              "data-components.json",
+              "training-profiles.json",
+          ):
+              shutil.copy2(current / name, frontend / name)
+          PY
+          if [[ -n "$(git status --porcelain -- \
+            data/research/model_data_bundle_v1 \
+            qlib-dashboard/public/data/model-data-readiness.json \
+            qlib-dashboard/public/data/data-components.json \
+            qlib-dashboard/public/data/training-profiles.json)" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Install candidate and rebuild Strategy Operations
         if: steps.plan.outputs.refresh_required == 'true'
         env:
@@ -558,7 +599,7 @@ jobs:
           npm run sync:market-evidence
           npm run sync:strategy-operations
       - name: Validate complete candidate publication
-        if: steps.plan.outputs.refresh_required == 'true'
+        if: steps.plan.outputs.refresh_required == 'true' || steps.model_data.outputs.changed == 'true'
         run: |
           set -euo pipefail
           uv run pytest \
@@ -601,7 +642,7 @@ jobs:
           PY
       - name: Open or update reviewed refresh PR
         id: pull_request
-        if: steps.plan.outputs.refresh_required == 'true'
+        if: steps.plan.outputs.refresh_required == 'true' || steps.model_data.outputs.changed == 'true'
         env:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
           US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
@@ -628,7 +669,7 @@ jobs:
             echo "pr_number=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git commit -m "data: refresh governed evidence through US ${US_CUTOFF} and CN ${CN_CUTOFF}"
+          git commit -m "data: publish governed evidence through US ${US_CUTOFF} and CN ${CN_CUTOFF}"
           git push --force origin "HEAD:${REFRESH_BRANCH}"
           body_file="$(mktemp)"
           cat > "$body_file" <<EOF
@@ -822,7 +863,7 @@ jobs:
             }
       - name: Upload bounded refresh evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: formal-backtest-refresh-${{ github.run_id }}
           path: |
