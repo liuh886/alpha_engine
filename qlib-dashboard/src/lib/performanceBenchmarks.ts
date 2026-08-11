@@ -136,12 +136,20 @@ function benchmarkFields(report: ReportRow[]): string[] {
   });
 }
 
+function sameNormalizedSeries(left: NormalizedSeries, right: NormalizedSeries): boolean {
+  return left.length === right.length && left.every((value, index) => {
+    const other = right[index];
+    if (value === null || other === null) return value === other;
+    return Math.abs(value - other) <= 1e-12;
+  });
+}
+
 export function discoverBenchmarkOptions(
   report: ReportRow[],
   declaredBenchmarkId?: string,
 ): BenchmarkOption[] {
   if (!report.length) return [];
-  return benchmarkFields(report).flatMap(field => {
+  const discovered = benchmarkFields(report).flatMap(field => {
     const descriptor = descriptorForField(field, declaredBenchmarkId);
     const values = report.map(row => {
       const value = row[field];
@@ -152,6 +160,11 @@ export function discoverBenchmarkOptions(
     if (!series || !series.some(value => Number.isFinite(value))) return [];
     return [{ ...descriptor, series }];
   });
+
+  return discovered.filter((option, index) => !discovered.slice(0, index).some(previous => (
+    identity(previous.label) === identity(option.label)
+    && sameNormalizedSeries(previous.series, option.series)
+  )));
 }
 
 export function declaredBenchmarkDescriptor(

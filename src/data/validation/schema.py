@@ -1,5 +1,5 @@
 import pandas as pd
-import pandera as pa
+import pandera.pandas as pa
 
 OHLC_COMPARISON_TOLERANCE = 1e-8
 
