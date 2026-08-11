@@ -5,27 +5,34 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/byd-daily-signal-alert.yml"
+      - "configs/strategies/registry.json"
+      - "src/cli/main.py"
+      - "src/governance/active_strategy_catalog.py"
       - "src/research/byd_signal_alerts.py"
       - "src/research/byd_signal_evidence.py"
       - "src/factors/strategy_snapshot.py"
       - "configs/factor_libraries/strategy_inputs.yaml"
       - "src/artifacts/strategy_signal_ledger.py"
+      - "src/artifacts/strategy_operations.py"
       - "scripts/run_byd_signal_alert.py"
-      - "scripts/persist_strategy_signal_evaluation.py"
       - "tests/test_byd_signal_alerts.py"
       - "tests/test_byd_signal_evidence.py"
+      - "tests/test_active_strategy_catalog.py"
       - "data/research/byd_v1_3_low_vol_prospective/**"
   push:
     branches: [main]
     paths:
       - ".github/workflows/byd-daily-signal-alert.yml"
+      - "configs/strategies/registry.json"
+      - "src/cli/main.py"
+      - "src/governance/active_strategy_catalog.py"
       - "src/research/byd_signal_alerts.py"
       - "src/research/byd_signal_evidence.py"
       - "src/factors/strategy_snapshot.py"
       - "configs/factor_libraries/strategy_inputs.yaml"
       - "src/artifacts/strategy_signal_ledger.py"
+      - "src/artifacts/strategy_operations.py"
       - "scripts/run_byd_signal_alert.py"
-      - "scripts/persist_strategy_signal_evaluation.py"
       - "data/research/byd_v1_3_low_vol_prospective/**"
   workflow_run:
     workflows:
@@ -69,16 +76,20 @@ jobs:
       - name: Validate formal V1.3 signal contract
         run: |
           uv run ruff check \
+            src/cli/main.py \
+            src/governance/active_strategy_catalog.py \
             src/research/byd_signal_alerts.py \
             src/research/byd_signal_evidence.py \
             src/artifacts/strategy_signal_ledger.py \
+            src/artifacts/strategy_operations.py \
             scripts/run_byd_signal_alert.py \
-            scripts/persist_strategy_signal_evaluation.py \
             tests/test_byd_signal_alerts.py \
-            tests/test_byd_signal_evidence.py
+            tests/test_byd_signal_evidence.py \
+            tests/test_active_strategy_catalog.py
           uv run pytest \
             tests/test_byd_signal_alerts.py \
             tests/test_byd_signal_evidence.py \
+            tests/test_active_strategy_catalog.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
   evaluate-and-deliver:
@@ -108,14 +119,17 @@ jobs:
       - name: Validate signal implementation
         run: |
           uv run ruff check \
+            src/cli/main.py \
+            src/governance/active_strategy_catalog.py \
             src/research/byd_signal_alerts.py \
             src/research/byd_signal_evidence.py \
             src/artifacts/strategy_signal_ledger.py \
-            scripts/run_byd_signal_alert.py \
-            scripts/persist_strategy_signal_evaluation.py
+            src/artifacts/strategy_operations.py \
+            scripts/run_byd_signal_alert.py
           uv run pytest \
             tests/test_byd_signal_alerts.py \
             tests/test_byd_signal_evidence.py \
+            tests/test_active_strategy_catalog.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: Build exact formal V1.3 signal
         id: signal
@@ -191,7 +205,7 @@ jobs:
             echo "status=failed" >> "$GITHUB_OUTPUT"
             printf 'error=%s\n' "${body:0:500}" >> "$GITHUB_OUTPUT"
           fi
-      - name: Persist governed evaluation and rebuild operations read model
+      - name: Persist governed decision and rebuild operations read model
         env:
           ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
           TELEGRAM_STATUS: ${{ steps.telegram.outputs.status }}
@@ -204,10 +218,9 @@ jobs:
           created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           delivery_status="${TELEGRAM_STATUS:-not_required}"
           if [[ "$SHOULD_ALERT" != "true" ]]; then delivery_status="not_required"; fi
-          uv run python scripts/persist_strategy_signal_evaluation.py \
+          uv run alpha ops record-decision \
             --model-version-id "$MODEL_VERSION_ID" \
             --signal-json "$SIGNAL_DIR/signal_alert.json" \
-            --ledger-dir "$LEDGER_DIR" \
             --delivery-status "$delivery_status" \
             --github-issue-number "${ISSUE_NUMBER:-}" \
             --telegram-message-id "${TELEGRAM_MESSAGE_ID:-}" \
@@ -215,8 +228,8 @@ jobs:
             --workflow-run-id "$GITHUB_RUN_ID" \
             --commit-sha "$EXECUTION_SHA" \
             --created-at-utc "$created_at"
-          uv run python scripts/build_strategy_operations.py --generated-at "$created_at"
-      - name: Commit durable signal and operations state
+          uv run alpha ops build --generated-at "$created_at"
+      - name: Commit durable decision and operations state
         id: publish
         run: |
           set -euo pipefail
@@ -225,14 +238,14 @@ jobs:
           git config user.email "signal-agent@alphaengine.local"
           git add data/research/strategy_signal_ledgers data/research/strategy_operations/snapshots.json
           if git diff --cached --quiet; then
-            echo "Signal evaluation is already persisted."
+            echo "Decision evaluation is already persisted."
           else
             git commit -m "signal: publish BYD v1.3 evaluation ${{ steps.signal.outputs.signal_date }}"
             git pull --rebase origin main
             git push origin HEAD:main
             echo "published=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Upload finalized signal evidence
+      - name: Upload finalized decision evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:

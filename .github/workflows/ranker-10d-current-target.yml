@@ -11,14 +11,15 @@ on:
       - ".github/workflows/ranker-10d-current-target.yml"
       - "scripts/run_ranker_current_target.py"
       - "scripts/run_us_x1_2_current_target.py"
-      - "scripts/persist_strategy_signal_evaluation.py"
-      - "scripts/build_strategy_operations.py"
+      - "src/cli/main.py"
       - "src/research/ranker_current_target.py"
       - "src/research/us_x1_2_current_target.py"
       - "src/research/xgb_ranker_explainability.py"
       - "src/factors/ranker_snapshot.py"
       - "src/artifacts/strategy_signal_ledger.py"
       - "src/artifacts/strategy_operations.py"
+      - "src/governance/active_strategy_catalog.py"
+      - "configs/strategies/registry.json"
       - "configs/models/us_x1_2.yaml"
       - "configs/research_universes/us_selected_equities_v2.yaml"
       - "configs/research_classifications/us87_sector_industry_v1.yaml"
@@ -203,10 +204,9 @@ jobs:
               fi
             fi
 
-            uv run python scripts/persist_strategy_signal_evaluation.py \
+            uv run alpha ops record-decision \
               --model-version-id "$model" \
               --signal-json "$signal" \
-              --ledger-dir "data/research/strategy_signal_ledgers/$model" \
               --delivery-status "$delivery_status" \
               --github-issue-number "$issue_number" \
               --telegram-message-id "$telegram_message_id" \
@@ -217,14 +217,11 @@ jobs:
           done
           echo "delivery_failed=$delivery_failed" >> "$GITHUB_OUTPUT"
 
-      - name: Rebuild Strategy Operations and frontend read model
+      - name: Rebuild Strategy Operations
         run: |
           set -euo pipefail
           generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          PYTHONPATH=. uv run python scripts/build_strategy_operations.py --generated-at "$generated_at"
-          cd qlib-dashboard
-          npm ci --no-audit --no-fund
-          npm run sync:strategy-operations
+          uv run alpha ops build --generated-at "$generated_at"
 
       - name: Commit append-only decisions and operations snapshot
         id: publish_state
@@ -233,7 +230,7 @@ jobs:
           echo "published=false" >> "$GITHUB_OUTPUT"
           git config user.name "AlphaEngine Ranker Operations"
           git config user.email "ranker-operations@alphaengine.local"
-          git add data/research/strategy_signal_ledgers data/research/strategy_operations/snapshots.json qlib-dashboard/public/data/strategy-operations
+          git add data/research/strategy_signal_ledgers data/research/strategy_operations/snapshots.json
           if git diff --cached --quiet; then
             echo "No governed ranker publication changes."
           else

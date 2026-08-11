@@ -7,6 +7,9 @@ on:
       - ".github/workflows/qqq-v4-3-signal-alert.yml"
       - "configs/research_paradigms/qqqi_qqq_tqqq_current_baseline.yaml"
       - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
+      - "configs/strategies/registry.json"
+      - "src/cli/main.py"
+      - "src/governance/active_strategy_catalog.py"
       - "src/research/qqq_v4_3_monitor.py"
       - "src/research/qqq_v4_3_signal_alerts.py"
       - "src/factors/strategy_snapshot.py"
@@ -14,15 +17,16 @@ on:
       - "src/artifacts/strategy_operations.py"
       - "scripts/run_qqq_v4_3_monitor.py"
       - "scripts/run_qqq_v4_3_signal_alert.py"
-      - "scripts/persist_strategy_signal_evaluation.py"
-      - "scripts/build_strategy_operations.py"
-      - "qlib-dashboard/scripts/sync-strategy-operations.mjs"
       - "tests/test_qqq_v4_3_monitor_signal.py"
       - "tests/test_strategy_operations.py"
+      - "tests/test_active_strategy_catalog.py"
   push:
     branches: [main]
     paths:
       - ".github/workflows/qqq-v4-3-signal-alert.yml"
+      - "configs/strategies/registry.json"
+      - "src/cli/main.py"
+      - "src/governance/active_strategy_catalog.py"
       - "src/research/qqq_v4_3_monitor.py"
       - "src/research/qqq_v4_3_signal_alerts.py"
       - "src/factors/strategy_snapshot.py"
@@ -30,9 +34,6 @@ on:
       - "src/artifacts/strategy_operations.py"
       - "scripts/run_qqq_v4_3_monitor.py"
       - "scripts/run_qqq_v4_3_signal_alert.py"
-      - "scripts/persist_strategy_signal_evaluation.py"
-      - "scripts/build_strategy_operations.py"
-      - "qlib-dashboard/scripts/sync-strategy-operations.mjs"
   schedule:
     - cron: "30 0 * * 2-6"
   workflow_dispatch:
@@ -74,6 +75,8 @@ jobs:
       - name: Validate v4.3 signal and operations contracts
         run: |
           uv run ruff check \
+            src/cli/main.py \
+            src/governance/active_strategy_catalog.py \
             src/research/qqq_v4_3_monitor.py \
             src/research/qqq_v4_3_signal_alerts.py \
             src/factors/strategy_snapshot.py \
@@ -81,13 +84,13 @@ jobs:
             src/artifacts/strategy_operations.py \
             scripts/run_qqq_v4_3_monitor.py \
             scripts/run_qqq_v4_3_signal_alert.py \
-            scripts/persist_strategy_signal_evaluation.py \
-            scripts/build_strategy_operations.py \
             tests/test_qqq_v4_3_monitor_signal.py \
-            tests/test_strategy_operations.py
+            tests/test_strategy_operations.py \
+            tests/test_active_strategy_catalog.py
           uv run pytest \
             tests/test_qqq_v4_3_monitor_signal.py \
             tests/test_strategy_operations.py \
+            tests/test_active_strategy_catalog.py \
             -q --strict-markers --tb=short
 
   evaluate-and-deliver:
@@ -223,7 +226,7 @@ jobs:
             echo "status=failed" >> "$GITHUB_OUTPUT"
             echo "error_class=telegram_api_rejected" >> "$GITHUB_OUTPUT"
           fi
-      - name: Persist governed evaluation and rebuild operations read model
+      - name: Persist governed decision and rebuild operations read model
         env:
           SHOULD_ALERT: ${{ steps.alert.outputs.should_alert }}
           ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
@@ -248,10 +251,9 @@ jobs:
             message_id="${TELEGRAM_MESSAGE_ID:-}"
             delivery_error="${TELEGRAM_ERROR_CLASS:-}"
           fi
-          uv run python scripts/persist_strategy_signal_evaluation.py \
+          uv run alpha ops record-decision \
             --model-version-id "$MODEL_VERSION_ID" \
             --signal-json "$SIGNAL_ROOT/signal_alert.json" \
-            --ledger-dir "$LEDGER_DIR" \
             --delivery-status "$delivery_status" \
             --github-issue-number "${ISSUE_NUMBER:-}" \
             --telegram-message-id "$message_id" \
@@ -259,26 +261,24 @@ jobs:
             --workflow-run-id "$GITHUB_RUN_ID" \
             --commit-sha "$GITHUB_SHA" \
             --created-at-utc "$created_at"
-          uv run python scripts/build_strategy_operations.py --generated-at "$created_at"
-          node qlib-dashboard/scripts/sync-strategy-operations.mjs
+          uv run alpha ops build --generated-at "$created_at"
           echo "delivery_status=$delivery_status" >> "$GITHUB_ENV"
-      - name: Commit durable signal and frontend operations state
+      - name: Commit durable decision and operations state
         run: |
           set -euo pipefail
           git config user.name "AlphaEngine Signal Agent"
           git config user.email "signal-agent@alphaengine.local"
           git add \
             data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3 \
-            data/research/strategy_operations/snapshots.json \
-            qlib-dashboard/public/data/strategy-operations
+            data/research/strategy_operations/snapshots.json
           if git diff --cached --quiet; then
-            echo "Signal evaluation is already persisted."
+            echo "Decision evaluation is already persisted."
           else
             git commit -m "signal: publish QQQ v4.3 evaluation ${{ steps.alert.outputs.fingerprint }}"
             git pull --rebase origin main
             git push origin HEAD:main
           fi
-      - name: Upload hash-bound signal and operations evidence
+      - name: Upload hash-bound decision and operations evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -289,7 +289,6 @@ jobs:
             artifacts/signals/qqq_rotation_v4_3
             data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3
             data/research/strategy_operations/snapshots.json
-            qlib-dashboard/public/data/strategy-operations
           if-no-files-found: warn
           retention-days: 90
       - name: Fail visibly after persisting required Telegram delivery failure
