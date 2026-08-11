@@ -90,9 +90,9 @@ def validate_bundle(root: Path, *, require_executed: bool) -> None:
             raise FileNotFoundError(f"snapshot companion document is missing: {document}")
 
     notebooks = snapshot.get("notebooks", {})
-    if notebooks.get("immutable_v4_1_review") != str(IMMUTABLE_NOTEBOOK):
+    if notebooks.get("immutable_v4_1_review") != IMMUTABLE_NOTEBOOK.as_posix():
         raise ValueError("snapshot immutable notebook link is stale")
-    if notebooks.get("rolling_current_review") != str(ROLLING_NOTEBOOK):
+    if notebooks.get("rolling_current_review") != ROLLING_NOTEBOOK.as_posix():
         raise ValueError("snapshot rolling notebook link is stale")
 
     rolling = nbformat.read(root / ROLLING_NOTEBOOK, as_version=4)
@@ -101,8 +101,8 @@ def validate_bundle(root: Path, *, require_executed: bool) -> None:
         "baseline_experiment_id": "qqqi_qqq_tqqq_vxn_leverage_v4_1",
         "challenger_experiment_id": "qqqi_qqq_tqqq_vxn_bridge_v4_2",
         "prospective_start": "2026-08-01",
-        "snapshot": str(SNAPSHOT),
-        "maintenance_policy": str(POLICY),
+        "snapshot": SNAPSHOT.as_posix(),
+        "maintenance_policy": POLICY.as_posix(),
         "rolling_notebook": True,
         "research_only": True,
         "trade_ready": False,

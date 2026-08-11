@@ -279,13 +279,13 @@ def _build_markdown(ticket: Mapping[str, Any]) -> str:
 
 def _write_immutable(path: Path, payload: str, identity: str) -> None:
     if not path.exists():
-        path.write_text(payload, encoding="utf-8")
+        path.write_bytes(payload.encode("utf-8"))
         return
     if path.suffix == ".json":
         if _load_json(path).get("ticket_identity_sha256") != identity:
             raise ValueError(f"immutable shadow ledger conflict: {path}")
         return
-    if _sha256_bytes(path.read_bytes()) != _sha256_bytes(payload.encode("utf-8")):
+    if path.read_text(encoding="utf-8") != payload:
         raise ValueError(f"immutable shadow ledger conflict: {path}")
 
 

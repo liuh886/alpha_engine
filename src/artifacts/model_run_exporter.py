@@ -247,6 +247,7 @@ def export_model_run(
         (staging / "manifest.json").write_bytes(canonical_json_bytes(manifest))
         if target.exists():
             if _same_tree(target, staging):
+                shutil.rmtree(staging)
                 return target / "manifest.json"
             raise ModelRunExportError(
                 f"immutable run identity collision: {plan.model_family_id}/{plan.model_version_id}/{plan.run_id}"

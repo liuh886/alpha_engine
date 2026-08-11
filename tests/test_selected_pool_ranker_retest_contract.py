@@ -45,7 +45,7 @@ def test_us_retest_changes_only_the_selected_opportunity_set() -> None:
     old = _load(OLD_US_SPEC)
     new = _load(US_SPEC)
 
-    assert new["universe"]["source"] == str(US_POOL)
+    assert new["universe"]["source"] == US_POOL.as_posix()
     assert new["universe"]["universe_id"] == "us_selected_equities_v2"
     assert new["universe"]["exact_pool_candidate_count"] == 87
     assert new["universe"]["min_symbols"] == old["universe"]["min_symbols"] == 30
@@ -66,7 +66,7 @@ def test_cn_retest_uses_one_frozen_ranker_calibration() -> None:
     spec = _load(CN_SPEC)
     ranker = spec["candidate_grid"]["ranker"]
 
-    assert spec["universe"]["source"] == str(CN_POOL)
+    assert spec["universe"]["source"] == CN_POOL.as_posix()
     assert spec["universe"]["universe_id"] == "cn_selected_equities_v3"
     assert spec["universe"]["exact_pool_candidate_count"] == 130
     assert spec["universe"]["min_symbols"] == 30

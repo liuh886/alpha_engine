@@ -187,7 +187,7 @@ def test_spec_validation_rejects_invalid_model_families() -> None:
             "alignment_mode": "strict",
         },
         "factor_library": {
-            "source": "configs/factor_libraries/us_ohlcv.yaml",
+            "source": "configs/factor_libraries/ohlcv.yaml",
             "groups": ["momentum"],
         },
         "candidate_grid": {
@@ -202,7 +202,7 @@ def test_spec_validation_rejects_invalid_model_families() -> None:
                     }
                 ],
             },
-            "factor_baselines": ["factor:us_momentum_10d"],
+            "factor_baselines": ["ohlcv.momentum.ret_10d"],
         },
         "strategy": {
             "horizon_days": 10,

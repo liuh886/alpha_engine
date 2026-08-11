@@ -24,7 +24,7 @@ candidate_grid:
         min_data_in_leaf: 5
         learning_rate: 0.05
   factor_baselines:
-    - "factor:ci_momentum_10d"
+    - "ci.momentum.ret10"
 
 strategy:
   horizon_days: 10

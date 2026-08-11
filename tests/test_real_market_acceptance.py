@@ -20,27 +20,47 @@ def _write_factor_library(path: Path) -> None:
     path.write_text(
         yaml.safe_dump(
             {
-                "schema_version": "1.0",
+                "schema_version": "2.0",
+                "catalog": {"id": "test_real_market", "version": "1.0"},
+                "defaults": {
+                    "namespace": "test",
+                    "factor_version": "1.0",
+                    "source_name": "real market acceptance fixture",
+                    "source_version": "1.0",
+                    "source_reference": "tests/test_real_market_acceptance.py",
+                    "availability_lag_sessions": 0,
+                    "adjustment_requirement": "adjusted",
+                    "output_frequency": "day",
+                    "output_dtype": "float64",
+                    "missing_value_policy": "preserve_nan_after_warmup",
+                    "status": "unvalidated_formula",
+                },
+                "factors": {
+                    "test.momentum.ret5": {
+                        "display_name": "Five-session momentum",
+                        "information_family": "momentum",
+                        "expression": "$close/Ref($close,5)-1",
+                        "required_fields": ["close"],
+                        "markets": ["us"],
+                        "minimum_lookback": 5,
+                    },
+                    "test.momentum.ret10": {
+                        "display_name": "Ten-session momentum baseline",
+                        "information_family": "baseline",
+                        "expression": "$close/Ref($close,10)-1",
+                        "required_fields": ["close"],
+                        "markets": ["us"],
+                        "minimum_lookback": 10,
+                    },
+                },
                 "groups": {
                     "test_group": {
                         "description": "test",
-                        "factors": [
-                            {
-                                "id": "test:momentum",
-                                "expression": "$close/Ref($close,5)-1",
-                                "family": "momentum",
-                            }
-                        ],
+                        "factor_ids": ["test.momentum.ret5"],
                     },
                     "factor_baselines": {
                         "description": "test baseline",
-                        "factors": [
-                            {
-                                "id": "factor:test_momentum",
-                                "expression": "$close/Ref($close,10)-1",
-                                "family": "baseline",
-                            }
-                        ],
+                        "factor_ids": ["test.momentum.ret10"],
                     },
                 },
             },
@@ -103,7 +123,7 @@ def _write_spec(
                     }
                 ]
             },
-            "factor_baselines": ["factor:test_momentum"],
+            "factor_baselines": ["test.momentum.ret10"],
         },
         "strategy": {
             "horizon_days": 10,
@@ -422,4 +442,3 @@ def test_ohlc_order_tolerates_machine_precision_roundoff(tmp_path: Path) -> None
         "relative": 1e-12,
     }
     json.dumps(result, allow_nan=False)
-

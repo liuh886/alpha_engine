@@ -324,7 +324,7 @@ def _minimal_plan_with_benchmark(benchmark="QQQ"):
         "alignment_mode": "auto",
     }
     factor_library = {
-        "source": "configs/factor_libraries/us_ohlcv.yaml",
+        "source": "configs/factor_libraries/ohlcv.yaml",
         "groups": ["momentum"],
     }
     candidate_grid = {

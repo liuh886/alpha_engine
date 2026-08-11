@@ -413,8 +413,15 @@ def test_run_10d_experiment_output_dir_writes_evidence_json() -> None:
         assert artifact.exists()
         assert artifact.suffix == ".json"
         content = json.loads(artifact.read_text(encoding="utf-8"))
-        assert content["schema_version"] == "1.0"
+        assert content["schema_version"] == "1.1"
         assert "comparison_report" in content
+        assert "backtest_traces" in content
+        assert content["trace_contract"] == {
+            "frequency": "non_overlapping_forward_horizon",
+            "daily_nav_claim": False,
+            "research_only": True,
+            "trade_ready": False,
+        }
 
 
 def test_notebook_07_passes_nbformat_validation() -> None:

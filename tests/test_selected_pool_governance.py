@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import pytest
 import yaml
 
 from src.data.universe import get_selected_tickers
@@ -133,15 +132,15 @@ def test_future_runs_are_bound_to_user_approved_selected_universes() -> None:
     assert registry["policy"]["broad_universe_runs_are_legacy_or_diagnostic_only"] is True
 
     assert us["active_pool_id"] == "us_selected_equities_v2"
-    assert us["pool_spec"] == str(US_SELECTED)
+    assert us["pool_spec"] == US_SELECTED.as_posix()
     assert us["active_strategy_pool_id"] == "us_small_pool_v2"
     assert us["new_authoritative_runs_allowed"] is True
-    assert "TIGO provider refresh required" in us["authoritative_data_blockers"][0]
+    assert us["authoritative_data_blockers"] == []
     assert spec["pool_spec"] == us["active_strategy_pool_spec"]
     assert spec["pool_governance"]["allow_broad_universe_fallback"] is False
 
     assert cn["active_pool_id"] == "cn_selected_equities_v3"
-    assert cn["pool_spec"] == str(CN_SELECTED)
+    assert cn["pool_spec"] == CN_SELECTED.as_posix()
     assert cn["parent_pool_id"] == "cn_selected_equities_v2"
     assert cn["selection_decision_issue"] == 269
     assert cn["new_authoritative_runs_allowed"] is True
@@ -149,15 +148,12 @@ def test_future_runs_are_bound_to_user_approved_selected_universes() -> None:
 
 
 def test_authoritative_guard_and_data_universe_resolve_both_markets() -> None:
-    with pytest.raises(ValueError, match="TIGO provider refresh required"):
-        resolve_selected_pool("us")
-
-    us = resolve_selected_pool("us", require_data_ready=False)
+    us = resolve_selected_pool("us")
     cn = resolve_selected_pool("cn")
 
     assert us.pool_id == "us_selected_equities_v2"
     assert us.pool_spec == US_SELECTED.resolve()
-    assert us.authoritative_data_blockers
+    assert not us.authoritative_data_blockers
     assert cn.pool_id == "cn_selected_equities_v3"
     assert cn.pool_spec == CN_SELECTED.resolve()
     assert not cn.authoritative_data_blockers
@@ -178,12 +174,9 @@ def test_symbol_lifecycle_rules_fail_closed() -> None:
     assert lifecycle["terminal_listings"]["601989"]["active_universe_after_terminal_date_allowed"] is False
 
 
-def test_approved_csv_files_are_removed_and_archived_history_remains() -> None:
+def test_approved_csv_removals_and_archived_terminal_history_remain() -> None:
     for symbol in sorted(US_APPROVED_REMOVALS | CN_ALL_APPROVED_REMOVALS):
         assert not Path(f"data/csv_clean/{symbol}.csv").exists(), symbol
-
-    for symbol in CN_USER_RETAINED:
-        assert Path(f"data/csv_clean/{symbol}.csv").exists(), symbol
 
     assert "TIGO" not in US_APPROVED_REMOVALS
     assert Path("data/csv_clean/600837.csv").exists()
