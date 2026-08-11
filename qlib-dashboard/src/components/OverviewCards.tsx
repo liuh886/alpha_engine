@@ -10,8 +10,8 @@ interface OverviewCardsProps {
 
 export function OverviewCards({
   metrics,
-  unavailableReason = 'Not declared by the formal package.',
-  availabilityLabel = 'Not declared',
+  unavailableReason = 'The formal evidence contract does not declare this metric.',
+  availabilityLabel = 'Contract violation',
 }: OverviewCardsProps) {
   const formatPercent = (val: number | null | undefined) => {
     if (val === undefined || val === null || Number.isNaN(val)) return null;
