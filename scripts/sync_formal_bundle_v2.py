@@ -2,8 +2,7 @@
 
 Legacy accepted v1 packages are projected without recomputation. Native Bundle v2
 models enter the same formal catalog only through an explicit promotion adapter.
-The active catalog contains one formal baseline per model family and removes the
-superseded entry instead of carrying compatibility aliases.
+Every active formal model is published under one production evidence contract.
 """
 from __future__ import annotations
 
@@ -16,6 +15,10 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from src.artifacts import formal_bundle_v2_projector as projector
+from src.artifacts.formal_evidence_standard import (
+    FORMAL_EVIDENCE_CONTRACT_ID,
+    validate_formal_catalog_evidence,
+)
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes, validate_catalog
 from src.artifacts.model_run_exporter import update_catalog
 from src.artifacts.us_x1_2_formal import (
@@ -177,6 +180,24 @@ def _with_provisional_mtm(plan, source_path: Path):
     return replace(plan, sections=tuple(sections))
 
 
+def _with_evidence_contract(plan):
+    sections = []
+    bound = False
+    for section in plan.sections:
+        if section.section_id != "summary":
+            sections.append(section)
+            continue
+        if not isinstance(section.payload, Mapping):
+            raise FormalBundleV2SyncError("formal summary section is unavailable")
+        payload = dict(section.payload)
+        payload["evidence_contract"] = FORMAL_EVIDENCE_CONTRACT_ID
+        sections.append(replace(section, payload=payload))
+        bound = True
+    if not bound:
+        raise FormalBundleV2SyncError("formal summary section was not found")
+    return replace(plan, sections=tuple(sections))
+
+
 def _native_preview_manifest(native_root: Path, model_id: str) -> Path:
     catalog = _object(native_root / "catalog.json")
     validate_catalog(catalog)
@@ -250,7 +271,8 @@ def sync(
         projector.MODEL_MAP.update(FORMAL_MODEL_ADAPTERS)
 
         def build_plan_with_mtm(source_path: Path):
-            return _with_provisional_mtm(prior_build_plan(source_path), source_path)
+            plan = _with_provisional_mtm(prior_build_plan(source_path), source_path)
+            return _with_evidence_contract(plan)
 
         projector.build_plan = build_plan_with_mtm
         migration_receipt = projector.project_formal_bundle_v2(
@@ -280,9 +302,18 @@ def sync(
             f"active formal model-set parity failed: active={active}, projected={projected}"
         )
 
+    contract_models = validate_formal_catalog_evidence(catalog_path)
+    if set(contract_models) != set(active) or len(contract_models) != len(active):
+        raise FormalBundleV2SyncError(
+            "formal evidence contract coverage failed: "
+            f"active={active}, contract_models={contract_models}"
+        )
+
     receipt = {
         "schema_version": "2.0.0",
         "status": "all_active_formal_models_projected",
+        "evidence_contract": FORMAL_EVIDENCE_CONTRACT_ID,
+        "evidence_contract_model_ids": contract_models,
         "accepted_v1_model_ids": accepted,
         "native_formal_model_ids": promoted,
         "superseded_formal_model_ids": list(NATIVE_FORMAL_PROMOTIONS.values()),
