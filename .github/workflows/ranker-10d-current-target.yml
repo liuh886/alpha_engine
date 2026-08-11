@@ -24,7 +24,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: strategy-operations-live
+  group: ranker-10d-current-target
   cancel-in-progress: false
 
 jobs:

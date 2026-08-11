@@ -43,7 +43,7 @@ on:
         type: string
 
 concurrency:
-  group: strategy-operations-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
+  group: qqq-v4-3-signal-alert-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 permissions:

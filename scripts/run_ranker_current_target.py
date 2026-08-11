@@ -15,6 +15,7 @@ from src.research.ranker_current_target import (
     CN_MODEL_ID,
     US_MODEL_ID,
     load_previous_state,
+    merge_governed_market_sessions,
     next_due_session,
     score_cn_current_target,
     score_us_current_target,
@@ -37,15 +38,33 @@ def _due(args: argparse.Namespace) -> int:
         ledger_dir=args.ledger_dir,
     )
     benchmark = "QQQ" if args.market == "us" else "000300"
-    bars = YFinanceAdapter().fetch_daily_bars(
-        FetchRequest(
-            symbol=benchmark,
-            market=args.market,
-            start=anchor,
-            end=args.as_of,
+    bars = (
+        YFinanceAdapter()
+        .fetch_daily_bars(
+            FetchRequest(
+                symbol=benchmark,
+                market=args.market,
+                start=anchor,
+                end=args.as_of,
+            )
         )
-    ).df
-    sessions = pd.DatetimeIndex(pd.to_datetime(bars["date"]))
+        .df
+    )
+    live_sessions = pd.DatetimeIndex(pd.to_datetime(bars["date"]))
+    evidence_path = (
+        ROOT
+        / "data"
+        / "research"
+        / "market_evidence"
+        / args.market
+        / "symbols"
+        / f"{benchmark}.json"
+    )
+    sessions = merge_governed_market_sessions(
+        evidence_path=evidence_path,
+        live_sessions=live_sessions,
+        as_of=args.as_of,
+    )
     due = next_due_session(anchor=anchor, sessions=sessions)
     payload = {
         "market": args.market,
@@ -54,7 +73,7 @@ def _due(args: argparse.Namespace) -> int:
         "as_of": args.as_of,
         "due": due is not None,
         "signal_date": due,
-        "calendar_provider": "yfinance_benchmark_session_probe",
+        "calendar_provider": "governed_market_evidence_plus_yfinance_increment",
         "research_only": True,
         "trade_ready": False,
     }

@@ -15,6 +15,7 @@ from src.research.ranker_current_target import (
     RankerCurrentTargetError,
     _select_cn_sector_breadth,
     load_previous_state,
+    merge_governed_market_sessions,
     next_due_session,
 )
 
@@ -66,6 +67,29 @@ def test_next_due_session_fails_if_anchor_is_not_provider_session() -> None:
         )
 
 
+def test_governed_sessions_fill_short_live_provider_window(tmp_path: Path) -> None:
+    evidence = tmp_path / "benchmark.json"
+    evidence.write_text(
+        json.dumps(
+            {
+                "bars": [
+                    {"time": str(day.date()), "close": 1.0}
+                    for day in pd.bdate_range("2026-07-29", periods=9)
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    sessions = merge_governed_market_sessions(
+        evidence_path=evidence,
+        live_sessions=pd.DatetimeIndex(["2026-08-11"]),
+        as_of="2026-08-11",
+    )
+    assert sessions[0] == pd.Timestamp("2026-07-29")
+    assert sessions[-1] == pd.Timestamp("2026-08-11")
+    assert next_due_session(anchor="2026-07-29", sessions=sessions) is None
+
+
 def test_live_ledger_supersedes_older_formal_position(tmp_path: Path) -> None:
     formal = tmp_path / "formal.json"
     ledger = tmp_path / "ledger"
@@ -95,8 +119,7 @@ def test_newer_formal_position_supersedes_stale_live_ledger(tmp_path: Path) -> N
 def test_us_ranker_snapshot_uses_exact_canonical_group_order() -> None:
     library = load_factor_library(ROOT / "configs/factor_libraries/ohlcv.yaml")
     ids = [
-        factor.factor_id
-        for factor in library.factors_for_groups(["momentum_volatility_volume"])
+        factor.factor_id for factor in library.factors_for_groups(["momentum_volatility_volume"])
     ]
     snapshot = build_ranker_factor_snapshot(
         model_family_id="us_ranker",
