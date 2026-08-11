@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: formal-bundle-v2-sync-${{ github.event.pull_request.number || github.ref }}
@@ -126,24 +126,21 @@ jobs:
       - name: Validate projected frontend build
         working-directory: qlib-dashboard
         run: npm run build
-      - name: Commit exact projected assets
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      - name: Report projection delta without mutating the PR
+        if: github.event_name == 'pull_request'
+        shell: bash
         run: |
-          set -euo pipefail
-          git config user.name "AlphaEngine Release Agent"
-          git config user.email "release-agent@alphaengine.local"
-          git add \
-            data/research/formal_model_runs \
-            data/research/strategy_operations/snapshots.json \
-            qlib-dashboard/public/data/formal-model-runs \
-            qlib-dashboard/public/data/strategy-operations
-          if git diff --cached --quiet; then
-            echo "Formal v2 and Strategy Operations projections are byte-stable."
-          else
-            git commit -m "release: sync formal v2 and strategy operations"
-            git pull --rebase origin ${{ github.head_ref }}
-            git push origin HEAD:${{ github.head_ref }}
-          fi
+          {
+            echo '### Generated projection delta'
+            echo '```text'
+            git status --short -- \
+              data/research/formal_model_runs \
+              data/research/strategy_operations/snapshots.json \
+              qlib-dashboard/public/data/formal-model-runs \
+              qlib-dashboard/public/data/strategy-operations
+            echo '```'
+            echo 'Reviewed refresh/main publication owns durable generated assets.'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload projection evidence
         if: always()
         uses: actions/upload-artifact@v6
