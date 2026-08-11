@@ -56,7 +56,6 @@ env:
   MODEL_VERSION_ID: byd_v1_3_recovery_event_low_vol_confirmation_v1
   LEDGER_DIR: data/research/strategy_signal_ledgers/byd_v1_3_recovery_event_low_vol_confirmation_v1
   SOURCE_STORE: data/research/byd_v1_3_low_vol_prospective
-  OPERATIONS_PATH: data/research/strategy_operations/snapshots.json
 
 jobs:
   contract:
@@ -205,7 +204,7 @@ jobs:
             echo "status=failed" >> "$GITHUB_OUTPUT"
             printf 'error=%s\n' "${body:0:500}" >> "$GITHUB_OUTPUT"
           fi
-      - name: Persist governed decision and rebuild operations read model
+      - name: Persist governed decision and materialize operations evidence
         env:
           ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
           TELEGRAM_STATUS: ${{ steps.telegram.outputs.status }}
@@ -228,15 +227,17 @@ jobs:
             --workflow-run-id "$GITHUB_RUN_ID" \
             --commit-sha "$EXECUTION_SHA" \
             --created-at-utc "$created_at"
-          uv run alpha ops build --generated-at "$created_at"
-      - name: Commit durable decision and operations state
+          uv run alpha ops build \
+            --generated-at "$created_at" \
+            --output "$SIGNAL_DIR/strategy-operations.json"
+      - name: Commit durable decision
         id: publish
         run: |
           set -euo pipefail
           echo "published=false" >> "$GITHUB_OUTPUT"
           git config user.name "AlphaEngine Signal Agent"
           git config user.email "signal-agent@alphaengine.local"
-          git add data/research/strategy_signal_ledgers data/research/strategy_operations/snapshots.json
+          git add data/research/strategy_signal_ledgers
           if git diff --cached --quiet; then
             echo "Decision evaluation is already persisted."
           else
@@ -253,7 +254,6 @@ jobs:
           path: |
             artifacts/signals/byd_v1_3
             data/research/strategy_signal_ledgers/byd_v1_3_recovery_event_low_vol_confirmation_v1
-            data/research/strategy_operations/snapshots.json
           if-no-files-found: error
           retention-days: 30
       - name: Fail after persisting a configured Telegram delivery error
