@@ -65,7 +65,7 @@ def test_completed_record_validation_does_not_resolve_current_catalog(monkeypatc
 @pytest.mark.parametrize(
     ("model_version_id", "model_kind", "model_family_id", "market", "benchmark"),
     (
-        ("us_x1_1", "cross_sectional_ranker", "us_ranker", "us", "QQQ"),
+        ("us_x1_2", "cross_sectional_ranker", "us_ranker", "us", "QQQ"),
         ("cn_x1_1", "cross_sectional_ranker", "cn_ranker", "cn", "000300"),
         (
             "byd_v1_3_recovery_event_low_vol_confirmation_v1",
