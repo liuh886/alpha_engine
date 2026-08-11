@@ -1,77 +1,90 @@
 ---
 path: scripts/README.md
-version: 2.0.0
-last_edit_date: 2026-08-02
+version: 3.0.0
+last_edit_date: 2026-08-12
 status: active
 ---
 
 # Scripts Catalog
 
-This folder contains supported Python research entrypoints and explicitly isolated utilities. Browser execution is not supported; Research Artifact Studio reads exported evidence only.
+`scripts/` contains maintained domain utilities and bounded research executors. It is **not** the control plane for Alpha Engine.
 
-## Supported entrypoints
+Cross-system lifecycle commands belong to the installed `alpha` CLI:
 
-- **Environment doctor**
-  - `uv run python scripts/doctor.py`
-- **Data update**
-  - `uv run python scripts/update_data.py --market {cn|us|all}`
-- **Training and backtest orchestration**
-  - `uv run python -m src.orchestrator run --market {market} --model_type lgbm --tag <MODEL_TAG>`
-- **Re-backtest**
-  - `uv run python -m src.orchestrator rebacktest --market {market} --start 2025-01-01 --end latest`
-- **End-to-end research smoke**
-  - `uv run python scripts/e2e_smoke.py --market {market} [--dry-run]`
-- **Build dashboard evidence JSON**
-  - `uv run python scripts/build_dashboard_db.py`
-- **Export static evidence source**
-  - `uv run python scripts/export_static_site_data.py --market all --output artifacts/site/data`
-- **Export versioned research bundle**
-  - `uv run python scripts/export_research_bundle.py --source artifacts/site --output artifacts/research-bundle`
-- **Daily research routine**
-  - `uv run python scripts/daily_run.py`
-- **Daily US low-turnover decision evidence**
-  - `uv run python scripts/run_latest_us_low_turnover_decision.py`
-- **Weekly research**
-  - `uv run python scripts/weekly_research.py --market {market}`
-- **Factor decay check**
-  - `uv run python scripts/check_factor_decay.py --update-metadata`
-- **Weekly report**
-  - `uv run python scripts/generate_weekly_report.py`
-- **Local schedule template**
-  - `uv run python scripts/setup_cron.py`
-- **Arena settlement**
-  - `uv run python scripts/arena_settle.py --market {market} --arena-name "{arena}" --date latest`
-- **Research Assistant compatibility entry**
-  - `uv run python scripts/agent_entry.py --agent {alpha|risk|governance|developer} [--market {cn|us|all}] [--topic "<topic>"]`
+```text
+alpha data ...                 governed data preparation / readiness
+alpha research ...             governed research, replay and run import
+alpha ops record-decision ...  append one immutable active-strategy decision
+alpha ops build ...            materialize the current Strategy Operations read model
+```
+
+GitHub Actions should call these maintained entrypoints whenever the task crosses data/research/operations boundaries. Once a CLI command replaces a wrapper script, the wrapper is deleted; no compatibility alias is retained.
+
+## Maintained domain utilities
+
+Some model/data operations remain explicit Python utilities because they own narrow domain semantics rather than a general product lifecycle. Examples include:
+
+- selected-pool provider construction and validation under `scripts/data/`;
+- QQQ/BYD/ranker model-specific current-target calculation;
+- formal-source deterministic builders/refresher utilities;
+- evidence audits and bounded research executors tied to committed specs.
+
+A domain utility may calculate its declared model/data result. It may not create a second evaluator, active-strategy registry, publication catalog or frontend data source.
+
+## Formal refresh boundary
+
+The reviewed formal refresh workflow may invoke model-specific builders, but the durable publication contract is shared:
+
+```text
+provider / component identity
+  -> exact replay gate
+  -> governed source or native Bundle v2 evidence
+  -> Active Strategy Catalog parity
+  -> formal Bundle v2 catalog
+```
+
+Strategy Operations and frontend `public/data` are generated after canonical evidence validation; scripts must not treat those projections as research truth.
+
+## Decision boundary
+
+Current strategy decisions are appended through:
+
+```bash
+alpha ops record-decision ...
+```
+
+The existing append-only ledger enforces model identity, factor evidence, workflow/commit provenance and duplicate protection. Do not create per-model persistence scripts or parallel signal databases.
+
+Current UI state is materialized with:
+
+```bash
+alpha ops build --generated-at <ISO-UTC>
+```
+
+The resulting Strategy Operations JSON is rebuildable and ignored by Git.
 
 ## Controlled research utilities
 
-These commands must remain bound to their predeclared evidence contracts:
+Research utilities must remain bound to their committed evidence contracts. They may be used for deterministic diagnosis/replay, but they do not become permanent product entrypoints merely because an experiment succeeded.
 
-- Build an isolated NDX provider:
-  - `uv run python scripts/build_ndx_window_start_provider.py --base-data-root . --output-data-root <isolated-root>`
-- Run the frozen candidate_v2 on official NDX window-start membership:
-  - `uv run python scripts/run_candidate_v2_ndx_window_start_evidence.py --data-root <isolated-root> --provider-lineage-path <isolated-root>/data/provider_backfill_lineage.json --first-test-year 2024 --last-test-year 2026`
-- Diagnose broad IC versus exact Top-3 tails:
-  - `uv run python scripts/run_candidate_v2_ndx_factor_diagnostics.py --data-root <isolated-root>`
-- Falsify the predeclared binary-Top-3 objective:
-  - `uv run python scripts/run_candidate_v2_top3_holdout_evidence.py --data-root <isolated-root> --provider-lineage-path <isolated-root>/data/provider_backfill_lineage.json`
-- Run NDX residual-trend evidence:
-  - `uv run python scripts/run_ndx_residual_trend_evidence.py --data-root <isolated-root>`
-- Run CN residual-trend evidence:
-  - `uv run python scripts/run_cn_residual_trend_evidence.py --data-root <isolated-cn-root>`
-- Decompose static-to-PIT alpha collapse:
-  - `uv run python scripts/run_static_to_pit_alpha_decomposition.py --static-reference-provider-uri <original-static-provider> --decomposition-provider-uri <repaired-pit-provider>`
+Examples include exact provider builds, frozen candidate replays, factor diagnostics and PIT/static decomposition utilities. The governing rule is more important than the filename:
+
+- one falsifiable mission;
+- immutable provider/universe/evaluator identity;
+- no post-result parameter search;
+- no validation-only fallback;
+- retain evidence/receipt, then delete superseded execution paths.
 
 ## Output rules
 
-- Persist configuration, commit SHA, provider identity, data cutoff, universe identity and benchmark identity.
-- Write immutable evidence under `artifacts/` or `reports/`.
-- Export browser-visible results through the versioned research bundle.
-- Do not silently overwrite a prior run identity.
-- Do not bypass coverage, cost, embargo, walk-forward or promotion gates.
-- Keep `research_only=true` and `trade_ready=false` unless an independently governed process changes that status.
+- persist configuration, commit SHA, provider identity, data cutoff, universe identity and benchmark identity;
+- retain immutable evidence under the governed repository evidence contract when it must survive review;
+- write temporary/generated material under `artifacts/`;
+- do not commit generated Strategy Operations or frontend projections;
+- do not silently overwrite a prior run/decision identity;
+- do not bypass coverage, cost, embargo, exact replay, walk-forward or promotion gates;
+- keep `research_only=true` and `trade_ready=false` unless a separately governed process changes that status.
 
-## Legacy utilities
+## Legacy policy
 
-Deprecated scripts kept only for reference live under `scripts/_legacy/`. They are not supported entrypoints and must not be restored to the product path without a new architecture decision.
+Deprecated scripts are not an API. When a maintained path replaces them, delete them rather than moving them into a compatibility directory. Historical evidence belongs in specs, manifests, receipts and Git history—not in executable fallback code.
