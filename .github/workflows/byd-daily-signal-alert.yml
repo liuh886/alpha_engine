@@ -28,7 +28,9 @@ on:
       - "scripts/persist_strategy_signal_evaluation.py"
       - "data/research/byd_v1_3_low_vol_prospective/**"
   workflow_run:
-    workflows: ["BYD v1.3 Prospective Evidence"]
+    workflows:
+      - "BYD v1.3 Prospective Evidence"
+      - "Reviewed Formal Backtest Refresh"
     types: [completed]
   schedule:
     - cron: "0 13 * * 1-5"
