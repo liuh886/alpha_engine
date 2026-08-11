@@ -14,7 +14,11 @@ from scripts.sync_formal_bundle_v2 import (
     active_formal_models,
     sync,
 )
-from src.artifacts.formal_evidence_standard import validate_formal_evidence_bundle
+from src.artifacts.formal_evidence_standard import (
+    FORMAL_EVIDENCE_CONTRACT_ID,
+    validate_formal_catalog_evidence,
+    validate_formal_evidence_bundle,
+)
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
 from src.artifacts.us_x1_2_formal import MODEL_ID as US_X1_2
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID as BYD_V13
@@ -98,6 +102,10 @@ def test_sync_projects_active_formal_set_deterministically(tmp_path: Path) -> No
     assert US_X1_2 in versions
     assert "us_x1_1" not in versions
 
+    assert receipt_a["evidence_contract"] == FORMAL_EVIDENCE_CONTRACT_ID
+    assert set(receipt_a["evidence_contract_model_ids"]) == versions
+    assert set(validate_formal_catalog_evidence(first / "catalog.json")) == versions
+
     native_models = set(receipt_a["native_formal_model_ids"])
     assert native_models == set(NATIVE_FORMAL_PROMOTIONS)
     for row in catalog["records"]:
@@ -106,8 +114,10 @@ def test_sync_projects_active_formal_set_deterministically(tmp_path: Path) -> No
         assert manifest["publication_status"] == "accepted_formal_baseline"
         assert manifest["research_only"] is True
         assert manifest["trade_ready"] is False
-        if row["model_version_id"] in native_models:
-            validate_formal_evidence_bundle((first / row["manifest_path"]).parent)
+        run_dir = (first / row["manifest_path"]).parent
+        summary = _read(run_dir / "summary.json")
+        assert summary["evidence_contract"] == FORMAL_EVIDENCE_CONTRACT_ID
+        validate_formal_evidence_bundle(run_dir)
 
     source_freshness = _read(SOURCE / "freshness.json")
     projected_freshness = _read(first / "freshness.json")
@@ -132,6 +142,7 @@ def test_native_us_x1_2_formal_boundary_is_explicit(tmp_path: Path) -> None:
     assert summary["baseline_status"] == "accepted_formal_baseline"
     assert summary["formal_acceptance_status"] == "accepted_by_explicit_user_direction"
     assert summary["trade_readiness_status"] == "prospective_gate_pending"
+    assert summary["evidence_contract"] == FORMAL_EVIDENCE_CONTRACT_ID
     assert summary["evidence_completeness"]["missing"] == []
     assert summary["evidence_completeness"]["not_applicable"] == [
         "brokerage_quantity",
@@ -157,3 +168,5 @@ def test_byd_v1_3_complete_ledgers_enter_bundle_v2(tmp_path: Path) -> None:
     sections = {row["section_id"]: row for row in manifest["sections"]}
     for section_id in ("performance", "portfolio", "trades", "attribution", "lineage"):
         assert sections[section_id]["availability_status"] == "available"
+    assert _read(manifest_path.parent / "summary.json")["evidence_contract"] == FORMAL_EVIDENCE_CONTRACT_ID
+    validate_formal_evidence_bundle(manifest_path.parent)
