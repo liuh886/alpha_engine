@@ -112,10 +112,15 @@ def run_regime_portfolio(
     cost_bps: int = 20,
     excluded_name: str | None = None,
     excluded_sector: str | None = None,
+    initial_weights: Mapping[str, float] | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Allocate to sector breadth when risk-on and CSI300 when risk-off."""
 
-    previous: dict[str, float] = {}
+    previous = {
+        str(instrument): float(weight)
+        for instrument, weight in (initial_weights or {}).items()
+        if float(weight) != 0.0
+    }
     period_rows: list[dict[str, Any]] = []
     holding_rows: list[dict[str, Any]] = []
     for window in windows:
