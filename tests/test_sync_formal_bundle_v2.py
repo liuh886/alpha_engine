@@ -97,15 +97,17 @@ def test_sync_projects_active_formal_set_deterministically(tmp_path: Path) -> No
     assert versions == set(receipt_a["active_formal_model_ids"])
     assert US_X1_2 in versions
     assert "us_x1_1" not in versions
+
+    native_models = set(receipt_a["native_formal_model_ids"])
+    assert native_models == set(NATIVE_FORMAL_PROMOTIONS)
     for row in catalog["records"]:
         manifest = _read(first / row["manifest_path"])
         validate_manifest(manifest)
         assert manifest["publication_status"] == "accepted_formal_baseline"
         assert manifest["research_only"] is True
         assert manifest["trade_ready"] is False
-
-    us_x1_2 = next(row for row in catalog["records"] if row["model_version_id"] == US_X1_2)
-    validate_formal_evidence_bundle((first / us_x1_2["manifest_path"]).parent)
+        if row["model_version_id"] in native_models:
+            validate_formal_evidence_bundle((first / row["manifest_path"]).parent)
 
     source_freshness = _read(SOURCE / "freshness.json")
     projected_freshness = _read(first / "freshness.json")
@@ -141,6 +143,7 @@ def test_native_us_x1_2_formal_boundary_is_explicit(tmp_path: Path) -> None:
     assert lineage["prospective_gate_status"] == "pending"
     assert summary["research_only"] is True
     assert summary["trade_ready"] is False
+    validate_formal_evidence_bundle(run_dir)
 
 
 def test_byd_v1_3_complete_ledgers_enter_bundle_v2(tmp_path: Path) -> None:
