@@ -19,6 +19,15 @@ def _session_count(value: object) -> int | None:
     return count if count >= 0 and count == value else None
 
 
+def _declared_text(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text or text.lower() in {"not_declared", "not declared"}:
+        return None
+    return text
+
+
 def build_performance_semantics(
     portfolio_contract: Mapping[str, Any], *, trace_frequency: object
 ) -> dict[str, Any]:
@@ -34,7 +43,15 @@ def build_performance_semantics(
         else portfolio_contract.get("holding_sessions")
     )
     delay = _session_count(portfolio_contract.get("execution_delay_sessions"))
-    end_offset = holding + delay if holding is not None and delay is not None else None
+    declared_offset = portfolio_contract.get("holding_end_offset_sessions")
+    end_offset: int | str | None
+    if _session_count(declared_offset) is not None:
+        end_offset = int(declared_offset)
+    elif _declared_text(declared_offset) is not None:
+        end_offset = str(declared_offset)
+    else:
+        end_offset = holding + delay if holding is not None and delay is not None else None
+
     raw_cost = portfolio_contract.get("cost_bps")
     cost_bps = (
         float(raw_cost)
@@ -45,6 +62,9 @@ def build_performance_semantics(
     )
     turnover_formula = portfolio_contract.get("turnover_formula")
     net_return_formula = portfolio_contract.get("net_return_formula")
+    performance_date_field = portfolio_contract.get("performance_date_field")
+    if performance_date_field not in {"date", "holding_end_date"}:
+        performance_date_field = "holding_end_date" if holding is not None and delay is not None else "date"
     return {
         "schema_version": SCHEMA_VERSION,
         "trace_frequency": str(trace_frequency or "not_declared"),
@@ -60,7 +80,7 @@ def build_performance_semantics(
         "execution_delay_sessions": delay,
         "holding_period_sessions": holding,
         "holding_end_offset_sessions": end_offset,
-        "performance_date_field": "holding_end_date" if holding is not None else "date",
+        "performance_date_field": performance_date_field,
         "cost": {
             "rate_bps": cost_bps,
             "turnover_formula": (
@@ -97,6 +117,10 @@ def validate_performance_semantics(value: Mapping[str, Any]) -> None:
         raise PerformanceSemanticsError("execution delay is invalid")
     if holding is not None and (not isinstance(holding, int) or holding < 1):
         raise PerformanceSemanticsError("holding period is invalid")
-    expected = delay + holding if delay is not None and holding is not None else None
-    if offset != expected:
-        raise PerformanceSemanticsError("holding-end offset does not match delay plus holding")
+    fixed_offset = isinstance(offset, int) and not isinstance(offset, bool) and offset >= 0
+    policy_offset = _declared_text(offset) is not None
+    if not fixed_offset and not policy_offset and offset is not None:
+        raise PerformanceSemanticsError("holding-end offset is invalid")
+    if delay is not None and holding is not None and fixed_offset:
+        if offset != delay + holding:
+            raise PerformanceSemanticsError("holding-end offset does not match delay plus holding")
