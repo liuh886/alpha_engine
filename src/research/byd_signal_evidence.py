@@ -36,6 +36,8 @@ def close_evidence_is_current(observation: Mapping[str, Any]) -> bool:
         return False
     if not str(observation.get("data_version") or ""):
         return False
+    if not isinstance(observation.get("common_open_eligible"), bool):
+        return False
     source = observation.get("source")
     targets = observation.get("targets")
     factors = observation.get("factors")

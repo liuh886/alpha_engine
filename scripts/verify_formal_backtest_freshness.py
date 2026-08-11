@@ -189,6 +189,7 @@ def verify(root: Path, *, as_of: str | None = None) -> dict[str, Any]:
         "schema_version": "1.0.0",
         "status": "current",
         "cutoff_policy": policy["cutoff_policy"],
+        "cutoff_source": "provider_resolved_common_session",
         "as_of": parsed_as_of.isoformat() if parsed_as_of is not None else None,
         "next_session_close_utc": parsed_next_closes,
         "verified_models": verified,
