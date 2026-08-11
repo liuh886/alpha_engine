@@ -15,6 +15,7 @@ from src.artifacts.model_run_bundle_v2 import (
     compute_bundle_id,
     validate_manifest,
 )
+from src.artifacts.performance_semantics import SCHEMA_VERSION as PERFORMANCE_SEMANTICS_SCHEMA
 
 MODEL_ID = "us_x1_2"
 MODEL_FAMILY_ID = "us_ranker"
@@ -111,6 +112,37 @@ def _rewrite_summary(path: Path) -> None:
     path.write_bytes(canonical_json_bytes(summary))
 
 
+def _rewrite_performance(path: Path) -> None:
+    """Normalize the accepted US x1.2 evidence onto the formal semantics schema."""
+
+    source = _object(path)
+    raw = source.get("performance_semantics")
+    if not isinstance(raw, Mapping):
+        raise USX12FormalPromotionError("US x1.2 performance semantics are missing")
+    cost = raw.get("cost")
+    if not isinstance(cost, Mapping):
+        raise USX12FormalPromotionError("US x1.2 cost semantics are missing")
+    source["performance_semantics"] = {
+        **dict(raw),
+        "schema_version": PERFORMANCE_SEMANTICS_SCHEMA,
+        "trace_frequency": "non_overlapping_10_session",
+        "session_unit": "provider_session",
+        "execution_delay_sessions": 0,
+        "holding_period_sessions": 10,
+        "holding_end_offset_sessions": 10,
+        "performance_date_field": "holding_end_date",
+        "cost": {
+            **dict(cost),
+            "row_cost_field": "transaction_cost",
+            "browser_recomputation_permitted": False,
+        },
+        "source": "governed_us_x1_2_formal_evidence",
+        "research_only": True,
+        "trade_ready": False,
+    }
+    path.write_bytes(canonical_json_bytes(source))
+
+
 def _rewrite_risk(path: Path) -> None:
     source = _object(path)
     risk = {
@@ -191,6 +223,7 @@ def promote_preview_bundle(source_run_dir: Path, output_root: Path) -> Path:
     shutil.copytree(source_run_dir, target)
 
     _rewrite_summary(target / "summary.json")
+    _rewrite_performance(target / "performance.json")
     _rewrite_risk(target / "risk.json")
     _rewrite_robustness(target / "robustness.json")
     _rewrite_diagnostics(target / "diagnostics.json")
