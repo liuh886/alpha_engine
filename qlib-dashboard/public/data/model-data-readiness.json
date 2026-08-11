@@ -1,6 +1,6 @@
 {
-  "built_at": "2026-08-11T04:51:39+00:00",
-  "bundle_id": "08748a4c27a1d538151b0c56c2104c5f184bf49c8623b853cf0730775daa2ca7",
+  "built_at": "2026-08-11T05:27:20+00:00",
+  "bundle_id": "e5ae3e731eb563867112a3d0e55980d6b2b322ab7b0cc7c29ac2c958ea29de17",
   "evidence_cutoff": "2026-08-10",
   "research_only": true,
   "schema_version": "1.1",
@@ -8,17 +8,18 @@
     "blocked_component_count": 0,
     "blocked_training_profiles": [
       "cn_selected_alpha158_v1",
-      "cn_selected_price_only_v1",
       "cn_selected_price_plus_fundamentals_v1",
       "qqqi_qqq_tqqq_rotation_v1",
       "us_selected_alpha158_v1",
-      "us_selected_price_only_v1",
       "us_selected_price_plus_fundamentals_v1"
     ],
     "component_count": 2,
     "partial_component_count": 0,
     "ready_component_count": 2,
-    "ready_training_profiles": []
+    "ready_training_profiles": [
+      "cn_selected_price_only_v1",
+      "us_selected_price_only_v1"
+    ]
   },
   "trade_ready": false
 }
