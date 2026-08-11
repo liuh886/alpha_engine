@@ -139,6 +139,19 @@ function EvidenceTable({
 }
 
 function PerformancePanel({ evidence }: { evidence: FormalRunEvidence }) {
+  const semantics = evidence.performance.semantics;
+  const cost = typeof semantics.cost === 'object' && semantics.cost !== null && !Array.isArray(semantics.cost)
+    ? semantics.cost as Record<string, unknown>
+    : {};
+  const methodologyRows: Array<[string, unknown]> = [
+    ['Signal time', semantics.signal_time],
+    ['Execution time', semantics.execution_time],
+    ['Return measurement', semantics.return_measurement],
+    ['Holding-end offset', typeof semantics.holding_end_offset_sessions === 'number' ? `${semantics.holding_end_offset_sessions} sessions` : 'not declared'],
+    ['Cost rate', typeof cost.rate_bps === 'number' ? `${cost.rate_bps} bps` : 'not declared'],
+    ['Turnover formula', cost.turnover_formula],
+    ['Net return', cost.net_return_formula],
+  ];
   return (
     <div className="space-y-4">
       <Card>
@@ -150,6 +163,20 @@ function PerformancePanel({ evidence }: { evidence: FormalRunEvidence }) {
           <Badge variant="outline" className="shrink-0 font-mono text-[10px]">{formatEvidenceLabel(evidence.performance.traceFrequency)}</Badge>
         </CardHeader>
         <CardContent className="pt-4"><PerformanceCharts report={evidence.performance.report} /></CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="border-b pb-3">
+          <CardTitle className="text-sm">Governed performance methodology</CardTitle>
+          <p className="mt-1 text-xs text-muted-foreground">Read directly from the formal evidence contract; the browser does not supply timing or cost defaults.</p>
+        </CardHeader>
+        <CardContent className="grid gap-x-6 pt-2 sm:grid-cols-2 lg:grid-cols-3">
+          {methodologyRows.map(([label, value]) => (
+            <div key={String(label)} className="flex items-start justify-between gap-4 border-b py-2 text-xs">
+              <span className="text-muted-foreground">{label}</span>
+              <span className="max-w-[60%] break-words text-right font-mono">{String(value || 'not declared')}</span>
+            </div>
+          ))}
+        </CardContent>
       </Card>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {['annualized_return', 'annualized_volatility', 'sharpe_ratio', 'information_ratio'].map((metricId) => (

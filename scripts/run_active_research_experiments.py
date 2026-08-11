@@ -13,6 +13,7 @@ import yaml
 from src.common.runtime_settings import PROJECT_ROOT
 from src.research.cross_sectional_experiment_runner import (
     RUNNER_ID as CROSS_SECTIONAL_RUNNER,
+    load_cross_sectional_experiment_spec,
     run_cross_sectional_experiment,
 )
 from src.research.formal_baseline_onboarding import (
@@ -63,14 +64,49 @@ def run_spec(path: Path) -> dict[str, Any]:
     return write_research_receipt(path, receipt)
 
 
+def validate_spec(path: Path) -> dict[str, Any]:
+    """Validate one active mission without loading providers or running models."""
+
+    payload = _load(path)
+    if payload.get("active") is not True:
+        raise ValueError(f"research experiment {path} must be active")
+    if payload.get("research_only") is not True or payload.get("trade_ready") is not False:
+        raise ValueError(f"research experiment {path} violates the research-only boundary")
+    runner = str(payload.get("runner", ""))
+    if runner == CROSS_SECTIONAL_RUNNER:
+        parsed = load_cross_sectional_experiment_spec(path)
+        experiment_id = parsed.experiment_id
+    elif runner in {FORMAL_BASELINE_RUNNER, RULES_BASED_ALLOCATION_RUNNER}:
+        experiment_id = str(payload.get("experiment_id") or "")
+        if not experiment_id:
+            raise ValueError(f"active experiment {path} has no experiment_id")
+    else:
+        raise ValueError(f"active experiment {path} declares unsupported runner {runner!r}")
+    return {
+        "path": path.relative_to(PROJECT_ROOT).as_posix(),
+        "experiment_id": experiment_id,
+        "runner": runner,
+        "status": "valid",
+        "models_executed": False,
+        "providers_rebuilt": False,
+        "research_only": True,
+        "trade_ready": False,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the active research experiment spec")
     parser.add_argument("--spec", type=Path)
+    parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args()
 
     specs = [args.spec.resolve()] if args.spec else active_specs()
     if not specs:
         print("[]")
+        return 0
+
+    if args.validate_only:
+        print(json.dumps([validate_spec(path) for path in specs], indent=2, sort_keys=True))
         return 0
 
     receipts: list[dict[str, Any]] = []

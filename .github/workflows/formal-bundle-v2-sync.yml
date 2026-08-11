@@ -6,10 +6,10 @@ on:
     paths:
       - .github/workflows/formal-bundle-v2-sync.yml
       - scripts/sync_formal_bundle_v2.py
-      - scripts/migrate_formal_v1_to_bundle_v2.py
+      - src/artifacts/formal_bundle_v2_projector.py
       - scripts/build_strategy_operations.py
       - src/artifacts/strategy_operations.py
-      - tests/test_migrate_formal_v1_to_bundle_v2.py
+      - tests/test_formal_bundle_v2_projector.py
       - tests/test_sync_formal_bundle_v2.py
       - tests/test_strategy_operations.py
       - data/research/formal_backtests/**
@@ -103,15 +103,15 @@ jobs:
         run: |
           set -euo pipefail
           uv run ruff check \
-            scripts/migrate_formal_v1_to_bundle_v2.py \
+            src/artifacts/formal_bundle_v2_projector.py \
             scripts/sync_formal_bundle_v2.py \
             scripts/build_strategy_operations.py \
             src/artifacts/strategy_operations.py \
-            tests/test_migrate_formal_v1_to_bundle_v2.py \
+            tests/test_formal_bundle_v2_projector.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py
           uv run pytest \
-            tests/test_migrate_formal_v1_to_bundle_v2.py \
+            tests/test_formal_bundle_v2_projector.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
             -q --strict-markers --tb=short

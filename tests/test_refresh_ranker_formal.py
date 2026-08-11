@@ -9,6 +9,7 @@ import pytest
 from scripts.refresh_ranker_formal import (
     RankerRefreshError,
     _date_identity,
+    _holding_end,
     _latest_realized_holding_end,
     _update_common_metadata,
 )
@@ -26,8 +27,26 @@ def test_date_identity_rejects_missing_value() -> None:
         _date_identity(None)
 
 
+def test_holding_end_includes_execution_delay() -> None:
+    calendar = [f"2026-07-{day:02d}" for day in range(1, 20)]
+
+    assert _holding_end(calendar, "2026-07-01") == "2026-07-11"
+    assert _holding_end(
+        calendar,
+        "2026-07-01",
+        holding_sessions=10,
+        execution_delay_sessions=1,
+    ) == "2026-07-12"
+
+
 def test_latest_realized_holding_end_preserves_accepted_receipt() -> None:
     package = {
+        "trace_frequency": "non_overlapping_10_session",
+        "portfolio_contract": {
+            "cost_bps": 20,
+            "holding_sessions": 10,
+            "execution_delay_sessions": 1,
+        },
         "freshness": {"latest_realized_holding_end": "2026-07-29"},
         "report": [{"date": "2026-07-15"}],
         "positions": [],
@@ -43,6 +62,12 @@ def test_common_metadata_keeps_realized_end_when_no_new_period_exists(
     provider_manifest = tmp_path / "provider.json"
     provider_manifest.write_text(json.dumps({"cutoff": "2026-08-07"}))
     package = {
+        "trace_frequency": "non_overlapping_10_session",
+        "portfolio_contract": {
+            "cost_bps": 20,
+            "holding_sessions": 10,
+            "execution_delay_sessions": 1,
+        },
         "date_range": {"start": "2022-07-01", "end": "2026-08-03"},
         "freshness": {"latest_realized_holding_end": "2026-07-29"},
         "report": [{"date": "2026-07-15"}],
@@ -64,3 +89,4 @@ def test_common_metadata_keeps_realized_end_when_no_new_period_exists(
     assert package["freshness"]["latest_realized_holding_end"] == "2026-07-29"
     assert package["research_only"] is True
     assert package["trade_ready"] is False
+    assert package["performance_semantics"]["holding_end_offset_sessions"] == 11

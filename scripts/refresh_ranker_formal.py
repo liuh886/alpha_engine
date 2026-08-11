@@ -20,6 +20,7 @@ import pandas as pd
 
 from scripts.run_cn_x1_1_sector_breadth import load_ledgers
 from src.artifacts.formal_refresh import FormalRefreshError, load_object, sha256, write_object
+from src.artifacts.performance_semantics import build_performance_semantics
 from src.research.cn130_cross_sectional_ranking import forward_returns, load_provider_panel
 from src.research.cn_x1_1_regime_gated import (
     RegimeGateSpec,
@@ -49,14 +50,23 @@ def _calendar(path: Path) -> list[str]:
     return rows
 
 
-def _holding_end(calendar: Sequence[str], signal_date: str, horizon: int = 10) -> str:
+def _holding_end(
+    calendar: Sequence[str],
+    signal_date: str,
+    *,
+    holding_sessions: int = 10,
+    execution_delay_sessions: int = 0,
+) -> str:
     try:
         index = calendar.index(signal_date)
     except ValueError as exc:
         raise RankerRefreshError(f"signal date is absent from provider calendar: {signal_date}") from exc
-    target = index + horizon
+    target = index + execution_delay_sessions + holding_sessions
     if target >= len(calendar):
-        raise RankerRefreshError(f"unrealized horizon: {signal_date}+{horizon}")
+        raise RankerRefreshError(
+            "unrealized horizon: "
+            f"{signal_date}+{execution_delay_sessions}+{holding_sessions}"
+        )
     return str(calendar[target])
 
 
@@ -173,6 +183,10 @@ def _update_common_metadata(
     provider_manifest: Path,
     evidence: Mapping[str, Any],
 ) -> None:
+    package["performance_semantics"] = build_performance_semantics(
+        dict(package["portfolio_contract"]),
+        trace_frequency=package.get("trace_frequency"),
+    )
     package["generated_at"] = generated_at
     package["evidence_cutoff"] = cutoff
     package["date_range"] = {
@@ -529,7 +543,12 @@ def refresh_cn(
         signal_date = _date_identity(period["datetime"])
         if signal_date in existing_dates:
             continue
-        holding_end = _holding_end(calendar, signal_date)
+        holding_end = _holding_end(
+            calendar,
+            signal_date,
+            holding_sessions=spec.horizon_sessions,
+            execution_delay_sessions=spec.execution_delay_sessions,
+        )
         if holding_end > cutoff:
             continue
         rows = holdings_by_date.get(signal_date, [])

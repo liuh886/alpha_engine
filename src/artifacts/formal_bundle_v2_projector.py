@@ -1,4 +1,4 @@
-"""Project the current accepted formal v1 packages into Model Run Bundle v2.
+"""Canonical projector from accepted formal v1 into Model Run Bundle v2.
 
 The projection is deterministic evidence packaging. It does not rerun models,
 recompute absent ledgers, reopen model selection, or alter accepted v1 source
@@ -6,7 +6,6 @@ packages. Only the current accepted formal model set is supported.
 """
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import re
@@ -15,6 +14,10 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes
+from src.artifacts.performance_semantics import (
+    build_performance_semantics,
+    validate_performance_semantics,
+)
 from src.artifacts.model_run_exporter import (
     RunExportPlan,
     SectionPlan,
@@ -283,10 +286,19 @@ def build_plan(source_path: Path) -> RunExportPlan:
         "date_range": date_range,
         "benchmark": package.get("benchmark"),
         "trace_frequency": package.get("trace_frequency"),
+        "performance_semantics": dict(
+            package.get("performance_semantics")
+            if isinstance(package.get("performance_semantics"), Mapping)
+            else build_performance_semantics(
+                portfolio_contract,
+                trace_frequency=package.get("trace_frequency"),
+            )
+        ),
         "source_field": "report",
         "research_only": True,
         "trade_ready": False,
     }
+    validate_performance_semantics(performance["performance_semantics"])
     risk_metric_ids = {
         "annualized_volatility",
         "max_drawdown",
@@ -422,7 +434,7 @@ def build_plan(source_path: Path) -> RunExportPlan:
     )
 
 
-def migrate(source_root: Path, output_root: Path) -> dict[str, Any]:
+def project_formal_bundle_v2(source_root: Path, output_root: Path) -> dict[str, Any]:
     catalog_path = source_root / "catalog.json"
     catalog_sha = _sha256(catalog_path)
     source_catalog = _object(catalog_path)
@@ -491,29 +503,3 @@ def migrate(source_root: Path, output_root: Path) -> dict[str, Any]:
     }
     (output_root / "migration-receipt.json").write_bytes(canonical_json_bytes(receipt))
     return receipt
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--source-root",
-        type=Path,
-        default=Path("data/research/formal_backtests"),
-    )
-    parser.add_argument(
-        "--output-root",
-        type=Path,
-        default=Path("data/research/formal_model_runs"),
-    )
-    parser.add_argument("--receipt", type=Path)
-    args = parser.parse_args()
-    receipt = migrate(args.source_root, args.output_root)
-    text = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
-    if args.receipt:
-        args.receipt.parent.mkdir(parents=True, exist_ok=True)
-        args.receipt.write_text(text, encoding="utf-8")
-    print(text, end="")
-
-
-if __name__ == "__main__":
-    main()

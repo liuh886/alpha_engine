@@ -8,6 +8,7 @@ export interface FormalPerformanceEvidence {
   dateRange: { start: string; end: string };
   report: ReportRow[];
   traceFrequency: string;
+  semantics: Record<string, unknown>;
 }
 
 export interface FormalRiskEvidence {
@@ -192,6 +193,7 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
       dateRange: { start, end },
       report: parsedReport,
       traceFrequency: String(performance.trace_frequency ?? run.manifest.comparability_key.trace_frequency),
+      semantics: isRecord(performance.performance_semantics) ? performance.performance_semantics : {},
     },
     risk: {
       metrics: risk ? canonicalMetrics(risk.metrics, 'risk.metrics') : [],
