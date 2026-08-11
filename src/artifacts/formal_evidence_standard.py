@@ -12,6 +12,7 @@ from src.artifacts.model_run_bundle_v2 import (
     validate_manifest,
     validate_metric,
 )
+from src.artifacts.performance_semantics import validate_performance_semantics
 
 FORMAL_EVIDENCE_CONTRACT_ID = "native_formal_bundle_v2"
 
@@ -81,6 +82,14 @@ def _declared_text(value: object) -> bool:
     }
 
 
+def _declared_holding_end(value: object) -> bool:
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and value >= 0
+    ) or _declared_text(value)
+
+
 def validate_formal_evidence_bundle(run_dir: Path) -> None:
     """Validate the production evidence contract for an accepted formal model."""
 
@@ -139,10 +148,13 @@ def validate_formal_evidence_bundle(run_dir: Path) -> None:
     performance = _object(run_dir / str(sections["performance"]["path"]))
     semantics = performance.get("performance_semantics")
     _require(isinstance(semantics, Mapping), "performance semantics are missing")
+    validate_performance_semantics(semantics)
     for key in REQUIRED_PERFORMANCE_SEMANTICS:
         _require(_declared_text(semantics.get(key)), f"performance semantics missing {key}")
-    offset = semantics.get("holding_end_offset_sessions")
-    _require(isinstance(offset, int) and offset >= 0, "holding-end offset is not declared")
+    _require(
+        _declared_holding_end(semantics.get("holding_end_offset_sessions")),
+        "holding-end semantics are not declared",
+    )
     cost = semantics.get("cost")
     _require(isinstance(cost, Mapping), "performance cost semantics are missing")
     _require(
