@@ -191,8 +191,33 @@ def _selected_pool_prices(
     providers = (
         _clean_symbols(selected.values()) if isinstance(selected, dict) else _clean_symbols([])
     )
-    first_dates = [str(row.get("first_date", "")) for row in records if row.get("first_date")]
-    last_dates = [str(row.get("last_date", "")) for row in records if row.get("last_date")]
+    candidate_symbols = set(_clean_symbols(payload.get("candidate_symbols", [])))
+    candidate_records = (
+        [
+            row
+            for row in records
+            if str(row.get("symbol", "")).strip().upper() in candidate_symbols
+        ]
+        if candidate_symbols
+        else records
+    )
+    first_dates = [
+        str(row.get("first_date", ""))
+        for row in candidate_records
+        if row.get("first_date")
+    ]
+    last_dates = [
+        str(row.get("last_date", ""))
+        for row in candidate_records
+        if row.get("last_date")
+    ]
+    common_first_date = max(first_dates)[:10] if first_dates else None
+    common_last_date = min(last_dates)[:10] if last_dates else None
+    requested_cutoff = _parse_date(
+        payload.get("evidence_cutoff")
+        or payload.get("cutoff")
+        or payload.get("requested_cutoff")
+    )
     return DataComponent(
         component_id=spec.component_id,
         component_kind=spec.component_kind,
@@ -201,13 +226,9 @@ def _selected_pool_prices(
         pool_id=str(payload.get("pool_id", payload.get("universe_id", ""))),
         manifest_path=str(path),
         manifest_sha256=_sha256(path),
-        evidence_cutoff=_parse_date(
-            payload.get("evidence_cutoff")
-            or payload.get("cutoff")
-            or payload.get("requested_cutoff")
-        ),
-        first_date=min(first_dates)[:10] if first_dates else None,
-        last_date=max(last_dates)[:10] if last_dates else None,
+        evidence_cutoff=common_last_date or requested_cutoff,
+        first_date=common_first_date,
+        last_date=common_last_date,
         expected_symbol_count=expected,
         ready_symbol_count=ready,
         coverage_ratio=_ratio(ready, expected),
@@ -224,6 +245,9 @@ def _selected_pool_prices(
             "promotion_blocker": payload.get("promotion_blocker"),
             "benchmark": payload.get("benchmark"),
             "provider_identity_sha256": payload.get("provider_identity_sha256"),
+            "requested_cutoff": requested_cutoff,
+            "candidate_observation_start": common_first_date,
+            "candidate_observation_cutoff": common_last_date,
         },
     )
 

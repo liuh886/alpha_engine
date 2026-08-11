@@ -282,6 +282,60 @@ def test_profile_fails_on_post_cutoff_component(tmp_path: Path) -> None:
     assert any("exceeds" in gate for gate in profile["failed_gates"])
 
 
+def test_selected_pool_uses_common_candidate_observation_cutoff(
+    tmp_path: Path,
+) -> None:
+    prices = _price_manifest(
+        tmp_path,
+        market="us",
+        pool_id="us_selected_equities_v2",
+        candidate_count=87,
+        cutoff="2026-06-18",
+    )
+    payload = json.loads(prices.read_text(encoding="utf-8"))
+    payload["candidate_symbols"] = [row["symbol"] for row in payload["records"]]
+    payload["cutoff"] = "2026-06-19"
+    payload.pop("evidence_cutoff")
+    payload["records"].append(
+        {
+            "symbol": "QQQ",
+            "provider": "tiingo",
+            "first_date": "2020-01-02",
+            "last_date": "2026-06-19",
+        }
+    )
+    _write_json(prices, payload)
+
+    manifest = build_model_data_bundle(
+        root=Path.cwd(),
+        contract_path=CONTRACT,
+        component_specs=[
+            ComponentSpec(
+                "prices.us_selected_equities_v2",
+                "selected_pool_prices",
+                prices,
+                "us",
+            )
+        ],
+        output_root=tmp_path / "output",
+        evidence_cutoff="2026-06-18",
+    )
+
+    component = manifest["components"][0]
+    assert component["evidence_cutoff"] == "2026-06-18"
+    assert component["first_date"] == "2021-01-04"
+    assert component["last_date"] == "2026-06-18"
+    assert component["details"]["requested_cutoff"] == "2026-06-19"
+    assert component["details"]["candidate_observation_cutoff"] == "2026-06-18"
+    profile = next(
+        row
+        for row in manifest["training_profiles"]
+        if row["profile_id"] == "us_selected_price_only_v1"
+    )
+    assert profile["status"] == "ready"
+    assert profile["failed_gates"] == []
+
+
 def test_candidate_reference_overlap_fails_closed(tmp_path: Path) -> None:
     contract = yaml.safe_load(CONTRACT.read_text(encoding="utf-8"))
     contract["profiles"] = {
