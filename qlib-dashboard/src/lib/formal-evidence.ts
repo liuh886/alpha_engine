@@ -75,7 +75,7 @@ function evidenceReason(
 }
 
 function isCrossSectionalMetric(aliases: string[]): boolean {
-  const normalized = aliases.map((value) => value.toLowerCase().replaceAll(' ', '_'));
+  const normalized = aliases.map((value) => value.toLowerCase().split(' ').join('_'));
   return normalized.some((value) => ['ic', 'rank_ic', 'icir', 'ic_ir'].includes(value));
 }
 
