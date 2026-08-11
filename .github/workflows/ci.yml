@@ -119,3 +119,50 @@ jobs:
       - name: Package build
         if: github.event_name != 'pull_request'
         run: uv build
+
+  cn-x1-2-certification:
+    if: github.event_name == 'pull_request' && github.head_ref == 'agent/cn-x1-2-corrected-certification'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          show-progress: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate certification implementation
+        run: |
+          uv run ruff check scripts/certify_cn_x1_2_candidates.py
+          uv run python -m py_compile scripts/certify_cn_x1_2_candidates.py
+      - name: Rebuild governed CN provider through 2026-08-10
+        run: |
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py \
+            --root . \
+            --market cn \
+            --source-csv-dir data/csv_clean \
+            --output-root artifacts/cn-x1-2/provider-cn \
+            --start 2021-01-01 \
+            --cutoff 2026-08-10 \
+            --max-rounds 3 \
+            --full-refresh
+      - name: Run corrected CN x1.2 certification
+        run: |
+          uv run python scripts/certify_cn_x1_2_candidates.py \
+            --provider-dir artifacts/cn-x1-2/provider-cn \
+            --output-dir artifacts/cn-x1-2/certification
+      - name: Upload CN x1.2 certification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: cn-x1-2-corrected-certification-${{ github.run_id }}
+          path: artifacts/cn-x1-2/certification
+          if-no-files-found: error
+          retention-days: 90
