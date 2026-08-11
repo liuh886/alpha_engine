@@ -432,19 +432,14 @@ def test_notebook_07_passes_nbformat_validation() -> None:
     nbformat.validate(nb)
 
 
-def test_ci_workflow_includes_notebook_07_execution() -> None:
-    """The online-validation CI workflow must run notebook 07 alongside 00/01/end_to_end/06."""
-    ci_path = Path(__file__).parent.parent / ".github" / "workflows" / "online-validation.yml"
+def test_backend_ci_owns_notebook_lab_contracts() -> None:
+    """Notebook contract validation belongs to the canonical backend CI."""
+    ci_path = Path(__file__).parent.parent / ".github" / "workflows" / "ci.yml"
     source = ci_path.read_text(encoding="utf-8")
 
-    # Existing entries must remain
-    assert "notebooks/00_data_download_and_sync.ipynb" in source
-    assert "notebooks/01_factor_research.ipynb" in source
-    assert "notebooks/end_to_end_training_pipeline.ipynb" in source
-    assert "notebooks/06_risk_controlled_momentum_grid.ipynb" in source
-
-    # Notebook 07 execution must be present
-    assert "07_true_daily_ranker_lab" in source
+    assert "notebooks/**" in source
+    assert "tests/test_notebook_lab_contracts.py" in source
+    assert "online-validation.yml" not in source
 
 
 def test_xgb_daily_ranker_maps_to_xgb_rank_ndcg_not_regressor() -> None:
