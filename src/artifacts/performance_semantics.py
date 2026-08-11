@@ -44,9 +44,11 @@ def build_performance_semantics(
         else None
     )
     turnover_formula = portfolio_contract.get("turnover_formula")
+    net_return_formula = portfolio_contract.get("net_return_formula")
     return {
         "schema_version": SCHEMA_VERSION,
         "trace_frequency": str(trace_frequency or "not_declared"),
+        "session_unit": str(portfolio_contract.get("session_unit") or "provider_session"),
         "signal_time": str(portfolio_contract.get("signal_time") or "not_declared"),
         "execution_time": str(portfolio_contract.get("execution_time") or "not_declared"),
         "return_measurement": str(
@@ -54,6 +56,7 @@ def build_performance_semantics(
             or portfolio_contract.get("return_expression")
             or "not_declared"
         ),
+        "price_basis": str(portfolio_contract.get("price_basis") or "not_declared"),
         "execution_delay_sessions": delay,
         "holding_period_sessions": holding,
         "holding_end_offset_sessions": end_offset,
@@ -64,7 +67,11 @@ def build_performance_semantics(
                 str(turnover_formula) if turnover_formula else "not_declared"
             ),
             "row_cost_field": "transaction_cost",
-            "net_return_formula": "gross_return - transaction_cost",
+            "net_return_formula": (
+                str(net_return_formula)
+                if net_return_formula
+                else "gross_return - transaction_cost"
+            ),
             "browser_recomputation_permitted": False,
         },
         "source": "formal.portfolio_contract",
