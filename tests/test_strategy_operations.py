@@ -371,5 +371,5 @@ def test_operations_payload_write_is_idempotent(tmp_path: Path) -> None:
         generated_at="2026-08-08T00:00:00Z",
     )
     output = tmp_path / "operations.json"
-    assert write_operations_payload(payload, output) is True
-    assert write_operations_payload(payload, output) is False
+    assert write_operations_payload(output, payload) is True
+    assert write_operations_payload(output, payload) is False
