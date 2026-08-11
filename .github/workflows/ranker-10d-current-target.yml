@@ -20,12 +20,11 @@ on:
       - "configs/factor_libraries/ohlcv.yaml"
 
 permissions:
-  actions: write
   contents: write
   issues: write
 
 concurrency:
-  group: ranker-10d-current-target
+  group: strategy-operations-live
   cancel-in-progress: false
 
 jobs:
@@ -39,13 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.sha }}
+          ref: main
           fetch-depth: 0
       - name: Capture executed source revision
         id: source
         shell: bash
         run: |
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v6
         with:
@@ -241,12 +239,6 @@ jobs:
             git push origin HEAD:main
             echo "published=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Dispatch Pages for committed operating state
-        if: steps.publish_state.outputs.published == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
 
       - name: Retain decision evidence
         if: always()

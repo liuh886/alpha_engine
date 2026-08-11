@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 import pandas as pd
@@ -8,6 +9,7 @@ import pytest
 
 from src.factors.ranker_snapshot import build_ranker_factor_snapshot
 from src.factors.library import load_factor_library
+from src.artifacts.strategy_signal_ledger import canonical_json_bytes
 from src.research.ranker_current_target import (
     CN_FACTOR_COLUMNS,
     RankerCurrentTargetError,
@@ -33,6 +35,23 @@ def _formal(path: Path, date: str, weights: dict[str, float]) -> None:
     )
 
 
+def _live_ledger(path: Path, date: str, weights: dict[str, float]) -> None:
+    signal = {"signal_date": date, "target_weights": weights}
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": "strategy_signal_evaluation_v1",
+                "model_version_id": path.parent.name,
+                "signal": signal,
+                "signal_sha256": hashlib.sha256(canonical_json_bytes(signal)).hexdigest(),
+                "research_only": True,
+                "trade_ready": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_next_due_session_is_exactly_ten_provider_sessions_after_anchor() -> None:
     sessions = pd.bdate_range("2026-07-01", periods=20)
     assert next_due_session(anchor="2026-07-01", sessions=sessions) == "2026-07-15"
@@ -52,14 +71,10 @@ def test_live_ledger_supersedes_older_formal_position(tmp_path: Path) -> None:
     ledger = tmp_path / "ledger"
     ledger.mkdir()
     _formal(formal, "2026-07-01", {"AAA": 1.0})
-    (ledger / "latest.json").write_text(
-        json.dumps(
-            {
-                "signal_date": "2026-07-15",
-                "target_weights": {"BBB": 0.5, "CCC": 0.5},
-            }
-        ),
-        encoding="utf-8",
+    _live_ledger(
+        ledger / "latest.json",
+        "2026-07-15",
+        {"BBB": 0.5, "CCC": 0.5},
     )
     date, weights = load_previous_state(formal_package=formal, ledger_dir=ledger)
     assert date == "2026-07-15"
@@ -71,15 +86,7 @@ def test_newer_formal_position_supersedes_stale_live_ledger(tmp_path: Path) -> N
     ledger = tmp_path / "ledger"
     ledger.mkdir()
     _formal(formal, "2026-07-15", {"AAA": 1.0})
-    (ledger / "latest.json").write_text(
-        json.dumps(
-            {
-                "signal_date": "2026-07-01",
-                "target_weights": {"BBB": 1.0},
-            }
-        ),
-        encoding="utf-8",
-    )
+    _live_ledger(ledger / "latest.json", "2026-07-01", {"BBB": 1.0})
     date, weights = load_previous_state(formal_package=formal, ledger_dir=ledger)
     assert date == "2026-07-15"
     assert weights == {"AAA": 1.0}

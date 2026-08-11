@@ -37,11 +37,10 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: byd-v1-3-daily-signal-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
+  group: strategy-operations-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
   cancel-in-progress: false
 
 permissions:
-  actions: write
   contents: write
   issues: write
 
@@ -233,11 +232,6 @@ jobs:
             git push origin HEAD:main
             echo "published=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Dispatch Pages for committed operating state
-        if: steps.publish.outputs.published == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
       - name: Upload finalized signal evidence
         if: always()
         uses: actions/upload-artifact@v6

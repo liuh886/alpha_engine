@@ -484,6 +484,27 @@ def build_operations_payload(
     }
 
 
+def write_operations_payload(path: Path, payload: Mapping[str, object]) -> bool:
+    """Write a changed read model without timestamp-only publication churn."""
+
+    validate_operations_payload(payload)
+    if path.is_file():
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        validate_operations_payload(existing)
+        existing_state = dict(existing)
+        candidate_state = dict(payload)
+        existing_state.pop("generated_at", None)
+        candidate_state.pop("generated_at", None)
+        if existing_state == candidate_state:
+            return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return True
+
+
 def validate_operations_payload(payload: object) -> None:
     if not isinstance(payload, Mapping):
         raise StrategyOperationsError("operations payload root must be an object")

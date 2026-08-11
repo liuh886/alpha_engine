@@ -26,6 +26,10 @@ from src.research.cn130_cross_sectional_ranking import (
     stack_return_frame,
 )
 import src.research.cn130_ranking_pipeline as cn_core
+from src.artifacts.strategy_signal_ledger import (
+    StrategySignalLedgerError,
+    read_latest_evaluation,
+)
 from src.research.cn_x1_1_regime_gated import (
     RegimeGateSpec,
     build_regime_state,
@@ -126,12 +130,20 @@ def load_previous_state(*, formal_package: Path, ledger_dir: Path) -> tuple[str,
     """Use the newest governed target, preferring the live append-only ledger."""
 
     formal_anchor, formal_weights = _latest_formal_weights(_json(formal_package))
-    latest = ledger_dir / "latest.json"
-    if not latest.is_file():
+    try:
+        record = read_latest_evaluation(
+            ledger_dir,
+            model_version_id=ledger_dir.name,
+        )
+    except (OSError, json.JSONDecodeError, StrategySignalLedgerError) as exc:
+        raise RankerCurrentTargetError("latest live ranker record is invalid") from exc
+    if record is None:
         return formal_anchor, formal_weights
-    record = _json(latest)
-    signal_date = str(record.get("signal_date", ""))
-    target = record.get("target_weights")
+    signal = record.get("signal")
+    if not isinstance(signal, dict):
+        raise RankerCurrentTargetError("latest live ranker record is invalid")
+    signal_date = str(signal.get("signal_date", ""))
+    target = signal.get("target_weights")
     if not signal_date or not isinstance(target, dict) or not target:
         raise RankerCurrentTargetError("latest live ranker record is invalid")
     live_weights = {str(key): float(value) for key, value in target.items()}

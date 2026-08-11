@@ -8,6 +8,7 @@ import pytest
 from src.artifacts.strategy_operations import (
     build_operations_payload,
     validate_operations_payload,
+    write_operations_payload,
 )
 from src.artifacts.strategy_signal_ledger import (
     StrategySignalLedgerError,
@@ -472,3 +473,22 @@ def test_tampered_signal_fails_closed_in_operations_read_model(tmp_path: Path) -
     qqq = _by_model(payload)[QQQ_MODEL]
     assert qqq["status"] == "blocked"
     assert "digest mismatch" in str(qqq["decision_reason"])
+
+
+def test_operations_writer_ignores_timestamp_only_rebuilds(tmp_path: Path) -> None:
+    output = tmp_path / "snapshots.json"
+    first = build_operations_payload(
+        formal_catalog=FORMAL_CATALOG,
+        ledger_root=tmp_path / "ledgers",
+        generated_at="2026-08-08T00:00:01Z",
+    )
+    assert write_operations_payload(output, first) is True
+    first_bytes = output.read_bytes()
+
+    repeated = build_operations_payload(
+        formal_catalog=FORMAL_CATALOG,
+        ledger_root=tmp_path / "ledgers",
+        generated_at="2026-08-08T00:01:01Z",
+    )
+    assert write_operations_payload(output, repeated) is False
+    assert output.read_bytes() == first_bytes
