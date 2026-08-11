@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from src.research.byd_signal_evidence import bind_final_signal_identity, close_evidence_is_current
+import pytest
+
+from src.research.byd_signal_evidence import (
+    BYDSignalEvidenceError,
+    bind_final_signal_identity,
+    bind_manifest_observation_identity,
+    close_evidence_is_current,
+)
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID
 
 
@@ -76,6 +83,36 @@ def test_formal_close_freshness_rejects_missing_identity_after_legacy_seed() -> 
         }
     )
     assert close_evidence_is_current(observation) is False
+
+
+def test_manifest_hash_binds_immutable_observation_with_legacy_missing_field() -> None:
+    observation = _observation()
+    observation.pop("candidate_model_id")
+    observation["signal_date"] = "2026-08-11"
+    bound = bind_manifest_observation_identity(
+        observation,
+        observation_sha256="a" * 64,
+        manifest={
+            "schema_version": observation["schema_version"],
+            "candidate_model_id": MODEL_ID,
+            "observation_sha256": {"2026-08-11": "a" * 64},
+        },
+    )
+    assert bound["candidate_model_id"] == MODEL_ID
+    assert "candidate_model_id" not in observation
+
+
+def test_manifest_binding_rejects_unsealed_observation() -> None:
+    with pytest.raises(BYDSignalEvidenceError, match="not sealed"):
+        bind_manifest_observation_identity(
+            _observation(),
+            observation_sha256="b" * 64,
+            manifest={
+                "schema_version": "byd_v1_3_low_vol_prospective_v1",
+                "candidate_model_id": MODEL_ID,
+                "observation_sha256": {"2026-08-10": "a" * 64},
+            },
+        )
 
 
 def test_close_freshness_fails_when_final_source_identity_is_missing() -> None:
