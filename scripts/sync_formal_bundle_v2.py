@@ -1,10 +1,9 @@
-"""Project the accepted formal v1 catalog into Model Run Bundle v2.
+"""Publish the active formal model set into Model Run Bundle v2.
 
-This is the single formal publication projector. It derives the accepted model
-set from the governed v1 catalog, requires exact parity with the supported
-adapter registry, and rebuilds Bundle v2 deterministically without rerunning a
-model or reopening model selection. A baseline promotion therefore enters the
-frontend only after its accepted v1 package and adapter identity agree.
+Legacy accepted v1 packages are projected without recomputation. Native Bundle v2
+models enter the same formal catalog only through an explicit promotion adapter.
+The active catalog contains one formal baseline per model family and removes the
+superseded entry instead of carrying compatibility aliases.
 """
 from __future__ import annotations
 
@@ -18,10 +17,16 @@ from typing import Any, Mapping
 
 from src.artifacts import formal_bundle_v2_projector as projector
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes, validate_catalog
+from src.artifacts.model_run_exporter import update_catalog
+from src.artifacts.us_x1_2_formal import (
+    MODEL_ID as US_X1_2,
+    SUPERSEDED_FORMAL_MODEL as US_X1_1,
+    promote_preview_bundle,
+)
 
 FORMAL_MODEL_ADAPTERS: dict[str, tuple[str, str]] = {
     "qqqi_qqq_tqqq_v4_3": ("qqq_rotation", "rules_based_allocation"),
-    "us_x1_1": ("us_ranker", "cross_sectional_ranker"),
+    US_X1_1: ("us_ranker", "cross_sectional_ranker"),
     "cn_x1_1": ("cn_ranker", "cross_sectional_ranker"),
     "byd_v1_3_recovery_event_low_vol_confirmation_v1": (
         "byd_allocation",
@@ -29,9 +34,13 @@ FORMAL_MODEL_ADAPTERS: dict[str, tuple[str, str]] = {
     ),
 }
 
+NATIVE_FORMAL_PROMOTIONS: dict[str, str] = {
+    US_X1_2: US_X1_1,
+}
+
 
 class FormalBundleV2SyncError(ValueError):
-    """Raised when formal v1 and Bundle v2 publication contracts diverge."""
+    """Raised when formal source and Bundle v2 publication contracts diverge."""
 
 
 def _object(path: Path) -> dict[str, Any]:
@@ -90,6 +99,13 @@ def accepted_v1_models(source_root: Path) -> list[str]:
             )
         model_ids.append(model_id)
     return model_ids
+
+
+def active_formal_models(accepted_v1: list[str]) -> list[str]:
+    superseded = set(NATIVE_FORMAL_PROMOTIONS.values())
+    active = [model_id for model_id in accepted_v1 if model_id not in superseded]
+    active.extend(NATIVE_FORMAL_PROMOTIONS)
+    return active
 
 
 def _publish_freshness_policy(source_root: Path, output_root: Path) -> str:
@@ -161,14 +177,63 @@ def _with_provisional_mtm(plan, source_path: Path):
     return replace(plan, sections=tuple(sections))
 
 
-def sync(source_root: Path, output_root: Path) -> dict[str, Any]:
+def _native_preview_manifest(native_root: Path, model_id: str) -> Path:
+    catalog = _object(native_root / "catalog.json")
+    validate_catalog(catalog)
+    if catalog.get("channel") != "preview":
+        raise FormalBundleV2SyncError("native formal source must be a preview catalog")
+    records = [
+        row
+        for row in catalog["records"]
+        if isinstance(row, Mapping) and row.get("model_version_id") == model_id
+    ]
+    if len(records) != 1:
+        raise FormalBundleV2SyncError(
+            f"native formal source identity is ambiguous: {model_id}"
+        )
+    record = records[0]
+    manifest_path = native_root / str(record["manifest_path"])
+    if not manifest_path.is_file() or _sha256(manifest_path) != record["manifest_sha256"]:
+        raise FormalBundleV2SyncError(
+            f"native formal source manifest digest mismatch: {model_id}"
+        )
+    return manifest_path
+
+
+def _publish_native_formals(native_root: Path, output_root: Path) -> list[str]:
+    promoted: list[str] = []
+    for model_id, superseded in NATIVE_FORMAL_PROMOTIONS.items():
+        source_manifest = _native_preview_manifest(native_root, model_id)
+        manifest_path = promote_preview_bundle(source_manifest.parent, output_root)
+        superseded_root = output_root / "us_ranker" / superseded
+        if superseded_root.exists():
+            shutil.rmtree(superseded_root)
+        if not manifest_path.is_file():
+            raise FormalBundleV2SyncError(f"native formal publication failed: {model_id}")
+        promoted.append(model_id)
+
+    manifests = sorted(output_root.rglob("manifest.json"))
+    update_catalog(
+        manifests,
+        catalog_path=output_root / "catalog.json",
+        channel="formal",
+    )
+    return promoted
+
+
+def sync(
+    source_root: Path,
+    output_root: Path,
+    native_root: Path = Path("data/research/model_runs"),
+) -> dict[str, Any]:
     source_root = source_root.resolve()
     output_root = output_root.resolve()
+    native_root = native_root.resolve()
     accepted = accepted_v1_models(source_root)
     supported = list(FORMAL_MODEL_ADAPTERS)
     if accepted != supported:
         raise FormalBundleV2SyncError(
-            "accepted formal catalog and Bundle v2 adapter registry diverge: "
+            "accepted formal v1 catalog and projector registry diverge: "
             f"accepted={accepted}, supported={supported}"
         )
 
@@ -203,20 +268,25 @@ def sync(source_root: Path, output_root: Path) -> dict[str, Any]:
             canonical_json_bytes(migration_receipt)
         )
 
+    promoted = _publish_native_formals(native_root, output_root)
     freshness_sha = _publish_freshness_policy(source_root, output_root)
     catalog_path = output_root / "catalog.json"
     catalog = _object(catalog_path)
     validate_catalog(catalog)
     projected = [str(row.get("model_version_id")) for row in catalog["records"]]
-    if set(projected) != set(accepted) or len(projected) != len(accepted):
+    active = active_formal_models(accepted)
+    if set(projected) != set(active) or len(projected) != len(active):
         raise FormalBundleV2SyncError(
-            f"formal v1/v2 model-set parity failed: accepted={accepted}, projected={projected}"
+            f"active formal model-set parity failed: active={active}, projected={projected}"
         )
 
     receipt = {
         "schema_version": "2.0.0",
-        "status": "all_accepted_formal_models_projected",
-        "accepted_model_ids": accepted,
+        "status": "all_active_formal_models_projected",
+        "accepted_v1_model_ids": accepted,
+        "native_formal_model_ids": promoted,
+        "superseded_formal_model_ids": list(NATIVE_FORMAL_PROMOTIONS.values()),
+        "active_formal_model_ids": active,
         "projected_model_ids": projected,
         "source_catalog_sha256": _sha256(source_root / "catalog.json"),
         "source_freshness_sha256": _sha256(source_root / "freshness.json"),
@@ -246,9 +316,14 @@ def main() -> None:
         type=Path,
         default=Path("data/research/formal_model_runs"),
     )
+    parser.add_argument(
+        "--native-root",
+        type=Path,
+        default=Path("data/research/model_runs"),
+    )
     parser.add_argument("--receipt", type=Path)
     args = parser.parse_args()
-    receipt = sync(args.source_root, args.output_root)
+    receipt = sync(args.source_root, args.output_root, args.native_root)
     text = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
     if args.receipt:
         args.receipt.parent.mkdir(parents=True, exist_ok=True)

@@ -7,11 +7,20 @@ import numpy as np
 import pandas as pd
 
 from scripts.byd_formal_publication_common import write_json
-from scripts.sync_formal_bundle_v2 import FORMAL_MODEL_ADAPTERS, accepted_v1_models, sync
+from scripts.sync_formal_bundle_v2 import (
+    FORMAL_MODEL_ADAPTERS,
+    NATIVE_FORMAL_PROMOTIONS,
+    accepted_v1_models,
+    active_formal_models,
+    sync,
+)
+from src.artifacts.formal_evidence_standard import validate_formal_evidence_bundle
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+from src.artifacts.us_x1_2_formal import MODEL_ID as US_X1_2
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID as BYD_V13
 
 SOURCE = Path("data/research/formal_backtests")
+NATIVE = Path("data/research/model_runs")
 
 
 def _read(path: Path):
@@ -53,7 +62,7 @@ def test_live_signal_state_is_not_embedded_in_formal_v1_3_package() -> None:
     assert "delivery_status" not in monitoring
 
 
-def test_current_formal_catalog_matches_supported_adapters() -> None:
+def test_current_formal_v1_catalog_matches_supported_legacy_projectors() -> None:
     assert accepted_v1_models(SOURCE) == list(FORMAL_MODEL_ADAPTERS)
     assert list(FORMAL_MODEL_ADAPTERS) == [
         "qqqi_qqq_tqqq_v4_3",
@@ -61,13 +70,20 @@ def test_current_formal_catalog_matches_supported_adapters() -> None:
         "cn_x1_1",
         BYD_V13,
     ]
+    assert NATIVE_FORMAL_PROMOTIONS == {US_X1_2: "us_x1_1"}
+    assert set(active_formal_models(accepted_v1_models(SOURCE))) == {
+        "qqqi_qqq_tqqq_v4_3",
+        US_X1_2,
+        "cn_x1_1",
+        BYD_V13,
+    }
 
 
-def test_sync_projects_every_accepted_model_deterministically(tmp_path: Path) -> None:
+def test_sync_projects_active_formal_set_deterministically(tmp_path: Path) -> None:
     first = tmp_path / "first"
     second = tmp_path / "second"
-    receipt_a = sync(SOURCE, first)
-    receipt_b = sync(SOURCE, second)
+    receipt_a = sync(SOURCE, first, NATIVE)
+    receipt_b = sync(SOURCE, second, NATIVE)
     assert receipt_a == receipt_b
 
     files_a = sorted(path.relative_to(first) for path in first.rglob("*") if path.is_file())
@@ -78,14 +94,18 @@ def test_sync_projects_every_accepted_model_deterministically(tmp_path: Path) ->
     catalog = _read(first / "catalog.json")
     validate_catalog(catalog)
     versions = {row["model_version_id"] for row in catalog["records"]}
-    assert versions == set(FORMAL_MODEL_ADAPTERS)
-    assert len(catalog["records"]) == len(FORMAL_MODEL_ADAPTERS)
+    assert versions == set(receipt_a["active_formal_model_ids"])
+    assert US_X1_2 in versions
+    assert "us_x1_1" not in versions
     for row in catalog["records"]:
         manifest = _read(first / row["manifest_path"])
         validate_manifest(manifest)
         assert manifest["publication_status"] == "accepted_formal_baseline"
         assert manifest["research_only"] is True
         assert manifest["trade_ready"] is False
+
+    us_x1_2 = next(row for row in catalog["records"] if row["model_version_id"] == US_X1_2)
+    validate_formal_evidence_bundle((first / us_x1_2["manifest_path"]).parent)
 
     source_freshness = _read(SOURCE / "freshness.json")
     projected_freshness = _read(first / "freshness.json")
@@ -94,9 +114,38 @@ def test_sync_projects_every_accepted_model_deterministically(tmp_path: Path) ->
     assert receipt_a["source_freshness_sha256"] == receipt_a["formal_bundle_v2_freshness_sha256"]
 
 
+def test_native_us_x1_2_formal_boundary_is_explicit(tmp_path: Path) -> None:
+    output = tmp_path / "formal"
+    receipt = sync(SOURCE, output, NATIVE)
+    assert receipt["native_formal_model_ids"] == [US_X1_2]
+    assert receipt["superseded_formal_model_ids"] == ["us_x1_1"]
+
+    catalog = _read(output / "catalog.json")
+    record = next(row for row in catalog["records"] if row["model_version_id"] == US_X1_2)
+    run_dir = (output / record["manifest_path"]).parent
+    summary = _read(run_dir / "summary.json")
+    diagnostics = _read(run_dir / "diagnostics.json")
+    lineage = _read(run_dir / "lineage.json")
+
+    assert summary["baseline_status"] == "accepted_formal_baseline"
+    assert summary["formal_acceptance_status"] == "accepted_by_explicit_user_direction"
+    assert summary["trade_readiness_status"] == "prospective_gate_pending"
+    assert summary["evidence_completeness"]["missing"] == []
+    assert summary["evidence_completeness"]["not_applicable"] == [
+        "brokerage_quantity",
+        "brokerage_fill_price",
+    ]
+    assert diagnostics["evidence_completeness"]["missing"] == []
+    assert lineage["formal_baseline_superseded"] == "us_x1_1"
+    assert lineage["prospective_gate_scope"] == "trade_readiness_only"
+    assert lineage["prospective_gate_status"] == "pending"
+    assert summary["research_only"] is True
+    assert summary["trade_ready"] is False
+
+
 def test_byd_v1_3_complete_ledgers_enter_bundle_v2(tmp_path: Path) -> None:
     output = tmp_path / "formal"
-    sync(SOURCE, output)
+    sync(SOURCE, output, NATIVE)
     catalog = _read(output / "catalog.json")
     byd = next(row for row in catalog["records"] if row["model_version_id"] == BYD_V13)
     manifest_path = output / byd["manifest_path"]
