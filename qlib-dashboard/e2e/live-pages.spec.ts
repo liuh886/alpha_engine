@@ -88,7 +88,7 @@ async function loadFormalModels(page: Page, catalog: FormalCatalog): Promise<For
   return models;
 }
 
-async function openStrategy(page: Page, model: FormalModel): Promise<'accessible' | 'gated'> {
+async function openStrategy(page: Page, model: FormalModel): Promise<'accessible' | 'public_preview' | 'gated'> {
   await page.goto(
     `?live_acceptance=${Date.now()}#/strategies/${encodeURIComponent(model.version)}`,
     { waitUntil: 'networkidle' },
@@ -108,7 +108,14 @@ async function openStrategy(page: Page, model: FormalModel): Promise<'accessible
     await expect(main.getByRole('button', { name: /Sign in to continue|View Pro access|Open account/ })).toBeVisible();
     return 'gated';
   }
-  await expect(page.getByRole('heading', { name: 'Current decision state', exact: true })).toBeVisible();
+  const decisionState = main.getByRole('heading', { name: 'Current decision state', exact: true });
+  const publicPerformance = main.getByRole('heading', { name: 'Formal performance', exact: true });
+  await expect(decisionState.or(publicPerformance)).toBeVisible();
+  if (await publicPerformance.isVisible()) {
+    await expect(main.getByRole('heading', { name: 'Pro execution layer', exact: true })).toBeVisible();
+    await expect(main.getByRole('button', { name: 'View AlphaEngine Pro access', exact: true })).toBeVisible();
+    return 'public_preview';
+  }
   return 'accessible';
 }
 
