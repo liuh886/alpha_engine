@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T03:20:41Z",
+  "generated_at": "2026-08-11T04:24:58Z",
   "records": [
     {
       "allocations": [
@@ -143,7 +143,7 @@
       "source_identity": {
         "commit_sha": "deee7eff583f9df9e99aea934533c75e6632afa8",
         "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
-        "formal_bundle_id": "28bb243c6c37f876e18445b99b42dfa2b94c7be840736a0ee78b643999cef104",
+        "formal_bundle_id": "9b6fbca35816f72fc60785a403f9a22d65c808e3728b5f6239ba3d1fc238f15b",
         "formal_evidence_cutoff": "2026-08-10",
         "formal_run_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_08_10",
         "github_issue_number": 788,
@@ -864,7 +864,7 @@
       "source_identity": {
         "commit_sha": "649809a2e2978b657700263b1ec7be279e859c70",
         "factor_catalog_implementation_hash": "cceaabd14dc45667774acb6036be67c095224a5ae46e26c16449df5d92dc48ae",
-        "formal_bundle_id": "1c7eca8c9106dcd0a1d77bd5138421219cb3f01fc2843c7b82fda0a7502ae544",
+        "formal_bundle_id": "50bbe9fbef2471b6a935d447ebf204ac18683f746b96dd51a6d4cadbcc760828",
         "formal_evidence_cutoff": "2026-08-10",
         "formal_run_id": "cn_x1_1-through-2026_08_10",
         "github_issue_number": 776,
@@ -1031,7 +1031,7 @@
       "source_identity": {
         "commit_sha": "af74ca84055bbc2ae9d1cb53a12c824905554e1e",
         "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
-        "formal_bundle_id": "38d0611692c39e2d6f4aa404540e3204491ac0dc64a517f63e5caf5ac4d1db0c",
+        "formal_bundle_id": "2f588e219a851c839fc087e27be163739f811c7691cd7d109795ab9e226957c8",
         "formal_evidence_cutoff": "2026-08-07",
         "formal_run_id": "qqqi_qqq_tqqq_v4_3-through-2026_08_07",
         "github_issue_number": null,
@@ -2070,7 +2070,7 @@
       "source_identity": {
         "commit_sha": "649809a2e2978b657700263b1ec7be279e859c70",
         "factor_catalog_implementation_hash": "cceaabd14dc45667774acb6036be67c095224a5ae46e26c16449df5d92dc48ae",
-        "formal_bundle_id": "d4299d76ae9d5e5db957952a574ba84d4a399ef65f053f66eca47a588473976d",
+        "formal_bundle_id": "a0d041771b3265bcdcbfafe18b51c5bf4d7474e9a5bb3fdb7641a55edafde6a7",
         "formal_evidence_cutoff": "2026-08-07",
         "formal_run_id": "us_x1_1-through-2026_08_07",
         "github_issue_number": 775,
