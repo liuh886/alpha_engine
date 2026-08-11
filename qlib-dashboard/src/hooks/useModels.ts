@@ -63,10 +63,11 @@ export function useModels() {
         ...run,
         modelData: byId.get(run.modelVersionId) ?? null,
       }));
+      const previewRuns = preview.runs.filter((run) => !formalVersions.has(run.modelVersionId));
       const localModels = repositoryModels.filter((model) => !formalVersions.has(model.id));
       const governedRuns = sortRuns([
         ...formalRuns,
-        ...preview.runs,
+        ...previewRuns,
         ...adaptLocalRuns(localModels),
       ]);
       const generatedDates = governedRuns.map((record) => record.generatedAt).filter(Boolean).sort();
