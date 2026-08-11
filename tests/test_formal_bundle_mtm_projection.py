@@ -31,7 +31,7 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
 ) -> None:
     source = tmp_path / "formal-v1"
     shutil.copytree(SOURCE, source)
-    package_path = source / "us_x1_1.json"
+    package_path = source / "cn_x1_1.json"
     package = _read(package_path)
     settled_count = len(package["report"])
     cutoff = package["evidence_cutoff"]
@@ -47,7 +47,7 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
             "date": latest["holding_end_date"],
             "holding_end_date": cutoff,
             "account": latest["account"],
-            "bench_qqq": latest["bench_qqq"],
+            "bench_hs300": latest["bench_hs300"],
             "provisional_mtm": True,
             "settlement_status": "provisional_mtm",
             "mtm_as_of": cutoff,
@@ -62,7 +62,7 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
     catalog_path = source / "catalog.json"
     catalog = _read(catalog_path)
     for row in catalog["records"]:
-        if row["model_id"] == "us_x1_1":
+        if row["model_id"] == "cn_x1_1":
             row["sha256"] = _sha(package_path)
     _write(catalog_path, catalog)
 
@@ -70,15 +70,15 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
     sync(source, output)
 
     projected_catalog = _read(output / "catalog.json")
-    us = next(
+    cn = next(
         row for row in projected_catalog["records"]
-        if row["model_version_id"] == "us_x1_1"
+        if row["model_version_id"] == "cn_x1_1"
     )
-    manifest = _read(output / us["manifest_path"])
+    manifest = _read(output / cn["manifest_path"])
     performance_decl = next(
         row for row in manifest["sections"] if row["section_id"] == "performance"
     )
-    performance = _read((output / us["manifest_path"]).parent / performance_decl["path"])
+    performance = _read((output / cn["manifest_path"]).parent / performance_decl["path"])
 
     assert len(package["report"]) == settled_count
     assert len(performance["report"]) == settled_count + 1
