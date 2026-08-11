@@ -34,6 +34,7 @@ DIRECT_EXACT_PATHS = {
 DIRECT_PREFIXES = (
     "data/research/formal_model_runs/",
     "data/research/market_evidence/",
+    "data/research/model_data_bundle_v1/",
     "data/research/model_runs/",
     "data/research/model_decisions/",
     "data/research/strategy_operations/",

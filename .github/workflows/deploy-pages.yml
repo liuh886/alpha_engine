@@ -123,6 +123,12 @@ jobs:
           mkdir -p artifacts/site/docs
           cp docs/methodology.md artifacts/site/docs/methodology.md
           PYTHONPATH=. python scripts/export_research_bundle.py --source artifacts/site --output artifacts/research-bundle
+          if test -d data/research/model_data_bundle_v1; then
+            for name in model-data-readiness.json data-components.json training-profiles.json; do
+              test -f "artifacts/site/data/${name}"
+              test -f "artifacts/research-bundle/data/${name}"
+            done
+          fi
       - name: Assemble and validate publication
         env:
           IMPACT_REASON: ${{ needs.detect-impact.outputs.reason }}
@@ -160,6 +166,12 @@ jobs:
           test ! -e _site/data/strategy-operations/capabilities.json
           test -f _site/docs/methodology.md
           test -f _site/bundle/alpha-engine-bundle.json
+          if test -d data/research/model_data_bundle_v1; then
+            for name in model-data-readiness.json data-components.json training-profiles.json; do
+              test -f "_site/data/${name}"
+              test -f "_site/bundle/data/${name}"
+            done
+          fi
           grep -q '"source": "repository_research_store"' _site/data/manifest.json
           ! grep -q 'metadata_db_missing' _site/bundle/alpha-engine-bundle.json
           PYTHONPATH=. python - <<'PY'

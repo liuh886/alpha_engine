@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -487,12 +487,25 @@ def build_model_data_bundle(
     frontend_data_dir: Path | None = None,
 ) -> dict[str, Any]:
     normalized_root = root.resolve()
+    output = output_root.resolve()
     contract = _load_mapping(contract_path.resolve())
     cutoff = _parse_date(evidence_cutoff)
     if cutoff is None:
         raise ModelDataBundleError("evidence_cutoff is required")
 
     components_list = [normalize_component(spec) for spec in component_specs]
+    portable_components: list[DataComponent] = []
+    for component in components_list:
+        manifest_path = Path(component.manifest_path)
+        try:
+            portable_path = manifest_path.relative_to(output).as_posix()
+        except ValueError:
+            portable_components.append(component)
+        else:
+            portable_components.append(
+                replace(component, manifest_path=portable_path)
+            )
+    components_list = portable_components
     component_ids = [component.component_id for component in components_list]
     if len(component_ids) != len(set(component_ids)):
         raise ModelDataBundleError("component IDs must be unique")
@@ -523,7 +536,6 @@ def build_model_data_bundle(
         f"{contract_hash}\n{cutoff}\n{component_seed}\n{profile_seed}".encode("utf-8")
     ).hexdigest()
 
-    output = output_root.resolve()
     output.mkdir(parents=True, exist_ok=True)
     component_payload = [
         component.to_dict()
@@ -627,6 +639,8 @@ def verify_model_data_bundle(output_root: Path) -> list[str]:
         if not isinstance(component, dict):
             raise ModelDataBundleError("invalid component record")
         path = Path(str(component.get("manifest_path", "")))
+        if not path.is_absolute():
+            path = root / path
         digest = str(component.get("manifest_sha256", "")).lower()
         if not path.is_file() or _sha256(path) != digest:
             raise ModelDataBundleError(
