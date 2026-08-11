@@ -16,6 +16,7 @@ import scripts.run_us_x1_1_rank_aware_sector_cap as sector_cap
 from src.data.market_provider import load_provider_manifest
 from src.factors.library import load_factor_library, normalize_expression
 from src.research.daily_ranker import prepare_ranker_frame
+from src.research.multi_market_readiness import normalize_market_symbols
 from src.research.qlib_execution_common import normalize_qlib_frame_index
 from src.research.ranker_current_target import (
     _explanation_summary,
@@ -87,13 +88,23 @@ def _calibration(config: Mapping[str, Any]) -> XGBNativeCalibration:
     return XGBNativeCalibration.from_dict(fields)
 
 
-def _symbols(root: Path, config: Mapping[str, Any]) -> list[str]:
+def _symbols(
+    root: Path,
+    config: Mapping[str, Any],
+    runtime: QlibUSExecutionRuntime,
+) -> list[str]:
     universe = _yaml(root / UNIVERSE_CONFIG)
-    symbols = [str(value) for value in universe.get("symbols", [])]
+    requested = [str(value) for value in universe.get("symbols", [])]
     expected = int(universe.get("candidate_count", 0))
     declared = dict(config.get("universe") or {})
-    if declared.get("universe_id") != universe.get("universe_id"):
+    if declared.get("universe_id") != universe.get("pool_id"):
         raise USX12CurrentTargetError("US x1.2 universe identity drifted")
+    normalized = normalize_market_symbols(
+        "us",
+        requested,
+        available_symbols=runtime.available_symbols(),
+    )
+    symbols = [value.normalized_symbol for value in normalized]
     if len(symbols) != expected or len(symbols) != len(set(symbols)):
         raise USX12CurrentTargetError("US x1.2 universe is incomplete")
     return symbols
@@ -202,8 +213,6 @@ def score_us_x1_2_current_target(
     ):
         raise USX12CurrentTargetError("US x1.2 portfolio contract changed")
 
-    symbols = _symbols(root, config)
-    sectors = _sectors(root, symbols)
     calibration = _calibration(config)
     expressions = [str(value) for value in dict(config.get("features") or {}).get("expressions", [])]
     if len(expressions) != 7:
@@ -211,10 +220,8 @@ def score_us_x1_2_current_target(
 
     runtime = QlibUSExecutionRuntime(provider_uri=provider_dir)
     runtime.initialize(root)
-    available = runtime.available_symbols()
-    missing = sorted(set(symbols) - available)
-    if missing:
-        raise USX12CurrentTargetError(f"US provider missing formal universe symbols: {missing}")
+    symbols = _symbols(root, config, runtime)
+    sectors = _sectors(root, symbols)
 
     signal_ts = pd.Timestamp(signal_date)
     half_start = pd.Timestamp(f"{signal_ts.year}-{'01-01' if signal_ts.month <= 6 else '07-01'}")
