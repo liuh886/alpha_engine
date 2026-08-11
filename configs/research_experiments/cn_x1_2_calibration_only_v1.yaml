@@ -10,6 +10,11 @@ parent_model_id: cn_x1_1
 research_only: true
 trade_ready: false
 
+snapshot:
+  policy: exact_selected_pool_source_rebuild
+  source_dir: data/csv_source
+  cutoff: '2026-06-24'
+
 purpose: >-
   Test ONE hypothesis: lower learning rate (0.03) with more rounds (300) and
   row/column sampling improves CN x1.1 signal quality. Factor set, portfolio
