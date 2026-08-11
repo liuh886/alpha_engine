@@ -117,14 +117,21 @@ async function optionalSection(
   return loadRunSection(run, sectionId);
 }
 
-function parseReport(value: unknown, benchmarkId: string): ReportRow[] {
+function parseReport(value: unknown, benchmarkId: string, dateField: string): ReportRow[] {
   return records(value, 'performance.report').map((row, index) => {
     const account = Number(row.account);
-    const date = String(row.date ?? '');
+    const sourceDate = String(row.date ?? '');
+    const date = String(row[dateField] ?? row.date ?? '');
     if (!date || !Number.isFinite(account) || account <= 0) {
       throw new Error(`performance.report row ${index} has an invalid date or account value.`);
     }
-    return { ...row, date, account, benchmark_id: benchmarkId } as ReportRow;
+    return {
+      ...row,
+      ...(dateField !== 'date' && sourceDate ? { signal_date: sourceDate } : {}),
+      date,
+      account,
+      benchmark_id: benchmarkId,
+    } as ReportRow;
   });
 }
 
@@ -211,11 +218,6 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
   const parsedTrades = tradesRaw
     ? parseTrades(tradesRaw)
     : { rows: [], analytics: {}, price: '', amount: '' };
-  const chartBenchmark = run.modelFamilyId === 'byd_allocation' ? 'BYD' : benchmark;
-  const parsedReport = attachBydPriceBaseline(
-    parseReport(performance.report, chartBenchmark),
-    parsedPositions,
-  );
 
   let productionSemantics: Record<string, unknown>;
   let productionPortfolioContract: Record<string, unknown>;
@@ -229,6 +231,13 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
     productionSemantics = contractRecord(performance.performance_semantics ?? {}, 'performance.performance_semantics');
     productionPortfolioContract = contractRecord(portfolio.portfolio_contract ?? {}, 'portfolio.portfolio_contract');
   }
+
+  const chartBenchmark = run.modelFamilyId === 'byd_allocation' ? 'BYD' : benchmark;
+  const performanceDateField = String(productionSemantics.performance_date_field ?? 'date');
+  const parsedReport = attachBydPriceBaseline(
+    parseReport(performance.report, chartBenchmark, performanceDateField),
+    parsedPositions,
+  );
 
   return {
     run,
