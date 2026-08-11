@@ -55,6 +55,7 @@ function FormalRunCard({ run, selected, onSelect }: { run: GovernedRunSummary; s
         <div><p className="text-[10px] text-muted-foreground">Drawdown</p><p className="mt-1 font-mono font-semibold">{metricText(run, 'max_drawdown')}</p></div>
       </div>
       <div className="mt-3"><Badge variant="outline" className={completeness === 'complete' ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>{completeness} evidence</Badge></div>
+      <div className="mt-2"><Badge variant="secondary" className="text-[9px]">{run.channel === 'formal' ? 'Accepted formal' : 'Active research preview'}</Badge></div>
     </button>
   );
 }
@@ -98,8 +99,11 @@ export function FormalBacktestsPage() {
   const workspace = useOutletContext<RunWorkspaceContext>();
   const navigate = useNavigate();
   const [freshness, setFreshness] = useState<FormalFreshnessSnapshot | null>(null);
-  const formalRuns = useMemo(() => workspace.runs.filter((run) => run.channel === 'formal'), [workspace.runs]);
-  const activeRun = formalRuns.find((run) => run.key === workspace.activeRunKey) ?? formalRuns[0] ?? null;
+  const governedRuns = useMemo(
+    () => workspace.runs.filter((run) => run.channel === 'formal' || run.channel === 'preview'),
+    [workspace.runs],
+  );
+  const activeRun = governedRuns.find((run) => run.key === workspace.activeRunKey) ?? governedRuns[0] ?? null;
 
   useEffect(() => {
     let active = true;
@@ -114,7 +118,7 @@ export function FormalBacktestsPage() {
   }, [activeRun?.key, workspace.activeRunKey, workspace.selectRun]);
 
   if (!activeRun) {
-    return <div className="rounded-xl border-2 border-dashed p-12 text-center text-sm text-muted-foreground">No accepted formal baseline is declared by the verified catalog.</div>;
+    return <div className="rounded-xl border-2 border-dashed p-12 text-center text-sm text-muted-foreground">No governed formal or research-preview run is declared by the verified catalogs.</div>;
   }
 
   const selectFormalRun = (run: GovernedRunSummary) => {
@@ -127,15 +131,15 @@ export function FormalBacktestsPage() {
       <section className="rounded-xl border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Accepted evidence workspace</p>
-            <h2 className="mt-1 text-2xl font-semibold">Formal Backtests</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Governed evidence workspace</p>
+            <h2 className="mt-1 text-2xl font-semibold">Model Backtests</h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              Review the complete retained evidence for accepted formal baselines. Metrics, paths, holdings, trades and attribution are loaded from hash-verified Model Run Bundle v2 sections; missing evidence remains visible and is never reconstructed in the browser.
+              Review accepted formal baselines together with the active research baseline. Performance, holdings, trades, prices, normalized amount, outcome analytics, attribution and signals are loaded from hash-verified Bundle v2 sections; the browser never invents missing execution evidence.
             </p>
           </div>
           <div className="flex items-start gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-            <div><div className="font-semibold">{formalRuns.length} governed baselines</div><div className="mt-1 text-xs text-muted-foreground">research_only=true · trade_ready=false</div></div>
+            <div><div className="font-semibold">{governedRuns.length} governed runs</div><div className="mt-1 text-xs text-muted-foreground">formal + active research preview · trade_ready=false</div></div>
           </div>
         </div>
       </section>
@@ -143,7 +147,7 @@ export function FormalBacktestsPage() {
       <FreshnessBanner snapshot={freshness} />
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4" aria-label="Accepted formal backtest baselines">
-        {formalRuns.map((run) => (
+        {governedRuns.map((run) => (
           <FormalRunCard key={run.key} run={run} selected={run.key === activeRun.key} onSelect={() => selectFormalRun(run)} />
         ))}
       </section>

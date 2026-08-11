@@ -102,6 +102,7 @@ jobs:
           test -f dist/sw.js
           test -f dist/icons/alpha-engine.svg
           test -f dist/data/formal-model-runs/catalog.json
+          test -f dist/data/model-runs/catalog.json
           test -f dist/data/strategy-operations/snapshots.json
           test ! -e dist/data/strategy-operations/capabilities.json
           test ! -e dist/data/formal-backtests
@@ -162,6 +163,7 @@ jobs:
           test -f _site/data/manifest.json
           test -f _site/data/models.json
           test -f _site/data/formal-model-runs/catalog.json
+          test -f _site/data/model-runs/catalog.json
           test -f _site/data/strategy-operations/snapshots.json
           test ! -e _site/data/strategy-operations/capabilities.json
           test -f _site/docs/methodology.md

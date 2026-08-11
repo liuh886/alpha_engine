@@ -26,18 +26,13 @@ export function HoldingsSummary({
   const avgWeight =
     positions.reduce((acc, p) => acc + (p.weight || 0), 0) / positions.length;
 
-  // approximate turnover: sum abs(delta weight) / 2 over time
-  let turnover = 0;
-  const instruments = new Set(positions.map((p) => p.instrument));
-  for (const inst of instruments) {
-    const series = positions
-      .filter((p) => p.instrument === inst)
-      .sort((a, b) => a.date.localeCompare(b.date));
-    for (let i = 1; i < series.length; i++) {
-      turnover += Math.abs((series[i].weight || 0) - (series[i - 1].weight || 0));
-    }
-  }
-  turnover = turnover / 2;
+  const previousPositions = dates.length > 1 ? byDate[dates[dates.length - 2]] : [];
+  const previousWeights = new Map(previousPositions.map((position) => [position.instrument, Number(position.weight) || 0]));
+  const currentWeights = new Map(lastPositions.map((position) => [position.instrument, Number(position.weight) || 0]));
+  const latestTurnover = dates.length > 1
+    ? 0.5 * Array.from(new Set([...previousWeights.keys(), ...currentWeights.keys()]))
+      .reduce((sum, instrument) => sum + Math.abs((currentWeights.get(instrument) ?? 0) - (previousWeights.get(instrument) ?? 0)), 0)
+    : null;
 
   return (
     <Card>
@@ -67,8 +62,8 @@ export function HoldingsSummary({
             <span className="font-medium">{(avgWeight * 100).toFixed(2)}%</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-muted-foreground">Turnover (approx)</span>
-            <span className="font-medium">{(turnover ?? 0).toFixed(2)}</span>
+            <span className="text-muted-foreground">Latest Turnover (derived)</span>
+            <span className="font-medium">{latestTurnover === null ? '—' : `${(latestTurnover * 100).toFixed(1)}%`}</span>
           </div>
         </div>
         

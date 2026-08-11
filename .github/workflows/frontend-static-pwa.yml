@@ -6,6 +6,7 @@ on:
       - 'qlib-dashboard/**'
       - 'data/research/formal_backtests/**'
       - 'data/research/formal_model_runs/**'
+      - 'data/research/model_runs/**'
       - 'data/research/strategy_operations/**'
       - 'data/research/strategy_signal_ledgers/**'
       - 'src/artifacts/strategy_operations.py'
@@ -67,6 +68,7 @@ jobs:
           test -f dist/sw.js
           test -f dist/icons/alpha-engine.svg
           test -f dist/data/formal-model-runs/catalog.json
+          test -f dist/data/model-runs/catalog.json
           test -f dist/data/strategy-operations/snapshots.json
           test ! -e dist/data/strategy-operations/capabilities.json
           grep -q "Systematic Strategy Console" dist/index.html

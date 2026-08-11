@@ -76,10 +76,22 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
     const exited = previousPositions.filter((position) => !currentInstruments.has(position.instrument)).length;
     const added = currentPositions.filter((position) => position.changeKind === 'new').length;
     const adjusted = currentPositions.filter((position) => position.changeKind === 'increased' || position.changeKind === 'reduced').length;
-    const turnoverRow = report?.find((row) => row.date === currentDate || row.holding_end_date === currentDate);
-    const turnover = turnoverRow && Number.isFinite(Number(turnoverRow.turnover)) ? Number(turnoverRow.turnover) : null;
+    const turnoverRow = report?.find((row) => row.date === currentDate);
+    const derivedTurnover = previousDate
+      ? 0.5 * Array.from(new Set([
+        ...previousPositions.map((position) => position.instrument),
+        ...currentPositions.map((position) => position.instrument),
+      ])).reduce((sum, instrument) => {
+        const previousWeight = Number(previousPositions.find((position) => position.instrument === instrument)?.weight ?? 0);
+        const currentWeight = Number(currentPositions.find((position) => position.instrument === instrument)?.weight ?? 0);
+        return sum + Math.abs(currentWeight - previousWeight);
+      }, 0)
+      : null;
+    const turnover = turnoverRow && Number.isFinite(Number(turnoverRow.turnover))
+      ? Number(turnoverRow.turnover)
+      : derivedTurnover;
     return { grossExposure, netExposure, topFiveConcentration, exited, added, adjusted, turnover };
-  }, [currentDate, currentPositions, previousPositions, report]);
+  }, [currentDate, currentPositions, previousDate, previousPositions, report]);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({

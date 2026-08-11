@@ -62,4 +62,20 @@ describe('PositionsTable snapshot diagnostics', () => {
     expect(screen.getByText('\u4e09\u73af\u96c6\u56e2')).toBeInTheDocument();
     expect(screen.getByText('300408')).toBeInTheDocument();
   });
+
+  it('derives turnover from adjacent snapshots when the latest signal has no performance row yet', () => {
+    render(
+      <PositionsTable
+        positions={[
+          { date: '2026-07-16', instrument: 'A', weight: 0.5 },
+          { date: '2026-07-16', instrument: 'B', weight: 0.5 },
+          { date: '2026-07-30', instrument: 'A', weight: 0.5 },
+          { date: '2026-07-30', instrument: 'C', weight: 0.5 },
+        ]}
+        report={[{ date: '2026-07-16', holding_end_date: '2026-07-30', account: 1.05, turnover: 0.1 }]}
+      />,
+    );
+
+    expect(screen.getByTestId('holdings-snapshot')).toHaveTextContent('50.0%');
+  });
 });
