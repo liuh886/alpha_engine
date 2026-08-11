@@ -17,9 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -50,7 +50,7 @@ jobs:
 
       - name: Upsert freshness receipt issue
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           STATUS_LABEL: ${{ steps.freshness.outputs.status_label }}
           EXIT_CODE: ${{ steps.freshness.outputs.exit_code }}
@@ -94,14 +94,21 @@ jobs:
             );
 
             if (existing) {
-              await github.rest.issues.update({
+              const update = {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: existing.number,
                 title,
                 body,
-              });
-              core.notice(`Updated freshness issue #${existing.number}`);
+              };
+              if (status === 'current') {
+                update.state = 'closed';
+                update.state_reason = 'completed';
+              }
+              await github.rest.issues.update(update);
+              core.notice(
+                `${status === 'current' ? 'Closed' : 'Updated'} freshness issue #${existing.number}`
+              );
             } else if (status !== 'current') {
               await github.rest.issues.create({
                 owner: context.repo.owner,
