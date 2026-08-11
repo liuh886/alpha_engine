@@ -1,19 +1,27 @@
-name: Shadow Decision Desk CI
+name: Decision Support Shadow CI
 
 on:
   push:
     branches: [main]
     paths:
+      - "configs/operations/prospective_shadow_cutover_v1.yaml"
       - "src/decision_support/**"
       - "scripts/run_shadow_decision_desk.py"
+      - "scripts/run_prospective_shadow_cycle.py"
       - "tests/test_shadow_decision_desk.py"
+      - "tests/test_prospective_shadow_cycle.py"
+      - "docs/operations/prospective_shadow_runbook.md"
       - ".github/workflows/shadow-decision-desk-ci.yml"
   pull_request:
     branches: [main]
     paths:
+      - "configs/operations/prospective_shadow_cutover_v1.yaml"
       - "src/decision_support/**"
       - "scripts/run_shadow_decision_desk.py"
+      - "scripts/run_prospective_shadow_cycle.py"
       - "tests/test_shadow_decision_desk.py"
+      - "tests/test_prospective_shadow_cycle.py"
+      - "docs/operations/prospective_shadow_runbook.md"
       - ".github/workflows/shadow-decision-desk-ci.yml"
   workflow_dispatch:
 
@@ -21,7 +29,7 @@ permissions:
   contents: read
 
 jobs:
-  shadow-ledger-contract:
+  shadow-contracts:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -34,16 +42,21 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Ruff focused files
+      - name: Ruff decision support shadow path
         run: >-
           uv run ruff check
           src/decision_support
           scripts/run_shadow_decision_desk.py
+          scripts/run_prospective_shadow_cycle.py
           tests/test_shadow_decision_desk.py
-      - name: Run shadow desk tests
+          tests/test_prospective_shadow_cycle.py
+      - name: Run decision support shadow tests
         run: >-
           uv run pytest
           tests/test_shadow_decision_desk.py
+          tests/test_prospective_shadow_cycle.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: Shadow desk CLI import check
-        run: uv run python scripts/run_shadow_decision_desk.py --help
+      - name: CLI import checks
+        run: |
+          uv run python scripts/run_shadow_decision_desk.py --help
+          uv run python scripts/run_prospective_shadow_cycle.py --help
