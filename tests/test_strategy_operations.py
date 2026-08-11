@@ -373,3 +373,21 @@ def test_operations_payload_write_is_idempotent(tmp_path: Path) -> None:
     output = tmp_path / "operations.json"
     assert write_operations_payload(output, payload) is True
     assert write_operations_payload(output, payload) is False
+
+
+def test_committed_operations_identity_matches_formal_bundle_catalog() -> None:
+    formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+    operations = json.loads(
+        Path("data/research/strategy_operations/snapshots.json").read_text(encoding="utf-8")
+    )
+    formal_by_id = {row["model_version_id"]: row for row in formal["records"]}
+    operation_by_id = {
+        row["model_version_id"]: row for row in operations["records"]
+    }
+    assert set(operation_by_id) == set(formal_by_id)
+    for model_id, record in operation_by_id.items():
+        catalog_record = formal_by_id[model_id]
+        identity = record["source_identity"]
+        assert identity["formal_bundle_id"] == catalog_record["bundle_id"]
+        assert identity["formal_run_id"] == catalog_record["run_id"]
+        assert identity["formal_evidence_cutoff"] == catalog_record["evidence_cutoff"]
