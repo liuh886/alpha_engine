@@ -9,10 +9,12 @@ on:
       - 'data/source_repairs/**'
       - 'data/csv_source/**'
       - 'data/research/formal_model_runs/**'
+      - 'src/cli/main.py'
       - 'src/research/cross_sectional_experiment_runner.py'
       - 'src/research/experiment_harness.py'
       - 'src/research/formal_baseline.py'
       - 'src/research/formal_baseline_onboarding.py'
+      - 'src/research/formal_model_replay.py'
       - 'src/research/rules_based_allocation_experiment_runner.py'
       - 'src/research/byd_v1_3_candidate.py'
       - 'src/research/research_receipt.py'
@@ -26,6 +28,7 @@ on:
       - 'tests/test_cross_sectional_experiment_runner.py'
       - 'tests/test_experiment_harness.py'
       - 'tests/test_formal_baseline_onboarding.py'
+      - 'tests/test_formal_model_replay.py'
       - 'tests/test_rules_based_allocation_experiment_runner.py'
       - 'tests/test_research_receipt.py'
       - 'tests/test_optimization_campaign.py'
@@ -182,10 +185,12 @@ jobs:
       - name: Validate research harness
         run: |
           uv run ruff check \
+            src/cli/main.py \
             src/research/experiment_harness.py \
             src/research/cross_sectional_experiment_runner.py \
             src/research/formal_baseline.py \
             src/research/formal_baseline_onboarding.py \
+            src/research/formal_model_replay.py \
             src/research/rules_based_allocation_experiment_runner.py \
             src/research/byd_v1_3_candidate.py \
             src/research/research_receipt.py \
@@ -199,6 +204,7 @@ jobs:
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             tests/test_formal_baseline_onboarding.py \
+            tests/test_formal_model_replay.py \
             tests/test_rules_based_allocation_experiment_runner.py \
             tests/test_research_receipt.py \
             tests/test_optimization_campaign.py
@@ -206,6 +212,7 @@ jobs:
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             tests/test_formal_baseline_onboarding.py \
+            tests/test_formal_model_replay.py \
             tests/test_rules_based_allocation_experiment_runner.py \
             tests/test_research_receipt.py \
             tests/test_optimization_campaign.py \

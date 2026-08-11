@@ -19,6 +19,10 @@ from src.research.formal_baseline_onboarding import (
     run_formal_baseline_onboarding,
 )
 from src.research.research_receipt import write_research_receipt
+from src.research.rules_based_allocation_experiment_runner import (
+    RUNNER_ID as RULES_BASED_ALLOCATION_RUNNER,
+    run_rules_based_allocation_experiment,
+)
 
 
 def _runner(path: Path) -> str:
@@ -39,6 +43,8 @@ def main() -> int:
         receipt = run_cross_sectional_experiment(args.spec, output_dir=args.output_dir)
     elif runner == FORMAL_BASELINE_RUNNER:
         receipt = run_formal_baseline_onboarding(args.spec, output_dir=args.output_dir)
+    elif runner == RULES_BASED_ALLOCATION_RUNNER:
+        receipt = run_rules_based_allocation_experiment(args.spec)
     else:
         raise ValueError(f"unsupported runner: {runner!r}")
     receipt = write_research_receipt(
