@@ -361,6 +361,7 @@ def test_formal_refresh_publishes_one_shared_model_data_bundle() -> None:
     assert 'echo "changed=true" >> "$GITHUB_OUTPUT"' in model_data
     publication_condition = (
         "if: steps.plan.outputs.refresh_required == 'true' || "
+        "steps.preview.outputs.changed == 'true' || "
         "steps.model_data.outputs.changed == 'true'"
     )
     assert workflow.count(publication_condition) == 2
@@ -373,6 +374,7 @@ def test_formal_refresh_publishes_one_shared_model_data_bundle() -> None:
     )
     publish = workflow[publish_start:publish_end]
     assert "REFRESH_REQUIRED: ${{ steps.plan.outputs.refresh_required }}" in publish
+    assert "PREVIEW_CHANGED: ${{ steps.preview.outputs.changed }}" in publish
     assert "git fetch origin main" in publish
     assert "candidate_bundle_id" in publish
     assert "main_bundle_id" in publish
