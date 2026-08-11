@@ -143,6 +143,7 @@ logs/
 
 # Handoff documents
 docs/research/HANDOFF_*.md
+docs/research/HANDOVER-*.md
 
 # Optimization experiment outputs
 artifacts/optimization/
