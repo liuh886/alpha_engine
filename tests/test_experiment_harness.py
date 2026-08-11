@@ -16,7 +16,7 @@ def _write_spec(tmp_path: Path, *, reporting: list[str] | None = None) -> Path:
     payload = {
         "experiment_id": "us_x1_2_harness_integrity_v1",
         "snapshot": {
-            "provider_identity_sha256": "frozen-provider",
+            "provider_identity_sha256": "a" * 64,
             "cutoff": "2026-07-31",
         },
         "windows": {
@@ -165,3 +165,60 @@ def test_missing_selection_window_fails_closed(tmp_path: Path) -> None:
 def test_selection_and_reporting_windows_must_be_disjoint(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="selection/reporting windows overlap"):
         load_experiment_contract(_write_spec(tmp_path, reporting=["2025H2"]))
+
+
+class TestProviderIdentityValidation:
+    """Non-empty, 64-char hex SHA256 + valid ISO date required."""
+
+    VALID_SHA256 = "a" * 64
+
+    def _write(self, tmp_path: Path, provider_id: str = VALID_SHA256, cutoff: str = "2026-06-24") -> Path:
+        spec = deepcopy({
+            "experiment_id": "test",
+            "runner": "cross_sectional_xgb_ranker_v1",
+            "research_only": True,
+            "trade_ready": False,
+            "windows": {"candidate_selection": ["2024H1"], "consumed_reporting_only": [],
+                         "consumed_reporting_may_enter_selection": False},
+            "evaluation": {"baseline_candidate_id": "bl", "stress_cost_bps": 60,
+                           "decision": "test", "ranking": ["compounded_relative_excess"],
+                           "thresholds": {"min_window_relative_excess": 0.0, "min_worst_drawdown": -0.30,
+                                          "min_stress_compounded_relative_excess": 0.0,
+                                          "max_strongest_positive_window_share": 0.55,
+                                          "min_mean_rank_ic_improvement": 0.0,
+                                          "require_factor_baseline_dominance": False}},
+            "execution": {"base_cost_bps": 20, "cost_stress_bps": [20, 60]},
+            "snapshot": {"provider_identity_sha256": provider_id, "cutoff": cutoff},
+        })
+        p = tmp_path / "spec.yaml"
+        p.write_text(yaml.dump(spec))
+        return p
+
+    def test_valid_sha256_loads(self, tmp_path):
+        c = load_experiment_contract(self._write(tmp_path))
+        assert len(c.provider_identity_sha256) == 64
+
+    def test_missing_identity_raises(self, tmp_path):
+        p = self._write(tmp_path, provider_id="")
+        with pytest.raises(ValueError, match="provider_identity_sha256 is required"):
+            load_experiment_contract(p)
+
+    def test_wrong_length_raises(self, tmp_path):
+        p = self._write(tmp_path, provider_id="abc123")
+        with pytest.raises(ValueError, match="64-character hex"):
+            load_experiment_contract(p)
+
+    def test_non_hex_raises(self, tmp_path):
+        p = self._write(tmp_path, provider_id="g" * 64)
+        with pytest.raises(ValueError, match="64-character hex"):
+            load_experiment_contract(p)
+
+    def test_invalid_date_raises(self, tmp_path):
+        p = self._write(tmp_path, cutoff="not-a-date")
+        with pytest.raises(ValueError, match="YYYY-MM-DD"):
+            load_experiment_contract(p)
+
+    def test_missing_cutoff_raises(self, tmp_path):
+        p = self._write(tmp_path, cutoff="")
+        with pytest.raises(ValueError, match="cutoff is required"):
+            load_experiment_contract(p)

@@ -15,6 +15,17 @@ from typing import Any
 import yaml
 
 
+def _validate_iso_date(value: str, label: str) -> None:
+    """Validate that value is a YYYY-MM-DD ISO date."""
+    if len(value) != 10 or value[4] != "-" or value[7] != "-":
+        raise ValueError(f"{label} must be a YYYY-MM-DD ISO date, got {value!r}")
+    try:
+        from datetime import date
+        date.fromisoformat(value)
+    except ValueError:
+        raise ValueError(f"{label} must be a valid calendar date, got {value!r}")
+
+
 @dataclass(frozen=True)
 class ExperimentContract:
     experiment_id: str
@@ -79,8 +90,14 @@ def load_experiment_contract(path: str | Path) -> ExperimentContract:
     cutoff = str(snapshot.get("cutoff", ""))
     if not provider_id:
         raise ValueError("snapshot.provider_identity_sha256 is required and must be non-empty")
+    if len(provider_id) != 64 or not all(c in "0123456789abcdef" for c in provider_id):
+        raise ValueError(
+            f"snapshot.provider_identity_sha256 must be a 64-character hex string, "
+            f"got {len(provider_id)} chars"
+        )
     if not cutoff:
         raise ValueError("snapshot.cutoff is required and must be non-empty")
+    _validate_iso_date(cutoff, "snapshot.cutoff")
 
     return ExperimentContract(
         experiment_id=str(raw["experiment_id"]),
