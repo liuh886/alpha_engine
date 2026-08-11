@@ -26,6 +26,19 @@ def _json_default(value: Any) -> Any:
     raise TypeError(f"unsupported JSON value: {type(value)!r}")
 
 
+def _effective_end_date(raw: str | None, contract: dict[str, Any]) -> str | None:
+    """Resolve one optional cutoff for every provider used by the monitor."""
+
+    requested = str(raw or "").strip()
+    if requested:
+        return requested
+    data_contract = contract.get("data")
+    if not isinstance(data_contract, dict):
+        return None
+    configured = str(data_contract.get("end_date") or "").strip()
+    return configured or None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -43,10 +56,11 @@ def main() -> int:
     args = parser.parse_args()
 
     contract = yaml.safe_load(args.contract.read_text(encoding="utf-8"))
+    end_date = _effective_end_date(args.end_date, contract)
     bars, coverage, data_identity = fetch_governed_etf_strategy_bars(
         symbols=["QQQI", "QQQ", "TQQQ", "SGOV", "^VIX", "^VXN"],
         start=contract["data"]["start_date"],
-        end=args.end_date or contract["data"].get("end_date"),
+        end=end_date,
         bundle_dir=args.etf_data_bundle,
     )
     _, _, prepared, _ = run_bridge_allocation_comparison(bars, contract)
@@ -54,7 +68,7 @@ def main() -> int:
         prepared,
         config=config_from_contract(contract),
     )
-    fear_greed = fetch_cnn_fear_greed(end_date=args.end_date)
+    fear_greed = fetch_cnn_fear_greed(end_date=end_date)
     qqq_close = _normalise_close(bars["QQQ"], "QQQ")
     summary = build_v4_3_monitor_summary(
         prepared,
