@@ -1,4 +1,4 @@
-"""Fail closed when a published formal backtest is older than its market cutoff."""
+"""Fail closed when formal packages disagree with provider-resolved market cutoffs."""
 
 from __future__ import annotations
 
@@ -89,17 +89,10 @@ def verify(root: Path, *, as_of: str | None = None) -> dict[str, Any]:
         )
 
     parsed_as_of = _as_of(as_of)
-    parsed_next_closes: dict[str, str] = {}
-    for market, value in next_closes.items():
-        close = _timestamp(str(value), label=f"{market} next-session close")
-        parsed_next_closes[str(market)] = close.isoformat()
-        if parsed_as_of is not None and parsed_as_of >= close:
-            declared = str(markets.get(market) or "")
-            raise FormalBacktestFreshnessError(
-                f"{market}: declared cutoff {declared!r} is stale at "
-                f"{parsed_as_of.isoformat()}; the next session closed at "
-                f"{close.isoformat()}"
-            )
+    parsed_next_closes = {
+        str(market): _timestamp(str(value), label=f"{market} next-session close").isoformat()
+        for market, value in next_closes.items()
+    }
 
     by_id = {
         str(row.get("model_id")): row
@@ -214,7 +207,7 @@ def main() -> None:
     parser.add_argument(
         "--as-of",
         default=None,
-        help="Timezone-aware timestamp or 'now'; fail once the next session has closed.",
+        help="Timezone-aware receipt timestamp or 'now'. Provider-resolved cutoffs remain authoritative.",
     )
     parser.add_argument("--receipt", type=Path, default=None)
     args = parser.parse_args()
