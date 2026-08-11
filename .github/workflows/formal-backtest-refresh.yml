@@ -11,6 +11,8 @@ on:
       - ".github/workflows/formal-backtest-refresh-ci.yml"
       - "src/artifacts/formal_refresh.py"
       - "src/artifacts/formal_provider_cache.py"
+      - "src/artifacts/us_x1_2_preview.py"
+      - "configs/models/us_x1_2.yaml"
       - "src/artifacts/qqq_v4_3_formal.py"
       - "src/artifacts/strategy_operations.py"
       - "src/dashboard/market_evidence.py"
@@ -34,6 +36,7 @@ on:
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/ranker_provisional_mtm.py"
       - "scripts/refresh_ranker_formal.py"
+      - "scripts/build_us_x1_2_preview.py"
       - "scripts/byd_formal_refresh_common.py"
       - "scripts/byd_v1_3_formal_builder.py"
       - "scripts/refresh_byd_v1_3_formal.py"
@@ -50,6 +53,7 @@ on:
       - "configs/pools/selected_pool_registry_v1.yaml"
       - "configs/pools/reference_instrument_registry_v1.yaml"
       - "configs/research_universes/us_selected_equities_v2.yaml"
+      - "configs/research_classifications/us87_sector_industry_v1.yaml"
       - "configs/research_universes/cn_selected_equities_v3.yaml"
       - "pyproject.toml"
       - "uv.lock"
@@ -64,13 +68,16 @@ on:
       - "tests/test_model_data_bundle.py"
       - "tests/test_repository_research_store.py"
       - "tests/test_sync_formal_bundle_v2.py"
+      - "tests/test_us_x1_2_preview_publication.py"
       - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
+      - "data/research/model_runs/**"
       - "data/research/market_evidence/**"
       - "data/research/strategy_signal_ledgers/**"
       - "data/research/strategy_operations/**"
       - "data/research/model_data_bundle_v1/**"
       - "qlib-dashboard/public/data/formal-model-runs/**"
+      - "qlib-dashboard/public/data/model-runs/**"
       - "qlib-dashboard/public/data/market-evidence/**"
       - "qlib-dashboard/public/data/strategy-operations/**"
       - "qlib-dashboard/public/data/model-data-readiness.json"
@@ -97,6 +104,7 @@ env:
   CURRENT_FORMAL_ROOT: data/research/formal_backtests
   CANDIDATE_FORMAL_ROOT: artifacts/formal-refresh/formal-v1
   CANDIDATE_V2_ROOT: artifacts/formal-refresh/formal-v2
+  CANDIDATE_PREVIEW_ROOT: artifacts/formal-refresh/model-runs
   CANDIDATE_MARKET_EVIDENCE_ROOT: artifacts/formal-refresh/market-evidence
   CANDIDATE_MODEL_DATA_ROOT: artifacts/formal-refresh/model-data-bundle-v1
   CURRENT_MODEL_DATA_ROOT: data/research/model_data_bundle_v1
@@ -418,6 +426,63 @@ jobs:
             --provider-manifest artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
             --cutoff "$US_CUTOFF" --generated-at "$GENERATED_AT" \
             --output "$CANDIDATE_FORMAL_ROOT/us_x1_1.json"
+      - name: Rebuild active US x1.2 research preview with complete evidence
+        id: preview
+        env:
+          GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
+        run: |
+          set -euo pipefail
+          preview_required="$(uv run python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          def sha(path: str) -> str:
+              return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+          provider = json.loads(Path(
+              "artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json"
+          ).read_text(encoding="utf-8"))
+          expected = {
+              "provider_identity_sha256": provider["provider_identity_sha256"],
+              "source_model_config_sha256": sha("configs/models/us_x1_2.yaml"),
+              "builder_source_sha256": sha("src/artifacts/us_x1_2_preview.py"),
+              "universe_config_sha256": sha("configs/research_universes/us_selected_equities_v2.yaml"),
+              "classification_config_sha256": sha("configs/research_classifications/us87_sector_industry_v1.yaml"),
+          }
+          try:
+              catalog = json.loads(Path("data/research/model_runs/catalog.json").read_text(encoding="utf-8"))
+              record = next(row for row in catalog["records"] if row["model_version_id"] == "us_x1_2")
+              lineage_path = Path("data/research/model_runs") / Path(record["manifest_path"]).parent / "lineage.json"
+              current = json.loads(lineage_path.read_text(encoding="utf-8"))
+          except (FileNotFoundError, KeyError, StopIteration, json.JSONDecodeError):
+              print("true")
+          else:
+              print(str(any(current.get(key) != value for key, value in expected.items())).lower())
+          PY
+          )"
+          if [[ "$preview_required" != "true" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "US x1.2 provider, model, universe, classification, and builder identities are unchanged."
+            exit 0
+          fi
+          rm -rf "$CANDIDATE_PREVIEW_ROOT"
+          uv run python scripts/build_us_x1_2_preview.py \
+            --provider-dir artifacts/formal-refresh/provider-us/data/providers/us \
+            --generated-at "$GENERATED_AT" \
+            --output-root "$CANDIDATE_PREVIEW_ROOT"
+          candidate_id="$(python -c 'import json; print(json.load(open("artifacts/formal-refresh/model-runs/catalog.json", encoding="utf-8"))["records"][0]["bundle_id"])')"
+          current_id="$(python -c 'import json; print(next(r["bundle_id"] for r in json.load(open("data/research/model_runs/catalog.json", encoding="utf-8"))["records"] if r["model_version_id"] == "us_x1_2"))' 2>/dev/null || true)"
+          if [[ "$candidate_id" == "$current_id" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "US x1.2 evidence remains content-identical at ${candidate_id}."
+          else
+            rm -rf data/research/model_runs
+            cp -a "$CANDIDATE_PREVIEW_ROOT" data/research/model_runs
+            cd qlib-dashboard
+            npm run sync:model-runs
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Reproduce and refresh CN x1.1 twice
         if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'cn_x1_1')
         env:
@@ -598,7 +663,7 @@ jobs:
           npm run sync:market-evidence
           npm run sync:strategy-operations
       - name: Validate complete candidate publication
-        if: steps.plan.outputs.refresh_required == 'true' || steps.model_data.outputs.changed == 'true'
+        if: steps.plan.outputs.refresh_required == 'true' || steps.preview.outputs.changed == 'true' || steps.model_data.outputs.changed == 'true'
         run: |
           set -euo pipefail
           uv run pytest \
@@ -612,6 +677,7 @@ jobs:
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_model_x1_baselines.py \
+            tests/test_us_x1_2_preview_publication.py \
             -q --strict-markers --tb=short
           uv run python scripts/check_repository_model_runs.py
           cd qlib-dashboard
@@ -620,6 +686,7 @@ jobs:
           npm test -- --run
           npm run build
           test -f dist/data/formal-model-runs/catalog.json
+          test -f dist/data/model-runs/catalog.json
           test -f dist/data/market-evidence/us/catalog.json
           test -f dist/data/market-evidence/cn/catalog.json
           test -f dist/data/strategy-operations/snapshots.json
@@ -641,18 +708,19 @@ jobs:
           PY
       - name: Open or update reviewed refresh PR
         id: pull_request
-        if: steps.plan.outputs.refresh_required == 'true' || steps.model_data.outputs.changed == 'true'
+        if: steps.plan.outputs.refresh_required == 'true' || steps.preview.outputs.changed == 'true' || steps.model_data.outputs.changed == 'true'
         env:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
           US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
           CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
           REFRESH_REQUIRED: ${{ steps.plan.outputs.refresh_required }}
+          PREVIEW_CHANGED: ${{ steps.preview.outputs.changed }}
         run: |
           set -euo pipefail
           git config user.name "AlphaEngine Formal Refresh Agent"
           git config user.email "formal-refresh-agent@alphaengine.local"
           git fetch origin main
-          if [[ "$REFRESH_REQUIRED" != "true" ]]; then
+          if [[ "$REFRESH_REQUIRED" != "true" && "$PREVIEW_CHANGED" != "true" ]]; then
             candidate_bundle_id="$(python -c 'import json; print(json.load(open("data/research/model_data_bundle_v1/model-data-bundle.json", encoding="utf-8"))["bundle_id"])')"
             main_bundle_id="$(git show origin/main:data/research/model_data_bundle_v1/model-data-bundle.json 2>/dev/null \
               | python -c 'import json, sys; print(json.load(sys.stdin)["bundle_id"])' \
@@ -667,10 +735,12 @@ jobs:
           git add \
             data/research/formal_backtests \
             data/research/formal_model_runs \
+            data/research/model_runs \
             data/research/market_evidence \
             data/research/strategy_operations/snapshots.json \
             data/research/model_data_bundle_v1 \
             qlib-dashboard/public/data/formal-model-runs \
+            qlib-dashboard/public/data/model-runs \
             qlib-dashboard/public/data/market-evidence \
             qlib-dashboard/public/data/strategy-operations \
             qlib-dashboard/public/data/model-data-readiness.json \

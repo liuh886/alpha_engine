@@ -9,6 +9,8 @@ on:
       - ".github/workflows/formal-backtest-refresh-ci.yml"
       - "src/artifacts/formal_refresh.py"
       - "src/artifacts/formal_provider_cache.py"
+      - "src/artifacts/us_x1_2_preview.py"
+      - "configs/models/us_x1_2.yaml"
       - "src/artifacts/qqq_v4_3_formal.py"
       - "src/artifacts/strategy_operations.py"
       - "src/dashboard/market_evidence.py"
@@ -29,6 +31,7 @@ on:
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/ranker_provisional_mtm.py"
       - "scripts/refresh_ranker_formal.py"
+      - "scripts/build_us_x1_2_preview.py"
       - "scripts/byd_formal_refresh_common.py"
       - "scripts/byd_v1_3_formal_builder.py"
       - "scripts/refresh_byd_v1_3_formal.py"
@@ -53,12 +56,15 @@ on:
       - "tests/test_model_data_bundle.py"
       - "tests/test_repository_research_store.py"
       - "tests/test_sync_formal_bundle_v2.py"
+      - "tests/test_us_x1_2_preview_publication.py"
       - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
+      - "data/research/model_runs/**"
       - "data/research/market_evidence/**"
       - "data/research/strategy_operations/**"
       - "data/research/model_data_bundle_v1/**"
       - "qlib-dashboard/public/data/formal-model-runs/**"
+      - "qlib-dashboard/public/data/model-runs/**"
       - "qlib-dashboard/public/data/market-evidence/**"
       - "qlib-dashboard/public/data/strategy-operations/**"
       - "qlib-dashboard/public/data/model-data-readiness.json"
@@ -73,6 +79,7 @@ on:
       - "configs/pools/selected_pool_registry_v1.yaml"
       - "configs/pools/reference_instrument_registry_v1.yaml"
       - "configs/research_universes/us_selected_equities_v2.yaml"
+      - "configs/research_classifications/us87_sector_industry_v1.yaml"
       - "configs/research_universes/cn_selected_equities_v3.yaml"
       - "configs/factor_libraries/ohlcv.yaml"
       - "configs/data_contracts/model_data_bundle_v1.yaml"
@@ -154,6 +161,7 @@ jobs:
           uv run ruff check \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
+            src/artifacts/us_x1_2_preview.py \
             src/artifacts/qqq_v4_3_formal.py \
             src/artifacts/strategy_operations.py \
             src/dashboard/market_evidence.py \
@@ -170,6 +178,7 @@ jobs:
             scripts/ranker_provisional_mtm.py \
             scripts/govern_formal_provider_cache.py \
             scripts/refresh_ranker_formal.py \
+            scripts/build_us_x1_2_preview.py \
             scripts/byd_formal_refresh_common.py \
             scripts/byd_v1_3_formal_builder.py \
             scripts/refresh_byd_v1_3_formal.py \
@@ -186,7 +195,8 @@ jobs:
             tests/test_formal_provider_cache.py \
             tests/test_strategy_operations.py \
             tests/test_model_data_bundle.py \
-            tests/test_repository_research_store.py
+            tests/test_repository_research_store.py \
+            tests/test_us_x1_2_preview_publication.py
           uv run mypy \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
@@ -207,6 +217,7 @@ jobs:
             tests/test_strategy_operations.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
+            tests/test_us_x1_2_preview_publication.py \
             -q --strict-markers --tb=short
           cd qlib-dashboard
           npm run check:account

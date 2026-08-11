@@ -18,6 +18,9 @@ const CHANNEL_ORDER: Record<GovernedRunSummary['channel'], number> = {
 
 function sortRuns(runs: GovernedRunSummary[]): GovernedRunSummary[] {
   return [...runs].sort((left, right) => (
+    Number(right.summary.baseline_status === 'active_research_baseline')
+    - Number(left.summary.baseline_status === 'active_research_baseline')
+    ||
     CHANNEL_ORDER[left.channel] - CHANNEL_ORDER[right.channel]
     || right.evidenceCutoff.localeCompare(left.evidenceCutoff)
     || left.title.localeCompare(right.title)

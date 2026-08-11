@@ -23,7 +23,7 @@ const fallbackFleetRows = [
   { name: 'QQQR v4.3', detail: 'US systematic rotation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
   { name: 'CN x1.1', detail: 'China equity ranking', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
   { name: 'BYD v1.2', detail: 'Adaptive single-stock allocation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
-  { name: 'US x1.1', detail: 'US equity ranking', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'US x1.2', detail: 'Active US research baseline', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
 ];
 
 const evidenceChecks = [

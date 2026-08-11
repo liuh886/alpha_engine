@@ -100,6 +100,19 @@ function EmptyEvidence({ title, reason }: { title: string; reason: string }) {
   );
 }
 
+function formatEvidenceCell(column: string, value: unknown): string {
+  if (value === undefined || value === null || value === '') return '—';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value !== 'number') return String(value);
+  if (['execution_price', 'entry_price', 'exit_price', 'price', 'reference_price'].includes(column)) {
+    return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  }
+  if (column.includes('weight') || column.includes('return') || column === 'transaction_cost' || column === 'normalized_notional') {
+    return `${(value * 100).toFixed(2)}%`;
+  }
+  return value.toLocaleString(undefined, { maximumFractionDigits: 5 });
+}
+
 function EvidenceTable({
   rows,
   columns,
@@ -124,9 +137,7 @@ function EvidenceTable({
             <tr key={`${String(row.date ?? row.instrument ?? row.window ?? index)}-${index}`} className="border-b last:border-0">
               {columns.map((column) => (
                 <td key={column} className="max-w-72 whitespace-nowrap px-3 py-2 font-mono">
-                  {typeof row[column] === 'number'
-                    ? Number(row[column]).toLocaleString(undefined, { maximumFractionDigits: 5 })
-                    : String(row[column] ?? '—')}
+                  {formatEvidenceCell(column, row[column])}
                 </td>
               ))}
             </tr>
@@ -145,10 +156,11 @@ function PerformancePanel({ evidence }: { evidence: FormalRunEvidence }) {
     : {};
   const methodologyRows: Array<[string, unknown]> = [
     ['Signal time', semantics.signal_time],
-    ['Execution time', semantics.execution_time],
-    ['Return measurement', semantics.return_measurement],
+    ['Execution time', semantics.execution_time ?? semantics.execution_model],
+    ['Return measurement', semantics.return_measurement ?? semantics.return_basis],
+    ['Price basis', semantics.price_basis],
     ['Holding-end offset', typeof semantics.holding_end_offset_sessions === 'number' ? `${semantics.holding_end_offset_sessions} sessions` : 'not declared'],
-    ['Cost rate', typeof cost.rate_bps === 'number' ? `${cost.rate_bps} bps` : 'not declared'],
+    ['Cost rate', typeof cost.rate_bps === 'number' ? `${cost.rate_bps} bps` : typeof semantics.cost_bps === 'number' ? `${semantics.cost_bps} bps` : 'not declared'],
     ['Turnover formula', cost.turnover_formula],
     ['Net return', cost.net_return_formula],
   ];
@@ -221,6 +233,10 @@ function RiskPanel({ evidence }: { evidence: FormalRunEvidence }) {
 
 function PortfolioPanel({ evidence }: { evidence: FormalRunEvidence }) {
   const contractRows = Object.entries(evidence.portfolio.contract);
+  const latestSignal = evidence.portfolio.latestSignal;
+  const rankedTargets = latestSignal && Array.isArray(latestSignal.ranked_targets)
+    ? latestSignal.ranked_targets.filter(isRecord)
+    : [];
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -240,6 +256,17 @@ function PortfolioPanel({ evidence }: { evidence: FormalRunEvidence }) {
           </Card>
         </div>
       </div>
+      {latestSignal && (
+        <Card>
+          <CardHeader className="border-b pb-3">
+            <CardTitle className="text-sm">Latest retained rebalance signal</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">Signal {String(latestSignal.signal_date ?? '—')} · {latestSignal.holding_end_date ? `holding realized through ${String(latestSignal.holding_end_date)}` : String(latestSignal.signal_state ?? 'outcome pending')} · hash {String(latestSignal.signal_sha256 ?? '').slice(0, 12)}…</p>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <EvidenceTable rows={rankedTargets} columns={['rank', 'instrument', 'sector', 'score', 'target_weight', 'reference_price']} maxRows={20} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -250,7 +277,31 @@ function TradesPanel({ evidence }: { evidence: FormalRunEvidence }) {
     [evidence.trades],
   );
   if (!rows.length) return <EmptyEvidence title="Trade ledger" reason={evidence.sectionReasons.trades || String(evidence.diagnostics.completeness.trades || 'No retained transaction ledger is available.')} />;
-  return <EvidenceTable rows={rows} columns={['date', 'instrument', 'action', 'previous_weight', 'target_weight', 'weight_delta', 'transaction_cost', 'holding_end_date', 'window']} />;
+  const analytics = evidence.tradeAnalytics;
+  const analyticsRows: Array<[string, string]> = [
+    ['Completed holdings', Number(analytics.episode_count ?? 0).toLocaleString()],
+    ['Win rate', typeof analytics.win_rate === 'number' ? `${(analytics.win_rate * 100).toFixed(1)}%` : 'Unavailable'],
+    ['Alpha hit rate', typeof analytics.alpha_hit_rate === 'number' ? `${(analytics.alpha_hit_rate * 100).toFixed(1)}%` : 'Unavailable'],
+    ['Average winner', typeof analytics.average_winner === 'number' ? `${(analytics.average_winner * 100).toFixed(2)}%` : 'Unavailable'],
+    ['Average loser', typeof analytics.average_loser === 'number' ? `${(analytics.average_loser * 100).toFixed(2)}%` : 'Unavailable'],
+    ['Profit factor', typeof analytics.profit_factor === 'number' ? analytics.profit_factor.toFixed(2) : 'Unavailable'],
+  ];
+  return (
+    <div className="space-y-4">
+      {Object.keys(analytics).length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {analyticsRows.map(([label, value]) => <Card key={label}><CardContent className="pt-4"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 text-lg font-semibold tabular-nums">{value}</p></CardContent></Card>)}
+        </div>
+      )}
+      {(evidence.tradeSemantics.price || evidence.tradeSemantics.amount) && (
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-relaxed text-muted-foreground">
+          <p><strong className="text-foreground">Price:</strong> {evidence.tradeSemantics.price}</p>
+          <p className="mt-1"><strong className="text-foreground">Amount:</strong> {evidence.tradeSemantics.amount}</p>
+        </div>
+      )}
+      <EvidenceTable rows={rows} columns={['date', 'instrument', 'action', 'execution_price', 'entry_price', 'exit_price', 'previous_weight', 'target_weight', 'normalized_notional', 'amount', 'quantity', 'realized_return', 'profitable', 'transaction_cost', 'holding_end_date', 'window']} />
+    </div>
+  );
 }
 
 function AttributionPanel({ evidence }: { evidence: FormalRunEvidence }) {
@@ -337,10 +388,10 @@ export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
   }, [run.key]);
 
   if (state.loading) {
-    return <div className="flex min-h-[420px] items-center justify-center rounded-xl border bg-card"><Loader2 className="mr-2 h-5 w-5 animate-spin text-primary" />Loading verified formal evidence…</div>;
+    return <div className="flex min-h-[420px] items-center justify-center rounded-xl border bg-card"><Loader2 className="mr-2 h-5 w-5 animate-spin text-primary" />Loading verified governed evidence…</div>;
   }
   if (state.error || !state.value) {
-    return <EmptyEvidence title="Formal backtest" reason={state.error || 'The formal evidence loader returned no review data.'} />;
+    return <EmptyEvidence title="Governed backtest" reason={state.error || 'The governed evidence loader returned no review data.'} />;
   }
 
   const evidence = state.value;
@@ -350,7 +401,7 @@ export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
       <section className="flex flex-col gap-4 border-b pb-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Accepted formal baseline</Badge>
+            <Badge className={run.channel === 'formal' ? 'bg-emerald-600 text-white hover:bg-emerald-600' : 'bg-blue-600 text-white hover:bg-blue-600'}>{run.channel === 'formal' ? 'Accepted formal baseline' : 'Active research preview'}</Badge>
             <Badge variant="outline" className={complete ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>{complete ? 'Complete retained evidence' : 'Partial retained evidence'}</Badge>
             <Badge variant="outline" className="text-amber-700 dark:text-amber-300">Research only · read only</Badge>
           </div>

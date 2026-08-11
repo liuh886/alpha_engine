@@ -24,6 +24,8 @@ export interface FormalRobustnessEvidence {
 export interface FormalPortfolioEvidence {
   contract: Record<string, unknown>;
   positions: Position[];
+  signals: Array<Record<string, unknown>>;
+  latestSignal: Record<string, unknown> | null;
 }
 
 export interface FormalDiagnosticsEvidence {
@@ -39,6 +41,8 @@ export interface FormalRunEvidence {
   robustness: FormalRobustnessEvidence;
   portfolio: FormalPortfolioEvidence;
   trades: Array<Record<string, unknown>>;
+  tradeAnalytics: Record<string, unknown>;
+  tradeSemantics: { price: string; amount: string };
   attribution: Array<Record<string, unknown>>;
   diagnostics: FormalDiagnosticsEvidence;
   lineage: Record<string, unknown>;
@@ -64,6 +68,24 @@ function records(value: unknown, label: string): Array<Record<string, unknown>> 
 
 function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : [];
+}
+
+function parseTrades(value: unknown): {
+  rows: Array<Record<string, unknown>>;
+  analytics: Record<string, unknown>;
+  price: string;
+  amount: string;
+} {
+  if (Array.isArray(value)) {
+    return { rows: records(value, 'trades'), analytics: {}, price: '', amount: '' };
+  }
+  const payload = record(value, 'trades');
+  return {
+    rows: records(payload.records, 'trades.records'),
+    analytics: isRecord(payload.analytics) ? payload.analytics : {},
+    price: String(payload.price_semantics ?? ''),
+    amount: String(payload.amount_semantics ?? ''),
+  };
 }
 
 function canonicalMetrics(value: unknown, label: string): CanonicalMetricV2[] {
@@ -147,8 +169,8 @@ export function metricById(metrics: CanonicalMetricV2[], metricId: string): Cano
 }
 
 export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<FormalRunEvidence> {
-  if (run.channel !== 'formal' || !run.manifest) {
-    throw new Error('Formal backtest review only accepts a manifest-bound formal run.');
+  if (!['formal', 'preview'].includes(run.channel) || !run.manifest) {
+    throw new Error('Governed backtest review requires a manifest-bound formal or preview run.');
   }
 
   const sectionReasons: Record<string, string> = {};
@@ -164,7 +186,7 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
   ]);
 
   if (!performanceRaw || !portfolioRaw) {
-    throw new Error('The formal bundle does not retain the required performance and portfolio sections.');
+    throw new Error('The governed bundle does not retain the required performance and portfolio sections.');
   }
 
   const summary = record(run.summary, 'summary');
@@ -179,6 +201,9 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
   const end = String(dateRange.end ?? run.manifest.comparability_key.end);
   const benchmark = String(performance.benchmark ?? run.benchmark);
   const parsedPositions = parsePositions(portfolio.positions);
+  const parsedTrades = tradesRaw
+    ? parseTrades(tradesRaw)
+    : { rows: [], analytics: {}, price: '', amount: '' };
   const chartBenchmark = run.modelFamilyId === 'byd_allocation' ? 'BYD' : benchmark;
   const parsedReport = attachBydPriceBaseline(
     parseReport(performance.report, chartBenchmark),
@@ -206,8 +231,12 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
     portfolio: {
       contract: isRecord(portfolio.portfolio_contract) ? portfolio.portfolio_contract : {},
       positions: parsedPositions,
+      signals: Array.isArray(portfolio.signals) ? records(portfolio.signals, 'portfolio.signals') : [],
+      latestSignal: isRecord(portfolio.latest_signal) ? portfolio.latest_signal : null,
     },
-    trades: tradesRaw ? records(tradesRaw, 'trades') : [],
+    trades: parsedTrades.rows,
+    tradeAnalytics: parsedTrades.analytics,
+    tradeSemantics: { price: parsedTrades.price, amount: parsedTrades.amount },
     attribution: attributionRaw ? records(attributionRaw, 'attribution') : [],
     diagnostics: {
       completeness: diagnostics && isRecord(diagnostics.evidence_completeness)
