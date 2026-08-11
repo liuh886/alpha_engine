@@ -168,7 +168,39 @@ jobs:
               returns.columns = ["raw_forward_return"]
               return canonical_prepare_ranker_frame(features, returns)
 
+          def ledger_with_explicit_schema(scores, execution_returns, classification, *, window):
+              score_frame = scores.copy()
+              if score_frame.shape[1] != 1:
+                  raise ValueError("certification scores must contain exactly one column")
+              score_frame.columns = ["score"]
+              score_frame = score_frame.loc[:, ["score"]]
+
+              return_frame = execution_returns.copy()
+              if return_frame.shape[1] != 1:
+                  raise ValueError("certification execution returns must contain exactly one column")
+              return_frame.columns = ["execution_forward_return"]
+              return_frame = return_frame.loc[:, ["execution_forward_return"]]
+
+              joined = score_frame.join(return_frame, how="left").reset_index()
+              joined["instrument"] = joined["instrument"].astype(str).str.zfill(6)
+              joined["window"] = window
+              joined["entity"] = joined["instrument"].map(
+                  lambda symbol: classification[symbol]["entity"]
+              )
+              joined["sector"] = joined["instrument"].map(
+                  lambda symbol: classification[symbol]["sector"]
+              )
+              joined["industry"] = joined["instrument"].map(
+                  lambda symbol: classification[symbol]["industry"]
+              )
+              return joined.sort_values(
+                  ["datetime", "score", "instrument"],
+                  ascending=[True, False, True],
+                  kind="mergesort",
+              ).reset_index(drop=True)
+
           certification.prepare_ranker_frame = prepare_with_explicit_return_contract
+          certification._ledger_for_scores = ledger_with_explicit_schema
           sys.argv = [
               "certify_cn_x1_2_candidates.py",
               "--provider-dir",
