@@ -1,0 +1,41 @@
+# Example: QQQR rotation parameter optimization
+# Run: python scripts/run_model_optimizer.py --spec configs/optimization/example_qqqr_grid.yaml
+
+experiment_id: example_qqqr_state_weights
+model_type: rotator
+market: us
+benchmark: QQQ
+gate_profile: calmar_focused
+
+cost_structure:
+  base_cost_bps: 10.0
+  stress_cost_bps: [20.0, 40.0]
+
+windows:
+  labels: ["full"]
+
+metadata:
+  state_trace_source: data/research/formal_backtests/qqqi_qqq_tqqq_v4_3.json
+
+baseline_candidate_id: baseline_v43
+
+candidates:
+  - candidate_id: baseline_v43
+    role: baseline
+    params:
+      state_0: {QQQI: 0.5, QQQ: 0.0, TQQQ: 0.0, SGOV: 0.5}
+      state_1: {QQQI: 0.9, QQQ: 0.1, TQQQ: 0.0, SGOV: 0.0}
+      state_2: {QQQI: 0.0, QQQ: 0.0, TQQQ: 1.0, SGOV: 0.0}
+      panic_boost: 0.0
+      defense_split: [0.75, 0.25]
+    description: "R975 baseline — SGOV 50% S0, QQQI 90% S1, TQQQ 100% S2"
+
+  - candidate_id: sgov70_s1_100
+    role: challenger
+    params:
+      state_0: {QQQI: 0.3, QQQ: 0.0, TQQQ: 0.0, SGOV: 0.7}
+      state_1: {QQQI: 1.0, QQQ: 0.0, TQQQ: 0.0, SGOV: 0.0}
+      state_2: {QQQI: 0.0, QQQ: 0.0, TQQQ: 1.0, SGOV: 0.0}
+      panic_boost: 0.0
+      defense_split: [0.75, 0.25]
+    description: "SGOV 70% S0 + QQQI 100% S1"

@@ -1,0 +1,49 @@
+# Example: BYD single-stock timing optimization
+# Run: python scripts/run_model_optimizer.py --spec configs/optimization/example_byd_grid.yaml
+
+experiment_id: example_byd_timing
+model_type: timer
+market: cn
+benchmark: "000300"
+gate_profile: calmar_focused
+
+cost_structure:
+  base_cost_bps: 20.0
+  stress_cost_bps: [40.0]
+
+windows:
+  labels: ["full"]
+
+metadata:
+  backtest_source: data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json
+  primary_asset: BYD
+  defensive_asset: "515180"
+
+baseline_candidate_id: baseline_r3
+
+candidates:
+  - candidate_id: baseline_r3
+    role: baseline
+    params:
+      defense_byd_pct: 0.0
+      offense_byd_pct: 1.0
+      expansion_max: 1.125
+      convex_power: 4.0
+      full_increment_momentum: 0.15
+      max_financed_increment: 0.125
+      mom_entry_threshold: 0.0
+      mom_exit_threshold: 0.0
+    description: "R3 baseline — def=0%, simple mom_20 rule"
+
+  - candidate_id: aggressive_hysteresis
+    role: challenger
+    params:
+      defense_byd_pct: 0.0
+      offense_byd_pct: 1.0
+      expansion_max: 1.125
+      convex_power: 6.0
+      full_increment_momentum: 0.10
+      max_financed_increment: 0.20
+      mom_entry_threshold: 0.05
+      mom_exit_threshold: -0.05
+    description: "R50 — mom hysteresis + agg params"

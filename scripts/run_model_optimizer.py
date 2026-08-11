@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Model Optimizer CLI — unified entry point for model optimization experiments.
+"""Model Optimizer CLI — v2 with Ranker, Rotator, and Timer support.
 
 Usage:
-    python scripts/run_model_optimizer.py --spec configs/optimization/usx_grid.yaml
-    python scripts/run_model_optimizer.py --spec configs/optimization/cnx_factor_sweep.yaml
+    # Ranker (cross-sectional stock ranking):
+    python scripts/run_model_optimizer.py --spec configs/optimization/example_usx_grid.yaml
 
-The spec YAML defines the experiment contract declaratively.
-Any agent can generate a spec and run it through this CLI.
+    # Rotator (ETF rotation like QQQR):
+    python scripts/run_model_optimizer.py --spec configs/optimization/qqqr_grid.yaml
+
+    # Timer (single-stock timing like BYD):
+    python scripts/run_model_optimizer.py --spec configs/optimization/byd_grid.yaml
 """
 from __future__ import annotations
 
@@ -17,27 +20,22 @@ from pathlib import Path
 import yaml
 
 from src.optimization.contracts import (
-    CandidateSpec,
-    CostStructure,
-    ExperimentContract,
-    GateProfile,
-    ModelType,
-    WindowSpec,
+    CandidateSpec, CostStructure, ExperimentContract,
+    GateProfile, ModelType, WindowSpec,
 )
 from src.optimization.runner import BaseOptimizationRunner
 from src.optimization.ranker_runner import RankerOptimizer
+from src.optimization.rotator_runner import RotatorOptimizer
+from src.optimization.timer_runner import TimerOptimizer
 
 
 def load_spec(path: str | Path) -> ExperimentContract:
-    """Load an experiment specification from YAML."""
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("spec must be a YAML mapping")
 
-    # Parse model type
     mt = ModelType(raw.get("model_type", "ranker"))
 
-    # Parse cost structure
     cost_raw = raw.get("cost_structure", {})
     cost = CostStructure(
         base_cost_bps=float(cost_raw.get("base_cost_bps", 20.0)),
@@ -45,7 +43,6 @@ def load_spec(path: str | Path) -> ExperimentContract:
         annual_financing_rate=cost_raw.get("annual_financing_rate"),
     )
 
-    # Parse windows
     win_raw = raw.get("windows", {})
     windows = WindowSpec(
         labels=tuple(str(w) for w in win_raw.get("labels", ["2024H1", "2024H2", "2025H1", "2025H2"])),
@@ -59,10 +56,8 @@ def load_spec(path: str | Path) -> ExperimentContract:
         reporting_windows=tuple(str(w) for w in win_raw.get("reporting_windows", [])),
     )
 
-    # Parse candidates
-    cands_raw = raw.get("candidates", [])
     candidates = []
-    for c in cands_raw:
+    for c in raw.get("candidates", []):
         candidates.append(CandidateSpec(
             candidate_id=str(c["candidate_id"]),
             role=str(c.get("role", "challenger")),
@@ -70,16 +65,13 @@ def load_spec(path: str | Path) -> ExperimentContract:
             description=str(c.get("description", "")),
         ))
 
-    # Parse gate profile
     gp = GateProfile(raw.get("gate_profile", "ten_day_model_gates_v1"))
 
     contract = ExperimentContract(
         experiment_id=str(raw.get("experiment_id", Path(path).stem)),
-        model_type=mt,
-        market=str(raw.get("market", "us")),
+        model_type=mt, market=str(raw.get("market", "us")),
         benchmark=str(raw.get("benchmark", "QQQ")),
-        cost_structure=cost,
-        windows=windows,
+        cost_structure=cost, windows=windows,
         candidates=tuple(candidates),
         baseline_candidate_id=str(raw.get("baseline_candidate_id", candidates[0].candidate_id if candidates else "baseline")),
         gate_profile=gp,
@@ -93,27 +85,28 @@ def load_spec(path: str | Path) -> ExperimentContract:
 
 
 def get_runner(contract: ExperimentContract, output_dir: str) -> BaseOptimizationRunner:
-    """Factory: get the appropriate runner for the model type."""
-    if contract.model_type == ModelType.RANKER:
-        return RankerOptimizer(contract, output_dir)
-    elif contract.model_type in (ModelType.ROTATOR, ModelType.TIMER, ModelType.CUSTOM):
-        print(f"[optimizer] Model type '{contract.model_type.value}' runner not yet implemented.")
-        print("[optimizer] Use the programmatic API to provide a custom _evaluate_candidate implementation.")
+    """Factory: select runner by model type."""
+    runners = {
+        ModelType.RANKER: RankerOptimizer,
+        ModelType.ROTATOR: RotatorOptimizer,
+        ModelType.TIMER: TimerOptimizer,
+    }
+    cls = runners.get(contract.model_type)
+    if cls is None:
+        print(f"[optimizer] Model type '{contract.model_type.value}' requires CUSTOM runner.")
+        print("[optimizer] Subclass BaseOptimizationRunner and implement _evaluate_candidate().")
         sys.exit(1)
-    else:
-        raise ValueError(f"unknown model type: {contract.model_type}")
+    return cls(contract, output_dir)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--spec", type=Path, required=True,
-                        help="Path to experiment specification YAML")
-    parser.add_argument("--output-dir", type=str, default="artifacts/optimization",
-                        help="Output directory for receipts")
+    parser.add_argument("--spec", type=Path, required=True)
+    parser.add_argument("--output-dir", type=str, default="artifacts/optimization")
     args = parser.parse_args()
 
     contract = load_spec(str(args.spec))
-    print(f"[optimizer] Loaded spec: {contract.experiment_id}")
+    print(f"[optimizer] {contract.experiment_id}")
     print(f"[optimizer] Type: {contract.model_type.value} | Market: {contract.market} | Benchmark: {contract.benchmark}")
     print(f"[optimizer] Cost: {contract.cost_structure.base_cost_bps}bps | Windows: {contract.windows.labels}")
     print(f"[optimizer] Candidates: {len(contract.candidates)}")
@@ -125,6 +118,7 @@ def main():
     if passing:
         best = max(passing, key=lambda g: g.selection_score)
         print(f"\n[optimizer] BEST: {best.candidate_id} (score={best.selection_score:.4f})")
+        print(f"[optimizer] Passing: {[g.candidate_id for g in passing]}")
     else:
         print(f"\n[optimizer] No candidate passed all gates.")
 

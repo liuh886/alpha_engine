@@ -1,11 +1,16 @@
-"""Model Optimization Infrastructure — public API.
+"""Model Optimization Infrastructure — v2 public API.
+
+Complete optimization framework with:
+- 3 model-type runners (Ranker, Rotator, Timer)
+- Data caching (one load, many uses)
+- Sector cap + guardrail integration
+- Standardized receipts and gate checking
 
 Usage:
     from src.optimization import (
         ExperimentContract, CandidateSpec, CostStructure, WindowSpec,
         ModelType, GateProfile,
-        build_ranker_experiment, build_rotator_experiment, build_timer_experiment,
-        BaseOptimizationRunner,
+        RankerOptimizer, RotatorOptimizer, TimerOptimizer,
     )
 """
 from src.optimization.contracts import (
@@ -26,27 +31,21 @@ from src.optimization.metrics import (
     relative_excess,
 )
 from src.optimization.receipts import experiment_identity, save_receipt
+from src.optimization.cache import OptimizationDataCache
 from src.optimization.runner import BaseOptimizationRunner
+from src.optimization.ranker_runner import RankerOptimizer
+from src.optimization.rotator_runner import RotatorOptimizer
+from src.optimization.timer_runner import TimerOptimizer
 
 __all__ = [
     # Contracts
-    "ExperimentContract",
-    "CandidateSpec",
-    "CostStructure",
-    "WindowSpec",
-    "ModelType",
-    "GateProfile",
+    "ExperimentContract", "CandidateSpec", "CostStructure", "WindowSpec",
+    "ModelType", "GateProfile",
     # Metrics
-    "WindowResult",
-    "CandidateResult",
-    "GateResult",
-    "aggregate_windows",
-    "check_gates",
-    "compound_returns",
-    "relative_excess",
-    # Receipts
-    "experiment_identity",
-    "save_receipt",
-    # Runner
-    "BaseOptimizationRunner",
+    "WindowResult", "CandidateResult", "GateResult",
+    "aggregate_windows", "check_gates", "compound_returns", "relative_excess",
+    # Infrastructure
+    "OptimizationDataCache", "experiment_identity", "save_receipt",
+    # Runners
+    "BaseOptimizationRunner", "RankerOptimizer", "RotatorOptimizer", "TimerOptimizer",
 ]
