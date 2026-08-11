@@ -203,7 +203,7 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
                       <td className="flex flex-[1.5] items-center px-4 py-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="truncate font-medium">{position.instrument_label || getName(position.instrument)}</span>
+                            <span className="truncate font-medium">{position.instrument_label || position.name || getName(position.instrument)}</span>
                             {position.changeKind === 'new' && <Badge variant="outline" className="h-4 px-1 text-[8px] text-emerald-700 dark:text-emerald-300">New</Badge>}
                           </div>
                           <span className="block truncate font-mono text-[9px] text-muted-foreground">{position.instrument}</span>

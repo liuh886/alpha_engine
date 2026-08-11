@@ -45,6 +45,18 @@ describe('shared performance benchmark discovery', () => {
     expect(options.map(option => option.key)).toEqual(['benchmark_qqq', 'benchmark']);
   });
 
+  it('deduplicates generic and named baselines when their labels and series match', () => {
+    const report = [
+      { date: '2026-01-01', account: 1, benchmark_id: 'QQQ', bench: 0, bench_qqq: 100 },
+      { date: '2026-01-02', account: 1.02, benchmark_id: 'QQQ', bench: 0.01, bench_qqq: 101 },
+    ];
+
+    const options = discoverBenchmarkOptions(report, 'QQQ');
+
+    expect(options.map(option => option.key)).toEqual(['benchmark_qqq']);
+    expect(options.map(option => option.label)).toEqual(['QQQ']);
+  });
+
   it('resolves declared CSI300 identity to retained hs300 evidence', () => {
     const report = [
       { date: '2026-01-01', account: 1, bench_qqq: 100, bench_hs300: 100 },

@@ -49,4 +49,17 @@ describe('PositionsTable snapshot diagnostics', () => {
     expect(screen.getByText('-10.00%')).toBeInTheDocument();
     expect(screen.getByText('+50.00%')).toBeInTheDocument();
   });
+
+  it('shows the retained Chinese holding name alongside its instrument code', () => {
+    render(
+      <PositionsTable
+        positions={[
+          { date: '2026-08-10', instrument: '300408', name: '\u4e09\u73af\u96c6\u56e2', weight: 1 },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('\u4e09\u73af\u96c6\u56e2')).toBeInTheDocument();
+    expect(screen.getByText('300408')).toBeInTheDocument();
+  });
 });
