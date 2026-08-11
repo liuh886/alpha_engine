@@ -118,6 +118,10 @@ def _production_contract(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any]]
         "holding_period_sessions": 10,
         "holding_end_offset_sessions": 10,
         "performance_date_field": "holding_end_date",
+        "observation_policy": str(
+            raw.get("observation_policy")
+            or "settled_10_session_plus_single_cutoff_mtm"
+        ),
         "cost": {
             "rate_bps": cost["rate_bps"],
             "turnover_formula": cost["turnover_formula"],
@@ -176,6 +180,13 @@ def _rewrite_summary(path: Path, source_run_dir: Path) -> None:
         "research_only": True,
         "trade_ready": False,
     }
+    for key in (
+        "settled_performance_end",
+        "performance_observation_end",
+        "performance_observation_status",
+    ):
+        if key in source:
+            summary[key] = source[key]
     path.write_bytes(canonical_json_bytes(summary))
 
 
@@ -227,6 +238,8 @@ def _rewrite_lineage(path: Path, source_manifest: Mapping[str, Any]) -> None:
         "source_model_config": source.get("source_model_config"),
         "source_model_config_sha256": source.get("source_model_config_sha256"),
         "evidence_builder_source_sha256": source.get("builder_source_sha256"),
+        "publication_builder_source_sha256": source.get("publication_builder_source_sha256"),
+        "cutoff_mtm_source_sha256": source.get("cutoff_mtm_source_sha256"),
         "universe_config_sha256": source.get("universe_config_sha256"),
         "classification_config_sha256": source.get("classification_config_sha256"),
         "provider_identity_sha256": source.get("provider_identity_sha256"),
