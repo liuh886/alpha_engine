@@ -36,15 +36,16 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
     settled_count = len(package["report"])
     cutoff = package["evidence_cutoff"]
     latest = package["report"][-1]
+    latest_date = latest["date"]
     package["provisional_mtm"] = {
         "schema_version": "ranker_provisional_mtm_v1",
         "as_of": cutoff,
-        "signal_date": latest["holding_end_date"],
-        "entry_date": latest["holding_end_date"],
+        "signal_date": latest_date,
+        "entry_date": latest_date,
         "target_weights": {"TEST": 1.0},
         "source": "governed_current_target",
         "performance_row": {
-            "date": latest["holding_end_date"],
+            "date": latest_date,
             "holding_end_date": cutoff,
             "account": latest["account"],
             "bench_hs300": latest["bench_hs300"],
