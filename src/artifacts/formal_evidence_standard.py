@@ -90,7 +90,7 @@ def _declared_holding_end(value: object) -> bool:
     ) or _declared_text(value)
 
 
-def _validate_contract_envelope(summary: Mapping[str, Any]) -> None:
+def _validate_contract_envelope(summary: Mapping[str, Any]) -> Mapping[str, Any]:
     _require(
         summary.get("evidence_contract") == FORMAL_EVIDENCE_CONTRACT_ID,
         "formal evidence contract identity is missing",
@@ -117,6 +117,60 @@ def _validate_contract_envelope(summary: Mapping[str, Any]) -> None:
     _require(isinstance(portfolio_contract, Mapping), "formal portfolio contract is missing")
     for key in ("signal_time", "execution_time", "price_basis", "turnover_formula"):
         _require(_declared_text(portfolio_contract.get(key)), f"portfolio contract missing {key}")
+    return semantics
+
+
+def _validate_performance_endpoint(
+    *,
+    manifest: Mapping[str, Any],
+    summary: Mapping[str, Any],
+    performance: Mapping[str, Any],
+    semantics: Mapping[str, Any],
+) -> None:
+    date_range = performance.get("date_range")
+    _require(isinstance(date_range, Mapping), "formal performance date range is missing")
+    performance_end = str(date_range.get("end") or "")
+    _require(bool(performance_end), "formal performance end is missing")
+
+    comparability = manifest.get("comparability_key")
+    _require(isinstance(comparability, Mapping), "formal comparability key is missing")
+    comparability_end = str(comparability.get("end") or "")
+    _require(
+        performance_end == comparability_end,
+        "formal performance end and comparability end diverge",
+    )
+
+    report = performance.get("report")
+    _require(isinstance(report, list) and bool(report), "formal performance report is empty")
+    latest = report[-1]
+    _require(isinstance(latest, Mapping), "latest formal performance row is invalid")
+    date_field = str(semantics.get("performance_date_field") or "date")
+    _require(
+        date_field in {"date", "holding_end_date"},
+        "formal performance date field is unsupported",
+    )
+    latest_observation = str(latest.get(date_field) or "")
+    _require(
+        latest_observation == performance_end,
+        "latest formal performance observation does not reach declared end",
+    )
+
+    observation_end = summary.get("performance_observation_end")
+    if observation_end is not None:
+        _require(
+            str(observation_end) == performance_end,
+            "formal summary performance observation end diverges",
+        )
+    if summary.get("performance_observation_status") == "provisional_mtm":
+        _require(
+            performance_end == str(manifest.get("evidence_cutoff") or ""),
+            "provisional MTM does not reach the evidence cutoff",
+        )
+        _require(latest.get("provisional_mtm") is True, "latest formal row is not marked provisional MTM")
+        _require(
+            latest.get("settlement_status") == "provisional_mtm",
+            "latest formal MTM settlement status is invalid",
+        )
 
 
 def validate_formal_evidence_bundle(run_dir: Path) -> None:
@@ -152,7 +206,7 @@ def validate_formal_evidence_bundle(run_dir: Path) -> None:
         )
 
     summary = _object(run_dir / str(sections["summary"]["path"]))
-    _validate_contract_envelope(summary)
+    semantics = _validate_contract_envelope(summary)
     metrics = summary.get("metrics")
     _require(isinstance(metrics, list), "formal summary canonical metrics are missing")
     metric_ids: set[str] = set()
@@ -170,6 +224,14 @@ def validate_formal_evidence_bundle(run_dir: Path) -> None:
     _require(completeness.get("missing") == [], "formal evidence has unresolved missing items")
     not_applicable = completeness.get("not_applicable", [])
     _require(isinstance(not_applicable, list), "not_applicable must be an explicit list")
+
+    performance = _object(run_dir / str(sections["performance"]["path"]))
+    _validate_performance_endpoint(
+        manifest=manifest,
+        summary=summary,
+        performance=performance,
+        semantics=semantics,
+    )
 
     diagnostics = _object(run_dir / str(sections["diagnostics"]["path"]))
     diagnostics_completeness = diagnostics.get("evidence_completeness")
