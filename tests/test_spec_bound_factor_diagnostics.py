@@ -403,7 +403,7 @@ def test_window_mapping_preserves_horizon_containment(tmp_path: Path) -> None:
     date_map, windows, policy = _window_date_map(available, spec)
     assert date_map
     assert windows
-    assert policy["label_horizon_sessions"] == 10
+    assert policy["horizon_sessions"] == 10
     assert all(
         row["excluded_tail_sessions"] == 10
         for row in windows

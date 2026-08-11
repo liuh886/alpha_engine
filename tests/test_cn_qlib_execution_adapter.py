@@ -97,10 +97,10 @@ def test_cn_plan_uses_declared_grid_and_top_n() -> None:
         "cn_balanced_ohlcv",
     }
     assert set(plan.baseline_factors) == {
-        "factor:cn_momentum_10d",
-        "factor:cn_reversal_5d",
-        "factor:cn_volatility_10d",
-        "factor:cn_volume_shock_10d",
+        "ohlcv.momentum.ret_10d",
+        "ohlcv.reversal.inv_ret_5d",
+        "ohlcv.volatility.std_ret_10d",
+        "ohlcv.liquidity.volume_vs_ma_10d",
     }
 
 

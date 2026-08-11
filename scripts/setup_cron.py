@@ -15,7 +15,7 @@ def _project_root() -> Path:
 
 
 def _quoted(path: Path) -> str:
-    return shlex.quote(str(path))
+    return shlex.quote(path.as_posix())
 
 
 def setup_posix_cron() -> str:

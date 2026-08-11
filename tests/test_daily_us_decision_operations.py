@@ -23,6 +23,7 @@ def test_posix_cron_contains_post_close_daily_job(tmp_path: Path, monkeypatch) -
     assert "30 7 * * 2-6" in content
     assert "scripts/run_latest_us_low_turnover_decision.py" in content
     assert "artifacts/logs/daily_us_decision.log" in content
+    assert "\\" not in content
     assert "SEC_USER_AGENT must be available" in content
 
 

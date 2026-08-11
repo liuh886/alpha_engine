@@ -70,6 +70,7 @@ def test_byte_identical_inputs_are_idempotent(tmp_path: Path) -> None:
     }
     assert first == second
     assert before == after
+    assert not list(first.parent.parent.glob(f".{first.parent.name}.*"))
 
 
 def test_changed_content_cannot_reuse_immutable_run_identity(tmp_path: Path) -> None:

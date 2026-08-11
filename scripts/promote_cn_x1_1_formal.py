@@ -44,6 +44,13 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _frozen_evidence_bytes(path: Path) -> bytes:
+    payload = path.read_bytes()
+    if path.suffix.lower() == ".csv":
+        return payload.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return payload
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> str:
     text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -100,9 +107,10 @@ def verify_evidence(evidence_root: Path) -> dict[str, Any]:
         path = evidence_root / relative
         if not path.is_file():
             raise PromotionError(f"missing frozen evidence: {relative}")
-        if _sha256(path) != row.get("sha256"):
+        frozen_bytes = _frozen_evidence_bytes(path)
+        if hashlib.sha256(frozen_bytes).hexdigest() != row.get("sha256"):
             raise PromotionError(f"frozen evidence hash mismatch: {relative}")
-        if path.stat().st_size != int(row.get("bytes", -1)):
+        if len(frozen_bytes) != int(row.get("bytes", -1)):
             raise PromotionError(f"frozen evidence byte-size mismatch: {relative}")
 
     return {

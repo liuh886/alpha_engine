@@ -8,9 +8,6 @@ PURGE_LIST = Path("configs/data_quality/history_purge_paths_v1.txt")
 US_SELECTED = Path("configs/research_universes/us_selected_equities_v2.yaml")
 CN_SELECTED = Path("configs/research_universes/cn_selected_equities_v3.yaml")
 WORKFLOW = Path(".github/workflows/purge-deleted-market-data-history.yml")
-EXECUTION_FLAG = Path(
-    "docs/operations/execute_deleted_market_data_history_purge_2026-08-01.flag"
-)
 USER_RETAINED = {
     "000338",
     "000895",
@@ -48,11 +45,6 @@ def test_history_purge_contract_is_exact_and_safe() -> None:
         assert not Path(path).exists(), path
 
 
-def test_one_shot_history_purge_assets_exist() -> None:
-    assert WORKFLOW.exists()
-    assert EXECUTION_FLAG.exists()
-    workflow = WORKFLOW.read_text(encoding="utf-8")
-    assert "git filter-repo" in workflow
-    assert "bundle create" in workflow
-    assert "Verify from a fresh mirror clone" in workflow
-    assert "github.actor != 'github-actions[bot]'" in workflow
+def test_completed_one_shot_history_purge_workflow_is_retired() -> None:
+    assert not WORKFLOW.exists()
+    assert PURGE_LIST.exists()

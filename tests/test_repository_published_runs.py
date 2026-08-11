@@ -135,7 +135,10 @@ def test_exporter_validates_and_publishes_primary_repository_run(
     assert (output / "runs" / "run-1" / "inventory.json").is_file()
     assert (output / "curves" / "run-1.json").is_file()
     assert manifest["stats"]["total_runs"] == 1
-    assert manifest["blocked_gates"] == []
+    assert manifest["blocked_gates"] == [
+        "model_data_readiness_not_published",
+        "primary_run_provider_snapshot_unavailable",
+    ]
 
 
 def test_exporter_rejects_tampered_published_run(

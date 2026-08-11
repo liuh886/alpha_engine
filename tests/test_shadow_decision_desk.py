@@ -292,6 +292,7 @@ def test_shadow_ticket_is_immutable_explainable_and_non_trading(tmp_path: Path) 
 
     assert (ledger / "us" / "2026-07-31.json").exists()
     assert (ledger / "us" / "2026-07-31.md").exists()
+    assert b"\r\n" not in (ledger / "us" / "2026-07-31.md").read_bytes()
     manifest = json.loads((ledger / "us" / "ledger_manifest.json").read_text())
     assert manifest["ticket_count"] == 1
     assert manifest["trade_ready"] is False

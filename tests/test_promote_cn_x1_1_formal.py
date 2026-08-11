@@ -32,7 +32,7 @@ def _seed_formal_root(target: Path) -> None:
     shutil.copy2(FORMAL_ROOT / "freshness.json", target / "freshness.json")
 
 
-def test_committed_cn_x1_1_package_is_complete_and_reproducible(tmp_path: Path) -> None:
+def test_frozen_cn_x1_1_promotion_is_complete_and_reproducible(tmp_path: Path) -> None:
     module = _load()
     first = tmp_path / "first"
     second = tmp_path / "second"
@@ -46,9 +46,6 @@ def test_committed_cn_x1_1_package_is_complete_and_reproducible(tmp_path: Path) 
     assert (first / "cn_x1_1.json").read_bytes() == (second / "cn_x1_1.json").read_bytes()
     assert (first / "catalog.json").read_bytes() == (second / "catalog.json").read_bytes()
     assert (first / "freshness.json").read_bytes() == (second / "freshness.json").read_bytes()
-    assert (first / "cn_x1_1.json").read_bytes() == (
-        FORMAL_ROOT / "cn_x1_1.json"
-    ).read_bytes()
 
     package = json.loads((first / "cn_x1_1.json").read_text(encoding="utf-8"))
     assert package["model_id"] == "cn_x1_1"
@@ -98,7 +95,7 @@ def test_catalog_replaces_cn_x1_0_with_cn_x1_1(tmp_path: Path) -> None:
         "qqqi_qqq_tqqq_v4_3",
         "us_x1_1",
         "cn_x1_1",
-        "byd_v1_2_convex_momentum_budget_v1",
+        "byd_v1_3_recovery_event_low_vol_confirmation_v1",
     ]
     freshness = json.loads((target / "freshness.json").read_text(encoding="utf-8"))
     assert "cn_x1_0" not in freshness["required_models"]

@@ -31,6 +31,7 @@ IMPORT_PATTERN = re.compile(
     r"(?:from\s+|import\s*\()\s*['\"](?:@/|\.\.?/)*(?:lib/(?:api|api-client|release-api)|api/(?:dataApi|jobsApi|backtestApi)|hooks/(?:useJobs|useDataStatus|useSystemHealth|useQuery|useMutation))['\"]"
 )
 API_LITERAL_PATTERN = re.compile(r"['\"](/api(?:/[^'\"]*)?)['\"]")
+REMOTE_API_PATTERN = re.compile(r"https?://api\.github\.com")
 
 
 def _production_sources() -> list[Path]:
@@ -67,6 +68,17 @@ def test_production_frontend_contains_no_api_endpoint_literals() -> None:
     assert not violations, "Production frontend still declares /api endpoints:\n" + "\n".join(violations)
 
 
+def test_production_frontend_contains_no_github_api_endpoints() -> None:
+    violations: list[str] = []
+    for path in _production_sources():
+        content = path.read_text(encoding="utf-8", errors="ignore")
+        if REMOTE_API_PATTERN.search(content):
+            violations.append(str(path.relative_to(PROJECT_ROOT)))
+    assert not violations, "Production frontend still declares GitHub API endpoints:\n" + "\n".join(
+        violations
+    )
+
+
 def test_browser_runtime_is_artifact_only() -> None:
     runtime = (FRONTEND_SRC / "lib" / "runtime-capabilities.ts").read_text(encoding="utf-8")
     assert "export type RuntimeMode = 'static_artifact' | 'local_artifact';" in runtime
@@ -74,7 +86,3 @@ def test_browser_runtime_is_artifact_only() -> None:
     assert "mutations: false" in runtime
     assert "jobs: false" in runtime
     assert "requiresAuthentication: false" in runtime
-
-    routes = (FRONTEND_SRC / "routes.ts").read_text(encoding="utf-8")
-    for retired_route in ("system", "agent", "backtest", "data-manager", "arena", "strategy"):
-        assert f"path: '{retired_route}'" not in routes

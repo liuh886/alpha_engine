@@ -12,7 +12,6 @@ from src.data.model_data_bundle import ModelDataBundleError, verify_model_data_b
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CATALOG = PROJECT_ROOT / "data" / "research" / "catalog.json"
-DEFAULT_MODEL_DATA_ROOT = PROJECT_ROOT / "data" / "research" / "model_data_bundle_v1"
 MODEL_DATA_INDEXES = (
     "model-data-readiness.json",
     "data-components.json",
@@ -320,8 +319,10 @@ def export_repository_research_data(
     output_dir: Path,
     *,
     catalog_path: Path = DEFAULT_CATALOG,
-    model_data_root: Path = DEFAULT_MODEL_DATA_ROOT,
+    model_data_root: Path | None = None,
 ) -> dict[str, Any]:
+    if model_data_root is None:
+        model_data_root = PROJECT_ROOT / "data" / "research" / "model_data_bundle_v1"
     catalog = _read_json(catalog_path)
     if catalog.get("research_only") is not True or catalog.get("trade_ready") is not False:
         raise RepositoryResearchStoreError("repository catalog has an invalid research boundary")
