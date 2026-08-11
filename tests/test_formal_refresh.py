@@ -339,15 +339,31 @@ def test_formal_refresh_publishes_one_shared_model_data_bundle() -> None:
     )
     assert workflow.count("scripts/data/build_model_data_bundle.py") == 3
     assert (
-        "prices.us_selected_equities_v2:selected_pool_prices:${CURRENT_MODEL_DATA_ROOT}"
+        "prices.us_selected_equities_v2:selected_pool_prices:${CANDIDATE_MODEL_DATA_ROOT}"
         in workflow
     )
     assert (
-        "prices.cn_selected_equities_v3:selected_pool_prices:${CURRENT_MODEL_DATA_ROOT}"
+        "prices.cn_selected_equities_v3:selected_pool_prices:${CANDIDATE_MODEL_DATA_ROOT}"
         in workflow
     )
     assert "data/research/model_data_bundle_v1" in workflow
     assert "cancel-in-progress: false" in workflow
+    start = workflow.index(
+        "      - name: Build shared Model Data Bundle for training and frontend"
+    )
+    end = workflow.index(
+        "      - name: Install candidate and rebuild Strategy Operations"
+    )
+    model_data = workflow[start:end]
+    assert "id: model_data" in model_data
+    assert "if: steps.plan.outputs.refresh_required" not in model_data
+    assert "current_id != candidate_id" in model_data
+    assert 'echo "changed=true" >> "$GITHUB_OUTPUT"' in model_data
+    publication_condition = (
+        "if: steps.plan.outputs.refresh_required == 'true' || "
+        "steps.model_data.outputs.changed == 'true'"
+    )
+    assert workflow.count(publication_condition) == 2
 
 
 def test_formal_refresh_frontend_validation_paths_are_complete() -> None:

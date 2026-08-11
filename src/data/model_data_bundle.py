@@ -488,7 +488,8 @@ def build_model_data_bundle(
 ) -> dict[str, Any]:
     normalized_root = root.resolve()
     output = output_root.resolve()
-    contract = _load_mapping(contract_path.resolve())
+    resolved_contract_path = contract_path.resolve()
+    contract = _load_mapping(resolved_contract_path)
     cutoff = _parse_date(evidence_cutoff)
     if cutoff is None:
         raise ModelDataBundleError("evidence_cutoff is required")
@@ -526,7 +527,13 @@ def build_model_data_bundle(
         if isinstance(profile, dict)
     ]
 
-    contract_hash = _sha256(contract_path.resolve())
+    contract_hash = _sha256(resolved_contract_path)
+    try:
+        portable_contract_path = resolved_contract_path.relative_to(
+            normalized_root
+        ).as_posix()
+    except ValueError:
+        portable_contract_path = str(resolved_contract_path)
     component_seed = "\n".join(
         f"{component.component_id}:{component.manifest_sha256}"
         for component in sorted(components_list, key=lambda item: item.component_id)
@@ -560,7 +567,7 @@ def build_model_data_bundle(
         "bundle_id": bundle_id,
         "built_at": built_at,
         "evidence_cutoff": cutoff,
-        "contract_path": str(contract_path),
+        "contract_path": portable_contract_path,
         "contract_sha256": contract_hash,
         "research_only": True,
         "trade_ready": False,
