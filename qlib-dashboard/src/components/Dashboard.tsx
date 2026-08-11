@@ -26,9 +26,16 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
     model_type: typeof params?.model_type === 'string' ? params.model_type : '',
   });
   const completeness = formal?.evidence_completeness.status;
+  const metricAvailabilityLabel = formal?.evidence_completeness.status === 'partial'
+    ? 'Blocked by source'
+    : formal
+      ? 'Not retained'
+      : 'Not declared';
   const metricUnavailableReason = formal?.evidence_completeness.status === 'partial'
-    ? 'Unavailable in the retained formal source evidence.'
-    : 'Not computed or not declared by the formal package.';
+    ? 'The retained formal source evidence does not provide this metric.'
+    : formal
+      ? 'The accepted formal package does not retain this metric.'
+      : 'No formal package declares this metric.';
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 pb-16">
@@ -50,7 +57,11 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
         </div>
       </section>
 
-      <OverviewCards metrics={data.metrics} unavailableReason={metricUnavailableReason} />
+      <OverviewCards
+        metrics={data.metrics}
+        availabilityLabel={metricAvailabilityLabel}
+        unavailableReason={metricUnavailableReason}
+      />
 
       {!hasReport ? (
         <div className="rounded-xl border-2 border-dashed bg-muted/20 px-6 py-14 text-center">
