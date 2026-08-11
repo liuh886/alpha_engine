@@ -5,9 +5,14 @@ import { cn } from "@/lib/utils";
 interface OverviewCardsProps {
   metrics: Record<string, number | null | undefined>;
   unavailableReason?: string;
+  availabilityLabel?: string;
 }
 
-export function OverviewCards({ metrics, unavailableReason = 'Not declared by the formal package.' }: OverviewCardsProps) {
+export function OverviewCards({
+  metrics,
+  unavailableReason = 'Not declared by the formal package.',
+  availabilityLabel = 'Not declared',
+}: OverviewCardsProps) {
   const formatPercent = (val: number | null | undefined) => {
     if (val === undefined || val === null || Number.isNaN(val)) return null;
     return `${(val * 100).toFixed(2)}%`;
@@ -74,7 +79,7 @@ export function OverviewCards({ metrics, unavailableReason = 'Not declared by th
           <CardContent>
             {stat.value === null ? (
               <div>
-                <div className="text-sm font-semibold text-muted-foreground">Unavailable</div>
+                <div className="text-sm font-semibold text-muted-foreground">{availabilityLabel}</div>
                 <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground/80">{unavailableReason}</p>
               </div>
             ) : (
