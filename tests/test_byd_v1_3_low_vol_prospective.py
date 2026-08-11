@@ -57,6 +57,16 @@ def _source_row(
     }
 
 
+def _write_source(root: Path, row: dict[str, object]) -> None:
+    observations = root / "observations"
+    observations.mkdir(parents=True, exist_ok=True)
+    date = str(row["signal_date"])
+    (observations / f"{date}.json").write_text(
+        json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
 def test_prelaunch_seed_never_starts_lifecycle() -> None:
     rows = [_source_row("2026-08-10", edge=True, vol_state="low", prospective=False)]
     state = build_lifecycle(rows)
@@ -121,12 +131,9 @@ def test_build_observations_preserves_prelaunch_seed_and_source_hash(
     tmp_path: Path,
 ) -> None:
     source_root = tmp_path / "source"
-    observations = source_root / "observations"
-    observations.mkdir(parents=True)
-    seed = _source_row("2026-08-10", edge=True, vol_state="high", prospective=False)
-    (observations / "2026-08-10.json").write_text(
-        json.dumps(seed, ensure_ascii=False, sort_keys=True) + "\n",
-        encoding="utf-8",
+    _write_source(
+        source_root,
+        _source_row("2026-08-10", edge=True, vol_state="high", prospective=False),
     )
 
     built = build_observations(source_store=source_root, existing_records=[])
@@ -142,16 +149,27 @@ def test_build_observations_preserves_prelaunch_seed_and_source_hash(
     assert len(row["source"]["recovery_event_observation_sha256"]) == 64
 
 
-def test_new_observations_carry_explicit_candidate_identity(tmp_path: Path) -> None:
+def test_observation_schema_stays_uniform_after_launch(tmp_path: Path) -> None:
     source_root = tmp_path / "source"
-    observations = source_root / "observations"
-    observations.mkdir(parents=True)
-    row = _source_row("2026-08-12", edge=False, vol_state="high", prospective=True)
-    (observations / "2026-08-12.json").write_text(
-        json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n",
-        encoding="utf-8",
+    _write_source(
+        source_root,
+        _source_row("2026-08-12", edge=False, vol_state="high", prospective=True),
     )
 
     built = build_observations(source_store=source_root, existing_records=[])
 
-    assert built[0]["candidate_model_id"] == CANDIDATE_MODEL_ID
+    assert "candidate_model_id" not in built[0]
+    assert CANDIDATE_MODEL_ID in built[0]["targets"]
+
+
+def test_existing_observation_replays_exactly_without_schema_adaptation(tmp_path: Path) -> None:
+    source_root = tmp_path / "source"
+    _write_source(
+        source_root,
+        _source_row("2026-08-10", edge=True, vol_state="high", prospective=False),
+    )
+    first = build_observations(source_store=source_root, existing_records=[])
+
+    replay = build_observations(source_store=source_root, existing_records=first)
+
+    assert replay == []

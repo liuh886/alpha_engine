@@ -24,7 +24,6 @@ CANDIDATE_MODEL_ID = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
 CHAMPION_MODEL_ID = "byd_v1_2_convex_momentum_budget_v1"
 EVENT_MODEL_ID = "byd_recovery_event_hold20_v1"
 LAUNCH_AFTER = pd.Timestamp("2026-08-10")
-LAST_MANIFEST_BOUND_IDENTITY_DATE = pd.Timestamp("2026-08-11")
 RECOVERY_THRESHOLD = 0.026937
 HOLD_ELIGIBLE_SESSIONS = 20
 ASSETS = ("byd", "etf", "cash")
@@ -233,14 +232,9 @@ def build_observations(
                 else "non_prospective_source_observation"
             ),
         }
-        if date > LAST_MANIFEST_BOUND_IDENTITY_DATE:
-            record["candidate_model_id"] = CANDIDATE_MODEL_ID
         record["data_version"] = f"byd-v1-3-low-vol-{signal_date}-{source_row['source_sha256'][:8]}"
         if signal_date in existing:
-            comparable = dict(record)
-            if "candidate_model_id" not in existing[signal_date]:
-                comparable.pop("candidate_model_id")
-            if _json_bytes(existing[signal_date]) != _json_bytes(comparable):
+            if _json_bytes(existing[signal_date]) != _json_bytes(record):
                 raise RuntimeError(f"existing low-vol observation drifted: {signal_date}")
             continue
         output.append(record)
