@@ -14,8 +14,6 @@ on:
   workflow_run:
     workflows: ["BYD Prospective Shadow Ledger"]
     types: [completed]
-  schedule:
-    - cron: "45 11 * * 1-5"
   workflow_dispatch:
 
 permissions:
