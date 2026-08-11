@@ -54,11 +54,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: qlib-dashboard/package-lock.json
       - name: Install locked environment
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -217,24 +212,26 @@ jobs:
           done
           echo "delivery_failed=$delivery_failed" >> "$GITHUB_OUTPUT"
 
-      - name: Rebuild Strategy Operations
+      - name: Materialize Strategy Operations evidence for this run
         run: |
           set -euo pipefail
           generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          uv run alpha ops build --generated-at "$generated_at"
+          uv run alpha ops build \
+            --generated-at "$generated_at" \
+            --output artifacts/ranker-current-target/strategy-operations.json
 
-      - name: Commit append-only decisions and operations snapshot
+      - name: Commit append-only decisions
         id: publish_state
         run: |
           set -euo pipefail
           echo "published=false" >> "$GITHUB_OUTPUT"
           git config user.name "AlphaEngine Ranker Operations"
           git config user.email "ranker-operations@alphaengine.local"
-          git add data/research/strategy_signal_ledgers data/research/strategy_operations/snapshots.json
+          git add data/research/strategy_signal_ledgers
           if git diff --cached --quiet; then
-            echo "No governed ranker publication changes."
+            echo "No governed ranker decision changes."
           else
-            git commit -m "ops: publish governed 10-session ranker state"
+            git commit -m "ops: publish governed 10-session decisions"
             git pull --rebase origin main
             git push origin HEAD:main
             echo "published=true" >> "$GITHUB_OUTPUT"
