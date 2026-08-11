@@ -1,0 +1,25 @@
+{
+  "experiment_id": "qqqr_r26_advanced_v1",
+  "r26_baseline": {
+    "calmar": 2.949,
+    "cagr": 0.6785,
+    "max_dd": -0.2301
+  },
+  "v43_baseline": {
+    "calmar": 2.738,
+    "cagr": 0.574,
+    "max_dd": -0.2097
+  },
+  "best": {
+    "label": "R975",
+    "calmar": 4.934,
+    "cagr": 0.6995,
+    "max_dd": -0.1418
+  },
+  "state_0": "QQQI 50% + SGOV 50%",
+  "state_1": "QQQI 90% + QQQ 10%",
+  "state_2": "TQQQ 100%",
+  "panic_boost": 0.0,
+  "improvement_vs_r26": "+67.3%",
+  "improvement_vs_v43": "+80.3%"
+}
