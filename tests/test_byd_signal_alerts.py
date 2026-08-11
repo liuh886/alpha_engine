@@ -107,6 +107,28 @@ def test_prelaunch_seed_can_initialize_formal_signal_without_becoming_forward_ev
     assert alert["should_alert"] is True
 
 
+def test_immutable_legacy_prelaunch_seed_proves_identity_from_frozen_contract() -> None:
+    observation = _observation()
+    observation.pop("candidate_model_id")
+    observation["kind"] = "v1_3_low_vol_recovery_observation"
+    observation["launch_after"] = "2026-08-10"
+
+    alert = build_byd_signal_alert(observation)
+
+    assert alert["model_id"] == MODEL_ID
+    assert alert["data_freshness_ok"] is True
+
+
+def test_missing_identity_outside_legacy_seed_fails_closed() -> None:
+    observation = _observation(signal_date="2026-08-11")
+    observation.pop("candidate_model_id")
+    observation["kind"] = "v1_3_low_vol_recovery_observation"
+    observation["launch_after"] = "2026-08-10"
+
+    with pytest.raises(ValueError, match="wrong model identity"):
+        build_byd_signal_alert(observation)
+
+
 def test_unchanged_target_does_not_alert() -> None:
     first = build_byd_signal_alert(_observation())
     second = build_byd_signal_alert(_observation(), previous_alert=first)
