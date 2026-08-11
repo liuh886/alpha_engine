@@ -9,6 +9,9 @@ on:
     paths:
       - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/formal-backtest-refresh-ci.yml"
+      - "configs/strategies/registry.json"
+      - "src/cli/main.py"
+      - "src/governance/active_strategy_catalog.py"
       - "src/artifacts/formal_refresh.py"
       - "src/artifacts/formal_provider_cache.py"
       - "src/artifacts/us_x1_2_preview.py"
@@ -32,7 +35,6 @@ on:
       - "scripts/dump_bin.py"
       - "scripts/build_market_evidence.py"
       - "scripts/govern_formal_provider_cache.py"
-      - "scripts/build_strategy_operations.py"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/ranker_provisional_mtm.py"
       - "scripts/refresh_ranker_formal.py"
@@ -57,6 +59,7 @@ on:
       - "configs/research_universes/cn_selected_equities_v3.yaml"
       - "pyproject.toml"
       - "uv.lock"
+      - "tests/test_active_strategy_catalog.py"
       - "tests/test_formal_refresh.py"
       - "tests/test_ranker_provisional_mtm.py"
       - "tests/test_refresh_byd_v1_3_formal.py"
@@ -74,15 +77,7 @@ on:
       - "data/research/model_runs/**"
       - "data/research/market_evidence/**"
       - "data/research/strategy_signal_ledgers/**"
-      - "data/research/strategy_operations/**"
       - "data/research/model_data_bundle_v1/**"
-      - "qlib-dashboard/public/data/formal-model-runs/**"
-      - "qlib-dashboard/public/data/model-runs/**"
-      - "qlib-dashboard/public/data/market-evidence/**"
-      - "qlib-dashboard/public/data/strategy-operations/**"
-      - "qlib-dashboard/public/data/model-data-readiness.json"
-      - "qlib-dashboard/public/data/data-components.json"
-      - "qlib-dashboard/public/data/training-profiles.json"
       - "qlib-dashboard/scripts/**"
       - "qlib-dashboard/src/**"
       - "qlib-dashboard/package.json"
@@ -149,6 +144,8 @@ jobs:
       - name: Validate refresh implementation before network work
         run: |
           uv run ruff check \
+            src/cli/main.py \
+            src/governance/active_strategy_catalog.py \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
             src/artifacts/qqq_v4_3_formal.py \
@@ -163,7 +160,6 @@ jobs:
             src/research/byd_v1_3_low_vol_recovery.py \
             scripts/build_market_evidence.py \
             scripts/govern_formal_provider_cache.py \
-            scripts/build_strategy_operations.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/ranker_provisional_mtm.py \
             scripts/refresh_ranker_formal.py \
@@ -174,6 +170,7 @@ jobs:
             scripts/data/refresh_selected_pool_prices.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             scripts/data/build_model_data_bundle.py \
+            tests/test_active_strategy_catalog.py \
             tests/test_formal_refresh.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_refresh_byd_v1_3_formal.py \
@@ -184,6 +181,7 @@ jobs:
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py
           uv run pytest \
+            tests/test_active_strategy_catalog.py \
             tests/test_formal_refresh.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_refresh_byd_v1_3_formal.py \
@@ -479,8 +477,6 @@ jobs:
           else
             rm -rf data/research/model_runs
             cp -a "$CANDIDATE_PREVIEW_ROOT" data/research/model_runs
-            cd qlib-dashboard
-            npm run sync:model-runs
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Reproduce and refresh CN x1.1 twice
@@ -538,7 +534,7 @@ jobs:
             --signal-ledger data/research/strategy_signal_ledgers/byd_v1_3_recovery_event_low_vol_confirmation_v1 \
             --cutoff "$CN_CUTOFF" --generated-at "$GENERATED_AT" \
             --output "$CANDIDATE_FORMAL_ROOT/byd_v1_3_recovery_event_low_vol_confirmation_v1.json"
-      - name: Seal formal v1 and build Bundle v2
+      - name: Seal formal source packages and build Bundle v2
         if: steps.plan.outputs.refresh_required == 'true'
         env:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
@@ -582,7 +578,7 @@ jobs:
           wait "$cn_pid" || status=1
           cat artifacts/formal-refresh/market-evidence-us.log artifacts/formal-refresh/market-evidence-cn.log
           test "$status" -eq 0
-      - name: Build shared Model Data Bundle for training and frontend
+      - name: Build shared Model Data Bundle
         id: model_data
         env:
           US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
@@ -624,25 +620,13 @@ jobs:
               if current.exists():
                   shutil.rmtree(current)
               shutil.copytree(candidate, current)
-          frontend = Path("qlib-dashboard/public/data")
-          frontend.mkdir(parents=True, exist_ok=True)
-          for name in (
-              "model-data-readiness.json",
-              "data-components.json",
-              "training-profiles.json",
-          ):
-              shutil.copy2(current / name, frontend / name)
           PY
-          if [[ -n "$(git status --porcelain -- \
-            data/research/model_data_bundle_v1 \
-            qlib-dashboard/public/data/model-data-readiness.json \
-            qlib-dashboard/public/data/data-components.json \
-            qlib-dashboard/public/data/training-profiles.json)" ]]; then
+          if [[ -n "$(git status --porcelain -- data/research/model_data_bundle_v1)" ]]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Install candidate and rebuild Strategy Operations
+      - name: Install candidate and materialize generated read models
         if: steps.plan.outputs.refresh_required == 'true'
         env:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
@@ -653,20 +637,15 @@ jobs:
           cp -a "$CANDIDATE_V2_ROOT" data/research/formal_model_runs
           cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" data/research/market_evidence
           cp "$REFRESH_RECEIPT" data/research/formal_backtests/latest_refresh_receipt.json
-          uv run python scripts/build_strategy_operations.py \
+          uv run alpha ops build \
             --formal-catalog data/research/formal_model_runs/catalog.json \
-            --ledger-root data/research/strategy_signal_ledgers \
-            --generated-at "$GENERATED_AT" \
-            --output data/research/strategy_operations/snapshots.json
-          cd qlib-dashboard
-          npm run sync:formal-model-runs
-          npm run sync:market-evidence
-          npm run sync:strategy-operations
+            --generated-at "$GENERATED_AT"
       - name: Validate complete candidate publication
         if: steps.plan.outputs.refresh_required == 'true' || steps.preview.outputs.changed == 'true' || steps.model_data.outputs.changed == 'true'
         run: |
           set -euo pipefail
           uv run pytest \
+            tests/test_active_strategy_catalog.py \
             tests/test_formal_refresh.py \
             tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
@@ -737,24 +716,13 @@ jobs:
             data/research/formal_model_runs \
             data/research/model_runs \
             data/research/market_evidence \
-            data/research/strategy_operations/snapshots.json \
-            data/research/model_data_bundle_v1 \
-            qlib-dashboard/public/data/formal-model-runs \
-            qlib-dashboard/public/data/model-runs \
-            qlib-dashboard/public/data/market-evidence \
-            qlib-dashboard/public/data/strategy-operations \
-            qlib-dashboard/public/data/model-data-readiness.json \
-            qlib-dashboard/public/data/data-components.json \
-            qlib-dashboard/public/data/training-profiles.json
+            data/research/model_data_bundle_v1
           if git diff --cached --quiet; then
-            echo "No publication bytes changed after refresh validation."
+            echo "No canonical evidence bytes changed after refresh validation."
             echo "pr_number=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git commit -m "data: publish governed evidence through US ${US_CUTOFF} and CN ${CN_CUTOFF}"
-          # A provider rebuild can outlive unrelated merges to main. Fold the
-          # latest base into the candidate before validation so a clean update
-          # is validated at its exact SHA instead of failing only at release.
           if ! git merge --no-edit origin/main; then
             git merge --abort || true
             echo "Reviewed refresh overlaps newer main changes; rerun from the latest main." >&2
@@ -772,7 +740,8 @@ jobs:
           - QQQ formal model: QQQ Rotation v4.3 append-only
           - BYD formal model: BYD v1.3 append-only
           - Historical reports, positions and trades: immutable prefix verified
-          - Formal v1, Bundle v2, Market Evidence and Strategy Operations: one reviewed publication
+          - Durable Git diff: canonical formal/model/market/model-data evidence only
+          - Strategy Operations + frontend public data: generated from canonical evidence at validation/deploy time
           - Model selection: not reopened
           - Protected merge: all candidate PR checks must pass before explicit squash merge
           - Pages publication: explicit workflow dispatch is pinned to the reviewed merge SHA and must pass live acceptance before operating status becomes current
@@ -912,7 +881,8 @@ jobs:
               `- Review PR: ${prNumber ? `#${prNumber}` : 'none'}`,
               `- Reviewed merge SHA: ${mergeSha ? `\`${mergeSha}\`` : 'none'}`,
               `- Pages acceptance run: ${pagesRunId ? `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${pagesRunId}` : 'none'}`,
-              '- Formal + Market Evidence transaction: one reviewed publication',
+              '- Canonical evidence transaction: one reviewed publication',
+              '- Strategy Operations and frontend projections: generated from canonical evidence',
               '- Model selection reopened: no',
               '- Automatic merge: only after required PR checks pass',
               '- Pages live acceptance: required before current/closed status',
@@ -921,7 +891,7 @@ jobs:
               '',
               failed
                 ? 'The refresh failed closed before the complete reviewed publication and live Pages acceptance transaction finished.'
-                : 'Accepted formal evidence, Market Evidence, Strategy Operations and live Pages match the latest provider-resolved common sessions.',
+                : 'Accepted formal evidence and Market Evidence match the latest provider-resolved common sessions; Strategy Operations and Pages were regenerated from that canonical state.',
             ].join('\n');
             const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
