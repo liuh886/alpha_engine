@@ -365,6 +365,20 @@ def test_formal_refresh_publishes_one_shared_model_data_bundle() -> None:
     )
     assert workflow.count(publication_condition) == 2
 
+    publish_start = workflow.index(
+        "      - name: Open or update reviewed refresh PR"
+    )
+    publish_end = workflow.index(
+        "      - name: Wait for candidate checks, merge reviewed refresh, and verify Pages"
+    )
+    publish = workflow[publish_start:publish_end]
+    assert "REFRESH_REQUIRED: ${{ steps.plan.outputs.refresh_required }}" in publish
+    assert "git fetch origin main" in publish
+    assert "candidate_bundle_id" in publish
+    assert "main_bundle_id" in publish
+    assert "Latest main already contains governed Model Data Bundle" in publish
+    assert publish.index("git fetch origin main") < publish.index("git checkout -B")
+
 
 def test_formal_refresh_frontend_validation_paths_are_complete() -> None:
     required = (
