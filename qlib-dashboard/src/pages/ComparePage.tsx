@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
-import { AlertTriangle, Check, Crown, GitCompareArrows, LineChart as LineChartIcon, Scale } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { AlertTriangle, Check, GitCompareArrows, LineChart as LineChartIcon, Scale } from 'lucide-react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useAccessControl } from '@/hooks/useAccessControl';
 import type { ModelData } from '@/lib/data-parser';
 import { evidenceAvailabilityLabel, formatDeclaredValue } from '@/lib/evidence-availability';
 import { projectFormalEvidence, projectFormalMetric, type FormalMetricProjection } from '@/lib/formal-evidence';
-import type { RunWorkspaceContext } from '@/lib/run-workspace';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,37 +72,24 @@ function compareIdentity(models: ModelData[]) {
 }
 
 export function ComparePage({ models }: { models: ModelData[] }) {
-  const workspace = useOutletContext<RunWorkspaceContext>();
-  const access = useAccessControl();
   const location = useLocation();
   const navigate = useNavigate();
-  const requiredTierByModelId = useMemo(() => new Map(
-    workspace.runs.flatMap((run) => [run.modelVersionId, run.modelData?.id]
-      .filter((value): value is string => Boolean(value))
-      .map((id) => [id, access.requiredTierForModel(run)] as const)),
-  ), [access, workspace.runs]);
-  const accessibleModels = useMemo(
-    () => models.filter((model) => access.canAccess(requiredTierByModelId.get(model.id) ?? 'public')),
-    [access, models, requiredTierByModelId],
-  );
-  const lockedModelCount = models.length - accessibleModels.length;
-  const lockedProCount = models.filter((model) => requiredTierByModelId.get(model.id) === 'pro' && !access.canAccess('pro')).length;
 
   const initialIds = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const declared = (params.get('models') ?? '').split(',').filter(Boolean);
-    const valid = declared.filter((id) => accessibleModels.some((model) => model.id === id));
+    const valid = declared.filter((id) => models.some((model) => model.id === id));
     return valid.length > 0
       ? valid.slice(0, MAX_COMPARE)
-      : accessibleModels.slice(0, Math.min(2, accessibleModels.length)).map((model) => model.id);
-  }, [accessibleModels, location.search]);
+      : models.slice(0, Math.min(2, models.length)).map((model) => model.id);
+  }, [models, location.search]);
   const [selectedIds, setSelectedIds] = useState<string[]>(initialIds);
 
   useEffect(() => setSelectedIds(initialIds), [initialIds]);
 
   const selected = useMemo(
-    () => selectedIds.map((id) => accessibleModels.find((model) => model.id === id)).filter((model): model is ModelData => Boolean(model)),
-    [accessibleModels, selectedIds],
+    () => selectedIds.map((id) => models.find((model) => model.id === id)).filter((model): model is ModelData => Boolean(model)),
+    [models, selectedIds],
   );
   const identity = useMemo(() => compareIdentity(selected), [selected]);
   const equity = useMemo(() => buildEquitySeries(selected), [selected]);
@@ -112,7 +97,7 @@ export function ComparePage({ models }: { models: ModelData[] }) {
   const comparable = incompatibleRows.length === 0;
 
   const updateSelection = (nextIds: string[]) => {
-    const limited = nextIds.filter((id) => accessibleModels.some((model) => model.id === id)).slice(0, MAX_COMPARE);
+    const limited = nextIds.filter((id) => models.some((model) => model.id === id)).slice(0, MAX_COMPARE);
     setSelectedIds(limited);
     const params = new URLSearchParams(location.search);
     if (limited.length) params.set('models', limited.join(','));
@@ -125,12 +110,12 @@ export function ComparePage({ models }: { models: ModelData[] }) {
     else if (selectedIds.length < MAX_COMPARE) updateSelection([...selectedIds, id]);
   };
 
-  if (accessibleModels.length === 0) {
+  if (models.length === 0) {
     return (
       <div className="research-empty-state">
         <GitCompareArrows className="mx-auto h-8 w-8 text-muted-foreground" />
         <h2 className="mt-4 text-lg font-semibold">No comparable records</h2>
-        <p className="mt-2 text-sm text-muted-foreground">No Free-tier comparison records are available for the active research bundle.</p>
+        <p className="mt-2 text-sm text-muted-foreground">No retained comparison records are available for the active research bundle.</p>
       </div>
     );
   }
@@ -141,24 +126,14 @@ export function ComparePage({ models }: { models: ModelData[] }) {
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Like-for-like review</p>
         <h2 className="mt-2 text-2xl font-black tracking-tight">Compare formal evidence</h2>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          Select up to {MAX_COMPARE} accessible records. Metrics are descriptive unless market, benchmark, window, snapshot and formal cost contract are aligned.
+          Select up to {MAX_COMPARE} retained evidence records. Historical evidence is public; metrics are descriptive unless market, benchmark, window, snapshot and formal cost contract are aligned.
         </p>
       </section>
-
-      {lockedModelCount > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
-          <div>
-            <p className="flex items-center gap-2 font-semibold text-primary"><Crown className="h-4 w-4" />{lockedModelCount} restricted model {lockedModelCount === 1 ? 'is' : 'are'} excluded</p>
-            <p className="mt-1 text-xs text-muted-foreground">{lockedProCount > 0 ? `${lockedProCount} require AlphaEngine Pro.` : 'Sign in with the required account level to include them.'}</p>
-          </div>
-          <Button type="button" size="sm" variant="outline" onClick={access.openAccount}>{lockedProCount > 0 ? 'View Pro access' : 'Open account'}</Button>
-        </div>
-      )}
 
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm">Evidence records</CardTitle></CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          {accessibleModels.map((model) => {
+          {models.map((model) => {
             const active = selectedIds.includes(model.id);
             return (
               <Button
@@ -181,7 +156,7 @@ export function ComparePage({ models }: { models: ModelData[] }) {
       </Card>
 
       {selected.length < 2 ? (
-        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Select at least two accessible evidence records to compare.</div>
+        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Select at least two evidence records to compare.</div>
       ) : (
         <>
           <Card className={comparable ? 'border-emerald-500/30' : 'border-amber-500/40'}>
