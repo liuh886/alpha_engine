@@ -228,21 +228,20 @@ jobs:
             --cutoff "$REQUESTED_CUTOFF" \
             --output "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
             --github-output "$GITHUB_OUTPUT"
-      - name: Restore exact scheduled provider cache
-        if: github.event_name == 'schedule'
+      - name: Restore exact governed provider cache
         id: provider_cache
         uses: actions/cache/restore@v4
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
-          key: ${{ steps.contract.outputs.cache_key }}-scheduled
+          key: ${{ steps.contract.outputs.cache_key }}-governed
       - name: Install locked provider environment
-        if: github.event_name != 'schedule' || steps.provider_cache.outputs.cache-hit != 'true'
+        if: steps.provider_cache.outputs.cache-hit != 'true'
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen
       - name: Rebuild isolated selected-pool provider
-        if: github.event_name != 'schedule' || steps.provider_cache.outputs.cache-hit != 'true'
+        if: steps.provider_cache.outputs.cache-hit != 'true'
         env:
           MARKET: ${{ matrix.market }}
           REQUESTED_CUTOFF: ${{ needs.prepare.outputs.requested_cutoff }}
@@ -254,7 +253,7 @@ jobs:
             --output-root "artifacts/formal-refresh/provider-${MARKET}" \
             --start 2021-01-01 --cutoff "$REQUESTED_CUTOFF" --max-rounds 3 --full-refresh
       - name: Seal fresh provider cache
-        if: github.event_name != 'schedule' || steps.provider_cache.outputs.cache-hit != 'true'
+        if: steps.provider_cache.outputs.cache-hit != 'true'
         env:
           MARKET: ${{ matrix.market }}
         run: |
@@ -263,7 +262,7 @@ jobs:
             --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
             --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
       - name: Verify restored provider cache
-        if: github.event_name == 'schedule' && steps.provider_cache.outputs.cache-hit == 'true'
+        if: steps.provider_cache.outputs.cache-hit == 'true'
         env:
           MARKET: ${{ matrix.market }}
         run: |
@@ -271,12 +270,12 @@ jobs:
             --provider-root "artifacts/formal-refresh/provider-${MARKET}" \
             --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
             --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
-      - name: Save exact scheduled provider cache
-        if: github.event_name == 'schedule' && steps.provider_cache.outputs.cache-hit != 'true'
+      - name: Save exact governed provider cache
+        if: steps.provider_cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
-          key: ${{ steps.contract.outputs.cache_key }}-scheduled
+          key: ${{ steps.contract.outputs.cache_key }}-governed
       - name: Transfer verified provider to refresh job
         uses: actions/upload-artifact@v6
         with:
