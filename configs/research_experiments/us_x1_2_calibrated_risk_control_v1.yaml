@@ -1,8 +1,8 @@
 schema_version: '1.0'
 experiment_id: us_x1_2_calibrated_risk_control_v1
 runner: cross_sectional_xgb_ranker_v1
-active: true
-status: pre_registered
+active: false
+status: superseded
 parent_model_id: us_x1_1
 research_only: true
 trade_ready: false

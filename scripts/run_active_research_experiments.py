@@ -27,11 +27,24 @@ from src.research.rules_based_allocation_experiment_runner import (
 )
 
 EXPERIMENT_ROOT = PROJECT_ROOT / "configs" / "research_experiments"
+TERMINAL_RESEARCH_STATUSES = {
+    "completed",
+    "completed_not_supported",
+    "promoted",
+    "retired",
+    "superseded",
+}
 
 
 def _load(path: Path) -> dict[str, Any]:
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return payload if isinstance(payload, dict) else {}
+    payload = payload if isinstance(payload, dict) else {}
+    status = str(payload.get("status") or "")
+    if payload.get("active") is True and status in TERMINAL_RESEARCH_STATUSES:
+        raise ValueError(
+            f"research experiment {path} cannot be active with terminal status {status!r}"
+        )
+    return payload
 
 
 def active_specs() -> list[Path]:
