@@ -7,6 +7,9 @@ on:
     paths:
       - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/formal-backtest-refresh-ci.yml"
+      - "configs/strategies/registry.json"
+      - "src/cli/main.py"
+      - "src/governance/active_strategy_catalog.py"
       - "src/artifacts/formal_refresh.py"
       - "src/artifacts/formal_provider_cache.py"
       - "src/artifacts/us_x1_2_preview.py"
@@ -39,11 +42,11 @@ on:
       - "scripts/promote_byd_v1_3_formal.py"
       - "scripts/build_market_evidence.py"
       - "scripts/govern_formal_provider_cache.py"
-      - "scripts/build_strategy_operations.py"
       - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "scripts/data/build_model_data_bundle.py"
       - "scripts/sync_formal_bundle_v2.py"
+      - "tests/test_active_strategy_catalog.py"
       - "tests/test_formal_refresh.py"
       - "tests/test_ranker_provisional_mtm.py"
       - "tests/test_formal_bundle_mtm_projection.py"
@@ -61,15 +64,7 @@ on:
       - "data/research/formal_model_runs/**"
       - "data/research/model_runs/**"
       - "data/research/market_evidence/**"
-      - "data/research/strategy_operations/**"
       - "data/research/model_data_bundle_v1/**"
-      - "qlib-dashboard/public/data/formal-model-runs/**"
-      - "qlib-dashboard/public/data/model-runs/**"
-      - "qlib-dashboard/public/data/market-evidence/**"
-      - "qlib-dashboard/public/data/strategy-operations/**"
-      - "qlib-dashboard/public/data/model-data-readiness.json"
-      - "qlib-dashboard/public/data/data-components.json"
-      - "qlib-dashboard/public/data/training-profiles.json"
       - "qlib-dashboard/scripts/**"
       - "qlib-dashboard/src/**"
       - "qlib-dashboard/package.json"
@@ -159,6 +154,8 @@ jobs:
         if: steps.scope.outputs.backend == 'true'
         run: |
           uv run ruff check \
+            src/cli/main.py \
+            src/governance/active_strategy_catalog.py \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
             src/artifacts/us_x1_2_preview.py \
@@ -186,6 +183,7 @@ jobs:
             scripts/data/refresh_selected_pool_prices.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             scripts/data/build_model_data_bundle.py \
+            tests/test_active_strategy_catalog.py \
             tests/test_formal_refresh.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_formal_bundle_mtm_projection.py \
@@ -205,6 +203,7 @@ jobs:
             scripts/build_market_evidence.py \
             scripts/run_formal_refresh_transaction.py
           uv run pytest \
+            tests/test_active_strategy_catalog.py \
             tests/test_formal_refresh.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_formal_bundle_mtm_projection.py \
