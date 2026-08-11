@@ -3,12 +3,13 @@ import type {
   FormalBacktestPackage,
   FormalBacktestTrade,
 } from './formal-backtest';
+import type { SectionAvailability } from './model-run-bundle-v2';
 
 export type FormalModelKind = 'rules_based_allocation' | 'cross_sectional_ranker';
 
 export interface FormalMetricProjection {
   value: number | null;
-  availability: 'available' | 'not_computed' | 'not_retained' | 'blocked_by_source';
+  availability: SectionAvailability;
   reason: string;
 }
 
@@ -46,7 +47,8 @@ export function inferFormalModelKind(
   const modelId = formal?.model_id ?? model?.id ?? '';
   const modelType = String(model?.model_type ?? '').toLowerCase();
   if (
-    modelId === 'qqqi_qqq_tqqq_v4_2'
+    modelId.startsWith('qqqi_qqq_tqqq_')
+    || modelId.startsWith('byd_v')
     || modelType.includes('rotation')
     || modelType.includes('allocation')
   ) {
@@ -60,7 +62,7 @@ function evidenceReason(
   component: 'trades' | 'attribution' | 'metrics' | 'costs',
 ): string {
   if (!formal) return 'No formal package is attached to this record.';
-  if (component === 'metrics') return 'This metric is not declared by the formal package.';
+  if (component === 'metrics') return 'This metric is not retained by the formal package.';
   if (component === 'costs') return 'The formal portfolio contract does not declare a cost rate.';
   const declared = formal.evidence_completeness[component];
   if (typeof declared === 'string' && declared.trim()) {
@@ -69,7 +71,12 @@ function evidenceReason(
   if (formal.evidence_completeness.missing.includes(component)) {
     return `${component} are blocked or were not retained by the governed source evidence.`;
   }
-  return `${component} are not declared by the formal package.`;
+  return `${component} are not retained by the formal package.`;
+}
+
+function isCrossSectionalMetric(aliases: string[]): boolean {
+  const normalized = aliases.map((value) => value.toLowerCase().replaceAll(' ', '_'));
+  return normalized.some((value) => ['ic', 'rank_ic', 'icir', 'ic_ir'].includes(value));
 }
 
 export function projectFormalMetric(
@@ -83,11 +90,31 @@ export function projectFormalMetric(
     }
   }
   const formal = getFormalBacktest(model);
-  const blocked = formal?.evidence_completeness.status === 'partial';
+  if (inferFormalModelKind(formal, model) === 'rules_based_allocation' && isCrossSectionalMetric(aliases)) {
+    return {
+      value: null,
+      availability: 'not_applicable',
+      reason: 'Cross-sectional prediction metrics do not apply to rules-based allocation models.',
+    };
+  }
+  if (formal?.evidence_completeness.status === 'partial') {
+    return {
+      value: null,
+      availability: 'blocked_by_source',
+      reason: evidenceReason(formal, 'metrics'),
+    };
+  }
+  if (formal) {
+    return {
+      value: null,
+      availability: 'not_retained',
+      reason: evidenceReason(formal, 'metrics'),
+    };
+  }
   return {
     value: null,
-    availability: blocked ? 'blocked_by_source' : 'not_computed',
-    reason: evidenceReason(formal, 'metrics'),
+    availability: 'not_computed',
+    reason: 'No governed formal metric is attached to this record.',
   };
 }
 
