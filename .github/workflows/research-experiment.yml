@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'configs/research_experiments/**'
+      - 'configs/research_optimization/**'
       - 'data/source_repairs/**'
       - 'data/csv_source/**'
       - 'data/research/formal_model_runs/**'
@@ -15,21 +16,32 @@ on:
       - 'src/research/rules_based_allocation_experiment_runner.py'
       - 'src/research/byd_v1_3_candidate.py'
       - 'src/research/research_receipt.py'
+      - 'src/research/optimization_campaign.py'
       - 'scripts/prepare_research_source_repair.py'
       - 'scripts/promote_approved_research_source_repair.py'
       - 'scripts/rebuild_active_research_providers.py'
       - 'scripts/run_research_experiment.py'
       - 'scripts/run_active_research_experiments.py'
+      - 'scripts/run_model_optimization_campaign.py'
       - 'tests/test_cross_sectional_experiment_runner.py'
       - 'tests/test_experiment_harness.py'
       - 'tests/test_formal_baseline_onboarding.py'
       - 'tests/test_rules_based_allocation_experiment_runner.py'
       - 'tests/test_research_receipt.py'
+      - 'tests/test_optimization_campaign.py'
       - '.github/workflows/research-experiment.yml'
   workflow_dispatch:
     inputs:
       spec:
         description: Optional committed experiment spec path; blank runs active mission
+        required: false
+        type: string
+      campaign:
+        description: Optional fixed-context optimization campaign contract
+        required: false
+        type: string
+      submissions:
+        description: Candidate delta submissions; required with campaign
         required: false
         type: string
 
@@ -177,26 +189,30 @@ jobs:
             src/research/rules_based_allocation_experiment_runner.py \
             src/research/byd_v1_3_candidate.py \
             src/research/research_receipt.py \
+            src/research/optimization_campaign.py \
             scripts/prepare_research_source_repair.py \
             scripts/promote_approved_research_source_repair.py \
             scripts/rebuild_active_research_providers.py \
             scripts/run_research_experiment.py \
             scripts/run_active_research_experiments.py \
+            scripts/run_model_optimization_campaign.py \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             tests/test_formal_baseline_onboarding.py \
             tests/test_rules_based_allocation_experiment_runner.py \
-            tests/test_research_receipt.py
+            tests/test_research_receipt.py \
+            tests/test_optimization_campaign.py
           uv run pytest \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             tests/test_formal_baseline_onboarding.py \
             tests/test_rules_based_allocation_experiment_runner.py \
             tests/test_research_receipt.py \
+            tests/test_optimization_campaign.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Prepare authoritative source repair candidate
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.campaign == ''
         shell: bash
         run: |
           if [[ -n "${{ inputs.spec }}" ]]; then
@@ -206,7 +222,7 @@ jobs:
           fi
 
       - name: Upload source repair candidate
-        if: github.event_name == 'workflow_dispatch' && always()
+        if: github.event_name == 'workflow_dispatch' && inputs.campaign == '' && always()
         uses: actions/upload-artifact@v6
         with:
           name: research-source-repair
@@ -215,7 +231,7 @@ jobs:
           retention-days: 30
 
       - name: Require canonical research sources
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.campaign == ''
         shell: bash
         run: |
           if [[ -f artifacts/research_source_repair/repair_required ]]; then
@@ -228,7 +244,16 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          if [[ -n "${{ inputs.spec }}" ]]; then
+          if [[ -n "${{ inputs.campaign }}" ]]; then
+            test -n "${{ inputs.submissions }}"
+            output="artifacts/model_optimization_campaigns/${GITHUB_RUN_ID}"
+            uv run python scripts/run_model_optimization_campaign.py \
+              --campaign "${{ inputs.campaign }}" \
+              --submissions "${{ inputs.submissions }}" \
+              --output-dir "$output"
+            uv run python scripts/rebuild_active_research_providers.py \
+              --spec "$output/compiled-experiment.yaml"
+          elif [[ -n "${{ inputs.spec }}" ]]; then
             uv run python scripts/rebuild_active_research_providers.py --spec "${{ inputs.spec }}"
           else
             uv run python scripts/rebuild_active_research_providers.py
@@ -238,7 +263,12 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          if [[ -n "${{ inputs.spec }}" ]]; then
+          if [[ -n "${{ inputs.campaign }}" ]]; then
+            output="artifacts/model_optimization_campaigns/${GITHUB_RUN_ID}"
+            uv run python scripts/run_model_optimization_campaign.py \
+              --manifest "$output/campaign-manifest.json" \
+              --execute
+          elif [[ -n "${{ inputs.spec }}" ]]; then
             uv run python scripts/run_active_research_experiments.py --spec "${{ inputs.spec }}"
           else
             uv run python scripts/run_active_research_experiments.py
@@ -249,6 +279,8 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: research-experiment-receipts
-          path: artifacts/research_experiments/
+          path: |
+            artifacts/research_experiments/
+            artifacts/model_optimization_campaigns/
           if-no-files-found: warn
           retention-days: 30
