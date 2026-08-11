@@ -8,16 +8,18 @@ const AVAILABILITY_LABELS: Record<SectionAvailability, string> = {
   blocked_by_source: 'Blocked by source',
 };
 
+const CONTRACT_VIOLATION = 'Contract violation';
+
 export function evidenceAvailabilityLabel(status: SectionAvailability | null | undefined): string {
-  return status ? AVAILABILITY_LABELS[status] : 'Not declared';
+  return status ? AVAILABILITY_LABELS[status] : CONTRACT_VIOLATION;
 }
 
 export function formatDeclaredValue(value: unknown): string {
-  return value === null || value === undefined || value === '' ? 'Not declared' : String(value);
+  return value === null || value === undefined || value === '' ? CONTRACT_VIOLATION : String(value);
 }
 
 export function formatCanonicalMetric(metric: CanonicalMetricV2 | null): string {
-  if (!metric) return 'Not declared';
+  if (!metric) return CONTRACT_VIOLATION;
   if (metric.availability_status !== 'available' || metric.value === null) {
     return evidenceAvailabilityLabel(metric.availability_status);
   }

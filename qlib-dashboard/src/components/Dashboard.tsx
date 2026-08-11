@@ -30,12 +30,12 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
     ? 'Blocked by source'
     : formal
       ? 'Not retained'
-      : 'Not declared';
+      : 'Contract violation';
   const metricUnavailableReason = formal?.evidence_completeness.status === 'partial'
     ? 'The retained formal source evidence does not provide this metric.'
     : formal
       ? 'The accepted formal package does not retain this metric.'
-      : 'No formal package declares this metric.';
+      : 'The formal evidence contract is missing from this record.';
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 pb-16">
@@ -66,9 +66,9 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
       {!hasReport ? (
         <div className="rounded-xl border-2 border-dashed bg-muted/20 px-6 py-14 text-center">
           <Info className="mx-auto h-8 w-8 text-muted-foreground/30" />
-          <p className="mt-3 text-sm font-medium">Formal backtest series is not declared</p>
+          <p className="mt-3 text-sm font-medium">Formal performance contract violation</p>
           <p className="mx-auto mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">
-            The publication gate did not provide a retained performance path for this named baseline. The frontend does not reconstruct one from headline metrics.
+            A formal baseline must retain a performance path. The frontend will not reconstruct one from headline metrics.
           </p>
         </div>
       ) : (

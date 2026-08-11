@@ -79,7 +79,7 @@ export function EvidenceModelsPage({ models }: { models: ModelData[] }) {
           })}</TableRow>)}
           <TableRow><TableCell className="font-medium">Declared costs</TableCell>{selected.map((model) => {
             const projection = projectFormalEvidence(model);
-            return <TableCell key={model.id} className="font-mono" title={projection.costAvailability}>{projection.costBps === null ? 'Not declared' : `${projection.costBps} bps`}</TableCell>;
+            return <TableCell key={model.id} className="font-mono" title={projection.costAvailability}>{projection.costBps === null ? evidenceAvailabilityLabel(undefined) : `${projection.costBps} bps`}</TableCell>;
           })}</TableRow>
         </TableBody></Table></div></CardContent>
       </Card>
@@ -87,7 +87,7 @@ export function EvidenceModelsPage({ models }: { models: ModelData[] }) {
       <Card className="research-surface overflow-hidden">
         <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><BarChart3 className="h-4 w-4 text-primary" /> Formal transaction evidence · {focus?.name || focus?.id}</CardTitle><p className="text-xs text-muted-foreground">This view reads the same retained formal transaction ledger used by Backtests. It does not infer trades from positions.</p></CardHeader>
         <CardContent className="p-0">
-          {ledger.length === 0 ? <div className="border-t p-6 text-sm text-muted-foreground">{focusProjection?.tradeAvailability ?? 'No formal transaction evidence is declared.'}</div> : <div className="max-h-[420px] overflow-auto"><Table><TableHeader className="sticky top-0 bg-card"><TableRow><TableHead>Date</TableHead><TableHead>Instrument</TableHead><TableHead>Action</TableHead><TableHead>Target</TableHead><TableHead>Reason / window</TableHead></TableRow></TableHeader><TableBody>{ledger.map((row, index) => <TableRow key={`${row.instrument}-${row.date}-${index}`}><TableCell className="font-mono text-xs">{row.date}</TableCell><TableCell>{row.instrument}</TableCell><TableCell>{row.action}</TableCell><TableCell className="font-mono">{typeof row.target_weight === 'number' ? `${(row.target_weight * 100).toFixed(1)}%` : '—'}</TableCell><TableCell className="max-w-[280px] truncate text-xs text-muted-foreground" title={String(row.reason ?? row.window ?? '')}>{String(row.reason ?? row.window ?? '—')}</TableCell></TableRow>)}</TableBody></Table></div>}
+          {ledger.length === 0 ? <div className="border-t p-6 text-sm text-muted-foreground">{focusProjection?.tradeAvailability ?? 'Contract violation: no formal transaction evidence contract.'}</div> : <div className="max-h-[420px] overflow-auto"><Table><TableHeader className="sticky top-0 bg-card"><TableRow><TableHead>Date</TableHead><TableHead>Instrument</TableHead><TableHead>Action</TableHead><TableHead>Target</TableHead><TableHead>Reason / window</TableHead></TableRow></TableHeader><TableBody>{ledger.map((row, index) => <TableRow key={`${row.instrument}-${row.date}-${index}`}><TableCell className="font-mono text-xs">{row.date}</TableCell><TableCell>{row.instrument}</TableCell><TableCell>{row.action}</TableCell><TableCell className="font-mono">{typeof row.target_weight === 'number' ? `${(row.target_weight * 100).toFixed(1)}%` : '—'}</TableCell><TableCell className="max-w-[280px] truncate text-xs text-muted-foreground" title={String(row.reason ?? row.window ?? '')}>{String(row.reason ?? row.window ?? '—')}</TableCell></TableRow>)}</TableBody></Table></div>}
         </CardContent>
       </Card>
     </div>
