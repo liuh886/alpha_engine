@@ -296,10 +296,14 @@ def test_formal_refresh_yaml_contains_no_model_execution_recipe() -> None:
         "Extend canonical inputs and refresh BYD v1.3",
     ):
         assert obsolete_step not in workflow
-    assert "scripts/refresh_qqq_v4_3_formal.py" not in workflow
-    assert "scripts/refresh_ranker_formal.py cn" not in workflow
-    assert "scripts/refresh_byd_v1_3_formal.py" not in workflow
-    assert "scripts/build_us_x1_2_preview.py" not in workflow
+    strategy_start = workflow.index("\n  strategy:\n")
+    publish_start = workflow.index("\n  publish:\n", strategy_start)
+    strategy_block = workflow[strategy_start:publish_start]
+    assert "scripts/refresh_qqq_v4_3_formal.py" not in strategy_block
+    assert "scripts/refresh_ranker_formal.py cn" not in strategy_block
+    assert "scripts/refresh_byd_v1_3_formal.py" not in strategy_block
+    assert "scripts/build_us_x1_2_preview.py" not in strategy_block
+    assert "scripts/run_formal_strategy_refresh.py" in strategy_block
 
 
 def test_strategy_results_are_uploaded_even_when_one_task_fails() -> None:
