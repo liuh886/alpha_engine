@@ -1,20 +1,20 @@
-# Issue #874 — fixed 50/50 baseline + cal_deeper rank blend.
+# Issue #874 — completed fixed 50/50 baseline + cal_deeper rank blend.
 schema_version: '1.0'
 experiment_id: cn_rank_blend_50_50_v1
 runner: cross_sectional_xgb_ranker_v1
 active: false
-status: pre_registered
+status: completed_not_supported
+result_receipt: data/research/experiment_receipts/cn_rank_blend_50_50_v1.json
 parent_model_id: cn_x1_1
 research_only: true
 trade_ready: false
-online_validation: exact_cn_ranker_portfolio_v1
 
 purpose: >-
   Test whether cal_deeper contributes useful incremental information as a
-  secondary ranker. Fit only the governed CN x1.1 baseline and frozen cal_deeper,
-  convert each daily cross-section to percentile ranks, blend them exactly 50/50,
-  and evaluate the blend under the frozen sector-cap portfolio mapping. No
-  weights, model parameters, factors or economic semantics are searched.
+  secondary ranker. The fixed 50/50 percentile-rank blend improved both
+  standalone components under the same sector-cap mapping, but did not beat the
+  governed CN x1.1 sector_4x1 strategy, remained negative at 60bps, and had only
+  two of four positive windows. No search followed the observed result.
 
 submission_lineage:
   source_issue: 874
@@ -22,6 +22,14 @@ submission_lineage:
   prior_full_path_pr: 871
   evidence_tier: fixed_rank_blend_diagnostic
   promotion_eligible: false
+
+validation_lineage:
+  workflow_run_id: 31577082186
+  artifact_id: 9133681207
+  artifact_digest: sha256:68fe6264ac7ea0d4514b77d68a1e380e0e7510de18e002ae20e813b9e64ba21e
+  provider_identity_sha256: 1b0b8aea689422640f6b0ca8e24ecc8c0f64fe2131caebd3fb2f1e1bd03d1050
+  decision: cn_rank_blend_not_supported
+  new_holdout_consumed: false
 
 snapshot:
   policy: exact_selected_pool_source_rebuild
@@ -43,8 +51,7 @@ factor_library:
 candidates:
   - candidate_id: baseline_cn_x1_1
     role: baseline
-    factor_groups:
-      - cn_balanced_ohlcv
+    factor_groups: [cn_balanced_ohlcv]
     xgb_native:
       n_gain_bins: 5
       num_boost_round: 100
@@ -57,12 +64,9 @@ candidates:
       reg_alpha: 0.0
       reg_lambda: 1.0
       seed: 42
-
   - candidate_id: cal_deeper
     role: challenger
-    factor_groups:
-      - cn_balanced_ohlcv
-      - cn_short_reversal_liquidity
+    factor_groups: [cn_balanced_ohlcv, cn_short_reversal_liquidity]
     xgb_native:
       n_gain_bins: 7
       num_boost_round: 300
@@ -77,11 +81,7 @@ candidates:
       seed: 42
 
 windows:
-  candidate_selection:
-    - 2024H1
-    - 2024H2
-    - 2025H1
-    - 2025H2
+  candidate_selection: [2024H1, 2024H2, 2025H1, 2025H2]
   consumed_reporting_only: []
   consumed_reporting_may_enter_selection: false
   new_holdout_reserved: true
@@ -121,11 +121,8 @@ evaluation:
   schema_version: '1.0'
   baseline_candidate_id: baseline_cn_x1_1
   stress_cost_bps: 60
-  decision: cn_rank_blend_supported
-  ranking:
-    - gate_pass_count
-    - worst_drawdown
-    - compounded_relative_excess
+  decision: cn_rank_blend_not_supported
+  ranking: [gate_pass_count, worst_drawdown, compounded_relative_excess]
   thresholds:
     min_window_relative_excess: 0.0
     min_worst_drawdown: -0.25
@@ -146,6 +143,25 @@ support_boundary:
   require_exact_portfolio_reproduction: true
   require_exact_holding_contract: true
 
+result_summary:
+  baseline_sector_4x1:
+    relative_excess_20bps: 0.11764128560811282
+    relative_excess_60bps: 0.0013100834407369089
+    max_drawdown_20bps: -0.1496517333750298
+  baseline_sector_cap4:
+    relative_excess_20bps: -0.005003786049627146
+    relative_excess_60bps: -0.09612776879273144
+  cal_deeper_sector_cap4:
+    relative_excess_20bps: 0.05522180730338544
+    relative_excess_60bps: -0.03894969978733587
+  blend_50_50_sector_cap4:
+    relative_excess_20bps: 0.07547411990890907
+    relative_excess_60bps: -0.02157518122661939
+    max_drawdown_20bps: -0.17197279598981918
+    positive_excess_windows: 2
+    mean_rank_ic: 0.004725
+    mean_icir: 0.1031825
+
 stop_rules:
   - no_rank_blend_weight_search
   - no_alternative_blend_formula
@@ -161,8 +177,8 @@ stop_rules:
   - no_automatic_model_promotion
 
 version_policy:
-  maximum_surviving_blends: 1
-  may_retain_as_cn_research_candidate: true
+  maximum_surviving_blends: 0
+  may_retain_as_cn_research_candidate: false
   may_propose_cn_x1_2_candidate: false
   may_release_cn_x1_2_automatically: false
   new_untouched_challenge_required_for_any_future_release: true
