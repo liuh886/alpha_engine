@@ -39,7 +39,8 @@ describe('Alpha Engine landing page', () => {
     expect(screen.getByRole('heading', { name: /know what your systematic strategy is doing/i })).toBeInTheDocument();
     expect(screen.getByText('QQQR v4.3')).toBeInTheDocument();
     expect(screen.getByText('CN x1.1')).toBeInTheDocument();
-    expect(screen.getByText('BYD v1.2')).toBeInTheDocument();
+    expect(screen.getByText('BYD v1.3')).toBeInTheDocument();
+    expect(screen.getByText('US x1.3')).toBeInTheDocument();
 
     const fleetTable = container.querySelector('.landing-run-table');
     expect(fleetTable).not.toBeNull();
