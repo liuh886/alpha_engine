@@ -24,6 +24,9 @@ type PositionWithChange = Position & {
   previousWeight: number | null;
   deltaWeight: number | null;
   changeKind: 'new' | 'increased' | 'reduced' | 'unchanged';
+  transactionCost: number | null;
+  tradeStatus: 'trade' | 'no_trade' | 'unavailable';
+  tradeAction: string;
 };
 
 type TurnoverEvent = {
@@ -48,6 +51,12 @@ function deriveTurnover(previous: Position[], current: Position[]) {
     (sum, instrument) => sum + Math.abs((currentByInstrument.get(instrument) ?? 0) - (previousByInstrument.get(instrument) ?? 0)),
     0,
   );
+}
+
+function finiteNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 export function PositionsTable({ positions, report }: { positions: Position[]; report?: ReportRow[] }) {
@@ -82,7 +91,18 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
         if (!previous) changeKind = 'new';
         else if (deltaWeight > EPSILON) changeKind = 'increased';
         else if (deltaWeight < -EPSILON) changeKind = 'reduced';
-        return { ...position, previousWeight, deltaWeight, changeKind };
+        const tradeStatus: PositionWithChange['tradeStatus'] = position.trade_status === 'trade'
+          ? 'trade'
+          : position.trade_status === 'no_trade' ? 'no_trade' : 'unavailable';
+        return {
+          ...position,
+          previousWeight,
+          deltaWeight,
+          changeKind,
+          transactionCost: finiteNumber(position.transaction_cost),
+          tradeStatus,
+          tradeAction: typeof position.trade_action === 'string' ? position.trade_action : '',
+        };
       })
       .sort((left, right) => Math.abs(Number(right.weight) || 0) - Math.abs(Number(left.weight) || 0));
   }, [currentDate, positions, previousPositions]);
@@ -124,8 +144,10 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
     const turnoverRow = turnoverEvents.find((row) => row.date === currentDate);
     const derivedTurnover = previousDate ? deriveTurnover(previousPositions, currentPositions) : null;
     const turnover = turnoverRow ? turnoverRow.turnover : derivedTurnover;
-    return { grossExposure, netExposure, topFiveConcentration, exited, added, adjusted, turnover };
-  }, [currentDate, currentPositions, previousDate, previousPositions, turnoverEvents]);
+    const reportRow = report?.find((row) => row.date === currentDate && !isProvisionalMtm(row));
+    const transactionCost = finiteNumber(reportRow?.transaction_cost);
+    return { grossExposure, netExposure, topFiveConcentration, exited, added, adjusted, turnover, transactionCost };
+  }, [currentDate, currentPositions, previousDate, previousPositions, report, turnoverEvents]);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
@@ -203,7 +225,7 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
             </div>
             <Badge variant="secondary" className="font-mono text-[10px]">{currentPositions.length} assets</Badge>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3 sm:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3 sm:grid-cols-3 lg:grid-cols-5">
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Net exposure</p>
               <p className="mt-1 font-mono text-sm font-semibold tabular-nums">{formatPercent(snapshotStats.netExposure)}</p>
@@ -220,10 +242,14 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Turnover</p>
               <p className="mt-1 font-mono text-sm font-semibold tabular-nums">{formatPercent(snapshotStats.turnover)}</p>
             </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Transaction cost</p>
+              <p className="mt-1 font-mono text-sm font-semibold tabular-nums">{formatPercent(snapshotStats.transactionCost, 3)}</p>
+            </div>
           </div>
           {previousDate && (
             <p className="mt-3 text-[10px] text-muted-foreground">
-              Since previous snapshot: {snapshotStats.added} added · {snapshotStats.adjusted} resized · {snapshotStats.exited} exited.
+              Since previous snapshot: {snapshotStats.added} added · {snapshotStats.adjusted} resized · {snapshotStats.exited} exited. Transaction costs are retained source values; the browser does not reconstruct them.
             </p>
           )}
         </CardHeader>
@@ -245,14 +271,14 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
           </div>
 
           <div ref={parentRef} className="h-[410px] overflow-auto rounded-lg border">
-            <table className="relative min-w-[760px] w-full text-left text-sm">
+            <table className="relative min-w-[780px] w-full text-left text-sm">
               <thead className="sticky top-0 z-10 block border-b bg-background/95 text-[10px] text-muted-foreground backdrop-blur">
                 <tr className="flex w-full">
                   <th className="flex-[1.5] px-4 py-2.5 font-medium">Instrument</th>
                   <th className="flex-1 px-4 py-2.5 text-right font-medium">Weight</th>
                   <th className="flex-1 px-4 py-2.5 text-right font-medium">Δ weight</th>
                   <th className="flex-1 px-4 py-2.5 text-right font-medium">Price</th>
-                  <th className="flex-1 px-4 py-2.5 text-right font-medium">Amount</th>
+                  <th className="flex-1 px-4 py-2.5 text-right font-medium">Trade cost</th>
                 </tr>
               </thead>
               <tbody className="relative block" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
@@ -290,7 +316,18 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
                         {delta === null ? '—' : `${delta > 0 ? '+' : ''}${(delta * 100).toFixed(2)}%`}
                       </td>
                       <td className="flex flex-1 items-center justify-end px-4 py-2 font-mono text-xs tabular-nums text-muted-foreground">{position.price?.toFixed(2) || '—'}</td>
-                      <td className="flex flex-1 items-center justify-end px-4 py-2 font-mono text-xs tabular-nums text-muted-foreground">{position.amount?.toLocaleString() || '—'}</td>
+                      <td className="flex flex-1 items-center justify-end px-4 py-2 text-right">
+                        {position.tradeStatus === 'trade' ? (
+                          <div>
+                            <div className="font-mono text-xs font-semibold tabular-nums">{formatPercent(position.transactionCost, 3)}</div>
+                            <div className="mt-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">{position.tradeAction || 'Rebalance'}</div>
+                          </div>
+                        ) : position.tradeStatus === 'no_trade' ? (
+                          <span className="text-[10px] text-muted-foreground">No trade</span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">—</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
