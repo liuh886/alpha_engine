@@ -24,6 +24,7 @@ import yaml
 import scripts.run_us_x1_1_rank_aware_sector_cap as sector_cap
 from src.artifacts.model_run_exporter import RunExportPlan, SectionPlan
 from src.data.market_provider import load_provider_manifest
+from src.factors.model_contract import resolve_model_factor_inputs
 from src.research.daily_ranker import prepare_ranker_frame
 from src.research.multi_market_readiness import normalize_market_symbols
 from src.research.qlib_execution_common import normalize_qlib_frame_index
@@ -47,6 +48,7 @@ UNIVERSE_CONFIG = Path("configs/research_universes/us_selected_equities_v2.yaml"
 CLASSIFICATION_CONFIG = Path(
     "configs/research_classifications/us87_sector_industry_v1.yaml"
 )
+FACTOR_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
 RETURN_EXPRESSION = "Ref($close, -10) / $close - 1"
 DEVELOPMENT_WINDOWS = ("2024H1", "2024H2", "2025H1", "2025H2")
 RESEARCH_ONLY = True
@@ -559,7 +561,15 @@ def build_plan(
     symbols = _symbols(root, runtime)
     sectors = _sectors(root, symbols)
     calibration = _calibration(config)
-    expressions = [str(value) for value in dict(config["features"])["expressions"]]
+    try:
+        _, expressions = resolve_model_factor_inputs(
+            root=root,
+            features=dict(config.get("features") or {}),
+            expected_library=FACTOR_LIBRARY,
+            expected_count=7,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        raise USX12PreviewError(str(exc)) from exc
     windows, dates = _windows(runtime)
     evidence = [
         _fit_window(
@@ -949,6 +959,7 @@ def build_plan(
         "source_model_config": MODEL_CONFIG.as_posix(),
         "source_model_config_sha256": hashlib.sha256((root / MODEL_CONFIG).read_bytes()).hexdigest(),
         "builder_source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "factor_library_sha256": hashlib.sha256((root / FACTOR_LIBRARY).read_bytes()).hexdigest(),
         "universe_config_sha256": hashlib.sha256((root / UNIVERSE_CONFIG).read_bytes()).hexdigest(),
         "classification_config_sha256": hashlib.sha256((root / CLASSIFICATION_CONFIG).read_bytes()).hexdigest(),
         "provider_identity_sha256": provider["provider_identity_sha256"],

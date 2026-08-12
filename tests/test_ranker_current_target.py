@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from src.factors.ranker_snapshot import build_ranker_factor_snapshot
-from src.factors.library import load_factor_library
 from src.artifacts.strategy_signal_ledger import canonical_json_bytes
+from src.factors.library import load_factor_library
+from src.factors.ranker_snapshot import build_ranker_factor_snapshot
 from src.research.ranker_current_target import (
     CN_FACTOR_COLUMNS,
     RankerCurrentTargetError,
@@ -116,10 +116,29 @@ def test_newer_formal_position_supersedes_stale_live_ledger(tmp_path: Path) -> N
     assert weights == {"AAA": 1.0}
 
 
-def test_us_ranker_snapshot_uses_exact_canonical_group_order() -> None:
+def test_us_ranker_snapshot_preserves_explicit_model_factor_order() -> None:
     library = load_factor_library(ROOT / "configs/factor_libraries/ohlcv.yaml")
     ids = [
         factor.factor_id for factor in library.factors_for_groups(["momentum_volatility_volume"])
+    ]
+    ids = list(reversed(ids))
+    snapshot = build_ranker_factor_snapshot(
+        model_family_id="us_ranker",
+        signal_date="2026-08-07",
+        latest_data_date="2026-08-07",
+        factor_values={factor_id: float(index) for index, factor_id in enumerate(ids)},
+        factor_references={},
+        data_freshness_ok=True,
+    )
+    assert snapshot["groups"] == []
+    assert [row["factor_id"] for row in snapshot["factors"]] == ids
+    assert snapshot["freshness"] == "current"
+
+
+def test_us_ranker_snapshot_accepts_new_canonical_factors_without_family_map() -> None:
+    library = load_factor_library(ROOT / "configs/factor_libraries/ohlcv.yaml")
+    ids = [
+        factor.factor_id for factor in library.factors_for_groups(["us_short_reversal_liquidity"])
     ]
     snapshot = build_ranker_factor_snapshot(
         model_family_id="us_ranker",
@@ -129,9 +148,8 @@ def test_us_ranker_snapshot_uses_exact_canonical_group_order() -> None:
         factor_references={},
         data_freshness_ok=True,
     )
-    assert snapshot["groups"] == ["momentum_volatility_volume"]
+    assert snapshot["groups"] == []
     assert [row["factor_id"] for row in snapshot["factors"]] == ids
-    assert snapshot["freshness"] == "current"
 
 
 def test_cn_factor_mapping_matches_canonical_group() -> None:

@@ -251,6 +251,47 @@ groups:
       - ohlcv.risk_adjusted.ret10_per_vol10
       - ohlcv.risk_adjusted.ret20_per_vol20
 
+  us_short_reversal_liquidity:
+    description: US short-horizon reversal, mean reversion, and liquidity shocks
+    factor_ids:
+      - ohlcv.reversal.inv_ret_1d
+      - ohlcv.reversal.inv_ret_3d
+      - ohlcv.reversal.inv_ret_5d
+      - ohlcv.mean_reversion.close_vs_ma_5d
+      - ohlcv.mean_reversion.close_vs_ma_10d
+      - ohlcv.mean_reversion.close_vs_ma_20d
+      - ohlcv.liquidity.volume_vs_ma_5d
+      - ohlcv.liquidity.volume_vs_ma_10d
+      - ohlcv.liquidity.volume_vs_ma_20d
+
+  us_volatility_reversal:
+    description: US reversal, volatility, and risk-adjusted returns
+    factor_ids:
+      - ohlcv.reversal.inv_ret_1d
+      - ohlcv.reversal.inv_ret_3d
+      - ohlcv.reversal.inv_ret_5d
+      - ohlcv.volatility.std_ret_5d
+      - ohlcv.volatility.std_ret_10d
+      - ohlcv.volatility.std_ret_20d
+      - ohlcv.volatility.high_low_range_pct
+      - ohlcv.risk_adjusted.ret5_per_vol5
+      - ohlcv.risk_adjusted.ret10_per_vol10
+      - ohlcv.risk_adjusted.ret20_per_vol20
+
+  us_price_volume_pressure:
+    description: US momentum, liquidity, and price-volume interaction signals
+    factor_ids:
+      - ohlcv.momentum.ret_3d
+      - ohlcv.momentum.ret_5d
+      - ohlcv.momentum.ret_10d
+      - ohlcv.momentum.ret_20d
+      - ohlcv.liquidity.volume_vs_ma_5d
+      - ohlcv.liquidity.volume_vs_ma_10d
+      - ohlcv.liquidity.volume_vs_ma_20d
+      - ohlcv.pressure.ret1_x_volume_shock_5d
+      - ohlcv.pressure.ret5_x_volume_shock_10d
+      - ohlcv.pressure.high_low_ratio
+
   us_factor_baselines:
     description: US single-factor direction diagnostics
     factor_ids:

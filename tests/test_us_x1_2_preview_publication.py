@@ -64,13 +64,18 @@ def test_us_x1_2_lineage_can_skip_content_identical_refreshes() -> None:
     expected_sources = {
         "source_model_config_sha256": Path("configs/models/us_x1_2.yaml"),
         "builder_source_sha256": Path("src/artifacts/us_x1_2_preview.py"),
+        "factor_library_sha256": Path("configs/factor_libraries/ohlcv.yaml"),
         "universe_config_sha256": Path("configs/research_universes/us_selected_equities_v2.yaml"),
         "classification_config_sha256": Path(
             "configs/research_classifications/us87_sector_industry_v1.yaml"
         ),
     }
-    for field, path in expected_sources.items():
-        assert lineage[field] == hashlib.sha256(path.read_bytes()).hexdigest()
+    expected = {
+        field: hashlib.sha256(path.read_bytes()).hexdigest()
+        for field, path in expected_sources.items()
+    }
+    actual = {field: lineage.get(field) for field in expected_sources}
+    assert actual == expected
     assert len(lineage["provider_identity_sha256"]) == 64
 
 

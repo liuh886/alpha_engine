@@ -14,7 +14,7 @@ import yaml
 
 import scripts.run_us_x1_1_rank_aware_sector_cap as sector_cap
 from src.data.market_provider import load_provider_manifest
-from src.factors.library import load_factor_library, normalize_expression
+from src.factors.model_contract import resolve_model_factor_inputs
 from src.research.daily_ranker import prepare_ranker_frame
 from src.research.multi_market_readiness import normalize_market_symbols
 from src.research.qlib_execution_common import normalize_qlib_frame_index
@@ -126,28 +126,31 @@ def _sectors(root: Path, symbols: list[str]) -> dict[str, str]:
     return {symbol: sectors[symbol] for symbol in symbols}
 
 
-def _factor_columns(
+def _factor_contract(
     root: Path,
+    config: Mapping[str, Any],
+) -> tuple[list[str], list[str]]:
+    try:
+        return resolve_model_factor_inputs(
+            root=root,
+            features=dict(config.get("features") or {}),
+            expected_library=FACTOR_LIBRARY,
+            expected_count=7,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        raise USX12CurrentTargetError(str(exc)) from exc
+
+
+def _factor_columns(
     *,
-    expressions: list[str],
+    factor_ids: list[str],
     columns: list[str],
 ) -> dict[str, str]:
-    library = load_factor_library(root / FACTOR_LIBRARY)
-    by_expression = {
-        normalize_expression(expression): column
-        for expression, column in zip(expressions, columns, strict=True)
-    }
-    result: dict[str, str] = {}
-    for definition in library.factors_for_groups(["momentum_volatility_volume"]):
-        column = by_expression.get(normalize_expression(definition.expression))
-        if column is None:
-            raise USX12CurrentTargetError(
-                f"US x1.2 is missing canonical factor {definition.factor_id}"
-            )
-        result[definition.factor_id] = column
-    if len(result) != len(expressions):
+    if not factor_ids or len(factor_ids) != len(columns):
         raise USX12CurrentTargetError("US x1.2 factor identity is not one-to-one")
-    return result
+    if len(factor_ids) != len(set(factor_ids)):
+        raise USX12CurrentTargetError("US x1.2 factor identity contains duplicates")
+    return dict(zip(factor_ids, columns, strict=True))
 
 
 def _formal_identity(
@@ -214,9 +217,7 @@ def score_us_x1_2_current_target(
         raise USX12CurrentTargetError("US x1.2 portfolio contract changed")
 
     calibration = _calibration(config)
-    expressions = [str(value) for value in dict(config.get("features") or {}).get("expressions", [])]
-    if len(expressions) != 7:
-        raise USX12CurrentTargetError("US x1.2 must retain seven canonical OHLCV factors")
+    factor_ids, expressions = _factor_contract(root, config)
 
     runtime = QlibUSExecutionRuntime(provider_uri=provider_dir)
     runtime.initialize(root)
@@ -276,7 +277,7 @@ def score_us_x1_2_current_target(
         ledger_dir=ledger_dir,
     )
 
-    factor_columns = _factor_columns(root, expressions=expressions, columns=columns)
+    factor_columns = _factor_columns(factor_ids=factor_ids, columns=columns)
     factor_evidence = _factor_summary(
         model_family_id=MODEL_FAMILY_ID,
         signal_date=signal_date,

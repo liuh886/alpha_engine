@@ -73,6 +73,7 @@ def test_load_select_resolve_and_manifest() -> None:
         selected = library.select_groups(["momentum"])
         ranker_groups = factor_groups_to_ranker_feature_groups(selected)
         manifest = library.manifest(["momentum"])
+        resolved = library.resolve_factors(["test.ret10", "test.ret5"])
 
         assert library.schema_version == FACTOR_LIBRARY_SCHEMA_VERSION
         assert ranker_groups[0].expressions == (
@@ -81,6 +82,7 @@ def test_load_select_resolve_and_manifest() -> None:
         )
         assert manifest["factor_count"] == 2
         assert manifest["group_count"] == 1
+        assert [row.factor_id for row in resolved] == ["test.ret10", "test.ret5"]
         assert library.resolve_expressions(["test.ret10"]) == [
             "$close/Ref($close,10)-1"
         ]
@@ -128,6 +130,10 @@ def test_unknown_group_and_factor_fail_closed() -> None:
             library.select_groups(["missing"])
         with pytest.raises(ValueError, match="unknown factor id"):
             library.resolve_expressions(["missing"])
+        with pytest.raises(ValueError, match="must not contain duplicates"):
+            library.resolve_factors(["test.ret5", "test.ret5"])
+        with pytest.raises(ValueError, match="at least one"):
+            library.resolve_factors([])
     finally:
         path.unlink()
 
@@ -137,6 +143,9 @@ def test_only_one_canonical_ohlcv_library_is_required() -> None:
     assert library.catalog.catalog_id == "alpha_engine_ohlcv"
     assert len(library.catalog.definitions) == 24
     assert "momentum_volatility_volume" in library
+    assert "us_short_reversal_liquidity" in library
+    assert "us_volatility_reversal" in library
+    assert "us_price_volume_pressure" in library
     assert "cn_balanced_ohlcv" in library
 
     expressions = [row.expression for row in library.catalog.definitions]
@@ -150,6 +159,20 @@ def test_only_one_canonical_ohlcv_library_is_required() -> None:
         "ohlcv.volume.momentum_10d",
         "ohlcv.liquidity.volume_vs_ma_20d",
     )
+
+    us_research_groups = (
+        "momentum_volatility_volume",
+        "risk_controlled_momentum",
+        "us_short_reversal_liquidity",
+        "us_volatility_reversal",
+        "us_price_volume_pressure",
+    )
+    us_factor_ids = {
+        factor_id
+        for group_name in us_research_groups
+        for factor_id in library[group_name].factor_ids
+    }
+    assert us_factor_ids == {row.factor_id for row in library.catalog.definitions}
 
 
 def test_exploratory_pool_has_no_generated_fallback() -> None:
