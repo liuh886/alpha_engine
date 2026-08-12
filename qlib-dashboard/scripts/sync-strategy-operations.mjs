@@ -12,7 +12,6 @@ const outputPath = resolve(outputDir, 'snapshots.json');
 const allowedStatuses = new Set(['pipeline_unavailable', 'awaiting_observation', 'current_no_change', 'target_pending_execution', 'execution_observed', 'stale', 'blocked', 'delivery_failed']);
 const allowedFreshness = new Set(['current', 'stale', 'blocked', 'unknown']);
 const allowedEffects = new Set(['support', 'veto', 'neutral']);
-const allowedAccess = new Set(['public', 'authenticated', 'pro', 'owner']);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -22,7 +21,6 @@ function redactRuntimeRecord(record) {
   return {
     strategy_id: record.strategy_id,
     model_version_id: record.model_version_id,
-    current_operations_access: record.current_operations_access,
     status: 'blocked',
     as_of: null,
     latest_completed_session: null,
@@ -56,7 +54,7 @@ function redactRuntimeRecord(record) {
 
 const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 const snapshots = JSON.parse(await readFile(snapshotsPath, 'utf8'));
-assert(snapshots.schema_version === '2.1.0', 'Unsupported strategy operations schema');
+assert(snapshots.schema_version === '2.2.0', 'Unsupported strategy operations schema');
 assert(snapshots.research_only === true && snapshots.trade_ready === false, 'Invalid strategy operations boundary');
 assert(Array.isArray(snapshots.records), 'Strategy operations records are missing');
 assert(Array.isArray(catalog.records), 'Formal Model Run Bundle v2 catalog records are missing');
@@ -74,7 +72,7 @@ for (const record of snapshots.records) {
   const formal = formalById.get(String(id));
   assert(formal, `Missing formal record for ${id}`);
   assert(typeof record.strategy_id === 'string' && record.strategy_id.length > 0, `Missing stable strategy id for ${id}`);
-  assert(allowedAccess.has(record.current_operations_access), `Unsupported operations access for ${id}`);
+  assert(!Object.hasOwn(record, 'current_operations_access'), `Runtime access tier leaked into operations evidence for ${id}`);
   assert(allowedStatuses.has(record.status), `Unsupported operations status for ${id}`);
   assert(allowedFreshness.has(record.data_freshness), `Unsupported data freshness for ${id}`);
   assert(allowedFreshness.has(record.factor_freshness), `Unsupported factor freshness for ${id}`);
