@@ -6,9 +6,11 @@ from src.research.cross_sectional_experiment_runner import (
     _factor_expressions,
     load_cross_sectional_experiment_spec,
 )
+from src.research.research_receipt import build_factor_lineage
 
 
 SPEC = Path("configs/research_experiments/us_x1_2_risk_controlled_momentum_v1.yaml")
+ALPHA158_SPEC = Path("tests/fixtures/research_experiments/alpha158_runner_v1.yaml")
 
 
 def test_us_x1_2_mission_is_atomic_and_provider_bound() -> None:
@@ -58,3 +60,20 @@ def test_us_x1_2_candidates_share_identical_xgb_runtime() -> None:
     assert manifests[0]["effective_model_parameters"] == manifests[1][
         "effective_model_parameters"
     ]
+
+
+def test_alpha158_uses_the_same_cross_sectional_harness_without_formula_copying() -> None:
+    spec = load_cross_sectional_experiment_spec(ALPHA158_SPEC)
+    expressions = _factor_expressions(spec)
+    lineage = build_factor_lineage(ALPHA158_SPEC)
+
+    assert spec.factor_library_path.as_posix().endswith(
+        "src/factors/sets/qlib_alpha158.py"
+    )
+    assert len(expressions["alpha158_baseline"]) == 158
+    assert len(set(expressions["alpha158_baseline"])) == 158
+    assert expressions["alpha158_baseline"] == expressions["alpha158_challenger"]
+    assert lineage is not None
+    assert lineage["catalog_id"] == "qlib_alpha158"
+    assert lineage["candidates"]["alpha158_baseline"]["factor_count"] == 158
+    assert len(lineage["candidates"]["alpha158_baseline"]["factor_ids"]) == 158

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Materialize a governed Alpha158 panel from one promoted Qlib provider."""
+"""Materialize or reuse a governed Alpha158 panel from one promoted Qlib provider."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
-from src.factors.panel import build_alpha158_panel
+from src.factors.reusable_panel import build_reusable_alpha158_panel
 
 
 def main() -> int:
@@ -25,7 +25,7 @@ def main() -> int:
     parser.add_argument("--output-root", type=Path, required=True)
     args = parser.parse_args()
 
-    payload = build_alpha158_panel(
+    payload = build_reusable_alpha158_panel(
         root=args.root,
         contract_path=args.contract,
         provider_uri=args.provider_uri,
