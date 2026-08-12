@@ -31,10 +31,6 @@ jobs:
       - name: Materialize US x1.3 promotion changes
         run: |
           set -euo pipefail
-          # The migration has shared replacement sets, while small wrapper files
-          # legitimately do not contain every class/display-name token. Keep the
-          # explicit structural anchors fail-closed, but make clone replacements
-          # conditional per file.
           python - <<'PY'
           from pathlib import Path
           path = Path('scripts/migrate_us_x1_3_promotion.py')
@@ -55,10 +51,13 @@ jobs:
             src/artifacts/us_x1_3_preview.py \
             src/artifacts/us_x1_3_formal.py \
             src/research/us_x1_3_current_target.py
-      - name: Remove one-shot migration machinery
+      - name: Prepare connector-safe review branch
         run: |
+          # GitHub's Actions token intentionally cannot update workflow files.
+          # Keep workflow changes for the GitHub connector to apply directly to
+          # the generated review branch, while publishing all ordinary code now.
+          git checkout HEAD -- .github/workflows
           rm -f scripts/migrate_us_x1_3_promotion.py
-          rm -f .github/workflows/us-x1-3-promotion-migration.yml
       - name: Publish review branch
         run: |
           set -euo pipefail
