@@ -20,6 +20,7 @@ const files = {
   registry: resolve(root, '../configs/strategies/registry.json'),
   moduleMigration: resolve(root, '../supabase/migrations/20260809070851_alpha_engine_access_control.sql'),
   strategyMigration: resolve(root, '../supabase/migrations/20260812022634_alpha_engine_strategy_access_policies.sql'),
+  splitStrategyRlsMigration: resolve(root, '../supabase/migrations/20260812031512_split_alpha_engine_strategy_access_rls.sql'),
 };
 await Promise.all(Object.values(files).map((path) => access(path)));
 
@@ -121,17 +122,29 @@ for (const value of [
   "('alpha_engine', 'strategy', 'us_x', 'public'",
   "('alpha_engine', 'strategy', 'cn_x', 'public'",
   "('alpha_engine', 'strategy', 'byd', 'public'",
-  'Strategy current operations follow runtime access policy',
   "p.resource_type = 'strategy'",
   "p.resource_id = strategy_operation_snapshots.strategy_id",
-  "p.required_tier = 'authenticated'",
-  "p.required_tier = 'pro'",
-  "p.required_tier = 'owner'",
 ]) {
   if (!content.strategyMigration.toLowerCase().includes(value.toLowerCase())) throw new Error(`strategy access migration missing: ${value}`);
 }
+for (const value of [
+  'Public strategy current operations',
+  'Authenticated strategy current operations',
+  'to anon, authenticated',
+  'to authenticated',
+  "p.required_tier = 'public'",
+  "p.required_tier = 'authenticated'",
+  "p.required_tier = 'pro'",
+  "p.required_tier = 'owner'",
+  "e.entitlement_code = 'alpha_engine.pro'",
+]) {
+  if (!content.splitStrategyRlsMigration.toLowerCase().includes(value.toLowerCase())) throw new Error(`split strategy RLS migration missing: ${value}`);
+}
 if (content.strategyMigration.includes('required_entitlement text') || content.strategyMigration.includes("resource_type = 'model'")) {
   throw new Error('Generic strategy access migration must not retain per-model or per-snapshot entitlement authority.');
+}
+if (content.splitStrategyRlsMigration.includes('grant select on public.entitlements to anon')) {
+  throw new Error('Public strategy reads must not require exposing entitlements to anon.');
 }
 
 const activeSources = [html, ...Object.entries(content).filter(([key]) => !key.toLowerCase().includes('migration')).map(([, source]) => source)].join('\n');
