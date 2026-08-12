@@ -150,6 +150,43 @@ function parsePositions(value: unknown): Position[] {
   return positions;
 }
 
+function attachRetainedTradeEvidence(
+  positions: Position[],
+  trades: Array<Record<string, unknown>>,
+): Position[] {
+  const byPosition = new Map<string, { transactionCost: number; costComplete: boolean; actions: string[] }>();
+
+  for (const trade of trades) {
+    const date = String(trade.date ?? '');
+    const instrument = String(trade.instrument ?? '');
+    if (!date || !instrument) continue;
+    const key = `${date}\u0000${instrument}`;
+    const existing = byPosition.get(key) ?? { transactionCost: 0, costComplete: true, actions: [] };
+    const rawCost = trade.transaction_cost;
+    if (rawCost === null || rawCost === undefined || rawCost === '') {
+      existing.costComplete = false;
+    } else {
+      const cost = Number(rawCost);
+      if (Number.isFinite(cost)) existing.transactionCost += cost;
+      else existing.costComplete = false;
+    }
+    const action = String(trade.action ?? '').trim();
+    if (action && !existing.actions.includes(action)) existing.actions.push(action);
+    byPosition.set(key, existing);
+  }
+
+  return positions.map((position) => {
+    const evidence = byPosition.get(`${position.date}\u0000${position.instrument}`);
+    if (!evidence) return { ...position, trade_status: 'no_trade' };
+    return {
+      ...position,
+      trade_status: 'trade',
+      trade_action: evidence.actions.join(' + '),
+      ...(evidence.costComplete ? { transaction_cost: evidence.transactionCost } : {}),
+    };
+  });
+}
+
 function attachBydPriceBaseline(report: ReportRow[], positions: Position[]): ReportRow[] {
   const prices = new Map<string, number>();
   for (const position of positions) {
@@ -200,10 +237,13 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
   const start = String(dateRange.start ?? run.manifest.comparability_key.start);
   const end = String(dateRange.end ?? run.manifest.comparability_key.end);
   const benchmark = String(performance.benchmark ?? run.benchmark);
-  const parsedPositions = parsePositions(portfolio.positions);
+  const basePositions = parsePositions(portfolio.positions);
   const parsedTrades = tradesRaw
     ? parseTrades(tradesRaw)
     : { rows: [], analytics: {}, price: '', amount: '' };
+  const parsedPositions = tradesRaw
+    ? attachRetainedTradeEvidence(basePositions, parsedTrades.rows)
+    : basePositions;
   const chartBenchmark = run.modelFamilyId === 'byd_allocation' ? 'BYD' : benchmark;
   const parsedReport = attachBydPriceBaseline(
     parseReport(performance.report, chartBenchmark),

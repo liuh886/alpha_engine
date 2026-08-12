@@ -23,18 +23,18 @@ vi.mock('recharts', () => ({
 }));
 
 describe('PositionsTable snapshot diagnostics', () => {
-  it('shows concentration, turnover and changes versus the previous snapshot', () => {
+  it('shows retained turnover, transaction cost and changes versus the previous snapshot', () => {
     render(
       <PositionsTable
         positions={[
-          { date: '2026-01-01', instrument: 'A', weight: 0.6 },
-          { date: '2026-01-01', instrument: 'B', weight: 0.4 },
-          { date: '2026-01-11', instrument: 'A', weight: 0.5 },
-          { date: '2026-01-11', instrument: 'C', weight: 0.5 },
+          { date: '2026-01-01', instrument: 'A', weight: 0.6, trade_status: 'trade', transaction_cost: 0.001 },
+          { date: '2026-01-01', instrument: 'B', weight: 0.4, trade_status: 'trade', transaction_cost: 0.001 },
+          { date: '2026-01-11', instrument: 'A', weight: 0.5, trade_status: 'trade', trade_action: 'DECREASE', transaction_cost: 0.001 },
+          { date: '2026-01-11', instrument: 'C', weight: 0.5, trade_status: 'trade', trade_action: 'BUY', transaction_cost: 0.002 },
         ]}
         report={[
-          { date: '2026-01-01', account: 1, turnover: 0.2 },
-          { date: '2026-01-11', account: 1.05, turnover: 0.3 },
+          { date: '2026-01-01', account: 1, turnover: 0.2, transaction_cost: 0.002 },
+          { date: '2026-01-11', account: 1.05, turnover: 0.3, transaction_cost: 0.003 },
         ]}
       />,
     );
@@ -45,9 +45,15 @@ describe('PositionsTable snapshot diagnostics', () => {
     expect(snapshot).toHaveTextContent('Top 5 concentration');
     expect(snapshot).toHaveTextContent('Turnover');
     expect(snapshot).toHaveTextContent('30.0%');
+    expect(snapshot).toHaveTextContent('Transaction cost');
+    expect(snapshot).toHaveTextContent('0.300%');
     expect(snapshot).toHaveTextContent('1 added · 1 resized · 1 exited');
     expect(screen.getByText('-10.00%')).toBeInTheDocument();
     expect(screen.getByText('+50.00%')).toBeInTheDocument();
+    expect(screen.getByText('0.100%')).toBeInTheDocument();
+    expect(screen.getByText('0.200%')).toBeInTheDocument();
+    expect(screen.getByText('DECREASE')).toBeInTheDocument();
+    expect(screen.getByText('BUY')).toBeInTheDocument();
   });
 
   it('shows the retained Chinese holding name alongside its instrument code', () => {
@@ -63,7 +69,7 @@ describe('PositionsTable snapshot diagnostics', () => {
     expect(screen.getByText('300408')).toBeInTheDocument();
   });
 
-  it('derives turnover from adjacent snapshots when the latest signal has no performance row yet', () => {
+  it('does not derive turnover when the retained performance row is absent', () => {
     render(
       <PositionsTable
         positions={[
@@ -76,6 +82,22 @@ describe('PositionsTable snapshot diagnostics', () => {
       />,
     );
 
-    expect(screen.getByTestId('holdings-snapshot')).toHaveTextContent('50.0%');
+    const snapshot = screen.getByTestId('holdings-snapshot');
+    expect(snapshot).toHaveTextContent('Turnover');
+    expect(snapshot).not.toHaveTextContent('50.0%');
+  });
+
+  it('distinguishes a retained no-trade holding from missing trade evidence', () => {
+    render(
+      <PositionsTable
+        positions={[
+          { date: '2026-08-12', instrument: 'A', weight: 0.5, trade_status: 'no_trade' },
+          { date: '2026-08-12', instrument: 'B', weight: 0.5 },
+        ]}
+        report={[{ date: '2026-08-12', account: 1, turnover: 0, transaction_cost: 0 }]}
+      />,
+    );
+
+    expect(screen.getByText('No trade')).toBeInTheDocument();
   });
 });
