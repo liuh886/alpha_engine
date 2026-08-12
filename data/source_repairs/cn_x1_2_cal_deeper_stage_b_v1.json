@@ -15,6 +15,11 @@
     "provider_identity_sha256": "1b0b8aea689422640f6b0ca8e24ecc8c0f64fe2131caebd3fb2f1e1bd03d1050",
     "workflow_run_id": 31570109803
   },
+  "canonical_promotion": {
+    "status": "committed",
+    "commit_sha": "26838061fb106ed0d2fa09bacf69ab1105eb0e36",
+    "symbol_count": 22
+  },
   "targets": {
     "002222": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz002222","rows":1358,"sha256":"6f862940a5231451a42af6b6ee3b02e3d0bcbe49e49b6561d165ee3555da6962"},
     "002463": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz002463","rows":1358,"sha256":"c0265c6c362720a9cfd2fe8674c1a07f0c6845528207dbe91c1b116168808568"},
