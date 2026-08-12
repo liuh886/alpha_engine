@@ -10,7 +10,7 @@ from scripts.byd_formal_publication_common import write_json
 from scripts.sync_formal_bundle_v2 import NATIVE_PROMOTERS, sync
 from src.artifacts.formal_evidence_standard import validate_formal_evidence_bundle
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
-from src.artifacts.us_x1_2_formal import MODEL_ID as US_X1_2
+from src.artifacts.us_x1_3_formal import MODEL_ID as US_X1_3
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID as BYD_V13
 
@@ -68,10 +68,10 @@ def test_active_formal_sources_are_exactly_partitioned() -> None:
         "cn_x1_1",
         BYD_V13,
     }
-    assert native_ids == {US_X1_2}
+    assert native_ids == {US_X1_3}
     assert source_ids.isdisjoint(native_ids)
     assert source_ids | native_ids == set(active.active_model_version_ids)
-    assert "us_x1_1" not in source_ids
+    assert "us_x1_2" not in source_ids
 
 
 def test_sync_builds_active_formal_set_deterministically(tmp_path: Path) -> None:
@@ -92,18 +92,18 @@ def test_sync_builds_active_formal_set_deterministically(tmp_path: Path) -> None
     assert versions == set(receipt_a["active_model_version_ids"])
     assert versions == {
         "qqqi_qqq_tqqq_v4_3",
-        US_X1_2,
+        US_X1_3,
         "cn_x1_1",
         BYD_V13,
     }
-    assert "us_x1_1" not in versions
+    assert "us_x1_2" not in versions
     assert receipt_a["status"] == "active_formal_bundle_v2_built"
     assert receipt_a["source_built_model_ids"] == [
         "qqqi_qqq_tqqq_v4_3",
         "cn_x1_1",
         BYD_V13,
     ]
-    assert receipt_a["native_promoted_model_ids"] == [US_X1_2]
+    assert receipt_a["native_promoted_model_ids"] == [US_X1_3]
     assert "migration_receipt" not in receipt_a
     assert "superseded_formal_model_ids" not in receipt_a
 
@@ -113,7 +113,7 @@ def test_sync_builds_active_formal_set_deterministically(tmp_path: Path) -> None
         assert manifest["publication_status"] == "accepted_formal_baseline"
         assert manifest["research_only"] is True
         assert manifest["trade_ready"] is False
-        if row["model_version_id"] == US_X1_2:
+        if row["model_version_id"] == US_X1_3:
             validate_formal_evidence_bundle((first / row["manifest_path"]).parent)
         else:
             lineage_row = next(
@@ -125,17 +125,17 @@ def test_sync_builds_active_formal_set_deterministically(tmp_path: Path) -> None
 
     freshness = _read(first / "freshness.json")
     assert freshness["required_models"] == list(load_active_strategy_catalog(STRATEGIES).active_model_version_ids)
-    assert freshness["date_range_end_required_models"] == [US_X1_2, "cn_x1_1"]
-    assert freshness["freshness_receipt_required_models"] == [US_X1_2, "cn_x1_1"]
+    assert freshness["date_range_end_required_models"] == [US_X1_3, "cn_x1_1"]
+    assert freshness["freshness_receipt_required_models"] == [US_X1_3, "cn_x1_1"]
 
 
-def test_native_us_x1_2_formal_boundary_is_explicit(tmp_path: Path) -> None:
+def test_native_us_x1_3_formal_boundary_is_explicit(tmp_path: Path) -> None:
     output = tmp_path / "formal"
     receipt = sync(SOURCE, output, native_root=NATIVE, strategy_catalog=STRATEGIES)
-    assert receipt["native_promoted_model_ids"] == [US_X1_2]
+    assert receipt["native_promoted_model_ids"] == [US_X1_3]
 
     catalog = _read(output / "catalog.json")
-    record = next(row for row in catalog["records"] if row["model_version_id"] == US_X1_2)
+    record = next(row for row in catalog["records"] if row["model_version_id"] == US_X1_3)
     run_dir = (output / record["manifest_path"]).parent
     summary = _read(run_dir / "summary.json")
     diagnostics = _read(run_dir / "diagnostics.json")
@@ -146,7 +146,7 @@ def test_native_us_x1_2_formal_boundary_is_explicit(tmp_path: Path) -> None:
     assert summary["trade_readiness_status"] == "prospective_gate_pending"
     assert summary["evidence_completeness"]["missing"] == []
     assert diagnostics["evidence_completeness"]["missing"] == []
-    assert lineage["formal_baseline_superseded"] == "us_x1_1"
+    assert lineage["formal_baseline_superseded"] == "us_x1_2"
     assert lineage["prospective_gate_scope"] == "trade_readiness_only"
     assert lineage["prospective_gate_status"] == "pending"
     assert summary["research_only"] is True
