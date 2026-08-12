@@ -18,6 +18,43 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function redactProtectedRecord(record) {
+  if (record.current_operations_access === 'public') return record;
+  return {
+    strategy_id: record.strategy_id,
+    model_version_id: record.model_version_id,
+    current_operations_access: record.current_operations_access,
+    status: 'blocked',
+    as_of: null,
+    latest_completed_session: null,
+    decision_cadence: record.decision_cadence,
+    next_decision_policy: record.next_decision_policy,
+    state_label: 'Protected current operations',
+    decision_reason: 'Current holdings and signals require authenticated entitlement delivery.',
+    allocations: [],
+    turnover: null,
+    estimated_cost: null,
+    data_freshness: 'unknown',
+    factor_freshness: 'blocked',
+    delivery_status: 'not available',
+    source_label: 'Protected current operations',
+    source_href: null,
+    note: 'Current holdings, targets, drivers and decision-ledger provenance are not included in the public bundle.',
+    factor_evidence: [],
+    source_identity: {
+      formal_bundle_id: record.source_identity.formal_bundle_id,
+      formal_run_id: record.source_identity.formal_run_id,
+      formal_evidence_cutoff: record.source_identity.formal_evidence_cutoff,
+      ledger_fingerprint: null,
+      signal_sha256: null,
+      factor_catalog_implementation_hash: null,
+      workflow_run_id: null,
+      commit_sha: null,
+      github_issue_number: null,
+    },
+  };
+}
+
 const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 const snapshots = JSON.parse(await readFile(snapshotsPath, 'utf8'));
 assert(snapshots.schema_version === '2.1.0', 'Unsupported strategy operations schema');
@@ -63,7 +100,21 @@ for (const record of snapshots.records) {
   assert(record.source_identity.formal_evidence_cutoff === formal.evidence_cutoff, `Formal evidence cutoff drift for ${id}`);
 }
 
+const publicProjection = {
+  ...snapshots,
+  records: snapshots.records.map(redactProtectedRecord),
+};
+
+for (const record of publicProjection.records) {
+  if (record.current_operations_access === 'public') continue;
+  assert(record.allocations.length === 0, `Protected allocations leaked for ${record.model_version_id}`);
+  assert(record.factor_evidence.length === 0, `Protected factor evidence leaked for ${record.model_version_id}`);
+  assert(record.source_identity.ledger_fingerprint === null, `Protected ledger fingerprint leaked for ${record.model_version_id}`);
+  assert(record.source_identity.signal_sha256 === null, `Protected signal hash leaked for ${record.model_version_id}`);
+  assert(record.source_identity.workflow_run_id === null, `Protected workflow provenance leaked for ${record.model_version_id}`);
+}
+
 await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(snapshots)}\n`, 'utf8');
-console.log(`Published governed strategy operations snapshots for ${operationIds.length} formal models.`);
+await writeFile(outputPath, `${JSON.stringify(publicProjection)}\n`, 'utf8');
+console.log(`Published governed strategy operations snapshots for ${operationIds.length} formal models; protected current operations were redacted.`);
