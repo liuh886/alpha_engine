@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Mapping, Sequence
-from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN
 from numbers import Real
 from pathlib import Path
 from typing import Any
@@ -118,8 +117,8 @@ def _weights_before(package: Mapping[str, Any], boundary: str) -> dict[str, floa
     latest = max(str(row["date"]) for row in eligible)
     weights = {
         str(row["instrument"]): float(row["weight"])
-        for row in eligible
-        if str(row["date"]) == latest
+        for row in positions
+        if isinstance(row, Mapping) and str(row.get("date")) == latest
     }
     if not math.isclose(sum(weights.values()), 1.0, rel_tol=0.0, abs_tol=1e-12):
         raise RulesFormalReplayError(
@@ -194,7 +193,13 @@ def _project_fields(
 
 
 def _accepted_decimal_match(expected: object, observed: object) -> bool:
-    """Match a replay value at the precision published by accepted evidence."""
+    """Replay numbers through the serializer that produced accepted frozen CSVs.
+
+    CN x1.1 candidate CSVs were written with pandas ``float_format="%.10g"``.
+    If the accepted JSON value is itself exactly representable by that serializer,
+    the current replay must serialize back to the same ten-significant-digit text.
+    Values with more retained precision are not frozen-CSV values and remain strict.
+    """
 
     if isinstance(expected, bool) or isinstance(observed, bool):
         return expected == observed
@@ -206,13 +211,10 @@ def _accepted_decimal_match(expected: object, observed: object) -> bool:
         return True
     if not math.isfinite(left) or not math.isfinite(right):
         return left == right
-    try:
-        accepted = Decimal(str(expected))
-        replayed = Decimal(str(observed))
-        quantum = Decimal(1).scaleb(accepted.as_tuple().exponent)
-        return replayed.quantize(quantum, rounding=ROUND_HALF_EVEN) == accepted
-    except (InvalidOperation, ValueError):
-        return False
+    accepted_text = str(expected)
+    if format(left, ".10g") == accepted_text:
+        return format(right, ".10g") == accepted_text
+    return left == right
 
 
 def _compare_rows_at_accepted_precision(
@@ -225,7 +227,7 @@ def _compare_rows_at_accepted_precision(
             "expected_rows": len(expected) if isinstance(expected, list) else None,
             "observed_rows": len(observed) if isinstance(observed, list) else None,
             "first_mismatch": {"reason": "section_is_not_a_row_list"},
-            "comparison_semantics": "accepted_serialized_decimal_precision",
+            "comparison_semantics": "accepted_frozen_csv_serializer_or_full_precision",
         }
     first_mismatch: dict[str, Any] | None = None
     if len(expected) != len(observed):
@@ -265,7 +267,7 @@ def _compare_rows_at_accepted_precision(
         "expected_rows": len(expected),
         "observed_rows": len(observed),
         "first_mismatch": first_mismatch,
-        "comparison_semantics": "accepted_serialized_decimal_precision",
+        "comparison_semantics": "accepted_frozen_csv_serializer_or_full_precision",
     }
 
 
@@ -572,7 +574,9 @@ def verify_cn_current_allocation_replay(
             "continuation_state_source": (
                 f"accepted_formal_positions_before_{replay_dates[0]}"
             ),
-            "numeric_comparison": "accepted_serialized_decimal_precision",
+            "numeric_comparison": (
+                "accepted_frozen_csv_serializer_or_full_precision"
+            ),
         },
         "research_only": True,
         "trade_ready": False,

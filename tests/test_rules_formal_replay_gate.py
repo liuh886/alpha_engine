@@ -144,8 +144,18 @@ def test_cn_accepted_precision_accepts_same_published_decimal() -> None:
 
     assert comparison["exact"] is True
     assert comparison["comparison_semantics"] == (
-        "accepted_serialized_decimal_precision"
+        "accepted_frozen_csv_serializer_or_full_precision"
     )
+
+
+def test_cn_frozen_csv_serializer_reproduces_halfway_net_contribution() -> None:
+    comparison = _compare_rows_at_accepted_precision(
+        [{"net_contribution": -0.02729934647}],
+        [{"net_contribution": -0.027299346475}],
+    )
+
+    assert format(-0.027299346475, ".10g") == "-0.02729934647"
+    assert comparison["exact"] is True
 
 
 def test_cn_accepted_precision_rejects_changed_published_decimal() -> None:
