@@ -18,7 +18,7 @@ from src.artifacts.model_run_bundle_v2 import (
 )
 
 EXPECTED_REQUIRED_BUNDLE_KINDS = {"model_index", "static_export_manifest"}
-SHELL_MARKER = "Governed Model Runs"
+SHELL_BOOTSTRAP_MARKERS = ('<div id="root"></div>', '<script type="module"')
 
 
 class ReleaseVerificationError(RuntimeError):
@@ -337,9 +337,13 @@ def validate_bundle_artifact_bytes(
 
 
 def validate_shell(payload: bytes) -> None:
+    """Validate stable app bootstrap structure instead of product copy."""
     shell = payload.decode("utf-8", errors="replace")
-    if SHELL_MARKER not in shell:
-        raise ReleaseVerificationError(f"deployed shell is missing marker {SHELL_MARKER!r}")
+    missing = [marker for marker in SHELL_BOOTSTRAP_MARKERS if marker not in shell]
+    if missing:
+        raise ReleaseVerificationError(
+            f"deployed shell is missing bootstrap markers: {missing}"
+        )
 
 
 def _cache_busted_url(base_url: str, path: str) -> str:
