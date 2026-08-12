@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, Copy, Gift, Loader2, Share2 } from 'lucide-react';
-import { ProductShareButton, shareUrl } from '@/components/ProductShareButton';
+import { shareUrl } from '@/components/ProductShareButton';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
