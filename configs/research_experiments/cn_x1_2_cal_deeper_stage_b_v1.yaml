@@ -34,6 +34,9 @@ snapshot:
     provider_identity_sha256 is the deterministic CN130 + CSI300 Qlib runtime
     provider expected from exact repository-source rebuild.
 
+source_repair:
+  approval_manifest: data/source_repairs/cn_x1_2_cal_deeper_stage_b_v1.json
+
 fixed_model:
   model_id: cn_x1_1
   frozen_spec: configs/research_paradigms/cn_10d_selected_pool_ranker_retest_v1.yaml
