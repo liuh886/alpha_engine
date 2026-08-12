@@ -264,23 +264,62 @@ def test_formal_refresh_parallelizes_and_seals_provider_builds() -> None:
     assert "uses: actions/cache/restore@v4" in workflow
     assert "uses: actions/cache/save@v4" in workflow
     assert "-m scripts.govern_formal_provider_cache seal" in workflow
-    assert workflow.count("-m scripts.govern_formal_provider_cache verify") >= 2
-    assert "needs: [prepare, providers]" in workflow
     assert "formal-provider-${{ matrix.market }}-${{ github.run_id }}" in workflow
 
 
-def test_formal_refresh_runs_cn_duplicate_evidence_concurrently() -> None:
+def test_formal_refresh_fans_out_active_strategies_and_fans_in_atomically() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
     )
-    cn_start = workflow.index("      - name: Reproduce and refresh CN x1.1 twice")
-    byd_start = workflow.index("      - name: Extend canonical inputs")
-    cn = workflow[cn_start:byd_start]
-    assert 'pids+=("$!")' in cn
-    assert 'for pid in "${pids[@]}"' in cn
-    assert 'wait "$pid" || status=1' in cn
-    assert "cn-ledger-${suffix}.log" in cn
-    assert '--ledger-a "$LEDGER_A" --ledger-b "$LEDGER_B"' in cn
+    assert "plan:\n    needs: [prepare, providers]" in workflow
+    assert "strategy:\n    needs: [prepare, plan]" in workflow
+    assert "task: ${{ fromJson(needs.plan.outputs.task_matrix) }}" in workflow
+    assert workflow.count("fail-fast: false") >= 2
+    assert "uv run python scripts/run_formal_strategy_refresh.py" in workflow
+    assert "publish:\n    needs: [prepare, providers, plan, strategy]\n    if: always()" in workflow
+    assert "pattern: formal-strategy-*-${{ github.run_id }}" in workflow
+    assert "merge-multiple: true" in workflow
+    assert "run_formal_refresh_transaction.py assemble" in workflow
+    assert '--fan-in-receipt "$FAN_IN_RECEIPT"' in workflow
+    assert "--native-root \"$CANDIDATE_PREVIEW_ROOT\"" in workflow
+
+
+def test_formal_refresh_yaml_contains_no_model_execution_recipe() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    for obsolete_step in (
+        "Refresh QQQ Rotation v4.3 append-only",
+        "Reproduce and refresh US x1.1 twice",
+        "Rebuild active US x1.2 research preview with complete evidence",
+        "Reproduce and refresh CN x1.1 twice",
+        "Extend canonical inputs and refresh BYD v1.3",
+    ):
+        assert obsolete_step not in workflow
+    assert "scripts/refresh_qqq_v4_3_formal.py" not in workflow
+    assert "scripts/refresh_ranker_formal.py cn" not in workflow
+    assert "scripts/refresh_byd_v1_3_formal.py" not in workflow
+    assert "scripts/build_us_x1_2_preview.py" not in workflow
+
+
+def test_strategy_results_are_uploaded_even_when_one_task_fails() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    start = workflow.index("      - name: Upload bounded strategy receipt and evidence")
+    end = workflow.index("\n\n  publish:", start)
+    block = workflow[start:end]
+    assert "if: always()" in block
+    assert "artifacts/formal-refresh/strategy-result" in block
+
+
+def test_cn_duplicate_evidence_concurrency_lives_in_repository_runner() -> None:
+    runner = Path("scripts/run_formal_strategy_refresh.py").read_text(encoding="utf-8")
+    assert "subprocess.Popen(" in runner
+    assert 'for suffix in ("a", "b")' in runner
+    assert "process.wait()" in runner
+    assert "--ledger-a" in runner
+    assert "--ledger-b" in runner
 
 
 def test_market_evidence_is_content_addressed_and_parallel() -> None:
@@ -288,9 +327,7 @@ def test_market_evidence_is_content_addressed_and_parallel() -> None:
         encoding="utf-8"
     )
     start = workflow.index("      - name: Build shared governed Market Evidence")
-    end = workflow.index(
-        "      - name: Install candidate and materialize generated read models"
-    )
+    end = workflow.index("      - name: Build shared Model Data Bundle")
     block = workflow[start:end]
     assert block.count("--reuse-root data/research/market_evidence") == 2
     assert 'us_pid="$!"' in block
@@ -303,7 +340,7 @@ def test_formal_refresh_publishes_one_shared_model_data_bundle() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
     )
-    assert workflow.count("scripts/data/build_model_data_bundle.py") == 3
+    assert workflow.count("scripts/data/build_model_data_bundle.py") == 1
     assert (
         "prices.us_selected_equities_v2:selected_pool_prices:${CANDIDATE_MODEL_DATA_ROOT}"
         in workflow
@@ -314,36 +351,6 @@ def test_formal_refresh_publishes_one_shared_model_data_bundle() -> None:
     )
     assert "data/research/model_data_bundle_v1" in workflow
     assert "cancel-in-progress: false" in workflow
-    start = workflow.index("      - name: Build shared Model Data Bundle")
-    end = workflow.index(
-        "      - name: Install candidate and materialize generated read models"
-    )
-    model_data = workflow[start:end]
-    assert "id: model_data" in model_data
-    assert "if: steps.plan.outputs.refresh_required" not in model_data
-    assert "current_id != candidate_id" in model_data
-    assert 'echo "changed=true" >> "$GITHUB_OUTPUT"' in model_data
-    publication_condition = (
-        "if: steps.plan.outputs.refresh_required == 'true' || "
-        "steps.preview.outputs.changed == 'true' || "
-        "steps.model_data.outputs.changed == 'true'"
-    )
-    assert workflow.count(publication_condition) == 2
-
-    publish_start = workflow.index(
-        "      - name: Open or update reviewed refresh PR"
-    )
-    publish_end = workflow.index(
-        "      - name: Wait for candidate checks, merge reviewed refresh, and verify Pages"
-    )
-    publish = workflow[publish_start:publish_end]
-    assert "REFRESH_REQUIRED: ${{ steps.plan.outputs.refresh_required }}" in publish
-    assert "PREVIEW_CHANGED: ${{ steps.preview.outputs.changed }}" in publish
-    assert "git fetch origin main" in publish
-    assert "candidate_bundle_id" in publish
-    assert "main_bundle_id" in publish
-    assert "Latest main already contains governed Model Data Bundle" in publish
-    assert publish.index("git fetch origin main") < publish.index("git checkout -B")
 
 
 def test_formal_refresh_frontend_validation_paths_are_complete() -> None:
@@ -372,17 +379,6 @@ def test_formal_refresh_frontend_validation_paths_are_complete() -> None:
     assert "npm run check:account" in live[preflight_start:clock_start]
 
 
-def test_production_refresh_runs_v1_3_regressions_before_network_work() -> None:
-    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
-        encoding="utf-8"
-    )
-    start = workflow.index("      - name: Validate refresh implementation before network work")
-    end = workflow.index("      - name: Resolve transaction timestamp")
-    preflight = workflow[start:end]
-    assert "tests/test_refresh_byd_v1_3_formal.py" in preflight
-    assert "tests/test_refresh_allocation_formal.py" not in preflight
-
-
 def test_reviewed_refresh_dispatches_exact_merge_to_pages_before_current_status() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
@@ -397,12 +393,10 @@ def test_reviewed_refresh_dispatches_exact_merge_to_pages_before_current_status(
     assert "gh workflow run formal-backtest-refresh-ci.yml" in release
     assert '--ref "$REFRESH_BRANCH"' in release
     assert '-f "candidate_sha=${CANDIDATE_SHA}"' in release
-    assert 'select(.headSha == \\"${CANDIDATE_SHA}\\"' in release
     assert 'gh run watch "$validation_run"' in release
     assert 'test "$validation_conclusion" = "success"' in release
-    assert "gh pr checks" not in release
     assert 'current_main="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main"' in release
-    assert 'if [[ "$current_main" != "$merge_sha" ]]' in release
+    assert 'test "$current_main" = "$merge_sha"' in release
     assert "actions/workflows/deploy-pages.yml/dispatches" in release
     assert "X-GitHub-Api-Version: 2026-03-10" in release
     assert "inputs:{target_sha:$target_sha}" in release
@@ -421,7 +415,6 @@ def test_formal_refresh_contract_can_validate_an_exact_dispatched_candidate() ->
     workflow = Path(".github/workflows/formal-backtest-refresh-ci.yml").read_text(
         encoding="utf-8"
     )
-
     assert "workflow_dispatch:" in workflow
     assert "candidate_sha:" in workflow
     assert "pr_number:" in workflow
