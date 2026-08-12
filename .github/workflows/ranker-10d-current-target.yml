@@ -10,20 +10,23 @@ on:
     paths:
       - ".github/workflows/ranker-10d-current-target.yml"
       - "scripts/run_ranker_current_target.py"
-      - "scripts/run_us_x1_2_current_target.py"
+      - "scripts/run_us_x1_3_current_target.py"
       - "src/cli/main.py"
       - "src/research/ranker_current_target.py"
-      - "src/research/us_x1_2_current_target.py"
+      - "src/research/us_x1_3_current_target.py"
       - "src/research/xgb_ranker_explainability.py"
       - "src/factors/ranker_snapshot.py"
       - "src/artifacts/strategy_signal_ledger.py"
       - "src/artifacts/strategy_operations.py"
       - "src/governance/active_strategy_catalog.py"
       - "configs/strategies/registry.json"
-      - "configs/models/us_x1_2.yaml"
+      - "configs/models/us_x1_3.yaml"
       - "configs/research_universes/us_selected_equities_v2.yaml"
       - "configs/research_classifications/us87_sector_industry_v1.yaml"
       - "configs/factor_libraries/ohlcv.yaml"
+      # The reviewed formal publication of a newly promoted US model should
+      # immediately bootstrap its own first prospective signal ledger.
+      - "data/research/formal_model_runs/**"
 
 permissions:
   contents: write
@@ -67,11 +70,33 @@ jobs:
           set -euo pipefail
           as_of="$(date -u +%F)"
           mkdir -p artifacts/ranker-current-target
-          uv run python scripts/run_us_x1_2_current_target.py due \
-            --formal-root data/research/formal_model_runs \
-            --ledger-dir data/research/strategy_signal_ledgers/us_x1_2 \
-            --as-of "$as_of" \
-            --output artifacts/ranker-current-target/us_due.json
+
+          # During the code->reviewed-formal cutover there can be one commit
+          # where x1.3 is active in source but the accepted formal catalog still
+          # contains x1.2. Fail closed without relabeling x1.2 evidence; the
+          # formal_model_runs publication push retriggers this workflow.
+          us_formal_ready="$(uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('data/research/formal_model_runs/catalog.json')
+          try:
+              rows = json.loads(path.read_text(encoding='utf-8')).get('records', [])
+              print('true' if any(row.get('model_version_id') == 'us_x1_3' for row in rows) else 'false')
+          except Exception:
+              print('false')
+          PY
+          )"
+          if [ "$us_formal_ready" = "true" ]; then
+            uv run python scripts/run_us_x1_3_current_target.py due \
+              --formal-root data/research/formal_model_runs \
+              --ledger-dir data/research/strategy_signal_ledgers/us_x1_3 \
+              --as-of "$as_of" \
+              --output artifacts/ranker-current-target/us_due.json
+          else
+            printf '%s\n' '{"market":"us","model_version_id":"us_x1_3","due":false,"signal_date":null,"reason":"awaiting_formal_promotion","research_only":true,"trade_ready":false}' \
+              > artifacts/ranker-current-target/us_due.json
+          fi
+
           uv run python scripts/run_ranker_current_target.py due \
             --market cn \
             --formal-package data/research/formal_backtests/cn_x1_1.json \
@@ -87,7 +112,7 @@ jobs:
               print(f"{market}_date={payload.get('signal_date') or ''}")
           PY
 
-      - name: Build due US x1.2 provider and current target
+      - name: Build due US x1.3 provider and current target
         if: steps.due.outputs.us_due == 'true'
         shell: bash
         run: |
@@ -101,9 +126,9 @@ jobs:
             --cutoff "$date" \
             --max-rounds 3 \
             --full-refresh
-          uv run python scripts/run_us_x1_2_current_target.py build \
+          uv run python scripts/run_us_x1_3_current_target.py build \
             --formal-root data/research/formal_model_runs \
-            --ledger-dir data/research/strategy_signal_ledgers/us_x1_2 \
+            --ledger-dir data/research/strategy_signal_ledgers/us_x1_3 \
             --provider-dir artifacts/ranker-current-target/us_provider/data/providers/us \
             --signal-date "$date" \
             --market-cutoff "US close $date" \
@@ -153,11 +178,10 @@ jobs:
           print(json.load(open(sys.argv[1]))['model_version_id'])
           PY
           )"
-            changed="$(uv run python - "$signal" <<'PY'
-          import json, sys
-          print('true' if json.load(open(sys.argv[1]))['should_alert'] else 'false')
-          PY
-          )"
+            # A due evaluation is itself operationally material. Deliver HOLD / no
+            # allocation-change evaluations too, so the user can distinguish a
+            # fresh HOLD from a stale or missing signal.
+            changed="true"
             delivery_status="not_required"
             issue_number=""
             telegram_message_id=""
@@ -169,7 +193,8 @@ jobs:
           payload=json.load(open(sys.argv[1]))
           target=', '.join(f"{k} {v:.1%}" for k,v in payload['target_weights'].items())
           current=', '.join(f"{k} {v:.1%}" for k,v in payload['current_weights'].items())
-          print(f"Model: {payload['model_version_id']}\nSignal date: {payload['signal_date']}\nExecution: {payload['execution_time']}\nCurrent: {current}\nTarget: {target}\nTurnover: {payload['turnover_units']:.2%}\nEstimated cost: {payload['estimated_transaction_cost']:.4%}\nReason: {payload['reason_code']}\n\nResearch only; not trade ready.")
+          action=payload.get('action') or ('REBALANCE' if payload.get('should_alert') else 'HOLD')
+          print(f"Model: {payload['model_version_id']}\nSignal date: {payload['signal_date']}\nAction: {action}\nExecution: {payload['execution_time']}\nCurrent: {current}\nTarget: {target}\nTurnover: {payload['turnover_units']:.2%}\nEstimated cost: {payload['estimated_transaction_cost']:.4%}\nReason: {payload['reason_code']}\n\nResearch only; not trade ready.")
           PY
           )"
               issue_url="$(gh issue create --repo "$GITHUB_REPOSITORY" --title "[Signal] ${model} $(uv run python -c "import json; print(json.load(open('$signal'))['signal_date'])")" --body "$body")" || {
