@@ -6,9 +6,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import { useStrategyOperations } from '@/hooks/useStrategyOperations';
+import type { AccessTier } from '@/lib/model-access';
 import { STRATEGY_STATUS_LABEL } from '@/lib/strategy-operations';
 import type { StrategyFactorEvidence } from '@/lib/strategy-operations';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
+
+const ACCESS_TIER_LABEL: Record<AccessTier, string> = {
+  public: 'Public',
+  authenticated: 'Member',
+  pro: 'Pro',
+  owner: 'Owner',
+};
 
 function pct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
@@ -76,7 +84,8 @@ export function StrategyDetailPage() {
   const selectedRuns = useMemo(() => run ? [run] : [], [run]);
   const { snapshots, loading } = useStrategyOperations(selectedRuns);
   const snapshot = run ? snapshots.get(run.modelVersionId) : undefined;
-  const requiredTier = snapshot?.currentOperationsAccess ?? 'public';
+  const requiredTier = snapshot ? access.requiredTier('strategy', snapshot.strategyId) : 'public';
+  const requiredTierLabel = ACCESS_TIER_LABEL[requiredTier];
   const liveLocked = Boolean(snapshot && !access.canAccess(requiredTier));
   const protectedUnavailable = Boolean(
     snapshot
@@ -109,7 +118,7 @@ export function StrategyDetailPage() {
               <Badge variant="outline">{run.market.toUpperCase()}</Badge>
               <Badge variant="outline">Benchmark {run.benchmark}</Badge>
               <Badge variant="secondary">Formal baseline</Badge>
-              {requiredTier !== 'public' && <Badge variant="outline"><Crown className="mr-1 h-3 w-3" />{requiredTier === 'pro' ? 'Pro live' : requiredTier}</Badge>}
+              {requiredTier !== 'public' && <Badge variant="outline"><Crown className="mr-1 h-3 w-3" />{requiredTierLabel} live</Badge>}
             </div>
             <h1 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">{run.title}</h1>
             <p className="mt-3 text-sm text-muted-foreground">Evidence cutoff {run.evidenceCutoff} · {run.modelKind.replace(/_/g, ' ')}</p>
@@ -126,7 +135,7 @@ export function StrategyDetailPage() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Now</p>
-            <h2 id="strategy-now-heading" className="mt-1 text-2xl font-bold">{liveLocked ? 'Pro execution layer' : 'Current decision state'}</h2>
+            <h2 id="strategy-now-heading" className="mt-1 text-2xl font-bold">{liveLocked ? `${requiredTierLabel} current operations` : 'Current decision state'}</h2>
           </div>
           {!liveLocked && !protectedUnavailable && snapshot?.sourceHref && (
             <a href={snapshot.sourceHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Source record <ArrowUpRight className="h-3.5 w-3.5" /></a>
@@ -139,8 +148,8 @@ export function StrategyDetailPage() {
               <div className="rounded-full bg-primary/10 p-2 text-primary"><LockKeyhole className="h-5 w-5" /></div>
               <div className="max-w-2xl">
                 <h3 className="text-lg font-semibold">Current holdings and live signals are protected</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">AlphaEngine Pro unlocks the current holdings, target allocations, current signal drivers and next-decision state for this strategy. Historical formal performance, risk, holdings and attribution remain public below.</p>
-                <Button className="mt-5" onClick={access.openAccount}>View AlphaEngine Pro access</Button>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{requiredTierLabel} access is required for the current holdings, target allocations, signal drivers and next-decision state of this strategy. Historical formal performance, risk, holdings and attribution remain public below.</p>
+                <Button className="mt-5" onClick={access.openAccount}>{requiredTier === 'authenticated' ? 'Sign in for current operations' : requiredTier === 'pro' ? 'View AlphaEngine Pro access' : 'Owner access required'}</Button>
               </div>
             </div>
           </div>
