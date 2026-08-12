@@ -23,11 +23,15 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
 
     void (async () => {
       const next = await loadStrategyOperations(formalRuns);
+      for (const snapshot of next.values()) {
+        snapshot.currentOperationsAccess = access.requiredTier('strategy', snapshot.strategyId);
+      }
+
       if (membership.signedIn) {
         const client = await membership.getClient();
         if (client) {
           const protectedSnapshots = Array.from(next.values()).filter(
-            (snapshot) => access.requiredTier('strategy', snapshot.strategyId) !== 'public',
+            (snapshot) => snapshot.currentOperationsAccess !== 'public',
           );
           await Promise.all(protectedSnapshots.map(async (snapshot) => {
             try {
@@ -36,7 +40,10 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
                 snapshot.strategyId,
                 snapshot.modelVersionId,
               );
-              if (protectedSnapshot) next.set(snapshot.modelVersionId, protectedSnapshot);
+              if (protectedSnapshot) {
+                protectedSnapshot.currentOperationsAccess = access.requiredTier('strategy', snapshot.strategyId);
+                next.set(snapshot.modelVersionId, protectedSnapshot);
+              }
             } catch {
               // Fail closed at the product surface: keep the redacted public projection.
             }
