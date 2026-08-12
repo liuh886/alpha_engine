@@ -318,6 +318,13 @@ def run_exact_us_ranker_portfolio_replay(
             runtime.features(symbols, [RETURN_EXPRESSION], window.train_start, window.test_end)
         ).replace([np.inf, -np.inf], np.nan)
         returns_all.columns = ["return"]
+        returns_all.attrs.update(
+            {
+                "provenance": "raw_forward_return",
+                "horizon": 10,
+                "expression": RETURN_EXPRESSION,
+            }
+        )
         all_dates = features_all.index.get_level_values("datetime")
         train_mask = (all_dates >= pd.Timestamp(window.train_start)) & (
             all_dates <= pd.Timestamp(window.train_end)
@@ -330,6 +337,7 @@ def run_exact_us_ranker_portfolio_replay(
         )
         features_test = features_all.loc[test_mask].copy()
         returns_test = returns_all.loc[test_mask].copy()
+        returns_test.attrs.update(returns_all.attrs)
         benchmark = load_window_benchmark_returns(
             runtime,
             benchmark_instrument=benchmark_symbol,
