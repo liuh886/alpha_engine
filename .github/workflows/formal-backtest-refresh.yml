@@ -296,7 +296,7 @@ jobs:
         env:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
-          python scripts/run_formal_refresh_transaction.py plan \
+          python -m scripts.run_formal_refresh_transaction plan \
             --formal-root "$CURRENT_FORMAL_ROOT" \
             --formal-v2-catalog data/research/formal_model_runs/catalog.json \
             --us-provider-manifest artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
