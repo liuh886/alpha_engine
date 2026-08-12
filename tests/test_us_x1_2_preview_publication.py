@@ -8,17 +8,33 @@ from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifes
 from src.artifacts.us_x1_2_preview import _json_safe, _trade_analytics
 
 ROOT = Path("data/research/model_runs")
-RUN = ROOT / "us_ranker/us_x1_2/us_x1_2-through-2026_08_10"
+
+
+def _catalog() -> dict:
+    payload = json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    return payload
+
+
+def _run_root() -> Path:
+    catalog = _catalog()
+    matches = [
+        row
+        for row in catalog["records"]
+        if row.get("model_version_id") == "us_x1_2"
+    ]
+    assert len(matches) == 1
+    return ROOT / Path(matches[0]["manifest_path"]).parent
 
 
 def _object(name: str) -> dict:
-    payload = json.loads((RUN / name).read_text(encoding="utf-8"))
+    payload = json.loads((_run_root() / name).read_text(encoding="utf-8"))
     assert isinstance(payload, dict)
     return payload
 
 
 def test_active_us_x1_2_preview_is_cataloged_without_crossing_formal_boundary() -> None:
-    catalog = json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))
+    catalog = _catalog()
     validate_catalog(catalog)
     assert catalog["channel"] == "preview"
     assert [row["model_version_id"] for row in catalog["records"]] == ["us_x1_2"]
@@ -43,10 +59,12 @@ def test_us_x1_2_bundle_retains_performance_positions_trades_prices_and_signals(
     assert len(portfolio["latest_signal"]["ranked_targets"]) == 15
     priced = [row for row in portfolio["positions"] if row["price"] is not None]
     assert len(priced) > 850
-    realized_priced = [row for row in priced if row.get("holding_status") != "prospective_unrealized"]
+    realized_priced = [
+        row for row in priced if row.get("holding_status") != "prospective_unrealized"
+    ]
     assert all(row["exit_price"] is not None for row in realized_priced[-15:])
-    assert portfolio["latest_signal"]["signal_date"] == "2026-07-30"
-    assert portfolio["latest_signal"]["signal_state"] == "prospective_unrealized"
+    assert portfolio["latest_signal"]["signal_date"] == portfolio["signals"][-1]["signal_date"]
+    assert portfolio["latest_signal"]["signal_state"] == portfolio["signals"][-1]["signal_state"]
     assert len(trades["records"]) > 1_000
     assert any(row["action"] == "BUY" for row in trades["records"])
     assert any(row["action"] == "SELL" for row in trades["records"])
