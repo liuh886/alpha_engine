@@ -1,6 +1,6 @@
 """Research projections over the governed factor foundation.
 
-Canonical definitions and schema validation belong to :mod:`src.factors.library`.
+Canonical definitions and schema validation belong to :mod:`src.factors`.
 This module projects those definitions into the group mapping expected by the
 existing ranker research path. Exploratory scanning remains a separate committed
 pool and has no generated fallback.
@@ -22,16 +22,16 @@ from src.factors.library import (
     FACTOR_LIBRARY_SCHEMA_VERSION,
     FactorGroup,
     factor_groups_to_ranker_feature_groups,
-    load_factor_library as load_canonical_factor_library,
 )
+from src.factors.research_source import load_research_factor_source
 
 STRUCTURED_FACTOR_LIBRARY_SCHEMA = FACTOR_LIBRARY_SCHEMA_VERSION
 
 
 def load_factor_library(path: str | Path) -> dict[str, FactorGroup]:
-    """Project the canonical factor library into the research group mapping."""
+    """Project one canonical research factor source into the ranker group mapping."""
 
-    return dict(load_canonical_factor_library(path).groups)
+    return dict(load_research_factor_source(path).groups)
 
 
 def select_factor_groups(

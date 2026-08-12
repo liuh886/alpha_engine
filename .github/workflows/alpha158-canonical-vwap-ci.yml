@@ -10,10 +10,13 @@ on:
       - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
       - "src/data/canonical_vwap.py"
       - "src/factors/panel.py"
+      - "src/factors/reusable_panel.py"
       - "src/factors/governance.py"
       - "scripts/data/build_canonical_vwap_provider.py"
+      - "scripts/factors/build_alpha158_panel.py"
       - "tests/test_canonical_vwap.py"
       - "tests/test_alpha158_panel.py"
+      - "tests/test_reusable_alpha158_panel.py"
       - "tests/test_factor_governance.py"
       - "docs/research/alpha158_canonical_vwap_execution_2026-08-02.md"
   push:
@@ -25,8 +28,10 @@ on:
       - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
       - "src/data/canonical_vwap.py"
       - "src/factors/panel.py"
+      - "src/factors/reusable_panel.py"
       - "src/factors/governance.py"
       - "scripts/data/build_canonical_vwap_provider.py"
+      - "scripts/factors/build_alpha158_panel.py"
   schedule:
     - cron: "41 7 2 * *"
   workflow_dispatch:
@@ -62,21 +67,27 @@ jobs:
         run: >-
           uv run ruff check
           src/data/canonical_vwap.py
+          src/factors/reusable_panel.py
           src/factors/governance.py
           scripts/data/build_canonical_vwap_provider.py
+          scripts/factors/build_alpha158_panel.py
           tests/test_canonical_vwap.py
           tests/test_alpha158_panel.py
+          tests/test_reusable_alpha158_panel.py
           tests/test_factor_governance.py
       - name: Type-check canonical VWAP paths
         run: >-
           uv run mypy --follow-imports=skip
           src/data/canonical_vwap.py
+          src/factors/reusable_panel.py
           scripts/data/build_canonical_vwap_provider.py
+          scripts/factors/build_alpha158_panel.py
       - name: Run canonical VWAP and Alpha158 contract tests
         run: >-
           uv run pytest
           tests/test_canonical_vwap.py
           tests/test_alpha158_panel.py
+          tests/test_reusable_alpha158_panel.py
           tests/test_factor_governance.py
           tests/test_model_data_bundle.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1

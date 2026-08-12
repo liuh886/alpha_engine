@@ -19,7 +19,7 @@ from src.data.canonical_vwap import (
 )
 from src.data.model_data_bundle import ComponentSpec, build_model_data_bundle
 from src.factors.governance import build_factor_governance_manifest
-from src.factors.panel import build_alpha158_panel
+from src.factors.reusable_panel import build_reusable_alpha158_panel
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -340,7 +340,7 @@ def build_cn(
         vwap_ready=True,
     )
     source_role_path = provider / "source_role_manifest.json"
-    panel_manifest = build_alpha158_panel(
+    panel_manifest = build_reusable_alpha158_panel(
         root=Path.cwd(),
         contract_path=Path("configs/data/alpha158_panel_v1.yaml"),
         provider_uri=provider,
