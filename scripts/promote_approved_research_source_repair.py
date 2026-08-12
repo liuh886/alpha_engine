@@ -170,7 +170,12 @@ def promote(
         "copied": copied,
         "already_present": already_present,
     }
-    receipt_path = repair_root / "artifacts" / "source_repair_promotion_receipt.json"
+    receipt_path = (
+        artifact_root_resolved
+        / experiment_id
+        / "artifacts"
+        / "source_repair_promotion_receipt.json"
+    )
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
     receipt_path.write_text(
         json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8"
