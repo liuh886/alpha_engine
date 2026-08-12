@@ -1,0 +1,114 @@
+name: Research Online Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'configs/research_experiments/**'
+      - 'configs/factor_libraries/**'
+      - 'configs/research_classifications/**'
+      - 'data/csv_source/**'
+      - 'src/factors/**'
+      - 'src/research/us_ranker_exact_portfolio_replay.py'
+      - 'scripts/run_us_ranker_exact_portfolio_replay.py'
+      - 'scripts/rebuild_active_research_providers.py'
+      - 'scripts/prepare_research_source_repair.py'
+      - '.github/workflows/research-online-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-online-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  exact-replay:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          show-progress: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Resolve one opted-in online validation spec
+        id: mission
+        shell: bash
+        run: |
+          spec=$(uv run python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          matches = []
+          for path in sorted(Path('configs/research_experiments').glob('*.yaml')):
+              payload = yaml.safe_load(path.read_text(encoding='utf-8'))
+              if not isinstance(payload, dict):
+                  continue
+              if payload.get('online_validation') == 'exact_us_ranker_portfolio_v1':
+                  matches.append(path.as_posix())
+          if len(matches) != 1:
+              raise SystemExit(
+                  f'exact online validation requires exactly one opted-in spec; found {matches}'
+              )
+          print(matches[0])
+          PY
+          )
+          echo "spec=$spec" >> "$GITHUB_OUTPUT"
+          echo "Online validation spec: $spec"
+
+      - name: Validate exact replay code
+        run: |
+          uv run ruff check \
+            src/research/us_ranker_exact_portfolio_replay.py \
+            scripts/run_us_ranker_exact_portfolio_replay.py
+          uv run python scripts/run_active_research_experiments.py \
+            --spec "${{ steps.mission.outputs.spec }}" \
+            --validate-only
+
+      - name: Check canonical source completeness
+        run: |
+          rm -rf artifacts/research_source_repair
+          uv run python scripts/prepare_research_source_repair.py \
+            --spec "${{ steps.mission.outputs.spec }}"
+          if [[ -f artifacts/research_source_repair/repair_required ]]; then
+            cat artifacts/research_source_repair/summary.json
+            echo 'Canonical source repair is required before exact online replay.' >&2
+            exit 1
+          fi
+
+      - name: Rebuild canonical mission provider
+        run: >-
+          uv run python scripts/rebuild_active_research_providers.py
+          --spec "${{ steps.mission.outputs.spec }}"
+
+      - name: Run exact US portfolio replay
+        run: >-
+          uv run python scripts/run_us_ranker_exact_portfolio_replay.py
+          --spec "${{ steps.mission.outputs.spec }}"
+          --output-dir artifacts/research_online_validation/stage_b
+
+      - name: Upload exact replay evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: research-online-validation-${{ github.run_id }}
+          path: |
+            artifacts/research_online_validation/
+            artifacts/research_source_repair/
+          if-no-files-found: warn
+          retention-days: 90
