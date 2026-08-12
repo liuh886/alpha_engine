@@ -8,10 +8,6 @@ alter table public.product_access_policies
 comment on table public.product_access_policies is
   'Owner-managed minimum access tier for AlphaEngine strategy current operations and independent product modules.';
 
-delete from public.product_access_policies
-where product_code = 'alpha_engine'
-  and resource_type = 'model';
-
 insert into public.product_access_policies (
   product_code, resource_type, resource_id, required_tier, updated_by, updated_at
 ) values
