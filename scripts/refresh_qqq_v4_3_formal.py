@@ -238,6 +238,54 @@ def _window_summary(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
+def _rebase_appended_report(
+    current: Mapping[str, Any], replay: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Continue new economics from the immutable accepted account boundary."""
+
+    old = _report_prefix(current)
+    source = _report_prefix(replay)
+    boundary = max(old)
+    frozen = old[boundary]
+    source_boundary = source.get(boundary)
+    if source_boundary is None:
+        raise QqqV43RefreshError(
+            f"v4.3 replay is missing accepted economic boundary: {boundary}"
+        )
+
+    rows = [
+        dict(row)
+        for row in replay.get("report", [])
+        if isinstance(row, Mapping) and str(row.get("date") or "") > boundary
+    ]
+    rows.sort(key=lambda row: str(row["date"]))
+    if not rows:
+        raise QqqV43RefreshError("v4.3 refresh produced no new realized sessions")
+
+    account = float(frozen["account"])
+    benchmark = float(frozen["bench_qqq"])
+    tqqq_benchmark = float(frozen["bench_tqqq"])
+    source_tqqq = float(source_boundary["bench_tqqq"])
+    peak = max(float(row["account"]) for row in old.values())
+
+    rebased: list[dict[str, Any]] = []
+    for item in rows:
+        account *= 1.0 + float(item["period_return"])
+        benchmark *= 1.0 + float(item["bench"])
+        next_source_tqqq = float(item["bench_tqqq"])
+        if source_tqqq == 0.0:
+            raise QqqV43RefreshError("v4.3 source TQQQ benchmark boundary is zero")
+        tqqq_benchmark *= next_source_tqqq / source_tqqq
+        source_tqqq = next_source_tqqq
+        peak = max(peak, account)
+        item["account"] = account
+        item["bench_qqq"] = benchmark
+        item["bench_tqqq"] = tqqq_benchmark
+        item["drawdown"] = account / peak - 1.0
+        rebased.append(item)
+    return rebased
+
+
 def refresh(
     *,
     current_package: Path,
@@ -304,13 +352,7 @@ def refresh(
     package = copy.deepcopy(current)
     old_report = _report_prefix(current)
     boundary = max(old_report)
-    appended_report = [
-        dict(row)
-        for row in replay["report"]
-        if str(row.get("date") or "") > boundary
-    ]
-    if not appended_report:
-        raise QqqV43RefreshError("v4.3 refresh produced no new realized sessions")
+    appended_report = _rebase_appended_report(current, replay)
     appended_dates = {str(row["date"]) for row in appended_report}
     package["report"].extend(appended_report)
     package["positions"].extend(
@@ -348,6 +390,7 @@ def refresh(
         **dict(evidence),
         "append_only_boundary": boundary,
         "historical_economic_evidence_recomputed": False,
+        "appended_economics_rebased_from_frozen_account": True,
     }
     package["research_only"] = True
     package["trade_ready"] = False

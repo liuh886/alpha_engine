@@ -7,7 +7,6 @@ from numbers import Integral, Real
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
 import yaml
 
 from scripts.run_cn130_ranking_batch import run as run_cn_ranking_batch
@@ -21,12 +20,13 @@ from src.artifacts.qqq_v4_3_formal import (
 from src.data.adapters.cnn_fear_greed import fetch_cnn_fear_greed
 from src.data.etf_reference_bundle import build_etf_reference_bundle
 from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
-from src.research.formal_model_replay import _compare_package_sections
+from src.research.formal_model_replay import _compare_package_sections, _compare_row_lists
 from src.research.rules_formal_replay_gate import (
     CN_MODEL_ID,
     CN_REPLAY_LEDGER_NAME,
     CN_WINDOW,
     RulesFormalReplayError,
+    assert_exact_formal_prefix,
     verify_cn_current_allocation_replay,
 )
 from src.research.v4_33_ma200_ma20_vix_release import run_v4_33_comparison
@@ -35,27 +35,22 @@ QQQ_REFERENCE_CONTRACT = Path("configs/data/qqqi_qqq_tqqq_reference_bundle_v1.ya
 QQQ_BRIDGE_CONTRACT = Path(
     "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
 )
+QQQ_FORMAL_ROOT = Path("data/research/formal_backtests")
+QQQ_FORMAL_CATALOG = QQQ_FORMAL_ROOT / "catalog.json"
 
-# These are the fields that determine the accepted QQQ economic/decision path.
-# `bench_tqqq` is a diagnostic comparison series, not the formal benchmark or a
-# portfolio input. Position `price` is a displayed source observation; portfolio
-# economics are carried by the retained return/account/cost trace below and the
-# governed source identity is bound separately by manifest/reconciliation hashes.
-QQQ_REPORT_FIELDS = (
+# Historical economic rows are immutable accepted evidence. A current provider
+# snapshot is authoritative for reproducing the strategy decision path and for
+# economics of newly appended rows, but it must not rewrite the accepted past
+# when the upstream provider restates historical adjusted prices by tiny amounts.
+QQQ_DECISION_REPORT_FIELDS = (
     "date",
-    "account",
-    "bench_qqq",
-    "bench",
     "turnover",
-    "period_return",
-    "gross_return",
     "transaction_cost",
     "position_state",
     "position_label",
     "decision_state",
     "decision_reason",
     "executed_reason",
-    "drawdown",
     "trace_frequency",
     "panic_repair_active",
     "slow_bear_defense_active",
@@ -70,6 +65,28 @@ QQQ_POSITION_FIELDS = (
     "executed_reason",
     "panic_repair_active",
     "slow_bear_defense_active",
+)
+QQQ_TRADE_FIELDS = (
+    "date",
+    "instrument",
+    "action",
+    "previous_weight",
+    "target_weight",
+    "weight_delta",
+    "transaction_cost",
+    "reason",
+    "position_state",
+    "position_label",
+    "vix_regime",
+    "vxn_regime",
+)
+QQQ_APPENDED_ECONOMIC_FIELDS = (
+    "date",
+    "bench",
+    "turnover",
+    "period_return",
+    "gross_return",
+    "transaction_cost",
 )
 
 
@@ -117,31 +134,213 @@ def compare_qqq_authoritative_trace(
     expected: Mapping[str, Any],
     observed: Mapping[str, Any],
 ) -> dict[str, Any]:
+    """Compare current-source strategy identity, not frozen historical economics."""
+
     expected_projection = {
         "portfolio_contract": expected.get("portfolio_contract"),
-        "report": _project_rows(expected.get("report"), QQQ_REPORT_FIELDS, label="report"),
+        "report": _project_rows(
+            expected.get("report"), QQQ_DECISION_REPORT_FIELDS, label="report"
+        ),
         "positions": _project_rows(
             expected.get("positions"), QQQ_POSITION_FIELDS, label="positions"
         ),
-        "trades": expected.get("trades"),
+        "trades": _project_rows(
+            expected.get("trades"), QQQ_TRADE_FIELDS, label="trades"
+        ),
     }
     observed_projection = {
         "portfolio_contract": observed.get("portfolio_contract"),
-        "report": _project_rows(observed.get("report"), QQQ_REPORT_FIELDS, label="report"),
+        "report": _project_rows(
+            observed.get("report"), QQQ_DECISION_REPORT_FIELDS, label="report"
+        ),
         "positions": _project_rows(
             observed.get("positions"), QQQ_POSITION_FIELDS, label="positions"
         ),
-        "trades": observed.get("trades"),
+        "trades": _project_rows(
+            observed.get("trades"), QQQ_TRADE_FIELDS, label="trades"
+        ),
     }
     comparison = _compare_package_sections(expected_projection, observed_projection)
     comparison["authority"] = {
-        "report_fields": list(QQQ_REPORT_FIELDS),
+        "historical_economic_authority": "accepted_formal_prefix",
+        "current_source_authority": "decision_path_and_newly_appended_economics",
+        "report_fields": list(QQQ_DECISION_REPORT_FIELDS),
         "position_fields": list(QQQ_POSITION_FIELDS),
-        "trade_fields": "all_retained_fields",
-        "non_authoritative_observation_fields": ["report.bench_tqqq", "positions.price"],
+        "trade_fields": list(QQQ_TRADE_FIELDS),
+        "non_authoritative_current_observation_fields": [
+            "report.account",
+            "report.bench_qqq",
+            "report.bench_tqqq",
+            "report.bench",
+            "report.period_return",
+            "report.gross_return",
+            "report.drawdown",
+            "positions.price",
+            "trades.vix_close",
+            "trades.vxn_close",
+        ],
         "source_identity_bound_separately": True,
     }
     return comparison
+
+
+def _accepted_qqq_reference(root: Path) -> tuple[dict[str, Any], Path, str]:
+    formal_root = (root / QQQ_FORMAL_ROOT).resolve()
+    catalog_path = (root / QQQ_FORMAL_CATALOG).resolve()
+    catalog = load_object(catalog_path)
+    records = catalog.get("records")
+    if not isinstance(records, list):
+        raise RulesFormalReplayError("QQQ formal catalog records are missing")
+    matches = [
+        row
+        for row in records
+        if isinstance(row, Mapping) and row.get("model_id") == QQQ_MODEL_ID
+    ]
+    if len(matches) != 1:
+        raise RulesFormalReplayError(
+            f"expected one accepted QQQ formal catalog row, found {len(matches)}"
+        )
+    record = matches[0]
+    if record.get("publication_status") != "accepted_formal_baseline":
+        raise RulesFormalReplayError("QQQ formal catalog row is not accepted")
+    package_path = (formal_root / str(record.get("path") or "")).resolve()
+    package_path.relative_to(formal_root)
+    if not package_path.is_file():
+        raise RulesFormalReplayError("accepted QQQ formal package is missing")
+    digest = sha256(package_path)
+    if digest != str(record.get("sha256") or ""):
+        raise RulesFormalReplayError("accepted QQQ formal catalog hash mismatch")
+    package = load_object(package_path)
+    if package.get("model_id") != QQQ_MODEL_ID:
+        raise RulesFormalReplayError("accepted QQQ formal package identity mismatch")
+    return package, package_path, digest
+
+
+def _report_boundary(package: Mapping[str, Any]) -> str:
+    report = package.get("report")
+    if not isinstance(report, list) or not report:
+        raise RulesFormalReplayError("QQQ formal report is empty")
+    dates = [
+        str(row["date"])
+        for row in report
+        if isinstance(row, Mapping) and row.get("date")
+    ]
+    if not dates:
+        raise RulesFormalReplayError("QQQ formal report has no dated rows")
+    return max(dates)
+
+
+def _appended_economic_replay(
+    accepted: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    observed: Mapping[str, Any],
+) -> dict[str, Any]:
+    boundary = _report_boundary(accepted)
+    candidate_rows = [
+        row
+        for row in candidate.get("report", [])
+        if isinstance(row, Mapping) and str(row.get("date") or "") > boundary
+    ]
+    if not candidate_rows:
+        return {
+            "exact": True,
+            "status": "not_applicable_no_appended_rows",
+            "boundary": boundary,
+            "rows": 0,
+        }
+    observed_by_date = {
+        str(row.get("date")): row
+        for row in observed.get("report", [])
+        if isinstance(row, Mapping) and row.get("date")
+    }
+    observed_rows: list[Mapping[str, Any]] = []
+    for row in candidate_rows:
+        date = str(row["date"])
+        source = observed_by_date.get(date)
+        if source is None:
+            raise RulesFormalReplayError(
+                f"QQQ appended economic source row is missing: {date}"
+            )
+        observed_rows.append(source)
+    expected_projection = _project_rows(
+        candidate_rows,
+        QQQ_APPENDED_ECONOMIC_FIELDS,
+        label="appended report",
+    )
+    observed_projection = _project_rows(
+        observed_rows,
+        QQQ_APPENDED_ECONOMIC_FIELDS,
+        label="source appended report",
+    )
+    comparison = _compare_row_lists(expected_projection, observed_projection)
+    comparison["status"] = "exact_recomputed_appended_economics"
+    comparison["boundary"] = boundary
+    return comparison
+
+
+def _verify_cumulative_continuity(
+    accepted: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+) -> dict[str, Any]:
+    boundary = _report_boundary(accepted)
+    accepted_report = [
+        row for row in accepted.get("report", []) if isinstance(row, Mapping)
+    ]
+    accepted_boundary = next(
+        row for row in accepted_report if str(row.get("date")) == boundary
+    )
+    appended = sorted(
+        [
+            row
+            for row in candidate.get("report", [])
+            if isinstance(row, Mapping) and str(row.get("date") or "") > boundary
+        ],
+        key=lambda row: str(row["date"]),
+    )
+    if not appended:
+        return {
+            "exact": True,
+            "status": "not_applicable_no_appended_rows",
+            "boundary": boundary,
+            "rows": 0,
+        }
+
+    account = float(accepted_boundary["account"])
+    benchmark = float(accepted_boundary["bench_qqq"])
+    peak = max(float(row["account"]) for row in accepted_report)
+    for row in appended:
+        date = str(row["date"])
+        account *= 1.0 + float(row["period_return"])
+        benchmark *= 1.0 + float(row["bench"])
+        peak = max(peak, account)
+        drawdown = account / peak - 1.0
+        checks = {
+            "account": (account, float(row["account"])),
+            "bench_qqq": (benchmark, float(row["bench_qqq"])),
+            "drawdown": (drawdown, float(row["drawdown"])),
+        }
+        for field, (expected_value, observed_value) in checks.items():
+            if not math.isclose(
+                expected_value,
+                observed_value,
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            ):
+                return {
+                    "exact": False,
+                    "status": "cumulative_continuity_mismatch",
+                    "boundary": boundary,
+                    "date": date,
+                    "field": field,
+                    "expected": expected_value,
+                    "observed": observed_value,
+                }
+    return {
+        "exact": True,
+        "status": "exact_frozen_prefix_continuation",
+        "boundary": boundary,
+        "rows": len(appended),
+    }
 
 
 def verify_qqq_authoritative_replay(
@@ -152,10 +351,18 @@ def verify_qqq_authoritative_replay(
 ) -> dict[str, Any]:
     root = Path(repository_root).resolve()
     package_file = Path(package_path).resolve()
-    expected = load_object(package_file)
-    if expected.get("model_id") != QQQ_MODEL_ID:
-        raise RulesFormalReplayError("QQQ replay requires the accepted v4.3 package")
-    cutoff = str(expected.get("evidence_cutoff") or "")
+    candidate = load_object(package_file)
+    if candidate.get("model_id") != QQQ_MODEL_ID:
+        raise RulesFormalReplayError("QQQ replay requires the accepted v4.3 model family")
+
+    accepted, accepted_path, accepted_sha = _accepted_qqq_reference(root)
+    frozen_prefix = assert_exact_formal_prefix(
+        accepted,
+        candidate,
+        label="QQQ Rotation v4.3 frozen economic prefix",
+    )
+
+    cutoff = str(candidate.get("evidence_cutoff") or "")
     if not cutoff:
         raise RulesFormalReplayError("QQQ formal package has no evidence cutoff")
 
@@ -184,11 +391,11 @@ def verify_qqq_authoritative_replay(
         build_qqq_package(
             results[JOINT_STRATEGY],
             bars,
-            generated_at=str(expected.get("generated_at") or "credentialed-replay"),
+            generated_at=str(candidate.get("generated_at") or "credentialed-replay"),
             evidence_cutoff=cutoff,
-            backtest_id=str(expected.get("backtest_id") or f"{QQQ_MODEL_ID}-replay"),
+            backtest_id=str(candidate.get("backtest_id") or f"{QQQ_MODEL_ID}-replay"),
             evidence={
-                "replay_gate": "qqq_authoritative_replay_v1",
+                "replay_gate": "qqq_authoritative_replay_v2",
                 "model_selection_reopened": False,
             },
             freshness={
@@ -200,11 +407,22 @@ def verify_qqq_authoritative_replay(
             },
         )
     )
-    comparison = compare_qqq_authoritative_trace(expected, observed)
-    if not comparison["exact"]:
+
+    decision_replay = compare_qqq_authoritative_trace(candidate, observed)
+    if not decision_replay["exact"]:
         raise RulesFormalReplayError(
-            "QQQ Rotation v4.3 authoritative replay mismatch: "
-            + str(comparison)
+            "QQQ Rotation v4.3 decision replay mismatch: " + str(decision_replay)
+        )
+    appended_economics = _appended_economic_replay(accepted, candidate, observed)
+    if not appended_economics["exact"]:
+        raise RulesFormalReplayError(
+            "QQQ Rotation v4.3 appended economic replay mismatch: "
+            + str(appended_economics)
+        )
+    continuity = _verify_cumulative_continuity(accepted, candidate)
+    if not continuity["exact"]:
+        raise RulesFormalReplayError(
+            "QQQ Rotation v4.3 cumulative continuation mismatch: " + str(continuity)
         )
 
     manifest = bundle / "bundle_manifest.json"
@@ -215,10 +433,25 @@ def verify_qqq_authoritative_replay(
             raise RulesFormalReplayError(f"QQQ governed replay evidence missing: {path.name}")
 
     return {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "model_id": QQQ_MODEL_ID,
         "decision": "exact_replay",
-        "trace_reproduction": comparison,
+        "trace_reproduction": {
+            "exact": True,
+            "frozen_economic_prefix": frozen_prefix,
+            "current_source_decision_path": decision_replay,
+            "appended_economics": appended_economics,
+            "cumulative_continuity": continuity,
+        },
+        "frozen_economic_identity": {
+            "mode": "accepted_formal_prefix_retained_exact",
+            "accepted_package_path": str(accepted_path.relative_to(root)),
+            "accepted_package_sha256": accepted_sha,
+            "historical_economics_recomputed_from_current_provider": False,
+        },
+        "historical_challenger_policy": (
+            "prospective_window_or_immutable_original_source_snapshot_required"
+        ),
         "data_identity": data_identity,
         "coverage_rows": int(len(coverage)),
         "retrospective_diagnostics_present": bool(diagnostics),
@@ -296,7 +529,7 @@ def prepare_and_verify_active_rules_replay(
     )
 
     return {
-        "schema_version": "active_rules_replay_v1",
+        "schema_version": "active_rules_replay_v2",
         "decision": "exact_replay",
         "models": {
             QQQ_MODEL_ID: qqq_replay,
