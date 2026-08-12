@@ -1,20 +1,18 @@
-# PR #870 Stage B — canonical full-path replay for cal_deeper.
-# Grid discovery remains separate; this mission freezes only incumbent + winner.
+# PR #870 Stage B — completed canonical full-path replay for cal_deeper.
 schema_version: '1.0'
 experiment_id: cn_x1_2_cal_deeper_stage_b_v1
 runner: cross_sectional_xgb_ranker_v1
 active: false
-status: pre_registered
+status: completed_not_supported
+result_receipt: data/research/experiment_receipts/cn_x1_2_cal_deeper_stage_b_v1.json
 parent_model_id: cn_x1_1
 research_only: true
 trade_ready: false
-online_validation: exact_cn_ranker_portfolio_v1
 
 purpose: >-
   Validate PR #870 winner cal_deeper on the governed CN x1.1 portfolio path.
-  Refit the frozen daily ranker on canonical CN130 data, then replay sector 4x1,
-  two-of-three PIT regime gating, one-session execution delay, CSI300 risk-off
-  fallback, actual turnover, and 20/60 bps costs. No new holdout is consumed.
+  The canonical Stage-B replay is complete and rejected cal_deeper. No new
+  untouched holdout was consumed.
 
 submission_lineage:
   source_pr: 870
@@ -23,6 +21,14 @@ submission_lineage:
   grid_relative_excess: 0.282
   grid_provider_identity_sha256: fa92e3e88facf5908b9f6ec153f140e2505a9bce3ef693078cd001b58f607f40
   promotion_eligible: false
+
+validation_lineage:
+  workflow_run_id: 31572825445
+  artifact_id: 9132053519
+  artifact_digest: sha256:abc2215bfbe0f98c54cef2b6a0b99ebff144318846235dfb5cb93d02ab9b9cb4
+  provider_identity_sha256: 1b0b8aea689422640f6b0ca8e24ecc8c0f64fe2131caebd3fb2f1e1bd03d1050
+  decision: cn_x1_2_cal_deeper_full_path_rejected
+  new_holdout_consumed: false
 
 snapshot:
   policy: exact_selected_pool_source_rebuild
@@ -34,10 +40,11 @@ snapshot:
     source_component_identity_sha256 is the selected-pool price-component lineage;
     grid_provider_identity_sha256 records the provider used for PR #870 discovery;
     provider_identity_sha256 is the deterministic CN130 + CSI300 Qlib runtime
-    provider rebuilt from the repaired canonical repository sources for Stage B.
+    provider rebuilt from repaired canonical repository sources for Stage B.
 
 source_repair:
   approval_manifest: data/source_repairs/cn_x1_2_cal_deeper_stage_b_v1.json
+  promotion_receipt: data/source_repairs/cn_x1_2_cal_deeper_stage_b_v1.promotion.json
 
 fixed_model:
   model_id: cn_x1_1
@@ -116,7 +123,7 @@ evaluation:
   schema_version: '1.0'
   baseline_candidate_id: baseline_cn_x1_1
   stress_cost_bps: 60
-  decision: cn_x1_2_cal_deeper_full_path_supported
+  decision: cn_x1_2_cal_deeper_full_path_rejected
   ranking:
     - gate_pass_count
     - worst_drawdown
@@ -153,7 +160,7 @@ stop_rules:
   - no_automatic_model_promotion
 
 version_policy:
-  maximum_surviving_candidates: 1
-  may_propose_cn_x1_2_candidate: true
+  maximum_surviving_candidates: 0
+  may_propose_cn_x1_2_candidate: false
   may_release_cn_x1_2_automatically: false
   new_untouched_challenge_required: true
