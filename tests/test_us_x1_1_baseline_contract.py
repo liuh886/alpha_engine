@@ -5,9 +5,11 @@ from pathlib import Path
 
 import yaml
 
+from src.governance.active_strategy_catalog import load_active_strategy_catalog
+
 
 ROOT = Path(__file__).resolve().parents[1]
-REGISTRY = ROOT / "configs/models/model_registry_v1.yaml"
+ACTIVE_CATALOG = ROOT / "configs/strategies/registry.json"
 MODEL = ROOT / "configs/models/us_x1_1.yaml"
 SPEC = ROOT / "configs/research_paradigms/us_x1_1_frozen_v1.yaml"
 EXPERIMENT = ROOT / "configs/research_experiments/us_x1_1_risk_control_v1.yaml"
@@ -24,14 +26,10 @@ def _compound(values: list[float]) -> float:
 
 
 def test_us_x1_1_is_immutable_superseded_baseline() -> None:
-    registry = _load(REGISTRY)
+    catalog = load_active_strategy_catalog(ACTIVE_CATALOG)
     model = _load(MODEL)
-    assert registry["active_baselines"]["us"] == "us_x1_2"
-    assert registry["models"]["us_x1_0"]["superseded_by"] == "us_x1_1"
-    assert registry["models"]["us_x1_1"]["status"] == (
-        "historical_baseline_superseded"
-    )
-    assert registry["models"]["us_x1_1"]["superseded_by"] == "us_x1_2"
+    assert catalog.by_strategy_id["us_x"].model_version_id == "us_x1_2"
+    assert "us_x1_1" not in catalog.by_model_version_id
     assert model["model_id"] == "us_x1_1"
     assert model["lineage"]["parent"] == "us_x1_0"
     assert model["lineage"]["adopted_from_candidate"] == (
