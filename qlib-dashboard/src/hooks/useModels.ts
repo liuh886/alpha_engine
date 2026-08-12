@@ -7,7 +7,11 @@ import {
   loadPreviewRuns,
   type GovernedRunSummary,
 } from '@/lib/governed-run';
-import { subscribeResearchBundle } from '@/lib/research-bundle';
+import {
+  getActiveResearchBundle,
+  HttpBundleSource,
+  subscribeResearchBundle,
+} from '@/lib/research-bundle';
 import { useGlobalStore } from '@/store/globalStore';
 
 const CHANNEL_ORDER: Record<GovernedRunSummary['channel'], number> = {
@@ -25,6 +29,12 @@ function sortRuns(runs: GovernedRunSummary[]): GovernedRunSummary[] {
     || right.evidenceCutoff.localeCompare(left.evidenceCutoff)
     || left.title.localeCompare(right.title)
   ));
+}
+
+function explicitLocalModels(models: ModelData[], formalVersions: Set<string>): ModelData[] {
+  const bundle = getActiveResearchBundle();
+  if (!bundle || bundle.source instanceof HttpBundleSource) return [];
+  return models.filter((model) => !formalVersions.has(model.id));
 }
 
 export function useModels() {
@@ -64,11 +74,10 @@ export function useModels() {
         modelData: byId.get(run.modelVersionId) ?? null,
       }));
       const previewRuns = preview.runs.filter((run) => !formalVersions.has(run.modelVersionId));
-      const localModels = repositoryModels.filter((model) => !formalVersions.has(model.id));
       const governedRuns = sortRuns([
         ...formalRuns,
         ...previewRuns,
-        ...adaptLocalRuns(localModels),
+        ...adaptLocalRuns(explicitLocalModels(repositoryModels, formalVersions)),
       ]);
       const generatedDates = governedRuns.map((record) => record.generatedAt).filter(Boolean).sort();
       useGlobalStore.getState().setDataGeneratedAt(
