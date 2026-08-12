@@ -18,8 +18,7 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function redactProtectedRecord(record) {
-  if (record.current_operations_access === 'public') return record;
+function redactRuntimeRecord(record) {
   return {
     strategy_id: record.strategy_id,
     model_version_id: record.model_version_id,
@@ -29,17 +28,17 @@ function redactProtectedRecord(record) {
     latest_completed_session: null,
     decision_cadence: record.decision_cadence,
     next_decision_policy: record.next_decision_policy,
-    state_label: 'Protected current operations',
-    decision_reason: 'Current holdings and signals require authenticated entitlement delivery.',
+    state_label: 'Runtime current operations',
+    decision_reason: 'Current holdings and signals are delivered from the runtime access plane.',
     allocations: [],
     turnover: null,
     estimated_cost: null,
     data_freshness: 'unknown',
     factor_freshness: 'blocked',
     delivery_status: 'not available',
-    source_label: 'Protected current operations',
+    source_label: 'Runtime current operations',
     source_href: null,
-    note: 'Current holdings, targets, drivers and decision-ledger provenance are not included in the public bundle.',
+    note: 'Current holdings, targets, drivers and decision-ledger provenance are never included in the public static bundle.',
     factor_evidence: [],
     source_identity: {
       formal_bundle_id: record.source_identity.formal_bundle_id,
@@ -102,19 +101,18 @@ for (const record of snapshots.records) {
 
 const publicProjection = {
   ...snapshots,
-  records: snapshots.records.map(redactProtectedRecord),
+  records: snapshots.records.map(redactRuntimeRecord),
 };
 
 for (const record of publicProjection.records) {
-  if (record.current_operations_access === 'public') continue;
-  assert(record.allocations.length === 0, `Protected allocations leaked for ${record.model_version_id}`);
-  assert(record.factor_evidence.length === 0, `Protected factor evidence leaked for ${record.model_version_id}`);
-  assert(record.source_identity.ledger_fingerprint === null, `Protected ledger fingerprint leaked for ${record.model_version_id}`);
-  assert(record.source_identity.signal_sha256 === null, `Protected signal hash leaked for ${record.model_version_id}`);
-  assert(record.source_identity.workflow_run_id === null, `Protected workflow provenance leaked for ${record.model_version_id}`);
+  assert(record.allocations.length === 0, `Runtime allocations leaked for ${record.model_version_id}`);
+  assert(record.factor_evidence.length === 0, `Runtime factor evidence leaked for ${record.model_version_id}`);
+  assert(record.source_identity.ledger_fingerprint === null, `Runtime ledger fingerprint leaked for ${record.model_version_id}`);
+  assert(record.source_identity.signal_sha256 === null, `Runtime signal hash leaked for ${record.model_version_id}`);
+  assert(record.source_identity.workflow_run_id === null, `Runtime workflow provenance leaked for ${record.model_version_id}`);
 }
 
 await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(publicProjection)}\n`, 'utf8');
-console.log(`Published governed strategy operations snapshots for ${operationIds.length} formal models; protected current operations were redacted.`);
+console.log(`Published public strategy identity shells for ${operationIds.length} formal models; all current operations stay on the runtime access plane.`);
