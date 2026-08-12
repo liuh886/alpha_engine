@@ -1,42 +1,45 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import {
-  loadProtectedStrategyOperation,
+  loadRuntimeStrategyOperation,
   loadStrategyOperations,
   type StrategyOperationsClient,
   type StrategyOperationsSnapshot,
 } from '@/lib/strategy-operations';
+import { useAccessControl } from './useAccessControl';
 import { useAlphaMembership } from './useAlphaMembership';
 
 export function useStrategyOperations(runs: GovernedRunSummary[]) {
+  const access = useAccessControl();
   const membership = useAlphaMembership();
   const formalRuns = useMemo(() => runs.filter((run) => run.channel === 'formal'), [runs]);
   const [snapshots, setSnapshots] = useState<Map<string, StrategyOperationsSnapshot>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (membership.loading) return;
+    if (membership.loading || access.policyLoading) return;
     let active = true;
     setLoading(true);
 
     void (async () => {
       const next = await loadStrategyOperations(formalRuns);
-      if (membership.signedIn) {
+      const runtimeSnapshots = Array.from(next.values()).filter((snapshot) => {
+        const requiredTier = access.requiredTier('strategy', snapshot.strategyId);
+        return requiredTier === 'public' || membership.signedIn;
+      });
+      if (runtimeSnapshots.length) {
         const client = await membership.getClient();
         if (client) {
-          const protectedSnapshots = Array.from(next.values()).filter(
-            (snapshot) => snapshot.currentOperationsAccess !== 'public',
-          );
-          await Promise.all(protectedSnapshots.map(async (snapshot) => {
+          await Promise.all(runtimeSnapshots.map(async (snapshot) => {
             try {
-              const protectedSnapshot = await loadProtectedStrategyOperation(
+              const runtimeSnapshot = await loadRuntimeStrategyOperation(
                 client as StrategyOperationsClient,
                 snapshot.strategyId,
                 snapshot.modelVersionId,
               );
-              if (protectedSnapshot) next.set(snapshot.modelVersionId, protectedSnapshot);
+              if (runtimeSnapshot) next.set(snapshot.modelVersionId, runtimeSnapshot);
             } catch {
-              // Fail closed: keep the redacted public projection when entitlement delivery fails.
+              // Fail closed at the product surface: keep the redacted public identity shell.
             }
           }));
         }
@@ -47,7 +50,7 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
     })();
 
     return () => { active = false; };
-  }, [formalRuns, membership.getClient, membership.loading, membership.signedIn]);
+  }, [access.policyLoading, access.requiredTier, formalRuns, membership.getClient, membership.loading, membership.signedIn]);
 
   return { formalRuns, snapshots, loading };
 }

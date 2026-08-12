@@ -66,7 +66,7 @@ export function StrategyFleet({
       <div className="divide-y">
         {runs.map((run) => {
           const snapshot = snapshots.get(run.modelVersionId);
-          const requiredTier = snapshot?.currentOperationsAccess ?? 'public';
+          const requiredTier = snapshot ? access.requiredTier('strategy', snapshot.strategyId) : 'owner';
           const liveLocked = !access.canAccess(requiredTier);
           const label = snapshot ? STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading operations' : 'Operating status unavailable';
           return (

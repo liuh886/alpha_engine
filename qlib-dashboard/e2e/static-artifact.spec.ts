@@ -54,6 +54,13 @@ async function installMembershipFixture(page: Page, initial: MembershipFixture):
   await page.addInitScript((snapshot) => {
     let current = snapshot;
     const listeners = new Set<(value: MembershipFixture) => void>();
+    const policies = [
+      { product_code: 'alpha_engine', resource_type: 'module', resource_id: 'securities', required_tier: 'authenticated', updated_at: '2026-08-12T00:00:00Z' },
+      { product_code: 'alpha_engine', resource_type: 'strategy', resource_id: 'qqq_rotation', required_tier: 'pro', updated_at: '2026-08-12T00:00:00Z' },
+      { product_code: 'alpha_engine', resource_type: 'strategy', resource_id: 'us_x', required_tier: 'public', updated_at: '2026-08-12T00:00:00Z' },
+      { product_code: 'alpha_engine', resource_type: 'strategy', resource_id: 'cn_x', required_tier: 'public', updated_at: '2026-08-12T00:00:00Z' },
+      { product_code: 'alpha_engine', resource_type: 'strategy', resource_id: 'byd', required_tier: 'public', updated_at: '2026-08-12T00:00:00Z' },
+    ];
     (window as any).HaoAccount = {
       getState: () => current,
       open: () => undefined,
@@ -61,6 +68,27 @@ async function installMembershipFixture(page: Page, initial: MembershipFixture):
         listeners.add(listener);
         return () => listeners.delete(listener);
       },
+      getClient: async () => ({
+        from: (table: string) => {
+          if (table === 'product_access_policies') {
+            return {
+              select: () => ({
+                eq: async () => ({ data: policies, error: null }),
+              }),
+            };
+          }
+          return {
+            select: () => {
+              const query: any = {
+                eq: () => query,
+                maybeSingle: async () => ({ data: null, error: null }),
+              };
+              return query;
+            },
+            upsert: async () => ({ error: null }),
+          };
+        },
+      }),
     };
     (window as any).__setAlphaMembership = (next: MembershipFixture) => {
       current = next;
@@ -122,7 +150,7 @@ test('Free users can inspect QQQR evidence while current operations remain prote
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   await fleet.getByText('QQQR v4.3', { exact: true }).click();
   await expect(page.getByRole('heading', { name: 'QQQR v4.3', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Pro execution layer', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pro current operations', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Current holdings and live signals are protected', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'View AlphaEngine Pro access' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Performance, risk, holdings and attribution', exact: true })).toBeVisible();
@@ -135,7 +163,8 @@ test('only a verified Owner can open access settings', async ({ page }) => {
   await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'owner-fixture', app_metadata: { alpha_engine_role: 'owner' } } });
   await page.goto('/#/settings/access');
   await expect(page.getByRole('main').getByRole('heading', { name: 'Access Settings' })).toBeVisible();
-  await expect(page.getByText('Guest < Member < Pro < Owner.')).toBeVisible();
+  await expect(page.getByText('Public < Member < Pro < Owner.')).toBeVisible();
+  await expect(page.getByText('Strategy current operations', { exact: true })).toBeVisible();
 });
 
 async function loadFormalDisplayNames(page: Page): Promise<string[]> {

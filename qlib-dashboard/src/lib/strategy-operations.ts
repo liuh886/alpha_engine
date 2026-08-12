@@ -1,5 +1,4 @@
 import type { GovernedRunSummary } from './governed-run';
-import type { AccessTier } from './model-access';
 import { assetUrl } from './runtime-capabilities';
 
 export type StrategyOperationalStatus =
@@ -51,7 +50,6 @@ export interface StrategySourceIdentity {
 export interface StrategyOperationsSnapshot {
   strategyId: string;
   modelVersionId: string;
-  currentOperationsAccess: AccessTier;
   status: StrategyOperationalStatus;
   asOf: string | null;
   latestCompletedSession: string | null;
@@ -79,28 +77,28 @@ interface OperationsDocument {
   records?: unknown;
 }
 
-interface ProtectedOperationRow {
+interface RuntimeOperationRow {
   strategy_id?: unknown;
   model_version_id?: unknown;
   snapshot?: unknown;
 }
 
-interface ProtectedOperationResult {
-  data: ProtectedOperationRow | null;
+interface RuntimeOperationResult {
+  data: RuntimeOperationRow | null;
   error: { message?: string } | null;
 }
 
-interface ProtectedOperationFilter {
-  eq: (column: string, value: string) => ProtectedOperationFilter;
-  maybeSingle: () => Promise<ProtectedOperationResult>;
+interface RuntimeOperationFilter {
+  eq: (column: string, value: string) => RuntimeOperationFilter;
+  maybeSingle: () => Promise<RuntimeOperationResult>;
 }
 
-interface ProtectedOperationQuery {
-  select: (columns: string) => ProtectedOperationFilter;
+interface RuntimeOperationQuery {
+  select: (columns: string) => RuntimeOperationFilter;
 }
 
 export interface StrategyOperationsClient {
-  from: (table: string) => ProtectedOperationQuery;
+  from: (table: string) => RuntimeOperationQuery;
 }
 
 const STATUS = new Set<StrategyOperationalStatus>([
@@ -115,7 +113,6 @@ const STATUS = new Set<StrategyOperationalStatus>([
 ]);
 const FRESHNESS = new Set<StrategyFreshness>(['current', 'stale', 'blocked', 'unknown']);
 const EFFECT = new Set<FactorEffect>(['support', 'veto', 'neutral']);
-const ACCESS = new Set<AccessTier>(['public', 'authenticated', 'pro', 'owner']);
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -168,7 +165,6 @@ export function parseStrategyOperationsSnapshot(value: unknown): StrategyOperati
   const strategyId = record.strategy_id;
   assert(typeof modelVersionId === 'string' && modelVersionId.length > 0, 'Strategy operations model identity is missing');
   assert(typeof strategyId === 'string' && strategyId.length > 0, `Strategy identity is missing for ${modelVersionId}`);
-  assert(ACCESS.has(record.current_operations_access as AccessTier), `Unsupported operations access for ${modelVersionId}`);
   assert(STATUS.has(record.status as StrategyOperationalStatus), `Unsupported operations status for ${modelVersionId}`);
   assert(FRESHNESS.has(record.data_freshness as StrategyFreshness), `Unsupported data freshness for ${modelVersionId}`);
   assert(FRESHNESS.has(record.factor_freshness as StrategyFreshness), `Unsupported factor freshness for ${modelVersionId}`);
@@ -202,7 +198,6 @@ export function parseStrategyOperationsSnapshot(value: unknown): StrategyOperati
   return {
     strategyId,
     modelVersionId,
-    currentOperationsAccess: record.current_operations_access as AccessTier,
     status: record.status as StrategyOperationalStatus,
     asOf: nullableString(record.as_of),
     latestCompletedSession: nullableString(record.latest_completed_session),
@@ -240,7 +235,6 @@ function blocked(run: GovernedRunSummary, message: string): StrategyOperationsSn
   return {
     strategyId: run.modelVersionId,
     modelVersionId: run.modelVersionId,
-    currentOperationsAccess: 'public',
     status: 'blocked',
     asOf: null,
     latestCompletedSession: run.evidenceCutoff || null,
@@ -276,7 +270,7 @@ async function fetchOperations(): Promise<Map<string, StrategyOperationsSnapshot
   const response = await fetch(assetUrl('data/strategy-operations/snapshots.json'), { cache: 'no-store' });
   if (!response.ok) throw new Error(`Strategy operations snapshot unavailable (${response.status})`);
   const value = await response.json() as OperationsDocument;
-  assert(value.schema_version === '2.1.0', 'Unsupported strategy operations schema');
+  assert(value.schema_version === '2.2.0', 'Unsupported strategy operations schema');
   assert(value.research_only === true && value.trade_ready === false, 'Invalid strategy operations boundary');
   assert(Array.isArray(value.records), 'Strategy operations records are missing');
   const snapshots = value.records.map(parseStrategyOperationsSnapshot);
@@ -285,7 +279,7 @@ async function fetchOperations(): Promise<Map<string, StrategyOperationsSnapshot
   return new Map(snapshots.map((snapshot) => [snapshot.modelVersionId, snapshot]));
 }
 
-export async function loadProtectedStrategyOperation(
+export async function loadRuntimeStrategyOperation(
   client: StrategyOperationsClient,
   strategyId: string,
   modelVersionId: string,
@@ -296,13 +290,13 @@ export async function loadProtectedStrategyOperation(
     .eq('strategy_id', strategyId)
     .eq('model_version_id', modelVersionId)
     .maybeSingle();
-  if (error) throw new Error(error.message || 'Protected strategy operations request failed.');
+  if (error) throw new Error(error.message || 'Runtime strategy operations request failed.');
   if (!data) return null;
-  assert(data.strategy_id === strategyId, 'Protected strategy identity mismatch');
-  assert(data.model_version_id === modelVersionId, 'Protected model identity mismatch');
+  assert(data.strategy_id === strategyId, 'Runtime strategy identity mismatch');
+  assert(data.model_version_id === modelVersionId, 'Runtime model identity mismatch');
   const snapshot = parseStrategyOperationsSnapshot(data.snapshot);
-  assert(snapshot.strategyId === strategyId, 'Protected snapshot strategy identity mismatch');
-  assert(snapshot.modelVersionId === modelVersionId, 'Protected snapshot model identity mismatch');
+  assert(snapshot.strategyId === strategyId, 'Runtime snapshot strategy identity mismatch');
+  assert(snapshot.modelVersionId === modelVersionId, 'Runtime snapshot model identity mismatch');
   return snapshot;
 }
 
