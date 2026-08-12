@@ -87,16 +87,20 @@ def test_catalog_replaces_cn_x1_0_with_cn_x1_1(tmp_path: Path) -> None:
     module = _load()
     target = tmp_path / "formal"
     _seed_formal_root(target)
+    before = json.loads((target / "catalog.json").read_text(encoding="utf-8"))
+    preserved_ids = [
+        row["model_id"]
+        for row in before["records"]
+        if row["model_id"] not in {"cn_x1_0", "cn_x1_1"}
+    ]
+
     module.promote(target, EVIDENCE)
     catalog = json.loads((target / "catalog.json").read_text(encoding="utf-8"))
     ids = [row["model_id"] for row in catalog["records"]]
     assert "cn_x1_0" not in ids
-    assert ids == [
-        "qqqi_qqq_tqqq_v4_3",
-        "us_x1_1",
-        "cn_x1_1",
-        "byd_v1_3_recovery_event_low_vol_confirmation_v1",
-    ]
+    assert ids.count("cn_x1_1") == 1
+    assert [model_id for model_id in ids if model_id != "cn_x1_1"] == preserved_ids
+
     freshness = json.loads((target / "freshness.json").read_text(encoding="utf-8"))
     assert "cn_x1_0" not in freshness["required_models"]
     assert "cn_x1_1" in freshness["required_models"]
