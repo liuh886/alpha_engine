@@ -24,8 +24,8 @@ const FAMILY_ORDER = ['qqq_rotation', 'cn_ranker', 'byd_allocation', 'us_ranker'
 const fallbackFleetRows = [
   { name: 'QQQR v4.3', detail: 'US systematic rotation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
   { name: 'CN x1.1', detail: 'China equity ranking', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
-  { name: 'BYD v1.2', detail: 'Adaptive single-stock allocation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
-  { name: 'US x1.2', detail: 'Active US research baseline', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'BYD v1.3', detail: 'Adaptive single-stock allocation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'US x1.3', detail: 'Active US research baseline', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
 ];
 
 const evidenceChecks = [
