@@ -84,6 +84,15 @@ def _qqq_package() -> dict:
                 "action": "BUY",
                 "previous_weight": 0.0,
                 "target_weight": 0.5,
+                "weight_delta": 0.5,
+                "transaction_cost": 0.0,
+                "reason": "hold",
+                "position_state": 1,
+                "position_label": "balanced",
+                "vix_close": 15.0,
+                "vix_regime": "normal",
+                "vxn_close": 18.0,
+                "vxn_regime": "normal",
             }
         ],
     }
@@ -111,27 +120,82 @@ def test_exact_prefix_rejects_historical_mutation() -> None:
         assert_exact_formal_prefix(expected, observed, label="fixture")
 
 
-def test_qqq_authoritative_trace_separates_diagnostics_from_economics() -> None:
+def test_qqq_current_source_replay_ignores_restated_historical_observations() -> None:
     expected = _qqq_package()
     observed = copy.deepcopy(expected)
+    observed["report"][0]["account"] = 1.1999998
+    observed["report"][0]["period_return"] = 0.0199998
+    observed["report"][0]["gross_return"] = 0.0199998
+    observed["report"][0]["drawdown"] = -0.0100002
     observed["report"][0]["bench_tqqq"] = 9.9
     observed["positions"][0]["price"] = 600.00002
+    observed["trades"][0]["vix_close"] = 15.0002
+    observed["trades"][0]["vxn_close"] = 18.0002
 
     comparison = compare_qqq_authoritative_trace(expected, observed)
 
     assert comparison["exact"] is True
+    assert comparison["authority"]["historical_economic_authority"] == (
+        "accepted_formal_prefix"
+    )
     assert comparison["authority"]["source_identity_bound_separately"] is True
 
 
-def test_qqq_authoritative_trace_rejects_economic_drift() -> None:
+def test_qqq_current_source_replay_rejects_decision_drift() -> None:
     expected = _qqq_package()
     observed = copy.deepcopy(expected)
-    observed["report"][0]["period_return"] = 0.021
+    observed["report"][0]["weight_QQQ"] = 0.25
 
     comparison = compare_qqq_authoritative_trace(expected, observed)
 
     assert comparison["exact"] is False
-    assert comparison["sections"]["report"]["first_mismatch"]["field"] == "period_return"
+    assert comparison["sections"]["report"]["first_mismatch"]["field"] == "weight_QQQ"
+
+
+def test_qqq_appended_economics_still_require_exact_current_source() -> None:
+    accepted = _qqq_package()
+    candidate = copy.deepcopy(accepted)
+    observed = copy.deepcopy(accepted)
+    appended = copy.deepcopy(accepted["report"][0])
+    appended["date"] = "2026-08-07"
+    appended["period_return"] = 0.01
+    appended["gross_return"] = 0.01
+    appended["bench"] = 0.005
+    candidate["report"].append(copy.deepcopy(appended))
+    source = copy.deepcopy(appended)
+    source["period_return"] = 0.011
+    observed["report"].append(source)
+
+    comparison = qqq_replay._appended_economic_replay(accepted, candidate, observed)
+
+    assert comparison["exact"] is False
+    assert comparison["first_mismatch"]["field"] == "period_return"
+
+
+def test_qqq_appended_cumulative_path_must_continue_from_frozen_account() -> None:
+    accepted = _qqq_package()
+    candidate = copy.deepcopy(accepted)
+    appended = copy.deepcopy(accepted["report"][0])
+    appended.update(
+        {
+            "date": "2026-08-07",
+            "period_return": 0.01,
+            "bench": 0.02,
+            "account": 1.2 * 1.01,
+            "bench_qqq": 1.1 * 1.02,
+            "drawdown": 0.0,
+        }
+    )
+    candidate["report"].append(appended)
+
+    comparison = qqq_replay._verify_cumulative_continuity(accepted, candidate)
+
+    assert comparison["exact"] is True
+
+    candidate["report"][-1]["account"] += 1e-6
+    mismatch = qqq_replay._verify_cumulative_continuity(accepted, candidate)
+    assert mismatch["exact"] is False
+    assert mismatch["field"] == "account"
 
 
 def test_cn_regime_portfolio_respects_continuation_weights() -> None:
