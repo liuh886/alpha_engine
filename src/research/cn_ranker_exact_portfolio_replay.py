@@ -12,12 +12,13 @@ import pandas as pd
 import yaml
 
 from src.common.runtime_settings import PROJECT_ROOT
+from src.factors.library import load_factor_library
+from src.factors.model_contract import resolve_canonical_factor_ids
 from src.research.cn130_cross_sectional_ranking import forward_returns, load_provider_panel
 from src.research.cn_x1_1_regime_gated import RegimeGateSpec, build_regime_state, run_regime_portfolio
 from src.research.cross_sectional_experiment_runner import (
     RETURN_EXPRESSION,
     _benchmark_instrument,
-    _factor_expressions,
     _resolve_symbols,
     _runtime_for_market,
     load_cross_sectional_experiment_spec,
@@ -164,6 +165,77 @@ def _windows(spec, runtime):
     return selected, dates
 
 
+def _raw_candidate_map(spec) -> dict[str, dict[str, Any]]:
+    rows = spec.raw.get("candidates")
+    if not isinstance(rows, list):
+        raise ValueError("CN exact replay requires candidate mappings")
+    result: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("CN exact replay candidate entries must be mappings")
+        candidate_id = str(row.get("candidate_id", "")).strip()
+        if not candidate_id or candidate_id in result:
+            raise ValueError(f"invalid or duplicate candidate id: {candidate_id!r}")
+        result[candidate_id] = row
+    expected = {candidate.candidate_id for candidate in spec.candidates}
+    if set(result) != expected:
+        raise ValueError("parsed candidate metadata differs from validated experiment candidates")
+    return result
+
+
+def _candidate_factor_contracts(spec) -> dict[str, dict[str, Any]]:
+    """Resolve deterministic candidate features across maintained canonical libraries."""
+
+    factor_cfg = spec.raw.get("factor_library") or {}
+    primary_source = str(factor_cfg.get("source", "")).strip()
+    if not primary_source:
+        raise ValueError("exact CN replay requires factor_library.source")
+    primary = load_factor_library(spec.factor_library_path)
+    raw_candidates = _raw_candidate_map(spec)
+
+    contracts: dict[str, dict[str, Any]] = {}
+    for candidate in spec.candidates:
+        base_definitions = primary.factors_for_groups(candidate.factor_groups)
+        factor_ids = [definition.factor_id for definition in base_definitions]
+        library_sources = [primary_source]
+
+        additions = raw_candidates[candidate.candidate_id].get("canonical_factor_additions")
+        if additions is not None:
+            if not isinstance(additions, dict):
+                raise ValueError(
+                    f"candidate {candidate.candidate_id} canonical_factor_additions "
+                    "must be a mapping"
+                )
+            raw_sources = additions.get("library_sources")
+            raw_ids = additions.get("factor_ids")
+            if not isinstance(raw_sources, list) or not raw_sources:
+                raise ValueError(
+                    f"candidate {candidate.candidate_id} additions require library_sources"
+                )
+            if not isinstance(raw_ids, list) or not raw_ids:
+                raise ValueError(
+                    f"candidate {candidate.candidate_id} additions require factor_ids"
+                )
+            library_sources.extend(str(value).strip() for value in raw_sources)
+            factor_ids.extend(str(value).strip() for value in raw_ids)
+
+        definitions = resolve_canonical_factor_ids(
+            root=PROJECT_ROOT,
+            library_sources=library_sources,
+            factor_ids=factor_ids,
+        )
+        contracts[candidate.candidate_id] = {
+            "library_sources": tuple(library_sources),
+            "factor_ids": tuple(definition.factor_id for definition in definitions),
+            "expressions": tuple(definition.expression for definition in definitions),
+            "implementation_hashes": {
+                definition.factor_id: definition.implementation_hash
+                for definition in definitions
+            },
+        }
+    return contracts
+
+
 def _fit_scores(
     candidate,
     expressions: tuple[str, ...],
@@ -233,18 +305,29 @@ def _ledger(
 def _candidate_summary(
     candidate_id: str,
     factor_groups: tuple[str, ...],
-    factor_count: int,
+    factor_contract: dict[str, Any],
     parameter_identity: dict[str, object],
     diagnostic_rows: list[dict[str, Any]],
     base: dict[str, Any],
     stress: dict[str, Any],
 ) -> dict[str, Any]:
-    rank_ic = [float(row["rank_ic"]) for row in diagnostic_rows if row["candidate_id"] == candidate_id]
-    icir = [float(row["icir"]) for row in diagnostic_rows if row["candidate_id"] == candidate_id]
+    rank_ic = [
+        float(row["rank_ic"])
+        for row in diagnostic_rows
+        if row["candidate_id"] == candidate_id
+    ]
+    icir = [
+        float(row["icir"])
+        for row in diagnostic_rows
+        if row["candidate_id"] == candidate_id
+    ]
     return {
         "candidate_id": candidate_id,
         "factor_groups": list(factor_groups),
-        "factor_count": factor_count,
+        "factor_library_sources": list(factor_contract["library_sources"]),
+        "factor_ids": list(factor_contract["factor_ids"]),
+        "factor_implementation_hashes": dict(factor_contract["implementation_hashes"]),
+        "factor_count": len(factor_contract["factor_ids"]),
         "parameter_identity": parameter_identity,
         "mean_rank_ic": float(np.mean(rank_ic)) if rank_ic else 0.0,
         "mean_icir": float(np.mean(icir)) if icir else 0.0,
@@ -261,7 +344,10 @@ def run_exact_cn_ranker_portfolio_replay(
     spec = load_cross_sectional_experiment_spec(spec_path)
     if spec.market != "cn" or str(spec.raw.get("online_validation") or "") != REPLAY_ID:
         raise ValueError("spec is not opted into exact CN online replay")
-    if spec.contract.base_cost_bps != BASE_COST_BPS or spec.contract.stress_cost_bps != STRESS_COST_BPS:
+    if (
+        spec.contract.base_cost_bps != BASE_COST_BPS
+        or spec.contract.stress_cost_bps != STRESS_COST_BPS
+    ):
         raise ValueError("exact CN replay requires 20/60 bps")
     if tuple(spec.contract.selection_windows) != SELECTION_WINDOWS:
         raise ValueError("exact CN replay requires the four frozen selection windows")
@@ -269,7 +355,11 @@ def run_exact_cn_ranker_portfolio_replay(
     output = (
         Path(output_dir).resolve()
         if output_dir is not None
-        else PROJECT_ROOT / "artifacts" / "research_experiments" / spec.experiment_id / "stage_b"
+        else PROJECT_ROOT
+        / "artifacts"
+        / "research_experiments"
+        / spec.experiment_id
+        / "stage_b"
     )
     output.mkdir(parents=True, exist_ok=True)
 
@@ -322,7 +412,11 @@ def run_exact_cn_ranker_portfolio_replay(
     )[BENCHMARK]
 
     windows, evaluation_dates = _windows(spec, runtime)
-    expressions_by_candidate = _factor_expressions(spec)
+    factor_contracts = _candidate_factor_contracts(spec)
+    expressions_by_candidate = {
+        candidate_id: tuple(contract["expressions"])
+        for candidate_id, contract in factor_contracts.items()
+    }
     union_expressions = list(
         dict.fromkeys(
             expression
@@ -331,10 +425,13 @@ def run_exact_cn_ranker_portfolio_replay(
         )
     )
     expression_columns = {
-        expression: f"feature_{index}" for index, expression in enumerate(union_expressions)
+        expression: f"feature_{index}"
+        for index, expression in enumerate(union_expressions)
     }
 
-    ledgers: dict[str, list[pd.DataFrame]] = {candidate.candidate_id: [] for candidate in spec.candidates}
+    ledgers: dict[str, list[pd.DataFrame]] = {
+        candidate.candidate_id: [] for candidate in spec.candidates
+    }
     score_hashes: dict[str, dict[str, str]] = {
         candidate.candidate_id: {} for candidate in spec.candidates
     }
@@ -344,11 +441,21 @@ def run_exact_cn_ranker_portfolio_replay(
     for window in windows:
         dates = evaluation_dates[window.label]
         features_all = normalize_qlib_frame_index(
-            runtime.features(symbols, union_expressions, window.train_start, window.test_end)
+            runtime.features(
+                symbols,
+                union_expressions,
+                window.train_start,
+                window.test_end,
+            )
         ).replace([np.inf, -np.inf], np.nan)
         features_all.columns = [expression_columns[item] for item in union_expressions]
         returns_all = normalize_qlib_frame_index(
-            runtime.features(symbols, [RETURN_EXPRESSION], window.train_start, window.test_end)
+            runtime.features(
+                symbols,
+                [RETURN_EXPRESSION],
+                window.train_start,
+                window.test_end,
+            )
         ).replace([np.inf, -np.inf], np.nan)
         returns_all.columns = ["return"]
         returns_all.attrs.update(
@@ -434,7 +541,10 @@ def run_exact_cn_ranker_portfolio_replay(
                 _ledger(scores, execution_test, classification, window.label)
             )
 
-    results: dict[str, dict[int, tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataFrame]]] = {}
+    results: dict[
+        str,
+        dict[int, tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataFrame]],
+    ] = {}
     for candidate in spec.candidates:
         candidate_id = candidate.candidate_id
         ledger = pd.concat(ledgers[candidate_id], ignore_index=True)
@@ -453,10 +563,14 @@ def run_exact_cn_ranker_portfolio_replay(
 
     baseline_id = spec.contract.baseline_candidate_id
     challenger_ids = [
-        candidate.candidate_id for candidate in spec.candidates if candidate.candidate_id != baseline_id
+        candidate.candidate_id
+        for candidate in spec.candidates
+        if candidate.candidate_id != baseline_id
     ]
-    if challenger_ids != ["cal_deeper"]:
-        raise ValueError(f"CN Stage-B must freeze only cal_deeper; got {challenger_ids}")
+    if len(challenger_ids) != 1:
+        raise ValueError(
+            f"CN Stage-B requires exactly one declared challenger; got {challenger_ids}"
+        )
     challenger_id = challenger_ids[0]
 
     candidate_rows: list[dict[str, Any]] = []
@@ -467,7 +581,7 @@ def run_exact_cn_ranker_portfolio_replay(
             _candidate_summary(
                 candidate.candidate_id,
                 candidate.factor_groups,
-                len(expressions_by_candidate[candidate.candidate_id]),
+                factor_contracts[candidate.candidate_id],
                 candidate.calibration.identity_manifest(),
                 diagnostics,
                 base,
@@ -479,11 +593,15 @@ def run_exact_cn_ranker_portfolio_replay(
     baseline_stress = results[baseline_id][STRESS_COST_BPS][0]
     challenger_base = results[challenger_id][BASE_COST_BPS][0]
     challenger_stress = results[challenger_id][STRESS_COST_BPS][0]
-    drawdown_delta = float(challenger_base["max_drawdown"] - baseline_base["max_drawdown"])
+    drawdown_delta = float(
+        challenger_base["max_drawdown"] - baseline_base["max_drawdown"]
+    )
 
     second_ledgers: list[pd.DataFrame] = []
     reproduction: dict[str, dict[str, str]] = {}
-    challenger = next(item for item in spec.candidates if item.candidate_id == challenger_id)
+    challenger = next(
+        item for item in spec.candidates if item.candidate_id == challenger_id
+    )
     deterministic_scores = True
     for window in windows:
         cached = cache[window.label]
@@ -498,7 +616,10 @@ def run_exact_cn_ranker_portfolio_replay(
         )
         second_hash = _score_hash(replay_scores)
         first_hash = score_hashes[challenger_id][window.label]
-        reproduction[window.label] = {"first": first_hash, "second": second_hash}
+        reproduction[window.label] = {
+            "first": first_hash,
+            "second": second_hash,
+        }
         deterministic_scores = deterministic_scores and first_hash == second_hash
         second_ledgers.append(
             _ledger(
@@ -526,8 +647,14 @@ def run_exact_cn_ranker_portfolio_replay(
         )
         first_period_hash = _frame_hash(first_periods, ["window", "datetime"])
         second_period_hash = _frame_hash(second_periods, ["window", "datetime"])
-        first_holdings_hash = _frame_hash(first_holdings, ["window", "datetime", "instrument"])
-        second_holdings_hash = _frame_hash(second_holdings, ["window", "datetime", "instrument"])
+        first_holdings_hash = _frame_hash(
+            first_holdings,
+            ["window", "datetime", "instrument"],
+        )
+        second_holdings_hash = _frame_hash(
+            second_holdings,
+            ["window", "datetime", "instrument"],
+        )
         portfolio_reproduction[str(cost_bps)] = {
             "first_periods": first_period_hash,
             "second_periods": second_period_hash,
@@ -535,7 +662,8 @@ def run_exact_cn_ranker_portfolio_replay(
             "second_holdings": second_holdings_hash,
         }
         deterministic_portfolio = deterministic_portfolio and (
-            first_period_hash == second_period_hash and first_holdings_hash == second_holdings_hash
+            first_period_hash == second_period_hash
+            and first_holdings_hash == second_holdings_hash
         )
 
     positive_windows = int(challenger_base["positive_excess_windows"])
@@ -548,11 +676,18 @@ def run_exact_cn_ranker_portfolio_replay(
         > float(baseline_base["relative_excess"]),
         "beats_incumbent_60bps": float(challenger_stress["relative_excess"])
         > float(baseline_stress["relative_excess"]),
-        "stress_relative_excess_positive": float(challenger_stress["relative_excess"]) > 0.0,
+        "stress_relative_excess_positive": float(
+            challenger_stress["relative_excess"]
+        )
+        > 0.0,
         "at_least_three_of_four_positive_windows": positive_windows >= 3,
-        "max_drawdown_above_minus_25pct": float(challenger_base["max_drawdown"]) >= -0.25,
+        "max_drawdown_above_minus_25pct": float(challenger_base["max_drawdown"])
+        >= -0.25,
         "drawdown_worsening_within_3pp": drawdown_delta >= -0.03,
-        "risk_on_relative_excess_positive": float(challenger_base["risk_on_relative_excess"]) > 0.0,
+        "risk_on_relative_excess_positive": float(
+            challenger_base["risk_on_relative_excess"]
+        )
+        > 0.0,
         "risk_off_relative_no_worse_than_cost_drag": risk_off_cost_gate,
         "exact_score_reproduction": deterministic_scores,
         "exact_portfolio_reproduction": deterministic_portfolio,
@@ -561,9 +696,13 @@ def run_exact_cn_ranker_portfolio_replay(
     support = {
         "challenger": challenger_id,
         "baseline": baseline_id,
-        "improvement_vs_incumbent_20bps": float(challenger_base["relative_excess"])
+        "improvement_vs_incumbent_20bps": float(
+            challenger_base["relative_excess"]
+        )
         - float(baseline_base["relative_excess"]),
-        "improvement_vs_incumbent_60bps": float(challenger_stress["relative_excess"])
+        "improvement_vs_incumbent_60bps": float(
+            challenger_stress["relative_excess"]
+        )
         - float(baseline_stress["relative_excess"]),
         "worst_drawdown_delta_vs_incumbent": drawdown_delta,
         "positive_window_count": positive_windows,
@@ -572,19 +711,21 @@ def run_exact_cn_ranker_portfolio_replay(
     }
 
     receipt = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "experiment_id": spec.experiment_id,
         "runner": REPLAY_ID,
         "status": "completed",
         "decision": (
-            "cn_x1_2_cal_deeper_full_path_supported"
+            f"{challenger_id}_full_path_supported"
             if supported
-            else "cn_x1_2_cal_deeper_full_path_rejected"
+            else f"{challenger_id}_full_path_rejected"
         ),
         "observed_provider_identity_sha256": observed_provider,
         "sector_classification_sha256": classification_identity,
         "selection_windows": list(SELECTION_WINDOWS),
-        "portfolio_contract": (spec.raw.get("execution") or {}).get("exact_portfolio"),
+        "portfolio_contract": (spec.raw.get("execution") or {}).get(
+            "exact_portfolio"
+        ),
         "candidates": candidate_rows,
         "support_boundary": support,
         "score_reproduction": reproduction,
