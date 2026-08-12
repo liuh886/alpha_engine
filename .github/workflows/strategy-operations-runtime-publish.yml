@@ -1,0 +1,70 @@
+name: Strategy Operations Runtime Publish
+
+on:
+  workflow_run:
+    workflows:
+      - "QQQ Rotation v4.3 Signal Alert"
+      - "BYD v1.3 Daily Signal"
+      - "10D Ranker Current Target"
+      - "Reviewed Formal Backtest Refresh"
+    types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - "configs/strategies/registry.json"
+      - "data/research/formal_model_runs/catalog.json"
+      - "src/artifacts/strategy_operations.py"
+      - "src/artifacts/strategy_operations_runtime.py"
+      - "src/cli/main.py"
+      - ".github/workflows/strategy-operations-runtime-publish.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: strategy-operations-runtime-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate runtime publisher contract
+        run: |
+          uv run ruff check \
+            src/artifacts/strategy_operations_runtime.py \
+            src/cli/main.py \
+            tests/test_strategy_operations_runtime.py
+          uv run pytest tests/test_strategy_operations_runtime.py -q --strict-markers --tb=short
+      - name: Materialize current operations from canonical main evidence
+        run: |
+          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          uv run alpha ops build --generated-at "$generated_at"
+      - name: Publish current operations through GitHub OIDC
+        run: uv run alpha ops publish
+      - name: Retain published read model
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: strategy-operations-runtime-${{ github.run_id }}
+          path: data/research/strategy_operations/snapshots.json
+          if-no-files-found: error
+          retention-days: 14
