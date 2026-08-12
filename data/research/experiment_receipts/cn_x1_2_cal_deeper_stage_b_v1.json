@@ -1,0 +1,129 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "cn_x1_2_cal_deeper_stage_b_v1",
+  "runner": "exact_cn_ranker_portfolio_v1",
+  "status": "completed_not_supported",
+  "decision": "cn_x1_2_cal_deeper_full_path_rejected",
+  "research_only": true,
+  "trade_ready": false,
+  "automatic_promotion": false,
+  "new_holdout_consumed": false,
+  "selection_windows": ["2024H1", "2024H2", "2025H1", "2025H2"],
+  "validation_lineage": {
+    "workflow_run_id": 31572825445,
+    "artifact_id": 9132053519,
+    "artifact_digest": "sha256:abc2215bfbe0f98c54cef2b6a0b99ebff144318846235dfb5cb93d02ab9b9cb4",
+    "provider_identity_sha256": "1b0b8aea689422640f6b0ca8e24ecc8c0f64fe2131caebd3fb2f1e1bd03d1050",
+    "sector_classification_sha256": "d1ef3bd06c0953c7e78fa0ba99c372da714ddce67203909d195d73e9eec61d15"
+  },
+  "portfolio_contract": {
+    "replay_id": "exact_cn_ranker_portfolio_v1",
+    "sector_classification": "configs/research_classifications/cn130_sector_industry_v1.yaml",
+    "sectors": 4,
+    "names_per_sector": 1,
+    "weighting": "equal_weight",
+    "holding_sessions": 10,
+    "rebalance_sessions": 10,
+    "execution_delay_sessions": 1,
+    "regime_rule": "two_of_three",
+    "regime_long_ma_sessions": 200,
+    "regime_momentum_sessions": 60,
+    "regime_breadth_ma_sessions": 60,
+    "regime_breadth_threshold": 0.5,
+    "regime_votes_required": 2,
+    "risk_off_fallback": "000300"
+  },
+  "candidates": [
+    {
+      "candidate_id": "baseline_cn_x1_1",
+      "factor_groups": ["cn_balanced_ohlcv"],
+      "factor_count": 14,
+      "mean_rank_ic": 0.001324999999999999,
+      "mean_icir": 0.0907415,
+      "base_20bps": {
+        "relative_excess": 0.11764128560811282,
+        "total_return": 0.5978747465302174,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.1496517333750298,
+        "positive_excess_windows": 2,
+        "turnover": 27.5,
+        "risk_on_relative_excess": 0.12661304906799425,
+        "risk_off_relative_excess": -0.007963482641447996
+      },
+      "stress_60bps": {
+        "relative_excess": 0.0013100834407369089,
+        "total_return": 0.4315577962078143,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.15946767742144763,
+        "positive_excess_windows": 2,
+        "turnover": 27.5,
+        "risk_on_relative_excess": 0.025667330665182068,
+        "risk_off_relative_excess": -0.023747706976928646
+      }
+    },
+    {
+      "candidate_id": "cal_deeper",
+      "factor_groups": ["cn_balanced_ohlcv", "cn_short_reversal_liquidity"],
+      "factor_count": 17,
+      "mean_rank_ic": 0.006575749999999998,
+      "mean_icir": 0.088692,
+      "base_20bps": {
+        "relative_excess": -0.09238049648235558,
+        "total_return": 0.29760979914055774,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.19547943520332411,
+        "positive_excess_windows": 2,
+        "turnover": 29.0,
+        "risk_on_relative_excess": -0.0850946637183078,
+        "risk_off_relative_excess": -0.007963482641447996
+      },
+      "stress_60bps": {
+        "relative_excess": -0.19199681547356673,
+        "total_return": 0.15518986305905602,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.2058223268128584,
+        "positive_excess_windows": 1,
+        "turnover": 29.0,
+        "risk_on_relative_excess": -0.1723418318185327,
+        "risk_off_relative_excess": -0.023747706976928646
+      }
+    }
+  ],
+  "support_boundary": {
+    "baseline": "baseline_cn_x1_1",
+    "challenger": "cal_deeper",
+    "improvement_vs_incumbent_20bps": -0.2100217820904684,
+    "improvement_vs_incumbent_60bps": -0.19330689891430364,
+    "worst_drawdown_delta_vs_incumbent": -0.04582770182829432,
+    "positive_window_count": 2,
+    "checks": {
+      "beats_incumbent_20bps": false,
+      "beats_incumbent_60bps": false,
+      "stress_relative_excess_positive": false,
+      "at_least_three_of_four_positive_windows": false,
+      "max_drawdown_above_minus_25pct": true,
+      "drawdown_worsening_within_3pp": false,
+      "risk_on_relative_excess_positive": false,
+      "risk_off_relative_no_worse_than_cost_drag": true,
+      "exact_score_reproduction": true,
+      "exact_portfolio_reproduction": true
+    },
+    "supported": false
+  },
+  "score_reproduction": {
+    "2024H1": "276ee5eafaaf2eb2deaa8e5598da85e64a2713123e90c65d5e0d43162ff2bda6",
+    "2024H2": "cb59bdcdc1931089f32f8abf1898402661c28925f1844b3a809f0dd3934ff84c",
+    "2025H1": "3e57adca3fc3df9bfa22dc25f1c875f09631ad8f980f0cfd3ced033fbc26a80e",
+    "2025H2": "520aadd9e60c8e8c8169bd330169b461f4579375985acc2458c36e8967fc3011"
+  },
+  "portfolio_reproduction": {
+    "20": {
+      "periods_sha256": "2ac132ff28a1d562b97f7698acc7ad6aa7231a6e44270348c5dd1589e2a9886e",
+      "holdings_sha256": "9488a549a21f42fb5978eab164479f281b21f5266204e0ac8cc4779016bba5b9"
+    },
+    "60": {
+      "periods_sha256": "334b22524b29607f65ffdc8cb6448a6a52c109527daa484a7aa5cbf7634bd734",
+      "holdings_sha256": "2b4e99b1430e8bac994af76d20495365d952005c6cce9ada1244451225df6c11"
+    }
+  }
+}
