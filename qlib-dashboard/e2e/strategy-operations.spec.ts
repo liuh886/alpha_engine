@@ -57,10 +57,9 @@ const bundleManifest = {
   ],
 };
 
-const protectedOperation = {
+const runtimeOperation = {
   strategy_id: 'qqq_rotation',
   model_version_id: 'qqqi_qqq_tqqq_v4_3',
-  current_operations_access: 'pro',
   status: 'target_pending_execution',
   as_of: '2026-07-31',
   latest_completed_session: '2026-07-31',
@@ -123,7 +122,7 @@ const protectedOperation = {
 };
 
 const operations = {
-  schema_version: '2.1.0',
+  schema_version: '2.2.0',
   generated_at: '2026-08-02T00:03:00Z',
   research_only: true,
   trade_ready: false,
@@ -131,23 +130,22 @@ const operations = {
     {
       strategy_id: 'qqq_rotation',
       model_version_id: 'qqqi_qqq_tqqq_v4_3',
-      current_operations_access: 'pro',
       status: 'blocked',
       as_of: null,
       latest_completed_session: null,
       decision_cadence: 'Every completed US market session',
       next_decision_policy: 'Evaluate at close; target applies to the next eligible open.',
-      state_label: 'Protected current operations',
-      decision_reason: 'Current holdings and signals require authenticated entitlement delivery.',
+      state_label: 'Runtime current operations',
+      decision_reason: 'Current holdings and signals are delivered from the runtime access plane.',
       allocations: [],
       turnover: null,
       estimated_cost: null,
       data_freshness: 'unknown',
       factor_freshness: 'blocked',
       delivery_status: 'not available',
-      source_label: 'Protected current operations',
+      source_label: 'Runtime current operations',
       source_href: null,
-      note: 'Current holdings, targets, drivers and decision-ledger provenance are not included in the public bundle.',
+      note: 'Current holdings, targets, drivers and decision-ledger provenance are never included in the public static bundle.',
       factor_evidence: [],
       source_identity: {
         formal_bundle_id: 'a'.repeat(64),
@@ -199,30 +197,48 @@ async function installProMembership(page: Page): Promise<void> {
         return () => undefined;
       },
       getClient: async () => ({
-        from: (table: string) => ({
-          select: () => {
-            const query: any = {
-              eq: () => query,
-              maybeSingle: async () => table === 'strategy_operation_snapshots'
-                ? {
-                    data: {
-                      strategy_id: 'qqq_rotation',
-                      model_version_id: 'qqqi_qqq_tqqq_v4_3',
-                      snapshot: fullSnapshot,
-                    },
-                    error: null,
-                  }
-                : { data: null, error: null },
+        from: (table: string) => {
+          if (table === 'product_access_policies') {
+            return {
+              select: () => ({
+                eq: async () => ({
+                  data: [{
+                    product_code: 'alpha_engine',
+                    resource_type: 'strategy',
+                    resource_id: 'qqq_rotation',
+                    required_tier: 'pro',
+                    updated_at: '2026-08-12T00:00:00Z',
+                  }],
+                  error: null,
+                }),
+              }),
             };
-            return query;
-          },
-        }),
+          }
+          return {
+            select: () => {
+              const query: any = {
+                eq: () => query,
+                maybeSingle: async () => table === 'strategy_operation_snapshots'
+                  ? {
+                      data: {
+                        strategy_id: 'qqq_rotation',
+                        model_version_id: 'qqqi_qqq_tqqq_v4_3',
+                        snapshot: fullSnapshot,
+                      },
+                      error: null,
+                    }
+                  : { data: null, error: null },
+              };
+              return query;
+            },
+          };
+        },
       }),
     };
-  }, protectedOperation);
+  }, runtimeOperation);
 }
 
-test('QQQ Pro operations are hydrated from the authenticated snapshot, not the public bundle', async ({ page }, testInfo) => {
+test('strategy current operations are authorized by runtime policy and hydrated from the runtime store', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   const githubApiRequests: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
@@ -251,7 +267,7 @@ test('QQQ Pro operations are hydrated from the authenticated snapshot, not the p
   const evidenceTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
   await expect(evidenceTabs.getByRole('tab', { name: 'Performance', exact: true })).toBeVisible();
   await expect(evidenceTabs.getByRole('tab', { name: 'Risk & robustness', exact: true })).toBeVisible();
-  await expect(page.getByText('Protected current operations', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Runtime current operations', { exact: true })).toHaveCount(0);
   expect(githubApiRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
   await assertNoHorizontalOverflow(page);
