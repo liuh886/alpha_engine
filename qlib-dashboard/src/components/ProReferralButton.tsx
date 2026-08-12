@@ -124,8 +124,8 @@ export function ProReferralButton() {
       }
     }}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="hidden h-8 gap-1.5 px-2.5 text-xs sm:inline-flex">
-          <Gift className="h-3.5 w-3.5" /> Invite
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs sm:px-2.5" aria-label="Invite a friend to Alpha Engine Pro">
+          <Gift className="h-3.5 w-3.5" /><span className="hidden sm:inline">Invite</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
