@@ -16,8 +16,7 @@
       "decision_cadence": "Every completed US market session",
       "next_decision_policy": "Evaluate at close; target applies to the next eligible open.",
       "signal_ledger": "data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3",
-      "historical_evidence_access": "public",
-      "current_operations_access": "pro"
+      "historical_evidence_access": "public"
     },
     {
       "strategy_id": "us_x",
@@ -31,8 +30,7 @@
       "decision_cadence": "Every 10 provider sessions",
       "next_decision_policy": "Publish only on the governed rebalance session; target applies to the next eligible open.",
       "signal_ledger": "data/research/strategy_signal_ledgers/us_x1_2",
-      "historical_evidence_access": "public",
-      "current_operations_access": "public"
+      "historical_evidence_access": "public"
     },
     {
       "strategy_id": "cn_x",
@@ -46,8 +44,7 @@
       "decision_cadence": "Every 10 provider sessions",
       "next_decision_policy": "Publish only on the governed rebalance session; target applies to the next eligible open.",
       "signal_ledger": "data/research/strategy_signal_ledgers/cn_x1_1",
-      "historical_evidence_access": "public",
-      "current_operations_access": "public"
+      "historical_evidence_access": "public"
     },
     {
       "strategy_id": "byd",
@@ -61,8 +58,7 @@
       "decision_cadence": "Every completed CN market session",
       "next_decision_policy": "Evaluate after the common close; target applies to the next independently confirmed eligible open.",
       "signal_ledger": "data/research/strategy_signal_ledgers/byd_v1_3_recovery_event_low_vol_confirmation_v1",
-      "historical_evidence_access": "public",
-      "current_operations_access": "public"
+      "historical_evidence_access": "public"
     }
   ]
 }
