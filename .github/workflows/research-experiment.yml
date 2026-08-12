@@ -23,6 +23,7 @@ on:
       - 'src/research/research_receipt.py'
       - 'src/research/optimization_campaign.py'
       - 'src/research/us_ranker_exact_portfolio_replay.py'
+      - 'src/research/cn_ranker_exact_portfolio_replay.py'
       - 'scripts/prepare_research_source_repair.py'
       - 'scripts/promote_approved_research_source_repair.py'
       - 'scripts/rebuild_active_research_providers.py'
@@ -30,6 +31,7 @@ on:
       - 'scripts/run_active_research_experiments.py'
       - 'scripts/run_model_optimization_campaign.py'
       - 'scripts/run_us_ranker_exact_portfolio_replay.py'
+      - 'scripts/run_cn_ranker_exact_portfolio_replay.py'
       - 'tests/test_cross_sectional_experiment_runner.py'
       - 'tests/test_experiment_harness.py'
       - 'tests/test_formal_baseline_onboarding.py'
@@ -201,6 +203,7 @@ jobs:
             src/research/research_receipt.py \
             src/research/optimization_campaign.py \
             src/research/us_ranker_exact_portfolio_replay.py \
+            src/research/cn_ranker_exact_portfolio_replay.py \
             scripts/prepare_research_source_repair.py \
             scripts/promote_approved_research_source_repair.py \
             scripts/rebuild_active_research_providers.py \
@@ -208,6 +211,7 @@ jobs:
             scripts/run_active_research_experiments.py \
             scripts/run_model_optimization_campaign.py \
             scripts/run_us_ranker_exact_portfolio_replay.py \
+            scripts/run_cn_ranker_exact_portfolio_replay.py \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             tests/test_formal_baseline_onboarding.py \
@@ -333,25 +337,32 @@ jobs:
           from pathlib import Path
           import yaml
 
+          allowed = {
+              'exact_us_ranker_portfolio_v1',
+              'exact_cn_ranker_portfolio_v1',
+          }
           matches = []
           for path in sorted(Path('configs/research_experiments').glob('*.yaml')):
               payload = yaml.safe_load(path.read_text(encoding='utf-8'))
               if not isinstance(payload, dict):
                   continue
-              if payload.get('online_validation') == 'exact_us_ranker_portfolio_v1':
-                  matches.append(path.as_posix())
+              replay = payload.get('online_validation')
+              if replay in allowed:
+                  matches.append((path.as_posix(), replay))
           if len(matches) > 1:
               raise SystemExit(
                   f'exact online validation allows at most one opted-in spec; found {matches}'
               )
           print('true' if matches else 'false')
-          print(matches[0] if matches else '')
+          print(matches[0][0] if matches else '')
+          print(matches[0][1] if matches else '')
           PY
           )
           echo "enabled=${state[0]}" >> "$GITHUB_OUTPUT"
           echo "spec=${state[1]}" >> "$GITHUB_OUTPUT"
+          echo "replay=${state[2]}" >> "$GITHUB_OUTPUT"
           if [[ "${state[0]}" == 'true' ]]; then
-            echo "Canonical online validation spec: ${state[1]}"
+            echo "Canonical online validation spec: ${state[1]} (${state[2]})"
           else
             echo 'No canonical online validation requested by this checkout.'
           fi
@@ -361,16 +372,19 @@ jobs:
         run: |
           uv run ruff check \
             src/research/us_ranker_exact_portfolio_replay.py \
-            scripts/run_us_ranker_exact_portfolio_replay.py
+            src/research/cn_ranker_exact_portfolio_replay.py \
+            scripts/run_us_ranker_exact_portfolio_replay.py \
+            scripts/run_cn_ranker_exact_portfolio_replay.py
           uv run python - "${{ steps.mission.outputs.spec }}" <<'PY'
           import sys
+          from src.research.cn_ranker_exact_portfolio_replay import REPLAY_ID as CN_REPLAY_ID
           from src.research.cross_sectional_experiment_runner import (
               load_cross_sectional_experiment_spec,
           )
-          from src.research.us_ranker_exact_portfolio_replay import REPLAY_ID
+          from src.research.us_ranker_exact_portfolio_replay import REPLAY_ID as US_REPLAY_ID
 
           spec = load_cross_sectional_experiment_spec(sys.argv[1])
-          if spec.raw.get('online_validation') != REPLAY_ID:
+          if spec.raw.get('online_validation') not in {US_REPLAY_ID, CN_REPLAY_ID}:
               raise SystemExit('online validation replay identity drifted')
           if spec.raw.get('research_only') is not True or spec.raw.get('trade_ready') is not False:
               raise SystemExit('online validation must remain research-only')
@@ -396,12 +410,26 @@ jobs:
           uv run python scripts/rebuild_active_research_providers.py
           --spec "${{ steps.mission.outputs.spec }}"
 
-      - name: Run exact US portfolio replay
+      - name: Run exact portfolio replay
         if: steps.mission.outputs.enabled == 'true'
-        run: >-
-          uv run python scripts/run_us_ranker_exact_portfolio_replay.py
-          --spec "${{ steps.mission.outputs.spec }}"
-          --output-dir artifacts/research_online_validation/stage_b
+        shell: bash
+        run: |
+          case "${{ steps.mission.outputs.replay }}" in
+            exact_us_ranker_portfolio_v1)
+              uv run python scripts/run_us_ranker_exact_portfolio_replay.py \
+                --spec "${{ steps.mission.outputs.spec }}" \
+                --output-dir artifacts/research_online_validation/stage_b
+              ;;
+            exact_cn_ranker_portfolio_v1)
+              uv run python scripts/run_cn_ranker_exact_portfolio_replay.py \
+                --spec "${{ steps.mission.outputs.spec }}" \
+                --output-dir artifacts/research_online_validation/stage_b
+              ;;
+            *)
+              echo 'Unsupported canonical replay id.' >&2
+              exit 1
+              ;;
+          esac
 
       - name: Upload exact replay evidence
         if: always() && steps.mission.outputs.enabled == 'true'

@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "cn_x1_2_cal_deeper_stage_b_v1",
+  "status": "canonical_source_repair_committed",
+  "approval_manifest": "data/source_repairs/cn_x1_2_cal_deeper_stage_b_v1.json",
+  "source_artifact_id": 9131009574,
+  "initial_missing_addition_commit_sha": "26838061fb106ed0d2fa09bacf69ab1105eb0e36",
+  "invalid_replacement_commit_sha": "5869db2c9ec61043fd616bb99d3bf225189d8f13",
+  "approved_symbol_count": 41,
+  "initial_missing_symbol_count": 22,
+  "invalid_repaired_symbol_count": 19,
+  "replacement_policy": "delete_invalid_then_promote_exact_approved_artifact_bytes"
+}

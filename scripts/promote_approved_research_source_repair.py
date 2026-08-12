@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Promote reviewed selected-pool repair files into canonical source storage.
 
-Promotion is permitted only when an immutable downloaded repair artifact matches
-a committed approval manifest byte-for-byte. Existing canonical files are never
-replaced by this path.
+Promotion is permitted only when approved targets are present in an immutable
+repair artifact and match the committed approval manifest byte-for-byte.
+Existing canonical files are never replaced by this path.
 """
 
 from __future__ import annotations
@@ -58,7 +58,19 @@ def promote(
     if not isinstance(approved_targets, dict) or not approved_targets:
         raise ValueError("approval targets must be a non-empty object")
 
-    repair_root = artifact_root / experiment_id
+    source_artifact = approval.get("source_artifact")
+    if not isinstance(source_artifact, dict):
+        raise ValueError("approval source_artifact must be an object")
+    archive_root_raw = str(source_artifact.get("archive_root", "")).strip()
+    if not archive_root_raw:
+        raise ValueError("approval source_artifact.archive_root is required")
+    archive_root = Path(archive_root_raw)
+    if archive_root.is_absolute() or ".." in archive_root.parts:
+        raise ValueError("approval source_artifact.archive_root must be repository-relative")
+    artifact_root_resolved = artifact_root.resolve()
+    repair_root = (artifact_root_resolved / archive_root / experiment_id).resolve()
+    repair_root.relative_to(artifact_root_resolved)
+
     refresh_manifest = _load_json(repair_root / MANIFEST_RELATIVE_PATH)
     _require_equal(
         "refresh_status",
@@ -75,11 +87,13 @@ def promote(
     _require_equal(
         "requested_end", refresh_manifest.get("cutoff"), approval.get("requested_end")
     )
-    _require_equal(
-        "repair targets",
-        set(refresh_manifest.get("targets", [])),
-        set(approved_targets),
-    )
+    refresh_targets = set(refresh_manifest.get("targets", []))
+    unbound_targets = sorted(set(approved_targets) - refresh_targets)
+    if unbound_targets:
+        raise ValueError(
+            "approval targets are absent from immutable repair artifact: "
+            f"{unbound_targets}"
+        )
 
     records = {
         str(record.get("symbol")): record
@@ -156,7 +170,12 @@ def promote(
         "copied": copied,
         "already_present": already_present,
     }
-    receipt_path = repair_root / "artifacts" / "source_repair_promotion_receipt.json"
+    receipt_path = (
+        artifact_root_resolved
+        / experiment_id
+        / "artifacts"
+        / "source_repair_promotion_receipt.json"
+    )
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
     receipt_path.write_text(
         json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8"
