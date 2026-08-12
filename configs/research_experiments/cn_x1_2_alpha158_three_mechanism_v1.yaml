@@ -1,18 +1,19 @@
-# Issue #892 — preregistered single mixed-canonical CN challenger.
+# Issue #892 — completed single mixed-canonical CN challenger.
 schema_version: '1.0'
 experiment_id: cn_x1_2_alpha158_three_mechanism_v1
 runner: cross_sectional_xgb_ranker_v1
-online_validation: exact_cn_ranker_portfolio_v1
 active: false
-status: pre_registered
+status: completed_supported
+result_receipt: data/research/experiment_receipts/cn_x1_2_alpha158_three_mechanism_v1.json
 parent_model_id: cn_x1_1
 research_only: true
 trade_ready: false
 
 purpose: >-
-  Test exactly one mixed-canonical challenger: the frozen CN x1.1 inherited
-  ranker plus CNTD30, CORD5 and IMIN30, evaluated only through the exact
-  governed CN x1.1 portfolio path. No 2026 holdout is consumed.
+  Record the completed exact-path test of the frozen CN x1.1 inherited ranker
+  plus CNTD30, CORD5 and IMIN30. The single challenger passed every
+  preregistered Stage-B support gate. No 2026 holdout was consumed and no
+  automatic model promotion is authorized by this experiment.
 
 diagnostic_lineage:
   source_issue: 883
@@ -20,6 +21,14 @@ diagnostic_lineage:
   artifact_id: 9137028569
   artifact_digest: sha256:92443bba10dcd26490ac75cb89ec99d824889308f678313a8ea5233fa5bdaa29
   selection_windows: [2024H1, 2024H2, 2025H1, 2025H2]
+  new_holdout_consumed: false
+
+validation_lineage:
+  workflow_run_id: 31591976145
+  artifact_id: 9139549489
+  artifact_digest: sha256:46fb82c1c07225acb92502d2ef7b1904822083a8ab25dd17b243fcbac5402e16
+  provider_identity_sha256: 1b0b8aea689422640f6b0ca8e24ecc8c0f64fe2131caebd3fb2f1e1bd03d1050
+  decision: cn_x1_2_alpha158_three_mechanism_full_path_supported
   new_holdout_consumed: false
 
 snapshot:
@@ -112,7 +121,7 @@ evaluation:
   schema_version: '1.0'
   baseline_candidate_id: baseline_cn_x1_1
   stress_cost_bps: 60
-  decision: cn_x1_2_alpha158_three_mechanism_candidate_only
+  decision: cn_x1_2_alpha158_three_mechanism_full_path_supported
   ranking:
     - gate_pass_count
     - worst_drawdown
