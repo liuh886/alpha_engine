@@ -57,7 +57,6 @@ class ActiveStrategy:
     next_decision_policy: str
     signal_ledger: str
     historical_evidence_access: str
-    current_operations_access: str
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "ActiveStrategy":
@@ -75,11 +74,8 @@ class ActiveStrategy:
         historical_access = _required_string(
             value.get("historical_evidence_access"), label="historical_evidence_access"
         )
-        current_access = _required_string(
-            value.get("current_operations_access"), label="current_operations_access"
-        )
-        if historical_access not in ACCESS_LEVELS or current_access not in ACCESS_LEVELS:
-            raise ActiveStrategyCatalogError("unsupported strategy access level")
+        if historical_access not in ACCESS_LEVELS:
+            raise ActiveStrategyCatalogError("unsupported historical evidence access level")
         return cls(
             strategy_id=_slug(value.get("strategy_id"), label="strategy_id"),
             display_name=_required_string(value.get("display_name"), label="display_name"),
@@ -97,7 +93,6 @@ class ActiveStrategy:
             ),
             signal_ledger=_relative_path(value.get("signal_ledger"), label="signal_ledger"),
             historical_evidence_access=historical_access,
-            current_operations_access=current_access,
         )
 
 
