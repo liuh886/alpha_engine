@@ -165,14 +165,15 @@ async function loadFormalDisplayNames(page: Page): Promise<string[]> {
 test('Strategy overview and list are driven by the governed formal catalog', async ({ page }) => {
   await openConsole(page);
   const formalNames = await loadFormalDisplayNames(page);
-  const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
+  const overviewFleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   for (const name of formalNames) {
-    await expect(fleet.getByText(name, { exact: true })).toBeVisible();
+    await expect(overviewFleet.getByText(name, { exact: true })).toBeVisible();
   }
   await page.goto('/#/strategies');
   await expect(page.getByRole('heading', { name: 'Formal Strategies' })).toBeVisible();
+  const strategyFleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   for (const name of formalNames) {
-    await expect(page.getByText(name, { exact: true })).toBeVisible();
+    await expect(strategyFleet.getByText(name, { exact: true })).toBeVisible();
   }
   await assertNoHorizontalOverflow(page);
 });
