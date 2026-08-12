@@ -269,7 +269,14 @@ def test_committed_operations_fail_closed_during_declared_model_cutover(
     formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
     formal_ids = {row["model_version_id"] for row in formal["records"]}
     if US_MODEL in formal_ids:
-        pytest.skip("reviewed formal x1.3 evidence is already published")
+        payload = build_operations_payload(
+            formal_catalog=FORMAL_CATALOG,
+            ledger_root=tmp_path,
+            generated_at="2026-08-08T00:00:00Z",
+        )
+        validate_operations_payload(payload)
+        assert US_MODEL in _by_model(payload)
+        return
     with pytest.raises(StrategyOperationsError, match="formal catalog"):
         build_operations_payload(
             formal_catalog=FORMAL_CATALOG,
