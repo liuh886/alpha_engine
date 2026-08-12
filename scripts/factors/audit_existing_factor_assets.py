@@ -10,6 +10,11 @@ from typing import Any
 
 KNOWN_ASSETS = (
     {
+        "path": "src/factors/sets/qlib_alpha158.py",
+        "asset_type": "canonical_factor_library_source",
+        "expected_claim": "maintained exact Qlib Alpha158 158-factor definition source",
+    },
+    {
         "path": "docs/research/factor_history_inventory_seed_2026-07-31.yaml",
         "asset_type": "legacy_factor_history_seed",
         "expected_claim": "legacy 261-factor scan and named historical families",
@@ -63,17 +68,27 @@ def audit(root: Path) -> dict[str, Any]:
         row = dict(asset)
         row["exists"] = path.is_file()
         row["sha256"] = _sha256(path) if path.is_file() else None
-        row["formula_recovery_status"] = (
-            "requires_content_classification"
-            if path.is_file()
-            else "not_present_in_checkout"
-        )
+        if row["asset_type"] == "canonical_factor_library_source":
+            row["formula_recovery_status"] = (
+                "canonical_maintained" if path.is_file() else "canonical_source_missing"
+            )
+        else:
+            row["formula_recovery_status"] = (
+                "requires_content_classification"
+                if path.is_file()
+                else "not_present_in_checkout"
+            )
         rows.append(row)
 
     return {
         "schema_version": "1.0",
         "inventory_id": "factor_asset_inventory_v1",
         "alpha158_intended_public_set": True,
+        "alpha158_canonical_maintained": any(
+            row["asset_type"] == "canonical_factor_library_source"
+            and row["formula_recovery_status"] == "canonical_maintained"
+            for row in rows
+        ),
         "alpha161_alias_allowed": False,
         "legacy261_claim_preserved": True,
         "asset_count": len(rows),
@@ -82,9 +97,10 @@ def audit(root: Path) -> dict[str, Any]:
         "research_only": True,
         "trade_ready": False,
         "interpretation": (
-            "Presence of an old config, output column or metric does not prove that "
-            "a complete reusable formula is available. Each present asset must be "
-            "classified before migration."
+            "The canonical Alpha158 definition source is maintained infrastructure. "
+            "Presence of any historical config, output column or metric does not prove that "
+            "a separate complete reusable formula is available; historical assets require "
+            "classification before reuse."
         ),
     }
 
