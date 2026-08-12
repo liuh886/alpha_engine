@@ -1,6 +1,7 @@
 from qlib.contrib.data.loader import Alpha158DL
 
 from scripts.factors.build_factor_catalog import build_catalog
+from src.factors.library import ALPHA158_SOURCE_PATH, load_factor_library
 from src.factors.sets.qlib_alpha158 import (
     ALPHA158_CONFIG,
     load_alpha158_definitions,
@@ -16,6 +17,21 @@ def test_alpha158_exact_count_order_and_expression_parity() -> None:
     assert [row.expression for row in definitions] == list(fields)
     assert len({row.factor_id for row in definitions}) == 158
     assert definitions[0].factor_id == "qlib_alpha158.kmid"
+
+
+def test_alpha158_is_a_first_class_canonical_factor_library() -> None:
+    fields, names = Alpha158DL.get_feature_config(ALPHA158_CONFIG)
+    library = load_factor_library(ALPHA158_SOURCE_PATH)
+    group = library["qlib_alpha158_all"]
+
+    assert library.catalog.catalog_id == "qlib_alpha158"
+    assert library.catalog.catalog_version == "1.0"
+    assert len(library.catalog.definitions) == 158
+    assert len(group.factor_ids) == 158
+    assert group.factor_ids == tuple(row.factor_id for row in library.catalog.definitions)
+    assert [row.display_name for row in group.factors] == list(names)
+    assert [row.expression for row in group.factors] == list(fields)
+    assert library.manifest()["factor_count"] == 158
 
 
 def test_alpha158_has_no_alpha161_alias() -> None:
