@@ -1,13 +1,20 @@
 from __future__ import annotations
 
-import math
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
+from src.artifacts.model_run_exporter import (
+    RunExportPlan,
+    SectionPlan,
+    export_model_run,
+    update_catalog,
+)
+from src.dashboard.formal_bundle_market_events import load_formal_market_runs
 from src.dashboard.market_evidence import (
     MarketEvidenceError,
     _bars,
@@ -92,7 +99,14 @@ def test_trade_events_keep_model_and_canonical_instrument_identity() -> None:
             "model_id": "byd_v1_2",
             "display_name": "BYD v1.2",
             "backtest_id": "run-a",
-            "positions": [{"instrument": "BYD", "name": "比亚迪", "date": "2026-01-02", "weight": 0.75}],
+            "positions": [
+                {
+                    "instrument": "BYD",
+                    "name": "比亚迪",
+                    "date": "2026-01-02",
+                    "weight": 0.75,
+                }
+            ],
             "trades": [
                 {
                     "date": "2026-01-02",
@@ -229,3 +243,105 @@ def test_content_addressed_market_evidence_reuse_verifies_every_file(
             destination_root=tmp_path / "rejected" / "us",
             expected_input_identity=identity,
         )
+
+
+def _formal_fixture_plan(model_id: str = "us_x9") -> RunExportPlan:
+    return RunExportPlan(
+        model_family_id="us_ranker",
+        model_version_id=model_id,
+        run_id=f"{model_id}-through-2026_08_11",
+        model_kind="cross_sectional_ranker",
+        publication_channel="formal",
+        publication_status="accepted_formal_baseline",
+        generated_at="2026-08-12T00:00:00Z",
+        evidence_cutoff="2026-08-11",
+        comparability_key={
+            "market": "us",
+            "universe_id": "us_selected_equities_v2",
+            "benchmark_id": "qqq",
+            "start": "2026-01-02",
+            "end": "2026-08-11",
+            "trace_frequency": "10_session",
+            "horizon": "10_sessions",
+            "rebalance_contract_id": "top15_sector4_10_sessions",
+            "cost_contract_id": "cost_20_bps",
+        },
+        sections=(
+            SectionPlan(
+                section_id="summary",
+                availability_status="available",
+                required_for_model_kind=True,
+                payload={
+                    "display_name": "US x9",
+                    "research_only": True,
+                    "trade_ready": False,
+                },
+            ),
+            SectionPlan(
+                section_id="portfolio",
+                availability_status="available",
+                required_for_model_kind=True,
+                payload={
+                    "positions": [
+                        {
+                            "date": "2026-08-01",
+                            "instrument": "BE",
+                            "weight": 1.0,
+                        }
+                    ],
+                    "research_only": True,
+                    "trade_ready": False,
+                },
+            ),
+            SectionPlan(
+                section_id="trades",
+                availability_status="available",
+                required_for_model_kind=True,
+                payload=[
+                    {
+                        "date": "2026-08-01",
+                        "instrument": "BE",
+                        "action": "BUY",
+                        "previous_weight": 0.0,
+                        "target_weight": 1.0,
+                        "weight_delta": 1.0,
+                    }
+                ],
+            ),
+        ),
+    )
+
+
+def test_formal_market_runs_follow_catalog_and_ignore_stray_files(tmp_path: Path) -> None:
+    root = tmp_path / "formal-v2"
+    manifest = export_model_run(_formal_fixture_plan(), output_root=root)
+    update_catalog([manifest], catalog_path=root / "catalog.json", channel="formal")
+    (root / "stale_superseded.json").write_text(
+        json.dumps({"model_id": "stale_model", "trades": [{"instrument": "BE"}]}),
+        encoding="utf-8",
+    )
+
+    runs = load_formal_market_runs(root, "us")
+    assert [row["model_id"] for row in runs] == ["us_x9"]
+    assert runs[0]["trades"][0]["instrument"] == "BE"
+    events, _ = _trade_events(runs, "us")
+    assert [row["model_id"] for row in events["BE"]] == ["us_x9"]
+
+
+def test_repository_formal_bundle_v2_projects_current_market_models() -> None:
+    root = Path("data/research/formal_model_runs")
+    us = load_formal_market_runs(root, "us")
+    cn = load_formal_market_runs(root, "cn")
+
+    assert {row["model_id"] for row in us} == {
+        "qqqi_qqq_tqqq_v4_3",
+        "us_x1_3",
+    }
+    assert {row["model_id"] for row in cn} == {
+        "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "cn_x1_1",
+    }
+
+    events, _ = _trade_events(us, "us")
+    assert "BE" in events
+    assert any(row["model_id"] == "us_x1_3" for row in events["BE"])

@@ -19,6 +19,10 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 import pandas as pd
 
+from src.dashboard.formal_bundle_market_events import (
+    FormalMarketEventError,
+    load_formal_market_runs,
+)
 from src.factors.library import FactorLibrary, load_factor_library
 from src.factors.panel import QlibFactorEvaluator
 
@@ -28,7 +32,7 @@ class MarketEvidenceError(ValueError):
 
 
 DEFAULT_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
-MARKET_EVIDENCE_IDENTITY_VERSION = "1.0.0"
+MARKET_EVIDENCE_IDENTITY_VERSION = "2.0.0"
 SERIES_FACTOR_GROUP = {
     "us": "momentum_volatility_volume",
     "cn": "cn_balanced_ohlcv",
@@ -97,6 +101,7 @@ def _market_evidence_input_identity(
     repository_root = Path(__file__).resolve().parents[2]
     implementation_paths = (
         Path(__file__).resolve(),
+        repository_root / "src/dashboard/formal_bundle_market_events.py",
         repository_root / "src/factors/library.py",
         repository_root / "src/factors/panel.py",
     )
@@ -107,6 +112,7 @@ def _market_evidence_input_identity(
         "formal_packages": [
             {
                 "model_id": str(package.get("model_id", "")),
+                "bundle_id": str(package.get("bundle_id", "")),
                 "sha256": _sha256_bytes(_canonical_json(package)),
             }
             for package in sorted(
@@ -277,22 +283,6 @@ def _bars(frame: pd.DataFrame) -> list[dict[str, Any]]:
     if not output:
         raise MarketEvidenceError("OHLCV source contains no valid bars")
     return output
-
-
-def _formal_packages(formal_root: Path, market: str) -> list[dict[str, Any]]:
-    packages: list[dict[str, Any]] = []
-    for path in sorted(formal_root.glob("*.json")):
-        payload = _load_json(path)
-        if payload.get("record_type") != "formal_model_backtest":
-            continue
-        if str(payload.get("market", "")).lower() != market:
-            continue
-        if payload.get("research_only") is not True or payload.get("trade_ready") is not False:
-            raise MarketEvidenceError(f"formal package crossed research boundary: {path}")
-        packages.append(payload)
-    if not packages:
-        raise MarketEvidenceError(f"no formal model packages found for {market}")
-    return packages
 
 
 def _trade_events(
@@ -549,7 +539,10 @@ def build_market_evidence(
         for row in records
     }
 
-    packages = _formal_packages(formal_root, market)
+    try:
+        packages = load_formal_market_runs(formal_root, market)
+    except FormalMarketEventError as exc:
+        raise MarketEvidenceError(str(exc)) from exc
     events, labels = _trade_events(packages, market)
     uncovered = sorted(set(events) - set(symbols))
     if uncovered:

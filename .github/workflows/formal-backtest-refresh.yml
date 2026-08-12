@@ -20,6 +20,7 @@ on:
       - "src/artifacts/**"
       - "src/data/**"
       - "src/dashboard/market_evidence.py"
+      - "src/dashboard/formal_bundle_market_events.py"
       - "src/factors/**"
       - "src/governance/**"
       - "src/research/**"
@@ -103,6 +104,7 @@ jobs:
             src/artifacts/us_x1_3_preview.py \
             src/artifacts/qqq_v4_3_formal.py \
             src/artifacts/strategy_operations.py \
+            src/dashboard/formal_bundle_market_events.py \
             src/dashboard/market_evidence.py \
             src/factors/library.py \
             src/factors/panel.py \
@@ -138,6 +140,7 @@ jobs:
           uv run mypy \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
+            src/dashboard/formal_bundle_market_events.py \
             src/dashboard/market_evidence.py \
             scripts/govern_formal_provider_cache.py \
             scripts/build_market_evidence.py \
@@ -448,14 +451,14 @@ jobs:
           rm -rf "$CANDIDATE_MARKET_EVIDENCE_ROOT"
           uv run python scripts/build_market_evidence.py \
             --market us --provider-root artifacts/formal-refresh/provider-us \
-            --formal-root "$CANDIDATE_FORMAL_ROOT" \
+            --formal-root "$CANDIDATE_V2_ROOT" \
             --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT" \
             --reuse-root data/research/market_evidence \
             > artifacts/formal-refresh/market-evidence-us.log 2>&1 &
           us_pid="$!"
           uv run python scripts/build_market_evidence.py \
             --market cn --provider-root artifacts/formal-refresh/provider-cn \
-            --formal-root "$CANDIDATE_FORMAL_ROOT" \
+            --formal-root "$CANDIDATE_V2_ROOT" \
             --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT" \
             --reuse-root data/research/market_evidence \
             > artifacts/formal-refresh/market-evidence-cn.log 2>&1 &
