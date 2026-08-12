@@ -79,14 +79,28 @@ def run_cn_x1_2_certification(
 
     output = Path(output_dir).resolve()
     original_windows = exact_replay.SELECTION_WINDOWS
+    original_benchmark_loader = exact_replay.load_window_benchmark_returns
+    rebalance_days = int(spec.parent.strategy["rebalance_days"])
+
+    def certification_benchmark_loader(runtime: Any, **kwargs: Any) -> Any:
+        """Require benchmark completeness only on dates the evaluator actually trades."""
+
+        evaluation_dates = kwargs.get("evaluation_dates")
+        if evaluation_dates is None:
+            raise ValueError("certification benchmark loader requires evaluation_dates")
+        kwargs["evaluation_dates"] = evaluation_dates[::rebalance_days]
+        return original_benchmark_loader(runtime, **kwargs)
+
     try:
         exact_replay.SELECTION_WINDOWS = CERTIFICATION_WINDOWS
+        exact_replay.load_window_benchmark_returns = certification_benchmark_loader
         exact = exact_replay.run_exact_cn_ranker_portfolio_replay(
             spec_path,
             output_dir=output / "exact_replay",
         )
     finally:
         exact_replay.SELECTION_WINDOWS = original_windows
+        exact_replay.load_window_benchmark_returns = original_benchmark_loader
 
     if exact.get("status") != "completed":
         blocked = {
