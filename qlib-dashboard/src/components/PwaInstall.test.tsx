@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PwaInstallProvider } from './PwaInstall';
 
@@ -30,7 +30,7 @@ describe('PwaInstallProvider', () => {
     event.prompt = prompt;
     event.userChoice = Promise.resolve({ outcome: 'accepted', platform: 'web' });
 
-    window.dispatchEvent(event);
+    act(() => { window.dispatchEvent(event); });
     const install = await screen.findByRole('button', { name: 'Install' });
     fireEvent.click(install);
 
