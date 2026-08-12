@@ -1,0 +1,69 @@
+name: One-shot US x1.3 publication fix
+
+on:
+  push:
+    branches:
+      - fix/us-x1-3-final-publication-and-cutoff
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/us-x1-3-final-publication-and-cutoff
+          fetch-depth: 0
+      - name: Apply exact contract fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'expected block not found: {path}')
+              target.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace_exact(
+              'tests/test_strategy_operations.py',
+              '''    if US_MODEL in formal_ids:\n        pytest.skip("reviewed formal x1.3 evidence is already published")\n    with pytest.raises(StrategyOperationsError, match="formal catalog"):\n        build_operations_payload(\n            formal_catalog=FORMAL_CATALOG,\n            ledger_root=tmp_path,\n            generated_at="2026-08-08T00:00:00Z",\n        )\n''',
+              '''    if US_MODEL in formal_ids:\n        payload = build_operations_payload(\n            formal_catalog=FORMAL_CATALOG,\n            ledger_root=tmp_path,\n            generated_at="2026-08-08T00:00:00Z",\n        )\n        validate_operations_payload(payload)\n        assert US_MODEL in _by_model(payload)\n        return\n    with pytest.raises(StrategyOperationsError, match="formal catalog"):\n        build_operations_payload(\n            formal_catalog=FORMAL_CATALOG,\n            ledger_root=tmp_path,\n            generated_at="2026-08-08T00:00:00Z",\n        )\n''',
+          )
+
+          replace_exact(
+              'src/artifacts/us_x1_3_preview.py',
+              '''        report.append(\n            {\n                "date": signal_date,\n                "holding_end_date": cutoff,\n                "window": "current_target",\n''',
+              '''        report.append(\n            {\n                "date": cutoff,\n                "signal_date": signal_date,\n                "holding_end_date": cutoff,\n                "window": "current_target",\n''',
+          )
+
+          replace_exact(
+              'scripts/ranker_provisional_mtm.py',
+              '''    mtm_row: dict[str, Any] = {\n        "date": signal_date,\n        "holding_end_date": cutoff,\n''',
+              '''    mtm_row: dict[str, Any] = {\n        "date": cutoff,\n        "signal_date": signal_date,\n        "holding_end_date": cutoff,\n''',
+          )
+
+          replace_exact(
+              'tests/test_ranker_provisional_mtm.py',
+              '''    row = result["performance_row"]\n    assert row["holding_end_date"] == "2026-08-07"\n''',
+              '''    row = result["performance_row"]\n    assert row["date"] == "2026-08-07"\n    assert row["signal_date"] == "2026-08-05"\n    assert row["holding_end_date"] == "2026-08-07"\n''',
+          )
+
+          replace_exact(
+              'tests/test_us_x1_3_preview_publication.py',
+              '''    assert performance["report"][-1]["holding_end_date"] == manifest["evidence_cutoff"]\n    assert performance["date_range"]["end"] == manifest["evidence_cutoff"]\n''',
+              '''    assert performance["report"][-1]["date"] == manifest["evidence_cutoff"]\n    assert performance["report"][-1]["holding_end_date"] == manifest["evidence_cutoff"]\n    assert performance["date_range"]["end"] == manifest["evidence_cutoff"]\n''',
+          )
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/test_strategy_operations.py src/artifacts/us_x1_3_preview.py scripts/ranker_provisional_mtm.py tests/test_ranker_provisional_mtm.py tests/test_us_x1_3_preview_publication.py
+          git diff --cached --check
+          git commit -m "fix: finalize US x1.3 publication and MTM date semantics"
+          git push origin HEAD:fix/us-x1-3-final-publication-and-cutoff
