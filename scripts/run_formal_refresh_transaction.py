@@ -12,7 +12,6 @@ from typing import Any
 
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
-    accepted_records,
     build_plan,
     common_provider_cutoff,
     finalize_candidate_tree,
