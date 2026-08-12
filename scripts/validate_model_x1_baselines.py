@@ -312,10 +312,10 @@ def validate_model_config(
 def validate_registry(root: Path) -> dict[str, Any]:
     catalog_path = root / "configs/strategies/registry.json"
     active_catalog = load_active_strategy_catalog(catalog_path)
-    active_by_family = active_catalog.by_model_family_id
+    active_by_strategy = active_catalog.by_strategy_id
     observed_active = {
-        "us": active_by_family["us_x"].model_version_id,
-        "cn": active_by_family["cn_x"].model_version_id,
+        "us": active_by_strategy["us_x"].model_version_id,
+        "cn": active_by_strategy["cn_x"].model_version_id,
     }
     if observed_active != EXPECTED_ACTIVE_BASELINES:
         raise ValueError(
