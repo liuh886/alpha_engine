@@ -16,6 +16,7 @@ lineage:
   stage_b_pr: 869
   stage_b_receipt: data/research/experiment_receipts/us_x1_3_stage_b_v1.json
   stage_b_validation_workflow_run_id: 31567853785
+  certification_workflow_run_id: 31567853785
   stage_b_artifact_id: 9130182216
   stage_b_artifact_digest: sha256:6733fde47212088c902df88c436af553f2bd83e37a19c14d47e066ce5f8c199d
   adoption_decision: explicit_user_directed_research_baseline_promotion
@@ -34,17 +35,21 @@ provider_binding:
   stage_b_cutoff: '2026-08-10'
 features:
   library: configs/factor_libraries/ohlcv.yaml
+  source_factor_groups:
+  - momentum_volatility_volume
+  - us_price_volume_pressure
+  factor_order_semantics: ordered_group_union_first_occurrence_wins
   factor_ids:
-  - ohlcv.momentum.ret_3d
   - ohlcv.momentum.ret_5d
   - ohlcv.momentum.ret_10d
   - ohlcv.momentum.ret_20d
   - ohlcv.volatility.std_ret_10d
   - ohlcv.volatility.std_ret_20d
   - ohlcv.volume.momentum_10d
+  - ohlcv.liquidity.volume_vs_ma_20d
+  - ohlcv.momentum.ret_3d
   - ohlcv.liquidity.volume_vs_ma_5d
   - ohlcv.liquidity.volume_vs_ma_10d
-  - ohlcv.liquidity.volume_vs_ma_20d
   - ohlcv.pressure.ret1_x_volume_shock_5d
   - ohlcv.pressure.ret5_x_volume_shock_10d
   - ohlcv.pressure.high_low_ratio
@@ -99,6 +104,10 @@ stage_b_evidence:
   worst_drawdown: -0.26532173378029633
   incumbent_worst_drawdown: -0.26218061541141957
   exact_score_reproduction: true
+certification_evidence:
+  development:
+    mean_rank_ic: 0.051617500000000004
+    mean_icir: null
 selection_decision:
   stage_b_supported: true
   selected_over: us_x1_2
