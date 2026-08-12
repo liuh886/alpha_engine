@@ -9,7 +9,7 @@
     "completed_10_recovery_lifecycles": false,
     "forward_time_12_months": false,
     "largest_positive_lifecycle_share_le_40pct": false,
-    "largest_positive_quarter_share_le_60pct": false,
+    "largest_positive_quarter_share_le_60pct": true,
     "primary_relative_wealth_positive": false,
     "stress_relative_wealth_nonnegative": true
   },
@@ -17,7 +17,7 @@
   "largest_positive_quarter_share": 0.0,
   "last_prospective_signal_date": null,
   "launch_after": "2026-08-10",
-  "observation_count": 2,
+  "observation_count": 3,
   "prospective_days": 0,
   "prospective_observation_count": 0,
   "research_only": true,
