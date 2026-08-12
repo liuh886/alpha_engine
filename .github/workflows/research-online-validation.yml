@@ -71,14 +71,25 @@ jobs:
           echo "spec=$spec" >> "$GITHUB_OUTPUT"
           echo "Online validation spec: $spec"
 
-      - name: Validate exact replay code
+      - name: Validate exact replay code and contract
         run: |
           uv run ruff check \
             src/research/us_ranker_exact_portfolio_replay.py \
             scripts/run_us_ranker_exact_portfolio_replay.py
-          uv run python scripts/run_active_research_experiments.py \
-            --spec "${{ steps.mission.outputs.spec }}" \
-            --validate-only
+          uv run python - "${{ steps.mission.outputs.spec }}" <<'PY'
+          import sys
+          from src.research.cross_sectional_experiment_runner import (
+              load_cross_sectional_experiment_spec,
+          )
+          from src.research.us_ranker_exact_portfolio_replay import REPLAY_ID
+
+          spec = load_cross_sectional_experiment_spec(sys.argv[1])
+          if spec.raw.get('online_validation') != REPLAY_ID:
+              raise SystemExit('online validation replay identity drifted')
+          if spec.raw.get('research_only') is not True or spec.raw.get('trade_ready') is not False:
+              raise SystemExit('online validation must remain research-only')
+          print(spec.experiment_id)
+          PY
 
       - name: Check canonical source completeness
         run: |
