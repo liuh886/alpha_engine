@@ -58,7 +58,19 @@ def promote(
     if not isinstance(approved_targets, dict) or not approved_targets:
         raise ValueError("approval targets must be a non-empty object")
 
-    repair_root = artifact_root / experiment_id
+    source_artifact = approval.get("source_artifact")
+    if not isinstance(source_artifact, dict):
+        raise ValueError("approval source_artifact must be an object")
+    archive_root_raw = str(source_artifact.get("archive_root", "")).strip()
+    if not archive_root_raw:
+        raise ValueError("approval source_artifact.archive_root is required")
+    archive_root = Path(archive_root_raw)
+    if archive_root.is_absolute() or ".." in archive_root.parts:
+        raise ValueError("approval source_artifact.archive_root must be repository-relative")
+    artifact_root_resolved = artifact_root.resolve()
+    repair_root = (artifact_root_resolved / archive_root / experiment_id).resolve()
+    repair_root.relative_to(artifact_root_resolved)
+
     refresh_manifest = _load_json(repair_root / MANIFEST_RELATIVE_PATH)
     _require_equal(
         "refresh_status",
