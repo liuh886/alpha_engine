@@ -78,6 +78,7 @@ def test_active_us_x1_3_preview_is_cataloged_without_crossing_formal_boundary() 
     if record is None:
         _assert_valid_prepublication_cutover()
         return
+    assert record["model_version_id"] == "us_x1_3"
     assert [row["model_version_id"] for row in catalog["records"]] == ["us_x1_3"]
     manifest = _object("manifest.json")
     validate_manifest(manifest)
