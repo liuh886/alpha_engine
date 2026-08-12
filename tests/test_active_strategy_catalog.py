@@ -19,6 +19,7 @@ FORMAL_CATALOG = Path("data/research/formal_model_runs/catalog.json")
 def test_committed_active_strategy_catalog_matches_formal_catalog() -> None:
     active = load_active_strategy_catalog(CATALOG)
     catalog = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+    registry = json.loads(CATALOG.read_text(encoding="utf-8"))
 
     assert active.active_model_version_ids == (
         "qqqi_qqq_tqqq_v4_3",
@@ -26,7 +27,10 @@ def test_committed_active_strategy_catalog_matches_formal_catalog() -> None:
         "cn_x1_1",
         "byd_v1_3_recovery_event_low_vol_confirmation_v1",
     )
-    assert active.by_strategy_id["qqq_rotation"].current_operations_access == "pro"
+    assert all(
+        "current_operations_access" not in strategy
+        for strategy in registry["strategies"]
+    )
     assert_formal_catalog_matches_active_strategies(catalog, active)
 
 
