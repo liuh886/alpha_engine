@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PwaInstallProvider } from '@/components/PwaInstall';
 import { LandingPage } from './LandingPage';
 
 vi.mock('@/lib/governed-run', () => ({
@@ -9,11 +10,30 @@ vi.mock('@/lib/governed-run', () => ({
 }));
 
 describe('Alpha Engine landing page', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: false,
+        media: '',
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+  });
+
   it('leads with product value, comparative performance proof and traceable evidence', () => {
     const { container } = render(
-      <MemoryRouter>
-        <LandingPage />
-      </MemoryRouter>,
+      <PwaInstallProvider>
+        <MemoryRouter>
+          <LandingPage />
+        </MemoryRouter>
+      </PwaInstallProvider>,
     );
 
     expect(screen.getByRole('heading', { name: /know what your systematic strategy is doing/i })).toBeInTheDocument();
@@ -32,7 +52,8 @@ describe('Alpha Engine landing page', () => {
     expect(screen.getAllByText('Strategy fleet')).toHaveLength(1);
 
     expect(screen.getByRole('link', { name: /explore strategies/i })).toHaveAttribute('href', '/strategies');
-    expect(screen.getAllByRole('link', { name: /open console/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /open app/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /share alpha engine/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /inspect formal performance/i })).toHaveAttribute('href', '/strategies');
     expect(screen.getByRole('link', { name: /open research evidence/i })).toHaveAttribute('href', '/research');
   });
