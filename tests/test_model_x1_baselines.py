@@ -29,10 +29,10 @@ def _load_validator() -> ModuleType:
 
 def test_active_strategy_catalog_owns_current_x1_identities() -> None:
     catalog = load_active_strategy_catalog(ACTIVE_CATALOG)
-    assert catalog.by_model_family_id["us_x"].model_version_id == "us_x1_2"
-    assert catalog.by_model_family_id["cn_x"].model_version_id == "cn_x1_1"
-    assert catalog.by_model_family_id["us_x"].historical_evidence_access == "public"
-    assert catalog.by_model_family_id["cn_x"].historical_evidence_access == "public"
+    assert catalog.by_strategy_id["us_x"].model_version_id == "us_x1_2"
+    assert catalog.by_strategy_id["cn_x"].model_version_id == "cn_x1_1"
+    assert catalog.by_strategy_id["us_x"].historical_evidence_access == "public"
+    assert catalog.by_strategy_id["cn_x"].historical_evidence_access == "public"
 
 
 def test_model_configs_notebooks_and_frozen_specs_tie() -> None:
