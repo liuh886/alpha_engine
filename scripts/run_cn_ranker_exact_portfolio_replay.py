@@ -1,4 +1,4 @@
-"""Run one exact CN ranker Stage-B portfolio replay."""
+"""Run one exact CN ranker portfolio replay or final certification."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from src.research.cn_cal_deeper_portfolio_mapping_replay import (
 )
 from src.research.cn_rank_blend_portfolio_replay import run_cn_rank_blend_portfolio_replay
 from src.research.cn_ranker_exact_portfolio_replay import run_exact_cn_ranker_portfolio_replay
+from src.research.cn_x1_2_certification import run_cn_x1_2_certification
 
 
 def main() -> int:
@@ -24,7 +25,12 @@ def main() -> int:
     payload = yaml.safe_load(args.spec.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("CN replay spec must be a YAML mapping")
-    if payload.get("rank_blend_diagnostic") is not None:
+    if payload.get("certification") is not None:
+        receipt = run_cn_x1_2_certification(
+            args.spec,
+            output_dir=args.output_dir,
+        )
+    elif payload.get("rank_blend_diagnostic") is not None:
         receipt = run_cn_rank_blend_portfolio_replay(
             args.spec,
             output_dir=args.output_dir,
