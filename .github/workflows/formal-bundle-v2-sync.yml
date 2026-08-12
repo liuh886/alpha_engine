@@ -6,20 +6,20 @@ on:
     paths:
       - .github/workflows/formal-bundle-v2-sync.yml
       - scripts/sync_formal_bundle_v2.py
-      - src/artifacts/formal_bundle_v2_projector.py
-      - scripts/build_strategy_operations.py
+      - src/artifacts/formal_bundle_v2_builder.py
+      - src/cli/main.py
+      - src/governance/active_strategy_catalog.py
+      - configs/strategies/registry.json
       - src/artifacts/strategy_operations.py
-      - tests/test_formal_bundle_v2_projector.py
+      - tests/test_formal_bundle_v2_builder.py
       - tests/test_sync_formal_bundle_v2.py
       - tests/test_strategy_operations.py
+      - tests/test_active_strategy_catalog.py
       - data/research/formal_backtests/**
       - data/research/formal_model_runs/**
       - data/research/strategy_signal_ledgers/**
-      - data/research/strategy_operations/**
       - qlib-dashboard/scripts/sync-formal-model-runs.mjs
       - qlib-dashboard/scripts/sync-strategy-operations.mjs
-      - qlib-dashboard/public/data/formal-model-runs/**
-      - qlib-dashboard/public/data/strategy-operations/**
       - qlib-dashboard/src/**
   workflow_dispatch:
 
@@ -57,7 +57,7 @@ jobs:
           uv sync --frozen --extra dev
           cd qlib-dashboard
           npm ci --no-audit --no-fund
-      - name: Project accepted formal v1 into Bundle v2 twice
+      - name: Build active formal Bundle v2 twice
         run: |
           set -euo pipefail
           rm -rf artifacts/bundle-a artifacts/bundle-b
@@ -74,7 +74,7 @@ jobs:
           rm -rf data/research/formal_model_runs
           cp -a artifacts/bundle-a data/research/formal_model_runs
           rm -f data/research/formal_model_runs/formal-bundle-v2-sync-receipt.json
-      - name: Rebuild Strategy Operations against projected identities
+      - name: Rebuild generated Strategy Operations against active identities
         run: |
           set -euo pipefail
           generated_at="$(python - <<'PY'
@@ -84,36 +84,38 @@ jobs:
           print(payload['published_at'])
           PY
           )"
-          uv run python scripts/build_strategy_operations.py \
+          uv run alpha ops build \
             --formal-catalog data/research/formal_model_runs/catalog.json \
-            --ledger-root data/research/strategy_signal_ledgers \
             --generated-at "$generated_at" \
             --output artifacts/operations-a.json
-          uv run python scripts/build_strategy_operations.py \
+          uv run alpha ops build \
             --formal-catalog data/research/formal_model_runs/catalog.json \
-            --ledger-root data/research/strategy_signal_ledgers \
             --generated-at "$generated_at" \
             --output artifacts/operations-b.json
           cmp artifacts/operations-a.json artifacts/operations-b.json
+          mkdir -p data/research/strategy_operations
           cp artifacts/operations-a.json data/research/strategy_operations/snapshots.json
           cd qlib-dashboard
           npm run sync:formal-model-runs
           npm run sync:strategy-operations
-      - name: Validate projected Python publication contracts
+      - name: Validate Python publication contracts
         run: |
           set -euo pipefail
           uv run ruff check \
-            src/artifacts/formal_bundle_v2_projector.py \
+            src/artifacts/formal_bundle_v2_builder.py \
             scripts/sync_formal_bundle_v2.py \
-            scripts/build_strategy_operations.py \
+            src/cli/main.py \
+            src/governance/active_strategy_catalog.py \
             src/artifacts/strategy_operations.py \
-            tests/test_formal_bundle_v2_projector.py \
-            tests/test_sync_formal_bundle_v2.py \
-            tests/test_strategy_operations.py
-          uv run pytest \
-            tests/test_formal_bundle_v2_projector.py \
+            tests/test_formal_bundle_v2_builder.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
+            tests/test_active_strategy_catalog.py
+          uv run pytest \
+            tests/test_formal_bundle_v2_builder.py \
+            tests/test_sync_formal_bundle_v2.py \
+            tests/test_strategy_operations.py \
+            tests/test_active_strategy_catalog.py \
             -q --strict-markers --tb=short
       - name: Validate projected frontend lint and types
         working-directory: qlib-dashboard
@@ -126,20 +128,16 @@ jobs:
       - name: Validate projected frontend build
         working-directory: qlib-dashboard
         run: npm run build
-      - name: Report projection delta without mutating the PR
+      - name: Report generated delta without mutating the PR
         if: github.event_name == 'pull_request'
         shell: bash
         run: |
           {
-            echo '### Generated projection delta'
+            echo '### Generated publication delta'
             echo '```text'
-            git status --short -- \
-              data/research/formal_model_runs \
-              data/research/strategy_operations/snapshots.json \
-              qlib-dashboard/public/data/formal-model-runs \
-              qlib-dashboard/public/data/strategy-operations
+            git status --short -- data/research/formal_model_runs
             echo '```'
-            echo 'Reviewed refresh/main publication owns durable generated assets.'
+            echo 'Strategy Operations and frontend public assets are build outputs and are intentionally untracked.'
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload projection evidence
         if: always()

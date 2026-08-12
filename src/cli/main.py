@@ -13,12 +13,28 @@ from src.artifacts.repository_run_store import (
     RepositoryRunStoreError,
     import_local_run,
 )
+from src.artifacts.strategy_operations import (
+    StrategyOperationsError,
+    build_operations_payload,
+    validate_operations_payload,
+    write_operations_payload,
+)
+from src.artifacts.strategy_signal_ledger import (
+    StrategySignalLedgerError,
+    append_signal_evaluation,
+    parse_optional_int,
+)
 from src.data.data_recipe import (
     DataRecipeError,
     data_recipe_catalog,
     data_recipe_status,
     prepare_data_recipe,
     run_research_recipe,
+)
+from src.governance.active_strategy_catalog import (
+    DEFAULT_CATALOG_PATH as DEFAULT_STRATEGY_CATALOG,
+    ActiveStrategyCatalogError,
+    load_active_strategy_catalog,
 )
 from src.research.formal_model_replay import (
     BYD_REPLAY_ID,
@@ -43,7 +59,7 @@ def _render(payload: dict[str, Any]) -> None:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="alpha",
-        description="Governed Alpha Engine data and research workflows.",
+        description="Governed Alpha Engine data, research and strategy operations.",
     )
     parser.add_argument(
         "--root",
@@ -138,7 +154,64 @@ def _build_parser() -> argparse.ArgumentParser:
         default=Path("artifacts/metadata/metadata.db"),
         help="SQLite cache path relative to the repository root unless absolute.",
     )
+
+    ops = groups.add_parser("ops", help="Record decisions and publish current strategy state.")
+    ops_commands = ops.add_subparsers(dest="ops_command", required=True)
+
+    record_decision = ops_commands.add_parser(
+        "record-decision",
+        help="Append one immutable active-strategy decision evaluation.",
+    )
+    record_decision.add_argument("--model-version-id", required=True)
+    record_decision.add_argument("--signal-json", type=Path, required=True)
+    record_decision.add_argument(
+        "--strategy-catalog",
+        type=Path,
+        default=DEFAULT_STRATEGY_CATALOG,
+    )
+    record_decision.add_argument(
+        "--ledger-root",
+        type=Path,
+        default=Path("data/research/strategy_signal_ledgers"),
+    )
+    record_decision.add_argument("--delivery-status", required=True)
+    record_decision.add_argument("--github-issue-number", default="")
+    record_decision.add_argument("--telegram-message-id", default="")
+    record_decision.add_argument("--delivery-error", default="")
+    record_decision.add_argument("--workflow-run-id", required=True)
+    record_decision.add_argument("--commit-sha", required=True)
+    record_decision.add_argument("--created-at-utc", required=True)
+
+    build_ops = ops_commands.add_parser(
+        "build",
+        help="Materialize the current Strategy Console read model from formal identity and decisions.",
+    )
+    build_ops.add_argument(
+        "--formal-catalog",
+        type=Path,
+        default=Path("data/research/formal_model_runs/catalog.json"),
+    )
+    build_ops.add_argument(
+        "--strategy-catalog",
+        type=Path,
+        default=DEFAULT_STRATEGY_CATALOG,
+    )
+    build_ops.add_argument(
+        "--ledger-root",
+        type=Path,
+        default=Path("data/research/strategy_signal_ledgers"),
+    )
+    build_ops.add_argument(
+        "--output",
+        type=Path,
+        default=Path("data/research/strategy_operations/snapshots.json"),
+    )
+    build_ops.add_argument("--generated-at", required=True)
     return parser
+
+
+def _resolve(root: Path, value: Path) -> Path:
+    return value if value.is_absolute() else root / value
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -189,10 +262,65 @@ def main(argv: Sequence[str] | None = None) -> int:
                 set_primary=args.set_primary,
             )
         elif args.group == "research" and args.research_command == "rebuild-index":
-            output = args.output
-            if not output.is_absolute():
-                output = root / output
-            payload = rebuild_metadata_cache(root=root, db_path=output)
+            payload = rebuild_metadata_cache(
+                root=root,
+                db_path=_resolve(root, args.output),
+            )
+        elif args.group == "ops" and args.ops_command == "record-decision":
+            strategy_catalog = _resolve(root, args.strategy_catalog)
+            active = load_active_strategy_catalog(strategy_catalog)
+            strategy = active.by_model_version_id.get(args.model_version_id)
+            if strategy is None:
+                raise ActiveStrategyCatalogError(
+                    f"model is not an active strategy: {args.model_version_id}"
+                )
+            signal_path = _resolve(root, args.signal_json)
+            signal = json.loads(signal_path.read_text(encoding="utf-8"))
+            if not isinstance(signal, dict):
+                raise StrategySignalLedgerError("signal JSON root must be an object")
+            ledger_root = _resolve(root, args.ledger_root) / strategy.model_version_id
+            record_path = append_signal_evaluation(
+                ledger_root=ledger_root,
+                model_version_id=strategy.model_version_id,
+                signal=signal,
+                delivery_status=args.delivery_status,
+                github_issue_number=parse_optional_int(
+                    args.github_issue_number,
+                    label="github_issue_number",
+                ),
+                telegram_message_id=parse_optional_int(
+                    args.telegram_message_id,
+                    label="telegram_message_id",
+                ),
+                delivery_error=args.delivery_error or None,
+                workflow_run_id=args.workflow_run_id,
+                commit_sha=args.commit_sha,
+                created_at_utc=args.created_at_utc,
+            )
+            payload = {
+                "strategy_id": strategy.strategy_id,
+                "model_version_id": strategy.model_version_id,
+                "record_path": record_path.relative_to(root).as_posix(),
+                "research_only": True,
+                "trade_ready": False,
+            }
+        elif args.group == "ops" and args.ops_command == "build":
+            output = _resolve(root, args.output)
+            operations = build_operations_payload(
+                formal_catalog=_resolve(root, args.formal_catalog),
+                strategy_catalog=_resolve(root, args.strategy_catalog),
+                ledger_root=_resolve(root, args.ledger_root),
+                generated_at=args.generated_at,
+            )
+            validate_operations_payload(operations)
+            changed = write_operations_payload(output, operations)
+            payload = {
+                "path": output.relative_to(root).as_posix(),
+                "changed": changed,
+                "strategy_count": len(operations["records"]),
+                "research_only": True,
+                "trade_ready": False,
+            }
         else:
             parser.error("unsupported command")
             return 2
@@ -201,6 +329,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         FormalModelReplayError,
         RepositoryRunStoreError,
         RepositoryMetadataCacheError,
+        ActiveStrategyCatalogError,
+        StrategySignalLedgerError,
+        StrategyOperationsError,
+        OSError,
+        json.JSONDecodeError,
     ) as exc:
         _render(
             {

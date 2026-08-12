@@ -116,17 +116,19 @@ test('Security Explorer explains its value before sign-in and remains available 
   await expect.poll(() => marketEvidenceRequests.length).toBeGreaterThan(0);
 });
 
-test('Free users can inspect QQQR performance while live execution remains Pro', async ({ page }) => {
+test('Free users can inspect QQQR evidence while current operations remain protected', async ({ page }) => {
   await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'free-fixture' } });
   await page.goto('/#/strategies');
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   await fleet.getByText('QQQR v4.3', { exact: true }).click();
   await expect(page.getByRole('heading', { name: 'QQQR v4.3', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Formal performance', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Pro execution layer', exact: true })).toBeVisible();
-  await expect(page.getByText('Current holdings', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Current holdings and live signals are protected', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'View AlphaEngine Pro access' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Performance, risk, holdings and attribution', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Performance', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Current decision state' })).toHaveCount(0);
+  await expect(page.getByText('Current signal drivers', { exact: true })).toHaveCount(0);
 });
 
 test('only a verified Owner can open access settings', async ({ page }) => {
@@ -159,6 +161,22 @@ async function loadFormalDisplayNames(page: Page): Promise<string[]> {
   expect(names.length).toBeGreaterThan(0);
   return names;
 }
+
+test('Strategy overview and list are driven by the governed formal catalog', async ({ page }) => {
+  await openConsole(page);
+  const formalNames = await loadFormalDisplayNames(page);
+  const overviewFleet = page.getByRole('region', { name: 'Formal strategy fleet' });
+  for (const name of formalNames) {
+    await expect(overviewFleet.getByText(name, { exact: true })).toBeVisible();
+  }
+  await page.goto('/#/strategies');
+  await expect(page.getByRole('heading', { name: 'Formal Strategies' })).toBeVisible();
+  const strategyFleet = page.getByRole('region', { name: 'Formal strategy fleet' });
+  for (const name of formalNames) {
+    await expect(strategyFleet.getByText(name, { exact: true })).toBeVisible();
+  }
+  await assertNoHorizontalOverflow(page);
+});
 
 test('product homepage opens the strategy console', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];

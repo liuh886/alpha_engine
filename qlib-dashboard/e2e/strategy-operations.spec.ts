@@ -57,72 +57,108 @@ const bundleManifest = {
   ],
 };
 
+const protectedOperation = {
+  strategy_id: 'qqq_rotation',
+  model_version_id: 'qqqi_qqq_tqqq_v4_3',
+  current_operations_access: 'pro',
+  status: 'target_pending_execution',
+  as_of: '2026-07-31',
+  latest_completed_session: '2026-07-31',
+  decision_cadence: 'Every completed US market session',
+  next_decision_policy: 'Evaluate at close; target applies to the next eligible open.',
+  state_label: 'Defensive → Transition',
+  decision_reason: 'QQQ repair with easing volatility',
+  allocations: [
+    { asset: 'QQQ', current: 0, target: 0.5, delta: 0.5 },
+    { asset: 'QQQI', current: 1, target: 0.5, delta: -0.5 },
+    { asset: 'TQQQ', current: 0, target: 0, delta: 0 },
+  ],
+  turnover: 1,
+  estimated_cost: 0.001,
+  data_freshness: 'current',
+  factor_freshness: 'current',
+  delivery_status: 'sent',
+  source_label: 'Governed QQQ signal ledger',
+  source_href: 'https://github.com/liuh886/alpha_engine/issues/9001',
+  note: 'Target is awaiting next-open execution evidence.',
+  factor_evidence: [
+    {
+      factor_id: 'strategy.qqq.vix_close',
+      factor_version: '1.0',
+      implementation_hash: 'd'.repeat(64),
+      display_name: 'VIX close',
+      information_family: 'volatility',
+      value: 15.99,
+      reference: { normal: 18, stress: 22 },
+      state: 'calm',
+      effect: 'veto',
+      reason_code: 'vix_easing_supports_release',
+      observed_at: '2026-07-31',
+    },
+    {
+      factor_id: 'strategy.qqq.qqq_vs_ma20',
+      factor_version: '1.0',
+      implementation_hash: 'e'.repeat(64),
+      display_name: 'QQQ distance to SMA20',
+      information_family: 'trend',
+      value: 0.01,
+      reference: 0,
+      state: 'at_or_above',
+      effect: 'veto',
+      reason_code: 'price_repair_supports_release',
+      observed_at: '2026-07-31',
+    },
+  ],
+  source_identity: {
+    formal_bundle_id: 'a'.repeat(64),
+    formal_run_id: 'qqq-formal-run',
+    formal_evidence_cutoff: '2026-07-31',
+    ledger_fingerprint: 'fixture-fingerprint',
+    signal_sha256: 'b'.repeat(64),
+    factor_catalog_implementation_hash: 'f'.repeat(64),
+    workflow_run_id: '12345',
+    commit_sha: 'c'.repeat(40),
+    github_issue_number: 9001,
+  },
+};
+
 const operations = {
-  schema_version: '2.0.0',
+  schema_version: '2.1.0',
   generated_at: '2026-08-02T00:03:00Z',
   research_only: true,
   trade_ready: false,
   records: [
     {
+      strategy_id: 'qqq_rotation',
       model_version_id: 'qqqi_qqq_tqqq_v4_3',
-      status: 'target_pending_execution',
-      as_of: '2026-07-31',
-      latest_completed_session: '2026-07-31',
+      current_operations_access: 'pro',
+      status: 'blocked',
+      as_of: null,
+      latest_completed_session: null,
       decision_cadence: 'Every completed US market session',
       next_decision_policy: 'Evaluate at close; target applies to the next eligible open.',
-      state_label: 'Defensive → Transition',
-      decision_reason: 'QQQ repair with easing volatility',
-      allocations: [
-        { asset: 'QQQ', current: 0, target: 0.5, delta: 0.5 },
-        { asset: 'QQQI', current: 1, target: 0.5, delta: -0.5 },
-        { asset: 'TQQQ', current: 0, target: 0, delta: 0 },
-      ],
-      turnover: 1,
-      estimated_cost: 0.001,
-      data_freshness: 'current',
-      factor_freshness: 'current',
-      delivery_status: 'sent',
-      source_label: 'Governed QQQ signal ledger',
-      source_href: 'https://github.com/liuh886/alpha_engine/issues/9001',
-      note: 'Target is awaiting next-open execution evidence.',
-      factor_evidence: [
-        {
-          factor_id: 'strategy.qqq.vix_close',
-          factor_version: '1.0',
-          implementation_hash: 'd'.repeat(64),
-          display_name: 'VIX close',
-          information_family: 'volatility',
-          value: 15.99,
-          reference: { normal: 18, stress: 22 },
-          state: 'calm',
-          effect: 'veto',
-          reason_code: 'vix_easing_supports_release',
-          observed_at: '2026-07-31',
-        },
-        {
-          factor_id: 'strategy.qqq.qqq_vs_ma20',
-          factor_version: '1.0',
-          implementation_hash: 'e'.repeat(64),
-          display_name: 'QQQ distance to SMA20',
-          information_family: 'trend',
-          value: 0.01,
-          reference: 0,
-          state: 'at_or_above',
-          effect: 'veto',
-          reason_code: 'price_repair_supports_release',
-          observed_at: '2026-07-31',
-        },
-      ],
+      state_label: 'Protected current operations',
+      decision_reason: 'Current holdings and signals require authenticated entitlement delivery.',
+      allocations: [],
+      turnover: null,
+      estimated_cost: null,
+      data_freshness: 'unknown',
+      factor_freshness: 'blocked',
+      delivery_status: 'not available',
+      source_label: 'Protected current operations',
+      source_href: null,
+      note: 'Current holdings, targets, drivers and decision-ledger provenance are not included in the public bundle.',
+      factor_evidence: [],
       source_identity: {
         formal_bundle_id: 'a'.repeat(64),
         formal_run_id: 'qqq-formal-run',
         formal_evidence_cutoff: '2026-07-31',
-        ledger_fingerprint: 'fixture-fingerprint',
-        signal_sha256: 'b'.repeat(64),
-        factor_catalog_implementation_hash: 'f'.repeat(64),
-        workflow_run_id: '12345',
-        commit_sha: 'c'.repeat(40),
-        github_issue_number: 9001,
+        ledger_fingerprint: null,
+        signal_sha256: null,
+        factor_catalog_implementation_hash: null,
+        workflow_run_id: null,
+        commit_sha: null,
+        github_issue_number: null,
       },
     },
   ],
@@ -153,7 +189,7 @@ async function assertNoHorizontalOverflow(page: Page) {
 
 async function installProMembership(page: Page): Promise<void> {
   await page.route('**/admin/shared/account-shell.js*', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
-  await page.addInitScript(() => {
+  await page.addInitScript((fullSnapshot) => {
     const snapshot = { loading: false, isPro: true, user: { id: 'pro-fixture' } };
     (window as any).HaoAccount = {
       getState: () => snapshot,
@@ -162,11 +198,31 @@ async function installProMembership(page: Page): Promise<void> {
         listener(snapshot);
         return () => undefined;
       },
+      getClient: async () => ({
+        from: (table: string) => ({
+          select: () => {
+            const query: any = {
+              eq: () => query,
+              maybeSingle: async () => table === 'strategy_operation_snapshots'
+                ? {
+                    data: {
+                      strategy_id: 'qqq_rotation',
+                      model_version_id: 'qqqi_qqq_tqqq_v4_3',
+                      snapshot: fullSnapshot,
+                    },
+                    error: null,
+                  }
+                : { data: null, error: null },
+            };
+            return query;
+          },
+        }),
+      }),
     };
-  });
+  }, protectedOperation);
 }
 
-test('QQQ operating evidence is rendered from the governed static read model', async ({ page }, testInfo) => {
+test('QQQ Pro operations are hydrated from the authenticated snapshot, not the public bundle', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   const githubApiRequests: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
@@ -195,7 +251,7 @@ test('QQQ operating evidence is rendered from the governed static read model', a
   const evidenceTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
   await expect(evidenceTabs.getByRole('tab', { name: 'Performance', exact: true })).toBeVisible();
   await expect(evidenceTabs.getByRole('tab', { name: 'Risk & robustness', exact: true })).toBeVisible();
-  await expect(page.getByText('Sign in')).toHaveCount(0);
+  await expect(page.getByText('Protected current operations', { exact: true })).toHaveCount(0);
   expect(githubApiRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
   await assertNoHorizontalOverflow(page);

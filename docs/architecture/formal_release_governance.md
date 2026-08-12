@@ -1,87 +1,134 @@
 # Formal release governance
 
-Alpha Engine publishes a static, research-only artifact studio. The release system deliberately separates repository research evidence from the smaller set of named formal backtests exposed in the frontend selector.
+Alpha Engine exposes one active formal model per stable product strategy. Historical research evidence may retain superseded models, but **active identity is owned only by `configs/strategies/registry.json`**.
 
-## Two publication catalogs
+Current active strategy set:
 
-`data/research/catalog.json` governs repository-backed research metadata and retained run evidence. It may contain active and superseded named models when their historical evidence remains useful. For example, US x1.0 remains in the repository bundle as immutable historical evidence even though US x1.1 supersedes it as the active US baseline.
+1. `qqq_rotation` → QQQ Rotation v4.3;
+2. `us_x` → US x1.2;
+3. `cn_x` → CN x1.1;
+4. `byd` → BYD v1.3.
 
-`data/research/formal_backtests/catalog.json` is the stricter frontend allow-list. It currently exposes exactly:
+All remain `research_only=true`, `trade_ready=false`.
 
-1. QQQ Rotation v4.2;
-2. US x1.1;
-3. CN x1.0.
+## Evidence layers
 
-US x1.0 is therefore allowed in `bundle/data/models.json` but must not appear in the formal model selector. Exploratory experiments, candidate grids, rejected candidates and shadow strategies are excluded from the formal catalog.
+### Repository research catalog
 
-Both catalogs retain `research_only=true` and `trade_ready=false`. The browser does not train models, generate signals or write results back to the repository.
+`data/research/catalog.json` may retain active and superseded research runs when their immutable evidence remains useful. Historical presence does not make a model active.
+
+### Active Strategy Catalog
+
+`configs/strategies/registry.json` answers the product question:
+
+> Which stable strategies exist now, and which model version currently represents each one?
+
+Formal publication, Strategy Operations and frontend current-state policy must agree with this catalog exactly. README text, workflow names and old model registries are not identity authorities.
+
+### Formal Model Run Bundle v2 catalog
+
+`data/research/formal_model_runs/catalog.json` is the active formal evidence catalog exposed to Strategy Console. Its model-version set must equal the Active Strategy Catalog exactly.
+
+The final formal catalog is assembled from two current source classes:
+
+- governed source packages for QQQ v4.3, CN x1.1 and BYD v1.3;
+- native Bundle v2 evidence for US x1.2.
+
+There is no active v1→v2 migration registry, compatibility reader or projector layer. The internal flat source package format may remain a model-specific deterministic input until that model is natively produced as Bundle v2, but it is not the public evidence contract.
+
+## Promotion means identity over immutable evidence
+
+A formal promotion should preserve the already-observed economic evidence and assign accepted formal identity through a reviewed contract. It must not silently retrain, reopen model selection or substitute newer provider bytes.
+
+For native Bundle v2 runs, promotion is a validated reference/materialization of the immutable run into the formal catalog. US x1.2 is the reference implementation.
+
+For source-backed models, the Bundle v2 builder maps only retained source evidence into the canonical sections. Missing evidence stays `not_retained` / `not_applicable`; the builder does not invent metrics, fills, PnL, IC or diagnostics.
+
+## Reviewed refresh transaction
+
+The reviewed refresh transaction owns evidence extension, not model selection.
+
+Required sequence:
+
+1. resolve provider/component identity and common market cutoffs;
+2. enforce exact incumbent replay gates where applicable;
+3. extend only accepted source/native evidence using governed execution semantics;
+4. build the complete active Bundle v2 catalog from the Active Strategy Catalog;
+5. verify immutable historical prefixes, source hashes, freshness and catalog parity;
+6. open a review PR containing **canonical evidence only**;
+7. merge only after required checks pass;
+8. regenerate Strategy Operations and frontend projections from the reviewed canonical state;
+9. deploy the exact reviewed merge SHA and pass live Pages acceptance.
+
+A reviewed refresh PR does not commit generated `data/research/strategy_operations/` or `qlib-dashboard/public/data/`.
+
+## US x1.1 retirement
+
+US x1.1 is historical evidence only after the accepted US x1.2 promotion.
+
+- it is not in the Active Strategy Catalog;
+- it is not an active formal source package;
+- it is not refreshed to satisfy current product state;
+- no compatibility adapter relabels it as US x1.2;
+- its useful historical lineage may remain referenced by immutable US x1.2 evidence.
+
+## Strategy decisions are companion evidence
+
+Formal historical evidence and current decisions are intentionally separate:
+
+```text
+Formal Bundle v2          append-only Decision Ledger
+       │                            │
+       └────────────┬───────────────┘
+                    ↓
+            Strategy Operations
+              generated read model
+```
+
+A formal run does not embed mutable Telegram/GitHub delivery state. The browser does not reconstruct current holdings from backtests.
 
 ## Pages publication impact
 
-Every push to `main` runs the lightweight publication-impact detector before any Pages build. The detector resolves the current dependency graph from the repository catalog and deploys only when a changed path can alter the public artifact.
+Pages impact detection follows canonical publication dependencies, including:
 
-Direct publication dependencies include:
+- frontend source;
+- Active Strategy Catalog;
+- active formal Bundle v2 evidence;
+- repository research/model/market/model-data evidence used by the public product;
+- append-only Strategy Decision Ledgers;
+- static exporters, contract validators and deployment workflows.
 
-- `qlib-dashboard/**`;
-- `data/research/formal_backtests/**`;
-- the repository catalog;
-- model contracts listed by that catalog;
-- run directories listed by that catalog;
-- result reports referenced by published model contracts;
-- the static exporters, bundle schema/runtime, release verifier and Pages workflows.
+Generated Strategy Operations and `public/data` are outputs, not change-authority inputs.
 
-Unreferenced experiments, candidate cards and ordinary unpublished research notes do not trigger the expensive build, deployment, Chromium installation or live browser suite.
-
-The detector fails closed. An unreadable catalog, missing published source, unsupported report declaration or unavailable commit range produces `deploy=true`. Every decision is retained as a `pages-impact-decision` workflow artifact. A deployed `deployment.json` also records the impact reason and matched publication paths.
-
-The independent `workflow_run` observer is the sole writer of the rolling production receipt. It distinguishes:
-
-- a verified deployment;
-- a clean skip because no publication dependency changed;
-- an upstream deployment failure;
-- a failed live-origin verification;
-- a missing impact decision, which is treated as a governance failure.
+The detector fails closed when the dependency graph or commit range cannot be resolved.
 
 ## Production acceptance gates
 
-A required Pages release must pass both structural and behavioral gates.
+A required Pages release must verify:
 
-The structural verifier checks the exact deployed commit, complete research bundle, required bundle artifact sizes and SHA-256 values, repository-backed source contract, formal catalog order, all formal package hashes and model identities, the research boundary and the complete-backtest application shell.
+- exact deployed commit;
+- exactly the four active strategy/model identities;
+- formal manifest and section hashes;
+- research-only / not-trade-ready boundary;
+- regenerated Strategy Operations parity with formal identity;
+- no superseded model appearing as current through fallback;
+- no required resource failures or page-level runtime errors;
+- desktop/mobile browser acceptance.
 
-After deployment, Playwright opens the public Pages origin in fresh desktop Chrome and Pixel 7 contexts. It verifies:
+## Formal promotion provenance
 
-- exactly the three governed formal baselines;
-- no Experiments navigation and no US x1.0 selector entry;
-- v4.2 performance and evidence views;
-- US x1.1 holdings, transaction ledger, attribution and complete evidence;
-- CN x1.0 partial-evidence and unavailable-ledger states;
-- no page errors, failed required resources or document-level horizontal overflow.
+Retained historical promotion manifests/archives remain evidence of previously accepted baselines where they are still required for byte-exact reproduction. They are provenance, not an alternate active catalog.
 
-Traces and screenshots are retained as `pages-live-browser-evidence`.
+Do not add new archive/migration machinery automatically for models that can be promoted from immutable Bundle v2 evidence directly. Prefer the native current contract and delete superseded promotion plumbing once it is no longer an evidence dependency.
 
-## Formal baseline promotion contract
+## Invariants
 
-A formal package change is reviewed through `.github/workflows/formal-promotion.yml`. The workflow is PR-only and has read-only repository permissions. It never edits a package, changes a catalog, merges a pull request or promotes a model automatically.
-
-Each model has an explicit manifest under `data/research/formal_promotions/` containing:
-
-- model and package identity;
-- evidence cutoff;
-- original workflow run, workflow head commit, artifact ID, name and SHA-256 digest;
-- original Actions artifact expiration for provenance;
-- archive layout and all files required by the deterministic builder;
-- the approved durable repository location.
-
-The exact verified source ZIP bytes are retained under `data/research/formal_promotions/archive/`. The three archives total approximately 2.7 MB and remain normal binary Git objects rather than LFS pointers, so historical checkout and reproduction do not depend on expiring Actions storage or separate LFS retention.
-
-The promotion workflow verifies that each repository ZIP SHA-256 exactly matches the original Actions artifact digest, copies it into an isolated materialization directory, safely extracts it, checks every required source path, regenerates all formal packages in a temporary directory and byte-compares the result with the proposed committed packages and catalog. It emits a JSON receipt and a human-readable diff summary.
-
-The original Actions artifacts remain recorded as provenance, but their expiration no longer affects reproduction of accepted baselines. No newer provider bytes may be substituted: a changed or missing repository archive fails verification. Introducing or replacing a durable archive requires a reviewed PR with matching manifest, digest and byte-exact package reproduction.
-
-A short-lived branch-only workflow was used once to download the three exact artifacts, verify their fixed SHA-256 values and commit the ZIP bytes to the governance branch. That workflow was removed before merge; no archive-writing workflow or elevated contents permission remains on `main`.
-
-## Browser runtime caching assessment
-
-Node package downloads already use the package-manager cache. The production deployment continues to install the Playwright Chromium runtime with `--with-deps` for each required release. A shared browser binary cache is intentionally not introduced because Playwright browser revisions and Linux system dependencies must remain aligned with the checked-in lockfile and current runner image.
-
-Caching may be reconsidered after measuring deployment cost, preferably through a pinned and reviewed runner image or an explicit Playwright browser revision cache key. Any optimization must preserve the same fresh-context, public-origin acceptance semantics.
+- one stable strategy has one active model version;
+- one Active Strategy Catalog owns current identity;
+- Bundle v2 is the formal frontend evidence contract;
+- no model selection during refresh;
+- no historical evidence recomputation during promotion;
+- no compatibility fallback for superseded active versions;
+- missing evidence stays missing rather than synthesized;
+- generated frontend/read-model projections are rebuildable outputs;
+- formal acceptance never implies broker execution or trade readiness.

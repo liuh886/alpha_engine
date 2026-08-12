@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0.0",
+  "registry_id": "alpha_strategy_registry",
+  "research_only": true,
+  "trade_ready": false,
+  "strategies": [
+    {
+      "strategy_id": "qqq_rotation",
+      "display_name": "QQQ Rotation v4.3",
+      "model_family_id": "qqq_rotation",
+      "model_version_id": "qqqi_qqq_tqqq_v4_3",
+      "model_kind": "rules_based_allocation",
+      "market": "us",
+      "benchmark_id": "QQQ",
+      "formal_status": "accepted_formal_baseline",
+      "decision_cadence": "Every completed US market session",
+      "next_decision_policy": "Evaluate at close; target applies to the next eligible open.",
+      "signal_ledger": "data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3",
+      "historical_evidence_access": "public",
+      "current_operations_access": "pro"
+    },
+    {
+      "strategy_id": "us_x",
+      "display_name": "US x1.2",
+      "model_family_id": "us_ranker",
+      "model_version_id": "us_x1_2",
+      "model_kind": "cross_sectional_ranker",
+      "market": "us",
+      "benchmark_id": "QQQ",
+      "formal_status": "accepted_formal_baseline",
+      "decision_cadence": "Every 10 provider sessions",
+      "next_decision_policy": "Publish only on the governed rebalance session; target applies to the next eligible open.",
+      "signal_ledger": "data/research/strategy_signal_ledgers/us_x1_2",
+      "historical_evidence_access": "public",
+      "current_operations_access": "public"
+    },
+    {
+      "strategy_id": "cn_x",
+      "display_name": "CN x1.1",
+      "model_family_id": "cn_ranker",
+      "model_version_id": "cn_x1_1",
+      "model_kind": "cross_sectional_ranker",
+      "market": "cn",
+      "benchmark_id": "000300",
+      "formal_status": "accepted_formal_baseline",
+      "decision_cadence": "Every 10 provider sessions",
+      "next_decision_policy": "Publish only on the governed rebalance session; target applies to the next eligible open.",
+      "signal_ledger": "data/research/strategy_signal_ledgers/cn_x1_1",
+      "historical_evidence_access": "public",
+      "current_operations_access": "public"
+    },
+    {
+      "strategy_id": "byd",
+      "display_name": "BYD v1.3",
+      "model_family_id": "byd_allocation",
+      "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+      "model_kind": "rules_based_allocation",
+      "market": "cn",
+      "benchmark_id": "byd_v1.2",
+      "formal_status": "accepted_formal_baseline",
+      "decision_cadence": "Every completed CN market session",
+      "next_decision_policy": "Evaluate after the common close; target applies to the next independently confirmed eligible open.",
+      "signal_ledger": "data/research/strategy_signal_ledgers/byd_v1_3_recovery_event_low_vol_confirmation_v1",
+      "historical_evidence_access": "public",
+      "current_operations_access": "public"
+    }
+  ]
+}

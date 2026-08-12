@@ -16,8 +16,16 @@ from src.factors.strategy_snapshot import (
     StrategyFactorSnapshotError,
     validate_strategy_factor_snapshot,
 )
+from src.governance.active_strategy_catalog import (
+    ACCESS_LEVELS,
+    DEFAULT_CATALOG_PATH,
+    ActiveStrategy,
+    ActiveStrategyCatalogError,
+    assert_formal_catalog_matches_active_strategies,
+    load_active_strategy_catalog,
+)
 
-SCHEMA_VERSION = "2.0.0"
+SCHEMA_VERSION = "2.1.0"
 QQQ_FAMILY = "qqq_rotation"
 BYD_FAMILY = "byd_allocation"
 US_RANKER_FAMILY = "us_ranker"
@@ -88,7 +96,11 @@ def _has_change(allocations: Sequence[Mapping[str, object]]) -> bool:
     return any(abs(float(row["delta"])) > 1e-9 for row in allocations)
 
 
-def _formal_records(formal_catalog: Path) -> list[dict[str, Any]]:
+def _formal_records(
+    formal_catalog: Path,
+    *,
+    strategy_catalog: Path,
+) -> tuple[list[dict[str, Any]], dict[str, ActiveStrategy]]:
     payload = json.loads(formal_catalog.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise StrategyOperationsError("formal catalog root must be an object")
@@ -97,33 +109,30 @@ def _formal_records(formal_catalog: Path) -> list[dict[str, Any]]:
         raise StrategyOperationsError("operations read model requires the formal catalog")
     if payload.get("research_only") is not True or payload.get("trade_ready") is not False:
         raise StrategyOperationsError("formal catalog research boundary is invalid")
+    try:
+        active = load_active_strategy_catalog(strategy_catalog)
+        assert_formal_catalog_matches_active_strategies(payload, active)
+    except ActiveStrategyCatalogError as exc:
+        raise StrategyOperationsError(str(exc)) from exc
     records = payload.get("records")
     if not isinstance(records, list) or not records:
         raise StrategyOperationsError("formal catalog contains no records")
-    return [dict(record) for record in records if isinstance(record, Mapping)]
-
-
-def _cadence(record: Mapping[str, Any]) -> tuple[str, str]:
-    family = str(record.get("model_family_id", ""))
-    if family == QQQ_FAMILY:
-        return (
-            "Every completed US market session",
-            "Evaluate at close; target applies to the next eligible open.",
-        )
-    if family == BYD_FAMILY:
-        return (
-            "Every completed CN market session",
-            "Evaluate after the common close; target applies to the next independently confirmed eligible open.",
-        )
-    if family in RANKER_FAMILIES:
-        return (
-            "Every 10 provider sessions",
-            "Publish only on the governed rebalance session; target applies to the next eligible open.",
-        )
     return (
-        "Governed model cadence",
-        "No governed current-target publisher is registered yet.",
+        [dict(record) for record in records if isinstance(record, Mapping)],
+        active.by_model_version_id,
     )
+
+
+def _identity(strategy: ActiveStrategy, record: Mapping[str, Any]) -> dict[str, object]:
+    return {
+        "strategy_id": strategy.strategy_id,
+        "model_version_id": str(record["model_version_id"]),
+        "current_operations_access": strategy.current_operations_access,
+    }
+
+
+def _cadence(strategy: ActiveStrategy) -> tuple[str, str]:
+    return strategy.decision_cadence, strategy.next_decision_policy
 
 
 def _source(record: Mapping[str, Any], ledger: Mapping[str, Any] | None) -> dict[str, object]:
@@ -161,18 +170,23 @@ def _source(record: Mapping[str, Any], ledger: Mapping[str, Any] | None) -> dict
     return result
 
 
-def _unavailable(record: Mapping[str, Any], *, awaiting: bool) -> dict[str, object]:
-    cadence, next_policy = _cadence(record)
+def _unavailable(
+    record: Mapping[str, Any],
+    strategy: ActiveStrategy,
+    *,
+    awaiting: bool,
+) -> dict[str, object]:
+    cadence, next_policy = _cadence(strategy)
     if awaiting:
         status = "awaiting_observation"
         state_label = "Awaiting first governed evaluation"
-        note = "The signal publisher exists, but no cutoff-bound evaluation has been committed yet."
+        note = "The decision publisher exists, but no cutoff-bound evaluation has been committed yet."
     else:
         status = "pipeline_unavailable"
         state_label = "No governed current-target publisher"
-        note = "Formal historical evidence is available; live target state is intentionally unavailable."
+        note = "Formal historical evidence is available; current strategy state is intentionally unavailable."
     return {
-        "model_version_id": str(record["model_version_id"]),
+        **_identity(strategy, record),
         "status": status,
         "as_of": None,
         "latest_completed_session": record.get("evidence_cutoff"),
@@ -186,7 +200,7 @@ def _unavailable(record: Mapping[str, Any], *, awaiting: bool) -> dict[str, obje
         "data_freshness": "unknown",
         "factor_freshness": "blocked" if awaiting else "unknown",
         "delivery_status": "not available",
-        "source_label": ("Governed signal ledger" if awaiting else "Formal evidence only"),
+        "source_label": ("Governed decision ledger" if awaiting else "Formal evidence only"),
         "source_href": None,
         "note": note,
         "factor_evidence": [],
@@ -211,7 +225,7 @@ def _factor_snapshot(
 ) -> tuple[str, list[dict[str, Any]], str | None]:
     payload = signal.get("factor_evidence")
     if payload is None:
-        return "blocked", [], "Latest signal predates the canonical factor snapshot contract."
+        return "blocked", [], "Latest decision predates the canonical factor snapshot contract."
     try:
         validate_strategy_factor_snapshot(payload)
     except StrategyFactorSnapshotError as exc:
@@ -222,7 +236,7 @@ def _factor_snapshot(
         return (
             "blocked",
             [],
-            "Canonical factor snapshot cutoff does not match the signal data cutoff.",
+            "Canonical factor snapshot cutoff does not match the decision data cutoff.",
         )
     rows = payload.get("factors")
     if not isinstance(rows, list):
@@ -272,10 +286,14 @@ def _status(
     return "target_pending_execution" if changed else "current_no_change"
 
 
-def _qqq(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, object]:
+def _qqq(
+    record: Mapping[str, Any],
+    strategy: ActiveStrategy,
+    ledger: Mapping[str, Any],
+) -> dict[str, object]:
     signal = ledger.get("signal")
     if not isinstance(signal, Mapping):
-        raise StrategyOperationsError("QQQ ledger signal is missing")
+        raise StrategyOperationsError("QQQ decision ledger signal is missing")
     allocations = _allocations(signal.get("current_weights"), signal.get("target_weights"))
     changed = _has_change(allocations)
     data_fresh = signal.get("data_freshness_ok") is True
@@ -283,7 +301,7 @@ def _qqq(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
     latest = signal.get("latest_data_date") or ledger.get("latest_data_date")
     factor_freshness, factors, factor_error = _factor_snapshot(signal, latest_data_date=latest)
     _, _, state_label = _qqq_state(signal)
-    cadence, next_policy = _cadence(record)
+    cadence, next_policy = _cadence(strategy)
     decision_reason = signal.get("decision_reason_label") or signal.get("decision_reason")
     if not decision_reason:
         current_overlay = signal.get("current_overlay")
@@ -294,7 +312,7 @@ def _qqq(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
             else str(target_overlay or "Frozen QQQ rotation evaluation.")
         )
     return {
-        "model_version_id": str(record["model_version_id"]),
+        **_identity(strategy, record),
         "status": _status(
             delivery_status=delivery_status,
             data_fresh=data_fresh,
@@ -313,7 +331,7 @@ def _qqq(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
         "data_freshness": "current" if data_fresh else "stale",
         "factor_freshness": factor_freshness,
         "delivery_status": delivery_status,
-        "source_label": "Governed QQQ signal ledger",
+        "source_label": "Governed QQQ decision ledger",
         "source_href": (
             f"https://github.com/liuh886/alpha_engine/issues/{issue_number}"
             if issue_number
@@ -330,10 +348,14 @@ def _qqq(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
     }
 
 
-def _byd(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, object]:
+def _byd(
+    record: Mapping[str, Any],
+    strategy: ActiveStrategy,
+    ledger: Mapping[str, Any],
+) -> dict[str, object]:
     signal = ledger.get("signal")
     if not isinstance(signal, Mapping):
-        raise StrategyOperationsError("BYD ledger signal is missing")
+        raise StrategyOperationsError("BYD decision ledger signal is missing")
     allocations = _allocations(signal.get("current_weights"), signal.get("target_weights"))
     changed = _has_change(allocations)
     data_fresh = signal.get("data_freshness_ok") is True
@@ -341,9 +363,9 @@ def _byd(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
     latest = signal.get("latest_data_date") or ledger.get("latest_data_date")
     factor_freshness, factors, factor_error = _factor_snapshot(signal, latest_data_date=latest)
     mode = str(signal.get("target_mode") or "")
-    cadence, next_policy = _cadence(record)
+    cadence, next_policy = _cadence(strategy)
     return {
-        "model_version_id": str(record["model_version_id"]),
+        **_identity(strategy, record),
         "status": _status(
             delivery_status=delivery_status,
             data_fresh=data_fresh,
@@ -364,7 +386,7 @@ def _byd(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
         "data_freshness": "current" if data_fresh else "stale",
         "factor_freshness": factor_freshness,
         "delivery_status": delivery_status,
-        "source_label": "Governed BYD signal ledger",
+        "source_label": "Governed BYD decision ledger",
         "source_href": (
             f"https://github.com/liuh886/alpha_engine/issues/{issue_number}"
             if issue_number
@@ -381,17 +403,21 @@ def _byd(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
     }
 
 
-def _ranker(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, object]:
+def _ranker(
+    record: Mapping[str, Any],
+    strategy: ActiveStrategy,
+    ledger: Mapping[str, Any],
+) -> dict[str, object]:
     signal = ledger.get("signal")
     if not isinstance(signal, Mapping):
-        raise StrategyOperationsError("ranker ledger signal is missing")
+        raise StrategyOperationsError("ranker decision ledger signal is missing")
     allocations = _allocations(signal.get("current_weights"), signal.get("target_weights"))
     changed = _has_change(allocations)
     data_fresh = signal.get("data_freshness_ok") is True
     delivery_status, issue_number = _delivery(ledger)
     latest = signal.get("latest_data_date") or ledger.get("latest_data_date")
     factor_freshness, factors, factor_error = _factor_snapshot(signal, latest_data_date=latest)
-    family = str(record.get("model_family_id", ""))
+    family = strategy.model_family_id
     diagnostics = (
         signal.get("diagnostics") if isinstance(signal.get("diagnostics"), Mapping) else {}
     )
@@ -401,9 +427,9 @@ def _ranker(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, o
         state_label = "CN risk-off · CSI300 fallback"
     else:
         state_label = "CN risk-on · sector 4×1"
-    cadence, next_policy = _cadence(record)
+    cadence, next_policy = _cadence(strategy)
     return {
-        "model_version_id": str(record["model_version_id"]),
+        **_identity(strategy, record),
         "status": _status(
             delivery_status=delivery_status,
             data_fresh=data_fresh,
@@ -422,7 +448,7 @@ def _ranker(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, o
         "data_freshness": "current" if data_fresh else "stale",
         "factor_freshness": factor_freshness,
         "delivery_status": delivery_status,
-        "source_label": "Governed 10-session ranker signal ledger",
+        "source_label": "Governed 10-session ranker decision ledger",
         "source_href": (
             f"https://github.com/liuh886/alpha_engine/issues/{issue_number}"
             if issue_number
@@ -440,39 +466,58 @@ def _ranker(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, o
 
 
 def build_operations_payload(
-    *, formal_catalog: Path, ledger_root: Path, generated_at: str
+    *,
+    formal_catalog: Path,
+    ledger_root: Path,
+    generated_at: str,
+    strategy_catalog: Path = DEFAULT_CATALOG_PATH,
 ) -> dict[str, object]:
     records: list[dict[str, object]] = []
-    for formal in _formal_records(formal_catalog):
+    formal_records, strategies = _formal_records(
+        formal_catalog,
+        strategy_catalog=strategy_catalog,
+    )
+    for formal in formal_records:
         model_version_id = str(formal["model_version_id"])
-        family = str(formal.get("model_family_id", ""))
+        strategy = strategies[model_version_id]
+        family = strategy.model_family_id
         try:
             ledger = read_latest_evaluation(
                 ledger_root / model_version_id,
                 model_version_id=model_version_id,
             )
         except (OSError, json.JSONDecodeError, StrategySignalLedgerError) as exc:
-            blocked = _unavailable(formal, awaiting=family in SUPPORTED_SIGNAL_FAMILIES)
+            blocked = _unavailable(
+                formal,
+                strategy,
+                awaiting=family in SUPPORTED_SIGNAL_FAMILIES,
+            )
             blocked["status"] = "blocked"
             blocked["decision_reason"] = str(exc)
-            blocked["note"] = "Governed signal ledger failed validation; operations fail closed."
+            blocked["note"] = "Governed decision ledger failed validation; operations fail closed."
             records.append(blocked)
             continue
         if ledger is None:
-            records.append(_unavailable(formal, awaiting=family in SUPPORTED_SIGNAL_FAMILIES))
+            records.append(
+                _unavailable(
+                    formal,
+                    strategy,
+                    awaiting=family in SUPPORTED_SIGNAL_FAMILIES,
+                )
+            )
         elif family == QQQ_FAMILY:
-            records.append(_qqq(formal, ledger))
+            records.append(_qqq(formal, strategy, ledger))
         elif family == BYD_FAMILY:
-            records.append(_byd(formal, ledger))
+            records.append(_byd(formal, strategy, ledger))
         elif family in RANKER_FAMILIES:
-            records.append(_ranker(formal, ledger))
+            records.append(_ranker(formal, strategy, ledger))
         else:
-            blocked = _unavailable(formal, awaiting=False)
+            blocked = _unavailable(formal, strategy, awaiting=False)
             blocked["status"] = "blocked"
             blocked["decision_reason"] = (
-                "A signal ledger exists but no governed operations adapter is registered."
+                "A decision ledger exists but no governed operations adapter is registered."
             )
-            blocked["note"] = "Backend adapter required before this signal can be published."
+            blocked["note"] = "Backend adapter required before this decision can be published."
             records.append(blocked)
 
     return {
@@ -515,16 +560,25 @@ def validate_operations_payload(payload: object) -> None:
     records = payload.get("records")
     if not isinstance(records, Sequence) or isinstance(records, (str, bytes)):
         raise StrategyOperationsError("operations records must be a list")
-    seen: set[str] = set()
+    seen_models: set[str] = set()
+    seen_strategies: set[str] = set()
     for index, value in enumerate(records):
         if not isinstance(value, Mapping):
             raise StrategyOperationsError(f"operations record {index} must be an object")
         model_id = value.get("model_version_id")
+        strategy_id = value.get("strategy_id")
         if not isinstance(model_id, str) or not model_id:
             raise StrategyOperationsError(f"operations record {index} has no model identity")
-        if model_id in seen:
+        if not isinstance(strategy_id, str) or not strategy_id:
+            raise StrategyOperationsError(f"operations record {index} has no strategy identity")
+        if model_id in seen_models:
             raise StrategyOperationsError(f"duplicate operations model: {model_id}")
-        seen.add(model_id)
+        if strategy_id in seen_strategies:
+            raise StrategyOperationsError(f"duplicate operations strategy: {strategy_id}")
+        seen_models.add(model_id)
+        seen_strategies.add(strategy_id)
+        if value.get("current_operations_access") not in ACCESS_LEVELS:
+            raise StrategyOperationsError(f"invalid operations access for {model_id}")
         if value.get("status") not in STATUS_VALUES:
             raise StrategyOperationsError(f"invalid operations status for {model_id}")
         if (

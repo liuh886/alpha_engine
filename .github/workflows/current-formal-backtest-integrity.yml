@@ -1,4 +1,4 @@
-name: Current Formal Backtest Integrity
+name: Current Formal Source Integrity
 
 on:
   pull_request:
@@ -11,16 +11,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: current-formal-integrity-${{ github.event.pull_request.number }}
+  group: current-formal-source-integrity-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  verify-current-snapshot:
+  verify-current-sources:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - name: Verify active identities, package hashes, and internal freshness contracts
+      - name: Verify source-backed formal identities, hashes, and internal freshness contracts
         run: |
           python - <<'PY'
           import hashlib
@@ -31,20 +31,19 @@ jobs:
           catalog = json.loads((root / 'catalog.json').read_text(encoding='utf-8'))
           freshness = json.loads((root / 'freshness.json').read_text(encoding='utf-8'))
           byd_v1_3 = 'byd_v1_3_recovery_event_low_vol_confirmation_v1'
-          expected = {
+          expected_sources = {
               'qqqi_qqq_tqqq_v4_3',
-              'us_x1_1',
               'cn_x1_1',
               byd_v1_3,
           }
           records = catalog.get('records') or []
           ids = {str(row['model_id']) for row in records}
-          assert ids == expected, (ids, expected)
+          assert ids == expected_sources, (ids, expected_sources)
+          assert 'us_x1_1' not in ids
+          assert 'us_x1_2' not in ids, 'US x1.2 is native Bundle v2 evidence, not a flat formal source.'
           assert 'qqqi_qqq_tqqq_v4_2' not in ids
           assert 'byd_v1_2_convex_momentum_budget_v1' not in ids
-          assert set(freshness.get('required_models') or []) == expected
-          assert 'qqqi_qqq_tqqq_v4_2' not in freshness.get('required_models', [])
-          assert 'byd_v1_2_convex_momentum_budget_v1' not in freshness.get('required_models', [])
+          assert set(freshness.get('required_models') or []) == expected_sources
 
           packages = {}
           for row in records:
@@ -78,5 +77,5 @@ jobs:
           assert byd_evidence.get('fresh_historical_holdout') is False
           assert byd.get('benchmark') == 'BYD v1.2'
 
-          print('Current formal snapshot is structurally valid; cross-market temporal freshness remains the responsibility of Reviewed Formal Backtest Refresh.')
+          print('Current source-backed formal packages are structurally valid. Active four-strategy parity is enforced by Bundle v2 + Active Strategy Catalog validation.')
           PY

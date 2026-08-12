@@ -255,22 +255,6 @@ def test_finalize_accepts_stale_candidate_catalog_hashes_and_reseals(
         assert row["sha256"] == sha256(candidate_root / row["path"])
 
 
-def test_us_x1_1_refresh_uses_locked_project_python() -> None:
-    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
-        encoding="utf-8"
-    )
-    start = workflow.index("      - name: Reproduce and refresh US x1.1 twice")
-    end = workflow.index("      - name: Reproduce and refresh CN x1.1 twice")
-    us_refresh = workflow[start:end]
-
-    assert "uv run python - <<'PY'" in us_refresh
-    assert "\n          python - <<'PY'\n" not in us_refresh
-    assert "for suffix in a b; do" in us_refresh
-    assert "scripts/run_us_feature_quality_validation.py" in us_refresh
-    assert "--provider-uri artifacts/formal-refresh/provider-us/data/providers/us" in us_refresh
-    assert "scripts/refresh_ranker_formal.py us" in us_refresh
-
-
 def test_formal_refresh_parallelizes_and_seals_provider_builds() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
@@ -285,22 +269,18 @@ def test_formal_refresh_parallelizes_and_seals_provider_builds() -> None:
     assert "formal-provider-${{ matrix.market }}-${{ github.run_id }}" in workflow
 
 
-def test_formal_refresh_runs_duplicate_evidence_concurrently() -> None:
+def test_formal_refresh_runs_cn_duplicate_evidence_concurrently() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
     )
-    us_start = workflow.index("      - name: Reproduce and refresh US x1.1 twice")
     cn_start = workflow.index("      - name: Reproduce and refresh CN x1.1 twice")
     byd_start = workflow.index("      - name: Extend canonical inputs")
-    us = workflow[us_start:cn_start]
     cn = workflow[cn_start:byd_start]
-    for block, prefix in ((us, "us-run"), (cn, "cn-ledger")):
-        assert 'pids+=("$!")' in block
-        assert 'for pid in "${pids[@]}"' in block
-        assert 'wait "$pid" || status=1' in block
-        assert f"{prefix}-${{suffix}}.log" in block
-    assert "--run-a \"$RUN_A\" --run-b \"$RUN_B\"" in us
-    assert "--ledger-a \"$LEDGER_A\" --ledger-b \"$LEDGER_B\"" in cn
+    assert 'pids+=("$!")' in cn
+    assert 'for pid in "${pids[@]}"' in cn
+    assert 'wait "$pid" || status=1' in cn
+    assert "cn-ledger-${suffix}.log" in cn
+    assert '--ledger-a "$LEDGER_A" --ledger-b "$LEDGER_B"' in cn
 
 
 def test_market_evidence_is_content_addressed_and_parallel() -> None:
@@ -308,7 +288,9 @@ def test_market_evidence_is_content_addressed_and_parallel() -> None:
         encoding="utf-8"
     )
     start = workflow.index("      - name: Build shared governed Market Evidence")
-    end = workflow.index("      - name: Install candidate and rebuild Strategy Operations")
+    end = workflow.index(
+        "      - name: Install candidate and materialize generated read models"
+    )
     block = workflow[start:end]
     assert block.count("--reuse-root data/research/market_evidence") == 2
     assert 'us_pid="$!"' in block
@@ -332,11 +314,9 @@ def test_formal_refresh_publishes_one_shared_model_data_bundle() -> None:
     )
     assert "data/research/model_data_bundle_v1" in workflow
     assert "cancel-in-progress: false" in workflow
-    start = workflow.index(
-        "      - name: Build shared Model Data Bundle for training and frontend"
-    )
+    start = workflow.index("      - name: Build shared Model Data Bundle")
     end = workflow.index(
-        "      - name: Install candidate and rebuild Strategy Operations"
+        "      - name: Install candidate and materialize generated read models"
     )
     model_data = workflow[start:end]
     assert "id: model_data" in model_data

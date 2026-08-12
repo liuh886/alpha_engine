@@ -28,10 +28,7 @@ from src.research.rules_formal_replay_gate import (
     verify_cn_frozen_prefix,
 )
 
-RANKER_MTM_MODELS = (
-    ("us_x1_1", "us"),
-    ("cn_x1_1", "cn"),
-)
+RANKER_MTM_MODELS = (("cn_x1_1", "cn"),)
 QQQ_MODEL_ID = "qqqi_qqq_tqqq_v4_3"
 CN_MODEL_ID = "cn_x1_1"
 QQQ_BUNDLE_ROOT = Path("artifacts/formal-refresh/qqq-bundle")
@@ -127,38 +124,24 @@ def _mtm_refresh_model_ids(
 def _attach_ranker_mtm(
     *,
     candidate_root: Path,
-    us_provider_manifest: Path,
     cn_provider_manifest: Path,
     cutoffs: dict[str, str],
 ) -> None:
     repository_root = Path.cwd().resolve()
-    rows = (
-        (
-            "us_x1_1",
-            "us",
-            us_provider_manifest,
-        ),
-        (
-            "cn_x1_1",
-            "cn",
-            cn_provider_manifest,
-        ),
+    package_path = candidate_root / f"{CN_MODEL_ID}.json"
+    if not package_path.is_file():
+        return
+    attach_ranker_provisional_mtm(
+        package_path=package_path,
+        provider_dir=_provider_dir(cn_provider_manifest, "cn"),
+        ledger_dir=repository_root
+        / "data"
+        / "research"
+        / "strategy_signal_ledgers"
+        / CN_MODEL_ID,
+        cutoff=cutoffs["cn"],
+        repository_root=repository_root,
     )
-    for model_id, market, provider_manifest in rows:
-        package_path = candidate_root / f"{model_id}.json"
-        if not package_path.is_file():
-            continue
-        attach_ranker_provisional_mtm(
-            package_path=package_path,
-            provider_dir=_provider_dir(provider_manifest, market),
-            ledger_dir=repository_root
-            / "data"
-            / "research"
-            / "strategy_signal_ledgers"
-            / model_id,
-            cutoff=cutoffs[market],
-            repository_root=repository_root,
-        )
 
 
 def _report_changed(current: Path, candidate: Path) -> bool:
@@ -311,7 +294,6 @@ def main() -> None:
 
     _attach_ranker_mtm(
         candidate_root=args.candidate_root,
-        us_provider_manifest=args.us_provider_manifest,
         cn_provider_manifest=args.cn_provider_manifest,
         cutoffs=cutoffs,
     )

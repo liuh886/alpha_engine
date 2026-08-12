@@ -14,6 +14,7 @@ ZERO_SHA = "0" * 40
 DIRECT_EXACT_PATHS = {
     ".github/workflows/deploy-pages.yml",
     ".github/workflows/pages-release-receipt.yml",
+    "configs/strategies/registry.json",
     "data/research/catalog.json",
     "docs/architecture/legacy_web_inventory.json",
     "docs/contracts/alpha-engine-bundle.schema.json",
@@ -30,6 +31,10 @@ DIRECT_EXACT_PATHS = {
     "src/artifacts/pages_release_verification.py",
     "src/artifacts/repository_research_store.py",
     "src/artifacts/research_bundle.py",
+    "src/artifacts/strategy_operations.py",
+    "src/artifacts/strategy_signal_ledger.py",
+    "src/cli/main.py",
+    "src/governance/active_strategy_catalog.py",
 }
 DIRECT_PREFIXES = (
     "data/research/formal_model_runs/",
@@ -37,7 +42,6 @@ DIRECT_PREFIXES = (
     "data/research/model_data_bundle_v1/",
     "data/research/model_runs/",
     "data/research/model_decisions/",
-    "data/research/strategy_operations/",
     "data/research/strategy_signal_ledgers/",
     "qlib-dashboard/",
 )

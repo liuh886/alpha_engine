@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the current governed x1 baseline lifecycle contracts."""
+"""Validate governed x1 model artifacts against the Active Strategy Catalog."""
 
 from __future__ import annotations
 
@@ -11,6 +11,8 @@ from typing import Any
 
 import yaml
 
+from src.governance.active_strategy_catalog import load_active_strategy_catalog
+
 EXPECTED_ACTIVE_BASELINES = {"us": "us_x1_2", "cn": "cn_x1_1"}
 EXPECTED_X1_MODELS = (
     "cn_x1_0",
@@ -19,6 +21,47 @@ EXPECTED_X1_MODELS = (
     "us_x1_1",
     "us_x1_2",
 )
+
+# Historical artifact paths are lifecycle test inputs, not an active-product registry.
+MODEL_ARTIFACTS: dict[str, dict[str, Any]] = {
+    "cn_x1_0": {
+        "display_name": "CN x1.0",
+        "status": "historical_baseline_superseded",
+        "config": "configs/models/cn_x1_0.yaml",
+        "notebook": "notebooks/models/cn_x1_0_baseline.ipynb",
+        "frozen_research_spec": "configs/research_paradigms/cn_x1_0_frozen_v1.yaml",
+    },
+    "cn_x1_1": {
+        "display_name": "CN x1.1",
+        "status": "accepted_formal_baseline",
+        "config": "configs/models/cn_x1_1.yaml",
+        "notebook": "notebooks/models/cn_x1_1_complete_backtest.ipynb",
+        "frozen_research_spec": "configs/research_experiments/cn_x1_1_fallback_aware_certification_v1.yaml",
+        "formal_package": "data/research/formal_backtests/cn_x1_1.json",
+    },
+    "us_x1_0": {
+        "display_name": "US x1.0",
+        "status": "historical_baseline_superseded",
+        "config": "configs/models/us_x1_0.yaml",
+        "notebook": "notebooks/models/us_x1_0_baseline.ipynb",
+        "frozen_research_spec": "configs/research_paradigms/us_10d_xgb_optimization_frozen_v1.yaml",
+    },
+    "us_x1_1": {
+        "display_name": "US x1.1",
+        "status": "historical_baseline_superseded",
+        "config": "configs/models/us_x1_1.yaml",
+        "notebook": "notebooks/models/us_x1_1_baseline.ipynb",
+        "frozen_research_spec": "configs/research_paradigms/us_x1_1_frozen_v1.yaml",
+    },
+    "us_x1_2": {
+        "display_name": "US x1.2",
+        "status": "baseline_research_active",
+        "config": "configs/models/us_x1_2.yaml",
+        "notebook": "notebooks/models/us_x1_2_baseline.ipynb",
+        "frozen_research_spec": "configs/research_paradigms/us_x1_2_frozen_v1.yaml",
+        "certification_receipt": "data/research/experiment_receipts/us_x1_2_certification_v1.json",
+    },
+}
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -105,7 +148,7 @@ def _validate_common_model(
     if config.get("research_only") is not True or config.get("trade_ready") is not False:
         raise ValueError(f"{model_id}: research boundary mismatch")
     if str(entry.get("display_name")) != str(config.get("display_name")):
-        raise ValueError(f"{model_id}: registry/config display name mismatch")
+        raise ValueError(f"{model_id}: artifact/config display name mismatch")
     return config, config_path
 
 
@@ -267,50 +310,29 @@ def validate_model_config(
 
 
 def validate_registry(root: Path) -> dict[str, Any]:
-    registry_path = root / "configs/models/model_registry_v1.yaml"
-    registry = _load_yaml(registry_path)
-    if registry.get("trade_ready") is not False:
-        raise ValueError("Registry must remain trade_ready=false")
-    registered_models = registry.get("models")
-    if not isinstance(registered_models, dict):
-        raise ValueError("Registry models must be a mapping")
-    missing = sorted(set(EXPECTED_X1_MODELS) - set(registered_models))
-    if missing:
-        raise ValueError(f"Registry is missing governed x1 versions: {missing}")
-
-    active = registry.get("active_baselines")
-    if not isinstance(active, dict):
-        raise ValueError("Registry active baselines must be a mapping")
-    for market, expected in EXPECTED_ACTIVE_BASELINES.items():
-        if active.get(market) != expected:
-            raise ValueError(f"Registry active {market} baseline must be {expected}")
-    if registered_models["us_x1_0"].get("superseded_by") != "us_x1_1":
-        raise ValueError("US x1.0 must be superseded by US x1.1")
-    if registered_models["us_x1_1"].get("superseded_by") != "us_x1_2":
-        raise ValueError("US x1.1 must be superseded by US x1.2")
-    if registered_models["us_x1_1"].get("status") != "historical_baseline_superseded":
-        raise ValueError("US x1.1 must be historical after US x1.2 promotion")
-    if registered_models["us_x1_2"].get("status") != "baseline_research_active":
-        raise ValueError("US x1.2 must be the active US research baseline")
-    if registered_models["cn_x1_0"].get("superseded_by") != "cn_x1_1":
-        raise ValueError("CN x1.0 must be superseded by CN x1.1")
-    if registered_models["cn_x1_1"].get("status") != "accepted_formal_baseline":
-        raise ValueError("CN x1.1 must be the active accepted CN baseline")
+    catalog_path = root / "configs/strategies/registry.json"
+    active_catalog = load_active_strategy_catalog(catalog_path)
+    active_by_strategy = active_catalog.by_strategy_id
+    observed_active = {
+        "us": active_by_strategy["us_x"].model_version_id,
+        "cn": active_by_strategy["cn_x"].model_version_id,
+    }
+    if observed_active != EXPECTED_ACTIVE_BASELINES:
+        raise ValueError(
+            f"Active Strategy Catalog x1 identities drifted: {observed_active}"
+        )
 
     models = [
-        validate_model_config(root, model_id, dict(registered_models[model_id]))
+        validate_model_config(root, model_id, dict(MODEL_ARTIFACTS[model_id]))
         for model_id in EXPECTED_X1_MODELS
     ]
     return {
-        "schema_version": "1.5",
-        "status": "baseline_model_registry_valid",
-        "registry": str(registry_path.relative_to(root)),
-        "active_baselines": dict(active),
+        "schema_version": "2.0",
+        "status": "x1_lifecycle_valid",
+        "active_strategy_catalog": str(catalog_path.relative_to(root)),
+        "active_baselines": observed_active,
         "governed_x1_models": models,
         "models": models,
-        "additional_registered_models": sorted(
-            set(registered_models) - set(EXPECTED_X1_MODELS)
-        ),
     }
 
 

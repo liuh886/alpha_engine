@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import type { GovernedRunSummary } from '@/lib/governed-run';
 import {
   canAccessTier,
   DEFAULT_ACCESS_POLICIES,
@@ -24,7 +23,6 @@ interface AccessControlValue {
   openAccount: () => void;
   canAccess: (required: AccessTier) => boolean;
   requiredTier: (type: AccessResourceType, id: string) => AccessTier;
-  requiredTierForModel: (run: GovernedRunSummary) => AccessTier;
   savePolicy: (type: AccessResourceType, id: string, tier: AccessTier) => Promise<void>;
   reloadPolicies: () => Promise<void>;
 }
@@ -36,14 +34,14 @@ function parsePolicies(rows: unknown): AccessPolicy[] {
   return rows.flatMap((row) => {
     if (!row || typeof row !== 'object') return [];
     const value = row as Record<string, unknown>;
-    const resourceType = String(value.resource_type) as AccessResourceType;
+    const resourceType = String(value.resource_type);
     const requiredTier = String(value.required_tier) as AccessTier;
-    if (!['model', 'module'].includes(resourceType) || !['public', 'authenticated', 'pro', 'owner'].includes(requiredTier)) return [];
+    if (resourceType !== 'module' || !['public', 'authenticated', 'pro', 'owner'].includes(requiredTier)) return [];
     const resourceId = String(value.resource_id ?? '');
     if (!resourceId) return [];
     return [{
       productCode: 'alpha_engine' as const,
-      resourceType,
+      resourceType: 'module' as const,
       resourceId,
       requiredTier,
       updatedAt: typeof value.updated_at === 'string' ? value.updated_at : undefined,
@@ -123,7 +121,6 @@ export function AccessControlProvider({ children }: { children: ReactNode }) {
     openAccount: membership.openAccount,
     canAccess: (required) => canAccessTier(tier, required),
     requiredTier,
-    requiredTierForModel: (run) => requiredTier('model', run.modelFamilyId),
     savePolicy,
     reloadPolicies,
   }), [membership.loading, membership.openAccount, membership.isOwner, membership.isPro, membership.signedIn, policies, policyError, policyLoading, reloadPolicies, requiredTier, savePolicy, tier]);

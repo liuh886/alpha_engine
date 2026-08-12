@@ -2,15 +2,16 @@
 
 ## 受治理的中频系统化策略研究与运行观察平台
 
-Alpha Engine 用固定研究契约、时间有效的数据、walk-forward / prospective 验证和 fail-closed 决策，把候选研究收敛成可审计的正式策略，并把正式回测、当前策略状态、研究证据和后续迭代连成一条链。
+Alpha Engine 用固定研究契约、时间有效的数据、exact replay / walk-forward / prospective 验证和 fail-closed 决策，把候选研究收敛成可审计的正式策略，并把“模型为什么存在”和“模型现在为什么这样做”连成一条证据链。
 
-> **Current status — 2026-08-08**
+> **Current status — 2026-08-12**
 >
-> - Alpha Engine 仍是 `research_only=true` 的研究与策略观察系统，不提供 broker/order execution。
-> - GitHub Pages/PWA **Strategy Console** 是公开 Web 产品；Python CLI、脚本和 GitHub Actions 负责数据、训练、回测、研究和信号生产。
-> - 正式模型目录当前包含 QQQ Rotation v4.2、US x1.1、CN x1.1 和 BYD v1.2。
-> - QQQ/BYD 已有受治理的运行证据来源；US/CN 的 10-session live signal publication 由 Issue #600 继续闭环，在此之前前端明确显示 signal unavailable，而不是从历史回测推断实时持仓。
-> - Model Run Bundle v2 是正式历史证据边界；Alpha Research Loop receipts 是研究迭代边界；Strategy Operations contract 是当前状态的前端语义边界。
+> - Alpha Engine 仍是 `research_only=true`、`trade_ready=false` 的研究与策略观察系统，不提供 broker/order execution。
+> - `configs/strategies/registry.json` 是当前正式策略身份的唯一产品权威；模型历史由 immutable evidence / lineage 保留，不维护第二份 active baseline registry。
+> - 当前正式策略：QQQ Rotation v4.3、US x1.2、CN x1.1、BYD v1.3。
+> - Model Run Bundle v2 是正式历史证据边界；append-only Strategy Decision Ledger 是当前决策事实边界；Strategy Operations 是由二者生成的只读当前状态投影。
+> - GitHub 不再跟踪 `data/research/strategy_operations/` 或 `qlib-dashboard/public/data/`；它们在 CI / Pages 构建时由 canonical evidence 重新生成。
+> - 历史正式证据公开；当前策略 operations 的访问级别由 Active Strategy Catalog 声明，账户/entitlement 只负责判断用户是否满足该级别。
 
 公开入口：<https://liuh886.github.io/alpha_engine/>
 
@@ -18,88 +19,130 @@ Alpha Engine 用固定研究契约、时间有效的数据、walk-forward / pros
 
 ## 1. Strategy Console
 
-前端从“按仓库子系统浏览证据”收敛成“按正式策略阅读决策”。一级导航只有：
+Strategy Console 按“用户要回答的问题”组织，而不是按仓库子系统组织：
 
-- **Overview** — Strategy Fleet：当前状态、target、变动、next decision、风险与运行状态；
-- **Strategies** — 正式策略列表和单策略工作空间；
-- **Research** — Runs / Compare / Decisions / Factors / Reports，用于解释策略如何演化；
+- **Overview** — Strategy Fleet：正式策略、历史绩效、当前状态与运行健康；
+- **Strategies** — 单策略工作空间：Performance / Risk / Holdings / Trades / Attribution / Drivers / Evidence；
+- **Research** — Runs / Compare / Decisions / Factors / Reports，用于解释模型如何演化；
 - **System** — Data / Library / Methodology，用于检查数据、freshness 和证据边界。
 
-单策略阅读顺序是：
+浏览器不会从历史 backtest 推断当前仓位，也不会重算模型、因子、PnL 或成交价。缺失的 current evidence 必须显式显示 unavailable / blocked。
+
+## 2. Strategy-centered authority
 
 ```text
-Now
-  -> Performance / Risk / Holdings / Trades / Attribution
-  -> Current Drivers
-  -> Evidence / Lineage
+                         Active Strategy Catalog
+                                  │
+                    ┌─────────────┴─────────────┐
+                    ↓                           ↓
+               Data contracts              Model logic
+                    │                           │
+                    └─────────────┬─────────────┘
+                                  ↓
+                            Research engine
+                                  ↓
+                        Immutable Model Run
+                         Model Run Bundle v2
+                                  │
+                    ┌─────────────┴─────────────┐
+                    ↓                           ↓
+             Formal identity                 Decision Ledger
+                    │                           │
+                    ↓                           ↓
+             Formal catalog            Strategy Operations
+                    │                           │
+                    └─────────────┬─────────────┘
+                                  ↓
+                           Strategy Console
 ```
 
-浏览器不会从历史 backtest 重建“当前仓位”。缺少正式 signal pipeline 时必须显式失败或显示 unavailable。
+`strategy_id` 是稳定产品身份；`model_version_id` 是可以被正式晋级替换的实现身份。比如 `us_x` 可以从 `us_x1_2` 晋级到后续版本，而 URL、权限语义、operations 家族和产品理解不需要复制一套新系统。
 
-## 2. 证据架构
+## 3. Evidence 与 Decision Ledger
+
+Model Run Bundle v2 保存已观察、可复核的历史证据：
+
+- performance / risk；
+- portfolio / trades / attribution；
+- robustness；
+- diagnostics；
+- lineage。
+
+当前策略决策保存为 append-only decision evaluation：
 
 ```text
-ResearchSpec / Factor definitions
-        ↓
-Python data / model / backtest / signal pipelines
-        ↓
-┌──────────────────────────────────────────────────┐
-│ Formal Model Run Bundle v2                      │
-│ performance / risk / portfolio / trades /       │
-│ attribution / robustness / lineage              │
-└──────────────────────────────────────────────────┘
-        ↓
-┌──────────────────────────────────────────────────┐
-│ Strategy operations evidence                    │
-│ state / current / target / delta / cadence /     │
-│ freshness / delivery / current drivers          │
-└──────────────────────────────────────────────────┘
-        ↓
-┌──────────────────────────────────────────────────┐
-│ Alpha Research Loop receipts                    │
-│ hypothesis / identities / windows / gates /      │
-│ verdict / learning                               │
-└──────────────────────────────────────────────────┘
-        ↓
-GitHub Pages / installable PWA / local bundle reader
+Evidence cutoff
+    ↓
+Decision / target
+    ↓
+Delivery / workflow identity
+    ↓
+Execution / outcome evidence when available
 ```
 
-原则：
+Strategy Operations 不是新的事实源，而是：
 
-- Python 研究流水线是事实来源；
-- 浏览器永久只读，不训练、不刷新模型、不修改 registry、不下单；
-- 正式 Bundle v2 的 manifest / section / SHA-256 不匹配时 fail closed；
-- 当前 signal、execution evidence 和历史 backtest 语义分离；
-- stale / blocked / unavailable 必须显式显示；
-- 因子定义与因子观测分离，Issue #626 负责把 canonical factor identity / freshness / current drivers 贯通到正式模型和前端。
+> Active Strategy Catalog + Formal Catalog + latest valid Decision Ledger → current read model
 
-## 3. 当前正式策略
+因此它可以随时重建，不应该作为独立数据库长期维护。
 
-| Strategy | Kind | Decision cadence | Current frontend operations |
-| --- | --- | --- | --- |
-| QQQ Rotation v4.2 | rules-based allocation | daily close evaluation | governed operating ledger |
-| US x1.1 | cross-sectional ranker | 10 trading sessions | signal pipeline unavailable until #600 closes |
-| CN x1.1 | cross-sectional ranker | 10 trading sessions | signal pipeline unavailable until #600 closes |
-| BYD v1.2 | rules-based allocation | daily eligible close evaluation | governed BYD signal ledger / awaiting valid observation when empty |
+## 4. 当前正式策略
 
-这四个策略是独立正式策略。仓库目前没有定义跨 QQQ / US / CN / BYD 的统一资本配置合同，因此前端不会虚构一个总组合权重。
+| Stable strategy | Active model | Kind | Decision cadence | Current operations access |
+| --- | --- | --- | --- | --- |
+| `qqq_rotation` | QQQ Rotation v4.3 | rules-based allocation | 每个完成的美股交易日 | Pro |
+| `us_x` | US x1.2 | cross-sectional ranker | 每 10 provider sessions | Public |
+| `cn_x` | CN x1.1 | cross-sectional ranker | 每 10 provider sessions | Public |
+| `byd` | BYD v1.3 | rules-based allocation | 每个完成的 A 股交易日 | Public |
 
-## 4. US / CN 10D 研究契约
+当前正式身份以 `configs/strategies/registry.json` 为准，而不是 README、workflow 名称或前端 hardcode。
+
+这四个策略是独立研究策略。仓库没有定义跨 QQQ / US / CN / BYD 的统一资本配置合同，因此前端不会虚构总组合权重。
+
+## 5. Public Evidence Plane / Current Operations Plane
+
+### Public Evidence Plane
+
+Git-reviewed、不可变、可复核：
+
+- formal identity；
+- historical performance / risk；
+- historical holdings / trades / attribution；
+- methodology / lineage / research reports。
+
+GitHub Pages 在构建时从 canonical repository evidence 生成静态 projection。
+
+### Current Operations Plane
+
+只承载当前状态：
+
+- current / target allocation；
+- latest decision；
+- current drivers；
+- next decision semantics；
+- delivery / operating health。
+
+访问级别由 Active Strategy Catalog 声明。需要 Pro 的 current operations 必须经过 authenticated entitlement delivery；不能靠前端隐藏公开 JSON 伪装成权限控制。
+
+量化计算仍然由 Python pipeline 完成；Supabase/账户系统不是 market/backtest/factor 数据库。
+
+## 6. US / CN 10D 研究契约
 
 | Property | Contract |
 | --- | --- |
 | Forecast horizon | 10 trading sessions |
 | Holding period | 10 trading sessions |
 | Rebalance cadence | 10 trading sessions |
-| Economic return | `Ref($close, -10) / $close - 1` |
+| Economic return | governed raw holding-period return |
+| Execution | explicit one-session delay where declared by the formal model |
 | Training/evaluation boundary | processed rank labels for fitting; raw returns for economics |
-| Validation | expanding half-year OOS windows with a 10-session embargo |
+| Validation | frozen window roles + embargo + exact incumbent replay |
 | Benchmark | CSI 300 for CN; QQQ for US |
 | Scope | `research_only=true` |
 
-研究执行绑定到 `configs/research_paradigms/` 中的版本化规范。基准日期、股票池、provider lineage、因子身份、覆盖证据或最小窗口缺失时均 fail closed。
+研究执行绑定到版本化 mission/spec、provider/component identity、universe、factor、cost 和 evaluator contract。任何关键身份或 replay 不一致都 fail closed；不得用 fallback 数据或简化 evaluator 让候选通过。
 
-## 5. 安装研究环境
+## 7. CLI 是执行入口
 
 Alpha Engine 使用 Astral `uv`，`uv.lock` 是 Python 依赖来源：
 
@@ -109,7 +152,18 @@ cd alpha_engine
 uv sync --extra dev
 ```
 
-常用检查：
+主要治理入口：
+
+```text
+alpha data ...                 数据准备与 readiness
+alpha research ...             研究、replay、run import
+alpha ops record-decision ...  追加不可变策略决策
+alpha ops build ...            生成 Strategy Operations read model
+```
+
+GitHub Actions 负责调度这些 maintained entrypoints；领域逻辑不应只存在于 workflow YAML。旧 wrapper 一旦被 `alpha` 入口替代就直接删除，不保留 compatibility alias。
+
+常用质量门禁：
 
 ```bash
 make doctor
@@ -117,25 +171,25 @@ make test
 make ci
 ```
 
-## 6. 常用研究与发布命令
+## 8. Formal publication
 
-```text
-make doctor           检查 Python 研究环境
-make data             更新市场数据
-make train-us         运行 US 训练流程
-make train-cn         运行 CN 训练流程
-make backtest         运行标准回测流程
-make research-bundle  导出版本化研究成果包
-make static-pwa       构建静态 Strategy Console PWA
-make breakfast        生成每日研究简报
-make ci               运行仓库质量门禁
-```
+正式回测刷新是 catalog-driven reviewed transaction：
 
-正式回测刷新通过 catalog-driven reviewed refresh transaction 延伸已接受证据，不重开模型选择，也不自动合并数据更新。
+1. provider / component evidence fail closed；
+2. exact incumbent replay gate；
+3. 生成或延伸 governed formal source / native Bundle v2 evidence；
+4. Active Strategy Catalog 决定最终 active formal set；
+5. 生成唯一 Bundle v2 formal catalog；
+6. review PR 只提交 canonical evidence；
+7. Strategy Operations 与前端 `public/data` 在验证/部署时重新生成。
 
-## 7. 前端开发与验证
+US x1.2 已走 native Bundle v2 promotion；被取代的 US x1.1 不再参与 active formal refresh。不存在 v1→v2 migration reader、projector registry 或 browser fallback。
+
+## 9. 前端开发与验证
 
 ```bash
+uv sync --frozen
+uv run alpha ops build --generated-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 cd qlib-dashboard
 npm ci
 VITE_RUNTIME_MODE=static_artifact npm run dev
@@ -152,17 +206,18 @@ VITE_RUNTIME_MODE=static_artifact npm run build
 npx playwright test --config=playwright.static.config.ts
 ```
 
-前端继续使用现有 React + Vite + TypeScript + Radix/Tailwind + lightweight-charts/Recharts + Vitest/Playwright 技术栈，不为了“现代化”引入第二套框架或后台服务。
+前端继续使用 React + Vite + TypeScript + Radix/Tailwind + lightweight-charts/Recharts + Vitest/Playwright；不为了“现代化”引入第二套框架或浏览器计算后端。
 
-## 8. Scope and safety
+## 10. Scope and safety
 
-- No browser-side model training.
+- No browser-side model training or evidence reconstruction.
 - No broker integration or order execution.
 - No automatic model promotion.
-- No hosted upload or cloud synchronization of local bundles.
-- No silent fallback from missing artifact evidence to another data source.
+- No silent fallback from missing governed evidence.
 - No inferred live position from historical backtests.
-- No feature-importance view is presented as proof of factor effectiveness.
+- No frontend-generated execution price, PnL, factor statistic or system-health claim.
+- No second active-strategy registry.
+- No committed generated frontend projection as a fact source.
 - `research_only=true`, `trade_ready=false`.
 
-更多说明见 `docs/product/strategy_console.md`、`docs/methodology.md`、`docs/architecture/legacy_web_retirement.md` 和 `AGENTS.md`。
+更多说明见 `docs/product/strategy_console.md`、`docs/methodology.md`、`docs/architecture/repository_data_convergence.md`、`docs/architecture/formal_release_governance.md`、`docs/architecture/legacy_web_retirement.md` 和 `AGENTS.md`。

@@ -5,14 +5,13 @@ import type { ModelData } from './lib/data-parser';
 import type { GovernedRunSummary } from './lib/governed-run';
 import { selectRunFromQuery } from './lib/governed-run';
 import type { RunWorkspaceContext } from './lib/run-workspace';
-import { highestTier, type AccessTier } from './lib/model-access';
+import type { AccessTier } from './lib/model-access';
 import { AccessGate } from './components/AccessGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileNavigation } from './components/MobileNavigation';
 import { ResearchContextBar } from './components/ResearchContextBar';
 import { SecurityExplorerAccessPreview } from './components/SecurityExplorerAccessPreview';
 import { Sidebar } from './components/Sidebar';
-import { StrategyPublicPreview } from './components/StrategyPublicPreview';
 import { Button } from './components/ui/button';
 import { Skeleton } from './components/ui/skeleton';
 import { AccessControlProvider, useAccessControl } from './hooks/useAccessControl';
@@ -20,8 +19,6 @@ import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { LandingPage } from './pages/LandingPage';
 import { routes } from './routes';
 import { useGlobalStore } from './store/globalStore';
-
-const RUN_DETAIL_PATHS = new Set(['backtests', 'review', 'compare', 'decisions', 'factors', 'reports']);
 
 function PageLoader() {
   return <div className="flex min-h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary/60" /></div>;
@@ -61,26 +58,13 @@ function Layout(props: LayoutProps) {
     () => props.runs.find((run) => run.key === props.activeRunKey) ?? props.runs[0] ?? null,
     [props.activeRunKey, props.runs],
   );
-  const protectedRun = useMemo(() => {
-    if (declaredRoute?.path === 'strategies/:strategyId') {
-      const match = matchPath({ path: '/strategies/:strategyId', end: true }, location.pathname);
-      const strategyId = match?.params.strategyId;
-      return props.runs.find((run) => run.channel === 'formal' && run.modelVersionId === strategyId) ?? null;
-    }
-    if (declaredRoute && RUN_DETAIL_PATHS.has(declaredRoute.path)) {
-      return selectRunFromQuery(props.runs, location.search) ?? activeRun;
-    }
-    return null;
-  }, [activeRun, declaredRoute, location.pathname, location.search, props.runs]);
-  const modelTier = protectedRun ? access.requiredTierForModel(protectedRun) : 'public';
-  const moduleTier: AccessTier = declaredRoute?.ownerOnly
+  const requiredTier: AccessTier = declaredRoute?.ownerOnly
     ? 'owner'
     : declaredRoute?.accessResourceId
       ? access.requiredTier('module', declaredRoute.accessResourceId)
       : 'public';
-  const requiredTier = highestTier(modelTier, moduleTier);
   const accessLocked = !access.canAccess(requiredTier);
-  const accessResource = protectedRun?.title ?? declaredRoute?.title ?? 'this product';
+  const accessResource = declaredRoute?.title ?? 'this product';
   const showRunPicker = Boolean(
     declaredRoute
     && ['backtests', 'review', 'compare', 'decisions'].includes(declaredRoute.path)
@@ -119,9 +103,7 @@ function Layout(props: LayoutProps) {
 
   const lockedPreview = declaredRoute?.path === 'securities'
     ? <SecurityExplorerAccessPreview openAccount={access.openAccount} />
-    : declaredRoute?.path === 'strategies/:strategyId' && protectedRun
-      ? <StrategyPublicPreview run={protectedRun} openAccount={access.openAccount} />
-      : null;
+    : null;
 
   return (
     <div className="research-app-shell">

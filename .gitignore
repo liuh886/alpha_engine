@@ -60,6 +60,11 @@ node_modules/
 *.pid
 .env
 
+# Generated strategy read models and frontend projections.
+# Canonical facts live in formal evidence + append-only decision ledgers.
+/data/research/strategy_operations/
+/qlib-dashboard/public/data/
+
 # Qlib dashboard build output
 qlib-dashboard/dist/
 qlib-dashboard/.vite/
