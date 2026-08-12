@@ -3,6 +3,7 @@
     "candidate_count": 130,
     "candidate_pool_id": "cn_selected_equities_v3",
     "failed_gates": [
+      "component:prices.cn_selected_equities_v3:component cutoff 2026-08-12 exceeds 2026-08-11",
       "component:factors.qlib_alpha158.panel.cn.v1:required_component_missing"
     ],
     "market": "cn",
@@ -15,9 +16,14 @@
         "accepted_statuses": [
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "prices.cn_selected_equities_v3",
-        "gate_reasons": [],
-        "gate_status": "passed",
+        "coverage_basis": "all_symbols",
+        "gate_reasons": [
+          "component cutoff 2026-08-12 exceeds 2026-08-11"
+        ],
+        "gate_status": "failed",
         "minimum_coverage_ratio": 1.0,
         "observed": {
           "component_id": "prices.cn_selected_equities_v3",
@@ -25,23 +31,24 @@
           "coverage_ratio": 1.0,
           "details": {
             "benchmark": "000300",
-            "candidate_observation_cutoff": "2026-08-11",
+            "candidate_observation_cutoff": "2026-08-12",
             "candidate_observation_start": "2026-04-16",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "3538fd7650083d5ac9860a80ca6c9615cc3ce842ce5728e2205953807adeb444",
+            "provider_identity_sha256": "c54cbb1dc62eabf6362d199e9a28bcf08d8a4e5e4c3b3d9e81bffd106a5ada5c",
             "requested_cutoff": "2026-08-12",
             "source_status": "selected_pool_price_refresh_ready"
           },
-          "evidence_cutoff": "2026-08-11",
+          "evidence_cutoff": "2026-08-12",
           "expected_symbol_count": 130,
           "first_date": "2026-04-16",
           "invalid_symbols": [],
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "manifest_path": "components/cn-selected-pool-prices.json",
-          "manifest_sha256": "6f721b38b6ebd0e60830eb0288effaeda8635b8babfeecc511ee44b86380bba9",
+          "manifest_sha256": "8e0c0edf1a2100b82d7b764f1ad5d3ae035762fbcde8d51712e84d269308597c",
           "market": "cn",
           "missing_symbols": [],
+          "not_yet_applicable_symbols": [],
           "pool_id": "cn_selected_equities_v3",
           "professional_source_ready": null,
           "providers": [
@@ -57,9 +64,13 @@
       },
       {
         "accepted_statuses": [
+          "partial",
           "ready"
         ],
+        "allow_not_yet_applicable": true,
+        "applicable_coverage_ratio": null,
         "component_id": "factors.qlib_alpha158.panel.cn.v1",
+        "coverage_basis": "all_symbols",
         "gate_reasons": [
           "required_component_missing"
         ],
@@ -75,7 +86,9 @@
   {
     "candidate_count": 130,
     "candidate_pool_id": "cn_selected_equities_v3",
-    "failed_gates": [],
+    "failed_gates": [
+      "component:prices.cn_selected_equities_v3:component cutoff 2026-08-12 exceeds 2026-08-11"
+    ],
     "market": "cn",
     "profile_id": "cn_selected_price_only_v1",
     "references": [
@@ -86,9 +99,14 @@
         "accepted_statuses": [
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "prices.cn_selected_equities_v3",
-        "gate_reasons": [],
-        "gate_status": "passed",
+        "coverage_basis": "all_symbols",
+        "gate_reasons": [
+          "component cutoff 2026-08-12 exceeds 2026-08-11"
+        ],
+        "gate_status": "failed",
         "minimum_coverage_ratio": 1.0,
         "observed": {
           "component_id": "prices.cn_selected_equities_v3",
@@ -96,23 +114,24 @@
           "coverage_ratio": 1.0,
           "details": {
             "benchmark": "000300",
-            "candidate_observation_cutoff": "2026-08-11",
+            "candidate_observation_cutoff": "2026-08-12",
             "candidate_observation_start": "2026-04-16",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "3538fd7650083d5ac9860a80ca6c9615cc3ce842ce5728e2205953807adeb444",
+            "provider_identity_sha256": "c54cbb1dc62eabf6362d199e9a28bcf08d8a4e5e4c3b3d9e81bffd106a5ada5c",
             "requested_cutoff": "2026-08-12",
             "source_status": "selected_pool_price_refresh_ready"
           },
-          "evidence_cutoff": "2026-08-11",
+          "evidence_cutoff": "2026-08-12",
           "expected_symbol_count": 130,
           "first_date": "2026-04-16",
           "invalid_symbols": [],
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "manifest_path": "components/cn-selected-pool-prices.json",
-          "manifest_sha256": "6f721b38b6ebd0e60830eb0288effaeda8635b8babfeecc511ee44b86380bba9",
+          "manifest_sha256": "8e0c0edf1a2100b82d7b764f1ad5d3ae035762fbcde8d51712e84d269308597c",
           "market": "cn",
           "missing_symbols": [],
+          "not_yet_applicable_symbols": [],
           "pool_id": "cn_selected_equities_v3",
           "professional_source_ready": null,
           "providers": [
@@ -128,13 +147,14 @@
       }
     ],
     "research_only": true,
-    "status": "ready",
+    "status": "blocked",
     "trade_ready": false
   },
   {
     "candidate_count": 130,
     "candidate_pool_id": "cn_selected_equities_v3",
     "failed_gates": [
+      "component:prices.cn_selected_equities_v3:component cutoff 2026-08-12 exceeds 2026-08-11",
       "component:fundamentals.cn_selected_equities_v3:required_component_missing",
       "component:corporate_actions.cn_selected_equities_v3:required_component_missing"
     ],
@@ -148,9 +168,14 @@
         "accepted_statuses": [
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "prices.cn_selected_equities_v3",
-        "gate_reasons": [],
-        "gate_status": "passed",
+        "coverage_basis": "all_symbols",
+        "gate_reasons": [
+          "component cutoff 2026-08-12 exceeds 2026-08-11"
+        ],
+        "gate_status": "failed",
         "minimum_coverage_ratio": 1.0,
         "observed": {
           "component_id": "prices.cn_selected_equities_v3",
@@ -158,23 +183,24 @@
           "coverage_ratio": 1.0,
           "details": {
             "benchmark": "000300",
-            "candidate_observation_cutoff": "2026-08-11",
+            "candidate_observation_cutoff": "2026-08-12",
             "candidate_observation_start": "2026-04-16",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "3538fd7650083d5ac9860a80ca6c9615cc3ce842ce5728e2205953807adeb444",
+            "provider_identity_sha256": "c54cbb1dc62eabf6362d199e9a28bcf08d8a4e5e4c3b3d9e81bffd106a5ada5c",
             "requested_cutoff": "2026-08-12",
             "source_status": "selected_pool_price_refresh_ready"
           },
-          "evidence_cutoff": "2026-08-11",
+          "evidence_cutoff": "2026-08-12",
           "expected_symbol_count": 130,
           "first_date": "2026-04-16",
           "invalid_symbols": [],
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "manifest_path": "components/cn-selected-pool-prices.json",
-          "manifest_sha256": "6f721b38b6ebd0e60830eb0288effaeda8635b8babfeecc511ee44b86380bba9",
+          "manifest_sha256": "8e0c0edf1a2100b82d7b764f1ad5d3ae035762fbcde8d51712e84d269308597c",
           "market": "cn",
           "missing_symbols": [],
+          "not_yet_applicable_symbols": [],
           "pool_id": "cn_selected_equities_v3",
           "professional_source_ready": null,
           "providers": [
@@ -193,7 +219,10 @@
           "partial",
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "fundamentals.cn_selected_equities_v3",
+        "coverage_basis": "all_symbols",
         "gate_reasons": [
           "required_component_missing"
         ],
@@ -206,7 +235,10 @@
           "partial",
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "corporate_actions.cn_selected_equities_v3",
+        "coverage_basis": "all_symbols",
         "gate_reasons": [
           "required_component_missing"
         ],
@@ -236,7 +268,10 @@
         "accepted_statuses": [
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "references.qqqi_qqq_tqqq_reference_bundle_v1",
+        "coverage_basis": "all_symbols",
         "gate_reasons": [
           "required_component_missing"
         ],
@@ -265,7 +300,10 @@
         "accepted_statuses": [
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "prices.us_selected_equities_v2",
+        "coverage_basis": "all_symbols",
         "gate_reasons": [],
         "gate_status": "passed",
         "minimum_coverage_ratio": 1.0,
@@ -279,7 +317,7 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "d6fd2c676e619931224f5fea04b7b1d9f8e603bc0a85cf736bb36cd936931181",
+            "provider_identity_sha256": "26b26a59d7a7c3e1f74a494426a5b74aa6ec31050f79d314281f5d060cfb2a0f",
             "requested_cutoff": "2026-08-12",
             "source_status": "selected_pool_price_refresh_ready"
           },
@@ -289,9 +327,10 @@
           "invalid_symbols": [],
           "last_date": "2026-08-10",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "f7b7e892281a21a9b734faaaa59e4b17bd7a7348ebd90bf6e402bef58d881845",
+          "manifest_sha256": "d192c59cd486251a795f8ff05be7b6d3c54003fa205862674b46ef96c65bc06c",
           "market": "us",
           "missing_symbols": [],
+          "not_yet_applicable_symbols": [],
           "pool_id": "us_selected_equities_v2",
           "professional_source_ready": null,
           "providers": [
@@ -308,7 +347,10 @@
         "accepted_statuses": [
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "factors.qlib_alpha158.panel.us.v1",
+        "coverage_basis": "all_symbols",
         "gate_reasons": [
           "required_component_missing"
         ],
@@ -335,7 +377,10 @@
         "accepted_statuses": [
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "prices.us_selected_equities_v2",
+        "coverage_basis": "all_symbols",
         "gate_reasons": [],
         "gate_status": "passed",
         "minimum_coverage_ratio": 1.0,
@@ -349,7 +394,7 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "d6fd2c676e619931224f5fea04b7b1d9f8e603bc0a85cf736bb36cd936931181",
+            "provider_identity_sha256": "26b26a59d7a7c3e1f74a494426a5b74aa6ec31050f79d314281f5d060cfb2a0f",
             "requested_cutoff": "2026-08-12",
             "source_status": "selected_pool_price_refresh_ready"
           },
@@ -359,9 +404,10 @@
           "invalid_symbols": [],
           "last_date": "2026-08-10",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "f7b7e892281a21a9b734faaaa59e4b17bd7a7348ebd90bf6e402bef58d881845",
+          "manifest_sha256": "d192c59cd486251a795f8ff05be7b6d3c54003fa205862674b46ef96c65bc06c",
           "market": "us",
           "missing_symbols": [],
+          "not_yet_applicable_symbols": [],
           "pool_id": "us_selected_equities_v2",
           "professional_source_ready": null,
           "providers": [
@@ -396,7 +442,10 @@
         "accepted_statuses": [
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "prices.us_selected_equities_v2",
+        "coverage_basis": "all_symbols",
         "gate_reasons": [],
         "gate_status": "passed",
         "minimum_coverage_ratio": 1.0,
@@ -410,7 +459,7 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "d6fd2c676e619931224f5fea04b7b1d9f8e603bc0a85cf736bb36cd936931181",
+            "provider_identity_sha256": "26b26a59d7a7c3e1f74a494426a5b74aa6ec31050f79d314281f5d060cfb2a0f",
             "requested_cutoff": "2026-08-12",
             "source_status": "selected_pool_price_refresh_ready"
           },
@@ -420,9 +469,10 @@
           "invalid_symbols": [],
           "last_date": "2026-08-10",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "f7b7e892281a21a9b734faaaa59e4b17bd7a7348ebd90bf6e402bef58d881845",
+          "manifest_sha256": "d192c59cd486251a795f8ff05be7b6d3c54003fa205862674b46ef96c65bc06c",
           "market": "us",
           "missing_symbols": [],
+          "not_yet_applicable_symbols": [],
           "pool_id": "us_selected_equities_v2",
           "professional_source_ready": null,
           "providers": [
@@ -440,7 +490,10 @@
           "partial",
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "fundamentals.us_selected_equities_v2",
+        "coverage_basis": "all_symbols",
         "gate_reasons": [
           "required_component_missing"
         ],
@@ -453,7 +506,10 @@
           "partial",
           "ready"
         ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
         "component_id": "corporate_actions.us_selected_equities_v2",
+        "coverage_basis": "all_symbols",
         "gate_reasons": [
           "required_component_missing"
         ],
