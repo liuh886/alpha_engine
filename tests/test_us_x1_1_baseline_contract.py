@@ -28,7 +28,10 @@ def _compound(values: list[float]) -> float:
 def test_us_x1_1_is_immutable_superseded_baseline() -> None:
     catalog = load_active_strategy_catalog(ACTIVE_CATALOG)
     model = _load(MODEL)
-    assert catalog.by_strategy_id["us_x"].model_version_id == "us_x1_2"
+    # The historical x1.1 contract is immutable even as the active successor
+    # advances beyond x1.2. Never pin a historical baseline test to one future
+    # active version.
+    assert catalog.by_strategy_id["us_x"].model_version_id == "us_x1_3"
     assert "us_x1_1" not in catalog.by_model_version_id
     assert model["model_id"] == "us_x1_1"
     assert model["lineage"]["parent"] == "us_x1_0"
