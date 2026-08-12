@@ -247,8 +247,7 @@ def _rebase_appended_report(
     source = _report_prefix(replay)
     boundary = max(old)
     frozen = old[boundary]
-    source_boundary = source.get(boundary)
-    if source_boundary is None:
+    if boundary not in source:
         raise QqqV43RefreshError(
             f"v4.3 replay is missing accepted economic boundary: {boundary}"
         )
@@ -264,23 +263,16 @@ def _rebase_appended_report(
 
     account = float(frozen["account"])
     benchmark = float(frozen["bench_qqq"])
-    tqqq_benchmark = float(frozen["bench_tqqq"])
-    source_tqqq = float(source_boundary["bench_tqqq"])
     peak = max(float(row["account"]) for row in old.values())
 
     rebased: list[dict[str, Any]] = []
     for item in rows:
         account *= 1.0 + float(item["period_return"])
         benchmark *= 1.0 + float(item["bench"])
-        next_source_tqqq = float(item["bench_tqqq"])
-        if source_tqqq == 0.0:
-            raise QqqV43RefreshError("v4.3 source TQQQ benchmark boundary is zero")
-        tqqq_benchmark *= next_source_tqqq / source_tqqq
-        source_tqqq = next_source_tqqq
         peak = max(peak, account)
         item["account"] = account
         item["bench_qqq"] = benchmark
-        item["bench_tqqq"] = tqqq_benchmark
+        item.pop("bench_tqqq", None)
         item["drawdown"] = account / peak - 1.0
         rebased.append(item)
     return rebased

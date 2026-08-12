@@ -18,7 +18,6 @@ def _package(weight_sgov: float = 0.5) -> dict[str, object]:
                 "date": "2026-08-05",
                 "account": 1.2,
                 "bench_qqq": 1.1,
-                "bench_tqqq": 1.3,
                 "bench": 0.01,
                 "drawdown": 0.0,
                 "period_return": 0.01,
@@ -62,7 +61,6 @@ def test_appended_report_rebases_from_frozen_account_not_restated_history() -> N
             "date": "2026-08-06",
             "account": 1.211999798,
             "bench_qqq": 1.110999798,
-            "bench_tqqq": 1.326,
             "bench": 0.01,
             "period_return": 0.01,
             "gross_return": 0.01,
@@ -75,11 +73,11 @@ def test_appended_report_rebases_from_frozen_account_not_restated_history() -> N
     assert len(appended) == 1
     assert appended[0]["account"] == pytest.approx(1.2 * 1.01)
     assert appended[0]["bench_qqq"] == pytest.approx(1.1 * 1.01)
-    assert appended[0]["bench_tqqq"] == pytest.approx(1.3 * (1.326 / 1.3))
+    assert "bench_tqqq" not in appended[0]
     assert appended[0]["drawdown"] == pytest.approx(0.0)
 
 
-def test_formal_report_retains_tqqq_baseline_from_existing_daily_returns() -> None:
+def test_formal_report_keeps_only_declared_qqq_benchmark() -> None:
     daily = pd.DataFrame(
         {
             "net_return": [0.01, -0.02],
@@ -100,5 +98,5 @@ def test_formal_report_retains_tqqq_baseline_from_existing_daily_returns() -> No
     report = _report(daily)
 
     assert report[0]["bench_qqq"] == pytest.approx(1.01)
-    assert report[0]["bench_tqqq"] == pytest.approx(1.03)
-    assert report[1]["bench_tqqq"] == pytest.approx(1.03 * 0.98)
+    assert "bench_tqqq" not in report[0]
+    assert "bench_tqqq" not in report[1]
