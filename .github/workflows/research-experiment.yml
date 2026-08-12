@@ -6,10 +6,13 @@ on:
     paths:
       - 'configs/research_experiments/**'
       - 'configs/research_optimization/**'
+      - 'configs/factor_libraries/**'
+      - 'configs/research_classifications/**'
       - 'data/source_repairs/**'
       - 'data/csv_source/**'
       - 'data/research/formal_model_runs/**'
       - 'src/cli/main.py'
+      - 'src/factors/**'
       - 'src/research/cross_sectional_experiment_runner.py'
       - 'src/research/experiment_harness.py'
       - 'src/research/formal_baseline.py'
@@ -19,12 +22,14 @@ on:
       - 'src/research/byd_v1_3_candidate.py'
       - 'src/research/research_receipt.py'
       - 'src/research/optimization_campaign.py'
+      - 'src/research/us_ranker_exact_portfolio_replay.py'
       - 'scripts/prepare_research_source_repair.py'
       - 'scripts/promote_approved_research_source_repair.py'
       - 'scripts/rebuild_active_research_providers.py'
       - 'scripts/run_research_experiment.py'
       - 'scripts/run_active_research_experiments.py'
       - 'scripts/run_model_optimization_campaign.py'
+      - 'scripts/run_us_ranker_exact_portfolio_replay.py'
       - 'tests/test_cross_sectional_experiment_runner.py'
       - 'tests/test_experiment_harness.py'
       - 'tests/test_formal_baseline_onboarding.py'
@@ -195,12 +200,14 @@ jobs:
             src/research/byd_v1_3_candidate.py \
             src/research/research_receipt.py \
             src/research/optimization_campaign.py \
+            src/research/us_ranker_exact_portfolio_replay.py \
             scripts/prepare_research_source_repair.py \
             scripts/promote_approved_research_source_repair.py \
             scripts/rebuild_active_research_providers.py \
             scripts/run_research_experiment.py \
             scripts/run_active_research_experiments.py \
             scripts/run_model_optimization_campaign.py \
+            scripts/run_us_ranker_exact_portfolio_replay.py \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             tests/test_formal_baseline_onboarding.py \
@@ -291,3 +298,118 @@ jobs:
             artifacts/model_optimization_campaigns/
           if-no-files-found: warn
           retention-days: 30
+
+  online-validation:
+    needs: source-promotion
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (needs.source-promotion.result == 'success' || needs.source-promotion.result == 'skipped') &&
+      needs.source-promotion.outputs.changed != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          show-progress: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Detect opted-in canonical replay
+        id: mission
+        shell: bash
+        run: |
+          readarray -t state < <(uv run python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          matches = []
+          for path in sorted(Path('configs/research_experiments').glob('*.yaml')):
+              payload = yaml.safe_load(path.read_text(encoding='utf-8'))
+              if not isinstance(payload, dict):
+                  continue
+              if payload.get('online_validation') == 'exact_us_ranker_portfolio_v1':
+                  matches.append(path.as_posix())
+          if len(matches) > 1:
+              raise SystemExit(
+                  f'exact online validation allows at most one opted-in spec; found {matches}'
+              )
+          print('true' if matches else 'false')
+          print(matches[0] if matches else '')
+          PY
+          )
+          echo "enabled=${state[0]}" >> "$GITHUB_OUTPUT"
+          echo "spec=${state[1]}" >> "$GITHUB_OUTPUT"
+          if [[ "${state[0]}" == 'true' ]]; then
+            echo "Canonical online validation spec: ${state[1]}"
+          else
+            echo 'No canonical online validation requested by this checkout.'
+          fi
+
+      - name: Validate exact replay contract
+        if: steps.mission.outputs.enabled == 'true'
+        run: |
+          uv run ruff check \
+            src/research/us_ranker_exact_portfolio_replay.py \
+            scripts/run_us_ranker_exact_portfolio_replay.py
+          uv run python - "${{ steps.mission.outputs.spec }}" <<'PY'
+          import sys
+          from src.research.cross_sectional_experiment_runner import (
+              load_cross_sectional_experiment_spec,
+          )
+          from src.research.us_ranker_exact_portfolio_replay import REPLAY_ID
+
+          spec = load_cross_sectional_experiment_spec(sys.argv[1])
+          if spec.raw.get('online_validation') != REPLAY_ID:
+              raise SystemExit('online validation replay identity drifted')
+          if spec.raw.get('research_only') is not True or spec.raw.get('trade_ready') is not False:
+              raise SystemExit('online validation must remain research-only')
+          print(spec.experiment_id)
+          PY
+
+      - name: Check canonical source completeness
+        if: steps.mission.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          rm -rf artifacts/research_source_repair
+          uv run python scripts/prepare_research_source_repair.py \
+            --spec "${{ steps.mission.outputs.spec }}"
+          if [[ -f artifacts/research_source_repair/repair_required ]]; then
+            cat artifacts/research_source_repair/summary.json
+            echo 'Canonical source repair is required before exact online replay.' >&2
+            exit 1
+          fi
+
+      - name: Rebuild canonical mission provider
+        if: steps.mission.outputs.enabled == 'true'
+        run: >-
+          uv run python scripts/rebuild_active_research_providers.py
+          --spec "${{ steps.mission.outputs.spec }}"
+
+      - name: Run exact US portfolio replay
+        if: steps.mission.outputs.enabled == 'true'
+        run: >-
+          uv run python scripts/run_us_ranker_exact_portfolio_replay.py
+          --spec "${{ steps.mission.outputs.spec }}"
+          --output-dir artifacts/research_online_validation/stage_b
+
+      - name: Upload exact replay evidence
+        if: always() && steps.mission.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: research-online-validation-${{ github.run_id }}
+          path: |
+            artifacts/research_online_validation/
+            artifacts/research_source_repair/
+          if-no-files-found: warn
+          retention-days: 90
