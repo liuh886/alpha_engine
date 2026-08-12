@@ -79,6 +79,30 @@ interface OperationsDocument {
   records?: unknown;
 }
 
+interface ProtectedOperationRow {
+  strategy_id?: unknown;
+  model_version_id?: unknown;
+  snapshot?: unknown;
+}
+
+interface ProtectedOperationResult {
+  data: ProtectedOperationRow | null;
+  error: { message?: string } | null;
+}
+
+interface ProtectedOperationFilter {
+  eq: (column: string, value: string) => ProtectedOperationFilter;
+  maybeSingle: () => Promise<ProtectedOperationResult>;
+}
+
+interface ProtectedOperationQuery {
+  select: (columns: string) => ProtectedOperationFilter;
+}
+
+export interface StrategyOperationsClient {
+  from: (table: string) => ProtectedOperationQuery;
+}
+
 const STATUS = new Set<StrategyOperationalStatus>([
   'pipeline_unavailable',
   'awaiting_observation',
@@ -137,7 +161,7 @@ function parseFactorEvidence(value: unknown, id: string, index: number): Strateg
   };
 }
 
-function parseSnapshot(value: unknown): StrategyOperationsSnapshot {
+export function parseStrategyOperationsSnapshot(value: unknown): StrategyOperationsSnapshot {
   assert(Boolean(value) && typeof value === 'object' && !Array.isArray(value), 'Invalid strategy operations record');
   const record = value as Record<string, unknown>;
   const modelVersionId = record.model_version_id;
@@ -255,10 +279,31 @@ async function fetchOperations(): Promise<Map<string, StrategyOperationsSnapshot
   assert(value.schema_version === '2.1.0', 'Unsupported strategy operations schema');
   assert(value.research_only === true && value.trade_ready === false, 'Invalid strategy operations boundary');
   assert(Array.isArray(value.records), 'Strategy operations records are missing');
-  const snapshots = value.records.map(parseSnapshot);
+  const snapshots = value.records.map(parseStrategyOperationsSnapshot);
   assert(new Set(snapshots.map((snapshot) => snapshot.modelVersionId)).size === snapshots.length, 'Duplicate strategy operations model identity');
   assert(new Set(snapshots.map((snapshot) => snapshot.strategyId)).size === snapshots.length, 'Duplicate stable strategy identity');
   return new Map(snapshots.map((snapshot) => [snapshot.modelVersionId, snapshot]));
+}
+
+export async function loadProtectedStrategyOperation(
+  client: StrategyOperationsClient,
+  strategyId: string,
+  modelVersionId: string,
+): Promise<StrategyOperationsSnapshot | null> {
+  const { data, error } = await client
+    .from('strategy_operation_snapshots')
+    .select('strategy_id,model_version_id,snapshot')
+    .eq('strategy_id', strategyId)
+    .eq('model_version_id', modelVersionId)
+    .maybeSingle();
+  if (error) throw new Error(error.message || 'Protected strategy operations request failed.');
+  if (!data) return null;
+  assert(data.strategy_id === strategyId, 'Protected strategy identity mismatch');
+  assert(data.model_version_id === modelVersionId, 'Protected model identity mismatch');
+  const snapshot = parseStrategyOperationsSnapshot(data.snapshot);
+  assert(snapshot.strategyId === strategyId, 'Protected snapshot strategy identity mismatch');
+  assert(snapshot.modelVersionId === modelVersionId, 'Protected snapshot model identity mismatch');
+  return snapshot;
 }
 
 export async function loadStrategyOperations(runs: GovernedRunSummary[]): Promise<Map<string, StrategyOperationsSnapshot>> {
