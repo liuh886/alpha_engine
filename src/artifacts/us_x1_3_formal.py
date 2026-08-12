@@ -133,6 +133,14 @@ def _rewrite_robustness(path: Path) -> None:
     path.write_bytes(canonical_json_bytes(robustness))
 
 
+def _rewrite_trades(path: Path) -> None:
+    source = _object(path)
+    records = source.get("records")
+    if not isinstance(records, list) or not all(isinstance(row, Mapping) for row in records):
+        raise USX13FormalPromotionError("US x1.3 preview trade ledger records are invalid")
+    path.write_bytes(canonical_json_bytes(records))
+
+
 def _rewrite_diagnostics(path: Path) -> None:
     source = _object(path)
     diagnostics = {
@@ -193,6 +201,7 @@ def promote_preview_bundle(source_run_dir: Path, output_root: Path) -> Path:
     _rewrite_summary(target / "summary.json")
     _rewrite_risk(target / "risk.json")
     _rewrite_robustness(target / "robustness.json")
+    _rewrite_trades(target / "trades.json")
     _rewrite_diagnostics(target / "diagnostics.json")
     _rewrite_lineage(target / "lineage.json", source_manifest)
 

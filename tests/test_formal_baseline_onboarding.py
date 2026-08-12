@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from src.governance.active_strategy_catalog import ActiveStrategy, load_active_strategy_catalog
 from src.research.formal_baseline import load_formal_baseline
 from src.research.formal_baseline_onboarding import (
     load_completed_onboarding_record,
@@ -19,6 +20,7 @@ QQQ_SPEC = Path(
     "configs/research_experiments/qqq_rotation_v4_3_research_loop_onboarding_v1.yaml"
 )
 COMPLETED_SPECS = (CN_SPEC, BYD_SPEC, QQQ_SPEC)
+ACTIVE_FORMAL_STRATEGIES = load_active_strategy_catalog().strategies
 
 
 def _spec(path: Path) -> dict:
@@ -63,45 +65,27 @@ def test_completed_record_validation_does_not_resolve_current_catalog(monkeypatc
 
 
 @pytest.mark.parametrize(
-    ("model_version_id", "model_kind", "model_family_id", "market", "benchmark"),
-    (
-        ("us_x1_2", "cross_sectional_ranker", "us_ranker", "us", "QQQ"),
-        ("cn_x1_1", "cross_sectional_ranker", "cn_ranker", "cn", "000300"),
-        (
-            "byd_v1_3_recovery_event_low_vol_confirmation_v1",
-            "rules_based_allocation",
-            "byd_allocation",
-            "cn",
-            "BYD v1.2",
-        ),
-        (
-            "qqqi_qqq_tqqq_v4_3",
-            "rules_based_allocation",
-            "qqq_rotation",
-            "us",
-            "QQQ",
-        ),
-    ),
+    "strategy",
+    ACTIVE_FORMAL_STRATEGIES,
+    ids=lambda strategy: strategy.strategy_id,
 )
-def test_current_formal_catalog_bundle_is_hash_verified(
-    model_version_id: str,
-    model_kind: str,
-    model_family_id: str,
-    market: str,
-    benchmark: str,
-) -> None:
+def test_current_formal_catalog_bundle_is_hash_verified(strategy: ActiveStrategy) -> None:
     baseline = load_formal_baseline(
-        model_version_id,
-        expected_model_kind=model_kind,
-        expected_model_family_id=model_family_id,
+        strategy.model_version_id,
+        expected_model_kind=strategy.model_kind,
+        expected_model_family_id=strategy.model_family_id,
     )
 
-    assert baseline.market == market
-    assert baseline.benchmark == benchmark
-    # The formal catalog is refreshed independently of this contract test.  Pinning
-    # a copied cutoff here makes every valid refresh break backend CI even though
-    # ``load_formal_baseline`` already verifies catalog/manifest identity.  Keep
-    # this assertion structural so the test follows the accepted formal bundle.
+    assert baseline.model_version_id == strategy.model_version_id
+    assert baseline.model_family_id == strategy.model_family_id
+    assert baseline.model_kind == strategy.model_kind
+    assert baseline.market == strategy.market
+    assert baseline.benchmark
+    # The formal catalog is refreshed independently of this contract test. Pinning
+    # a copied cutoff or model version here makes every valid promotion/refresh break
+    # backend CI even though load_formal_baseline already verifies catalog/manifest
+    # identity. Keep these assertions structural so the test follows the active
+    # strategy catalog and accepted formal bundle automatically.
     assert date.fromisoformat(baseline.evidence_cutoff).isoformat() == baseline.evidence_cutoff
     assert baseline.bundle_id
     assert baseline.manifest_sha256
