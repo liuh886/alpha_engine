@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Promote reviewed selected-pool repair files into canonical source storage.
 
-Promotion is permitted only when an immutable downloaded repair artifact matches
-a committed approval manifest byte-for-byte. Existing canonical files are never
-replaced by this path.
+Promotion is permitted only when approved targets are present in an immutable
+repair artifact and match the committed approval manifest byte-for-byte.
+Existing canonical files are never replaced by this path.
 """
 
 from __future__ import annotations
@@ -75,11 +75,13 @@ def promote(
     _require_equal(
         "requested_end", refresh_manifest.get("cutoff"), approval.get("requested_end")
     )
-    _require_equal(
-        "repair targets",
-        set(refresh_manifest.get("targets", [])),
-        set(approved_targets),
-    )
+    refresh_targets = set(refresh_manifest.get("targets", []))
+    unbound_targets = sorted(set(approved_targets) - refresh_targets)
+    if unbound_targets:
+        raise ValueError(
+            "approval targets are absent from immutable repair artifact: "
+            f"{unbound_targets}"
+        )
 
     records = {
         str(record.get("symbol")): record
