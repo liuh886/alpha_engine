@@ -33,7 +33,8 @@ class FormalModelRecord:
 @dataclass(frozen=True)
 class FormalRefreshPlan:
     generated_at: str
-    target_cutoffs: dict[str, str]
+    market_provider_cutoffs: dict[str, str]
+    model_target_cutoffs: dict[str, str]
     models: tuple[FormalModelRecord, ...]
     stale_model_ids: tuple[str, ...]
 
@@ -43,9 +44,10 @@ class FormalRefreshPlan:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "schema_version": "formal_refresh_plan_v1",
+            "schema_version": "formal_refresh_plan_v2",
             "generated_at": self.generated_at,
-            "target_cutoffs": dict(sorted(self.target_cutoffs.items())),
+            "market_provider_cutoffs": dict(sorted(self.market_provider_cutoffs.items())),
+            "model_target_cutoffs": dict(sorted(self.model_target_cutoffs.items())),
             "accepted_model_ids": [record.model_id for record in self.models],
             "stale_model_ids": list(self.stale_model_ids),
             "refresh_required": self.refresh_required,
@@ -194,30 +196,56 @@ def common_provider_cutoff(manifest: Mapping[str, Any], *, market: str) -> str:
     return min(dates).isoformat()
 
 
+def _resolve_model_cutoffs(
+    records: Sequence[FormalModelRecord],
+    market_provider_cutoffs: Mapping[str, str],
+    model_target_cutoffs: Mapping[str, str] | None,
+) -> dict[str, str]:
+    model_ids = {record.model_id for record in records}
+    overrides = dict(model_target_cutoffs or {})
+    unknown = sorted(set(overrides) - model_ids)
+    if unknown:
+        raise FormalRefreshError(f"unknown model target cutoffs: {unknown}")
+    resolved: dict[str, str] = {}
+    for record in records:
+        value = overrides.get(record.model_id, market_provider_cutoffs[record.market])
+        resolved[record.model_id] = _date(
+            value,
+            label=f"{record.model_id} target cutoff",
+        ).isoformat()
+    return resolved
+
+
 def build_plan(
     root: Path,
     *,
     target_cutoffs: Mapping[str, str],
+    model_target_cutoffs: Mapping[str, str] | None = None,
     generated_at: str | None = None,
 ) -> FormalRefreshPlan:
     records = accepted_records(root)
     parsed_targets = {
-        str(market): _date(value, label=f"{market} target cutoff").isoformat()
+        str(market): _date(value, label=f"{market} provider cutoff").isoformat()
         for market, value in target_cutoffs.items()
     }
     expected_markets = {record.market for record in records}
     if set(parsed_targets) != expected_markets:
         raise FormalRefreshError(
-            "target cutoff markets do not match accepted formal packages: "
+            "provider cutoff markets do not match accepted formal packages: "
             f"expected={sorted(expected_markets)}, "
             f"observed={sorted(parsed_targets)}"
         )
+    resolved_model_cutoffs = _resolve_model_cutoffs(
+        records,
+        parsed_targets,
+        model_target_cutoffs,
+    )
 
     stale: list[str] = []
     for record in records:
         target = _date(
-            parsed_targets[record.market],
-            label=f"{record.market} target",
+            resolved_model_cutoffs[record.model_id],
+            label=f"{record.model_id} target",
         )
         current = _date(
             record.current_cutoff,
@@ -232,7 +260,8 @@ def build_plan(
     timestamp = generated_at or datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     return FormalRefreshPlan(
         generated_at=timestamp,
-        target_cutoffs=parsed_targets,
+        market_provider_cutoffs=parsed_targets,
+        model_target_cutoffs=resolved_model_cutoffs,
         models=records,
         stale_model_ids=tuple(stale),
     )
@@ -332,12 +361,7 @@ def verify_append_only_package(
 
 
 def next_weekday_refresh_deadline(cutoff: str, *, market: str) -> str:
-    """Return the next bounded refresh check after a published market session.
-
-    This is an operational deadline, not a claim that the following weekday is
-    necessarily an exchange session. The live refresh resolver remains the
-    source of truth and naturally no-ops on holidays.
-    """
+    """Return the next bounded refresh check after a published market session."""
 
     day = _date(cutoff, label=f"{market} cutoff") + timedelta(days=1)
     while day.weekday() >= 5:
@@ -358,11 +382,21 @@ def finalize_candidate_tree(
     candidate_root: Path,
     *,
     target_cutoffs: Mapping[str, str],
+    model_target_cutoffs: Mapping[str, str] | None = None,
     generated_at: str,
     receipt_path: Path,
 ) -> dict[str, Any]:
     current_records = accepted_records(current_root)
     current_ids = [record.model_id for record in current_records]
+    parsed_market_cutoffs = {
+        str(market): _date(value, label=f"{market} provider cutoff").isoformat()
+        for market, value in target_cutoffs.items()
+    }
+    model_cutoffs = _resolve_model_cutoffs(
+        current_records,
+        parsed_market_cutoffs,
+        model_target_cutoffs,
+    )
     catalog = load_object(candidate_root / "catalog.json")
     raw_rows = catalog.get("records")
     if not isinstance(raw_rows, list):
@@ -378,12 +412,11 @@ def finalize_candidate_tree(
     for record in current_records:
         current_package = load_object(current_root / record.path)
         candidate_package = load_object(candidate_root / record.path)
-        target = str(target_cutoffs[record.market])
         verification.append(
             verify_append_only_package(
                 current_package,
                 candidate_package,
-                target_cutoff=target,
+                target_cutoff=model_cutoffs[record.model_id],
             )
         )
         rows_by_id[record.model_id]["sha256"] = sha256(candidate_root / record.path)
@@ -394,10 +427,13 @@ def finalize_candidate_tree(
     catalog_sha = write_object(candidate_root / "catalog.json", catalog)
 
     freshness = load_object(candidate_root / "freshness.json")
-    freshness["markets"] = dict(sorted(target_cutoffs.items()))
+    freshness["schema_version"] = "1.1.0"
+    freshness["market_provider_cutoffs"] = dict(sorted(parsed_market_cutoffs.items()))
+    freshness.pop("markets", None)
+    freshness["model_cutoffs"] = dict(sorted(model_cutoffs.items()))
     freshness["next_session_close_utc"] = {
         market: next_weekday_refresh_deadline(cutoff, market=market)
-        for market, cutoff in sorted(target_cutoffs.items())
+        for market, cutoff in sorted(parsed_market_cutoffs.items())
     }
     freshness["declared_at"] = generated_at
     freshness["required_models"] = current_ids
@@ -406,10 +442,11 @@ def finalize_candidate_tree(
     freshness_sha = write_object(candidate_root / "freshness.json", freshness)
 
     receipt = {
-        "schema_version": "formal_refresh_receipt_v1",
+        "schema_version": "formal_refresh_receipt_v2",
         "status": "candidate_ready_for_review",
         "generated_at": generated_at,
-        "target_cutoffs": dict(sorted(target_cutoffs.items())),
+        "market_provider_cutoffs": dict(sorted(parsed_market_cutoffs.items())),
+        "model_target_cutoffs": dict(sorted(model_cutoffs.items())),
         "accepted_model_ids": current_ids,
         "model_verification": verification,
         "catalog_sha256": catalog_sha,
