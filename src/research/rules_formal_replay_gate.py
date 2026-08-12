@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import json
 import math
-import shutil
 from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN
-from numbers import Integral, Real
+from numbers import Real
 from pathlib import Path
 from typing import Any
 
@@ -13,60 +12,28 @@ import pandas as pd
 import yaml
 
 from scripts.promote_cn_x1_1_formal import build_package as build_cn_frozen_package
-from scripts.run_cn130_ranking_batch import WINDOWS as CN_WINDOWS
-from scripts.run_cn130_ranking_batch import run as run_cn_ranking_batch
-from scripts.run_cn_x1_1_sector_breadth import load_ledgers
 from src.artifacts.formal_refresh import load_object, sha256
-from src.artifacts.qqq_v4_3_formal import (
-    JOINT_STRATEGY,
-    MODEL_ID as QQQ_MODEL_ID,
-    build_formal_package as build_qqq_package,
-)
-from src.data.adapters.cnn_fear_greed import fetch_cnn_fear_greed
-from src.data.etf_reference_bundle import build_etf_reference_bundle
 from src.research.cn130_cross_sectional_ranking import forward_returns, load_provider_panel
 from src.research.cn_x1_1_regime_gated import (
     RegimeGateSpec,
     build_regime_state,
     run_regime_portfolio,
 )
-from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
-from src.research.formal_model_replay import _compare_package_sections, _compare_row_lists
-from src.research.v4_33_ma200_ma20_vix_release import run_v4_33_comparison
+from src.research.formal_model_replay import _compare_package_sections
 
 CN_MODEL_ID = "cn_x1_1"
 CN_FROZEN_EVIDENCE = Path("data/research/cn_x1_1_regime_gated_candidate_v1")
+CN_FROZEN_SCORE_MANIFEST = (
+    CN_FROZEN_EVIDENCE / "frozen_score_cross_sections_2026H2_manifest.json"
+)
 CN_WINDOW = "2026H2_PARTIAL"
 CN_REPLAY_LEDGER_NAME = (
     "2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
-)
-QQQ_REFERENCE_CONTRACT = Path("configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml")
-QQQ_BRIDGE_CONTRACT = Path(
-    "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
 )
 
 
 class RulesFormalReplayError(ValueError):
     """Raised when an accepted rules-based economic path cannot be reproduced."""
-
-
-def _json_safe(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return {str(key): _json_safe(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_json_safe(item) for item in value]
-    if value is None or isinstance(value, (str, bool)):
-        return value
-    if isinstance(value, Integral):
-        return int(value)
-    if isinstance(value, Real):
-        numeric = float(value)
-        return numeric if math.isfinite(numeric) else None
-    if hasattr(value, "item"):
-        return _json_safe(value.item())
-    if hasattr(value, "isoformat"):
-        return value.isoformat()
-    return value
 
 
 def _raise_mismatch(label: str, comparison: Mapping[str, Any]) -> None:
@@ -227,7 +194,7 @@ def _project_fields(
 
 
 def _accepted_decimal_match(expected: object, observed: object) -> bool:
-    """Match a numeric replay at the precision actually published as evidence."""
+    """Match a replay value at the precision published by accepted evidence."""
 
     if isinstance(expected, bool) or isinstance(observed, bool):
         return expected == observed
@@ -252,15 +219,6 @@ def _compare_rows_at_accepted_precision(
     expected: object,
     observed: object,
 ) -> dict[str, Any]:
-    """Compare CN rows using each accepted numeric field's serialized precision.
-
-    The original CN x1.1 frozen CSV intentionally published bounded decimal
-    precision. Replaying the same provider math at full binary-double precision
-    must round back to those accepted decimals; a value that changes the accepted
-    decimal representation is still a hard mismatch. Newly appended formal rows
-    retain full JSON float precision, so this contract naturally remains strict.
-    """
-
     if not isinstance(expected, list) or not isinstance(observed, list):
         return {
             "exact": False,
@@ -311,6 +269,168 @@ def _compare_rows_at_accepted_precision(
     }
 
 
+def _load_cn_frozen_score_cross_sections(
+    root: Path,
+    *,
+    symbols: Sequence[str],
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    evidence_root = (root / CN_FROZEN_EVIDENCE).resolve()
+    manifest_path = (root / CN_FROZEN_SCORE_MANIFEST).resolve()
+    manifest = load_object(manifest_path)
+    if manifest.get("schema_version") != "cn_x1_1_frozen_score_cross_sections_v1":
+        raise RulesFormalReplayError("CN frozen score manifest schema is invalid")
+    if manifest.get("model_id") != CN_MODEL_ID or manifest.get("window") != CN_WINDOW:
+        raise RulesFormalReplayError("CN frozen score manifest identity is invalid")
+    if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
+        raise RulesFormalReplayError("CN frozen score manifest violates research boundary")
+
+    source = manifest.get("source")
+    if not isinstance(source, Mapping):
+        raise RulesFormalReplayError("CN frozen score source provenance is missing")
+    certification = load_object(evidence_root / "manifest.json")
+    if source.get("provider_identity_sha256") != certification.get(
+        "provider_identity_sha256"
+    ):
+        raise RulesFormalReplayError("CN frozen score provider identity is not certified")
+    ledger_rows = certification.get("ledger_files")
+    if not isinstance(ledger_rows, list):
+        raise RulesFormalReplayError("CN certified ledger inventory is missing")
+    source_sha = str(source.get("source_sha256") or "")
+    source_name = Path(str(source.get("source_path") or "")).name
+    matches = [
+        row
+        for row in ledger_rows
+        if isinstance(row, Mapping)
+        and Path(str(row.get("path") or "")).name == source_name
+        and str(row.get("sha256") or "") == source_sha
+    ]
+    if len(matches) != 1:
+        raise RulesFormalReplayError("CN frozen score source SHA is not certified")
+
+    expected_symbols = {str(symbol).zfill(6) for symbol in symbols}
+    declared_dates = [str(value) for value in manifest.get("accepted_signal_dates", [])]
+    cross_sections = manifest.get("cross_sections")
+    if not declared_dates or not isinstance(cross_sections, list):
+        raise RulesFormalReplayError("CN frozen score cross-section inventory is empty")
+
+    frames: list[pd.DataFrame] = []
+    seen_dates: list[str] = []
+    required_columns = [
+        "window",
+        "datetime",
+        "instrument",
+        "score",
+        "execution_forward_return",
+        "entity",
+        "sector",
+    ]
+    for record in cross_sections:
+        if not isinstance(record, Mapping):
+            raise RulesFormalReplayError("CN frozen score cross-section row is invalid")
+        date = str(record.get("date") or "")
+        relative = Path(str(record.get("path") or ""))
+        path = (evidence_root / relative).resolve()
+        path.relative_to(evidence_root)
+        if not path.is_file() or sha256(path) != str(record.get("sha256") or ""):
+            raise RulesFormalReplayError(
+                f"CN frozen score cross-section hash mismatch: {date}"
+            )
+        frame = pd.read_csv(path, dtype={"instrument": str})
+        if list(frame.columns) != required_columns:
+            raise RulesFormalReplayError(
+                f"CN frozen score cross-section columns changed: {date}"
+            )
+        frame["instrument"] = frame["instrument"].astype(str).str.zfill(6)
+        frame["datetime"] = pd.to_datetime(frame["datetime"], errors="raise")
+        if len(frame) != int(record.get("rows", -1)) or len(frame) != 130:
+            raise RulesFormalReplayError(
+                f"CN frozen score cross-section row count changed: {date}"
+            )
+        if set(frame["instrument"]) != expected_symbols or frame["instrument"].duplicated().any():
+            raise RulesFormalReplayError(
+                f"CN frozen score cross-section universe changed: {date}"
+            )
+        frame_dates = set(frame["datetime"].dt.date.astype(str))
+        if frame_dates != {date} or set(frame["window"].astype(str)) != {CN_WINDOW}:
+            raise RulesFormalReplayError(
+                f"CN frozen score cross-section date/window changed: {date}"
+            )
+        if not pd.to_numeric(frame["score"], errors="coerce").notna().all():
+            raise RulesFormalReplayError(f"CN frozen score values are invalid: {date}")
+        if not pd.to_numeric(
+            frame["execution_forward_return"], errors="coerce"
+        ).notna().all():
+            raise RulesFormalReplayError(
+                f"CN frozen execution returns are invalid: {date}"
+            )
+        frames.append(frame)
+        seen_dates.append(date)
+
+    if seen_dates != declared_dates or len(set(seen_dates)) != len(seen_dates):
+        raise RulesFormalReplayError("CN frozen score accepted dates changed")
+    combined = pd.concat(frames, ignore_index=True)
+    return combined, {
+        "manifest_path": str(manifest_path.relative_to(root)),
+        "manifest_sha256": sha256(manifest_path),
+        "accepted_signal_dates": declared_dates,
+        "cross_section_sha256": {
+            str(row["date"]): str(row["sha256"])
+            for row in cross_sections
+            if isinstance(row, Mapping)
+        },
+        "source": dict(source),
+    }
+
+
+def _replay_cn_frozen_score_dates(
+    ledger: pd.DataFrame,
+    benchmark_returns: pd.Series,
+    state: pd.DataFrame,
+    *,
+    package: Mapping[str, Any],
+    spec: RegimeGateSpec,
+    dates: Sequence[str],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    previous = _weights_before(package, dates[0])
+    period_frames: list[pd.DataFrame] = []
+    holding_frames: list[pd.DataFrame] = []
+    for date in dates:
+        timestamp = pd.Timestamp(date)
+        day = ledger.loc[ledger["datetime"].eq(timestamp)].copy()
+        if len(day) != 130:
+            raise RulesFormalReplayError(
+                f"CN frozen score cross-section unavailable for replay: {date}"
+            )
+        _, periods, holdings, _ = run_regime_portfolio(
+            day,
+            benchmark_returns,
+            state,
+            windows=(CN_WINDOW,),
+            variant=spec.variant(),
+            rule="two_of_three",
+            rebalance_sessions=1,
+            cost_bps=spec.cost_bps,
+            initial_weights=previous,
+        )
+        if len(periods) != 1:
+            raise RulesFormalReplayError(f"CN frozen replay did not emit one period: {date}")
+        current = {
+            str(row["instrument"]): float(row["weight"])
+            for row in holdings.to_dict("records")
+        }
+        if not current or not math.isclose(
+            sum(current.values()), 1.0, rel_tol=0.0, abs_tol=1e-12
+        ):
+            raise RulesFormalReplayError(f"CN frozen replay weights are invalid: {date}")
+        previous = current
+        period_frames.append(periods)
+        holding_frames.append(holdings)
+    return (
+        pd.concat(period_frames, ignore_index=True),
+        pd.concat(holding_frames, ignore_index=True),
+    )
+
+
 def verify_cn_current_allocation_replay(
     repository_root: str | Path,
     *,
@@ -319,11 +439,9 @@ def verify_cn_current_allocation_replay(
     ledger_path: str | Path,
 ) -> dict[str, Any]:
     root = Path(repository_root).resolve()
-    package_file = Path(package_path).resolve()
-    package = load_object(package_file)
-    frozen = verify_cn_frozen_prefix(root, package)
+    package = load_object(Path(package_path).resolve())
+    frozen_prefix = verify_cn_frozen_prefix(root, package)
 
-    spec = RegimeGateSpec()
     universe = yaml.safe_load(
         (root / "configs/research_universes/cn_selected_equities_v3.yaml").read_text(
             encoding="utf-8"
@@ -333,8 +451,12 @@ def verify_cn_current_allocation_replay(
     if len(symbols) != 130 or len(set(symbols)) != 130:
         raise RulesFormalReplayError("CN130 universe identity is not exact")
 
-    ledger_file = Path(ledger_path).resolve()
-    ledger, _ = load_ledgers([ledger_file.parent], (CN_WINDOW,))
+    frozen_scores, score_identity = _load_cn_frozen_score_cross_sections(
+        root,
+        symbols=symbols,
+    )
+    replay_dates = list(score_identity["accepted_signal_dates"])
+    spec = RegimeGateSpec()
     panel = load_provider_panel(
         Path(provider_dir).resolve(),
         [*symbols, spec.benchmark],
@@ -355,25 +477,20 @@ def verify_cn_current_allocation_replay(
         horizon=spec.horizon_sessions,
         delay=spec.execution_delay_sessions,
     )[spec.benchmark]
-    _, periods, holdings, _ = run_regime_portfolio(
-        ledger,
+    periods, holdings = _replay_cn_frozen_score_dates(
+        frozen_scores,
         benchmark_returns,
         state,
-        windows=(CN_WINDOW,),
-        variant=spec.variant(),
-        rule="two_of_three",
-        rebalance_sessions=spec.rebalance_sessions,
-        cost_bps=spec.cost_bps,
-        initial_weights=_weights_before(package, CN_WINDOWS[CN_WINDOW][0]),
+        package=package,
+        spec=spec,
+        dates=replay_dates,
     )
 
     computed_report = _cn_report_rows(periods)
-    computed_dates = {row["date"] for row in computed_report}
     accepted_report = [
         row
         for row in package.get("report", [])
-        if isinstance(row, Mapping)
-        and str(row.get("date") or "") in computed_dates
+        if isinstance(row, Mapping) and str(row.get("date") or "") in replay_dates
     ]
     report_fields = (
         "date",
@@ -393,23 +510,19 @@ def verify_cn_current_allocation_replay(
         "benchmark_hit",
     )
     report_expected = _project_fields(accepted_report, report_fields)
-    expected_dates = {row["date"] for row in report_expected}
-    report_observed = _project_fields(
-        [row for row in computed_report if row["date"] in expected_dates],
-        report_fields,
-    )
+    report_observed = _project_fields(computed_report, report_fields)
     report_comparison = _compare_rows_at_accepted_precision(
         report_expected, report_observed
     )
     if not report_comparison["exact"]:
-        _raise_mismatch("CN x1.1 current allocation report", report_comparison)
+        _raise_mismatch("CN x1.1 frozen-score allocation report", report_comparison)
 
     computed_positions = _cn_position_rows(periods, holdings)
     accepted_positions = sorted(
         [
             row
             for row in package.get("positions", [])
-            if isinstance(row, Mapping) and str(row.get("date") or "") in expected_dates
+            if isinstance(row, Mapping) and str(row.get("date") or "") in replay_dates
         ],
         key=lambda row: (str(row.get("date")), str(row.get("instrument"))),
     )
@@ -427,185 +540,39 @@ def verify_cn_current_allocation_replay(
         "risk_state",
     )
     position_expected = _project_fields(accepted_positions, position_fields)
-    position_observed = _project_fields(
-        [row for row in computed_positions if row["date"] in expected_dates],
-        position_fields,
-    )
+    position_observed = _project_fields(computed_positions, position_fields)
     position_comparison = _compare_rows_at_accepted_precision(
         position_expected, position_observed
     )
     if not position_comparison["exact"]:
-        _raise_mismatch("CN x1.1 current allocation positions", position_comparison)
-
-    if not report_expected:
+        _raise_mismatch("CN x1.1 frozen-score allocation positions", position_comparison)
+    if len(report_expected) != len(replay_dates):
         raise RulesFormalReplayError(
-            "CN current governed ledger has no overlap with accepted settled formal trace"
+            "CN frozen score dates do not match accepted settled formal trace"
         )
 
+    future_ledger = Path(ledger_path).resolve()
+    if not future_ledger.is_file():
+        raise RulesFormalReplayError("CN current score ledger is missing")
+
     return {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "model_id": CN_MODEL_ID,
         "decision": "exact_replay",
-        "frozen_prefix": frozen,
+        "frozen_prefix": frozen_prefix,
         "current_allocation": {
             "accepted_overlap_periods": len(report_expected),
             "report": report_comparison,
             "positions": position_comparison,
-            "ledger_sha256": sha256(ledger_file),
+            "historical_score_authority": "committed_frozen_score_cross_sections",
+            "frozen_score_identity": score_identity,
+            "future_score_ledger_sha256": sha256(future_ledger),
             "provider_calendar_start": pd.Timestamp(close.index.min()).date().isoformat(),
             "provider_calendar_end": pd.Timestamp(close.index.max()).date().isoformat(),
             "continuation_state_source": (
-                f"accepted_formal_positions_before_{CN_WINDOWS[CN_WINDOW][0]}"
+                f"accepted_formal_positions_before_{replay_dates[0]}"
             ),
             "numeric_comparison": "accepted_serialized_decimal_precision",
-        },
-        "research_only": True,
-        "trade_ready": False,
-        "promotion_authorized": False,
-    }
-
-
-def verify_qqq_professional_replay(
-    repository_root: str | Path,
-    *,
-    package_path: str | Path,
-    bundle_dir: str | Path,
-) -> dict[str, Any]:
-    root = Path(repository_root).resolve()
-    package_file = Path(package_path).resolve()
-    expected = load_object(package_file)
-    if expected.get("model_id") != QQQ_MODEL_ID:
-        raise RulesFormalReplayError("QQQ replay requires the accepted v4.3 package")
-    cutoff = str(expected.get("evidence_cutoff") or "")
-    if not cutoff:
-        raise RulesFormalReplayError("QQQ formal package has no evidence cutoff")
-
-    contract_path = (root / QQQ_BRIDGE_CONTRACT).resolve()
-    contract = yaml.safe_load(contract_path.read_text(encoding="utf-8"))
-    bars, coverage, data_identity = fetch_governed_etf_strategy_bars(
-        symbols=["QQQI", "QQQ", "TQQQ", "SGOV", "^VIX", "^VXN"],
-        start=str(contract["data"]["start_date"]),
-        end=cutoff,
-        bundle_dir=Path(bundle_dir).resolve(),
-    )
-    if data_identity.get("professional_source_ready") is not True:
-        raise RulesFormalReplayError(
-            "QQQ exact replay requires a professional governed ETF bundle"
-        )
-    fear_greed = fetch_cnn_fear_greed(end_date=cutoff)
-    _, results, diagnostics = run_v4_33_comparison(
-        bars,
-        contract,
-        fear_greed,
-        cash_symbol="SGOV",
-    )
-    observed = _json_safe(
-        build_qqq_package(
-            results[JOINT_STRATEGY],
-            bars,
-            generated_at=str(expected.get("generated_at") or "credentialed-replay"),
-            evidence_cutoff=cutoff,
-            backtest_id=str(expected.get("backtest_id") or f"{QQQ_MODEL_ID}-replay"),
-            evidence={
-                "replay_gate": "rules_formal_replay_gate_v1",
-                "model_selection_reopened": False,
-            },
-            freshness={
-                "status": "replay",
-                "required_cutoff": cutoff,
-                "model_selection_reopened": False,
-                "research_only": True,
-                "trade_ready": False,
-            },
-        )
-    )
-    comparison = _compare_package_sections(expected, observed)
-    if not comparison["exact"]:
-        _raise_mismatch("QQQ Rotation v4.3 professional replay", comparison)
-    return {
-        "schema_version": "1.0",
-        "model_id": QQQ_MODEL_ID,
-        "decision": "exact_replay",
-        "trace_reproduction": comparison,
-        "data_identity": data_identity,
-        "coverage_rows": int(len(coverage)),
-        "retrospective_diagnostics_present": bool(diagnostics),
-        "bundle_manifest_sha256": sha256(Path(bundle_dir).resolve() / "bundle_manifest.json"),
-        "research_only": True,
-        "trade_ready": False,
-        "promotion_authorized": False,
-    }
-
-
-def prepare_and_verify_active_rules_replay(
-    repository_root: str | Path,
-    *,
-    formal_root: str | Path,
-    cn_provider_dir: str | Path,
-    qqq_bundle_dir: str | Path,
-    cn_replay_output_dir: str | Path,
-) -> dict[str, Any]:
-    """Build bounded governed replay inputs and verify accepted QQQ/CN baselines."""
-
-    root = Path(repository_root).resolve()
-    formal = Path(formal_root).resolve()
-    qqq_bundle = Path(qqq_bundle_dir).resolve()
-    cn_output = Path(cn_replay_output_dir).resolve()
-
-    qqq_package = formal / f"{QQQ_MODEL_ID}.json"
-    cn_package = formal / f"{CN_MODEL_ID}.json"
-    if not qqq_package.is_file() or not cn_package.is_file():
-        raise RulesFormalReplayError(
-            "active formal QQQ/CN packages are required before replay planning"
-        )
-
-    qqq_cutoff = str(load_object(qqq_package).get("evidence_cutoff") or "")
-    if not qqq_cutoff:
-        raise RulesFormalReplayError("active QQQ package has no evidence cutoff")
-    if qqq_bundle.exists():
-        shutil.rmtree(qqq_bundle)
-    qqq_manifest = build_etf_reference_bundle(
-        contract_path=(root / QQQ_REFERENCE_CONTRACT).resolve(),
-        output_root=qqq_bundle,
-        end=qqq_cutoff,
-    )
-    if qqq_manifest.get("strategy_data_ready") is not True:
-        raise RulesFormalReplayError("QQQ governed ETF replay bundle is not strategy-ready")
-    if qqq_manifest.get("professional_source_ready") is not True:
-        raise RulesFormalReplayError(
-            "QQQ governed ETF replay bundle is not professionally reconciled"
-        )
-    qqq_replay = verify_qqq_professional_replay(
-        root,
-        package_path=qqq_package,
-        bundle_dir=qqq_bundle,
-    )
-
-    if cn_output.exists():
-        shutil.rmtree(cn_output)
-    run_cn_ranking_batch(
-        root,
-        Path(cn_provider_dir).resolve(),
-        cn_output,
-        CN_WINDOW,
-        "r0r1",
-    )
-    cn_ledger = cn_output / "score_ledgers" / CN_REPLAY_LEDGER_NAME
-    if not cn_ledger.is_file():
-        raise RulesFormalReplayError(f"CN replay ledger is missing: {cn_ledger}")
-    cn_replay = verify_cn_current_allocation_replay(
-        root,
-        package_path=cn_package,
-        provider_dir=cn_provider_dir,
-        ledger_path=cn_ledger,
-    )
-
-    return {
-        "schema_version": "active_rules_replay_v1",
-        "decision": "exact_replay",
-        "models": {
-            QQQ_MODEL_ID: qqq_replay,
-            CN_MODEL_ID: cn_replay,
         },
         "research_only": True,
         "trade_ready": False,

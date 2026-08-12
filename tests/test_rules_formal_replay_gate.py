@@ -6,10 +6,12 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+import yaml
 
 from src.artifacts.formal_refresh import load_object
 from src.research import qqq_authoritative_replay as qqq_replay
 from src.research import rules_formal_replay_gate as replay_gate
+from src.research.cn130_tail_factor_discovery import choose_holdings
 from src.research.cn_x1_1_regime_gated import RegimeGateSpec, run_regime_portfolio
 from src.research.qqq_authoritative_replay import (
     compare_qqq_authoritative_trace,
@@ -18,6 +20,7 @@ from src.research.qqq_authoritative_replay import (
 from src.research.rules_formal_replay_gate import (
     RulesFormalReplayError,
     _compare_rows_at_accepted_precision,
+    _load_cn_frozen_score_cross_sections,
     assert_exact_formal_prefix,
     verify_cn_frozen_prefix,
 )
@@ -162,6 +165,33 @@ def test_cn_full_precision_appended_value_remains_strict() -> None:
     )
 
     assert comparison["exact"] is False
+
+
+def test_committed_cn_frozen_score_cross_sections_reproduce_sector_selection() -> None:
+    universe = yaml.safe_load(
+        Path("configs/research_universes/cn_selected_equities_v3.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    symbols = [str(value).zfill(6) for value in universe["symbols"]]
+    ledger, identity = _load_cn_frozen_score_cross_sections(
+        Path.cwd(),
+        symbols=symbols,
+    )
+    variant = RegimeGateSpec().variant()
+    expected = {
+        "2026-07-01": {"301666", "601600", "301291", "603392"},
+        "2026-07-15": {"300408", "600184", "603260", "603259"},
+    }
+
+    assert len(ledger) == 260
+    assert identity["source"]["source_sha256"] == (
+        "8dbd8bc437f1092f5d3ae296892cd56c463d2c96b680fdf0601f6ef508eecdd5"
+    )
+    for date, instruments in expected.items():
+        day = ledger.loc[ledger["datetime"].eq(pd.Timestamp(date))]
+        chosen = choose_holdings(day, variant)
+        assert set(chosen["instrument"].astype(str)) == instruments
 
 
 def test_qqq_current_source_replay_ignores_restated_historical_observations() -> None:
