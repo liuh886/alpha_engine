@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from src.artifacts.strategy_operations import (
+    StrategyOperationsError,
     build_operations_payload,
     validate_operations_payload,
     write_operations_payload,
@@ -194,8 +195,36 @@ def _ranker_signal(
     }
 
 
-def _catalog_with_v43(tmp_path: Path) -> Path:
+def _catalog_matching_active(tmp_path: Path) -> Path:
+    """Build a catalog with exact active IDs without relabeling repository evidence.
+
+    This is a unit-test fixture only. During a declared model cutover the committed
+    catalog intentionally still points to the predecessor until Reviewed Formal
+    Refresh creates genuine successor evidence. Strategy Operations must fail
+    closed on that committed mismatch; membership behavior is tested separately
+    against this synthetic identity-only fixture.
+    """
     payload = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+    for record in payload["records"]:
+        if record.get("model_family_id") != "us_ranker":
+            continue
+        if record.get("model_version_id") == US_MODEL:
+            break
+        record["model_version_id"] = US_MODEL
+        record["run_id"] = "us_x1_3-synthetic-membership-test"
+        record["manifest_path"] = (
+            "us_ranker/us_x1_3/us_x1_3-synthetic-membership-test/manifest.json"
+        )
+    path = tmp_path / "active-catalog.json"
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return path
+
+
+def _catalog_with_v43(tmp_path: Path) -> Path:
+    base = _catalog_matching_active(tmp_path)
+    payload = json.loads(base.read_text(encoding="utf-8"))
     for record in payload["records"]:
         if record["model_family_id"] != "qqq_rotation":
             continue
@@ -234,15 +263,31 @@ def _append(
     )
 
 
+def test_committed_operations_fail_closed_during_declared_model_cutover(
+    tmp_path: Path,
+) -> None:
+    formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+    formal_ids = {row["model_version_id"] for row in formal["records"]}
+    if US_MODEL in formal_ids:
+        pytest.skip("reviewed formal x1.3 evidence is already published")
+    with pytest.raises(StrategyOperationsError, match="formal catalog"):
+        build_operations_payload(
+            formal_catalog=FORMAL_CATALOG,
+            ledger_root=tmp_path,
+            generated_at="2026-08-08T00:00:00Z",
+        )
+
+
 def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> None:
+    catalog = _catalog_matching_active(tmp_path)
     payload = build_operations_payload(
-        formal_catalog=FORMAL_CATALOG,
+        formal_catalog=catalog,
         ledger_root=tmp_path,
         generated_at="2026-08-08T00:00:00Z",
     )
     validate_operations_payload(payload)
     observed = _by_model(payload)
-    formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+    formal = json.loads(catalog.read_text(encoding="utf-8"))
     expected = {row["model_version_id"] for row in formal["records"]}
     assert payload["schema_version"] == "2.2.0"
     assert set(observed) == expected
@@ -262,6 +307,7 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
 
 
 def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
+    catalog = _catalog_matching_active(tmp_path)
     _append(
         tmp_path / US_MODEL,
         US_MODEL,
@@ -284,7 +330,7 @@ def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
         ),
     )
     payload = build_operations_payload(
-        formal_catalog=FORMAL_CATALOG,
+        formal_catalog=catalog,
         ledger_root=tmp_path,
         generated_at="2026-08-08T00:00:01Z",
     )
@@ -303,6 +349,7 @@ def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
 
 
 def test_qqq_ledger_projects_canonical_factor_snapshot(tmp_path: Path) -> None:
+    catalog = _catalog_matching_active(tmp_path)
     ledger = tmp_path / QQQ_MODEL
     append_signal_evaluation(
         ledger_root=ledger,
@@ -316,7 +363,7 @@ def test_qqq_ledger_projects_canonical_factor_snapshot(tmp_path: Path) -> None:
         created_at_utc="2026-08-08T00:00:00Z",
     )
     payload = build_operations_payload(
-        formal_catalog=FORMAL_CATALOG,
+        formal_catalog=catalog,
         ledger_root=tmp_path,
         generated_at="2026-08-08T00:00:01Z",
     )
@@ -377,8 +424,9 @@ def test_new_ledger_write_rejects_missing_factor_evidence(tmp_path: Path) -> Non
 
 
 def test_operations_payload_write_is_idempotent(tmp_path: Path) -> None:
+    catalog = _catalog_matching_active(tmp_path)
     payload = build_operations_payload(
-        formal_catalog=FORMAL_CATALOG,
+        formal_catalog=catalog,
         ledger_root=tmp_path / "ledgers",
         generated_at="2026-08-08T00:00:00Z",
     )
@@ -388,9 +436,10 @@ def test_operations_payload_write_is_idempotent(tmp_path: Path) -> None:
 
 
 def test_generated_operations_identity_matches_formal_bundle_catalog(tmp_path: Path) -> None:
-    formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+    catalog = _catalog_matching_active(tmp_path)
+    formal = json.loads(catalog.read_text(encoding="utf-8"))
     operations = build_operations_payload(
-        formal_catalog=FORMAL_CATALOG,
+        formal_catalog=catalog,
         ledger_root=tmp_path / "ledgers",
         generated_at="2026-08-08T00:00:00Z",
     )
