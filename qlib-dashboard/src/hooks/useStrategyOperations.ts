@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import {
-  loadProtectedStrategyOperation,
+  loadRuntimeStrategyOperation,
   loadStrategyOperations,
   type StrategyOperationsClient,
   type StrategyOperationsSnapshot,
@@ -23,27 +23,21 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
 
     void (async () => {
       const next = await loadStrategyOperations(formalRuns);
-      for (const snapshot of next.values()) {
-        snapshot.currentOperationsAccess = access.requiredTier('strategy', snapshot.strategyId);
-      }
-
-      const runtimeSnapshots = Array.from(next.values()).filter(
-        (snapshot) => snapshot.currentOperationsAccess === 'public' || membership.signedIn,
-      );
+      const runtimeSnapshots = Array.from(next.values()).filter((snapshot) => {
+        const requiredTier = access.requiredTier('strategy', snapshot.strategyId);
+        return requiredTier === 'public' || membership.signedIn;
+      });
       if (runtimeSnapshots.length) {
         const client = await membership.getClient();
         if (client) {
           await Promise.all(runtimeSnapshots.map(async (snapshot) => {
             try {
-              const runtimeSnapshot = await loadProtectedStrategyOperation(
+              const runtimeSnapshot = await loadRuntimeStrategyOperation(
                 client as StrategyOperationsClient,
                 snapshot.strategyId,
                 snapshot.modelVersionId,
               );
-              if (runtimeSnapshot) {
-                runtimeSnapshot.currentOperationsAccess = access.requiredTier('strategy', snapshot.strategyId);
-                next.set(snapshot.modelVersionId, runtimeSnapshot);
-              }
+              if (runtimeSnapshot) next.set(snapshot.modelVersionId, runtimeSnapshot);
             } catch {
               // Fail closed at the product surface: keep the redacted public identity shell.
             }
