@@ -74,16 +74,21 @@ export function useModels() {
         modelData: byId.get(run.modelVersionId) ?? null,
       }));
       const previewRuns = preview.runs.filter((run) => !formalVersions.has(run.modelVersionId));
+      const localModels = explicitLocalModels(repositoryModels, formalVersions);
+      const workspaceModels = [
+        ...repositoryModels.filter((model) => formalVersions.has(model.id)),
+        ...localModels,
+      ];
       const governedRuns = sortRuns([
         ...formalRuns,
         ...previewRuns,
-        ...adaptLocalRuns(explicitLocalModels(repositoryModels, formalVersions)),
+        ...adaptLocalRuns(localModels),
       ]);
       const generatedDates = governedRuns.map((record) => record.generatedAt).filter(Boolean).sort();
       useGlobalStore.getState().setDataGeneratedAt(
         generatedDates.length > 0 ? generatedDates[generatedDates.length - 1] : String(json.generated_at || ''),
       );
-      setModels(repositoryModels);
+      setModels(workspaceModels);
       setRuns(governedRuns);
       setRunLoadErrors(preview.errors);
 
@@ -96,7 +101,7 @@ export function useModels() {
         setActiveRunKey('');
         setSelectedModelId('');
       }
-      return repositoryModels;
+      return workspaceModels;
     } catch (error) {
       console.error('Failed to load governed model runs', error);
       setModels([]);
