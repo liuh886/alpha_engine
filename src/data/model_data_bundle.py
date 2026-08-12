@@ -54,6 +54,7 @@ class DataComponent:
     expected_symbol_count: int
     ready_symbol_count: int
     coverage_ratio: float
+    not_yet_applicable_symbols: tuple[str, ...]
     missing_symbols: tuple[str, ...]
     invalid_symbols: tuple[str, ...]
     quarantined_symbols: tuple[str, ...]
@@ -66,6 +67,7 @@ class DataComponent:
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
         for key in (
+            "not_yet_applicable_symbols",
             "missing_symbols",
             "invalid_symbols",
             "quarantined_symbols",
@@ -154,6 +156,9 @@ def _direct_component(
         expected_symbol_count=expected,
         ready_symbol_count=ready,
         coverage_ratio=float(payload.get("coverage_ratio", _ratio(ready, expected))),
+        not_yet_applicable_symbols=_clean_symbols(
+            payload.get("not_yet_applicable_symbols", [])
+        ),
         missing_symbols=_clean_symbols(payload.get("missing_symbols", [])),
         invalid_symbols=_clean_symbols(payload.get("invalid_symbols", [])),
         quarantined_symbols=_clean_symbols(payload.get("quarantined_symbols", [])),
@@ -232,6 +237,7 @@ def _selected_pool_prices(
         expected_symbol_count=expected,
         ready_symbol_count=ready,
         coverage_ratio=_ratio(ready, expected),
+        not_yet_applicable_symbols=tuple(),
         missing_symbols=missing,
         invalid_symbols=invalid,
         quarantined_symbols=quarantined,
@@ -287,6 +293,7 @@ def _etf_reference_bundle(
         expected_symbol_count=expected,
         ready_symbol_count=ready,
         coverage_ratio=_ratio(ready, expected),
+        not_yet_applicable_symbols=tuple(),
         missing_symbols=tuple(),
         invalid_symbols=tuple(),
         quarantined_symbols=quarantined,
@@ -323,13 +330,20 @@ def _generic_coverage(
     )
     if isinstance(payload.get("ready_symbols"), list):
         ready = len(payload["ready_symbols"])
+    not_yet_applicable = _clean_symbols(payload.get("not_yet_applicable_symbols", []))
     missing = _clean_symbols(payload.get("missing_symbols", payload.get("missing_candidates", [])))
     invalid = _clean_symbols(payload.get("invalid_symbols", payload.get("invalid_candidates", [])))
     quarantined = _clean_symbols(payload.get("quarantined_symbols", []))
     if expected <= 0:
-        expected = ready + len(set(missing) | set(invalid) | set(quarantined))
+        expected = ready + len(
+            set(not_yet_applicable) | set(missing) | set(invalid) | set(quarantined)
+        )
     if ready <= 0 and expected > 0:
-        ready = max(0, expected - len(set(missing) | set(invalid) | set(quarantined)))
+        ready = max(
+            0,
+            expected
+            - len(set(not_yet_applicable) | set(missing) | set(invalid) | set(quarantined)),
+        )
     declared_status = str(payload.get("status", payload.get("decision", ""))).lower()
     if declared_status in ALLOWED_STATUSES:
         status = declared_status
@@ -358,6 +372,7 @@ def _generic_coverage(
         expected_symbol_count=expected,
         ready_symbol_count=ready,
         coverage_ratio=float(payload.get("coverage_ratio", _ratio(ready, expected))),
+        not_yet_applicable_symbols=not_yet_applicable,
         missing_symbols=missing,
         invalid_symbols=invalid,
         quarantined_symbols=quarantined,
@@ -444,11 +459,17 @@ def evaluate_training_profile(
         if not isinstance(raw, dict):
             raise ModelDataBundleError(f"invalid component requirement: {profile_id}")
         component_id = str(raw.get("component_id", "")).strip()
-        accepted = {str(value).strip().lower() for value in raw.get("accepted_statuses", ["ready"])}
+        accepted = {
+            str(value).strip().lower()
+            for value in raw.get("accepted_statuses", ["ready"])
+        }
         minimum = float(raw.get("minimum_coverage_ratio", 1.0))
+        allow_not_yet_applicable = bool(raw.get("allow_not_yet_applicable", False))
         component = components.get(component_id)
         gate_status = "passed"
         gate_reasons: list[str] = []
+        applicable_coverage_ratio: float | None = None
+        coverage_basis = "all_symbols"
         if component is None:
             gate_status = "failed"
             gate_reasons.append("required_component_missing")
@@ -456,9 +477,43 @@ def evaluate_training_profile(
             if component.status not in accepted:
                 gate_status = "failed"
                 gate_reasons.append(f"status={component.status} not in {sorted(accepted)}")
-            if component.coverage_ratio + 1e-12 < minimum:
+
+            coverage_for_gate = component.coverage_ratio
+            if allow_not_yet_applicable:
+                coverage_basis = "applicable_symbols"
+                not_yet_applicable = set(component.not_yet_applicable_symbols)
+                bad_symbols = (
+                    set(component.missing_symbols)
+                    | set(component.invalid_symbols)
+                    | set(component.quarantined_symbols)
+                )
+                if bad_symbols:
+                    gate_status = "failed"
+                    gate_reasons.append(
+                        "lifecycle_allowance_requires_no_missing_invalid_or_quarantined"
+                    )
+                if not_yet_applicable & bad_symbols:
+                    gate_status = "failed"
+                    gate_reasons.append("lifecycle_status_overlap")
+                applicable_expected = component.expected_symbol_count - len(
+                    not_yet_applicable
+                )
+                if applicable_expected < 0 or component.ready_symbol_count > applicable_expected:
+                    gate_status = "failed"
+                    gate_reasons.append("invalid_lifecycle_partition")
+                    applicable_coverage_ratio = 0.0
+                else:
+                    applicable_coverage_ratio = _ratio(
+                        component.ready_symbol_count,
+                        applicable_expected,
+                    )
+                coverage_for_gate = applicable_coverage_ratio
+
+            if coverage_for_gate + 1e-12 < minimum:
                 gate_status = "failed"
-                gate_reasons.append(f"coverage={component.coverage_ratio:.6f} below {minimum:.6f}")
+                gate_reasons.append(
+                    f"coverage={coverage_for_gate:.6f} below {minimum:.6f}"
+                )
             if component.evidence_cutoff and component.evidence_cutoff > evidence_cutoff:
                 gate_status = "failed"
                 gate_reasons.append(
@@ -482,6 +537,9 @@ def evaluate_training_profile(
                 "component_id": component_id,
                 "accepted_statuses": sorted(accepted),
                 "minimum_coverage_ratio": minimum,
+                "allow_not_yet_applicable": allow_not_yet_applicable,
+                "coverage_basis": coverage_basis,
+                "applicable_coverage_ratio": applicable_coverage_ratio,
                 "gate_status": gate_status,
                 "gate_reasons": gate_reasons,
                 "observed": component.to_dict() if component else None,
