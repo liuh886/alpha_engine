@@ -1,0 +1,171 @@
+# Issue #862 Stage B — canonical online replay of Stage-A survivors.
+# Local discovery may use a different provider identity, but promotion evidence
+# is produced only by rebuilding the canonical repository provider in CI.
+schema_version: '1.0'
+experiment_id: us_x1_3_stage_b_v1
+runner: cross_sectional_xgb_ranker_v1
+active: false
+status: completed_supported
+parent_model_id: us_x1_2
+research_only: true
+trade_ready: false
+validation_runner: exact_us_ranker_portfolio_v1
+
+purpose: >-
+  Exact Stage-B replay for Issue #862. Refit the frozen US x1.2 XGBoost
+  calibration with only the two Stage-A factor survivors, then evaluate the
+  governed Top-15 equal-weight portfolio with at most four names per sector,
+  actual turnover, 20/60 bps costs, and independent score reproduction.
+
+submission_lineage:
+  source_pr: 868
+  local_stage_a_provider_identity_sha256: 1236f32168f9fc71a8fe79d733ddc21edb37e733f50f228bf97d080784a2613f
+  evidence_tier: exploratory_local
+  promotion_eligible: false
+
+snapshot:
+  policy: canonical_repository_source_rebuild
+  source_component_identity_sha256: b3d746b16b43c9047b14b653226a9e09fa7ae57d5f7f75586f207f7f39252072
+  provider_identity_sha256: c2b8cc29ad70afde1b4590a03da6f82d4a9fd1e242426bc936333b7f7c3bd39d
+  cutoff: '2026-08-10'
+  identity_note: >-
+    source_component_identity_sha256 is the governed selected-pool price
+    component lineage from model-data-bundle. provider_identity_sha256 is the
+    deterministic Qlib runtime provider identity produced by rebuilding the
+    exact US87 plus QQQ repository sources. They are different identity layers.
+
+fixed_model:
+  model_id: us_x1_2
+  frozen_spec: configs/research_paradigms/us_x1_1_frozen_v1.yaml
+  formal_contract: configs/models/us_x1_2.yaml
+
+factor_library:
+  source: configs/factor_libraries/ohlcv.yaml
+
+candidates:
+  - candidate_id: baseline_r11_sampled
+    role: baseline
+    factor_groups:
+      - momentum_volatility_volume
+    xgb_native:
+      n_gain_bins: 7
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: mvv_plus_pressure
+    role: challenger
+    factor_groups:
+      - momentum_volatility_volume
+      - us_price_volume_pressure
+    xgb_native:
+      n_gain_bins: 7
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: mvv_plus_revliq
+    role: challenger
+    factor_groups:
+      - momentum_volatility_volume
+      - us_short_reversal_liquidity
+    xgb_native:
+      n_gain_bins: 7
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+windows:
+  candidate_selection:
+    - 2024H1
+    - 2024H2
+    - 2025H1
+    - 2025H2
+  consumed_reporting_only: []
+  consumed_reporting_may_enter_selection: false
+  new_holdout_reserved: true
+
+execution:
+  base_cost_bps: 20
+  cost_stress_bps: [20, 60]
+  exact_portfolio:
+    replay_id: exact_us_ranker_portfolio_v1
+    top_n: 15
+    weighting: equal_weight
+    maximum_names_per_sector: 4
+    sector_classification: configs/research_classifications/us87_sector_industry_v1.yaml
+    holding_sessions: 10
+    rebalance_sessions: 10
+    fill_contract: scan_complete_eligible_cross_section_until_exactly_15
+    fail_closed_if_unfillable: true
+
+evaluation:
+  schema_version: '1.0'
+  baseline_candidate_id: baseline_r11_sampled
+  stress_cost_bps: 60
+  decision: us_x1_3_stage_b_candidate_supported
+  ranking:
+    - gate_pass_count
+    - worst_drawdown
+    - compounded_relative_excess
+  thresholds:
+    min_window_relative_excess: 0.0
+    min_worst_drawdown: -0.35
+    min_stress_compounded_relative_excess: 0.0
+    max_strongest_positive_window_share: 0.55
+    min_mean_rank_ic_improvement: 0.0
+    require_factor_baseline_dominance: false
+
+support_boundary:
+  must_beat_incumbent_20bps: true
+  must_beat_incumbent_60bps: true
+  minimum_positive_selection_windows: 3
+  require_positive_mean_rank_ic: true
+  require_exact_score_reproduction: true
+  require_governed_sector_cap: true
+  drawdown_comparison: report_delta_without_posthoc_numeric_threshold
+
+stop_rules:
+  - no_new_factor_groups
+  - no_parameter_search
+  - no_seed_search
+  - no_topk_search
+  - no_sector_cap_search
+  - no_label_or_holding_period_search
+  - no_cost_semantic_changes
+  - no_automatic_model_promotion
+
+version_policy:
+  maximum_surviving_candidates: 1
+  may_propose_us_x1_3_candidate: true
+  may_release_us_x1_3_automatically: false
+
+result:
+  supported: true
+  winner: mvv_plus_pressure
+  result_receipt: data/research/experiment_receipts/us_x1_3_stage_b_v1.json
+  canonical_validation_run_id: 31567853785
+  artifact_id: 9130182216
+  artifact_digest: sha256:6733fde47212088c902df88c436af553f2bd83e37a19c14d47e066ce5f8c199d
+  automatic_promotion: false
