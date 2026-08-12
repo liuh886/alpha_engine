@@ -8,6 +8,7 @@ const files = {
   styles: resolve(root, 'public/account-integration.css'),
   app: resolve(root, 'src/App.tsx'),
   accessRules: resolve(root, 'src/lib/model-access.ts'),
+  operationsLib: resolve(root, 'src/lib/strategy-operations.ts'),
   membershipHook: resolve(root, 'src/hooks/useAlphaMembership.ts'),
   accessHook: resolve(root, 'src/hooks/useAccessControl.tsx'),
   fleet: resolve(root, 'src/components/StrategyFleet.tsx'),
@@ -16,6 +17,7 @@ const files = {
   settings: resolve(root, 'src/pages/AccessSettingsPage.tsx'),
   runs: resolve(root, 'src/pages/RunsPage.tsx'),
   compare: resolve(root, 'src/pages/ComparePage.tsx'),
+  registry: resolve(root, '../configs/strategies/registry.json'),
   moduleMigration: resolve(root, '../supabase/migrations/20260809070851_alpha_engine_access_control.sql'),
   strategyMigration: resolve(root, '../supabase/migrations/20260812022634_alpha_engine_strategy_access_policies.sql'),
 };
@@ -94,8 +96,13 @@ for (const value of ['ACCESS_TIERS', 'access.savePolicy', 'Strategy current oper
 if (content.settings.includes('Model families') || content.settings.includes('type="model"')) {
   throw new Error('Owner settings must not create a model-family access authority.');
 }
-for (const value of ['currentOperationsAccess', 'Live holdings & signals']) {
-  if (!content.fleet.includes(value)) throw new Error(`fleet missing current execution access metadata: ${value}`);
+for (const value of ["requiredTier('strategy', snapshot.strategyId)", 'Live holdings & signals']) {
+  if (!content.fleet.includes(value)) throw new Error(`fleet missing runtime strategy access resolution: ${value}`);
+}
+for (const [label, source] of [['registry', content.registry], ['operations', content.operationsLib], ['fleet', content.fleet]]) {
+  if (source.includes('current_operations_access') || source.includes('currentOperationsAccess')) {
+    throw new Error(`${label} must not retain a second current-operations access authority.`);
+  }
 }
 for (const [label, source] of [['runs', content.runs], ['compare', content.compare]]) {
   if (source.includes('requiredTierForModel') || source.includes('useAccessControl')) {
