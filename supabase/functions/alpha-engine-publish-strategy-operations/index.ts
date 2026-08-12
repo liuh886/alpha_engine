@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
   try {
     await verifyGitHubPublisher(req);
     const document = await req.json() as StrategyOperationsDocument;
-    if (document.schema_version !== "2.1.0") throw new Error("unsupported Strategy Operations schema");
+    if (document.schema_version !== "2.2.0") throw new Error("unsupported Strategy Operations schema");
     if (document.research_only !== true || document.trade_ready !== false) throw new Error("invalid research/trade boundary");
     if (!Array.isArray(document.records) || document.records.length === 0) throw new Error("strategy operations records are required");
 
