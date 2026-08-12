@@ -21,18 +21,20 @@ submission_lineage:
   evidence_tier: grid_discovery
   grid_winner: cal_deeper
   grid_relative_excess: 0.282
+  grid_provider_identity_sha256: fa92e3e88facf5908b9f6ec153f140e2505a9bce3ef693078cd001b58f607f40
   promotion_eligible: false
 
 snapshot:
   policy: exact_selected_pool_source_rebuild
   source_dir: data/csv_source
   source_component_identity_sha256: 15248fcc8ffe83bdc025d23f07b2ab0fa7cca71880583f5c2af1db75ae35c55d
-  provider_identity_sha256: fa92e3e88facf5908b9f6ec153f140e2505a9bce3ef693078cd001b58f607f40
+  provider_identity_sha256: 1b0b8aea689422640f6b0ca8e24ecc8c0f64fe2131caebd3fb2f1e1bd03d1050
   cutoff: '2026-08-11'
   identity_note: >-
     source_component_identity_sha256 is the selected-pool price-component lineage;
+    grid_provider_identity_sha256 records the provider used for PR #870 discovery;
     provider_identity_sha256 is the deterministic CN130 + CSI300 Qlib runtime
-    provider expected from exact repository-source rebuild.
+    provider rebuilt from the repaired canonical repository sources for Stage B.
 
 source_repair:
   approval_manifest: data/source_repairs/cn_x1_2_cal_deeper_stage_b_v1.json
