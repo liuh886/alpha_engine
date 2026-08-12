@@ -6,16 +6,17 @@ import argparse
 import json
 from pathlib import Path
 
-from src.factors import FactorCatalog
-from src.factors.sets.qlib_alpha158 import load_alpha158_definitions
+from src.factors import FactorCatalog, load_factor_library
+from src.factors.library import ALPHA158_SOURCE_PATH
 
 
 def build_catalog() -> FactorCatalog:
+    alpha158 = load_factor_library(ALPHA158_SOURCE_PATH)
     catalog = FactorCatalog(
         catalog_id="alpha_engine_factor_catalog",
         catalog_version="1.0",
     )
-    catalog.extend(load_alpha158_definitions())
+    catalog.extend(alpha158.catalog.definitions)
     return catalog
 
 
