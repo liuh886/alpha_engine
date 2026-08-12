@@ -108,11 +108,24 @@ async function openStrategy(page: Page, model: FormalModel): Promise<'accessible
     await expect(main.getByRole('button', { name: /Sign in to continue|View Pro access|Open account/ })).toBeVisible();
     return 'gated';
   }
+
+  // Formal historical evidence is public for every strategy that reaches the
+  // strategy page. Current operations may either be directly accessible or
+  // explicitly protected behind the Pro runtime plane.
+  await expect(main.getByRole('heading', {
+    name: 'Performance, risk, holdings and attribution',
+    exact: true,
+  })).toBeVisible();
+
   const decisionState = main.getByRole('heading', { name: 'Current decision state', exact: true });
-  const publicPerformance = main.getByRole('heading', { name: 'Formal performance', exact: true });
-  await expect(decisionState.or(publicPerformance)).toBeVisible();
-  if (await publicPerformance.isVisible()) {
-    await expect(main.getByRole('heading', { name: 'Pro execution layer', exact: true })).toBeVisible();
+  const protectedOperations = main.getByRole('heading', { name: 'Pro current operations', exact: true });
+  await expect(decisionState.or(protectedOperations)).toBeVisible();
+
+  if (await protectedOperations.isVisible()) {
+    await expect(main.getByRole('heading', {
+      name: 'Current holdings and live signals are protected',
+      exact: true,
+    })).toBeVisible();
     await expect(main.getByRole('button', { name: 'View AlphaEngine Pro access', exact: true })).toBeVisible();
     return 'public_preview';
   }
@@ -212,7 +225,7 @@ test('live Pages renders or explicitly policy-gates every catalog-governed forma
 
   for (const model of formalModels) {
     const access = await openStrategy(page, model);
-    if (access === 'accessible') {
+    if (access !== 'gated') {
       await exerciseAvailableEvidence(page);
       await expectCompleteLedgers(page);
     }
