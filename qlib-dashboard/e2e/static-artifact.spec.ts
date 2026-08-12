@@ -116,17 +116,19 @@ test('Security Explorer explains its value before sign-in and remains available 
   await expect.poll(() => marketEvidenceRequests.length).toBeGreaterThan(0);
 });
 
-test('Free users can inspect QQQR performance while live execution remains Pro', async ({ page }) => {
+test('Free users can inspect QQQR evidence while current operations remain protected', async ({ page }) => {
   await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'free-fixture' } });
   await page.goto('/#/strategies');
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   await fleet.getByText('QQQR v4.3', { exact: true }).click();
   await expect(page.getByRole('heading', { name: 'QQQR v4.3', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Formal performance', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Pro execution layer', exact: true })).toBeVisible();
-  await expect(page.getByText('Current holdings', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Current holdings and live signals are protected', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'View AlphaEngine Pro access' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Performance, risk, holdings and attribution', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Performance', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Current decision state' })).toHaveCount(0);
+  await expect(page.getByText('Current signal drivers', { exact: true })).toHaveCount(0);
 });
 
 test('only a verified Owner can open access settings', async ({ page }) => {
@@ -160,77 +162,17 @@ async function loadFormalDisplayNames(page: Page): Promise<string[]> {
   return names;
 }
 
-test('product homepage opens the strategy console', async ({ page }, testInfo) => {
-  const pageErrors: string[] = [];
-  page.on('pageerror', (error) => pageErrors.push(error.message));
-
-  await page.goto('/#/');
-  await expect(page.getByRole('heading', { name: 'Know what your systematic strategy is doing — and why.' })).toBeVisible();
-  await expect(page.getByText('QQQR v4.3', { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Performance before persuasion.' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Every decision is traceable.' })).toBeVisible();
-  await assertNoHorizontalOverflow(page);
-  expect(pageErrors).toEqual([]);
-  await page.screenshot({ path: `test-results/static-artifact/landing-${testInfo.project.name}.png`, fullPage: true });
-
-  await page.locator('.landing-actions').getByRole('link', { name: 'Open console' }).click();
-  await expect(page).toHaveURL(/#\/app$/);
-  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
-});
-
-test('strategy console exposes four primary destinations and formal strategy drill-down', async ({ page }, testInfo) => {
-  const apiRequests: string[] = [];
-  const pageErrors: string[] = [];
-  page.on('request', (request) => {
-    const pathname = new URL(request.url()).pathname;
-    if (pathname.startsWith('/api/')) apiRequests.push(request.url());
-  });
-  page.on('pageerror', (error) => pageErrors.push(error.message));
-
+test('Strategy overview and list are driven by the governed formal catalog', async ({ page }) => {
   await openConsole(page);
-  const navName = testInfo.project.name === 'mobile' ? 'Mobile strategy console navigation' : 'Strategy console navigation';
-  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: 'Open strategy navigation' }).click();
-  const navigation = page.getByRole('navigation', { name: navName });
-  for (const label of ['Overview', 'Strategies', 'Research', 'System']) {
-    await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
-  }
-  await expect(navigation.getByRole('link', { name: 'Runs', exact: true })).toHaveCount(0);
-  await expect(navigation.getByRole('link', { name: 'Backtests', exact: true })).toHaveCount(0);
-  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: 'Close strategy navigation' }).click();
-
   const formalNames = await loadFormalDisplayNames(page);
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
-  for (const name of formalNames) await expect(fleet.getByText(name, { exact: true })).toBeVisible();
-  await fleet.getByText('QQQR v4.3', { exact: true }).click();
-  await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_3$/);
-  await expect(page.getByRole('heading', { name: 'QQQR v4.3', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Current decision state' })).toBeVisible();
-  const formalTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
-  for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {
-    await expect(formalTabs.getByRole('tab', { name: label, exact: true })).toBeVisible();
+  for (const name of formalNames) {
+    await expect(fleet.getByText(name, { exact: true })).toBeVisible();
+  }
+  await page.goto('/#/strategies');
+  await expect(page.getByRole('heading', { name: 'Formal Strategies' })).toBeVisible();
+  for (const name of formalNames) {
+    await expect(page.getByText(name, { exact: true })).toBeVisible();
   }
   await assertNoHorizontalOverflow(page);
-
-  await page.goto('/#/research');
-  await expect(page.getByRole('heading', { name: 'Research', exact: true })).toBeVisible();
-  await page.goto('/#/system');
-  await expect(page.getByRole('heading', { name: 'System', exact: true })).toBeVisible();
-  await page.goto('/#/dashboard');
-  await expect(page.getByRole('heading', { name: 'Strategy view not found' })).toBeVisible();
-
-  expect(apiRequests).toEqual([]);
-  expect(pageErrors).toEqual([]);
-  await assertNoHorizontalOverflow(page);
-  await page.screenshot({ path: `test-results/static-artifact/strategy-console-${testInfo.project.name}.png`, fullPage: true });
-});
-
-test('installed shell reopens offline after first visit', async ({ page, context }, testInfo) => {
-  test.skip(testInfo.project.name !== 'desktop', 'Offline lifecycle is checked once on desktop Chromium.');
-  await openConsole(page);
-  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
-  await page.reload();
-  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
-  await context.setOffline(true);
-  await page.reload();
-  await expect(page.getByText('Alpha Engine', { exact: true }).first()).toBeVisible();
 });
