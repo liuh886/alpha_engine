@@ -260,10 +260,6 @@ def validate_formal_section(
         raise ReleaseVerificationError(
             f"summary research boundary mismatch for {record.model_version_id}"
         )
-    _digest(
-        summary.get("source_package_sha256"),
-        label=f"{record.model_version_id}.source_package_sha256",
-    )
 
 
 def validate_bundle_manifest(payload: object) -> tuple[str, tuple[PublishedBundleArtifact, ...]]:
