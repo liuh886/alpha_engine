@@ -54,7 +54,7 @@ def test_publish_uses_oidc_bearer_and_exact_operations_document(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     operations = {
-        "schema_version": "2.1.0",
+        "schema_version": "2.2.0",
         "research_only": True,
         "trade_ready": False,
         "records": [{"strategy_id": "fixture", "model_version_id": "fixture_v1"}],
