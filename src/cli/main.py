@@ -19,6 +19,10 @@ from src.artifacts.strategy_operations import (
     validate_operations_payload,
     write_operations_payload,
 )
+from src.artifacts.strategy_operations_runtime import (
+    StrategyOperationsRuntimeError,
+    publish_strategy_operations,
+)
 from src.artifacts.strategy_signal_ledger import (
     StrategySignalLedgerError,
     append_signal_evaluation,
@@ -207,6 +211,16 @@ def _build_parser() -> argparse.ArgumentParser:
         default=Path("data/research/strategy_operations/snapshots.json"),
     )
     build_ops.add_argument("--generated-at", required=True)
+
+    publish_ops = ops_commands.add_parser(
+        "publish",
+        help="Publish the generated Strategy Operations read model through GitHub OIDC.",
+    )
+    publish_ops.add_argument(
+        "--input",
+        type=Path,
+        default=Path("data/research/strategy_operations/snapshots.json"),
+    )
     return parser
 
 
@@ -321,6 +335,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "research_only": True,
                 "trade_ready": False,
             }
+        elif args.group == "ops" and args.ops_command == "publish":
+            payload = publish_strategy_operations(_resolve(root, args.input))
         else:
             parser.error("unsupported command")
             return 2
@@ -332,6 +348,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ActiveStrategyCatalogError,
         StrategySignalLedgerError,
         StrategyOperationsError,
+        StrategyOperationsRuntimeError,
         OSError,
         json.JSONDecodeError,
     ) as exc:
