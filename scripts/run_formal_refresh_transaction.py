@@ -1,4 +1,4 @@
-"""Plan and finalize a catalog-driven formal backtest refresh transaction."""
+"""Plan, assemble, and finalize the catalog-driven formal refresh transaction."""
 
 from __future__ import annotations
 
@@ -8,10 +8,11 @@ import shutil
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
+from typing import Any
 
-from scripts.ranker_provisional_mtm import attach_ranker_provisional_mtm
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
+    accepted_records,
     build_plan,
     common_provider_cutoff,
     finalize_candidate_tree,
@@ -19,24 +20,17 @@ from src.artifacts.formal_refresh import (
     sha256,
     write_object,
 )
-from src.research.qqq_authoritative_replay import (
-    prepare_and_verify_active_rules_replay,
-    verify_qqq_authoritative_replay,
-)
-from src.research.rules_formal_replay_gate import (
-    verify_cn_current_allocation_replay,
-    verify_cn_frozen_prefix,
+from src.governance.active_strategy_catalog import (
+    ActiveStrategyCatalogError,
+    assert_formal_catalog_matches_active_strategies,
+    load_active_strategy_catalog,
 )
 
 RANKER_MTM_MODELS = (("cn_x1_1", "cn"),)
-QQQ_MODEL_ID = "qqqi_qqq_tqqq_v4_3"
-CN_MODEL_ID = "cn_x1_1"
-QQQ_BUNDLE_ROOT = Path("artifacts/formal-refresh/qqq-bundle")
-CN_REPLAY_OUTPUT_ROOT = Path("artifacts/formal-refresh/cn-replay-ledger")
-CN_LEDGER = Path(
-    "artifacts/formal-refresh/cn-ledger-a/score_ledgers/"
-    "2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
-)
+TASK_RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v1"
+PLAN_SCHEMA = "formal_refresh_plan_v2"
+FAN_IN_SCHEMA = "formal_strategy_fan_in_v1"
+SUCCESS_STATES = {"current_no_change", "refreshed"}
 
 
 def _cutoffs(us_manifest: Path, cn_manifest: Path) -> dict[str, str]:
@@ -44,10 +38,6 @@ def _cutoffs(us_manifest: Path, cn_manifest: Path) -> dict[str, str]:
         "us": common_provider_cutoff(load_object(us_manifest), market="us"),
         "cn": common_provider_cutoff(load_object(cn_manifest), market="cn"),
     }
-
-
-def _provider_dir(manifest: Path, market: str) -> Path:
-    return manifest.resolve().parent.parent / "data" / "providers" / market
 
 
 def _iso_date(value: object, *, label: str) -> str:
@@ -121,101 +111,209 @@ def _mtm_refresh_model_ids(
     return tuple(required)
 
 
-def _attach_ranker_mtm(
+def build_task_plan(
     *,
-    candidate_root: Path,
-    cn_provider_manifest: Path,
-    cutoffs: dict[str, str],
-) -> None:
-    repository_root = Path.cwd().resolve()
-    package_path = candidate_root / f"{CN_MODEL_ID}.json"
-    if not package_path.is_file():
-        return
-    attach_ranker_provisional_mtm(
-        package_path=package_path,
-        provider_dir=_provider_dir(cn_provider_manifest, "cn"),
-        ledger_dir=repository_root
-        / "data"
-        / "research"
-        / "strategy_signal_ledgers"
-        / CN_MODEL_ID,
-        cutoff=cutoffs["cn"],
-        repository_root=repository_root,
+    formal_root: Path,
+    formal_v2_catalog: Path,
+    cutoffs: Mapping[str, str],
+    generated_at: str,
+) -> dict[str, Any]:
+    """Build a side-effect-free active-strategy execution matrix."""
+
+    active = load_active_strategy_catalog()
+    formal_v2 = load_object(formal_v2_catalog)
+    try:
+        assert_formal_catalog_matches_active_strategies(formal_v2, active)
+    except ActiveStrategyCatalogError as exc:
+        raise FormalRefreshError(str(exc)) from exc
+
+    formal_plan = build_plan(
+        formal_root,
+        target_cutoffs=cutoffs,
+        generated_at=generated_at,
     )
+    formal_ids = {record.model_id for record in formal_plan.models}
+    stale_ids = set(formal_plan.stale_model_ids)
+    mtm_ids = set(_mtm_refresh_model_ids(formal_root, cutoffs=cutoffs))
 
-
-def _report_changed(current: Path, candidate: Path) -> bool:
-    if not current.is_file() or not candidate.is_file():
-        return False
-    return load_object(current).get("report") != load_object(candidate).get("report")
-
-
-def _verify_rules_replay_gates(
-    *,
-    current_root: Path,
-    candidate_root: Path,
-    cn_provider_manifest: Path,
-) -> dict[str, object]:
-    repository_root = Path.cwd().resolve()
-    receipts: dict[str, object] = {}
-
-    qqq_current = current_root / f"{QQQ_MODEL_ID}.json"
-    qqq_candidate = candidate_root / f"{QQQ_MODEL_ID}.json"
-    qqq_bundle_manifest = QQQ_BUNDLE_ROOT / "bundle_manifest.json"
-    qqq_changed = (
-        qqq_current.is_file()
-        and qqq_candidate.is_file()
-        and sha256(qqq_current) != sha256(qqq_candidate)
-    )
-    if qqq_changed or qqq_bundle_manifest.is_file():
-        if not qqq_bundle_manifest.is_file():
-            raise FormalRefreshError(
-                "QQQ formal candidate changed without the professional governed ETF bundle"
-            )
-        receipts[QQQ_MODEL_ID] = verify_qqq_authoritative_replay(
-            repository_root,
-            package_path=qqq_candidate,
-            bundle_dir=QQQ_BUNDLE_ROOT,
+    tasks: list[dict[str, Any]] = []
+    for strategy in active.strategies:
+        model_id = strategy.model_version_id
+        tasks.append(
+            {
+                "strategy_id": strategy.strategy_id,
+                "model_family_id": strategy.model_family_id,
+                "model_version_id": model_id,
+                "model_kind": strategy.model_kind,
+                "market": strategy.market,
+                "planned_provider_cutoff": str(cutoffs[strategy.market]),
+                "publication_input": (
+                    "formal_v1" if model_id in formal_ids else "native_bundle_v2"
+                ),
+                "formal_refresh_required": model_id in stale_ids,
+                "mtm_refresh_required": model_id in mtm_ids,
+            }
         )
 
-    cn_current = current_root / f"{CN_MODEL_ID}.json"
-    cn_candidate = candidate_root / f"{CN_MODEL_ID}.json"
-    if cn_candidate.is_file():
-        candidate_package = load_object(cn_candidate)
-        frozen = verify_cn_frozen_prefix(repository_root, candidate_package)
-        ledger = (repository_root / CN_LEDGER).resolve()
-        settled_changed = _report_changed(cn_current, cn_candidate)
-        if ledger.is_file():
-            receipts[CN_MODEL_ID] = verify_cn_current_allocation_replay(
-                repository_root,
-                package_path=cn_candidate,
-                provider_dir=_provider_dir(cn_provider_manifest, "cn"),
-                ledger_path=ledger,
-            )
-        elif settled_changed:
-            raise FormalRefreshError(
-                "CN settled formal trace changed without the governed current R0 score ledger"
-            )
-        else:
-            receipts[CN_MODEL_ID] = {
-                "schema_version": "1.0",
-                "model_id": CN_MODEL_ID,
-                "decision": "exact_replay",
-                "frozen_prefix": frozen,
-                "current_allocation": "not_required_no_settled_trace_change",
-                "research_only": True,
-                "trade_ready": False,
-                "promotion_authorized": False,
-            }
-
     return {
-        "schema_version": "rules_formal_replay_gates_v1",
-        "status": "exact_replay",
-        "models": receipts,
+        "schema_version": PLAN_SCHEMA,
+        "generated_at": generated_at,
+        "target_cutoffs": dict(sorted(cutoffs.items())),
+        "active_strategy_ids": [row.strategy_id for row in active.strategies],
+        "active_model_version_ids": list(active.active_model_version_ids),
+        "formal_v1_model_ids": [record.model_id for record in formal_plan.models],
+        "stale_model_ids": list(formal_plan.stale_model_ids),
+        "mtm_refresh_model_ids": sorted(mtm_ids),
+        "refresh_required": bool(stale_ids or mtm_ids),
+        "tasks": tasks,
         "research_only": True,
         "trade_ready": False,
-        "promotion_authorized": False,
     }
+
+
+def _copy_tree(source: Path, target: Path) -> None:
+    if target.exists():
+        shutil.rmtree(target)
+    shutil.copytree(source, target)
+
+
+def _validate_task_receipt(
+    task: Mapping[str, Any],
+    receipt: Mapping[str, Any],
+) -> None:
+    if receipt.get("schema_version") != TASK_RECEIPT_SCHEMA:
+        raise FormalRefreshError(
+            f"invalid strategy receipt schema for {task.get('strategy_id')}"
+        )
+    bindings = (
+        "strategy_id",
+        "model_family_id",
+        "model_version_id",
+        "model_kind",
+        "market",
+        "planned_provider_cutoff",
+        "publication_input",
+    )
+    for field in bindings:
+        if receipt.get(field) != task.get(field):
+            raise FormalRefreshError(
+                f"strategy receipt binding mismatch for {task.get('strategy_id')}: {field}"
+            )
+    if receipt.get("research_only") is not True or receipt.get("trade_ready") is not False:
+        raise FormalRefreshError(
+            f"strategy receipt research boundary changed: {task.get('strategy_id')}"
+        )
+    status = str(receipt.get("execution_status") or "")
+    if status not in SUCCESS_STATES:
+        raise FormalRefreshError(
+            f"strategy task is not publishable: {task.get('strategy_id')}={status or 'missing'}"
+        )
+
+
+def assemble_strategy_results(
+    *,
+    plan_path: Path,
+    strategy_results_root: Path,
+    current_root: Path,
+    candidate_root: Path,
+    current_preview_root: Path,
+    candidate_preview_root: Path,
+    receipt_path: Path,
+) -> dict[str, Any]:
+    """Atomically fan in all expected strategy receipts and candidate outputs."""
+
+    plan = load_object(plan_path)
+    if plan.get("schema_version") != PLAN_SCHEMA:
+        raise FormalRefreshError("unsupported formal refresh plan schema")
+    tasks = plan.get("tasks")
+    if not isinstance(tasks, list) or not tasks:
+        raise FormalRefreshError("formal refresh plan has no active strategy tasks")
+
+    expected = {
+        str(task.get("strategy_id")): task
+        for task in tasks
+        if isinstance(task, Mapping) and task.get("strategy_id")
+    }
+    if len(expected) != len(tasks):
+        raise FormalRefreshError("formal refresh plan contains duplicate strategy tasks")
+
+    observed_dirs = {
+        path.name
+        for path in strategy_results_root.iterdir()
+        if path.is_dir() and (path / "receipt.json").is_file()
+    }
+    if observed_dirs != set(expected):
+        raise FormalRefreshError(
+            "strategy result membership mismatch: "
+            f"expected={sorted(expected)}, observed={sorted(observed_dirs)}"
+        )
+
+    _copy_tree(current_root, candidate_root)
+    _copy_tree(current_preview_root, candidate_preview_root)
+
+    receipts: list[dict[str, Any]] = []
+    changed: list[str] = []
+    for strategy_id, task in expected.items():
+        result_root = strategy_results_root / strategy_id
+        receipt = load_object(result_root / "receipt.json")
+        _validate_task_receipt(task, receipt)
+        status = str(receipt["execution_status"])
+        publication_input = str(task["publication_input"])
+        model_id = str(task["model_version_id"])
+
+        if status == "refreshed":
+            if publication_input == "formal_v1":
+                package = result_root / "formal-package.json"
+                if not package.is_file():
+                    raise FormalRefreshError(
+                        f"refreshed formal package is missing for {strategy_id}"
+                    )
+                expected_sha = str(receipt.get("output_sha256") or "")
+                if not expected_sha or sha256(package) != expected_sha:
+                    raise FormalRefreshError(
+                        f"formal package digest mismatch for {strategy_id}"
+                    )
+                shutil.copy2(package, candidate_root / f"{model_id}.json")
+            elif publication_input == "native_bundle_v2":
+                preview = result_root / "model-runs"
+                catalog = preview / "catalog.json"
+                expected_sha = str(receipt.get("output_sha256") or "")
+                if not catalog.is_file() or not expected_sha or sha256(catalog) != expected_sha:
+                    raise FormalRefreshError(
+                        f"native preview digest mismatch for {strategy_id}"
+                    )
+                _copy_tree(preview, candidate_preview_root)
+            else:
+                raise FormalRefreshError(
+                    f"unsupported publication input for {strategy_id}: {publication_input}"
+                )
+            changed.append(strategy_id)
+        receipts.append(dict(receipt))
+
+    fan_in = {
+        "schema_version": FAN_IN_SCHEMA,
+        "status": "complete",
+        "generated_at": plan.get("generated_at"),
+        "expected_strategy_ids": list(expected),
+        "changed_strategy_ids": changed,
+        "receipts": receipts,
+        "research_only": True,
+        "trade_ready": False,
+    }
+    write_object(receipt_path, fan_in)
+    return fan_in
+
+
+def _validate_fan_in(path: Path) -> dict[str, Any]:
+    receipt = load_object(path)
+    if (
+        receipt.get("schema_version") != FAN_IN_SCHEMA
+        or receipt.get("status") != "complete"
+        or receipt.get("research_only") is not True
+        or receipt.get("trade_ready") is not False
+    ):
+        raise FormalRefreshError("strategy fan-in receipt is invalid")
+    return receipt
 
 
 def main() -> None:
@@ -224,15 +322,21 @@ def main() -> None:
 
     plan_parser = subparsers.add_parser("plan")
     plan_parser.add_argument("--formal-root", type=Path, required=True)
+    plan_parser.add_argument("--formal-v2-catalog", type=Path, required=True)
     plan_parser.add_argument("--us-provider-manifest", type=Path, required=True)
     plan_parser.add_argument("--cn-provider-manifest", type=Path, required=True)
     plan_parser.add_argument("--generated-at", required=True)
     plan_parser.add_argument("--output", type=Path, required=True)
     plan_parser.add_argument("--github-output", type=Path)
 
-    initialize = subparsers.add_parser("initialize")
-    initialize.add_argument("--current-root", type=Path, required=True)
-    initialize.add_argument("--candidate-root", type=Path, required=True)
+    assemble = subparsers.add_parser("assemble")
+    assemble.add_argument("--plan", type=Path, required=True)
+    assemble.add_argument("--strategy-results-root", type=Path, required=True)
+    assemble.add_argument("--current-root", type=Path, required=True)
+    assemble.add_argument("--candidate-root", type=Path, required=True)
+    assemble.add_argument("--current-preview-root", type=Path, required=True)
+    assemble.add_argument("--candidate-preview-root", type=Path, required=True)
+    assemble.add_argument("--receipt", type=Path, required=True)
 
     finalize = subparsers.add_parser("finalize")
     finalize.add_argument("--current-root", type=Path, required=True)
@@ -240,68 +344,49 @@ def main() -> None:
     finalize.add_argument("--us-provider-manifest", type=Path, required=True)
     finalize.add_argument("--cn-provider-manifest", type=Path, required=True)
     finalize.add_argument("--generated-at", required=True)
+    finalize.add_argument("--fan-in-receipt", type=Path, required=True)
     finalize.add_argument("--receipt", type=Path, required=True)
 
     args = parser.parse_args()
-    if args.command == "initialize":
-        if args.candidate_root.exists():
-            shutil.rmtree(args.candidate_root)
-        shutil.copytree(args.current_root, args.candidate_root)
+    if args.command == "assemble":
+        result = assemble_strategy_results(
+            plan_path=args.plan,
+            strategy_results_root=args.strategy_results_root,
+            current_root=args.current_root,
+            candidate_root=args.candidate_root,
+            current_preview_root=args.current_preview_root,
+            candidate_preview_root=args.candidate_preview_root,
+            receipt_path=args.receipt,
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
         return
 
     cutoffs = _cutoffs(args.us_provider_manifest, args.cn_provider_manifest)
     if args.command == "plan":
-        active_rules_replay = prepare_and_verify_active_rules_replay(
-            Path.cwd(),
+        plan = build_task_plan(
             formal_root=args.formal_root,
-            cn_provider_dir=_provider_dir(args.cn_provider_manifest, "cn"),
-            qqq_bundle_dir=QQQ_BUNDLE_ROOT,
-            cn_replay_output_dir=CN_REPLAY_OUTPUT_ROOT,
-        )
-        plan = build_plan(
-            args.formal_root,
-            target_cutoffs=cutoffs,
+            formal_v2_catalog=args.formal_v2_catalog,
+            cutoffs=cutoffs,
             generated_at=args.generated_at,
         )
-        mtm_refresh_model_ids = _mtm_refresh_model_ids(
-            args.formal_root,
-            cutoffs=cutoffs,
-        )
-        refresh_required = plan.refresh_required or bool(mtm_refresh_model_ids)
-        plan_payload = plan.to_dict()
-        plan_payload["active_rules_replay"] = active_rules_replay
-        plan_payload["mtm_refresh_model_ids"] = list(mtm_refresh_model_ids)
-        plan_payload["refresh_required"] = refresh_required
-        write_object(args.output, plan_payload)
+        write_object(args.output, plan)
         if args.github_output:
             args.github_output.parent.mkdir(parents=True, exist_ok=True)
             with args.github_output.open("a", encoding="utf-8") as handle:
-                handle.write(f"refresh_required={str(refresh_required).lower()}\n")
-                handle.write(f"us_cutoff={plan.target_cutoffs['us']}\n")
-                handle.write(f"cn_cutoff={plan.target_cutoffs['cn']}\n")
                 handle.write(
-                    "stale_model_ids="
-                    + json.dumps(list(plan.stale_model_ids), separators=(",", ":"))
+                    f"refresh_required={str(bool(plan['refresh_required'])).lower()}\n"
+                )
+                handle.write(f"us_cutoff={plan['target_cutoffs']['us']}\n")
+                handle.write(f"cn_cutoff={plan['target_cutoffs']['cn']}\n")
+                handle.write(
+                    "task_matrix="
+                    + json.dumps(plan["tasks"], separators=(",", ":"))
                     + "\n"
                 )
-                handle.write(
-                    "mtm_refresh_model_ids="
-                    + json.dumps(list(mtm_refresh_model_ids), separators=(",", ":"))
-                    + "\n"
-                )
-        print(json.dumps(plan_payload, indent=2, sort_keys=True))
+        print(json.dumps(plan, indent=2, sort_keys=True))
         return
 
-    _attach_ranker_mtm(
-        candidate_root=args.candidate_root,
-        cn_provider_manifest=args.cn_provider_manifest,
-        cutoffs=cutoffs,
-    )
-    replay_gates = _verify_rules_replay_gates(
-        current_root=args.current_root,
-        candidate_root=args.candidate_root,
-        cn_provider_manifest=args.cn_provider_manifest,
-    )
+    fan_in = _validate_fan_in(args.fan_in_receipt)
     receipt = finalize_candidate_tree(
         args.current_root,
         args.candidate_root,
@@ -309,7 +394,8 @@ def main() -> None:
         generated_at=args.generated_at,
         receipt_path=args.receipt,
     )
-    receipt["rules_formal_replay_gates"] = replay_gates
+    receipt["strategy_fan_in_sha256"] = sha256(args.fan_in_receipt)
+    receipt["active_strategy_ids"] = fan_in["expected_strategy_ids"]
     write_object(args.receipt, receipt)
     print(json.dumps(receipt, indent=2, sort_keys=True))
 
