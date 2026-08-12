@@ -1,5 +1,5 @@
 export type AccessTier = 'public' | 'authenticated' | 'pro' | 'owner';
-export type AccessResourceType = 'module';
+export type AccessResourceType = 'module' | 'strategy';
 
 export interface AccessPolicy {
   productCode: 'alpha_engine';
@@ -11,7 +11,7 @@ export interface AccessPolicy {
 
 export const ACCESS_TIERS: AccessTier[] = ['public', 'authenticated', 'pro', 'owner'];
 
-/** Safe startup policy for protected modules while the remote policy table is unavailable. */
+/** Safe startup policy for independent modules while the remote policy table is unavailable. */
 export const DEFAULT_ACCESS_POLICIES: AccessPolicy[] = [
   { productCode: 'alpha_engine', resourceType: 'module', resourceId: 'securities', requiredTier: 'authenticated' },
 ];
@@ -32,7 +32,9 @@ export function resolveRequiredTier(
   resourceType: AccessResourceType,
   resourceId: string,
 ): AccessTier {
-  return policies.find((policy) => policy.resourceType === resourceType && policy.resourceId === resourceId)?.requiredTier ?? 'public';
+  const declared = policies.find((policy) => policy.resourceType === resourceType && policy.resourceId === resourceId)?.requiredTier;
+  if (declared) return declared;
+  return resourceType === 'strategy' ? 'owner' : 'public';
 }
 
 export function mergeAccessPolicies(remote: AccessPolicy[]): AccessPolicy[] {
