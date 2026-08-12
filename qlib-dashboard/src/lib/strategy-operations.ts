@@ -310,10 +310,11 @@ export async function loadStrategyOperations(runs: GovernedRunSummary[]): Promis
   const formalRuns = runs.filter((run) => run.channel === 'formal');
   try {
     const snapshots = await fetchOperations();
-    const formalIds = formalRuns.map((run) => run.modelVersionId).sort();
-    const operationIds = Array.from(snapshots.values()).map((snapshot) => snapshot.modelVersionId).sort();
-    assert(JSON.stringify(formalIds) === JSON.stringify(operationIds), 'Strategy operations model set does not match the accepted formal catalog');
-    return snapshots;
+    const missingIds = formalRuns
+      .map((run) => run.modelVersionId)
+      .filter((modelVersionId) => !snapshots.has(modelVersionId));
+    assert(missingIds.length === 0, `Strategy operations are missing accepted formal models: ${missingIds.join(', ')}`);
+    return new Map(formalRuns.map((run) => [run.modelVersionId, snapshots.get(run.modelVersionId)!]));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Strategy operations snapshot is unavailable.';
     return new Map(formalRuns.map((run) => [run.modelVersionId, blocked(run, message)]));
