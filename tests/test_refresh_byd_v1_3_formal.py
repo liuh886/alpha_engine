@@ -179,6 +179,10 @@ def test_v1_3_formal_refresh_replays_and_appends_production_archives(tmp_path: P
     assert current["model_id"] == MODEL_ID
     cutoff = str(current["evidence_cutoff"])
     output = tmp_path / "byd-v1-3-formal.json"
+    canonical_signal_ledger = Path(
+        "data/research/strategy_signal_ledgers/"
+        "byd_v1_3_recovery_event_low_vol_confirmation_v1"
+    )
     result = refresh_byd_v1_3(
         current_package=current_package,
         predecessor_package=predecessor_package,
@@ -186,10 +190,7 @@ def test_v1_3_formal_refresh_replays_and_appends_production_archives(tmp_path: P
         base_etf_dir=etf_base,
         shadow_store=Path("data/research/byd_prospective_shadow"),
         paired_store=Path("data/research/byd_515180_prospective"),
-        signal_ledger=Path(
-            "data/research/strategy_signal_ledgers/"
-            "byd_v1_3_recovery_event_low_vol_confirmation_v1"
-        ),
+        signal_ledger=canonical_signal_ledger.resolve(),
         cutoff=cutoff,
         generated_at=f"{cutoff}T16:00:00Z",
         output=output,
@@ -202,6 +203,12 @@ def test_v1_3_formal_refresh_replays_and_appends_production_archives(tmp_path: P
     assert package["freshness"]["required_cutoff"] == cutoff
     assert package["freshness"]["latest_completed_session"] == cutoff
     assert package["freshness"]["model_selection_reopened"] is False
+    assert package["freshness"]["monitoring_source"] == canonical_signal_ledger.as_posix()
+    assert package["operational_monitoring"] == {
+        "status": "separate_runtime_signal_ledger",
+        "ledger": canonical_signal_ledger.as_posix(),
+        "runtime_state_embedded": False,
+    }
     assert package["evidence"]["refresh_adapter"] == "refresh_byd_v1_3_formal"
     assert package["research_only"] is True
     assert package["trade_ready"] is False

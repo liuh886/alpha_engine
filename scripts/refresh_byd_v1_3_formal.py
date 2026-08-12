@@ -25,6 +25,23 @@ class BYDV13RefreshError(BYDFormalRefreshError):
     """Raised when the accepted V1.3 package cannot be refreshed safely."""
 
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+RUNTIME_SIGNAL_LEDGER = (
+    Path("data/research/strategy_signal_ledgers") / MODEL_ID
+)
+
+
+def _stable_signal_ledger(signal_ledger: Path) -> str:
+    expected = (REPOSITORY_ROOT / RUNTIME_SIGNAL_LEDGER).resolve()
+    observed = signal_ledger.resolve()
+    if observed != expected:
+        raise BYDV13RefreshError(
+            "BYD v1.3 refresh requires the canonical repository signal ledger: "
+            f"{RUNTIME_SIGNAL_LEDGER.as_posix()}"
+        )
+    return RUNTIME_SIGNAL_LEDGER.as_posix()
+
+
 def refresh_byd_v1_3(
     *,
     current_package: Path,
@@ -44,6 +61,7 @@ def refresh_byd_v1_3(
         raise BYDV13RefreshError("BYD refresh requires the accepted BYD v1.3 package")
     if predecessor.get("model_id") != V12_MODEL_ID:
         raise BYDV13RefreshError("BYD v1.3 refresh requires the immutable V1.2 predecessor")
+    stable_signal_ledger = _stable_signal_ledger(signal_ledger)
 
     with tempfile.TemporaryDirectory(prefix="formal-byd-v1-3-refresh-") as temporary:
         root = Path(temporary)
@@ -93,13 +111,18 @@ def refresh_byd_v1_3(
         **dict(candidate["date_range"]),
         "end": min(str(candidate["date_range"]["end"]), cutoff),
     }
+    candidate["operational_monitoring"] = {
+        "status": "separate_runtime_signal_ledger",
+        "ledger": stable_signal_ledger,
+        "runtime_state_embedded": False,
+    }
     candidate["freshness"] = {
         "status": "current",
         "required_cutoff": cutoff,
         "latest_completed_session": cutoff,
         "latest_realized_holding_end": str(candidate["date_range"]["end"]),
         "model_selection_reopened": False,
-        "monitoring_source": signal_ledger.as_posix(),
+        "monitoring_source": stable_signal_ledger,
         "research_only": True,
         "trade_ready": False,
     }
