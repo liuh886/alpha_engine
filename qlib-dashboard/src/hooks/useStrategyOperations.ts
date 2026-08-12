@@ -27,25 +27,25 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
         snapshot.currentOperationsAccess = access.requiredTier('strategy', snapshot.strategyId);
       }
 
-      if (membership.signedIn) {
+      const runtimeSnapshots = Array.from(next.values()).filter(
+        (snapshot) => snapshot.currentOperationsAccess === 'public' || membership.signedIn,
+      );
+      if (runtimeSnapshots.length) {
         const client = await membership.getClient();
         if (client) {
-          const protectedSnapshots = Array.from(next.values()).filter(
-            (snapshot) => snapshot.currentOperationsAccess !== 'public',
-          );
-          await Promise.all(protectedSnapshots.map(async (snapshot) => {
+          await Promise.all(runtimeSnapshots.map(async (snapshot) => {
             try {
-              const protectedSnapshot = await loadProtectedStrategyOperation(
+              const runtimeSnapshot = await loadProtectedStrategyOperation(
                 client as StrategyOperationsClient,
                 snapshot.strategyId,
                 snapshot.modelVersionId,
               );
-              if (protectedSnapshot) {
-                protectedSnapshot.currentOperationsAccess = access.requiredTier('strategy', snapshot.strategyId);
-                next.set(snapshot.modelVersionId, protectedSnapshot);
+              if (runtimeSnapshot) {
+                runtimeSnapshot.currentOperationsAccess = access.requiredTier('strategy', snapshot.strategyId);
+                next.set(snapshot.modelVersionId, runtimeSnapshot);
               }
             } catch {
-              // Fail closed at the product surface: keep the redacted public projection.
+              // Fail closed at the product surface: keep the redacted public identity shell.
             }
           }));
         }
