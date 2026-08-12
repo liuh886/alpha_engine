@@ -29,6 +29,8 @@ on:
       - 'Makefile'
       - '.github/workflows/ci.yml'
       - '.github/workflows/ranker-10d-current-target.yml'
+  schedule:
+    - cron: '17 2 * * 0'
   workflow_dispatch:
 
 permissions:
@@ -40,6 +42,7 @@ concurrency:
 
 jobs:
   backend:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -151,7 +154,7 @@ jobs:
         run: uv build
 
   repository-health:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
