@@ -7,7 +7,11 @@ import {
   loadPreviewRuns,
   type GovernedRunSummary,
 } from '@/lib/governed-run';
-import { subscribeResearchBundle } from '@/lib/research-bundle';
+import {
+  getActiveResearchBundle,
+  HttpBundleSource,
+  subscribeResearchBundle,
+} from '@/lib/research-bundle';
 import { useGlobalStore } from '@/store/globalStore';
 
 const CHANNEL_ORDER: Record<GovernedRunSummary['channel'], number> = {
@@ -25,6 +29,12 @@ function sortRuns(runs: GovernedRunSummary[]): GovernedRunSummary[] {
     || right.evidenceCutoff.localeCompare(left.evidenceCutoff)
     || left.title.localeCompare(right.title)
   ));
+}
+
+function explicitLocalModels(models: ModelData[], formalVersions: Set<string>): ModelData[] {
+  const bundle = getActiveResearchBundle();
+  if (!bundle || bundle.source instanceof HttpBundleSource) return [];
+  return models.filter((model) => !formalVersions.has(model.id));
 }
 
 export function useModels() {
@@ -64,7 +74,11 @@ export function useModels() {
         modelData: byId.get(run.modelVersionId) ?? null,
       }));
       const previewRuns = preview.runs.filter((run) => !formalVersions.has(run.modelVersionId));
-      const localModels = repositoryModels.filter((model) => !formalVersions.has(model.id));
+      const localModels = explicitLocalModels(repositoryModels, formalVersions);
+      const workspaceModels = [
+        ...repositoryModels.filter((model) => formalVersions.has(model.id)),
+        ...localModels,
+      ];
       const governedRuns = sortRuns([
         ...formalRuns,
         ...previewRuns,
@@ -74,7 +88,7 @@ export function useModels() {
       useGlobalStore.getState().setDataGeneratedAt(
         generatedDates.length > 0 ? generatedDates[generatedDates.length - 1] : String(json.generated_at || ''),
       );
-      setModels(repositoryModels);
+      setModels(workspaceModels);
       setRuns(governedRuns);
       setRunLoadErrors(preview.errors);
 
@@ -87,7 +101,7 @@ export function useModels() {
         setActiveRunKey('');
         setSelectedModelId('');
       }
-      return repositoryModels;
+      return workspaceModels;
     } catch (error) {
       console.error('Failed to load governed model runs', error);
       setModels([]);
