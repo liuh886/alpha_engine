@@ -9,7 +9,7 @@ import {
   type AccessResourceType,
   type AccessTier,
 } from '@/lib/model-access';
-import { useAlphaMembership } from './useAlphaMembership';
+import { useAlphaMembership, type SupabaseAccessClient } from './useAlphaMembership';
 
 interface AccessControlValue {
   loading: boolean;
@@ -21,6 +21,7 @@ interface AccessControlValue {
   isOwner: boolean;
   policies: AccessPolicy[];
   openAccount: () => void;
+  getClient: () => Promise<SupabaseAccessClient | undefined>;
   canAccess: (required: AccessTier) => boolean;
   requiredTier: (type: AccessResourceType, id: string) => AccessTier;
   savePolicy: (type: AccessResourceType, id: string, tier: AccessTier) => Promise<void>;
@@ -119,11 +120,12 @@ export function AccessControlProvider({ children }: { children: ReactNode }) {
     isOwner: membership.isOwner,
     policies,
     openAccount: membership.openAccount,
+    getClient: membership.getClient,
     canAccess: (required) => canAccessTier(tier, required),
     requiredTier,
     savePolicy,
     reloadPolicies,
-  }), [membership.loading, membership.openAccount, membership.isOwner, membership.isPro, membership.signedIn, policies, policyError, policyLoading, reloadPolicies, requiredTier, savePolicy, tier]);
+  }), [membership.getClient, membership.loading, membership.openAccount, membership.isOwner, membership.isPro, membership.signedIn, policies, policyError, policyLoading, reloadPolicies, requiredTier, savePolicy, tier]);
 
   return <AccessControlContext.Provider value={value}>{children}</AccessControlContext.Provider>;
 }
