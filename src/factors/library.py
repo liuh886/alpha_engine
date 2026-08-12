@@ -1,8 +1,10 @@
-"""Canonical schema-v2 factor library.
+"""Canonical factor-library foundation.
 
 Factor definitions live once. Named groups reference factor IDs and never copy
-formula metadata. This is the static definition seam shared by research,
-formal-model configuration, runtime factor snapshots, and frontend evidence.
+formula metadata. Schema-v2 YAML libraries and the exact package-backed Qlib
+Alpha158 set both resolve to the same immutable :class:`FactorLibrary` contract
+shared by research, formal-model configuration, runtime snapshots, diagnostics,
+and frontend evidence.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ from src.factors.catalog import FactorCatalog
 from src.factors.definition import FactorDefinition
 
 FACTOR_LIBRARY_SCHEMA_VERSION = "2.0"
+ALPHA158_SOURCE_PATH = (Path(__file__).resolve().parent / "sets" / "qlib_alpha158.py").resolve()
 
 
 def normalize_expression(expression: str) -> str:
@@ -205,12 +208,46 @@ def _integer(value: object, field: str, *, default: int = 0) -> int:
     raise ValueError(f"{field} must be an integer")
 
 
+def _load_alpha158_library(source_path: Path) -> FactorLibrary:
+    """Load Qlib Alpha158 as a first-class canonical factor library."""
+
+    from src.factors.sets.qlib_alpha158 import load_alpha158_definitions
+
+    definitions = load_alpha158_definitions()
+    if len(definitions) != 158:
+        raise ValueError(f"Alpha158 library must resolve exactly 158 factors: {len(definitions)}")
+    factor_ids = tuple(definition.factor_id for definition in definitions)
+    if len(set(factor_ids)) != 158:
+        raise ValueError("Alpha158 library factor IDs are not unique")
+
+    catalog = FactorCatalog(catalog_id="qlib_alpha158", catalog_version="1.0")
+    catalog.extend(definitions)
+    group = FactorGroup(
+        name="qlib_alpha158_all",
+        description="Exact Qlib Alpha158 catalog in native feature order",
+        factor_ids=factor_ids,
+        factors=tuple(definitions),
+    )
+    return FactorLibrary(
+        schema_version=FACTOR_LIBRARY_SCHEMA_VERSION,
+        source_path=source_path,
+        source_sha256=hashlib.sha256(source_path.read_bytes()).hexdigest(),
+        catalog=catalog,
+        groups={group.name: group},
+    )
+
+
 def load_factor_library(path: str | Path) -> FactorLibrary:
-    """Load the only supported factor-library schema (2.0), failing closed."""
+    """Load one supported canonical factor library, failing closed."""
 
     source_path = Path(path).resolve()
     if not source_path.is_file():
         raise FileNotFoundError(f"factor library not found: {source_path}")
+    if source_path == ALPHA158_SOURCE_PATH:
+        return _load_alpha158_library(source_path)
+    if source_path.suffix not in {".yaml", ".yml"}:
+        raise ValueError(f"unsupported canonical factor library source: {source_path}")
+
     raw_bytes = source_path.read_bytes()
     raw_text = raw_bytes.decode("utf-8")
     _assert_unique_mapping_keys(raw_text, "factors")

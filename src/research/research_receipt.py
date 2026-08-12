@@ -9,8 +9,7 @@ from typing import Any
 import yaml
 
 from src.common.runtime_settings import PROJECT_ROOT
-from src.factors.library import FactorLibrary
-from src.factors.research_source import load_research_factor_source
+from src.factors.library import FactorLibrary, load_factor_library
 
 
 def _resolve_repo_file(raw: str, *, spec_path: Path) -> Path:
@@ -66,7 +65,7 @@ def build_factor_lineage(spec_path: str | Path) -> dict[str, Any] | None:
         raise ValueError("factor_library.source must be non-empty")
 
     library_path = _resolve_repo_file(source, spec_path=path)
-    library = load_research_factor_source(library_path)
+    library = load_factor_library(library_path)
 
     raw_candidates = payload.get("candidates")
     if not isinstance(raw_candidates, list) or not raw_candidates:
