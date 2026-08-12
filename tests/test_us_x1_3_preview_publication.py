@@ -163,9 +163,12 @@ def test_us_x1_3_chart_reaches_evidence_cutoff_with_provisional_mtm() -> None:
         return
     manifest = _object("manifest.json")
     performance = _object("performance.json")
-    assert performance["report"][-1]["date"] == manifest["evidence_cutoff"]
-    assert performance["report"][-1]["holding_end_date"] == manifest["evidence_cutoff"]
+    latest = performance["report"][-1]
+    assert latest["date"] == manifest["evidence_cutoff"]
+    assert latest["holding_end_date"] == manifest["evidence_cutoff"]
     assert performance["date_range"]["end"] == manifest["evidence_cutoff"]
-    if performance["report"][-1].get("provisional_mtm"):
-        assert performance["report"][-1]["settlement_status"] == "provisional_mtm"
-        assert performance["report"][-1]["trade_ready"] is False
+    if latest.get("provisional_mtm"):
+        assert latest["signal_date"] <= latest["date"]
+        assert latest["mtm_as_of"] == manifest["evidence_cutoff"]
+        assert latest["settlement_status"] == "provisional_mtm"
+        assert latest["trade_ready"] is False
