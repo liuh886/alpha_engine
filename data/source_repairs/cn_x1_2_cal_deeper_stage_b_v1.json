@@ -1,0 +1,41 @@
+{
+  "approval_status": "approved_for_canonical_missing_source_addition",
+  "experiment_id": "cn_x1_2_cal_deeper_stage_b_v1",
+  "market": "cn",
+  "refresh_contract": "scripts/data/refresh_selected_pool_prices_v2.py",
+  "refresh_mode": "repair_only",
+  "repair_id": "cn_x1_2_cal_deeper_stage_b_v1_source_gap_v1",
+  "requested_end": "2026-08-11",
+  "requested_start": "2021-01-01",
+  "schema_version": "1.0",
+  "source_artifact": {
+    "artifact_digest": "sha256:3872607eb23a3f019a98fa2b12b7069594241a8f10474cb854ac3e9d92f197a8",
+    "artifact_id": 9131009574,
+    "provider_identity_sha256": "1b0b8aea689422640f6b0ca8e24ecc8c0f64fe2131caebd3fb2f1e1bd03d1050",
+    "workflow_run_id": 31570109803
+  },
+  "targets": {
+    "002222": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz002222","rows":1358,"sha256":"6f862940a5231451a42af6b6ee3b02e3d0bcbe49e49b6561d165ee3555da6962"},
+    "002463": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz002463","rows":1358,"sha256":"c0265c6c362720a9cfd2fe8674c1a07f0c6845528207dbe91c1b116168808568"},
+    "002709": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz002709","rows":1358,"sha256":"268605054fd320e851dd463d0e42dd938197805408401e1a32b89477bab81730"},
+    "300017": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz300017","rows":1358,"sha256":"9dcc6ca469c3de37a57df24082d1f26a1d6bb9b6776fa4dfeb4387ed2133d17b"},
+    "300133": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz300133","rows":1358,"sha256":"1bd1bd790990144b6822674cdffe8f6aee0135a58a9868335113cbe71ce8bf34"},
+    "300408": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz300408","rows":1358,"sha256":"9002664eb677594ad9378aa64305417807c076224a02bc4a699b85f8c4be947c"},
+    "300548": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz300548","rows":1354,"sha256":"3fcf37a3c2e04a10c3fd465f25e7a7c79a37a7117115a1751000037817c45aca"},
+    "300782": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz300782","rows":1358,"sha256":"76d5d8c027df92848111844cfad9486c02999d28785c04b0551ea847f26d533e"},
+    "301308": {"first_date":"2022-08-05","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz301308","rows":973,"sha256":"eac68db550e9c797d4531cd63bdf0a15c44963d0d1ec0c73929939ff4ee242be"},
+    "301309": {"first_date":"2022-09-19","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz301309","rows":933,"sha256":"e8018a4b111f84c7c0f0c945e427ec085e1fc4125f7e736a9cf17d1d7f95d3b7"},
+    "301666": {"first_date":"2026-04-16","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sz301666","rows":77,"sha256":"1ed6591625f743637599a5c009b8ae83c7b9526c654897c25b59c0692681aca8"},
+    "600026": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sh600026","rows":1358,"sha256":"b3fe9737b89c1f3506f81baf0ef16cf5967203b546a50323f9f3f77a331dc2e0"},
+    "600150": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sh600150","rows":1344,"sha256":"59f1abde08cfd98ec0941e8f097539df12dd9f8d6c974bc44a498ba23785cfc3"},
+    "600184": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sh600184","rows":1358,"sha256":"55b5bfc0c7404fabfd4eb2db85bfb2b4edab5e3ba8bf3f9e69ad7b5a533d8fb6"},
+    "600426": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sh600426","rows":1358,"sha256":"8dc0172945b9c520a120e267a8e962cbf62cb3ea620928b6fed46743100534bd"},
+    "600487": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sh600487","rows":1358,"sha256":"e008eabebdb55eacc0aed10331b6c13df829baaabda869d22357c1010637ae64"},
+    "601872": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sh601872","rows":1358,"sha256":"fdc9c659af069c3055bea9c41ca11ed3d559a0f68196792a78a4059c90b7e05d"},
+    "603629": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sh603629","rows":1358,"sha256":"778aa2bacdc45f0f1fe203029be92c12be0a698d29acb115424a87033946611b"},
+    "688008": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sh688008","rows":1358,"sha256":"4ffae7a35b356823b9ddf0a5b2953e53f56b3c55d3ebad2180311d277242cdb4"},
+    "688521": {"first_date":"2021-01-04","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sh688521","rows":1348,"sha256":"a28328385e9299fcf51df88a486d3a4bedc3fae119cc519dbcde73c60e3e301e"},
+    "688525": {"first_date":"2022-12-30","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sh688525","rows":874,"sha256":"ab789144982736aa6740fd3520dcb66deb18244474df6dfbd38288c1e743f4b7"},
+    "688676": {"first_date":"2021-03-09","last_date":"2026-08-11","provider":"akshare_sina","provider_symbol":"sh688676","rows":1317,"sha256":"6d8cb5e5c699d1a27ceb6205c4bcdc336159a08173511af6f42d6009a9bf339b"}
+  }
+}
