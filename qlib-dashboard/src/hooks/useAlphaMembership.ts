@@ -7,8 +7,11 @@ interface AccountSnapshot {
   user?: { id?: string; app_metadata?: Record<string, unknown> } | null;
 }
 
-interface SupabaseAccessClient {
+export interface SupabaseAccessClient {
   from: (table: string) => any;
+  functions: {
+    invoke: <T = unknown>(name: string, options?: { body?: unknown }) => Promise<{ data: T | null; error: { message?: string } | null }>;
+  };
 }
 
 interface HaoAccountApi {
