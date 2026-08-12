@@ -13,13 +13,13 @@ import yaml
 
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
-EXPECTED_ACTIVE_BASELINES = {"us": "us_x1_2", "cn": "cn_x1_1"}
+EXPECTED_ACTIVE_BASELINES = {"us": "us_x1_3", "cn": "cn_x1_1"}
 EXPECTED_X1_MODELS = (
     "cn_x1_0",
     "cn_x1_1",
     "us_x1_0",
     "us_x1_1",
-    "us_x1_2",
+    "us_x1_3",
 )
 
 # Historical artifact paths are lifecycle test inputs, not an active-product registry.
@@ -53,8 +53,8 @@ MODEL_ARTIFACTS: dict[str, dict[str, Any]] = {
         "notebook": "notebooks/models/us_x1_1_baseline.ipynb",
         "frozen_research_spec": "configs/research_paradigms/us_x1_1_frozen_v1.yaml",
     },
-    "us_x1_2": {
-        "display_name": "US x1.2",
+    "us_x1_3": {
+        "display_name": "US x1.3",
         "status": "baseline_research_active",
         "config": "configs/models/us_x1_2.yaml",
         "notebook": "notebooks/models/us_x1_2_baseline.ipynb",
@@ -194,7 +194,7 @@ def _validate_legacy_x1(
 
 
 def _validate_us_x1_2(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
-    model_id = "us_x1_2"
+    model_id = "us_x1_3"
     config, config_path = _validate_common_model(root, model_id, entry)
     if config.get("status") != "baseline_research_active":
         raise ValueError("us_x1_2: active baseline status mismatch")
@@ -258,11 +258,11 @@ def _validate_us_x1_2(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("us_x1_2: frozen spec status mismatch")
     if spec.get("promotion_boundary", {}).get("prospective_acceptance_pending") is not True:
         raise ValueError("us_x1_2: prospective acceptance boundary was weakened")
-    _validate_notebook(notebook_path, model_id=model_id, display_name="US x1.2")
+    _validate_notebook(notebook_path, model_id=model_id, display_name="US x1.3")
 
     return {
         "model_id": model_id,
-        "display_name": "US x1.2",
+        "display_name": "US x1.3",
         "status": str(entry["status"]),
         "config": str(config_path.relative_to(root)),
         "notebook": str(notebook_path.relative_to(root)),
@@ -302,7 +302,7 @@ def validate_model_config(
     model_id: str,
     entry: dict[str, Any],
 ) -> dict[str, Any]:
-    if model_id == "us_x1_2":
+    if model_id == "us_x1_3":
         return _validate_us_x1_2(root, entry)
     if model_id == "cn_x1_1":
         return _validate_cn_x1_1(root, entry)

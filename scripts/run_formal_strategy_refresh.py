@@ -28,7 +28,7 @@ from src.research.rules_formal_replay_gate import (
 RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v1"
 PLAN_SCHEMA = "formal_refresh_plan_v2"
 QQQ_MODEL_ID = "qqqi_qqq_tqqq_v4_3"
-US_MODEL_ID = "us_x1_2"
+US_MODEL_ID = "us_x1_3"
 CN_MODEL_ID = "cn_x1_1"
 BYD_MODEL_ID = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
 BYD_PREDECESSOR_ID = "byd_v1_2_convex_momentum_budget_v1"
@@ -131,7 +131,7 @@ def _run_us(
     _run(
         [
             sys.executable,
-            "scripts/build_us_x1_2_preview.py",
+            "scripts/build_us_x1_3_preview.py",
             "--root",
             str(root),
             "--provider-dir",
@@ -146,7 +146,7 @@ def _run_us(
     current_id = _current_preview_bundle_id(current_preview_root, US_MODEL_ID)
     candidate_id = _current_preview_bundle_id(candidate, US_MODEL_ID)
     if candidate_id is None:
-        raise StrategyRefreshBlocked("invalid_evidence", "US x1.2 preview catalog is missing")
+        raise StrategyRefreshBlocked("invalid_evidence", "US x1.3 preview catalog is missing")
     changed = current_id != candidate_id
     return {
         **_base_receipt(task),

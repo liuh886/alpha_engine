@@ -57,7 +57,7 @@ def _seed_tree(root: Path) -> None:
 def test_fan_in_accepts_complete_current_strategy_set(tmp_path: Path) -> None:
     tasks = [
         _task("qqq_rotation", "qqqi_qqq_tqqq_v4_3", "formal_v1"),
-        _task("us_x", "us_x1_2", "native_bundle_v2"),
+        _task("us_x", "us_x1_3", "native_bundle_v2"),
     ]
     plan = tmp_path / "plan.json"
     _write_plan(plan, tasks)
@@ -92,7 +92,7 @@ def test_fan_in_accepts_complete_current_strategy_set(tmp_path: Path) -> None:
 def test_fan_in_fails_closed_on_missing_strategy_receipt(tmp_path: Path) -> None:
     tasks = [
         _task("qqq_rotation", "qqqi_qqq_tqqq_v4_3", "formal_v1"),
-        _task("us_x", "us_x1_2", "native_bundle_v2"),
+        _task("us_x", "us_x1_3", "native_bundle_v2"),
     ]
     plan = tmp_path / "plan.json"
     _write_plan(plan, tasks)

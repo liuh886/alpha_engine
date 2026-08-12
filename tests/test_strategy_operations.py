@@ -23,7 +23,7 @@ FACTOR_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
 QQQ_MODEL = "qqqi_qqq_tqqq_v4_3"
 QQQ_V43_MODEL = "qqqi_qqq_tqqq_v4_3"
 BYD_MODEL = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
-US_MODEL = "us_x1_2"
+US_MODEL = "us_x1_3"
 CN_MODEL = "cn_x1_1"
 
 

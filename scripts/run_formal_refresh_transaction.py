@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+
+import yaml
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
@@ -30,6 +32,63 @@ TASK_RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v1"
 PLAN_SCHEMA = "formal_refresh_plan_v2"
 FAN_IN_SCHEMA = "formal_strategy_fan_in_v1"
 SUCCESS_STATES = {"current_no_change", "refreshed"}
+
+
+def _assert_formal_catalog_or_declared_transition(
+    formal_v2: Mapping[str, object],
+    active,
+) -> None:
+    try:
+        assert_formal_catalog_matches_active_strategies(formal_v2, active)
+        return
+    except ActiveStrategyCatalogError as original:
+        rows = formal_v2.get("records")
+        if not isinstance(rows, list):
+            raise FormalRefreshError(str(original)) from original
+        observed = {
+            str(row.get("model_version_id") or "")
+            for row in rows
+            if isinstance(row, Mapping)
+        }
+        expected = set(active.active_model_version_ids)
+        missing = expected - observed
+        extra = observed - expected
+        if not missing or len(missing) != len(extra):
+            raise FormalRefreshError(str(original)) from original
+        by_model = active.by_model_version_id
+        unmatched_extra = set(extra)
+        for successor in sorted(missing):
+            strategy = by_model.get(successor)
+            config_path = Path("configs/models") / f"{successor}.yaml"
+            if strategy is None or not config_path.is_file():
+                raise FormalRefreshError(str(original)) from original
+            config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            lineage = config.get("lineage") if isinstance(config, Mapping) else None
+            predecessor = (
+                str(lineage.get("supersedes") or "")
+                if isinstance(lineage, Mapping)
+                else ""
+            )
+            predecessor_row = next(
+                (
+                    row
+                    for row in rows
+                    if isinstance(row, Mapping)
+                    and row.get("model_version_id") == predecessor
+                ),
+                None,
+            )
+            if (
+                predecessor not in unmatched_extra
+                or not isinstance(predecessor_row, Mapping)
+                or predecessor_row.get("model_family_id") != strategy.model_family_id
+                or predecessor_row.get("model_kind") != strategy.model_kind
+                or predecessor_row.get("publication_status") != strategy.formal_status
+            ):
+                raise FormalRefreshError(str(original)) from original
+            unmatched_extra.remove(predecessor)
+        if unmatched_extra:
+            raise FormalRefreshError(str(original)) from original
 
 
 def _cutoffs(us_manifest: Path, cn_manifest: Path) -> dict[str, str]:
@@ -121,10 +180,7 @@ def build_task_plan(
 
     active = load_active_strategy_catalog()
     formal_v2 = load_object(formal_v2_catalog)
-    try:
-        assert_formal_catalog_matches_active_strategies(formal_v2, active)
-    except ActiveStrategyCatalogError as exc:
-        raise FormalRefreshError(str(exc)) from exc
+    _assert_formal_catalog_or_declared_transition(formal_v2, active)
 
     formal_plan = build_plan(
         formal_root,

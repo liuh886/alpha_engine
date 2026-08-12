@@ -291,7 +291,7 @@ def test_formal_refresh_yaml_contains_no_model_execution_recipe() -> None:
     for obsolete_step in (
         "Refresh QQQ Rotation v4.3 append-only",
         "Reproduce and refresh US x1.1 twice",
-        "Rebuild active US x1.2 research preview with complete evidence",
+        "Rebuild active US x1.3 research preview with complete evidence",
         "Reproduce and refresh CN x1.1 twice",
         "Extend canonical inputs and refresh BYD v1.3",
     ):

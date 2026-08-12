@@ -23,7 +23,7 @@ def test_committed_active_strategy_catalog_matches_formal_catalog() -> None:
 
     assert active.active_model_version_ids == (
         "qqqi_qqq_tqqq_v4_3",
-        "us_x1_2",
+        "us_x1_3",
         "cn_x1_1",
         "byd_v1_3_recovery_event_low_vol_confirmation_v1",
     )

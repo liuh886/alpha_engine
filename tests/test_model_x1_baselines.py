@@ -29,7 +29,7 @@ def _load_validator() -> ModuleType:
 
 def test_active_strategy_catalog_owns_current_x1_identities() -> None:
     catalog = load_active_strategy_catalog(ACTIVE_CATALOG)
-    assert catalog.by_strategy_id["us_x"].model_version_id == "us_x1_2"
+    assert catalog.by_strategy_id["us_x"].model_version_id == "us_x1_3"
     assert catalog.by_strategy_id["cn_x"].model_version_id == "cn_x1_1"
     assert catalog.by_strategy_id["us_x"].historical_evidence_access == "public"
     assert catalog.by_strategy_id["cn_x"].historical_evidence_access == "public"
@@ -41,7 +41,7 @@ def test_model_configs_notebooks_and_frozen_specs_tie() -> None:
     assert result["status"] == "x1_lifecycle_valid"
     assert result["active_strategy_catalog"] == "configs/strategies/registry.json"
     assert result["active_baselines"] == {
-        "us": "us_x1_2",
+        "us": "us_x1_3",
         "cn": "cn_x1_1",
     }
     assert [item["model_id"] for item in result["models"]] == [
@@ -49,11 +49,11 @@ def test_model_configs_notebooks_and_frozen_specs_tie() -> None:
         "cn_x1_1",
         "us_x1_0",
         "us_x1_1",
-        "us_x1_2",
+        "us_x1_3",
     ]
     cn_x1_1 = next(item for item in result["models"] if item["model_id"] == "cn_x1_1")
     assert cn_x1_1["evidence_completeness"] == "complete"
-    us_x1_2 = next(item for item in result["models"] if item["model_id"] == "us_x1_2")
+    us_x1_2 = next(item for item in result["models"] if item["model_id"] == "us_x1_3")
     assert us_x1_2["selected_candidate"] == "r11_sampled"
     assert us_x1_2["prospective_acceptance_pending"] is True
     assert all(item["trade_ready"] is False for item in result["models"])
