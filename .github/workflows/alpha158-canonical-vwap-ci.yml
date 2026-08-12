@@ -8,16 +8,20 @@ on:
       - "configs/data/alpha158_panel_v1.yaml"
       - "configs/data_contracts/model_data_bundle_v1.yaml"
       - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
+      - "configs/research_paradigms/cn_alpha158_cross_window_stability_v1.yaml"
       - "src/data/canonical_vwap.py"
       - "src/factors/panel.py"
       - "src/factors/reusable_panel.py"
       - "src/factors/governance.py"
+      - "src/research/alpha158_stability_diagnostics.py"
       - "scripts/data/build_canonical_vwap_provider.py"
       - "scripts/factors/build_alpha158_panel.py"
+      - "scripts/run_cn_alpha158_stability_diagnostics.py"
       - "tests/test_canonical_vwap.py"
       - "tests/test_alpha158_panel.py"
       - "tests/test_reusable_alpha158_panel.py"
       - "tests/test_factor_governance.py"
+      - "tests/test_alpha158_stability_diagnostics.py"
       - "docs/research/alpha158_canonical_vwap_execution_2026-08-02.md"
   push:
     branches: [main]
@@ -26,12 +30,15 @@ on:
       - "configs/data/alpha158_panel_v1.yaml"
       - "configs/data_contracts/model_data_bundle_v1.yaml"
       - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
+      - "configs/research_paradigms/cn_alpha158_cross_window_stability_v1.yaml"
       - "src/data/canonical_vwap.py"
       - "src/factors/panel.py"
       - "src/factors/reusable_panel.py"
       - "src/factors/governance.py"
+      - "src/research/alpha158_stability_diagnostics.py"
       - "scripts/data/build_canonical_vwap_provider.py"
       - "scripts/factors/build_alpha158_panel.py"
+      - "scripts/run_cn_alpha158_stability_diagnostics.py"
   schedule:
     - cron: "41 7 2 * *"
   workflow_dispatch:
@@ -69,19 +76,24 @@ jobs:
           src/data/canonical_vwap.py
           src/factors/reusable_panel.py
           src/factors/governance.py
+          src/research/alpha158_stability_diagnostics.py
           scripts/data/build_canonical_vwap_provider.py
           scripts/factors/build_alpha158_panel.py
+          scripts/run_cn_alpha158_stability_diagnostics.py
           tests/test_canonical_vwap.py
           tests/test_alpha158_panel.py
           tests/test_reusable_alpha158_panel.py
           tests/test_factor_governance.py
+          tests/test_alpha158_stability_diagnostics.py
       - name: Type-check canonical VWAP paths
         run: >-
           uv run mypy --follow-imports=skip
           src/data/canonical_vwap.py
           src/factors/reusable_panel.py
+          src/research/alpha158_stability_diagnostics.py
           scripts/data/build_canonical_vwap_provider.py
           scripts/factors/build_alpha158_panel.py
+          scripts/run_cn_alpha158_stability_diagnostics.py
       - name: Run canonical VWAP and Alpha158 contract tests
         run: >-
           uv run pytest
@@ -89,6 +101,7 @@ jobs:
           tests/test_alpha158_panel.py
           tests/test_reusable_alpha158_panel.py
           tests/test_factor_governance.py
+          tests/test_alpha158_stability_diagnostics.py
           tests/test_model_data_bundle.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: Verify US remains honestly blocked
@@ -142,6 +155,12 @@ jobs:
           --start 2021-01-01
           --cutoff "${{ inputs.cutoff || '2026-07-31' }}"
           --output-root artifacts/data/canonical_vwap/cn
+      - name: Run CN Alpha158 cross-window stability diagnostics
+        run: >-
+          uv run python scripts/run_cn_alpha158_stability_diagnostics.py
+          --spec configs/research_paradigms/cn_alpha158_cross_window_stability_v1.yaml
+          --bundle-root artifacts/data/canonical_vwap/cn
+          --output artifacts/data/canonical_vwap/cn/alpha158/research/cn_alpha158_cross_window_stability_v1.json
       - name: Save exact-cutoff CN source pairs
         if: always()
         uses: actions/cache/save@v4
@@ -163,16 +182,36 @@ jobs:
               panel = payload["factor_panel_manifest"]
               profiles = payload["model_data_manifest"]["training_profiles"]
               target = next(row for row in profiles if row["profile_id"] == "cn_selected_alpha158_v1")
+              diagnostic_path = Path(
+                  "artifacts/data/canonical_vwap/cn/alpha158/research/"
+                  "cn_alpha158_cross_window_stability_v1.json"
+              )
+              diagnostic = (
+                  json.loads(diagnostic_path.read_text(encoding="utf-8"))
+                  if diagnostic_path.is_file()
+                  else None
+              )
               print(json.dumps({
                   "panel_status": panel["status"],
                   "ready_symbols": panel["ready_symbol_count"],
                   "expected_symbols": panel["expected_symbol_count"],
                   "training_profile": target,
+                  "factor_stability_diagnostics": (
+                      None
+                      if diagnostic is None
+                      else {
+                          "status": diagnostic["status"],
+                          "classification_counts": diagnostic["classification_counts"],
+                          "cross_window_stable_factor_ids": diagnostic[
+                              "cross_window_stable_factor_ids"
+                          ],
+                      }
+                  ),
               }, indent=2))
           else:
               print("canonical_vwap_bundle.json was not created")
           PY
-      - name: Upload provider, panels, quality and readiness indexes
+      - name: Upload provider, panels, quality, readiness and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
