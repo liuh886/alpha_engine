@@ -36,12 +36,12 @@ function parsePolicies(rows: unknown): AccessPolicy[] {
     const value = row as Record<string, unknown>;
     const resourceType = String(value.resource_type);
     const requiredTier = String(value.required_tier) as AccessTier;
-    if (resourceType !== 'module' || !['public', 'authenticated', 'pro', 'owner'].includes(requiredTier)) return [];
+    if (!['module', 'strategy'].includes(resourceType) || !['public', 'authenticated', 'pro', 'owner'].includes(requiredTier)) return [];
     const resourceId = String(value.resource_id ?? '');
     if (!resourceId) return [];
     return [{
       productCode: 'alpha_engine' as const,
-      resourceType: 'module' as const,
+      resourceType: resourceType as AccessResourceType,
       resourceId,
       requiredTier,
       updatedAt: typeof value.updated_at === 'string' ? value.updated_at : undefined,
