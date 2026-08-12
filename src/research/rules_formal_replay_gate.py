@@ -4,6 +4,7 @@ import json
 import math
 import shutil
 from collections.abc import Mapping, Sequence
+from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Any
@@ -225,6 +226,91 @@ def _project_fields(
     return [{field: row.get(field) for field in fields} for row in rows]
 
 
+def _accepted_decimal_match(expected: object, observed: object) -> bool:
+    """Match a numeric replay at the precision actually published as evidence."""
+
+    if isinstance(expected, bool) or isinstance(observed, bool):
+        return expected == observed
+    if not isinstance(expected, Real) or not isinstance(observed, Real):
+        return expected == observed
+    left = float(expected)
+    right = float(observed)
+    if math.isnan(left) and math.isnan(right):
+        return True
+    if not math.isfinite(left) or not math.isfinite(right):
+        return left == right
+    try:
+        accepted = Decimal(str(expected))
+        replayed = Decimal(str(observed))
+        quantum = Decimal(1).scaleb(accepted.as_tuple().exponent)
+        return replayed.quantize(quantum, rounding=ROUND_HALF_EVEN) == accepted
+    except (InvalidOperation, ValueError):
+        return False
+
+
+def _compare_rows_at_accepted_precision(
+    expected: object,
+    observed: object,
+) -> dict[str, Any]:
+    """Compare CN rows using each accepted numeric field's serialized precision.
+
+    The original CN x1.1 frozen CSV intentionally published bounded decimal
+    precision. Replaying the same provider math at full binary-double precision
+    must round back to those accepted decimals; a value that changes the accepted
+    decimal representation is still a hard mismatch. Newly appended formal rows
+    retain full JSON float precision, so this contract naturally remains strict.
+    """
+
+    if not isinstance(expected, list) or not isinstance(observed, list):
+        return {
+            "exact": False,
+            "expected_rows": len(expected) if isinstance(expected, list) else None,
+            "observed_rows": len(observed) if isinstance(observed, list) else None,
+            "first_mismatch": {"reason": "section_is_not_a_row_list"},
+            "comparison_semantics": "accepted_serialized_decimal_precision",
+        }
+    first_mismatch: dict[str, Any] | None = None
+    if len(expected) != len(observed):
+        first_mismatch = {
+            "reason": "row_count_mismatch",
+            "expected": len(expected),
+            "observed": len(observed),
+        }
+    for index, (left, right) in enumerate(zip(expected, observed, strict=False)):
+        if not isinstance(left, Mapping) or not isinstance(right, Mapping):
+            if first_mismatch is None:
+                first_mismatch = {"reason": "row_is_not_mapping", "index": index}
+            continue
+        if set(left) != set(right):
+            if first_mismatch is None:
+                first_mismatch = {
+                    "reason": "field_set_mismatch",
+                    "index": index,
+                    "expected_only": sorted(set(left) - set(right)),
+                    "observed_only": sorted(set(right) - set(left)),
+                }
+            continue
+        for field, expected_value in left.items():
+            observed_value = right[field]
+            if _accepted_decimal_match(expected_value, observed_value):
+                continue
+            if first_mismatch is None:
+                first_mismatch = {
+                    "reason": "value_mismatch",
+                    "index": index,
+                    "field": field,
+                    "expected": expected_value,
+                    "observed": observed_value,
+                }
+    return {
+        "exact": first_mismatch is None,
+        "expected_rows": len(expected),
+        "observed_rows": len(observed),
+        "first_mismatch": first_mismatch,
+        "comparison_semantics": "accepted_serialized_decimal_precision",
+    }
+
+
 def verify_cn_current_allocation_replay(
     repository_root: str | Path,
     *,
@@ -312,7 +398,9 @@ def verify_cn_current_allocation_replay(
         [row for row in computed_report if row["date"] in expected_dates],
         report_fields,
     )
-    report_comparison = _compare_row_lists(report_expected, report_observed)
+    report_comparison = _compare_rows_at_accepted_precision(
+        report_expected, report_observed
+    )
     if not report_comparison["exact"]:
         _raise_mismatch("CN x1.1 current allocation report", report_comparison)
 
@@ -343,7 +431,9 @@ def verify_cn_current_allocation_replay(
         [row for row in computed_positions if row["date"] in expected_dates],
         position_fields,
     )
-    position_comparison = _compare_row_lists(position_expected, position_observed)
+    position_comparison = _compare_rows_at_accepted_precision(
+        position_expected, position_observed
+    )
     if not position_comparison["exact"]:
         _raise_mismatch("CN x1.1 current allocation positions", position_comparison)
 
@@ -353,7 +443,7 @@ def verify_cn_current_allocation_replay(
         )
 
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "model_id": CN_MODEL_ID,
         "decision": "exact_replay",
         "frozen_prefix": frozen,
@@ -367,6 +457,7 @@ def verify_cn_current_allocation_replay(
             "continuation_state_source": (
                 f"accepted_formal_positions_before_{CN_WINDOWS[CN_WINDOW][0]}"
             ),
+            "numeric_comparison": "accepted_serialized_decimal_precision",
         },
         "research_only": True,
         "trade_ready": False,
