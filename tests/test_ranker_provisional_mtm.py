@@ -130,6 +130,8 @@ def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
 
     assert result is not None
     row = result["performance_row"]
+    assert row["date"] == "2026-08-07"
+    assert row["signal_date"] == "2026-08-05"
     assert row["holding_end_date"] == "2026-08-07"
     assert row["provisional_mtm"] is True
     assert row["settlement_status"] == "provisional_mtm"

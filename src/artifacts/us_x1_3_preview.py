@@ -876,7 +876,8 @@ def build_plan(
         settled_peak = max([1.0, *[float(row["account"]) for row in report]])
         report.append(
             {
-                "date": signal_date,
+                "date": cutoff,
+                "signal_date": signal_date,
                 "holding_end_date": cutoff,
                 "window": "current_target",
                 "window_role": "prospective_unrealized",

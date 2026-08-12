@@ -255,7 +255,8 @@ def attach_ranker_provisional_mtm(
     drawdown = account / max(peak, account) - 1.0
 
     mtm_row: dict[str, Any] = {
-        "date": signal_date,
+        "date": cutoff,
+        "signal_date": signal_date,
         "holding_end_date": cutoff,
         "account_before": account_before,
         "account": account,
