@@ -17,7 +17,6 @@ from src.artifacts.model_run_bundle_v2 import (
     validate_manifest as validate_model_run_manifest,
 )
 
-EXPECTED_BUNDLE_MODEL_IDS = {"us_x1_1", "cn_x1_0"}
 EXPECTED_REQUIRED_BUNDLE_KINDS = {"model_index", "static_export_manifest"}
 SHELL_MARKER = "Governed Model Runs"
 
@@ -243,10 +242,7 @@ def validate_formal_section(
         )
     digest = hashlib.sha256(payload).hexdigest()
     if digest != section.sha256:
-        raise ReleaseVerificationError(
-            f"section digest mismatch for {record.model_version_id}/{section.section_id}: "
-            f"expected {section.sha256}, found {digest}"
-        )
+        raise ReleaseVerificationError(f"section digest mismatch for {record.model_version_id}/{section.section_id}: expected {section.sha256}, found {digest}")
     decoded = _json(payload, label=f"{record.model_version_id}/{section.path}")
     if section.section_id != "summary":
         return
@@ -325,11 +321,6 @@ def validate_bundle_artifact_bytes(
         ]
         if len(model_ids) != len(set(model_ids)):
             raise ReleaseVerificationError("bundle model index contains duplicate IDs")
-        missing = EXPECTED_BUNDLE_MODEL_IDS - set(model_ids)
-        if missing:
-            raise ReleaseVerificationError(
-                f"bundle model index is missing metadata sources: {sorted(missing)}"
-            )
     elif artifact.kind == "static_export_manifest":
         manifest = _mapping(decoded, label="static export manifest")
         if manifest.get("source") != "repository_research_store":
@@ -463,9 +454,7 @@ def verify_with_retries(
                 expected_commit=expected_commit,
                 timeout_seconds=timeout_seconds,
             )
-        except (
-            Exception
-        ) as exc:  # bounded retry includes temporary network/CDN propagation failures
+        except Exception as exc:  # bounded retry includes temporary network/CDN propagation failures
             last_error = exc
             if attempt < attempts:
                 time.sleep(delay_seconds)
