@@ -17,6 +17,7 @@ from src.research.qqq_authoritative_replay import (
 )
 from src.research.rules_formal_replay_gate import (
     RulesFormalReplayError,
+    _compare_rows_at_accepted_precision,
     assert_exact_formal_prefix,
     verify_cn_frozen_prefix,
 )
@@ -118,6 +119,49 @@ def test_exact_prefix_rejects_historical_mutation() -> None:
 
     with pytest.raises(RulesFormalReplayError, match="exact replay mismatch"):
         assert_exact_formal_prefix(expected, observed, label="fixture")
+
+
+def test_cn_accepted_precision_accepts_same_published_decimal() -> None:
+    comparison = _compare_rows_at_accepted_precision(
+        [
+            {
+                "period_return": 0.01942118706,
+                "benchmark_return": -0.02366060168,
+                "breadth_value": 0.2846153846,
+            }
+        ],
+        [
+            {
+                "period_return": 0.019421187062499998,
+                "benchmark_return": -0.02366060168368111,
+                "breadth_value": 0.2846153846153846,
+            }
+        ],
+    )
+
+    assert comparison["exact"] is True
+    assert comparison["comparison_semantics"] == (
+        "accepted_serialized_decimal_precision"
+    )
+
+
+def test_cn_accepted_precision_rejects_changed_published_decimal() -> None:
+    comparison = _compare_rows_at_accepted_precision(
+        [{"period_return": 0.01942118706}],
+        [{"period_return": 0.01942118707}],
+    )
+
+    assert comparison["exact"] is False
+    assert comparison["first_mismatch"]["field"] == "period_return"
+
+
+def test_cn_full_precision_appended_value_remains_strict() -> None:
+    comparison = _compare_rows_at_accepted_precision(
+        [{"period_return": 0.019421187062499998}],
+        [{"period_return": 0.01942118706}],
+    )
+
+    assert comparison["exact"] is False
 
 
 def test_qqq_current_source_replay_ignores_restated_historical_observations() -> None:
