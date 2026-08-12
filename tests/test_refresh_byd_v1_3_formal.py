@@ -35,7 +35,16 @@ def test_byd_extension_normalizes_prospective_date_dtype(tmp_path: Path) -> None
     output = tmp_path / "byd-output"
     base.mkdir()
     pd.DataFrame(
-        [{"date": "2026-08-03", "open": 90.0, "high": 91.0, "low": 89.0, "close": 90.5, "volume": 1000.0}]
+        [
+            {
+                "date": "2026-08-03",
+                "open": 90.0,
+                "high": 91.0,
+                "low": 89.0,
+                "close": 90.5,
+                "volume": 1000.0,
+            }
+        ]
     ).to_csv(base / "adjusted_ohlcv.csv", index=False)
     pd.DataFrame([{"date": "2026-08-03", "open_research_eligible": True}]).to_csv(
         base / "session_audit.csv", index=False
@@ -168,6 +177,7 @@ def test_v1_3_formal_refresh_replays_and_appends_production_archives(tmp_path: P
     )
     current = json.loads(current_package.read_text(encoding="utf-8"))
     assert current["model_id"] == MODEL_ID
+    cutoff = str(current["evidence_cutoff"])
     output = tmp_path / "byd-v1-3-formal.json"
     result = refresh_byd_v1_3(
         current_package=current_package,
@@ -180,17 +190,17 @@ def test_v1_3_formal_refresh_replays_and_appends_production_archives(tmp_path: P
             "data/research/strategy_signal_ledgers/"
             "byd_v1_3_recovery_event_low_vol_confirmation_v1"
         ),
-        cutoff="2026-08-10",
-        generated_at="2026-08-10T16:00:00Z",
+        cutoff=cutoff,
+        generated_at=f"{cutoff}T16:00:00Z",
         output=output,
     )
 
     package = json.loads(output.read_text(encoding="utf-8"))
     assert result["model_id"] == MODEL_ID
     assert result["appended_sessions"] >= 0
-    assert package["evidence_cutoff"] == "2026-08-10"
-    assert package["freshness"]["required_cutoff"] == "2026-08-10"
-    assert package["freshness"]["latest_completed_session"] == "2026-08-10"
+    assert package["evidence_cutoff"] == cutoff
+    assert package["freshness"]["required_cutoff"] == cutoff
+    assert package["freshness"]["latest_completed_session"] == cutoff
     assert package["freshness"]["model_selection_reopened"] is False
     assert package["evidence"]["refresh_adapter"] == "refresh_byd_v1_3_formal"
     assert package["research_only"] is True
