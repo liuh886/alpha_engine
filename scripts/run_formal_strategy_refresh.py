@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import shutil
@@ -12,7 +13,7 @@ import tarfile
 import zipfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from scripts.ranker_provisional_mtm import attach_ranker_provisional_mtm
 from src.artifacts.formal_refresh import load_object, sha256, write_object
@@ -34,6 +35,8 @@ BYD_PREDECESSOR_ID = "byd_v1_2_convex_momentum_budget_v1"
 
 
 class StrategyRefreshBlocked(RuntimeError):
+    """Raised when one strategy cannot produce publishable governed evidence."""
+
     def __init__(self, status: str, reason: str) -> None:
         super().__init__(reason)
         self.status = status
@@ -43,6 +46,10 @@ class StrategyRefreshBlocked(RuntimeError):
 def _run(command: Sequence[str], *, cwd: Path) -> None:
     print("+", " ".join(command), flush=True)
     subprocess.run(command, cwd=cwd, check=True)
+
+
+def _mapping(value: object) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
 
 
 def _task(plan_path: Path, strategy_id: str) -> dict[str, Any]:
@@ -120,8 +127,6 @@ def _run_us(
     generated_at: str,
 ) -> dict[str, Any]:
     candidate = result_root / "model-runs"
-    if candidate.exists():
-        shutil.rmtree(candidate)
     provider_dir = provider_root / "data" / "providers" / "us"
     _run(
         [
@@ -222,7 +227,7 @@ def _run_qqq(
         **_base_receipt(task),
         "execution_status": "refreshed",
         "candidate_evidence_cutoff": candidate.get("evidence_cutoff"),
-        "performance_observation_end": candidate.get("date_range", {}).get("end"),
+        "performance_observation_end": _mapping(candidate.get("date_range")).get("end"),
         "output_sha256": sha256(package),
         "replay_verdict": "exact_replay",
     }
@@ -234,7 +239,7 @@ def _run_cn_duplicate_ledgers(
     provider_dir: Path,
     result_root: Path,
 ) -> tuple[Path, Path]:
-    processes: list[tuple[subprocess.Popen[bytes], Any]] = []
+    processes: list[tuple[subprocess.Popen[bytes], BinaryIO]] = []
     outputs: list[Path] = []
     for suffix in ("a", "b"):
         output = result_root / f"cn-ledger-{suffix}"
@@ -387,7 +392,7 @@ def _run_cn(
         **_base_receipt(task),
         "execution_status": "refreshed",
         "candidate_evidence_cutoff": candidate.get("evidence_cutoff"),
-        "performance_observation_end": candidate.get("freshness", {}).get(
+        "performance_observation_end": _mapping(candidate.get("freshness")).get(
             "latest_realized_holding_end"
         ),
         "output_sha256": sha256(package),
@@ -403,8 +408,6 @@ def _extract_byd_inputs(root: Path, result_root: Path) -> tuple[Path, Path]:
     with tarfile.open(root / "data/research/byd_canonical_v1_snapshot.tar.xz", "r:xz") as archive:
         archive.extractall(byd_base, filter="data")
     encoded = (root / "data/research/515180_canonical_v1_artifact.zip.b64").read_bytes()
-    import base64
-
     archive_path = result_root / "515180.zip"
     archive_path.write_bytes(base64.b64decode(encoded))
     with zipfile.ZipFile(archive_path) as archive:
@@ -468,7 +471,7 @@ def _run_byd(
         **_base_receipt(task),
         "execution_status": "refreshed",
         "candidate_evidence_cutoff": candidate.get("evidence_cutoff"),
-        "performance_observation_end": candidate.get("date_range", {}).get("end"),
+        "performance_observation_end": _mapping(candidate.get("date_range")).get("end"),
         "output_sha256": sha256(package),
         "replay_verdict": "exact_incumbent_replay_then_append_only_refresh",
     }
@@ -566,7 +569,14 @@ def main() -> int:
         write_object(receipt_path, receipt)
         print(json.dumps(receipt, indent=2, sort_keys=True))
         return 1
-    except (OSError, ValueError, KeyError, subprocess.CalledProcessError, tarfile.TarError, zipfile.BadZipFile) as exc:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        subprocess.CalledProcessError,
+        tarfile.TarError,
+        zipfile.BadZipFile,
+    ) as exc:
         receipt = {
             **_base_receipt(task),
             "execution_status": "execution_failed",
