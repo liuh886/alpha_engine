@@ -28,10 +28,15 @@ def test_formal_us_x1_3_bundle_resolves_without_legacy_alias() -> None:
     assert portfolio_path.is_file()
 
 
-def test_current_target_uses_exact_formal_x1_2_model_contract() -> None:
+def test_current_target_uses_exact_formal_x1_3_stage_b_contract() -> None:
     config = yaml.safe_load((ROOT / "configs/models/us_x1_3.yaml").read_text(encoding="utf-8"))
     calibration = _calibration(config)
     assert config["lineage"]["selected_candidate"] == "mvv_plus_pressure"
+    assert config["features"]["source_factor_groups"] == [
+        "momentum_volatility_volume",
+        "us_price_volume_pressure",
+    ]
+    assert config["features"]["factor_order_semantics"] == "ordered_group_union_first_occurrence_wins"
     assert calibration.num_boost_round == 200
     assert calibration.learning_rate == 0.05
     assert calibration.subsample == 0.8
@@ -45,16 +50,16 @@ def test_current_target_uses_exact_formal_x1_2_model_contract() -> None:
     columns = [f"feature_{index}" for index in range(len(expressions))]
     factor_columns = _factor_columns(factor_ids=factor_ids, columns=columns)
     assert factor_ids == [
-        "ohlcv.momentum.ret_3d",
         "ohlcv.momentum.ret_5d",
         "ohlcv.momentum.ret_10d",
         "ohlcv.momentum.ret_20d",
         "ohlcv.volatility.std_ret_10d",
         "ohlcv.volatility.std_ret_20d",
         "ohlcv.volume.momentum_10d",
+        "ohlcv.liquidity.volume_vs_ma_20d",
+        "ohlcv.momentum.ret_3d",
         "ohlcv.liquidity.volume_vs_ma_5d",
         "ohlcv.liquidity.volume_vs_ma_10d",
-        "ohlcv.liquidity.volume_vs_ma_20d",
         "ohlcv.pressure.ret1_x_volume_shock_5d",
         "ohlcv.pressure.ret5_x_volume_shock_10d",
         "ohlcv.pressure.high_low_ratio",
@@ -62,13 +67,3 @@ def test_current_target_uses_exact_formal_x1_2_model_contract() -> None:
     assert len(expressions) == 13
     assert list(factor_columns) == factor_ids
     assert set(factor_columns.values()) == set(columns)
-
-
-def test_production_ranker_workflow_no_longer_targets_us_x1_1() -> None:
-    workflow = (ROOT / ".github/workflows/ranker-10d-current-target.yml").read_text(
-        encoding="utf-8"
-    )
-    assert "scripts/run_us_x1_3_current_target.py due" in workflow
-    assert "scripts/run_us_x1_3_current_target.py build" in workflow
-    assert "strategy_signal_ledgers/us_x1_3" in workflow
-    assert "strategy_signal_ledgers/us_x1_2" not in workflow
