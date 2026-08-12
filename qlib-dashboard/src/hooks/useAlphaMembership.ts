@@ -52,7 +52,7 @@ export function useAlphaMembership() {
   }, []);
 
   const openAccount = useCallback(() => window.HaoAccount?.open?.(), []);
-  const getClient = useCallback(() => window.HaoAccount?.getClient?.(), []);
+  const getClient = useCallback(async (): Promise<SupabaseAccessClient | undefined> => window.HaoAccount?.getClient?.(), []);
 
   return {
     loading: snapshot.loading === true,
