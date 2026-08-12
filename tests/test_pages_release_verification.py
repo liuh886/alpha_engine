@@ -304,7 +304,7 @@ def test_rejects_corrupted_bundle_artifact() -> None:
         )
 
 
-def test_rejects_legacy_shell() -> None:
-    validate_shell(b"<html>Governed Model Runs</html>")
-    with pytest.raises(ReleaseVerificationError, match="missing marker"):
-        validate_shell(b"<html>Complete backtest review</html>")
+def test_verifies_stable_shell_bootstrap_without_product_copy_dependency() -> None:
+    validate_shell(b'<html><body><div id="root"></div><script type="module" src="/assets/app.js"></script></body></html>')
+    with pytest.raises(ReleaseVerificationError, match="bootstrap markers"):
+        validate_shell(b"<html>Governed Model Runs</html>")
