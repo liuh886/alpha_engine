@@ -124,7 +124,7 @@ jobs:
           PY
 
   live-cn-panel:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 600
