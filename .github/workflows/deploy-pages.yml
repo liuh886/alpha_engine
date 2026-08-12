@@ -4,6 +4,13 @@ run-name: Pages ${{ inputs.target_sha || github.sha }}
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows:
+      - "QQQ Rotation v4.3 Signal Alert"
+      - "BYD v1.3 Daily Signal"
+      - "10D Ranker Current Target"
+      - "Reviewed Formal Backtest Refresh"
+    types: [completed]
   workflow_dispatch:
     inputs:
       target_sha:
@@ -18,11 +25,59 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages
+  group: publication-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
+  publish-current-operations:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate runtime publisher contract
+        run: |
+          uv run ruff check \
+            src/artifacts/strategy_operations_runtime.py \
+            src/cli/main.py \
+            tests/test_strategy_operations_runtime.py
+          uv run pytest tests/test_strategy_operations_runtime.py -q --strict-markers --tb=short
+      - name: Materialize current operations from canonical evidence
+        run: |
+          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          uv run alpha ops build --generated-at "$generated_at"
+      - name: Publish current operations through GitHub OIDC
+        run: uv run alpha ops publish
+      - name: Retain published read model
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: strategy-operations-runtime-${{ github.run_id }}
+          path: data/research/strategy_operations/snapshots.json
+          if-no-files-found: error
+          retention-days: 14
+
   detect-impact:
+    if: github.event_name != 'workflow_run'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -205,6 +260,8 @@ jobs:
           operations = json.loads(Path('_site/data/strategy-operations/snapshots.json').read_text(encoding='utf-8'))
           validate_operations_payload(operations)
           assert {row['model_version_id'] for row in operations['records']} == formal_ids
+          assert all(not row['allocations'] for row in operations['records'])
+          assert all(not row['factor_evidence'] for row in operations['records'])
           PY
       - name: Setup Pages
         uses: actions/configure-pages@v6
