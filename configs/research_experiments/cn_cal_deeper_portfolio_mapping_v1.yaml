@@ -1,19 +1,20 @@
-# Issue #872 — one-dimensional portfolio-mapping test for frozen cal_deeper.
+# Issue #872 — completed portfolio-mapping test for frozen cal_deeper.
 schema_version: '1.0'
 experiment_id: cn_cal_deeper_portfolio_mapping_v1
 runner: cross_sectional_xgb_ranker_v1
 active: false
-status: pre_registered
+status: completed_not_supported
+result_receipt: data/research/experiment_receipts/cn_cal_deeper_portfolio_mapping_v1.json
 parent_model_id: cn_x1_1
 research_only: true
 trade_ready: false
-online_validation: exact_cn_ranker_portfolio_v1
 
 purpose: >-
-  Test whether cal_deeper's negative CN Stage-B result is caused by the
-  concentrated sector_4x1 risk-on mapping. Keep the ranker, provider, regime
-  gate, T+1 execution, holding period, turnover semantics and costs fixed;
-  change only the risk-on portfolio selector.
+  Test whether cal_deeper's negative CN Stage-B result was caused by the
+  concentrated sector_4x1 risk-on mapping. The experiment kept the ranker,
+  provider, regime gate, T+1 execution, holding period, turnover semantics and
+  costs fixed and changed only the risk-on portfolio selector. No broad mapping
+  passed the frozen support boundary.
 
 submission_lineage:
   source_issue: 872
@@ -21,6 +22,15 @@ submission_lineage:
   evidence_tier: portfolio_mapping_diagnostic
   prior_full_path_decision: cn_x1_2_cal_deeper_full_path_rejected
   promotion_eligible: false
+
+validation_lineage:
+  workflow_run_id: 31575953204
+  artifact_id: 9133240508
+  artifact_digest: sha256:42a5af08c5d1821b936912a457ea89ab9fc6d16886b19033b70c5153399c7a0e
+  provider_identity_sha256: 1b0b8aea689422640f6b0ca8e24ecc8c0f64fe2131caebd3fb2f1e1bd03d1050
+  decision: cal_deeper_broad_mapping_not_supported
+  best_mapping: global_top15_sector_cap4
+  new_holdout_consumed: false
 
 snapshot:
   policy: exact_selected_pool_source_rebuild
@@ -119,7 +129,7 @@ evaluation:
   schema_version: '1.0'
   baseline_candidate_id: baseline_cn_x1_1
   stress_cost_bps: 60
-  decision: cal_deeper_broad_mapping_supported
+  decision: cal_deeper_broad_mapping_not_supported
   ranking:
     - gate_pass_count
     - worst_drawdown
@@ -144,6 +154,21 @@ support_boundary:
   require_exact_portfolio_reproduction: true
   require_exact_holding_contract: true
 
+result_summary:
+  sector_4x1:
+    relative_excess_20bps: -0.09238049648235558
+    relative_excess_60bps: -0.19199681547356673
+    max_drawdown_20bps: -0.19547943520332411
+  global_top15:
+    relative_excess_20bps: -0.05452176275981602
+    relative_excess_60bps: -0.13965423864310367
+    max_drawdown_20bps: -0.254772819808354
+  global_top15_sector_cap4:
+    relative_excess_20bps: 0.05522180730338544
+    relative_excess_60bps: -0.03894969978733587
+    max_drawdown_20bps: -0.17381695156949994
+    positive_excess_windows: 2
+
 stop_rules:
   - no_additional_ranker_candidates
   - no_factor_search
@@ -157,8 +182,8 @@ stop_rules:
   - no_automatic_model_promotion
 
 version_policy:
-  maximum_surviving_mappings: 2
-  may_retain_cal_deeper_as_broad_ranker_research_candidate: true
+  maximum_surviving_mappings: 0
+  may_retain_cal_deeper_as_broad_ranker_research_candidate: false
   may_propose_cn_x1_2_candidate: false
   may_release_cn_x1_2_automatically: false
   new_untouched_challenge_required_for_any_future_release: true
