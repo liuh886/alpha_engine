@@ -1,0 +1,181 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "cn_x1_2_alpha158_three_mechanism_v1",
+  "runner": "exact_cn_ranker_portfolio_v1",
+  "status": "completed_supported",
+  "decision": "cn_x1_2_alpha158_three_mechanism_full_path_supported",
+  "research_only": true,
+  "trade_ready": false,
+  "automatic_promotion": false,
+  "new_holdout_consumed": false,
+  "selection_windows": ["2024H1", "2024H2", "2025H1", "2025H2"],
+  "validation_lineage": {
+    "workflow_run_id": 31591976145,
+    "artifact_id": 9139549489,
+    "artifact_digest": "sha256:46fb82c1c07225acb92502d2ef7b1904822083a8ab25dd17b243fcbac5402e16",
+    "provider_identity_sha256": "1b0b8aea689422640f6b0ca8e24ecc8c0f64fe2131caebd3fb2f1e1bd03d1050",
+    "sector_classification_sha256": "d1ef3bd06c0953c7e78fa0ba99c372da714ddce67203909d195d73e9eec61d15"
+  },
+  "portfolio_contract": {
+    "replay_id": "exact_cn_ranker_portfolio_v1",
+    "sector_classification": "configs/research_classifications/cn130_sector_industry_v1.yaml",
+    "sectors": 4,
+    "names_per_sector": 1,
+    "weighting": "equal_weight",
+    "holding_sessions": 10,
+    "rebalance_sessions": 10,
+    "execution_delay_sessions": 1,
+    "regime_rule": "two_of_three",
+    "regime_long_ma_sessions": 200,
+    "regime_momentum_sessions": 60,
+    "regime_breadth_ma_sessions": 60,
+    "regime_breadth_threshold": 0.5,
+    "regime_votes_required": 2,
+    "risk_off_fallback": "000300"
+  },
+  "candidates": [
+    {
+      "candidate_id": "baseline_cn_x1_1",
+      "factor_count": 14,
+      "mean_rank_ic": 0.001324999999999999,
+      "mean_icir": 0.0907415,
+      "xgb_identity_sha256": "f1dd0e691dffb4725bdb413c98dfd0acc98d484e3c4b4f30076efeac416e6a6a",
+      "base_20bps": {
+        "relative_excess": 0.11764128560811282,
+        "total_return": 0.5978747465302174,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.1496517333750298,
+        "positive_excess_windows": 2,
+        "turnover": 27.5,
+        "risk_on_relative_excess": 0.1266130490679943,
+        "risk_off_relative_excess": -0.00796348264144801
+      },
+      "stress_60bps": {
+        "relative_excess": 0.0013100834407369089,
+        "total_return": 0.4315577962078143,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.15946767742144763,
+        "positive_excess_windows": 2,
+        "turnover": 27.5,
+        "risk_on_relative_excess": 0.02566733066518209,
+        "risk_off_relative_excess": -0.023747706976928653
+      }
+    },
+    {
+      "candidate_id": "cn_x1_2_alpha158_three_mechanism",
+      "factor_count": 17,
+      "factor_library_sources": [
+        "configs/factor_libraries/ohlcv.yaml",
+        "src/factors/sets/qlib_alpha158.py"
+      ],
+      "factor_ids": [
+        "ohlcv.momentum.ret_3d",
+        "ohlcv.momentum.ret_5d",
+        "ohlcv.momentum.ret_10d",
+        "ohlcv.momentum.ret_20d",
+        "ohlcv.reversal.inv_ret_1d",
+        "ohlcv.reversal.inv_ret_3d",
+        "ohlcv.reversal.inv_ret_5d",
+        "ohlcv.volatility.std_ret_5d",
+        "ohlcv.volatility.std_ret_10d",
+        "ohlcv.volatility.std_ret_20d",
+        "ohlcv.volatility.high_low_range_pct",
+        "ohlcv.liquidity.volume_vs_ma_5d",
+        "ohlcv.liquidity.volume_vs_ma_10d",
+        "ohlcv.liquidity.volume_vs_ma_20d",
+        "qlib_alpha158.cntd30",
+        "qlib_alpha158.cord5",
+        "qlib_alpha158.imin30"
+      ],
+      "factor_implementation_hashes": {
+        "ohlcv.momentum.ret_3d": "66e3d63484c4079407d41968cd58813ef46dca293df20c5e14bdbc3a6e0e97da",
+        "ohlcv.momentum.ret_5d": "1175cef28866deff3df24dc9e764d385893ecb17ad522f06bc1b0345c5fa09b1",
+        "ohlcv.momentum.ret_10d": "31badd629c359582432b205f929a2435d3e86104a81c8647669b8accc22d743f",
+        "ohlcv.momentum.ret_20d": "a8d24b82269190faeaa6f4de0ef1b30ad7206f3e9d348bc475753c66096e0e8b",
+        "ohlcv.reversal.inv_ret_1d": "608c2bb1c0d5f314532c91cb2d2fd9673a4c3a525761c3f140de797c64473e17",
+        "ohlcv.reversal.inv_ret_3d": "7975b55e788ad718365ac599fb64edaa3db8e90e9f6061d2271d6fb8bc9f4935",
+        "ohlcv.reversal.inv_ret_5d": "921a3187a75afc13bb651d89b610d5f5d9ca414f9dae60abe48ab575fc10ac27",
+        "ohlcv.volatility.std_ret_5d": "9bac3b5d9ccec0ac1ac6a5a7895305231393bf20dbf8cfc3bc78d284435801ac",
+        "ohlcv.volatility.std_ret_10d": "86e010f84562b0372734633adb497d25c3347d4f52b588f5b9a72e7d5100d361",
+        "ohlcv.volatility.std_ret_20d": "62ce273ab190b76bed0fee82d3ebedb6f0639b609984dbe2192911a92cf999d9",
+        "ohlcv.volatility.high_low_range_pct": "d547ae9cce2dc2a48e5a1165d9b1ec63b0bdc44e4367318349ad192cc8b58f35",
+        "ohlcv.liquidity.volume_vs_ma_5d": "4ab17f79c7ee43141bc2352be7c44526865c96849d8b1c39c5eee515003eaad8",
+        "ohlcv.liquidity.volume_vs_ma_10d": "57fcc53957f2e394c5c3ac48809265aec409342b277f4db12ca915293fafc5b3",
+        "ohlcv.liquidity.volume_vs_ma_20d": "db0144914d27d3afe39c90fb8cceb6d4604c4cde56d5b35b7a1c3edbda7fe8e8",
+        "qlib_alpha158.cntd30": "c4cd5f4905632fb36253ff79af7b426a1cdb5a2dd30c5dbc3b62cfa84b685757",
+        "qlib_alpha158.cord5": "0bc91d98b2e6e674e63042d055f9127bc9eb1dcadebb1048d13dc21d2e4bc39e",
+        "qlib_alpha158.imin30": "68ebb95a01b23fe911a611bf6ccef65aba560d32227f5166068c3ca401b79897"
+      },
+      "mean_rank_ic": 0.0111885,
+      "mean_icir": 0.10777225000000001,
+      "xgb_identity_sha256": "f1dd0e691dffb4725bdb413c98dfd0acc98d484e3c4b4f30076efeac416e6a6a",
+      "base_20bps": {
+        "relative_excess": 0.19789623847193405,
+        "total_return": 0.7126140319488825,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.14845115874165704,
+        "positive_excess_windows": 3,
+        "turnover": 28.75,
+        "risk_on_relative_excess": 0.2075122412444203,
+        "risk_off_relative_excess": -0.00796348264144801,
+        "maximum_name_absolute_contribution_share": 0.12814263926318986,
+        "maximum_sector_absolute_contribution_share": 0.3653713413622372
+      },
+      "stress_60bps": {
+        "relative_excess": 0.06839699676552113,
+        "total_return": 0.5274709357855174,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.1614402378834533,
+        "positive_excess_windows": 3,
+        "turnover": 28.75,
+        "risk_on_relative_excess": 0.09438615857906313,
+        "risk_off_relative_excess": -0.023747706976928653,
+        "maximum_name_absolute_contribution_share": 0.12628752409228164,
+        "maximum_sector_absolute_contribution_share": 0.35625113159701843
+      }
+    }
+  ],
+  "window_rank_ic": {
+    "2024H1": {"baseline": -0.018593, "challenger": -0.010725},
+    "2024H2": {"baseline": -0.055602, "challenger": -0.039084},
+    "2025H1": {"baseline": 0.066004, "challenger": 0.080278},
+    "2025H2": {"baseline": 0.013491, "challenger": 0.014285}
+  },
+  "support_boundary": {
+    "baseline": "baseline_cn_x1_1",
+    "challenger": "cn_x1_2_alpha158_three_mechanism",
+    "improvement_vs_incumbent_20bps": 0.08025495286382123,
+    "improvement_vs_incumbent_60bps": 0.06708691332478423,
+    "worst_drawdown_delta_vs_incumbent": 0.001200574633372753,
+    "positive_window_count": 3,
+    "checks": {
+      "beats_incumbent_20bps": true,
+      "beats_incumbent_60bps": true,
+      "stress_relative_excess_positive": true,
+      "at_least_three_of_four_positive_windows": true,
+      "max_drawdown_above_minus_25pct": true,
+      "drawdown_worsening_within_3pp": true,
+      "risk_on_relative_excess_positive": true,
+      "risk_off_relative_no_worse_than_cost_drag": true,
+      "exact_score_reproduction": true,
+      "exact_portfolio_reproduction": true
+    },
+    "supported": true
+  },
+  "score_reproduction": {
+    "2024H1": "767abac9327056003bbddd37793e4173fadbe14ec45cb1ff05bb67f3c9654827",
+    "2024H2": "b64068dd36553f318865413b5047dd1daccba7a8e5e762b865a3bb489f528567",
+    "2025H1": "eec364837b935056abfd94ee1034f9eba31b2fc138fc6313f4907bb320983d1a",
+    "2025H2": "1204e33782c6a23747da7179d88f0cb7d72982623d19ebdb08d87b65223cedeb"
+  },
+  "portfolio_reproduction": {
+    "20": {
+      "periods_sha256": "723c0e4c4aebe85b30a681a29183c5a655cf9c629fc7b1d1c60b83365a4b0e32",
+      "holdings_sha256": "e05f78a871a15035a07d2ca63ebbc88239ffd29e341d1bb1cd6d63786be351e8"
+    },
+    "60": {
+      "periods_sha256": "ff219458457cd77ed3edbc1bf6e11b1d037cec27e8a5741bd5ac8ae0d6411988",
+      "holdings_sha256": "5ad2d4f236893178488ca0d6a479ebf2f7086f623d89b891962564b49eee938a"
+    }
+  }
+}
