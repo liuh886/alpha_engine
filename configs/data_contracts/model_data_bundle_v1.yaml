@@ -128,8 +128,9 @@ profiles:
         accepted_statuses: ["ready"]
         minimum_coverage_ratio: 1.0
       - component_id: "factors.qlib_alpha158.panel.cn.v1"
-        accepted_statuses: ["ready"]
+        accepted_statuses: ["ready", "partial"]
         minimum_coverage_ratio: 1.0
+        allow_not_yet_applicable: true
 
   qqqi_qqq_tqqq_rotation_v1:
     market: "us"
