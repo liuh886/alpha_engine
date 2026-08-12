@@ -9,6 +9,7 @@
   "requested_start": "2021-01-01",
   "schema_version": "1.0",
   "source_artifact": {
+    "archive_root": "research_source_repair",
     "artifact_digest": "sha256:3872607eb23a3f019a98fa2b12b7069594241a8f10474cb854ac3e9d92f197a8",
     "artifact_id": 9131009574,
     "provider_identity_sha256": "1b0b8aea689422640f6b0ca8e24ecc8c0f64fe2131caebd3fb2f1e1bd03d1050",
