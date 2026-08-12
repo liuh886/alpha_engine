@@ -17,7 +17,6 @@ from src.factors.strategy_snapshot import (
     validate_strategy_factor_snapshot,
 )
 from src.governance.active_strategy_catalog import (
-    ACCESS_LEVELS,
     DEFAULT_CATALOG_PATH,
     ActiveStrategy,
     ActiveStrategyCatalogError,
@@ -25,7 +24,7 @@ from src.governance.active_strategy_catalog import (
     load_active_strategy_catalog,
 )
 
-SCHEMA_VERSION = "2.1.0"
+SCHEMA_VERSION = "2.2.0"
 QQQ_FAMILY = "qqq_rotation"
 BYD_FAMILY = "byd_allocation"
 US_RANKER_FAMILY = "us_ranker"
@@ -127,7 +126,6 @@ def _identity(strategy: ActiveStrategy, record: Mapping[str, Any]) -> dict[str, 
     return {
         "strategy_id": strategy.strategy_id,
         "model_version_id": str(record["model_version_id"]),
-        "current_operations_access": strategy.current_operations_access,
     }
 
 
@@ -577,8 +575,6 @@ def validate_operations_payload(payload: object) -> None:
             raise StrategyOperationsError(f"duplicate operations strategy: {strategy_id}")
         seen_models.add(model_id)
         seen_strategies.add(strategy_id)
-        if value.get("current_operations_access") not in ACCESS_LEVELS:
-            raise StrategyOperationsError(f"invalid operations access for {model_id}")
         if value.get("status") not in STATUS_VALUES:
             raise StrategyOperationsError(f"invalid operations status for {model_id}")
         if (
