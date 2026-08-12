@@ -9,7 +9,7 @@ create table if not exists public.product_access_policies (
 );
 
 comment on table public.product_access_policies is
-  'Owner-managed minimum access tier for product model families and modules.';
+  'Owner-managed minimum access tier for independent product modules. Strategy current-operation access is governed by each product strategy catalog.';
 
 alter table public.product_access_policies enable row level security;
 
@@ -62,6 +62,5 @@ using (
 
 insert into public.product_access_policies (product_code, resource_type, resource_id, required_tier)
 values
-  ('alpha_engine', 'model', 'qqq_rotation', 'pro'),
   ('alpha_engine', 'module', 'securities', 'authenticated')
 on conflict (product_code, resource_type, resource_id) do nothing;
