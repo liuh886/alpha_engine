@@ -1,0 +1,46 @@
+{
+  "schema_version": "cn_x1_1_frozen_score_cross_sections_v1",
+  "model_id": "cn_x1_1",
+  "window": "2026H2_PARTIAL",
+  "purpose": "exact_incumbent_allocation_replay",
+  "accepted_signal_dates": [
+    "2026-07-01",
+    "2026-07-15"
+  ],
+  "cross_sections": [
+    {
+      "date": "2026-07-01",
+      "path": "frozen_score_cross_section_2026-07-01.csv",
+      "rows": 130,
+      "sha256": "dbb46f3719333b725c1fe3f4d8c8b80788858817a0ee1b7e962580a72a7b8f0b"
+    },
+    {
+      "date": "2026-07-15",
+      "path": "frozen_score_cross_section_2026-07-15.csv",
+      "rows": 130,
+      "sha256": "e442dad9c524e9115e34f61548a70fdfae5a9da62b31a2e2ee8f1846d6040b80"
+    }
+  ],
+  "columns": [
+    "window",
+    "datetime",
+    "instrument",
+    "score",
+    "execution_forward_return",
+    "entity",
+    "sector"
+  ],
+  "selection": "retain the complete 130-name frozen score cross-section for every accepted 2026H2 signal date so the maintained global-percentile and sector-top3 implementation is replayed without approximation",
+  "source": {
+    "workflow_run_id": 30994083925,
+    "workflow_head_sha": "ba5a318b35d57dac2a2a01df282f67e41cfff316",
+    "artifact_id": 8926572265,
+    "artifact_name": "cn130-pit-fundamental-30994083925",
+    "artifact_digest": "sha256:e51889b08e24b9adde83388066df02efcbd3290b58886d4bff82f7559d787b7b",
+    "source_path": "score_ledgers/2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz",
+    "source_sha256": "8dbd8bc437f1092f5d3ae296892cd56c463d2c96b680fdf0601f6ef508eecdd5",
+    "provider_identity_sha256": "abae71f037571a9a847d4582e0bea9fabdd71796cac54a70aa7c6d07b668eeb0"
+  },
+  "research_only": true,
+  "trade_ready": false
+}
