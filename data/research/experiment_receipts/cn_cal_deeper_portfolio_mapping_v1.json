@@ -1,0 +1,127 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "cn_cal_deeper_portfolio_mapping_v1",
+  "runner": "cn_cal_deeper_portfolio_mapping_v1",
+  "status": "completed_not_supported",
+  "decision": "cal_deeper_broad_mapping_not_supported",
+  "research_only": true,
+  "trade_ready": false,
+  "automatic_promotion": false,
+  "new_holdout_consumed": false,
+  "validation_lineage": {
+    "workflow_run_id": 31575953204,
+    "artifact_id": 9133240508,
+    "artifact_digest": "sha256:42a5af08c5d1821b936912a457ea89ab9fc6d16886b19033b70c5153399c7a0e",
+    "provider_identity_sha256": "1b0b8aea689422640f6b0ca8e24ecc8c0f64fe2131caebd3fb2f1e1bd03d1050",
+    "sector_classification_sha256": "d1ef3bd06c0953c7e78fa0ba99c372da714ddce67203909d195d73e9eec61d15"
+  },
+  "candidate": {
+    "candidate_id": "cal_deeper",
+    "factor_groups": ["cn_balanced_ohlcv", "cn_short_reversal_liquidity"],
+    "mean_rank_ic": 0.006575749999999998,
+    "mean_icir": 0.088692
+  },
+  "selection_windows": ["2024H1", "2024H2", "2025H1", "2025H2"],
+  "window_diagnostics": [
+    {"window": "2024H1", "rank_ic": -0.028778, "icir": -0.044775},
+    {"window": "2024H2", "rank_ic": -0.071302, "icir": -0.307376},
+    {"window": "2025H1", "rank_ic": 0.077387, "icir": 0.318003},
+    {"window": "2025H2", "rank_ic": 0.048996, "icir": 0.388916}
+  ],
+  "variants": [
+    {
+      "variant_id": "sector_4x1",
+      "base_20bps": {
+        "relative_excess": -0.09238049648235558,
+        "total_return": 0.29760979914055774,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.19547943520332411,
+        "positive_excess_windows": 2,
+        "turnover": 29.0,
+        "risk_on_relative_excess": -0.08509466371830778
+      },
+      "stress_60bps": {
+        "relative_excess": -0.19199681547356673,
+        "total_return": 0.15518986305905602,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.2058223268128584,
+        "positive_excess_windows": 1,
+        "turnover": 29.0,
+        "risk_on_relative_excess": -0.1723418318185327
+      },
+      "broad_mapping_supported": false
+    },
+    {
+      "variant_id": "global_top15",
+      "base_20bps": {
+        "relative_excess": -0.05452176275981602,
+        "total_return": 0.3517358549062439,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.254772819808354,
+        "positive_excess_windows": 2,
+        "turnover": 23.60000000000001,
+        "risk_on_relative_excess": -0.046932022464592944
+      },
+      "stress_60bps": {
+        "relative_excess": -0.13965423864310367,
+        "total_return": 0.23002324901455729,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.26194585658243186,
+        "positive_excess_windows": 2,
+        "turnover": 23.60000000000001,
+        "risk_on_relative_excess": -0.1187260019715369
+      },
+      "improvement_vs_4x1_20bps": 0.03785873372253956,
+      "improvement_vs_4x1_60bps": 0.05234257683046306,
+      "broad_mapping_supported": false
+    },
+    {
+      "variant_id": "global_top15_sector_cap4",
+      "base_20bps": {
+        "relative_excess": 0.05522180730338544,
+        "total_return": 0.5086345678082524,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.17381695156949994,
+        "positive_excess_windows": 2,
+        "turnover": 23.466666666666676,
+        "risk_on_relative_excess": 0.0636925040955879
+      },
+      "stress_60bps": {
+        "relative_excess": -0.03894969978733587,
+        "total_return": 0.3739989964844166,
+        "benchmark_return": 0.4296847898391727,
+        "max_drawdown": -0.19124417706084074,
+        "positive_excess_windows": 2,
+        "turnover": 23.466666666666676,
+        "risk_on_relative_excess": -0.015571787046289873
+      },
+      "improvement_vs_4x1_20bps": 0.14760230378574102,
+      "improvement_vs_4x1_60bps": 0.15304711568623086,
+      "checks": {
+        "positive_relative_excess_20bps": true,
+        "positive_relative_excess_60bps": false,
+        "beats_4x1_20bps": true,
+        "beats_4x1_60bps": true,
+        "at_least_three_of_four_positive_windows": false,
+        "max_drawdown_above_minus_25pct": true,
+        "risk_on_relative_excess_positive": true,
+        "exact_portfolio_reproduction": true,
+        "holding_contract": true
+      },
+      "broad_mapping_supported": false
+    }
+  ],
+  "supported_variant": null,
+  "score_reproduction": {
+    "2024H1": "276ee5eafaaf2eb2deaa8e5598da85e64a2713123e90c65d5e0d43162ff2bda6",
+    "2024H2": "cb59bdcdc1931089f32f8abf1898402661c28925f1844b3a809f0dd3934ff84c",
+    "2025H1": "3e57adca3fc3df9bfa22dc25f1c875f09631ad8f980f0cfd3ced033fbc26a80e",
+    "2025H2": "520aadd9e60c8e8c8169bd330169b461f4579375985acc2458c36e8967fc3011"
+  },
+  "exact_score_reproduction": true,
+  "exact_portfolio_reproduction": {
+    "sector_4x1": true,
+    "global_top15": true,
+    "global_top15_sector_cap4": true
+  }
+}
