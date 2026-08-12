@@ -29,6 +29,8 @@ on:
       - "src/research/byd_515180_allocation.py"
       - "src/research/byd_v1_2_recovery_state.py"
       - "src/research/byd_v1_3_low_vol_recovery.py"
+      - "src/research/qqq_authoritative_replay.py"
+      - "src/research/rules_formal_replay_gate.py"
       - "scripts/build_market_providers.py"
       - "scripts/dump_bin.py"
       - "scripts/run_formal_refresh_transaction.py"
@@ -52,6 +54,7 @@ on:
       - "tests/test_formal_bundle_mtm_projection.py"
       - "tests/test_refresh_byd_v1_3_formal.py"
       - "tests/test_refresh_qqq_v4_3_formal.py"
+      - "tests/test_rules_formal_replay_gate.py"
       - "tests/test_market_evidence.py"
       - "tests/test_formal_provider_cache.py"
       - "tests/test_formal_backtest_freshness.py"
@@ -170,6 +173,8 @@ jobs:
             src/data/adapters \
             src/research/byd_v1_2_recovery_state.py \
             src/research/byd_v1_3_low_vol_recovery.py \
+            src/research/qqq_authoritative_replay.py \
+            src/research/rules_formal_replay_gate.py \
             scripts/build_market_evidence.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/ranker_provisional_mtm.py \
@@ -189,6 +194,7 @@ jobs:
             tests/test_formal_bundle_mtm_projection.py \
             tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_rules_formal_replay_gate.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
             tests/test_strategy_operations.py \
@@ -209,6 +215,7 @@ jobs:
             tests/test_formal_bundle_mtm_projection.py \
             tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_rules_formal_replay_gate.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
             tests/test_formal_backtest_freshness.py \
