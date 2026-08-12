@@ -13,7 +13,7 @@ from typing import Any, Callable, Mapping
 from src.artifacts.formal_bundle_v2_builder import FormalBundleV2BuildError, build_plan
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes, validate_catalog
 from src.artifacts.model_run_exporter import export_model_run, update_catalog
-from src.artifacts.us_x1_2_formal import promote_preview_bundle as promote_us_x1_2
+from src.artifacts.us_x1_3_formal import promote_preview_bundle as promote_us_x1_3
 from src.governance.active_strategy_catalog import (
     DEFAULT_CATALOG_PATH,
     ActiveStrategy,
@@ -23,7 +23,7 @@ from src.governance.active_strategy_catalog import (
 )
 
 NATIVE_PROMOTERS: dict[str, Callable[[Path, Path], Path]] = {
-    "us_x1_2": promote_us_x1_2,
+    "us_x1_3": promote_us_x1_3,
 }
 
 

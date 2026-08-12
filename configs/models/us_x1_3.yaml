@@ -1,0 +1,128 @@
+schema_version: '1.3'
+model_id: us_x1_3
+display_name: US x1.3
+release_date: '2026-08-12'
+status: baseline_research_active
+research_only: true
+trade_ready: false
+market: us
+benchmark: QQQ
+objective: Rank the governed US87 equity pool for 10-session forward return with the Stage-B supported momentum/volatility/volume plus price-volume-pressure factor contract and the governed max-four-names-per-sector portfolio constraint.
+lineage:
+  parent: us_x1_2
+  supersedes: us_x1_2
+  selected_candidate: mvv_plus_pressure
+  source_research_pr: 868
+  stage_b_pr: 869
+  stage_b_receipt: data/research/experiment_receipts/us_x1_3_stage_b_v1.json
+  stage_b_validation_workflow_run_id: 31567853785
+  certification_workflow_run_id: 31567853785
+  stage_b_artifact_id: 9130182216
+  stage_b_artifact_digest: sha256:6733fde47212088c902df88c436af553f2bd83e37a19c14d47e066ce5f8c199d
+  adoption_decision: explicit_user_directed_research_baseline_promotion
+  promotion_authority: explicit_user_direction_2026_08_12
+  promotion_note: User-directed promotion after canonical Stage-B exact replay supported mvv_plus_pressure. This remains research-only and does not authorize brokerage execution or trade readiness.
+universe:
+  universe_id: us_selected_equities_v2
+  source: configs/research_universes/us_selected_equities_v2.yaml
+  declared_candidate_count: 87
+  membership_mode: static_curated
+  survivorship_bias: true
+  listing_policy: no_prelisting_fill_coverage_qualified_static_members
+provider_binding:
+  policy: canonical_repository_source_rebuild
+  stage_b_provider_identity_sha256: c2b8cc29ad70afde1b4590a03da6f82d4a9fd1e242426bc936333b7f7c3bd39d
+  stage_b_cutoff: '2026-08-10'
+features:
+  library: configs/factor_libraries/ohlcv.yaml
+  source_factor_groups:
+  - momentum_volatility_volume
+  - us_price_volume_pressure
+  factor_order_semantics: ordered_group_union_first_occurrence_wins
+  factor_ids:
+  - ohlcv.momentum.ret_5d
+  - ohlcv.momentum.ret_10d
+  - ohlcv.momentum.ret_20d
+  - ohlcv.volatility.std_ret_10d
+  - ohlcv.volatility.std_ret_20d
+  - ohlcv.volume.momentum_10d
+  - ohlcv.liquidity.volume_vs_ma_20d
+  - ohlcv.momentum.ret_3d
+  - ohlcv.liquidity.volume_vs_ma_5d
+  - ohlcv.liquidity.volume_vs_ma_10d
+  - ohlcv.pressure.ret1_x_volume_shock_5d
+  - ohlcv.pressure.ret5_x_volume_shock_10d
+  - ohlcv.pressure.high_low_ratio
+label:
+  type: processed_daily_cross_sectional_percentile_gain
+  economic_return_expression: Ref($close, -10) / $close - 1
+  horizon_sessions: 10
+  gain_bins: 7
+model:
+  family: xgb
+  objective: rank:ndcg
+  tree_method: hist
+  grow_policy: lossguide
+  max_leaves: 31
+  max_depth: 0
+  min_child_weight: 1.0
+  learning_rate: 0.05
+  num_boost_round: 200
+  subsample: 0.8
+  colsample_bytree: 0.8
+  reg_alpha: 0.0
+  reg_lambda: 1.0
+  seed: 42
+  score_orientation: original
+strategy:
+  holding_sessions: 10
+  rebalance_sessions: 10
+  top_n: 15
+  bottom_n_diagnostic: 15
+  weighting: equal_weight
+  maximum_names_per_sector: 4
+  effective_maximum_sector_weight: 0.26666666666666666
+  sector_classification: configs/research_classifications/us87_sector_industry_v1.yaml
+  fill_contract: scan_complete_eligible_cross_section_until_exactly_15
+  fail_closed_if_unfillable: true
+  cost_bps: 20
+  benchmark_mode: reference_only
+stage_b_evidence:
+  experiment_id: us_x1_3_stage_b_v1
+  runner: exact_us_ranker_portfolio_v1
+  development_period: 2024H1-2025H2
+  positive_windows: 4
+  gate_pass_count: 6
+  compounded_relative_excess_20bps: 1.8032463075003768
+  compounded_relative_excess_60bps: 1.5919189436396328
+  incumbent_compounded_relative_excess_20bps: 1.6706892505243864
+  incumbent_compounded_relative_excess_60bps: 1.4534527938905026
+  improvement_vs_incumbent_20bps: 0.1325570569759904
+  improvement_vs_incumbent_60bps: 0.13846614974913019
+  mean_rank_ic: 0.051617500000000004
+  mean_rank_ic_improvement: 0.0019187500000000038
+  worst_drawdown: -0.26532173378029633
+  incumbent_worst_drawdown: -0.26218061541141957
+  exact_score_reproduction: true
+certification_evidence:
+  development:
+    mean_rank_ic: 0.051617500000000004
+    mean_icir: null
+selection_decision:
+  stage_b_supported: true
+  selected_over: us_x1_2
+  selected_by: canonical_stage_b_exact_replay_plus_explicit_user_direction
+  formal_acceptance: false
+  research_baseline_promotion: true
+  promotion_authority: explicit_user_direction_2026_08_12
+  reason: mvv_plus_pressure_passed_all_stage_b_support_gates_and_user_explicitly_directed_formal_research_baseline_promotion
+acceptance_gate:
+  untouched_future_six_month_window_required: true
+  prospective_acceptance_pending: true
+  clock_resets_for_exact_us_x1_3_identity: true
+  no_automatic_trade_readiness: true
+known_limitations:
+- Static curated membership carries survivorship bias.
+- Stage-B selection uses the declared development windows; no reporting window is reclassified as untouched evidence.
+- The exact US x1.3 prospective acceptance clock starts from this model identity and may not inherit US x1.2 observations.
+- This is an accepted research baseline after formal publication, not a trade-ready model.

@@ -291,7 +291,7 @@ def test_formal_refresh_yaml_contains_no_model_execution_recipe() -> None:
     for obsolete_step in (
         "Refresh QQQ Rotation v4.3 append-only",
         "Reproduce and refresh US x1.1 twice",
-        "Rebuild active US x1.2 research preview with complete evidence",
+        "Rebuild active US x1.3 research preview with complete evidence",
         "Reproduce and refresh CN x1.1 twice",
         "Extend canonical inputs and refresh BYD v1.3",
     ):
@@ -357,8 +357,8 @@ def test_formal_refresh_publishes_one_shared_model_data_bundle() -> None:
     assert "cancel-in-progress: false" in workflow
 
 
-def test_formal_refresh_frontend_validation_paths_are_complete() -> None:
-    required = (
+def test_formal_refresh_frontend_validation_is_decoupled_from_heavy_trigger() -> None:
+    frontend_triggers = (
         '"qlib-dashboard/scripts/**"',
         '"qlib-dashboard/src/**"',
         '"qlib-dashboard/package.json"',
@@ -366,21 +366,27 @@ def test_formal_refresh_frontend_validation_paths_are_complete() -> None:
         '"qlib-dashboard/vite.config.*"',
         '"qlib-dashboard/tsconfig*.json"',
     )
-    for path in (
-        Path(".github/workflows/formal-backtest-refresh.yml"),
-        Path(".github/workflows/formal-backtest-refresh-ci.yml"),
-    ):
-        workflow = path.read_text(encoding="utf-8")
-        for trigger in required:
-            assert trigger in workflow
     live = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
     )
+    candidate = Path(".github/workflows/formal-backtest-refresh-ci.yml").read_text(
+        encoding="utf-8"
+    )
+    for trigger in frontend_triggers:
+        assert trigger not in live
+        assert trigger in candidate
+
     preflight_start = live.index(
         "      - name: Validate refresh implementation before network work"
     )
     clock_start = live.index("      - name: Resolve transaction timestamp")
     assert "npm run check:account" in live[preflight_start:clock_start]
+
+    validation_start = live.index("      - name: Validate complete candidate publication")
+    review_start = live.index("      - name: Open or update reviewed refresh PR")
+    validation = live[validation_start:review_start]
+    for command in ("npm run lint", "npx tsc --noEmit", "npm test -- --run", "npm run build"):
+        assert command in validation
 
 
 def test_reviewed_refresh_dispatches_exact_merge_to_pages_before_current_status() -> None:

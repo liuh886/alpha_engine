@@ -10,7 +10,7 @@ on:
       - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/formal-backtest-refresh-ci.yml"
       - "configs/strategies/registry.json"
-      - "configs/models/us_x1_2.yaml"
+      - "configs/models/**"
       - "configs/factor_libraries/ohlcv.yaml"
       - "configs/data/**"
       - "configs/data_contracts/**"
@@ -19,35 +19,24 @@ on:
       - "configs/research_classifications/**"
       - "src/artifacts/**"
       - "src/data/**"
-      - "src/dashboard/**"
+      - "src/dashboard/market_evidence.py"
       - "src/factors/**"
       - "src/governance/**"
       - "src/research/**"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/run_formal_strategy_refresh.py"
       - "scripts/build_market_evidence.py"
-      - "scripts/build_us_x1_2_preview.py"
+      - "scripts/build_us_x1_3_preview.py"
       - "scripts/govern_formal_provider_cache.py"
       - "scripts/ranker_provisional_mtm.py"
       - "scripts/refresh_ranker_formal.py"
       - "scripts/refresh_byd_v1_3_formal.py"
       - "scripts/refresh_qqq_v4_3_formal.py"
       - "scripts/data/**"
-      - "data/research/formal_backtests/**"
-      - "data/research/formal_model_runs/**"
-      - "data/research/model_runs/**"
-      - "data/research/market_evidence/**"
-      - "data/research/model_data_bundle_v1/**"
-      - "data/research/strategy_signal_ledgers/**"
-      - "qlib-dashboard/scripts/**"
-      - "qlib-dashboard/src/**"
-      - "qlib-dashboard/package.json"
-      - "qlib-dashboard/package-lock.json"
-      - "qlib-dashboard/vite.config.*"
-      - "qlib-dashboard/tsconfig*.json"
       - "tests/test_formal_refresh.py"
       - "tests/test_formal_strategy_refresh.py"
-      - "tests/test_us_x1_2_preview_publication.py"
+      - "tests/test_us_x1_3_preview_publication.py"
+      - "tests/test_us_x1_3_current_target.py"
       - "tests/test_refresh_byd_v1_3_formal.py"
       - "pyproject.toml"
       - "uv.lock"
@@ -111,7 +100,7 @@ jobs:
             src/governance/active_strategy_catalog.py \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
-            src/artifacts/us_x1_2_preview.py \
+            src/artifacts/us_x1_3_preview.py \
             src/artifacts/qqq_v4_3_formal.py \
             src/artifacts/strategy_operations.py \
             src/dashboard/market_evidence.py \
@@ -127,7 +116,7 @@ jobs:
             scripts/run_formal_strategy_refresh.py \
             scripts/ranker_provisional_mtm.py \
             scripts/refresh_ranker_formal.py \
-            scripts/build_us_x1_2_preview.py \
+            scripts/build_us_x1_3_preview.py \
             scripts/byd_formal_refresh_common.py \
             scripts/byd_v1_3_formal_builder.py \
             scripts/refresh_byd_v1_3_formal.py \
@@ -144,7 +133,8 @@ jobs:
             tests/test_strategy_operations.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
-            tests/test_us_x1_2_preview_publication.py
+            tests/test_us_x1_3_preview_publication.py \
+            tests/test_us_x1_3_current_target.py
           uv run mypy \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
@@ -166,7 +156,8 @@ jobs:
             tests/test_strategy_operations.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
-            tests/test_us_x1_2_preview_publication.py \
+            tests/test_us_x1_3_preview_publication.py \
+            tests/test_us_x1_3_current_target.py \
             -q --strict-markers --tb=short
           cd qlib-dashboard
           npm run check:account
@@ -525,7 +516,8 @@ jobs:
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_model_x1_baselines.py \
-            tests/test_us_x1_2_preview_publication.py \
+            tests/test_us_x1_3_preview_publication.py \
+            tests/test_us_x1_3_current_target.py \
             -q --strict-markers --tb=short
           uv run python scripts/check_repository_model_runs.py
           cd qlib-dashboard

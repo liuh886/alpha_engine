@@ -5,6 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from scripts.run_formal_refresh_transaction import (
+    _assert_formal_catalog_or_declared_transition,
+)
 from src.governance.active_strategy_catalog import (
     ActiveStrategyCatalogError,
     assert_formal_catalog_matches_active_strategies,
@@ -16,14 +19,14 @@ CATALOG = Path("configs/strategies/registry.json")
 FORMAL_CATALOG = Path("data/research/formal_model_runs/catalog.json")
 
 
-def test_committed_active_strategy_catalog_matches_formal_catalog() -> None:
+def test_committed_active_strategy_catalog_matches_or_declares_formal_cutover() -> None:
     active = load_active_strategy_catalog(CATALOG)
     catalog = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
     registry = json.loads(CATALOG.read_text(encoding="utf-8"))
 
     assert active.active_model_version_ids == (
         "qqqi_qqq_tqqq_v4_3",
-        "us_x1_2",
+        "us_x1_3",
         "cn_x1_1",
         "byd_v1_3_recovery_event_low_vol_confirmation_v1",
     )
@@ -31,7 +34,21 @@ def test_committed_active_strategy_catalog_matches_formal_catalog() -> None:
         "current_operations_access" not in strategy
         for strategy in registry["strategies"]
     )
-    assert_formal_catalog_matches_active_strategies(catalog, active)
+
+    observed = {
+        str(row.get("model_version_id") or "")
+        for row in catalog.get("records", [])
+        if isinstance(row, dict)
+    }
+    expected = set(active.active_model_version_ids)
+    if observed == expected:
+        assert_formal_catalog_matches_active_strategies(catalog, active)
+    else:
+        # The only permitted temporary mismatch is the exact one-for-one
+        # lineage.supersedes cutover validated by the formal refresh planner.
+        # Once Reviewed Formal Refresh publishes the successor, this branch
+        # returns to the strict exact-match path above.
+        _assert_formal_catalog_or_declared_transition(catalog, active)
 
 
 def test_catalog_rejects_duplicate_active_model_identity() -> None:

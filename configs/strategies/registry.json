@@ -20,16 +20,16 @@
     },
     {
       "strategy_id": "us_x",
-      "display_name": "US x1.2",
+      "display_name": "US x1.3",
       "model_family_id": "us_ranker",
-      "model_version_id": "us_x1_2",
+      "model_version_id": "us_x1_3",
       "model_kind": "cross_sectional_ranker",
       "market": "us",
       "benchmark_id": "QQQ",
       "formal_status": "accepted_formal_baseline",
       "decision_cadence": "Every 10 provider sessions",
       "next_decision_policy": "Publish only on the governed rebalance session; target applies to the next eligible open.",
-      "signal_ledger": "data/research/strategy_signal_ledgers/us_x1_2",
+      "signal_ledger": "data/research/strategy_signal_ledgers/us_x1_3",
       "historical_evidence_access": "public"
     },
     {
