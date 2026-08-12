@@ -220,7 +220,7 @@ test('product homepage opens the strategy console', async ({ page }, testInfo) =
   expect(pageErrors).toEqual([]);
   await page.screenshot({ path: `test-results/static-artifact/landing-${testInfo.project.name}.png`, fullPage: true });
 
-  await page.locator('.landing-actions').getByRole('link', { name: 'Open console' }).click();
+  await page.locator('.landing-actions').getByRole('link', { name: 'Open app' }).click();
   await expect(page).toHaveURL(/#\/app$/);
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
 });
