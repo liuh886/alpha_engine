@@ -22,16 +22,16 @@ from src.factors.library import (
     FACTOR_LIBRARY_SCHEMA_VERSION,
     FactorGroup,
     factor_groups_to_ranker_feature_groups,
+    load_factor_library as load_canonical_factor_library,
 )
-from src.factors.research_source import load_research_factor_source
 
 STRUCTURED_FACTOR_LIBRARY_SCHEMA = FACTOR_LIBRARY_SCHEMA_VERSION
 
 
 def load_factor_library(path: str | Path) -> dict[str, FactorGroup]:
-    """Project one canonical research factor source into the ranker group mapping."""
+    """Project one canonical factor library into the ranker group mapping."""
 
-    return dict(load_research_factor_source(path).groups)
+    return dict(load_canonical_factor_library(path).groups)
 
 
 def select_factor_groups(
