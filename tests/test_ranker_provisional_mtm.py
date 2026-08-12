@@ -146,7 +146,7 @@ def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
     assert persisted["freshness"]["performance_observation_status"] == "provisional_mtm"
 
 
-def test_mtm_planner_refreshes_current_cutoff_when_performance_is_stale(
+def test_mtm_planner_refreshes_only_active_ranker_source_when_performance_is_stale(
     tmp_path: Path,
 ) -> None:
     _write_ranker_package(
@@ -165,21 +165,19 @@ def test_mtm_planner_refreshes_current_cutoff_when_performance_is_stale(
     assert _mtm_refresh_model_ids(
         tmp_path,
         cutoffs={"us": "2026-08-07", "cn": "2026-08-07"},
-    ) == ("us_x1_1", "cn_x1_1")
+    ) == ("cn_x1_1",)
 
 
-def test_mtm_planner_is_current_after_cutoff_mtm_is_published(tmp_path: Path) -> None:
-    for model_id, settled_end in (
-        ("us_x1_1", "2026-07-30"),
-        ("cn_x1_1", "2026-07-29"),
-    ):
-        _write_ranker_package(
-            tmp_path,
-            model_id=model_id,
-            settled_end=settled_end,
-            cutoff="2026-08-07",
-            provisional_as_of="2026-08-07",
-        )
+def test_mtm_planner_is_current_after_active_cutoff_mtm_is_published(
+    tmp_path: Path,
+) -> None:
+    _write_ranker_package(
+        tmp_path,
+        model_id="cn_x1_1",
+        settled_end="2026-07-29",
+        cutoff="2026-08-07",
+        provisional_as_of="2026-08-07",
+    )
 
     assert _mtm_refresh_model_ids(
         tmp_path,
