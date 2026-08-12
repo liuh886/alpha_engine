@@ -6,16 +6,18 @@ import {
   type StrategyOperationsClient,
   type StrategyOperationsSnapshot,
 } from '@/lib/strategy-operations';
+import { useAccessControl } from './useAccessControl';
 import { useAlphaMembership } from './useAlphaMembership';
 
 export function useStrategyOperations(runs: GovernedRunSummary[]) {
+  const access = useAccessControl();
   const membership = useAlphaMembership();
   const formalRuns = useMemo(() => runs.filter((run) => run.channel === 'formal'), [runs]);
   const [snapshots, setSnapshots] = useState<Map<string, StrategyOperationsSnapshot>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (membership.loading) return;
+    if (membership.loading || access.policyLoading) return;
     let active = true;
     setLoading(true);
 
@@ -25,7 +27,7 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
         const client = await membership.getClient();
         if (client) {
           const protectedSnapshots = Array.from(next.values()).filter(
-            (snapshot) => snapshot.currentOperationsAccess !== 'public',
+            (snapshot) => access.requiredTier('strategy', snapshot.strategyId) !== 'public',
           );
           await Promise.all(protectedSnapshots.map(async (snapshot) => {
             try {
@@ -36,7 +38,7 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
               );
               if (protectedSnapshot) next.set(snapshot.modelVersionId, protectedSnapshot);
             } catch {
-              // Fail closed: keep the redacted public projection when entitlement delivery fails.
+              // Fail closed at the product surface: keep the redacted public projection.
             }
           }));
         }
@@ -47,7 +49,7 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
     })();
 
     return () => { active = false; };
-  }, [formalRuns, membership.getClient, membership.loading, membership.signedIn]);
+  }, [access.policyLoading, access.requiredTier, formalRuns, membership.getClient, membership.loading, membership.signedIn]);
 
   return { formalRuns, snapshots, loading };
 }
