@@ -19,10 +19,10 @@ EXPECTED_X1_MODELS = (
     "cn_x1_1",
     "us_x1_0",
     "us_x1_1",
+    "us_x1_2",
     "us_x1_3",
 )
 
-# Historical artifact paths are lifecycle test inputs, not an active-product registry.
 MODEL_ARTIFACTS: dict[str, dict[str, Any]] = {
     "cn_x1_0": {
         "display_name": "CN x1.0",
@@ -53,13 +53,20 @@ MODEL_ARTIFACTS: dict[str, dict[str, Any]] = {
         "notebook": "notebooks/models/us_x1_1_baseline.ipynb",
         "frozen_research_spec": "configs/research_paradigms/us_x1_1_frozen_v1.yaml",
     },
-    "us_x1_3": {
-        "display_name": "US x1.3",
-        "status": "baseline_research_active",
+    "us_x1_2": {
+        "display_name": "US x1.2",
+        "status": "historical_baseline_superseded",
         "config": "configs/models/us_x1_2.yaml",
         "notebook": "notebooks/models/us_x1_2_baseline.ipynb",
         "frozen_research_spec": "configs/research_paradigms/us_x1_2_frozen_v1.yaml",
         "certification_receipt": "data/research/experiment_receipts/us_x1_2_certification_v1.json",
+    },
+    "us_x1_3": {
+        "display_name": "US x1.3",
+        "status": "baseline_research_active",
+        "config": "configs/models/us_x1_3.yaml",
+        "stage_b_spec": "configs/research_experiments/us_x1_3_stage_b_v1.yaml",
+        "stage_b_receipt": "data/research/experiment_receipts/us_x1_3_stage_b_v1.json",
     },
 }
 
@@ -93,23 +100,17 @@ def _validate_notebook(path: Path, *, model_id: str, display_name: str) -> None:
     text = "\n".join(
         "".join(cell.get("source", [])) for cell in notebook.get("cells", [])
     )
-    required = (display_name, "trade_ready")
-    missing = [token for token in required if token not in text]
+    missing = [token for token in (display_name, "trade_ready") if token not in text]
     if missing:
         raise ValueError(f"{model_id}: notebook missing required tokens {missing}")
 
 
-def _validate_cn_formal_extension(
-    package: dict[str, Any],
-    config: dict[str, Any],
-) -> None:
+def _validate_cn_formal_extension(package: dict[str, Any], config: dict[str, Any]) -> None:
     if package.get("evidence_completeness", {}).get("status") != "complete":
         raise ValueError("cn_x1_1: complete evidence is required")
     if package.get("evidence_completeness", {}).get("missing") != []:
         raise ValueError("cn_x1_1: package declares missing evidence")
-    promotion = dict(
-        dict(config.get("backtest_evidence", {})).get("complete_formal_path") or {}
-    )
+    promotion = dict(dict(config.get("backtest_evidence", {})).get("complete_formal_path") or {})
     minimum_rows = {
         "report": int(promotion.get("rebalance_count", 0)),
         "positions": int(promotion.get("position_rows", 0)),
@@ -120,13 +121,9 @@ def _validate_cn_formal_extension(
     for field, minimum in minimum_rows.items():
         rows = package.get(field)
         if not isinstance(rows, list) or len(rows) < minimum:
-            raise ValueError(
-                f"cn_x1_1: frozen {field} prefix is shorter than {minimum} rows"
-            )
+            raise ValueError(f"cn_x1_1: frozen {field} prefix is shorter than {minimum} rows")
     try:
-        frozen_cutoff = date.fromisoformat(
-            str(config.get("provider_binding", {}).get("cutoff") or "")
-        )
+        frozen_cutoff = date.fromisoformat(str(config.get("provider_binding", {}).get("cutoff") or ""))
         published_cutoff = date.fromisoformat(str(package.get("evidence_cutoff") or ""))
     except ValueError as exc:
         raise ValueError("cn_x1_1: invalid evidence cutoff") from exc
@@ -134,11 +131,7 @@ def _validate_cn_formal_extension(
         raise ValueError("cn_x1_1: evidence cutoff predates frozen promotion evidence")
 
 
-def _validate_common_model(
-    root: Path,
-    model_id: str,
-    entry: dict[str, Any],
-) -> tuple[dict[str, Any], Path]:
+def _validate_common_model(root: Path, model_id: str, entry: dict[str, Any]) -> tuple[dict[str, Any], Path]:
     config_path = root / str(entry["config"])
     if not config_path.is_file():
         raise FileNotFoundError(config_path)
@@ -152,11 +145,7 @@ def _validate_common_model(
     return config, config_path
 
 
-def _validate_legacy_x1(
-    root: Path,
-    model_id: str,
-    entry: dict[str, Any],
-) -> dict[str, Any]:
+def _validate_legacy_x1(root: Path, model_id: str, entry: dict[str, Any]) -> dict[str, Any]:
     config, config_path = _validate_common_model(root, model_id, entry)
     strategy = dict(config.get("strategy", {}))
     if int(strategy.get("holding_sessions", 0)) != 10:
@@ -167,21 +156,14 @@ def _validate_legacy_x1(
         raise ValueError(f"{model_id}: Top-15 convention must remain frozen")
     if int(strategy.get("cost_bps", 0)) != 20:
         raise ValueError(f"{model_id}: cost must remain 20 bps")
-
     notebook_path = root / str(entry["notebook"])
     spec_path = root / str(entry["frozen_research_spec"])
     if not notebook_path.is_file() or not spec_path.is_file():
         raise FileNotFoundError(f"{model_id}: notebook or frozen spec is missing")
     spec = _load_yaml(spec_path)
-    if spec.get("market") != config.get("market") or spec.get("benchmark") != config.get(
-        "benchmark"
-    ):
+    if spec.get("market") != config.get("market") or spec.get("benchmark") != config.get("benchmark"):
         raise ValueError(f"{model_id}: frozen spec identity mismatch")
-    _validate_notebook(
-        notebook_path,
-        model_id=model_id,
-        display_name=str(config["display_name"]),
-    )
+    _validate_notebook(notebook_path, model_id=model_id, display_name=str(config["display_name"]))
     return {
         "model_id": model_id,
         "display_name": str(config["display_name"]),
@@ -194,81 +176,109 @@ def _validate_legacy_x1(
 
 
 def _validate_us_x1_2(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
-    model_id = "us_x1_3"
+    model_id = "us_x1_2"
     config, config_path = _validate_common_model(root, model_id, entry)
-    if config.get("status") != "baseline_research_active":
-        raise ValueError("us_x1_2: active baseline status mismatch")
     lineage = dict(config.get("lineage", {}))
     if lineage.get("parent") != "us_x1_1" or lineage.get("supersedes") != "us_x1_1":
         raise ValueError("us_x1_2: lineage mismatch")
-
-    model = dict(config.get("model", {}))
-    expected_model: dict[str, Any] = {
-        "family": "xgb",
-        "objective": "rank:ndcg",
-        "tree_method": "hist",
-        "grow_policy": "lossguide",
-        "max_leaves": 31,
-        "max_depth": 0,
-        "min_child_weight": 1.0,
-        "learning_rate": 0.05,
-        "num_boost_round": 200,
-        "subsample": 0.8,
-        "colsample_bytree": 0.8,
-        "reg_alpha": 0.0,
-        "reg_lambda": 1.0,
-        "seed": 42,
-    }
-    for key, expected in expected_model.items():
-        if model.get(key) != expected:
-            raise ValueError(f"us_x1_2: XGBoost {key} mismatch")
-
-    strategy = dict(config.get("strategy", {}))
-    expected_strategy: dict[str, Any] = {
-        "holding_sessions": 10,
-        "rebalance_sessions": 10,
-        "top_n": 15,
-        "weighting": "equal_weight",
-        "maximum_names_per_sector": 4,
-        "cost_bps": 20,
-        "fail_closed_if_unfillable": True,
-    }
-    for key, expected in expected_strategy.items():
-        if strategy.get(key) != expected:
-            raise ValueError(f"us_x1_2: strategy {key} mismatch")
-
     receipt_path = root / str(entry["certification_receipt"])
     receipt = _load_json(receipt_path)
     if receipt.get("selected_development_winner") != "r11_sampled":
         raise ValueError("us_x1_2: certification winner mismatch")
     if receipt.get("determinism", {}).get("exact") is not True:
         raise ValueError("us_x1_2: deterministic reproduction is required")
-    if receipt.get("governance", {}).get("formal_acceptance_supported") is not False:
-        raise ValueError("us_x1_2: prospective limitation must remain explicit")
     selected = dict(receipt.get("development_candidates", {}).get("r11_sampled") or {})
     if selected.get("all_development_gates_pass") is not True:
         raise ValueError("us_x1_2: development gates are not satisfied")
-
     notebook_path = root / str(entry["notebook"])
     spec_path = root / str(entry["frozen_research_spec"])
     if not notebook_path.is_file() or not spec_path.is_file():
         raise FileNotFoundError("us_x1_2: notebook or frozen spec is missing")
-    spec = _load_yaml(spec_path)
-    if spec.get("model_id") != model_id or spec.get("status") != "frozen_active_research_baseline":
-        raise ValueError("us_x1_2: frozen spec status mismatch")
-    if spec.get("promotion_boundary", {}).get("prospective_acceptance_pending") is not True:
-        raise ValueError("us_x1_2: prospective acceptance boundary was weakened")
-    _validate_notebook(notebook_path, model_id=model_id, display_name="US x1.3")
-
+    _validate_notebook(notebook_path, model_id=model_id, display_name="US x1.2")
     return {
         "model_id": model_id,
-        "display_name": "US x1.3",
+        "display_name": "US x1.2",
         "status": str(entry["status"]),
         "config": str(config_path.relative_to(root)),
         "notebook": str(notebook_path.relative_to(root)),
         "frozen_spec": str(spec_path.relative_to(root)),
         "certification_receipt": str(receipt_path.relative_to(root)),
         "selected_candidate": "r11_sampled",
+        "prospective_acceptance_pending": True,
+        "trade_ready": False,
+    }
+
+
+def _validate_us_x1_3(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
+    model_id = "us_x1_3"
+    config, config_path = _validate_common_model(root, model_id, entry)
+    if config.get("status") != "baseline_research_active":
+        raise ValueError("us_x1_3: active baseline status mismatch")
+    lineage = dict(config.get("lineage", {}))
+    if lineage.get("parent") != "us_x1_2" or lineage.get("supersedes") != "us_x1_2" or lineage.get("selected_candidate") != "mvv_plus_pressure":
+        raise ValueError("us_x1_3: lineage mismatch")
+    expected_factors = [
+        "ohlcv.momentum.ret_5d",
+        "ohlcv.momentum.ret_10d",
+        "ohlcv.momentum.ret_20d",
+        "ohlcv.volatility.std_ret_10d",
+        "ohlcv.volatility.std_ret_20d",
+        "ohlcv.volume.momentum_10d",
+        "ohlcv.liquidity.volume_vs_ma_20d",
+        "ohlcv.momentum.ret_3d",
+        "ohlcv.liquidity.volume_vs_ma_5d",
+        "ohlcv.liquidity.volume_vs_ma_10d",
+        "ohlcv.pressure.ret1_x_volume_shock_5d",
+        "ohlcv.pressure.ret5_x_volume_shock_10d",
+        "ohlcv.pressure.high_low_ratio",
+    ]
+    features = dict(config.get("features", {}))
+    if features.get("source_factor_groups") != ["momentum_volatility_volume", "us_price_volume_pressure"] or features.get("factor_ids") != expected_factors:
+        raise ValueError("us_x1_3: Stage-B factor identity/order mismatch")
+    expected_model = {
+        "family": "xgb", "objective": "rank:ndcg", "tree_method": "hist", "grow_policy": "lossguide",
+        "max_leaves": 31, "max_depth": 0, "min_child_weight": 1.0, "learning_rate": 0.05,
+        "num_boost_round": 200, "subsample": 0.8, "colsample_bytree": 0.8, "reg_alpha": 0.0,
+        "reg_lambda": 1.0, "seed": 42,
+    }
+    model = dict(config.get("model", {}))
+    for key, expected in expected_model.items():
+        if model.get(key) != expected:
+            raise ValueError(f"us_x1_3: XGBoost {key} mismatch")
+    strategy = dict(config.get("strategy", {}))
+    expected_strategy = {
+        "holding_sessions": 10, "rebalance_sessions": 10, "top_n": 15, "weighting": "equal_weight",
+        "maximum_names_per_sector": 4, "cost_bps": 20, "fail_closed_if_unfillable": True,
+    }
+    for key, expected in expected_strategy.items():
+        if strategy.get(key) != expected:
+            raise ValueError(f"us_x1_3: strategy {key} mismatch")
+    spec_path = root / str(entry["stage_b_spec"])
+    receipt_path = root / str(entry["stage_b_receipt"])
+    spec = _load_yaml(spec_path)
+    receipt = _load_json(receipt_path)
+    if spec.get("status") != "completed_supported" or spec.get("result", {}).get("supported") is not True or spec.get("result", {}).get("winner") != "mvv_plus_pressure":
+        raise ValueError("us_x1_3: Stage-B experiment is not supported")
+    if receipt.get("decision") != "us_x1_3_stage_b_candidate_supported" or receipt.get("winner") != "mvv_plus_pressure" or receipt.get("stage_b_supported") is not True or receipt.get("supported") is not True or receipt.get("research_only") is not True or receipt.get("trade_ready") is not False:
+        raise ValueError("us_x1_3: Stage-B receipt boundary mismatch")
+    candidate = dict(receipt.get("candidate_metadata", {}).get("mvv_plus_pressure") or {})
+    if candidate.get("factor_count") != 13 or candidate.get("factor_groups") != ["momentum_volatility_volume", "us_price_volume_pressure"]:
+        raise ValueError("us_x1_3: Stage-B candidate metadata mismatch")
+    reproduction = receipt.get("score_reproduction")
+    if not isinstance(reproduction, dict) or not reproduction or any(not isinstance(row, dict) or row.get("first") != row.get("second") for row in reproduction.values()):
+        raise ValueError("us_x1_3: deterministic score reproduction failed")
+    support = dict(receipt.get("support_boundary") or {})
+    if support.get("supported") is not True or support.get("leader") != "mvv_plus_pressure" or support.get("positive_window_count") != 4 or support.get("exact_score_reproduction") is not True:
+        raise ValueError("us_x1_3: Stage-B support gates are incomplete")
+    return {
+        "model_id": model_id,
+        "display_name": "US x1.3",
+        "status": str(entry["status"]),
+        "config": str(config_path.relative_to(root)),
+        "stage_b_spec": str(spec_path.relative_to(root)),
+        "stage_b_receipt": str(receipt_path.relative_to(root)),
+        "selected_candidate": "mvv_plus_pressure",
+        "factor_count": 13,
         "prospective_acceptance_pending": True,
         "trade_ready": False,
     }
@@ -297,13 +307,11 @@ def _validate_cn_x1_1(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def validate_model_config(
-    root: Path,
-    model_id: str,
-    entry: dict[str, Any],
-) -> dict[str, Any]:
-    if model_id == "us_x1_3":
+def validate_model_config(root: Path, model_id: str, entry: dict[str, Any]) -> dict[str, Any]:
+    if model_id == "us_x1_2":
         return _validate_us_x1_2(root, entry)
+    if model_id == "us_x1_3":
+        return _validate_us_x1_3(root, entry)
     if model_id == "cn_x1_1":
         return _validate_cn_x1_1(root, entry)
     return _validate_legacy_x1(root, model_id, entry)
@@ -318,14 +326,8 @@ def validate_registry(root: Path) -> dict[str, Any]:
         "cn": active_by_strategy["cn_x"].model_version_id,
     }
     if observed_active != EXPECTED_ACTIVE_BASELINES:
-        raise ValueError(
-            f"Active Strategy Catalog x1 identities drifted: {observed_active}"
-        )
-
-    models = [
-        validate_model_config(root, model_id, dict(MODEL_ARTIFACTS[model_id]))
-        for model_id in EXPECTED_X1_MODELS
-    ]
+        raise ValueError(f"Active Strategy Catalog x1 identities drifted: {observed_active}")
+    models = [validate_model_config(root, model_id, dict(MODEL_ARTIFACTS[model_id])) for model_id in EXPECTED_X1_MODELS]
     return {
         "schema_version": "2.0",
         "status": "x1_lifecycle_valid",
