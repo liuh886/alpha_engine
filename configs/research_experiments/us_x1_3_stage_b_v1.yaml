@@ -5,11 +5,11 @@ schema_version: '1.0'
 experiment_id: us_x1_3_stage_b_v1
 runner: cross_sectional_xgb_ranker_v1
 active: false
-status: pre_registered
+status: completed_supported
 parent_model_id: us_x1_2
 research_only: true
 trade_ready: false
-online_validation: exact_us_ranker_portfolio_v1
+validation_runner: exact_us_ranker_portfolio_v1
 
 purpose: >-
   Exact Stage-B replay for Issue #862. Refit the frozen US x1.2 XGBoost
@@ -160,3 +160,12 @@ version_policy:
   maximum_surviving_candidates: 1
   may_propose_us_x1_3_candidate: true
   may_release_us_x1_3_automatically: false
+
+result:
+  supported: true
+  winner: mvv_plus_pressure
+  result_receipt: data/research/experiment_receipts/us_x1_3_stage_b_v1.json
+  canonical_validation_run_id: 31567853785
+  artifact_id: 9130182216
+  artifact_digest: sha256:6733fde47212088c902df88c436af553f2bd83e37a19c14d47e066ce5f8c199d
+  automatic_promotion: false
