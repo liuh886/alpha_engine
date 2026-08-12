@@ -6,6 +6,11 @@ import argparse
 import json
 from pathlib import Path
 
+import yaml
+
+from src.research.cn_cal_deeper_portfolio_mapping_replay import (
+    run_cal_deeper_portfolio_mapping_replay,
+)
 from src.research.cn_ranker_exact_portfolio_replay import run_exact_cn_ranker_portfolio_replay
 
 
@@ -14,10 +19,20 @@ def main() -> int:
     parser.add_argument("--spec", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
-    receipt = run_exact_cn_ranker_portfolio_replay(
-        args.spec,
-        output_dir=args.output_dir,
-    )
+
+    payload = yaml.safe_load(args.spec.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("CN replay spec must be a YAML mapping")
+    if payload.get("portfolio_mapping_diagnostic") is not None:
+        receipt = run_cal_deeper_portfolio_mapping_replay(
+            args.spec,
+            output_dir=args.output_dir,
+        )
+    else:
+        receipt = run_exact_cn_ranker_portfolio_replay(
+            args.spec,
+            output_dir=args.output_dir,
+        )
     print(json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if receipt.get("status") == "completed" else 1
 
