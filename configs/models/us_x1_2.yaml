@@ -33,15 +33,14 @@ provider_binding:
   cutoff: '2026-08-10'
 features:
   library: configs/factor_libraries/ohlcv.yaml
-  group: momentum_volatility_volume
-  expressions:
-  - $close/Ref($close,10)-1
-  - $close/Ref($close,20)-1
-  - $close/Ref($close,5)-1
-  - Std($close/Ref($close,1)-1,10)
-  - Std($close/Ref($close,1)-1,20)
-  - $volume/Ref($volume,10)-1
-  - $volume/Mean($volume,20)-1
+  factor_ids:
+  - ohlcv.momentum.ret_10d
+  - ohlcv.momentum.ret_20d
+  - ohlcv.momentum.ret_5d
+  - ohlcv.volatility.std_ret_10d
+  - ohlcv.volatility.std_ret_20d
+  - ohlcv.volume.momentum_10d
+  - ohlcv.liquidity.volume_vs_ma_20d
 label:
   type: processed_daily_cross_sectional_percentile_gain
   economic_return_expression: Ref($close, -10) / $close - 1

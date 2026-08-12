@@ -10,6 +10,7 @@ from src.research.us_x1_2_current_target import (
     MODEL_ID,
     _calibration,
     _factor_columns,
+    _factor_contract,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,10 +40,29 @@ def test_current_target_uses_exact_formal_x1_2_model_contract() -> None:
     assert config["strategy"]["maximum_names_per_sector"] == 4
     assert config["strategy"]["cost_bps"] == 20
 
-    expressions = list(config["features"]["expressions"])
+    assert "expressions" not in config["features"]
+    factor_ids, expressions = _factor_contract(ROOT, config)
     columns = [f"feature_{index}" for index in range(len(expressions))]
-    factor_columns = _factor_columns(ROOT, expressions=expressions, columns=columns)
-    assert len(factor_columns) == 7
+    factor_columns = _factor_columns(factor_ids=factor_ids, columns=columns)
+    assert factor_ids == [
+        "ohlcv.momentum.ret_10d",
+        "ohlcv.momentum.ret_20d",
+        "ohlcv.momentum.ret_5d",
+        "ohlcv.volatility.std_ret_10d",
+        "ohlcv.volatility.std_ret_20d",
+        "ohlcv.volume.momentum_10d",
+        "ohlcv.liquidity.volume_vs_ma_20d",
+    ]
+    assert expressions == [
+        "$close/Ref($close,10)-1",
+        "$close/Ref($close,20)-1",
+        "$close/Ref($close,5)-1",
+        "Std($close/Ref($close,1)-1,10)",
+        "Std($close/Ref($close,1)-1,20)",
+        "$volume/Ref($volume,10)-1",
+        "$volume/Mean($volume,20)-1",
+    ]
+    assert list(factor_columns) == factor_ids
     assert set(factor_columns.values()) == set(columns)
 
 

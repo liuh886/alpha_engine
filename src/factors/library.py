@@ -107,6 +107,16 @@ class FactorLibrary(Mapping[str, FactorGroup]):
                 return definition
         raise ValueError(f"unknown factor id: {factor_id}")
 
+    def resolve_factors(self, factor_ids: Iterable[str]) -> list[FactorDefinition]:
+        """Resolve an explicit ordered model input contract to canonical definitions."""
+
+        ids = [str(factor_id).strip() for factor_id in factor_ids]
+        if not ids or not all(ids):
+            raise ValueError("factor_ids must contain at least one non-empty factor id")
+        if len(ids) != len(set(ids)):
+            raise ValueError("factor_ids must not contain duplicates")
+        return [self.factor(factor_id) for factor_id in ids]
+
     def select_groups(self, group_names: Iterable[str]) -> list[FactorGroup]:
         selected: list[FactorGroup] = []
         for raw_name in group_names:
@@ -130,7 +140,7 @@ class FactorLibrary(Mapping[str, FactorGroup]):
         return definitions
 
     def resolve_expressions(self, factor_ids: Iterable[str]) -> list[str]:
-        return [self.factor(str(factor_id)).expression for factor_id in factor_ids]
+        return [definition.expression for definition in self.resolve_factors(factor_ids)]
 
     def manifest(self, group_names: Iterable[str] | None = None) -> dict[str, Any]:
         if group_names is None:

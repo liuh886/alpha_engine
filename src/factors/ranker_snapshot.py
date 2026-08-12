@@ -15,10 +15,6 @@ from src.factors.strategy_snapshot import (
 )
 
 LIBRARY_PATH = PROJECT_ROOT / "configs" / "factor_libraries" / "ohlcv.yaml"
-RANKER_GROUPS = {
-    "us_ranker": "momentum_volatility_volume",
-    "cn_ranker": "cn_balanced_ohlcv",
-}
 
 
 def _finite(value: object, label: str) -> float:
@@ -40,30 +36,25 @@ def build_ranker_factor_snapshot(
     data_freshness_ok: bool,
     library_path: str | Path = LIBRARY_PATH,
 ) -> dict[str, Any]:
-    """Bind the exact current ranker inputs to canonical factor identities.
+    """Bind the exact ordered ranker inputs to canonical factor identities.
 
     ``factor_values`` contains the target-portfolio weighted mean of each model
-    input at the decision cutoff. ``factor_references`` may additionally carry
-    universe means or model contribution diagnostics without redefining the
-    canonical factor value itself.
+    input at the decision cutoff. Its key order is the model feature contract.
+    Research factor-group labels are intentionally not inferred here because
+    multiple groups may reference the same canonical factor set.
     """
 
-    group = RANKER_GROUPS.get(model_family_id)
-    if group is None:
-        raise StrategyFactorSnapshotError(
-            f"no ranker factor materializer for family {model_family_id!r}"
-        )
+    if not model_family_id:
+        raise StrategyFactorSnapshotError("ranker model_family_id is required")
     if not signal_date or not latest_data_date:
         raise StrategyFactorSnapshotError("ranker signal/cutoff date is required")
 
     library = load_factor_library(library_path)
-    definitions = library.factors_for_groups([group])
-    expected_ids = [definition.factor_id for definition in definitions]
-    actual_ids = list(factor_values)
-    if actual_ids != expected_ids:
-        raise StrategyFactorSnapshotError(
-            f"ranker factor identity mismatch: expected={expected_ids}, actual={actual_ids}"
-        )
+    factor_ids = list(factor_values)
+    try:
+        definitions = library.resolve_factors(factor_ids)
+    except ValueError as exc:
+        raise StrategyFactorSnapshotError(str(exc)) from exc
 
     references = factor_references or {}
     rows: list[dict[str, Any]] = []
@@ -95,7 +86,7 @@ def build_ranker_factor_snapshot(
         "catalog_version": library.catalog.catalog_version,
         "catalog_implementation_hash": library.catalog.implementation_hash(),
         "source_sha256": library.source_sha256,
-        "groups": [group],
+        "groups": [],
         "factor_count": len(rows),
         "factors": rows,
         "research_only": True,
