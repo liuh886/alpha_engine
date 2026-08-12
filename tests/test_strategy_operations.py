@@ -244,6 +244,7 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
     observed = _by_model(payload)
     formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
     expected = {row["model_version_id"] for row in formal["records"]}
+    assert payload["schema_version"] == "2.2.0"
     assert set(observed) == expected
     assert {str(row["strategy_id"]) for row in observed.values()} == {
         "qqq_rotation",
@@ -251,7 +252,7 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
         "cn_x",
         "byd",
     }
-    assert observed[QQQ_MODEL]["current_operations_access"] == "pro"
+    assert all("current_operations_access" not in row for row in observed.values())
     assert observed[QQQ_MODEL]["status"] == "awaiting_observation"
     assert observed[BYD_MODEL]["status"] == "awaiting_observation"
     assert observed[US_MODEL]["status"] == "awaiting_observation"
@@ -321,7 +322,7 @@ def test_qqq_ledger_projects_canonical_factor_snapshot(tmp_path: Path) -> None:
     )
     qqq = _by_model(payload)[QQQ_MODEL]
     assert qqq["strategy_id"] == "qqq_rotation"
-    assert qqq["current_operations_access"] == "pro"
+    assert "current_operations_access" not in qqq
     assert qqq["status"] == "target_pending_execution"
     assert qqq["data_freshness"] == "current"
     assert qqq["factor_freshness"] == "current"
