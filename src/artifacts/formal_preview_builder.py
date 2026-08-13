@@ -16,6 +16,7 @@ from typing import Any, Mapping
 from src.artifacts.formal_bundle_v2_builder import FormalBundleV2BuildError, build_plan
 from src.artifacts.model_run_exporter import RunExportPlan, SectionPlan, export_model_run
 from src.governance.active_strategy_catalog import ActiveStrategy
+from src.governance.model_contract import ModelContractError, load_performance_semantics
 
 
 class FormalPreviewBuildError(ValueError):
@@ -93,8 +94,16 @@ def _with_provisional_mtm(plan: RunExportPlan, source_path: Path) -> RunExportPl
     return replace(plan, sections=tuple(sections))
 
 
-def _native_sections(plan: RunExportPlan) -> tuple[SectionPlan, ...]:
-    """Remove the legacy package contract from the published evidence graph."""
+def _native_sections(
+    plan: RunExportPlan,
+    strategy: ActiveStrategy,
+) -> tuple[SectionPlan, ...]:
+    """Remove legacy publication identity and bind methodology to the model contract."""
+
+    try:
+        governed_semantics = load_performance_semantics(strategy)
+    except ModelContractError as exc:
+        raise FormalPreviewBuildError(str(exc)) from exc
 
     sections: list[SectionPlan] = []
     for section in plan.sections:
@@ -109,7 +118,10 @@ def _native_sections(plan: RunExportPlan) -> tuple[SectionPlan, ...]:
             if source_sha:
                 value["evidence_source_sha256"] = source_sha
             value["evidence_contract"] = "native_bundle_v2"
+            value["model_contract"] = strategy.model_contract
             value["evidence_completeness"] = _complete(value.get("evidence_completeness"))
+        elif section.section_id == "performance":
+            value["performance_semantics"] = governed_semantics
         elif section.section_id == "diagnostics":
             if "evidence_completeness" in value:
                 value["evidence_completeness"] = _complete(value.get("evidence_completeness"))
@@ -118,6 +130,7 @@ def _native_sections(plan: RunExportPlan) -> tuple[SectionPlan, ...]:
             value = {
                 "schema_version": "2.0.0",
                 "publication_origin": "governed_model_evidence",
+                "model_contract": strategy.model_contract,
                 "evidence_source_sha256": source_sha,
                 "source_backtest_id": value.get("source_backtest_id"),
                 "source_evidence": value.get("source_evidence"),
@@ -153,6 +166,6 @@ def build_preview_bundle(
         plan,
         publication_channel="preview",
         publication_status="ci_validated_preview",
-        sections=_native_sections(plan),
+        sections=_native_sections(plan, strategy),
     )
     return export_model_run(preview, output_root=output_root)
