@@ -7,14 +7,15 @@
   "first_signal_date": "2026-08-10",
   "historical_retuning_allowed": false,
   "hold_common_open_eligible_sessions": 20,
-  "last_signal_date": "2026-08-12",
+  "last_signal_date": "2026-08-13",
   "launch_after": "2026-08-10",
-  "ledger_sha256": "8c2f0ae320c7c33289d69381dd6e85c10d902e5588e26f5de8e22396eea0e39e",
-  "observation_count": 3,
+  "ledger_sha256": "492279169dcf856dd6c12b5d9323f2ec53d0c787e4c6b88a03e93245adec2bf2",
+  "observation_count": 4,
   "observation_sha256": {
     "2026-08-10": "1c0672ec303115c8361979a2c3a01340d9f8e621446e0d805e74b2d4aacfd097",
     "2026-08-11": "d7cd94ef15f891c69820a4d33855dff6d226e9acb5d13717a24603eb6baa40f5",
-    "2026-08-12": "b1e64337e56903600c8a72e1a272c2372c04d7ab5351f74a442d8730447a5bb7"
+    "2026-08-12": "b1e64337e56903600c8a72e1a272c2372c04d7ab5351f74a442d8730447a5bb7",
+    "2026-08-13": "972120364f7cc2cd6989a351e545b53735b13a797ef4c59d2da20e921d9bd5f3"
   },
   "outcome_count": 0,
   "outcome_sha256": {},
@@ -22,7 +23,7 @@
   "provider_fallback": false,
   "research_only": true,
   "schema_version": "byd_recovery_event_prospective_v1",
-  "scorecard_sha256": "ff74553ff99a6d4e4e7d9a163abdd881f153da3247cad798cadf3879b26c7fc6",
+  "scorecard_sha256": "c8c49bd7aaad9c2368842661d21d3a9ff9a372f6f4ae08511a0a032edaecc400",
   "shadow_only": true,
   "source_stores": [
     "data/research/byd_prospective_shadow",
