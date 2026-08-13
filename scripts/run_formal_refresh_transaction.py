@@ -442,7 +442,7 @@ def _validate_fan_in(path: Path) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    subparsers = parser.add_subpar(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
     plan_parser = subparsers.add_parser("plan")
     plan_parser.add_argument("--formal-root", type=Path, required=True)
