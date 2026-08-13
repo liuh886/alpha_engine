@@ -76,6 +76,8 @@ jobs:
           uv run ruff check
           src/release
           src/models/metric_contract.py
+          src/research/economics.py
+          src/research/replay_comparison.py
           src/research/experiment_harness.py
           src/research/cross_sectional_experiment_runner.py
           src/research/ranker_training.py
@@ -128,7 +130,13 @@ jobs:
           tests/test_notebook_lab_contracts.py
 
       - name: Mypy type check
-        run: uv run mypy src/release src/models/metric_contract.py
+        run: >-
+          uv run mypy
+          src/release
+          src/models/metric_contract.py
+          src/research/economics.py
+          src/research/replay_comparison.py
+          src/research/ranker_training.py
 
       - name: Core release-contract tests
         if: github.event_name == 'pull_request'
