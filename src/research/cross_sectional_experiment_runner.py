@@ -18,6 +18,7 @@ import yaml
 
 from src.common.runtime_settings import PROJECT_ROOT
 from src.research.daily_ranker import prepare_ranker_frame
+from src.research.economics import relative_excess
 from src.research.evaluation_context import SpecBoundEvaluationContext
 from src.research.experiment_harness import (
     ExperimentContract,
@@ -242,10 +243,6 @@ def _benchmark_instrument(spec: CrossSectionalExperimentSpec, runtime) -> str:
     return _resolve_benchmark_instrument(spec.market, spec.benchmark, available)
 
 
-def _relative_excess(strategy_return: float, benchmark_return: float) -> float:
-    return (1.0 + strategy_return) / (1.0 + benchmark_return) - 1.0
-
-
 def _original_result(report: dict[str, Any], candidate_name: str) -> dict[str, Any]:
     comparison = report.get("comparison_report") or {}
     rows = comparison.get("candidates", []) if isinstance(comparison, dict) else []
@@ -275,7 +272,7 @@ def _result_to_observation(
         "candidate_id": candidate_id,
         "window": window,
         "cost_bps": cost_bps,
-        "relative_excess": _relative_excess(strategy_return, benchmark_return),
+        "relative_excess": relative_excess(strategy_return, benchmark_return),
         "strategy_return": strategy_return,
         "benchmark_return": benchmark_return,
         "max_drawdown": float(result["max_drawdown"]),
