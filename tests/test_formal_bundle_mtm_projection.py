@@ -63,6 +63,7 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
 
     preview = tmp_path / "active-preview"
     shutil.copytree(NATIVE, preview)
+    shutil.rmtree(preview / "cn_ranker" / MODEL_ID)
     strategy = load_active_strategy_catalog().by_model_version_id[MODEL_ID]
     build_preview_bundle(package_path, strategy, output_root=preview)
     update_catalog(
