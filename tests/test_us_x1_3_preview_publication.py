@@ -4,8 +4,6 @@ import hashlib
 import json
 from pathlib import Path
 
-import yaml
-
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
 from src.artifacts.us_x1_3_preview import _json_safe, _trade_analytics
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
@@ -22,47 +20,19 @@ def _catalog() -> dict:
     return payload
 
 
-def _x1_3_record() -> dict | None:
+def _x1_3_record() -> dict:
     catalog = _catalog()
     matches = [
         row
         for row in catalog["records"]
         if row.get("model_version_id") == "us_x1_3"
     ]
-    assert len(matches) <= 1
-    return matches[0] if matches else None
-
-
-def _assert_valid_prepublication_cutover() -> None:
-    """Prove the repository still carries genuine predecessor preview evidence.
-
-    This state is valid only before Reviewed Formal Backtest Refresh has built the
-    successor. We never relabel x1.2 preview bytes as x1.3; after candidate
-    generation `_x1_3_record()` becomes non-null and the full publication tests
-    below execute normally.
-    """
-    catalog = _catalog()
-    validate_catalog(catalog)
-    preview_ids = [row["model_version_id"] for row in catalog["records"]]
-    assert "us_x1_3" not in preview_ids
-    assert "us_x1_2" in preview_ids
-
-    active = json.loads(ACTIVE_CATALOG.read_text(encoding="utf-8"))
-    us_strategy = next(row for row in active["strategies"] if row["strategy_id"] == "us_x")
-    assert us_strategy["model_version_id"] == "us_x1_3"
-    assert us_strategy["signal_ledger"].endswith("/us_x1_3")
-
-    model = yaml.safe_load(MODEL_CONFIG.read_text(encoding="utf-8"))
-    assert model["model_id"] == "us_x1_3"
-    assert model["lineage"]["supersedes"] == "us_x1_2"
-    assert model["lineage"]["selected_candidate"] == "mvv_plus_pressure"
-    assert model["research_only"] is True
-    assert model["trade_ready"] is False
+    assert len(matches) == 1, "US x1.3 preview must be present exactly once"
+    return matches[0]
 
 
 def _run_root() -> Path:
     record = _x1_3_record()
-    assert record is not None, "US x1.3 preview has not been generated"
     return ROOT / Path(record["manifest_path"]).parent
 
 
@@ -77,11 +47,7 @@ def test_active_us_x1_3_preview_is_cataloged_without_crossing_formal_boundary() 
     validate_catalog(catalog)
     assert catalog["channel"] == "preview"
     record = _x1_3_record()
-    if record is None:
-        _assert_valid_prepublication_cutover()
-        return
     assert record["model_version_id"] == "us_x1_3"
-    assert [row["model_version_id"] for row in catalog["records"]] == ["us_x1_3"]
     manifest = _object("manifest.json")
     validate_manifest(manifest)
     assert manifest["publication_channel"] == "preview"
@@ -91,9 +57,6 @@ def test_active_us_x1_3_preview_is_cataloged_without_crossing_formal_boundary() 
 
 
 def test_us_x1_3_bundle_retains_performance_positions_trades_prices_and_signals() -> None:
-    if _x1_3_record() is None:
-        _assert_valid_prepublication_cutover()
-        return
     summary = _object("summary.json")
     performance = _object("performance.json")
     portfolio = _object("portfolio.json")
@@ -125,9 +88,6 @@ def test_us_x1_3_bundle_retains_performance_positions_trades_prices_and_signals(
 
 
 def test_us_x1_3_lineage_retains_source_hashes_without_treating_metadata_as_model_drift() -> None:
-    if _x1_3_record() is None:
-        _assert_valid_prepublication_cutover()
-        return
     lineage = _object("lineage.json")
     expected_sources = {
         "builder_source_sha256": Path("src/artifacts/us_x1_3_preview.py"),
@@ -170,9 +130,6 @@ def test_trade_analytics_and_json_normalization_do_not_fabricate_missing_values(
 
 
 def test_us_x1_3_chart_reaches_evidence_cutoff_with_provisional_mtm() -> None:
-    if _x1_3_record() is None:
-        _assert_valid_prepublication_cutover()
-        return
     manifest = _object("manifest.json")
     performance = _object("performance.json")
     latest = performance["report"][-1]
