@@ -4,12 +4,11 @@ import base64
 import hashlib
 import io
 import json
-import math
 import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 import pandas as pd
 import yaml
@@ -26,6 +25,7 @@ from src.data.adapters.cnn_fear_greed import fetch_cnn_fear_greed
 from src.data.data_recipe import DataRecipeError, prepare_data_recipe
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID as BYD_MODEL_ID
 from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
+from src.research.replay_comparison import compare_package_sections
 from src.research.v4_33_ma200_ma20_vix_release import run_v4_33_comparison
 
 RUNNER_ID = "formal_model_replay_v1"
@@ -50,8 +50,6 @@ QQQ_BRIDGE_CONTRACT = Path(
     "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
 )
 QQQ_RECIPE_ID = "qqq-rotation-sgov"
-TRACE_SECTIONS = ("report", "positions", "trades")
-FLOAT_TOLERANCE = 1e-12
 
 
 class FormalModelReplayError(ValueError):
@@ -154,107 +152,6 @@ def _formal_v1_package(
     if package.get("research_only") is not True or package.get("trade_ready") is not False:
         raise FormalModelReplayError(f"formal v1 package violates research boundary: {model_id}")
     return package
-
-
-def _numeric(value: Any) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
-
-
-def _compare_row_lists(expected: object, observed: object) -> dict[str, Any]:
-    if not isinstance(expected, list) or not isinstance(observed, list):
-        return {
-            "exact": False,
-            "expected_rows": len(expected) if isinstance(expected, list) else None,
-            "observed_rows": len(observed) if isinstance(observed, list) else None,
-            "first_mismatch": {"reason": "section_is_not_a_row_list"},
-            "max_absolute_difference": {},
-        }
-
-    max_absolute_difference: dict[str, float] = {}
-    first_mismatch: dict[str, Any] | None = None
-    if len(expected) != len(observed):
-        first_mismatch = {
-            "reason": "row_count_mismatch",
-            "expected": len(expected),
-            "observed": len(observed),
-        }
-
-    for index, (left, right) in enumerate(zip(expected, observed, strict=False)):
-        if not isinstance(left, Mapping) or not isinstance(right, Mapping):
-            if first_mismatch is None:
-                first_mismatch = {"reason": "row_is_not_mapping", "index": index}
-            continue
-        if set(left) != set(right):
-            if first_mismatch is None:
-                first_mismatch = {
-                    "reason": "field_set_mismatch",
-                    "index": index,
-                    "expected_only": sorted(set(left) - set(right)),
-                    "observed_only": sorted(set(right) - set(left)),
-                }
-            continue
-        for field, expected_value in left.items():
-            observed_value = right[field]
-            if _numeric(expected_value) and _numeric(observed_value):
-                left_value = float(expected_value)
-                right_value = float(observed_value)
-                if math.isnan(left_value) and math.isnan(right_value):
-                    difference = 0.0
-                    matches = True
-                else:
-                    difference = abs(left_value - right_value)
-                    matches = math.isclose(
-                        left_value,
-                        right_value,
-                        rel_tol=0.0,
-                        abs_tol=FLOAT_TOLERANCE,
-                    )
-                max_absolute_difference[field] = max(
-                    max_absolute_difference.get(field, 0.0),
-                    difference,
-                )
-            else:
-                matches = expected_value == observed_value
-            if not matches and first_mismatch is None:
-                first_mismatch = {
-                    "reason": "value_mismatch",
-                    "index": index,
-                    "field": str(field),
-                    "expected": expected_value,
-                    "observed": observed_value,
-                }
-
-    exact = first_mismatch is None and len(expected) == len(observed)
-    return {
-        "exact": exact,
-        "expected_rows": len(expected),
-        "observed_rows": len(observed),
-        "first_mismatch": first_mismatch,
-        "max_absolute_difference": dict(sorted(max_absolute_difference.items())),
-    }
-
-
-def _compare_package_sections(
-    expected: Mapping[str, Any],
-    observed: Mapping[str, Any],
-    *,
-    sections: Sequence[str] = TRACE_SECTIONS,
-) -> dict[str, Any]:
-    comparison = {
-        section: _compare_row_lists(expected.get(section), observed.get(section))
-        for section in sections
-    }
-    portfolio_contract_exact = expected.get("portfolio_contract") == observed.get(
-        "portfolio_contract"
-    )
-    exact = portfolio_contract_exact and all(
-        bool(result["exact"]) for result in comparison.values()
-    )
-    return {
-        "exact": exact,
-        "portfolio_contract_exact": portfolio_contract_exact,
-        "sections": comparison,
-    }
 
 
 def _receipt(
@@ -388,7 +285,7 @@ def replay_qqq_v4_3(
                 "trade_ready": False,
             },
         )
-        comparison = _compare_package_sections(expected, observed)
+        comparison = compare_package_sections(expected, observed)
         fear_csv = fear_greed.sort_index().to_csv(date_format="%Y-%m-%d").encode("utf-8")
         data_identity = {
             "recipe_id": QQQ_RECIPE_ID,
@@ -565,7 +462,7 @@ def replay_byd_v1_3(*, root: str | Path) -> dict[str, Any]:
                 predecessor_package=predecessor,
             )
 
-        comparison = _compare_package_sections(expected, observed)
+        comparison = compare_package_sections(expected, observed)
         data_identity = {**source_identity, **governed_identity}
         if not comparison["exact"]:
             return _receipt(
