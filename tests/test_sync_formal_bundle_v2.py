@@ -163,8 +163,16 @@ def test_sync_promotes_active_preview_set_deterministically(tmp_path: Path) -> N
 
 
 def test_sync_fails_closed_when_preview_catalog_is_incomplete(tmp_path: Path) -> None:
-    incomplete = tmp_path / "incomplete"
-    shutil.copytree(NATIVE, incomplete)
+    incomplete = _active_preview_root(tmp_path)
+    catalog_path = incomplete / "catalog.json"
+    catalog = _read(catalog_path)
+    catalog["records"] = [
+        row for row in catalog["records"] if row["model_version_id"] != BYD_V13
+    ]
+    catalog_path.write_text(
+        json.dumps(catalog, sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
     output = tmp_path / "formal"
 
     try:
