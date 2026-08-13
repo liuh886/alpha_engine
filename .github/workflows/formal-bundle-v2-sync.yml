@@ -16,8 +16,10 @@ on:
       - configs/strategies/registry.json
       - configs/models/**
       - src/artifacts/strategy_operations.py
+      - src/artifacts/system_health.py
       - tests/test_sync_formal_bundle_v2.py
       - tests/test_strategy_operations.py
+      - tests/test_system_health.py
       - tests/test_active_strategy_catalog.py
       - tests/test_formal_refresh.py
       - data/research/formal_backtests/**
@@ -156,17 +158,20 @@ jobs:
           print(payload['published_at'])
           PY
           )"
+          rm -rf artifacts/operations-a artifacts/operations-b
           uv run alpha ops build \
             --formal-catalog data/research/formal_model_runs/catalog.json \
             --generated-at "$generated_at" \
-            --output artifacts/operations-a.json
+            --output artifacts/operations-a/snapshots.json
           uv run alpha ops build \
             --formal-catalog data/research/formal_model_runs/catalog.json \
             --generated-at "$generated_at" \
-            --output artifacts/operations-b.json
-          cmp artifacts/operations-a.json artifacts/operations-b.json
+            --output artifacts/operations-b/snapshots.json
+          diff -ru artifacts/operations-a artifacts/operations-b
+          rm -rf data/research/strategy_operations
           mkdir -p data/research/strategy_operations
-          cp artifacts/operations-a.json data/research/strategy_operations/snapshots.json
+          cp artifacts/operations-a/snapshots.json data/research/strategy_operations/snapshots.json
+          cp artifacts/operations-a/system-health.json data/research/strategy_operations/system-health.json
           cd qlib-dashboard
           npm run sync:formal-model-runs
           npm run sync:strategy-operations
@@ -179,6 +184,7 @@ jobs:
             src/artifacts/formal_preview_builder.py \
             src/artifacts/native_formal_promotion.py \
             src/artifacts/formal_evidence_standard.py \
+            src/artifacts/system_health.py \
             scripts/build_active_formal_previews.py \
             scripts/sync_formal_bundle_v2.py \
             src/cli/main.py \
@@ -186,11 +192,13 @@ jobs:
             src/artifacts/strategy_operations.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
+            tests/test_system_health.py \
             tests/test_active_strategy_catalog.py
           uv run pytest \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_strategy_operations.py \
+            tests/test_system_health.py \
             tests/test_active_strategy_catalog.py \
             -q --strict-markers --tb=short
 
@@ -220,7 +228,7 @@ jobs:
             echo '```text'
             git status --short -- data/research/formal_model_runs
             echo '```'
-            echo 'Strategy Operations and frontend public assets are build outputs and are intentionally untracked.'
+            echo 'Strategy Operations, System Health and frontend public assets are build outputs and are intentionally untracked.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload projection evidence
@@ -232,6 +240,6 @@ jobs:
             artifacts/preview-a
             artifacts/bundle-a
             artifacts/bundle-receipt-a.json
-            artifacts/operations-a.json
+            artifacts/operations-a
           if-no-files-found: error
           retention-days: 30
