@@ -1,22 +1,28 @@
 import { AlertTriangle, ArrowRight, BookOpen, CheckCircle2, Database, FolderArchive, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
-import { fetchFormalFreshness, type FormalFreshnessSnapshot } from '@/lib/formal-freshness';
+import { fetchSystemHealth, type LiveSystemHealth } from '@/lib/system-health';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 import { useAccessControl } from '@/hooks/useAccessControl';
+
+const stateTone = (state: string) => state === 'current'
+  ? 'text-emerald-500'
+  : state === 'delayed'
+    ? 'text-amber-500'
+    : 'text-destructive';
 
 export function SystemHubPage() {
   const workspace = useOutletContext<RunWorkspaceContext>();
   const access = useAccessControl();
-  const [freshness, setFreshness] = useState<FormalFreshnessSnapshot | null>(null);
+  const [health, setHealth] = useState<LiveSystemHealth | null>(null);
 
   useEffect(() => {
     let active = true;
-    void fetchFormalFreshness().then((value) => { if (active) setFreshness(value); });
+    void fetchSystemHealth().then((value) => { if (active) setHealth(value); });
     return () => { active = false; };
   }, []);
 
-  const status = freshness?.status ?? 'unknown';
+  const status = health?.status ?? 'unknown';
   const StatusIcon = status === 'current' ? CheckCircle2 : AlertTriangle;
 
   return (
@@ -27,13 +33,33 @@ export function SystemHubPage() {
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Data lineage, freshness, local bundles and methodology live here. They support strategy decisions without dominating the normal operating workflow.</p>
       </header>
 
-      <section className="flex items-start gap-4 rounded-2xl border bg-card p-5 shadow-sm">
-        <StatusIcon className={`mt-0.5 h-5 w-5 shrink-0 ${status === 'current' ? 'text-emerald-500' : 'text-amber-500'}`} />
-        <div className="min-w-0">
-          <p className="text-sm font-semibold">Formal evidence freshness: {status}</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{freshness?.message ?? 'Freshness policy has not been loaded.'}</p>
-          <p className="mt-2 text-[10px] font-mono text-muted-foreground">{workspace.runs.filter((run) => run.channel === 'formal').length} accepted formal baselines · {workspace.runLoadErrors.length} preview load errors</p>
+      <section className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex items-start gap-4">
+          <StatusIcon className={`mt-0.5 h-5 w-5 shrink-0 ${stateTone(status)}`} />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold">Pipeline health: {status}</p>
+              <p className={`text-[10px] font-mono ${stateTone(health?.deploymentStatus ?? 'unknown')}`}>Pages: {health?.deploymentStatus ?? 'unknown'}</p>
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{health?.message ?? 'System health has not been loaded.'}</p>
+            <p className="mt-2 text-[10px] font-mono text-muted-foreground">{workspace.runs.filter((run) => run.channel === 'formal').length} accepted formal baselines · {workspace.runLoadErrors.length} preview load errors</p>
+          </div>
         </div>
+
+        {health?.health?.markets.length ? (
+          <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-2">
+            {health.health.markets.map((market) => (
+              <div key={market.market} className="rounded-xl bg-muted/30 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase">{market.market}</p>
+                  <p className={`text-[10px] font-mono ${stateTone(market.state)}`}>{market.state}</p>
+                </div>
+                <p className="mt-1 text-[10px] font-mono text-muted-foreground">provider {market.provider_cutoff ?? '—'} · expected {market.market_expected_cutoff ?? '—'}</p>
+                {market.state === 'delayed' && <p className="mt-1 text-[10px] text-muted-foreground">Internally consistent; provider-resolved common session is behind another governed active watermark.</p>}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">

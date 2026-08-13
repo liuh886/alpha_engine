@@ -7,11 +7,14 @@ const dashboardRoot = resolve(scriptDir, '..');
 const repoRoot = resolve(dashboardRoot, '..');
 const catalogPath = resolve(repoRoot, 'data/research/formal_model_runs/catalog.json');
 const snapshotsPath = resolve(repoRoot, 'data/research/strategy_operations/snapshots.json');
+const healthPath = resolve(repoRoot, 'data/research/strategy_operations/system-health.json');
 const outputDir = resolve(dashboardRoot, 'public/data/strategy-operations');
 const outputPath = resolve(outputDir, 'snapshots.json');
+const healthOutputPath = resolve(outputDir, 'system-health.json');
 const allowedStatuses = new Set(['pipeline_unavailable', 'awaiting_observation', 'current_no_change', 'target_pending_execution', 'execution_observed', 'stale', 'blocked', 'delivery_failed']);
 const allowedFreshness = new Set(['current', 'stale', 'blocked', 'unknown']);
 const allowedEffects = new Set(['support', 'veto', 'neutral']);
+const allowedHealthStates = new Set(['current', 'delayed', 'blocked', 'inconsistent', 'not_applicable']);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -52,19 +55,55 @@ function redactRuntimeRecord(record) {
   };
 }
 
+function redactHealthRecord(record) {
+  return {
+    strategy_id: record.strategy_id,
+    model_version_id: record.model_version_id,
+    market: record.market,
+    state: record.state,
+    market_expected_cutoff: record.market_expected_cutoff,
+    provider_cutoff: record.provider_cutoff,
+    formal_cutoff: record.formal_cutoff,
+    model_data_cutoff: record.model_data_cutoff,
+    factor_cutoff: record.factor_cutoff,
+    last_signal_evaluation: null,
+    last_signal_change: null,
+    delivery_state: 'not_applicable',
+    delivery_status: null,
+    stages: {
+      provider: record.stages.provider,
+      formal: record.stages.formal,
+      model_data: record.stages.model_data,
+      factor: record.stages.factor,
+      signal: record.stages.signal,
+      delivery: 'not_applicable',
+    },
+    formal_bundle_id: record.formal_bundle_id,
+    formal_run_id: record.formal_run_id,
+  };
+}
+
 const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 const snapshots = JSON.parse(await readFile(snapshotsPath, 'utf8'));
+const health = JSON.parse(await readFile(healthPath, 'utf8'));
 assert(snapshots.schema_version === '2.2.0', 'Unsupported strategy operations schema');
 assert(snapshots.research_only === true && snapshots.trade_ready === false, 'Invalid strategy operations boundary');
 assert(Array.isArray(snapshots.records), 'Strategy operations records are missing');
 assert(Array.isArray(catalog.records), 'Formal Model Run Bundle v2 catalog records are missing');
+assert(health.schema_version === '1.0.0', 'Unsupported system health schema');
+assert(health.research_only === true && health.trade_ready === false, 'Invalid system health boundary');
+assert(allowedHealthStates.has(health.state), 'Invalid system health state');
+assert(Array.isArray(health.markets) && health.markets.length > 0, 'System health markets are missing');
+assert(Array.isArray(health.strategies), 'System health strategies are missing');
 
 const formalIds = catalog.records.map((record) => String(record.model_version_id)).sort();
 const operationIds = snapshots.records.map((record) => String(record.model_version_id)).sort();
 const strategyIds = snapshots.records.map((record) => String(record.strategy_id));
+const healthIds = health.strategies.map((record) => String(record.model_version_id)).sort();
 assert(new Set(operationIds).size === operationIds.length, 'Duplicate strategy operations model identity');
 assert(new Set(strategyIds).size === strategyIds.length, 'Duplicate stable strategy identity');
 assert(JSON.stringify(formalIds) === JSON.stringify(operationIds), 'Strategy operations set must exactly match the accepted formal catalog');
+assert(JSON.stringify(formalIds) === JSON.stringify(healthIds), 'System health set must exactly match the accepted formal catalog');
 const formalById = new Map(catalog.records.map((record) => [String(record.model_version_id), record]));
 
 for (const record of snapshots.records) {
@@ -97,9 +136,25 @@ for (const record of snapshots.records) {
   assert(record.source_identity.formal_evidence_cutoff === formal.evidence_cutoff, `Formal evidence cutoff drift for ${id}`);
 }
 
+for (const record of health.strategies) {
+  const formal = formalById.get(String(record.model_version_id));
+  assert(formal, `Missing formal record for system health ${record.model_version_id}`);
+  assert(allowedHealthStates.has(record.state), `Invalid system health strategy state for ${record.model_version_id}`);
+  assert(record.stages && typeof record.stages === 'object', `Missing system health stages for ${record.model_version_id}`);
+  for (const value of Object.values(record.stages)) {
+    assert(allowedHealthStates.has(value), `Invalid system health stage state for ${record.model_version_id}`);
+  }
+  assert(record.formal_bundle_id === formal.bundle_id, `System health formal bundle drift for ${record.model_version_id}`);
+  assert(record.formal_run_id === formal.run_id, `System health formal run drift for ${record.model_version_id}`);
+}
+
 const publicProjection = {
   ...snapshots,
   records: snapshots.records.map(redactRuntimeRecord),
+};
+const publicHealth = {
+  ...health,
+  strategies: health.strategies.map(redactHealthRecord),
 };
 
 for (const record of publicProjection.records) {
@@ -109,8 +164,14 @@ for (const record of publicProjection.records) {
   assert(record.source_identity.signal_sha256 === null, `Runtime signal hash leaked for ${record.model_version_id}`);
   assert(record.source_identity.workflow_run_id === null, `Runtime workflow provenance leaked for ${record.model_version_id}`);
 }
+for (const record of publicHealth.strategies) {
+  assert(record.last_signal_evaluation === null, `Signal evaluation leaked for ${record.model_version_id}`);
+  assert(record.last_signal_change === null, `Signal change leaked for ${record.model_version_id}`);
+  assert(record.delivery_status === null, `Delivery provenance leaked for ${record.model_version_id}`);
+}
 
 await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(publicProjection)}\n`, 'utf8');
-console.log(`Published public strategy identity shells for ${operationIds.length} formal models; all current operations stay on the runtime access plane.`);
+await writeFile(healthOutputPath, `${JSON.stringify(publicHealth)}\n`, 'utf8');
+console.log(`Published public strategy identity and system-health shells for ${operationIds.length} formal models; protected current operations stay on the runtime access plane.`);
