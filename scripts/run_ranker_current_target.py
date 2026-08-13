@@ -11,6 +11,7 @@ import pandas as pd
 
 from src.data.adapters.base import FetchRequest
 from src.data.adapters.yfinance_adapter import YFinanceAdapter
+from src.research.market_session_clock import completed_market_date
 from src.research.ranker_current_target import (
     CN_MODEL_ID,
     US_MODEL_ID,
@@ -64,6 +65,7 @@ def _due(args: argparse.Namespace) -> int:
         ledger_dir=args.ledger_dir,
     )
     benchmark = "QQQ" if args.market == "us" else "000300"
+    completed_as_of = completed_market_date(args.market, args.as_of)
     bars = (
         YFinanceAdapter()
         .fetch_daily_bars(
@@ -71,7 +73,7 @@ def _due(args: argparse.Namespace) -> int:
                 symbol=benchmark,
                 market=args.market,
                 start=anchor,
-                end=args.as_of,
+                end=completed_as_of,
             )
         )
         .df
@@ -89,17 +91,18 @@ def _due(args: argparse.Namespace) -> int:
     sessions = merge_governed_market_sessions(
         evidence_path=evidence_path,
         live_sessions=live_sessions,
-        as_of=args.as_of,
+        as_of=completed_as_of,
     )
     due = next_due_session(anchor=anchor, sessions=sessions)
     payload = {
         "market": args.market,
         "model_version_id": model_version_id,
         "anchor": anchor,
-        "as_of": args.as_of,
+        "requested_as_of": args.as_of,
+        "as_of": completed_as_of,
         "due": due is not None,
         "signal_date": due,
-        "calendar_provider": "governed_market_evidence_plus_yfinance_increment",
+        "calendar_provider": "completed_session_gate+governed_market_evidence+yfinance_increment",
         "research_only": True,
         "trade_ready": False,
     }
