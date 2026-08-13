@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from dataclasses import dataclass
@@ -27,6 +28,13 @@ def _object(path: Path) -> dict[str, Any]:
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _rows(value: Any, *, section_id: str) -> list[dict[str, Any]]:
+    rows = value.get("records") if isinstance(value, Mapping) and "records" in value else value
+    if not isinstance(rows, list):
+        raise FormalBundleReadError(f"formal section rows are unavailable: {section_id}")
+    return [copy.deepcopy(dict(row)) for row in rows if isinstance(row, Mapping)]
 
 
 @dataclass(frozen=True)
@@ -94,10 +102,112 @@ class FormalRun:
                 f"formal trades are unavailable for replay: {self.model_version_id}"
             )
         return {
-            "portfolio_contract": dict(contract),
-            "report": list(report),
-            "positions": list(positions),
-            "trades": list(trade_rows),
+            "portfolio_contract": copy.deepcopy(dict(contract)),
+            "report": copy.deepcopy(list(report)),
+            "positions": copy.deepcopy(list(positions)),
+            "trades": copy.deepcopy(list(trade_rows)),
+        }
+
+    def refresh_state(self) -> dict[str, Any]:
+        """Return mutable model-refresh evidence reconstructed only from Bundle v2 sections.
+
+        This is an in-process strategy working state, never a repository authority. A
+        refreshed strategy seals it directly into a preview Bundle v2 before fan-in.
+        """
+
+        performance = self.section("performance")
+        portfolio = self.section("portfolio")
+        summary = self.section("summary")
+        robustness = self.section("robustness")
+        diagnostics = self.section("diagnostics")
+        lineage = self.section("lineage")
+        if not all(
+            isinstance(value, Mapping)
+            for value in (performance, portfolio, summary, robustness, diagnostics, lineage)
+        ):
+            raise FormalBundleReadError(
+                f"formal refresh sections are invalid: {self.model_version_id}"
+            )
+        report = performance.get("report")
+        positions = portfolio.get("positions")
+        contract = portfolio.get("portfolio_contract")
+        date_range = performance.get("date_range")
+        metrics_rows = summary.get("metrics")
+        windows = robustness.get("window_summary")
+        notes = diagnostics.get("interpretation_notes")
+        completeness = diagnostics.get("evidence_completeness") or summary.get("evidence_completeness")
+        if (
+            not isinstance(report, list)
+            or not isinstance(positions, list)
+            or not isinstance(contract, Mapping)
+            or not isinstance(date_range, Mapping)
+            or not isinstance(metrics_rows, list)
+            or not isinstance(windows, list)
+            or not isinstance(notes, list)
+            or not isinstance(completeness, Mapping)
+        ):
+            raise FormalBundleReadError(
+                f"formal refresh state is incomplete: {self.model_version_id}"
+            )
+
+        metrics: dict[str, float] = {}
+        for row in metrics_rows:
+            if not isinstance(row, Mapping) or row.get("availability_status") != "available":
+                continue
+            value = row.get("value")
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                metrics[str(row.get("metric_id") or "")] = float(value)
+
+        source_evidence = lineage.get("source_evidence")
+        source_freshness = lineage.get("source_freshness")
+        evidence = copy.deepcopy(dict(source_evidence)) if isinstance(source_evidence, Mapping) else {}
+        evidence.update(
+            {
+                "accepted_formal_bundle_id": str(self.manifest["bundle_id"]),
+                "accepted_formal_run_id": self.run_id,
+                "accepted_formal_manifest_sha256": _sha256(self.manifest_path),
+            }
+        )
+        freshness = (
+            copy.deepcopy(dict(source_freshness))
+            if isinstance(source_freshness, Mapping)
+            else {
+                "status": "current",
+                "required_cutoff": self.evidence_cutoff,
+                "latest_completed_session": self.evidence_cutoff,
+                "model_selection_reopened": False,
+                "research_only": True,
+                "trade_ready": False,
+            }
+        )
+        trades = _rows(self.section("trades"), section_id="trades")
+        attribution = _rows(self.section("attribution"), section_id="attribution")
+
+        return {
+            "schema_version": "governed_model_evidence_v1",
+            "record_type": "governed_model_evidence",
+            "model_id": self.model_version_id,
+            "backtest_id": self.run_id,
+            "publication_status": "accepted_formal_baseline",
+            "generated_at": self.generated_at,
+            "evidence_cutoff": self.evidence_cutoff,
+            "benchmark": performance.get("benchmark"),
+            "trace_frequency": performance.get("trace_frequency"),
+            "date_range": copy.deepcopy(dict(date_range)),
+            "performance_semantics": copy.deepcopy(performance.get("performance_semantics")),
+            "portfolio_contract": copy.deepcopy(dict(contract)),
+            "metrics": metrics,
+            "report": copy.deepcopy(list(report)),
+            "positions": copy.deepcopy(list(positions)),
+            "trades": trades,
+            "attribution": attribution,
+            "window_summary": copy.deepcopy(list(windows)),
+            "interpretation_notes": copy.deepcopy(list(notes)),
+            "evidence_completeness": copy.deepcopy(dict(completeness)),
+            "evidence": evidence,
+            "freshness": freshness,
+            "research_only": True,
+            "trade_ready": False,
         }
 
 

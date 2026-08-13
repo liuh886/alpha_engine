@@ -39,6 +39,9 @@ on:
       - "tests/test_us_x1_3_preview_publication.py"
       - "tests/test_us_x1_3_current_target.py"
       - "tests/test_refresh_byd_v1_3_formal.py"
+      - "tests/test_system_health.py"
+      - "data/research/formal_model_runs/**"
+      - "data/research/model_runs/**"
       - "pyproject.toml"
       - "uv.lock"
 
@@ -53,11 +56,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  CURRENT_FORMAL_ROOT: data/research/formal_backtests
+  CURRENT_FORMAL_V2_ROOT: data/research/formal_model_runs
   CURRENT_PREVIEW_ROOT: data/research/model_runs
-  CANDIDATE_FORMAL_ROOT: artifacts/formal-refresh/formal-v1
   CANDIDATE_V2_ROOT: artifacts/formal-refresh/formal-v2
   CANDIDATE_PREVIEW_ROOT: artifacts/formal-refresh/model-runs
+  CANDIDATE_FRESHNESS_ROOT: artifacts/formal-refresh/freshness-input
   CANDIDATE_MARKET_EVIDENCE_ROOT: artifacts/formal-refresh/market-evidence
   CANDIDATE_MODEL_DATA_ROOT: artifacts/formal-refresh/model-data-bundle-v1
   REFRESH_RECEIPT: artifacts/formal-refresh/formal-refresh-receipt.json
@@ -99,11 +102,13 @@ jobs:
         run: |
           uv run ruff check \
             src/governance/active_strategy_catalog.py \
+            src/artifacts/formal_bundle_reader.py \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
             src/artifacts/us_x1_3_preview.py \
             src/artifacts/qqq_v4_3_formal.py \
             src/artifacts/strategy_operations.py \
+            src/artifacts/system_health.py \
             src/dashboard/formal_bundle_market_events.py \
             src/dashboard/market_evidence.py \
             src/factors/library.py \
@@ -133,11 +138,13 @@ jobs:
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
             tests/test_strategy_operations.py \
+            tests/test_system_health.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_us_x1_3_preview_publication.py \
             tests/test_us_x1_3_current_target.py
           uv run mypy \
+            src/artifacts/formal_bundle_reader.py \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
             src/dashboard/formal_bundle_market_events.py \
@@ -157,6 +164,7 @@ jobs:
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
             tests/test_strategy_operations.py \
+            tests/test_system_health.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_us_x1_3_preview_publication.py \
@@ -291,8 +299,7 @@ jobs:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
           python -m scripts.run_formal_refresh_transaction plan \
-            --formal-root "$CURRENT_FORMAL_ROOT" \
-            --formal-v2-catalog data/research/formal_model_runs/catalog.json \
+            --formal-v2-root "$CURRENT_FORMAL_V2_ROOT" \
             --us-provider-manifest artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
             --cn-provider-manifest artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json \
             --generated-at "$GENERATED_AT" \
@@ -351,7 +358,7 @@ jobs:
             --strategy-id "$STRATEGY_ID" \
             --plan artifacts/formal-refresh/plan/plan.json \
             --provider-root artifacts/formal-refresh/provider \
-            --current-formal-root "$CURRENT_FORMAL_ROOT" \
+            --formal-v2-root "$CURRENT_FORMAL_V2_ROOT" \
             --current-preview-root "$CURRENT_PREVIEW_ROOT" \
             --generated-at "$GENERATED_AT" \
             --output-root artifacts/formal-refresh/strategy-result
@@ -415,37 +422,32 @@ jobs:
           pattern: formal-strategy-*-${{ github.run_id }}
           path: artifacts/formal-refresh/strategy-results
           merge-multiple: true
-      - name: Atomically fan in active strategy results
+      - name: Atomically fan in active preview results
         run: |
           uv run python scripts/run_formal_refresh_transaction.py assemble \
             --plan artifacts/formal-refresh/plan/plan.json \
             --strategy-results-root artifacts/formal-refresh/strategy-results \
-            --current-root "$CURRENT_FORMAL_ROOT" \
-            --candidate-root "$CANDIDATE_FORMAL_ROOT" \
             --current-preview-root "$CURRENT_PREVIEW_ROOT" \
             --candidate-preview-root "$CANDIDATE_PREVIEW_ROOT" \
             --receipt "$FAN_IN_RECEIPT"
-      - name: Seal formal source packages and build Bundle v2
+      - name: Build formal Bundle v2 from preview fan-in
         env:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
+          rm -rf "$CANDIDATE_FRESHNESS_ROOT" "$CANDIDATE_V2_ROOT"
+          mkdir -p "$CANDIDATE_FRESHNESS_ROOT"
           uv run python scripts/run_formal_refresh_transaction.py finalize \
-            --current-root "$CURRENT_FORMAL_ROOT" \
-            --candidate-root "$CANDIDATE_FORMAL_ROOT" \
             --us-provider-manifest artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
             --cn-provider-manifest artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json \
             --generated-at "$GENERATED_AT" \
             --fan-in-receipt "$FAN_IN_RECEIPT" \
+            --freshness-output "$CANDIDATE_FRESHNESS_ROOT/freshness.json" \
             --receipt "$REFRESH_RECEIPT"
-          rm -rf "$CANDIDATE_V2_ROOT"
           uv run python scripts/sync_formal_bundle_v2.py \
-            --source-root "$CANDIDATE_FORMAL_ROOT" \
+            --source-root "$CANDIDATE_FRESHNESS_ROOT" \
             --native-root "$CANDIDATE_PREVIEW_ROOT" \
             --output-root "$CANDIDATE_V2_ROOT" \
             --receipt artifacts/formal-refresh/formal-v2-sync-receipt.json
-          uv run python scripts/verify_formal_backtest_freshness.py \
-            --root "$CANDIDATE_FORMAL_ROOT" --as-of "$GENERATED_AT" \
-            --receipt artifacts/formal-refresh/freshness-verification.json
       - name: Build shared governed Market Evidence
         run: |
           rm -rf "$CANDIDATE_MARKET_EVIDENCE_ROOT"
@@ -490,17 +492,15 @@ jobs:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
           rm -rf \
-            data/research/formal_backtests \
             data/research/formal_model_runs \
             data/research/model_runs \
             data/research/market_evidence \
             data/research/model_data_bundle_v1
-          cp -a "$CANDIDATE_FORMAL_ROOT" data/research/formal_backtests
           cp -a "$CANDIDATE_V2_ROOT" data/research/formal_model_runs
           cp -a "$CANDIDATE_PREVIEW_ROOT" data/research/model_runs
           cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" data/research/market_evidence
           cp -a "$CANDIDATE_MODEL_DATA_ROOT" data/research/model_data_bundle_v1
-          cp "$REFRESH_RECEIPT" data/research/formal_backtests/latest_refresh_receipt.json
+          test ! -e data/research/formal_backtests
           uv run alpha ops build \
             --formal-catalog data/research/formal_model_runs/catalog.json \
             --generated-at "$GENERATED_AT"
@@ -513,9 +513,9 @@ jobs:
             tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
-            tests/test_formal_backtest_freshness.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
+            tests/test_system_health.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_model_x1_baselines.py \
@@ -533,6 +533,7 @@ jobs:
           test -f dist/data/market-evidence/us/catalog.json
           test -f dist/data/market-evidence/cn/catalog.json
           test -f dist/data/strategy-operations/snapshots.json
+          test -f dist/data/strategy-operations/system-health.json
           test -f dist/data/model-data-readiness.json
           test -f dist/data/data-components.json
           test -f dist/data/training-profiles.json
@@ -549,7 +550,6 @@ jobs:
           git fetch origin main
           git checkout -B "$REFRESH_BRANCH"
           git add \
-            data/research/formal_backtests \
             data/research/formal_model_runs \
             data/research/model_runs \
             data/research/market_evidence \
@@ -575,8 +575,8 @@ jobs:
           - Generated at: \`${GENERATED_AT}\`
           - Active strategy membership: Active Strategy Catalog
           - Strategy execution: independent receipt-bound matrix, fail-fast disabled
-          - Publication: one atomic fan-in; no partial formal state
-          - Historical reports, positions and trades: immutable prefix verified
+          - Publication: one atomic Bundle v2 preview fan-in; no flat formal state
+          - Historical reports, positions and trades: immutable prefix verified against accepted Bundle v2
           - Model selection: not reopened
           - Research only: true
           - Trade ready: false
@@ -694,8 +694,8 @@ jobs:
               `- Reviewed merge SHA: ${mergeSha ? `\`${mergeSha}\`` : 'none'}`,
               `- Pages acceptance run: ${pagesRunId ? `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${pagesRunId}` : 'none'}`,
               '- Strategy execution: independent receipt-bound tasks',
-              '- Canonical evidence transaction: one atomic fan-in publication',
-              '- Strategy Operations and frontend projections: generated from canonical evidence',
+              '- Canonical evidence transaction: one atomic Bundle v2 preview fan-in',
+              '- Strategy Operations and System Health: generated from canonical evidence',
               '- Model selection reopened: no',
               '- Pages live acceptance: required before current/closed status',
               '- Research only: yes',
@@ -703,7 +703,7 @@ jobs:
               '',
               failed
                 ? 'The refresh failed closed before the complete reviewed publication and live Pages acceptance transaction finished.'
-                : 'All active strategy receipts passed the atomic fan-in and the reviewed evidence transaction reached live Pages acceptance.',
+                : 'All active strategy receipts passed the Bundle v2 fan-in and the reviewed evidence transaction reached live Pages acceptance.',
             ].join('\n');
             const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
@@ -744,7 +744,7 @@ jobs:
             artifacts/formal-refresh/strategy-fan-in-receipt.json
             artifacts/formal-refresh/formal-refresh-receipt.json
             artifacts/formal-refresh/formal-v2-sync-receipt.json
-            artifacts/formal-refresh/freshness-verification.json
+            artifacts/formal-refresh/freshness-input/freshness.json
             artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json
             artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json
             artifacts/formal-refresh/market-evidence/us/catalog.json

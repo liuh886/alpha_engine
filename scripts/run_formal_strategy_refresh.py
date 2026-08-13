@@ -1,4 +1,4 @@
-"""Execute exactly one active strategy refresh task from a formal refresh plan."""
+"""Execute exactly one active strategy refresh task from a formal Bundle v2 plan."""
 
 from __future__ import annotations
 
@@ -10,13 +10,17 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 import zipfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, BinaryIO
 
 from scripts.ranker_provisional_mtm import attach_ranker_provisional_mtm
+from src.artifacts.formal_bundle_reader import load_formal_run
+from src.artifacts.formal_preview_builder import build_preview_bundle
 from src.artifacts.formal_refresh import load_object, sha256, write_object
+from src.artifacts.model_run_exporter import update_catalog
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.research.formal_model_replay import replay_byd_v1_3
 from src.research.qqq_authoritative_replay import verify_qqq_authoritative_replay
@@ -26,12 +30,14 @@ from src.research.rules_formal_replay_gate import (
 )
 
 RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v1"
-PLAN_SCHEMA = "formal_refresh_plan_v2"
+PLAN_SCHEMA = "formal_refresh_plan_v3"
 QQQ_MODEL_ID = "qqqi_qqq_tqqq_v4_3"
 US_MODEL_ID = "us_x1_3"
 CN_MODEL_ID = "cn_x1_1"
 BYD_MODEL_ID = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
-BYD_PREDECESSOR_ID = "byd_v1_2_convex_momentum_budget_v1"
+BYD_PREDECESSOR = Path(
+    "data/research/historical_model_evidence/byd_v1_2_convex_momentum_budget_v1.json"
+)
 
 
 class StrategyRefreshBlocked(RuntimeError):
@@ -75,6 +81,7 @@ def _task(plan_path: Path, strategy_id: str) -> dict[str, Any]:
         "model_version_id": active.model_version_id,
         "model_kind": active.model_kind,
         "market": active.market,
+        "publication_input": "native_bundle_v2",
     }
     for field, value in expected.items():
         if task.get(field) != value:
@@ -91,7 +98,7 @@ def _base_receipt(task: Mapping[str, Any]) -> dict[str, Any]:
         "model_kind": task["model_kind"],
         "market": task["market"],
         "planned_provider_cutoff": task["planned_provider_cutoff"],
-        "publication_input": task["publication_input"],
+        "publication_input": "native_bundle_v2",
         "formal_refresh_required": bool(task.get("formal_refresh_required")),
         "mtm_refresh_required": bool(task.get("mtm_refresh_required")),
         "research_only": True,
@@ -99,7 +106,7 @@ def _base_receipt(task: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _current_preview_bundle_id(root: Path, model_id: str) -> str | None:
+def _preview_record(root: Path, model_id: str) -> Mapping[str, Any] | None:
     catalog_path = root / "catalog.json"
     if not catalog_path.is_file():
         return None
@@ -112,9 +119,46 @@ def _current_preview_bundle_id(root: Path, model_id: str) -> str | None:
         for row in rows
         if isinstance(row, Mapping) and row.get("model_version_id") == model_id
     ]
-    if len(matches) != 1:
-        return None
-    return str(matches[0].get("bundle_id") or "") or None
+    return matches[0] if len(matches) == 1 else None
+
+
+def _current_preview_bundle_id(root: Path, model_id: str) -> str | None:
+    record = _preview_record(root, model_id)
+    return str(record.get("bundle_id") or "") or None if record is not None else None
+
+
+def _materialize_refresh_state(
+    *, root: Path, formal_v2_root: Path, model_id: str, target: Path
+) -> dict[str, Any]:
+    relative_root = formal_v2_root.resolve().relative_to(root)
+    state = load_formal_run(root, model_id, relative_root=relative_root).refresh_state()
+    # Compact strategy evidence is a task-local working contract only. It is never
+    # persisted or accepted as cross-strategy authority.
+    state["schema_version"] = "1.0.0"
+    state["record_type"] = "formal_model_backtest"
+    state["publication_status"] = "accepted_formal_baseline"
+    write_object(target, state)
+    return state
+
+
+def _seal_preview(
+    *, root: Path, task: Mapping[str, Any], evidence_path: Path, result_root: Path
+) -> tuple[str, str]:
+    strategy = load_active_strategy_catalog().by_strategy_id[str(task["strategy_id"])]
+    preview_root = result_root / "model-runs"
+    if preview_root.exists():
+        shutil.rmtree(preview_root)
+    manifest = build_preview_bundle(evidence_path, strategy, output_root=preview_root)
+    catalog = update_catalog(
+        [manifest], catalog_path=preview_root / "catalog.json", channel="preview"
+    )
+    rows = catalog.get("records")
+    if not isinstance(rows, list) or len(rows) != 1:
+        raise StrategyRefreshBlocked("invalid_evidence", "strategy preview catalog is invalid")
+    record = rows[0]
+    if not isinstance(record, Mapping) or record.get("model_version_id") != strategy.model_version_id:
+        raise StrategyRefreshBlocked("invalid_evidence", "strategy preview identity changed")
+    return sha256(preview_root / "catalog.json"), str(record.get("bundle_id") or "")
 
 
 def _run_us(
@@ -162,7 +206,7 @@ def _run_qqq(
     *,
     root: Path,
     task: Mapping[str, Any],
-    current_formal_root: Path,
+    formal_v2_root: Path,
     result_root: Path,
     generated_at: str,
 ) -> dict[str, Any]:
@@ -180,64 +224,66 @@ def _run_qqq(
 
     cutoff = str(task["planned_provider_cutoff"])
     bundle = result_root / "qqq-bundle"
-    package = result_root / "formal-package.json"
-    _run(
-        [
-            sys.executable,
-            "scripts/data/build_etf_reference_bundle.py",
-            "--end-date",
-            cutoff,
-            "--output-root",
-            str(bundle),
-            "--require-professional",
-        ],
-        cwd=root,
-    )
-    _run(
-        [
-            sys.executable,
-            "scripts/refresh_qqq_v4_3_formal.py",
-            "--current-package",
-            str(current_formal_root / f"{QQQ_MODEL_ID}.json"),
-            "--bundle-dir",
-            str(bundle),
-            "--cutoff",
-            cutoff,
-            "--generated-at",
-            generated_at,
-            "--output",
-            str(package),
-        ],
-        cwd=root,
-    )
-    try:
-        replay = verify_qqq_authoritative_replay(
-            root,
-            package_path=package,
-            bundle_dir=bundle,
+    with tempfile.TemporaryDirectory(prefix="qqq-refresh-state-") as temporary:
+        current = Path(temporary) / "current.json"
+        package = Path(temporary) / "candidate.json"
+        _materialize_refresh_state(
+            root=root, formal_v2_root=formal_v2_root, model_id=QQQ_MODEL_ID, target=current
         )
-    except (ValueError, KeyError, OSError) as exc:
-        raise StrategyRefreshBlocked("invalid_evidence", str(exc)) from exc
-    if replay.get("decision") != "exact_replay":
-        raise StrategyRefreshBlocked(
-            "invalid_evidence", f"QQQ replay verdict: {replay.get('decision')}"
+        _run(
+            [
+                sys.executable,
+                "scripts/data/build_etf_reference_bundle.py",
+                "--end-date",
+                cutoff,
+                "--output-root",
+                str(bundle),
+                "--require-professional",
+            ],
+            cwd=root,
         )
-    candidate = load_object(package)
+        _run(
+            [
+                sys.executable,
+                "scripts/refresh_qqq_v4_3_formal.py",
+                "--current-package",
+                str(current),
+                "--bundle-dir",
+                str(bundle),
+                "--cutoff",
+                cutoff,
+                "--generated-at",
+                generated_at,
+                "--output",
+                str(package),
+            ],
+            cwd=root,
+        )
+        try:
+            replay = verify_qqq_authoritative_replay(root, package_path=package, bundle_dir=bundle)
+        except (ValueError, KeyError, OSError) as exc:
+            raise StrategyRefreshBlocked("invalid_evidence", str(exc)) from exc
+        if replay.get("decision") != "exact_replay":
+            raise StrategyRefreshBlocked(
+                "invalid_evidence", f"QQQ replay verdict: {replay.get('decision')}"
+            )
+        candidate = load_object(package)
+        output_sha, bundle_id = _seal_preview(
+            root=root, task=task, evidence_path=package, result_root=result_root
+        )
     return {
         **_base_receipt(task),
         "execution_status": "refreshed",
         "candidate_evidence_cutoff": candidate.get("evidence_cutoff"),
         "performance_observation_end": _mapping(candidate.get("date_range")).get("end"),
-        "output_sha256": sha256(package),
+        "candidate_bundle_id": bundle_id,
+        "output_sha256": output_sha,
         "replay_verdict": "exact_replay",
     }
 
 
 def _run_cn_duplicate_ledgers(
-    *,
-    root: Path,
-    provider_dir: Path,
-    result_root: Path,
+    *, root: Path, provider_dir: Path, result_root: Path
 ) -> tuple[Path, Path]:
     processes: list[tuple[subprocess.Popen[bytes], BinaryIO]] = []
     outputs: list[Path] = []
@@ -293,7 +339,7 @@ def _run_cn(
     root: Path,
     task: Mapping[str, Any],
     provider_root: Path,
-    current_formal_root: Path,
+    formal_v2_root: Path,
     result_root: Path,
     generated_at: str,
 ) -> dict[str, Any]:
@@ -309,85 +355,85 @@ def _run_cn(
     cutoff = str(task["planned_provider_cutoff"])
     provider_dir = provider_root / "data" / "providers" / "cn"
     provider_manifest = provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
-    current_package = current_formal_root / f"{CN_MODEL_ID}.json"
-    package = result_root / "formal-package.json"
     ledger_a: Path | None = None
-
-    if formal_required:
-        ledger_a, ledger_b = _run_cn_duplicate_ledgers(
-            root=root,
-            provider_dir=provider_dir,
-            result_root=result_root,
+    with tempfile.TemporaryDirectory(prefix="cn-refresh-state-") as temporary:
+        current_package = Path(temporary) / "current.json"
+        package = Path(temporary) / "candidate.json"
+        current_state = _materialize_refresh_state(
+            root=root, formal_v2_root=formal_v2_root, model_id=CN_MODEL_ID, target=current_package
         )
-        _run(
-            [
-                sys.executable,
-                "scripts/refresh_ranker_formal.py",
-                "cn",
-                "--repository-root",
-                str(root),
-                "--current-package",
-                str(current_package),
-                "--provider-dir",
-                str(provider_dir),
-                "--provider-manifest",
-                str(provider_manifest),
-                "--ledger-a",
-                str(ledger_a),
-                "--ledger-b",
-                str(ledger_b),
-                "--cutoff",
-                cutoff,
-                "--generated-at",
-                generated_at,
-                "--output",
-                str(package),
-            ],
-            cwd=root,
-        )
-    else:
-        shutil.copy2(current_package, package)
-
-    attach_ranker_provisional_mtm(
-        package_path=package,
-        provider_dir=provider_dir,
-        ledger_dir=root / "data/research/strategy_signal_ledgers" / CN_MODEL_ID,
-        cutoff=cutoff,
-        repository_root=root,
-    )
-
-    try:
-        candidate = load_object(package)
-        frozen = verify_cn_frozen_prefix(root, candidate)
-        current = load_object(current_package)
-        report_changed = current.get("report") != candidate.get("report")
-        if report_changed:
-            if ledger_a is None:
-                raise StrategyRefreshBlocked(
-                    "invalid_evidence",
-                    "CN settled formal trace changed without the governed current R0 score ledger",
-                )
-            current_replay = verify_cn_current_allocation_replay(
-                root,
-                package_path=package,
-                provider_dir=provider_dir,
-                ledger_path=ledger_a,
+        if formal_required:
+            ledger_a, ledger_b = _run_cn_duplicate_ledgers(
+                root=root, provider_dir=provider_dir, result_root=result_root
             )
-            replay_verdict: object = {
-                "frozen_prefix": frozen,
-                "current_allocation": current_replay,
-            }
+            _run(
+                [
+                    sys.executable,
+                    "scripts/refresh_ranker_formal.py",
+                    "cn",
+                    "--repository-root",
+                    str(root),
+                    "--current-package",
+                    str(current_package),
+                    "--provider-dir",
+                    str(provider_dir),
+                    "--provider-manifest",
+                    str(provider_manifest),
+                    "--ledger-a",
+                    str(ledger_a),
+                    "--ledger-b",
+                    str(ledger_b),
+                    "--cutoff",
+                    cutoff,
+                    "--generated-at",
+                    generated_at,
+                    "--output",
+                    str(package),
+                ],
+                cwd=root,
+            )
         else:
-            replay_verdict = {
-                "frozen_prefix": frozen,
-                "current_allocation": "not_required_no_settled_trace_change",
-            }
-    except StrategyRefreshBlocked:
-        raise
-    except (ValueError, KeyError, OSError) as exc:
-        raise StrategyRefreshBlocked("invalid_evidence", str(exc)) from exc
+            write_object(package, current_state)
 
-    candidate = load_object(package)
+        attach_ranker_provisional_mtm(
+            package_path=package,
+            provider_dir=provider_dir,
+            ledger_dir=root / "data/research/strategy_signal_ledgers" / CN_MODEL_ID,
+            cutoff=cutoff,
+            repository_root=root,
+        )
+        try:
+            candidate = load_object(package)
+            frozen = verify_cn_frozen_prefix(root, candidate)
+            report_changed = current_state.get("report") != candidate.get("report")
+            if report_changed:
+                if ledger_a is None:
+                    raise StrategyRefreshBlocked(
+                        "invalid_evidence",
+                        "CN settled formal trace changed without the governed current R0 score ledger",
+                    )
+                current_replay = verify_cn_current_allocation_replay(
+                    root,
+                    package_path=package,
+                    provider_dir=provider_dir,
+                    ledger_path=ledger_a,
+                )
+                replay_verdict: object = {
+                    "frozen_prefix": frozen,
+                    "current_allocation": current_replay,
+                }
+            else:
+                replay_verdict = {
+                    "frozen_prefix": frozen,
+                    "current_allocation": "not_required_no_settled_trace_change",
+                }
+        except StrategyRefreshBlocked:
+            raise
+        except (ValueError, KeyError, OSError) as exc:
+            raise StrategyRefreshBlocked("invalid_evidence", str(exc)) from exc
+        output_sha, bundle_id = _seal_preview(
+            root=root, task=task, evidence_path=package, result_root=result_root
+        )
     return {
         **_base_receipt(task),
         "execution_status": "refreshed",
@@ -395,7 +441,8 @@ def _run_cn(
         "performance_observation_end": _mapping(candidate.get("freshness")).get(
             "latest_realized_holding_end"
         ),
-        "output_sha256": sha256(package),
+        "candidate_bundle_id": bundle_id,
+        "output_sha256": output_sha,
         "replay_verdict": replay_verdict,
     }
 
@@ -419,7 +466,7 @@ def _run_byd(
     *,
     root: Path,
     task: Mapping[str, Any],
-    current_formal_root: Path,
+    formal_v2_root: Path,
     result_root: Path,
     generated_at: str,
 ) -> dict[str, Any]:
@@ -438,41 +485,50 @@ def _run_byd(
 
     cutoff = str(task["planned_provider_cutoff"])
     byd_base, etf_base = _extract_byd_inputs(root, result_root)
-    package = result_root / "formal-package.json"
-    _run(
-        [
-            sys.executable,
-            "scripts/refresh_byd_v1_3_formal.py",
-            "--current-package",
-            str(current_formal_root / f"{BYD_MODEL_ID}.json"),
-            "--predecessor-package",
-            str(current_formal_root / f"{BYD_PREDECESSOR_ID}.json"),
-            "--base-byd-dir",
-            str(byd_base),
-            "--base-etf-dir",
-            str(etf_base),
-            "--shadow-store",
-            str(root / "data/research/byd_prospective_shadow"),
-            "--paired-store",
-            str(root / "data/research/byd_515180_prospective"),
-            "--signal-ledger",
-            str(root / "data/research/strategy_signal_ledgers" / BYD_MODEL_ID),
-            "--cutoff",
-            cutoff,
-            "--generated-at",
-            generated_at,
-            "--output",
-            str(package),
-        ],
-        cwd=root,
-    )
-    candidate = load_object(package)
+    with tempfile.TemporaryDirectory(prefix="byd-refresh-state-") as temporary:
+        current = Path(temporary) / "current.json"
+        package = Path(temporary) / "candidate.json"
+        _materialize_refresh_state(
+            root=root, formal_v2_root=formal_v2_root, model_id=BYD_MODEL_ID, target=current
+        )
+        _run(
+            [
+                sys.executable,
+                "scripts/refresh_byd_v1_3_formal.py",
+                "--current-package",
+                str(current),
+                "--predecessor-package",
+                str(root / BYD_PREDECESSOR),
+                "--base-byd-dir",
+                str(byd_base),
+                "--base-etf-dir",
+                str(etf_base),
+                "--shadow-store",
+                str(root / "data/research/byd_prospective_shadow"),
+                "--paired-store",
+                str(root / "data/research/byd_515180_prospective"),
+                "--signal-ledger",
+                str(root / "data/research/strategy_signal_ledgers" / BYD_MODEL_ID),
+                "--cutoff",
+                cutoff,
+                "--generated-at",
+                generated_at,
+                "--output",
+                str(package),
+            ],
+            cwd=root,
+        )
+        candidate = load_object(package)
+        output_sha, bundle_id = _seal_preview(
+            root=root, task=task, evidence_path=package, result_root=result_root
+        )
     return {
         **_base_receipt(task),
         "execution_status": "refreshed",
         "candidate_evidence_cutoff": candidate.get("evidence_cutoff"),
         "performance_observation_end": _mapping(candidate.get("date_range")).get("end"),
-        "output_sha256": sha256(package),
+        "candidate_bundle_id": bundle_id,
+        "output_sha256": output_sha,
         "replay_verdict": "exact_incumbent_replay_then_append_only_refresh",
     }
 
@@ -482,7 +538,7 @@ def execute_strategy(
     root: Path,
     task: Mapping[str, Any],
     provider_root: Path,
-    current_formal_root: Path,
+    formal_v2_root: Path,
     current_preview_root: Path,
     result_root: Path,
     generated_at: str,
@@ -501,7 +557,7 @@ def execute_strategy(
         return _run_qqq(
             root=root,
             task=task,
-            current_formal_root=current_formal_root,
+            formal_v2_root=formal_v2_root,
             result_root=result_root,
             generated_at=generated_at,
         )
@@ -510,7 +566,7 @@ def execute_strategy(
             root=root,
             task=task,
             provider_root=provider_root,
-            current_formal_root=current_formal_root,
+            formal_v2_root=formal_v2_root,
             result_root=result_root,
             generated_at=generated_at,
         )
@@ -518,7 +574,7 @@ def execute_strategy(
         return _run_byd(
             root=root,
             task=task,
-            current_formal_root=current_formal_root,
+            formal_v2_root=formal_v2_root,
             result_root=result_root,
             generated_at=generated_at,
         )
@@ -532,7 +588,7 @@ def main() -> int:
     parser.add_argument("--strategy-id", required=True)
     parser.add_argument("--plan", type=Path, required=True)
     parser.add_argument("--provider-root", type=Path, required=True)
-    parser.add_argument("--current-formal-root", type=Path, required=True)
+    parser.add_argument("--formal-v2-root", type=Path, required=True)
     parser.add_argument("--current-preview-root", type=Path, required=True)
     parser.add_argument("--generated-at", required=True)
     parser.add_argument(
@@ -555,7 +611,7 @@ def main() -> int:
             root=root,
             task=task,
             provider_root=args.provider_root.resolve(),
-            current_formal_root=args.current_formal_root.resolve(),
+            formal_v2_root=args.formal_v2_root.resolve(),
             current_preview_root=args.current_preview_root.resolve(),
             result_root=result_root.resolve(),
             generated_at=args.generated_at,

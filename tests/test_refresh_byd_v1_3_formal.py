@@ -15,6 +15,7 @@ from scripts.byd_formal_refresh_common import (
     preserve_verified_prefix,
 )
 from scripts.refresh_byd_v1_3_formal import refresh_byd_v1_3
+from src.artifacts.formal_bundle_reader import load_formal_run
 from src.research.byd_v1_2_recovery_state import (
     CANONICAL_EXTENDED_SCHEMA,
     file_sha256,
@@ -27,6 +28,16 @@ from src.research.byd_v1_3_low_vol_recovery import MODEL_ID
 def _write_json(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def _bundle_refresh_state(tmp_path: Path) -> tuple[Path, dict[str, object]]:
+    state = load_formal_run(Path.cwd(), MODEL_ID).refresh_state()
+    state["schema_version"] = "1.0.0"
+    state["record_type"] = "formal_model_backtest"
+    state["publication_status"] = "accepted_formal_baseline"
+    path = tmp_path / "current-byd.json"
+    _write_json(path, state)
+    return path, state
 
 
 def test_byd_extension_normalizes_prospective_date_dtype(tmp_path: Path) -> None:
@@ -156,7 +167,7 @@ def test_prefix_rejects_material_historical_drift() -> None:
         preserve_verified_prefix("positions", current, replayed)
 
 
-def test_v1_3_formal_refresh_replays_and_appends_production_archives(tmp_path: Path) -> None:
+def test_v1_3_formal_refresh_replays_bundle_v2_prefix_and_appends(tmp_path: Path) -> None:
     byd_base = tmp_path / "byd-base"
     etf_base = tmp_path / "etf-base"
     byd_base.mkdir()
@@ -169,13 +180,10 @@ def test_v1_3_formal_refresh_replays_and_appends_production_archives(tmp_path: P
     with zipfile.ZipFile(archive_path) as archive:
         archive.extractall(etf_base)
 
-    current_package = Path(
-        "data/research/formal_backtests/byd_v1_3_recovery_event_low_vol_confirmation_v1.json"
-    )
+    current_package, current = _bundle_refresh_state(tmp_path)
     predecessor_package = Path(
-        "data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json"
+        "data/research/historical_model_evidence/byd_v1_2_convex_momentum_budget_v1.json"
     )
-    current = json.loads(current_package.read_text(encoding="utf-8"))
     assert current["model_id"] == MODEL_ID
     cutoff = str(current["evidence_cutoff"])
     output = tmp_path / "byd-v1-3-formal.json"

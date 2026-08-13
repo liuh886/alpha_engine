@@ -36,7 +36,7 @@ def test_heavy_formal_refresh_keeps_source_and_release_gates() -> None:
         '      - "scripts/run_formal_strategy_refresh.py"',
         '      - "scripts/build_us_x1_3_preview.py"',
         '      - "tests/test_us_x1_3_preview_publication.py"',
-        '      - name: Atomically fan in active strategy results',
+        '      - name: Atomically fan in active preview results',
         '      - name: Wait for candidate checks, merge reviewed refresh, and verify Pages',
         '      - name: Upsert refresh operating status',
     )

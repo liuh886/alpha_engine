@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import shutil
 from pathlib import Path
 
-from scripts.build_active_formal_previews import build_active_previews
 from scripts.sync_formal_bundle_v2 import sync
+from src.artifacts.formal_bundle_reader import load_formal_run
+from src.artifacts.formal_preview_builder import build_preview_bundle
+from src.artifacts.model_run_exporter import update_catalog
+from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
-
-SOURCE = Path("data/research/formal_backtests")
+FRESHNESS = Path("data/research/formal_model_runs")
 NATIVE = Path("data/research/model_runs")
+MODEL_ID = "cn_x1_1"
 
 
 def _read(path: Path):
@@ -24,17 +26,13 @@ def _write(path: Path, payload) -> None:
     )
 
 
-def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
 def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
     tmp_path: Path,
 ) -> None:
-    source = tmp_path / "governed-evidence"
-    shutil.copytree(SOURCE, source)
-    package_path = source / "cn_x1_1.json"
-    package = _read(package_path)
+    package = load_formal_run(Path.cwd(), MODEL_ID).refresh_state()
+    package["schema_version"] = "1.0.0"
+    package["record_type"] = "formal_model_backtest"
+    package["publication_status"] = "accepted_formal_baseline"
     settled_count = len(package["report"])
     cutoff = package["evidence_cutoff"]
     latest = package["report"][-1]
@@ -60,28 +58,26 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
         "research_only": True,
         "trade_ready": False,
     }
+    package_path = tmp_path / "cn-refresh-state.json"
     _write(package_path, package)
 
-    catalog_path = source / "catalog.json"
-    catalog = _read(catalog_path)
-    for row in catalog["records"]:
-        if row["model_id"] == "cn_x1_1":
-            row["sha256"] = _sha(package_path)
-    _write(catalog_path, catalog)
-
     preview = tmp_path / "active-preview"
-    build_active_previews(
-        governed_root=source,
-        native_root=NATIVE,
-        output_root=preview,
+    shutil.copytree(NATIVE, preview)
+    strategy = load_active_strategy_catalog().by_model_version_id[MODEL_ID]
+    build_preview_bundle(package_path, strategy, output_root=preview)
+    update_catalog(
+        sorted(preview.rglob("manifest.json")),
+        catalog_path=preview / "catalog.json",
+        channel="preview",
     )
+
     output = tmp_path / "formal-v2"
-    sync(source, output, native_root=preview)
+    sync(FRESHNESS, output, native_root=preview)
 
     projected_catalog = _read(output / "catalog.json")
     cn = next(
         row for row in projected_catalog["records"]
-        if row["model_version_id"] == "cn_x1_1"
+        if row["model_version_id"] == MODEL_ID
     )
     manifest = _read(output / cn["manifest_path"])
     performance_decl = next(
