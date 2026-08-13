@@ -10,7 +10,6 @@ import { AccessGate } from './components/AccessGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileNavigation } from './components/MobileNavigation';
 import { ProductShareButton } from './components/ProductShareButton';
-import { ProReferralButton } from './components/ProReferralButton';
 import { PwaInstallProvider } from './components/PwaInstall';
 import { ResearchContextBar } from './components/ResearchContextBar';
 import { SecurityExplorerAccessPreview } from './components/SecurityExplorerAccessPreview';
@@ -135,7 +134,6 @@ function Layout(props: LayoutProps) {
 
           <div className="research-topbar-actions">
             <MobileNavigation />
-            <ProReferralButton />
             <ProductShareButton />
             <div className="alpha-account-slot" data-account-slot aria-label="AlphaEngine account" />
             <Button
