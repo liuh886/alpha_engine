@@ -98,7 +98,8 @@ backtest_evidence:
     position_rows: 252
     transaction_rows: 372
 formal_publication:
-  package: data/research/formal_backtests/cn_x1_1.json
+  formal_bundle_catalog: data/research/formal_model_runs/catalog.json
+  preview_bundle_catalog: data/research/model_runs/catalog.json
   notebook: notebooks/models/cn_x1_1_complete_backtest.ipynb
   complete_evidence_root: data/research/cn_x1_1_regime_gated_candidate_v1
   evidence_completeness: complete
