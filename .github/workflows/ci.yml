@@ -78,6 +78,7 @@ jobs:
           src/models/metric_contract.py
           src/research/experiment_harness.py
           src/research/cross_sectional_experiment_runner.py
+          src/research/ranker_training.py
           src/research/formal_baseline.py
           src/research/formal_baseline_onboarding.py
           src/research/rules_based_allocation_experiment_runner.py
@@ -114,6 +115,7 @@ jobs:
           tests/test_formal_baseline_onboarding.py
           tests/test_rules_based_allocation_experiment_runner.py
           tests/test_rules_formal_replay_gate.py
+          tests/test_ranker_training.py
           tests/test_ranker_current_target.py
           tests/test_us_x1_2_current_target.py
           tests/test_us_x1_3_current_target.py
@@ -141,6 +143,7 @@ jobs:
           tests/test_data_runtime_truth.py
           tests/test_experiment_harness.py
           tests/test_cross_sectional_experiment_runner.py
+          tests/test_ranker_training.py
           tests/test_formal_baseline_onboarding.py
           tests/test_rules_based_allocation_experiment_runner.py
           tests/test_rules_formal_replay_gate.py
