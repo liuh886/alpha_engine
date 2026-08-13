@@ -12,7 +12,7 @@ import hashlib
 import json
 import shutil
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from src.artifacts.formal_evidence_standard import validate_formal_evidence_bundle
 from src.artifacts.model_run_bundle_v2 import (
@@ -71,6 +71,21 @@ def _verify_preview(run_dir: Path, strategy: ActiveStrategy) -> dict[str, Any]:
     return manifest
 
 
+def _bind_lineage(target: Path, source_manifest: dict[str, Any]) -> None:
+    path = target / "lineage.json"
+    lineage = _object(path)
+    lineage.update(
+        {
+            "source_preview_bundle_id": source_manifest["bundle_id"],
+            "publication_contract": "native_formal_bundle_v2",
+            "model_selection_reopened": False,
+            "research_only": True,
+            "trade_ready": False,
+        }
+    )
+    path.write_bytes(canonical_json_bytes(lineage))
+
+
 def promote_preview_bundle(
     source_run_dir: Path,
     output_root: Path,
@@ -91,6 +106,7 @@ def promote_preview_bundle(
         shutil.rmtree(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source_run_dir, target)
+    _bind_lineage(target, source_manifest)
 
     manifest = copy.deepcopy(source_manifest)
     manifest["publication_channel"] = "formal"
