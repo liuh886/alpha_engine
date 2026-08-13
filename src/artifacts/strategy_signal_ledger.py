@@ -66,7 +66,6 @@ def _optional_int(value: object, *, label: str) -> int | None:
 
 
 def _signal_copy(signal: Mapping[str, Any]) -> dict[str, Any]:
-    # Rendered prose is delivery material, not part of the canonical decision.
     return {
         str(key): value
         for key, value in signal.items()
@@ -202,7 +201,6 @@ def _raw_latest_decision(
 
 
 def _decision_record_bytes(payload: Mapping[str, Any]) -> bytes:
-    # Delivery fields in historical records are not part of decision identity.
     decision = dict(payload)
     decision.pop("delivery", None)
     return canonical_json_bytes(decision)
@@ -285,9 +283,7 @@ def seal_signal_decision(
             and existing.get("signal") == normalized_signal
         ):
             if latest is None or latest.get("signal_date") == signal_date:
-                (ledger_root / "latest.json").write_bytes(
-                    canonical_json_bytes(existing)
-                )
+                (ledger_root / "latest.json").write_bytes(canonical_json_bytes(existing))
                 _write_manifest(
                     ledger_root,
                     model_version_id=model_version_id,
@@ -377,7 +373,7 @@ def record_signal_delivery(
     telegram_message_id: int | None = None,
     delivery_error: str | None = None,
 ) -> Path:
-    """Append a delivery receipt for an already sealed canonical decision."""
+    """Append delivery evidence for an already sealed canonical decision."""
 
     model_version_id = _required_string(model_version_id, label="model_version_id")
     delivery_status = _required_string(delivery_status, label="delivery_status")
@@ -453,6 +449,56 @@ def record_signal_delivery(
     return receipt_path
 
 
+def append_signal_evaluation(
+    *,
+    ledger_root: Path,
+    model_version_id: str,
+    signal: Mapping[str, Any],
+    delivery_status: str,
+    workflow_run_id: str,
+    commit_sha: str,
+    created_at_utc: str,
+    github_issue_number: int | None = None,
+    telegram_message_id: int | None = None,
+    delivery_error: str | None = None,
+) -> Path:
+    """Run one explicit phase of the signal transaction.
+
+    ``pending`` seals the canonical decision and forbids delivery metadata. Any
+    terminal/failed delivery status requires that canonical decision to already
+    exist and appends a separate delivery receipt.
+    """
+
+    if delivery_status == "pending":
+        if any(
+            value not in (None, "")
+            for value in (github_issue_number, telegram_message_id, delivery_error)
+        ):
+            raise StrategySignalLedgerError(
+                "pending decision seal cannot contain delivery metadata"
+            )
+        return seal_signal_decision(
+            ledger_root=ledger_root,
+            model_version_id=model_version_id,
+            signal=signal,
+            workflow_run_id=workflow_run_id,
+            commit_sha=commit_sha,
+            created_at_utc=created_at_utc,
+        )
+    return record_signal_delivery(
+        ledger_root=ledger_root,
+        model_version_id=model_version_id,
+        signal=signal,
+        delivery_status=delivery_status,
+        github_issue_number=github_issue_number,
+        telegram_message_id=telegram_message_id,
+        delivery_error=delivery_error,
+        workflow_run_id=workflow_run_id,
+        commit_sha=commit_sha,
+        created_at_utc=created_at_utc,
+    )
+
+
 def read_latest_evaluation(
     ledger_root: Path,
     *,
@@ -462,8 +508,6 @@ def read_latest_evaluation(
     if decision is None:
         return None
     result = dict(decision)
-    # Historical embedded delivery fields are deliberately ignored. Delivery is
-    # a separate side effect and only a hash-bound receipt may project it.
     result["delivery"] = {
         "status": "pending",
         "github_issue_number": None,
@@ -486,6 +530,4 @@ def read_latest_evaluation(
 
 
 def parse_optional_int(value: object, *, label: str) -> int | None:
-    """CLI-facing integer parser kept here so workflow adapters share validation."""
-
     return _optional_int(value, label=label)
