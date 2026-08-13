@@ -28,6 +28,12 @@ from src.artifacts.strategy_signal_ledger import (
     append_signal_evaluation,
     parse_optional_int,
 )
+from src.artifacts.system_health import (
+    SystemHealthError,
+    build_system_health,
+    validate_system_health,
+    write_system_health,
+)
 from src.data.data_recipe import (
     DataRecipeError,
     data_recipe_catalog,
@@ -188,7 +194,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     build_ops = ops_commands.add_parser(
         "build",
-        help="Materialize the current Strategy Console read model from formal identity and decisions.",
+        help="Materialize Strategy Operations and the system-health read model.",
     )
     build_ops.add_argument(
         "--formal-catalog",
@@ -320,18 +326,35 @@ def main(argv: Sequence[str] | None = None) -> int:
             }
         elif args.group == "ops" and args.ops_command == "build":
             output = _resolve(root, args.output)
+            formal_catalog = _resolve(root, args.formal_catalog)
             operations = build_operations_payload(
-                formal_catalog=_resolve(root, args.formal_catalog),
+                formal_catalog=formal_catalog,
                 strategy_catalog=_resolve(root, args.strategy_catalog),
                 ledger_root=_resolve(root, args.ledger_root),
                 generated_at=args.generated_at,
             )
             validate_operations_payload(operations)
             changed = write_operations_payload(output, operations)
+
+            health_output = output.parent / "system-health.json"
+            health = build_system_health(
+                repository_root=root,
+                formal_catalog=formal_catalog,
+                formal_freshness=formal_catalog.parent / "freshness.json",
+                operations=operations,
+                model_data_readiness=root
+                / "data/research/model_data_bundle_v1/model-data-readiness.json",
+                generated_at=args.generated_at,
+            )
+            validate_system_health(health)
+            health_changed = write_system_health(health_output, health)
             payload = {
                 "path": output.relative_to(root).as_posix(),
                 "changed": changed,
                 "strategy_count": len(operations["records"]),
+                "system_health_path": health_output.relative_to(root).as_posix(),
+                "system_health_changed": health_changed,
+                "system_health_state": health["state"],
                 "research_only": True,
                 "trade_ready": False,
             }
@@ -349,6 +372,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         StrategySignalLedgerError,
         StrategyOperationsError,
         StrategyOperationsRuntimeError,
+        SystemHealthError,
         OSError,
         json.JSONDecodeError,
     ) as exc:
