@@ -141,7 +141,7 @@ def test_cli_replay_returns_zero_on_exact_replay(
     assert payload["decision"] == "exact_replay"
 
 
-def test_committed_byd_v1_3_replays_exactly() -> None:
+def test_committed_byd_v1_3_replays_exactly_from_bundle_v2_baseline() -> None:
     result = replay.replay_byd_v1_3(root=Path.cwd())
 
     assert result["decision"] == "exact_replay", json.dumps(
@@ -151,3 +151,7 @@ def test_committed_byd_v1_3_replays_exactly() -> None:
         sort_keys=True,
         default=str,
     )
+    baseline = result["baseline"]
+    assert baseline["manifest_path"].startswith("data/research/formal_model_runs/")
+    assert "formal_backtests" not in baseline["manifest_path"]
+    assert len(baseline["manifest_sha256"]) == 64
