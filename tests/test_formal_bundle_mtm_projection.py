@@ -5,10 +5,12 @@ import json
 import shutil
 from pathlib import Path
 
+from scripts.build_active_formal_previews import build_active_previews
 from scripts.sync_formal_bundle_v2 import sync
 
 
 SOURCE = Path("data/research/formal_backtests")
+NATIVE = Path("data/research/model_runs")
 
 
 def _read(path: Path):
@@ -29,7 +31,7 @@ def _sha(path: Path) -> str:
 def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
     tmp_path: Path,
 ) -> None:
-    source = tmp_path / "formal-v1"
+    source = tmp_path / "governed-evidence"
     shutil.copytree(SOURCE, source)
     package_path = source / "cn_x1_1.json"
     package = _read(package_path)
@@ -67,8 +69,14 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
             row["sha256"] = _sha(package_path)
     _write(catalog_path, catalog)
 
+    preview = tmp_path / "active-preview"
+    build_active_previews(
+        governed_root=source,
+        native_root=NATIVE,
+        output_root=preview,
+    )
     output = tmp_path / "formal-v2"
-    sync(source, output)
+    sync(source, output, native_root=preview)
 
     projected_catalog = _read(output / "catalog.json")
     cn = next(

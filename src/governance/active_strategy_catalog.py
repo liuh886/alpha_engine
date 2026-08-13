@@ -53,6 +53,7 @@ class ActiveStrategy:
     market: str
     benchmark_id: str
     formal_status: str
+    model_contract: str
     decision_cadence: str
     next_decision_policy: str
     signal_ledger: str
@@ -85,6 +86,7 @@ class ActiveStrategy:
             market=market,
             benchmark_id=_required_string(value.get("benchmark_id"), label="benchmark_id"),
             formal_status=formal_status,
+            model_contract=_relative_path(value.get("model_contract"), label="model_contract"),
             decision_cadence=_required_string(
                 value.get("decision_cadence"), label="decision_cadence"
             ),
@@ -138,6 +140,7 @@ def validate_active_strategy_catalog(payload: object) -> ActiveStrategyCatalog:
         ("strategy_id", [row.strategy_id for row in strategies]),
         ("model_version_id", [row.model_version_id for row in strategies]),
         ("model_family_id", [row.model_family_id for row in strategies]),
+        ("model_contract", [row.model_contract for row in strategies]),
         ("signal_ledger", [row.signal_ledger for row in strategies]),
     ):
         if len(values) != len(set(values)):

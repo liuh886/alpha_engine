@@ -29,6 +29,21 @@ current_research_baseline:
     execution_time: next_session_open_t_plus_1
     transaction_cost_bps_per_turnover_unit: 10.0
 
+performance_semantics:
+  schema_version: formal_performance_semantics_v1
+  trace_frequency: daily_open_to_open
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_next_adjusted_open
+  price_basis: governed_adjusted_open
+  performance_date_field: date
+  holding_end_offset_sessions: 1
+  cost:
+    rate_bps: 10.0
+    turnover_formula: sum(abs(target_weight - previous_weight))
+    row_cost_field: transaction_cost
+    net_return_formula: gross_return - transaction_cost
+
 promotion_decision:
   issue: 643
   research_result: docs/research/qqqi_qqq_tqqq_v4_33_ma200_ma20_vix_release_result_2026-08-08.md

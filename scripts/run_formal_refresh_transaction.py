@@ -1,17 +1,23 @@
-"""Plan, assemble, and finalize the catalog-driven formal refresh transaction."""
+"""Plan, assemble, and finalize the catalog-driven formal refresh transaction.
+
+Model-specific strategy jobs remain responsible for deterministic refresh and replay.
+The transaction boundary is stricter: before cross-strategy publication, every active
+strategy is represented by exactly one preview-channel Model Run Bundle v2.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
 import shutil
-
-import yaml
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
 from typing import Any
 
+import yaml
+
+from src.artifacts.formal_preview_builder import build_preview_bundle
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
     build_plan,
@@ -21,6 +27,8 @@ from src.artifacts.formal_refresh import (
     sha256,
     write_object,
 )
+from src.artifacts.model_run_bundle_v2 import validate_catalog
+from src.artifacts.model_run_exporter import update_catalog
 from src.governance.active_strategy_catalog import (
     ActiveStrategyCatalogError,
     assert_formal_catalog_matches_active_strategies,
@@ -30,7 +38,7 @@ from src.governance.active_strategy_catalog import (
 RANKER_MTM_MODELS = (("cn_x1_1", "cn"),)
 TASK_RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v1"
 PLAN_SCHEMA = "formal_refresh_plan_v2"
-FAN_IN_SCHEMA = "formal_strategy_fan_in_v1"
+FAN_IN_SCHEMA = "formal_strategy_fan_in_v2"
 SUCCESS_STATES = {"current_no_change", "refreshed"}
 
 
@@ -111,7 +119,6 @@ def _latest_settled_performance_end(package: Mapping[str, object]) -> str:
         realized = freshness.get("latest_realized_holding_end")
         if realized:
             return _iso_date(realized, label="latest_realized_holding_end")
-
     report = package.get("report")
     if not isinstance(report, list) or not report:
         raise FormalRefreshError("formal ranker report is missing")
@@ -158,13 +165,9 @@ def _mtm_refresh_model_ids(
         settled_end = _latest_settled_performance_end(package)
         if settled_end > target:
             raise FormalRefreshError(
-                f"settled performance exceeds target cutoff for {model_id}: "
-                f"{settled_end} > {target}"
+                f"settled performance exceeds target cutoff for {model_id}: {settled_end} > {target}"
             )
-        if settled_end < target and not _has_current_provisional_mtm(
-            package,
-            cutoff=target,
-        ):
+        if settled_end < target and not _has_current_provisional_mtm(package, cutoff=target):
             required.append(model_id)
     return tuple(required)
 
@@ -176,8 +179,6 @@ def build_task_plan(
     cutoffs: Mapping[str, str],
     generated_at: str,
 ) -> dict[str, Any]:
-    """Build a side-effect-free active-strategy execution matrix."""
-
     active = load_active_strategy_catalog()
     formal_v2 = load_object(formal_v2_catalog)
     _assert_formal_catalog_or_declared_transition(formal_v2, active)
@@ -203,7 +204,7 @@ def build_task_plan(
                 "market": strategy.market,
                 "planned_provider_cutoff": str(cutoffs[strategy.market]),
                 "publication_input": (
-                    "formal_v1" if model_id in formal_ids else "native_bundle_v2"
+                    "governed_model_evidence" if model_id in formal_ids else "native_bundle_v2"
                 ),
                 "formal_refresh_required": model_id in stale_ids,
                 "mtm_refresh_required": model_id in mtm_ids,
@@ -216,7 +217,7 @@ def build_task_plan(
         "target_cutoffs": dict(sorted(cutoffs.items())),
         "active_strategy_ids": [row.strategy_id for row in active.strategies],
         "active_model_version_ids": list(active.active_model_version_ids),
-        "formal_v1_model_ids": [record.model_id for record in formal_plan.models],
+        "governed_evidence_model_ids": [record.model_id for record in formal_plan.models],
         "stale_model_ids": list(formal_plan.stale_model_ids),
         "mtm_refresh_model_ids": sorted(mtm_ids),
         "refresh_required": bool(stale_ids or mtm_ids),
@@ -232,15 +233,12 @@ def _copy_tree(source: Path, target: Path) -> None:
     shutil.copytree(source, target)
 
 
-def _validate_task_receipt(
-    task: Mapping[str, Any],
-    receipt: Mapping[str, Any],
-) -> None:
+def _validate_task_receipt(task: Mapping[str, Any], receipt: Mapping[str, Any]) -> None:
     if receipt.get("schema_version") != TASK_RECEIPT_SCHEMA:
         raise FormalRefreshError(
             f"invalid strategy receipt schema for {task.get('strategy_id')}"
         )
-    bindings = (
+    for field in (
         "strategy_id",
         "model_family_id",
         "model_version_id",
@@ -248,8 +246,7 @@ def _validate_task_receipt(
         "market",
         "planned_provider_cutoff",
         "publication_input",
-    )
-    for field in bindings:
+    ):
         if receipt.get(field) != task.get(field):
             raise FormalRefreshError(
                 f"strategy receipt binding mismatch for {task.get('strategy_id')}: {field}"
@@ -265,6 +262,73 @@ def _validate_task_receipt(
         )
 
 
+def _install_native_preview(source_root: Path, target_root: Path) -> None:
+    catalog = load_object(source_root / "catalog.json")
+    validate_catalog(catalog)
+    if catalog.get("channel") != "preview":
+        raise FormalRefreshError("strategy native output must be a preview Bundle v2 catalog")
+    rows = catalog.get("records")
+    if not isinstance(rows, list) or len(rows) != 1:
+        raise FormalRefreshError("strategy native output must contain exactly one preview run")
+    row = rows[0]
+    if not isinstance(row, Mapping):
+        raise FormalRefreshError("strategy native preview catalog record is invalid")
+    manifest = source_root / str(row.get("manifest_path") or "")
+    if not manifest.is_file() or sha256(manifest) != row.get("manifest_sha256"):
+        raise FormalRefreshError("strategy native preview manifest digest mismatch")
+    family = str(row.get("model_family_id") or "")
+    model = str(row.get("model_version_id") or "")
+    source_model_root = source_root / family / model
+    target_model_root = target_root / family / model
+    _copy_tree(source_model_root, target_model_root)
+
+
+def _seal_active_preview_catalog(
+    *,
+    tasks: list[Mapping[str, Any]],
+    candidate_root: Path,
+    candidate_preview_root: Path,
+) -> None:
+    active = load_active_strategy_catalog()
+    by_strategy = active.by_strategy_id
+
+    for task in tasks:
+        if task.get("publication_input") != "governed_model_evidence":
+            continue
+        strategy_id = str(task["strategy_id"])
+        strategy = by_strategy.get(strategy_id)
+        if strategy is None:
+            raise FormalRefreshError(f"active strategy disappeared during fan-in: {strategy_id}")
+        source_path = candidate_root / f"{strategy.model_version_id}.json"
+        if not source_path.is_file():
+            raise FormalRefreshError(f"governed evidence is missing for {strategy_id}")
+        model_root = candidate_preview_root / strategy.model_family_id / strategy.model_version_id
+        if model_root.exists():
+            shutil.rmtree(model_root)
+        build_preview_bundle(source_path, strategy, output_root=candidate_preview_root)
+
+    manifests = sorted(candidate_preview_root.rglob("manifest.json"))
+    if not manifests:
+        raise FormalRefreshError("active preview fan-in produced no Bundle v2 manifests")
+    catalog = update_catalog(
+        manifests,
+        catalog_path=candidate_preview_root / "catalog.json",
+        channel="preview",
+    )
+    observed = [
+        str(row.get("model_version_id") or "")
+        for row in catalog.get("records", [])
+        if isinstance(row, Mapping)
+    ]
+    if len(observed) != len(set(observed)):
+        raise FormalRefreshError("active preview fan-in contains multiple runs for one model")
+    if set(observed) != set(active.active_model_version_ids):
+        raise FormalRefreshError(
+            "active preview fan-in must contain exactly the active model set: "
+            f"expected={sorted(active.active_model_version_ids)}, observed={sorted(observed)}"
+        )
+
+
 def assemble_strategy_results(
     *,
     plan_path: Path,
@@ -275,20 +339,16 @@ def assemble_strategy_results(
     candidate_preview_root: Path,
     receipt_path: Path,
 ) -> dict[str, Any]:
-    """Atomically fan in all expected strategy receipts and candidate outputs."""
-
     plan = load_object(plan_path)
     if plan.get("schema_version") != PLAN_SCHEMA:
         raise FormalRefreshError("unsupported formal refresh plan schema")
-    tasks = plan.get("tasks")
-    if not isinstance(tasks, list) or not tasks:
+    raw_tasks = plan.get("tasks")
+    if not isinstance(raw_tasks, list) or not raw_tasks:
         raise FormalRefreshError("formal refresh plan has no active strategy tasks")
-
-    expected = {
-        str(task.get("strategy_id")): task
-        for task in tasks
-        if isinstance(task, Mapping) and task.get("strategy_id")
-    }
+    tasks = [dict(task) for task in raw_tasks if isinstance(task, Mapping)]
+    if len(tasks) != len(raw_tasks):
+        raise FormalRefreshError("formal refresh plan contains invalid strategy tasks")
+    expected = {str(task["strategy_id"]): task for task in tasks}
     if len(expected) != len(tasks):
         raise FormalRefreshError("formal refresh plan contains duplicate strategy tasks")
 
@@ -317,16 +377,16 @@ def assemble_strategy_results(
         model_id = str(task["model_version_id"])
 
         if status == "refreshed":
-            if publication_input == "formal_v1":
+            if publication_input == "governed_model_evidence":
                 package = result_root / "formal-package.json"
                 if not package.is_file():
                     raise FormalRefreshError(
-                        f"refreshed formal package is missing for {strategy_id}"
+                        f"refreshed governed evidence is missing for {strategy_id}"
                     )
                 expected_sha = str(receipt.get("output_sha256") or "")
                 if not expected_sha or sha256(package) != expected_sha:
                     raise FormalRefreshError(
-                        f"formal package digest mismatch for {strategy_id}"
+                        f"governed evidence digest mismatch for {strategy_id}"
                     )
                 shutil.copy2(package, candidate_root / f"{model_id}.json")
             elif publication_input == "native_bundle_v2":
@@ -337,7 +397,7 @@ def assemble_strategy_results(
                     raise FormalRefreshError(
                         f"native preview digest mismatch for {strategy_id}"
                     )
-                _copy_tree(preview, candidate_preview_root)
+                _install_native_preview(preview, candidate_preview_root)
             else:
                 raise FormalRefreshError(
                     f"unsupported publication input for {strategy_id}: {publication_input}"
@@ -345,12 +405,20 @@ def assemble_strategy_results(
             changed.append(strategy_id)
         receipts.append(dict(receipt))
 
+    _seal_active_preview_catalog(
+        tasks=tasks,
+        candidate_root=candidate_root,
+        candidate_preview_root=candidate_preview_root,
+    )
+
     fan_in = {
         "schema_version": FAN_IN_SCHEMA,
         "status": "complete",
         "generated_at": plan.get("generated_at"),
         "expected_strategy_ids": list(expected),
         "changed_strategy_ids": changed,
+        "publication_contract": "active_preview_bundle_v2",
+        "preview_catalog_sha256": sha256(candidate_preview_root / "catalog.json"),
         "receipts": receipts,
         "research_only": True,
         "trade_ready": False,
@@ -364,6 +432,7 @@ def _validate_fan_in(path: Path) -> dict[str, Any]:
     if (
         receipt.get("schema_version") != FAN_IN_SCHEMA
         or receipt.get("status") != "complete"
+        or receipt.get("publication_contract") != "active_preview_bundle_v2"
         or receipt.get("research_only") is not True
         or receipt.get("trade_ready") is not False
     ):
@@ -373,7 +442,7 @@ def _validate_fan_in(path: Path) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subpar(dest="command", required=True)
 
     plan_parser = subparsers.add_parser("plan")
     plan_parser.add_argument("--formal-root", type=Path, required=True)
@@ -428,9 +497,7 @@ def main() -> None:
         if args.github_output:
             args.github_output.parent.mkdir(parents=True, exist_ok=True)
             with args.github_output.open("a", encoding="utf-8") as handle:
-                handle.write(
-                    f"refresh_required={str(bool(plan['refresh_required'])).lower()}\n"
-                )
+                handle.write(f"refresh_required={str(bool(plan['refresh_required'])).lower()}\n")
                 handle.write(f"us_cutoff={plan['target_cutoffs']['us']}\n")
                 handle.write(f"cn_cutoff={plan['target_cutoffs']['cn']}\n")
                 handle.write(
@@ -451,6 +518,8 @@ def main() -> None:
     )
     receipt["strategy_fan_in_sha256"] = sha256(args.fan_in_receipt)
     receipt["active_strategy_ids"] = fan_in["expected_strategy_ids"]
+    receipt["publication_contract"] = fan_in["publication_contract"]
+    receipt["preview_catalog_sha256"] = fan_in["preview_catalog_sha256"]
     write_object(args.receipt, receipt)
     print(json.dumps(receipt, indent=2, sort_keys=True))
 

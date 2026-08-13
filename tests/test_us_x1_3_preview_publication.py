@@ -8,6 +8,8 @@ import yaml
 
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
 from src.artifacts.us_x1_3_preview import _json_safe, _trade_analytics
+from src.governance.active_strategy_catalog import load_active_strategy_catalog
+from src.governance.model_contract import load_performance_semantics
 
 ROOT = Path("data/research/model_runs")
 ACTIVE_CATALOG = Path("configs/strategies/registry.json")
@@ -122,13 +124,12 @@ def test_us_x1_3_bundle_retains_performance_positions_trades_prices_and_signals(
     assert all(row["normalized_notional"] >= 0 for row in trades["records"])
 
 
-def test_us_x1_3_lineage_can_skip_content_identical_refreshes() -> None:
+def test_us_x1_3_lineage_retains_source_hashes_without_treating_metadata_as_model_drift() -> None:
     if _x1_3_record() is None:
         _assert_valid_prepublication_cutover()
         return
     lineage = _object("lineage.json")
     expected_sources = {
-        "source_model_config_sha256": Path("configs/models/us_x1_3.yaml"),
         "builder_source_sha256": Path("src/artifacts/us_x1_3_preview.py"),
         "factor_library_sha256": Path("configs/factor_libraries/ohlcv.yaml"),
         "universe_config_sha256": Path("configs/research_universes/us_selected_equities_v2.yaml"),
@@ -142,7 +143,17 @@ def test_us_x1_3_lineage_can_skip_content_identical_refreshes() -> None:
     }
     actual = {field: lineage.get(field) for field in expected_sources}
     assert actual == expected
+    assert lineage["source_model_config"] == MODEL_CONFIG.as_posix()
+    assert len(lineage["source_model_config_sha256"]) == 64
     assert len(lineage["provider_identity_sha256"]) == 64
+
+    active = load_active_strategy_catalog(ACTIVE_CATALOG)
+    strategy = active.by_strategy_id["us_x"]
+    semantics = load_performance_semantics(strategy)
+    assert semantics["holding_end_offset_sessions"] == 10
+    assert semantics["cost"]["rate_bps"] == 20.0
+    assert semantics["research_only"] is True
+    assert semantics["trade_ready"] is False
 
 
 def test_trade_analytics_and_json_normalization_do_not_fabricate_missing_values() -> None:
