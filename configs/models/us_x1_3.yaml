@@ -7,21 +7,16 @@ research_only: true
 trade_ready: false
 market: us
 benchmark: QQQ
-objective: Rank the governed US87 equity pool for 10-session forward return with the Stage-B supported momentum/volatility/volume plus price-volume-pressure factor contract and the governed max-four-names-per-sector portfolio constraint.
+objective: Rank the governed US87 equity pool for 10-session forward return using the momentum/volatility/volume plus price-volume-pressure factor contract and the governed max-four-names-per-sector portfolio constraint.
 lineage:
   parent: us_x1_2
   supersedes: us_x1_2
   selected_candidate: mvv_plus_pressure
   source_research_pr: 868
   stage_b_pr: 869
+  stage_b_spec: configs/research_experiments/us_x1_3_stage_b_v1.yaml
   stage_b_receipt: data/research/experiment_receipts/us_x1_3_stage_b_v1.json
-  stage_b_validation_workflow_run_id: 31567853785
-  certification_workflow_run_id: 31567853785
-  stage_b_artifact_id: 9130182216
-  stage_b_artifact_digest: sha256:6733fde47212088c902df88c436af553f2bd83e37a19c14d47e066ce5f8c199d
-  adoption_decision: explicit_user_directed_research_baseline_promotion
   promotion_authority: explicit_user_direction_2026_08_12
-  promotion_note: User-directed promotion after canonical Stage-B exact replay supported mvv_plus_pressure. This remains research-only and does not authorize brokerage execution or trade readiness.
 universe:
   universe_id: us_selected_equities_v2
   source: configs/research_universes/us_selected_equities_v2.yaml
@@ -29,10 +24,6 @@ universe:
   membership_mode: static_curated
   survivorship_bias: true
   listing_policy: no_prelisting_fill_coverage_qualified_static_members
-provider_binding:
-  policy: canonical_repository_source_rebuild
-  stage_b_provider_identity_sha256: c2b8cc29ad70afde1b4590a03da6f82d4a9fd1e242426bc936333b7f7c3bd39d
-  stage_b_cutoff: '2026-08-10'
 features:
   library: configs/factor_libraries/ohlcv.yaml
   source_factor_groups:
@@ -87,35 +78,6 @@ strategy:
   fail_closed_if_unfillable: true
   cost_bps: 20
   benchmark_mode: reference_only
-stage_b_evidence:
-  experiment_id: us_x1_3_stage_b_v1
-  runner: exact_us_ranker_portfolio_v1
-  development_period: 2024H1-2025H2
-  positive_windows: 4
-  gate_pass_count: 6
-  compounded_relative_excess_20bps: 1.8032463075003768
-  compounded_relative_excess_60bps: 1.5919189436396328
-  incumbent_compounded_relative_excess_20bps: 1.6706892505243864
-  incumbent_compounded_relative_excess_60bps: 1.4534527938905026
-  improvement_vs_incumbent_20bps: 0.1325570569759904
-  improvement_vs_incumbent_60bps: 0.13846614974913019
-  mean_rank_ic: 0.051617500000000004
-  mean_rank_ic_improvement: 0.0019187500000000038
-  worst_drawdown: -0.26532173378029633
-  incumbent_worst_drawdown: -0.26218061541141957
-  exact_score_reproduction: true
-certification_evidence:
-  development:
-    mean_rank_ic: 0.051617500000000004
-    mean_icir: null
-selection_decision:
-  stage_b_supported: true
-  selected_over: us_x1_2
-  selected_by: canonical_stage_b_exact_replay_plus_explicit_user_direction
-  formal_acceptance: false
-  research_baseline_promotion: true
-  promotion_authority: explicit_user_direction_2026_08_12
-  reason: mvv_plus_pressure_passed_all_stage_b_support_gates_and_user_explicitly_directed_formal_research_baseline_promotion
 acceptance_gate:
   untouched_future_six_month_window_required: true
   prospective_acceptance_pending: true
