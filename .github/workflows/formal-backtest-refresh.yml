@@ -40,8 +40,6 @@ on:
       - "tests/test_us_x1_3_current_target.py"
       - "tests/test_refresh_byd_v1_3_formal.py"
       - "tests/test_system_health.py"
-      - "data/research/formal_model_runs/**"
-      - "data/research/model_runs/**"
       - "pyproject.toml"
       - "uv.lock"
 
@@ -500,7 +498,6 @@ jobs:
           cp -a "$CANDIDATE_PREVIEW_ROOT" data/research/model_runs
           cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" data/research/market_evidence
           cp -a "$CANDIDATE_MODEL_DATA_ROOT" data/research/model_data_bundle_v1
-          test ! -e data/research/formal_backtests
           uv run alpha ops build \
             --formal-catalog data/research/formal_model_runs/catalog.json \
             --generated-at "$GENERATED_AT"
@@ -687,12 +684,12 @@ jobs:
               '',
               `## 正式回测与市场证据刷新：${status}`,
               '',
-              `- US common cutoff: \`${process.env.US_CUTOFF || 'unresolved'}\``,
-              `- CN common cutoff: \`${process.env.CN_CUTOFF || 'unresolved'}\``,
-              `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              `- Review PR: ${prNumber ? `#${prNumber}` : 'none'}`,
-              `- Reviewed merge SHA: ${mergeSha ? `\`${mergeSha}\`` : 'none'}`,
-              `- Pages acceptance run: ${pagesRunId ? `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${pagesRunId}` : 'none'}`,
+              `- **US common cutoff**: \`${process.env.US_CUTOFF || 'unresolved'}\``,
+              `- **CN common cutoff**: \`${process.env.CN_CUTOFF || 'unresolved'}\``,
+              `- **Workflow run**: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              `- **Review PR**: ${prNumber ? `#${prNumber}` : 'none'}`,
+              `- **Reviewed merge SHA**: ${mergeSha ? `\`${mergeSha}\`` : 'none'}`,
+              `- **Pages acceptance run**: ${pagesRunId ? `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${pagesRunId}` : 'none'}`,
               '- Strategy execution: independent receipt-bound tasks',
               '- Canonical evidence transaction: one atomic Bundle v2 preview fan-in',
               '- Strategy Operations and System Health: generated from canonical evidence',
