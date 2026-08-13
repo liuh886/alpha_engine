@@ -20,22 +20,17 @@ from src.research.cross_sectional_experiment_runner import (
     _runtime_for_market,
     load_cross_sectional_experiment_spec,
 )
-from src.research.daily_ranker import prepare_ranker_frame
 from src.research.economics import relative_excess
 from src.research.experiment_harness import evaluate_experiment
 from src.research.qlib_execution_common import (
     load_window_benchmark_returns,
     normalize_qlib_frame_index,
 )
+from src.research.ranker_training import fit_predict_ranker_scores
 from src.research.rolling_windows import purge_training_tail
 from src.research.signal_discovery import CandidateKind, ScoreOrientation, evaluate_candidate
-from src.research.universe_robustness import validate_no_nan_inputs
 from src.research.us87_sector_style import load_pool_symbols, load_sector_classification
 from src.research.window_policy import build_window_sampling_plan, horizon_eligible_dates_by_window
-from src.research.xgb_native_calibration import (
-    fit_xgb_native_daily_ranker,
-    predict_xgb_native_daily_ranker,
-)
 
 REPLAY_ID = "exact_us_ranker_portfolio_v1"
 TOP_N = 15
@@ -162,33 +157,6 @@ def _windows(spec, runtime):
     if missing:
         raise ValueError(f"selection windows unavailable: {missing}")
     return selected, dates
-
-
-def _fit_scores(
-    candidate,
-    expressions: tuple[str, ...],
-    expression_columns: dict[str, str],
-    features_train_all: pd.DataFrame,
-    returns_train: pd.DataFrame,
-    features_test_all: pd.DataFrame,
-    window: str,
-) -> pd.DataFrame:
-    columns = [expression_columns[item] for item in expressions]
-    train = features_train_all.loc[:, columns]
-    valid, reason = validate_no_nan_inputs(
-        train,
-        context=f"US exact replay train/{window}/{candidate.candidate_id}",
-    )
-    if not valid:
-        raise ValueError(reason)
-    x_rank, y_rank, groups = prepare_ranker_frame(train, returns_train)
-    fitted = fit_xgb_native_daily_ranker(
-        x_rank,
-        y_rank,
-        groups,
-        calibration=candidate.calibration,
-    )
-    return predict_xgb_native_daily_ranker(fitted, features_test_all.loc[:, columns])
 
 
 def _support_boundary(
@@ -355,14 +323,14 @@ def run_exact_us_ranker_portfolio_replay(
 
         for candidate in spec.candidates:
             candidate_id = candidate.candidate_id
-            scores = _fit_scores(
-                candidate,
-                expressions_by_candidate[candidate_id],
-                expression_columns,
-                features_train,
-                returns_train,
-                features_test,
-                window.label,
+            scores = fit_predict_ranker_scores(
+                expressions=expressions_by_candidate[candidate_id],
+                expression_columns=expression_columns,
+                features_train=features_train,
+                returns_train=returns_train,
+                features_test=features_test,
+                calibration=candidate.calibration,
+                context=f"US exact replay train/{window.label}/{candidate_id}",
             )
             score_hashes[candidate_id][window.label] = _score_hash(scores)
             diagnostic = evaluate_candidate(
@@ -421,14 +389,14 @@ def run_exact_us_ranker_portfolio_replay(
     deterministic = True
     for window in windows:
         cached = cache[window.label]
-        replay = _fit_scores(
-            leader,
-            expressions_by_candidate[leader_id],
-            expression_columns,
-            cached["features_train"],
-            cached["returns_train"],
-            cached["features_test"],
-            window.label,
+        replay = fit_predict_ranker_scores(
+            expressions=expressions_by_candidate[leader_id],
+            expression_columns=expression_columns,
+            features_train=cached["features_train"],
+            returns_train=cached["returns_train"],
+            features_test=cached["features_test"],
+            calibration=leader.calibration,
+            context=f"US exact replay train/{window.label}/{leader_id}",
         )
         second = _score_hash(replay)
         first = score_hashes[leader_id][window.label]
