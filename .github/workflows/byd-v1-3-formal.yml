@@ -7,11 +7,17 @@ on:
       - ".github/workflows/byd-v1-3-formal.yml"
       - "scripts/byd_v1_3_formal_builder.py"
       - "scripts/promote_byd_v1_3_formal.py"
+      - "scripts/build_active_formal_previews.py"
+      - "scripts/sync_formal_bundle_v2.py"
+      - "src/artifacts/formal_preview_builder.py"
+      - "src/artifacts/native_formal_promotion.py"
       - "src/research/byd_v1_3_low_vol_recovery.py"
       - "configs/models/byd_v1_3_recovery_event_low_vol_confirmation_v1.yaml"
       - "configs/models/model_registry_v1.yaml"
+      - "configs/strategies/registry.json"
       - "tests/test_byd_v1_3_low_vol_recovery.py"
       - "data/research/formal_backtests/**"
+      - "data/research/model_runs/**"
   workflow_dispatch:
 
 permissions:
@@ -57,6 +63,9 @@ jobs:
           uv run ruff check \
             scripts/byd_v1_3_formal_builder.py \
             scripts/promote_byd_v1_3_formal.py \
+            scripts/build_active_formal_previews.py \
+            src/artifacts/formal_preview_builder.py \
+            src/artifacts/native_formal_promotion.py \
             src/research/byd_v1_3_low_vol_recovery.py \
             tests/test_byd_v1_3_low_vol_recovery.py
           uv run pytest \
@@ -64,7 +73,7 @@ jobs:
             tests/test_model_x1_baselines.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-      - name: Rebuild complete formal package twice
+      - name: Rebuild complete governed evidence twice
         run: |
           set -euo pipefail
           for suffix in a b; do
@@ -81,17 +90,21 @@ jobs:
           diff -ru artifacts/formal-a artifacts/formal-b
           cmp artifacts/promotion-a.json artifacts/promotion-b.json
 
-      - name: Rebuild Bundle v2 twice from reproduced formal root
+      - name: Rebuild active previews and formal Bundle v2 twice
         run: |
           set -euo pipefail
-          uv run python scripts/sync_formal_bundle_v2.py \
-            --source-root artifacts/formal-a \
-            --output-root artifacts/bundle-a \
-            --receipt artifacts/bundle-receipt-a.json
-          uv run python scripts/sync_formal_bundle_v2.py \
-            --source-root artifacts/formal-a \
-            --output-root artifacts/bundle-b \
-            --receipt artifacts/bundle-receipt-b.json
+          for suffix in a b; do
+            uv run python scripts/build_active_formal_previews.py \
+              --governed-root "artifacts/formal-${suffix}" \
+              --native-root data/research/model_runs \
+              --output-root "artifacts/preview-${suffix}"
+            uv run python scripts/sync_formal_bundle_v2.py \
+              --source-root "artifacts/formal-${suffix}" \
+              --native-root "artifacts/preview-${suffix}" \
+              --output-root "artifacts/bundle-${suffix}" \
+              --receipt "artifacts/bundle-receipt-${suffix}.json"
+          done
+          diff -ru artifacts/preview-a artifacts/preview-b
           diff -ru artifacts/bundle-a artifacts/bundle-b
           cmp artifacts/bundle-receipt-a.json artifacts/bundle-receipt-b.json
 
@@ -102,6 +115,7 @@ jobs:
           name: byd-v1-3-formal-${{ github.run_id }}
           path: |
             artifacts/formal-a
+            artifacts/preview-a
             artifacts/bundle-a
             artifacts/promotion-a.json
             artifacts/bundle-receipt-a.json
