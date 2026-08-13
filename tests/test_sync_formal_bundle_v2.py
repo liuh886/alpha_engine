@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from scripts.byd_formal_publication_common import write_json
-from scripts.sync_formal_bundle_v2 import NATIVE_PROMOTERS, sync
+from scripts.sync_formal_bundle_v2 import sync
 from src.artifacts.formal_evidence_standard import validate_formal_evidence_bundle
+from src.artifacts.formal_preview_builder import build_preview_bundle
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+from src.artifacts.model_run_exporter import update_catalog
 from src.artifacts.us_x1_3_formal import MODEL_ID as US_X1_3
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID as BYD_V13
@@ -21,6 +24,23 @@ STRATEGIES = Path("configs/strategies/registry.json")
 
 def _read(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _active_preview_root(tmp_path: Path) -> Path:
+    root = tmp_path / "preview"
+    shutil.copytree(NATIVE, root)
+    active = load_active_strategy_catalog(STRATEGIES)
+    for strategy in active.strategies:
+        if strategy.model_version_id == US_X1_3:
+            continue
+        build_preview_bundle(
+            SOURCE / f"{strategy.model_version_id}.json",
+            strategy,
+            output_root=root,
+        )
+    manifests = sorted(root.rglob("manifest.json"))
+    update_catalog(manifests, catalog_path=root / "catalog.json", channel="preview")
+    return root
 
 
 def test_formal_json_serializes_timestamps_and_numpy_scalars(tmp_path: Path) -> None:
@@ -41,7 +61,7 @@ def test_formal_json_serializes_timestamps_and_numpy_scalars(tmp_path: Path) -> 
     }
 
 
-def test_live_signal_state_is_not_embedded_in_formal_v1_3_source() -> None:
+def test_live_signal_state_is_not_embedded_in_governed_byd_evidence() -> None:
     package = _read(SOURCE / f"{BYD_V13}.json")
     monitoring = package["operational_monitoring"]
     assert monitoring == {
@@ -57,28 +77,42 @@ def test_live_signal_state_is_not_embedded_in_formal_v1_3_source() -> None:
     assert "delivery_status" not in monitoring
 
 
-def test_active_formal_sources_are_exactly_partitioned() -> None:
+def test_active_preview_catalog_is_exact_active_strategy_set(tmp_path: Path) -> None:
     active = load_active_strategy_catalog(STRATEGIES)
-    source = _read(SOURCE / "catalog.json")
-    source_ids = {row["model_id"] for row in source["records"]}
-    native_ids = set(NATIVE_PROMOTERS)
+    preview = _active_preview_root(tmp_path)
+    catalog = _read(preview / "catalog.json")
+    validate_catalog(catalog)
 
-    assert source_ids == {
+    assert catalog["channel"] == "preview"
+    preview_ids = {row["model_version_id"] for row in catalog["records"]}
+    assert preview_ids == set(active.active_model_version_ids)
+    assert preview_ids == {
         "qqqi_qqq_tqqq_v4_3",
+        US_X1_3,
         "cn_x1_1",
         BYD_V13,
     }
-    assert native_ids == {US_X1_3}
-    assert source_ids.isdisjoint(native_ids)
-    assert source_ids | native_ids == set(active.active_model_version_ids)
-    assert "us_x1_2" not in source_ids
+    assert "us_x1_2" not in preview_ids
+
+    for row in catalog["records"]:
+        manifest = _read(preview / row["manifest_path"])
+        validate_manifest(manifest)
+        assert manifest["publication_channel"] == "preview"
+        assert manifest["publication_status"] == "ci_validated_preview"
+        if row["model_version_id"] != US_X1_3:
+            lineage = _read((preview / row["manifest_path"]).parent / "lineage.json")
+            assert lineage["publication_origin"] == "governed_model_evidence"
+            assert "source_contract" not in lineage
+            assert "source_path" not in lineage
+            assert "formal_model_backtest_1_0_0" not in json.dumps(lineage)
 
 
-def test_sync_builds_active_formal_set_deterministically(tmp_path: Path) -> None:
+def test_sync_promotes_active_preview_set_deterministically(tmp_path: Path) -> None:
+    preview = _active_preview_root(tmp_path)
     first = tmp_path / "first"
     second = tmp_path / "second"
-    receipt_a = sync(SOURCE, first, native_root=NATIVE, strategy_catalog=STRATEGIES)
-    receipt_b = sync(SOURCE, second, native_root=NATIVE, strategy_catalog=STRATEGIES)
+    receipt_a = sync(SOURCE, first, native_root=preview, strategy_catalog=STRATEGIES)
+    receipt_b = sync(SOURCE, second, native_root=preview, strategy_catalog=STRATEGIES)
     assert receipt_a == receipt_b
 
     files_a = sorted(path.relative_to(first) for path in first.rglob("*") if path.is_file())
@@ -96,43 +130,56 @@ def test_sync_builds_active_formal_set_deterministically(tmp_path: Path) -> None
         "cn_x1_1",
         BYD_V13,
     }
-    assert "us_x1_2" not in versions
     assert receipt_a["status"] == "active_formal_bundle_v2_built"
-    assert receipt_a["source_built_model_ids"] == [
-        "qqqi_qqq_tqqq_v4_3",
-        "cn_x1_1",
-        BYD_V13,
-    ]
-    assert receipt_a["native_promoted_model_ids"] == [US_X1_3]
+    assert receipt_a["publication_input"] == "active_preview_bundle_v2"
+    assert receipt_a["native_promoted_model_ids"] == list(
+        load_active_strategy_catalog(STRATEGIES).active_model_version_ids
+    )
+    assert "source_built_model_ids" not in receipt_a
+    assert "source_catalog_sha256" not in receipt_a
     assert "migration_receipt" not in receipt_a
-    assert "superseded_formal_model_ids" not in receipt_a
 
     for row in catalog["records"]:
-        manifest = _read(first / row["manifest_path"])
+        run_dir = (first / row["manifest_path"]).parent
+        manifest = _read(run_dir / "manifest.json")
         validate_manifest(manifest)
+        assert manifest["publication_channel"] == "formal"
         assert manifest["publication_status"] == "accepted_formal_baseline"
         assert manifest["research_only"] is True
         assert manifest["trade_ready"] is False
-        if row["model_version_id"] == US_X1_3:
-            validate_formal_evidence_bundle((first / row["manifest_path"]).parent)
-        else:
-            lineage_row = next(
-                section for section in manifest["sections"] if section["section_id"] == "lineage"
-            )
-            lineage = _read((first / row["manifest_path"]).parent / lineage_row["path"])
-            assert lineage["source_contract"] == "formal_model_backtest_1_0_0"
-            assert "migration" not in json.dumps(lineage).lower()
+        validate_formal_evidence_bundle(run_dir)
+        if row["model_version_id"] != US_X1_3:
+            lineage = _read(run_dir / "lineage.json")
+            assert lineage["publication_origin"] == "governed_model_evidence"
+            assert "source_contract" not in lineage
+            assert "source_path" not in lineage
 
     freshness = _read(first / "freshness.json")
-    assert freshness["required_models"] == list(load_active_strategy_catalog(STRATEGIES).active_model_version_ids)
+    assert freshness["required_models"] == list(
+        load_active_strategy_catalog(STRATEGIES).active_model_version_ids
+    )
     assert freshness["date_range_end_required_models"] == [US_X1_3, "cn_x1_1"]
     assert freshness["freshness_receipt_required_models"] == [US_X1_3, "cn_x1_1"]
 
 
-def test_native_us_x1_3_formal_boundary_is_explicit(tmp_path: Path) -> None:
+def test_sync_fails_closed_when_preview_catalog_is_incomplete(tmp_path: Path) -> None:
+    incomplete = tmp_path / "incomplete"
+    shutil.copytree(NATIVE, incomplete)
     output = tmp_path / "formal"
-    receipt = sync(SOURCE, output, native_root=NATIVE, strategy_catalog=STRATEGIES)
-    assert receipt["native_promoted_model_ids"] == [US_X1_3]
+
+    try:
+        sync(SOURCE, output, native_root=incomplete, strategy_catalog=STRATEGIES)
+    except ValueError as exc:
+        assert "must exactly match" in str(exc)
+    else:
+        raise AssertionError("incomplete active preview catalog was accepted")
+
+
+def test_native_us_x1_3_formal_boundary_is_explicit(tmp_path: Path) -> None:
+    preview = _active_preview_root(tmp_path)
+    output = tmp_path / "formal"
+    receipt = sync(SOURCE, output, native_root=preview, strategy_catalog=STRATEGIES)
+    assert US_X1_3 in receipt["native_promoted_model_ids"]
 
     catalog = _read(output / "catalog.json")
     record = next(row for row in catalog["records"] if row["model_version_id"] == US_X1_3)
@@ -154,9 +201,10 @@ def test_native_us_x1_3_formal_boundary_is_explicit(tmp_path: Path) -> None:
     validate_formal_evidence_bundle(run_dir)
 
 
-def test_byd_v1_3_complete_ledgers_enter_bundle_v2(tmp_path: Path) -> None:
+def test_byd_v1_3_complete_ledgers_enter_native_formal_bundle(tmp_path: Path) -> None:
+    preview = _active_preview_root(tmp_path)
     output = tmp_path / "formal"
-    sync(SOURCE, output, native_root=NATIVE, strategy_catalog=STRATEGIES)
+    sync(SOURCE, output, native_root=preview, strategy_catalog=STRATEGIES)
     catalog = _read(output / "catalog.json")
     byd = next(row for row in catalog["records"] if row["model_version_id"] == BYD_V13)
     manifest = _read(output / byd["manifest_path"])
@@ -164,3 +212,4 @@ def test_byd_v1_3_complete_ledgers_enter_bundle_v2(tmp_path: Path) -> None:
     sections = {row["section_id"]: row for row in manifest["sections"]}
     for section_id in ("performance", "portfolio", "trades", "attribution", "lineage"):
         assert sections[section_id]["availability_status"] == "available"
+    validate_formal_evidence_bundle((output / byd["manifest_path"]).parent)
