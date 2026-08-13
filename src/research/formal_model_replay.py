@@ -15,6 +15,7 @@ import yaml
 
 from scripts.byd_formal_refresh_common import extend_byd_input, extend_etf_input
 from scripts.byd_v1_3_formal_builder import build_package as build_byd_package
+from src.artifacts.formal_bundle_reader import FormalBundleReadError, load_formal_run
 from src.artifacts.formal_refresh import load_object
 from src.artifacts.qqq_v4_3_formal import (
     JOINT_STRATEGY,
@@ -28,16 +29,14 @@ from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
 from src.research.replay_comparison import compare_package_sections
 from src.research.v4_33_ma200_ma20_vix_release import run_v4_33_comparison
 
-RUNNER_ID = "formal_model_replay_v1"
+RUNNER_ID = "formal_model_replay_v2"
 QQQ_REPLAY_ID = "qqq_v4_3"
 BYD_REPLAY_ID = "byd_v1_3"
 REPLAY_IDS = (QQQ_REPLAY_ID, BYD_REPLAY_ID)
 
-FORMAL_V1_ROOT = Path("data/research/formal_backtests")
-FORMAL_V2_ROOT = Path("data/research/formal_model_runs")
-QQQ_PACKAGE = FORMAL_V1_ROOT / "qqqi_qqq_tqqq_v4_3.json"
-BYD_PACKAGE = FORMAL_V1_ROOT / "byd_v1_3_recovery_event_low_vol_confirmation_v1.json"
-BYD_PREDECESSOR_PACKAGE = FORMAL_V1_ROOT / "byd_v1_2_convex_momentum_budget_v1.json"
+BYD_PREDECESSOR_PACKAGE = Path(
+    "data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json"
+)
 BYD_SNAPSHOT = Path("data/research/byd_canonical_v1_snapshot.tar.xz")
 ETF_ARTIFACT = Path("data/research/515180_canonical_v1_artifact.zip.b64")
 BYD_SHADOW_STORE = Path("data/research/byd_prospective_shadow")
@@ -77,80 +76,15 @@ def _resolve(root: Path, relative: Path) -> Path:
     return path
 
 
-def _accepted_baseline_identity(root: Path, model_id: str) -> dict[str, Any]:
-    formal_root = _resolve(root, FORMAL_V2_ROOT)
-    catalog = _load_json(formal_root / "catalog.json")
-    if catalog.get("schema_version") != "2.0.0" or catalog.get("channel") != "formal":
-        raise FormalModelReplayError("formal Model Run Bundle v2 catalog is invalid")
-    records = catalog.get("records")
-    if not isinstance(records, list):
-        raise FormalModelReplayError("formal catalog records must be a list")
-    matches = [
-        dict(row)
-        for row in records
-        if isinstance(row, dict) and row.get("model_version_id") == model_id
-    ]
-    if len(matches) != 1:
-        raise FormalModelReplayError(
-            f"expected one accepted formal baseline for {model_id!r}, found {len(matches)}"
-        )
-    record = matches[0]
-    if record.get("publication_status") != "accepted_formal_baseline":
-        raise FormalModelReplayError(f"{model_id} is not an accepted formal baseline")
-
-    manifest_path = (formal_root / str(record["manifest_path"])).resolve()
-    manifest_path.relative_to(formal_root)
-    if not manifest_path.is_file():
-        raise FormalModelReplayError(f"formal manifest is missing: {manifest_path}")
-    manifest_sha = _sha256(manifest_path)
-    if manifest_sha != str(record["manifest_sha256"]):
-        raise FormalModelReplayError(f"formal manifest hash mismatch for {model_id}")
-    manifest = _load_json(manifest_path)
-    for field in (
-        "model_version_id",
-        "model_family_id",
-        "model_kind",
-        "run_id",
-        "bundle_id",
-        "evidence_cutoff",
-    ):
-        if manifest.get(field) != record.get(field):
-            raise FormalModelReplayError(
-                f"formal manifest {field} mismatch for {model_id}"
-            )
-    if manifest.get("publication_status") != "accepted_formal_baseline":
-        raise FormalModelReplayError(f"formal manifest is not accepted: {model_id}")
-    return {
-        "model_version_id": model_id,
-        "model_family_id": str(record["model_family_id"]),
-        "model_kind": str(record["model_kind"]),
-        "run_id": str(record["run_id"]),
-        "bundle_id": str(record["bundle_id"]),
-        "evidence_cutoff": str(record["evidence_cutoff"]),
-        "manifest_path": str(manifest_path.relative_to(root)),
-        "manifest_sha256": manifest_sha,
-    }
-
-
-def _formal_v1_package(
-    root: Path,
-    relative: Path,
-    model_id: str,
-    *,
-    require_accepted: bool = True,
-) -> dict[str, Any]:
-    path = _resolve(root, relative)
+def _historical_predecessor(root: Path) -> dict[str, Any]:
+    path = _resolve(root, BYD_PREDECESSOR_PACKAGE)
     if not path.is_file():
-        raise FormalModelReplayError(f"formal v1 package is missing: {path}")
+        raise FormalModelReplayError(f"BYD v1.2 historical evidence is missing: {path}")
     package = _load_json(path)
-    if package.get("model_id") != model_id:
-        raise FormalModelReplayError(
-            f"formal v1 model mismatch: expected={model_id!r}, observed={package.get('model_id')!r}"
-        )
-    if require_accepted and package.get("publication_status") != "accepted_formal_baseline":
-        raise FormalModelReplayError(f"formal v1 package is not accepted: {model_id}")
+    if package.get("model_id") != "byd_v1_2_convex_momentum_budget_v1":
+        raise FormalModelReplayError("BYD v1.2 historical evidence identity is invalid")
     if package.get("research_only") is not True or package.get("trade_ready") is not False:
-        raise FormalModelReplayError(f"formal v1 package violates research boundary: {model_id}")
+        raise FormalModelReplayError("BYD v1.2 historical evidence violates research boundary")
     return package
 
 
@@ -166,7 +100,7 @@ def _receipt(
 ) -> dict[str, Any]:
     completed = decision == "exact_replay"
     payload: dict[str, Any] = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "runner": RUNNER_ID,
         "replay_id": replay_id,
         "model_version_id": model_id,
@@ -187,22 +121,6 @@ def _receipt(
     return payload
 
 
-def _validate_cutoff(
-    baseline: Mapping[str, Any],
-    package: Mapping[str, Any],
-    *,
-    model_id: str,
-) -> str:
-    v2_cutoff = str(baseline["evidence_cutoff"])
-    v1_cutoff = str(package.get("evidence_cutoff") or "")
-    if v1_cutoff != v2_cutoff:
-        raise FormalModelReplayError(
-            f"formal v1/v2 evidence cutoff mismatch for {model_id}: "
-            f"{v1_cutoff!r} != {v2_cutoff!r}"
-        )
-    return v2_cutoff
-
-
 def replay_qqq_v4_3(
     *,
     root: str | Path,
@@ -210,10 +128,11 @@ def replay_qqq_v4_3(
 ) -> dict[str, Any]:
     normalized_root = Path(root).resolve()
     try:
-        baseline = _accepted_baseline_identity(normalized_root, QQQ_MODEL_ID)
-        expected = _formal_v1_package(normalized_root, QQQ_PACKAGE, QQQ_MODEL_ID)
-        cutoff = _validate_cutoff(baseline, expected, model_id=QQQ_MODEL_ID)
-    except (FileNotFoundError, FormalModelReplayError, json.JSONDecodeError) as exc:
+        accepted = load_formal_run(normalized_root, QQQ_MODEL_ID)
+        baseline = accepted.identity
+        expected = accepted.replay_trace()
+        cutoff = accepted.evidence_cutoff
+    except (FileNotFoundError, FormalBundleReadError, json.JSONDecodeError) as exc:
         return _receipt(
             replay_id=QQQ_REPLAY_ID,
             model_id=QQQ_MODEL_ID,
@@ -270,9 +189,9 @@ def replay_qqq_v4_3(
         observed = build_qqq_package(
             result,
             bars,
-            generated_at=str(expected.get("generated_at") or "local-replay"),
+            generated_at=accepted.generated_at,
             evidence_cutoff=cutoff,
-            backtest_id=str(expected.get("backtest_id") or f"{QQQ_MODEL_ID}-replay"),
+            backtest_id=accepted.run_id,
             evidence={
                 "replay_runner": RUNNER_ID,
                 "model_selection_reopened": False,
@@ -304,7 +223,7 @@ def replay_qqq_v4_3(
                 model_id=QQQ_MODEL_ID,
                 baseline=baseline,
                 decision="invalid_evidence",
-                reason="maintained QQQ v4.3 execution does not reproduce the accepted formal trace",
+                reason="maintained QQQ v4.3 execution does not reproduce the accepted Bundle v2 trace",
                 comparison=comparison,
                 data_identity=data_identity,
             )
@@ -413,16 +332,17 @@ def _extend_byd_inputs(
 def replay_byd_v1_3(*, root: str | Path) -> dict[str, Any]:
     normalized_root = Path(root).resolve()
     try:
-        baseline = _accepted_baseline_identity(normalized_root, BYD_MODEL_ID)
-        expected = _formal_v1_package(normalized_root, BYD_PACKAGE, BYD_MODEL_ID)
-        predecessor = _formal_v1_package(
-            normalized_root,
-            BYD_PREDECESSOR_PACKAGE,
-            "byd_v1_2_convex_momentum_budget_v1",
-            require_accepted=False,
-        )
-        cutoff = _validate_cutoff(baseline, expected, model_id=BYD_MODEL_ID)
-    except (FileNotFoundError, FormalModelReplayError, json.JSONDecodeError) as exc:
+        accepted = load_formal_run(normalized_root, BYD_MODEL_ID)
+        baseline = accepted.identity
+        expected = accepted.replay_trace()
+        predecessor = _historical_predecessor(normalized_root)
+        cutoff = accepted.evidence_cutoff
+    except (
+        FileNotFoundError,
+        FormalBundleReadError,
+        FormalModelReplayError,
+        json.JSONDecodeError,
+    ) as exc:
         return _receipt(
             replay_id=BYD_REPLAY_ID,
             model_id=BYD_MODEL_ID,
@@ -458,7 +378,7 @@ def replay_byd_v1_3(*, root: str | Path) -> dict[str, Any]:
                 etf_dir=etf_dir,
                 signal_ledger=_resolve(normalized_root, BYD_SIGNAL_LEDGER),
                 cutoff=cutoff,
-                generated_at=str(expected.get("generated_at") or "local-replay"),
+                generated_at=accepted.generated_at,
                 predecessor_package=predecessor,
             )
 
@@ -470,7 +390,7 @@ def replay_byd_v1_3(*, root: str | Path) -> dict[str, Any]:
                 model_id=BYD_MODEL_ID,
                 baseline=baseline,
                 decision="invalid_evidence",
-                reason="maintained BYD v1.3 execution does not reproduce the accepted formal trace",
+                reason="maintained BYD v1.3 execution does not reproduce the accepted Bundle v2 trace",
                 comparison=comparison,
                 data_identity=data_identity,
             )
@@ -492,6 +412,7 @@ def replay_byd_v1_3(*, root: str | Path) -> dict[str, Any]:
         )
     except (
         FormalModelReplayError,
+        FormalBundleReadError,
         ValueError,
         KeyError,
         json.JSONDecodeError,
@@ -536,7 +457,7 @@ def replay_formal_models(
 
     exact = all(result.get("decision") == "exact_replay" for result in results)
     return {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "runner": RUNNER_ID,
         "requested_replay": replay_id,
         "status": "completed" if exact else "blocked",
