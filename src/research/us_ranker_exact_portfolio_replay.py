@@ -1,4 +1,4 @@
-"""Exact US ranker Stage-B replay under the governed US x1.2 portfolio contract."""
+"""Exact US ranker Stage-B replay under the governed US portfolio contract."""
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ from src.research.cross_sectional_experiment_runner import (
     load_cross_sectional_experiment_spec,
 )
 from src.research.daily_ranker import prepare_ranker_frame
+from src.research.economics import relative_excess
 from src.research.experiment_harness import evaluate_experiment
 from src.research.qlib_execution_common import (
     load_window_benchmark_returns,
@@ -94,10 +95,6 @@ def _benchmark_map(frame: pd.DataFrame) -> dict[pd.Timestamp, float]:
     if list(frame.columns) != ["return"]:
         raise ValueError("benchmark frame must expose one canonical 'return' column")
     return {pd.Timestamp(index): float(value) for index, value in frame["return"].items()}
-
-
-def _relative_excess(strategy_return: float, benchmark_return: float) -> float:
-    return (1.0 + strategy_return) / (1.0 + benchmark_return) - 1.0
 
 
 def _sectors(spec, symbols: list[str]) -> tuple[dict[str, str], str]:
@@ -247,7 +244,7 @@ def run_exact_us_ranker_portfolio_replay(
         raise ValueError("exact replay requires 20/60 bps")
     strategy = spec.parent.strategy
     if int(strategy["top_n"]) != TOP_N or int(strategy["holding_days"]) != 10 or int(strategy["rebalance_days"]) != 10:
-        raise ValueError("parent strategy does not match the US x1.2 10D Top-15 contract")
+        raise ValueError("parent strategy does not match the governed US 10D Top-15 contract")
 
     output = (
         Path(output_dir).resolve()
@@ -400,7 +397,7 @@ def run_exact_us_ranker_portfolio_replay(
                         "candidate_id": candidate_id,
                         "window": window.label,
                         "cost_bps": cost_bps,
-                        "relative_excess": _relative_excess(
+                        "relative_excess": relative_excess(
                             float(result["total_return"]), float(result["benchmark_return"])
                         ),
                         "strategy_return": float(result["total_return"]),

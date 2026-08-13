@@ -18,7 +18,7 @@ from src.research.cn_x1_1_regime_gated import (
     build_regime_state,
     run_regime_portfolio,
 )
-from src.research.formal_model_replay import _compare_package_sections
+from src.research.replay_comparison import compare_package_sections
 
 CN_MODEL_ID = "cn_x1_1"
 CN_FROZEN_EVIDENCE = Path("data/research/cn_x1_1_regime_gated_candidate_v1")
@@ -65,7 +65,7 @@ def assert_exact_formal_prefix(
     *,
     label: str,
 ) -> dict[str, Any]:
-    comparison = _compare_package_sections(expected, _prefix_package(expected, observed))
+    comparison = compare_package_sections(expected, _prefix_package(expected, observed))
     if not comparison["exact"]:
         _raise_mismatch(label, comparison)
     return comparison

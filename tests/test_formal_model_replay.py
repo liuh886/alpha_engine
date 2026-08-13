@@ -5,6 +5,7 @@ from pathlib import Path
 
 from src.cli import main as cli
 from src.research import formal_model_replay as replay
+from src.research.replay_comparison import compare_package_sections
 
 
 def _package(value: float) -> dict:
@@ -40,7 +41,7 @@ def test_trace_comparison_accepts_machine_precision_noise() -> None:
     expected = _package(0.01)
     observed = _package(0.01 + 5e-13)
 
-    result = replay._compare_package_sections(expected, observed)
+    result = compare_package_sections(expected, observed)
 
     assert result["exact"] is True
     assert result["sections"]["report"]["first_mismatch"] is None
@@ -50,7 +51,7 @@ def test_trace_comparison_rejects_economic_drift() -> None:
     expected = _package(0.01)
     observed = _package(0.011)
 
-    result = replay._compare_package_sections(expected, observed)
+    result = compare_package_sections(expected, observed)
 
     assert result["exact"] is False
     mismatch = result["sections"]["report"]["first_mismatch"]

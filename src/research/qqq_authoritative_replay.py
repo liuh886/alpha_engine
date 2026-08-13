@@ -20,7 +20,7 @@ from src.artifacts.qqq_v4_3_formal import (
 from src.data.adapters.cnn_fear_greed import fetch_cnn_fear_greed
 from src.data.etf_reference_bundle import build_etf_reference_bundle
 from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
-from src.research.formal_model_replay import _compare_package_sections, _compare_row_lists
+from src.research.replay_comparison import compare_package_sections, compare_row_lists
 from src.research.rules_formal_replay_gate import (
     CN_MODEL_ID,
     CN_REPLAY_LEDGER_NAME,
@@ -160,7 +160,7 @@ def compare_qqq_authoritative_trace(
             observed.get("trades"), QQQ_TRADE_FIELDS, label="trades"
         ),
     }
-    comparison = _compare_package_sections(expected_projection, observed_projection)
+    comparison = compare_package_sections(expected_projection, observed_projection)
     comparison["authority"] = {
         "historical_economic_authority": "accepted_formal_prefix",
         "current_source_authority": "decision_path_and_newly_appended_economics",
@@ -272,7 +272,7 @@ def _appended_economic_replay(
         QQQ_APPENDED_ECONOMIC_FIELDS,
         label="source appended report",
     )
-    comparison = _compare_row_lists(expected_projection, observed_projection)
+    comparison = compare_row_lists(expected_projection, observed_projection)
     comparison["status"] = "exact_recomputed_appended_economics"
     comparison["boundary"] = boundary
     return comparison

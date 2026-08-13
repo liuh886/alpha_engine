@@ -2,14 +2,9 @@
 
 Alpha Engine exposes one active formal model per stable product strategy. Historical research evidence may retain superseded models, but **active identity is owned only by `configs/strategies/registry.json`**.
 
-Current active strategy set:
+The stable product strategy families are `qqq_rotation`, `us_x`, `cn_x` and `byd`. Their current `model_version_id` values are not copied into this document; every production consumer must resolve them from the Active Strategy Catalog.
 
-1. `qqq_rotation` → QQQ Rotation v4.3;
-2. `us_x` → US x1.2;
-3. `cn_x` → CN x1.1;
-4. `byd` → BYD v1.3.
-
-All remain `research_only=true`, `trade_ready=false`.
+All active strategies remain `research_only=true`, `trade_ready=false` unless the governing product contract is explicitly changed.
 
 ## Evidence layers
 
@@ -29,18 +24,20 @@ Formal publication, Strategy Operations and frontend current-state policy must a
 
 `data/research/formal_model_runs/catalog.json` is the active formal evidence catalog exposed to Strategy Console. Its model-version set must equal the Active Strategy Catalog exactly.
 
-The final formal catalog is assembled from two current source classes:
+An active strategy's formal evidence may currently be produced from either:
 
-- governed source packages for QQQ v4.3, CN x1.1 and BYD v1.3;
-- native Bundle v2 evidence for US x1.2.
+- a governed deterministic source package that is projected into Bundle v2; or
+- a native Bundle v2 run that is validated and promoted into the formal catalog.
 
-There is no active v1→v2 migration registry, compatibility reader or projector layer. The internal flat source package format may remain a model-specific deterministic input until that model is natively produced as Bundle v2, but it is not the public evidence contract.
+The partition is executable implementation detail and must be enforced by the formal sync path; documentation must not become a second model-to-source registry.
+
+There is no active v1→v2 migration registry, compatibility reader or projector layer. Any internal flat source package is a deterministic input until that strategy becomes native Bundle v2; it is not the public evidence contract.
 
 ## Promotion means identity over immutable evidence
 
 A formal promotion should preserve the already-observed economic evidence and assign accepted formal identity through a reviewed contract. It must not silently retrain, reopen model selection or substitute newer provider bytes.
 
-For native Bundle v2 runs, promotion is a validated reference/materialization of the immutable run into the formal catalog. US x1.2 is the reference implementation.
+For native Bundle v2 runs, promotion is a validated reference/materialization of the immutable run into the formal catalog.
 
 For source-backed models, the Bundle v2 builder maps only retained source evidence into the canonical sections. Missing evidence stays `not_retained` / `not_applicable`; the builder does not invent metrics, fills, PnL, IC or diagnostics.
 
@@ -62,15 +59,17 @@ Required sequence:
 
 A reviewed refresh PR does not commit generated `data/research/strategy_operations/` or `qlib-dashboard/public/data/`.
 
-## US x1.1 retirement
+## Superseded model retirement
 
-US x1.1 is historical evidence only after the accepted US x1.2 promotion.
+A superseded model is historical evidence only after its successor becomes the accepted active model for the same stable strategy.
 
-- it is not in the Active Strategy Catalog;
-- it is not an active formal source package;
-- it is not refreshed to satisfy current product state;
-- no compatibility adapter relabels it as US x1.2;
-- its useful historical lineage may remain referenced by immutable US x1.2 evidence.
+- superseded versions are not in the Active Strategy Catalog;
+- they are not active formal source packages;
+- they are not refreshed to satisfy current product state;
+- no compatibility adapter relabels predecessor evidence as the successor;
+- useful historical lineage may remain referenced by immutable successor evidence.
+
+Promotion replaces active execution identity instead of growing a parallel compatibility path.
 
 ## Strategy decisions are companion evidence
 
@@ -107,7 +106,7 @@ The detector fails closed when the dependency graph or commit range cannot be re
 A required Pages release must verify:
 
 - exact deployed commit;
-- exactly the four active strategy/model identities;
+- active strategy/model identities exactly match the Active Strategy Catalog;
 - formal manifest and section hashes;
 - research-only / not-trade-ready boundary;
 - regenerated Strategy Operations parity with formal identity;
