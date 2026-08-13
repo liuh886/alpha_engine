@@ -1,0 +1,205 @@
+"""Read accepted formal Model Run Bundle v2 evidence with fail-closed identity checks."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Mapping
+
+from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+
+
+class FormalBundleReadError(ValueError):
+    """Raised when accepted formal Bundle v2 evidence is incomplete or inconsistent."""
+
+
+def _object(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise FormalBundleReadError(f"invalid formal JSON: {path}") from exc
+    if not isinstance(value, dict):
+        raise FormalBundleReadError(f"formal JSON root must be an object: {path}")
+    return value
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+@dataclass(frozen=True)
+class FormalRun:
+    root: Path
+    record: Mapping[str, Any]
+    manifest_path: Path
+    manifest: Mapping[str, Any]
+    sections: Mapping[str, Any]
+
+    @property
+    def model_version_id(self) -> str:
+        return str(self.manifest["model_version_id"])
+
+    @property
+    def evidence_cutoff(self) -> str:
+        return str(self.manifest["evidence_cutoff"])
+
+    @property
+    def generated_at(self) -> str:
+        return str(self.manifest["generated_at"])
+
+    @property
+    def run_id(self) -> str:
+        return str(self.manifest["run_id"])
+
+    @property
+    def identity(self) -> dict[str, Any]:
+        return {
+            "model_version_id": self.model_version_id,
+            "model_family_id": str(self.manifest["model_family_id"]),
+            "model_kind": str(self.manifest["model_kind"]),
+            "run_id": self.run_id,
+            "bundle_id": str(self.manifest["bundle_id"]),
+            "evidence_cutoff": self.evidence_cutoff,
+            "manifest_path": self.manifest_path.relative_to(self.root).as_posix(),
+            "manifest_sha256": _sha256(self.manifest_path),
+        }
+
+    def section(self, section_id: str) -> Any:
+        if section_id not in self.sections:
+            raise FormalBundleReadError(
+                f"formal section is unavailable for {self.model_version_id}: {section_id}"
+            )
+        return self.sections[section_id]
+
+    def replay_trace(self) -> dict[str, Any]:
+        performance = self.section("performance")
+        portfolio = self.section("portfolio")
+        trades = self.section("trades")
+        if not isinstance(performance, Mapping) or not isinstance(portfolio, Mapping):
+            raise FormalBundleReadError(
+                f"formal performance/portfolio sections are invalid: {self.model_version_id}"
+            )
+        report = performance.get("report")
+        positions = portfolio.get("positions")
+        contract = portfolio.get("portfolio_contract")
+        if not isinstance(report, list) or not isinstance(positions, list) or not isinstance(contract, Mapping):
+            raise FormalBundleReadError(
+                f"formal replay trace is incomplete: {self.model_version_id}"
+            )
+        trade_rows = trades.get("records") if isinstance(trades, Mapping) else trades
+        if not isinstance(trade_rows, list):
+            raise FormalBundleReadError(
+                f"formal trades are unavailable for replay: {self.model_version_id}"
+            )
+        return {
+            "portfolio_contract": dict(contract),
+            "report": list(report),
+            "positions": list(positions),
+            "trades": list(trade_rows),
+        }
+
+
+def load_formal_run(
+    repository_root: str | Path,
+    model_version_id: str,
+    *,
+    relative_root: Path = Path("data/research/formal_model_runs"),
+) -> FormalRun:
+    repository = Path(repository_root).resolve()
+    formal_root = (repository / relative_root).resolve()
+    try:
+        formal_root.relative_to(repository)
+    except ValueError as exc:
+        raise FormalBundleReadError("formal root escapes repository") from exc
+
+    catalog_path = formal_root / "catalog.json"
+    catalog = _object(catalog_path)
+    validate_catalog(catalog)
+    if (
+        catalog.get("channel") != "formal"
+        or catalog.get("research_only") is not True
+        or catalog.get("trade_ready") is not False
+    ):
+        raise FormalBundleReadError("formal catalog boundary is invalid")
+    rows = catalog.get("records")
+    if not isinstance(rows, list):
+        raise FormalBundleReadError("formal catalog records are missing")
+    matches = [
+        dict(row)
+        for row in rows
+        if isinstance(row, Mapping) and row.get("model_version_id") == model_version_id
+    ]
+    if len(matches) != 1:
+        raise FormalBundleReadError(
+            f"expected one accepted formal run for {model_version_id}, found {len(matches)}"
+        )
+    record = matches[0]
+    if record.get("publication_status") != "accepted_formal_baseline":
+        raise FormalBundleReadError(f"formal run is not accepted: {model_version_id}")
+
+    manifest_path = (formal_root / str(record.get("manifest_path") or "")).resolve()
+    try:
+        manifest_path.relative_to(formal_root)
+    except ValueError as exc:
+        raise FormalBundleReadError("formal manifest escapes formal root") from exc
+    if not manifest_path.is_file() or _sha256(manifest_path) != record.get("manifest_sha256"):
+        raise FormalBundleReadError(f"formal manifest digest mismatch: {model_version_id}")
+    manifest = _object(manifest_path)
+    validate_manifest(manifest)
+    for field in (
+        "model_version_id",
+        "model_family_id",
+        "model_kind",
+        "run_id",
+        "bundle_id",
+        "evidence_cutoff",
+        "publication_status",
+    ):
+        if manifest.get(field) != record.get(field):
+            raise FormalBundleReadError(
+                f"formal manifest/catalog mismatch for {model_version_id}: {field}"
+            )
+    if (
+        manifest.get("publication_channel") != "formal"
+        or manifest.get("publication_status") != "accepted_formal_baseline"
+        or manifest.get("research_only") is not True
+        or manifest.get("trade_ready") is not False
+    ):
+        raise FormalBundleReadError(f"formal manifest boundary is invalid: {model_version_id}")
+
+    run_dir = manifest_path.parent
+    sections: dict[str, Any] = {}
+    for declaration in manifest.get("sections", []):
+        if not isinstance(declaration, Mapping):
+            raise FormalBundleReadError("formal section declaration is invalid")
+        if declaration.get("availability_status") != "available":
+            continue
+        section_id = str(declaration.get("section_id") or "")
+        path = (run_dir / str(declaration.get("path") or "")).resolve()
+        try:
+            path.relative_to(run_dir)
+        except ValueError as exc:
+            raise FormalBundleReadError(f"formal section escapes run: {section_id}") from exc
+        if not path.is_file():
+            raise FormalBundleReadError(f"formal section is missing: {section_id}")
+        data = path.read_bytes()
+        if (
+            len(data) != declaration.get("byte_size")
+            or hashlib.sha256(data).hexdigest() != declaration.get("sha256")
+        ):
+            raise FormalBundleReadError(f"formal section digest mismatch: {section_id}")
+        try:
+            value = json.loads(data)
+        except json.JSONDecodeError as exc:
+            raise FormalBundleReadError(f"formal section JSON is invalid: {section_id}") from exc
+        sections[section_id] = value
+
+    return FormalRun(
+        root=repository,
+        record=record,
+        manifest_path=manifest_path,
+        manifest=manifest,
+        sections=sections,
+    )
