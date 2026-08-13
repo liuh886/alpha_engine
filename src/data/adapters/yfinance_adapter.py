@@ -4,15 +4,13 @@ import warnings
 from dataclasses import dataclass
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
 
-# Yahoo/yfinance adjusts and repairs OHLC fields independently. Small envelope
-# drift of a few basis points can therefore be introduced by provider rounding
-# even when the bar is economically consistent. Keep the reconciliation bound
-# narrow enough to reject genuinely malformed bars while tolerating that
-# provider-scale adjustment noise.
+# Small provider/repair rounding drift is tolerated only inside this narrow
+# envelope. Material raw OHLC inconsistencies still fail closed.
 OHLC_ROUNDING_REL_TOL = 5e-4
 CN_ETF_PRICE_TICK = 1e-3
 CN_ETF_PREFIXES = ("15", "16", "51", "56", "58")
@@ -63,10 +61,14 @@ def _reconcile_ohlc_rounding(
     high_gap = (required_high - result["high"]).clip(lower=0.0)
     low_gap = (result["low"] - required_low).clip(lower=0.0)
     high_scale = (
-        pd.concat([required_high.abs(), result["high"].abs()], axis=1).max(axis=1).clip(lower=1.0)
+        pd.concat([required_high.abs(), result["high"].abs()], axis=1)
+        .max(axis=1)
+        .clip(lower=1.0)
     )
     low_scale = (
-        pd.concat([required_low.abs(), result["low"].abs()], axis=1).max(axis=1).clip(lower=1.0)
+        pd.concat([required_low.abs(), result["low"].abs()], axis=1)
+        .max(axis=1)
+        .clip(lower=1.0)
     )
     high_relative = high_gap / high_scale
     low_relative = low_gap / low_scale
@@ -113,11 +115,12 @@ def _process_yfinance_df(
     *,
     absolute_tolerance: float = 0.0,
 ) -> pd.DataFrame:
-    """Normalize bars already adjusted consistently by Yahoo/yfinance.
+    """Normalize repaired Yahoo bars and apply one uniform adjustment ratio.
 
-    The adapter requests ``auto_adjust=True``. Reconstructing OHLC from an
-    adjusted-close ratio is deliberately forbidden because Yahoo can publish
-    repaired or rounded fields whose ratios differ across columns.
+    yfinance's maintained ``auto_adjust`` algorithm multiplies raw Open/High/Low
+    by ``Adj Close / Close`` and uses Adj Close as Close. Perform that operation
+    explicitly after ``repair=True`` so every OHLC field shares the same ratio
+    before the Alpha Engine envelope gate runs.
     """
 
     if df is None or df.empty:
@@ -130,16 +133,41 @@ def _process_yfinance_df(
             pass
     result = result.reset_index()
     result.columns = [str(column).lower() for column in result.columns]
-    required = ["date", "open", "high", "low", "close", "volume"]
+    required = ["date", "open", "high", "low", "close", "adj close", "volume"]
     if any(column not in result.columns for column in required):
         return pd.DataFrame()
     result["date"] = pd.to_datetime(result["date"], errors="coerce")
-    for column in ("open", "high", "low", "close", "volume"):
+    for column in ("open", "high", "low", "close", "adj close", "volume"):
         result[column] = pd.to_numeric(result[column], errors="coerce")
-    result = result.dropna(subset=["date", "open", "high", "low", "close"]).copy()
-    # Yahoo does not expose reported turnover through this endpoint. Keep the
-    # historical Alpha Engine column but classify it as synthetic in the
-    # provider capability manifest.
+    result = result.dropna(
+        subset=["date", "open", "high", "low", "close", "adj close"]
+    ).copy()
+
+    raw = result[["date", "open", "high", "low", "close", "volume"]].copy()
+    raw, raw_evidence = _reconcile_ohlc_rounding(
+        raw,
+        absolute_tolerance=absolute_tolerance,
+    )
+    result.loc[:, ["open", "high", "low", "close", "volume"]] = raw[
+        ["open", "high", "low", "close", "volume"]
+    ].to_numpy()
+
+    close = result["close"].to_numpy(dtype=float)
+    adjusted_close = result["adj close"].to_numpy(dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = adjusted_close / close
+    if (
+        not np.isfinite(ratio).all()
+        or (close <= 0.0).any()
+        or (adjusted_close <= 0.0).any()
+        or (ratio <= 0.0).any()
+    ):
+        raise DataFetchError("Yahoo adjustment ratio is non-finite or non-positive")
+
+    result["open"] = result["open"] * ratio
+    result["high"] = result["high"] * ratio
+    result["low"] = result["low"] * ratio
+    result["close"] = result["adj close"]
     result["amount"] = result["close"] * result["volume"]
     result["factor"] = 1.0
     out = (
@@ -147,10 +175,15 @@ def _process_yfinance_df(
         .sort_values("date")
         .reset_index(drop=True)
     )
-    reconciled, _ = _reconcile_ohlc_rounding(
+    reconciled, adjusted_evidence = _reconcile_ohlc_rounding(
         out,
         absolute_tolerance=absolute_tolerance,
     )
+    adjusted_evidence["adjustment_method"] = "uniform_adj_close_ratio"
+    adjusted_evidence["adjustment_ratio_min"] = float(np.min(ratio))
+    adjusted_evidence["adjustment_ratio_max"] = float(np.max(ratio))
+    adjusted_evidence["raw_reconciliation"] = raw_evidence
+    reconciled.attrs["ohlc_rounding_reconciliation"] = adjusted_evidence
     return reconciled
 
 
@@ -230,7 +263,7 @@ class YFinanceAdapter:
                     start=start,
                     end=provider_end,
                     progress=False,
-                    auto_adjust=True,
+                    auto_adjust=False,
                     repair=True,
                     threads=False,
                 )

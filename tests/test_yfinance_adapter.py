@@ -18,12 +18,14 @@ from src.data.adapters.yfinance_adapter import (
 
 def _frame(dates: list[str]) -> pd.DataFrame:
     index = pd.DatetimeIndex(pd.to_datetime(dates), name="Date")
+    close = [10.5 + i for i in range(len(index))]
     return pd.DataFrame(
         {
             "Open": [10.0 + i for i in range(len(index))],
             "High": [11.0 + i for i in range(len(index))],
             "Low": [9.0 + i for i in range(len(index))],
-            "Close": [10.5 + i for i in range(len(index))],
+            "Close": close,
+            "Adj Close": close,
             "Volume": [1000 + i for i in range(len(index))],
         },
         index=index,
@@ -70,7 +72,7 @@ def test_yfinance_translates_inclusive_end_and_clips_provider_rows(monkeypatch):
         "start": "2026-06-17",
         "end": "2026-06-19",
         "progress": False,
-        "auto_adjust": True,
+        "auto_adjust": False,
         "repair": True,
         "threads": False,
     }
@@ -84,6 +86,42 @@ def test_yfinance_translates_inclusive_end_and_clips_provider_rows(monkeypatch):
     assert result.df.iloc[0]["low"] == pytest.approx(9.0)
     assert result.df.iloc[0]["close"] == pytest.approx(10.5)
     assert result.df.iloc[0]["amount"] == pytest.approx(10500.0)
+
+
+def test_uniform_adj_close_ratio_preserves_ohlc_envelope(monkeypatch):
+    index = pd.DatetimeIndex(pd.to_datetime(["2026-08-12"]), name="Date")
+    frame = pd.DataFrame(
+        {
+            "Open": [100.0],
+            "High": [110.0],
+            "Low": [90.0],
+            "Close": [105.0],
+            "Adj Close": [99.75],
+            "Volume": [1000.0],
+        },
+        index=index,
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "yfinance",
+        SimpleNamespace(download=lambda *args, **kwargs: frame),
+    )
+    result = YFinanceAdapter().fetch_daily_bars(
+        FetchRequest(
+            symbol="ETN",
+            market="us",
+            start="2026-08-12",
+            end="2026-08-12",
+        )
+    )
+    ratio = 99.75 / 105.0
+    assert result.df.loc[0, "open"] == pytest.approx(100.0 * ratio)
+    assert result.df.loc[0, "high"] == pytest.approx(110.0 * ratio)
+    assert result.df.loc[0, "low"] == pytest.approx(90.0 * ratio)
+    assert result.df.loc[0, "close"] == pytest.approx(99.75)
+    evidence = result.df.attrs["ohlc_rounding_reconciliation"]
+    assert evidence["adjustment_method"] == "uniform_adj_close_ratio"
+    assert evidence["max_relative_violation"] == pytest.approx(0.0)
 
 
 def test_cn_yahoo_exchange_mapping_covers_main_boards_and_growth_boards():
@@ -193,6 +231,7 @@ def test_cn_etf_one_tick_ohlc_rounding_is_reconciled(monkeypatch):
             "High": [1.323],
             "Low": [1.320],
             "Close": [1.324],
+            "Adj Close": [1.324],
             "Volume": [1000.0],
         },
         index=index,
@@ -215,8 +254,10 @@ def test_cn_etf_one_tick_ohlc_rounding_is_reconciled(monkeypatch):
     evidence = result.df.attrs["ohlc_rounding_reconciliation"]
     assert result.df.loc[0, "high"] == pytest.approx(1.324)
     assert evidence["absolute_tolerance"] == CN_ETF_PRICE_TICK
-    assert evidence["max_relative_violation"] > OHLC_ROUNDING_REL_TOL
-    assert evidence["max_absolute_violation"] == pytest.approx(CN_ETF_PRICE_TICK)
+    assert evidence["raw_reconciliation"]["max_relative_violation"] > OHLC_ROUNDING_REL_TOL
+    assert evidence["raw_reconciliation"]["max_absolute_violation"] == pytest.approx(
+        CN_ETF_PRICE_TICK
+    )
 
 
 def test_same_one_tick_relative_gap_remains_material_for_cn_stock(monkeypatch):
@@ -227,6 +268,7 @@ def test_same_one_tick_relative_gap_remains_material_for_cn_stock(monkeypatch):
             "High": [1.323],
             "Low": [1.320],
             "Close": [1.324],
+            "Adj Close": [1.324],
             "Volume": [1000.0],
         },
         index=index,
@@ -251,6 +293,7 @@ def test_material_ohlc_inconsistency_remains_rejected(monkeypatch):
     frame = _frame(["2026-06-17"])
     frame.loc[:, "High"] = 10.0
     frame.loc[:, "Close"] = 12.0
+    frame.loc[:, "Adj Close"] = 12.0
     monkeypatch.setitem(
         sys.modules,
         "yfinance",
