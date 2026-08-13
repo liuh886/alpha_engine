@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from src.artifacts.strategy_signal_ledger import canonical_json_bytes
+from src.artifacts.strategy_signal_ledger import seal_signal_decision
 from src.factors.library import load_factor_library
 from src.factors.ranker_snapshot import build_ranker_factor_snapshot
 from src.research.ranker_current_target import (
@@ -36,20 +35,39 @@ def _formal(path: Path, date: str, weights: dict[str, float]) -> None:
     )
 
 
-def _live_ledger(path: Path, date: str, weights: dict[str, float]) -> None:
-    signal = {"signal_date": date, "target_weights": weights}
-    path.write_text(
-        json.dumps(
-            {
-                "schema_version": "strategy_signal_evaluation_v1",
-                "model_version_id": path.parent.name,
-                "signal": signal,
-                "signal_sha256": hashlib.sha256(canonical_json_bytes(signal)).hexdigest(),
-                "research_only": True,
-                "trade_ready": False,
-            }
-        ),
-        encoding="utf-8",
+def _live_ledger(ledger: Path, date: str, weights: dict[str, float]) -> None:
+    factor_evidence = build_ranker_factor_snapshot(
+        model_family_id="us_ranker",
+        signal_date=date,
+        latest_data_date=date,
+        factor_values={"ohlcv.momentum.ret_3d": 0.0},
+        factor_references={},
+        data_freshness_ok=True,
+    )
+    signal = {
+        "model_family_id": "us_ranker",
+        "research_only": True,
+        "trade_ready": False,
+        "should_alert": True,
+        "fingerprint": f"test-{date}",
+        "signal_date": date,
+        "latest_data_date": date,
+        "data_freshness_ok": True,
+        "factor_evidence": factor_evidence,
+        "factor_freshness_ok": True,
+        "current_weights": {},
+        "target_weights": weights,
+        "turnover_units": 1.0,
+        "estimated_transaction_cost": 0.0,
+        "reason_code": "test_ranker_state",
+    }
+    seal_signal_decision(
+        ledger_root=ledger,
+        model_version_id=ledger.name,
+        signal=signal,
+        workflow_run_id="test-run",
+        commit_sha="a" * 40,
+        created_at_utc=f"{date}T00:00:00Z",
     )
 
 
@@ -93,10 +111,9 @@ def test_governed_sessions_fill_short_live_provider_window(tmp_path: Path) -> No
 def test_live_ledger_supersedes_older_formal_position(tmp_path: Path) -> None:
     formal = tmp_path / "formal.json"
     ledger = tmp_path / "ledger"
-    ledger.mkdir()
     _formal(formal, "2026-07-01", {"AAA": 1.0})
     _live_ledger(
-        ledger / "latest.json",
+        ledger,
         "2026-07-15",
         {"BBB": 0.5, "CCC": 0.5},
     )
@@ -108,9 +125,8 @@ def test_live_ledger_supersedes_older_formal_position(tmp_path: Path) -> None:
 def test_newer_formal_position_supersedes_stale_live_ledger(tmp_path: Path) -> None:
     formal = tmp_path / "formal.json"
     ledger = tmp_path / "ledger"
-    ledger.mkdir()
     _formal(formal, "2026-07-15", {"AAA": 1.0})
-    _live_ledger(ledger / "latest.json", "2026-07-01", {"BBB": 1.0})
+    _live_ledger(ledger, "2026-07-01", {"BBB": 1.0})
     date, weights = load_previous_state(formal_package=formal, ledger_dir=ledger)
     assert date == "2026-07-15"
     assert weights == {"AAA": 1.0}
