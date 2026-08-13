@@ -5,6 +5,7 @@
     enabled: true,
     billingEnabled: true,
     referralEnabled: true,
+    standaloneReferralTrigger: false,
     appName: 'AlphaEngine',
     productCode: 'alpha_engine',
     entitlementCode: 'alpha_engine.pro',
