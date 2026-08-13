@@ -4,7 +4,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "05538740574cc08621b96b7b7caecd27380e150538e40f4b5467f9033459a8cc",
+      "sha256": "5f37371de233c359676be80971ddb83f83a627d565d3424634f40d3d7b129b5c",
       "status": "ready",
       "symbol": "AAOI"
     },
@@ -12,7 +12,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "4744f0da9b28140103f6ffc200a912b5ab8aa1cd797114890bc3d9408032135d",
+      "sha256": "7ce3bf5e23bddb639e345f975f663a434253195bf2086402ebd45a6e29fc769f",
       "status": "ready",
       "symbol": "AAPL"
     },
@@ -20,7 +20,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "3ace7febef8afa18d3816f6c4543f1ec33809d69f535fcb45fe4f5b4fb60eb76",
+      "sha256": "cd0efc35db2bea6b3f5eb9e30505b328d1b9c3f756f3fabd43d7327e54edad59",
       "status": "ready",
       "symbol": "ABBNY"
     },
@@ -28,7 +28,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "8b0c4db5ab775b60ebeceb6580076227d7870ed7d5946b0be3dee8de53b60dc5",
+      "sha256": "20b3bd04c907559c720b70e5a318b4a633ce460bb3099a1f7f85774a9206a43e",
       "status": "ready",
       "symbol": "ADP"
     },
@@ -36,7 +36,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "543fad170d82c40acee6c335fcd6c2f197fef1aea5e0fe8f33c3d846e910cf02",
+      "sha256": "0bd2229856decb7390a7b71fa301c0d6dc8ed4520b71f422cac61c79907a83a2",
       "status": "ready",
       "symbol": "ADSK"
     },
@@ -44,7 +44,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "c9fa000707f3f2c7bea4d01531a7aa75cf9b61fbb6df92e5c7bc4f9497876c75",
+      "sha256": "22589b3cb1dcad31eb03f16e612abd8f5eeceaae7cfb30c737885b98b8d992a3",
       "status": "ready",
       "symbol": "AEHR"
     },
@@ -52,7 +52,7 @@
       "first_date": "2024-03-20",
       "last_date": "2026-08-12",
       "rows": 601,
-      "sha256": "4f05661a1354aa6813ab8c68a6db454d376722711430d5cdbf08dd7525675641",
+      "sha256": "bc55822e717e0dfb8d8d0103c704dd3f0624b6a4e0d2ef5b444f6b1568e8df09",
       "status": "ready",
       "symbol": "ALAB"
     },
@@ -60,7 +60,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "6cdc3fca24c494b16e0a62e860cfef9aaa9fe926318a19b6041cda802d2b66ef",
+      "sha256": "02339683eb6ca425303efa6593fa7bf7e44e75297b9b39593bab24507b457ab5",
       "status": "ready",
       "symbol": "AMAT"
     },
@@ -68,7 +68,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "9d99791a5936fba01a3536f2cb5f0c6d905702d5631a792bd619104d2a3a0cd7",
+      "sha256": "04e5ec7d456da4bad8be9851bd73d671d6d9ba5e3dec142ba504b7af77ca6731",
       "status": "ready",
       "symbol": "AMD"
     },
@@ -76,7 +76,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "8fe422a93e480fa830c7374e954a180bc3da51d3341364c295dbad9b75c15b54",
+      "sha256": "0849079a7e84597d40d39054faa26768dc50daaf1eea691968068bda904191fe",
       "status": "ready",
       "symbol": "AMZN"
     },
@@ -84,7 +84,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "e495392ac51eeb11644711d01028b5488be33bc25b18d757104fad1c738428e0",
+      "sha256": "41de017e007c3401fa036509ae1b4bd6ed982f92f881f67741478813eb80bc59",
       "status": "ready",
       "symbol": "ANET"
     },
@@ -92,7 +92,7 @@
       "first_date": "2021-04-15",
       "last_date": "2026-08-12",
       "rows": 1338,
-      "sha256": "6371f7e4dea5952850af38456574aaedfc115656ac6aa5b63db7ff39fe22278b",
+      "sha256": "d9ff86bf1d434e26af60a7251d9a800f6993a04983bc4f66a293b17080ac8d70",
       "status": "ready",
       "symbol": "APP"
     },
@@ -100,7 +100,7 @@
       "first_date": "2023-09-14",
       "last_date": "2026-08-12",
       "rows": 730,
-      "sha256": "e655d4b94658515a8848070011d7942e208ee2311cc866ac59ad976fd493ad87",
+      "sha256": "9ae08338db7906841619acce023109714c0a632d2a837a432368c9c611b23fa0",
       "status": "ready",
       "symbol": "ARM"
     },
@@ -108,7 +108,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "e13afada0e6f942a4ad89b048fd2b3580667175968ae6ac278d95d78945974f0",
+      "sha256": "7006403c73e80c20bfa17b7ac9656438bfeb8bd1d41f3c36ae393781b6d667a8",
       "status": "ready",
       "symbol": "ASML"
     },
@@ -116,7 +116,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "dfdb37cfd25d251ab2168322bf43f910d5259f37ecc7a9d91ec777fd5c40c07f",
+      "sha256": "3ee076580c947523f86b1c7123b620aecd2bf57689c53ef48a6eaa640f1d4f72",
       "status": "ready",
       "symbol": "AVGO"
     },
@@ -124,7 +124,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "1fdc79d1c34c4884d429ba93861235ccdfe369f0efc5da62156cdec3e61141b9",
+      "sha256": "427cb734b43c9dc43bc541d4ff6301c627afa9a53bec97bfdc2b388eb0b7d330",
       "status": "ready",
       "symbol": "AXON"
     },
@@ -132,7 +132,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "1e8ce1a0f2bc474a532e40201161180c07d593613a4b24d2306735149492e7ab",
+      "sha256": "af95767b6c3047417be73eb7eeb038bd84701fcea5cc5c6404368afe3ce1f0f6",
       "status": "ready",
       "symbol": "BE"
     },
@@ -140,7 +140,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "4c2f627bbc2473afe50d3f223be4e356d7d067f0f406200b2370a9bc90ef5167",
+      "sha256": "9488c6a94319f465acc8bb70d0bc9ac7065cc3c9ac4551ed87b1a31e7bb4acaf",
       "status": "ready",
       "symbol": "BKNG"
     },
@@ -148,7 +148,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "89d6eda259e94f86e246dba8b176a42f2a8a16eb7c4ed8ad22b2c39a0375359e",
+      "sha256": "3caeb4863f0b1b7f76c76bb634be51c488fa06530e8c4d18262ba4dbec1debd0",
       "status": "ready",
       "symbol": "BKR"
     },
@@ -156,7 +156,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "9309d1f35fe165738fc1083d9ca407a1f055876991e7dd6069eb2893fae9a9a1",
+      "sha256": "c1938ccde8e7386d0024ec6422246a5a4c374b8cac489a687a9d6ce832113f29",
       "status": "ready",
       "symbol": "CDNS"
     },
@@ -164,7 +164,7 @@
       "first_date": "2022-01-19",
       "last_date": "2026-08-12",
       "rows": 1145,
-      "sha256": "289e08e1bfd40d4e0d39d67860a8a8497d88d724e52c4e99dddbd8db09bcdce7",
+      "sha256": "6f47b324a1831164b1c75e36a678af6ae74cfe86da6dbd8f5bf376ebaadd9270",
       "status": "ready",
       "symbol": "CEG"
     },
@@ -172,7 +172,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "1afae5a9f616d4e00c019c1d8652d566b9ce040427c26df5e79bbc9f56af7de4",
+      "sha256": "9c52f4e774f840bca521864dd895c8776f06709b5f888714d3f2e6a473fba182",
       "status": "ready",
       "symbol": "COHR"
     },
@@ -180,7 +180,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "6e342302b1188347bb35e3c55d1cb7521662c1bb2ac2aab1981617519c3c333e",
+      "sha256": "41228f21f1286824871a12fb084ae9223808c76566ce591cc079fc3bbb2a84ae",
       "status": "ready",
       "symbol": "COST"
     },
@@ -188,7 +188,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "19800fe343a5de9aae499e7ec14a30920cb9a2a834229774875cf4468688473b",
+      "sha256": "c4738f9ae94f7932a65a6b25d46db0d95ca180ff239590c6fcb0fa7710d1d86a",
       "status": "ready",
       "symbol": "CPRT"
     },
@@ -196,7 +196,7 @@
       "first_date": "2025-06-05",
       "last_date": "2026-08-12",
       "rows": 298,
-      "sha256": "50fa855ebbafee51f0c5056e378be03c89d283fcc0686e9cc7d2aa0bc46b0a94",
+      "sha256": "ca36cf1b3f7cd2022af8bd9cb204cc832de550432a73707130e9e8d2a27f4698",
       "status": "ready",
       "symbol": "CRCL"
     },
@@ -204,7 +204,7 @@
       "first_date": "2022-01-27",
       "last_date": "2026-08-12",
       "rows": 1139,
-      "sha256": "693138b5004c7f371d016ac9adaa7d25f1fcdf8538378d43a4381f06eaf9c649",
+      "sha256": "aa0528e861537be7561b90006de1d8dcd765e186f457c18bc7f21d6a7a93e028",
       "status": "ready",
       "symbol": "CRDO"
     },
@@ -212,7 +212,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "1fc1b464b64c63bdd68e4f27ba5bfaf0a70b430f485537ff7e318fb57ab107a4",
+      "sha256": "0a8908cbd9c6a5356aecc930b1510211ad1a3e62bdc7e5d03ce283dbdffe295a",
       "status": "ready",
       "symbol": "CRWD"
     },
@@ -220,7 +220,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "c1f414176aa8bbb71e567d9a4e7f28d2c7eebfb46178bad0951c4ab22a3963f9",
+      "sha256": "3a8164da850ceec3fa791bd72e7e2801d180938a63aadd077088b7fb72a4faa0",
       "status": "ready",
       "symbol": "CSCO"
     },
@@ -228,7 +228,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "ee9e6729317875db2137bad36d81fe2f05fadc2355c69099b6eacc7c85b103b6",
+      "sha256": "731f892550f6ab900743e29c051324fd6178543cf7a3cb426a6c39e98270ec01",
       "status": "ready",
       "symbol": "CTAS"
     },
@@ -236,7 +236,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "dec68de3c670bcdeb06e761615143d1d4c878469c4ad40fe6eaa93486d29a6ec",
+      "sha256": "d3958b0cab91b823c6fb0e5c0e22f0a4f453a33b7e7b27e6298ccd2aba844688",
       "status": "ready",
       "symbol": "DASH"
     },
@@ -244,7 +244,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "c01ee5e46e2312b8d9ff0053b8728807053708f303de61b7139348451eb91381",
+      "sha256": "56c248b66f70bafc7f2c064b0bd45e5be06c3ddde044f8fc4bed48b6c97b3c5e",
       "status": "ready",
       "symbol": "DDOG"
     },
@@ -252,7 +252,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-10",
       "rows": 1406,
-      "sha256": "45be1a6f6ea165ac686aa1d522654f37b7d644da5911e0d20ef3e812df9cc1f5",
+      "sha256": "819034255b9263059299d5a868e5d5e91468b6ca49e72a631f5e9e1d1cff6c49",
       "status": "ready",
       "symbol": "EA"
     },
@@ -260,7 +260,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "eb8bc47a88edd5c4809be4e524a3319c3699594e3e1f0e1d35fd08d9c440e009",
+      "sha256": "cc4cdb71b473a86c06253bdf7ac783705f900d295d35f0f22ad646957c5e6899",
       "status": "ready",
       "symbol": "EME"
     },
@@ -268,7 +268,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "c6cd6004b22bbbccf32a8123741eb975e22d1926d149de9c14dee33e7ba32d3b",
+      "sha256": "64e1723a4d3efa4c0539cd8b37338c6958529d334531bc7531f6619df85fdfe9",
       "status": "ready",
       "symbol": "ETN"
     },
@@ -276,7 +276,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "285d512a02bd5dcd97aa39f4ede5c5c21c9f06d0e7c2e72f1b79adca0b5a7d18",
+      "sha256": "1fbd105d04c78a15c00c90d2a57d5a7e037b50cdd06528366bec1e28cf10451f",
       "status": "ready",
       "symbol": "FANG"
     },
@@ -284,7 +284,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "84c6ecc522651fbaaad3f71d06fbea92ce0a92065972e5ffc84f9a11e64c8e7c",
+      "sha256": "bc4ca98af9106dd4dac44f7860f4a775f319f568773f0ba2741280e315e33c15",
       "status": "ready",
       "symbol": "FIX"
     },
@@ -292,7 +292,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "72007fbeb36db8bf9b799cbb83bc6314cabd65327bc3d5b489b5797bce92e40a",
+      "sha256": "6195ada1f2696ff57af487966c1b6edbe2e70eff4c07551b8e7ed30e14267e6f",
       "status": "ready",
       "symbol": "FN"
     },
@@ -300,7 +300,7 @@
       "first_date": "2022-12-15",
       "last_date": "2026-08-12",
       "rows": 916,
-      "sha256": "bd5f07fc6cbc7b489fd72f31435c61c7c52b0230da3ed1a875aa2674c8000f33",
+      "sha256": "ce4eda3a1e8b63359477014cb547ae70936a96c8bb1dbebf5f0369016fe0fae4",
       "status": "ready",
       "symbol": "GEHC"
     },
@@ -308,7 +308,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "7d76acf4f9e444d7d52bd02e9f200d8905e604f35b6e1677b15a148e168ccd95",
+      "sha256": "44285c189d1c1716e2caf33faab3205e9bd0469428e75eb2e0fa90e85f1c12ce",
       "status": "ready",
       "symbol": "GOOGL"
     },
@@ -316,7 +316,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "728c1ac4fa781b546ef9666b81c38febae55cc88367c2c91720ac26a4456d849",
+      "sha256": "60841139e851c36fd8824df2b44d65f8d8d40bf77e44ead7e678197fc0aaea25",
       "status": "ready",
       "symbol": "HIMS"
     },
@@ -324,7 +324,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "03b0b0249677cb3afd16fec708129166ef281e81abfe6b33972dc985f7425c00",
+      "sha256": "a12a83a04c2a6f8643067f3ead9f2047dd0342d2d4304b56916c26ce724e1349",
       "status": "ready",
       "symbol": "HIMX"
     },
@@ -332,7 +332,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "cd73a4bc88e11a71ab73b02b2e61d552d4e5e05d8b6df4e6a6a2d43e25844d56",
+      "sha256": "fdaefcedfa2916f62d38bfd5df93bab9b4db0ba173ccee77abdd166f5e10823c",
       "status": "ready",
       "symbol": "HON"
     },
@@ -340,7 +340,7 @@
       "first_date": "2021-07-29",
       "last_date": "2026-08-12",
       "rows": 1265,
-      "sha256": "2bbf5f2786ab334028cfa8e76e1401112b397ef16818ec0aafda4711dadaeb66",
+      "sha256": "754b16ad1e8f89536df05d913651024bf4be53ea420316ce9d9a0f539e58d1c0",
       "status": "ready",
       "symbol": "HOOD"
     },
@@ -348,7 +348,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "83a154e1c106d5f8767244149d20e07fb7feaa9f1fb7845e30d32e2e4411d315",
+      "sha256": "a69c0f7de10c960ec73ab447d6848befc27d94514a19baa229c6a0536b4d1374",
       "status": "ready",
       "symbol": "INTC"
     },
@@ -356,7 +356,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "e50d6aeb80d58247d9b3d576102ff737b06bb1ef49e24b52b06b73b9f4cf84e7",
+      "sha256": "725038a95849ce4c3da5277586c16836fb61e91ff758a8eb5fd07c71dae703e4",
       "status": "ready",
       "symbol": "INTU"
     },
@@ -364,7 +364,7 @@
       "first_date": "2021-11-17",
       "last_date": "2026-08-12",
       "rows": 1187,
-      "sha256": "9bbd6e9fc4c59b3578b9312a673b56e46f3ef764ecc67088ea2fb87d72363850",
+      "sha256": "9b69dbec6e9965c1a63d4ebb0fc68dd7ddab2721e5c9b1e096ea932a3c660a44",
       "status": "ready",
       "symbol": "IREN"
     },
@@ -372,7 +372,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "08c4421f73b65d1c0789b0828947787a1d7c78825a0f3872764f3b7a64aa15a4",
+      "sha256": "2b615c23c3d76132ed896d43b78b5a18a2b4a5fc7e4d8bae5a594f57b9f92849",
       "status": "ready",
       "symbol": "ISRG"
     },
@@ -380,7 +380,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "e2025742dfd5ac8d43bbb3a6d9822b01964d8c8ce9eb2cc7d70afe5441bf2874",
+      "sha256": "da25d826a91f7fba08f852166c8e682eb0eef61f6fc8ce35cb023417d0534e04",
       "status": "ready",
       "symbol": "KLAC"
     },
@@ -388,7 +388,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "600335d23533e05ba97aa7c31ef338b2f3988684059307cf31417ad24b05c150",
+      "sha256": "d776b37ca46ea50bb757f797c56a2965016da28a1218d680b53bc66322c2f921",
       "status": "ready",
       "symbol": "LIN"
     },
@@ -396,7 +396,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "3327f3f6943b4af04e1e52a50192981b4dc6de905cfbd07a6c547a1b5d2214ec",
+      "sha256": "e306a920b39243acc4802bddf85da0e747e80d1fdc30fd4579407a84cd97ea8c",
       "status": "ready",
       "symbol": "LITE"
     },
@@ -404,7 +404,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "86776bf8ad6aa010bb804c1af834213bcbcecb8f2dd81954a046ce9f867b6166",
+      "sha256": "3a501333e4e3c542724dee46d923be03e4451ee9a0892e4b5fb5d0ea088de557",
       "status": "ready",
       "symbol": "LRCX"
     },
@@ -412,7 +412,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "214f70692d52a2aafe24fab61575dfbba1de5e823ce6fc0d3ea6ddfa613a5d68",
+      "sha256": "33266606a4ff86f9b27844a159d0cc7d3277ff311a8f72f1270aefe0c75fd2df",
       "status": "ready",
       "symbol": "MELI"
     },
@@ -420,7 +420,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "e97cf451fd86336d538e4882c22c1e6f9b1ef4bb24fe56733c507cf8edd265c9",
+      "sha256": "f29d3968b46ba7825e2c5a72503d10f7459eb0b2b982ea7f7b433468d96d4f33",
       "status": "ready",
       "symbol": "META"
     },
@@ -428,7 +428,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "87b71264a530f3f1c68138de0f004f81de6ab0ccb69076c8111eb4ff410c87e2",
+      "sha256": "643bcedfd5725d3c619bf3a7793d8a2d97f267b3665c0bfc0a2a6612a5d3ce99",
       "status": "ready",
       "symbol": "MPWR"
     },
@@ -436,7 +436,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "bc3f2306c09b3575ceac4a806ce39b20aac756cc6ffa93d350d18297ea2bc093",
+      "sha256": "12b20847977d20a58bfc8fe78d0effe32fc3c40859ff6d33333b69d82cea0445",
       "status": "ready",
       "symbol": "MRVL"
     },
@@ -444,7 +444,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "70d7329dbcb7842b846441c108cc2b63a57c2981df0fd1dc4a6776d7521c72b0",
+      "sha256": "9e792c5d3854399be8290b8d2b47b3c51606da435f0cf7cb1ef37cd92a4889a1",
       "status": "ready",
       "symbol": "MSFT"
     },
@@ -452,7 +452,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "f7aee866bb1cbea5919010c11cd05e7f6624425d895e0a17ea95959ce2b9d88e",
+      "sha256": "f28b94454d19c67e61ff159f1fb94b16a0676751e455de56cfe6ee5904969991",
       "status": "ready",
       "symbol": "MU"
     },
@@ -460,7 +460,7 @@
       "first_date": "2024-10-21",
       "last_date": "2026-08-12",
       "rows": 453,
-      "sha256": "9a2c63f52d34d25a1820c95e956209b12d7dd0b31e3e85d9fea587520561ee58",
+      "sha256": "a7066bc4e91ab9bd7df2351c3d9aef683b1fb4c6a4bb4acc047b738a3d459719",
       "status": "ready",
       "symbol": "NBIS"
     },
@@ -468,7 +468,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "43417a515a8cef9e93a035207e8104e9e6ca31fc9e157bad0dde6c7a6717c966",
+      "sha256": "31b33d71c1edf6a3d0552fe7f9f4409672382b9e7518b47c83481435f3d06f37",
       "status": "ready",
       "symbol": "NFLX"
     },
@@ -476,7 +476,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "faed387bc1c5c9e9d3a0e7ae697b820cce765b0a498897bdb8730e4b801412db",
+      "sha256": "337fbab3b667fdcd3d90b194235f4eda538e2270d6d27037fc13536eea406686",
       "status": "ready",
       "symbol": "NOK"
     },
@@ -484,7 +484,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "b109bd778e79ea67710c336a3c03bcabc382e36f1fa0bc8dd042d4f7265473f0",
+      "sha256": "cac5de4f842edb1c39ebbf12634b1bbdb6ddcf92f2b6eda2a69a5a51f5fa1957",
       "status": "ready",
       "symbol": "NVDA"
     },
@@ -492,7 +492,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "263ba8c25ef4eac5e3c14d0921b8c4237cb948c1128356cf3e0d9027ee90b27e",
+      "sha256": "d84943fc31deb15b3f63418114bc94b4b99d35b2924c5940e79a16331dec2d08",
       "status": "ready",
       "symbol": "ORCL"
     },
@@ -500,7 +500,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "2279824aecd89592b90435e65d6474e0434f470f2e41a71f2a134e027a5bae3a",
+      "sha256": "00c8824ba67979d5402ebeb320730806b45194c5cc4bfc313457a3342a63bf96",
       "status": "ready",
       "symbol": "ORLY"
     },
@@ -508,7 +508,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "1538ae09e744a4151b083c00fe164b08813412cdcc17391b51d6174994dd3d87",
+      "sha256": "e7ccbcc483ce28a93f29d3f5a1b8b910a3d792cebe5adaa25cef6a16d5115a00",
       "status": "ready",
       "symbol": "PANW"
     },
@@ -516,7 +516,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "f3eaa2e005f689471587d69ea4efc88992622e0a079356e8e0416097c45c1b80",
+      "sha256": "77b1055388b87ead5b79a037778625737a88d06cba0484041ac18f57880abb03",
       "status": "ready",
       "symbol": "PDD"
     },
@@ -524,7 +524,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "164b479f90e1c47c3219065d86d53fc3451fe6dbaebabfedac5fb5fc85865219",
+      "sha256": "23734332f6c70cf95321a44e16c9193917a390b4bce28f4920c687f41c1d307d",
       "status": "ready",
       "symbol": "PEP"
     },
@@ -532,7 +532,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "29a93ca08a6b2d10fcd595fe27e0c2d1c0bc1073297962841e9afceac65b7077",
+      "sha256": "e32f31b1563a6a7d4a4135f8ad36d90f60b462209e7d810640a9457947ece4e0",
       "status": "ready",
       "symbol": "PLTR"
     },
@@ -540,7 +540,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "f31e79b20192965d09ae7c455c546b072e6905f6802ed92589120e899dcfa51f",
+      "sha256": "a806f12c181effb75adde20951f7adf46dc954b8887b60639154beac02216f52",
       "status": "ready",
       "symbol": "POET"
     },
@@ -548,7 +548,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "53dcbf6faf98ff4e2f819c7d305cdef1dc6f5afb69499b5c756305d21d81b675",
+      "sha256": "e22dc9a4661d8afa1c457d3a10d0b42e2db2cb2f71a68ad0c500a9ae9e2bf65e",
       "status": "ready",
       "symbol": "PWR"
     },
@@ -556,7 +556,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "f3023f95bdb588a6ba8ff30045f54b3a7e44cb36fcfea1e7f01026c2007b71de",
+      "sha256": "fe60d8809d9395e8367b444a3d9c4b28d7735073e7b797a4e08b29d3bbf64470",
       "status": "ready",
       "symbol": "QCOM"
     },
@@ -564,7 +564,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "39c03f2fbcf0738724df280677e60f167da837456ec904a62a8958dfbb734cb3",
+      "sha256": "98da13f53a204051ec048345261517929499276c1ccde8c18255c01d4a2d376c",
       "status": "ready",
       "symbol": "QQQ"
     },
@@ -572,7 +572,7 @@
       "first_date": "2024-01-30",
       "last_date": "2026-08-12",
       "rows": 636,
-      "sha256": "de0922fcb8b1ac020cb9c531cea877223c1cb24f7489a8293cd32efc76d45ce2",
+      "sha256": "d39d8a8fa2a8825684e4cb007fa8135e48c9c2e48d468a59952e4f5f4fc31a79",
       "status": "ready",
       "symbol": "QQQI"
     },
@@ -580,7 +580,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "e0000ba113da94cae708925dc1d409e7a3c9623d29b28dc63945eabb75c5e5b3",
+      "sha256": "f1e009571f925b27e5342a9e50660a4186deb5cd91071469fe4842cbaf84100c",
       "status": "ready",
       "symbol": "REGN"
     },
@@ -588,7 +588,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "9453c9d73dcef4dfac4ad9472ca6be9aa2caa0cb847a3fc25d136189cc6af567",
+      "sha256": "2532f88d336cb04095dbc02998e3861add05320a1ffb6b3f503028e169ff46cc",
       "status": "ready",
       "symbol": "ROP"
     },
@@ -596,7 +596,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "b900b8547236737f22b6d7eb301561d30adf1f19b450becc30fafd4d06a9852a",
+      "sha256": "6a05586efaf6409b367e69ea4c2400470ca841fc4d70100f89134ded159f4365",
       "status": "ready",
       "symbol": "SBGSY"
     },
@@ -604,7 +604,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "0c73eb0227b01f4fcb90129f3d29595782a08c24b22b4671bef2e83abd9c02fc",
+      "sha256": "ac1548884791edcb5ce95b57dc4be247fcb241c66cf439b2dac612ed7bcd8442",
       "status": "ready",
       "symbol": "SGOV"
     },
@@ -612,7 +612,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "8fc416e10649d4022d6211ba66716f8f4dd72ee5e01fd258b489c7f1975a103c",
+      "sha256": "fedbc10e00ef670feb34ba341759ede9bac0e997196ed983b7a9a4ae48a480ca",
       "status": "ready",
       "symbol": "SHOP"
     },
@@ -620,7 +620,7 @@
       "first_date": "2025-02-13",
       "last_date": "2026-08-12",
       "rows": 375,
-      "sha256": "aa4e7bea348e63695f068877da1347b932a3f9f35c88efaa76718eba5d81ad01",
+      "sha256": "d47e2525ff03703714a6546e66916dcfcec978c09d7cc26aacf7ffbb114737d0",
       "status": "ready",
       "symbol": "SNDK"
     },
@@ -628,7 +628,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "89b140dbc01071128e9362cecdcfc294260cfa8cee7e1227bbd5edf27c1411ef",
+      "sha256": "adf75ead5a21f0210e0a53fbd3098b3f428bbf55438706ab13dbd38df4ec44c0",
       "status": "ready",
       "symbol": "SNPS"
     },
@@ -636,7 +636,7 @@
       "first_date": "2024-06-14",
       "last_date": "2026-08-12",
       "rows": 541,
-      "sha256": "201366a0a694cb3c209512efccfaf7690c2655e5d5ce589640eea355635dff11",
+      "sha256": "ac65c7ab6ad4fcb25b1d9190cdafbbbb8103ffbda66d3efd1e9ff280dce1bdcb",
       "status": "ready",
       "symbol": "TEM"
     },
@@ -644,7 +644,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "9ec20d3d9ce1793c3b69aa135dc04b175bd1d07578d1afcdaa176680db439496",
+      "sha256": "3ee78c8dd69530efc9e2c0de440cf915503d8367aec198c6099f111e4b206c7b",
       "status": "ready",
       "symbol": "TIGO"
     },
@@ -652,7 +652,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "b9e8c3c83a774b29e766b5b8c2a0da2aaeb9f5fa3940afc20d101afe260b26ab",
+      "sha256": "1915b168630627a310d89b03a300db3700c14d8578cd93886463d8e83555fc69",
       "status": "ready",
       "symbol": "TMUS"
     },
@@ -660,7 +660,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "156d20c72814001c2877dcf50f90e9f983ec1e45203c0930e9639e1f38a14960",
+      "sha256": "ea47f6a35ce9a947ee166828830d8d016beab35ab664d51bfc47697668ce3e69",
       "status": "ready",
       "symbol": "TQQQ"
     },
@@ -668,7 +668,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "8f5ec713c5734f1dff3d622e654ac27e1d59c62012b3bb4a7f8f7d5442118541",
+      "sha256": "7750e53db087d7b905c14cc136745f0e3379339da38ea9f3a9427159f5af17d9",
       "status": "ready",
       "symbol": "TSLA"
     },
@@ -676,7 +676,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "83baffade3311f8e55f1d1defc2e0e295293d5ccd4d0be71303adb9dcec4bf7f",
+      "sha256": "ebb1424a2cb1f5c3db5b260252357fc8563e695fb782d9c2d97a94a083bcd552",
       "status": "ready",
       "symbol": "TSM"
     },
@@ -684,7 +684,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "dca17ec8a29a55da30aa91db12d06024da1705fc0901c163c9ae488c19e9e6ab",
+      "sha256": "8f68cbbfb0769eaa22874d29e55a628c763eb34461a049123d322adaf8d25e9c",
       "status": "ready",
       "symbol": "TTWO"
     },
@@ -692,7 +692,7 @@
       "first_date": "2021-09-03",
       "last_date": "2026-08-12",
       "rows": 1239,
-      "sha256": "7092b38ec6d45743eddf014ff7d561a5a388951a2c19ba8fa96414583ecb7b0c",
+      "sha256": "60748af5de3b6f85c819d440dcb10e8f66867dddc2ad9cf8abcf4ed376b1dfe4",
       "status": "ready",
       "symbol": "TYGO"
     },
@@ -700,7 +700,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "93d386bb0e1ecddf772192f1ebfec4a7c9c932d4906c7b6873599551b1af57c9",
+      "sha256": "104efcd35c3ad0746062ac0d7d56ecca72c676a63eefc2ece5fadf48073e8a65",
       "status": "ready",
       "symbol": "VRT"
     },
@@ -708,7 +708,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "e4fee06e8bbdcdd4bce6b4bc6b6f18d96dad8cb8f420986f82b77870ef27abb1",
+      "sha256": "1763405ef952ecbf3b4c1d668ecf144f7c67df7a1c33f918f7eefceec86dc49b",
       "status": "ready",
       "symbol": "VRTX"
     },
@@ -716,7 +716,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "1e7510114f0fac460a4ff9c0ae15e58b9a6756b762869e55302e043eb8573c2d",
+      "sha256": "5dfa23ce516c960b596071f9f954560dede6aae1c03b2b4e3db12173090a2a59",
       "status": "ready",
       "symbol": "WDC"
     },
@@ -724,7 +724,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1408,
-      "sha256": "4969d189134e4bf2e6f86c4f8c9fb558b8a24617c1d875159888c183df2f166e",
+      "sha256": "c1e930aef16770041d12f78d3a4b5b3077a527c1028462b83bb72bfacf3ff0ae",
       "status": "ready",
       "symbol": "WMT"
     }
@@ -1601,7 +1601,7 @@
     "schema_version": "1.2",
     "selection_mode": "credential_aware_fallback"
   },
-  "provider_identity_sha256": "3b6ec85e70abab3142ba6745843d1332f9a21ed68e97d9b4fbcc0954a7d52aae",
+  "provider_identity_sha256": "4f72107d309087dc9a811977823f349264564c432cfea8738d12971c7b9017ca",
   "quarantined_symbols": [],
   "records": [
     {
@@ -1645,7 +1645,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "05538740574cc08621b96b7b7caecd27380e150538e40f4b5467f9033459a8cc",
+      "output_sha256": "5f37371de233c359676be80971ddb83f83a627d565d3424634f40d3d7b129b5c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1713,7 +1713,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "4744f0da9b28140103f6ffc200a912b5ab8aa1cd797114890bc3d9408032135d",
+      "output_sha256": "7ce3bf5e23bddb639e345f975f663a434253195bf2086402ebd45a6e29fc769f",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1781,7 +1781,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "3ace7febef8afa18d3816f6c4543f1ec33809d69f535fcb45fe4f5b4fb60eb76",
+      "output_sha256": "cd0efc35db2bea6b3f5eb9e30505b328d1b9c3f756f3fabd43d7327e54edad59",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1849,7 +1849,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "8b0c4db5ab775b60ebeceb6580076227d7870ed7d5946b0be3dee8de53b60dc5",
+      "output_sha256": "20b3bd04c907559c720b70e5a318b4a633ce460bb3099a1f7f85774a9206a43e",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1917,7 +1917,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "543fad170d82c40acee6c335fcd6c2f197fef1aea5e0fe8f33c3d846e910cf02",
+      "output_sha256": "0bd2229856decb7390a7b71fa301c0d6dc8ed4520b71f422cac61c79907a83a2",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1985,7 +1985,7 @@
       "first_date": "2024-03-20",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "4f05661a1354aa6813ab8c68a6db454d376722711430d5cdbf08dd7525675641",
+      "output_sha256": "bc55822e717e0dfb8d8d0103c704dd3f0624b6a4e0d2ef5b444f6b1568e8df09",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2053,7 +2053,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "6cdc3fca24c494b16e0a62e860cfef9aaa9fe926318a19b6041cda802d2b66ef",
+      "output_sha256": "02339683eb6ca425303efa6593fa7bf7e44e75297b9b39593bab24507b457ab5",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2121,7 +2121,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "9d99791a5936fba01a3536f2cb5f0c6d905702d5631a792bd619104d2a3a0cd7",
+      "output_sha256": "04e5ec7d456da4bad8be9851bd73d671d6d9ba5e3dec142ba504b7af77ca6731",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2189,7 +2189,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "8fe422a93e480fa830c7374e954a180bc3da51d3341364c295dbad9b75c15b54",
+      "output_sha256": "0849079a7e84597d40d39054faa26768dc50daaf1eea691968068bda904191fe",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2257,7 +2257,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "e495392ac51eeb11644711d01028b5488be33bc25b18d757104fad1c738428e0",
+      "output_sha256": "41de017e007c3401fa036509ae1b4bd6ed982f92f881f67741478813eb80bc59",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2325,7 +2325,7 @@
       "first_date": "2021-04-15",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "6371f7e4dea5952850af38456574aaedfc115656ac6aa5b63db7ff39fe22278b",
+      "output_sha256": "d9ff86bf1d434e26af60a7251d9a800f6993a04983bc4f66a293b17080ac8d70",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2393,7 +2393,7 @@
       "first_date": "2023-09-14",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "e655d4b94658515a8848070011d7942e208ee2311cc866ac59ad976fd493ad87",
+      "output_sha256": "9ae08338db7906841619acce023109714c0a632d2a837a432368c9c611b23fa0",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2461,7 +2461,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "e13afada0e6f942a4ad89b048fd2b3580667175968ae6ac278d95d78945974f0",
+      "output_sha256": "7006403c73e80c20bfa17b7ac9656438bfeb8bd1d41f3c36ae393781b6d667a8",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2529,7 +2529,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "dfdb37cfd25d251ab2168322bf43f910d5259f37ecc7a9d91ec777fd5c40c07f",
+      "output_sha256": "3ee076580c947523f86b1c7123b620aecd2bf57689c53ef48a6eaa640f1d4f72",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2597,7 +2597,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "1fdc79d1c34c4884d429ba93861235ccdfe369f0efc5da62156cdec3e61141b9",
+      "output_sha256": "427cb734b43c9dc43bc541d4ff6301c627afa9a53bec97bfdc2b388eb0b7d330",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2665,7 +2665,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "1e8ce1a0f2bc474a532e40201161180c07d593613a4b24d2306735149492e7ab",
+      "output_sha256": "af95767b6c3047417be73eb7eeb038bd84701fcea5cc5c6404368afe3ce1f0f6",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2733,7 +2733,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "4c2f627bbc2473afe50d3f223be4e356d7d067f0f406200b2370a9bc90ef5167",
+      "output_sha256": "9488c6a94319f465acc8bb70d0bc9ac7065cc3c9ac4551ed87b1a31e7bb4acaf",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2801,7 +2801,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "89d6eda259e94f86e246dba8b176a42f2a8a16eb7c4ed8ad22b2c39a0375359e",
+      "output_sha256": "3caeb4863f0b1b7f76c76bb634be51c488fa06530e8c4d18262ba4dbec1debd0",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2869,7 +2869,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "9309d1f35fe165738fc1083d9ca407a1f055876991e7dd6069eb2893fae9a9a1",
+      "output_sha256": "c1938ccde8e7386d0024ec6422246a5a4c374b8cac489a687a9d6ce832113f29",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2937,7 +2937,7 @@
       "first_date": "2022-01-19",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "289e08e1bfd40d4e0d39d67860a8a8497d88d724e52c4e99dddbd8db09bcdce7",
+      "output_sha256": "6f47b324a1831164b1c75e36a678af6ae74cfe86da6dbd8f5bf376ebaadd9270",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3005,7 +3005,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "1afae5a9f616d4e00c019c1d8652d566b9ce040427c26df5e79bbc9f56af7de4",
+      "output_sha256": "9c52f4e774f840bca521864dd895c8776f06709b5f888714d3f2e6a473fba182",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3073,7 +3073,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "6e342302b1188347bb35e3c55d1cb7521662c1bb2ac2aab1981617519c3c333e",
+      "output_sha256": "41228f21f1286824871a12fb084ae9223808c76566ce591cc079fc3bbb2a84ae",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3141,7 +3141,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "19800fe343a5de9aae499e7ec14a30920cb9a2a834229774875cf4468688473b",
+      "output_sha256": "c4738f9ae94f7932a65a6b25d46db0d95ca180ff239590c6fcb0fa7710d1d86a",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3209,7 +3209,7 @@
       "first_date": "2025-06-05",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "50fa855ebbafee51f0c5056e378be03c89d283fcc0686e9cc7d2aa0bc46b0a94",
+      "output_sha256": "ca36cf1b3f7cd2022af8bd9cb204cc832de550432a73707130e9e8d2a27f4698",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3277,7 +3277,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "1fc1b464b64c63bdd68e4f27ba5bfaf0a70b430f485537ff7e318fb57ab107a4",
+      "output_sha256": "0a8908cbd9c6a5356aecc930b1510211ad1a3e62bdc7e5d03ce283dbdffe295a",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3345,7 +3345,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "c1f414176aa8bbb71e567d9a4e7f28d2c7eebfb46178bad0951c4ab22a3963f9",
+      "output_sha256": "3a8164da850ceec3fa791bd72e7e2801d180938a63aadd077088b7fb72a4faa0",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3413,7 +3413,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "ee9e6729317875db2137bad36d81fe2f05fadc2355c69099b6eacc7c85b103b6",
+      "output_sha256": "731f892550f6ab900743e29c051324fd6178543cf7a3cb426a6c39e98270ec01",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3481,7 +3481,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "dec68de3c670bcdeb06e761615143d1d4c878469c4ad40fe6eaa93486d29a6ec",
+      "output_sha256": "d3958b0cab91b823c6fb0e5c0e22f0a4f453a33b7e7b27e6298ccd2aba844688",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3549,7 +3549,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "c01ee5e46e2312b8d9ff0053b8728807053708f303de61b7139348451eb91381",
+      "output_sha256": "56c248b66f70bafc7f2c064b0bd45e5be06c3ddde044f8fc4bed48b6c97b3c5e",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3617,7 +3617,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-10",
-      "output_sha256": "45be1a6f6ea165ac686aa1d522654f37b7d644da5911e0d20ef3e812df9cc1f5",
+      "output_sha256": "819034255b9263059299d5a868e5d5e91468b6ca49e72a631f5e9e1d1cff6c49",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3685,7 +3685,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "eb8bc47a88edd5c4809be4e524a3319c3699594e3e1f0e1d35fd08d9c440e009",
+      "output_sha256": "cc4cdb71b473a86c06253bdf7ac783705f900d295d35f0f22ad646957c5e6899",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3753,7 +3753,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "c6cd6004b22bbbccf32a8123741eb975e22d1926d149de9c14dee33e7ba32d3b",
+      "output_sha256": "64e1723a4d3efa4c0539cd8b37338c6958529d334531bc7531f6619df85fdfe9",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3821,7 +3821,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "285d512a02bd5dcd97aa39f4ede5c5c21c9f06d0e7c2e72f1b79adca0b5a7d18",
+      "output_sha256": "1fbd105d04c78a15c00c90d2a57d5a7e037b50cdd06528366bec1e28cf10451f",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3889,7 +3889,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "84c6ecc522651fbaaad3f71d06fbea92ce0a92065972e5ffc84f9a11e64c8e7c",
+      "output_sha256": "bc4ca98af9106dd4dac44f7860f4a775f319f568773f0ba2741280e315e33c15",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3957,7 +3957,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "72007fbeb36db8bf9b799cbb83bc6314cabd65327bc3d5b489b5797bce92e40a",
+      "output_sha256": "6195ada1f2696ff57af487966c1b6edbe2e70eff4c07551b8e7ed30e14267e6f",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4025,7 +4025,7 @@
       "first_date": "2022-12-15",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "bd5f07fc6cbc7b489fd72f31435c61c7c52b0230da3ed1a875aa2674c8000f33",
+      "output_sha256": "ce4eda3a1e8b63359477014cb547ae70936a96c8bb1dbebf5f0369016fe0fae4",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4093,7 +4093,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "7d76acf4f9e444d7d52bd02e9f200d8905e604f35b6e1677b15a148e168ccd95",
+      "output_sha256": "44285c189d1c1716e2caf33faab3205e9bd0469428e75eb2e0fa90e85f1c12ce",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4161,7 +4161,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "cd73a4bc88e11a71ab73b02b2e61d552d4e5e05d8b6df4e6a6a2d43e25844d56",
+      "output_sha256": "fdaefcedfa2916f62d38bfd5df93bab9b4db0ba173ccee77abdd166f5e10823c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4229,7 +4229,7 @@
       "first_date": "2021-07-29",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "2bbf5f2786ab334028cfa8e76e1401112b397ef16818ec0aafda4711dadaeb66",
+      "output_sha256": "754b16ad1e8f89536df05d913651024bf4be53ea420316ce9d9a0f539e58d1c0",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4297,7 +4297,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "83a154e1c106d5f8767244149d20e07fb7feaa9f1fb7845e30d32e2e4411d315",
+      "output_sha256": "a69c0f7de10c960ec73ab447d6848befc27d94514a19baa229c6a0536b4d1374",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4365,7 +4365,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "e50d6aeb80d58247d9b3d576102ff737b06bb1ef49e24b52b06b73b9f4cf84e7",
+      "output_sha256": "725038a95849ce4c3da5277586c16836fb61e91ff758a8eb5fd07c71dae703e4",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4433,7 +4433,7 @@
       "first_date": "2021-11-17",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "9bbd6e9fc4c59b3578b9312a673b56e46f3ef764ecc67088ea2fb87d72363850",
+      "output_sha256": "9b69dbec6e9965c1a63d4ebb0fc68dd7ddab2721e5c9b1e096ea932a3c660a44",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4501,7 +4501,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "08c4421f73b65d1c0789b0828947787a1d7c78825a0f3872764f3b7a64aa15a4",
+      "output_sha256": "2b615c23c3d76132ed896d43b78b5a18a2b4a5fc7e4d8bae5a594f57b9f92849",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4569,7 +4569,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "e2025742dfd5ac8d43bbb3a6d9822b01964d8c8ce9eb2cc7d70afe5441bf2874",
+      "output_sha256": "da25d826a91f7fba08f852166c8e682eb0eef61f6fc8ce35cb023417d0534e04",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4637,7 +4637,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "600335d23533e05ba97aa7c31ef338b2f3988684059307cf31417ad24b05c150",
+      "output_sha256": "d776b37ca46ea50bb757f797c56a2965016da28a1218d680b53bc66322c2f921",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4705,7 +4705,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "3327f3f6943b4af04e1e52a50192981b4dc6de905cfbd07a6c547a1b5d2214ec",
+      "output_sha256": "e306a920b39243acc4802bddf85da0e747e80d1fdc30fd4579407a84cd97ea8c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4773,7 +4773,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "86776bf8ad6aa010bb804c1af834213bcbcecb8f2dd81954a046ce9f867b6166",
+      "output_sha256": "3a501333e4e3c542724dee46d923be03e4451ee9a0892e4b5fb5d0ea088de557",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4841,7 +4841,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "214f70692d52a2aafe24fab61575dfbba1de5e823ce6fc0d3ea6ddfa613a5d68",
+      "output_sha256": "33266606a4ff86f9b27844a159d0cc7d3277ff311a8f72f1270aefe0c75fd2df",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4909,7 +4909,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "e97cf451fd86336d538e4882c22c1e6f9b1ef4bb24fe56733c507cf8edd265c9",
+      "output_sha256": "f29d3968b46ba7825e2c5a72503d10f7459eb0b2b982ea7f7b433468d96d4f33",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4977,7 +4977,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "87b71264a530f3f1c68138de0f004f81de6ab0ccb69076c8111eb4ff410c87e2",
+      "output_sha256": "643bcedfd5725d3c619bf3a7793d8a2d97f267b3665c0bfc0a2a6612a5d3ce99",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5045,7 +5045,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "bc3f2306c09b3575ceac4a806ce39b20aac756cc6ffa93d350d18297ea2bc093",
+      "output_sha256": "12b20847977d20a58bfc8fe78d0effe32fc3c40859ff6d33333b69d82cea0445",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5113,7 +5113,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "70d7329dbcb7842b846441c108cc2b63a57c2981df0fd1dc4a6776d7521c72b0",
+      "output_sha256": "9e792c5d3854399be8290b8d2b47b3c51606da435f0cf7cb1ef37cd92a4889a1",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5181,7 +5181,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "f7aee866bb1cbea5919010c11cd05e7f6624425d895e0a17ea95959ce2b9d88e",
+      "output_sha256": "f28b94454d19c67e61ff159f1fb94b16a0676751e455de56cfe6ee5904969991",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5249,7 +5249,7 @@
       "first_date": "2024-10-21",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "9a2c63f52d34d25a1820c95e956209b12d7dd0b31e3e85d9fea587520561ee58",
+      "output_sha256": "a7066bc4e91ab9bd7df2351c3d9aef683b1fb4c6a4bb4acc047b738a3d459719",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5317,7 +5317,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "43417a515a8cef9e93a035207e8104e9e6ca31fc9e157bad0dde6c7a6717c966",
+      "output_sha256": "31b33d71c1edf6a3d0552fe7f9f4409672382b9e7518b47c83481435f3d06f37",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5385,7 +5385,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "b109bd778e79ea67710c336a3c03bcabc382e36f1fa0bc8dd042d4f7265473f0",
+      "output_sha256": "cac5de4f842edb1c39ebbf12634b1bbdb6ddcf92f2b6eda2a69a5a51f5fa1957",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5453,7 +5453,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "2279824aecd89592b90435e65d6474e0434f470f2e41a71f2a134e027a5bae3a",
+      "output_sha256": "00c8824ba67979d5402ebeb320730806b45194c5cc4bfc313457a3342a63bf96",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5521,7 +5521,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "1538ae09e744a4151b083c00fe164b08813412cdcc17391b51d6174994dd3d87",
+      "output_sha256": "e7ccbcc483ce28a93f29d3f5a1b8b910a3d792cebe5adaa25cef6a16d5115a00",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5589,7 +5589,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "f3eaa2e005f689471587d69ea4efc88992622e0a079356e8e0416097c45c1b80",
+      "output_sha256": "77b1055388b87ead5b79a037778625737a88d06cba0484041ac18f57880abb03",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5657,7 +5657,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "164b479f90e1c47c3219065d86d53fc3451fe6dbaebabfedac5fb5fc85865219",
+      "output_sha256": "23734332f6c70cf95321a44e16c9193917a390b4bce28f4920c687f41c1d307d",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5725,7 +5725,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "29a93ca08a6b2d10fcd595fe27e0c2d1c0bc1073297962841e9afceac65b7077",
+      "output_sha256": "e32f31b1563a6a7d4a4135f8ad36d90f60b462209e7d810640a9457947ece4e0",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5793,7 +5793,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "53dcbf6faf98ff4e2f819c7d305cdef1dc6f5afb69499b5c756305d21d81b675",
+      "output_sha256": "e22dc9a4661d8afa1c457d3a10d0b42e2db2cb2f71a68ad0c500a9ae9e2bf65e",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5861,7 +5861,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "f3023f95bdb588a6ba8ff30045f54b3a7e44cb36fcfea1e7f01026c2007b71de",
+      "output_sha256": "fe60d8809d9395e8367b444a3d9c4b28d7735073e7b797a4e08b29d3bbf64470",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5929,7 +5929,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "e0000ba113da94cae708925dc1d409e7a3c9623d29b28dc63945eabb75c5e5b3",
+      "output_sha256": "f1e009571f925b27e5342a9e50660a4186deb5cd91071469fe4842cbaf84100c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5997,7 +5997,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "9453c9d73dcef4dfac4ad9472ca6be9aa2caa0cb847a3fc25d136189cc6af567",
+      "output_sha256": "2532f88d336cb04095dbc02998e3861add05320a1ffb6b3f503028e169ff46cc",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6065,7 +6065,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "b900b8547236737f22b6d7eb301561d30adf1f19b450becc30fafd4d06a9852a",
+      "output_sha256": "6a05586efaf6409b367e69ea4c2400470ca841fc4d70100f89134ded159f4365",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6133,7 +6133,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "8fc416e10649d4022d6211ba66716f8f4dd72ee5e01fd258b489c7f1975a103c",
+      "output_sha256": "fedbc10e00ef670feb34ba341759ede9bac0e997196ed983b7a9a4ae48a480ca",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6201,7 +6201,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "89b140dbc01071128e9362cecdcfc294260cfa8cee7e1227bbd5edf27c1411ef",
+      "output_sha256": "adf75ead5a21f0210e0a53fbd3098b3f428bbf55438706ab13dbd38df4ec44c0",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6269,7 +6269,7 @@
       "first_date": "2025-02-13",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "aa4e7bea348e63695f068877da1347b932a3f9f35c88efaa76718eba5d81ad01",
+      "output_sha256": "d47e2525ff03703714a6546e66916dcfcec978c09d7cc26aacf7ffbb114737d0",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6337,7 +6337,7 @@
       "first_date": "2024-06-14",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "201366a0a694cb3c209512efccfaf7690c2655e5d5ce589640eea355635dff11",
+      "output_sha256": "ac65c7ab6ad4fcb25b1d9190cdafbbbb8103ffbda66d3efd1e9ff280dce1bdcb",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6409,7 +6409,7 @@
         "forbidden_substitute": "TYGO"
       },
       "last_date": "2026-08-12",
-      "output_sha256": "9ec20d3d9ce1793c3b69aa135dc04b175bd1d07578d1afcdaa176680db439496",
+      "output_sha256": "3ee78c8dd69530efc9e2c0de440cf915503d8367aec198c6099f111e4b206c7b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6477,7 +6477,7 @@
       "first_date": "2021-09-03",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "7092b38ec6d45743eddf014ff7d561a5a388951a2c19ba8fa96414583ecb7b0c",
+      "output_sha256": "60748af5de3b6f85c819d440dcb10e8f66867dddc2ad9cf8abcf4ed376b1dfe4",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6545,7 +6545,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "b9e8c3c83a774b29e766b5b8c2a0da2aaeb9f5fa3940afc20d101afe260b26ab",
+      "output_sha256": "1915b168630627a310d89b03a300db3700c14d8578cd93886463d8e83555fc69",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6613,7 +6613,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "8f5ec713c5734f1dff3d622e654ac27e1d59c62012b3bb4a7f8f7d5442118541",
+      "output_sha256": "7750e53db087d7b905c14cc136745f0e3379339da38ea9f3a9427159f5af17d9",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6681,7 +6681,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "dca17ec8a29a55da30aa91db12d06024da1705fc0901c163c9ae488c19e9e6ab",
+      "output_sha256": "8f68cbbfb0769eaa22874d29e55a628c763eb34461a049123d322adaf8d25e9c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6749,7 +6749,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "93d386bb0e1ecddf772192f1ebfec4a7c9c932d4906c7b6873599551b1af57c9",
+      "output_sha256": "104efcd35c3ad0746062ac0d7d56ecca72c676a63eefc2ece5fadf48073e8a65",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6817,7 +6817,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "e4fee06e8bbdcdd4bce6b4bc6b6f18d96dad8cb8f420986f82b77870ef27abb1",
+      "output_sha256": "1763405ef952ecbf3b4c1d668ecf144f7c67df7a1c33f918f7eefceec86dc49b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6885,7 +6885,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "1e7510114f0fac460a4ff9c0ae15e58b9a6756b762869e55302e043eb8573c2d",
+      "output_sha256": "5dfa23ce516c960b596071f9f954560dede6aae1c03b2b4e3db12173090a2a59",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6953,7 +6953,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "4969d189134e4bf2e6f86c4f8c9fb558b8a24617c1d875159888c183df2f166e",
+      "output_sha256": "c1e930aef16770041d12f78d3a4b5b3077a527c1028462b83bb72bfacf3ff0ae",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7021,7 +7021,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "728c1ac4fa781b546ef9666b81c38febae55cc88367c2c91720ac26a4456d849",
+      "output_sha256": "60841139e851c36fd8824df2b44d65f8d8d40bf77e44ead7e678197fc0aaea25",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7089,7 +7089,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "03b0b0249677cb3afd16fec708129166ef281e81abfe6b33972dc985f7425c00",
+      "output_sha256": "a12a83a04c2a6f8643067f3ead9f2047dd0342d2d4304b56916c26ce724e1349",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7157,7 +7157,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "faed387bc1c5c9e9d3a0e7ae697b820cce765b0a498897bdb8730e4b801412db",
+      "output_sha256": "337fbab3b667fdcd3d90b194235f4eda538e2270d6d27037fc13536eea406686",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7225,7 +7225,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "83baffade3311f8e55f1d1defc2e0e295293d5ccd4d0be71303adb9dcec4bf7f",
+      "output_sha256": "ebb1424a2cb1f5c3db5b260252357fc8563e695fb782d9c2d97a94a083bcd552",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7293,7 +7293,7 @@
       "first_date": "2022-01-27",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "693138b5004c7f371d016ac9adaa7d25f1fcdf8538378d43a4381f06eaf9c649",
+      "output_sha256": "aa0528e861537be7561b90006de1d8dcd765e186f457c18bc7f21d6a7a93e028",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7361,7 +7361,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "263ba8c25ef4eac5e3c14d0921b8c4237cb948c1128356cf3e0d9027ee90b27e",
+      "output_sha256": "d84943fc31deb15b3f63418114bc94b4b99d35b2924c5940e79a16331dec2d08",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7429,7 +7429,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "f31e79b20192965d09ae7c455c546b072e6905f6802ed92589120e899dcfa51f",
+      "output_sha256": "a806f12c181effb75adde20951f7adf46dc954b8887b60639154beac02216f52",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7497,7 +7497,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "c9fa000707f3f2c7bea4d01531a7aa75cf9b61fbb6df92e5c7bc4f9497876c75",
+      "output_sha256": "22589b3cb1dcad31eb03f16e612abd8f5eeceaae7cfb30c737885b98b8d992a3",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7565,7 +7565,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "39c03f2fbcf0738724df280677e60f167da837456ec904a62a8958dfbb734cb3",
+      "output_sha256": "98da13f53a204051ec048345261517929499276c1ccde8c18255c01d4a2d376c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7633,7 +7633,7 @@
       "first_date": "2024-01-30",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "de0922fcb8b1ac020cb9c531cea877223c1cb24f7489a8293cd32efc76d45ce2",
+      "output_sha256": "d39d8a8fa2a8825684e4cb007fa8135e48c9c2e48d468a59952e4f5f4fc31a79",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7701,7 +7701,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "156d20c72814001c2877dcf50f90e9f983ec1e45203c0930e9639e1f38a14960",
+      "output_sha256": "ea47f6a35ce9a947ee166828830d8d016beab35ab664d51bfc47697668ce3e69",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7769,7 +7769,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "0c73eb0227b01f4fcb90129f3d29595782a08c24b22b4671bef2e83abd9c02fc",
+      "output_sha256": "ac1548884791edcb5ce95b57dc4be247fcb241c66cf439b2dac612ed7bcd8442",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
