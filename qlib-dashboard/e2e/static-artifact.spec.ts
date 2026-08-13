@@ -114,6 +114,17 @@ async function assertNoHorizontalOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
+async function exposeInstallPrompt(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const event = new Event('beforeinstallprompt', { cancelable: true });
+    Object.defineProperties(event, {
+      prompt: { value: async () => undefined },
+      userChoice: { value: Promise.resolve({ outcome: 'dismissed', platform: 'web' }) },
+    });
+    window.dispatchEvent(event);
+  });
+}
+
 async function openConsole(page: Page) {
   await installMembershipFixture(page, { loading: false, isPro: true, user: { id: 'pro-fixture' } });
   await page.goto('/#/app');
@@ -216,7 +227,11 @@ test('product homepage exposes the installable PWA entry and strategy console', 
   await expect(page.getByText('QQQR v4.3', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Performance before persuasion.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Every decision is traceable.' })).toBeVisible();
-  await expect(page.locator('.landing-actions').getByRole('button', { name: 'Install app' })).toBeVisible();
+  const landingActions = page.locator('.landing-actions');
+  await expect(landingActions.getByRole('link', { name: 'Open app' })).toBeVisible();
+  await exposeInstallPrompt(page);
+  await expect(landingActions.getByRole('button', { name: 'Install app' })).toBeVisible();
+  await expect(page.getByLabel('Install Alpha Engine')).toBeVisible();
   await assertNoHorizontalOverflow(page);
   expect(pageErrors).toEqual([]);
   await page.screenshot({ path: `test-results/static-artifact/landing-${testInfo.project.name}.png`, fullPage: true });
