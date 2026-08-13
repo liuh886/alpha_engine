@@ -8,11 +8,12 @@ winner or how support gates are evaluated.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import prod
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+from src.research.economics import compound_returns
 
 
 def _validate_iso_date(value: str, label: str) -> None:
@@ -114,10 +115,6 @@ def load_experiment_contract(path: str | Path) -> ExperimentContract:
     )
 
 
-def _compound(values: list[float]) -> float:
-    return prod(1.0 + value for value in values) - 1.0
-
-
 def _selection_rows(
     contract: ExperimentContract,
     observations: list[dict[str, Any]],
@@ -168,13 +165,13 @@ def _candidate_metrics(
     return {
         "candidate_id": candidate_id,
         "evaluated_windows": list(contract.selection_windows),
-        "compounded_relative_excess": _compound(relative_excess),
+        "compounded_relative_excess": compound_returns(relative_excess),
         "all_development_windows_positive_excess": all(
             value > float(contract.thresholds["min_window_relative_excess"])
             for value in relative_excess
         ),
         "worst_drawdown": min(drawdowns),
-        "stress_compounded_relative_excess": _compound(stress_relative_excess),
+        "stress_compounded_relative_excess": compound_returns(stress_relative_excess),
         "strongest_positive_window_share": strongest_share,
         "mean_rank_ic": mean_rank_ic,
         "mean_rank_ic_improvement": mean_rank_ic - baseline_rank_ic,
