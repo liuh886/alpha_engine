@@ -7,8 +7,11 @@ interface AccountSnapshot {
   user?: { id?: string; app_metadata?: Record<string, unknown> } | null;
 }
 
-interface SupabaseAccessClient {
+export interface SupabaseAccessClient {
   from: (table: string) => any;
+  functions: {
+    invoke: <T = unknown>(name: string, options?: { body?: unknown }) => Promise<{ data: T | null; error: { message?: string } | null }>;
+  };
 }
 
 interface HaoAccountApi {
@@ -49,7 +52,7 @@ export function useAlphaMembership() {
   }, []);
 
   const openAccount = useCallback(() => window.HaoAccount?.open?.(), []);
-  const getClient = useCallback(() => window.HaoAccount?.getClient?.(), []);
+  const getClient = useCallback(async (): Promise<SupabaseAccessClient | undefined> => window.HaoAccount?.getClient?.(), []);
 
   return {
     loading: snapshot.loading === true,

@@ -114,6 +114,17 @@ async function assertNoHorizontalOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
+async function exposeInstallPrompt(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const event = new Event('beforeinstallprompt', { cancelable: true });
+    Object.defineProperties(event, {
+      prompt: { value: async () => undefined },
+      userChoice: { value: Promise.resolve({ outcome: 'dismissed', platform: 'web' }) },
+    });
+    window.dispatchEvent(event);
+  });
+}
+
 async function openConsole(page: Page) {
   await installMembershipFixture(page, { loading: false, isPro: true, user: { id: 'pro-fixture' } });
   await page.goto('/#/app');
@@ -207,7 +218,7 @@ test('Strategy overview and list are driven by the governed formal catalog', asy
   await assertNoHorizontalOverflow(page);
 });
 
-test('product homepage opens the strategy console', async ({ page }, testInfo) => {
+test('product homepage exposes the installable PWA entry and strategy console', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
@@ -216,11 +227,15 @@ test('product homepage opens the strategy console', async ({ page }, testInfo) =
   await expect(page.getByText('QQQR v4.3', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Performance before persuasion.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Every decision is traceable.' })).toBeVisible();
+  const landingActions = page.locator('.landing-actions');
+  await exposeInstallPrompt(page);
+  await expect(landingActions.getByRole('button', { name: 'Install app' })).toBeVisible();
+  await expect(page.getByLabel('Install Alpha Engine')).toBeVisible();
   await assertNoHorizontalOverflow(page);
   expect(pageErrors).toEqual([]);
   await page.screenshot({ path: `test-results/static-artifact/landing-${testInfo.project.name}.png`, fullPage: true });
 
-  await page.locator('.landing-actions').getByRole('link', { name: 'Open console' }).click();
+  await page.goto('/#/app');
   await expect(page).toHaveURL(/#\/app$/);
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
 });

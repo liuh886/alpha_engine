@@ -9,6 +9,9 @@ import type { AccessTier } from './lib/model-access';
 import { AccessGate } from './components/AccessGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileNavigation } from './components/MobileNavigation';
+import { ProductShareButton } from './components/ProductShareButton';
+import { ProReferralButton } from './components/ProReferralButton';
+import { PwaInstallProvider } from './components/PwaInstall';
 import { ResearchContextBar } from './components/ResearchContextBar';
 import { SecurityExplorerAccessPreview } from './components/SecurityExplorerAccessPreview';
 import { Sidebar } from './components/Sidebar';
@@ -132,6 +135,8 @@ function Layout(props: LayoutProps) {
 
           <div className="research-topbar-actions">
             <MobileNavigation />
+            <ProReferralButton />
+            <ProductShareButton />
             <div className="alpha-account-slot" data-account-slot aria-label="AlphaEngine account" />
             <Button
               variant="ghost"
@@ -206,14 +211,16 @@ function StrategyConsoleApp() {
 
 function AlphaEngineApp() {
   return (
-    <AccessControlProvider>
-      <HashRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/*" element={<StrategyConsoleApp />} />
-        </Routes>
-      </HashRouter>
-    </AccessControlProvider>
+    <PwaInstallProvider>
+      <AccessControlProvider>
+        <HashRouter>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/*" element={<StrategyConsoleApp />} />
+          </Routes>
+        </HashRouter>
+      </AccessControlProvider>
+    </PwaInstallProvider>
   );
 }
 

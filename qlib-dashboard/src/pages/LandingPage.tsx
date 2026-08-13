@@ -13,6 +13,8 @@ import {
   ShieldCheck,
   Sun,
 } from 'lucide-react';
+import { ProductShareButton } from '@/components/ProductShareButton';
+import { PwaOpenButton } from '@/components/PwaInstall';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
 import { useGlobalStore } from '@/store/globalStore';
@@ -22,8 +24,8 @@ const FAMILY_ORDER = ['qqq_rotation', 'cn_ranker', 'byd_allocation', 'us_ranker'
 const fallbackFleetRows = [
   { name: 'QQQR v4.3', detail: 'US systematic rotation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
   { name: 'CN x1.1', detail: 'China equity ranking', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
-  { name: 'BYD v1.2', detail: 'Adaptive single-stock allocation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
-  { name: 'US x1.2', detail: 'Active US research baseline', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'BYD v1.3', detail: 'Adaptive single-stock allocation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'US x1.3', detail: 'Active US research baseline', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
 ];
 
 const evidenceChecks = [
@@ -344,8 +346,9 @@ export function LandingPage() {
           <a href="#performance">Performance</a>
           <a href="#evidence">Evidence</a>
           <a href="https://github.com/liuh886/alpha_engine" target="_blank" rel="noreferrer"><Github className="h-4 w-4" /><span className="sr-only">GitHub</span></a>
+          <ProductShareButton landing />
           <ThemeButton />
-          <Link className="landing-nav-cta" to="/app">Open console <ArrowRight className="h-3.5 w-3.5" /></Link>
+          <PwaOpenButton className="landing-nav-cta" />
         </nav>
       </header>
 
@@ -356,7 +359,7 @@ export function LandingPage() {
             <p>Alpha Engine brings current state, target allocation, next decision, formal performance, risk and research evidence into one medium-frequency strategy console.</p>
             <div className="landing-actions">
               <Link className="landing-primary-action" to="/strategies">Explore strategies <ArrowRight className="h-4 w-4" /></Link>
-              <Link className="landing-secondary-action" to="/app">Open console</Link>
+              <PwaOpenButton className="landing-secondary-action" />
             </div>
             <p className="landing-trust-line">Read-only · Evidence-governed · No broker execution</p>
           </div>
