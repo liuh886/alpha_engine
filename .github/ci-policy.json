@@ -18,9 +18,7 @@
   "release_workflows": [
     ".github/workflows/deploy-pages.yml",
     ".github/workflows/formal-backtest-refresh.yml",
-    ".github/workflows/formal-bundle-v2-sync.yml",
-    ".github/workflows/current-formal-backtest-integrity.yml",
-    ".github/workflows/byd-v1-3-formal.yml"
+    ".github/workflows/formal-bundle-v2-sync.yml"
   ],
   "advisory_workflows": [],
   "artifact_retention_days": {
