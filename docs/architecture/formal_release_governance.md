@@ -5,7 +5,7 @@ Alpha Engine exposes one active formal model per stable product strategy. Histor
 Current active strategy set:
 
 1. `qqq_rotation` → QQQ Rotation v4.3;
-2. `us_x` → US x1.2;
+2. `us_x` → US x1.3;
 3. `cn_x` → CN x1.1;
 4. `byd` → BYD v1.3.
 
@@ -32,7 +32,7 @@ Formal publication, Strategy Operations and frontend current-state policy must a
 The final formal catalog is assembled from two current source classes:
 
 - governed source packages for QQQ v4.3, CN x1.1 and BYD v1.3;
-- native Bundle v2 evidence for US x1.2.
+- native Bundle v2 evidence for US x1.3.
 
 There is no active v1→v2 migration registry, compatibility reader or projector layer. The internal flat source package format may remain a model-specific deterministic input until that model is natively produced as Bundle v2, but it is not the public evidence contract.
 
@@ -40,7 +40,7 @@ There is no active v1→v2 migration registry, compatibility reader or projector
 
 A formal promotion should preserve the already-observed economic evidence and assign accepted formal identity through a reviewed contract. It must not silently retrain, reopen model selection or substitute newer provider bytes.
 
-For native Bundle v2 runs, promotion is a validated reference/materialization of the immutable run into the formal catalog. US x1.2 is the reference implementation.
+For native Bundle v2 runs, promotion is a validated reference/materialization of the immutable run into the formal catalog. US x1.3 is the reference implementation.
 
 For source-backed models, the Bundle v2 builder maps only retained source evidence into the canonical sections. Missing evidence stays `not_retained` / `not_applicable`; the builder does not invent metrics, fills, PnL, IC or diagnostics.
 
@@ -62,15 +62,19 @@ Required sequence:
 
 A reviewed refresh PR does not commit generated `data/research/strategy_operations/` or `qlib-dashboard/public/data/`.
 
-## US x1.1 retirement
+## Superseded model retirement
 
-US x1.1 is historical evidence only after the accepted US x1.2 promotion.
+A superseded model is historical evidence only after its successor becomes the accepted active model for the same stable strategy.
 
-- it is not in the Active Strategy Catalog;
-- it is not an active formal source package;
-- it is not refreshed to satisfy current product state;
-- no compatibility adapter relabels it as US x1.2;
-- its useful historical lineage may remain referenced by immutable US x1.2 evidence.
+For the current US ranker lineage, US x1.2 and US x1.1 are historical evidence only after the accepted US x1.3 promotion.
+
+- superseded versions are not in the Active Strategy Catalog;
+- they are not active formal source packages;
+- they are not refreshed to satisfy current product state;
+- no compatibility adapter relabels predecessor evidence as the successor;
+- useful historical lineage may remain referenced by immutable successor evidence.
+
+The same rule applies to every strategy family: promotion replaces active execution identity instead of growing a parallel compatibility path.
 
 ## Strategy decisions are companion evidence
 
