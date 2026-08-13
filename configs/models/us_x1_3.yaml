@@ -87,6 +87,20 @@ strategy:
   fail_closed_if_unfillable: true
   cost_bps: 20
   benchmark_mode: reference_only
+performance_semantics:
+  schema_version: formal_performance_semantics_v1
+  trace_frequency: non_overlapping_10_session
+  signal_time: adjusted_close_of_signal_date
+  execution_time: same_adjusted_close_research_mark
+  return_measurement: adjusted_close_t_to_t_plus_10_sessions
+  price_basis: governed_adjusted_close
+  performance_date_field: holding_end_date
+  holding_end_offset_sessions: 10
+  cost:
+    rate_bps: 20.0
+    turnover_formula: 0.5 * sum(abs(target_weight - previous_weight))
+    row_cost_field: transaction_cost
+    net_return_formula: gross_return - turnover * 20 / 10000
 stage_b_evidence:
   experiment_id: us_x1_3_stage_b_v1
   runner: exact_us_ranker_portfolio_v1
