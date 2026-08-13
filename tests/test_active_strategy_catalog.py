@@ -14,6 +14,7 @@ from src.governance.active_strategy_catalog import (
     load_active_strategy_catalog,
     validate_active_strategy_catalog,
 )
+from src.governance.model_contract import load_performance_semantics
 
 CATALOG = Path("configs/strategies/registry.json")
 FORMAL_CATALOG = Path("data/research/formal_model_runs/catalog.json")
@@ -44,11 +45,29 @@ def test_committed_active_strategy_catalog_matches_or_declares_formal_cutover() 
     if observed == expected:
         assert_formal_catalog_matches_active_strategies(catalog, active)
     else:
-        # The only permitted temporary mismatch is the exact one-for-one
-        # lineage.supersedes cutover validated by the formal refresh planner.
-        # Once Reviewed Formal Refresh publishes the successor, this branch
-        # returns to the strict exact-match path above.
         _assert_formal_catalog_or_declared_transition(catalog, active)
+
+
+def test_every_active_strategy_binds_complete_model_performance_semantics() -> None:
+    active = load_active_strategy_catalog(CATALOG)
+    for strategy in active.strategies:
+        semantics = load_performance_semantics(strategy)
+        assert semantics["schema_version"] == "formal_performance_semantics_v1"
+        assert semantics["source"] == strategy.model_contract
+        assert semantics["research_only"] is True
+        assert semantics["trade_ready"] is False
+        assert semantics["holding_end_offset_sessions"] >= 0
+        assert semantics["cost"]["rate_bps"] >= 0
+        assert semantics["cost"]["browser_recomputation_permitted"] is False
+        for field in (
+            "trace_frequency",
+            "signal_time",
+            "execution_time",
+            "return_measurement",
+            "price_basis",
+            "performance_date_field",
+        ):
+            assert semantics[field] != "not_declared"
 
 
 def test_catalog_rejects_duplicate_active_model_identity() -> None:
@@ -67,6 +86,14 @@ def test_catalog_rejects_signal_ledger_not_bound_to_active_model() -> None:
     payload["strategies"][0]["signal_ledger"] = "data/research/strategy_signal_ledgers/old_model"
 
     with pytest.raises(ActiveStrategyCatalogError, match="terminate at active model id"):
+        validate_active_strategy_catalog(payload)
+
+
+def test_catalog_rejects_missing_model_contract() -> None:
+    payload = json.loads(CATALOG.read_text(encoding="utf-8"))
+    del payload["strategies"][0]["model_contract"]
+
+    with pytest.raises(ActiveStrategyCatalogError, match="model_contract"):
         validate_active_strategy_catalog(payload)
 
 
