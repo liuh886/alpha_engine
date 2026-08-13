@@ -42,10 +42,10 @@ def _sha256(path: Path) -> str:
 
 
 def _preview_manifests(
-    native_root: Path,
+    preview_root: Path,
     strategies: tuple[ActiveStrategy, ...],
 ) -> dict[str, Path]:
-    catalog = _object(native_root / "catalog.json")
+    catalog = _object(preview_root / "catalog.json")
     validate_catalog(catalog)
     if (
         catalog.get("channel") != "preview"
@@ -70,7 +70,7 @@ def _preview_manifests(
             raise FormalBundleV2SyncError(
                 f"non-preview record entered active publication input: {model_id}"
             )
-        manifest = native_root / str(row.get("manifest_path") or "")
+        manifest = preview_root / str(row.get("manifest_path") or "")
         if not manifest.is_file() or _sha256(manifest) != row.get("manifest_sha256"):
             raise FormalBundleV2SyncError(
                 f"active preview manifest digest mismatch: {model_id}"
@@ -115,24 +115,24 @@ def _publish_freshness_policy(
 
 
 def sync(
-    source_root: Path,
+    freshness_root: Path,
     output_root: Path,
     *,
-    native_root: Path = Path("data/research/model_runs"),
+    preview_root: Path = Path("data/research/model_runs"),
     strategy_catalog: Path = DEFAULT_CATALOG_PATH,
 ) -> dict[str, Any]:
-    """Promote exactly one native preview Bundle v2 for every active strategy."""
+    """Promote exactly one preview Bundle v2 for every active strategy."""
 
-    freshness_root = source_root.resolve()
+    freshness_root = freshness_root.resolve()
     output_root = output_root.resolve()
-    native_root = native_root.resolve()
+    preview_root = preview_root.resolve()
     strategy_catalog = strategy_catalog.resolve()
     try:
         active = load_active_strategy_catalog(strategy_catalog)
     except ActiveStrategyCatalogError as exc:
         raise FormalBundleV2SyncError(str(exc)) from exc
 
-    preview_manifests = _preview_manifests(native_root, active.strategies)
+    preview_manifests = _preview_manifests(preview_root, active.strategies)
     if output_root.exists():
         shutil.rmtree(output_root)
     output_root.mkdir(parents=True)
@@ -170,7 +170,7 @@ def sync(
         "active_strategy_ids": [row.strategy_id for row in active.strategies],
         "active_model_version_ids": list(active.active_model_version_ids),
         "native_promoted_model_ids": promoted,
-        "preview_catalog_sha256": _sha256(native_root / "catalog.json"),
+        "preview_catalog_sha256": _sha256(preview_root / "catalog.json"),
         "freshness_source_sha256": _sha256(freshness_root / "freshness.json"),
         "strategy_catalog_sha256": _sha256(strategy_catalog),
         "formal_bundle_v2_catalog_sha256": _sha256(catalog_path),
@@ -189,24 +189,28 @@ def sync(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--source-root",
+        "--freshness-root",
         type=Path,
-        default=Path("data/research/formal_backtests"),
-        help="Freshness-policy root; model evidence is never read from this tree.",
+        default=Path("data/research/formal_model_runs"),
+        help="Directory containing the explicit formal freshness policy input.",
     )
     parser.add_argument(
         "--output-root", type=Path, default=Path("data/research/formal_model_runs")
     )
     parser.add_argument(
-        "--native-root", type=Path, default=Path("data/research/model_runs")
+        "--preview-root", type=Path, default=Path("data/research/model_runs")
     )
     parser.add_argument("--strategy-catalog", type=Path, default=DEFAULT_CATALOG_PATH)
     parser.add_argument("--receipt", type=Path)
     args = parser.parse_args()
+    if args.freshness_root.resolve() == args.output_root.resolve():
+        raise FormalBundleV2SyncError(
+            "freshness input and formal output must be separate directories"
+        )
     receipt = sync(
-        args.source_root,
+        args.freshness_root,
         args.output_root,
-        native_root=args.native_root,
+        preview_root=args.preview_root,
         strategy_catalog=args.strategy_catalog,
     )
     text = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
