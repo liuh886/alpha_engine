@@ -25,15 +25,18 @@ from src.research.experiment_harness import (
     load_experiment_contract,
 )
 from src.research.factor_library import load_factor_library, select_factor_groups
-from src.research.multi_market_readiness import (
-    load_market_watchlist,
-    normalize_market_symbols,
-)
 from src.research.notebook_experiment_api import run_10d_experiment
 from src.research.paradigm import ResearchParadigmSpec
 from src.research.qlib_execution_common import (
     load_window_benchmark_returns,
     normalize_qlib_frame_index,
+)
+from src.research.ranker_execution import (
+    TEN_SESSION_RETURN_EXPRESSION as RETURN_EXPRESSION,
+    benchmark_instrument as _benchmark_instrument,
+    factor_expressions as _factor_expressions,
+    resolve_symbols as _resolve_symbols,
+    runtime_for_market as _runtime_for_market,
 )
 from src.research.ranker_training import fit_predict_ranker_scores
 from src.research.rolling_windows import purge_training_tail
@@ -49,7 +52,6 @@ from src.research.window_policy import (
 from src.research.xgb_native_calibration import XGBNativeCalibration
 
 RUNNER_ID = "cross_sectional_xgb_ranker_v1"
-RETURN_EXPRESSION = "Ref($close, -10) / $close - 1"
 
 
 @dataclass(frozen=True)
@@ -173,69 +175,6 @@ def load_cross_sectional_experiment_spec(
         factor_library_path=factor_library_path,
         candidates=tuple(candidates),
     )
-
-
-def _runtime_for_market(market: str):
-    if market == "us":
-        from src.research.us_qlib_execution_adapter import QlibUSExecutionRuntime
-
-        return QlibUSExecutionRuntime()
-    if market == "cn":
-        from src.research.cn_qlib_execution_adapter import QlibCNExecutionRuntime
-
-        return QlibCNExecutionRuntime()
-    raise ValueError(f"unsupported market: {market}")
-
-
-def _factor_expressions(
-    spec: CrossSectionalExperimentSpec,
-) -> dict[str, tuple[str, ...]]:
-    library = load_factor_library(spec.factor_library_path)
-    result: dict[str, tuple[str, ...]] = {}
-    for candidate in spec.candidates:
-        groups = select_factor_groups(library, list(candidate.factor_groups))
-        expressions: list[str] = []
-        seen: set[str] = set()
-        for group in groups:
-            for factor in group.factors:
-                if factor.expression not in seen:
-                    expressions.append(factor.expression)
-                    seen.add(factor.expression)
-        if not expressions:
-            raise ValueError(f"candidate {candidate.candidate_id} has no factors")
-        result[candidate.candidate_id] = tuple(expressions)
-    return result
-
-
-def _resolve_symbols(spec: CrossSectionalExperimentSpec, runtime) -> list[str]:
-    universe_path = _resolve_repo_path(str(spec.parent.universe["source"]))
-    requested = load_market_watchlist(spec.market, watchlist_path=universe_path)
-    available = runtime.available_symbols()
-    normalized = normalize_market_symbols(
-        spec.market,
-        list(requested),
-        available_symbols=available,
-    )
-    resolved = [item.normalized_symbol for item in normalized]
-    missing = sorted(set(resolved) - available)
-    if missing:
-        raise ValueError(f"provider is missing experiment symbols: {missing}")
-    min_symbols = int(spec.parent.universe["min_symbols"])
-    if len(resolved) < min_symbols:
-        raise ValueError(f"resolved universe has {len(resolved)} symbols; requires {min_symbols}")
-    return resolved
-
-
-def _benchmark_instrument(spec: CrossSectionalExperimentSpec, runtime) -> str:
-    available = runtime.available_symbols()
-    if spec.market == "us":
-        matches = normalize_market_symbols("us", [spec.benchmark], available_symbols=available)
-        if not matches or matches[0].normalized_symbol not in available:
-            raise ValueError(f"benchmark {spec.benchmark!r} is unavailable")
-        return matches[0].normalized_symbol
-    from src.research.qlib_execution_common import _resolve_benchmark_instrument
-
-    return _resolve_benchmark_instrument(spec.market, spec.benchmark, available)
 
 
 def _original_result(report: dict[str, Any], candidate_name: str) -> dict[str, Any]:
