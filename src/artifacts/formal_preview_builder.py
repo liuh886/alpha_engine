@@ -1,9 +1,9 @@
-"""Build one preview-channel Model Run Bundle v2 from governed formal evidence.
+"""Build one preview-channel Model Run Bundle v2 from governed model evidence.
 
-This is the publication seam used by the formal-refresh transaction. Model-specific
-refresh/replay code may still produce its in-memory evidence record, but fan-in no
-longer hands that record to the production formal catalog. Every strategy is sealed
-as Bundle v2 before the cross-strategy publication step.
+Model-specific refresh/replay code may retain its compact evidence record while it
+owns exact historical reproduction. The cross-strategy publication boundary is
+native Bundle v2 only: no legacy package path or schema identity is exposed after
+this module seals the run.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from src.artifacts.formal_bundle_v2_builder import FormalBundleV2BuildError, build_plan
-from src.artifacts.model_run_exporter import RunExportPlan, export_model_run
+from src.artifacts.model_run_exporter import RunExportPlan, SectionPlan, export_model_run
 from src.governance.active_strategy_catalog import ActiveStrategy
 
 
@@ -30,6 +30,22 @@ def _object(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise FormalPreviewBuildError(f"formal evidence root must be an object: {path}")
     return value
+
+
+def _complete(value: object) -> dict[str, Any]:
+    completeness = dict(value) if isinstance(value, Mapping) else {}
+    missing = completeness.get("missing")
+    if completeness.get("status") != "complete" or missing != []:
+        raise FormalPreviewBuildError("governed evidence is not complete enough for publication")
+    completeness.update(
+        {
+            "status": "complete",
+            "quantity": "not_applicable_without_governed_capital_contract",
+            "not_applicable": ["brokerage_quantity", "brokerage_fill_price"],
+            "missing": [],
+        }
+    )
+    return completeness
 
 
 def _with_provisional_mtm(plan: RunExportPlan, source_path: Path) -> RunExportPlan:
@@ -77,6 +93,49 @@ def _with_provisional_mtm(plan: RunExportPlan, source_path: Path) -> RunExportPl
     return replace(plan, sections=tuple(sections))
 
 
+def _native_sections(plan: RunExportPlan) -> tuple[SectionPlan, ...]:
+    """Remove the legacy package contract from the published evidence graph."""
+
+    sections: list[SectionPlan] = []
+    for section in plan.sections:
+        payload = section.payload
+        if section.availability_status != "available" or not isinstance(payload, Mapping):
+            sections.append(section)
+            continue
+
+        value = dict(payload)
+        if section.section_id == "summary":
+            source_sha = value.pop("source_package_sha256", None)
+            if source_sha:
+                value["evidence_source_sha256"] = source_sha
+            value["evidence_contract"] = "native_bundle_v2"
+            value["evidence_completeness"] = _complete(value.get("evidence_completeness"))
+        elif section.section_id == "diagnostics":
+            if "evidence_completeness" in value:
+                value["evidence_completeness"] = _complete(value.get("evidence_completeness"))
+        elif section.section_id == "lineage":
+            source_sha = value.get("source_sha256") or value.get("source_package_sha256")
+            value = {
+                "schema_version": "2.0.0",
+                "publication_origin": "governed_model_evidence",
+                "evidence_source_sha256": source_sha,
+                "source_backtest_id": value.get("source_backtest_id"),
+                "source_evidence": value.get("source_evidence"),
+                "source_freshness": value.get("source_freshness"),
+                "source_evidence_completeness": _complete(
+                    value.get("source_evidence_completeness")
+                ),
+                "historical_evidence_recomputed": value.get(
+                    "historical_evidence_recomputed"
+                ) is True,
+                "model_selection_reopened": False,
+                "research_only": True,
+                "trade_ready": False,
+            }
+        sections.append(replace(section, payload=value))
+    return tuple(sections)
+
+
 def build_preview_bundle(
     source_path: Path,
     strategy: ActiveStrategy,
@@ -94,5 +153,6 @@ def build_preview_bundle(
         plan,
         publication_channel="preview",
         publication_status="ci_validated_preview",
+        sections=_native_sections(plan),
     )
     return export_model_run(preview, output_root=output_root)
