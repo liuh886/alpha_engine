@@ -2,7 +2,6 @@ name: 10D Ranker Current Target
 
 on:
   schedule:
-    # After the US close; the due probe uses each market's provider sessions.
     - cron: "30 22 * * 1-5"
   workflow_dispatch:
   push:
@@ -24,8 +23,6 @@ on:
       - "configs/research_universes/us_selected_equities_v2.yaml"
       - "configs/research_classifications/us87_sector_industry_v1.yaml"
       - "configs/factor_libraries/ohlcv.yaml"
-      # The reviewed formal publication of a newly promoted US model should
-      # immediately bootstrap its own first prospective signal ledger.
       - "data/research/formal_model_runs/**"
 
 permissions:
@@ -52,8 +49,7 @@ jobs:
       - name: Capture executed source revision
         id: source
         shell: bash
-        run: |
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -70,11 +66,6 @@ jobs:
           set -euo pipefail
           as_of="$(date -u +%F)"
           mkdir -p artifacts/ranker-current-target
-
-          # During the code->reviewed-formal cutover there can be one commit
-          # where x1.3 is active in source but the accepted formal catalog still
-          # contains x1.2. Fail closed without relabeling x1.2 evidence; the
-          # formal_model_runs publication push retriggers this workflow.
           us_formal_ready="$(uv run python - <<'PY'
           import json
           from pathlib import Path
@@ -96,7 +87,6 @@ jobs:
             printf '%s\n' '{"market":"us","model_version_id":"us_x1_3","due":false,"signal_date":null,"reason":"awaiting_formal_promotion","research_only":true,"trade_ready":false}' \
               > artifacts/ranker-current-target/us_due.json
           fi
-
           uv run python scripts/run_ranker_current_target.py due \
             --market cn \
             --formal-package data/research/formal_backtests/cn_x1_1.json \
@@ -157,73 +147,173 @@ jobs:
             --market-cutoff "CN close $date" \
             --output artifacts/ranker-current-target/cn_signal.json
 
-      - name: Deliver and persist due decisions
+      - name: Seal due canonical decisions
         if: steps.due.outputs.us_due == 'true' || steps.due.outputs.cn_due == 'true'
-        id: delivery
+        env:
+          EXECUTION_SHA: ${{ steps.source.outputs.sha }}
         shell: bash
+        run: |
+          set -euo pipefail
+          created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for market in us cn; do
+            if [ "$market" = "us" ] && [ "${{ steps.due.outputs.us_due }}" != "true" ]; then continue; fi
+            if [ "$market" = "cn" ] && [ "${{ steps.due.outputs.cn_due }}" != "true" ]; then continue; fi
+            signal="artifacts/ranker-current-target/${market}_signal.json"
+            model="$(uv run python -c "import json; print(json.load(open('$signal'))['model_version_id'])")"
+            uv run alpha ops record-decision \
+              --model-version-id "$model" \
+              --signal-json "$signal" \
+              --delivery-status pending \
+              --workflow-run-id "$GITHUB_RUN_ID" \
+              --commit-sha "$EXECUTION_SHA" \
+              --created-at-utc "$created_at"
+          done
+
+      - name: Commit canonical decisions before delivery
+        if: steps.due.outputs.us_due == 'true' || steps.due.outputs.cn_due == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "AlphaEngine Ranker Operations"
+          git config user.email "ranker-operations@alphaengine.local"
+          git add data/research/strategy_signal_ledgers
+          if git diff --cached --quiet; then
+            echo "Canonical ranker decision already sealed."
+          else
+            git commit -m "ops: seal governed 10-session decisions"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Resolve pending delivery candidates
+        id: delivery_candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          from src.artifacts.strategy_signal_ledger import read_latest_evaluation
+
+          rows = {
+              "us": ("us_x1_3", Path("data/research/strategy_signal_ledgers/us_x1_3")),
+              "cn": ("cn_x1_1", Path("data/research/strategy_signal_ledgers/cn_x1_1")),
+          }
+          out = Path("artifacts/ranker-current-target")
+          out.mkdir(parents=True, exist_ok=True)
+          for market, (model, ledger) in rows.items():
+              record = read_latest_evaluation(ledger, model_version_id=model)
+              status = "none"
+              error = ""
+              deliver = False
+              if record is not None:
+                  delivery = record.get("delivery", {})
+                  status = str(delivery.get("status") or "pending")
+                  error = str(delivery.get("error") or "")
+                  deliver = status in {"pending", "failed"}
+                  if deliver:
+                      (out / f"{market}_signal.json").write_text(
+                          json.dumps(record["signal"], ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                          encoding="utf-8",
+                      )
+              print(f"{market}_deliver={'true' if deliver else 'false'}")
+              print(f"{market}_prior_status={status}")
+              print(f"{market}_prior_error={error}")
+          PY
+
+      - name: Deliver sealed decisions
+        if: steps.delivery_candidates.outputs.us_deliver == 'true' || steps.delivery_candidates.outputs.cn_deliver == 'true'
+        id: delivery
         env:
           GH_TOKEN: ${{ github.token }}
           EXECUTION_SHA: ${{ steps.source.outputs.sha }}
+        shell: bash
         run: |
           set -euo pipefail
           delivery_failed=0
-          created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           for market in us cn; do
-            if [ "${{ steps.due.outputs.us_due }}" != "true" ] && [ "$market" = "us" ]; then continue; fi
-            if [ "${{ steps.due.outputs.cn_due }}" != "true" ] && [ "$market" = "cn" ]; then continue; fi
+            if [ "$market" = "us" ]; then
+              deliver="${{ steps.delivery_candidates.outputs.us_deliver }}"
+              prior_status="${{ steps.delivery_candidates.outputs.us_prior_status }}"
+              prior_error="${{ steps.delivery_candidates.outputs.us_prior_error }}"
+            else
+              deliver="${{ steps.delivery_candidates.outputs.cn_deliver }}"
+              prior_status="${{ steps.delivery_candidates.outputs.cn_prior_status }}"
+              prior_error="${{ steps.delivery_candidates.outputs.cn_prior_error }}"
+            fi
+            [ "$deliver" = "true" ] || continue
 
             signal="artifacts/ranker-current-target/${market}_signal.json"
-            model="$(uv run python - "$signal" <<'PY'
-          import json, sys
-          print(json.load(open(sys.argv[1]))['model_version_id'])
-          PY
-          )"
-            # A due evaluation is itself operationally material. Deliver HOLD / no
-            # allocation-change evaluations too, so the user can distinguish a
-            # fresh HOLD from a stale or missing signal.
-            changed="true"
-            delivery_status="not_required"
-            issue_number=""
-            telegram_message_id=""
+            model="$(uv run python -c "import json; print(json.load(open('$signal'))['model_version_id'])")"
+            signal_date="$(uv run python -c "import json; print(json.load(open('$signal'))['signal_date'])")"
+            fingerprint="$(uv run python -c "import json; print(json.load(open('$signal'))['fingerprint'])")"
+            marker="<!-- signal-decision:${model}:${signal_date}:${fingerprint} -->"
+            issue_number="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues?state=all&per_page=100" \
+              --jq ".[] | select(.pull_request == null) | select((.body // \"\") | contains(\"${marker}\")) | .number" | head -n 1)"
+            delivery_status="failed"
             delivery_error=""
+            telegram_message_id=""
 
-            if [ "$changed" = "true" ]; then
-              body="$(uv run python - "$signal" <<'PY'
+            if [ "$prior_error" = "ambiguous_external_delivery_state" ] || \
+               [ "$prior_error" = "telegram_transport_ambiguous" ]; then
+              delivery_error="$prior_error"
+              delivery_failed=1
+            elif [ -n "$issue_number" ] && [ "$prior_status" = "pending" ]; then
+              delivery_error="ambiguous_external_delivery_state"
+              delivery_failed=1
+            else
+              body="$(uv run python - "$signal" "$marker" <<'PY'
           import json, sys
           payload=json.load(open(sys.argv[1]))
+          marker=sys.argv[2]
           target=', '.join(f"{k} {v:.1%}" for k,v in payload['target_weights'].items())
           current=', '.join(f"{k} {v:.1%}" for k,v in payload['current_weights'].items())
           action=payload.get('action') or ('REBALANCE' if payload.get('should_alert') else 'HOLD')
-          print(f"Model: {payload['model_version_id']}\nSignal date: {payload['signal_date']}\nAction: {action}\nExecution: {payload['execution_time']}\nCurrent: {current}\nTarget: {target}\nTurnover: {payload['turnover_units']:.2%}\nEstimated cost: {payload['estimated_transaction_cost']:.4%}\nReason: {payload['reason_code']}\n\nResearch only; not trade ready.")
+          print(f"{marker}\nModel: {payload['model_version_id']}\nSignal date: {payload['signal_date']}\nAction: {action}\nExecution: {payload['execution_time']}\nCurrent: {current}\nTarget: {target}\nTurnover: {payload['turnover_units']:.2%}\nEstimated cost: {payload['estimated_transaction_cost']:.4%}\nReason: {payload['reason_code']}\n\nResearch only; not trade ready.")
           PY
-          )"
-              issue_url="$(gh issue create --repo "$GITHUB_REPOSITORY" --title "[Signal] ${model} $(uv run python -c "import json; print(json.load(open('$signal'))['signal_date'])")" --body "$body")" || {
-                delivery_status="failed"
-                delivery_error="github_issue_delivery_failed"
-                delivery_failed=1
-              }
-              if [ -n "${issue_url:-}" ]; then
-                issue_number="${issue_url##*/}"
-                if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
-                  response="$(curl --fail --silent --show-error \
+              )"
+              if [ -z "$issue_number" ]; then
+                set +e
+                issue_url="$(gh issue create --repo "$GITHUB_REPOSITORY" --title "[Signal] ${model} ${signal_date}" --body "$body")"
+                issue_status=$?
+                set -e
+                if [ "$issue_status" -ne 0 ] || [ -z "$issue_url" ]; then
+                  delivery_error="github_issue_delivery_failed"
+                  delivery_failed=1
+                else
+                  issue_number="${issue_url##*/}"
+                fi
+              fi
+
+              if [ -n "$issue_number" ] && [ -z "$delivery_error" ]; then
+                if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+                  delivery_status="skipped_not_configured"
+                else
+                  set +e
+                  response="$(curl --silent --show-error --write-out '\n%{http_code}' \
                     --request POST \
                     --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
                     --data-urlencode "text=$body" \
-                    "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage")" || {
-                      delivery_status="failed"
-                      delivery_error="telegram_delivery_failed"
-                      delivery_failed=1
-                    }
-                  if [ -n "${response:-}" ]; then
-                    telegram_message_id="$(printf '%s' "$response" | uv run python -c "import json,sys; print(json.load(sys.stdin)['result']['message_id'])")"
+                    "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" 2>&1)"
+                  curl_status=$?
+                  set -e
+                  http_code="$(printf '%s\n' "$response" | tail -n 1)"
+                  response_body="$(printf '%s\n' "$response" | head -n -1)"
+                  if [ "$curl_status" -ne 0 ]; then
+                    delivery_error="telegram_transport_ambiguous"
+                    delivery_failed=1
+                  elif [ "$http_code" != "200" ]; then
+                    delivery_error="telegram_api_rejected"
+                    delivery_failed=1
+                  else
+                    telegram_message_id="$(printf '%s' "$response_body" | uv run python -c "import json,sys; print(json.load(sys.stdin)['result']['message_id'])")"
                     delivery_status="sent"
                   fi
-                else
-                  delivery_status="skipped_not_configured"
                 fi
               fi
             fi
 
+            if [ -n "$delivery_error" ]; then delivery_status="failed"; fi
+            created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             uv run alpha ops record-decision \
               --model-version-id "$model" \
               --signal-json "$signal" \
@@ -237,7 +327,7 @@ jobs:
           done
           echo "delivery_failed=$delivery_failed" >> "$GITHUB_OUTPUT"
 
-      - name: Materialize Strategy Operations evidence for this run
+      - name: Materialize Strategy Operations evidence
         run: |
           set -euo pipefail
           generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -245,21 +335,19 @@ jobs:
             --generated-at "$generated_at" \
             --output artifacts/ranker-current-target/strategy-operations.json
 
-      - name: Commit append-only decisions
-        id: publish_state
+      - name: Commit append-only delivery receipts
+        if: steps.delivery_candidates.outputs.us_deliver == 'true' || steps.delivery_candidates.outputs.cn_deliver == 'true'
         run: |
           set -euo pipefail
-          echo "published=false" >> "$GITHUB_OUTPUT"
           git config user.name "AlphaEngine Ranker Operations"
           git config user.email "ranker-operations@alphaengine.local"
           git add data/research/strategy_signal_ledgers
           if git diff --cached --quiet; then
-            echo "No governed ranker decision changes."
+            echo "No new ranker delivery receipt."
           else
-            git commit -m "ops: publish governed 10-session decisions"
+            git commit -m "ops: publish 10-session delivery receipts"
             git pull --rebase origin main
             git push origin HEAD:main
-            echo "published=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Retain decision evidence
