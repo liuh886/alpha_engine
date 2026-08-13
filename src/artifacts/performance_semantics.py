@@ -83,13 +83,27 @@ def validate_performance_semantics(value: Mapping[str, Any]) -> None:
     cost = value.get("cost")
     if not isinstance(cost, Mapping) or cost.get("browser_recomputation_permitted") is not False:
         raise PerformanceSemanticsError("formal cost semantics are invalid")
+
     delay = value.get("execution_delay_sessions")
     holding = value.get("holding_period_sessions")
     offset = value.get("holding_end_offset_sessions")
-    if delay is not None and (not isinstance(delay, int) or delay < 0):
+    if delay is not None and (not isinstance(delay, int) or isinstance(delay, bool) or delay < 0):
         raise PerformanceSemanticsError("execution delay is invalid")
-    if holding is not None and (not isinstance(holding, int) or holding < 1):
+    if holding is not None and (
+        not isinstance(holding, int) or isinstance(holding, bool) or holding < 1
+    ):
         raise PerformanceSemanticsError("holding period is invalid")
-    expected = delay + holding if delay is not None and holding is not None else None
-    if offset != expected:
-        raise PerformanceSemanticsError("holding-end offset does not match delay plus holding")
+    if offset is not None and (
+        not isinstance(offset, int) or isinstance(offset, bool) or offset < 0
+    ):
+        raise PerformanceSemanticsError("holding-end offset is invalid")
+
+    timing_parts_declared = (delay is not None, holding is not None)
+    if timing_parts_declared[0] != timing_parts_declared[1]:
+        raise PerformanceSemanticsError(
+            "execution delay and holding period must be declared together"
+        )
+    if delay is not None and holding is not None and offset != delay + holding:
+        raise PerformanceSemanticsError(
+            "holding-end offset does not match declared delay plus holding"
+        )
