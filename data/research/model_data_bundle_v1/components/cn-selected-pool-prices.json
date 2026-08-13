@@ -26,9 +26,9 @@
     },
     "000300": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1358,
-      "sha256": "e82018b93832652933c18e0a8b293a4ac564d2c6a4f21a4df70ee302a4743214",
+      "last_date": "2026-08-12",
+      "rows": 1359,
+      "sha256": "5e802fedc38bd5b2b358eb7c3765b2d8116d47ca48e01fa5e752405e2593e487",
       "status": "ready",
       "symbol": "000300"
     },
@@ -44,7 +44,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1359,
-      "sha256": "dc0980f3a550502dc2bc728499c621429eba4c0095598ffdfe9ce01cf8b20491",
+      "sha256": "678f05bb72fff50ad343f93a2a3465291779afc16b9fc5abafe8705400e11cec",
       "status": "ready",
       "symbol": "000338"
     },
@@ -532,7 +532,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1359,
-      "sha256": "6a74ece8c74e50397183e2949af042103d53b5a48892059a0d55c5ed3a938024",
+      "sha256": "d2f0f13edcdfa283e06817bf52ea6f276f1f02b6d4f954576879c83607054555",
       "status": "ready",
       "symbol": "515180"
     },
@@ -836,7 +836,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-12",
       "rows": 1359,
-      "sha256": "5f12f44933d44eebd538c52f66a30fc385f4e50970da2896b96a09e3ba9d29d1",
+      "sha256": "ae3402dc4d32c806a9289cf7d8b1ce3c0a0e61275535f4c19a2f6a66a5157a1e",
       "status": "ready",
       "symbol": "601766"
     },
@@ -2229,7 +2229,7 @@
     "688525",
     "688676"
   ],
-  "cutoff": "2026-08-12",
+  "cutoff": "2026-08-13",
   "evidence_type": "selected_pool_price_refresh_v1",
   "failed_symbols": [],
   "failure_count": 0,
@@ -2364,7 +2364,7 @@
     "schema_version": "1.2",
     "selection_mode": "credential_aware_fallback"
   },
-  "provider_identity_sha256": "c54cbb1dc62eabf6362d199e9a28bcf08d8a4e5e4c3b3d9e81bffd106a5ada5c",
+  "provider_identity_sha256": "aef54bb10eb08c899fd24e67c53352db85f1cff0da68f5834ff885dd42927263",
   "quarantined_symbols": [],
   "records": [
     {
@@ -2662,7 +2662,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "dc0980f3a550502dc2bc728499c621429eba4c0095598ffdfe9ce01cf8b20491",
+      "output_sha256": "678f05bb72fff50ad343f93a2a3465291779afc16b9fc5abafe8705400e11cec",
       "promotion_status": "source_semantics_recorded",
       "provider": "akshare_sina",
       "provider_contract": {
@@ -8934,7 +8934,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "5f12f44933d44eebd538c52f66a30fc385f4e50970da2896b96a09e3ba9d29d1",
+      "output_sha256": "ae3402dc4d32c806a9289cf7d8b1ce3c0a0e61275535f4c19a2f6a66a5157a1e",
       "promotion_status": "source_semantics_recorded",
       "provider": "akshare_sina",
       "provider_contract": {
@@ -10695,7 +10695,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "sina_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "akshare_sina",
           "provider_contract": {
@@ -10718,15 +10718,15 @@
           },
           "provider_symbol": "sh000300",
           "round": 1,
-          "rows": 1358,
+          "rows": 1359,
           "schema_errors": [],
           "source_family": "sina_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "e82018b93832652933c18e0a8b293a4ac564d2c6a4f21a4df70ee302a4743214",
+      "last_date": "2026-08-12",
+      "output_sha256": "5e802fedc38bd5b2b358eb7c3765b2d8116d47ca48e01fa5e752405e2593e487",
       "promotion_status": "source_semantics_recorded",
       "provider": "akshare_sina",
       "provider_contract": {
@@ -10748,7 +10748,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "sh000300",
-      "rows": 1358,
+      "rows": 1359,
       "symbol": "000300"
     },
     {
@@ -10852,7 +10852,7 @@
         },
         {
           "circuit_breaker_open": false,
-          "error": "empty data for 515180",
+          "error": "efinance fetch failed for 515180: HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6%2Cf7%2Cf8%2Cf9%2Cf10%2Cf11%2Cf12%2Cf13&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57%2Cf58%2Cf59%2Cf60%2Cf61&beg=20210101&end=20260813&rtntype=6&secid=&klt=101&fqt=1 (Caused by ProtocolError('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')))",
           "first_date": null,
           "independent_group": "eastmoney",
           "last_date": null,
@@ -10920,7 +10920,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-12",
-      "output_sha256": "6a74ece8c74e50397183e2949af042103d53b5a48892059a0d55c5ed3a938024",
+      "output_sha256": "d2f0f13edcdfa283e06817bf52ea6f276f1f02b6d4f954576879c83607054555",
       "promotion_status": "formal_auxiliary_governed_yahoo_fallback",
       "provider": "yfinance",
       "provider_contract": {
