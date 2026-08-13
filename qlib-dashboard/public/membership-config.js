@@ -4,6 +4,7 @@
   window.HaoAccountConfig = Object.freeze({
     enabled: true,
     billingEnabled: true,
+    referralEnabled: true,
     appName: 'AlphaEngine',
     productCode: 'alpha_engine',
     entitlementCode: 'alpha_engine.pro',
