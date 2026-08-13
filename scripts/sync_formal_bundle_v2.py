@@ -115,17 +115,21 @@ def _publish_freshness_policy(
 
 
 def sync(
-    freshness_root: Path,
+    source_root: Path,
     output_root: Path,
     *,
-    preview_root: Path = Path("data/research/model_runs"),
+    native_root: Path = Path("data/research/model_runs"),
     strategy_catalog: Path = DEFAULT_CATALOG_PATH,
 ) -> dict[str, Any]:
-    """Promote exactly one preview Bundle v2 for every active strategy."""
+    """Promote exactly one persisted preview Bundle v2 for every active strategy.
 
-    freshness_root = freshness_root.resolve()
+    ``source_root`` contains freshness policy only. ``native_root`` is the exact
+    active preview Bundle v2 catalog and is the sole model-evidence input.
+    """
+
+    freshness_root = source_root.resolve()
     output_root = output_root.resolve()
-    preview_root = preview_root.resolve()
+    preview_root = native_root.resolve()
     strategy_catalog = strategy_catalog.resolve()
     try:
         active = load_active_strategy_catalog(strategy_catalog)
@@ -189,28 +193,31 @@ def sync(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--freshness-root",
+        "--source-root",
         type=Path,
         default=Path("data/research/formal_model_runs"),
-        help="Directory containing the explicit formal freshness policy input.",
+        help="Directory containing freshness.json; model evidence is never read here.",
     )
     parser.add_argument(
-        "--output-root", type=Path, default=Path("data/research/formal_model_runs")
+        "--output-root", type=Path, default=Path("artifacts/formal-model-runs")
     )
     parser.add_argument(
-        "--preview-root", type=Path, default=Path("data/research/model_runs")
+        "--native-root",
+        type=Path,
+        default=Path("data/research/model_runs"),
+        help="Exact active preview Bundle v2 catalog.",
     )
     parser.add_argument("--strategy-catalog", type=Path, default=DEFAULT_CATALOG_PATH)
     parser.add_argument("--receipt", type=Path)
     args = parser.parse_args()
-    if args.freshness_root.resolve() == args.output_root.resolve():
+    if args.source_root.resolve() == args.output_root.resolve():
         raise FormalBundleV2SyncError(
             "freshness input and formal output must be separate directories"
         )
     receipt = sync(
-        args.freshness_root,
+        args.source_root,
         args.output_root,
-        preview_root=args.preview_root,
+        native_root=args.native_root,
         strategy_catalog=args.strategy_catalog,
     )
     text = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
