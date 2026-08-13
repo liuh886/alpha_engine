@@ -5,7 +5,8 @@ strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
 current_research_baseline:
   model_id: qqqi_qqq_tqqq_v4_3
   display_name: QQQ Rotation v4.3
-  formal_package: data/research/formal_backtests/qqqi_qqq_tqqq_v4_3.json
+  formal_catalog: data/research/formal_model_runs/catalog.json
+  preview_catalog: data/research/model_runs/catalog.json
   formal_state_engine:
     experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
     contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
