@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { shareUrl } from './ProductShareButton';
+import { openReferralInvite, shareUrl } from './ProductShareButton';
 
 describe('shareUrl', () => {
   it('uses the native share sheet when available', async () => {
@@ -17,5 +17,24 @@ describe('shareUrl', () => {
 
     await expect(shareUrl({ title: 'Alpha', text: 'Evidence', url: 'https://example.com' })).resolves.toBe('copied');
     expect(writeText).toHaveBeenCalledWith('https://example.com');
+  });
+});
+
+describe('openReferralInvite', () => {
+  it('opens the shared referral surface when it is ready', () => {
+    const open = vi.fn();
+    window.HaoReferral = { open };
+
+    expect(openReferralInvite()).toBe('referral');
+    expect(open).toHaveBeenCalledOnce();
+  });
+
+  it('falls back to account sign-in when the referral surface is not ready', () => {
+    window.HaoReferral = undefined;
+    const open = vi.fn();
+    window.HaoAccount = { open };
+
+    expect(openReferralInvite()).toBe('account');
+    expect(open).toHaveBeenCalledOnce();
   });
 });
