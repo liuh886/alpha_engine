@@ -23,19 +23,14 @@ from src.research.cross_sectional_experiment_runner import (
     _runtime_for_market,
     load_cross_sectional_experiment_spec,
 )
-from src.research.daily_ranker import prepare_ranker_frame
 from src.research.qlib_execution_common import (
     load_window_benchmark_returns,
     normalize_qlib_frame_index,
 )
+from src.research.ranker_training import fit_predict_ranker_scores
 from src.research.rolling_windows import purge_training_tail
 from src.research.signal_discovery import CandidateKind, ScoreOrientation, evaluate_candidate
-from src.research.universe_robustness import validate_no_nan_inputs
 from src.research.window_policy import build_window_sampling_plan, horizon_eligible_dates_by_window
-from src.research.xgb_native_calibration import (
-    fit_xgb_native_daily_ranker,
-    predict_xgb_native_daily_ranker,
-)
 
 REPLAY_ID = "exact_cn_ranker_portfolio_v1"
 EXECUTION_RETURN_EXPRESSION = "Ref($close,-11)/Ref($close,-1)-1"
@@ -148,11 +143,7 @@ def _windows(spec, runtime):
         last_test_year=int(walk["last_test_year"]),
         min_complete_windows=int(walk["min_windows"]),
         partial_window_policy=str(walk["partial_window_policy"]),
-        min_partial_window_eligible_sessions=(
-            int(walk["min_partial_window_eligible_sessions"])
-            if "min_partial_window_eligible_sessions" in walk
-            else None
-        ),
+        min_partial_window_eligible_sessions=int(walk["min_partial_window_eligible_sessions"]),
         horizon_sessions=int(strategy["horizon_days"]),
         cadence_sessions=int(strategy["rebalance_days"]),
     )
@@ -234,33 +225,6 @@ def _candidate_factor_contracts(spec) -> dict[str, dict[str, Any]]:
             },
         }
     return contracts
-
-
-def _fit_scores(
-    candidate,
-    expressions: tuple[str, ...],
-    expression_columns: dict[str, str],
-    features_train_all: pd.DataFrame,
-    returns_train: pd.DataFrame,
-    features_test_all: pd.DataFrame,
-    window: str,
-) -> pd.DataFrame:
-    columns = [expression_columns[item] for item in expressions]
-    train = features_train_all.loc[:, columns]
-    valid, reason = validate_no_nan_inputs(
-        train,
-        context=f"CN exact replay train/{window}/{candidate.candidate_id}",
-    )
-    if not valid:
-        raise ValueError(reason)
-    x_rank, y_rank, groups = prepare_ranker_frame(train, returns_train)
-    fitted = fit_xgb_native_daily_ranker(
-        x_rank,
-        y_rank,
-        groups,
-        calibration=candidate.calibration,
-    )
-    return predict_xgb_native_daily_ranker(fitted, features_test_all.loc[:, columns])
 
 
 def _ledger(
@@ -509,14 +473,14 @@ def run_exact_cn_ranker_portfolio_replay(
 
         for candidate in spec.candidates:
             candidate_id = candidate.candidate_id
-            scores = _fit_scores(
-                candidate,
-                expressions_by_candidate[candidate_id],
-                expression_columns,
-                features_train,
-                returns_train,
-                features_test,
-                window.label,
+            scores = fit_predict_ranker_scores(
+                expressions=expressions_by_candidate[candidate_id],
+                expression_columns=expression_columns,
+                features_train=features_train,
+                returns_train=returns_train,
+                features_test=features_test,
+                calibration=candidate.calibration,
+                context=f"CN exact replay train/{window.label}/{candidate_id}",
             )
             score_hashes[candidate_id][window.label] = _score_hash(scores)
             diagnostic = evaluate_candidate(
@@ -605,14 +569,14 @@ def run_exact_cn_ranker_portfolio_replay(
     deterministic_scores = True
     for window in windows:
         cached = cache[window.label]
-        replay_scores = _fit_scores(
-            challenger,
-            expressions_by_candidate[challenger_id],
-            expression_columns,
-            cached["features_train"],
-            cached["returns_train"],
-            cached["features_test"],
-            window.label,
+        replay_scores = fit_predict_ranker_scores(
+            expressions=expressions_by_candidate[challenger_id],
+            expression_columns=expression_columns,
+            features_train=cached["features_train"],
+            returns_train=cached["returns_train"],
+            features_test=cached["features_test"],
+            calibration=challenger.calibration,
+            context=f"CN exact replay train/{window.label}/{challenger_id}",
         )
         second_hash = _score_hash(replay_scores)
         first_hash = score_hashes[challenger_id][window.label]
