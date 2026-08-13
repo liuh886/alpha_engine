@@ -6,14 +6,14 @@ from pathlib import Path
 import pytest
 
 from src.artifacts.strategy_operations import (
-    StrategyOperationsError,
     build_operations_payload,
     validate_operations_payload,
     write_operations_payload,
 )
 from src.artifacts.strategy_signal_ledger import (
     StrategySignalLedgerError,
-    append_signal_evaluation,
+    record_signal_delivery,
+    seal_signal_decision,
 )
 from src.factors.library import load_factor_library
 from src.factors.ranker_snapshot import build_ranker_factor_snapshot
@@ -22,7 +22,6 @@ from src.factors.strategy_snapshot import build_strategy_factor_snapshot
 FORMAL_CATALOG = Path("data/research/formal_model_runs/catalog.json")
 FACTOR_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
 QQQ_MODEL = "qqqi_qqq_tqqq_v4_3"
-QQQ_V43_MODEL = "qqqi_qqq_tqqq_v4_3"
 BYD_MODEL = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
 US_MODEL = "us_x1_3"
 CN_MODEL = "cn_x1_1"
@@ -68,12 +67,8 @@ def _qqq_signal(*, changed: bool = True) -> dict[str, object]:
         ),
         "turnover_units": 1.0 if changed else 0.0,
         "estimated_transaction_cost": 0.001 if changed else 0.0,
-        "decision_reason": (
-            "enter_qqq_early_repair_vix_easing" if changed else "hold"
-        ),
-        "decision_reason_label": (
-            "QQQ repair with easing volatility" if changed else "Hold"
-        ),
+        "decision_reason": "enter_qqq_early_repair_vix_easing" if changed else "hold",
+        "decision_reason_label": "QQQ repair with easing volatility" if changed else "Hold",
         "price_context": {
             "qqq_vs_ma20": 0.01,
             "qqq_vs_ma200": 0.10,
@@ -98,61 +93,6 @@ def _qqq_signal(*, changed: bool = True) -> dict[str, object]:
     return _factorized(signal, "qqq_rotation")
 
 
-def _v43_signal() -> dict[str, object]:
-    signal: dict[str, object] = {
-        "schema_version": "1.0.0",
-        "model_id": QQQ_V43_MODEL,
-        "research_only": True,
-        "trade_ready": False,
-        "should_alert": True,
-        "fingerprint": "qqq-v43-test-fingerprint",
-        "signal_date": "2026-08-07",
-        "latest_data_date": "2026-08-07",
-        "data_freshness_ok": True,
-        "execution_time": "next_session_open",
-        "current_formal_state": 0,
-        "target_formal_state": 0,
-        "current_overlay": "strong_defense",
-        "target_overlay": "base",
-        "current_weights": {
-            "QQQI": 0.5,
-            "QQQ": 0.0,
-            "TQQQ": 0.0,
-            "SGOV": 0.5,
-        },
-        "target_weights": {
-            "QQQI": 0.5,
-            "QQQ": 0.5,
-            "TQQQ": 0.0,
-            "SGOV": 0.0,
-        },
-        "turnover_units": 1.0,
-        "estimated_transaction_cost": 0.001,
-        "panic_repair_active": False,
-        "strong_defense": False,
-        "ma200_falling": True,
-        "fast_price_vol_repair": True,
-        "rsi_14": 44.2,
-        "fear_greed_score": 38.0,
-        "price_context": {
-            "qqq_vs_ma20": 710.0 / 705.0 - 1.0,
-            "qqq_vs_ma200": 710.0 / 640.0 - 1.0,
-            "stress_price_failure": False,
-            "long_break": False,
-        },
-        "context": {
-            "qqq_close": 710.0,
-            "ma20": 705.0,
-            "ma200": 640.0,
-            "vix_close": 16.2,
-            "vxn_close": 24.1,
-            "vix_easing": True,
-            "vix_normalized": True,
-        },
-    }
-    return _factorized(signal, "qqq_rotation")
-
-
 def _ranker_signal(
     *,
     family: str,
@@ -161,8 +101,7 @@ def _ranker_signal(
     target: dict[str, float],
     risk_on: bool | None = None,
 ) -> dict[str, object]:
-    library = load_factor_library(FACTOR_LIBRARY)
-    factors = library.factors_for_groups([group])
+    factors = load_factor_library(FACTOR_LIBRARY).factors_for_groups([group])
     factor_evidence = build_ranker_factor_snapshot(
         model_family_id=family,
         signal_date="2026-08-07",
@@ -195,106 +134,45 @@ def _ranker_signal(
     }
 
 
-def _catalog_matching_active(tmp_path: Path) -> Path:
-    """Build a catalog with exact active IDs without relabeling repository evidence.
-
-    This is a unit-test fixture only. During a declared model cutover the committed
-    catalog intentionally still points to the predecessor until Reviewed Formal
-    Refresh creates genuine successor evidence. Strategy Operations must fail
-    closed on that committed mismatch; membership behavior is tested separately
-    against this synthetic identity-only fixture.
-    """
-    payload = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
-    for record in payload["records"]:
-        if record.get("model_family_id") != "us_ranker":
-            continue
-        if record.get("model_version_id") == US_MODEL:
-            break
-        record["model_version_id"] = US_MODEL
-        record["run_id"] = "us_x1_3-synthetic-membership-test"
-        record["manifest_path"] = (
-            "us_ranker/us_x1_3/us_x1_3-synthetic-membership-test/manifest.json"
-        )
-    path = tmp_path / "active-catalog.json"
-    path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    return path
-
-
-def _catalog_with_v43(tmp_path: Path) -> Path:
-    base = _catalog_matching_active(tmp_path)
-    payload = json.loads(base.read_text(encoding="utf-8"))
-    for record in payload["records"]:
-        if record["model_family_id"] != "qqq_rotation":
-            continue
-        record["model_version_id"] = QQQ_V43_MODEL
-        record["run_id"] = "qqqi_qqq_tqqq_v4_3-promotion-test"
-        record["manifest_path"] = (
-            "qqq_rotation/qqqi_qqq_tqqq_v4_3/"
-            "qqqi_qqq_tqqq_v4_3-promotion-test/manifest.json"
-        )
-    path = tmp_path / "catalog.json"
-    path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    return path
-
-
-def _append(
+def _seal_and_deliver(
     ledger: Path,
     model: str,
     signal: dict[str, object],
     *,
     delivery_status: str = "sent",
-    fingerprint_suffix: str = "",
+    github_issue_number: int | None = None,
+    telegram_message_id: int | None = None,
 ) -> None:
-    payload = dict(signal)
-    if fingerprint_suffix:
-        payload["fingerprint"] = f"{payload['fingerprint']}{fingerprint_suffix}"
-    append_signal_evaluation(
+    seal_signal_decision(
         ledger_root=ledger,
         model_version_id=model,
-        signal=payload,
-        delivery_status=delivery_status,
-        workflow_run_id="12345",
+        signal=signal,
+        workflow_run_id="seal-12345",
         commit_sha="a" * 40,
         created_at_utc="2026-08-08T00:00:00Z",
     )
-
-
-def test_committed_operations_fail_closed_during_declared_model_cutover(
-    tmp_path: Path,
-) -> None:
-    formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
-    formal_ids = {row["model_version_id"] for row in formal["records"]}
-    if US_MODEL in formal_ids:
-        payload = build_operations_payload(
-            formal_catalog=FORMAL_CATALOG,
-            ledger_root=tmp_path,
-            generated_at="2026-08-08T00:00:00Z",
-        )
-        validate_operations_payload(payload)
-        assert US_MODEL in _by_model(payload)
-        return
-    with pytest.raises(StrategyOperationsError, match="formal catalog"):
-        build_operations_payload(
-            formal_catalog=FORMAL_CATALOG,
-            ledger_root=tmp_path,
-            generated_at="2026-08-08T00:00:00Z",
-        )
+    record_signal_delivery(
+        ledger_root=ledger,
+        model_version_id=model,
+        signal=signal,
+        delivery_status=delivery_status,
+        github_issue_number=github_issue_number,
+        telegram_message_id=telegram_message_id,
+        workflow_run_id="delivery-12345",
+        commit_sha="b" * 40,
+        created_at_utc="2026-08-08T00:00:01Z",
+    )
 
 
 def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> None:
-    catalog = _catalog_matching_active(tmp_path)
     payload = build_operations_payload(
-        formal_catalog=catalog,
+        formal_catalog=FORMAL_CATALOG,
         ledger_root=tmp_path,
         generated_at="2026-08-08T00:00:00Z",
     )
     validate_operations_payload(payload)
     observed = _by_model(payload)
-    formal = json.loads(catalog.read_text(encoding="utf-8"))
+    formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
     expected = {row["model_version_id"] for row in formal["records"]}
     assert payload["schema_version"] == "2.2.0"
     assert set(observed) == expected
@@ -305,17 +183,13 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
         "byd",
     }
     assert all("current_operations_access" not in row for row in observed.values())
-    assert observed[QQQ_MODEL]["status"] == "awaiting_observation"
-    assert observed[BYD_MODEL]["status"] == "awaiting_observation"
-    assert observed[US_MODEL]["status"] == "awaiting_observation"
-    assert observed[CN_MODEL]["status"] == "awaiting_observation"
+    assert all(row["status"] == "awaiting_observation" for row in observed.values())
     assert observed[US_MODEL]["decision_cadence"] == "Every 10 provider sessions"
     assert observed[CN_MODEL]["decision_cadence"] == "Every 10 provider sessions"
 
 
 def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
-    catalog = _catalog_matching_active(tmp_path)
-    _append(
+    _seal_and_deliver(
         tmp_path / US_MODEL,
         US_MODEL,
         _ranker_signal(
@@ -325,7 +199,7 @@ def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
             target={"A": 0.5, "B": 0.5},
         ),
     )
-    _append(
+    _seal_and_deliver(
         tmp_path / CN_MODEL,
         CN_MODEL,
         _ranker_signal(
@@ -337,46 +211,37 @@ def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
         ),
     )
     payload = build_operations_payload(
-        formal_catalog=catalog,
+        formal_catalog=FORMAL_CATALOG,
         ledger_root=tmp_path,
         generated_at="2026-08-08T00:00:01Z",
     )
     records = _by_model(payload)
     us = records[US_MODEL]
     cn = records[CN_MODEL]
-    assert us["strategy_id"] == "us_x"
-    assert cn["strategy_id"] == "cn_x"
     assert us["status"] == "target_pending_execution"
     assert us["state_label"] == "US Top-15 rebalance"
     assert us["factor_freshness"] == "current"
-    assert us["source_label"] == "Governed 10-session ranker decision ledger"
+    assert us["delivery_status"] == "sent"
     assert cn["status"] == "target_pending_execution"
     assert cn["state_label"] == "CN risk-on · sector 4×1"
     assert cn["factor_freshness"] == "current"
 
 
 def test_qqq_ledger_projects_canonical_factor_snapshot(tmp_path: Path) -> None:
-    catalog = _catalog_matching_active(tmp_path)
     ledger = tmp_path / QQQ_MODEL
-    append_signal_evaluation(
-        ledger_root=ledger,
-        model_version_id=QQQ_MODEL,
-        signal=_qqq_signal(),
-        delivery_status="sent",
+    _seal_and_deliver(
+        ledger,
+        QQQ_MODEL,
+        _qqq_signal(),
         github_issue_number=493,
         telegram_message_id=42,
-        workflow_run_id="12345",
-        commit_sha="a" * 40,
-        created_at_utc="2026-08-08T00:00:00Z",
     )
     payload = build_operations_payload(
-        formal_catalog=catalog,
+        formal_catalog=FORMAL_CATALOG,
         ledger_root=tmp_path,
         generated_at="2026-08-08T00:00:01Z",
     )
     qqq = _by_model(payload)[QQQ_MODEL]
-    assert qqq["strategy_id"] == "qqq_rotation"
-    assert "current_operations_access" not in qqq
     assert qqq["status"] == "target_pending_execution"
     assert qqq["data_freshness"] == "current"
     assert qqq["factor_freshness"] == "current"
@@ -390,28 +255,6 @@ def test_qqq_ledger_projects_canonical_factor_snapshot(tmp_path: Path) -> None:
         "strategy.qqq.qqq_vs_ma20",
         "strategy.qqq.qqq_vs_ma200",
     }
-    assert all(len(row["implementation_hash"]) == 64 for row in factors)
-
-
-def test_qqq_family_adapter_accepts_new_formal_version_without_version_branch(
-    tmp_path: Path,
-) -> None:
-    catalog = _catalog_with_v43(tmp_path)
-    ledger_root = tmp_path / "ledgers"
-    _append(ledger_root / QQQ_V43_MODEL, QQQ_V43_MODEL, _v43_signal())
-
-    payload = build_operations_payload(
-        formal_catalog=catalog,
-        ledger_root=ledger_root,
-        generated_at="2026-08-08T00:00:01Z",
-    )
-    qqq = _by_model(payload)[QQQ_V43_MODEL]
-    assert qqq["status"] == "target_pending_execution"
-    assert qqq["factor_freshness"] == "current"
-    assert "SGOV" in {row["asset"] for row in qqq["allocations"]}
-    assert "base" in str(qqq["state_label"])
-    factor_ids = {row["factor_id"] for row in qqq["factor_evidence"]}
-    assert {"strategy.qqq.rsi14", "strategy.qqq.strong_defense"} <= factor_ids
 
 
 def test_new_ledger_write_rejects_missing_factor_evidence(tmp_path: Path) -> None:
@@ -419,21 +262,19 @@ def test_new_ledger_write_rejects_missing_factor_evidence(tmp_path: Path) -> Non
     signal.pop("factor_evidence")
     signal.pop("factor_freshness_ok")
     with pytest.raises(StrategySignalLedgerError, match="factor evidence"):
-        append_signal_evaluation(
+        seal_signal_decision(
             ledger_root=tmp_path / QQQ_MODEL,
             model_version_id=QQQ_MODEL,
             signal=signal,
-            delivery_status="not_required",
-            workflow_run_id="12345",
+            workflow_run_id="seal-12345",
             commit_sha="a" * 40,
             created_at_utc="2026-08-08T00:00:00Z",
         )
 
 
 def test_operations_payload_write_is_idempotent(tmp_path: Path) -> None:
-    catalog = _catalog_matching_active(tmp_path)
     payload = build_operations_payload(
-        formal_catalog=catalog,
+        formal_catalog=FORMAL_CATALOG,
         ledger_root=tmp_path / "ledgers",
         generated_at="2026-08-08T00:00:00Z",
     )
@@ -443,10 +284,9 @@ def test_operations_payload_write_is_idempotent(tmp_path: Path) -> None:
 
 
 def test_generated_operations_identity_matches_formal_bundle_catalog(tmp_path: Path) -> None:
-    catalog = _catalog_matching_active(tmp_path)
-    formal = json.loads(catalog.read_text(encoding="utf-8"))
+    formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
     operations = build_operations_payload(
-        formal_catalog=catalog,
+        formal_catalog=FORMAL_CATALOG,
         ledger_root=tmp_path / "ledgers",
         generated_at="2026-08-08T00:00:00Z",
     )

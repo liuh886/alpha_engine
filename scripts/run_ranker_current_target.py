@@ -32,9 +32,35 @@ def _write(path: Path, payload: dict) -> None:
     )
 
 
+def _formal_portfolio(formal_root: Path, model_version_id: str) -> Path:
+    catalog_path = formal_root / "catalog.json"
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    records = [
+        row
+        for row in catalog.get("records", [])
+        if isinstance(row, dict) and row.get("model_version_id") == model_version_id
+    ]
+    if len(records) != 1:
+        raise ValueError(
+            f"formal catalog must contain exactly one {model_version_id} record"
+        )
+    record = records[0]
+    if record.get("publication_status") != "accepted_formal_baseline":
+        raise ValueError(f"formal model is not accepted: {model_version_id}")
+    manifest_path = record.get("manifest_path")
+    if not isinstance(manifest_path, str) or not manifest_path:
+        raise ValueError(f"formal manifest path is missing: {model_version_id}")
+    portfolio = formal_root / Path(manifest_path).parent / "portfolio.json"
+    if not portfolio.is_file():
+        raise ValueError(f"formal portfolio is missing: {portfolio}")
+    return portfolio
+
+
 def _due(args: argparse.Namespace) -> int:
+    model_version_id = US_MODEL_ID if args.market == "us" else CN_MODEL_ID
+    formal_package = _formal_portfolio(args.formal_root, model_version_id)
     anchor, _ = load_previous_state(
-        formal_package=args.formal_package,
+        formal_package=formal_package,
         ledger_dir=args.ledger_dir,
     )
     benchmark = "QQQ" if args.market == "us" else "000300"
@@ -68,7 +94,7 @@ def _due(args: argparse.Namespace) -> int:
     due = next_due_session(anchor=anchor, sessions=sessions)
     payload = {
         "market": args.market,
-        "model_version_id": US_MODEL_ID if args.market == "us" else CN_MODEL_ID,
+        "model_version_id": model_version_id,
         "anchor": anchor,
         "as_of": args.as_of,
         "due": due is not None,
@@ -83,10 +109,12 @@ def _due(args: argparse.Namespace) -> int:
 
 
 def _build(args: argparse.Namespace) -> int:
+    model_version_id = US_MODEL_ID if args.market == "us" else CN_MODEL_ID
+    formal_package = _formal_portfolio(args.formal_root, model_version_id)
     scorer = score_us_current_target if args.market == "us" else score_cn_current_target
     signal = scorer(
         provider_dir=args.provider_dir,
-        formal_package=args.formal_package,
+        formal_package=formal_package,
         ledger_dir=args.ledger_dir,
         signal_date=args.signal_date,
         market_cutoff=args.market_cutoff,
@@ -103,7 +131,11 @@ def main() -> int:
 
     due = subparsers.add_parser("due")
     due.add_argument("--market", choices=("us", "cn"), required=True)
-    due.add_argument("--formal-package", type=Path, required=True)
+    due.add_argument(
+        "--formal-root",
+        type=Path,
+        default=Path("data/research/formal_model_runs"),
+    )
     due.add_argument("--ledger-dir", type=Path, required=True)
     due.add_argument("--as-of", required=True)
     due.add_argument("--output", type=Path, required=True)
@@ -112,7 +144,11 @@ def main() -> int:
     build = subparsers.add_parser("build")
     build.add_argument("--market", choices=("us", "cn"), required=True)
     build.add_argument("--provider-dir", type=Path, required=True)
-    build.add_argument("--formal-package", type=Path, required=True)
+    build.add_argument(
+        "--formal-root",
+        type=Path,
+        default=Path("data/research/formal_model_runs"),
+    )
     build.add_argument("--ledger-dir", type=Path, required=True)
     build.add_argument("--signal-date", required=True)
     build.add_argument("--market-cutoff", required=True)

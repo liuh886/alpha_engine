@@ -19,6 +19,7 @@ on:
       - "scripts/run_qqq_v4_3_signal_alert.py"
       - "tests/test_qqq_v4_3_monitor_signal.py"
       - "tests/test_strategy_operations.py"
+      - "tests/test_strategy_signal_ledger.py"
       - "tests/test_active_strategy_catalog.py"
   push:
     branches: [main]
@@ -86,10 +87,12 @@ jobs:
             scripts/run_qqq_v4_3_signal_alert.py \
             tests/test_qqq_v4_3_monitor_signal.py \
             tests/test_strategy_operations.py \
+            tests/test_strategy_signal_ledger.py \
             tests/test_active_strategy_catalog.py
           uv run pytest \
             tests/test_qqq_v4_3_monitor_signal.py \
             tests/test_strategy_operations.py \
+            tests/test_strategy_signal_ledger.py \
             tests/test_active_strategy_catalog.py \
             -q --strict-markers --tb=short
 
@@ -104,6 +107,10 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+      - name: Capture executed source revision
+        id: source
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -130,124 +137,208 @@ jobs:
           --summary "$MONITOR_ROOT/current_summary.json"
           --output-dir "$SIGNAL_ROOT"
           --github-output "$GITHUB_OUTPUT"
-      - name: Create deduplicated GitHub signal issue
+
+      - name: Seal canonical QQQ decision
+        env:
+          EXECUTION_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          uv run alpha ops record-decision \
+            --model-version-id "$MODEL_VERSION_ID" \
+            --signal-json "$SIGNAL_ROOT/signal_alert.json" \
+            --delivery-status pending \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --commit-sha "$EXECUTION_SHA" \
+            --created-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+      - name: Commit canonical QQQ decision before delivery
+        run: |
+          set -euo pipefail
+          git config user.name "AlphaEngine Signal Agent"
+          git config user.email "signal-agent@alphaengine.local"
+          git add "$LEDGER_DIR"
+          if git diff --cached --quiet; then
+            echo "Canonical QQQ decision already sealed."
+          else
+            git commit -m "signal: seal QQQ v4.3 decision ${{ steps.alert.outputs.signal_date }}"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Read durable delivery state
+        id: prior
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
+          from pathlib import Path
+          from src.artifacts.strategy_signal_ledger import read_latest_evaluation
+
+          record = read_latest_evaluation(Path("data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3"), model_version_id="qqqi_qqq_tqqq_v4_3")
+          if record is None:
+              raise SystemExit("sealed QQQ decision is missing")
+          delivery = record.get("delivery", {})
+          print(f"status={delivery.get('status') or 'pending'}")
+          print(f"issue_number={delivery.get('github_issue_number') or ''}")
+          print(f"message_id={delivery.get('telegram_message_id') or ''}")
+          print(f"error={delivery.get('error') or ''}")
+          PY
+
+      - name: Ensure one GitHub issue for the sealed decision
         id: issue
         if: >-
           steps.alert.outputs.should_alert == 'true' &&
           steps.alert.outputs.data_freshness_ok == 'true' &&
           steps.alert.outputs.factor_freshness_ok == 'true'
-        uses: actions/github-script@v8
         env:
-          ALERT_FINGERPRINT: ${{ steps.alert.outputs.fingerprint }}
-          ALERT_TITLE: ${{ steps.alert.outputs.title }}
-        with:
-          script: |
-            const fs = require('node:fs');
-            const marker = `<!-- signal-fingerprint:${process.env.ALERT_FINGERPRINT} -->`;
-            const issues = await github.paginate(github.rest.issues.listForRepo, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'all',
-              per_page: 100,
-            });
-            const existing = issues.find((item) => !item.pull_request && String(item.body || '').includes(marker));
-            if (existing) {
-              core.setOutput('issue_number', String(existing.number));
-              core.setOutput('created', 'false');
-              return;
-            }
-            const report = fs.readFileSync(`${process.env.SIGNAL_ROOT}/signal_alert.md`, 'utf8');
-            const created = await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: process.env.ALERT_TITLE,
-              body: `@${context.repo.owner}\n\n${report}`,
-              assignees: [context.repo.owner],
-            });
-            core.setOutput('issue_number', String(created.data.number));
-            core.setOutput('created', 'true');
-      - name: Read prior durable delivery state
-        id: prior
-        env:
-          FINGERPRINT: ${{ steps.alert.outputs.fingerprint }}
+          GH_TOKEN: ${{ github.token }}
+          PRIOR_STATUS: ${{ steps.prior.outputs.status }}
+          PRIOR_ERROR: ${{ steps.prior.outputs.error }}
+          PRIOR_ISSUE_NUMBER: ${{ steps.prior.outputs.issue_number }}
+        shell: bash
         run: |
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
+          set -euo pipefail
+          if [ "$PRIOR_STATUS" = "sent" ] || [ "$PRIOR_STATUS" = "skipped_not_configured" ]; then
+            echo "issue_number=$PRIOR_ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
+            echo "ambiguous=false" >> "$GITHUB_OUTPUT"
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$PRIOR_ERROR" = "ambiguous_external_delivery_state" ] || [ "$PRIOR_ERROR" = "telegram_transport_ambiguous" ]; then
+            echo "issue_number=$PRIOR_ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
+            echo "ambiguous=true" >> "$GITHUB_OUTPUT"
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          signal_date="$(uv run python -c "import json; print(json.load(open('$SIGNAL_ROOT/signal_alert.json'))['signal_date'])")"
+          fingerprint="$(uv run python -c "import json; print(json.load(open('$SIGNAL_ROOT/signal_alert.json'))['fingerprint'])")"
+          marker="<!-- signal-decision:${MODEL_VERSION_ID}:${signal_date}:${fingerprint} -->"
+          existing="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues?state=all&per_page=100" \
+            --jq ".[] | select(.pull_request == null) | select((.body // \"\") | contains(\"${marker}\")) | .number" | head -n 1)"
+          if [ -n "$existing" ]; then
+            if [ "$PRIOR_STATUS" = "pending" ]; then
+              echo "issue_number=$existing" >> "$GITHUB_OUTPUT"
+              echo "ambiguous=true" >> "$GITHUB_OUTPUT"
+              echo "failed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "issue_number=$existing" >> "$GITHUB_OUTPUT"
+            echo "ambiguous=false" >> "$GITHUB_OUTPUT"
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          body="$(cat "$SIGNAL_ROOT/signal_alert.md")"$'\n\n'"$marker"
+          set +e
+          issue_url="$(gh issue create --repo "$GITHUB_REPOSITORY" --title "${{ steps.alert.outputs.title }}" --body "$body")"
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ] || [ -z "$issue_url" ]; then
+            echo "issue_number=" >> "$GITHUB_OUTPUT"
+            echo "ambiguous=false" >> "$GITHUB_OUTPUT"
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "issue_number=${issue_url##*/}" >> "$GITHUB_OUTPUT"
+            echo "ambiguous=false" >> "$GITHUB_OUTPUT"
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+          fi
 
-          path = Path(os.environ['LEDGER_DIR']) / 'latest.json'
-          already_sent = False
-          message_id = ''
-          if path.is_file():
-              payload = json.loads(path.read_text(encoding='utf-8'))
-              delivery = payload.get('delivery', {})
-              if payload.get('fingerprint') == os.environ['FINGERPRINT'] and delivery.get('status') == 'sent':
-                  already_sent = True
-                  message_id = str(delivery.get('telegram_message_id') or '')
-          with Path(os.environ['GITHUB_OUTPUT']).open('a', encoding='utf-8') as handle:
-              handle.write(f"already_sent={'true' if already_sent else 'false'}\n")
-              handle.write(f"message_id={message_id}\n")
-          PY
       - name: Send decision-grade Telegram alert once
         id: telegram
         if: >-
           steps.alert.outputs.should_alert == 'true' &&
           steps.alert.outputs.data_freshness_ok == 'true' &&
-          steps.alert.outputs.factor_freshness_ok == 'true' &&
-          steps.prior.outputs.already_sent != 'true'
+          steps.alert.outputs.factor_freshness_ok == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PRIOR_STATUS: ${{ steps.prior.outputs.status }}
+          PRIOR_MESSAGE_ID: ${{ steps.prior.outputs.message_id }}
+          ISSUE_AMBIGUOUS: ${{ steps.issue.outputs.ambiguous }}
+          ISSUE_FAILED: ${{ steps.issue.outputs.failed }}
         shell: bash
         run: |
+          set -euo pipefail
+          if [ "$PRIOR_STATUS" = "sent" ]; then
+            echo "status=sent" >> "$GITHUB_OUTPUT"
+            echo "message_id=$PRIOR_MESSAGE_ID" >> "$GITHUB_OUTPUT"
+            echo "error_class=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$PRIOR_STATUS" = "skipped_not_configured" ]; then
+            echo "status=skipped_not_configured" >> "$GITHUB_OUTPUT"
+            echo "message_id=" >> "$GITHUB_OUTPUT"
+            echo "error_class=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$ISSUE_AMBIGUOUS" = "true" ]; then
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+            echo "message_id=" >> "$GITHUB_OUTPUT"
+            echo "error_class=ambiguous_external_delivery_state" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$ISSUE_FAILED" = "true" ]; then
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+            echo "message_id=" >> "$GITHUB_OUTPUT"
+            echo "error_class=github_issue_delivery_failed" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
             echo "status=skipped_not_configured" >> "$GITHUB_OUTPUT"
-            echo "error_class=missing_secret" >> "$GITHUB_OUTPUT"
+            echo "message_id=" >> "$GITHUB_OUTPUT"
+            echo "error_class=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           set +e
-          response=$(curl --silent --show-error \
+          response="$(curl --silent --show-error --write-out '\n%{http_code}' \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text@${SIGNAL_ROOT}/signal_alert_telegram.txt" \
-            --data-urlencode "disable_web_page_preview=true")
+            --data-urlencode "disable_web_page_preview=true" 2>&1)"
           curl_status=$?
           set -e
-          if [[ $curl_status -ne 0 ]]; then
+          http_code="$(printf '%s\n' "$response" | tail -n 1)"
+          body="$(printf '%s\n' "$response" | head -n -1)"
+          if [[ "$curl_status" -ne 0 ]]; then
             echo "status=failed" >> "$GITHUB_OUTPUT"
-            echo "error_class=transport_error" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [[ "$(jq -r '.ok // false' <<< "$response")" == "true" ]]; then
-            echo "status=sent" >> "$GITHUB_OUTPUT"
-            echo "message_id=$(jq -r '.result.message_id // empty' <<< "$response")" >> "$GITHUB_OUTPUT"
-          else
+            echo "message_id=" >> "$GITHUB_OUTPUT"
+            echo "error_class=telegram_transport_ambiguous" >> "$GITHUB_OUTPUT"
+          elif [[ "$http_code" != "200" ]]; then
             echo "status=failed" >> "$GITHUB_OUTPUT"
+            echo "message_id=" >> "$GITHUB_OUTPUT"
             echo "error_class=telegram_api_rejected" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=sent" >> "$GITHUB_OUTPUT"
+            echo "message_id=$(printf '%s' "$body" | python -c "import json,sys; print(json.load(sys.stdin)['result']['message_id'])")" >> "$GITHUB_OUTPUT"
+            echo "error_class=" >> "$GITHUB_OUTPUT"
           fi
-      - name: Persist governed decision and materialize operations evidence
+
+      - name: Persist delivery receipt and materialize operations evidence
         env:
           SHOULD_ALERT: ${{ steps.alert.outputs.should_alert }}
-          ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
-          PRIOR_SENT: ${{ steps.prior.outputs.already_sent }}
+          PRIOR_STATUS: ${{ steps.prior.outputs.status }}
+          PRIOR_ISSUE_NUMBER: ${{ steps.prior.outputs.issue_number }}
           PRIOR_MESSAGE_ID: ${{ steps.prior.outputs.message_id }}
+          PRIOR_ERROR: ${{ steps.prior.outputs.error }}
+          ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
           TELEGRAM_STATUS: ${{ steps.telegram.outputs.status }}
           TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
           TELEGRAM_ERROR_CLASS: ${{ steps.telegram.outputs.error_class }}
+          EXECUTION_SHA: ${{ steps.source.outputs.sha }}
         run: |
           set -euo pipefail
           created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           if [[ "$SHOULD_ALERT" != "true" ]]; then
             delivery_status="not_required"
+            issue_number=""
             message_id=""
             delivery_error=""
-          elif [[ "$PRIOR_SENT" == "true" ]]; then
-            delivery_status="sent"
-            message_id="${PRIOR_MESSAGE_ID:-}"
-            delivery_error=""
+          elif [[ "$PRIOR_STATUS" = "sent" || "$PRIOR_STATUS" = "skipped_not_configured" ]]; then
+            delivery_status="$PRIOR_STATUS"
+            issue_number="$PRIOR_ISSUE_NUMBER"
+            message_id="$PRIOR_MESSAGE_ID"
+            delivery_error="$PRIOR_ERROR"
           else
             delivery_status="${TELEGRAM_STATUS:-failed}"
+            issue_number="${ISSUE_NUMBER:-}"
             message_id="${TELEGRAM_MESSAGE_ID:-}"
             delivery_error="${TELEGRAM_ERROR_CLASS:-}"
           fi
@@ -255,29 +346,31 @@ jobs:
             --model-version-id "$MODEL_VERSION_ID" \
             --signal-json "$SIGNAL_ROOT/signal_alert.json" \
             --delivery-status "$delivery_status" \
-            --github-issue-number "${ISSUE_NUMBER:-}" \
+            --github-issue-number "$issue_number" \
             --telegram-message-id "$message_id" \
             --delivery-error "$delivery_error" \
             --workflow-run-id "$GITHUB_RUN_ID" \
-            --commit-sha "$GITHUB_SHA" \
+            --commit-sha "$EXECUTION_SHA" \
             --created-at-utc "$created_at"
           uv run alpha ops build \
             --generated-at "$created_at" \
-            --output artifacts/signals/qqq_rotation_v4_3/strategy-operations.json
+            --output "$SIGNAL_ROOT/strategy-operations.json"
           echo "delivery_status=$delivery_status" >> "$GITHUB_ENV"
-      - name: Commit durable decision
+
+      - name: Commit QQQ delivery receipt
         run: |
           set -euo pipefail
           git config user.name "AlphaEngine Signal Agent"
           git config user.email "signal-agent@alphaengine.local"
-          git add data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3
+          git add "$LEDGER_DIR"
           if git diff --cached --quiet; then
-            echo "Decision evaluation is already persisted."
+            echo "QQQ delivery receipt already persisted."
           else
-            git commit -m "signal: publish QQQ v4.3 evaluation ${{ steps.alert.outputs.fingerprint }}"
+            git commit -m "signal: publish QQQ v4.3 delivery receipt"
             git pull --rebase origin main
             git push origin HEAD:main
           fi
+
       - name: Upload hash-bound decision and operations evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -290,6 +383,7 @@ jobs:
             data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3
           if-no-files-found: warn
           retention-days: 90
-      - name: Fail visibly after persisting required Telegram delivery failure
+
+      - name: Fail visibly after persisting delivery failure
         if: env.delivery_status == 'failed'
         run: exit 1
