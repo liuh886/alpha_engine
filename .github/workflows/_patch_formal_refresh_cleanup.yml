@@ -1,0 +1,47 @@
+name: Patch formal refresh cleanup
+
+on:
+  push:
+    branches:
+      - cleanup/delete-persisted-formal-v1-authority
+    paths:
+      - .github/workflows/_patch_formal_refresh_cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: cleanup/delete-persisted-formal-v1-authority
+          fetch-depth: 0
+      - name: Apply exact cleanup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/formal-backtest-refresh.yml')
+          text = path.read_text(encoding='utf-8')
+          removals = (
+              '      - "data/research/formal_model_runs/**"\n',
+              '      - "data/research/model_runs/**"\n',
+              '          test ! -e data/research/formal_backtests\n',
+          )
+          for token in removals:
+              if text.count(token) != 1:
+                  raise SystemExit(f'expected exactly one occurrence: {token!r}')
+              text = text.replace(token, '')
+          path.write_text(text, encoding='utf-8')
+          PY
+          rm .github/workflows/_patch_formal_refresh_cleanup.yml
+      - name: Commit exact branch patch
+        run: |
+          git config user.name "AlphaEngine Cleanup Agent"
+          git config user.email "cleanup-agent@alphaengine.local"
+          git add .github/workflows/formal-backtest-refresh.yml .github/workflows/_patch_formal_refresh_cleanup.yml
+          git diff --cached --check
+          git commit -m "ci: stop formal refresh from watching its own outputs"
+          git push origin HEAD:cleanup/delete-persisted-formal-v1-authority
