@@ -16,16 +16,16 @@ from src.factors.library import load_factor_library
 from src.factors.model_contract import resolve_canonical_factor_ids
 from src.research.cn130_cross_sectional_ranking import forward_returns, load_provider_panel
 from src.research.cn_x1_1_regime_gated import RegimeGateSpec, build_regime_state, run_regime_portfolio
-from src.research.cross_sectional_experiment_runner import (
-    RETURN_EXPRESSION,
-    _benchmark_instrument,
-    _resolve_symbols,
-    _runtime_for_market,
-    load_cross_sectional_experiment_spec,
-)
+from src.research.cross_sectional_experiment_runner import load_cross_sectional_experiment_spec
 from src.research.qlib_execution_common import (
     load_window_benchmark_returns,
     normalize_qlib_frame_index,
+)
+from src.research.ranker_execution import (
+    TEN_SESSION_RETURN_EXPRESSION as RETURN_EXPRESSION,
+    benchmark_instrument as _benchmark_instrument,
+    resolve_symbols as _resolve_symbols,
+    runtime_for_market as _runtime_for_market,
 )
 from src.research.ranker_training import fit_predict_ranker_scores
 from src.research.rolling_windows import purge_training_tail
