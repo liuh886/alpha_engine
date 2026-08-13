@@ -121,13 +121,13 @@ jobs:
           mkdir -p artifacts/freshness-input
           cp data/research/formal_model_runs/freshness.json artifacts/freshness-input/freshness.json
           uv run python scripts/sync_formal_bundle_v2.py \
-            --freshness-root artifacts/freshness-input \
-            --preview-root data/research/model_runs \
+            --source-root artifacts/freshness-input \
+            --native-root data/research/model_runs \
             --output-root artifacts/bundle-a \
             --receipt artifacts/bundle-receipt-a.json
           uv run python scripts/sync_formal_bundle_v2.py \
-            --freshness-root artifacts/freshness-input \
-            --preview-root data/research/model_runs \
+            --source-root artifacts/freshness-input \
+            --native-root data/research/model_runs \
             --output-root artifacts/bundle-b \
             --receipt artifacts/bundle-receipt-b.json
           diff -ru artifacts/bundle-a artifacts/bundle-b
