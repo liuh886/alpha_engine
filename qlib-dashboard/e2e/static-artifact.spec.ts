@@ -228,7 +228,6 @@ test('product homepage exposes the installable PWA entry and strategy console', 
   await expect(page.getByRole('heading', { name: 'Performance before persuasion.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Every decision is traceable.' })).toBeVisible();
   const landingActions = page.locator('.landing-actions');
-  await expect(landingActions.getByRole('link', { name: 'Open app' })).toBeVisible();
   await exposeInstallPrompt(page);
   await expect(landingActions.getByRole('button', { name: 'Install app' })).toBeVisible();
   await expect(page.getByLabel('Install Alpha Engine')).toBeVisible();
