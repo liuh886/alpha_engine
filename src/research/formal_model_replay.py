@@ -35,7 +35,7 @@ BYD_REPLAY_ID = "byd_v1_3"
 REPLAY_IDS = (QQQ_REPLAY_ID, BYD_REPLAY_ID)
 
 BYD_PREDECESSOR_PACKAGE = Path(
-    "data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json"
+    "data/research/historical_model_evidence/byd_v1_2_convex_momentum_budget_v1.json"
 )
 BYD_SNAPSHOT = Path("data/research/byd_canonical_v1_snapshot.tar.xz")
 ETF_ARTIFACT = Path("data/research/515180_canonical_v1_artifact.zip.b64")

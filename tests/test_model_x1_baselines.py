@@ -9,6 +9,7 @@ from types import ModuleType
 import pytest
 import yaml
 
+from src.artifacts.formal_bundle_reader import load_formal_run
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +26,10 @@ def _load_validator() -> ModuleType:
     sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def _cn_refresh_state() -> dict:
+    return load_formal_run(ROOT, "cn_x1_1").refresh_state()
 
 
 def test_active_strategy_catalog_owns_current_x1_identities() -> None:
@@ -94,23 +99,16 @@ def test_us_x1_3_receipt_is_stage_b_supported_but_not_trade_ready() -> None:
 def test_cn_registry_accepts_append_only_publication_cutoff_extension() -> None:
     module = _load_validator()
     config = yaml.safe_load((ROOT / "configs/models/cn_x1_1.yaml").read_text())
-    package = json.loads(
-        (ROOT / "data/research/formal_backtests/cn_x1_1.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    package["evidence_cutoff"] = "2026-08-07"
+    package = _cn_refresh_state()
+    package["evidence_cutoff"] = "2026-08-13"
     module._validate_cn_formal_extension(package, config)
 
 
 def test_cn_registry_rejects_frozen_evidence_truncation() -> None:
     module = _load_validator()
     config = yaml.safe_load((ROOT / "configs/models/cn_x1_1.yaml").read_text())
-    package = json.loads(
-        (ROOT / "data/research/formal_backtests/cn_x1_1.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    package["report"] = package["report"][:-1]
+    package = _cn_refresh_state()
+    minimum = int(config["backtest_evidence"]["complete_formal_path"]["rebalance_count"])
+    package["report"] = package["report"][: minimum - 1]
     with pytest.raises(ValueError, match="frozen report prefix"):
         module._validate_cn_formal_extension(package, config)

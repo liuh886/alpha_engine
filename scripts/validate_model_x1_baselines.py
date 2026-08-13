@@ -11,6 +11,7 @@ from typing import Any
 
 import yaml
 
+from src.artifacts.formal_bundle_reader import load_formal_run
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
 EXPECTED_ACTIVE_BASELINES = {"us": "us_x1_3", "cn": "cn_x1_1"}
@@ -37,7 +38,6 @@ MODEL_ARTIFACTS: dict[str, dict[str, Any]] = {
         "config": "configs/models/cn_x1_1.yaml",
         "notebook": "notebooks/models/cn_x1_1_complete_backtest.ipynb",
         "frozen_research_spec": "configs/research_experiments/cn_x1_1_fallback_aware_certification_v1.yaml",
-        "formal_package": "data/research/formal_backtests/cn_x1_1.json",
     },
     "us_x1_0": {
         "display_name": "US x1.0",
@@ -287,21 +287,18 @@ def _validate_us_x1_3(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
 def _validate_cn_x1_1(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
     model_id = "cn_x1_1"
     config, config_path = _validate_common_model(root, model_id, entry)
-    package_path = root / str(entry["formal_package"])
-    if not package_path.is_file():
-        raise FileNotFoundError(package_path)
-    package = _load_json(package_path)
+    package = load_formal_run(root, model_id).refresh_state()
     if config.get("status") != "accepted_formal_baseline":
         raise ValueError("cn_x1_1: formal status mismatch")
     if package.get("model_id") != model_id:
-        raise ValueError("cn_x1_1: formal package identity mismatch")
+        raise ValueError("cn_x1_1: formal Bundle v2 identity mismatch")
     _validate_cn_formal_extension(package, config)
     return {
         "model_id": model_id,
         "display_name": "CN x1.1",
         "status": str(entry["status"]),
         "config": str(config_path.relative_to(root)),
-        "formal_package": str(package_path.relative_to(root)),
+        "formal_bundle": "data/research/formal_model_runs/catalog.json",
         "evidence_completeness": "complete",
         "trade_ready": False,
     }

@@ -8,7 +8,7 @@ on:
       - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/formal-backtest-refresh-ci.yml"
       - "configs/strategies/registry.json"
-      - "configs/models/us_x1_3.yaml"
+      - "configs/models/**"
       - "src/artifacts/**"
       - "src/data/**"
       - "src/dashboard/**"
@@ -36,15 +36,14 @@ on:
       - "tests/test_rules_formal_replay_gate.py"
       - "tests/test_market_evidence.py"
       - "tests/test_formal_provider_cache.py"
-      - "tests/test_formal_backtest_freshness.py"
       - "tests/test_strategy_operations.py"
+      - "tests/test_system_health.py"
       - "tests/test_model_data_bundle.py"
       - "tests/test_repository_research_store.py"
       - "tests/test_sync_formal_bundle_v2.py"
       - "tests/test_us_x1_3_preview_publication.py"
       - "tests/test_us_x1_3_current_target.py"
       - "tests/test_formal_refresh_trigger_scope.py"
-      - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
       - "data/research/model_runs/**"
       - "data/research/market_evidence/**"
@@ -152,8 +151,6 @@ jobs:
               print("cutover=false")
               print("reason=exact_formal_identity")
           else:
-              # Only a one-for-one declared lineage.supersedes transition can
-              # enter this pre-publication mode. Arbitrary catalog drift fails.
               _assert_formal_catalog_or_declared_transition(formal, active)
               print("cutover=true")
               print("reason=declared_model_cutover_before_reviewed_refresh")
@@ -163,7 +160,7 @@ jobs:
         run: |
           uv run ruff check \
             src/governance/active_strategy_catalog.py \
-            src/artifacts/formal_refresh.py \
+            src/artifacts/formal_bundle_reader.py \
             src/artifacts/us_x1_3_preview.py \
             src/research/us_x1_3_current_target.py \
             scripts/run_formal_refresh_transaction.py \
@@ -178,7 +175,7 @@ jobs:
             tests/test_us_x1_3_current_target.py \
             tests/test_formal_refresh_trigger_scope.py
           uv run mypy \
-            src/artifacts/formal_refresh.py \
+            src/artifacts/formal_bundle_reader.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py
           uv run pytest \
@@ -194,13 +191,16 @@ jobs:
       - name: Validate exact formal candidate contracts
         if: steps.scope.outputs.backend == 'true' && steps.mode.outputs.cutover != 'true'
         run: |
+          test ! -e data/research/formal_backtests
           uv run ruff check \
             src/governance/active_strategy_catalog.py \
+            src/artifacts/formal_bundle_reader.py \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
             src/artifacts/us_x1_3_preview.py \
             src/artifacts/qqq_v4_3_formal.py \
             src/artifacts/strategy_operations.py \
+            src/artifacts/system_health.py \
             src/dashboard/market_evidence.py \
             src/factors/library.py \
             src/factors/panel.py \
@@ -232,6 +232,7 @@ jobs:
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
             tests/test_strategy_operations.py \
+            tests/test_system_health.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_sync_formal_bundle_v2.py \
@@ -239,6 +240,7 @@ jobs:
             tests/test_us_x1_3_current_target.py \
             tests/test_formal_refresh_trigger_scope.py
           uv run mypy \
+            src/artifacts/formal_bundle_reader.py \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
             src/dashboard/market_evidence.py \
@@ -257,9 +259,9 @@ jobs:
             tests/test_rules_formal_replay_gate.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
-            tests/test_formal_backtest_freshness.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
+            tests/test_system_health.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_us_x1_3_preview_publication.py \
