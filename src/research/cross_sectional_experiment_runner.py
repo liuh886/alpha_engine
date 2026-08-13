@@ -17,7 +17,6 @@ import pandas as pd
 import yaml
 
 from src.common.runtime_settings import PROJECT_ROOT
-from src.research.daily_ranker import prepare_ranker_frame
 from src.research.economics import relative_excess
 from src.research.evaluation_context import SpecBoundEvaluationContext
 from src.research.experiment_harness import (
@@ -36,22 +35,18 @@ from src.research.qlib_execution_common import (
     load_window_benchmark_returns,
     normalize_qlib_frame_index,
 )
+from src.research.ranker_training import fit_predict_ranker_scores
 from src.research.rolling_windows import purge_training_tail
 from src.research.signal_discovery import (
     CandidateKind,
     ScoreOrientation,
     evaluate_candidate,
 )
-from src.research.universe_robustness import validate_no_nan_inputs
 from src.research.window_policy import (
     build_window_sampling_plan,
     horizon_eligible_dates_by_window,
 )
-from src.research.xgb_native_calibration import (
-    XGBNativeCalibration,
-    fit_xgb_native_daily_ranker,
-    predict_xgb_native_daily_ranker,
-)
+from src.research.xgb_native_calibration import XGBNativeCalibration
 
 RUNNER_ID = "cross_sectional_xgb_ranker_v1"
 RETURN_EXPRESSION = "Ref($close, -10) / $close - 1"
@@ -438,30 +433,17 @@ def run_cross_sectional_experiment(
         names_by_id: dict[str, str] = {}
         scores_by_id: dict[str, pd.DataFrame] = {}
         for candidate in spec.candidates:
-            columns = [
-                expression_columns[expression]
-                for expression in expressions_by_candidate[candidate.candidate_id]
-            ]
-            features_train = features_train_all.loc[:, columns]
-            valid, reason = validate_no_nan_inputs(
-                features_train,
+            scores = fit_predict_ranker_scores(
+                expressions=expressions_by_candidate[candidate.candidate_id],
+                expression_columns=expression_columns,
+                features_train=features_train_all,
+                returns_train=returns_train,
+                features_test=features_test_all,
+                calibration=candidate.calibration,
                 context=(
                     f"{spec.market.upper()} {spec.experiment_id} "
                     f"train/{window.label}/{candidate.candidate_id}"
                 ),
-            )
-            if not valid:
-                raise ValueError(reason)
-            x_rank, y_rank, groups = prepare_ranker_frame(features_train, returns_train)
-            fitted = fit_xgb_native_daily_ranker(
-                x_rank,
-                y_rank,
-                groups,
-                calibration=candidate.calibration,
-            )
-            scores = predict_xgb_native_daily_ranker(
-                fitted,
-                features_test_all.loc[:, columns],
             )
             candidate_name = (
                 f"xgb:daily_ranker:{candidate.candidate_id}:native:{candidate.calibration.name}"
