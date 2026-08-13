@@ -91,6 +91,24 @@ def test_us_x1_3_receipt_is_stage_b_supported_but_not_trade_ready() -> None:
     assert receipt["trade_ready"] is False
 
 
+def test_active_us_model_config_references_evidence_without_copying_results() -> None:
+    config = yaml.safe_load((ROOT / "configs/models/us_x1_3.yaml").read_text(encoding="utf-8"))
+
+    assert config["lineage"]["stage_b_spec"] == (
+        "configs/research_experiments/us_x1_3_stage_b_v1.yaml"
+    )
+    assert config["lineage"]["stage_b_receipt"] == (
+        "data/research/experiment_receipts/us_x1_3_stage_b_v1.json"
+    )
+    for duplicate_evidence_block in (
+        "provider_binding",
+        "stage_b_evidence",
+        "certification_evidence",
+        "selection_decision",
+    ):
+        assert duplicate_evidence_block not in config
+
+
 def test_cn_registry_accepts_append_only_publication_cutoff_extension() -> None:
     module = _load_validator()
     config = yaml.safe_load((ROOT / "configs/models/cn_x1_1.yaml").read_text())
