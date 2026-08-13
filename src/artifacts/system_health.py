@@ -1,4 +1,4 @@
-"""Build one multi-watermark health snapshot from existing governed evidence."""
+"""Build one multi-watermark health snapshot from governed read models."""
 
 from __future__ import annotations
 
@@ -66,27 +66,15 @@ def _state_max(states: Sequence[str]) -> str:
 
 def _factor_cutoff(operation: Mapping[str, Any]) -> str | None:
     rows = operation.get("factor_evidence")
-    if not isinstance(rows, list):
-        return _date(operation.get("latest_completed_session"))
-    return _max_date(
-        [
+    if isinstance(rows, list):
+        observed = [
             _date(row.get("observed_at"))
             for row in rows
             if isinstance(row, Mapping)
         ]
-    ) or _date(operation.get("latest_completed_session"))
-
-
-def _latest_signal(strategy: ActiveStrategy, repository_root: Path) -> dict[str, Any] | None:
-    path = repository_root / strategy.signal_ledger / "latest.json"
-    if not path.is_file():
-        return None
-    payload = _object(path)
-    if payload.get("model_version_id") != strategy.model_version_id:
-        raise SystemHealthError(
-            f"signal ledger identity mismatch for {strategy.strategy_id}"
-        )
-    return payload
+        if any(observed):
+            return _max_date(observed)
+    return _date(operation.get("latest_completed_session"))
 
 
 def _last_signal_change(strategy: ActiveStrategy, repository_root: Path) -> str | None:
@@ -105,20 +93,19 @@ def _last_signal_change(strategy: ActiveStrategy, repository_root: Path) -> str 
     return max(changed) if changed else None
 
 
-def _delivery_state(latest: Mapping[str, Any] | None) -> tuple[str, str | None]:
-    if latest is None:
-        return "not_applicable", None
-    delivery = latest.get("delivery")
-    if not isinstance(delivery, Mapping):
-        return "blocked", None
-    status = str(delivery.get("status") or "")
-    if status in {"sent", "not_required", "unchanged", "suppressed"}:
-        return ("not_applicable" if status in {"not_required", "unchanged", "suppressed"} else "current"), status
+def _delivery_state(status_value: object) -> tuple[str, str | None]:
+    status = str(status_value or "")
+    if status in {"sent"}:
+        return "current", status
+    if status in {"not_required", "unchanged", "suppressed"}:
+        return "not_applicable", status
     if status in {"failed", "delivery_failed", "error"}:
         return "blocked", status
-    if not status:
-        return "blocked", None
-    return "delayed", status
+    if status in {"pending", "skipped_not_configured"}:
+        return "delayed", status
+    if status in {"not available", ""}:
+        return "not_applicable", None
+    raise SystemHealthError(f"unsupported delivery status: {status}")
 
 
 def _operation_state(operation: Mapping[str, Any]) -> str:
@@ -157,7 +144,7 @@ def build_system_health(
     model_data_readiness: Path,
     generated_at: str,
 ) -> dict[str, Any]:
-    """Build health without recomputing models or collapsing stage watermarks."""
+    """Build health from the canonical Strategy Operations read model."""
 
     root = repository_root.resolve()
     active = load_active_strategy_catalog(root / "configs/strategies/registry.json")
@@ -199,21 +186,18 @@ def build_system_health(
         else "blocked"
     )
 
-    latest_signals: dict[str, dict[str, Any] | None] = {}
-    last_changes: dict[str, str | None] = {}
     expected_market_candidates: dict[str, list[str | None]] = {}
+    last_changes: dict[str, str | None] = {}
     for strategy in active.strategies:
         operation = operations_by_model[strategy.model_version_id]
         formal_record = formal_by_model[strategy.model_version_id]
-        latest = _latest_signal(strategy, root)
-        latest_signals[strategy.model_version_id] = latest
         last_changes[strategy.model_version_id] = _last_signal_change(strategy, root)
         expected_market_candidates.setdefault(strategy.market, []).extend(
             [
                 _date(market_cutoffs.get(strategy.market)),
                 _date(formal_record.get("evidence_cutoff")),
                 _date(operation.get("latest_completed_session")),
-                _date(latest.get("signal_date")) if latest else None,
+                _date(operation.get("as_of")),
             ]
         )
 
@@ -254,17 +238,19 @@ def build_system_health(
         model_id = strategy.model_version_id
         operation = operations_by_model[model_id]
         formal_record = formal_by_model[model_id]
-        latest = latest_signals[model_id]
         provider_cutoff = _date(market_cutoffs.get(strategy.market))
         formal_cutoff = _date(formal_record.get("evidence_cutoff"))
         factor_cutoff = _factor_cutoff(operation)
-        signal_evaluation = (
-            _date(latest.get("signal_date")) if latest else _date(operation.get("latest_completed_session"))
+        signal_evaluation = _date(operation.get("as_of")) or _date(
+            operation.get("latest_completed_session")
         )
-        delivery_state, delivery_status = _delivery_state(latest)
-
-        formal_state = "blocked" if formal_cutoff is None or provider_cutoff is None else (
-            "delayed" if formal_cutoff < provider_cutoff else "current"
+        delivery_state, delivery_status = _delivery_state(
+            operation.get("delivery_status")
+        )
+        formal_state = (
+            "blocked"
+            if formal_cutoff is None or provider_cutoff is None
+            else ("delayed" if formal_cutoff < provider_cutoff else "current")
         )
         data_state = model_data_state
         if (
@@ -309,11 +295,10 @@ def build_system_health(
 
     deployment_commit = os.environ.get("GITHUB_SHA") or None
     deployment_run = os.environ.get("GITHUB_RUN_ID") or None
-    internal_state = _state_max([row["state"] for row in strategies])
     return {
         "schema_version": SCHEMA_VERSION,
         "generated_at": generated_at,
-        "state": internal_state,
+        "state": _state_max([row["state"] for row in strategies]),
         "markets": markets,
         "strategies": strategies,
         "deployment": {
