@@ -80,6 +80,7 @@ jobs:
           src/research/replay_comparison.py
           src/research/experiment_harness.py
           src/research/cross_sectional_experiment_runner.py
+          src/research/ranker_execution.py
           src/research/ranker_training.py
           src/research/formal_baseline.py
           src/research/formal_baseline_onboarding.py
@@ -136,6 +137,7 @@ jobs:
           src/models/metric_contract.py
           src/research/economics.py
           src/research/replay_comparison.py
+          src/research/ranker_execution.py
           src/research/ranker_training.py
 
       - name: Core release-contract tests

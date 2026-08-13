@@ -110,6 +110,7 @@ module = [
     "src.research.economics",
     "src.research.replay_comparison",
     "src.research.ranker_training",
+    "src.research.ranker_execution",
 ]
 ignore_errors = false
 disallow_untyped_defs = true

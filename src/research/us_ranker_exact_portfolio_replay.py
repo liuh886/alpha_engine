@@ -12,19 +12,19 @@ import pandas as pd
 
 import scripts.run_us_x1_1_rank_aware_sector_cap as sector_cap
 from src.common.runtime_settings import PROJECT_ROOT
-from src.research.cross_sectional_experiment_runner import (
-    RETURN_EXPRESSION,
-    _benchmark_instrument,
-    _factor_expressions,
-    _resolve_symbols,
-    _runtime_for_market,
-    load_cross_sectional_experiment_spec,
-)
+from src.research.cross_sectional_experiment_runner import load_cross_sectional_experiment_spec
 from src.research.economics import relative_excess
 from src.research.experiment_harness import evaluate_experiment
 from src.research.qlib_execution_common import (
     load_window_benchmark_returns,
     normalize_qlib_frame_index,
+)
+from src.research.ranker_execution import (
+    TEN_SESSION_RETURN_EXPRESSION as RETURN_EXPRESSION,
+    benchmark_instrument as _benchmark_instrument,
+    factor_expressions as _factor_expressions,
+    resolve_symbols as _resolve_symbols,
+    runtime_for_market as _runtime_for_market,
 )
 from src.research.ranker_training import fit_predict_ranker_scores
 from src.research.rolling_windows import purge_training_tail
