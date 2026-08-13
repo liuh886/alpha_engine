@@ -4,11 +4,11 @@
 
 Alpha Engine 用固定研究契约、时间有效的数据、exact replay / walk-forward / prospective 验证和 fail-closed 决策，把候选研究收敛成可审计的正式策略，并把“模型为什么存在”和“模型现在为什么这样做”连成一条证据链。
 
-> **Current status — 2026-08-12**
+> **Current status — 2026-08-13**
 >
 > - Alpha Engine 仍是 `research_only=true`、`trade_ready=false` 的研究与策略观察系统，不提供 broker/order execution。
 > - `configs/strategies/registry.json` 是当前正式策略身份的唯一产品权威；模型历史由 immutable evidence / lineage 保留，不维护第二份 active baseline registry。
-> - 当前正式策略：QQQ Rotation v4.3、US x1.2、CN x1.1、BYD v1.3。
+> - 当前正式策略：QQQ Rotation v4.3、US x1.3、CN x1.1、BYD v1.3。
 > - Model Run Bundle v2 是正式历史证据边界；append-only Strategy Decision Ledger 是当前决策事实边界；Strategy Operations 是由二者生成的只读当前状态投影。
 > - GitHub 不再跟踪 `data/research/strategy_operations/` 或 `qlib-dashboard/public/data/`；它们在 CI / Pages 构建时由 canonical evidence 重新生成。
 > - 历史正式证据公开；当前策略 operations 的访问级别由 Active Strategy Catalog 声明，账户/entitlement 只负责判断用户是否满足该级别。
@@ -56,7 +56,7 @@ Strategy Console 按“用户要回答的问题”组织，而不是按仓库子
                            Strategy Console
 ```
 
-`strategy_id` 是稳定产品身份；`model_version_id` 是可以被正式晋级替换的实现身份。比如 `us_x` 可以从 `us_x1_2` 晋级到后续版本，而 URL、权限语义、operations 家族和产品理解不需要复制一套新系统。
+`strategy_id` 是稳定产品身份；`model_version_id` 是可以被正式晋级替换的实现身份。比如 `us_x` 可以从一个已接受版本晋级到后续版本，而 URL、权限语义、operations 家族和产品理解不需要复制一套新系统。
 
 ## 3. Evidence 与 Decision Ledger
 
@@ -91,7 +91,7 @@ Strategy Operations 不是新的事实源，而是：
 | Stable strategy | Active model | Kind | Decision cadence | Current operations access |
 | --- | --- | --- | --- | --- |
 | `qqq_rotation` | QQQ Rotation v4.3 | rules-based allocation | 每个完成的美股交易日 | Pro |
-| `us_x` | US x1.2 | cross-sectional ranker | 每 10 provider sessions | Public |
+| `us_x` | US x1.3 | cross-sectional ranker | 每 10 provider sessions | Public |
 | `cn_x` | CN x1.1 | cross-sectional ranker | 每 10 provider sessions | Public |
 | `byd` | BYD v1.3 | rules-based allocation | 每个完成的 A 股交易日 | Public |
 
@@ -183,7 +183,7 @@ make ci
 6. review PR 只提交 canonical evidence；
 7. Strategy Operations 与前端 `public/data` 在验证/部署时重新生成。
 
-US x1.2 已走 native Bundle v2 promotion；被取代的 US x1.1 不再参与 active formal refresh。不存在 v1→v2 migration reader、projector registry 或 browser fallback。
+US x1.3 已走 native Bundle v2 promotion；被取代的 US x1.2 不再参与 active formal refresh。不存在 v1→v2 migration reader、projector registry 或 browser fallback。
 
 ## 9. 前端开发与验证
 
@@ -218,6 +218,3 @@ npx playwright test --config=playwright.static.config.ts
 - No frontend-generated execution price, PnL, factor statistic or system-health claim.
 - No second active-strategy registry.
 - No committed generated frontend projection as a fact source.
-- `research_only=true`, `trade_ready=false`.
-
-更多说明见 `docs/product/strategy_console.md`、`docs/methodology.md`、`docs/architecture/repository_data_convergence.md`、`docs/architecture/formal_release_governance.md`、`docs/architecture/legacy_web_retirement.md` 和 `AGENTS.md`。
