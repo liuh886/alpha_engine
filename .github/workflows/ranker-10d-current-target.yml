@@ -89,7 +89,7 @@ jobs:
           fi
           uv run python scripts/run_ranker_current_target.py due \
             --market cn \
-            --formal-package data/research/formal_backtests/cn_x1_1.json \
+            --formal-root data/research/formal_model_runs \
             --ledger-dir data/research/strategy_signal_ledgers/cn_x1_1 \
             --as-of "$as_of" \
             --output artifacts/ranker-current-target/cn_due.json
@@ -141,7 +141,7 @@ jobs:
           uv run python scripts/run_ranker_current_target.py build \
             --market cn \
             --provider-dir artifacts/ranker-current-target/cn_provider/data/providers/cn \
-            --formal-package data/research/formal_backtests/cn_x1_1.json \
+            --formal-root data/research/formal_model_runs \
             --ledger-dir data/research/strategy_signal_ledgers/cn_x1_1 \
             --signal-date "$date" \
             --market-cutoff "CN close $date" \
