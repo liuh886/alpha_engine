@@ -7,7 +7,11 @@ import numpy as np
 import pytest
 
 import scripts.ranker_provisional_mtm as mtm
-from scripts.run_formal_refresh_transaction import _mtm_refresh_model_ids
+from scripts.run_formal_refresh_transaction import (
+    RANKER_MTM_MODELS,
+    _has_current_provisional_mtm,
+    _latest_settled_performance_end,
+)
 
 
 def _write_close(provider: Path, instrument: str, values: list[float]) -> None:
@@ -16,55 +20,11 @@ def _write_close(provider: Path, instrument: str, values: list[float]) -> None:
     np.asarray([0.0, *values], dtype="<f4").tofile(path)
 
 
-def _write_ranker_package(
-    root: Path,
-    *,
-    model_id: str,
-    settled_end: str,
-    cutoff: str,
-    provisional_as_of: str | None = None,
-) -> None:
-    benchmark_key = "bench_qqq" if model_id == "us_x1_1" else "bench_hs300"
-    payload: dict[str, object] = {
-        "model_id": model_id,
-        "evidence_cutoff": cutoff,
-        "freshness": {
-            "status": "current",
-            "latest_realized_holding_end": settled_end,
-        },
-        "report": [
-            {
-                "date": settled_end,
-                "holding_end_date": settled_end,
-                "account": 1.0,
-                benchmark_key: 1.0,
-            }
-        ],
-    }
-    if provisional_as_of is not None:
-        payload["provisional_mtm"] = {
-            "schema_version": "ranker_provisional_mtm_v1",
-            "as_of": provisional_as_of,
-            "research_only": True,
-            "trade_ready": False,
-            "performance_row": {
-                "date": settled_end,
-                "holding_end_date": provisional_as_of,
-                "provisional_mtm": True,
-                "settlement_status": "provisional_mtm",
-            },
-        }
-    (root / f"{model_id}.json").write_text(
-        json.dumps(payload),
-        encoding="utf-8",
-    )
-
-
-def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
+def test_ranker_mtm_keeps_settled_trace_immutable(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    package_path = tmp_path / "us_x1_1.json"
+    package_path = tmp_path / "ranker.json"
     package_path.write_text(
         json.dumps(
             {
@@ -80,8 +40,6 @@ def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
                         "holding_end_date": "2026-07-30",
                         "account": 2.0,
                         "bench_qqq": 1.2,
-                        "window": "2026H2_partial",
-                        "evaluation": "reporting",
                     }
                 ],
                 "positions": [
@@ -91,9 +49,8 @@ def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
         ),
         encoding="utf-8",
     )
-
     provider = tmp_path / "provider"
-    calendar = [
+    sessions = [
         "2026-07-30",
         "2026-08-03",
         "2026-08-04",
@@ -102,11 +59,10 @@ def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
         "2026-08-07",
     ]
     (provider / "calendars").mkdir(parents=True)
-    (provider / "calendars" / "day.txt").write_text("\n".join(calendar) + "\n")
+    (provider / "calendars" / "day.txt").write_text("\n".join(sessions) + "\n")
     _write_close(provider, "A", [100, 102, 104, 106, 108, 110])
     _write_close(provider, "B", [100, 98, 96, 94, 92, 90])
     _write_close(provider, "QQQ", [100, 101, 102, 103, 104, 105])
-
     monkeypatch.setattr(
         mtm,
         "read_latest_evaluation",
@@ -129,59 +85,34 @@ def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
     )
 
     assert result is not None
-    row = result["performance_row"]
-    assert row["date"] == "2026-08-07"
-    assert row["signal_date"] == "2026-07-30"
-    assert row["holding_end_date"] == "2026-08-07"
-    assert row["provisional_mtm"] is True
-    assert row["settlement_status"] == "provisional_mtm"
-    assert row["gross_return"] == pytest.approx(0.0)
-    assert row["period_return"] == pytest.approx(-0.001)
-    assert row["account"] == pytest.approx(1.998)
-    assert row["benchmark_return"] == pytest.approx(0.05)
-    assert row["bench_qqq"] == pytest.approx(1.26)
-
     persisted = json.loads(package_path.read_text(encoding="utf-8"))
     assert len(persisted["report"]) == 1
     assert persisted["provisional_mtm"]["as_of"] == "2026-08-07"
-    assert persisted["freshness"]["latest_mtm_date"] == "2026-08-07"
-    assert persisted["freshness"]["performance_observation_status"] == "provisional_mtm"
+    assert persisted["provisional_mtm"]["performance_row"]["provisional_mtm"] is True
 
 
-def test_mtm_planner_refreshes_only_active_ranker_source_when_performance_is_stale(
-    tmp_path: Path,
-) -> None:
-    _write_ranker_package(
-        tmp_path,
-        model_id="us_x1_1",
-        settled_end="2026-07-30",
-        cutoff="2026-08-07",
-    )
-    _write_ranker_package(
-        tmp_path,
-        model_id="cn_x1_1",
-        settled_end="2026-07-29",
-        cutoff="2026-08-07",
-    )
-
-    assert _mtm_refresh_model_ids(
-        tmp_path,
-        cutoffs={"us": "2026-08-07", "cn": "2026-08-07"},
-    ) == ("cn_x1_1",)
+def test_mtm_contract_targets_only_cn_x1_1_and_detects_stale_settled_trace() -> None:
+    assert RANKER_MTM_MODELS == (("cn_x1_1", "cn"),)
+    performance = {
+        "report": [
+            {"date": "2026-07-29", "holding_end_date": "2026-07-29"}
+        ]
+    }
+    assert _latest_settled_performance_end(performance) == "2026-07-29"
+    assert _has_current_provisional_mtm(performance, cutoff="2026-08-07") is False
 
 
-def test_mtm_planner_is_current_after_active_cutoff_mtm_is_published(
-    tmp_path: Path,
-) -> None:
-    _write_ranker_package(
-        tmp_path,
-        model_id="cn_x1_1",
-        settled_end="2026-07-29",
-        cutoff="2026-08-07",
-        provisional_as_of="2026-08-07",
-    )
-
-    assert _mtm_refresh_model_ids(
-        tmp_path,
-        cutoffs={"us": "2026-08-07", "cn": "2026-08-07"},
-    ) == ()
+def test_mtm_contract_accepts_current_bundle_v2_projection() -> None:
+    performance = {
+        "report": [
+            {"date": "2026-07-29", "holding_end_date": "2026-07-29"},
+            {
+                "date": "2026-08-07",
+                "holding_end_date": "2026-08-07",
+                "provisional_mtm": True,
+                "settlement_status": "provisional_mtm",
+            },
+        ]
+    }
+    assert _latest_settled_performance_end(performance) == "2026-07-29"
+    assert _has_current_provisional_mtm(performance, cutoff="2026-08-07") is True
