@@ -2,249 +2,249 @@
   "after": {
     "AAOI": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "5d8824c653e7f70f2daba4182a11d79a2db14658be618debb4ba2c7b97bdd909",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "05538740574cc08621b96b7b7caecd27380e150538e40f4b5467f9033459a8cc",
       "status": "ready",
       "symbol": "AAOI"
     },
     "AAPL": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "3536efe0979b4ca0ae2b15870313f4c8434f842b6dfff76f1594052f3f984ee9",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "4744f0da9b28140103f6ffc200a912b5ab8aa1cd797114890bc3d9408032135d",
       "status": "ready",
       "symbol": "AAPL"
     },
     "ABBNY": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "735333d8b9c0ff679ad5dcd87aa56c29fb3398af2170ac5981051c1b3ae9ecae",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "3ace7febef8afa18d3816f6c4543f1ec33809d69f535fcb45fe4f5b4fb60eb76",
       "status": "ready",
       "symbol": "ABBNY"
     },
     "ADP": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "70be4890caaee18c573af5932fb421431240a16fb50eb827fbefda68452359d0",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "8b0c4db5ab775b60ebeceb6580076227d7870ed7d5946b0be3dee8de53b60dc5",
       "status": "ready",
       "symbol": "ADP"
     },
     "ADSK": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "ec6e82763a5a99e6cdecd383f4aa151394dd72be68db7056f8d28affc521a4fa",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "543fad170d82c40acee6c335fcd6c2f197fef1aea5e0fe8f33c3d846e910cf02",
       "status": "ready",
       "symbol": "ADSK"
     },
     "AEHR": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "2bf1e57d8a83200868da4556780dcbc2570090716d63bcda679b451caac71fa5",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "c9fa000707f3f2c7bea4d01531a7aa75cf9b61fbb6df92e5c7bc4f9497876c75",
       "status": "ready",
       "symbol": "AEHR"
     },
     "ALAB": {
       "first_date": "2024-03-20",
-      "last_date": "2026-08-11",
-      "rows": 600,
-      "sha256": "302d5f87c0370e9fd0f69177972d2f2c64b8ca9353d9c8703786c098a48ee607",
+      "last_date": "2026-08-12",
+      "rows": 601,
+      "sha256": "4f05661a1354aa6813ab8c68a6db454d376722711430d5cdbf08dd7525675641",
       "status": "ready",
       "symbol": "ALAB"
     },
     "AMAT": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "a05d1c4199052490daf17b0fde09fda5389fb8f304fabd0fd382f7d39181b624",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "6cdc3fca24c494b16e0a62e860cfef9aaa9fe926318a19b6041cda802d2b66ef",
       "status": "ready",
       "symbol": "AMAT"
     },
     "AMD": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "7c90b394bf99b1b49fd5e0a5d8dd723f3844328d6a5cb850e8ae0a79b864c5c9",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "9d99791a5936fba01a3536f2cb5f0c6d905702d5631a792bd619104d2a3a0cd7",
       "status": "ready",
       "symbol": "AMD"
     },
     "AMZN": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "f70f0f1c71309d70c53d62a9f75f0fcb569bd92695e58ea0eeccea991a7caf5e",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "8fe422a93e480fa830c7374e954a180bc3da51d3341364c295dbad9b75c15b54",
       "status": "ready",
       "symbol": "AMZN"
     },
     "ANET": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "8eb83ab3938e6dcf3037ac1e75f88b981be1741c8d387c02976e1d87ed52c0ed",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "e495392ac51eeb11644711d01028b5488be33bc25b18d757104fad1c738428e0",
       "status": "ready",
       "symbol": "ANET"
     },
     "APP": {
       "first_date": "2021-04-15",
-      "last_date": "2026-08-11",
-      "rows": 1337,
-      "sha256": "517e5f558c7d8536eb039210f666a9169b216f8d8f074925d8c00e50692bcb4d",
+      "last_date": "2026-08-12",
+      "rows": 1338,
+      "sha256": "6371f7e4dea5952850af38456574aaedfc115656ac6aa5b63db7ff39fe22278b",
       "status": "ready",
       "symbol": "APP"
     },
     "ARM": {
       "first_date": "2023-09-14",
-      "last_date": "2026-08-11",
-      "rows": 729,
-      "sha256": "3e3503d5dfcf8393c9b92b24aad90f7abd88e262447f554a6d8b1fd23b2b7f5c",
+      "last_date": "2026-08-12",
+      "rows": 730,
+      "sha256": "e655d4b94658515a8848070011d7942e208ee2311cc866ac59ad976fd493ad87",
       "status": "ready",
       "symbol": "ARM"
     },
     "ASML": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "619af4d9bd57e63c15f1c281e67d86ea2140ad5fa97cc82299c03abffcc7e928",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "e13afada0e6f942a4ad89b048fd2b3580667175968ae6ac278d95d78945974f0",
       "status": "ready",
       "symbol": "ASML"
     },
     "AVGO": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "7c3429b8f79784a011ebad80906f213037cdbc7e0992f42531065f855d66f84b",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "dfdb37cfd25d251ab2168322bf43f910d5259f37ecc7a9d91ec777fd5c40c07f",
       "status": "ready",
       "symbol": "AVGO"
     },
     "AXON": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "29690493efaece213d1362d933e406c9db12307f224774a0a1702f252359bbd2",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "1fdc79d1c34c4884d429ba93861235ccdfe369f0efc5da62156cdec3e61141b9",
       "status": "ready",
       "symbol": "AXON"
     },
     "BE": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "ee51050297d552f4393492f1b2e0a03c4583b7f6926ff18840a30bfcfa4b5084",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "1e8ce1a0f2bc474a532e40201161180c07d593613a4b24d2306735149492e7ab",
       "status": "ready",
       "symbol": "BE"
     },
     "BKNG": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "ecfbd50df52be254648a1b5b48f1f7a3d5e2f10f09fbb80a8292b30b28cd35da",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "4c2f627bbc2473afe50d3f223be4e356d7d067f0f406200b2370a9bc90ef5167",
       "status": "ready",
       "symbol": "BKNG"
     },
     "BKR": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "aa67cbe63ff0e583b8e985ecc61803b31e97c566145bd9832b7fa4a9d1df6599",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "89d6eda259e94f86e246dba8b176a42f2a8a16eb7c4ed8ad22b2c39a0375359e",
       "status": "ready",
       "symbol": "BKR"
     },
     "CDNS": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "36886270526797efd2bf3087c6aa254e0303b0bbbd47b585013b3b348562d2ac",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "9309d1f35fe165738fc1083d9ca407a1f055876991e7dd6069eb2893fae9a9a1",
       "status": "ready",
       "symbol": "CDNS"
     },
     "CEG": {
       "first_date": "2022-01-19",
-      "last_date": "2026-08-11",
-      "rows": 1144,
-      "sha256": "0bb963b1aee0b0a1a0b25c585557ae6b53db55c715ef7c3002c1b40913bd4bb5",
+      "last_date": "2026-08-12",
+      "rows": 1145,
+      "sha256": "289e08e1bfd40d4e0d39d67860a8a8497d88d724e52c4e99dddbd8db09bcdce7",
       "status": "ready",
       "symbol": "CEG"
     },
     "COHR": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "cc2853d9f60074fbf7a9fbd58e43ba372f3c3da03489c417d349a3be7e485be1",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "1afae5a9f616d4e00c019c1d8652d566b9ce040427c26df5e79bbc9f56af7de4",
       "status": "ready",
       "symbol": "COHR"
     },
     "COST": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "2ffb5255dbe5ada585fc4f9cef5ad91c50fe477d0c739496c2ab82f6add64a82",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "6e342302b1188347bb35e3c55d1cb7521662c1bb2ac2aab1981617519c3c333e",
       "status": "ready",
       "symbol": "COST"
     },
     "CPRT": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "85fe88eeace409f9b8f67e0aa8003e5d7fdadbebfa240ea94cd673cca5755cbe",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "19800fe343a5de9aae499e7ec14a30920cb9a2a834229774875cf4468688473b",
       "status": "ready",
       "symbol": "CPRT"
     },
     "CRCL": {
       "first_date": "2025-06-05",
-      "last_date": "2026-08-11",
-      "rows": 297,
-      "sha256": "456f8f960689b861199660d3b036eda506cc7f74048612ea31c03e49ae37f35d",
+      "last_date": "2026-08-12",
+      "rows": 298,
+      "sha256": "50fa855ebbafee51f0c5056e378be03c89d283fcc0686e9cc7d2aa0bc46b0a94",
       "status": "ready",
       "symbol": "CRCL"
     },
     "CRDO": {
       "first_date": "2022-01-27",
-      "last_date": "2026-08-11",
-      "rows": 1138,
-      "sha256": "8c5b3c0ef92beec9c3ac2855b859baf5ee0e0eaf9bedc7133349feace347e031",
+      "last_date": "2026-08-12",
+      "rows": 1139,
+      "sha256": "693138b5004c7f371d016ac9adaa7d25f1fcdf8538378d43a4381f06eaf9c649",
       "status": "ready",
       "symbol": "CRDO"
     },
     "CRWD": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "bf739eb259f897f85221a78ff6ee0e7b18013b390b98eef5c030fec66d8e279b",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "1fc1b464b64c63bdd68e4f27ba5bfaf0a70b430f485537ff7e318fb57ab107a4",
       "status": "ready",
       "symbol": "CRWD"
     },
     "CSCO": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "2f8afee5737cbc18306f1168be759f1d8d9e6ffc3005333fa56da2030069954c",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "c1f414176aa8bbb71e567d9a4e7f28d2c7eebfb46178bad0951c4ab22a3963f9",
       "status": "ready",
       "symbol": "CSCO"
     },
     "CTAS": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "7611496e34d6e671a99ac81de8524777f9fadafc1684f4d1c9d97f1d9559648c",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "ee9e6729317875db2137bad36d81fe2f05fadc2355c69099b6eacc7c85b103b6",
       "status": "ready",
       "symbol": "CTAS"
     },
     "DASH": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "d9a63e2eb703727632ffadc188118085e055d3524d64bba5d1a0b738bba31826",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "dec68de3c670bcdeb06e761615143d1d4c878469c4ad40fe6eaa93486d29a6ec",
       "status": "ready",
       "symbol": "DASH"
     },
     "DDOG": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "b17c28d57d2afb5a77246a65226c726e5f6613215efcc7f8ac6f15daaca56a9e",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "c01ee5e46e2312b8d9ff0053b8728807053708f303de61b7139348451eb91381",
       "status": "ready",
       "symbol": "DDOG"
     },
@@ -252,479 +252,479 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-10",
       "rows": 1406,
-      "sha256": "b0724aa099cc2a7ab1ea9ea7a029764334cc71d4dc5cd0434f656fa43738b500",
+      "sha256": "45be1a6f6ea165ac686aa1d522654f37b7d644da5911e0d20ef3e812df9cc1f5",
       "status": "ready",
       "symbol": "EA"
     },
     "EME": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "7cdbe2dffbe2b1b7c4c438f1e4782f3a21c17615bd7d4a313a9f2f21448a6b95",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "eb8bc47a88edd5c4809be4e524a3319c3699594e3e1f0e1d35fd08d9c440e009",
       "status": "ready",
       "symbol": "EME"
     },
     "ETN": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "bca4a2f5c90879501ccd8d46fe283ed61b7ec4ebaaa3bf1503303a5fb5c1ae65",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "c6cd6004b22bbbccf32a8123741eb975e22d1926d149de9c14dee33e7ba32d3b",
       "status": "ready",
       "symbol": "ETN"
     },
     "FANG": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "fdd3a587e1f4b9c0d632579de1f0c28480e3ed53966d7037b1330f210dd51038",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "285d512a02bd5dcd97aa39f4ede5c5c21c9f06d0e7c2e72f1b79adca0b5a7d18",
       "status": "ready",
       "symbol": "FANG"
     },
     "FIX": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "3b68f8f391f43de96acdcab8913e33e5e404fc6f01d477a78a918b9dab395d59",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "84c6ecc522651fbaaad3f71d06fbea92ce0a92065972e5ffc84f9a11e64c8e7c",
       "status": "ready",
       "symbol": "FIX"
     },
     "FN": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "0897c8a787776f2d17e91ff2e3c5008c5acc6fcd85a37ba7f4311a59c6f396bd",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "72007fbeb36db8bf9b799cbb83bc6314cabd65327bc3d5b489b5797bce92e40a",
       "status": "ready",
       "symbol": "FN"
     },
     "GEHC": {
       "first_date": "2022-12-15",
-      "last_date": "2026-08-11",
-      "rows": 915,
-      "sha256": "01ecc0323119e69f0df50da15e082cbd70261ddca47d32f079390a3ed911eac5",
+      "last_date": "2026-08-12",
+      "rows": 916,
+      "sha256": "bd5f07fc6cbc7b489fd72f31435c61c7c52b0230da3ed1a875aa2674c8000f33",
       "status": "ready",
       "symbol": "GEHC"
     },
     "GOOGL": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "bf730ba0244f894f358df15f8017fc961a0fa8de7dd1d678fa08948759b181bf",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "7d76acf4f9e444d7d52bd02e9f200d8905e604f35b6e1677b15a148e168ccd95",
       "status": "ready",
       "symbol": "GOOGL"
     },
     "HIMS": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "ed488c5eabf6656b77fa62a3e3a85c148f7cf4065812dbe05834ed4269682884",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "728c1ac4fa781b546ef9666b81c38febae55cc88367c2c91720ac26a4456d849",
       "status": "ready",
       "symbol": "HIMS"
     },
     "HIMX": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "b006c6ca7c00660d99eb0bf013787776300196d4fe808cad1715c1faa3e232c8",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "03b0b0249677cb3afd16fec708129166ef281e81abfe6b33972dc985f7425c00",
       "status": "ready",
       "symbol": "HIMX"
     },
     "HON": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "e6331c299760b8c60f13148b028bfad7a6a1c979b8347eebba6ce820366d6c70",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "cd73a4bc88e11a71ab73b02b2e61d552d4e5e05d8b6df4e6a6a2d43e25844d56",
       "status": "ready",
       "symbol": "HON"
     },
     "HOOD": {
       "first_date": "2021-07-29",
-      "last_date": "2026-08-11",
-      "rows": 1264,
-      "sha256": "8fc0ca1b1f8021cf24e5a47f9da9f7f4d07171480fb088606155ee77d1bfcba4",
+      "last_date": "2026-08-12",
+      "rows": 1265,
+      "sha256": "2bbf5f2786ab334028cfa8e76e1401112b397ef16818ec0aafda4711dadaeb66",
       "status": "ready",
       "symbol": "HOOD"
     },
     "INTC": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "2584622739f5684612779e536d4c0fc0867feeb413086bf5eaccbdba43e05088",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "83a154e1c106d5f8767244149d20e07fb7feaa9f1fb7845e30d32e2e4411d315",
       "status": "ready",
       "symbol": "INTC"
     },
     "INTU": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "d73b51374378180fce820194187fe83c49e05b19eda7ab90426278183f074b91",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "e50d6aeb80d58247d9b3d576102ff737b06bb1ef49e24b52b06b73b9f4cf84e7",
       "status": "ready",
       "symbol": "INTU"
     },
     "IREN": {
       "first_date": "2021-11-17",
-      "last_date": "2026-08-11",
-      "rows": 1186,
-      "sha256": "8198a41f7b17c906539dd7ce3c0717a42d18ab8975c2f32f05104185acb620d9",
+      "last_date": "2026-08-12",
+      "rows": 1187,
+      "sha256": "9bbd6e9fc4c59b3578b9312a673b56e46f3ef764ecc67088ea2fb87d72363850",
       "status": "ready",
       "symbol": "IREN"
     },
     "ISRG": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "62948b9cea484176a4fba83501081b36cd7218d1b704ca3417ad64cb1b0a4038",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "08c4421f73b65d1c0789b0828947787a1d7c78825a0f3872764f3b7a64aa15a4",
       "status": "ready",
       "symbol": "ISRG"
     },
     "KLAC": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "a0deaa553ebbde3e2fd782add467329c29460f29b6d162f52e778a3105a25933",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "e2025742dfd5ac8d43bbb3a6d9822b01964d8c8ce9eb2cc7d70afe5441bf2874",
       "status": "ready",
       "symbol": "KLAC"
     },
     "LIN": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "91940ae5da305343f8718c54614b92a50fd35db9dad9641e511603739e3ed689",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "600335d23533e05ba97aa7c31ef338b2f3988684059307cf31417ad24b05c150",
       "status": "ready",
       "symbol": "LIN"
     },
     "LITE": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "932af283da902f524f6184b58f72c262012596b49d2c62686f5e56807fa2fcb2",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "3327f3f6943b4af04e1e52a50192981b4dc6de905cfbd07a6c547a1b5d2214ec",
       "status": "ready",
       "symbol": "LITE"
     },
     "LRCX": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "c36e7e61ac232b63ad34a15fc7793b07d31166be85210c3af60fbc6dbf89f3c5",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "86776bf8ad6aa010bb804c1af834213bcbcecb8f2dd81954a046ce9f867b6166",
       "status": "ready",
       "symbol": "LRCX"
     },
     "MELI": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "f995163ac15a2435b7da9588e77a7601a6042c8e8028bfd0435644d912bd8b0d",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "214f70692d52a2aafe24fab61575dfbba1de5e823ce6fc0d3ea6ddfa613a5d68",
       "status": "ready",
       "symbol": "MELI"
     },
     "META": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "b88e2c4c18b14b64b69ce9a03fd8422d1f386f6e7ace6f8785a443c33e57959f",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "e97cf451fd86336d538e4882c22c1e6f9b1ef4bb24fe56733c507cf8edd265c9",
       "status": "ready",
       "symbol": "META"
     },
     "MPWR": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "458325d37c47d714fdb3978d647db2160db1c2fa1b5757d540624af40ee84412",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "87b71264a530f3f1c68138de0f004f81de6ab0ccb69076c8111eb4ff410c87e2",
       "status": "ready",
       "symbol": "MPWR"
     },
     "MRVL": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "ecfe2e4bb4b34dbaac0556623aed420cc654bae959a9e4b44dfb3d234e5a7489",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "bc3f2306c09b3575ceac4a806ce39b20aac756cc6ffa93d350d18297ea2bc093",
       "status": "ready",
       "symbol": "MRVL"
     },
     "MSFT": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "9a8e2fe326f521d931b3a87392351d43b8e351b1a110808358c3a8534a471eb9",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "70d7329dbcb7842b846441c108cc2b63a57c2981df0fd1dc4a6776d7521c72b0",
       "status": "ready",
       "symbol": "MSFT"
     },
     "MU": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "339fc809742ebe1e629c39f4b7fd3f6cd5a597c6d1b3af6896338d4c5a3a41c2",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "f7aee866bb1cbea5919010c11cd05e7f6624425d895e0a17ea95959ce2b9d88e",
       "status": "ready",
       "symbol": "MU"
     },
     "NBIS": {
       "first_date": "2024-10-21",
-      "last_date": "2026-08-11",
-      "rows": 452,
-      "sha256": "3c54b02d630a62896f474960fa2c209a73ab8a9a2a2a0975628a7508b6cc34bb",
+      "last_date": "2026-08-12",
+      "rows": 453,
+      "sha256": "9a2c63f52d34d25a1820c95e956209b12d7dd0b31e3e85d9fea587520561ee58",
       "status": "ready",
       "symbol": "NBIS"
     },
     "NFLX": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "0113a70592610079db8c582d26764817ca560053080b6d4543053b2de7b12e80",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "43417a515a8cef9e93a035207e8104e9e6ca31fc9e157bad0dde6c7a6717c966",
       "status": "ready",
       "symbol": "NFLX"
     },
     "NOK": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "4f65cd3d5a7d54945538f55a1f413dad92efb6cd36a0f21d72a472da8ab33bed",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "faed387bc1c5c9e9d3a0e7ae697b820cce765b0a498897bdb8730e4b801412db",
       "status": "ready",
       "symbol": "NOK"
     },
     "NVDA": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "e3a52ad24670a3dd6899b48a6afcc3b7445aea9e9a8d5e816b76441ac4644f95",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "b109bd778e79ea67710c336a3c03bcabc382e36f1fa0bc8dd042d4f7265473f0",
       "status": "ready",
       "symbol": "NVDA"
     },
     "ORCL": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "c9ba3d9560039a2fbd89c7b24b32f3711ea4dab6485610d85cb943f5bd90fe02",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "263ba8c25ef4eac5e3c14d0921b8c4237cb948c1128356cf3e0d9027ee90b27e",
       "status": "ready",
       "symbol": "ORCL"
     },
     "ORLY": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "f0ca693891f13fd182cb6f3b9e8b96c226b9c8c8b8ae5d6c62207acdcfde8559",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "2279824aecd89592b90435e65d6474e0434f470f2e41a71f2a134e027a5bae3a",
       "status": "ready",
       "symbol": "ORLY"
     },
     "PANW": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "510cf7d1a149baf632d7b5cda597f92bfb329b956b88f61edcfc682353201af0",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "1538ae09e744a4151b083c00fe164b08813412cdcc17391b51d6174994dd3d87",
       "status": "ready",
       "symbol": "PANW"
     },
     "PDD": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "a0c81fcb1064b089e53c1faf43aa5863d7c5e6ce80da4b17fd9d2eeacfabff94",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "f3eaa2e005f689471587d69ea4efc88992622e0a079356e8e0416097c45c1b80",
       "status": "ready",
       "symbol": "PDD"
     },
     "PEP": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "552f1db2206421c9d7d6d1e3f39a391f89ccfda7f283359983ec6305b3a803af",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "164b479f90e1c47c3219065d86d53fc3451fe6dbaebabfedac5fb5fc85865219",
       "status": "ready",
       "symbol": "PEP"
     },
     "PLTR": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "3de603bb464333a5af1fcba8f38f20779401193707ff891883cbb15292bb7b90",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "29a93ca08a6b2d10fcd595fe27e0c2d1c0bc1073297962841e9afceac65b7077",
       "status": "ready",
       "symbol": "PLTR"
     },
     "POET": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "9de4a111a6662f3f4129c311b9eb5f9b4e69cbba4843ca0bcebd712a4f6b0a16",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "f31e79b20192965d09ae7c455c546b072e6905f6802ed92589120e899dcfa51f",
       "status": "ready",
       "symbol": "POET"
     },
     "PWR": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "c025c6dbb45edec8982528c09fb422f2452da1248f407e33d654996d597160d0",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "53dcbf6faf98ff4e2f819c7d305cdef1dc6f5afb69499b5c756305d21d81b675",
       "status": "ready",
       "symbol": "PWR"
     },
     "QCOM": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "6e7f4f60cdf09295d2e7277c7b3beaf99e293eae6d0b489cc549ec656f61daef",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "f3023f95bdb588a6ba8ff30045f54b3a7e44cb36fcfea1e7f01026c2007b71de",
       "status": "ready",
       "symbol": "QCOM"
     },
     "QQQ": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "ed79a91cde309be57f392b591e5b58d96c0fe0d99f47963ead8efa91d835e844",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "39c03f2fbcf0738724df280677e60f167da837456ec904a62a8958dfbb734cb3",
       "status": "ready",
       "symbol": "QQQ"
     },
     "QQQI": {
       "first_date": "2024-01-30",
-      "last_date": "2026-08-11",
-      "rows": 635,
-      "sha256": "628dab081529926a3cc3ebaa5c2bdcc66ccf36f4ec92a4329b8e29a82a6dadd6",
+      "last_date": "2026-08-12",
+      "rows": 636,
+      "sha256": "de0922fcb8b1ac020cb9c531cea877223c1cb24f7489a8293cd32efc76d45ce2",
       "status": "ready",
       "symbol": "QQQI"
     },
     "REGN": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "4925c48dc97ea759feb634b37498d3bd1cbc451b83f67725935c71d638c766b8",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "e0000ba113da94cae708925dc1d409e7a3c9623d29b28dc63945eabb75c5e5b3",
       "status": "ready",
       "symbol": "REGN"
     },
     "ROP": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "f5ea9d6aa6e69b5858c879e79edde6d39699ef940b7bc86380c80b831396255d",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "9453c9d73dcef4dfac4ad9472ca6be9aa2caa0cb847a3fc25d136189cc6af567",
       "status": "ready",
       "symbol": "ROP"
     },
     "SBGSY": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "6bd49ffbad4166c727c3d322e9318c8103554993ec8d8b1ae80f7cd643aeea45",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "b900b8547236737f22b6d7eb301561d30adf1f19b450becc30fafd4d06a9852a",
       "status": "ready",
       "symbol": "SBGSY"
     },
     "SGOV": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "dcf0e168fb16af0b6fd348e583f6aab3a929e8e6c737aaccfffc0859934d316b",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "0c73eb0227b01f4fcb90129f3d29595782a08c24b22b4671bef2e83abd9c02fc",
       "status": "ready",
       "symbol": "SGOV"
     },
     "SHOP": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "3b53f484cb900d06efe2c21130e2d1948c0fedebe81f6a080a86f628390347d3",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "8fc416e10649d4022d6211ba66716f8f4dd72ee5e01fd258b489c7f1975a103c",
       "status": "ready",
       "symbol": "SHOP"
     },
     "SNDK": {
       "first_date": "2025-02-13",
-      "last_date": "2026-08-11",
-      "rows": 374,
-      "sha256": "c21f31a214501e286e6c021f227741db27822a2029f8f46bc80067f58298654e",
+      "last_date": "2026-08-12",
+      "rows": 375,
+      "sha256": "aa4e7bea348e63695f068877da1347b932a3f9f35c88efaa76718eba5d81ad01",
       "status": "ready",
       "symbol": "SNDK"
     },
     "SNPS": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "34d973e24c858b3e3b319f341340e4e2f07580ad4414a30d8e0e7d29550a5408",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "89b140dbc01071128e9362cecdcfc294260cfa8cee7e1227bbd5edf27c1411ef",
       "status": "ready",
       "symbol": "SNPS"
     },
     "TEM": {
       "first_date": "2024-06-14",
-      "last_date": "2026-08-11",
-      "rows": 540,
-      "sha256": "b7aa87b6ea2740342ee0733d360b0ca1a464f2bc0610739d37df2ae62c48a116",
+      "last_date": "2026-08-12",
+      "rows": 541,
+      "sha256": "201366a0a694cb3c209512efccfaf7690c2655e5d5ce589640eea355635dff11",
       "status": "ready",
       "symbol": "TEM"
     },
     "TIGO": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "3aef3979be493cec0c0312b260b35827cd73618b2e3cbdfabdde57ba82d87f15",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "9ec20d3d9ce1793c3b69aa135dc04b175bd1d07578d1afcdaa176680db439496",
       "status": "ready",
       "symbol": "TIGO"
     },
     "TMUS": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "362e1edcb5bdb3cd7172965bb267cd9cf5bef944ec5d18c77583bdae0846ee94",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "b9e8c3c83a774b29e766b5b8c2a0da2aaeb9f5fa3940afc20d101afe260b26ab",
       "status": "ready",
       "symbol": "TMUS"
     },
     "TQQQ": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "57206441af91b2d05f3cb95b42c0f642e8ca7c20bf64a268e44feae87416c28d",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "156d20c72814001c2877dcf50f90e9f983ec1e45203c0930e9639e1f38a14960",
       "status": "ready",
       "symbol": "TQQQ"
     },
     "TSLA": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "4d2bc5f28fc71a9dc2fb3e102610437f49676c0092ae6ff585ebc5c876bf078b",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "8f5ec713c5734f1dff3d622e654ac27e1d59c62012b3bb4a7f8f7d5442118541",
       "status": "ready",
       "symbol": "TSLA"
     },
     "TSM": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "4eae96a7a7390fb29d36579f77be9f744d93b128e48f3c2f06e9433dc25c48ca",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "83baffade3311f8e55f1d1defc2e0e295293d5ccd4d0be71303adb9dcec4bf7f",
       "status": "ready",
       "symbol": "TSM"
     },
     "TTWO": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "66663c379735a6dfd26eaf7c149522e2f5f04079686cb9fd520aa4821407b08e",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "dca17ec8a29a55da30aa91db12d06024da1705fc0901c163c9ae488c19e9e6ab",
       "status": "ready",
       "symbol": "TTWO"
     },
     "TYGO": {
       "first_date": "2021-09-03",
-      "last_date": "2026-08-11",
-      "rows": 1238,
-      "sha256": "729caa4bae18a555bae892c7ea65751eda7901aacaa1df367f0c8b0fae8b8209",
+      "last_date": "2026-08-12",
+      "rows": 1239,
+      "sha256": "7092b38ec6d45743eddf014ff7d561a5a388951a2c19ba8fa96414583ecb7b0c",
       "status": "ready",
       "symbol": "TYGO"
     },
     "VRT": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "c6c040435f5db98a10e598f8a67244b2650abff60881db60909949541c1a6ca7",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "93d386bb0e1ecddf772192f1ebfec4a7c9c932d4906c7b6873599551b1af57c9",
       "status": "ready",
       "symbol": "VRT"
     },
     "VRTX": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "febe81fd172e0c601744edc09a4cc668ee338f3f57b5c9c409d4cf295705c630",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "e4fee06e8bbdcdd4bce6b4bc6b6f18d96dad8cb8f420986f82b77870ef27abb1",
       "status": "ready",
       "symbol": "VRTX"
     },
     "WDC": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "01573062c1da836fe0e8fcabca773b98d9ae1d53b73061c7133a65b63152bea7",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "1e7510114f0fac460a4ff9c0ae15e58b9a6756b762869e55302e043eb8573c2d",
       "status": "ready",
       "symbol": "WDC"
     },
     "WMT": {
       "first_date": "2021-01-04",
-      "last_date": "2026-08-11",
-      "rows": 1407,
-      "sha256": "b08dec26edb3c342590db92e9acee24f297c30e4c61e2d6df80a888eec7e2504",
+      "last_date": "2026-08-12",
+      "rows": 1408,
+      "sha256": "4969d189134e4bf2e6f86c4f8c9fb558b8a24617c1d875159888c183df2f166e",
       "status": "ready",
       "symbol": "WMT"
     }
@@ -1542,7 +1542,7 @@
     "POET",
     "AEHR"
   ],
-  "cutoff": "2026-08-12",
+  "cutoff": "2026-08-13",
   "evidence_type": "selected_pool_price_refresh_v1",
   "failed_symbols": [],
   "failure_count": 0,
@@ -1601,7 +1601,7 @@
     "schema_version": "1.2",
     "selection_mode": "credential_aware_fallback"
   },
-  "provider_identity_sha256": "26b26a59d7a7c3e1f74a494426a5b74aa6ec31050f79d314281f5d060cfb2a0f",
+  "provider_identity_sha256": "3b6ec85e70abab3142ba6745843d1332f9a21ed68e97d9b4fbcc0954a7d52aae",
   "quarantined_symbols": [],
   "records": [
     {
@@ -1612,7 +1612,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -1637,15 +1637,15 @@
           },
           "provider_symbol": "AAOI",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "5d8824c653e7f70f2daba4182a11d79a2db14658be618debb4ba2c7b97bdd909",
+      "last_date": "2026-08-12",
+      "output_sha256": "05538740574cc08621b96b7b7caecd27380e150538e40f4b5467f9033459a8cc",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1669,7 +1669,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AAOI",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "AAOI"
     },
     {
@@ -1680,7 +1680,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -1705,15 +1705,15 @@
           },
           "provider_symbol": "AAPL",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "3536efe0979b4ca0ae2b15870313f4c8434f842b6dfff76f1594052f3f984ee9",
+      "last_date": "2026-08-12",
+      "output_sha256": "4744f0da9b28140103f6ffc200a912b5ab8aa1cd797114890bc3d9408032135d",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1737,7 +1737,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AAPL",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "AAPL"
     },
     {
@@ -1748,7 +1748,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -1773,15 +1773,15 @@
           },
           "provider_symbol": "ABBNY",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "735333d8b9c0ff679ad5dcd87aa56c29fb3398af2170ac5981051c1b3ae9ecae",
+      "last_date": "2026-08-12",
+      "output_sha256": "3ace7febef8afa18d3816f6c4543f1ec33809d69f535fcb45fe4f5b4fb60eb76",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1805,7 +1805,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ABBNY",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "ABBNY"
     },
     {
@@ -1816,7 +1816,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -1841,15 +1841,15 @@
           },
           "provider_symbol": "ADP",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "70be4890caaee18c573af5932fb421431240a16fb50eb827fbefda68452359d0",
+      "last_date": "2026-08-12",
+      "output_sha256": "8b0c4db5ab775b60ebeceb6580076227d7870ed7d5946b0be3dee8de53b60dc5",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1873,7 +1873,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ADP",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "ADP"
     },
     {
@@ -1884,7 +1884,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -1909,15 +1909,15 @@
           },
           "provider_symbol": "ADSK",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "ec6e82763a5a99e6cdecd383f4aa151394dd72be68db7056f8d28affc521a4fa",
+      "last_date": "2026-08-12",
+      "output_sha256": "543fad170d82c40acee6c335fcd6c2f197fef1aea5e0fe8f33c3d846e910cf02",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1941,7 +1941,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ADSK",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "ADSK"
     },
     {
@@ -1952,7 +1952,7 @@
           "error": null,
           "first_date": "2024-03-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -1977,15 +1977,15 @@
           },
           "provider_symbol": "ALAB",
           "round": 1,
-          "rows": 600,
+          "rows": 601,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2024-03-20",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "302d5f87c0370e9fd0f69177972d2f2c64b8ca9353d9c8703786c098a48ee607",
+      "last_date": "2026-08-12",
+      "output_sha256": "4f05661a1354aa6813ab8c68a6db454d376722711430d5cdbf08dd7525675641",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2009,7 +2009,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ALAB",
-      "rows": 600,
+      "rows": 601,
       "symbol": "ALAB"
     },
     {
@@ -2020,7 +2020,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2045,15 +2045,15 @@
           },
           "provider_symbol": "AMAT",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "a05d1c4199052490daf17b0fde09fda5389fb8f304fabd0fd382f7d39181b624",
+      "last_date": "2026-08-12",
+      "output_sha256": "6cdc3fca24c494b16e0a62e860cfef9aaa9fe926318a19b6041cda802d2b66ef",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2077,7 +2077,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AMAT",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "AMAT"
     },
     {
@@ -2088,7 +2088,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2113,15 +2113,15 @@
           },
           "provider_symbol": "AMD",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "7c90b394bf99b1b49fd5e0a5d8dd723f3844328d6a5cb850e8ae0a79b864c5c9",
+      "last_date": "2026-08-12",
+      "output_sha256": "9d99791a5936fba01a3536f2cb5f0c6d905702d5631a792bd619104d2a3a0cd7",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2145,7 +2145,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AMD",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "AMD"
     },
     {
@@ -2156,7 +2156,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2181,15 +2181,15 @@
           },
           "provider_symbol": "AMZN",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "f70f0f1c71309d70c53d62a9f75f0fcb569bd92695e58ea0eeccea991a7caf5e",
+      "last_date": "2026-08-12",
+      "output_sha256": "8fe422a93e480fa830c7374e954a180bc3da51d3341364c295dbad9b75c15b54",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2213,7 +2213,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AMZN",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "AMZN"
     },
     {
@@ -2224,7 +2224,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2249,15 +2249,15 @@
           },
           "provider_symbol": "ANET",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "8eb83ab3938e6dcf3037ac1e75f88b981be1741c8d387c02976e1d87ed52c0ed",
+      "last_date": "2026-08-12",
+      "output_sha256": "e495392ac51eeb11644711d01028b5488be33bc25b18d757104fad1c738428e0",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2281,7 +2281,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ANET",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "ANET"
     },
     {
@@ -2292,7 +2292,7 @@
           "error": null,
           "first_date": "2021-04-15",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2317,15 +2317,15 @@
           },
           "provider_symbol": "APP",
           "round": 1,
-          "rows": 1337,
+          "rows": 1338,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-04-15",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "517e5f558c7d8536eb039210f666a9169b216f8d8f074925d8c00e50692bcb4d",
+      "last_date": "2026-08-12",
+      "output_sha256": "6371f7e4dea5952850af38456574aaedfc115656ac6aa5b63db7ff39fe22278b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2349,7 +2349,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "APP",
-      "rows": 1337,
+      "rows": 1338,
       "symbol": "APP"
     },
     {
@@ -2360,7 +2360,7 @@
           "error": null,
           "first_date": "2023-09-14",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2385,15 +2385,15 @@
           },
           "provider_symbol": "ARM",
           "round": 1,
-          "rows": 729,
+          "rows": 730,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2023-09-14",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "3e3503d5dfcf8393c9b92b24aad90f7abd88e262447f554a6d8b1fd23b2b7f5c",
+      "last_date": "2026-08-12",
+      "output_sha256": "e655d4b94658515a8848070011d7942e208ee2311cc866ac59ad976fd493ad87",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2417,7 +2417,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ARM",
-      "rows": 729,
+      "rows": 730,
       "symbol": "ARM"
     },
     {
@@ -2428,7 +2428,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2453,15 +2453,15 @@
           },
           "provider_symbol": "ASML",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "619af4d9bd57e63c15f1c281e67d86ea2140ad5fa97cc82299c03abffcc7e928",
+      "last_date": "2026-08-12",
+      "output_sha256": "e13afada0e6f942a4ad89b048fd2b3580667175968ae6ac278d95d78945974f0",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2485,7 +2485,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ASML",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "ASML"
     },
     {
@@ -2496,7 +2496,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2521,15 +2521,15 @@
           },
           "provider_symbol": "AVGO",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "7c3429b8f79784a011ebad80906f213037cdbc7e0992f42531065f855d66f84b",
+      "last_date": "2026-08-12",
+      "output_sha256": "dfdb37cfd25d251ab2168322bf43f910d5259f37ecc7a9d91ec777fd5c40c07f",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2553,7 +2553,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AVGO",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "AVGO"
     },
     {
@@ -2564,7 +2564,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2589,15 +2589,15 @@
           },
           "provider_symbol": "AXON",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "29690493efaece213d1362d933e406c9db12307f224774a0a1702f252359bbd2",
+      "last_date": "2026-08-12",
+      "output_sha256": "1fdc79d1c34c4884d429ba93861235ccdfe369f0efc5da62156cdec3e61141b9",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2621,7 +2621,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AXON",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "AXON"
     },
     {
@@ -2632,7 +2632,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2657,15 +2657,15 @@
           },
           "provider_symbol": "BE",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "ee51050297d552f4393492f1b2e0a03c4583b7f6926ff18840a30bfcfa4b5084",
+      "last_date": "2026-08-12",
+      "output_sha256": "1e8ce1a0f2bc474a532e40201161180c07d593613a4b24d2306735149492e7ab",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2689,7 +2689,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "BE",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "BE"
     },
     {
@@ -2700,7 +2700,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2725,15 +2725,15 @@
           },
           "provider_symbol": "BKNG",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "ecfbd50df52be254648a1b5b48f1f7a3d5e2f10f09fbb80a8292b30b28cd35da",
+      "last_date": "2026-08-12",
+      "output_sha256": "4c2f627bbc2473afe50d3f223be4e356d7d067f0f406200b2370a9bc90ef5167",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2757,7 +2757,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "BKNG",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "BKNG"
     },
     {
@@ -2768,7 +2768,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2793,15 +2793,15 @@
           },
           "provider_symbol": "BKR",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "aa67cbe63ff0e583b8e985ecc61803b31e97c566145bd9832b7fa4a9d1df6599",
+      "last_date": "2026-08-12",
+      "output_sha256": "89d6eda259e94f86e246dba8b176a42f2a8a16eb7c4ed8ad22b2c39a0375359e",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2825,7 +2825,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "BKR",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "BKR"
     },
     {
@@ -2836,7 +2836,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2861,15 +2861,15 @@
           },
           "provider_symbol": "CDNS",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "36886270526797efd2bf3087c6aa254e0303b0bbbd47b585013b3b348562d2ac",
+      "last_date": "2026-08-12",
+      "output_sha256": "9309d1f35fe165738fc1083d9ca407a1f055876991e7dd6069eb2893fae9a9a1",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2893,7 +2893,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CDNS",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "CDNS"
     },
     {
@@ -2904,7 +2904,7 @@
           "error": null,
           "first_date": "2022-01-19",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2929,15 +2929,15 @@
           },
           "provider_symbol": "CEG",
           "round": 1,
-          "rows": 1144,
+          "rows": 1145,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2022-01-19",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "0bb963b1aee0b0a1a0b25c585557ae6b53db55c715ef7c3002c1b40913bd4bb5",
+      "last_date": "2026-08-12",
+      "output_sha256": "289e08e1bfd40d4e0d39d67860a8a8497d88d724e52c4e99dddbd8db09bcdce7",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2961,7 +2961,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CEG",
-      "rows": 1144,
+      "rows": 1145,
       "symbol": "CEG"
     },
     {
@@ -2972,7 +2972,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2997,15 +2997,15 @@
           },
           "provider_symbol": "COHR",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "cc2853d9f60074fbf7a9fbd58e43ba372f3c3da03489c417d349a3be7e485be1",
+      "last_date": "2026-08-12",
+      "output_sha256": "1afae5a9f616d4e00c019c1d8652d566b9ce040427c26df5e79bbc9f56af7de4",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3029,7 +3029,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "COHR",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "COHR"
     },
     {
@@ -3040,7 +3040,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3065,15 +3065,15 @@
           },
           "provider_symbol": "COST",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "2ffb5255dbe5ada585fc4f9cef5ad91c50fe477d0c739496c2ab82f6add64a82",
+      "last_date": "2026-08-12",
+      "output_sha256": "6e342302b1188347bb35e3c55d1cb7521662c1bb2ac2aab1981617519c3c333e",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3097,7 +3097,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "COST",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "COST"
     },
     {
@@ -3108,7 +3108,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3133,15 +3133,15 @@
           },
           "provider_symbol": "CPRT",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "85fe88eeace409f9b8f67e0aa8003e5d7fdadbebfa240ea94cd673cca5755cbe",
+      "last_date": "2026-08-12",
+      "output_sha256": "19800fe343a5de9aae499e7ec14a30920cb9a2a834229774875cf4468688473b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3165,7 +3165,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CPRT",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "CPRT"
     },
     {
@@ -3176,7 +3176,7 @@
           "error": null,
           "first_date": "2025-06-05",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3201,15 +3201,15 @@
           },
           "provider_symbol": "CRCL",
           "round": 1,
-          "rows": 297,
+          "rows": 298,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2025-06-05",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "456f8f960689b861199660d3b036eda506cc7f74048612ea31c03e49ae37f35d",
+      "last_date": "2026-08-12",
+      "output_sha256": "50fa855ebbafee51f0c5056e378be03c89d283fcc0686e9cc7d2aa0bc46b0a94",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3233,7 +3233,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CRCL",
-      "rows": 297,
+      "rows": 298,
       "symbol": "CRCL"
     },
     {
@@ -3244,7 +3244,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3269,15 +3269,15 @@
           },
           "provider_symbol": "CRWD",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "bf739eb259f897f85221a78ff6ee0e7b18013b390b98eef5c030fec66d8e279b",
+      "last_date": "2026-08-12",
+      "output_sha256": "1fc1b464b64c63bdd68e4f27ba5bfaf0a70b430f485537ff7e318fb57ab107a4",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3301,7 +3301,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CRWD",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "CRWD"
     },
     {
@@ -3312,7 +3312,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3337,15 +3337,15 @@
           },
           "provider_symbol": "CSCO",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "2f8afee5737cbc18306f1168be759f1d8d9e6ffc3005333fa56da2030069954c",
+      "last_date": "2026-08-12",
+      "output_sha256": "c1f414176aa8bbb71e567d9a4e7f28d2c7eebfb46178bad0951c4ab22a3963f9",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3369,7 +3369,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CSCO",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "CSCO"
     },
     {
@@ -3380,7 +3380,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3405,15 +3405,15 @@
           },
           "provider_symbol": "CTAS",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "7611496e34d6e671a99ac81de8524777f9fadafc1684f4d1c9d97f1d9559648c",
+      "last_date": "2026-08-12",
+      "output_sha256": "ee9e6729317875db2137bad36d81fe2f05fadc2355c69099b6eacc7c85b103b6",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3437,7 +3437,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CTAS",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "CTAS"
     },
     {
@@ -3448,7 +3448,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3473,15 +3473,15 @@
           },
           "provider_symbol": "DASH",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "d9a63e2eb703727632ffadc188118085e055d3524d64bba5d1a0b738bba31826",
+      "last_date": "2026-08-12",
+      "output_sha256": "dec68de3c670bcdeb06e761615143d1d4c878469c4ad40fe6eaa93486d29a6ec",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3505,7 +3505,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "DASH",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "DASH"
     },
     {
@@ -3516,7 +3516,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3541,15 +3541,15 @@
           },
           "provider_symbol": "DDOG",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "b17c28d57d2afb5a77246a65226c726e5f6613215efcc7f8ac6f15daaca56a9e",
+      "last_date": "2026-08-12",
+      "output_sha256": "c01ee5e46e2312b8d9ff0053b8728807053708f303de61b7139348451eb91381",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3573,7 +3573,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "DDOG",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "DDOG"
     },
     {
@@ -3617,7 +3617,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-10",
-      "output_sha256": "b0724aa099cc2a7ab1ea9ea7a029764334cc71d4dc5cd0434f656fa43738b500",
+      "output_sha256": "45be1a6f6ea165ac686aa1d522654f37b7d644da5911e0d20ef3e812df9cc1f5",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3652,7 +3652,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3677,15 +3677,15 @@
           },
           "provider_symbol": "EME",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "7cdbe2dffbe2b1b7c4c438f1e4782f3a21c17615bd7d4a313a9f2f21448a6b95",
+      "last_date": "2026-08-12",
+      "output_sha256": "eb8bc47a88edd5c4809be4e524a3319c3699594e3e1f0e1d35fd08d9c440e009",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3709,7 +3709,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "EME",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "EME"
     },
     {
@@ -3720,7 +3720,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3745,15 +3745,15 @@
           },
           "provider_symbol": "ETN",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "bca4a2f5c90879501ccd8d46fe283ed61b7ec4ebaaa3bf1503303a5fb5c1ae65",
+      "last_date": "2026-08-12",
+      "output_sha256": "c6cd6004b22bbbccf32a8123741eb975e22d1926d149de9c14dee33e7ba32d3b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3777,7 +3777,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ETN",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "ETN"
     },
     {
@@ -3788,7 +3788,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3813,15 +3813,15 @@
           },
           "provider_symbol": "FANG",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "fdd3a587e1f4b9c0d632579de1f0c28480e3ed53966d7037b1330f210dd51038",
+      "last_date": "2026-08-12",
+      "output_sha256": "285d512a02bd5dcd97aa39f4ede5c5c21c9f06d0e7c2e72f1b79adca0b5a7d18",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3845,7 +3845,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "FANG",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "FANG"
     },
     {
@@ -3856,7 +3856,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3881,15 +3881,15 @@
           },
           "provider_symbol": "FIX",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "3b68f8f391f43de96acdcab8913e33e5e404fc6f01d477a78a918b9dab395d59",
+      "last_date": "2026-08-12",
+      "output_sha256": "84c6ecc522651fbaaad3f71d06fbea92ce0a92065972e5ffc84f9a11e64c8e7c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3913,7 +3913,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "FIX",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "FIX"
     },
     {
@@ -3924,7 +3924,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3949,15 +3949,15 @@
           },
           "provider_symbol": "FN",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "0897c8a787776f2d17e91ff2e3c5008c5acc6fcd85a37ba7f4311a59c6f396bd",
+      "last_date": "2026-08-12",
+      "output_sha256": "72007fbeb36db8bf9b799cbb83bc6314cabd65327bc3d5b489b5797bce92e40a",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3981,7 +3981,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "FN",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "FN"
     },
     {
@@ -3992,7 +3992,7 @@
           "error": null,
           "first_date": "2022-12-15",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4017,15 +4017,15 @@
           },
           "provider_symbol": "GEHC",
           "round": 1,
-          "rows": 915,
+          "rows": 916,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2022-12-15",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "01ecc0323119e69f0df50da15e082cbd70261ddca47d32f079390a3ed911eac5",
+      "last_date": "2026-08-12",
+      "output_sha256": "bd5f07fc6cbc7b489fd72f31435c61c7c52b0230da3ed1a875aa2674c8000f33",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4049,7 +4049,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "GEHC",
-      "rows": 915,
+      "rows": 916,
       "symbol": "GEHC"
     },
     {
@@ -4060,7 +4060,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4085,15 +4085,15 @@
           },
           "provider_symbol": "GOOGL",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "bf730ba0244f894f358df15f8017fc961a0fa8de7dd1d678fa08948759b181bf",
+      "last_date": "2026-08-12",
+      "output_sha256": "7d76acf4f9e444d7d52bd02e9f200d8905e604f35b6e1677b15a148e168ccd95",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4117,7 +4117,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "GOOGL",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "GOOGL"
     },
     {
@@ -4128,7 +4128,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4153,15 +4153,15 @@
           },
           "provider_symbol": "HON",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "e6331c299760b8c60f13148b028bfad7a6a1c979b8347eebba6ce820366d6c70",
+      "last_date": "2026-08-12",
+      "output_sha256": "cd73a4bc88e11a71ab73b02b2e61d552d4e5e05d8b6df4e6a6a2d43e25844d56",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4185,7 +4185,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "HON",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "HON"
     },
     {
@@ -4196,7 +4196,7 @@
           "error": null,
           "first_date": "2021-07-29",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4221,15 +4221,15 @@
           },
           "provider_symbol": "HOOD",
           "round": 1,
-          "rows": 1264,
+          "rows": 1265,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-07-29",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "8fc0ca1b1f8021cf24e5a47f9da9f7f4d07171480fb088606155ee77d1bfcba4",
+      "last_date": "2026-08-12",
+      "output_sha256": "2bbf5f2786ab334028cfa8e76e1401112b397ef16818ec0aafda4711dadaeb66",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4253,7 +4253,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "HOOD",
-      "rows": 1264,
+      "rows": 1265,
       "symbol": "HOOD"
     },
     {
@@ -4264,7 +4264,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4289,15 +4289,15 @@
           },
           "provider_symbol": "INTC",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "2584622739f5684612779e536d4c0fc0867feeb413086bf5eaccbdba43e05088",
+      "last_date": "2026-08-12",
+      "output_sha256": "83a154e1c106d5f8767244149d20e07fb7feaa9f1fb7845e30d32e2e4411d315",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4321,7 +4321,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "INTC",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "INTC"
     },
     {
@@ -4332,7 +4332,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4357,15 +4357,15 @@
           },
           "provider_symbol": "INTU",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "d73b51374378180fce820194187fe83c49e05b19eda7ab90426278183f074b91",
+      "last_date": "2026-08-12",
+      "output_sha256": "e50d6aeb80d58247d9b3d576102ff737b06bb1ef49e24b52b06b73b9f4cf84e7",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4389,7 +4389,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "INTU",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "INTU"
     },
     {
@@ -4400,7 +4400,7 @@
           "error": null,
           "first_date": "2021-11-17",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4425,15 +4425,15 @@
           },
           "provider_symbol": "IREN",
           "round": 1,
-          "rows": 1186,
+          "rows": 1187,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-11-17",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "8198a41f7b17c906539dd7ce3c0717a42d18ab8975c2f32f05104185acb620d9",
+      "last_date": "2026-08-12",
+      "output_sha256": "9bbd6e9fc4c59b3578b9312a673b56e46f3ef764ecc67088ea2fb87d72363850",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4457,7 +4457,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "IREN",
-      "rows": 1186,
+      "rows": 1187,
       "symbol": "IREN"
     },
     {
@@ -4468,7 +4468,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4493,15 +4493,15 @@
           },
           "provider_symbol": "ISRG",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "62948b9cea484176a4fba83501081b36cd7218d1b704ca3417ad64cb1b0a4038",
+      "last_date": "2026-08-12",
+      "output_sha256": "08c4421f73b65d1c0789b0828947787a1d7c78825a0f3872764f3b7a64aa15a4",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4525,7 +4525,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ISRG",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "ISRG"
     },
     {
@@ -4536,7 +4536,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4561,15 +4561,15 @@
           },
           "provider_symbol": "KLAC",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "a0deaa553ebbde3e2fd782add467329c29460f29b6d162f52e778a3105a25933",
+      "last_date": "2026-08-12",
+      "output_sha256": "e2025742dfd5ac8d43bbb3a6d9822b01964d8c8ce9eb2cc7d70afe5441bf2874",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4593,7 +4593,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "KLAC",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "KLAC"
     },
     {
@@ -4604,7 +4604,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4629,15 +4629,15 @@
           },
           "provider_symbol": "LIN",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "91940ae5da305343f8718c54614b92a50fd35db9dad9641e511603739e3ed689",
+      "last_date": "2026-08-12",
+      "output_sha256": "600335d23533e05ba97aa7c31ef338b2f3988684059307cf31417ad24b05c150",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4661,7 +4661,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "LIN",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "LIN"
     },
     {
@@ -4672,7 +4672,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4697,15 +4697,15 @@
           },
           "provider_symbol": "LITE",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "932af283da902f524f6184b58f72c262012596b49d2c62686f5e56807fa2fcb2",
+      "last_date": "2026-08-12",
+      "output_sha256": "3327f3f6943b4af04e1e52a50192981b4dc6de905cfbd07a6c547a1b5d2214ec",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4729,7 +4729,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "LITE",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "LITE"
     },
     {
@@ -4740,7 +4740,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4765,15 +4765,15 @@
           },
           "provider_symbol": "LRCX",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "c36e7e61ac232b63ad34a15fc7793b07d31166be85210c3af60fbc6dbf89f3c5",
+      "last_date": "2026-08-12",
+      "output_sha256": "86776bf8ad6aa010bb804c1af834213bcbcecb8f2dd81954a046ce9f867b6166",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4797,7 +4797,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "LRCX",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "LRCX"
     },
     {
@@ -4808,7 +4808,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4833,15 +4833,15 @@
           },
           "provider_symbol": "MELI",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "f995163ac15a2435b7da9588e77a7601a6042c8e8028bfd0435644d912bd8b0d",
+      "last_date": "2026-08-12",
+      "output_sha256": "214f70692d52a2aafe24fab61575dfbba1de5e823ce6fc0d3ea6ddfa613a5d68",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4865,7 +4865,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "MELI",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "MELI"
     },
     {
@@ -4876,7 +4876,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4901,15 +4901,15 @@
           },
           "provider_symbol": "META",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "b88e2c4c18b14b64b69ce9a03fd8422d1f386f6e7ace6f8785a443c33e57959f",
+      "last_date": "2026-08-12",
+      "output_sha256": "e97cf451fd86336d538e4882c22c1e6f9b1ef4bb24fe56733c507cf8edd265c9",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4933,7 +4933,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "META",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "META"
     },
     {
@@ -4944,7 +4944,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4969,15 +4969,15 @@
           },
           "provider_symbol": "MPWR",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "458325d37c47d714fdb3978d647db2160db1c2fa1b5757d540624af40ee84412",
+      "last_date": "2026-08-12",
+      "output_sha256": "87b71264a530f3f1c68138de0f004f81de6ab0ccb69076c8111eb4ff410c87e2",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5001,7 +5001,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "MPWR",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "MPWR"
     },
     {
@@ -5012,7 +5012,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5037,15 +5037,15 @@
           },
           "provider_symbol": "MRVL",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "ecfe2e4bb4b34dbaac0556623aed420cc654bae959a9e4b44dfb3d234e5a7489",
+      "last_date": "2026-08-12",
+      "output_sha256": "bc3f2306c09b3575ceac4a806ce39b20aac756cc6ffa93d350d18297ea2bc093",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5069,7 +5069,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "MRVL",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "MRVL"
     },
     {
@@ -5080,7 +5080,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5105,15 +5105,15 @@
           },
           "provider_symbol": "MSFT",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "9a8e2fe326f521d931b3a87392351d43b8e351b1a110808358c3a8534a471eb9",
+      "last_date": "2026-08-12",
+      "output_sha256": "70d7329dbcb7842b846441c108cc2b63a57c2981df0fd1dc4a6776d7521c72b0",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5137,7 +5137,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "MSFT",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "MSFT"
     },
     {
@@ -5148,7 +5148,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5173,15 +5173,15 @@
           },
           "provider_symbol": "MU",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "339fc809742ebe1e629c39f4b7fd3f6cd5a597c6d1b3af6896338d4c5a3a41c2",
+      "last_date": "2026-08-12",
+      "output_sha256": "f7aee866bb1cbea5919010c11cd05e7f6624425d895e0a17ea95959ce2b9d88e",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5205,7 +5205,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "MU",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "MU"
     },
     {
@@ -5216,7 +5216,7 @@
           "error": null,
           "first_date": "2024-10-21",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5241,15 +5241,15 @@
           },
           "provider_symbol": "NBIS",
           "round": 1,
-          "rows": 452,
+          "rows": 453,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2024-10-21",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "3c54b02d630a62896f474960fa2c209a73ab8a9a2a2a0975628a7508b6cc34bb",
+      "last_date": "2026-08-12",
+      "output_sha256": "9a2c63f52d34d25a1820c95e956209b12d7dd0b31e3e85d9fea587520561ee58",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5273,7 +5273,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "NBIS",
-      "rows": 452,
+      "rows": 453,
       "symbol": "NBIS"
     },
     {
@@ -5284,7 +5284,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5309,15 +5309,15 @@
           },
           "provider_symbol": "NFLX",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "0113a70592610079db8c582d26764817ca560053080b6d4543053b2de7b12e80",
+      "last_date": "2026-08-12",
+      "output_sha256": "43417a515a8cef9e93a035207e8104e9e6ca31fc9e157bad0dde6c7a6717c966",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5341,7 +5341,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "NFLX",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "NFLX"
     },
     {
@@ -5352,7 +5352,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5377,15 +5377,15 @@
           },
           "provider_symbol": "NVDA",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "e3a52ad24670a3dd6899b48a6afcc3b7445aea9e9a8d5e816b76441ac4644f95",
+      "last_date": "2026-08-12",
+      "output_sha256": "b109bd778e79ea67710c336a3c03bcabc382e36f1fa0bc8dd042d4f7265473f0",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5409,7 +5409,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "NVDA",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "NVDA"
     },
     {
@@ -5420,7 +5420,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5445,15 +5445,15 @@
           },
           "provider_symbol": "ORLY",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "f0ca693891f13fd182cb6f3b9e8b96c226b9c8c8b8ae5d6c62207acdcfde8559",
+      "last_date": "2026-08-12",
+      "output_sha256": "2279824aecd89592b90435e65d6474e0434f470f2e41a71f2a134e027a5bae3a",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5477,7 +5477,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ORLY",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "ORLY"
     },
     {
@@ -5488,7 +5488,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5513,15 +5513,15 @@
           },
           "provider_symbol": "PANW",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "510cf7d1a149baf632d7b5cda597f92bfb329b956b88f61edcfc682353201af0",
+      "last_date": "2026-08-12",
+      "output_sha256": "1538ae09e744a4151b083c00fe164b08813412cdcc17391b51d6174994dd3d87",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5545,7 +5545,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "PANW",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "PANW"
     },
     {
@@ -5556,7 +5556,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5581,15 +5581,15 @@
           },
           "provider_symbol": "PDD",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "a0c81fcb1064b089e53c1faf43aa5863d7c5e6ce80da4b17fd9d2eeacfabff94",
+      "last_date": "2026-08-12",
+      "output_sha256": "f3eaa2e005f689471587d69ea4efc88992622e0a079356e8e0416097c45c1b80",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5613,7 +5613,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "PDD",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "PDD"
     },
     {
@@ -5624,7 +5624,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5649,15 +5649,15 @@
           },
           "provider_symbol": "PEP",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "552f1db2206421c9d7d6d1e3f39a391f89ccfda7f283359983ec6305b3a803af",
+      "last_date": "2026-08-12",
+      "output_sha256": "164b479f90e1c47c3219065d86d53fc3451fe6dbaebabfedac5fb5fc85865219",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5681,7 +5681,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "PEP",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "PEP"
     },
     {
@@ -5692,7 +5692,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5717,15 +5717,15 @@
           },
           "provider_symbol": "PLTR",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "3de603bb464333a5af1fcba8f38f20779401193707ff891883cbb15292bb7b90",
+      "last_date": "2026-08-12",
+      "output_sha256": "29a93ca08a6b2d10fcd595fe27e0c2d1c0bc1073297962841e9afceac65b7077",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5749,7 +5749,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "PLTR",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "PLTR"
     },
     {
@@ -5760,7 +5760,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5785,15 +5785,15 @@
           },
           "provider_symbol": "PWR",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "c025c6dbb45edec8982528c09fb422f2452da1248f407e33d654996d597160d0",
+      "last_date": "2026-08-12",
+      "output_sha256": "53dcbf6faf98ff4e2f819c7d305cdef1dc6f5afb69499b5c756305d21d81b675",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5817,7 +5817,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "PWR",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "PWR"
     },
     {
@@ -5828,7 +5828,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5853,15 +5853,15 @@
           },
           "provider_symbol": "QCOM",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "6e7f4f60cdf09295d2e7277c7b3beaf99e293eae6d0b489cc549ec656f61daef",
+      "last_date": "2026-08-12",
+      "output_sha256": "f3023f95bdb588a6ba8ff30045f54b3a7e44cb36fcfea1e7f01026c2007b71de",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5885,7 +5885,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "QCOM",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "QCOM"
     },
     {
@@ -5896,7 +5896,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5921,15 +5921,15 @@
           },
           "provider_symbol": "REGN",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "4925c48dc97ea759feb634b37498d3bd1cbc451b83f67725935c71d638c766b8",
+      "last_date": "2026-08-12",
+      "output_sha256": "e0000ba113da94cae708925dc1d409e7a3c9623d29b28dc63945eabb75c5e5b3",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5953,7 +5953,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "REGN",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "REGN"
     },
     {
@@ -5964,7 +5964,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5989,15 +5989,15 @@
           },
           "provider_symbol": "ROP",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "f5ea9d6aa6e69b5858c879e79edde6d39699ef940b7bc86380c80b831396255d",
+      "last_date": "2026-08-12",
+      "output_sha256": "9453c9d73dcef4dfac4ad9472ca6be9aa2caa0cb847a3fc25d136189cc6af567",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6021,7 +6021,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ROP",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "ROP"
     },
     {
@@ -6032,7 +6032,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6057,15 +6057,15 @@
           },
           "provider_symbol": "SBGSY",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "6bd49ffbad4166c727c3d322e9318c8103554993ec8d8b1ae80f7cd643aeea45",
+      "last_date": "2026-08-12",
+      "output_sha256": "b900b8547236737f22b6d7eb301561d30adf1f19b450becc30fafd4d06a9852a",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6089,7 +6089,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "SBGSY",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "SBGSY"
     },
     {
@@ -6100,7 +6100,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6125,15 +6125,15 @@
           },
           "provider_symbol": "SHOP",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "3b53f484cb900d06efe2c21130e2d1948c0fedebe81f6a080a86f628390347d3",
+      "last_date": "2026-08-12",
+      "output_sha256": "8fc416e10649d4022d6211ba66716f8f4dd72ee5e01fd258b489c7f1975a103c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6157,7 +6157,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "SHOP",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "SHOP"
     },
     {
@@ -6168,7 +6168,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6193,15 +6193,15 @@
           },
           "provider_symbol": "SNPS",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "34d973e24c858b3e3b319f341340e4e2f07580ad4414a30d8e0e7d29550a5408",
+      "last_date": "2026-08-12",
+      "output_sha256": "89b140dbc01071128e9362cecdcfc294260cfa8cee7e1227bbd5edf27c1411ef",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6225,7 +6225,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "SNPS",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "SNPS"
     },
     {
@@ -6236,7 +6236,7 @@
           "error": null,
           "first_date": "2025-02-13",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6261,15 +6261,15 @@
           },
           "provider_symbol": "SNDK",
           "round": 1,
-          "rows": 374,
+          "rows": 375,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2025-02-13",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "c21f31a214501e286e6c021f227741db27822a2029f8f46bc80067f58298654e",
+      "last_date": "2026-08-12",
+      "output_sha256": "aa4e7bea348e63695f068877da1347b932a3f9f35c88efaa76718eba5d81ad01",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6293,7 +6293,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "SNDK",
-      "rows": 374,
+      "rows": 375,
       "symbol": "SNDK"
     },
     {
@@ -6304,7 +6304,7 @@
           "error": null,
           "first_date": "2024-06-14",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6329,15 +6329,15 @@
           },
           "provider_symbol": "TEM",
           "round": 1,
-          "rows": 540,
+          "rows": 541,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2024-06-14",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "b7aa87b6ea2740342ee0733d360b0ca1a464f2bc0610739d37df2ae62c48a116",
+      "last_date": "2026-08-12",
+      "output_sha256": "201366a0a694cb3c209512efccfaf7690c2655e5d5ce589640eea355635dff11",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6361,7 +6361,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TEM",
-      "rows": 540,
+      "rows": 541,
       "symbol": "TEM"
     },
     {
@@ -6372,7 +6372,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6397,7 +6397,7 @@
           },
           "provider_symbol": "TIGO",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
@@ -6408,8 +6408,8 @@
         "expected_provider_symbol": "TIGO",
         "forbidden_substitute": "TYGO"
       },
-      "last_date": "2026-08-11",
-      "output_sha256": "3aef3979be493cec0c0312b260b35827cd73618b2e3cbdfabdde57ba82d87f15",
+      "last_date": "2026-08-12",
+      "output_sha256": "9ec20d3d9ce1793c3b69aa135dc04b175bd1d07578d1afcdaa176680db439496",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6433,7 +6433,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TIGO",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "TIGO"
     },
     {
@@ -6444,7 +6444,7 @@
           "error": null,
           "first_date": "2021-09-03",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6469,15 +6469,15 @@
           },
           "provider_symbol": "TYGO",
           "round": 1,
-          "rows": 1238,
+          "rows": 1239,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-09-03",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "729caa4bae18a555bae892c7ea65751eda7901aacaa1df367f0c8b0fae8b8209",
+      "last_date": "2026-08-12",
+      "output_sha256": "7092b38ec6d45743eddf014ff7d561a5a388951a2c19ba8fa96414583ecb7b0c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6501,7 +6501,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TYGO",
-      "rows": 1238,
+      "rows": 1239,
       "symbol": "TYGO"
     },
     {
@@ -6512,7 +6512,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6537,15 +6537,15 @@
           },
           "provider_symbol": "TMUS",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "362e1edcb5bdb3cd7172965bb267cd9cf5bef944ec5d18c77583bdae0846ee94",
+      "last_date": "2026-08-12",
+      "output_sha256": "b9e8c3c83a774b29e766b5b8c2a0da2aaeb9f5fa3940afc20d101afe260b26ab",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6569,7 +6569,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TMUS",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "TMUS"
     },
     {
@@ -6580,7 +6580,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6605,15 +6605,15 @@
           },
           "provider_symbol": "TSLA",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "4d2bc5f28fc71a9dc2fb3e102610437f49676c0092ae6ff585ebc5c876bf078b",
+      "last_date": "2026-08-12",
+      "output_sha256": "8f5ec713c5734f1dff3d622e654ac27e1d59c62012b3bb4a7f8f7d5442118541",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6637,7 +6637,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TSLA",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "TSLA"
     },
     {
@@ -6648,7 +6648,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6673,15 +6673,15 @@
           },
           "provider_symbol": "TTWO",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "66663c379735a6dfd26eaf7c149522e2f5f04079686cb9fd520aa4821407b08e",
+      "last_date": "2026-08-12",
+      "output_sha256": "dca17ec8a29a55da30aa91db12d06024da1705fc0901c163c9ae488c19e9e6ab",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6705,7 +6705,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TTWO",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "TTWO"
     },
     {
@@ -6716,7 +6716,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6741,15 +6741,15 @@
           },
           "provider_symbol": "VRT",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "c6c040435f5db98a10e598f8a67244b2650abff60881db60909949541c1a6ca7",
+      "last_date": "2026-08-12",
+      "output_sha256": "93d386bb0e1ecddf772192f1ebfec4a7c9c932d4906c7b6873599551b1af57c9",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6773,7 +6773,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "VRT",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "VRT"
     },
     {
@@ -6784,7 +6784,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6809,15 +6809,15 @@
           },
           "provider_symbol": "VRTX",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "febe81fd172e0c601744edc09a4cc668ee338f3f57b5c9c409d4cf295705c630",
+      "last_date": "2026-08-12",
+      "output_sha256": "e4fee06e8bbdcdd4bce6b4bc6b6f18d96dad8cb8f420986f82b77870ef27abb1",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6841,7 +6841,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "VRTX",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "VRTX"
     },
     {
@@ -6852,7 +6852,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6877,15 +6877,15 @@
           },
           "provider_symbol": "WDC",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "01573062c1da836fe0e8fcabca773b98d9ae1d53b73061c7133a65b63152bea7",
+      "last_date": "2026-08-12",
+      "output_sha256": "1e7510114f0fac460a4ff9c0ae15e58b9a6756b762869e55302e043eb8573c2d",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6909,7 +6909,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "WDC",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "WDC"
     },
     {
@@ -6920,7 +6920,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6945,15 +6945,15 @@
           },
           "provider_symbol": "WMT",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "b08dec26edb3c342590db92e9acee24f297c30e4c61e2d6df80a888eec7e2504",
+      "last_date": "2026-08-12",
+      "output_sha256": "4969d189134e4bf2e6f86c4f8c9fb558b8a24617c1d875159888c183df2f166e",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6977,7 +6977,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "WMT",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "WMT"
     },
     {
@@ -6988,7 +6988,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7013,15 +7013,15 @@
           },
           "provider_symbol": "HIMS",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "ed488c5eabf6656b77fa62a3e3a85c148f7cf4065812dbe05834ed4269682884",
+      "last_date": "2026-08-12",
+      "output_sha256": "728c1ac4fa781b546ef9666b81c38febae55cc88367c2c91720ac26a4456d849",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7045,7 +7045,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "HIMS",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "HIMS"
     },
     {
@@ -7056,7 +7056,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7081,15 +7081,15 @@
           },
           "provider_symbol": "HIMX",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "b006c6ca7c00660d99eb0bf013787776300196d4fe808cad1715c1faa3e232c8",
+      "last_date": "2026-08-12",
+      "output_sha256": "03b0b0249677cb3afd16fec708129166ef281e81abfe6b33972dc985f7425c00",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7113,7 +7113,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "HIMX",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "HIMX"
     },
     {
@@ -7124,7 +7124,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7149,15 +7149,15 @@
           },
           "provider_symbol": "NOK",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "4f65cd3d5a7d54945538f55a1f413dad92efb6cd36a0f21d72a472da8ab33bed",
+      "last_date": "2026-08-12",
+      "output_sha256": "faed387bc1c5c9e9d3a0e7ae697b820cce765b0a498897bdb8730e4b801412db",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7181,7 +7181,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "NOK",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "NOK"
     },
     {
@@ -7192,7 +7192,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7217,15 +7217,15 @@
           },
           "provider_symbol": "TSM",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "4eae96a7a7390fb29d36579f77be9f744d93b128e48f3c2f06e9433dc25c48ca",
+      "last_date": "2026-08-12",
+      "output_sha256": "83baffade3311f8e55f1d1defc2e0e295293d5ccd4d0be71303adb9dcec4bf7f",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7249,7 +7249,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TSM",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "TSM"
     },
     {
@@ -7260,7 +7260,7 @@
           "error": null,
           "first_date": "2022-01-27",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7285,15 +7285,15 @@
           },
           "provider_symbol": "CRDO",
           "round": 1,
-          "rows": 1138,
+          "rows": 1139,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2022-01-27",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "8c5b3c0ef92beec9c3ac2855b859baf5ee0e0eaf9bedc7133349feace347e031",
+      "last_date": "2026-08-12",
+      "output_sha256": "693138b5004c7f371d016ac9adaa7d25f1fcdf8538378d43a4381f06eaf9c649",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7317,7 +7317,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CRDO",
-      "rows": 1138,
+      "rows": 1139,
       "symbol": "CRDO"
     },
     {
@@ -7328,7 +7328,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7353,15 +7353,15 @@
           },
           "provider_symbol": "ORCL",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "c9ba3d9560039a2fbd89c7b24b32f3711ea4dab6485610d85cb943f5bd90fe02",
+      "last_date": "2026-08-12",
+      "output_sha256": "263ba8c25ef4eac5e3c14d0921b8c4237cb948c1128356cf3e0d9027ee90b27e",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7385,7 +7385,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ORCL",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "ORCL"
     },
     {
@@ -7396,7 +7396,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7421,15 +7421,15 @@
           },
           "provider_symbol": "POET",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "9de4a111a6662f3f4129c311b9eb5f9b4e69cbba4843ca0bcebd712a4f6b0a16",
+      "last_date": "2026-08-12",
+      "output_sha256": "f31e79b20192965d09ae7c455c546b072e6905f6802ed92589120e899dcfa51f",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7453,7 +7453,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "POET",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "POET"
     },
     {
@@ -7464,7 +7464,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7489,15 +7489,15 @@
           },
           "provider_symbol": "AEHR",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "2bf1e57d8a83200868da4556780dcbc2570090716d63bcda679b451caac71fa5",
+      "last_date": "2026-08-12",
+      "output_sha256": "c9fa000707f3f2c7bea4d01531a7aa75cf9b61fbb6df92e5c7bc4f9497876c75",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7521,7 +7521,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AEHR",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "AEHR"
     },
     {
@@ -7532,7 +7532,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7557,15 +7557,15 @@
           },
           "provider_symbol": "QQQ",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "ed79a91cde309be57f392b591e5b58d96c0fe0d99f47963ead8efa91d835e844",
+      "last_date": "2026-08-12",
+      "output_sha256": "39c03f2fbcf0738724df280677e60f167da837456ec904a62a8958dfbb734cb3",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7589,7 +7589,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "QQQ",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "QQQ"
     },
     {
@@ -7600,7 +7600,7 @@
           "error": null,
           "first_date": "2024-01-30",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7625,15 +7625,15 @@
           },
           "provider_symbol": "QQQI",
           "round": 1,
-          "rows": 635,
+          "rows": 636,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2024-01-30",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "628dab081529926a3cc3ebaa5c2bdcc66ccf36f4ec92a4329b8e29a82a6dadd6",
+      "last_date": "2026-08-12",
+      "output_sha256": "de0922fcb8b1ac020cb9c531cea877223c1cb24f7489a8293cd32efc76d45ce2",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7657,7 +7657,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "QQQI",
-      "rows": 635,
+      "rows": 636,
       "symbol": "QQQI"
     },
     {
@@ -7668,7 +7668,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7693,15 +7693,15 @@
           },
           "provider_symbol": "TQQQ",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "57206441af91b2d05f3cb95b42c0f642e8ca7c20bf64a268e44feae87416c28d",
+      "last_date": "2026-08-12",
+      "output_sha256": "156d20c72814001c2877dcf50f90e9f983ec1e45203c0930e9639e1f38a14960",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7725,7 +7725,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TQQQ",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "TQQQ"
     },
     {
@@ -7736,7 +7736,7 @@
           "error": null,
           "first_date": "2021-01-04",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-11",
+          "last_date": "2026-08-12",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7761,15 +7761,15 @@
           },
           "provider_symbol": "SGOV",
           "round": 1,
-          "rows": 1407,
+          "rows": 1408,
           "schema_errors": [],
           "source_family": "yahoo_finance"
         }
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-11",
-      "output_sha256": "dcf0e168fb16af0b6fd348e583f6aab3a929e8e6c737aaccfffc0859934d316b",
+      "last_date": "2026-08-12",
+      "output_sha256": "0c73eb0227b01f4fcb90129f3d29595782a08c24b22b4671bef2e83abd9c02fc",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7793,7 +7793,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "SGOV",
-      "rows": 1407,
+      "rows": 1408,
       "symbol": "SGOV"
     }
   ],
