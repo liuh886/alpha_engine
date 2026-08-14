@@ -30,7 +30,7 @@ export function ChartBenchmarkControl({
     if (!needle) return options;
     return options.filter(option => `${option.label} ${option.detail ?? ''}`.toLowerCase().includes(needle));
   }, [options, query]);
-  const groups = ['Benchmarks', 'Stock pool'] as const;
+  const groups = ['Benchmarks', 'US stock pool', 'CN stock pool'] as const;
 
   return (
     <Popover.Root>
