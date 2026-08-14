@@ -95,7 +95,6 @@ def test_ranker_mtm_replaces_old_observation_and_advances_cutoff(
         provider_dir=provider,
         ledger_dir=tmp_path / "ledger",
         cutoff="2026-08-07",
-        repository_root=tmp_path,
     )
 
     assert result is not None
@@ -169,7 +168,6 @@ def test_ranker_mtm_fails_closed_when_due_signal_is_missing(
             provider_dir=provider,
             ledger_dir=tmp_path / "ledger",
             cutoff="2026-07-30",
-            repository_root=tmp_path,
         )
 
 
