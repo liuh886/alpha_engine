@@ -37,60 +37,65 @@ REFRESH_RECEIPT_SCHEMA = "formal_refresh_receipt_v2"
 SUCCESS_STATES = {"current_no_change", "refreshed"}
 
 
-def _assert_formal_catalog_or_declared_transition(
-    formal_v2: Mapping[str, object], active
+def _assert_declared_model_transition(
+    rows: object,
+    active: Any,
+    *,
+    error_message: str,
+    cause: Exception | None = None,
+    publication_status: str | None = None,
 ) -> None:
+    if not isinstance(rows, list):
+        raise FormalRefreshError(error_message) from cause
+    observed = {str(row.get("model_version_id") or "") for row in rows if isinstance(row, Mapping)}
+    expected = set(active.active_model_version_ids)
+    missing = expected - observed
+    extra = observed - expected
+    if not missing or len(missing) != len(extra):
+        raise FormalRefreshError(error_message) from cause
+    by_model = active.by_model_version_id
+    unmatched_extra = set(extra)
+    for successor in sorted(missing):
+        strategy = by_model.get(successor)
+        config_path = Path("configs/models") / f"{successor}.yaml"
+        if strategy is None or not config_path.is_file():
+            raise FormalRefreshError(error_message) from cause
+        config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+        lineage = config.get("lineage") if isinstance(config, Mapping) else None
+        predecessor = str(lineage.get("supersedes") or "") if isinstance(lineage, Mapping) else ""
+        predecessor_row = next(
+            (
+                row
+                for row in rows
+                if isinstance(row, Mapping) and row.get("model_version_id") == predecessor
+            ),
+            None,
+        )
+        if (
+            predecessor not in unmatched_extra
+            or not isinstance(predecessor_row, Mapping)
+            or predecessor_row.get("model_family_id") != strategy.model_family_id
+            or predecessor_row.get("model_kind") != strategy.model_kind
+            or predecessor_row.get("publication_status")
+            != (publication_status or strategy.formal_status)
+        ):
+            raise FormalRefreshError(error_message) from cause
+        unmatched_extra.remove(predecessor)
+    if unmatched_extra:
+        raise FormalRefreshError(error_message) from cause
+
+
+def _assert_formal_catalog_or_declared_transition(formal_v2: Mapping[str, object], active) -> None:
     try:
         assert_formal_catalog_matches_active_strategies(formal_v2, active)
         return
     except ActiveStrategyCatalogError as original:
-        rows = formal_v2.get("records")
-        if not isinstance(rows, list):
-            raise FormalRefreshError(str(original)) from original
-        observed = {
-            str(row.get("model_version_id") or "")
-            for row in rows
-            if isinstance(row, Mapping)
-        }
-        expected = set(active.active_model_version_ids)
-        missing = expected - observed
-        extra = observed - expected
-        if not missing or len(missing) != len(extra):
-            raise FormalRefreshError(str(original)) from original
-        by_model = active.by_model_version_id
-        unmatched_extra = set(extra)
-        for successor in sorted(missing):
-            strategy = by_model.get(successor)
-            config_path = Path("configs/models") / f"{successor}.yaml"
-            if strategy is None or not config_path.is_file():
-                raise FormalRefreshError(str(original)) from original
-            config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-            lineage = config.get("lineage") if isinstance(config, Mapping) else None
-            predecessor = (
-                str(lineage.get("supersedes") or "")
-                if isinstance(lineage, Mapping)
-                else ""
-            )
-            predecessor_row = next(
-                (
-                    row
-                    for row in rows
-                    if isinstance(row, Mapping)
-                    and row.get("model_version_id") == predecessor
-                ),
-                None,
-            )
-            if (
-                predecessor not in unmatched_extra
-                or not isinstance(predecessor_row, Mapping)
-                or predecessor_row.get("model_family_id") != strategy.model_family_id
-                or predecessor_row.get("model_kind") != strategy.model_kind
-                or predecessor_row.get("publication_status") != strategy.formal_status
-            ):
-                raise FormalRefreshError(str(original)) from original
-            unmatched_extra.remove(predecessor)
-        if unmatched_extra:
-            raise FormalRefreshError(str(original)) from original
+        _assert_declared_model_transition(
+            formal_v2.get("records"),
+            active,
+            error_message=str(original),
+            cause=original,
+        )
 
 
 def _cutoffs(us_manifest: Path, cn_manifest: Path) -> dict[str, str]:
@@ -251,13 +256,10 @@ def _ranker_refresh_requirements(
         )
 
     settled_refresh_required = ledger_date > formal_date
-    mtm_refresh_required = (
-        target_date > ledger_date
-        and not _has_current_provisional_mtm(
-            performance,
-            cutoff=target_date,
-            signal_date=ledger_date,
-        )
+    mtm_refresh_required = target_date > ledger_date and not _has_current_provisional_mtm(
+        performance,
+        cutoff=target_date,
+        signal_date=ledger_date,
     )
     return settled_refresh_required, mtm_refresh_required
 
@@ -286,9 +288,7 @@ def build_task_plan(
             stale_ids.add(model_id)
             continue
         target = _iso_date(cutoffs[strategy.market], label=f"{strategy.market} target cutoff")
-        accepted = _iso_date(
-            record.get("evidence_cutoff"), label=f"{model_id} formal cutoff"
-        )
+        accepted = _iso_date(record.get("evidence_cutoff"), label=f"{model_id} formal cutoff")
         if accepted > target:
             raise FormalRefreshError(
                 f"target cutoff regresses formal evidence for {model_id}: {target} < {accepted}"
@@ -365,9 +365,7 @@ def _copy_tree(source: Path, target: Path) -> None:
 
 def _validate_task_receipt(task: Mapping[str, Any], receipt: Mapping[str, Any]) -> None:
     if receipt.get("schema_version") != TASK_RECEIPT_SCHEMA:
-        raise FormalRefreshError(
-            f"invalid strategy receipt schema for {task.get('strategy_id')}"
-        )
+        raise FormalRefreshError(f"invalid strategy receipt schema for {task.get('strategy_id')}")
     for field in (
         "strategy_id",
         "model_family_id",
@@ -430,9 +428,15 @@ def _seal_preview_catalog(candidate_preview_root: Path) -> dict[str, Any]:
     if len(observed) != len(set(observed)):
         raise FormalRefreshError("active preview fan-in contains multiple runs for one model")
     if set(observed) != set(active.active_model_version_ids):
-        raise FormalRefreshError(
+        message = (
             "active preview fan-in must contain exactly the active model set: "
             f"expected={sorted(active.active_model_version_ids)}, observed={sorted(observed)}"
+        )
+        _assert_declared_model_transition(
+            catalog.get("records"),
+            active,
+            error_message=message,
+            publication_status="ci_validated_preview",
         )
     return catalog
 
@@ -480,7 +484,11 @@ def assemble_strategy_results(
             preview = result_root / "model-runs"
             catalog_path = preview / "catalog.json"
             expected_sha = str(receipt.get("output_sha256") or "")
-            if not catalog_path.is_file() or not expected_sha or sha256(catalog_path) != expected_sha:
+            if (
+                not catalog_path.is_file()
+                or not expected_sha
+                or sha256(catalog_path) != expected_sha
+            ):
                 raise FormalRefreshError(f"preview digest mismatch for {strategy_id}")
             _install_preview(
                 preview,
@@ -626,9 +634,7 @@ def main() -> None:
                 handle.write(f"us_cutoff={plan['target_cutoffs']['us']}\n")
                 handle.write(f"cn_cutoff={plan['target_cutoffs']['cn']}\n")
                 handle.write(
-                    "task_matrix="
-                    + json.dumps(plan["tasks"], separators=(",", ":"))
-                    + "\n"
+                    "task_matrix=" + json.dumps(plan["tasks"], separators=(",", ":")) + "\n"
                 )
         print(json.dumps(plan, indent=2, sort_keys=True))
         return

@@ -28,13 +28,10 @@ def test_committed_active_strategy_catalog_matches_or_declares_formal_cutover() 
     assert active.active_model_version_ids == (
         "qqqi_qqq_tqqq_v4_3",
         "us_x1_3",
-        "cn_x1_1",
+        "cn_x1_2",
         "byd_v1_3_recovery_event_low_vol_confirmation_v1",
     )
-    assert all(
-        "current_operations_access" not in strategy
-        for strategy in registry["strategies"]
-    )
+    assert all("current_operations_access" not in strategy for strategy in registry["strategies"])
 
     observed = {
         str(row.get("model_version_id") or "")
@@ -72,9 +69,7 @@ def test_every_active_strategy_binds_complete_model_performance_semantics() -> N
 
 def test_catalog_rejects_duplicate_active_model_identity() -> None:
     payload = json.loads(CATALOG.read_text(encoding="utf-8"))
-    payload["strategies"][1]["model_version_id"] = payload["strategies"][0][
-        "model_version_id"
-    ]
+    payload["strategies"][1]["model_version_id"] = payload["strategies"][0]["model_version_id"]
     payload["strategies"][1]["signal_ledger"] = payload["strategies"][0]["signal_ledger"]
 
     with pytest.raises(ActiveStrategyCatalogError, match="duplicate model_version_id"):
@@ -102,5 +97,8 @@ def test_formal_catalog_fails_closed_when_active_model_is_missing() -> None:
     catalog = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
     catalog["records"] = catalog["records"][:-1]
 
-    with pytest.raises(ActiveStrategyCatalogError, match="formal catalog/active strategy mismatch"):
+    with pytest.raises(
+        ActiveStrategyCatalogError,
+        match="formal catalog (contains model outside|/active strategy mismatch)",
+    ):
         assert_formal_catalog_matches_active_strategies(catalog, active)

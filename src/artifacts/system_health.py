@@ -9,8 +9,13 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from src.artifacts.model_run_bundle_v2 import validate_catalog
+from src.artifacts.strategy_operations import (
+    StrategyOperationsError,
+    _transition_predecessor_strategies,
+)
 from src.governance.active_strategy_catalog import (
     ActiveStrategy,
+    ActiveStrategyCatalogError,
     assert_formal_catalog_matches_active_strategies,
     load_active_strategy_catalog,
 )
@@ -67,11 +72,7 @@ def _state_max(states: Sequence[str]) -> str:
 def _factor_cutoff(operation: Mapping[str, Any]) -> str | None:
     rows = operation.get("factor_evidence")
     if isinstance(rows, list):
-        observed = [
-            _date(row.get("observed_at"))
-            for row in rows
-            if isinstance(row, Mapping)
-        ]
+        observed = [_date(row.get("observed_at")) for row in rows if isinstance(row, Mapping)]
         if any(observed):
             return _max_date(observed)
     return _date(operation.get("latest_completed_session"))
@@ -147,10 +148,22 @@ def build_system_health(
     """Build health from the canonical Strategy Operations read model."""
 
     root = repository_root.resolve()
-    active = load_active_strategy_catalog(root / "configs/strategies/registry.json")
+    strategy_catalog = root / "configs/strategies/registry.json"
+    active = load_active_strategy_catalog(strategy_catalog)
     formal = _object(formal_catalog)
     validate_catalog(formal)
-    assert_formal_catalog_matches_active_strategies(formal, active)
+    try:
+        assert_formal_catalog_matches_active_strategies(formal, active)
+        strategies_by_model = active.by_model_version_id
+    except ActiveStrategyCatalogError as original:
+        try:
+            strategies_by_model = _transition_predecessor_strategies(
+                formal,
+                active=active,
+                strategy_catalog=strategy_catalog,
+            )
+        except StrategyOperationsError as transition_error:
+            raise SystemHealthError(str(original)) from transition_error
     freshness = _object(formal_freshness)
     model_data = _object(model_data_readiness)
 
@@ -159,16 +172,12 @@ def build_system_health(
     if not isinstance(operation_rows, list) or not isinstance(formal_rows, list):
         raise SystemHealthError("formal/operations records are missing")
     operations_by_model = {
-        str(row.get("model_version_id")): row
-        for row in operation_rows
-        if isinstance(row, Mapping)
+        str(row.get("model_version_id")): row for row in operation_rows if isinstance(row, Mapping)
     }
     formal_by_model = {
-        str(row.get("model_version_id")): row
-        for row in formal_rows
-        if isinstance(row, Mapping)
+        str(row.get("model_version_id")): row for row in formal_rows if isinstance(row, Mapping)
     }
-    expected_ids = set(active.active_model_version_ids)
+    expected_ids = set(strategies_by_model)
     if set(operations_by_model) != expected_ids or set(formal_by_model) != expected_ids:
         raise SystemHealthError("health inputs do not exactly match the active strategy set")
 
@@ -188,7 +197,7 @@ def build_system_health(
 
     expected_market_candidates: dict[str, list[str | None]] = {}
     last_changes: dict[str, str | None] = {}
-    for strategy in active.strategies:
+    for strategy in strategies_by_model.values():
         operation = operations_by_model[strategy.model_version_id]
         formal_record = formal_by_model[strategy.model_version_id]
         last_changes[strategy.model_version_id] = _last_signal_change(strategy, root)
@@ -234,7 +243,7 @@ def build_system_health(
         )
 
     strategies: list[dict[str, Any]] = []
-    for strategy in active.strategies:
+    for strategy in strategies_by_model.values():
         model_id = strategy.model_version_id
         operation = operations_by_model[model_id]
         formal_record = formal_by_model[model_id]
@@ -244,9 +253,7 @@ def build_system_health(
         signal_evaluation = _date(operation.get("as_of")) or _date(
             operation.get("latest_completed_session")
         )
-        delivery_state, delivery_status = _delivery_state(
-            operation.get("delivery_status")
-        )
+        delivery_state, delivery_status = _delivery_state(operation.get("delivery_status"))
         formal_state = (
             "blocked"
             if formal_cutoff is None or provider_cutoff is None

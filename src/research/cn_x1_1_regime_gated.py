@@ -12,6 +12,41 @@ from src.research.cn130_cross_sectional_ranking import compound, max_drawdown
 from src.research.cn130_ranking_pipeline import turnover
 from src.research.cn130_tail_factor_discovery import PortfolioVariant, choose_holdings
 
+#: Explicit risk-on rules accepted by :func:`regime_signal`. ``two_of_three`` remains
+#: the legacy default; ``breadth_veto`` is the Issue #947 challenger rule.
+SUPPORTED_REGIME_RULES = frozenset(
+    {
+        "two_of_three",
+        "trend_only",
+        "momentum_and_breadth",
+        "three_of_three",
+        "breadth_veto",
+    }
+)
+
+#: Exposure policies accepted by :func:`run_regime_portfolio`. ``full_exposure`` is
+#: the legacy default (risk-on holds the fixed selection at 100%); ``breadth_scaled``
+#: is the Issue #954 challenger policy that scales the active sleeve by
+#: :func:`clamped_active_share` and allocates the remainder to the benchmark.
+EXPOSURE_POLICIES = frozenset({"full_exposure", "breadth_scaled"})
+
+
+def clamped_active_share(
+    breadth_value: float,
+    breadth_threshold: float = 0.50,
+) -> float:
+    """Issue #954: scale active exposure by ``breadth_value / breadth_threshold``.
+
+    The ratio is clamped to ``[0, 1]``: a weak breadth value never produces a
+    negative or oversized active sleeve. The frozen threshold is 0.50 (the same
+    ``regime_breadth_threshold`` used to form the breadth vote).
+    """
+
+    if breadth_threshold <= 0:
+        raise ValueError("breadth_threshold must be positive")
+    ratio = float(breadth_value) / float(breadth_threshold)
+    return float(min(max(ratio, 0.0), 1.0))
+
 
 @dataclass(frozen=True)
 class RegimeGateSpec:
@@ -97,6 +132,12 @@ def regime_signal(state: pd.DataFrame, date: pd.Timestamp, rule: str) -> bool:
         return bool(row["medium_momentum"] and row["cross_sectional_breadth"])
     if rule == "three_of_three":
         return int(row["votes"]) >= 3
+    if rule == "breadth_veto":
+        # Issue #947: the breadth vote becomes a veto that must accompany at least
+        # one of the trend votes. No new threshold is introduced.
+        return bool(
+            row["cross_sectional_breadth"] and (row["long_trend"] or row["medium_momentum"])
+        )
     raise ValueError(f"unsupported regime rule: {rule}")
 
 
@@ -108,13 +149,42 @@ def run_regime_portfolio(
     windows: Sequence[str],
     variant: PortfolioVariant,
     rule: str = "two_of_three",
+    exposure_policy: str | None = None,
+    breadth_threshold: float = 0.50,
     rebalance_sessions: int = 10,
     cost_bps: int = 20,
     excluded_name: str | None = None,
     excluded_sector: str | None = None,
     initial_weights: Mapping[str, float] | None = None,
+    validate_holdings: bool = False,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Allocate to sector breadth when risk-on and CSI300 when risk-off."""
+    """Allocate to sector breadth when risk-on and CSI300 when risk-off.
+
+    ``exposure_policy`` selects how the risk-on selection is held. The default
+    ``full_exposure`` is unchanged: the fixed selection is held at 100% when
+    risk-on. With ``breadth_scaled`` (Issue #954) the same ``rule`` provides
+    two_of_three eligibility, but the active sleeve is scaled to
+    :func:`clamped_active_share`` of the current ``breadth_value`` and the
+    remainder ``1 - active_share`` is allocated to the CSI300 benchmark sleeve;
+    the mixed weights always sum to exactly 1. An eligible date with zero active
+    share (or an ineligible date) holds the benchmark at 100% and is attributed
+    as risk-off. The period and holding frames gain the ``risk_on_eligible``,
+    ``active_share``, and ``benchmark_sleeve`` diagnostic columns only under the
+    scaled policy, so the legacy and Issue #947 frames are byte-identical.
+
+    ``validate_holdings`` enables a fail-closed guard on the actual risk-on
+    selection for fixed-count variants: every selected holding's
+    ``execution_forward_return`` must be finite, the chosen set must contain
+    exactly ``sectors * names_per_sector`` names, and holdings must be unique.
+    Without it, a short or non-finite selection would silently shrink or skip a
+    period; with it the portfolio path raises instead. Risk-off behavior is
+    unchanged. Selection, dropna behavior, returns, costs, and weights are
+    never modified — the guard only verifies what was actually chosen.
+    """
+
+    exposure = str(exposure_policy or "full_exposure")
+    if exposure not in EXPOSURE_POLICIES:
+        raise ValueError(f"unsupported exposure policy: {exposure}")
 
     previous = {
         str(instrument): float(weight)
@@ -133,7 +203,16 @@ def run_regime_portfolio(
             benchmark_return = float(benchmark_returns.loc[date])
             if not np.isfinite(benchmark_return):
                 continue
-            risk_on = regime_signal(state, date, rule)
+            eligible = regime_signal(state, date, rule)
+            if exposure == "breadth_scaled":
+                active_share = clamped_active_share(
+                    float(state.loc[date, "breadth_value"]),
+                    breadth_threshold,
+                )
+                risk_on = bool(eligible and active_share > 0.0)
+            else:
+                active_share = 1.0
+                risk_on = eligible
             if risk_on:
                 day = part.loc[pd.to_datetime(part["datetime"]) == date]
                 chosen = choose_holdings(
@@ -142,40 +221,77 @@ def run_regime_portfolio(
                     excluded_name=excluded_name,
                     excluded_sector=excluded_sector,
                 )
+                if validate_holdings:
+                    expected = int(variant.sectors) * int(variant.names_per_sector)
+                    if len(chosen) != expected:
+                        raise ValueError(
+                            f"CN risk-on selection on {date:%Y-%m-%d} in {window} "
+                            f"must hold exactly {expected} names "
+                            f"({variant.selector} {variant.sectors}x"
+                            f"{variant.names_per_sector}); chose {len(chosen)}"
+                        )
+                    if not np.isfinite(chosen["execution_forward_return"].to_numpy()).all():
+                        raise ValueError(
+                            f"CN risk-on selection on {date:%Y-%m-%d} in {window} "
+                            "contains a non-finite execution return"
+                        )
+                    if not chosen["instrument"].is_unique:
+                        raise ValueError(
+                            f"CN risk-on selection on {date:%Y-%m-%d} in {window} "
+                            "contains duplicate holdings"
+                        )
                 if chosen.empty:
                     continue
-                weight = 1.0 / len(chosen)
-                weights = {str(symbol): weight for symbol in chosen["instrument"]}
-                gross_return = float(chosen["execution_forward_return"].mean())
+                name_count = len(chosen)
+                if exposure == "breadth_scaled":
+                    name_weight = active_share / name_count
+                    weights = {str(symbol): name_weight for symbol in chosen["instrument"]}
+                    weights["000300"] = 1.0 - active_share
+                    sleeve_weight = 1.0 - active_share
+                    gross_return = (
+                        active_share * float(chosen["execution_forward_return"].mean())
+                        + sleeve_weight * benchmark_return
+                    )
+                else:
+                    name_weight = 1.0 / name_count
+                    weights = {str(symbol): name_weight for symbol in chosen["instrument"]}
+                    sleeve_weight = 0.0
+                    gross_return = float(chosen["execution_forward_return"].mean())
             else:
                 chosen = part.iloc[0:0]
                 weights = {"000300": 1.0}
+                active_share = 0.0
+                sleeve_weight = 1.0
                 gross_return = benchmark_return
             period_turnover = turnover(previous, weights)
             cost = period_turnover * cost_bps / 10000.0
             net_return = gross_return - cost
             relative_log_return = float(np.log1p(net_return) - np.log1p(benchmark_return))
-            period_rows.append(
-                {
-                    "window": window,
-                    "datetime": date,
-                    "risk_on": risk_on,
-                    "rule": rule,
-                    "votes": int(state.loc[date, "votes"]),
-                    "long_trend": bool(state.loc[date, "long_trend"]),
-                    "medium_momentum": bool(state.loc[date, "medium_momentum"]),
-                    "cross_sectional_breadth": bool(state.loc[date, "cross_sectional_breadth"]),
-                    "breadth_value": float(state.loc[date, "breadth_value"]),
-                    "gross_return": gross_return,
-                    "net_return": net_return,
-                    "benchmark_return": benchmark_return,
-                    "relative_log_return": relative_log_return,
-                    "turnover": period_turnover,
-                    "cost": cost,
-                    "benchmark_hit": net_return > benchmark_return,
-                }
-            )
+            period_row = {
+                "window": window,
+                "datetime": date,
+                "risk_on": risk_on,
+                "rule": rule,
+                "votes": int(state.loc[date, "votes"]),
+                "long_trend": bool(state.loc[date, "long_trend"]),
+                "medium_momentum": bool(state.loc[date, "medium_momentum"]),
+                "cross_sectional_breadth": bool(state.loc[date, "cross_sectional_breadth"]),
+                "breadth_value": float(state.loc[date, "breadth_value"]),
+                "gross_return": gross_return,
+                "net_return": net_return,
+                "benchmark_return": benchmark_return,
+                "relative_log_return": relative_log_return,
+                "turnover": period_turnover,
+                "cost": cost,
+                "benchmark_hit": net_return > benchmark_return,
+            }
+            if exposure == "breadth_scaled":
+                period_row["risk_on_eligible"] = bool(eligible)
+                period_row["active_share"] = active_share
+                period_row["benchmark_sleeve"] = sleeve_weight
+            period_rows.append(period_row)
             if risk_on:
+                denominator = name_count + 1 if exposure == "breadth_scaled" else name_count
                 for row in chosen.itertuples(index=False):
                     holding_rows.append(
                         {
@@ -185,15 +301,34 @@ def run_regime_portfolio(
                             "entity": row.entity,
                             "sector": row.sector,
                             "score": float(row.score),
-                            "weight": weight,
+                            "weight": name_weight,
                             "raw_return": float(row.execution_forward_return),
                             "benchmark_return": benchmark_return,
                             "net_contribution": (
-                                weight * float(row.execution_forward_return) - cost / len(chosen)
+                                name_weight * float(row.execution_forward_return)
+                                - cost / denominator
                             ),
                             "precision_hit": (
                                 float(row.execution_forward_return) > benchmark_return
                             ),
+                        }
+                    )
+                if exposure == "breadth_scaled" and sleeve_weight > 0.0:
+                    holding_rows.append(
+                        {
+                            "window": window,
+                            "datetime": date,
+                            "instrument": "000300",
+                            "entity": "CSI300 sleeve",
+                            "sector": "CSI300",
+                            "score": np.nan,
+                            "weight": sleeve_weight,
+                            "raw_return": benchmark_return,
+                            "benchmark_return": benchmark_return,
+                            "net_contribution": (
+                                sleeve_weight * benchmark_return - cost / denominator
+                            ),
+                            "precision_hit": False,
                         }
                     )
             else:

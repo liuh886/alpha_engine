@@ -6,7 +6,10 @@ from pathlib import Path
 import pytest
 
 import scripts.run_formal_strategy_refresh as runner
-from scripts.run_formal_refresh_transaction import assemble_strategy_results
+from scripts.run_formal_refresh_transaction import (
+    _assert_declared_model_transition,
+    assemble_strategy_results,
+)
 from scripts.run_formal_strategy_refresh import RECEIPT_SCHEMA
 from src.artifacts.formal_refresh import FormalRefreshError, load_object, sha256, write_object
 from src.artifacts.model_run_bundle_v2 import validate_catalog
@@ -117,9 +120,15 @@ def test_fan_in_accepts_complete_active_strategy_set(tmp_path: Path) -> None:
     assert sha256(candidate_preview / "catalog.json") == fan_in["preview_catalog_sha256"]
     catalog = load_object(candidate_preview / "catalog.json")
     validate_catalog(catalog)
-    assert {row["model_version_id"] for row in catalog["records"]} == set(
-        active.active_model_version_ids
-    )
+    observed = {row["model_version_id"] for row in catalog["records"]}
+    expected = set(active.active_model_version_ids)
+    if observed != expected:
+        _assert_declared_model_transition(
+            catalog["records"],
+            active,
+            error_message="preview transition mismatch",
+            publication_status="ci_validated_preview",
+        )
 
 
 def test_fan_in_fails_closed_on_missing_strategy_receipt(tmp_path: Path) -> None:
@@ -181,10 +190,7 @@ def test_fan_in_installs_only_digest_bound_refreshed_preview(tmp_path: Path) -> 
     )
     assert "qqq_rotation" in fan_in["changed_strategy_ids"]
     catalog = load_object(candidate_preview / "catalog.json")
-    assert any(
-        row["model_version_id"] == "qqqi_qqq_tqqq_v4_3"
-        for row in catalog["records"]
-    )
+    assert any(row["model_version_id"] == "qqqi_qqq_tqqq_v4_3" for row in catalog["records"])
 
 
 def test_fan_in_rejects_unbound_refreshed_digest(tmp_path: Path) -> None:

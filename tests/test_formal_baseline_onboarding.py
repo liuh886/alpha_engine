@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from datetime import date
+import json
 from pathlib import Path
 
 import pytest
 import yaml
 
+from src.artifacts.strategy_operations import _transition_predecessor_strategies
 from src.governance.active_strategy_catalog import ActiveStrategy, load_active_strategy_catalog
 from src.research.formal_baseline import load_formal_baseline
 from src.research.formal_baseline_onboarding import (
@@ -16,11 +18,23 @@ from src.research.formal_baseline_onboarding import (
 
 CN_SPEC = Path("configs/research_experiments/cn_x1_1_research_loop_onboarding_v1.yaml")
 BYD_SPEC = Path("configs/research_experiments/byd_v1_2_research_loop_onboarding_v1.yaml")
-QQQ_SPEC = Path(
-    "configs/research_experiments/qqq_rotation_v4_3_research_loop_onboarding_v1.yaml"
-)
+QQQ_SPEC = Path("configs/research_experiments/qqq_rotation_v4_3_research_loop_onboarding_v1.yaml")
 COMPLETED_SPECS = (CN_SPEC, BYD_SPEC, QQQ_SPEC)
-ACTIVE_FORMAL_STRATEGIES = load_active_strategy_catalog().strategies
+FORMAL_CATALOG = Path("data/research/formal_model_runs/catalog.json")
+ACTIVE_STRATEGIES = load_active_strategy_catalog()
+FORMAL_PAYLOAD = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+FORMAL_MODEL_IDS = {row["model_version_id"] for row in FORMAL_PAYLOAD["records"]}
+CURRENT_FORMAL_STRATEGIES = (
+    ACTIVE_STRATEGIES.strategies
+    if FORMAL_MODEL_IDS == set(ACTIVE_STRATEGIES.active_model_version_ids)
+    else tuple(
+        _transition_predecessor_strategies(
+            FORMAL_PAYLOAD,
+            active=ACTIVE_STRATEGIES,
+            strategy_catalog=Path("configs/strategies/registry.json"),
+        ).values()
+    )
+)
 
 
 def _spec(path: Path) -> dict:
@@ -66,7 +80,7 @@ def test_completed_record_validation_does_not_resolve_current_catalog(monkeypatc
 
 @pytest.mark.parametrize(
     "strategy",
-    ACTIVE_FORMAL_STRATEGIES,
+    CURRENT_FORMAL_STRATEGIES,
     ids=lambda strategy: strategy.strategy_id,
 )
 def test_current_formal_catalog_bundle_is_hash_verified(strategy: ActiveStrategy) -> None:

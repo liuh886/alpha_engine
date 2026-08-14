@@ -36,17 +36,17 @@
     },
     {
       "strategy_id": "cn_x",
-      "display_name": "CN x1.1",
+      "display_name": "CN x1.2",
       "model_family_id": "cn_ranker",
-      "model_version_id": "cn_x1_1",
+      "model_version_id": "cn_x1_2",
       "model_kind": "cross_sectional_ranker",
       "market": "cn",
       "benchmark_id": "000300",
       "formal_status": "accepted_formal_baseline",
-      "model_contract": "configs/models/cn_x1_1.yaml",
+      "model_contract": "configs/models/cn_x1_2.yaml",
       "decision_cadence": "Every 10 provider sessions",
       "next_decision_policy": "Publish only on the governed rebalance session; target applies to the next eligible open.",
-      "signal_ledger": "data/research/strategy_signal_ledgers/cn_x1_1",
+      "signal_ledger": "data/research/strategy_signal_ledgers/cn_x1_2",
       "historical_evidence_access": "public"
     },
     {

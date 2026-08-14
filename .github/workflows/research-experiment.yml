@@ -204,6 +204,8 @@ jobs:
             src/research/optimization_campaign.py \
             src/research/us_ranker_exact_portfolio_replay.py \
             src/research/cn_ranker_exact_portfolio_replay.py \
+            src/research/cn_x1_2_breadth_veto_development.py \
+            src/research/cn_x1_2_breadth_scaled_development.py \
             scripts/prepare_research_source_repair.py \
             scripts/promote_approved_research_source_repair.py \
             scripts/rebuild_active_research_providers.py \
@@ -214,6 +216,8 @@ jobs:
             scripts/run_cn_ranker_exact_portfolio_replay.py \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
+            tests/test_cn_x1_2_breadth_veto_development.py \
+            tests/test_cn_x1_2_breadth_scaled_development.py \
             tests/test_formal_baseline_onboarding.py \
             tests/test_formal_model_replay.py \
             tests/test_rules_based_allocation_experiment_runner.py \
@@ -222,6 +226,8 @@ jobs:
           uv run pytest \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
+            tests/test_cn_x1_2_breadth_veto_development.py \
+            tests/test_cn_x1_2_breadth_scaled_development.py \
             tests/test_formal_baseline_onboarding.py \
             tests/test_formal_model_replay.py \
             tests/test_rules_based_allocation_experiment_runner.py \
@@ -373,6 +379,8 @@ jobs:
           uv run ruff check \
             src/research/us_ranker_exact_portfolio_replay.py \
             src/research/cn_ranker_exact_portfolio_replay.py \
+            src/research/cn_x1_2_breadth_veto_development.py \
+            src/research/cn_x1_2_breadth_scaled_development.py \
             scripts/run_us_ranker_exact_portfolio_replay.py \
             scripts/run_cn_ranker_exact_portfolio_replay.py
           uv run python - "${{ steps.mission.outputs.spec }}" <<'PY'

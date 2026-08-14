@@ -1,0 +1,54 @@
+{
+  "decision": "promoted_by_explicit_user_governance_exception",
+  "governance_interpretation": {
+    "automatic_promotion": false,
+    "current_target_activation": "blocked_until_cn_x1_2_formal_bundle_identity",
+    "failed_evidence_retained": true,
+    "formal_acceptance_supported_by_preregistered_gates": false,
+    "formal_bundle_transition": "declared_pending_materialization",
+    "research_baseline_promotion_authorized": true
+  },
+  "model_id": "cn_x1_2",
+  "no_2026h2_evidence_consumed": true,
+  "positive_evidence": {
+    "aggregate_max_drawdown_20bps": -0.1477144267185888,
+    "exact_portfolio_reproduction": true,
+    "exact_score_reproduction": true,
+    "incumbent_aggregate_max_drawdown_20bps": -0.14965173967111822,
+    "incumbent_relative_excess_20bps": 0.5928961481305439,
+    "incumbent_relative_excess_60bps": 0.3742960572846028,
+    "mean_rank_ic": 0.034634399999999996,
+    "positive_windows": 4,
+    "relative_excess_20bps": 0.7566420588854332,
+    "relative_excess_60bps": 0.5156241713521426
+  },
+  "preregistered_gate_result": {
+    "candidate_2026h1_max_drawdown": -0.127254261403144,
+    "drawdown_delta_percentage_points": -4.798990466643405,
+    "failed_gates": [
+      "2026h1_drawdown_worsening_within_3pp"
+    ],
+    "incumbent_2026h1_max_drawdown": -0.07926435673670995,
+    "maximum_allowed_worsening_percentage_points": 3.0,
+    "passed": 21,
+    "supported": false,
+    "total": 22
+  },
+  "promotion_authority": {
+    "audit_comment": "https://github.com/liuh886/alpha_engine/issues/954#issuecomment-5293367579",
+    "issue": 954,
+    "kind": "explicit_user_direction"
+  },
+  "promotion_date": "2026-08-14",
+  "research_only": true,
+  "schema_version": "cn_x1_2_user_directed_promotion_v1",
+  "selected_candidate": "cn_x1_2_alpha158_breadth_scaled",
+  "source_experiment": {
+    "experiment_id": "cn_x1_2_alpha158_breadth_scaled_v1",
+    "original_decision": "cn_x1_2_alpha158_breadth_scaled_development_rejected",
+    "receipt": "data/research/experiment_receipts/cn_x1_2_alpha158_breadth_scaled_v1.json",
+    "receipt_sha256": "cc54f329706fcf7990de2548f7abbc63bdc9aa2f8ef0a243ff48e36e6266f530",
+    "source_run_identity_sha256": "bfbf3e2c513a27e4aae0aea78a8d5460f963306a061b85e1a742ec9d0d5e2eb9"
+  },
+  "trade_ready": false
+}

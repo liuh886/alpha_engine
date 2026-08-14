@@ -14,10 +14,11 @@ import yaml
 from src.artifacts.formal_bundle_reader import load_formal_run
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
-EXPECTED_ACTIVE_BASELINES = {"us": "us_x1_3", "cn": "cn_x1_1"}
+EXPECTED_ACTIVE_BASELINES = {"us": "us_x1_3", "cn": "cn_x1_2"}
 EXPECTED_X1_MODELS = (
     "cn_x1_0",
     "cn_x1_1",
+    "cn_x1_2",
     "us_x1_0",
     "us_x1_1",
     "us_x1_2",
@@ -38,6 +39,13 @@ MODEL_ARTIFACTS: dict[str, dict[str, Any]] = {
         "config": "configs/models/cn_x1_1.yaml",
         "notebook": "notebooks/models/cn_x1_1_complete_backtest.ipynb",
         "frozen_research_spec": "configs/research_experiments/cn_x1_1_fallback_aware_certification_v1.yaml",
+    },
+    "cn_x1_2": {
+        "display_name": "CN x1.2",
+        "status": "accepted_formal_baseline",
+        "config": "configs/models/cn_x1_2.yaml",
+        "experiment_receipt": "data/research/experiment_receipts/cn_x1_2_alpha158_breadth_scaled_v1.json",
+        "promotion_receipt": "data/research/experiment_receipts/cn_x1_2_user_directed_promotion_v1.json",
     },
     "us_x1_0": {
         "display_name": "US x1.0",
@@ -97,9 +105,7 @@ def _validate_notebook(path: Path, *, model_id: str, display_name: str) -> None:
     metadata = notebook.get("metadata", {}).get("alpha_engine", {})
     if notebook.get("nbformat") != 4 or metadata.get("model_id") != model_id:
         raise ValueError(f"{model_id}: notebook identity mismatch")
-    text = "\n".join(
-        "".join(cell.get("source", [])) for cell in notebook.get("cells", [])
-    )
+    text = "\n".join("".join(cell.get("source", [])) for cell in notebook.get("cells", []))
     missing = [token for token in (display_name, "trade_ready") if token not in text]
     if missing:
         raise ValueError(f"{model_id}: notebook missing required tokens {missing}")
@@ -123,7 +129,9 @@ def _validate_cn_formal_extension(package: dict[str, Any], config: dict[str, Any
         if not isinstance(rows, list) or len(rows) < minimum:
             raise ValueError(f"cn_x1_1: frozen {field} prefix is shorter than {minimum} rows")
     try:
-        frozen_cutoff = date.fromisoformat(str(config.get("provider_binding", {}).get("cutoff") or ""))
+        frozen_cutoff = date.fromisoformat(
+            str(config.get("provider_binding", {}).get("cutoff") or "")
+        )
         published_cutoff = date.fromisoformat(str(package.get("evidence_cutoff") or ""))
     except ValueError as exc:
         raise ValueError("cn_x1_1: invalid evidence cutoff") from exc
@@ -131,7 +139,9 @@ def _validate_cn_formal_extension(package: dict[str, Any], config: dict[str, Any
         raise ValueError("cn_x1_1: evidence cutoff predates frozen promotion evidence")
 
 
-def _validate_common_model(root: Path, model_id: str, entry: dict[str, Any]) -> tuple[dict[str, Any], Path]:
+def _validate_common_model(
+    root: Path, model_id: str, entry: dict[str, Any]
+) -> tuple[dict[str, Any], Path]:
     config_path = root / str(entry["config"])
     if not config_path.is_file():
         raise FileNotFoundError(config_path)
@@ -161,7 +171,9 @@ def _validate_legacy_x1(root: Path, model_id: str, entry: dict[str, Any]) -> dic
     if not notebook_path.is_file() or not spec_path.is_file():
         raise FileNotFoundError(f"{model_id}: notebook or frozen spec is missing")
     spec = _load_yaml(spec_path)
-    if spec.get("market") != config.get("market") or spec.get("benchmark") != config.get("benchmark"):
+    if spec.get("market") != config.get("market") or spec.get("benchmark") != config.get(
+        "benchmark"
+    ):
         raise ValueError(f"{model_id}: frozen spec identity mismatch")
     _validate_notebook(notebook_path, model_id=model_id, display_name=str(config["display_name"]))
     return {
@@ -215,7 +227,11 @@ def _validate_us_x1_3(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
     if config.get("status") != "baseline_research_active":
         raise ValueError("us_x1_3: active baseline status mismatch")
     lineage = dict(config.get("lineage", {}))
-    if lineage.get("parent") != "us_x1_2" or lineage.get("supersedes") != "us_x1_2" or lineage.get("selected_candidate") != "mvv_plus_pressure":
+    if (
+        lineage.get("parent") != "us_x1_2"
+        or lineage.get("supersedes") != "us_x1_2"
+        or lineage.get("selected_candidate") != "mvv_plus_pressure"
+    ):
         raise ValueError("us_x1_3: lineage mismatch")
     expected_factors = [
         "ohlcv.momentum.ret_5d",
@@ -233,13 +249,27 @@ def _validate_us_x1_3(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
         "ohlcv.pressure.high_low_ratio",
     ]
     features = dict(config.get("features", {}))
-    if features.get("source_factor_groups") != ["momentum_volatility_volume", "us_price_volume_pressure"] or features.get("factor_ids") != expected_factors:
+    if (
+        features.get("source_factor_groups")
+        != ["momentum_volatility_volume", "us_price_volume_pressure"]
+        or features.get("factor_ids") != expected_factors
+    ):
         raise ValueError("us_x1_3: Stage-B factor identity/order mismatch")
     expected_model = {
-        "family": "xgb", "objective": "rank:ndcg", "tree_method": "hist", "grow_policy": "lossguide",
-        "max_leaves": 31, "max_depth": 0, "min_child_weight": 1.0, "learning_rate": 0.05,
-        "num_boost_round": 200, "subsample": 0.8, "colsample_bytree": 0.8, "reg_alpha": 0.0,
-        "reg_lambda": 1.0, "seed": 42,
+        "family": "xgb",
+        "objective": "rank:ndcg",
+        "tree_method": "hist",
+        "grow_policy": "lossguide",
+        "max_leaves": 31,
+        "max_depth": 0,
+        "min_child_weight": 1.0,
+        "learning_rate": 0.05,
+        "num_boost_round": 200,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_alpha": 0.0,
+        "reg_lambda": 1.0,
+        "seed": 42,
     }
     model = dict(config.get("model", {}))
     for key, expected in expected_model.items():
@@ -247,8 +277,13 @@ def _validate_us_x1_3(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
             raise ValueError(f"us_x1_3: XGBoost {key} mismatch")
     strategy = dict(config.get("strategy", {}))
     expected_strategy = {
-        "holding_sessions": 10, "rebalance_sessions": 10, "top_n": 15, "weighting": "equal_weight",
-        "maximum_names_per_sector": 4, "cost_bps": 20, "fail_closed_if_unfillable": True,
+        "holding_sessions": 10,
+        "rebalance_sessions": 10,
+        "top_n": 15,
+        "weighting": "equal_weight",
+        "maximum_names_per_sector": 4,
+        "cost_bps": 20,
+        "fail_closed_if_unfillable": True,
     }
     for key, expected in expected_strategy.items():
         if strategy.get(key) != expected:
@@ -257,18 +292,44 @@ def _validate_us_x1_3(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
     receipt_path = root / str(entry["stage_b_receipt"])
     spec = _load_yaml(spec_path)
     receipt = _load_json(receipt_path)
-    if spec.get("status") != "completed_supported" or spec.get("result", {}).get("supported") is not True or spec.get("result", {}).get("winner") != "mvv_plus_pressure":
+    if (
+        spec.get("status") != "completed_supported"
+        or spec.get("result", {}).get("supported") is not True
+        or spec.get("result", {}).get("winner") != "mvv_plus_pressure"
+    ):
         raise ValueError("us_x1_3: Stage-B experiment is not supported")
-    if receipt.get("decision") != "us_x1_3_stage_b_candidate_supported" or receipt.get("winner") != "mvv_plus_pressure" or receipt.get("stage_b_supported") is not True or receipt.get("supported") is not True or receipt.get("research_only") is not True or receipt.get("trade_ready") is not False:
+    if (
+        receipt.get("decision") != "us_x1_3_stage_b_candidate_supported"
+        or receipt.get("winner") != "mvv_plus_pressure"
+        or receipt.get("stage_b_supported") is not True
+        or receipt.get("supported") is not True
+        or receipt.get("research_only") is not True
+        or receipt.get("trade_ready") is not False
+    ):
         raise ValueError("us_x1_3: Stage-B receipt boundary mismatch")
     candidate = dict(receipt.get("candidate_metadata", {}).get("mvv_plus_pressure") or {})
-    if candidate.get("factor_count") != 13 or candidate.get("factor_groups") != ["momentum_volatility_volume", "us_price_volume_pressure"]:
+    if candidate.get("factor_count") != 13 or candidate.get("factor_groups") != [
+        "momentum_volatility_volume",
+        "us_price_volume_pressure",
+    ]:
         raise ValueError("us_x1_3: Stage-B candidate metadata mismatch")
     reproduction = receipt.get("score_reproduction")
-    if not isinstance(reproduction, dict) or not reproduction or any(not isinstance(row, dict) or row.get("first") != row.get("second") for row in reproduction.values()):
+    if (
+        not isinstance(reproduction, dict)
+        or not reproduction
+        or any(
+            not isinstance(row, dict) or row.get("first") != row.get("second")
+            for row in reproduction.values()
+        )
+    ):
         raise ValueError("us_x1_3: deterministic score reproduction failed")
     support = dict(receipt.get("support_boundary") or {})
-    if support.get("supported") is not True or support.get("leader") != "mvv_plus_pressure" or support.get("positive_window_count") != 4 or support.get("exact_score_reproduction") is not True:
+    if (
+        support.get("supported") is not True
+        or support.get("leader") != "mvv_plus_pressure"
+        or support.get("positive_window_count") != 4
+        or support.get("exact_score_reproduction") is not True
+    ):
         raise ValueError("us_x1_3: Stage-B support gates are incomplete")
     return {
         "model_id": model_id,
@@ -304,6 +365,56 @@ def _validate_cn_x1_1(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _validate_cn_x1_2(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
+    model_id = "cn_x1_2"
+    config, config_path = _validate_common_model(root, model_id, entry)
+    if config.get("status") != "accepted_formal_baseline":
+        raise ValueError("cn_x1_2: formal status mismatch")
+    lineage = dict(config.get("lineage") or {})
+    if lineage.get("parent") != "cn_x1_1" or lineage.get("supersedes") != "cn_x1_1":
+        raise ValueError("cn_x1_2: lineage mismatch")
+    if lineage.get("promotion_authority") != "explicit_user_direction_2026_08_14":
+        raise ValueError("cn_x1_2: promotion authority mismatch")
+    features = dict(config.get("features") or {})
+    if len(features.get("factor_ids") or []) != 17:
+        raise ValueError("cn_x1_2: frozen 17-factor identity is required")
+    experiment_path = root / str(entry["experiment_receipt"])
+    promotion_path = root / str(entry["promotion_receipt"])
+    experiment = _load_json(experiment_path)
+    promotion = _load_json(promotion_path)
+    boundary = dict(experiment.get("development_boundary") or {})
+    if experiment.get("decision") != "cn_x1_2_alpha158_breadth_scaled_development_rejected":
+        raise ValueError("cn_x1_2: rejected source decision was rewritten")
+    if boundary.get("supported") is not False:
+        raise ValueError("cn_x1_2: failed source boundary was rewritten")
+    failed = [key for key, value in dict(boundary.get("checks") or {}).items() if value is not True]
+    if failed != ["2026h1_drawdown_worsening_within_3pp"]:
+        raise ValueError("cn_x1_2: failed gate identity mismatch")
+    gate = dict(promotion.get("preregistered_gate_result") or {})
+    governance = dict(promotion.get("governance_interpretation") or {})
+    if promotion.get("decision") != "promoted_by_explicit_user_governance_exception":
+        raise ValueError("cn_x1_2: promotion decision mismatch")
+    if gate.get("passed") != 21 or gate.get("total") != 22 or gate.get("supported") is not False:
+        raise ValueError("cn_x1_2: promotion gate disclosure mismatch")
+    if governance.get("formal_acceptance_supported_by_preregistered_gates") is not False:
+        raise ValueError("cn_x1_2: promotion must not claim formal gate support")
+    if promotion.get("research_only") is not True or promotion.get("trade_ready") is not False:
+        raise ValueError("cn_x1_2: promotion research boundary mismatch")
+    return {
+        "model_id": model_id,
+        "display_name": "CN x1.2",
+        "status": str(entry["status"]),
+        "config": str(config_path.relative_to(root)),
+        "experiment_receipt": str(experiment_path.relative_to(root)),
+        "promotion_receipt": str(promotion_path.relative_to(root)),
+        "promotion_authority": str(lineage["promotion_authority"]),
+        "formal_acceptance_supported": False,
+        "failed_gate": failed[0],
+        "formal_bundle_transition": "declared_pending_materialization",
+        "trade_ready": False,
+    }
+
+
 def validate_model_config(root: Path, model_id: str, entry: dict[str, Any]) -> dict[str, Any]:
     if model_id == "us_x1_2":
         return _validate_us_x1_2(root, entry)
@@ -311,6 +422,8 @@ def validate_model_config(root: Path, model_id: str, entry: dict[str, Any]) -> d
         return _validate_us_x1_3(root, entry)
     if model_id == "cn_x1_1":
         return _validate_cn_x1_1(root, entry)
+    if model_id == "cn_x1_2":
+        return _validate_cn_x1_2(root, entry)
     return _validate_legacy_x1(root, model_id, entry)
 
 
@@ -324,11 +437,14 @@ def validate_registry(root: Path) -> dict[str, Any]:
     }
     if observed_active != EXPECTED_ACTIVE_BASELINES:
         raise ValueError(f"Active Strategy Catalog x1 identities drifted: {observed_active}")
-    models = [validate_model_config(root, model_id, dict(MODEL_ARTIFACTS[model_id])) for model_id in EXPECTED_X1_MODELS]
+    models = [
+        validate_model_config(root, model_id, dict(MODEL_ARTIFACTS[model_id]))
+        for model_id in EXPECTED_X1_MODELS
+    ]
     return {
         "schema_version": "2.0",
         "status": "x1_lifecycle_valid",
-        "active_strategy_catalog": str(catalog_path.relative_to(root)),
+        "active_strategy_catalog": catalog_path.relative_to(root).as_posix(),
         "active_baselines": observed_active,
         "governed_x1_models": models,
         "models": models,

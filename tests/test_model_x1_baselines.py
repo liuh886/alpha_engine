@@ -35,7 +35,7 @@ def _cn_refresh_state() -> dict:
 def test_active_strategy_catalog_owns_current_x1_identities() -> None:
     catalog = load_active_strategy_catalog(ACTIVE_CATALOG)
     assert catalog.by_strategy_id["us_x"].model_version_id == "us_x1_3"
-    assert catalog.by_strategy_id["cn_x"].model_version_id == "cn_x1_1"
+    assert catalog.by_strategy_id["cn_x"].model_version_id == "cn_x1_2"
     assert catalog.by_strategy_id["us_x"].historical_evidence_access == "public"
     assert catalog.by_strategy_id["cn_x"].historical_evidence_access == "public"
 
@@ -47,11 +47,12 @@ def test_model_configs_and_evidence_tie_across_lifecycle() -> None:
     assert result["active_strategy_catalog"] == "configs/strategies/registry.json"
     assert result["active_baselines"] == {
         "us": "us_x1_3",
-        "cn": "cn_x1_1",
+        "cn": "cn_x1_2",
     }
     assert [item["model_id"] for item in result["models"]] == [
         "cn_x1_0",
         "cn_x1_1",
+        "cn_x1_2",
         "us_x1_0",
         "us_x1_1",
         "us_x1_2",
@@ -59,6 +60,10 @@ def test_model_configs_and_evidence_tie_across_lifecycle() -> None:
     ]
     cn_x1_1 = next(item for item in result["models"] if item["model_id"] == "cn_x1_1")
     assert cn_x1_1["evidence_completeness"] == "complete"
+    cn_x1_2 = next(item for item in result["models"] if item["model_id"] == "cn_x1_2")
+    assert cn_x1_2["promotion_authority"] == "explicit_user_direction_2026_08_14"
+    assert cn_x1_2["formal_acceptance_supported"] is False
+    assert cn_x1_2["failed_gate"] == "2026h1_drawdown_worsening_within_3pp"
     us_x1_2 = next(item for item in result["models"] if item["model_id"] == "us_x1_2")
     assert us_x1_2["status"] == "historical_baseline_superseded"
     assert us_x1_2["selected_candidate"] == "r11_sampled"
