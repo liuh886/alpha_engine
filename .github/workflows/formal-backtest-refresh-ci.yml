@@ -28,6 +28,7 @@ on:
       - "scripts/data/**"
       - "tests/test_active_strategy_catalog.py"
       - "tests/test_formal_refresh.py"
+      - "tests/test_formal_bundle_reader.py"
       - "tests/test_formal_strategy_refresh.py"
       - "tests/test_ranker_provisional_mtm.py"
       - "tests/test_formal_bundle_mtm_projection.py"
@@ -169,6 +170,7 @@ jobs:
             scripts/run_us_x1_3_current_target.py \
             scripts/validate_model_x1_baselines.py \
             tests/test_active_strategy_catalog.py \
+            tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_model_x1_baselines.py \
@@ -180,6 +182,7 @@ jobs:
             scripts/run_formal_strategy_refresh.py
           uv run pytest \
             tests/test_active_strategy_catalog.py \
+            tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_model_x1_baselines.py \
@@ -222,6 +225,7 @@ jobs:
             scripts/refresh_byd_v1_3_formal.py \
             scripts/refresh_qqq_v4_3_formal.py \
             tests/test_active_strategy_catalog.py \
+            tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_ranker_provisional_mtm.py \
@@ -250,6 +254,7 @@ jobs:
             scripts/run_formal_strategy_refresh.py
           uv run pytest \
             tests/test_active_strategy_catalog.py \
+            tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_ranker_provisional_mtm.py \

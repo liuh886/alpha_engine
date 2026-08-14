@@ -9,7 +9,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
-from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+from src.artifacts.model_run_bundle_v2 import (
+    ModelRunBundleV2Error,
+    validate_catalog,
+    validate_manifest,
+)
 
 
 class FormalBundleReadError(ValueError):
@@ -211,6 +215,86 @@ class FormalRun:
         }
 
 
+class FormalBundleReader:
+    """Catalog-scoped reader that validates identity once and caches loaded runs."""
+
+    def __init__(
+        self,
+        *,
+        repository: Path,
+        formal_root: Path,
+        catalog: Mapping[str, Any],
+        records: Mapping[str, Mapping[str, Any]],
+    ) -> None:
+        self.repository = repository
+        self.formal_root = formal_root
+        self.catalog = catalog
+        self.records = records
+        self._runs: dict[str, FormalRun] = {}
+
+    @classmethod
+    def open(
+        cls,
+        repository_root: str | Path,
+        *,
+        relative_root: Path = Path("data/research/formal_model_runs"),
+    ) -> "FormalBundleReader":
+        repository = Path(repository_root).resolve()
+        formal_root = (repository / relative_root).resolve()
+        try:
+            formal_root.relative_to(repository)
+        except ValueError as exc:
+            raise FormalBundleReadError("formal root escapes repository") from exc
+
+        catalog = _object(formal_root / "catalog.json")
+        try:
+            validate_catalog(catalog)
+        except ModelRunBundleV2Error as exc:
+            raise FormalBundleReadError(f"invalid formal catalog: {exc}") from exc
+        if (
+            catalog.get("channel") != "formal"
+            or catalog.get("research_only") is not True
+            or catalog.get("trade_ready") is not False
+        ):
+            raise FormalBundleReadError("formal catalog boundary is invalid")
+        rows = catalog.get("records")
+        if not isinstance(rows, list):
+            raise FormalBundleReadError("formal catalog records are missing")
+        records: dict[str, Mapping[str, Any]] = {}
+        for row in rows:
+            if not isinstance(row, Mapping):
+                raise FormalBundleReadError("formal catalog record is invalid")
+            model_version_id = str(row.get("model_version_id") or "")
+            if not model_version_id or model_version_id in records:
+                raise FormalBundleReadError(
+                    f"duplicate formal model identity: {model_version_id!r}"
+                )
+            records[model_version_id] = dict(row)
+        return cls(
+            repository=repository,
+            formal_root=formal_root,
+            catalog=catalog,
+            records=records,
+        )
+
+    def load(self, model_version_id: str) -> FormalRun:
+        """Load one accepted run through the catalog/manifest/section Seam."""
+
+        cached = self._runs.get(model_version_id)
+        if cached is not None:
+            return cached
+        record = self.records.get(model_version_id)
+        if record is None:
+            raise FormalBundleReadError(
+                f"expected one accepted formal run for {model_version_id}, found 0"
+            )
+        if record.get("publication_status") != "accepted_formal_baseline":
+            raise FormalBundleReadError(f"formal run is not accepted: {model_version_id}")
+        run = _load_formal_manifest(self.repository, self.formal_root, record)
+        self._runs[model_version_id] = run
+        return run
+
+
 def _load_formal_manifest(
     repository: Path,
     formal_root: Path,
@@ -225,7 +309,12 @@ def _load_formal_manifest(
     if not manifest_path.is_file() or _sha256(manifest_path) != record.get("manifest_sha256"):
         raise FormalBundleReadError(f"formal manifest digest mismatch: {model_version_id}")
     manifest = _object(manifest_path)
-    validate_manifest(manifest)
+    try:
+        validate_manifest(manifest)
+    except ModelRunBundleV2Error as exc:
+        raise FormalBundleReadError(
+            f"invalid formal manifest for {model_version_id}: {exc}"
+        ) from exc
     for field in (
         "model_version_id",
         "model_family_id",
@@ -291,38 +380,10 @@ def load_formal_run(
 ) -> FormalRun:
     """Load the one catalog-active accepted formal run for a model."""
 
-    repository = Path(repository_root).resolve()
-    formal_root = (repository / relative_root).resolve()
-    try:
-        formal_root.relative_to(repository)
-    except ValueError as exc:
-        raise FormalBundleReadError("formal root escapes repository") from exc
-
-    catalog_path = formal_root / "catalog.json"
-    catalog = _object(catalog_path)
-    validate_catalog(catalog)
-    if (
-        catalog.get("channel") != "formal"
-        or catalog.get("research_only") is not True
-        or catalog.get("trade_ready") is not False
-    ):
-        raise FormalBundleReadError("formal catalog boundary is invalid")
-    rows = catalog.get("records")
-    if not isinstance(rows, list):
-        raise FormalBundleReadError("formal catalog records are missing")
-    matches = [
-        dict(row)
-        for row in rows
-        if isinstance(row, Mapping) and row.get("model_version_id") == model_version_id
-    ]
-    if len(matches) != 1:
-        raise FormalBundleReadError(
-            f"expected one accepted formal run for {model_version_id}, found {len(matches)}"
-        )
-    record = matches[0]
-    if record.get("publication_status") != "accepted_formal_baseline":
-        raise FormalBundleReadError(f"formal run is not accepted: {model_version_id}")
-    return _load_formal_manifest(repository, formal_root, record)
+    return FormalBundleReader.open(
+        repository_root,
+        relative_root=relative_root,
+    ).load(model_version_id)
 
 
 def load_retained_formal_run(
@@ -349,7 +410,10 @@ def load_retained_formal_run(
     if not manifest_path.is_file():
         raise FormalBundleReadError(f"retained formal manifest is missing: {manifest_path}")
     manifest = _object(manifest_path)
-    validate_manifest(manifest)
+    try:
+        validate_manifest(manifest)
+    except ModelRunBundleV2Error as exc:
+        raise FormalBundleReadError(f"invalid retained formal manifest: {exc}") from exc
     record = {
         "model_version_id": manifest.get("model_version_id"),
         "model_family_id": manifest.get("model_family_id"),
