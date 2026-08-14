@@ -12,7 +12,9 @@ vi.mock('@tanstack/react-virtual', () => ({
 }));
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => <>{children}</>,
-  ComposedChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  ComposedChart: ({ children, data }: { children: ReactNode; data?: unknown }) => (
+    <div data-testid="turnover-chart" data-points={JSON.stringify(data ?? [])}>{children}</div>
+  ),
   Bar: ({ children }: { children: ReactNode }) => <>{children}</>,
   CartesianGrid: () => null,
   Cell: () => null,
@@ -77,5 +79,43 @@ describe('PositionsTable snapshot diagnostics', () => {
     );
 
     expect(screen.getByTestId('holdings-snapshot')).toHaveTextContent('50.0%');
+    const chart = JSON.parse(screen.getByTestId('turnover-chart').getAttribute('data-points') || '[]');
+    expect(chart).toContainEqual(expect.objectContaining({ date: '2026-07-30', turnover: 0.5 }));
+  });
+
+  it('keeps provisional MTM separate from the rebalance timeline', () => {
+    render(
+      <PositionsTable
+        positions={[
+          { date: '2026-07-16', instrument: 'A', weight: 0.5 },
+          { date: '2026-07-16', instrument: 'B', weight: 0.5 },
+          { date: '2026-07-30', instrument: 'A', weight: 0.5 },
+          { date: '2026-07-30', instrument: 'C', weight: 0.5 },
+        ]}
+        report={[
+          { date: '2026-07-16', holding_end_date: '2026-07-30', account: 1.05, turnover: 0.1 },
+          {
+            date: '2026-08-12',
+            signal_date: '2026-07-30',
+            holding_end_date: '2026-08-12',
+            account: 1.1,
+            turnover: 0.4,
+            rebalance_turnover: 0.4,
+            provisional_mtm: true,
+            settlement_status: 'provisional_mtm',
+            mtm_as_of: '2026-08-12',
+          },
+        ]}
+      />,
+    );
+
+    const chart = JSON.parse(screen.getByTestId('turnover-chart').getAttribute('data-points') || '[]');
+    expect(chart).not.toContainEqual(expect.objectContaining({ date: '2026-08-12' }));
+    expect(chart).toContainEqual(expect.objectContaining({ date: '2026-07-30', turnover: 0.5 }));
+    expect(screen.getByTestId('holdings-snapshot')).toHaveTextContent('2026-07-30');
+    expect(screen.getByTestId('holdings-snapshot')).toHaveTextContent('50.0%');
+    expect(screen.getByTestId('mtm-observation')).toHaveTextContent('MTM 2026-08-12');
+    expect(screen.getByTestId('mtm-observation')).toHaveTextContent('No rebalance');
+    expect(screen.getByTestId('mtm-observation')).toHaveTextContent('Source signal: 2026-07-30');
   });
 });
