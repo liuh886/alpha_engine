@@ -238,7 +238,6 @@ def _run_us(
             provider_dir=provider_dir,
             ledger_dir=root / "data/research/strategy_signal_ledgers" / US_MODEL_ID,
             cutoff=cutoff,
-            repository_root=root,
         )
         if provisional is None:
             raise StrategyRefreshBlocked(
@@ -464,7 +463,6 @@ def _run_cn(
             provider_dir=provider_dir,
             ledger_dir=root / "data/research/strategy_signal_ledgers" / CN_MODEL_ID,
             cutoff=cutoff,
-            repository_root=root,
         )
         if mtm_required and provisional is None:
             raise StrategyRefreshBlocked(
