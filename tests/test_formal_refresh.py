@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,8 @@ from scripts.data.refresh_selected_pool_prices_v2 import (
     build_hardened_router,
 )
 from scripts.run_formal_refresh_transaction import (
+    RANKER_MODELS,
+    _latest_ledger_signal_date,
     _ranker_refresh_requirements,
     build_task_plan,
     finalize_refresh,
@@ -40,6 +43,27 @@ def _provider_manifest(path: Path, *, market: str, cutoff: str) -> Path:
         },
     )
     return path
+
+
+def _non_regressing_cutoffs() -> dict[str, str]:
+    active = load_active_strategy_catalog()
+    freshness = load_object(FORMAL_V2 / "freshness.json")
+    cutoffs = {str(key): str(value) for key, value in freshness["markets"].items()}
+    formal = load_object(FORMAL_V2 / "catalog.json")
+    for record in formal["records"]:
+        model_id = str(record["model_version_id"])
+        strategy = active.by_model_version_id.get(model_id)
+        if strategy is None:
+            continue
+        market = strategy.market
+        cutoffs[market] = max(cutoffs[market], str(record["evidence_cutoff"]))
+    ledger_root = FORMAL_V2.parent / "strategy_signal_ledgers"
+    for model_id, market in RANKER_MODELS:
+        cutoffs[market] = max(
+            cutoffs[market],
+            _latest_ledger_signal_date(ledger_root, model_id),
+        )
+    return cutoffs
 
 
 def test_common_provider_cutoff_is_conservative() -> None:
@@ -113,10 +137,9 @@ def test_formal_planner_accepts_governed_cn_auxiliary_yahoo_fallback(
 
 
 def test_plan_is_formal_v2_catalog_driven() -> None:
-    freshness = load_object(FORMAL_V2 / "freshness.json")
     plan = build_task_plan(
         formal_v2_root=FORMAL_V2,
-        cutoffs=dict(freshness["markets"]),
+        cutoffs=_non_regressing_cutoffs(),
         generated_at="2026-08-13T10:30:00Z",
     )
     active = load_active_strategy_catalog()
@@ -169,9 +192,13 @@ def test_ranker_ledger_advance_is_the_settled_rebuild_trigger() -> None:
 
 
 def test_future_cutoff_still_marks_non_rankers_stale() -> None:
+    cutoffs = {
+        market: (date.fromisoformat(cutoff) + timedelta(days=1)).isoformat()
+        for market, cutoff in _non_regressing_cutoffs().items()
+    }
     plan = build_task_plan(
         formal_v2_root=FORMAL_V2,
-        cutoffs={"us": "2026-08-13", "cn": "2026-08-13"},
+        cutoffs=cutoffs,
         generated_at="2026-08-13T10:30:00Z",
     )
     assert {
