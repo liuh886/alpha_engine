@@ -8,7 +8,7 @@ import pytest
 
 import scripts.ranker_provisional_mtm as mtm
 from scripts.run_formal_refresh_transaction import (
-    RANKER_MTM_MODELS,
+    RANKER_MODELS,
     _has_current_provisional_mtm,
     _latest_settled_performance_end,
 )
@@ -20,7 +20,7 @@ def _write_close(provider: Path, instrument: str, values: list[float]) -> None:
     np.asarray([0.0, *values], dtype="<f4").tofile(path)
 
 
-def test_ranker_mtm_keeps_settled_trace_immutable(
+def test_ranker_mtm_replaces_old_observation_and_advances_cutoff(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -28,22 +28,36 @@ def test_ranker_mtm_keeps_settled_trace_immutable(
     package_path.write_text(
         json.dumps(
             {
-                "model_id": "us_x1_1",
-                "evidence_cutoff": "2026-08-07",
+                "model_id": "us_x1_3",
+                "evidence_cutoff": "2026-08-05",
                 "benchmark": "QQQ",
                 "trace_frequency": "non_overlapping_10_session",
                 "portfolio_contract": {"execution_delay_sessions": 0},
-                "freshness": {"status": "current"},
+                "date_range": {"start": "2026-07-16", "end": "2026-08-05"},
+                "freshness": {
+                    "status": "current",
+                    "required_cutoff": "2026-08-05",
+                    "latest_completed_session": "2026-08-05",
+                },
                 "report": [
                     {
                         "date": "2026-07-16",
                         "holding_end_date": "2026-07-30",
                         "account": 2.0,
                         "bench_qqq": 1.2,
-                    }
+                    },
+                    {
+                        "date": "2026-08-05",
+                        "signal_date": "2026-07-30",
+                        "holding_end_date": "2026-08-05",
+                        "account": 99.0,
+                        "bench_qqq": 99.0,
+                        "provisional_mtm": True,
+                        "settlement_status": "provisional_mtm",
+                    },
                 ],
                 "positions": [
-                    {"date": "2026-07-16", "instrument": "OLD", "weight": 1.0}
+                    {"date": "2026-07-30", "instrument": "OLD", "weight": 1.0}
                 ],
             }
         ),
@@ -87,6 +101,10 @@ def test_ranker_mtm_keeps_settled_trace_immutable(
     assert result is not None
     persisted = json.loads(package_path.read_text(encoding="utf-8"))
     assert len(persisted["report"]) == 1
+    assert persisted["report"][0]["account"] == 2.0
+    assert persisted["evidence_cutoff"] == "2026-08-07"
+    assert persisted["date_range"]["end"] == "2026-08-07"
+    assert persisted["freshness"]["latest_completed_session"] == "2026-08-07"
     assert persisted["provisional_mtm"]["as_of"] == "2026-08-07"
     assert persisted["provisional_mtm"]["source"] == "strategy_signal_ledger"
     performance_row = persisted["provisional_mtm"]["performance_row"]
@@ -94,6 +112,7 @@ def test_ranker_mtm_keeps_settled_trace_immutable(
     assert performance_row["turnover"] == 0.0
     assert performance_row["rebalance_date"] == "2026-07-30"
     assert performance_row["rebalance_turnover"] == 0.5
+    assert performance_row["account_before"] == 2.0
 
 
 def test_ranker_mtm_fails_closed_when_due_signal_is_missing(
@@ -104,7 +123,7 @@ def test_ranker_mtm_fails_closed_when_due_signal_is_missing(
     package_path.write_text(
         json.dumps(
             {
-                "model_id": "us_x1_1",
+                "model_id": "us_x1_3",
                 "evidence_cutoff": "2026-07-30",
                 "trace_frequency": "non_overlapping_10_session",
                 "portfolio_contract": {"execution_delay_sessions": 0},
@@ -173,30 +192,35 @@ def test_ranker_mtm_rejects_formal_state_ahead_of_ledger(
         match="formal ranker state is ahead",
     ):
         mtm._latest_governed_signal(
-            model_id="us_x1_1",
+            model_id="us_x1_3",
             formal_signal_date="2026-07-30",
             cutoff="2026-08-07",
             ledger_dir=Path("unused"),
         )
 
 
-def test_mtm_contract_targets_only_cn_x1_1_and_detects_stale_settled_trace() -> None:
-    assert RANKER_MTM_MODELS == (("cn_x1_1", "cn"),)
+def test_mtm_contract_targets_active_us_and_cn_rankers() -> None:
+    assert RANKER_MODELS == (("us_x1_3", "us"), ("cn_x1_1", "cn"))
     performance = {
         "report": [
             {"date": "2026-07-29", "holding_end_date": "2026-07-29"}
         ]
     }
     assert _latest_settled_performance_end(performance) == "2026-07-29"
-    assert _has_current_provisional_mtm(performance, cutoff="2026-08-07") is False
+    assert _has_current_provisional_mtm(
+        performance,
+        cutoff="2026-08-07",
+        signal_date="2026-07-29",
+    ) is False
 
 
-def test_mtm_contract_accepts_current_bundle_v2_projection() -> None:
+def test_mtm_contract_requires_matching_signal_identity() -> None:
     performance = {
         "report": [
             {"date": "2026-07-29", "holding_end_date": "2026-07-29"},
             {
                 "date": "2026-08-07",
+                "signal_date": "2026-07-29",
                 "holding_end_date": "2026-08-07",
                 "provisional_mtm": True,
                 "settlement_status": "provisional_mtm",
@@ -204,4 +228,13 @@ def test_mtm_contract_accepts_current_bundle_v2_projection() -> None:
         ]
     }
     assert _latest_settled_performance_end(performance) == "2026-07-29"
-    assert _has_current_provisional_mtm(performance, cutoff="2026-08-07") is True
+    assert _has_current_provisional_mtm(
+        performance,
+        cutoff="2026-08-07",
+        signal_date="2026-07-29",
+    ) is True
+    assert _has_current_provisional_mtm(
+        performance,
+        cutoff="2026-08-07",
+        signal_date="2026-08-05",
+    ) is False
