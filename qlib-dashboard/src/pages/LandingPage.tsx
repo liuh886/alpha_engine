@@ -14,6 +14,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { ProductShareButton } from '@/components/ProductShareButton';
+import { PwaOpenButton, usePwaInstall } from '@/components/PwaInstall';
 import { useAlphaMembership } from '@/hooks/useAlphaMembership';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
@@ -346,6 +347,7 @@ function EvidencePreview() {
 export function LandingPage() {
   const theme = useGlobalStore((state) => state.theme);
   const membership = useAlphaMembership();
+  const pwa = usePwaInstall();
   const [formalRuns, setFormalRuns] = useState<GovernedRunSummary[]>([]);
 
   useEffect(() => {
@@ -410,6 +412,9 @@ export function LandingPage() {
             <div className="landing-actions">
               <AccountAction {...accountAction} className="landing-primary-action w-full sm:w-auto" />
               <Link className="landing-secondary-action" to="/strategies">Explore public strategies <ArrowRight className="h-4 w-4" /></Link>
+              {(pwa.installable || pwa.iosManualInstall) && (
+                <PwaOpenButton className="inline-flex min-h-[42px] w-full items-center justify-center gap-2 px-3 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground sm:w-auto" />
+              )}
             </div>
             <p className="mx-auto mt-4 max-w-2xl text-xs leading-relaxed text-muted-foreground">{accessNote}</p>
             <p className="landing-trust-line">Read-only · Evidence-governed · No broker execution</p>
