@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PwaInstallProvider } from '@/components/PwaInstall';
 import { LandingPage } from './LandingPage';
 
 const membershipState = vi.hoisted(() => ({
@@ -22,6 +23,16 @@ vi.mock('@/lib/governed-run', () => ({
   loadFormalRuns: vi.fn().mockResolvedValue({ runs: [], errors: [] }),
   loadRunSection: vi.fn().mockResolvedValue({ report: [] }),
 }));
+
+function renderLanding() {
+  return render(
+    <PwaInstallProvider>
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>
+    </PwaInstallProvider>,
+  );
+}
 
 describe('Alpha Engine landing page', () => {
   beforeEach(() => {
@@ -50,11 +61,7 @@ describe('Alpha Engine landing page', () => {
   });
 
   it('leads with product value, public proof and a real account entry point', () => {
-    const { container } = render(
-      <MemoryRouter>
-        <LandingPage />
-      </MemoryRouter>,
-    );
+    const { container } = renderLanding();
 
     expect(screen.getByRole('heading', { name: /know what your systematic strategy is doing/i })).toBeInTheDocument();
     expect(screen.getByText('QQQR v4.3')).toBeInTheDocument();
@@ -87,12 +94,7 @@ describe('Alpha Engine landing page', () => {
 
   it('turns the same landing CTAs into console entry after sign-in', () => {
     membershipState.signedIn = true;
-
-    render(
-      <MemoryRouter>
-        <LandingPage />
-      </MemoryRouter>,
-    );
+    renderLanding();
 
     expect(screen.getByRole('link', { name: /^open console$/i })).toHaveAttribute('href', '/app');
     const consoleActions = screen.getAllByRole('link', { name: /open strategy console/i });
@@ -104,12 +106,7 @@ describe('Alpha Engine landing page', () => {
   it('surfaces Pro state without adding a separate login route', () => {
     membershipState.signedIn = true;
     membershipState.isPro = true;
-
-    render(
-      <MemoryRouter>
-        <LandingPage />
-      </MemoryRouter>,
-    );
+    renderLanding();
 
     expect(screen.getByRole('link', { name: /^open pro$/i })).toHaveAttribute('href', '/app');
     const proActions = screen.getAllByRole('link', { name: /open alpha engine pro/i });
