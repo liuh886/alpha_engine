@@ -1,8 +1,8 @@
 """Attach an evidence-cutoff MTM observation to formal ranker packages.
 
-The accepted v1 report remains settled, append-only evidence. This module writes a
-single replaceable ``provisional_mtm`` sidecar on US/CN ranker packages. Bundle v2
-may project that row into its performance trace for the dashboard.
+MTM is a valuation view over an already sealed forward decision. It never scores
+or creates a target. The strategy signal ledger is the only authority allowed to
+advance live ranker state.
 """
 
 from __future__ import annotations
@@ -14,16 +14,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.artifacts.formal_refresh import load_object, write_object
 from src.artifacts.strategy_signal_ledger import read_latest_evaluation
 from src.research.cn130_cross_sectional_ranking import read_qlib_feature
-from src.research.ranker_current_target import (
-    CN_MODEL_ID,
-    US_MODEL_ID,
-    next_due_session,
-    score_cn_current_target,
-    score_us_current_target,
-)
-from src.artifacts.formal_refresh import load_object, write_object
+from src.research.ranker_current_target import CN_MODEL_ID, US_MODEL_ID, next_due_session
 
 
 class RankerProvisionalMtmError(ValueError):
@@ -79,6 +73,8 @@ def _latest_governed_signal(
     cutoff: str,
     ledger_dir: Path,
 ) -> dict[str, Any] | None:
+    """Return the canonical live signal, never a recomputed substitute."""
+
     record = read_latest_evaluation(ledger_dir, model_version_id=model_id)
     if record is None:
         return None
@@ -88,34 +84,21 @@ def _latest_governed_signal(
     signal_date = str(signal.get("signal_date") or record.get("signal_date") or "")
     if not signal_date:
         raise RankerProvisionalMtmError("latest governed signal date is missing")
-    if pd.Timestamp(formal_signal_date) < pd.Timestamp(signal_date) <= pd.Timestamp(cutoff):
-        return signal
-    return None
 
-
-def _score_due_target(
-    *,
-    model_id: str,
-    provider_dir: Path,
-    formal_package: Path,
-    signal_date: str,
-    cutoff: str,
-    repository_root: Path,
-) -> dict[str, Any]:
-    empty_ledger = repository_root / "artifacts" / "formal-refresh" / "mtm-empty-ledger" / model_id
-    kwargs = {
-        "provider_dir": provider_dir,
-        "formal_package": formal_package,
-        "ledger_dir": empty_ledger,
-        "signal_date": signal_date,
-        "market_cutoff": f"formal evidence cutoff {cutoff}",
-        "repository_root": repository_root,
-    }
-    if model_id == US_MODEL_ID:
-        return score_us_current_target(**kwargs)
-    if model_id == CN_MODEL_ID:
-        return score_cn_current_target(**kwargs)
-    raise RankerProvisionalMtmError(f"unsupported ranker model: {model_id}")
+    formal_ts = pd.Timestamp(formal_signal_date)
+    signal_ts = pd.Timestamp(signal_date)
+    cutoff_ts = pd.Timestamp(cutoff)
+    if signal_ts < formal_ts:
+        raise RankerProvisionalMtmError(
+            "formal ranker state is ahead of the canonical forward ledger: "
+            f"formal={formal_signal_date} ledger={signal_date}"
+        )
+    if signal_ts > cutoff_ts:
+        raise RankerProvisionalMtmError(
+            "canonical forward signal exceeds the MTM cutoff: "
+            f"signal={signal_date} cutoff={cutoff}"
+        )
+    return signal
 
 
 def _benchmark_field(model_id: str) -> tuple[str, str]:
@@ -200,17 +183,13 @@ def attach_ranker_provisional_mtm(
     )
     if signal is None:
         due = next_due_session(anchor=formal_signal, sessions=calendar)
-        if due is None or pd.Timestamp(due) > pd.Timestamp(cutoff):
-            write_object(package_path, package)
-            return None
-        signal = _score_due_target(
-            model_id=model_id,
-            provider_dir=provider_dir,
-            formal_package=package_path,
-            signal_date=due,
-            cutoff=cutoff,
-            repository_root=repository_root,
-        )
+        if due is not None and pd.Timestamp(due) <= pd.Timestamp(cutoff):
+            raise RankerProvisionalMtmError(
+                "MTM cannot advance forward state: canonical ledger signal is missing for "
+                f"{model_id} due={due} cutoff={cutoff}"
+            )
+        write_object(package_path, package)
+        return None
 
     signal_date = str(signal.get("signal_date") or "")
     target = _valid_target(signal)
@@ -224,6 +203,7 @@ def attach_ranker_provisional_mtm(
         cutoff=cutoff,
         execution_delay_sessions=delay,
     )
+    rebalance_turnover = float(signal.get("turnover_units") or 0.0)
     transaction_cost = (
         float(signal.get("estimated_transaction_cost") or 0.0)
         if entry_date is not None
@@ -266,8 +246,11 @@ def attach_ranker_provisional_mtm(
         "period_return": net_return,
         "benchmark_return": benchmark_return,
         "excess_return": net_return - benchmark_return,
-        "turnover": float(signal.get("turnover_units") or 0.0),
+        "turnover": 0.0,
+        "rebalance_date": signal_date,
+        "rebalance_turnover": rebalance_turnover,
         "transaction_cost": transaction_cost,
+        "transaction_cost_source_date": signal_date,
         "drawdown": drawdown,
         "window": str(previous.get("window") or ""),
         "evaluation": str(previous.get("evaluation") or "reporting"),
@@ -303,7 +286,7 @@ def attach_ranker_provisional_mtm(
         "signal_date": signal_date,
         "entry_date": entry_date,
         "target_weights": target,
-        "source": "governed_current_target",
+        "source": "strategy_signal_ledger",
         "performance_row": mtm_row,
         "research_only": True,
         "trade_ready": False,
