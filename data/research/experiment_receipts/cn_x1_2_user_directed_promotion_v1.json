@@ -2,14 +2,24 @@
   "decision": "promoted_by_explicit_user_governance_exception",
   "governance_interpretation": {
     "automatic_promotion": false,
-    "current_target_activation": "blocked_until_cn_x1_2_formal_bundle_identity",
+    "current_target_activation": "blocked_pending_maintained_cn_x1_2_inference_adapter",
     "failed_evidence_retained": true,
     "formal_acceptance_supported_by_preregistered_gates": false,
-    "formal_bundle_transition": "declared_pending_materialization",
+    "formal_bundle_transition": "materialized_complete_bundle_v2",
     "research_baseline_promotion_authorized": true
   },
   "model_id": "cn_x1_2",
   "no_2026h2_evidence_consumed": true,
+  "portfolio_evidence": {
+    "cost_paths_bps": [
+      20,
+      60
+    ],
+    "holdings": "retained_exact_all_rebalance_targets_including_CSI300_sleeve",
+    "path": "data/research/cn_x1_2_alpha158_breadth_scaled_v1/challenger_portfolio_evidence.json",
+    "performance_trace": "retained_exact_non_overlapping_10_session_trace",
+    "sha256": "dcdf929ea24efa792b8ae04e316d518abeb98f8b76bd7ecaf5f65ecb5d535bdc"
+  },
   "positive_evidence": {
     "aggregate_max_drawdown_20bps": -0.1477144267185888,
     "exact_portfolio_reproduction": true,
@@ -47,7 +57,7 @@
     "experiment_id": "cn_x1_2_alpha158_breadth_scaled_v1",
     "original_decision": "cn_x1_2_alpha158_breadth_scaled_development_rejected",
     "receipt": "data/research/experiment_receipts/cn_x1_2_alpha158_breadth_scaled_v1.json",
-    "receipt_sha256": "cc54f329706fcf7990de2548f7abbc63bdc9aa2f8ef0a243ff48e36e6266f530",
+    "receipt_sha256": "2979b2a011b1b02f22fe6e8443fbe7199b3d3734e13d90030b5886d46f17a258",
     "source_run_identity_sha256": "bfbf3e2c513a27e4aae0aea78a8d5460f963306a061b85e1a742ec9d0d5e2eb9"
   },
   "trade_ready": false

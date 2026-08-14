@@ -141,7 +141,12 @@ class ScoreCheckpointStore:
         attrs: Mapping[str, Any],
     ) -> pd.DataFrame:
         dtype = {"instrument": str} if "instrument" in index_names else None
-        frame = pd.read_csv(path, dtype=dtype)
+        # The checkpoint writer retains IEEE-754 values with ``%.17g``.  Pandas'
+        # default fast parser may choose a nearby, but different, float on
+        # reload, which breaks the semantic hash even though the CSV content
+        # hash is intact.  The round-trip converter is required for checkpoint
+        # recovery to reproduce the exact in-memory score frame.
+        frame = pd.read_csv(path, dtype=dtype, float_precision="round_trip")
         missing = sorted(set([*index_names, *columns]) - set(frame.columns))
         if missing:
             raise ValueError(f"score checkpoint columns are missing: {missing}")

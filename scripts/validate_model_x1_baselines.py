@@ -11,7 +11,7 @@ from typing import Any
 
 import yaml
 
-from src.artifacts.formal_bundle_reader import load_formal_run
+from src.artifacts.formal_bundle_reader import load_formal_run, load_retained_formal_run
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
 EXPECTED_ACTIVE_BASELINES = {"us": "us_x1_3", "cn": "cn_x1_2"}
@@ -35,7 +35,7 @@ MODEL_ARTIFACTS: dict[str, dict[str, Any]] = {
     },
     "cn_x1_1": {
         "display_name": "CN x1.1",
-        "status": "accepted_formal_baseline",
+        "status": "historical_baseline_superseded",
         "config": "configs/models/cn_x1_1.yaml",
         "notebook": "notebooks/models/cn_x1_1_complete_backtest.ipynb",
         "frozen_research_spec": "configs/research_experiments/cn_x1_1_fallback_aware_certification_v1.yaml",
@@ -348,7 +348,11 @@ def _validate_us_x1_3(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
 def _validate_cn_x1_1(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
     model_id = "cn_x1_1"
     config, config_path = _validate_common_model(root, model_id, entry)
-    package = load_formal_run(root, model_id).refresh_state()
+    package = load_retained_formal_run(
+        root,
+        "data/research/formal_model_runs/cn_ranker/cn_x1_1/"
+        "cn_x1_1-through-2026_08_12/manifest.json",
+    ).refresh_state()
     if config.get("status") != "accepted_formal_baseline":
         raise ValueError("cn_x1_1: formal status mismatch")
     if package.get("model_id") != model_id:
@@ -400,6 +404,23 @@ def _validate_cn_x1_2(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("cn_x1_2: promotion must not claim formal gate support")
     if promotion.get("research_only") is not True or promotion.get("trade_ready") is not False:
         raise ValueError("cn_x1_2: promotion research boundary mismatch")
+    package = load_formal_run(root, model_id).refresh_state()
+    completeness = dict(package.get("evidence_completeness") or {})
+    if (
+        package.get("model_id") != model_id
+        or completeness.get("status") != "complete"
+        or completeness.get("missing") != []
+        or package.get("evidence_cutoff") != "2026-06-30"
+    ):
+        raise ValueError("cn_x1_2: complete formal Bundle v2 identity mismatch")
+    publication = dict(config.get("formal_publication") or {})
+    if (
+        publication.get("transition_status") != "materialized_complete_bundle_v2"
+        or publication.get("evidence_completeness") != "complete_frontend_bundle_v2"
+        or publication.get("formal_manifest_sha256")
+        != package["evidence"]["accepted_formal_manifest_sha256"]
+    ):
+        raise ValueError("cn_x1_2: materialized publication binding mismatch")
     return {
         "model_id": model_id,
         "display_name": "CN x1.2",
@@ -410,7 +431,8 @@ def _validate_cn_x1_2(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
         "promotion_authority": str(lineage["promotion_authority"]),
         "formal_acceptance_supported": False,
         "failed_gate": failed[0],
-        "formal_bundle_transition": "declared_pending_materialization",
+        "formal_bundle_transition": "materialized_complete_bundle_v2",
+        "evidence_completeness": "complete",
         "trade_ready": False,
     }
 

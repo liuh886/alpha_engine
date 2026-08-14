@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from src.artifacts.formal_bundle_reader import load_formal_run
+from src.artifacts.formal_bundle_reader import load_retained_formal_run
 from src.research import qqq_authoritative_replay as qqq_replay
 from src.research import rules_formal_replay_gate as replay_gate
 from src.research.cn130_tail_factor_discovery import choose_holdings
@@ -268,7 +268,11 @@ def test_cn_regime_portfolio_respects_continuation_weights() -> None:
 
 
 def test_committed_cn_frozen_trace_is_exact_prefix_of_current_formal() -> None:
-    package = load_formal_run(Path.cwd(), "cn_x1_1").refresh_state()
+    package = load_retained_formal_run(
+        Path.cwd(),
+        "data/research/formal_model_runs/cn_ranker/cn_x1_1/"
+        "cn_x1_1-through-2026_08_12/manifest.json",
+    ).refresh_state()
     receipt = verify_cn_frozen_prefix(Path.cwd(), package)
     assert receipt["decision"] == "exact_replay"
     assert receipt["trace_reproduction"]["exact"] is True

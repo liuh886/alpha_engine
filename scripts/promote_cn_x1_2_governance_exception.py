@@ -22,6 +22,10 @@ EXPERIMENT_ID = "cn_x1_2_alpha158_breadth_scaled_v1"
 FAILED_GATE = "2026h1_drawdown_worsening_within_3pp"
 AUTHORITY_ISSUE = 954
 AUTHORITY_COMMENT = "https://github.com/liuh886/alpha_engine/issues/954#issuecomment-5293367579"
+PORTFOLIO_EVIDENCE = Path(
+    "data/research/cn_x1_2_alpha158_breadth_scaled_v1/"
+    "challenger_portfolio_evidence.json"
+)
 
 
 def _load_object(path: Path) -> dict[str, Any]:
@@ -43,8 +47,11 @@ def _write_object(path: Path, payload: Mapping[str, Any]) -> None:
     )
 
 
-def build_promotion_receipt(source: Path) -> dict[str, Any]:
+def build_promotion_receipt(
+    source: Path, portfolio_evidence: Path = PORTFOLIO_EVIDENCE
+) -> dict[str, Any]:
     raw = _load_object(source)
+    rows = _load_object(portfolio_evidence)
     if raw.get("experiment_id") != EXPERIMENT_ID or raw.get("status") != "completed_rejected":
         raise ValueError("CN x1.2 source experiment identity/status drifted")
     if raw.get("decision") != "cn_x1_2_alpha158_breadth_scaled_development_rejected":
@@ -80,6 +87,15 @@ def build_promotion_receipt(source: Path) -> dict[str, Any]:
         raise ValueError("CN x1.2 selected/incumbent evidence is missing")
     if selected.get("factor_count") != 17 or selected.get("exposure_policy") != "breadth_scaled":
         raise ValueError("CN x1.2 selected candidate identity drifted")
+    if (
+        rows.get("record_type") != "cn_x1_2_challenger_portfolio_evidence"
+        or rows.get("experiment_id") != EXPERIMENT_ID
+        or rows.get("candidate_id") != CANDIDATE_ID
+        or rows.get("no_2026h2_evidence_consumed") is not True
+        or rows.get("research_only") is not True
+        or rows.get("trade_ready") is not False
+    ):
+        raise ValueError("CN x1.2 row-level portfolio evidence boundary drifted")
 
     promotion_receipt = {
         "schema_version": "cn_x1_2_user_directed_promotion_v1",
@@ -98,6 +114,13 @@ def build_promotion_receipt(source: Path) -> dict[str, Any]:
             "receipt_sha256": _sha256(source),
             "source_run_identity_sha256": raw.get("source_run_identity_sha256"),
             "original_decision": raw["decision"],
+        },
+        "portfolio_evidence": {
+            "path": portfolio_evidence.as_posix(),
+            "sha256": _sha256(portfolio_evidence),
+            "cost_paths_bps": [20, 60],
+            "performance_trace": "retained_exact_non_overlapping_10_session_trace",
+            "holdings": "retained_exact_all_rebalance_targets_including_CSI300_sleeve",
         },
         "preregistered_gate_result": {
             "passed": 21,
@@ -128,8 +151,8 @@ def build_promotion_receipt(source: Path) -> dict[str, Any]:
             "formal_acceptance_supported_by_preregistered_gates": False,
             "research_baseline_promotion_authorized": True,
             "failed_evidence_retained": True,
-            "formal_bundle_transition": "declared_pending_materialization",
-            "current_target_activation": "blocked_until_cn_x1_2_formal_bundle_identity",
+            "formal_bundle_transition": "materialized_complete_bundle_v2",
+            "current_target_activation": "blocked_pending_maintained_cn_x1_2_inference_adapter",
         },
         "no_2026h2_evidence_consumed": True,
         "research_only": True,
@@ -141,6 +164,11 @@ def build_promotion_receipt(source: Path) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--portfolio-evidence",
+        type=Path,
+        default=PORTFOLIO_EVIDENCE,
+    )
+    parser.add_argument(
         "--source",
         type=Path,
         default=Path("data/research/experiment_receipts/cn_x1_2_alpha158_breadth_scaled_v1.json"),
@@ -151,7 +179,7 @@ def main() -> None:
         default=Path("data/research/experiment_receipts/cn_x1_2_user_directed_promotion_v1.json"),
     )
     args = parser.parse_args()
-    promotion = build_promotion_receipt(args.source)
+    promotion = build_promotion_receipt(args.source, args.portfolio_evidence)
     _write_object(args.promotion_output, promotion)
     print(json.dumps({"promotion": str(args.promotion_output)}))
 

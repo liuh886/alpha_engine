@@ -12,7 +12,7 @@ from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
 FRESHNESS = Path("data/research/formal_model_runs")
 NATIVE = Path("data/research/model_runs")
-MODEL_ID = "cn_x1_1"
+MODEL_ID = "cn_x1_2"
 
 
 def _read(path: Path):
@@ -64,6 +64,9 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
     preview = tmp_path / "active-preview"
     shutil.copytree(NATIVE, preview)
     shutil.rmtree(preview / "cn_ranker" / MODEL_ID)
+    retained_predecessor = preview / "cn_ranker" / "cn_x1_1"
+    if retained_predecessor.exists():
+        shutil.rmtree(retained_predecessor)
     strategy = load_active_strategy_catalog().by_model_version_id[MODEL_ID]
     build_preview_bundle(package_path, strategy, output_root=preview)
     update_catalog(

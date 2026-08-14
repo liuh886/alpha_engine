@@ -99,6 +99,6 @@ def test_formal_catalog_fails_closed_when_active_model_is_missing() -> None:
 
     with pytest.raises(
         ActiveStrategyCatalogError,
-        match="formal catalog (contains model outside|/active strategy mismatch)",
+        match="formal catalog( contains model outside|/active strategy mismatch)",
     ):
         assert_formal_catalog_matches_active_strategies(catalog, active)

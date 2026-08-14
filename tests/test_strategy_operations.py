@@ -24,7 +24,7 @@ FACTOR_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
 QQQ_MODEL = "qqqi_qqq_tqqq_v4_3"
 BYD_MODEL = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
 US_MODEL = "us_x1_3"
-CN_MODEL = "cn_x1_1"
+CN_MODEL = "cn_x1_2"
 
 
 def _by_model(payload: dict[str, object]) -> dict[str, dict[str, object]]:
@@ -186,8 +186,8 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
     assert all(row["status"] == "awaiting_observation" for row in observed.values())
     assert observed[US_MODEL]["decision_cadence"] == "Every 10 provider sessions"
     assert observed[CN_MODEL]["decision_cadence"] == "Every 10 provider sessions"
-    assert observed[CN_MODEL]["model_version_id"] == "cn_x1_1"
-    assert "cn_x1_2" not in observed
+    assert observed[CN_MODEL]["model_version_id"] == "cn_x1_2"
+    assert "cn_x1_1" not in observed
 
 
 def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:

@@ -20,7 +20,10 @@ def _scores() -> pd.DataFrame:
         ],
         names=["datetime", "instrument"],
     )
-    frame = pd.DataFrame({"score": [0.125, -0.25]}, index=index)
+    # The second value is one of the exact XGBoost scores that pandas' default
+    # CSV parser rounds to the adjacent float.  Checkpoint recovery must retain
+    # the original IEEE-754 value so the semantic hash remains reusable.
+    frame = pd.DataFrame({"score": [0.125, -0.21510428190231323]}, index=index)
     frame.attrs["provenance"] = "test"
     return frame
 

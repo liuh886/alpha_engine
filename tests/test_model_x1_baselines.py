@@ -9,7 +9,7 @@ from types import ModuleType
 import pytest
 import yaml
 
-from src.artifacts.formal_bundle_reader import load_formal_run
+from src.artifacts.formal_bundle_reader import load_retained_formal_run
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,7 +29,11 @@ def _load_validator() -> ModuleType:
 
 
 def _cn_refresh_state() -> dict:
-    return load_formal_run(ROOT, "cn_x1_1").refresh_state()
+    return load_retained_formal_run(
+        ROOT,
+        "data/research/formal_model_runs/cn_ranker/cn_x1_1/"
+        "cn_x1_1-through-2026_08_12/manifest.json",
+    ).refresh_state()
 
 
 def test_active_strategy_catalog_owns_current_x1_identities() -> None:
@@ -64,6 +68,8 @@ def test_model_configs_and_evidence_tie_across_lifecycle() -> None:
     assert cn_x1_2["promotion_authority"] == "explicit_user_direction_2026_08_14"
     assert cn_x1_2["formal_acceptance_supported"] is False
     assert cn_x1_2["failed_gate"] == "2026h1_drawdown_worsening_within_3pp"
+    assert cn_x1_2["formal_bundle_transition"] == "materialized_complete_bundle_v2"
+    assert cn_x1_2["evidence_completeness"] == "complete"
     us_x1_2 = next(item for item in result["models"] if item["model_id"] == "us_x1_2")
     assert us_x1_2["status"] == "historical_baseline_superseded"
     assert us_x1_2["selected_candidate"] == "r11_sampled"

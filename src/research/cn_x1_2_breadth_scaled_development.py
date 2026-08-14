@@ -41,6 +41,7 @@ from src.research.cn_ranker_exact_portfolio_replay import (
     _ledger,
     _load_benchmark_returns,
     _score_hash,
+    _sha256_file,
     _write_json,
     economic_rebalance_dates,
     validate_benchmark_execution_economic_rebalance_dates,
@@ -977,6 +978,43 @@ def _run_breadth_scaled_development_impl(
                 results[candidate_id][cost_bps][3]
             )
 
+    # Persist the exact row-level challenger evidence produced by this replay.
+    # The promotion path must never reconstruct performance, holdings, trades,
+    # or attribution from aggregate metrics.  Keeping both governed cost paths
+    # also lets downstream validators bind the frontend package to the same
+    # frames used by the development gates and reproduction checks.
+    portfolio_evidence_path = output / "challenger_portfolio_evidence.json"
+    portfolio_evidence = {
+        "schema_version": "1.0.0",
+        "record_type": "cn_x1_2_challenger_portfolio_evidence",
+        "experiment_id": spec.experiment_id,
+        "candidate_id": challenger_id,
+        "development_windows": list(DEVELOPMENT_WINDOWS),
+        "development_hard_stop": DEVELOPMENT_HARD_STOP.strftime("%Y-%m-%d"),
+        "no_2026h2_evidence_consumed": True,
+        "cost_paths": {
+            str(cost_bps): {
+                "summary": results[challenger_id][cost_bps][0],
+                "periods": results[challenger_id][cost_bps][1].to_dict(orient="records"),
+                "holdings": results[challenger_id][cost_bps][2].to_dict(orient="records"),
+                "window_summary": results[challenger_id][cost_bps][3].to_dict(
+                    orient="records"
+                ),
+                "periods_sha256": _frame_hash(
+                    results[challenger_id][cost_bps][1], ["window", "datetime"]
+                ),
+                "holdings_sha256": _frame_hash(
+                    results[challenger_id][cost_bps][2],
+                    ["window", "datetime", "instrument"],
+                ),
+            }
+            for cost_bps in (BASE_COST_BPS, STRESS_COST_BPS)
+        },
+        "research_only": True,
+        "trade_ready": False,
+    }
+    _write_json(portfolio_evidence_path, portfolio_evidence)
+
     receipt = {
         "schema_version": "1.1",
         "experiment_id": spec.experiment_id,
@@ -1004,6 +1042,10 @@ def _run_breadth_scaled_development_impl(
         "active_share_benchmark_sleeve": scaled,
         "score_reproduction": reproduction,
         "portfolio_reproduction": portfolio_reproduction,
+        "challenger_portfolio_evidence": {
+            "path": portfolio_evidence_path.name,
+            "sha256": _sha256_file(portfolio_evidence_path),
+        },
         "score_artifact_contract_version": SCORE_CONTRACT_SCHEMA_VERSION,
         "score_checkpoint_root": str(score_store.root),
         "score_artifacts": score_artifacts,
