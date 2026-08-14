@@ -1,0 +1,64 @@
+{
+  "decision": "promoted_by_explicit_user_governance_exception",
+  "governance_interpretation": {
+    "automatic_promotion": false,
+    "current_target_activation": "blocked_pending_maintained_cn_x1_2_inference_adapter",
+    "failed_evidence_retained": true,
+    "formal_acceptance_supported_by_preregistered_gates": false,
+    "formal_bundle_transition": "materialized_complete_bundle_v2",
+    "research_baseline_promotion_authorized": true
+  },
+  "model_id": "cn_x1_2",
+  "no_2026h2_evidence_consumed": true,
+  "portfolio_evidence": {
+    "cost_paths_bps": [
+      20,
+      60
+    ],
+    "holdings": "retained_exact_all_rebalance_targets_including_CSI300_sleeve",
+    "path": "data/research/cn_x1_2_alpha158_breadth_scaled_v1/challenger_portfolio_evidence.json",
+    "performance_trace": "retained_exact_non_overlapping_10_session_trace",
+    "sha256": "dcdf929ea24efa792b8ae04e316d518abeb98f8b76bd7ecaf5f65ecb5d535bdc"
+  },
+  "positive_evidence": {
+    "aggregate_max_drawdown_20bps": -0.1477144267185888,
+    "exact_portfolio_reproduction": true,
+    "exact_score_reproduction": true,
+    "incumbent_aggregate_max_drawdown_20bps": -0.14965173967111822,
+    "incumbent_relative_excess_20bps": 0.5928961481305439,
+    "incumbent_relative_excess_60bps": 0.3742960572846028,
+    "mean_rank_ic": 0.034634399999999996,
+    "positive_windows": 4,
+    "relative_excess_20bps": 0.7566420588854332,
+    "relative_excess_60bps": 0.5156241713521426
+  },
+  "preregistered_gate_result": {
+    "candidate_2026h1_max_drawdown": -0.127254261403144,
+    "drawdown_delta_percentage_points": -4.798990466643405,
+    "failed_gates": [
+      "2026h1_drawdown_worsening_within_3pp"
+    ],
+    "incumbent_2026h1_max_drawdown": -0.07926435673670995,
+    "maximum_allowed_worsening_percentage_points": 3.0,
+    "passed": 21,
+    "supported": false,
+    "total": 22
+  },
+  "promotion_authority": {
+    "audit_comment": "https://github.com/liuh886/alpha_engine/issues/954#issuecomment-5293367579",
+    "issue": 954,
+    "kind": "explicit_user_direction"
+  },
+  "promotion_date": "2026-08-14",
+  "research_only": true,
+  "schema_version": "cn_x1_2_user_directed_promotion_v1",
+  "selected_candidate": "cn_x1_2_alpha158_breadth_scaled",
+  "source_experiment": {
+    "experiment_id": "cn_x1_2_alpha158_breadth_scaled_v1",
+    "original_decision": "cn_x1_2_alpha158_breadth_scaled_development_rejected",
+    "receipt": "data/research/experiment_receipts/cn_x1_2_alpha158_breadth_scaled_v1.json",
+    "receipt_sha256": "2979b2a011b1b02f22fe6e8443fbe7199b3d3734e13d90030b5886d46f17a258",
+    "source_run_identity_sha256": "bfbf3e2c513a27e4aae0aea78a8d5460f963306a061b85e1a742ec9d0d5e2eb9"
+  },
+  "trade_ready": false
+}

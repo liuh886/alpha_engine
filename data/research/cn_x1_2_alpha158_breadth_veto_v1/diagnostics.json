@@ -1,0 +1,62 @@
+[
+  {
+    "candidate_id": "baseline_cn_x1_1",
+    "icir": 0.053936,
+    "rank_ic": -0.018593,
+    "window": "2024H1"
+  },
+  {
+    "candidate_id": "cn_x1_2_alpha158_breadth_veto",
+    "icir": 0.040973,
+    "rank_ic": -0.010725,
+    "window": "2024H1"
+  },
+  {
+    "candidate_id": "baseline_cn_x1_1",
+    "icir": -0.17536,
+    "rank_ic": -0.055602,
+    "window": "2024H2"
+  },
+  {
+    "candidate_id": "cn_x1_2_alpha158_breadth_veto",
+    "icir": -0.108259,
+    "rank_ic": -0.039084,
+    "window": "2024H2"
+  },
+  {
+    "candidate_id": "baseline_cn_x1_1",
+    "icir": 0.337747,
+    "rank_ic": 0.066004,
+    "window": "2025H1"
+  },
+  {
+    "candidate_id": "cn_x1_2_alpha158_breadth_veto",
+    "icir": 0.389035,
+    "rank_ic": 0.080278,
+    "window": "2025H1"
+  },
+  {
+    "candidate_id": "baseline_cn_x1_1",
+    "icir": 0.146644,
+    "rank_ic": 0.013491,
+    "window": "2025H2"
+  },
+  {
+    "candidate_id": "cn_x1_2_alpha158_breadth_veto",
+    "icir": 0.10934,
+    "rank_ic": 0.014285,
+    "window": "2025H2"
+  },
+  {
+    "candidate_id": "baseline_cn_x1_1",
+    "icir": 0.849299,
+    "rank_ic": 0.132224,
+    "window": "2026H1"
+  },
+  {
+    "candidate_id": "cn_x1_2_alpha158_breadth_veto",
+    "icir": 0.791853,
+    "rank_ic": 0.128418,
+    "window": "2026H1"
+  }
+]

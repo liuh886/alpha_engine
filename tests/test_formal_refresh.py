@@ -245,9 +245,7 @@ def test_finalize_writes_v2_freshness_and_receipt(tmp_path: Path) -> None:
 
 
 def test_formal_refresh_parallelizes_and_seals_provider_builds() -> None:
-    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
     assert "providers:\n    needs: prepare" in workflow
     assert "market: [us, cn]" in workflow
     assert "uses: actions/cache/restore@v4" in workflow
@@ -256,9 +254,7 @@ def test_formal_refresh_parallelizes_and_seals_provider_builds() -> None:
 
 
 def test_formal_refresh_is_bundle_v2_only() -> None:
-    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
     runner = Path("scripts/run_formal_strategy_refresh.py").read_text(encoding="utf-8")
     transaction = Path("scripts/run_formal_refresh_transaction.py").read_text(encoding="utf-8")
     for text in (workflow, runner, transaction):
@@ -273,9 +269,7 @@ def test_formal_refresh_is_bundle_v2_only() -> None:
 
 
 def test_formal_refresh_fans_out_and_fans_in_preview_v2_atomically() -> None:
-    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
     assert "plan:\n    needs: [prepare, providers]" in workflow
     assert "strategy:\n    needs: [prepare, plan]" in workflow
     assert "task: ${{ fromJson(needs.plan.outputs.task_matrix) }}" in workflow
@@ -283,14 +277,12 @@ def test_formal_refresh_fans_out_and_fans_in_preview_v2_atomically() -> None:
     assert "uv run python scripts/run_formal_strategy_refresh.py" in workflow
     assert "pattern: formal-strategy-*-${{ github.run_id }}" in workflow
     assert "run_formal_refresh_transaction.py assemble" in workflow
-    assert "--candidate-preview-root \"$CANDIDATE_PREVIEW_ROOT\"" in workflow
-    assert "--native-root \"$CANDIDATE_PREVIEW_ROOT\"" in workflow
+    assert '--candidate-preview-root "$CANDIDATE_PREVIEW_ROOT"' in workflow
+    assert '--native-root "$CANDIDATE_PREVIEW_ROOT"' in workflow
 
 
 def test_formal_refresh_yaml_contains_no_model_execution_recipe() -> None:
-    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
     strategy_start = workflow.index("\n  strategy:\n")
     publish_start = workflow.index("\n  publish:\n", strategy_start)
     strategy_block = workflow[strategy_start:publish_start]
@@ -301,9 +293,7 @@ def test_formal_refresh_yaml_contains_no_model_execution_recipe() -> None:
 
 
 def test_strategy_results_are_uploaded_even_when_one_task_fails() -> None:
-    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
     start = workflow.index("      - name: Upload bounded strategy receipt and evidence")
     end = workflow.index("\n\n  publish:", start)
     block = workflow[start:end]
@@ -321,9 +311,7 @@ def test_cn_duplicate_evidence_concurrency_lives_in_repository_runner() -> None:
 
 
 def test_market_evidence_is_content_addressed_and_parallel() -> None:
-    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
     start = workflow.index("      - name: Build shared governed Market Evidence")
     end = workflow.index("      - name: Build shared Model Data Bundle")
     block = workflow[start:end]
@@ -335,9 +323,7 @@ def test_market_evidence_is_content_addressed_and_parallel() -> None:
 
 
 def test_formal_refresh_publishes_one_shared_model_data_bundle() -> None:
-    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
     assert workflow.count("scripts/data/build_model_data_bundle.py") == 1
     assert "data/research/model_data_bundle_v1" in workflow
     assert "cancel-in-progress: false" in workflow

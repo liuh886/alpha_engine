@@ -15,7 +15,11 @@ from src.common.runtime_settings import PROJECT_ROOT
 from src.factors.library import load_factor_library
 from src.factors.model_contract import resolve_canonical_factor_ids
 from src.research.cn130_cross_sectional_ranking import forward_returns, load_provider_panel
-from src.research.cn_x1_1_regime_gated import RegimeGateSpec, build_regime_state, run_regime_portfolio
+from src.research.cn_x1_1_regime_gated import (
+    RegimeGateSpec,
+    build_regime_state,
+    run_regime_portfolio,
+)
 from src.research.cross_sectional_experiment_runner import load_cross_sectional_experiment_spec
 from src.research.qlib_execution_common import (
     load_window_benchmark_returns,
@@ -121,6 +125,175 @@ def _portfolio_contract(spec) -> tuple[dict[str, dict[str, str]], str]:
     return normalized, _sha256_file(path)
 
 
+def economic_rebalance_dates(
+    evaluation_dates: pd.DatetimeIndex,
+    rebalance_sessions: int,
+) -> pd.DatetimeIndex:
+    """Return exactly the economic rebalance dates the portfolio cadence samples.
+
+    :func:`run_regime_portfolio` trades on ``sorted(datetime.unique())
+    [::rebalance_sessions]``, which equals ``evaluation_dates[::rebalance_sessions]``
+    on the shared daily horizon-eligible calendar. This helper derives and
+    validates that slice — non-empty, unique, monotonically sorted, cadence-spaced
+    — so execution validation can fail closed instead of silently skipping
+    observations.
+    """
+
+    if rebalance_sessions <= 0:
+        raise ValueError("rebalance_sessions must be positive")
+    dates = pd.DatetimeIndex(sorted(pd.DatetimeIndex(evaluation_dates).normalize()))
+    if dates.empty:
+        raise ValueError("evaluation_dates must not be empty")
+    if not dates.is_unique:
+        raise ValueError("evaluation_dates must be unique")
+    sampled = dates[::rebalance_sessions]
+    if sampled.empty:
+        raise ValueError(
+            f"evaluation_dates yield no rebalance dates at cadence {rebalance_sessions}"
+        )
+    positions = [dates.get_loc(value) for value in sampled]
+    for left, right in zip(positions, positions[1:]):
+        if right - left < rebalance_sessions:
+            raise ValueError("rebalance cadence drifted below the declared sessions")
+    return sampled
+
+
+def _load_benchmark_returns(
+    runtime,
+    *,
+    benchmark_instrument: str,
+    return_expression: str,
+    evaluation_dates: pd.DatetimeIndex,
+    start: str,
+    end: str,
+    provenance: str,
+    horizon: int,
+    required_dates: pd.DatetimeIndex | None = None,
+    require_finite: bool = True,
+) -> pd.DataFrame:
+    """Load raw benchmark returns for one OOS evaluation window.
+
+    ``required_dates`` defaults to every ``evaluation_dates`` session, matching
+    the frozen complete-daily contract: a missing required date fails closed.
+    The Issue #947 development path narrows ``required_dates`` to the economic
+    rebalance dates actually traded, so irrelevant unsampled tail dates are
+    neither required nor finiteness-checked.
+
+    ``require_finite`` keeps the finiteness gate on for the frozen complete-daily
+    contract. The #947 economic-date contract instead gates execution on the
+    delay-1 ``benchmark_execution`` series actually consumed by the portfolio,
+    so it loads this delay-0 diagnostic frame with ``require_finite=False``: a
+    non-finite diagnostic value is retained as-is (never fabricated or filled)
+    and simply does not gate execution.
+    """
+
+    raw = normalize_qlib_frame_index(
+        runtime.features(
+            [benchmark_instrument],
+            [return_expression],
+            start,
+            end,
+        )
+    )
+    if raw.empty:
+        raise ValueError(
+            f"Benchmark '{benchmark_instrument}' produced empty data in [{start}, {end}]"
+        )
+    if isinstance(raw.index, pd.MultiIndex):
+        raw = raw.xs(benchmark_instrument, level="instrument")
+    series = raw.iloc[:, 0] if isinstance(raw, pd.DataFrame) else raw
+    result = series.to_frame("return").sort_index()
+    if not result.index.is_unique:
+        raise ValueError(f"Benchmark '{benchmark_instrument}' contains duplicate dates")
+
+    required = (
+        pd.DatetimeIndex(required_dates)
+        if required_dates is not None
+        else pd.DatetimeIndex(evaluation_dates)
+    )
+    missing_dates = required.difference(result.index)
+    if len(missing_dates) > 0:
+        raise ValueError(
+            f"Benchmark '{benchmark_instrument}' is missing "
+            f"{len(missing_dates)} of {len(required)} required dates "
+            f"in [{start}, {end}]"
+        )
+    result = result.loc[required].copy()
+
+    if require_finite:
+        finite = np.isfinite(result["return"].to_numpy())
+        if not finite.all():
+            raise ValueError(
+                f"Benchmark '{benchmark_instrument}' has "
+                f"{int((~finite).sum())} non-finite return value(s) on "
+                f"required dates in [{start}, {end}]"
+            )
+    result.attrs.update(
+        {
+            "provenance": provenance,
+            "horizon": horizon,
+            "expression": return_expression,
+        }
+    )
+    return result
+
+
+def validate_execution_economic_rebalance_dates(
+    execution_test: pd.DataFrame,
+    rebalance_dates: pd.DatetimeIndex,
+    window: str,
+) -> None:
+    """Fail closed if any economic rebalance date is absent from the execution panel.
+
+    ``execution_test`` is one window's candidate execution-return frame already
+    narrowed to the evaluation dates. Every ``rebalance_dates`` entry must be
+    present (the date must occur at least once); unsampled tail dates are
+    deliberately ignored. Per-instrument finiteness is deliberately NOT required
+    here — the fixed portfolio consumes only ``choose_holdings``-selected rows
+    and the shared portfolio path fails closed on the actual selected holdings.
+    """
+
+    rebalance = execution_test.loc[
+        execution_test.index.get_level_values("datetime").isin(rebalance_dates)
+    ]
+    missing = sorted(
+        pd.DatetimeIndex(rebalance_dates).difference(rebalance.index.get_level_values("datetime"))
+    )
+    if missing:
+        raise ValueError(
+            f"CN execution returns are missing {len(missing)} economic "
+            f"rebalance date(s) in {window}: "
+            f"{[str(value)[:10] for value in missing]}"
+        )
+
+
+def validate_benchmark_execution_economic_rebalance_dates(
+    benchmark_execution: pd.Series,
+    rebalance_dates: pd.DatetimeIndex,
+    window: str,
+) -> None:
+    """Fail closed on the delay-1 benchmark execution series the portfolio trades.
+
+    ``run_regime_portfolio`` consumes ``benchmark_execution`` (delay-1 forward
+    returns of the benchmark) for its risk-off leg and period attribution. Every
+    economic rebalance date must be present with a finite delay-1 value; a missing
+    or non-finite entry would silently drop a period, so it fails closed here
+    instead of in the delay-0 diagnostic frame.
+    """
+
+    present = pd.DatetimeIndex(benchmark_execution.index)
+    missing = sorted(pd.DatetimeIndex(rebalance_dates).difference(present))
+    if missing:
+        raise ValueError(
+            f"Benchmark execution is missing {len(missing)} economic rebalance "
+            f"date(s) in {window}: {[str(value)[:10] for value in missing]}"
+        )
+    if not np.isfinite(benchmark_execution.reindex(rebalance_dates).to_numpy()).all():
+        raise ValueError(
+            f"Benchmark execution has non-finite values on economic rebalance dates in {window}"
+        )
+
+
 def _windows(spec, runtime):
     walk = spec.parent.walk_forward
     strategy = spec.parent.strategy
@@ -204,9 +377,7 @@ def _candidate_factor_contracts(spec) -> dict[str, dict[str, Any]]:
                     f"candidate {candidate.candidate_id} additions require library_sources"
                 )
             if not isinstance(raw_ids, list) or not raw_ids:
-                raise ValueError(
-                    f"candidate {candidate.candidate_id} additions require factor_ids"
-                )
+                raise ValueError(f"candidate {candidate.candidate_id} additions require factor_ids")
             library_sources.extend(str(value).strip() for value in raw_sources)
             factor_ids.extend(str(value).strip() for value in raw_ids)
 
@@ -220,8 +391,7 @@ def _candidate_factor_contracts(spec) -> dict[str, dict[str, Any]]:
             "factor_ids": tuple(definition.factor_id for definition in definitions),
             "expressions": tuple(definition.expression for definition in definitions),
             "implementation_hashes": {
-                definition.factor_id: definition.implementation_hash
-                for definition in definitions
+                definition.factor_id: definition.implementation_hash for definition in definitions
             },
         }
     return contracts
@@ -245,9 +415,7 @@ def _ledger(
     frame["entity"] = frame["instrument"].map(
         lambda symbol: str(classification[symbol].get("entity", symbol))
     )
-    frame["sector"] = frame["instrument"].map(
-        lambda symbol: str(classification[symbol]["sector"])
-    )
+    frame["sector"] = frame["instrument"].map(lambda symbol: str(classification[symbol]["sector"]))
     frame["industry"] = frame["instrument"].map(
         lambda symbol: str(classification[symbol].get("industry", ""))
     )
@@ -276,15 +444,9 @@ def _candidate_summary(
     stress: dict[str, Any],
 ) -> dict[str, Any]:
     rank_ic = [
-        float(row["rank_ic"])
-        for row in diagnostic_rows
-        if row["candidate_id"] == candidate_id
+        float(row["rank_ic"]) for row in diagnostic_rows if row["candidate_id"] == candidate_id
     ]
-    icir = [
-        float(row["icir"])
-        for row in diagnostic_rows
-        if row["candidate_id"] == candidate_id
-    ]
+    icir = [float(row["icir"]) for row in diagnostic_rows if row["candidate_id"] == candidate_id]
     return {
         "candidate_id": candidate_id,
         "factor_groups": list(factor_groups),
@@ -319,11 +481,7 @@ def run_exact_cn_ranker_portfolio_replay(
     output = (
         Path(output_dir).resolve()
         if output_dir is not None
-        else PROJECT_ROOT
-        / "artifacts"
-        / "research_experiments"
-        / spec.experiment_id
-        / "stage_b"
+        else PROJECT_ROOT / "artifacts" / "research_experiments" / spec.experiment_id / "stage_b"
     )
     output.mkdir(parents=True, exist_ok=True)
 
@@ -389,8 +547,7 @@ def run_exact_cn_ranker_portfolio_replay(
         )
     )
     expression_columns = {
-        expression: f"feature_{index}"
-        for index, expression in enumerate(union_expressions)
+        expression: f"feature_{index}" for index, expression in enumerate(union_expressions)
     }
 
     ledgers: dict[str, list[pd.DataFrame]] = {
@@ -557,15 +714,11 @@ def run_exact_cn_ranker_portfolio_replay(
     baseline_stress = results[baseline_id][STRESS_COST_BPS][0]
     challenger_base = results[challenger_id][BASE_COST_BPS][0]
     challenger_stress = results[challenger_id][STRESS_COST_BPS][0]
-    drawdown_delta = float(
-        challenger_base["max_drawdown"] - baseline_base["max_drawdown"]
-    )
+    drawdown_delta = float(challenger_base["max_drawdown"] - baseline_base["max_drawdown"])
 
     second_ledgers: list[pd.DataFrame] = []
     reproduction: dict[str, dict[str, str]] = {}
-    challenger = next(
-        item for item in spec.candidates if item.candidate_id == challenger_id
-    )
+    challenger = next(item for item in spec.candidates if item.candidate_id == challenger_id)
     deterministic_scores = True
     for window in windows:
         cached = cache[window.label]
@@ -626,8 +779,7 @@ def run_exact_cn_ranker_portfolio_replay(
             "second_holdings": second_holdings_hash,
         }
         deterministic_portfolio = deterministic_portfolio and (
-            first_period_hash == second_period_hash
-            and first_holdings_hash == second_holdings_hash
+            first_period_hash == second_period_hash and first_holdings_hash == second_holdings_hash
         )
 
     positive_windows = int(challenger_base["positive_excess_windows"])
@@ -640,18 +792,11 @@ def run_exact_cn_ranker_portfolio_replay(
         > float(baseline_base["relative_excess"]),
         "beats_incumbent_60bps": float(challenger_stress["relative_excess"])
         > float(baseline_stress["relative_excess"]),
-        "stress_relative_excess_positive": float(
-            challenger_stress["relative_excess"]
-        )
-        > 0.0,
+        "stress_relative_excess_positive": float(challenger_stress["relative_excess"]) > 0.0,
         "at_least_three_of_four_positive_windows": positive_windows >= 3,
-        "max_drawdown_above_minus_25pct": float(challenger_base["max_drawdown"])
-        >= -0.25,
+        "max_drawdown_above_minus_25pct": float(challenger_base["max_drawdown"]) >= -0.25,
         "drawdown_worsening_within_3pp": drawdown_delta >= -0.03,
-        "risk_on_relative_excess_positive": float(
-            challenger_base["risk_on_relative_excess"]
-        )
-        > 0.0,
+        "risk_on_relative_excess_positive": float(challenger_base["risk_on_relative_excess"]) > 0.0,
         "risk_off_relative_no_worse_than_cost_drag": risk_off_cost_gate,
         "exact_score_reproduction": deterministic_scores,
         "exact_portfolio_reproduction": deterministic_portfolio,
@@ -660,13 +805,9 @@ def run_exact_cn_ranker_portfolio_replay(
     support = {
         "challenger": challenger_id,
         "baseline": baseline_id,
-        "improvement_vs_incumbent_20bps": float(
-            challenger_base["relative_excess"]
-        )
+        "improvement_vs_incumbent_20bps": float(challenger_base["relative_excess"])
         - float(baseline_base["relative_excess"]),
-        "improvement_vs_incumbent_60bps": float(
-            challenger_stress["relative_excess"]
-        )
+        "improvement_vs_incumbent_60bps": float(challenger_stress["relative_excess"])
         - float(baseline_stress["relative_excess"]),
         "worst_drawdown_delta_vs_incumbent": drawdown_delta,
         "positive_window_count": positive_windows,
@@ -687,9 +828,7 @@ def run_exact_cn_ranker_portfolio_replay(
         "observed_provider_identity_sha256": observed_provider,
         "sector_classification_sha256": classification_identity,
         "selection_windows": list(SELECTION_WINDOWS),
-        "portfolio_contract": (spec.raw.get("execution") or {}).get(
-            "exact_portfolio"
-        ),
+        "portfolio_contract": (spec.raw.get("execution") or {}).get("exact_portfolio"),
         "candidates": candidate_rows,
         "support_boundary": support,
         "score_reproduction": reproduction,

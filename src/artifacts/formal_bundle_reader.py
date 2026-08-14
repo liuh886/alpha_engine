@@ -211,44 +211,12 @@ class FormalRun:
         }
 
 
-def load_formal_run(
-    repository_root: str | Path,
-    model_version_id: str,
-    *,
-    relative_root: Path = Path("data/research/formal_model_runs"),
+def _load_formal_manifest(
+    repository: Path,
+    formal_root: Path,
+    record: Mapping[str, Any],
 ) -> FormalRun:
-    repository = Path(repository_root).resolve()
-    formal_root = (repository / relative_root).resolve()
-    try:
-        formal_root.relative_to(repository)
-    except ValueError as exc:
-        raise FormalBundleReadError("formal root escapes repository") from exc
-
-    catalog_path = formal_root / "catalog.json"
-    catalog = _object(catalog_path)
-    validate_catalog(catalog)
-    if (
-        catalog.get("channel") != "formal"
-        or catalog.get("research_only") is not True
-        or catalog.get("trade_ready") is not False
-    ):
-        raise FormalBundleReadError("formal catalog boundary is invalid")
-    rows = catalog.get("records")
-    if not isinstance(rows, list):
-        raise FormalBundleReadError("formal catalog records are missing")
-    matches = [
-        dict(row)
-        for row in rows
-        if isinstance(row, Mapping) and row.get("model_version_id") == model_version_id
-    ]
-    if len(matches) != 1:
-        raise FormalBundleReadError(
-            f"expected one accepted formal run for {model_version_id}, found {len(matches)}"
-        )
-    record = matches[0]
-    if record.get("publication_status") != "accepted_formal_baseline":
-        raise FormalBundleReadError(f"formal run is not accepted: {model_version_id}")
-
+    model_version_id = str(record.get("model_version_id") or "")
     manifest_path = (formal_root / str(record.get("manifest_path") or "")).resolve()
     try:
         manifest_path.relative_to(formal_root)
@@ -313,3 +281,84 @@ def load_formal_run(
         manifest=manifest,
         sections=sections,
     )
+
+
+def load_formal_run(
+    repository_root: str | Path,
+    model_version_id: str,
+    *,
+    relative_root: Path = Path("data/research/formal_model_runs"),
+) -> FormalRun:
+    """Load the one catalog-active accepted formal run for a model."""
+
+    repository = Path(repository_root).resolve()
+    formal_root = (repository / relative_root).resolve()
+    try:
+        formal_root.relative_to(repository)
+    except ValueError as exc:
+        raise FormalBundleReadError("formal root escapes repository") from exc
+
+    catalog_path = formal_root / "catalog.json"
+    catalog = _object(catalog_path)
+    validate_catalog(catalog)
+    if (
+        catalog.get("channel") != "formal"
+        or catalog.get("research_only") is not True
+        or catalog.get("trade_ready") is not False
+    ):
+        raise FormalBundleReadError("formal catalog boundary is invalid")
+    rows = catalog.get("records")
+    if not isinstance(rows, list):
+        raise FormalBundleReadError("formal catalog records are missing")
+    matches = [
+        dict(row)
+        for row in rows
+        if isinstance(row, Mapping) and row.get("model_version_id") == model_version_id
+    ]
+    if len(matches) != 1:
+        raise FormalBundleReadError(
+            f"expected one accepted formal run for {model_version_id}, found {len(matches)}"
+        )
+    record = matches[0]
+    if record.get("publication_status") != "accepted_formal_baseline":
+        raise FormalBundleReadError(f"formal run is not accepted: {model_version_id}")
+    return _load_formal_manifest(repository, formal_root, record)
+
+
+def load_retained_formal_run(
+    repository_root: str | Path,
+    manifest_relative_path: str | Path,
+    *,
+    relative_root: Path = Path("data/research/formal_model_runs"),
+) -> FormalRun:
+    """Load one immutable retained formal bundle outside the active catalog.
+
+    Superseded models remain auditable after the active catalog advances.  This
+    route keeps the same manifest and section digest checks as the active reader,
+    but it intentionally does not claim that the model is currently active.
+    """
+
+    repository = Path(repository_root).resolve()
+    formal_root = (repository / relative_root).resolve()
+    manifest_path = (repository / manifest_relative_path).resolve()
+    try:
+        formal_root.relative_to(repository)
+        relative_manifest = manifest_path.relative_to(formal_root)
+    except ValueError as exc:
+        raise FormalBundleReadError("retained formal manifest escapes formal root") from exc
+    if not manifest_path.is_file():
+        raise FormalBundleReadError(f"retained formal manifest is missing: {manifest_path}")
+    manifest = _object(manifest_path)
+    validate_manifest(manifest)
+    record = {
+        "model_version_id": manifest.get("model_version_id"),
+        "model_family_id": manifest.get("model_family_id"),
+        "model_kind": manifest.get("model_kind"),
+        "run_id": manifest.get("run_id"),
+        "bundle_id": manifest.get("bundle_id"),
+        "evidence_cutoff": manifest.get("evidence_cutoff"),
+        "publication_status": manifest.get("publication_status"),
+        "manifest_path": relative_manifest.as_posix(),
+        "manifest_sha256": _sha256(manifest_path),
+    }
+    return _load_formal_manifest(repository, formal_root, record)

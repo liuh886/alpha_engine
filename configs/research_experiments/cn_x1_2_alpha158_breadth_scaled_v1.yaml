@@ -1,0 +1,195 @@
+# Issue #954 — CN x1.2 breadth-scaled development. Single mechanism delta only.
+# Authority for development only; does not reopen the rejected certification and
+# never authorizes promotion. 2026H2 stays the untouched certification holdout.
+schema_version: '1.0'
+experiment_id: cn_x1_2_alpha158_breadth_scaled_v1
+runner: cross_sectional_xgb_ranker_v1
+development_runner: cn_x1_2_breadth_scaled_development_v1
+active: false
+status: research_candidate_development
+result_receipt: data/research/experiment_receipts/cn_x1_2_alpha158_breadth_scaled_v1.json
+parent_model_id: cn_x1_1
+rejected_parent_candidate: cn_x1_2_alpha158_three_mechanism
+authority_issue: 954
+research_only: true
+trade_ready: false
+automatic_promotion: false
+
+purpose: >-
+  Test exactly one interpretable risk-control mechanism (breadth-scaled active
+  exposure) on the CN x1.2 family while keeping the frozen 17-factor ranking
+  signal, frozen XGBoost parameters, and all CN130/CSI300 execution economics
+  unchanged from the rejected challenger. The incumbent baseline_cn_x1_1 keeps
+  the existing two_of_three regime rule at full exposure. The challenger uses the
+  same two_of_three eligibility but scales the active sleeve to
+  clamp(breadth_value / 0.50, 0, 1), allocating the active share equally across
+  the exact 4 selected names and the remainder to the CSI300 benchmark sleeve.
+  2026H2 is reserved as untouched certification holdout; development evidence
+  stops at 2026-06-30.
+
+diagnostic_lineage:
+  source_issue: 954
+  new_holdout_consumed: false
+  development_hard_stop: '2026-06-30'
+  reserved_holdout_start: '2026-07-01'
+
+snapshot:
+  policy: exact_selected_pool_source_rebuild
+  source_dir: data/csv_source
+  # Governed upstream selected-pool source lineage (full canonical CSVs); shared
+  # across the CN x1.2 family and independent of this spec's development cutoff.
+  source_component_identity_sha256: 15248fcc8ffe83bdc025d23f07b2ab0fa7cca71880583f5c2af1db75ae35c55d
+  # Derived exact-cutoff provider identity (date <= cutoff), bound by the rebuild.
+  provider_identity_sha256: 6f17a9eba541159a4cb472721b32758f6bac4892d1a917730fa1b62e9d455980
+  cutoff: '2026-06-30'
+
+fixed_model:
+  model_id: cn_x1_1
+  frozen_spec: configs/research_paradigms/cn_x1_2_alpha158_breadth_scaled_development_v1.yaml
+
+factor_library:
+  source: configs/factor_libraries/ohlcv.yaml
+
+candidates:
+  - candidate_id: baseline_cn_x1_1
+    role: baseline
+    factor_groups:
+      - cn_balanced_ohlcv
+    regime_rule: two_of_three
+    exposure_policy: full_exposure
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 100
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 1.0
+      colsample_bytree: 1.0
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+  - candidate_id: cn_x1_2_alpha158_breadth_scaled
+    role: challenger
+    factor_groups:
+      - cn_balanced_ohlcv
+    canonical_factor_additions:
+      library_sources:
+        - src/factors/sets/qlib_alpha158.py
+      factor_ids:
+        - qlib_alpha158.cntd30
+        - qlib_alpha158.cord5
+        - qlib_alpha158.imin30
+    regime_rule: two_of_three
+    exposure_policy: breadth_scaled
+    xgb_native:
+      n_gain_bins: 5
+      num_boost_round: 100
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 1.0
+      colsample_bytree: 1.0
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+windows:
+  candidate_selection:
+    - 2024H1
+    - 2024H2
+    - 2025H1
+    - 2025H2
+    - 2026H1
+  consumed_reporting_only: []
+  consumed_reporting_may_enter_selection: false
+  new_holdout_reserved: true
+
+execution:
+  base_cost_bps: 20
+  cost_stress_bps: [20, 60]
+  exact_portfolio:
+    replay_id: exact_cn_ranker_portfolio_v1
+    sector_classification: configs/research_classifications/cn130_sector_industry_v1.yaml
+    sectors: 4
+    names_per_sector: 1
+    weighting: equal_weight
+    holding_sessions: 10
+    rebalance_sessions: 10
+    execution_delay_sessions: 1
+    regime_rule: two_of_three
+    regime_long_ma_sessions: 200
+    regime_momentum_sessions: 60
+    regime_breadth_ma_sessions: 60
+    regime_breadth_threshold: 0.50
+    regime_votes_required: 2
+    risk_off_fallback: '000300'
+
+evaluation:
+  schema_version: '1.0'
+  baseline_candidate_id: baseline_cn_x1_1
+  stress_cost_bps: 60
+  decision: cn_x1_2_alpha158_breadth_scaled_development
+  ranking:
+    - gate_pass_count
+    - worst_drawdown
+    - compounded_relative_excess
+  thresholds:
+    min_window_relative_excess: 0.0
+    min_worst_drawdown: -0.25
+    min_stress_compounded_relative_excess: 0.0
+    max_strongest_positive_window_share: 0.60
+    min_mean_rank_ic_improvement: 0.0
+    require_factor_baseline_dominance: false
+
+development_boundary:
+  authority_issue: 954
+  development_windows:
+    - 2024H1
+    - 2024H2
+    - 2025H1
+    - 2025H2
+    - 2026H1
+  hard_stop: '2026-06-30'
+  reserved_holdout_start: '2026-07-01'
+  must_beat_incumbent_20bps: true
+  must_beat_incumbent_60bps: true
+  require_positive_excess_20bps: true
+  require_positive_excess_60bps: true
+  minimum_positive_selection_windows: 4
+  minimum_max_drawdown: -0.25
+  maximum_drawdown_worsening_vs_incumbent: 0.03
+  maximum_2026h1_drawdown_worsening_vs_incumbent: 0.03
+  require_2026h1_beat_incumbent_20bps: true
+  require_2026h1_beat_incumbent_60bps: true
+  require_positive_risk_on_relative_excess: true
+  require_risk_off_relative_no_worse_than_cost_drag: true
+  risk_on_share_min: 0.25
+  risk_on_share_max: 0.80
+  risk_on_active_hit_rate_min: 0.50
+  require_mean_rank_ic_non_negative: true
+  require_exact_score_reproduction: true
+  require_exact_portfolio_contract: true
+  require_active_share_scaling_engaged: true
+  active_share_max: 1.0
+  require_benchmark_sleeve_present: true
+  require_mixed_weights_sum_to_one: true
+  require_exact_four_finite_unique_selections: true
+
+stop_rules:
+  - no_second_candidate_in_this_experiment
+  - no_new_factor_or_alpha158_search
+  - no_parameter_seed_calibration_threshold_cost_universe_mapping_or_fallback_search
+  - no_2026h2_use
+  - no_automatic_promotion
+  - no_trade_ready_claim
+  - retain_all_failed_evidence
+  - any_gate_failure_ends_candidate
+
+version_policy:
+  maximum_surviving_candidates: 1
+  may_propose_cn_x1_2_candidate: true
+  may_release_cn_x1_2_automatically: false
+  new_untouched_challenge_required: true

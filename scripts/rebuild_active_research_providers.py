@@ -13,7 +13,7 @@ from typing import Any
 
 import yaml
 
-from scripts.build_market_providers import build_market_provider
+from scripts.build_market_providers import build_market_provider, validate_cutoff
 from scripts.data.refresh_selected_pool_prices import BENCHMARKS
 from src.common.runtime_settings import PROJECT_ROOT
 from src.data.market_provider import market_provider_path
@@ -29,6 +29,7 @@ SOURCE_DIR = PROJECT_ROOT / "data" / "csv_source"
 class MissionDataPlane:
     experiment_id: str
     market: str
+    cutoff: str
     source_symbols: tuple[str, ...]
 
 
@@ -55,23 +56,25 @@ def _data_plane_for_spec(path: Path) -> MissionDataPlane | None:
     frozen_spec = _resolve_repo_file(str(fixed_model.get("frozen_spec", "")))
     parent = ResearchParadigmSpec.from_yaml(frozen_spec)
     if parent.market not in {"us", "cn"}:
-        raise ValueError(
-            f"cross-sectional mission has unsupported market {parent.market!r}"
-        )
+        raise ValueError(f"cross-sectional mission has unsupported market {parent.market!r}")
     universe_path = _resolve_repo_file(str(parent.universe["source"]))
     candidates = load_market_watchlist(parent.market, watchlist_path=universe_path)
     benchmark_source = BENCHMARKS[parent.market]
     symbols = tuple(sorted({*candidates, benchmark_source}))
-    missing = [
-        symbol for symbol in symbols if not (SOURCE_DIR / f"{symbol}.csv").is_file()
-    ]
+    missing = [symbol for symbol in symbols if not (SOURCE_DIR / f"{symbol}.csv").is_file()]
     if missing:
         raise ValueError(
             f"mission {payload['experiment_id']} is missing canonical sources: {missing}"
         )
+    snapshot = payload.get("snapshot") or {}
+    cutoff = str(snapshot.get("cutoff", "")).strip()
+    if not cutoff:
+        raise ValueError(f"mission {payload['experiment_id']} is missing snapshot.cutoff")
+    validate_cutoff(cutoff)
     return MissionDataPlane(
         experiment_id=str(payload["experiment_id"]),
         market=parent.market,
+        cutoff=cutoff,
         source_symbols=symbols,
     )
 
@@ -91,19 +94,24 @@ def _group_data_planes(specs: list[Path]) -> dict[str, MissionDataPlane]:
         if plane is None:
             continue
         existing = by_market.get(plane.market)
-        if existing is not None and existing.source_symbols != plane.source_symbols:
+        if existing is not None and (
+            existing.source_symbols != plane.source_symbols or existing.cutoff != plane.cutoff
+        ):
+            detail = (
+                f" (cutoff {existing.cutoff} != {plane.cutoff})"
+                if existing.cutoff != plane.cutoff
+                else ""
+            )
             raise ValueError(
                 "simultaneous active missions in one market must share one exact "
-                f"data plane: {existing.experiment_id} != {plane.experiment_id}"
+                f"data plane: {existing.experiment_id} != {plane.experiment_id}{detail}"
             )
         by_market[plane.market] = plane
     return by_market
 
 
 def _build_exact_provider(plane: MissionDataPlane) -> dict[str, Any]:
-    with tempfile.TemporaryDirectory(
-        prefix=f"alpha-research-{plane.market}-sources-"
-    ) as temporary:
+    with tempfile.TemporaryDirectory(prefix=f"alpha-research-{plane.market}-sources-") as temporary:
         source_stage = Path(temporary) / "csv_source"
         source_stage.mkdir(parents=True)
         for symbol in plane.source_symbols:
@@ -112,6 +120,7 @@ def _build_exact_provider(plane: MissionDataPlane) -> dict[str, Any]:
             csv_dir=source_stage,
             provider_dir=market_provider_path(PROJECT_ROOT, plane.market),
             market=plane.market,
+            cutoff=plane.cutoff,
         )
 
 
@@ -130,6 +139,7 @@ def main() -> int:
     summary = {
         market: {
             "experiment_id": planes[market].experiment_id,
+            "cutoff": planes[market].cutoff,
             "provider_identity_sha256": report["provider_identity_sha256"],
             "session_count": report["calendar"]["session_count"],
             "instrument_count": report["instruments"]["count"],

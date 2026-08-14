@@ -25,6 +25,7 @@ def dump_all(
     include_fields: str | list[str] | None = None,
     date_field_name: str = "date",
     symbol_field_name: str = "symbol",  # reserved for compatibility; files are per-symbol
+    lf_newlines: bool = False,  # write text calendars/instruments with LF on all platforms
 ):
     csv_dir = Path(data_path)
     output_dir = Path(qlib_dir)
@@ -55,8 +56,7 @@ def dump_all(
         symbol = normalize_data_symbol(market, source_symbol)
         if symbol in data_cache:
             raise ValueError(
-                "CSV symbol identities collide after normalization: "
-                f"{source_symbol} -> {symbol}"
+                f"CSV symbol identities collide after normalization: {source_symbol} -> {symbol}"
             )
 
         df = pd.read_csv(csv_file)
@@ -118,7 +118,13 @@ def dump_all(
     n_days = len(sorted_dates)
 
     # Calendar.
-    with open(calendars_dir / "day.txt", "w", encoding="utf-8") as calendar_file:
+    newline = "\n" if lf_newlines else None
+    with open(
+        calendars_dir / "day.txt",
+        "w",
+        encoding="utf-8",
+        newline=newline,
+    ) as calendar_file:
         for date in sorted_dates:
             calendar_file.write(f"{date.strftime('%Y-%m-%d')}\n")
 
@@ -126,7 +132,12 @@ def dump_all(
     # Generate a minimal `day_future.txt` by appending one extra calendar day.
     if sorted_dates:
         future_last = sorted_dates[-1] + pd.Timedelta(days=1)
-        with open(calendars_dir / "day_future.txt", "w", encoding="utf-8") as future_file:
+        with open(
+            calendars_dir / "day_future.txt",
+            "w",
+            encoding="utf-8",
+            newline=newline,
+        ) as future_file:
             for date in sorted_dates:
                 future_file.write(f"{date.strftime('%Y-%m-%d')}\n")
             future_file.write(f"{future_last.strftime('%Y-%m-%d')}\n")
@@ -174,17 +185,13 @@ def dump_all(
             (instruments_dir / f"{market}.txt").write_text(
                 "\n".join(rows) + "\n",
                 encoding="utf-8",
+                newline=newline,
             )
 
     market_counts = {
-        market: len(rows)
-        for market, rows in instrument_rows.items()
-        if market != "all" and rows
+        market: len(rows) for market, rows in instrument_rows.items() if market != "all" and rows
     }
-    print(
-        f"Dump complete: {len(data_cache)} instruments -> {output_dir} "
-        f"(markets={market_counts})"
-    )
+    print(f"Dump complete: {len(data_cache)} instruments -> {output_dir} (markets={market_counts})")
 
 
 if __name__ == "__main__":

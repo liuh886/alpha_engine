@@ -41,7 +41,11 @@ def test_source_backed_active_formals_export_without_recomputation(tmp_path: Pat
         BYD_V13,
     ]
 
-    for model_id in source_ids:
+    source_backed_active = [
+        model_id for model_id in source_ids if model_id in active.by_model_version_id
+    ]
+    assert source_backed_active == ["qqqi_qqq_tqqq_v4_3", BYD_V13]
+    for model_id in source_backed_active:
         strategy = active.by_model_version_id[model_id]
         source_path = SOURCE / f"{model_id}.json"
         source = _read(source_path)
@@ -81,7 +85,7 @@ def test_source_backed_active_formals_export_without_recomputation(tmp_path: Pat
 
 def test_builder_uses_retained_metric_labels_only(tmp_path: Path) -> None:
     active = load_active_strategy_catalog(STRATEGIES)
-    for model_id in ("qqqi_qqq_tqqq_v4_3", "cn_x1_1", BYD_V13):
+    for model_id in ("qqqi_qqq_tqqq_v4_3", BYD_V13):
         manifest_path = export_model_run(
             build_plan(SOURCE / f"{model_id}.json", active.by_model_version_id[model_id]),
             output_root=tmp_path,

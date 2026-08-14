@@ -24,7 +24,7 @@ FACTOR_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
 QQQ_MODEL = "qqqi_qqq_tqqq_v4_3"
 BYD_MODEL = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
 US_MODEL = "us_x1_3"
-CN_MODEL = "cn_x1_1"
+CN_MODEL = "cn_x1_2"
 
 
 def _by_model(payload: dict[str, object]) -> dict[str, dict[str, object]]:
@@ -186,6 +186,8 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
     assert all(row["status"] == "awaiting_observation" for row in observed.values())
     assert observed[US_MODEL]["decision_cadence"] == "Every 10 provider sessions"
     assert observed[CN_MODEL]["decision_cadence"] == "Every 10 provider sessions"
+    assert observed[CN_MODEL]["model_version_id"] == "cn_x1_2"
+    assert "cn_x1_1" not in observed
 
 
 def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
@@ -291,9 +293,7 @@ def test_generated_operations_identity_matches_formal_bundle_catalog(tmp_path: P
         generated_at="2026-08-08T00:00:00Z",
     )
     formal_by_id = {row["model_version_id"]: row for row in formal["records"]}
-    operation_by_id = {
-        row["model_version_id"]: row for row in operations["records"]
-    }
+    operation_by_id = {row["model_version_id"]: row for row in operations["records"]}
     assert set(operation_by_id) == set(formal_by_id)
     for model_id, record in operation_by_id.items():
         catalog_record = formal_by_id[model_id]

@@ -59,7 +59,7 @@ def test_active_preview_catalog_is_exact_active_strategy_set(tmp_path: Path) -> 
     assert preview_ids == {
         "qqqi_qqq_tqqq_v4_3",
         US_X1_3,
-        "cn_x1_1",
+        "cn_x1_2",
         BYD_V13,
     }
     assert "us_x1_2" not in preview_ids
@@ -132,8 +132,8 @@ def test_sync_promotes_persisted_active_preview_set_deterministically(tmp_path: 
     assert freshness["required_models"] == list(
         load_active_strategy_catalog(STRATEGIES).active_model_version_ids
     )
-    assert freshness["date_range_end_required_models"] == [US_X1_3, "cn_x1_1"]
-    assert freshness["freshness_receipt_required_models"] == [US_X1_3, "cn_x1_1"]
+    assert freshness["date_range_end_required_models"] == [US_X1_3, "cn_x1_2"]
+    assert freshness["freshness_receipt_required_models"] == [US_X1_3, "cn_x1_2"]
 
 
 def test_sync_fails_closed_when_preview_catalog_is_incomplete(tmp_path: Path) -> None:

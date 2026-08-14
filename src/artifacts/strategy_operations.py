@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from src.artifacts.model_run_bundle_v2 import validate_catalog
 from src.artifacts.strategy_signal_ledger import (
@@ -52,6 +55,77 @@ BYD_MODE_LABELS = {
 
 class StrategyOperationsError(ValueError):
     """Raised when a governed operations snapshot cannot be constructed."""
+
+
+def _transition_predecessor_strategies(
+    payload: Mapping[str, Any],
+    *,
+    active: Any,
+    strategy_catalog: Path,
+) -> dict[str, ActiveStrategy]:
+    """Keep operations on the formal predecessor during a declared cutover.
+
+    The successor may be active in the registry before its Bundle v2 is
+    materialized. In that narrow state, operations continue to expose the
+    predecessor under its own identity and never relabel predecessor evidence or
+    ledgers as the successor.
+    """
+
+    records = payload.get("records")
+    if not isinstance(records, list):
+        raise StrategyOperationsError("formal catalog records are missing")
+    observed_rows = {
+        str(row.get("model_version_id") or ""): row for row in records if isinstance(row, Mapping)
+    }
+    expected = set(active.active_model_version_ids)
+    observed = set(observed_rows)
+    missing = expected - observed
+    extra = observed - expected
+    if not missing or len(missing) != len(extra):
+        raise StrategyOperationsError("formal catalog transition is not one-to-one")
+
+    root = strategy_catalog.resolve().parents[2]
+    strategies = dict(active.by_model_version_id)
+    unmatched_extra = set(extra)
+    for successor_id in sorted(missing):
+        successor = active.by_model_version_id.get(successor_id)
+        successor_config = root / "configs" / "models" / f"{successor_id}.yaml"
+        if successor is None or not successor_config.is_file():
+            raise StrategyOperationsError("formal catalog successor contract is missing")
+        config = yaml.safe_load(successor_config.read_text(encoding="utf-8"))
+        lineage = config.get("lineage") if isinstance(config, Mapping) else None
+        predecessor_id = (
+            str(lineage.get("supersedes") or "") if isinstance(lineage, Mapping) else ""
+        )
+        predecessor_row = observed_rows.get(predecessor_id)
+        predecessor_config = root / "configs" / "models" / f"{predecessor_id}.yaml"
+        if (
+            predecessor_id not in unmatched_extra
+            or not isinstance(predecessor_row, Mapping)
+            or not predecessor_config.is_file()
+            or predecessor_row.get("model_family_id") != successor.model_family_id
+            or predecessor_row.get("model_kind") != successor.model_kind
+            or predecessor_row.get("publication_status") != successor.formal_status
+        ):
+            raise StrategyOperationsError("formal catalog predecessor transition is invalid")
+        predecessor_payload = yaml.safe_load(predecessor_config.read_text(encoding="utf-8"))
+        display_name = (
+            str(predecessor_payload.get("display_name") or predecessor_id)
+            if isinstance(predecessor_payload, Mapping)
+            else predecessor_id
+        )
+        strategies.pop(successor_id)
+        strategies[predecessor_id] = replace(
+            successor,
+            display_name=display_name,
+            model_version_id=predecessor_id,
+            model_contract=f"configs/models/{predecessor_id}.yaml",
+            signal_ledger=f"data/research/strategy_signal_ledgers/{predecessor_id}",
+        )
+        unmatched_extra.remove(predecessor_id)
+    if unmatched_extra:
+        raise StrategyOperationsError("formal catalog transition has unmatched predecessors")
+    return strategies
 
 
 def _finite(value: object) -> float | None:
@@ -108,17 +182,25 @@ def _formal_records(
         raise StrategyOperationsError("operations read model requires the formal catalog")
     if payload.get("research_only") is not True or payload.get("trade_ready") is not False:
         raise StrategyOperationsError("formal catalog research boundary is invalid")
+    active = load_active_strategy_catalog(strategy_catalog)
     try:
-        active = load_active_strategy_catalog(strategy_catalog)
         assert_formal_catalog_matches_active_strategies(payload, active)
+        strategies = active.by_model_version_id
     except ActiveStrategyCatalogError as exc:
-        raise StrategyOperationsError(str(exc)) from exc
+        try:
+            strategies = _transition_predecessor_strategies(
+                payload,
+                active=active,
+                strategy_catalog=strategy_catalog,
+            )
+        except StrategyOperationsError as transition_exc:
+            raise StrategyOperationsError(str(exc)) from transition_exc
     records = payload.get("records")
     if not isinstance(records, list) or not records:
         raise StrategyOperationsError("formal catalog contains no records")
     return (
         [dict(record) for record in records if isinstance(record, Mapping)],
-        active.by_model_version_id,
+        strategies,
     )
 
 
@@ -178,7 +260,9 @@ def _unavailable(
     if awaiting:
         status = "awaiting_observation"
         state_label = "Awaiting first governed evaluation"
-        note = "The decision publisher exists, but no cutoff-bound evaluation has been committed yet."
+        note = (
+            "The decision publisher exists, but no cutoff-bound evaluation has been committed yet."
+        )
     else:
         status = "pipeline_unavailable"
         state_label = "No governed current-target publisher"

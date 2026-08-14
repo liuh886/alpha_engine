@@ -65,8 +65,13 @@ def write_provider_manifest(
     *,
     market: str,
     source_csv_files: Iterable[str | Path],
+    cutoff: str | None = None,
 ) -> dict[str, Any]:
-    """Write a deterministic identity manifest for one market provider."""
+    """Write a deterministic identity manifest for one market provider.
+
+    ``cutoff`` records the exact-cutoff build bound when supplied; it is part of
+    the identity so a cutoff provider cannot be confused with a full provider.
+    """
 
     provider = Path(provider_dir).resolve()
     market_key = normalize_provider_market(market)
@@ -116,6 +121,8 @@ def write_provider_manifest(
         "features_sha256": _sha256_tree(provider / "features"),
         "source_csvs": sources,
     }
+    if cutoff is not None:
+        payload["cutoff"] = str(cutoff)
     payload["provider_identity_sha256"] = _identity_sha256(payload)
     manifest_path = provider / "provider_manifest.json"
     manifest_path.write_text(

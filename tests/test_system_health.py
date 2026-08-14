@@ -5,7 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from src.artifacts.strategy_operations import build_operations_payload
+from src.artifacts.strategy_operations import (
+    _transition_predecessor_strategies,
+    build_operations_payload,
+)
 from src.artifacts.system_health import (
     SystemHealthError,
     build_system_health,
@@ -37,12 +40,20 @@ def _health(*, freshness: Path = FORMAL_FRESHNESS) -> dict[str, object]:
     )
 
 
-def test_system_health_matches_exact_active_strategy_set() -> None:
+def test_system_health_matches_active_or_declared_transition_strategy_set() -> None:
     payload = _health()
     validate_system_health(payload)
     active = load_active_strategy_catalog()
     observed = {row["model_version_id"] for row in payload["strategies"]}
-    assert observed == set(active.active_model_version_ids)
+    expected = set(active.active_model_version_ids)
+    if observed != expected:
+        formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+        transition = _transition_predecessor_strategies(
+            formal,
+            active=active,
+            strategy_catalog=Path("configs/strategies/registry.json"),
+        )
+        assert observed == set(transition)
     assert {row["market"] for row in payload["markets"]} == {"us", "cn"}
     assert payload["research_only"] is True
     assert payload["trade_ready"] is False

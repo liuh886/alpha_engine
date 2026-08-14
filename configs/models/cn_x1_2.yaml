@@ -1,0 +1,154 @@
+schema_version: '1.0'
+model_id: cn_x1_2
+display_name: CN x1.2
+release_date: '2026-08-14'
+status: accepted_formal_baseline
+research_only: true
+trade_ready: false
+market: cn
+benchmark: '000300'
+objective: Rank CN130 with the frozen 17-factor XGBoost signal and scale the active sector sleeve by cross-sectional breadth.
+lineage:
+  parent: cn_x1_1
+  supersedes: cn_x1_1
+  selected_candidate: cn_x1_2_alpha158_breadth_scaled
+  source_experiment: cn_x1_2_alpha158_breadth_scaled_v1
+  authority_issue: 954
+  promotion_authority: explicit_user_direction_2026_08_14
+  promotion_audit_comment: https://github.com/liuh886/alpha_engine/issues/954#issuecomment-5293367579
+  adoption_decision: user_directed_governance_exception_after_preregistered_rejection
+  promotion_note: >-
+    The user explicitly authorized research-baseline promotion after reviewing the
+    failed experiment. This decision does not convert the failed 2026H1 drawdown
+    gate into a pass and does not authorize live or automated trading.
+universe:
+  universe_id: cn_selected_equities_v3
+  source: configs/research_universes/cn_selected_equities_v3.yaml
+  declared_candidate_count: 130
+  membership_mode: static_curated
+  survivorship_bias: true
+  listing_policy: no_prelisting_fill_coverage_qualified_static_members
+provider_binding:
+  policy: exact_cutoff_provider_identity
+  provider_identity_sha256: 6f17a9eba541159a4cb472721b32758f6bac4892d1a917730fa1b62e9d455980
+  development_cutoff: '2026-06-30'
+  reserved_holdout_start: '2026-07-01'
+features:
+  primary_library: configs/factor_libraries/ohlcv.yaml
+  additional_library_sources:
+  - src/factors/sets/qlib_alpha158.py
+  factor_ids:
+  - ohlcv.momentum.ret_3d
+  - ohlcv.momentum.ret_5d
+  - ohlcv.momentum.ret_10d
+  - ohlcv.momentum.ret_20d
+  - ohlcv.reversal.inv_ret_1d
+  - ohlcv.reversal.inv_ret_3d
+  - ohlcv.reversal.inv_ret_5d
+  - ohlcv.volatility.std_ret_5d
+  - ohlcv.volatility.std_ret_10d
+  - ohlcv.volatility.std_ret_20d
+  - ohlcv.volatility.high_low_range_pct
+  - ohlcv.liquidity.volume_vs_ma_5d
+  - ohlcv.liquidity.volume_vs_ma_10d
+  - ohlcv.liquidity.volume_vs_ma_20d
+  - qlib_alpha158.cntd30
+  - qlib_alpha158.cord5
+  - qlib_alpha158.imin30
+label:
+  type: processed_daily_cross_sectional_percentile_gain
+  economic_return_expression: Ref($close, -10) / $close - 1
+  horizon_sessions: 10
+  gain_bins: 5
+model:
+  family: xgb
+  objective: rank:ndcg
+  tree_method: hist
+  grow_policy: lossguide
+  max_leaves: 31
+  max_depth: 0
+  min_child_weight: 1.0
+  learning_rate: 0.05
+  num_boost_round: 100
+  subsample: 1.0
+  colsample_bytree: 1.0
+  reg_alpha: 0.0
+  reg_lambda: 1.0
+  seed: 42
+  score_orientation: original
+portfolio_construction:
+  selected_sectors: 4
+  names_per_sector: 1
+  selection: one_highest_score_name_from_each_selected_sector
+  regime_rule: two_of_three
+  active_exposure: clamp(cross_sectional_breadth / 0.50, 0, 1)
+  active_weighting: equal_weight_across_four_names
+  benchmark_sleeve: one_minus_active_exposure_in_CSI300
+  risk_off_fallback:
+    instrument: '000300'
+    weight: 1.0
+execution:
+  holding_sessions: 10
+  rebalance_sessions: 10
+  execution_delay_sessions: 1
+  cost_bps_per_unit_turnover: 20
+  stress_cost_bps_per_unit_turnover: 60
+  no_same_session_execution: true
+performance_semantics:
+  schema_version: formal_performance_semantics_v1
+  trace_frequency: non_overlapping_10_session
+  signal_time: score_date_close_t
+  execution_time: provider_close_t_plus_1
+  return_measurement: provider_close_t_plus_1_to_provider_close_t_plus_11
+  price_basis: governed_provider_close
+  performance_date_field: date
+  holding_end_offset_sessions: 11
+  cost:
+    rate_bps: 20.0
+    turnover_formula: initial_allocation_1.0_then_0.5_times_sum_abs_target_minus_previous
+    row_cost_field: transaction_cost
+    net_return_formula: gross_return - transaction_cost
+experiment_evidence:
+  receipt: data/research/experiment_receipts/cn_x1_2_alpha158_breadth_scaled_v1.json
+  promotion_receipt: data/research/experiment_receipts/cn_x1_2_user_directed_promotion_v1.json
+  development_period: 2024H1-2026H1
+  relative_excess_20bps: 0.7566420588854332
+  incumbent_relative_excess_20bps: 0.5928961481305439
+  relative_excess_60bps: 0.5156241713521426
+  incumbent_relative_excess_60bps: 0.3742960572846028
+  aggregate_max_drawdown_20bps: -0.1477144267185888
+  incumbent_aggregate_max_drawdown_20bps: -0.14965173967111822
+  positive_windows: 4/5
+  mean_rank_ic: 0.034634399999999996
+  exact_score_reproduction: true
+  exact_portfolio_reproduction: true
+preregistered_gate_exception:
+  original_decision: cn_x1_2_alpha158_breadth_scaled_development_rejected
+  passed_gates: 21
+  total_gates: 22
+  supported: false
+  failed_gate: 2026h1_drawdown_worsening_within_3pp
+  incumbent_2026h1_max_drawdown: -0.07926435673670995
+  candidate_2026h1_max_drawdown: -0.127254261403144
+  drawdown_delta_percentage_points: -4.798990466643405
+  maximum_allowed_worsening_percentage_points: 3.0
+  interpretation: explicit_user_governance_exception_not_gate_pass
+formal_publication:
+  transition_status: materialized_complete_bundle_v2
+  predecessor_model_id: cn_x1_1
+  evidence_cutoff: '2026-06-30'
+  preview_manifest: data/research/model_runs/cn_ranker/cn_x1_2/cn_x1_2-through-2026_06_30/manifest.json
+  preview_manifest_sha256: 1f2a5e55100b9582a5349e4348baaffe5bb95cc1e12a32044fb38fdc781aad0a
+  formal_manifest: data/research/formal_model_runs/cn_ranker/cn_x1_2/cn_x1_2-through-2026_06_30/manifest.json
+  formal_manifest_sha256: fbc468baa3158e1d598c521084d481d6640566f7853aa6510aca346c7c52f630
+  formal_bundle_catalog: data/research/formal_model_runs/catalog.json
+  current_target_activation: blocked_pending_maintained_cn_x1_2_inference_adapter
+  evidence_completeness: complete_frontend_bundle_v2
+known_limitations:
+- The static CN130 universe carries survivorship bias.
+- The preregistered development decision was rejected because 2026H1 maximum drawdown worsened by 4.799 percentage points versus a 3 percentage-point limit.
+- The explicit user decision promotes the research baseline but does not establish that all preregistered gates passed.
+- No 2026H2 evidence was consumed; prospective evidence remains pending.
+- Historical Bundle v2 evidence is complete through 2026H1; current-target activation remains blocked until a maintained CN x1.2 inference adapter is implemented and identity-bound.
+- Research-only evidence is not authorization for live or automated trading.
+next_version: CN x1.3

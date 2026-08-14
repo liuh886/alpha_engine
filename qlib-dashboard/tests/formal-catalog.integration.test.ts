@@ -30,7 +30,7 @@ describe('published formal catalog', () => {
     expect(result.errors).toEqual([]);
     expect(result.runs.map((run) => run.modelVersionId).sort()).toEqual([
       BYD_V13,
-      'cn_x1_1',
+      'cn_x1_2',
       'qqqi_qqq_tqqq_v4_3',
       'us_x1_3',
     ]);
@@ -42,6 +42,14 @@ describe('published formal catalog', () => {
       expect(evidence.portfolio.positions.length).toBeGreaterThan(0);
       evidenceByModel.set(run.modelVersionId, evidence);
     }
+
+    const cn = evidenceByModel.get('cn_x1_2');
+    expect(cn).toBeDefined();
+    expect(cn?.performance.report).toHaveLength(57);
+    expect(cn?.portfolio.positions).toHaveLength(170);
+    expect(cn?.trades.length).toBeGreaterThan(0);
+    expect(cn?.attribution.length).toBeGreaterThan(0);
+    expect(cn?.robustness.windowSummary).toHaveLength(5);
 
     const byd = evidenceByModel.get(BYD_V13);
     expect(byd).toBeDefined();
