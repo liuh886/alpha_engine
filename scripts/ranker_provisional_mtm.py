@@ -17,7 +17,8 @@ import pandas as pd
 from src.artifacts.formal_refresh import load_object, write_object
 from src.artifacts.strategy_signal_ledger import read_latest_evaluation
 from src.research.cn130_cross_sectional_ranking import read_qlib_feature
-from src.research.ranker_current_target import CN_MODEL_ID, US_MODEL_ID, next_due_session
+from src.research.ranker_current_target import CN_MODEL_ID, next_due_session
+from src.research.us_x1_3_current_target import MODEL_ID as US_MODEL_ID
 
 
 class RankerProvisionalMtmError(ValueError):
@@ -153,7 +154,7 @@ def attach_ranker_provisional_mtm(
     cutoff: str,
     repository_root: Path,
 ) -> dict[str, Any] | None:
-    """Replace one ranker's provisional MTM sidecar with the current cutoff view."""
+    """Replace one ranker's provisional MTM observation with the current cutoff view."""
 
     package = load_object(package_path)
     package.pop("provisional_mtm", None)
@@ -165,13 +166,29 @@ def attach_ranker_provisional_mtm(
     model_id = str(package.get("model_id") or "")
     if model_id not in {US_MODEL_ID, CN_MODEL_ID}:
         raise RankerProvisionalMtmError(f"unsupported formal package: {model_id}")
-    if str(package.get("evidence_cutoff") or "") != cutoff:
+
+    evidence_cutoff = str(package.get("evidence_cutoff") or "")
+    if not evidence_cutoff:
+        raise RankerProvisionalMtmError(f"{model_id} evidence cutoff is missing")
+    if pd.Timestamp(evidence_cutoff) > pd.Timestamp(cutoff):
         raise RankerProvisionalMtmError(
-            f"{model_id} evidence cutoff does not match MTM cutoff: {package.get('evidence_cutoff')} != {cutoff}"
+            f"{model_id} MTM cutoff regresses evidence: {cutoff} < {evidence_cutoff}"
         )
+
     report = package.get("report")
     if not isinstance(report, list) or not report:
         raise RankerProvisionalMtmError(f"{model_id} formal report is empty")
+    settled_report = [
+        row
+        for row in report
+        if isinstance(row, Mapping)
+        and row.get("provisional_mtm") is not True
+        and row.get("settlement_status") != "provisional_mtm"
+    ]
+    if not settled_report:
+        raise RankerProvisionalMtmError(f"{model_id} formal report has no settled rows")
+    package["report"] = settled_report
+    report = settled_report
 
     formal_signal = _formal_signal_date(package)
     calendar = _calendar(provider_dir)
@@ -190,6 +207,15 @@ def attach_ranker_provisional_mtm(
             )
         write_object(package_path, package)
         return None
+
+    package["evidence_cutoff"] = cutoff
+    date_range = package.get("date_range")
+    if isinstance(date_range, dict):
+        date_range["end"] = cutoff
+    if isinstance(freshness, dict):
+        freshness["status"] = "current"
+        freshness["required_cutoff"] = cutoff
+        freshness["latest_completed_session"] = cutoff
 
     signal_date = str(signal.get("signal_date") or "")
     target = _valid_target(signal)
