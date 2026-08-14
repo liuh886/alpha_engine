@@ -70,3 +70,19 @@ def test_production_ranker_workflow_routes_only_to_active_us_x1_3() -> None:
     assert "scripts/run_us_x1_2_current_target.py" not in workflow
     assert "strategy_signal_ledgers/us_x1_2" not in workflow
     assert "strategy_signal_ledgers/us_x1_1" not in workflow
+
+
+def test_production_us_ranker_reuses_governed_history_and_refreshes_only_incrementally() -> None:
+    workflow = (ROOT / ".github/workflows/ranker-10d-current-target.yml").read_text(
+        encoding="utf-8"
+    )
+    us_step = workflow.split("- name: Build due US x1.3 provider and current target", 1)[1].split(
+        "- name: Build due CN provider and current target", 1
+    )[0]
+    cn_step = workflow.split("- name: Build due CN provider and current target", 1)[1].split(
+        "- name: Seal due canonical decisions", 1
+    )[0]
+
+    assert "--source-csv-dir data/csv_clean" in us_step
+    assert "--full-refresh" not in us_step
+    assert "--full-refresh" in cn_step
