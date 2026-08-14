@@ -14,7 +14,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { ProductShareButton } from '@/components/ProductShareButton';
-import { PwaOpenButton } from '@/components/PwaInstall';
+import { useAlphaMembership } from '@/hooks/useAlphaMembership';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
 import { useGlobalStore } from '@/store/globalStore';
@@ -47,6 +47,15 @@ type FleetRow = {
   totalReturn: string;
   cagr: string;
   maxDrawdown: string;
+};
+
+type AccountActionProps = {
+  loading: boolean;
+  signedIn: boolean;
+  isPro: boolean;
+  openAccount: () => void;
+  className: string;
+  compact?: boolean;
 };
 
 function metric(run: GovernedRunSummary, id: string): CanonicalMetricV2 | null {
@@ -97,6 +106,32 @@ function ThemeButton() {
     >
       {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>
+  );
+}
+
+function AccountAction({ loading, signedIn, isPro, openAccount, className, compact = false }: AccountActionProps) {
+  if (loading) {
+    return (
+      <button type="button" className={className} disabled aria-busy="true">
+        Account
+      </button>
+    );
+  }
+
+  if (!signedIn) {
+    return (
+      <button type="button" className={className} onClick={openAccount}>
+        {compact ? 'Sign in' : 'Sign in to Alpha Engine'}
+        {!compact && <ArrowRight className="h-4 w-4" />}
+      </button>
+    );
+  }
+
+  return (
+    <Link className={className} to="/app">
+      {compact ? (isPro ? 'Open Pro' : 'Open console') : (isPro ? 'Open Alpha Engine Pro' : 'Open Strategy Console')}
+      {!compact && <ArrowRight className="h-4 w-4" />}
+    </Link>
   );
 }
 
@@ -310,6 +345,7 @@ function EvidencePreview() {
 
 export function LandingPage() {
   const theme = useGlobalStore((state) => state.theme);
+  const membership = useAlphaMembership();
   const [formalRuns, setFormalRuns] = useState<GovernedRunSummary[]>([]);
 
   useEffect(() => {
@@ -333,6 +369,20 @@ export function LandingPage() {
   }, []);
 
   const featuredRun = selectFleetRuns(formalRuns).find((run) => run.modelFamilyId === 'qqq_rotation') ?? selectFleetRuns(formalRuns)[0] ?? null;
+  const accessNote = membership.loading
+    ? 'Checking account access…'
+    : membership.isPro
+      ? 'Alpha Engine Pro is active. Current holdings, target allocations and live decision signals are unlocked.'
+      : membership.signedIn
+        ? 'Signed in. Public evidence and authenticated tools are available; Pro unlocks current holdings and live decision signals.'
+        : 'Public strategy evidence stays open. Sign in for authenticated tools; Pro unlocks current holdings and live decision signals.';
+
+  const accountAction = {
+    loading: membership.loading,
+    signedIn: membership.signedIn,
+    isPro: membership.isPro,
+    openAccount: membership.openAccount,
+  };
 
   return (
     <div className="alpha-landing">
@@ -348,7 +398,7 @@ export function LandingPage() {
           <a href="https://github.com/liuh886/alpha_engine" target="_blank" rel="noreferrer"><Github className="h-4 w-4" /><span className="sr-only">GitHub</span></a>
           <ProductShareButton landing />
           <ThemeButton />
-          <PwaOpenButton className="landing-nav-cta" />
+          <AccountAction {...accountAction} className="landing-nav-cta" compact />
         </nav>
       </header>
 
@@ -358,9 +408,10 @@ export function LandingPage() {
             <h1>Know what your systematic strategy is doing — and why.</h1>
             <p>Alpha Engine brings current state, target allocation, next decision, formal performance, risk and research evidence into one medium-frequency strategy console.</p>
             <div className="landing-actions">
-              <Link className="landing-primary-action" to="/strategies">Explore strategies <ArrowRight className="h-4 w-4" /></Link>
-              <PwaOpenButton className="landing-secondary-action" />
+              <AccountAction {...accountAction} className="landing-primary-action w-full sm:w-auto" />
+              <Link className="landing-secondary-action" to="/strategies">Explore public strategies <ArrowRight className="h-4 w-4" /></Link>
             </div>
+            <p className="mx-auto mt-4 max-w-2xl text-xs leading-relaxed text-muted-foreground">{accessNote}</p>
             <p className="landing-trust-line">Read-only · Evidence-governed · No broker execution</p>
           </div>
           <FleetPreview runs={formalRuns} />
@@ -387,8 +438,8 @@ export function LandingPage() {
         </section>
 
         <section className="landing-final-cta">
-          <div><h2>See the model. Then inspect the decision.</h2><p>Start with the formal strategy fleet and drill into operating detail only when the decision requires it.</p></div>
-          <Link className="landing-primary-action" to="/strategies">Explore Alpha Engine <ArrowRight className="h-4 w-4" /></Link>
+          <div><h2>See the model. Then inspect the decision.</h2><p>Start with public strategy evidence, then sign in when you need authenticated tools or live Pro decision surfaces.</p></div>
+          <AccountAction {...accountAction} className="landing-primary-action" />
         </section>
       </main>
 
