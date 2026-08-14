@@ -55,23 +55,22 @@ export function PerformanceCharts({
   const [selectedBenchmarkKey, setSelectedBenchmarkKey] = useState<BenchmarkKey | null>(null);
   const [selectedComparisonKeys, setSelectedComparisonKeys] = useState<string[] | null>(null);
   const [rangeKey, setRangeKey] = useState<RangeKey>('all');
-  const [marketCatalog, setMarketCatalog] = useState<MarketEvidenceCatalog | null>(null);
+  const [marketCatalogs, setMarketCatalogs] = useState<MarketEvidenceCatalog[]>([]);
   const [marketBars, setMarketBars] = useState<Record<string, MarketBar[]>>({});
   const [loadingComparisonKeys, setLoadingComparisonKeys] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    setMarketCatalog(null);
+    setMarketCatalogs([]);
     setMarketBars({});
     setSelectedComparisonKeys(null);
     if (!market) return () => { cancelled = true; };
-    loadMarketEvidenceCatalog(market)
-      .then(catalog => {
-        if (!cancelled) setMarketCatalog(catalog);
-      })
-      .catch(() => {
-        if (!cancelled) setMarketCatalog(null);
-      });
+
+    const markets: MarketEvidenceMarket[] = market === 'us' ? ['us', 'cn'] : ['cn', 'us'];
+    Promise.allSettled(markets.map(loadMarketEvidenceCatalog)).then(results => {
+      if (cancelled) return;
+      setMarketCatalogs(results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []));
+    });
     return () => { cancelled = true; };
   }, [market]);
 
@@ -93,8 +92,8 @@ export function PerformanceCharts({
     [declaredBenchmarkId, report],
   );
   const comparisonOptions = useMemo(
-    () => buildPerformanceComparisonOptions(benchmarkOptions, marketCatalog),
-    [benchmarkOptions, marketCatalog],
+    () => buildPerformanceComparisonOptions(benchmarkOptions, marketCatalogs),
+    [benchmarkOptions, marketCatalogs],
   );
 
   const defaultBenchmarkKey = useMemo((): BenchmarkKey | null => {
@@ -125,15 +124,19 @@ export function PerformanceCharts({
   const excessBaseline = activeBenchmark?.label ?? null;
 
   const requestMarketComparison = (key: string) => {
-    if (!marketCatalog || marketBars[key] || loadingComparisonKeys.includes(key)) return;
+    if (marketBars[key] || loadingComparisonKeys.includes(key)) return;
     const option = comparisonOptions.find(candidate => candidate.key === key);
     const symbol = option?.marketSymbol?.symbol;
-    if (!symbol) return;
+    const catalog = option?.market
+      ? marketCatalogs.find(candidate => candidate.market === option.market) ?? null
+      : null;
+    if (!catalog || !symbol) return;
     setLoadingComparisonKeys(current => current.includes(key) ? current : [...current, key]);
-    loadSecurityMarketEvidence(marketCatalog, symbol)
+    loadSecurityMarketEvidence(catalog, symbol)
       .then(evidence => {
         setMarketBars(current => ({ ...current, [key]: evidence.bars }));
       })
+      .catch(() => undefined)
       .finally(() => {
         setLoadingComparisonKeys(current => current.filter(candidate => candidate !== key));
       });
