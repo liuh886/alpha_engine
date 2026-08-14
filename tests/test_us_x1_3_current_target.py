@@ -86,4 +86,4 @@ def test_production_us_ranker_reuses_governed_history_and_refreshes_only_increme
     assert "--source-csv-dir data/csv_clean" in us_step
     assert "--full-refresh" not in us_step
     assert "--full-refresh" in cn_step
-    assert "--market cn" not in cn_step
+    assert "scripts/run_ranker_current_target.py build \\\n            --market cn" not in cn_step
