@@ -78,7 +78,7 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "CSI 300");
   });
 
-  it("lets the user switch between retained baselines while defaulting BYD to the stock itself", () => {
+  it("lets the user switch the primary benchmark while defaulting BYD to the stock itself", () => {
     render(
       <PerformanceCharts report={[
         { date: "2026-01-01", account: 1, benchmark_id: "BYD", bench_byd: 100, bench_byd_v1_1: 1 },
@@ -90,11 +90,30 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "BYD");
     expect(screen.getByTestId("benchmark-line")).toHaveTextContent("BYD");
 
-    fireEvent.change(screen.getByLabelText("Chart baseline"), { target: { value: "benchmark_bydv11" } });
+    fireEvent.click(screen.getByLabelText("Benchmark comparisons"));
+    fireEvent.click(screen.getByLabelText("Use BYD v1.1 as primary benchmark"));
 
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "BYD v1.1");
-    expect(screen.getByTestId("benchmark-line")).toHaveTextContent("BYD v1.1");
+    expect(screen.getAllByTestId("benchmark-line").some(line => line.textContent === "BYD v1.1")).toBe(true);
     expect(equityChartData()[1].excess).toBeCloseTo(0.04, 10);
+  });
+
+  it("can overlay several comparisons without changing Excess until the primary changes", () => {
+    render(
+      <PerformanceCharts report={[
+        { date: "2026-01-01", account: 1, benchmark_id: "QQQ", bench_qqq: 1, bench_hs300: 1 },
+        { date: "2026-01-02", account: 1.08, benchmark_id: "QQQ", bench_qqq: 1.02, bench_hs300: 1.04 },
+        { date: "2026-01-03", account: 1.12, benchmark_id: "QQQ", bench_qqq: 1.04, bench_hs300: 1.05 },
+      ]} />,
+    );
+
+    expect(equityChartData()[1].excess).toBeCloseTo(0.06, 10);
+    fireEvent.click(screen.getByLabelText("Benchmark comparisons"));
+    fireEvent.click(screen.getByLabelText("Compare CSI 300"));
+
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-comparison-count", "2");
+    expect(screen.getAllByTestId("benchmark-line").map(line => line.textContent)).toEqual(expect.arrayContaining(["QQQ", "CSI 300"]));
+    expect(equityChartData()[1].excess).toBeCloseTo(0.06, 10);
   });
 
   it("plots 10-session returns on their realized holding-end date", () => {

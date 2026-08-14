@@ -1,6 +1,7 @@
 import { Calendar, Database, Info, Tag } from 'lucide-react';
 import type { BacktestData } from '@/lib/data-parser';
 import type { FormalBacktestPackage } from '@/lib/formal-backtest';
+import type { MarketEvidenceMarket } from '@/lib/market-evidence';
 import type { ModelParams } from '@/lib/types';
 import { projectFormalPackage } from '@/lib/formal-evidence';
 import { AttributionEvidence } from './AttributionEvidence';
@@ -16,7 +17,15 @@ import { PositionsTable } from './PositionsTable';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-export function Dashboard({ data, params }: { data: BacktestData; params?: ModelParams }) {
+export function Dashboard({
+  data,
+  params,
+  market,
+}: {
+  data: BacktestData;
+  params?: ModelParams;
+  market?: MarketEvidenceMarket;
+}) {
   const meta = data.meta;
   const snapshotId = (params as ModelParams & { data_snapshot_id?: string })?.data_snapshot_id ?? '';
   const hasReport = Array.isArray(data.report) && data.report.length > 0;
@@ -83,7 +92,7 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
                 {formal && <TabsTrigger className="shrink-0" value="evidence">Evidence</TabsTrigger>}
               </TabsList>
 
-              <TabsContent value="performance" className="mt-0"><section data-testid="backtest-performance-section"><PerformanceCharts report={data.report} /></section></TabsContent>
+              <TabsContent value="performance" className="mt-0"><section data-testid="backtest-performance-section"><PerformanceCharts report={data.report} market={market} /></section></TabsContent>
               <TabsContent value="positions" className="mt-0"><section data-testid="position-history-section"><PositionsTable positions={data.positions} report={data.report} /></section></TabsContent>
               {formal && <TabsContent value="trades" className="mt-0"><section data-testid="trade-ledger-section"><FormalBacktestTrades formal={formal} /></section></TabsContent>}
               <TabsContent value="attribution" className="mt-0"><section data-testid="attribution-section"><AttributionEvidence rows={projection.attribution} /></section></TabsContent>
