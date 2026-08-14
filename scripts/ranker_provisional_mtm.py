@@ -152,7 +152,6 @@ def attach_ranker_provisional_mtm(
     provider_dir: Path,
     ledger_dir: Path,
     cutoff: str,
-    repository_root: Path,
 ) -> dict[str, Any] | None:
     """Replace one ranker's provisional MTM observation with the current cutoff view."""
 
