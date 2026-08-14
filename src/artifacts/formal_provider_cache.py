@@ -34,7 +34,7 @@ MARKET_UNIVERSE_PATHS = {
     "cn": "configs/research_universes/cn_selected_equities_v3.yaml",
 }
 DEFAULT_AUXILIARIES = {
-    "us": ("QQQI", "TQQQ", "SGOV", "TYGO"),
+    "us": ("QQQI", "TQQQ", "CGDV", "SGOV", "TYGO"),
     "cn": ("515180",),
 }
 
@@ -152,7 +152,7 @@ def _validate_manifest(
     if manifest.get("promotion_eligible") is not True:
         raise FormalProviderCacheError("cached provider is not promotion eligible")
     if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
-        raise FormalProviderCacheError("cached provider crossed the research boundary")
+        raise FormalProviderCacheError("cached provider crossed research boundary")
     records = [row for row in manifest.get("records", []) if isinstance(row, dict)]
     symbols = [str(row.get("symbol", "")).strip().upper() for row in records]
     if not symbols or len(symbols) != len(set(symbols)):
