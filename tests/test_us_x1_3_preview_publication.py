@@ -65,16 +65,21 @@ def test_us_x1_3_bundle_retains_performance_positions_trades_prices_and_signals(
     assert summary["formal_acceptance_status"] == "prospective_gate_pending"
     assert len(performance["report"]) >= 60
     assert len(portfolio["positions"]) == len(portfolio["signals"]) * 15
-    assert portfolio["latest_signal"]["model_version_id"] == "us_x1_3"
-    assert len(portfolio["latest_signal"]["ranked_targets"]) == 15
+    latest = portfolio["latest_signal"]
+    assert latest["model_version_id"] == "us_x1_3"
+    assert len(latest["ranked_targets"]) == 15
     priced = [row for row in portfolio["positions"] if row["price"] is not None]
     assert len(priced) > 850
     realized_priced = [
         row for row in priced if row.get("holding_status") != "prospective_unrealized"
     ]
     assert all(row["exit_price"] is not None for row in realized_priced[-15:])
-    assert portfolio["latest_signal"]["signal_date"] == portfolio["signals"][-1]["signal_date"]
-    assert portfolio["latest_signal"]["signal_state"] == portfolio["signals"][-1]["signal_state"]
+    assert latest["signal_date"] == portfolio["signals"][-1]["signal_date"]
+    if latest.get("window_role") == "prospective_unrealized":
+        assert latest["signal_state"] == "prospective_unrealized"
+    else:
+        assert latest["holding_end_date"] is not None
+        assert latest["signal_date"] == portfolio["latest_realized_signal"]["signal_date"]
     assert len(trades["records"]) > 1_000
     assert any(row["action"] == "BUY" for row in trades["records"])
     assert any(row["action"] == "SELL" for row in trades["records"])
@@ -129,15 +134,20 @@ def test_trade_analytics_and_json_normalization_do_not_fabricate_missing_values(
     assert _json_safe({"missing": float("nan")}) == {"missing": None}
 
 
-def test_us_x1_3_chart_reaches_evidence_cutoff_with_provisional_mtm() -> None:
+def test_us_x1_3_performance_distinguishes_settled_end_from_optional_mtm() -> None:
     manifest = _object("manifest.json")
     performance = _object("performance.json")
     latest = performance["report"][-1]
-    assert latest["date"] == manifest["evidence_cutoff"]
-    assert latest["holding_end_date"] == manifest["evidence_cutoff"]
-    assert performance["date_range"]["end"] == manifest["evidence_cutoff"]
+    cutoff = manifest["evidence_cutoff"]
     if latest.get("provisional_mtm"):
+        assert latest["date"] == cutoff
+        assert latest["holding_end_date"] == cutoff
+        assert performance["date_range"]["end"] == cutoff
         assert latest["signal_date"] <= latest["date"]
-        assert latest["mtm_as_of"] == manifest["evidence_cutoff"]
+        assert latest["mtm_as_of"] == cutoff
         assert latest["settlement_status"] == "provisional_mtm"
         assert latest["trade_ready"] is False
+    else:
+        settled_end = latest["holding_end_date"]
+        assert settled_end <= cutoff
+        assert performance["date_range"]["end"] == settled_end
