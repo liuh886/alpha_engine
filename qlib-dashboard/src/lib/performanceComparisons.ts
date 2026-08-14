@@ -10,7 +10,7 @@ import {
   type NormalizedSeries,
 } from '@/lib/performanceBenchmarks';
 
-export type ComparisonGroup = 'Benchmarks' | 'Stock pool';
+export type ComparisonGroup = 'Benchmarks' | 'US stock pool' | 'CN stock pool';
 
 export interface PerformanceComparisonOption {
   key: string;
@@ -18,6 +18,7 @@ export interface PerformanceComparisonOption {
   detail?: string;
   group: ComparisonGroup;
   source: 'report' | 'market';
+  market?: MarketEvidenceMarket;
   series?: NormalizedSeries;
   marketSymbol?: MarketEvidenceCatalogSymbol;
 }
@@ -50,7 +51,7 @@ function optionOrder(option: PerformanceComparisonOption): [number, string] {
 
 export function buildPerformanceComparisonOptions(
   retained: BenchmarkOption[],
-  catalog: MarketEvidenceCatalog | null,
+  catalogs: MarketEvidenceCatalog[],
 ): PerformanceComparisonOption[] {
   const reportOptions: PerformanceComparisonOption[] = retained.map(option => ({
     key: option.key,
@@ -59,18 +60,27 @@ export function buildPerformanceComparisonOptions(
     source: 'report',
     series: option.series,
   }));
-  const retainedIdentities = new Set(reportOptions.map(option => canonicalComparisonIdentity(option.label)));
+  const seenIdentities = new Set(reportOptions.map(option => canonicalComparisonIdentity(option.label)));
+  const marketOptions: PerformanceComparisonOption[] = [];
 
-  const marketOptions = (catalog?.symbols ?? [])
-    .filter(symbol => !retainedIdentities.has(canonicalComparisonIdentity(symbol.symbol)))
-    .map((symbol): PerformanceComparisonOption => ({
-      key: marketComparisonKey(catalog!.market, symbol.symbol),
-      label: comparisonLabel(symbol),
-      detail: symbol.name !== symbol.symbol ? symbol.name : undefined,
-      group: symbol.roles.includes('selected_pool_candidate') ? 'Stock pool' : 'Benchmarks',
-      source: 'market',
-      marketSymbol: symbol,
-    }));
+  for (const catalog of catalogs) {
+    for (const symbol of catalog.symbols) {
+      const identity = canonicalComparisonIdentity(symbol.symbol);
+      if (seenIdentities.has(identity)) continue;
+      seenIdentities.add(identity);
+      marketOptions.push({
+        key: marketComparisonKey(catalog.market, symbol.symbol),
+        label: comparisonLabel(symbol),
+        detail: symbol.name !== symbol.symbol ? symbol.name : undefined,
+        group: symbol.roles.includes('selected_pool_candidate')
+          ? catalog.market === 'us' ? 'US stock pool' : 'CN stock pool'
+          : 'Benchmarks',
+        source: 'market',
+        market: catalog.market,
+        marketSymbol: symbol,
+      });
+    }
+  }
 
   const benchmarks = [...reportOptions, ...marketOptions.filter(option => option.group === 'Benchmarks')]
     .sort((left, right) => {
@@ -78,11 +88,14 @@ export function buildPerformanceComparisonOptions(
       const [rightPreset, rightLabel] = optionOrder(right);
       return leftPreset - rightPreset || leftLabel.localeCompare(rightLabel);
     });
-  const stockPool = marketOptions
-    .filter(option => option.group === 'Stock pool')
+  const usPool = marketOptions
+    .filter(option => option.group === 'US stock pool')
+    .sort((left, right) => left.label.localeCompare(right.label));
+  const cnPool = marketOptions
+    .filter(option => option.group === 'CN stock pool')
     .sort((left, right) => left.label.localeCompare(right.label));
 
-  return [...benchmarks, ...stockPool];
+  return [...benchmarks, ...usPool, ...cnPool];
 }
 
 export function alignMarketBarsToPerformanceDates(
