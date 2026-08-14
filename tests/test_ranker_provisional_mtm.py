@@ -88,7 +88,96 @@ def test_ranker_mtm_keeps_settled_trace_immutable(
     persisted = json.loads(package_path.read_text(encoding="utf-8"))
     assert len(persisted["report"]) == 1
     assert persisted["provisional_mtm"]["as_of"] == "2026-08-07"
-    assert persisted["provisional_mtm"]["performance_row"]["provisional_mtm"] is True
+    assert persisted["provisional_mtm"]["source"] == "strategy_signal_ledger"
+    performance_row = persisted["provisional_mtm"]["performance_row"]
+    assert performance_row["provisional_mtm"] is True
+    assert performance_row["turnover"] == 0.0
+    assert performance_row["rebalance_date"] == "2026-07-30"
+    assert performance_row["rebalance_turnover"] == 0.5
+
+
+def test_ranker_mtm_fails_closed_when_due_signal_is_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    package_path = tmp_path / "ranker.json"
+    package_path.write_text(
+        json.dumps(
+            {
+                "model_id": "us_x1_1",
+                "evidence_cutoff": "2026-07-30",
+                "trace_frequency": "non_overlapping_10_session",
+                "portfolio_contract": {"execution_delay_sessions": 0},
+                "report": [
+                    {
+                        "date": "2026-07-02",
+                        "holding_end_date": "2026-07-16",
+                        "account": 1.0,
+                        "bench_qqq": 1.0,
+                    }
+                ],
+                "positions": [
+                    {"date": "2026-07-16", "instrument": "OLD", "weight": 1.0}
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    provider = tmp_path / "provider"
+    sessions = [
+        "2026-07-16",
+        "2026-07-17",
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-27",
+        "2026-07-28",
+        "2026-07-29",
+        "2026-07-30",
+    ]
+    (provider / "calendars").mkdir(parents=True)
+    (provider / "calendars" / "day.txt").write_text("\n".join(sessions) + "\n")
+    monkeypatch.setattr(mtm, "read_latest_evaluation", lambda *_args, **_kwargs: None)
+
+    with pytest.raises(
+        mtm.RankerProvisionalMtmError,
+        match="MTM cannot advance forward state",
+    ):
+        mtm.attach_ranker_provisional_mtm(
+            package_path=package_path,
+            provider_dir=provider,
+            ledger_dir=tmp_path / "ledger",
+            cutoff="2026-07-30",
+            repository_root=tmp_path,
+        )
+
+
+def test_ranker_mtm_rejects_formal_state_ahead_of_ledger(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        mtm,
+        "read_latest_evaluation",
+        lambda *_args, **_kwargs: {
+            "signal": {
+                "signal_date": "2026-07-16",
+                "target_weights": {"A": 1.0},
+            }
+        },
+    )
+
+    with pytest.raises(
+        mtm.RankerProvisionalMtmError,
+        match="formal ranker state is ahead",
+    ):
+        mtm._latest_governed_signal(
+            model_id="us_x1_1",
+            formal_signal_date="2026-07-30",
+            cutoff="2026-08-07",
+            ledger_dir=Path("unused"),
+        )
 
 
 def test_mtm_contract_targets_only_cn_x1_1_and_detects_stale_settled_trace() -> None:
