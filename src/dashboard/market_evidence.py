@@ -367,10 +367,8 @@ def _filter_factor_frame(evaluated: pd.DataFrame, symbols: Sequence[str]) -> pd.
     names = list(evaluated.index.names)
     instrument_level = names.index("instrument") if "instrument" in names else 0
     allowed = {str(symbol).upper() for symbol in symbols}
-    mask = [
-        str(value).upper() in allowed
-        for value in evaluated.index.get_level_values(instrument_level)
-    ]
+    instruments = evaluated.index.get_level_values(instrument_level).astype(str).str.upper()
+    mask = instruments.isin(allowed)
     return evaluated.loc[mask]
 
 

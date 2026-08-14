@@ -19,6 +19,7 @@ from src.dashboard.market_evidence import (
     MarketEvidenceError,
     _bars,
     _chart_studies,
+    _filter_factor_frame,
     _factor_stats,
     _provider_symbol_for_formal_instrument,
     _reuse_market_evidence_tree,
@@ -183,6 +184,26 @@ def test_factor_statistics_are_distribution_evidence_not_importance() -> None:
     assert row["median"] == 0.0
     assert len(row["histogram"]) == 24
     assert "importance" not in row
+
+
+def test_candidate_factor_filter_is_vectorized_and_case_normalized() -> None:
+    index = pd.MultiIndex.from_tuples(
+        [
+            ("2026-01-02", "aaa"),
+            ("2026-01-02", "BBB"),
+            ("2026-01-03", "AAA"),
+        ],
+        names=["datetime", "instrument"],
+    )
+    evaluated = pd.DataFrame({"factor": [1.0, 2.0, 3.0]}, index=index)
+
+    filtered = _filter_factor_frame(evaluated, ["AaA"])
+
+    assert filtered["factor"].tolist() == [1.0, 3.0]
+    assert filtered.index.tolist() == [
+        ("2026-01-02", "aaa"),
+        ("2026-01-03", "AAA"),
+    ]
 
 
 def _write_json(path: Path, payload: dict[str, object]) -> str:
