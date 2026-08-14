@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -8,7 +9,13 @@ from scripts.data.refresh_selected_pool_prices_v2 import (
     _decorate_manifest,
     build_hardened_router,
 )
-from scripts.run_formal_refresh_transaction import build_task_plan, finalize_refresh
+from scripts.run_formal_refresh_transaction import (
+    RANKER_MODELS,
+    _latest_ledger_signal_date,
+    _ranker_refresh_requirements,
+    build_task_plan,
+    finalize_refresh,
+)
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
     common_provider_cutoff,
@@ -36,6 +43,27 @@ def _provider_manifest(path: Path, *, market: str, cutoff: str) -> Path:
         },
     )
     return path
+
+
+def _non_regressing_cutoffs() -> dict[str, str]:
+    active = load_active_strategy_catalog()
+    freshness = load_object(FORMAL_V2 / "freshness.json")
+    cutoffs = {str(key): str(value) for key, value in freshness["markets"].items()}
+    formal = load_object(FORMAL_V2 / "catalog.json")
+    for record in formal["records"]:
+        model_id = str(record["model_version_id"])
+        strategy = active.by_model_version_id.get(model_id)
+        if strategy is None:
+            continue
+        market = strategy.market
+        cutoffs[market] = max(cutoffs[market], str(record["evidence_cutoff"]))
+    ledger_root = FORMAL_V2.parent / "strategy_signal_ledgers"
+    for model_id, market in RANKER_MODELS:
+        cutoffs[market] = max(
+            cutoffs[market],
+            _latest_ledger_signal_date(ledger_root, model_id),
+        )
+    return cutoffs
 
 
 def test_common_provider_cutoff_is_conservative() -> None:
@@ -109,10 +137,9 @@ def test_formal_planner_accepts_governed_cn_auxiliary_yahoo_fallback(
 
 
 def test_plan_is_formal_v2_catalog_driven() -> None:
-    freshness = load_object(FORMAL_V2 / "freshness.json")
     plan = build_task_plan(
         formal_v2_root=FORMAL_V2,
-        cutoffs=dict(freshness["markets"]),
+        cutoffs=_non_regressing_cutoffs(),
         generated_at="2026-08-13T10:30:00Z",
     )
     active = load_active_strategy_catalog()
@@ -122,18 +149,62 @@ def test_plan_is_formal_v2_catalog_driven() -> None:
     assert "governed_evidence_model_ids" not in plan
 
 
-def test_future_cutoff_marks_v2_records_stale_without_flat_state() -> None:
+def test_ranker_daily_cutoff_uses_mtm_without_settled_rebuild() -> None:
+    performance = {
+        "report": [
+            {
+                "date": "2026-07-16",
+                "holding_end_date": "2026-07-30",
+                "account": 1.1,
+            }
+        ]
+    }
+    settled, mtm = _ranker_refresh_requirements(
+        model_id="us_x1_3",
+        target="2026-08-07",
+        formal_signal_date="2026-07-30",
+        ledger_signal_date="2026-07-30",
+        performance=performance,
+    )
+    assert settled is False
+    assert mtm is True
+
+
+def test_ranker_ledger_advance_is_the_settled_rebuild_trigger() -> None:
+    performance = {
+        "report": [
+            {
+                "date": "2026-07-16",
+                "holding_end_date": "2026-07-30",
+                "account": 1.1,
+            }
+        ]
+    }
+    settled, mtm = _ranker_refresh_requirements(
+        model_id="us_x1_3",
+        target="2026-08-13",
+        formal_signal_date="2026-07-30",
+        ledger_signal_date="2026-08-13",
+        performance=performance,
+    )
+    assert settled is True
+    assert mtm is False
+
+
+def test_future_cutoff_still_marks_non_rankers_stale() -> None:
+    cutoffs = {
+        market: (date.fromisoformat(cutoff) + timedelta(days=1)).isoformat()
+        for market, cutoff in _non_regressing_cutoffs().items()
+    }
     plan = build_task_plan(
         formal_v2_root=FORMAL_V2,
-        cutoffs={"us": "2026-08-13", "cn": "2026-08-13"},
+        cutoffs=cutoffs,
         generated_at="2026-08-13T10:30:00Z",
     )
-    assert set(plan["stale_model_ids"]) == {
+    assert {
         "qqqi_qqq_tqqq_v4_3",
-        "us_x1_3",
-        "cn_x1_1",
         "byd_v1_3_recovery_event_low_vol_confirmation_v1",
-    }
+    }.issubset(set(plan["stale_model_ids"]))
 
 
 def test_finalize_writes_v2_freshness_and_receipt(tmp_path: Path) -> None:

@@ -58,6 +58,19 @@ def _mapping(value: object) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
 
+def _settled_report(value: Mapping[str, Any]) -> list[dict[str, Any]]:
+    report = value.get("report")
+    if not isinstance(report, list):
+        return []
+    return [
+        dict(row)
+        for row in report
+        if isinstance(row, Mapping)
+        and row.get("provisional_mtm") is not True
+        and row.get("settlement_status") != "provisional_mtm"
+    ]
+
+
 def _task(plan_path: Path, strategy_id: str) -> dict[str, Any]:
     plan = load_object(plan_path)
     if plan.get("schema_version") != PLAN_SCHEMA:
@@ -132,8 +145,6 @@ def _materialize_refresh_state(
 ) -> dict[str, Any]:
     relative_root = formal_v2_root.resolve().relative_to(root)
     state = load_formal_run(root, model_id, relative_root=relative_root).refresh_state()
-    # Compact strategy evidence is a task-local working contract only. It is never
-    # persisted or accepted as cross-strategy authority.
     state["schema_version"] = "1.0.0"
     state["record_type"] = "formal_model_backtest"
     state["publication_status"] = "accepted_formal_baseline"
@@ -166,39 +177,91 @@ def _run_us(
     root: Path,
     task: Mapping[str, Any],
     provider_root: Path,
+    formal_v2_root: Path,
     current_preview_root: Path,
     result_root: Path,
     generated_at: str,
 ) -> dict[str, Any]:
-    candidate = result_root / "model-runs"
+    formal_required = bool(task.get("formal_refresh_required"))
+    mtm_required = bool(task.get("mtm_refresh_required"))
+    if not formal_required and not mtm_required:
+        return {
+            **_base_receipt(task),
+            "execution_status": "current_no_change",
+            "replay_verdict": "not_required_current_identity",
+        }
+
+    cutoff = str(task["planned_provider_cutoff"])
     provider_dir = provider_root / "data" / "providers" / "us"
-    _run(
-        [
-            sys.executable,
-            "scripts/build_us_x1_3_preview.py",
-            "--root",
-            str(root),
-            "--provider-dir",
-            str(provider_dir),
-            "--generated-at",
-            generated_at,
-            "--output-root",
-            str(candidate),
-        ],
-        cwd=root,
-    )
     current_id = _current_preview_bundle_id(current_preview_root, US_MODEL_ID)
-    candidate_id = _current_preview_bundle_id(candidate, US_MODEL_ID)
-    if candidate_id is None:
-        raise StrategyRefreshBlocked("invalid_evidence", "US x1.3 preview catalog is missing")
-    changed = current_id != candidate_id
+
+    if formal_required:
+        candidate = result_root / "model-runs"
+        _run(
+            [
+                sys.executable,
+                "scripts/build_us_x1_3_preview.py",
+                "--root",
+                str(root),
+                "--provider-dir",
+                str(provider_dir),
+                "--generated-at",
+                generated_at,
+                "--output-root",
+                str(candidate),
+            ],
+            cwd=root,
+        )
+        candidate_id = _current_preview_bundle_id(candidate, US_MODEL_ID)
+        if candidate_id is None:
+            raise StrategyRefreshBlocked("invalid_evidence", "US x1.3 preview catalog is missing")
+        changed = current_id != candidate_id
+        return {
+            **_base_receipt(task),
+            "execution_status": "refreshed" if changed else "current_no_change",
+            "candidate_bundle_id": candidate_id,
+            "current_bundle_id": current_id,
+            "output_sha256": sha256(candidate / "catalog.json"),
+            "replay_verdict": "deterministic_native_bundle_rebuild",
+        }
+
+    with tempfile.TemporaryDirectory(prefix="us-ranker-mtm-") as temporary:
+        package = Path(temporary) / "candidate.json"
+        _materialize_refresh_state(
+            root=root,
+            formal_v2_root=formal_v2_root,
+            model_id=US_MODEL_ID,
+            target=package,
+        )
+        provisional = attach_ranker_provisional_mtm(
+            package_path=package,
+            provider_dir=provider_dir,
+            ledger_dir=root / "data/research/strategy_signal_ledgers" / US_MODEL_ID,
+            cutoff=cutoff,
+        )
+        if provisional is None:
+            raise StrategyRefreshBlocked(
+                "invalid_evidence",
+                "US x1.3 MTM fast path was planned but produced no valuation observation",
+            )
+        candidate_state = load_object(package)
+        output_sha, bundle_id = _seal_preview(
+            root=root,
+            task=task,
+            evidence_path=package,
+            result_root=result_root,
+        )
     return {
         **_base_receipt(task),
-        "execution_status": "refreshed" if changed else "current_no_change",
-        "candidate_bundle_id": candidate_id,
+        "execution_status": "refreshed",
+        "candidate_evidence_cutoff": candidate_state.get("evidence_cutoff"),
+        "performance_observation_end": _mapping(candidate_state.get("freshness")).get(
+            "latest_mtm_date"
+        ),
+        "candidate_bundle_id": bundle_id,
         "current_bundle_id": current_id,
-        "output_sha256": sha256(candidate / "catalog.json"),
-        "replay_verdict": "deterministic_native_bundle_rebuild",
+        "output_sha256": output_sha,
+        "replay_verdict": "ledger_mtm_projection_no_historical_rebuild",
     }
 
 
@@ -395,17 +458,21 @@ def _run_cn(
         else:
             write_object(package, current_state)
 
-        attach_ranker_provisional_mtm(
+        provisional = attach_ranker_provisional_mtm(
             package_path=package,
             provider_dir=provider_dir,
             ledger_dir=root / "data/research/strategy_signal_ledgers" / CN_MODEL_ID,
             cutoff=cutoff,
-            repository_root=root,
         )
+        if mtm_required and provisional is None:
+            raise StrategyRefreshBlocked(
+                "invalid_evidence",
+                "CN x1.1 MTM fast path was planned but produced no valuation observation",
+            )
         try:
             candidate = load_object(package)
             frozen = verify_cn_frozen_prefix(root, candidate)
-            report_changed = current_state.get("report") != candidate.get("report")
+            report_changed = _settled_report(current_state) != _settled_report(candidate)
             if report_changed:
                 if ledger_a is None:
                     raise StrategyRefreshBlocked(
@@ -434,13 +501,13 @@ def _run_cn(
         output_sha, bundle_id = _seal_preview(
             root=root, task=task, evidence_path=package, result_root=result_root
         )
+    freshness = _mapping(candidate.get("freshness"))
     return {
         **_base_receipt(task),
         "execution_status": "refreshed",
         "candidate_evidence_cutoff": candidate.get("evidence_cutoff"),
-        "performance_observation_end": _mapping(candidate.get("freshness")).get(
-            "latest_realized_holding_end"
-        ),
+        "performance_observation_end": freshness.get("latest_mtm_date")
+        or freshness.get("latest_realized_holding_end"),
         "candidate_bundle_id": bundle_id,
         "output_sha256": output_sha,
         "replay_verdict": replay_verdict,
@@ -549,6 +616,7 @@ def execute_strategy(
             root=root,
             task=task,
             provider_root=provider_root,
+            formal_v2_root=formal_v2_root,
             current_preview_root=current_preview_root,
             result_root=result_root,
             generated_at=generated_at,
