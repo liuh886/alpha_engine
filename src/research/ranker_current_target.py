@@ -1,4 +1,4 @@
-"""Governed current-target inference for the formal US/CN 10-session rankers."""
+"""Shared live-state helpers and governed CN x1.1 current-target inference."""
 
 from __future__ import annotations
 
@@ -12,8 +12,11 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from src.artifacts.strategy_signal_ledger import (
+    StrategySignalLedgerError,
+    read_latest_evaluation,
+)
 from src.data.market_provider import load_provider_manifest
-from src.factors.library import load_factor_library, normalize_expression
 from src.factors.ranker_snapshot import build_ranker_factor_snapshot
 from src.research.cn130_cross_sectional_ranking import (
     attach_classification,
@@ -26,42 +29,20 @@ from src.research.cn130_cross_sectional_ranking import (
     stack_return_frame,
 )
 import src.research.cn130_ranking_pipeline as cn_core
-from src.artifacts.strategy_signal_ledger import (
-    StrategySignalLedgerError,
-    read_latest_evaluation,
-)
 from src.research.cn_x1_1_regime_gated import (
     RegimeGateSpec,
     build_regime_state,
     regime_signal,
 )
-from src.research.daily_ranker import prepare_ranker_frame
-from src.research.daily_ranker_model import (
-    fit_xgb_daily_ranker,
-    predict_xgb_daily_ranker,
-)
-from src.research.paradigm import ResearchParadigmSpec
-from src.research.qlib_execution_common import (
-    materialize_ranker_candidates,
-    normalize_qlib_frame_index,
-    sanitize_factor_name,
-    validate_no_nan_inputs,
-)
-from src.research.rolling_windows import purge_training_tail
-from src.research.spec_bound_execution import build_spec_bound_execution_plan
-from src.research.us_qlib_execution_adapter import QlibUSExecutionRuntime
 from src.research.xgb_ranker_explainability import (
     attach_factor_contributions,
     build_xgb_pred_contribs,
 )
 
-US_MODEL_ID = "us_x1_1"
 CN_MODEL_ID = "cn_x1_1"
-US_FAMILY = "us_ranker"
 CN_FAMILY = "cn_ranker"
 REBALANCE_SESSIONS = 10
 COST_BPS = 20
-US_SPEC_LABEL = "configs/research_paradigms/us_x1_1_frozen_v1.yaml"
 CN_CONFIG_LABEL = "configs/models/cn_x1_1.yaml"
 CN_FACTOR_COLUMNS = {
     "ohlcv.momentum.ret_3d": "momentum_3",
@@ -127,7 +108,7 @@ def _latest_formal_weights(
 
 
 def load_previous_state(*, formal_package: Path, ledger_dir: Path) -> tuple[str, dict[str, float]]:
-    """Use the newest governed target, preferring the live append-only ledger."""
+    """Bootstrap from formal once, then require the append-only ledger to lead live state."""
 
     formal_anchor, formal_weights = _latest_formal_weights(_json(formal_package))
     try:
@@ -149,9 +130,12 @@ def load_previous_state(*, formal_package: Path, ledger_dir: Path) -> tuple[str,
     live_weights = {str(key): float(value) for key, value in target.items()}
     if abs(sum(live_weights.values()) - 1.0) > 1e-6:
         raise RankerCurrentTargetError("latest live target weights do not sum to one")
-    if pd.Timestamp(signal_date) >= pd.Timestamp(formal_anchor):
-        return signal_date, dict(sorted(live_weights.items()))
-    return formal_anchor, formal_weights
+    if pd.Timestamp(signal_date) < pd.Timestamp(formal_anchor):
+        raise RankerCurrentTargetError(
+            "formal ranker state is ahead of canonical ledger: "
+            f"formal={formal_anchor} ledger={signal_date}"
+        )
+    return signal_date, dict(sorted(live_weights.items()))
 
 
 def next_due_session(
@@ -351,160 +335,6 @@ def _signal_payload(
     core["fingerprint"] = _canonical_sha(core)
     core["should_alert"] = changed
     return core
-
-
-def score_us_current_target(
-    *,
-    provider_dir: Path,
-    formal_package: Path,
-    ledger_dir: Path,
-    signal_date: str,
-    market_cutoff: str,
-    repository_root: Path,
-) -> dict[str, Any]:
-    """Refit the frozen H1/H2 US x1.1 ranker and score one rebalance date."""
-
-    spec_path = repository_root / US_SPEC_LABEL
-    spec = ResearchParadigmSpec.from_yaml(spec_path)
-    plan = build_spec_bound_execution_plan(spec)
-    candidates = materialize_ranker_candidates(plan)
-    if len(candidates) != 1:
-        raise RankerCurrentTargetError("US x1.1 must materialize exactly one ranker")
-    candidate = candidates[0]
-    if candidate.model_family != "xgb":
-        raise RankerCurrentTargetError("US x1.1 current publisher requires frozen XGBoost ranker")
-    symbols = [str(value) for value in plan.declared_contract["universe"]["requested_symbols"]]
-    runtime = QlibUSExecutionRuntime(provider_uri=provider_dir)
-    runtime.initialize(repository_root)
-    available = runtime.available_symbols()
-    missing = sorted(set(symbols) - available)
-    if missing:
-        raise RankerCurrentTargetError(f"US provider missing frozen universe symbols: {missing}")
-
-    signal_ts = pd.Timestamp(signal_date)
-    half_start = pd.Timestamp(f"{signal_ts.year}-{'01-01' if signal_ts.month <= 6 else '07-01'}")
-    train_start = str(spec.walk_forward["requested_train_start"])
-    train_end = (half_start - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
-    expressions = sorted(set(candidate.feature_group.expressions))
-    expression_columns = {
-        expression: sanitize_factor_name(expression) for expression in expressions
-    }
-    features_all = normalize_qlib_frame_index(
-        runtime.features(symbols, expressions, train_start, signal_date)
-    ).replace([np.inf, -np.inf], np.nan)
-    features_all.columns = [expression_columns[expression] for expression in expressions]
-    return_expression = str(spec.strategy["return_expression"])
-    returns_all = normalize_qlib_frame_index(
-        runtime.features(
-            symbols,
-            [return_expression],
-            train_start,
-            train_end,
-        )
-    )
-    returns_all.columns = ["return"]
-    dates = features_all.index.get_level_values("datetime")
-    train_mask = (dates >= pd.Timestamp(train_start)) & (dates <= pd.Timestamp(train_end))
-    test_mask = dates == signal_ts
-    features_train_raw = features_all.loc[train_mask].copy()
-    return_dates = returns_all.index.get_level_values("datetime")
-    returns_train_raw = returns_all.loc[
-        (return_dates >= pd.Timestamp(train_start)) & (return_dates <= pd.Timestamp(train_end))
-    ].copy()
-    features_train, returns_train = purge_training_tail(
-        features_train_raw,
-        returns_train_raw,
-        holding_days=int(spec.strategy["holding_days"]),
-    )
-    valid, reason = validate_no_nan_inputs(
-        features_train,
-        context="US x1.1 current target",
-    )
-    if not valid:
-        raise RankerCurrentTargetError(reason)
-    features_test = features_all.loc[test_mask].copy()
-    if len(features_test) < int(spec.universe["min_symbols"]):
-        raise RankerCurrentTargetError("US current target has insufficient feature rows")
-    columns = [expression_columns[item] for item in candidate.feature_group.expressions]
-    x_rank, y_rank, groups = prepare_ranker_frame(features_train.loc[:, columns], returns_train)
-    ranker_fit = fit_xgb_daily_ranker(
-        x_rank,
-        y_rank,
-        groups,
-        n_gain_bins=candidate.calibration.n_gain_bins,
-        params=None,
-        num_boost_round=candidate.calibration.num_boost_round,
-    )
-    scores = predict_xgb_daily_ranker(ranker_fit, features_test.loc[:, columns])
-    day = scores.reset_index().sort_values(
-        ["score", "instrument"],
-        ascending=[False, True],
-        kind="mergesort",
-    )
-    top_n = int(spec.strategy["top_n"])
-    chosen = day.head(top_n)
-    weight = 1.0 / top_n
-    target = {str(symbol): weight for symbol in chosen["instrument"]}
-    previous_date, previous = load_previous_state(
-        formal_package=formal_package,
-        ledger_dir=ledger_dir,
-    )
-
-    library = load_factor_library(repository_root / "configs/factor_libraries/ohlcv.yaml")
-    expression_to_column = {
-        normalize_expression(expression): expression_columns[expression]
-        for expression in expressions
-    }
-    factor_columns: dict[str, str] = {}
-    for definition in library.factors_for_groups(["momentum_volatility_volume"]):
-        normalized = normalize_expression(definition.expression)
-        column = expression_to_column.get(normalized)
-        if column is None:
-            raise RankerCurrentTargetError(
-                f"frozen US ranker is missing canonical factor {definition.factor_id}"
-            )
-        factor_columns[definition.factor_id] = column
-    factor_evidence = _factor_summary(
-        model_family_id=US_FAMILY,
-        signal_date=signal_date,
-        target_weights=target,
-        features=features_test,
-        factor_columns=factor_columns,
-    )
-    explanations = build_xgb_pred_contribs(
-        model=ranker_fit.model,
-        features=features_test.loc[:, columns],
-        scores=scores,
-        column_to_factor_id={column: factor_id for factor_id, column in factor_columns.items()},
-        instruments=list(target),
-        decision_role="selected_holding",
-    )
-    factor_evidence = attach_factor_contributions(factor_evidence, explanations)
-    return _signal_payload(
-        model_version_id=US_MODEL_ID,
-        model_family_id=US_FAMILY,
-        signal_date=signal_date,
-        market_cutoff=market_cutoff,
-        previous_weights=previous,
-        target_weights=target,
-        factor_evidence=factor_evidence,
-        model_identity=_model_identity(
-            formal_package=formal_package,
-            model_config=spec_path,
-            model_config_label=US_SPEC_LABEL,
-            provider_dir=provider_dir,
-            market="us",
-        ),
-        reason_code="frozen_us_x1_1_10_session_rebalance",
-        diagnostics={
-            "previous_signal_date": previous_date,
-            "train_start": train_start,
-            "train_end": train_end,
-            "ranker": candidate.name,
-            "top_n": top_n,
-            "model_explanations": _explanation_summary(explanations),
-        },
-    )
 
 
 def _select_cn_sector_breadth(
