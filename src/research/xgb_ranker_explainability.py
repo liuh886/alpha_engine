@@ -13,6 +13,18 @@ class XGBRankerExplainabilityError(ValueError):
     """Raised when model-native contribution evidence cannot be reconciled."""
 
 
+def _finite_required(value: object, *, label: str) -> float:
+    result = float(value)
+    if not np.isfinite(result):
+        raise XGBRankerExplainabilityError(f"{label} must be finite")
+    return result
+
+
+def _finite_or_none(value: object) -> float | None:
+    result = float(value)
+    return result if np.isfinite(result) else None
+
+
 def build_xgb_pred_contribs(
     *,
     model: Any,
@@ -26,7 +38,8 @@ def build_xgb_pred_contribs(
 
     XGBoost's native ``pred_contribs`` output is used directly; no SHAP package
     or surrogate explainer is introduced. Every row is reconciled back to the
-    exact model score before publication.
+    exact model score before publication. Missing source feature observations
+    remain explicit JSON ``null`` values; model outputs must always be finite.
     """
 
     import xgboost as xgb
@@ -51,12 +64,16 @@ def build_xgb_pred_contribs(
     predictions = np.asarray(model.predict(matrix), dtype=float).reshape(-1)
     if contributions.shape != (len(selected), len(columns) + 1):
         raise XGBRankerExplainabilityError("unexpected XGBoost pred_contribs shape")
+    if not np.isfinite(contributions).all() or not np.isfinite(predictions).all():
+        raise XGBRankerExplainabilityError("XGBoost explanation outputs must be finite")
     reconciled = contributions.sum(axis=1)
     if not np.allclose(reconciled, predictions, rtol=1e-6, atol=1e-6):
         raise XGBRankerExplainabilityError(
             "XGBoost contributions do not reconcile to model predictions"
         )
     expected_scores = scores.reindex(selected.index)["score"].to_numpy(dtype=float)
+    if not np.isfinite(expected_scores).all():
+        raise XGBRankerExplainabilityError("published ranker scores must be finite")
     if not np.allclose(predictions, expected_scores, rtol=1e-6, atol=1e-6):
         raise XGBRankerExplainabilityError(
             "XGBoost explanation predictions do not match published ranker scores"
@@ -68,12 +85,15 @@ def build_xgb_pred_contribs(
         instrument = str(index[1]) if isinstance(index, tuple) else str(index)
         feature_rows: list[dict[str, Any]] = []
         for column_index, column in enumerate(columns):
-            contribution = float(contributions[offset, column_index])
+            contribution = _finite_required(
+                contributions[offset, column_index],
+                label=f"{instrument}.{column}.contribution",
+            )
             feature_rows.append(
                 {
                     "factor_id": str(column_to_factor_id[column]),
-                    "value": float(selected.loc[index, column]),
-                    "percentile": float(percentiles.loc[index, column]),
+                    "value": _finite_or_none(selected.loc[index, column]),
+                    "percentile": _finite_or_none(percentiles.loc[index, column]),
                     "contribution": contribution,
                 }
             )
@@ -89,11 +109,15 @@ def build_xgb_pred_contribs(
             {
                 "instrument": instrument,
                 "decision_role": decision_role,
-                "score": float(predictions[offset]),
-                "bias": float(contributions[offset, -1]),
+                "score": _finite_required(predictions[offset], label=f"{instrument}.score"),
+                "bias": _finite_required(
+                    contributions[offset, -1], label=f"{instrument}.bias"
+                ),
                 "top_positive": positives,
                 "top_negative": negatives,
-                "factor_contributions": sorted(feature_rows, key=lambda row: str(row["factor_id"])),
+                "factor_contributions": sorted(
+                    feature_rows, key=lambda row: str(row["factor_id"])
+                ),
             }
         )
     rows.sort(key=lambda row: str(row["instrument"]))
@@ -130,9 +154,12 @@ def attach_factor_contributions(
                 {
                     "instrument": instrument,
                     "decision_role": role,
-                    "value": float(contribution["value"]),
-                    "percentile": float(contribution["percentile"]),
-                    "contribution": float(contribution["contribution"]),
+                    "value": contribution.get("value"),
+                    "percentile": contribution.get("percentile"),
+                    "contribution": _finite_required(
+                        contribution["contribution"],
+                        label=f"{instrument}.{factor_id}.contribution",
+                    ),
                 }
             )
     enriched: list[dict[str, Any]] = []
