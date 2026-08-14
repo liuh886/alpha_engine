@@ -66,19 +66,6 @@ def _due(args: argparse.Namespace) -> int:
     )
     benchmark = "QQQ" if args.market == "us" else "000300"
     completed_as_of = completed_market_date(args.market, args.as_of)
-    bars = (
-        YFinanceAdapter()
-        .fetch_daily_bars(
-            FetchRequest(
-                symbol=benchmark,
-                market=args.market,
-                start=anchor,
-                end=completed_as_of,
-            )
-        )
-        .df
-    )
-    live_sessions = pd.DatetimeIndex(pd.to_datetime(bars["date"]))
     evidence_path = (
         ROOT
         / "data"
@@ -88,6 +75,33 @@ def _due(args: argparse.Namespace) -> int:
         / "symbols"
         / f"{benchmark}.json"
     )
+
+    if args.market == "cn":
+        # CN cadence is governed by the audited benchmark evidence published by
+        # the formal refresh pipeline. If that evidence has not advanced far
+        # enough to prove the next 10-session boundary, fail closed as not due
+        # until the governed evidence advances; do not make production cadence
+        # depend on Yahoo availability for the CSI 300 index.
+        live_sessions = pd.DatetimeIndex([])
+        calendar_provider = "completed_session_gate+governed_market_evidence"
+    else:
+        bars = (
+            YFinanceAdapter()
+            .fetch_daily_bars(
+                FetchRequest(
+                    symbol=benchmark,
+                    market=args.market,
+                    start=anchor,
+                    end=completed_as_of,
+                )
+            )
+            .df
+        )
+        live_sessions = pd.DatetimeIndex(pd.to_datetime(bars["date"]))
+        calendar_provider = (
+            "completed_session_gate+governed_market_evidence+yfinance_increment"
+        )
+
     sessions = merge_governed_market_sessions(
         evidence_path=evidence_path,
         live_sessions=live_sessions,
@@ -102,7 +116,7 @@ def _due(args: argparse.Namespace) -> int:
         "as_of": completed_as_of,
         "due": due is not None,
         "signal_date": due,
-        "calendar_provider": "completed_session_gate+governed_market_evidence+yfinance_increment",
+        "calendar_provider": calendar_provider,
         "research_only": True,
         "trade_ready": False,
     }

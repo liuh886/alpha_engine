@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+from argparse import Namespace
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
+import scripts.run_ranker_current_target as ranker_runner
 from src.artifacts.strategy_signal_ledger import seal_signal_decision
 from src.factors.library import load_factor_library
 from src.factors.ranker_snapshot import build_ranker_factor_snapshot
@@ -106,6 +108,59 @@ def test_governed_sessions_fill_short_live_provider_window(tmp_path: Path) -> No
     assert sessions[0] == pd.Timestamp("2026-07-29")
     assert sessions[-1] == pd.Timestamp("2026-08-11")
     assert next_due_session(anchor="2026-07-29", sessions=sessions) is None
+
+
+def test_cn_due_uses_governed_calendar_without_yahoo(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evidence = tmp_path / "data/research/market_evidence/cn/symbols/000300.json"
+    evidence.parent.mkdir(parents=True)
+    evidence.write_text(
+        json.dumps({"bars": [{"time": "2026-08-12", "close": 1.0}]}),
+        encoding="utf-8",
+    )
+    formal = tmp_path / "portfolio.json"
+    formal.write_text("{}", encoding="utf-8")
+
+    monkeypatch.setattr(ranker_runner, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        ranker_runner,
+        "_formal_portfolio",
+        lambda _formal_root, _model_version_id: formal,
+    )
+    monkeypatch.setattr(
+        ranker_runner,
+        "load_previous_state",
+        lambda **_kwargs: ("2026-08-12", {"000300": 1.0}),
+    )
+    monkeypatch.setattr(
+        ranker_runner,
+        "completed_market_date",
+        lambda _market, _as_of: "2026-08-13",
+    )
+
+    class UnexpectedYahooAdapter:
+        def __init__(self) -> None:
+            raise AssertionError("CN due resolution must not instantiate Yahoo")
+
+    monkeypatch.setattr(ranker_runner, "YFinanceAdapter", UnexpectedYahooAdapter)
+    output = tmp_path / "due.json"
+    args = Namespace(
+        market="cn",
+        formal_root=tmp_path,
+        ledger_dir=tmp_path / "ledger",
+        as_of="2026-08-14",
+        output=output,
+    )
+
+    assert ranker_runner._due(args) == 0
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["due"] is False
+    assert payload["signal_date"] is None
+    assert payload["calendar_provider"] == (
+        "completed_session_gate+governed_market_evidence"
+    )
 
 
 def test_live_ledger_supersedes_older_formal_position(tmp_path: Path) -> None:
