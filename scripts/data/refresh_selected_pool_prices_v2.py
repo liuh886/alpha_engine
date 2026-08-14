@@ -159,6 +159,19 @@ def _governed_formal_auxiliary_yahoo_fallback(
 def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     market = str(payload.get("market", "")).strip().lower()
+    comparison_references = {
+        str(value).strip().upper()
+        for value in COMPARISON_REFERENCE_AUXILIARIES.get(market, ())
+        if str(value).strip()
+    }
+    payload["comparison_reference_symbols"] = sorted(comparison_references)
+    auxiliaries = payload.get("auxiliary_symbols", [])
+    if isinstance(auxiliaries, list):
+        payload["auxiliary_symbols"] = [
+            value
+            for value in auxiliaries
+            if str(value).strip().upper() not in comparison_references
+        ]
     provider_order = router.providers_for_market(market)
     selected_providers: dict[str, str] = {}
     quarantined: list[str] = []
