@@ -8,9 +8,12 @@ import pytest
 
 import scripts.ranker_provisional_mtm as mtm
 from scripts.run_formal_refresh_transaction import (
-    RANKER_MODELS,
     _has_current_provisional_mtm,
     _latest_settled_performance_end,
+)
+from src.governance.strategy_runtime_capabilities import (
+    RANKER_FORMAL_REFRESH_ADAPTERS,
+    load_active_strategy_runtime_capabilities,
 )
 
 
@@ -198,7 +201,14 @@ def test_ranker_mtm_rejects_formal_state_ahead_of_ledger(
 
 
 def test_mtm_contract_targets_active_us_and_cn_rankers() -> None:
-    assert RANKER_MODELS == (("us_x1_3", "us"), ("cn_x1_1", "cn"))
+    capabilities = load_active_strategy_runtime_capabilities()
+    maintained = {
+        row.model_version_id
+        for row in capabilities.values()
+        if row.formal_refresh.adapter_id in RANKER_FORMAL_REFRESH_ADAPTERS
+    }
+    assert maintained == {"us_x1_3"}
+    assert capabilities["cn_x"].formal_refresh.status == "blocked"
     performance = {
         "report": [
             {"date": "2026-07-29", "holding_end_date": "2026-07-29"}

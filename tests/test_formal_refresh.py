@@ -10,7 +10,6 @@ from scripts.data.refresh_selected_pool_prices_v2 import (
     build_hardened_router,
 )
 from scripts.run_formal_refresh_transaction import (
-    RANKER_MODELS,
     _latest_ledger_signal_date,
     _ranker_refresh_requirements,
     build_task_plan,
@@ -23,6 +22,10 @@ from src.artifacts.formal_refresh import (
     write_object,
 )
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
+from src.governance.strategy_runtime_capabilities import (
+    RANKER_FORMAL_REFRESH_ADAPTERS,
+    load_active_strategy_runtime_capabilities,
+)
 
 FORMAL_V2 = Path("data/research/formal_model_runs")
 
@@ -57,11 +60,19 @@ def _non_regressing_cutoffs() -> dict[str, str]:
             continue
         market = strategy.market
         cutoffs[market] = max(cutoffs[market], str(record["evidence_cutoff"]))
-    ledger_root = FORMAL_V2.parent / "strategy_signal_ledgers"
-    for model_id, market in RANKER_MODELS:
-        cutoffs[market] = max(
-            cutoffs[market],
-            _latest_ledger_signal_date(ledger_root, model_id),
+    capabilities = load_active_strategy_runtime_capabilities(active=active)
+    for strategy in active.strategies:
+        if (
+            capabilities[strategy.strategy_id].formal_refresh.adapter_id
+            not in RANKER_FORMAL_REFRESH_ADAPTERS
+        ):
+            continue
+        cutoffs[strategy.market] = max(
+            cutoffs[strategy.market],
+            _latest_ledger_signal_date(
+                Path(strategy.signal_ledger).parent,
+                strategy.model_version_id,
+            ),
         )
     return cutoffs
 
@@ -143,10 +154,17 @@ def test_plan_is_formal_v2_catalog_driven() -> None:
         generated_at="2026-08-13T10:30:00Z",
     )
     active = load_active_strategy_catalog()
-    assert plan["schema_version"] == "formal_refresh_plan_v3"
+    assert plan["schema_version"] == "formal_refresh_plan_v4"
     assert plan["active_model_version_ids"] == list(active.active_model_version_ids)
     assert {task["publication_input"] for task in plan["tasks"]} == {"native_bundle_v2"}
     assert "governed_evidence_model_ids" not in plan
+    cn = next(task for task in plan["tasks"] if task["strategy_id"] == "cn_x")
+    assert cn["formal_refresh_capability_status"] == "blocked"
+    assert cn["formal_refresh_adapter_id"] is None
+    assert cn["formal_refresh_block_reason"] == (
+        "blocked_pending_maintained_cn_x1_2_formal_refresh_adapter"
+    )
+    assert plan["blocked_model_ids"] == ["cn_x1_2"]
 
 
 def test_ranker_daily_cutoff_uses_mtm_without_settled_rebuild() -> None:

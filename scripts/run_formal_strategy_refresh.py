@@ -22,6 +22,9 @@ from src.artifacts.formal_preview_builder import build_preview_bundle
 from src.artifacts.formal_refresh import load_object, sha256, write_object
 from src.artifacts.model_run_exporter import update_catalog
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
+from src.governance.strategy_runtime_capabilities import (
+    load_active_strategy_runtime_capabilities,
+)
 from src.research.formal_model_replay import replay_byd_v1_3
 from src.research.qqq_authoritative_replay import verify_qqq_authoritative_replay
 from src.research.rules_formal_replay_gate import (
@@ -29,8 +32,8 @@ from src.research.rules_formal_replay_gate import (
     verify_cn_frozen_prefix,
 )
 
-RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v1"
-PLAN_SCHEMA = "formal_refresh_plan_v3"
+RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v2"
+PLAN_SCHEMA = "formal_refresh_plan_v4"
 QQQ_MODEL_ID = "qqqi_qqq_tqqq_v4_3"
 US_MODEL_ID = "us_x1_3"
 CN_MODEL_ID = "cn_x1_1"
@@ -88,6 +91,7 @@ def _task(plan_path: Path, strategy_id: str) -> dict[str, Any]:
     active = load_active_strategy_catalog().by_strategy_id.get(strategy_id)
     if active is None:
         raise ValueError(f"strategy is not active: {strategy_id}")
+    capability = load_active_strategy_runtime_capabilities()[strategy_id].formal_refresh
     task = matches[0]
     expected = {
         "model_family_id": active.model_family_id,
@@ -95,6 +99,9 @@ def _task(plan_path: Path, strategy_id: str) -> dict[str, Any]:
         "model_kind": active.model_kind,
         "market": active.market,
         "publication_input": "native_bundle_v2",
+        "formal_refresh_capability_status": capability.status,
+        "formal_refresh_adapter_id": capability.adapter_id,
+        "formal_refresh_block_reason": capability.reason,
     }
     for field, value in expected.items():
         if task.get(field) != value:
@@ -114,6 +121,9 @@ def _base_receipt(task: Mapping[str, Any]) -> dict[str, Any]:
         "publication_input": "native_bundle_v2",
         "formal_refresh_required": bool(task.get("formal_refresh_required")),
         "mtm_refresh_required": bool(task.get("mtm_refresh_required")),
+        "formal_refresh_capability_status": task["formal_refresh_capability_status"],
+        "formal_refresh_adapter_id": task.get("formal_refresh_adapter_id"),
+        "formal_refresh_block_reason": task.get("formal_refresh_block_reason"),
         "research_only": True,
         "trade_ready": False,
     }
@@ -610,9 +620,25 @@ def execute_strategy(
     result_root: Path,
     generated_at: str,
 ) -> dict[str, Any]:
-    model_id = str(task["model_version_id"])
-    if model_id == US_MODEL_ID:
-        return _run_us(
+    if not bool(task.get("formal_refresh_required")) and not bool(
+        task.get("mtm_refresh_required")
+    ):
+        return {
+            **_base_receipt(task),
+            "execution_status": "current_no_change",
+            "replay_verdict": "not_required_current_identity",
+        }
+
+    capability_status = str(task.get("formal_refresh_capability_status") or "")
+    if capability_status != "available":
+        reason = str(task.get("formal_refresh_block_reason") or "")
+        raise StrategyRefreshBlocked(
+            "runtime_blocked",
+            reason or f"formal refresh capability is {capability_status or 'missing'}",
+        )
+
+    adapters = {
+        "us_x1_3_formal_refresh_v1": lambda: _run_us(
             root=root,
             task=task,
             provider_root=provider_root,
@@ -620,35 +646,29 @@ def execute_strategy(
             current_preview_root=current_preview_root,
             result_root=result_root,
             generated_at=generated_at,
-        )
-    if model_id == QQQ_MODEL_ID:
-        return _run_qqq(
+        ),
+        "qqq_v4_3_formal_refresh_v1": lambda: _run_qqq(
             root=root,
             task=task,
             formal_v2_root=formal_v2_root,
             result_root=result_root,
             generated_at=generated_at,
-        )
-    if model_id == CN_MODEL_ID:
-        return _run_cn(
-            root=root,
-            task=task,
-            provider_root=provider_root,
-            formal_v2_root=formal_v2_root,
-            result_root=result_root,
-            generated_at=generated_at,
-        )
-    if model_id == BYD_MODEL_ID:
-        return _run_byd(
+        ),
+        "byd_v1_3_formal_refresh_v1": lambda: _run_byd(
             root=root,
             task=task,
             formal_v2_root=formal_v2_root,
             result_root=result_root,
             generated_at=generated_at,
+        ),
+    }
+    adapter_id = str(task.get("formal_refresh_adapter_id") or "")
+    adapter = adapters.get(adapter_id)
+    if adapter is None:
+        raise StrategyRefreshBlocked(
+            "runtime_blocked", f"unknown formal refresh adapter: {adapter_id or 'missing'}"
         )
-    raise StrategyRefreshBlocked(
-        "invalid_evidence", f"no maintained formal refresh implementation for {model_id}"
-    )
+    return adapter()
 
 
 def main() -> int:

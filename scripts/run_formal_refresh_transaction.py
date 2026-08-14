@@ -28,10 +28,13 @@ from src.governance.active_strategy_catalog import (
     assert_formal_catalog_matches_active_strategies,
     load_active_strategy_catalog,
 )
+from src.governance.strategy_runtime_capabilities import (
+    RANKER_FORMAL_REFRESH_ADAPTERS,
+    load_active_strategy_runtime_capabilities,
+)
 
-RANKER_MODELS = (("us_x1_3", "us"), ("cn_x1_1", "cn"))
-TASK_RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v1"
-PLAN_SCHEMA = "formal_refresh_plan_v3"
+TASK_RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v2"
+PLAN_SCHEMA = "formal_refresh_plan_v4"
 FAN_IN_SCHEMA = "formal_strategy_fan_in_v2"
 REFRESH_RECEIPT_SCHEMA = "formal_refresh_receipt_v2"
 SUCCESS_STATES = {"current_no_change", "refreshed"}
@@ -276,8 +279,14 @@ def build_task_plan(
     validate_catalog(formal_v2)
     _assert_formal_catalog_or_declared_transition(formal_v2, active)
     records = _formal_records(formal_v2)
-    ranker_markets = dict(RANKER_MODELS)
-    ledger_root = formal_v2_root.parent / "strategy_signal_ledgers"
+    runtime = load_active_strategy_runtime_capabilities(active=active)
+    ranker_strategies = [
+        strategy
+        for strategy in active.strategies
+        if runtime[strategy.strategy_id].formal_refresh.adapter_id
+        in RANKER_FORMAL_REFRESH_ADAPTERS
+    ]
+    ranker_model_ids = {strategy.model_version_id for strategy in ranker_strategies}
 
     stale_ids: set[str] = set()
     mtm_ids: set[str] = set()
@@ -293,10 +302,12 @@ def build_task_plan(
             raise FormalRefreshError(
                 f"target cutoff regresses formal evidence for {model_id}: {target} < {accepted}"
             )
-        if model_id not in ranker_markets and accepted < target:
+        if model_id not in ranker_model_ids and accepted < target:
             stale_ids.add(model_id)
 
-    for model_id, market in RANKER_MODELS:
+    for strategy in ranker_strategies:
+        model_id = strategy.model_version_id
+        market = strategy.market
         record = records.get(model_id)
         if record is None:
             continue
@@ -312,7 +323,10 @@ def build_task_plan(
             section_id="portfolio",
         )
         formal_signal = _latest_formal_signal_date(portfolio)
-        ledger_signal = _latest_ledger_signal_date(ledger_root, model_id)
+        ledger_signal = _latest_ledger_signal_date(
+            Path(strategy.signal_ledger).parent,
+            model_id,
+        )
         settled_required, mtm_required = _ranker_refresh_requirements(
             model_id=model_id,
             target=target,
@@ -328,6 +342,7 @@ def build_task_plan(
     tasks: list[dict[str, Any]] = []
     for strategy in active.strategies:
         model_id = strategy.model_version_id
+        capability = runtime[strategy.strategy_id].formal_refresh
         tasks.append(
             {
                 "strategy_id": strategy.strategy_id,
@@ -339,8 +354,20 @@ def build_task_plan(
                 "publication_input": "native_bundle_v2",
                 "formal_refresh_required": model_id in stale_ids,
                 "mtm_refresh_required": model_id in mtm_ids,
+                "formal_refresh_capability_status": capability.status,
+                "formal_refresh_adapter_id": capability.adapter_id,
+                "formal_refresh_block_reason": capability.reason,
             }
         )
+
+    blocked_ids = sorted(
+        str(task["model_version_id"])
+        for task in tasks
+        if (
+            task["formal_refresh_required"] or task["mtm_refresh_required"]
+        )
+        and task["formal_refresh_capability_status"] == "blocked"
+    )
 
     return {
         "schema_version": PLAN_SCHEMA,
@@ -350,6 +377,7 @@ def build_task_plan(
         "active_model_version_ids": list(active.active_model_version_ids),
         "stale_model_ids": sorted(stale_ids),
         "mtm_refresh_model_ids": sorted(mtm_ids),
+        "blocked_model_ids": blocked_ids,
         "refresh_required": bool(stale_ids or mtm_ids),
         "tasks": tasks,
         "research_only": True,
@@ -374,6 +402,9 @@ def _validate_task_receipt(task: Mapping[str, Any], receipt: Mapping[str, Any]) 
         "market",
         "planned_provider_cutoff",
         "publication_input",
+        "formal_refresh_capability_status",
+        "formal_refresh_adapter_id",
+        "formal_refresh_block_reason",
     ):
         if receipt.get(field) != task.get(field):
             raise FormalRefreshError(

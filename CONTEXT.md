@@ -189,6 +189,26 @@ Relationships:
 - Uses PortfolioRiskState before and during execution.
 - Is exposed through adapters but owned by the Strategy Execution module.
 
+### StrategyRuntimeCapability
+
+Definition: The repository's maintained runtime support for one exact active
+ModelVersion. It records whether a formal-refresh or current-target Adapter is
+available, blocked, or not applicable.
+
+Key invariants:
+
+- MUST bind to the exact active strategy and ModelVersion identity.
+- MUST fail closed when a successor ModelVersion has no maintained Adapter.
+- MUST NOT reuse a predecessor Adapter implicitly.
+- MUST distinguish unavailable runtime support from research or promotion
+  status.
+
+Relationships:
+
+- Resolves the Adapter that may refresh evidence or produce a current target.
+- Constrains Strategy Execution without changing the PromotionDecision.
+- May block an ExecutionPlan while historical EvidenceBundles remain valid.
+
 ### Adapter
 
 Definition: A boundary component that exposes core module capabilities to a
@@ -228,4 +248,3 @@ Relationships:
 - Evaluates EvidenceBundles containing BacktestEvidence and diagnostics.
 - Produces inputs to PromotionDecisions.
 - May check PortfolioRiskState before allowing execution-facing promotion.
-

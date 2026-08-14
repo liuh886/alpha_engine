@@ -15,6 +15,9 @@ from src.artifacts.formal_refresh import FormalRefreshError, load_object, sha256
 from src.artifacts.model_run_bundle_v2 import validate_catalog
 from src.artifacts.model_run_exporter import update_catalog
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
+from src.governance.strategy_runtime_capabilities import (
+    load_active_strategy_runtime_capabilities,
+)
 
 NATIVE = Path("data/research/model_runs")
 STRATEGIES = Path("configs/strategies/registry.json")
@@ -22,6 +25,7 @@ STRATEGIES = Path("configs/strategies/registry.json")
 
 def _tasks() -> list[dict[str, object]]:
     active = load_active_strategy_catalog(STRATEGIES)
+    runtime = load_active_strategy_runtime_capabilities(active=active)
     return [
         {
             "strategy_id": strategy.strategy_id,
@@ -33,6 +37,15 @@ def _tasks() -> list[dict[str, object]]:
             "publication_input": "native_bundle_v2",
             "formal_refresh_required": False,
             "mtm_refresh_required": False,
+            "formal_refresh_capability_status": runtime[
+                strategy.strategy_id
+            ].formal_refresh.status,
+            "formal_refresh_adapter_id": runtime[
+                strategy.strategy_id
+            ].formal_refresh.adapter_id,
+            "formal_refresh_block_reason": runtime[
+                strategy.strategy_id
+            ].formal_refresh.reason,
         }
         for strategy in active.strategies
     ]
@@ -52,7 +65,7 @@ def _write_plan(path: Path, tasks: list[dict[str, object]]) -> None:
     write_object(
         path,
         {
-            "schema_version": "formal_refresh_plan_v3",
+            "schema_version": "formal_refresh_plan_v4",
             "generated_at": "2026-08-13T00:00:00Z",
             "tasks": tasks,
             "research_only": True,
@@ -90,6 +103,9 @@ def _us_task(*, formal: bool, mtm: bool) -> dict[str, object]:
         "publication_input": "native_bundle_v2",
         "formal_refresh_required": formal,
         "mtm_refresh_required": mtm,
+        "formal_refresh_capability_status": "available",
+        "formal_refresh_adapter_id": "us_x1_3_formal_refresh_v1",
+        "formal_refresh_block_reason": None,
     }
 
 
@@ -297,3 +313,34 @@ def test_settled_report_ignores_provisional_observations() -> None:
             ]
         }
     ) == [{"date": "2026-07-30", "account": 1.1}]
+
+
+def test_task_rejects_runtime_adapter_identity_drift(tmp_path: Path) -> None:
+    task = next(row for row in _tasks() if row["strategy_id"] == "us_x")
+    task["formal_refresh_adapter_id"] = "cn_x1_1_formal_refresh_v1"
+    plan = tmp_path / "plan.json"
+    _write_plan(plan, [task])
+
+    with pytest.raises(ValueError, match="formal_refresh_adapter_id"):
+        runner._task(plan, "us_x")
+
+
+def test_required_cn_x1_2_refresh_is_explicitly_runtime_blocked(tmp_path: Path) -> None:
+    task = next(row for row in _tasks() if row["strategy_id"] == "cn_x")
+    task["formal_refresh_required"] = True
+
+    with pytest.raises(runner.StrategyRefreshBlocked) as blocked:
+        runner.execute_strategy(
+            root=tmp_path,
+            task=task,
+            provider_root=tmp_path,
+            formal_v2_root=tmp_path,
+            current_preview_root=tmp_path,
+            result_root=tmp_path,
+            generated_at="2026-08-15T00:00:00Z",
+        )
+
+    assert blocked.value.status == "runtime_blocked"
+    assert blocked.value.reason == (
+        "blocked_pending_maintained_cn_x1_2_formal_refresh_adapter"
+    )
