@@ -51,11 +51,11 @@ describe('performance comparisons', () => {
       label: 'QQQ',
       series: [0, 0.01],
     }];
-    const options = buildPerformanceComparisonOptions(retained, catalog());
+    const options = buildPerformanceComparisonOptions(retained, [catalog()]);
 
     expect(options.filter(option => option.label === 'QQQ')).toHaveLength(1);
     expect(options.find(option => option.label === 'TQQQ')?.group).toBe('Benchmarks');
-    expect(options.find(option => option.label === 'AAPL')).toMatchObject({ group: 'Stock pool', detail: 'Apple Inc.' });
+    expect(options.find(option => option.label === 'AAPL')).toMatchObject({ group: 'US stock pool', detail: 'Apple Inc.' });
   });
 
   it('aligns market closes to performance dates and rebases the selected asset', () => {
