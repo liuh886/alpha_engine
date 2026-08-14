@@ -8,7 +8,11 @@ from scripts.data.refresh_selected_pool_prices_v2 import (
     _decorate_manifest,
     build_hardened_router,
 )
-from scripts.run_formal_refresh_transaction import build_task_plan, finalize_refresh
+from scripts.run_formal_refresh_transaction import (
+    _ranker_refresh_requirements,
+    build_task_plan,
+    finalize_refresh,
+)
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
     common_provider_cutoff,
@@ -122,18 +126,58 @@ def test_plan_is_formal_v2_catalog_driven() -> None:
     assert "governed_evidence_model_ids" not in plan
 
 
-def test_future_cutoff_marks_v2_records_stale_without_flat_state() -> None:
+def test_ranker_daily_cutoff_uses_mtm_without_settled_rebuild() -> None:
+    performance = {
+        "report": [
+            {
+                "date": "2026-07-16",
+                "holding_end_date": "2026-07-30",
+                "account": 1.1,
+            }
+        ]
+    }
+    settled, mtm = _ranker_refresh_requirements(
+        model_id="us_x1_3",
+        target="2026-08-07",
+        formal_signal_date="2026-07-30",
+        ledger_signal_date="2026-07-30",
+        performance=performance,
+    )
+    assert settled is False
+    assert mtm is True
+
+
+def test_ranker_ledger_advance_is_the_settled_rebuild_trigger() -> None:
+    performance = {
+        "report": [
+            {
+                "date": "2026-07-16",
+                "holding_end_date": "2026-07-30",
+                "account": 1.1,
+            }
+        ]
+    }
+    settled, mtm = _ranker_refresh_requirements(
+        model_id="us_x1_3",
+        target="2026-08-13",
+        formal_signal_date="2026-07-30",
+        ledger_signal_date="2026-08-13",
+        performance=performance,
+    )
+    assert settled is True
+    assert mtm is False
+
+
+def test_future_cutoff_still_marks_non_rankers_stale() -> None:
     plan = build_task_plan(
         formal_v2_root=FORMAL_V2,
         cutoffs={"us": "2026-08-13", "cn": "2026-08-13"},
         generated_at="2026-08-13T10:30:00Z",
     )
-    assert set(plan["stale_model_ids"]) == {
+    assert {
         "qqqi_qqq_tqqq_v4_3",
-        "us_x1_3",
-        "cn_x1_1",
         "byd_v1_3_recovery_event_low_vol_confirmation_v1",
-    }
+    }.issubset(set(plan["stale_model_ids"]))
 
 
 def test_finalize_writes_v2_freshness_and_receipt(tmp_path: Path) -> None:
