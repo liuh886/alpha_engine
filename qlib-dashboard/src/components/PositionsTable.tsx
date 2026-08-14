@@ -108,7 +108,8 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
 
   const latestMtmObservation = useMemo(() => {
     const rows = (report || []).filter(isProvisionalMtm);
-    return rows.sort((left, right) => left.date.localeCompare(right.date)).at(-1);
+    rows.sort((left, right) => left.date.localeCompare(right.date));
+    return rows.length ? rows[rows.length - 1] : undefined;
   }, [report]);
 
   const snapshotStats = useMemo(() => {
