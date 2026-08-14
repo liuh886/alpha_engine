@@ -124,11 +124,7 @@ def test_cn_due_uses_governed_calendar_without_yahoo(
     formal.write_text("{}", encoding="utf-8")
 
     monkeypatch.setattr(ranker_runner, "ROOT", tmp_path)
-    monkeypatch.setattr(
-        ranker_runner,
-        "_formal_portfolio",
-        lambda _formal_root, _model_version_id: formal,
-    )
+    monkeypatch.setattr(ranker_runner, "_formal_portfolio", lambda _formal_root: formal)
     monkeypatch.setattr(
         ranker_runner,
         "load_previous_state",
@@ -140,14 +136,9 @@ def test_cn_due_uses_governed_calendar_without_yahoo(
         lambda _market, _as_of: "2026-08-13",
     )
 
-    class UnexpectedYahooAdapter:
-        def __init__(self) -> None:
-            raise AssertionError("CN due resolution must not instantiate Yahoo")
-
-    monkeypatch.setattr(ranker_runner, "YFinanceAdapter", UnexpectedYahooAdapter)
+    assert not hasattr(ranker_runner, "YFinanceAdapter")
     output = tmp_path / "due.json"
     args = Namespace(
-        market="cn",
         formal_root=tmp_path,
         ledger_dir=tmp_path / "ledger",
         as_of="2026-08-14",
@@ -156,6 +147,8 @@ def test_cn_due_uses_governed_calendar_without_yahoo(
 
     assert ranker_runner._due(args) == 0
     payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["market"] == "cn"
+    assert payload["model_version_id"] == "cn_x1_1"
     assert payload["due"] is False
     assert payload["signal_date"] is None
     assert payload["calendar_provider"] == (
@@ -177,14 +170,13 @@ def test_live_ledger_supersedes_older_formal_position(tmp_path: Path) -> None:
     assert weights == {"BBB": 0.5, "CCC": 0.5}
 
 
-def test_newer_formal_position_supersedes_stale_live_ledger(tmp_path: Path) -> None:
+def test_formal_state_ahead_of_existing_ledger_fails_closed(tmp_path: Path) -> None:
     formal = tmp_path / "formal.json"
     ledger = tmp_path / "ledger"
     _formal(formal, "2026-07-15", {"AAA": 1.0})
     _live_ledger(ledger, "2026-07-01", {"BBB": 1.0})
-    date, weights = load_previous_state(formal_package=formal, ledger_dir=ledger)
-    assert date == "2026-07-15"
-    assert weights == {"AAA": 1.0}
+    with pytest.raises(RankerCurrentTargetError, match="formal ranker state is ahead"):
+        load_previous_state(formal_package=formal, ledger_dir=ledger)
 
 
 def test_us_ranker_snapshot_preserves_explicit_model_factor_order() -> None:
