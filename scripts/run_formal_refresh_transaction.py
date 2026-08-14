@@ -412,9 +412,35 @@ def _install_preview(source_root: Path, target_root: Path, *, model_id: str) -> 
 
 def _seal_preview_catalog(candidate_preview_root: Path) -> dict[str, Any]:
     active = load_active_strategy_catalog()
-    manifests = sorted(candidate_preview_root.rglob("manifest.json"))
-    if not manifests:
+    discovered = sorted(candidate_preview_root.rglob("manifest.json"))
+    if not discovered:
         raise FormalRefreshError("active preview fan-in produced no Bundle v2 manifests")
+
+    manifests_by_model: dict[str, list[Path]] = {}
+    for manifest_path in discovered:
+        manifest = load_object(manifest_path)
+        model_id = str(manifest.get("model_version_id") or "")
+        manifests_by_model.setdefault(model_id, []).append(manifest_path)
+
+    manifests: list[Path] = []
+    for strategy in active.strategies:
+        model_id = strategy.model_version_id
+        candidates = manifests_by_model.get(model_id, [])
+        if not candidates:
+            config_path = Path("configs/models") / f"{model_id}.yaml"
+            config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            lineage = config.get("lineage") if isinstance(config, Mapping) else None
+            predecessor = (
+                str(lineage.get("supersedes") or "") if isinstance(lineage, Mapping) else ""
+            )
+            candidates = manifests_by_model.get(predecessor, [])
+        if len(candidates) != 1:
+            raise FormalRefreshError(
+                "active preview fan-in must resolve exactly one run for "
+                f"{model_id}: observed={len(candidates)}"
+            )
+        manifests.append(candidates[0])
+
     catalog = update_catalog(
         manifests,
         catalog_path=candidate_preview_root / "catalog.json",

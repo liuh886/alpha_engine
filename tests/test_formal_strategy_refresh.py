@@ -121,6 +121,7 @@ def test_fan_in_accepts_complete_active_strategy_set(tmp_path: Path) -> None:
     catalog = load_object(candidate_preview / "catalog.json")
     validate_catalog(catalog)
     observed = {row["model_version_id"] for row in catalog["records"]}
+    assert "cn_x1_1" not in observed
     expected = set(active.active_model_version_ids)
     if observed != expected:
         _assert_declared_model_transition(
