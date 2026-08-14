@@ -40,6 +40,10 @@ FORMAL_MARKET_AUXILIARIES: dict[str, tuple[str, ...]] = {
     "us": ("QQQI", "TQQQ", "SGOV", "TYGO"),
     "cn": ("515180",),
 }
+COMPARISON_REFERENCE_AUXILIARIES: dict[str, tuple[str, ...]] = {
+    "us": ("CGDV",),
+    "cn": (),
+}
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -281,8 +285,10 @@ def refresh_selected_pool_prices_v2(
     data_router = router or build_hardened_router(market)
     requested_auxiliaries = auxiliary_symbols
     if requested_auxiliaries is None and full_refresh:
-        requested_auxiliaries = FORMAL_MARKET_AUXILIARIES.get(
-            str(market).lower(), ()
+        market_key = str(market).lower()
+        requested_auxiliaries = (
+            *FORMAL_MARKET_AUXILIARIES.get(market_key, ()),
+            *COMPARISON_REFERENCE_AUXILIARIES.get(market_key, ()),
         )
     try:
         refresh_selected_pool_prices(
@@ -322,7 +328,7 @@ def main() -> None:
         default=None,
         help=(
             "Additional formal/reference security. On --full-refresh, the current "
-            "formal auxiliary set is used when this option is omitted."
+            "governed auxiliary and comparison-reference set is used when omitted."
         ),
     )
     parser.add_argument("--full-refresh", action="store_true")
