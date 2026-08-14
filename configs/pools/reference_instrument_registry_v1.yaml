@@ -42,16 +42,6 @@ markets:
         data_bundle_contract: "qqqi_qqq_tqqq_reference_bundle_v1"
         adjusted_open_close_required: true
         split_factor_required: true
-      CGDV:
-        canonical_symbol: "CGDV"
-        instrument_type: "equity_etf"
-        provider_aliases: ["CGDV"]
-        roles: ["comparison_reference"]
-        executable: true
-        candidate_eligible: false
-        portfolio_eligible_by_default: false
-        fundamental_data_applicable: false
-        corporate_actions_applicable: true
       QQQI:
         canonical_symbol: "QQQI"
         instrument_type: "income_equity_etf"
