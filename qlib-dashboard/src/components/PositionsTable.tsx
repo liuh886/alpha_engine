@@ -26,8 +26,28 @@ type PositionWithChange = Position & {
   changeKind: 'new' | 'increased' | 'reduced' | 'unchanged';
 };
 
+type TurnoverEvent = {
+  date: string;
+  turnover: number;
+  holding_end_date?: string;
+};
+
 function formatPercent(value: number | null, digits = 1) {
   return value === null ? '—' : `${(value * 100).toFixed(digits)}%`;
+}
+
+function isProvisionalMtm(row: ReportRow) {
+  return row.provisional_mtm === true || row.settlement_status === 'provisional_mtm';
+}
+
+function deriveTurnover(previous: Position[], current: Position[]) {
+  const previousByInstrument = new Map(previous.map((position) => [position.instrument, Number(position.weight) || 0]));
+  const currentByInstrument = new Map(current.map((position) => [position.instrument, Number(position.weight) || 0]));
+  const instruments = new Set([...previousByInstrument.keys(), ...currentByInstrument.keys()]);
+  return 0.5 * Array.from(instruments).reduce(
+    (sum, instrument) => sum + Math.abs((currentByInstrument.get(instrument) ?? 0) - (previousByInstrument.get(instrument) ?? 0)),
+    0,
+  );
 }
 
 export function PositionsTable({ positions, report }: { positions: Position[]; report?: ReportRow[] }) {
@@ -67,6 +87,31 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
       .sort((left, right) => Math.abs(Number(right.weight) || 0) - Math.abs(Number(left.weight) || 0));
   }, [currentDate, positions, previousPositions]);
 
+  const turnoverEvents = useMemo<TurnoverEvent[]>(() => {
+    const events = new Map<string, TurnoverEvent>();
+    for (const row of report || []) {
+      if (isProvisionalMtm(row) || !Number.isFinite(Number(row.turnover))) continue;
+      events.set(row.date, {
+        date: row.date,
+        turnover: Number(row.turnover),
+        holding_end_date: row.holding_end_date,
+      });
+    }
+    dates.forEach((date, index) => {
+      if (events.has(date) || index === 0) return;
+      const previous = positions.filter((position) => position.date === dates[index - 1]);
+      const current = positions.filter((position) => position.date === date);
+      events.set(date, { date, turnover: deriveTurnover(previous, current) });
+    });
+    return Array.from(events.values()).sort((left, right) => left.date.localeCompare(right.date));
+  }, [dates, positions, report]);
+
+  const latestMtmObservation = useMemo(() => {
+    const rows = (report || []).filter(isProvisionalMtm);
+    rows.sort((left, right) => left.date.localeCompare(right.date));
+    return rows.length ? rows[rows.length - 1] : undefined;
+  }, [report]);
+
   const snapshotStats = useMemo(() => {
     const grossExposure = currentPositions.reduce((sum, position) => sum + Math.abs(Number(position.weight) || 0), 0);
     const netExposure = currentPositions.reduce((sum, position) => sum + (Number(position.weight) || 0), 0);
@@ -76,22 +121,11 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
     const exited = previousPositions.filter((position) => !currentInstruments.has(position.instrument)).length;
     const added = currentPositions.filter((position) => position.changeKind === 'new').length;
     const adjusted = currentPositions.filter((position) => position.changeKind === 'increased' || position.changeKind === 'reduced').length;
-    const turnoverRow = report?.find((row) => row.date === currentDate);
-    const derivedTurnover = previousDate
-      ? 0.5 * Array.from(new Set([
-        ...previousPositions.map((position) => position.instrument),
-        ...currentPositions.map((position) => position.instrument),
-      ])).reduce((sum, instrument) => {
-        const previousWeight = Number(previousPositions.find((position) => position.instrument === instrument)?.weight ?? 0);
-        const currentWeight = Number(currentPositions.find((position) => position.instrument === instrument)?.weight ?? 0);
-        return sum + Math.abs(currentWeight - previousWeight);
-      }, 0)
-      : null;
-    const turnover = turnoverRow && Number.isFinite(Number(turnoverRow.turnover))
-      ? Number(turnoverRow.turnover)
-      : derivedTurnover;
+    const turnoverRow = turnoverEvents.find((row) => row.date === currentDate);
+    const derivedTurnover = previousDate ? deriveTurnover(previousPositions, currentPositions) : null;
+    const turnover = turnoverRow ? turnoverRow.turnover : derivedTurnover;
     return { grossExposure, netExposure, topFiveConcentration, exited, added, adjusted, turnover };
-  }, [currentDate, currentPositions, previousDate, previousPositions, report]);
+  }, [currentDate, currentPositions, previousDate, previousPositions, turnoverEvents]);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
@@ -111,32 +145,52 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
 
   if (!positions.length) return <div className="p-4 text-center text-sm text-muted-foreground">No position data available.</div>;
 
+  const mtmAsOf = latestMtmObservation
+    ? typeof latestMtmObservation.mtm_as_of === 'string' ? latestMtmObservation.mtm_as_of : latestMtmObservation.date
+    : null;
+  const mtmSignalDate = latestMtmObservation && typeof latestMtmObservation.signal_date === 'string'
+    ? latestMtmObservation.signal_date
+    : null;
+  const mtmRebalanceTurnover = latestMtmObservation && Number.isFinite(Number(latestMtmObservation.rebalance_turnover))
+    ? Number(latestMtmObservation.rebalance_turnover)
+    : null;
+
   return (
     <div className="space-y-5">
       <Card>
         <CardHeader className="border-b pb-3">
-          <CardTitle className="text-sm font-semibold">Turnover & holdings timeline</CardTitle>
-          <CardDescription className="text-xs">Use the turnover history as a navigator, then inspect the portfolio snapshot and weight changes below.</CardDescription>
+          <CardTitle className="text-sm font-semibold">Rebalance turnover & holdings timeline</CardTitle>
+          <CardDescription className="text-xs">Bars are rebalance events only. MTM valuation updates are shown separately and never create a holdings snapshot.</CardDescription>
         </CardHeader>
-        <CardContent className="h-[220px] pt-4 sm:h-[250px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={report || []}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-              <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), 'MM/yy')} minTickGap={30} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={(value) => `${(Number(value) * 100).toFixed(0)}%`} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={42} />
-              <Tooltip formatter={(value) => [`${(Number(value) * 100).toFixed(2)}%`, 'Turnover']} contentStyle={{ fontSize: '10px' }} />
-              <Bar dataKey="turnover" onClick={handleBarClick} cursor="pointer" name="Turnover" maxBarSize={10}>
-                {report?.map((entry, index) => (
-                  <Cell
-                    key={`${entry.date}-${index}`}
-                    fill="hsl(var(--primary))"
-                    fillOpacity={entry.date === currentDate || entry.holding_end_date === currentDate ? 0.9 : 0.28}
-                  />
-                ))}
-              </Bar>
-              {currentDate && <ReferenceLine x={currentDate} stroke="hsl(var(--primary))" strokeOpacity={0.45} strokeDasharray="3 3" />}
-            </ComposedChart>
-          </ResponsiveContainer>
+        <CardContent className="pt-4">
+          <div className="h-[190px] sm:h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={turnoverEvents}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), 'MM/yy')} minTickGap={30} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={(value) => `${(Number(value) * 100).toFixed(0)}%`} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={42} />
+                <Tooltip formatter={(value) => [`${(Number(value) * 100).toFixed(2)}%`, 'Turnover']} contentStyle={{ fontSize: '10px' }} />
+                <Bar dataKey="turnover" onClick={handleBarClick} cursor="pointer" name="Turnover" maxBarSize={10}>
+                  {turnoverEvents.map((entry, index) => (
+                    <Cell
+                      key={`${entry.date}-${index}`}
+                      fill="hsl(var(--primary))"
+                      fillOpacity={entry.date === currentDate || entry.holding_end_date === currentDate ? 0.9 : 0.28}
+                    />
+                  ))}
+                </Bar>
+                {currentDate && <ReferenceLine x={currentDate} stroke="hsl(var(--primary))" strokeOpacity={0.45} strokeDasharray="3 3" />}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+          {latestMtmObservation && mtmAsOf && (
+            <div data-testid="mtm-observation" className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 text-[10px] text-muted-foreground">
+              <Badge variant="outline" className="font-mono text-[9px]">MTM {mtmAsOf}</Badge>
+              <span>No rebalance.</span>
+              {mtmSignalDate && <span>Source signal: <span className="font-mono">{mtmSignalDate}</span>.</span>}
+              {mtmRebalanceTurnover !== null && <span>Source rebalance turnover: <span className="font-mono">{formatPercent(mtmRebalanceTurnover)}</span>.</span>}
+            </div>
+          )}
         </CardContent>
       </Card>
 
