@@ -42,3 +42,26 @@ def test_heavy_formal_refresh_keeps_source_and_release_gates() -> None:
     )
     for token in required:
         assert token in text, f"formal refresh lost required source/release gate: {token}"
+
+
+def test_heavy_formal_refresh_resolves_cutoff_per_completed_market_session() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "from src.research.market_session_clock import completed_market_date" in text
+    assert "us_cutoff: ${{ steps.clock.outputs.us_cutoff }}" in text
+    assert "cn_cutoff: ${{ steps.clock.outputs.cn_cutoff }}" in text
+    assert "completed_market_date('us', requested, now_utc=now)" in text
+    assert "completed_market_date('cn', requested, now_utc=now)" in text
+    market_cutoff_binding = (
+        "REQUESTED_CUTOFF: ${{ matrix.market == 'us' && "
+        "needs.prepare.outputs.us_cutoff || needs.prepare.outputs.cn_cutoff }}"
+    )
+    assert text.count(market_cutoff_binding) == 2
+    assert "requested_cutoff: ${{ steps.clock.outputs.requested_cutoff }}" not in text
+    assert 'requested_cutoff="$(date -u +%Y-%m-%d)"' not in text
+
+
+def test_heavy_formal_refresh_has_no_retired_us_x1_2_live_contract() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "test_us_x1_2_current_target.py" not in text
+    assert "run_us_x1_2_current_target.py" not in text
+    assert "us_x1_2_current_target.py" not in text

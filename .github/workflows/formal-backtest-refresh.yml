@@ -71,7 +71,8 @@ jobs:
     timeout-minutes: 30
     outputs:
       generated_at: ${{ steps.clock.outputs.generated_at }}
-      requested_cutoff: ${{ steps.clock.outputs.requested_cutoff }}
+      us_cutoff: ${{ steps.clock.outputs.us_cutoff }}
+      cn_cutoff: ${{ steps.clock.outputs.cn_cutoff }}
     steps:
       - name: Check out triggering revision
         uses: actions/checkout@v6
@@ -170,13 +171,19 @@ jobs:
             -q --strict-markers --tb=short
           cd qlib-dashboard
           npm run check:account
-      - name: Resolve transaction timestamp
+      - name: Resolve transaction timestamp and completed market cutoffs
         id: clock
         run: |
-          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          requested_cutoff="$(date -u +%Y-%m-%d)"
-          echo "generated_at=$generated_at" >> "$GITHUB_OUTPUT"
-          echo "requested_cutoff=$requested_cutoff" >> "$GITHUB_OUTPUT"
+          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
+          from datetime import datetime, timezone
+          from src.research.market_session_clock import completed_market_date
+
+          now = datetime.now(timezone.utc)
+          requested = now.date().isoformat()
+          print(f"generated_at={now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
+          print(f"us_cutoff={completed_market_date('us', requested, now_utc=now)}")
+          print(f"cn_cutoff={completed_market_date('cn', requested, now_utc=now)}")
+          PY
 
   providers:
     needs: prepare
@@ -202,7 +209,7 @@ jobs:
         id: contract
         env:
           MARKET: ${{ matrix.market }}
-          REQUESTED_CUTOFF: ${{ needs.prepare.outputs.requested_cutoff }}
+          REQUESTED_CUTOFF: ${{ matrix.market == 'us' && needs.prepare.outputs.us_cutoff || needs.prepare.outputs.cn_cutoff }}
         run: |
           python -m scripts.govern_formal_provider_cache contract \
             --root . --market "$MARKET" --start 2021-01-01 \
@@ -225,7 +232,7 @@ jobs:
         if: steps.provider_cache.outputs.cache-hit != 'true'
         env:
           MARKET: ${{ matrix.market }}
-          REQUESTED_CUTOFF: ${{ needs.prepare.outputs.requested_cutoff }}
+          REQUESTED_CUTOFF: ${{ matrix.market == 'us' && needs.prepare.outputs.us_cutoff || needs.prepare.outputs.cn_cutoff }}
         run: |
           rm -rf "artifacts/formal-refresh/provider-${MARKET}"
           uv run python scripts/data/refresh_selected_pool_prices_v2.py \

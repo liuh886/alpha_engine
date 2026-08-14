@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve and build governed 10-session current targets for formal rankers."""
+"""Resolve and build the governed CN x1.1 10-session current target."""
 
 from __future__ import annotations
 
@@ -9,20 +9,18 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.data.adapters.base import FetchRequest
-from src.data.adapters.yfinance_adapter import YFinanceAdapter
 from src.research.market_session_clock import completed_market_date
 from src.research.ranker_current_target import (
     CN_MODEL_ID,
-    US_MODEL_ID,
     load_previous_state,
     merge_governed_market_sessions,
     next_due_session,
     score_cn_current_target,
-    score_us_current_target,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+MARKET = "cn"
+BENCHMARK = "000300"
 
 
 def _write(path: Path, payload: dict) -> None:
@@ -33,24 +31,22 @@ def _write(path: Path, payload: dict) -> None:
     )
 
 
-def _formal_portfolio(formal_root: Path, model_version_id: str) -> Path:
+def _formal_portfolio(formal_root: Path) -> Path:
     catalog_path = formal_root / "catalog.json"
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     records = [
         row
         for row in catalog.get("records", [])
-        if isinstance(row, dict) and row.get("model_version_id") == model_version_id
+        if isinstance(row, dict) and row.get("model_version_id") == CN_MODEL_ID
     ]
     if len(records) != 1:
-        raise ValueError(
-            f"formal catalog must contain exactly one {model_version_id} record"
-        )
+        raise ValueError(f"formal catalog must contain exactly one {CN_MODEL_ID} record")
     record = records[0]
     if record.get("publication_status") != "accepted_formal_baseline":
-        raise ValueError(f"formal model is not accepted: {model_version_id}")
+        raise ValueError(f"formal model is not accepted: {CN_MODEL_ID}")
     manifest_path = record.get("manifest_path")
     if not isinstance(manifest_path, str) or not manifest_path:
-        raise ValueError(f"formal manifest path is missing: {model_version_id}")
+        raise ValueError(f"formal manifest path is missing: {CN_MODEL_ID}")
     portfolio = formal_root / Path(manifest_path).parent / "portfolio.json"
     if not portfolio.is_file():
         raise ValueError(f"formal portfolio is missing: {portfolio}")
@@ -58,65 +54,36 @@ def _formal_portfolio(formal_root: Path, model_version_id: str) -> Path:
 
 
 def _due(args: argparse.Namespace) -> int:
-    model_version_id = US_MODEL_ID if args.market == "us" else CN_MODEL_ID
-    formal_package = _formal_portfolio(args.formal_root, model_version_id)
+    formal_package = _formal_portfolio(args.formal_root)
     anchor, _ = load_previous_state(
         formal_package=formal_package,
         ledger_dir=args.ledger_dir,
     )
-    benchmark = "QQQ" if args.market == "us" else "000300"
-    completed_as_of = completed_market_date(args.market, args.as_of)
+    completed_as_of = completed_market_date(MARKET, args.as_of)
     evidence_path = (
         ROOT
         / "data"
         / "research"
         / "market_evidence"
-        / args.market
+        / MARKET
         / "symbols"
-        / f"{benchmark}.json"
+        / f"{BENCHMARK}.json"
     )
-
-    if args.market == "cn":
-        # CN cadence is governed by the audited benchmark evidence published by
-        # the formal refresh pipeline. If that evidence has not advanced far
-        # enough to prove the next 10-session boundary, fail closed as not due
-        # until the governed evidence advances; do not make production cadence
-        # depend on Yahoo availability for the CSI 300 index.
-        live_sessions = pd.DatetimeIndex([])
-        calendar_provider = "completed_session_gate+governed_market_evidence"
-    else:
-        bars = (
-            YFinanceAdapter()
-            .fetch_daily_bars(
-                FetchRequest(
-                    symbol=benchmark,
-                    market=args.market,
-                    start=anchor,
-                    end=completed_as_of,
-                )
-            )
-            .df
-        )
-        live_sessions = pd.DatetimeIndex(pd.to_datetime(bars["date"]))
-        calendar_provider = (
-            "completed_session_gate+governed_market_evidence+yfinance_increment"
-        )
-
     sessions = merge_governed_market_sessions(
         evidence_path=evidence_path,
-        live_sessions=live_sessions,
+        live_sessions=pd.DatetimeIndex([]),
         as_of=completed_as_of,
     )
     due = next_due_session(anchor=anchor, sessions=sessions)
     payload = {
-        "market": args.market,
-        "model_version_id": model_version_id,
+        "market": MARKET,
+        "model_version_id": CN_MODEL_ID,
         "anchor": anchor,
         "requested_as_of": args.as_of,
         "as_of": completed_as_of,
         "due": due is not None,
         "signal_date": due,
-        "calendar_provider": calendar_provider,
+        "calendar_provider": "completed_session_gate+governed_market_evidence",
         "research_only": True,
         "trade_ready": False,
     }
@@ -126,10 +93,8 @@ def _due(args: argparse.Namespace) -> int:
 
 
 def _build(args: argparse.Namespace) -> int:
-    model_version_id = US_MODEL_ID if args.market == "us" else CN_MODEL_ID
-    formal_package = _formal_portfolio(args.formal_root, model_version_id)
-    scorer = score_us_current_target if args.market == "us" else score_cn_current_target
-    signal = scorer(
+    formal_package = _formal_portfolio(args.formal_root)
+    signal = score_cn_current_target(
         provider_dir=args.provider_dir,
         formal_package=formal_package,
         ledger_dir=args.ledger_dir,
@@ -147,7 +112,6 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     due = subparsers.add_parser("due")
-    due.add_argument("--market", choices=("us", "cn"), required=True)
     due.add_argument(
         "--formal-root",
         type=Path,
@@ -159,7 +123,6 @@ def main() -> int:
     due.set_defaults(func=_due)
 
     build = subparsers.add_parser("build")
-    build.add_argument("--market", choices=("us", "cn"), required=True)
     build.add_argument("--provider-dir", type=Path, required=True)
     build.add_argument(
         "--formal-root",
