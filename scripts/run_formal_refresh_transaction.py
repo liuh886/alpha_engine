@@ -22,13 +22,14 @@ from src.artifacts.formal_refresh import (
 )
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
 from src.artifacts.model_run_exporter import update_catalog
+from src.artifacts.strategy_signal_ledger import read_latest_evaluation
 from src.governance.active_strategy_catalog import (
     ActiveStrategyCatalogError,
     assert_formal_catalog_matches_active_strategies,
     load_active_strategy_catalog,
 )
 
-RANKER_MTM_MODELS = (("cn_x1_1", "cn"),)
+RANKER_MODELS = (("us_x1_3", "us"), ("cn_x1_1", "cn"))
 TASK_RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v1"
 PLAN_SCHEMA = "formal_refresh_plan_v3"
 FAN_IN_SCHEMA = "formal_strategy_fan_in_v2"
@@ -121,7 +122,12 @@ def _formal_records(catalog: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
     return result
 
 
-def _performance_section(formal_root: Path, record: Mapping[str, Any]) -> Mapping[str, Any]:
+def _bundle_section(
+    formal_root: Path,
+    record: Mapping[str, Any],
+    *,
+    section_id: str,
+) -> Mapping[str, Any]:
     manifest_path = formal_root / str(record.get("manifest_path") or "")
     if not manifest_path.is_file() or sha256(manifest_path) != record.get("manifest_sha256"):
         raise FormalRefreshError(
@@ -137,21 +143,22 @@ def _performance_section(formal_root: Path, record: Mapping[str, Any]) -> Mappin
             row
             for row in declarations
             if isinstance(row, Mapping)
-            and row.get("section_id") == "performance"
+            and row.get("section_id") == section_id
             and row.get("availability_status") == "available"
         ),
         None,
     )
     if not isinstance(declaration, Mapping):
         raise FormalRefreshError(
-            f"formal performance section is unavailable: {record.get('model_version_id')}"
+            f"formal {section_id} section is unavailable: {record.get('model_version_id')}"
         )
     path = manifest_path.parent / str(declaration.get("path") or "")
     if not path.is_file() or sha256(path) != declaration.get("sha256"):
         raise FormalRefreshError(
-            f"formal performance digest mismatch: {record.get('model_version_id')}"
+            f"formal {section_id} digest mismatch: {record.get('model_version_id')}"
         )
-    return load_object(path)
+    value = load_object(path)
+    return value
 
 
 def _latest_settled_performance_end(performance: Mapping[str, Any]) -> str:
@@ -170,8 +177,36 @@ def _latest_settled_performance_end(performance: Mapping[str, Any]) -> str:
     return max(ends)
 
 
+def _latest_formal_signal_date(portfolio: Mapping[str, Any]) -> str:
+    positions = portfolio.get("positions")
+    if not isinstance(positions, list) or not positions:
+        raise FormalRefreshError("formal ranker portfolio has no positions")
+    dates = [
+        _iso_date(row.get("date"), label="formal ranker signal date")
+        for row in positions
+        if isinstance(row, Mapping) and row.get("date")
+    ]
+    if not dates:
+        raise FormalRefreshError("formal ranker portfolio has no signal date")
+    return max(dates)
+
+
+def _latest_ledger_signal_date(ledger_root: Path, model_id: str) -> str:
+    record = read_latest_evaluation(
+        ledger_root / model_id,
+        model_version_id=model_id,
+    )
+    if record is None:
+        raise FormalRefreshError(f"canonical ranker signal ledger is missing: {model_id}")
+    signal = record.get("signal")
+    if not isinstance(signal, Mapping):
+        raise FormalRefreshError(f"canonical ranker signal payload is missing: {model_id}")
+    value = signal.get("signal_date") or record.get("signal_date")
+    return _iso_date(value, label=f"{model_id} ledger signal date")
+
+
 def _has_current_provisional_mtm(
-    performance: Mapping[str, Any], *, cutoff: str
+    performance: Mapping[str, Any], *, cutoff: str, signal_date: str
 ) -> bool:
     report = performance.get("report")
     if not isinstance(report, list):
@@ -181,8 +216,50 @@ def _has_current_provisional_mtm(
         and row.get("provisional_mtm") is True
         and row.get("settlement_status") == "provisional_mtm"
         and str(row.get("holding_end_date") or "") == cutoff
+        and str(row.get("signal_date") or "") == signal_date
         for row in report
     )
+
+
+def _ranker_refresh_requirements(
+    *,
+    model_id: str,
+    target: str,
+    formal_signal_date: str,
+    ledger_signal_date: str,
+    performance: Mapping[str, Any],
+) -> tuple[bool, bool]:
+    target_date = _iso_date(target, label=f"{model_id} target cutoff")
+    formal_date = _iso_date(formal_signal_date, label=f"{model_id} formal signal date")
+    ledger_date = _iso_date(ledger_signal_date, label=f"{model_id} ledger signal date")
+    if ledger_date < formal_date:
+        raise FormalRefreshError(
+            f"formal ranker state is ahead of canonical ledger for {model_id}: "
+            f"formal={formal_date} ledger={ledger_date}"
+        )
+    if ledger_date > target_date:
+        raise FormalRefreshError(
+            f"canonical ranker signal exceeds provider cutoff for {model_id}: "
+            f"ledger={ledger_date} target={target_date}"
+        )
+
+    settled_end = _latest_settled_performance_end(performance)
+    if settled_end > target_date:
+        raise FormalRefreshError(
+            f"settled performance exceeds target cutoff for {model_id}: "
+            f"{settled_end} > {target_date}"
+        )
+
+    settled_refresh_required = ledger_date > formal_date
+    mtm_refresh_required = (
+        target_date > ledger_date
+        and not _has_current_provisional_mtm(
+            performance,
+            cutoff=target_date,
+            signal_date=ledger_date,
+        )
+    )
+    return settled_refresh_required, mtm_refresh_required
 
 
 def build_task_plan(
@@ -197,35 +274,55 @@ def build_task_plan(
     validate_catalog(formal_v2)
     _assert_formal_catalog_or_declared_transition(formal_v2, active)
     records = _formal_records(formal_v2)
+    ranker_markets = dict(RANKER_MODELS)
+    ledger_root = formal_v2_root.parent / "strategy_signal_ledgers"
 
     stale_ids: set[str] = set()
     mtm_ids: set[str] = set()
     for strategy in active.strategies:
-        record = records.get(strategy.model_version_id)
+        model_id = strategy.model_version_id
+        record = records.get(model_id)
         if record is None:
-            stale_ids.add(strategy.model_version_id)
+            stale_ids.add(model_id)
             continue
         target = _iso_date(cutoffs[strategy.market], label=f"{strategy.market} target cutoff")
         accepted = _iso_date(
-            record.get("evidence_cutoff"), label=f"{strategy.model_version_id} formal cutoff"
+            record.get("evidence_cutoff"), label=f"{model_id} formal cutoff"
         )
-        if accepted < target:
-            stale_ids.add(strategy.model_version_id)
+        if accepted > target:
+            raise FormalRefreshError(
+                f"target cutoff regresses formal evidence for {model_id}: {target} < {accepted}"
+            )
+        if model_id not in ranker_markets and accepted < target:
+            stale_ids.add(model_id)
 
-    for model_id, market in RANKER_MTM_MODELS:
+    for model_id, market in RANKER_MODELS:
         record = records.get(model_id)
         if record is None:
             continue
-        target = _iso_date(cutoffs[market], label=f"{market} MTM cutoff")
-        performance = _performance_section(formal_v2_root, record)
-        settled_end = _latest_settled_performance_end(performance)
-        if settled_end > target:
-            raise FormalRefreshError(
-                f"settled performance exceeds target cutoff for {model_id}: {settled_end} > {target}"
-            )
-        if settled_end < target and not _has_current_provisional_mtm(
-            performance, cutoff=target
-        ):
+        target = _iso_date(cutoffs[market], label=f"{market} ranker cutoff")
+        performance = _bundle_section(
+            formal_v2_root,
+            record,
+            section_id="performance",
+        )
+        portfolio = _bundle_section(
+            formal_v2_root,
+            record,
+            section_id="portfolio",
+        )
+        formal_signal = _latest_formal_signal_date(portfolio)
+        ledger_signal = _latest_ledger_signal_date(ledger_root, model_id)
+        settled_required, mtm_required = _ranker_refresh_requirements(
+            model_id=model_id,
+            target=target,
+            formal_signal_date=formal_signal,
+            ledger_signal_date=ledger_signal,
+            performance=performance,
+        )
+        if settled_required:
+            stale_ids.add(model_id)
+        if mtm_required:
             mtm_ids.add(model_id)
 
     tasks: list[dict[str, Any]] = []
