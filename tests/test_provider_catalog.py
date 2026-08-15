@@ -17,9 +17,17 @@ def test_eastmoney_transports_are_not_independent_sources():
             "akshare",
             "efinance",
             "baostock",
+            "tencent_qfq_history",
             "yfinance",
         ]
-    ) == ["tushare", "akshare_sina", "akshare", "baostock", "yfinance"]
+    ) == [
+        "tushare",
+        "akshare_sina",
+        "akshare",
+        "baostock",
+        "tencent_qfq_history",
+        "yfinance",
+    ]
 
 
 def test_sina_is_independent_from_eastmoney():

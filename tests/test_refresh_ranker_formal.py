@@ -9,10 +9,49 @@ import pytest
 from scripts.refresh_ranker_formal import (
     RankerRefreshError,
     _date_identity,
+    _annualized_ranker_metrics,
+    _cn_signal_metric_metadata,
     _holding_end,
     _latest_realized_holding_end,
     _update_common_metadata,
 )
+
+
+def test_annualized_ranker_metrics_use_non_overlapping_holding_periods() -> None:
+    metrics = _annualized_ranker_metrics(
+        [
+            {"period_return": 0.02, "excess_return": 0.01},
+            {"period_return": -0.01, "excess_return": -0.005},
+            {"period_return": 0.03, "excess_return": 0.015},
+        ],
+        holding_sessions=10,
+    )
+
+    assert set(metrics) == {
+        "Annualized Return",
+        "Annualized Volatility",
+        "Sharpe Ratio",
+        "Information Ratio",
+    }
+    assert metrics["Annualized Volatility"] > 0.0
+    assert metrics["Information Ratio"] > 0.0
+
+
+def test_cn_x1_2_signal_metrics_keep_frozen_development_scope() -> None:
+    metadata = _cn_signal_metric_metadata(
+        {
+            "date_range": {"start": "2024-01-02", "end": "2026-06-30"},
+            "report": [{}] * 57,
+            "evidence": {},
+        },
+        model_id="cn_x1_2",
+    )
+
+    assert metadata["rank_ic"]["sample_count"] == 57
+    assert metadata["rank_ic"]["scope"] == (
+        "frozen development window: 2024-01-02 through 2026-06-30"
+    )
+    assert metadata["icir"] == metadata["rank_ic"]
 
 
 def test_date_identity_normalizes_pandas_timestamp() -> None:

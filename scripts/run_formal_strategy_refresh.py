@@ -37,6 +37,7 @@ PLAN_SCHEMA = "formal_refresh_plan_v4"
 QQQ_MODEL_ID = "qqqi_qqq_tqqq_v4_3"
 US_MODEL_ID = "us_x1_3"
 CN_MODEL_ID = "cn_x1_1"
+CN_X1_2_MODEL_ID = "cn_x1_2"
 BYD_MODEL_ID = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
 BYD_PREDECESSOR = Path(
     "data/research/historical_model_evidence/byd_v1_2_convex_momentum_budget_v1.json"
@@ -72,6 +73,23 @@ def _settled_report(value: Mapping[str, Any]) -> list[dict[str, Any]]:
         and row.get("provisional_mtm") is not True
         and row.get("settlement_status") != "provisional_mtm"
     ]
+
+
+def _verify_append_only_prefix(
+    current: Mapping[str, Any], candidate: Mapping[str, Any]
+) -> dict[str, int]:
+    observed: dict[str, int] = {}
+    for field in ("report", "positions", "trades"):
+        before = current.get(field)
+        after = candidate.get(field)
+        if not isinstance(before, list) or not isinstance(after, list):
+            raise StrategyRefreshBlocked("invalid_evidence", f"CN x1.2 {field} is missing")
+        if len(after) < len(before) or after[: len(before)] != before:
+            raise StrategyRefreshBlocked(
+                "invalid_evidence", f"CN x1.2 {field} changed before the reporting boundary"
+            )
+        observed[field] = len(before)
+    return observed
 
 
 def _task(plan_path: Path, strategy_id: str) -> dict[str, Any]:
@@ -524,6 +542,129 @@ def _run_cn(
     }
 
 
+def _build_cn_x1_2_duplicate_ledgers(
+    *, root: Path, provider_dir: Path, result_root: Path, cutoff: str
+) -> tuple[Path, Path]:
+    outputs: list[Path] = []
+    for suffix in ("a", "b"):
+        ledger = result_root / f"cn-x1-2-ledger-{suffix}" / "score-ledger.csv.gz"
+        _run(
+            [
+                sys.executable,
+                "scripts/build_cn_x1_2_prospective_ledger.py",
+                "--repository-root",
+                str(root),
+                "--provider-dir",
+                str(provider_dir),
+                "--cutoff",
+                cutoff,
+                "--output",
+                str(ledger),
+            ],
+            cwd=root,
+        )
+        outputs.append(ledger)
+    if not all(path.is_file() for path in outputs):
+        raise StrategyRefreshBlocked(
+            "invalid_evidence", "CN x1.2 duplicate score ledgers are missing"
+        )
+    return outputs[0], outputs[1]
+
+
+def _run_cn_x1_2(
+    *,
+    root: Path,
+    task: Mapping[str, Any],
+    provider_root: Path,
+    formal_v2_root: Path,
+    result_root: Path,
+    generated_at: str,
+) -> dict[str, Any]:
+    if not bool(task.get("formal_refresh_required")):
+        return {
+            **_base_receipt(task),
+            "execution_status": "current_no_change",
+            "replay_verdict": "not_required_current_identity",
+        }
+
+    cutoff = str(task["planned_provider_cutoff"])
+    provider_dir = provider_root / "data" / "providers" / "cn"
+    provider_manifest = provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
+    ledger_a, ledger_b = _build_cn_x1_2_duplicate_ledgers(
+        root=root,
+        provider_dir=provider_dir,
+        result_root=result_root,
+        cutoff=cutoff,
+    )
+    with tempfile.TemporaryDirectory(prefix="cn-x1-2-refresh-state-") as temporary:
+        current_package = Path(temporary) / "current.json"
+        package = Path(temporary) / "candidate.json"
+        current_state = _materialize_refresh_state(
+            root=root,
+            formal_v2_root=formal_v2_root,
+            model_id=CN_X1_2_MODEL_ID,
+            target=current_package,
+        )
+        _run(
+            [
+                sys.executable,
+                "scripts/refresh_ranker_formal.py",
+                "cn",
+                "--repository-root",
+                str(root),
+                "--current-package",
+                str(current_package),
+                "--provider-dir",
+                str(provider_dir),
+                "--provider-manifest",
+                str(provider_manifest),
+                "--ledger-a",
+                str(ledger_a),
+                "--ledger-b",
+                str(ledger_b),
+                "--cutoff",
+                cutoff,
+                "--generated-at",
+                generated_at,
+                "--model-id",
+                CN_X1_2_MODEL_ID,
+                "--exposure-policy",
+                "breadth_scaled",
+                "--refresh-adapter",
+                "refresh_ranker_formal.cn_x1_2",
+                "--trade-reason",
+                "cn_x1_2_breadth_scaled_reporting_rebalance",
+                "--output",
+                str(package),
+            ],
+            cwd=root,
+        )
+        candidate = load_object(package)
+        prefix = _verify_append_only_prefix(current_state, candidate)
+        evidence = _mapping(candidate.get("evidence"))
+        if evidence.get("model_selection_reopened") is not False:
+            raise StrategyRefreshBlocked(
+                "invalid_evidence", "CN x1.2 refresh reopened model selection"
+            )
+        output_sha, bundle_id = _seal_preview(
+            root=root, task=task, evidence_path=package, result_root=result_root
+        )
+    freshness = _mapping(candidate.get("freshness"))
+    return {
+        **_base_receipt(task),
+        "execution_status": "refreshed",
+        "candidate_evidence_cutoff": candidate.get("evidence_cutoff"),
+        "performance_observation_end": freshness.get("latest_realized_holding_end"),
+        "candidate_bundle_id": bundle_id,
+        "output_sha256": output_sha,
+        "replay_verdict": {
+            "frozen_prefix_rows": prefix,
+            "duplicate_score_ledger_sha256": sha256(ledger_a),
+            "model_selection_reopened": False,
+        },
+    }
+
+
 def _extract_byd_inputs(root: Path, result_root: Path) -> tuple[Path, Path]:
     byd_base = result_root / "input" / "byd"
     etf_base = result_root / "input" / "515180"
@@ -644,6 +785,14 @@ def execute_strategy(
             provider_root=provider_root,
             formal_v2_root=formal_v2_root,
             current_preview_root=current_preview_root,
+            result_root=result_root,
+            generated_at=generated_at,
+        ),
+        "cn_x1_2_formal_refresh_v1": lambda: _run_cn_x1_2(
+            root=root,
+            task=task,
+            provider_root=provider_root,
+            formal_v2_root=formal_v2_root,
             result_root=result_root,
             generated_at=generated_at,
         ),

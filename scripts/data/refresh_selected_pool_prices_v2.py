@@ -23,6 +23,7 @@ from src.data.adapters.baostock_adapter import BaoStockAdapter
 from src.data.adapters.base import MarketDataAdapter
 from src.data.adapters.efinance_adapter import EFinanceAdapter
 from src.data.adapters.tushare_adapter import TushareAdapter
+from src.data.adapters.tencent_fqkline_adapter import TencentQfqHistoryAdapter
 from src.data.adapters.yfinance_adapter import YFinanceAdapter
 from src.data.provider_catalog import (
     independent_provider_names,
@@ -68,6 +69,7 @@ def build_hardened_router(market: str) -> MarketDataRouter:
                 AkShareAdapter(),
                 BaoStockAdapter(),
                 EFinanceAdapter(),
+                TencentQfqHistoryAdapter(),
                 YFinanceAdapter(),
             ]
         )
@@ -77,6 +79,7 @@ def build_hardened_router(market: str) -> MarketDataRouter:
                 "akshare",
                 "baostock",
                 "efinance",
+                "tencent_qfq_history",
                 "yfinance",
             ]
         )

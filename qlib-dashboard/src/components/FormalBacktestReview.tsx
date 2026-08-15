@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCanonicalMetric, formatDeclaredValue } from '@/lib/evidence-availability';
 import { formatEvidenceLabel } from '@/lib/format-evidence-label';
+import { visibleWindowColumns } from '@/lib/formal-evidence-presentation';
 import {
   loadFormalRunEvidence,
   metricById,
@@ -62,6 +63,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function MetricCard({ metricId, metrics }: { metricId: string; metrics: CanonicalMetricV2[] }) {
   const metric = metricById(metrics, metricId);
   const available = metric?.availability_status === 'available' && metric.value !== null;
+  const scopedWindow = metric?.scope && metric.scope !== 'accepted_formal_source_observed_window'
+    ? ` · ${metric.scope}`
+    : '';
   return (
     <Card className="min-w-0">
       <CardHeader className="pb-2">
@@ -73,7 +77,7 @@ function MetricCard({ metricId, metrics }: { metricId: string; metrics: Canonica
         </div>
         <p className="mt-1 line-clamp-2 min-h-8 text-[10px] leading-relaxed text-muted-foreground" title={metric?.unavailable_reason || metric?.scope || ''}>
           {available
-            ? `Retained source metric${metric?.sample_count ? ` · ${metric.sample_count.toLocaleString()} observations` : ''}`
+            ? `Retained source metric${metric?.sample_count ? ` · ${metric.sample_count.toLocaleString()} observations` : ''}${scopedWindow}`
             : metric?.unavailable_reason || 'The evidence contract does not declare this metric.'}
         </p>
       </CardContent>
@@ -98,7 +102,7 @@ function formatEvidenceCell(column: string, value: unknown): string {
   if (['execution_price', 'entry_price', 'exit_price', 'price', 'reference_price'].includes(column)) {
     return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
   }
-  if (column.includes('weight') || column.includes('return') || column === 'transaction_cost' || column === 'normalized_notional') {
+  if (column.includes('weight') || column.includes('return') || column.includes('share') || column.includes('hit_rate') || column === 'transaction_cost' || column === 'normalized_notional') {
     return `${(value * 100).toFixed(2)}%`;
   }
   return value.toLocaleString(undefined, { maximumFractionDigits: 5 });
@@ -186,12 +190,25 @@ function PerformancePanel({ evidence }: { evidence: FormalRunEvidence }) {
           <MetricCard key={metricId} metricId={metricId} metrics={evidence.metrics} />
         ))}
       </div>
+      {evidence.run.modelKind === 'cross_sectional_ranker' && (
+        <Card>
+          <CardHeader className="border-b pb-3">
+            <CardTitle className="text-sm">Signal quality</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">Cross-sectional diagnostics retained by the formal source; unavailable values remain explicit.</p>
+          </CardHeader>
+          <CardContent className="grid gap-3 pt-4 sm:grid-cols-3">
+            {['ic', 'rank_ic', 'icir'].map((metricId) => (
+              <MetricCard key={metricId} metricId={metricId} metrics={evidence.metrics} />
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
 
 function RiskPanel({ evidence }: { evidence: FormalRunEvidence }) {
-  const windowColumns = ['window', 'periods', 'positive_periods', 'net_strategy_return', 'qqq_return', 'simple_excess_return', 'max_drawdown', 'turnover', 'transaction_cost'];
+  const windowColumns = visibleWindowColumns(evidence.robustness.windowSummary);
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

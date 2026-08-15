@@ -18,7 +18,6 @@ from typing import Any, Mapping, Sequence
 
 import pandas as pd
 
-from scripts.run_cn_x1_1_sector_breadth import load_ledgers
 from src.artifacts.formal_refresh import FormalRefreshError, load_object, sha256, write_object
 from src.artifacts.performance_semantics import build_performance_semantics
 from src.research.cn130_cross_sectional_ranking import forward_returns, load_provider_panel
@@ -212,6 +211,61 @@ def _update_common_metadata(
     }
     package["research_only"] = True
     package["trade_ready"] = False
+
+
+def _annualized_ranker_metrics(
+    report: Sequence[Mapping[str, Any]], *, holding_sessions: int
+) -> dict[str, float]:
+    if holding_sessions <= 0 or not report:
+        raise RankerRefreshError("annualized metrics require retained return rows")
+    period_returns = pd.Series(
+        [float(row["period_return"]) for row in report], dtype="float64"
+    )
+    excess_returns = pd.Series(
+        [float(row["excess_return"]) for row in report], dtype="float64"
+    )
+    periods_per_year = 252.0 / float(holding_sessions)
+    return_std = float(period_returns.std(ddof=1))
+    excess_std = float(excess_returns.std(ddof=1))
+    return {
+        "Annualized Return": float(
+            (1.0 + period_returns).prod() ** (periods_per_year / len(period_returns)) - 1.0
+        ),
+        "Annualized Volatility": float(return_std * math.sqrt(periods_per_year)),
+        "Sharpe Ratio": (
+            float(period_returns.mean() / return_std * math.sqrt(periods_per_year))
+            if len(period_returns) > 1 and not math.isclose(return_std, 0.0)
+            else 0.0
+        ),
+        "Information Ratio": (
+            float(excess_returns.mean() / excess_std * math.sqrt(periods_per_year))
+            if len(excess_returns) > 1 and not math.isclose(excess_std, 0.0)
+            else 0.0
+        ),
+    }
+
+
+def _cn_signal_metric_metadata(
+    package: Mapping[str, Any], *, model_id: str
+) -> dict[str, Any]:
+    evidence = package.get("evidence")
+    if isinstance(evidence, Mapping):
+        existing = evidence.get("metric_metadata")
+        if isinstance(existing, Mapping):
+            return dict(existing)
+    if model_id != "cn_x1_2":
+        return {}
+    frozen_range = dict(package.get("date_range") or {})
+    if frozen_range.get("end") != "2026-06-30":
+        raise RankerRefreshError("CN x1.2 frozen signal-metric boundary is invalid")
+    frozen_scope = (
+        f"frozen development window: {frozen_range.get('start')} through 2026-06-30"
+    )
+    frozen_count = len(package.get("report") or [])
+    return {
+        "rank_ic": {"sample_count": frozen_count, "scope": frozen_scope},
+        "icir": {"sample_count": frozen_count, "scope": frozen_scope},
+    }
 
 
 def refresh_us(
@@ -468,12 +522,17 @@ def refresh_cn(
     cutoff: str,
     generated_at: str,
     output: Path,
+    model_id: str = "cn_x1_1",
+    exposure_policy: str = "full_exposure",
+    refresh_adapter: str = "refresh_ranker_formal.cn_x1_1",
+    trade_reason: str = "regime_gated_sector_breadth_rebalance",
 ) -> dict[str, Any]:
     package = copy.deepcopy(load_object(current_package))
-    if package.get("model_id") != "cn_x1_1":
-        raise RankerRefreshError("CN refresh requires the accepted cn_x1_1 package")
+    if package.get("model_id") != model_id:
+        raise RankerRefreshError(f"CN refresh requires the accepted {model_id} package")
     if sha256(ledger_a) != sha256(ledger_b):
         raise RankerRefreshError("CN duplicate score-ledger executions differ")
+    metric_metadata = _cn_signal_metric_metadata(package, model_id=model_id)
 
     spec = RegimeGateSpec()
     import yaml
@@ -486,8 +545,32 @@ def refresh_cn(
     symbols = [str(value).zfill(6) for value in universe["symbols"]]
     if len(symbols) != 130 or len(set(symbols)) != 130:
         raise RankerRefreshError("CN130 universe identity is not exact")
-    ledger_root = ledger_a.parent
-    ledger, _ = load_ledgers([ledger_root], ("2026H2_PARTIAL",))
+    ledger = pd.read_csv(
+        ledger_a,
+        compression="infer",
+        dtype={"instrument": str},
+        parse_dates=["datetime"],
+    )
+    required_ledger_columns = {
+        "window",
+        "datetime",
+        "instrument",
+        "entity",
+        "sector",
+        "industry",
+        "score",
+        "execution_forward_return",
+    }
+    if set(ledger.columns) != required_ledger_columns:
+        raise RankerRefreshError("CN score-ledger schema is invalid")
+    ledger["instrument"] = ledger["instrument"].astype(str).str.zfill(6)
+    if set(ledger["window"].astype(str)) != {"2026H2_PARTIAL"}:
+        raise RankerRefreshError("CN score ledger must contain only 2026H2_PARTIAL")
+    ledger = ledger.sort_values(
+        ["datetime", "score", "instrument"],
+        ascending=[True, False, True],
+        kind="mergesort",
+    ).reset_index(drop=True)
     panel = load_provider_panel(provider_dir, [*symbols, spec.benchmark], fields=("close",))
     close = panel.fields["close"]
     calendar = [_date_identity(value) for value in close.index]
@@ -514,6 +597,8 @@ def refresh_cn(
         windows=("2026H2_PARTIAL",),
         variant=spec.variant(),
         rule="two_of_three",
+        exposure_policy=exposure_policy,
+        breadth_threshold=spec.breadth_threshold,
         rebalance_sessions=spec.rebalance_sessions,
         cost_bps=spec.cost_bps,
     )
@@ -566,8 +651,7 @@ def refresh_cn(
         benchmark *= 1.0 + benchmark_return
         peak = max(peak, account)
         risk_on = bool(period["risk_on"])
-        package["report"].append(
-            {
+        report_row = {
                 "date": signal_date,
                 "holding_end_date": holding_end,
                 "account": account,
@@ -592,7 +676,12 @@ def refresh_cn(
                 "benchmark_hit": bool(period["benchmark_hit"]),
                 "trace_frequency": "non_overlapping_10_session",
             }
-        )
+        for field in ("risk_on_eligible", "active_share", "benchmark_sleeve"):
+            if field in period and not pd.isna(period[field]):
+                report_row[field] = (
+                    bool(period[field]) if field == "risk_on_eligible" else float(period[field])
+                )
+        package["report"].append(report_row)
         for row in rows:
             instrument = str(row["instrument"])
             entity = str(row.get("entity") or instrument)
@@ -614,6 +703,17 @@ def refresh_cn(
                     "window": "2026H2_PARTIAL",
                     "evaluation": "reporting",
                     "risk_state": "risk_on" if risk_on else "risk_off_csi300_fallback",
+                    "active_share": (
+                        float(period["active_share"])
+                        if "active_share" in period and not pd.isna(period["active_share"])
+                        else None
+                    ),
+                    "benchmark_sleeve": (
+                        float(period["benchmark_sleeve"])
+                        if "benchmark_sleeve" in period
+                        and not pd.isna(period["benchmark_sleeve"])
+                        else None
+                    ),
                 }
             )
             item = attribution.setdefault(
@@ -664,7 +764,7 @@ def refresh_cn(
                     "target_weight": target,
                     "weight_delta": delta,
                     "transaction_cost": allocated,
-                    "reason": "regime_gated_sector_breadth_rebalance",
+                    "reason": trade_reason,
                     "risk_state": "risk_on" if risk_on else "risk_off_csi300_fallback",
                     "window": "2026H2_PARTIAL",
                     "entity": None if source is None else source.get("entity"),
@@ -688,6 +788,10 @@ def refresh_cn(
         window_rows[str(row["window"])] = row
     package["window_summary"] = list(window_rows.values())
     last = package["report"][-1]
+    periods_per_year = 252.0 / float(spec.horizon_sessions)
+    annualized = _annualized_ranker_metrics(
+        package["report"], holding_sessions=spec.horizon_sessions
+    )
     package["metrics"] = {
         **dict(package["metrics"]),
         "Total Return": float(last["account"]) - 1.0,
@@ -700,23 +804,32 @@ def refresh_cn(
         "Transaction Cost": sum(
             float(row.get("transaction_cost", 0.0)) for row in package["report"]
         ),
+        **annualized,
         "2026 Reporting Relative Excess Return": float(summary["relative_excess"]),
     }
-    package["backtest_id"] = f"cn_x1_1-through-{cutoff.replace('-', '_')}"
+    package["backtest_id"] = f"{model_id}-through-{cutoff.replace('-', '_')}"
     _update_common_metadata(
         package,
         cutoff=cutoff,
         generated_at=generated_at,
         provider_manifest=provider_manifest,
         evidence={
-            "refresh_adapter": "refresh_ranker_formal.cn_x1_1",
+            "refresh_adapter": refresh_adapter,
             "score_ledger_sha256": sha256(ledger_a),
             "duplicate_score_ledger_sha256": sha256(ledger_b),
             "reporting_summary": summary,
+            "model_selection_reopened": False,
+            "prospective_reporting_start": "2026-07-01",
+            **({"metric_metadata": metric_metadata} if metric_metadata else {}),
+            "annualization": {
+                "periods_per_year": periods_per_year,
+                "risk_free_rate": 0.0,
+                "return_rows": int(len(package["report"])),
+            },
         },
     )
     write_object(output, package)
-    return {"model_id": "cn_x1_1", "appended_periods": appended, "output_sha256": sha256(output)}
+    return {"model_id": model_id, "appended_periods": appended, "output_sha256": sha256(output)}
 
 
 def main() -> None:
@@ -743,6 +856,10 @@ def main() -> None:
     cn.add_argument("--cutoff", required=True)
     cn.add_argument("--generated-at", required=True)
     cn.add_argument("--output", type=Path, required=True)
+    cn.add_argument("--model-id", default="cn_x1_1")
+    cn.add_argument("--exposure-policy", default="full_exposure")
+    cn.add_argument("--refresh-adapter", default="refresh_ranker_formal.cn_x1_1")
+    cn.add_argument("--trade-reason", default="regime_gated_sector_breadth_rebalance")
 
     args = parser.parse_args()
     if args.command == "us":
@@ -767,6 +884,10 @@ def main() -> None:
             cutoff=args.cutoff,
             generated_at=args.generated_at,
             output=args.output,
+            model_id=args.model_id,
+            exposure_policy=args.exposure_policy,
+            refresh_adapter=args.refresh_adapter,
+            trade_reason=args.trade_reason,
         )
     print(json.dumps(result, indent=2, sort_keys=True))
 

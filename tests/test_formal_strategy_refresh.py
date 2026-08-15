@@ -325,22 +325,28 @@ def test_task_rejects_runtime_adapter_identity_drift(tmp_path: Path) -> None:
         runner._task(plan, "us_x")
 
 
-def test_required_cn_x1_2_refresh_is_explicitly_runtime_blocked(tmp_path: Path) -> None:
+def test_required_cn_x1_2_refresh_dispatches_exact_maintained_adapter(
+    tmp_path: Path, monkeypatch
+) -> None:
     task = next(row for row in _tasks() if row["strategy_id"] == "cn_x")
     task["formal_refresh_required"] = True
+    observed = {}
 
-    with pytest.raises(runner.StrategyRefreshBlocked) as blocked:
-        runner.execute_strategy(
-            root=tmp_path,
-            task=task,
-            provider_root=tmp_path,
-            formal_v2_root=tmp_path,
-            current_preview_root=tmp_path,
-            result_root=tmp_path,
-            generated_at="2026-08-15T00:00:00Z",
-        )
+    def run_cn_x1_2(**kwargs):
+        observed.update(kwargs)
+        return {"execution_status": "refreshed", "model_id": "cn_x1_2"}
 
-    assert blocked.value.status == "runtime_blocked"
-    assert blocked.value.reason == (
-        "blocked_pending_maintained_cn_x1_2_formal_refresh_adapter"
+    monkeypatch.setattr(runner, "_run_cn_x1_2", run_cn_x1_2)
+    receipt = runner.execute_strategy(
+        root=tmp_path,
+        task=task,
+        provider_root=tmp_path,
+        formal_v2_root=tmp_path,
+        current_preview_root=tmp_path,
+        result_root=tmp_path,
+        generated_at="2026-08-15T00:00:00Z",
     )
+
+    assert receipt == {"execution_status": "refreshed", "model_id": "cn_x1_2"}
+    assert observed["task"] is task
+    assert observed["generated_at"] == "2026-08-15T00:00:00Z"

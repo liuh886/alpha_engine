@@ -35,9 +35,9 @@ METRIC_ALIASES: dict[str, tuple[str, ...]] = {
     "max_drawdown": ("Max Drawdown", "mdd"),
     "turnover": ("Turnover",),
     "transaction_cost": ("Transaction Cost",),
-    "ic": ("IC",),
-    "rank_ic": ("Rank IC", "Mean Rank IC"),
-    "icir": ("ICIR", "Mean ICIR"),
+    "ic": ("IC", "ic"),
+    "rank_ic": ("Rank IC", "Mean Rank IC", "rank_ic"),
+    "icir": ("ICIR", "Mean ICIR", "icir"),
 }
 
 METRIC_META: dict[str, tuple[str, str]] = {
@@ -95,6 +95,12 @@ def _mapping(package: Mapping[str, Any], key: str) -> dict[str, Any]:
 def _canonical_metrics(package: Mapping[str, Any], *, model_kind: str) -> list[dict[str, Any]]:
     raw = _mapping(package, "metrics")
     sample_count = len(_list(package, "report"))
+    evidence = package.get("evidence")
+    metric_metadata: Mapping[str, Any] = {}
+    if isinstance(evidence, Mapping):
+        declared = evidence.get("metric_metadata")
+        if isinstance(declared, Mapping):
+            metric_metadata = declared
     rows: list[dict[str, Any]] = []
     for metric_id, aliases in METRIC_ALIASES.items():
         source_label = next((label for label in aliases if label in raw), None)
@@ -103,6 +109,28 @@ def _canonical_metrics(package: Mapping[str, Any], *, model_kind: str) -> list[d
             value = raw[source_label]
             if not isinstance(value, (int, float)) or isinstance(value, bool):
                 raise FormalBundleV2BuildError(f"metric {source_label} is not a retained number")
+            declared_meta = metric_metadata.get(metric_id)
+            retained_count = sample_count
+            retained_scope = "accepted_formal_source_observed_window"
+            if declared_meta is not None:
+                if not isinstance(declared_meta, Mapping):
+                    raise FormalBundleV2BuildError(
+                        f"metric metadata for {metric_id} must be an object"
+                    )
+                declared_count = declared_meta.get("sample_count")
+                declared_scope = declared_meta.get("scope")
+                if (
+                    not isinstance(declared_count, int)
+                    or isinstance(declared_count, bool)
+                    or declared_count <= 0
+                    or not isinstance(declared_scope, str)
+                    or not declared_scope.strip()
+                ):
+                    raise FormalBundleV2BuildError(
+                        f"metric metadata for {metric_id} is invalid"
+                    )
+                retained_count = declared_count
+                retained_scope = declared_scope.strip()
             rows.append(
                 {
                     "metric_id": metric_id,
@@ -115,8 +143,8 @@ def _canonical_metrics(package: Mapping[str, Any], *, model_kind: str) -> list[d
                         if metric_id in {"annualized_return", "annualized_volatility", "sharpe_ratio", "information_ratio"}
                         else None
                     ),
-                    "sample_count": sample_count,
-                    "scope": "accepted_formal_source_observed_window",
+                    "sample_count": retained_count,
+                    "scope": retained_scope,
                     "availability_status": "available",
                     "unavailable_reason": None,
                 }

@@ -41,9 +41,15 @@ def _parse_rows(payload: object, provider_symbol: str) -> list[list[object]]:
     return [row for row in rows if isinstance(row, list)]
 
 
-def _fetch_rows(provider_symbol: str, start: str, end: str) -> pd.DataFrame:
+def _fetch_rows(
+    provider_symbol: str,
+    start: str,
+    end: str,
+    *,
+    count: int = 10,
+) -> pd.DataFrame:
     url = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
-    params = {"param": f"{provider_symbol},day,{start},{end},10,qfq"}
+    params = {"param": f"{provider_symbol},day,{start},{end},{count},qfq"}
     try:
         response = requests.get(
             url,
@@ -82,6 +88,51 @@ def _fetch_rows(provider_symbol: str, start: str, end: str) -> pd.DataFrame:
     if frame.empty:
         raise DataFetchError(f"Tencent fqkline returned no rows: {provider_symbol}")
     return frame
+
+
+def _fetch_history_rows(provider_symbol: str, start: str, end: str) -> pd.DataFrame:
+    """Fetch a complete qfq range through Tencent's bounded 640-row pages."""
+
+    start_ts = pd.Timestamp(start).normalize()
+    cursor = pd.Timestamp(end).normalize()
+    if cursor < start_ts:
+        raise DataFetchError("Tencent history end precedes start")
+    pages: list[pd.DataFrame] = []
+    previous_first: pd.Timestamp | None = None
+    for _ in range(16):
+        page = _fetch_rows(
+            provider_symbol,
+            start,
+            cursor.strftime("%Y-%m-%d"),
+            count=640,
+        )
+        page_dates = pd.to_datetime(page["date"], errors="coerce")
+        if page_dates.isna().any():
+            raise DataFetchError(f"Tencent history dates are invalid: {provider_symbol}")
+        first = page_dates.min().normalize()
+        if previous_first is not None and first >= previous_first:
+            raise DataFetchError(f"Tencent history pagination stalled: {provider_symbol}")
+        pages.append(page)
+        if first <= start_ts or len(page) < 640:
+            break
+        previous_first = first
+        cursor = first - pd.Timedelta(days=1)
+    else:
+        raise DataFetchError(f"Tencent history pagination exceeded bound: {provider_symbol}")
+
+    frame = pd.concat(pages, ignore_index=True)
+    frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
+    frame = frame.loc[
+        frame["date"].between(start_ts, pd.Timestamp(end).normalize())
+    ].copy()
+    frame = frame.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
+    if frame.empty or frame.iloc[0]["date"] > start_ts + pd.Timedelta(days=10):
+        raise DataFetchError(
+            f"Tencent history does not reach the requested or independently governed start: "
+            f"{provider_symbol}"
+        )
+    frame["amount"] = frame["amount"].fillna(frame["close"] * frame["volume"])
+    return frame[_BAR_COLUMNS]
 
 
 def _fetch_completed_quote(provider_symbol: str, cutoff: str) -> dict[str, float | str]:
@@ -215,5 +266,50 @@ class TencentFqKlineAdapter:
             start=start,
             end=end,
             df=frame[_BAR_COLUMNS],
+            provider_symbol=provider_symbol,
+        )
+
+
+@dataclass
+class TencentQfqHistoryAdapter:
+    """Fetch complete paginated CN qfq history without a credential."""
+
+    _name: str = "tencent_qfq_history"
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def fetch_daily_bars(self, req: FetchRequest) -> FetchResult:
+        symbol = str(req.symbol or "").strip().upper()
+        market = str(req.market or "").strip().lower()
+        start = str(req.start or "").strip()
+        end = str(req.end or "").strip()
+        if not symbol or market != "cn" or not start or not end:
+            raise DataFetchError("Tencent qfq history requires CN symbol, start and end")
+        _completed_session_guard(end)
+        provider_symbol = _provider_symbol(symbol)
+        frame = _fetch_history_rows(provider_symbol, start, end)
+        for row in frame.to_dict(orient="records"):
+            prices = [float(row[key]) for key in ("open", "high", "low", "close")]
+            if min(prices) <= 0:
+                raise DataFetchError(
+                    f"Tencent history contains non-positive price: {provider_symbol}"
+                )
+            if float(row["high"]) < max(float(row["open"]), float(row["close"])):
+                raise DataFetchError(
+                    f"Tencent history violates high envelope: {provider_symbol}"
+                )
+            if float(row["low"]) > min(float(row["open"]), float(row["close"])):
+                raise DataFetchError(
+                    f"Tencent history violates low envelope: {provider_symbol}"
+                )
+        return FetchResult(
+            provider=self.name,
+            symbol=symbol,
+            market=market,
+            start=start,
+            end=end,
+            df=frame,
             provider_symbol=provider_symbol,
         )

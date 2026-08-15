@@ -68,7 +68,7 @@ def test_model_configs_and_evidence_tie_across_lifecycle() -> None:
     assert cn_x1_2["promotion_authority"] == "explicit_user_direction_2026_08_14"
     assert cn_x1_2["formal_acceptance_supported"] is False
     assert cn_x1_2["failed_gate"] == "2026h1_drawdown_worsening_within_3pp"
-    assert cn_x1_2["formal_bundle_transition"] == "materialized_complete_bundle_v2"
+    assert cn_x1_2["formal_bundle_transition"] == "maintained_append_only_formal_refresh"
     assert cn_x1_2["evidence_completeness"] == "complete"
     us_x1_2 = next(item for item in result["models"] if item["model_id"] == "us_x1_2")
     assert us_x1_2["status"] == "historical_baseline_superseded"

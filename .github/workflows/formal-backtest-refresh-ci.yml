@@ -19,6 +19,7 @@ on:
       - "scripts/run_formal_strategy_refresh.py"
       - "scripts/build_market_evidence.py"
       - "scripts/build_us_x1_3_preview.py"
+      - "scripts/build_cn_x1_2_prospective_ledger.py"
       - "scripts/run_us_x1_3_current_target.py"
       - "scripts/govern_formal_provider_cache.py"
       - "scripts/ranker_provisional_mtm.py"
@@ -31,6 +32,9 @@ on:
       - "tests/test_formal_refresh.py"
       - "tests/test_formal_bundle_reader.py"
       - "tests/test_formal_strategy_refresh.py"
+      - "tests/test_cn_x1_2_prospective.py"
+      - "tests/test_refresh_ranker_formal.py"
+      - "tests/test_formal_refresh_metric_projection.py"
       - "tests/test_ranker_provisional_mtm.py"
       - "tests/test_formal_bundle_mtm_projection.py"
       - "tests/test_refresh_byd_v1_3_formal.py"
@@ -164,11 +168,14 @@ jobs:
             src/governance/active_strategy_catalog.py \
             src/governance/strategy_runtime_capabilities.py \
             src/artifacts/formal_bundle_reader.py \
+            src/artifacts/formal_bundle_v2_builder.py \
             src/artifacts/us_x1_3_preview.py \
             src/research/us_x1_3_current_target.py \
+            src/research/cn_x1_2_prospective.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py \
             scripts/build_us_x1_3_preview.py \
+            scripts/build_cn_x1_2_prospective_ledger.py \
             scripts/run_us_x1_3_current_target.py \
             scripts/validate_model_x1_baselines.py \
             tests/test_active_strategy_catalog.py \
@@ -176,6 +183,9 @@ jobs:
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \
+            tests/test_cn_x1_2_prospective.py \
+            tests/test_refresh_ranker_formal.py \
+            tests/test_formal_refresh_metric_projection.py \
             tests/test_model_x1_baselines.py \
             tests/test_us_x1_3_current_target.py \
             tests/test_formal_refresh_trigger_scope.py
@@ -189,6 +199,9 @@ jobs:
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \
+            tests/test_cn_x1_2_prospective.py \
+            tests/test_refresh_ranker_formal.py \
+            tests/test_formal_refresh_metric_projection.py \
             tests/test_model_x1_baselines.py \
             tests/test_us_x1_3_current_target.py \
             tests/test_formal_refresh_trigger_scope.py \
@@ -203,6 +216,7 @@ jobs:
             src/governance/active_strategy_catalog.py \
             src/governance/strategy_runtime_capabilities.py \
             src/artifacts/formal_bundle_reader.py \
+            src/artifacts/formal_bundle_v2_builder.py \
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
             src/artifacts/us_x1_3_preview.py \
@@ -216,6 +230,7 @@ jobs:
             src/research/formal_model_replay.py \
             src/research/qqq_authoritative_replay.py \
             src/research/rules_formal_replay_gate.py \
+            src/research/cn_x1_2_prospective.py \
             src/research/us_x1_3_current_target.py \
             scripts/build_market_evidence.py \
             scripts/run_formal_refresh_transaction.py \
@@ -223,6 +238,7 @@ jobs:
             scripts/ranker_provisional_mtm.py \
             scripts/govern_formal_provider_cache.py \
             scripts/refresh_ranker_formal.py \
+            scripts/build_cn_x1_2_prospective_ledger.py \
             scripts/build_us_x1_3_preview.py \
             scripts/run_us_x1_3_current_target.py \
             scripts/byd_formal_refresh_common.py \
@@ -234,6 +250,9 @@ jobs:
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \
+            tests/test_cn_x1_2_prospective.py \
+            tests/test_refresh_ranker_formal.py \
+            tests/test_formal_refresh_metric_projection.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_formal_bundle_mtm_projection.py \
             tests/test_refresh_byd_v1_3_formal.py \
@@ -264,6 +283,9 @@ jobs:
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \
+            tests/test_cn_x1_2_prospective.py \
+            tests/test_refresh_ranker_formal.py \
+            tests/test_formal_refresh_metric_projection.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_formal_bundle_mtm_projection.py \
             tests/test_refresh_byd_v1_3_formal.py \
