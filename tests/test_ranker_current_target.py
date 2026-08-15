@@ -110,7 +110,7 @@ def test_governed_sessions_fill_short_live_provider_window(tmp_path: Path) -> No
     assert next_due_session(anchor="2026-07-29", sessions=sessions) is None
 
 
-def test_cn_due_uses_governed_calendar_without_yahoo(
+def test_retained_cn_x1_1_adapter_uses_governed_calendar_without_yahoo(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -154,6 +154,11 @@ def test_cn_due_uses_governed_calendar_without_yahoo(
     assert payload["calendar_provider"] == (
         "completed_session_gate+governed_market_evidence"
     )
+    workflow = (ROOT / ".github/workflows/ranker-10d-current-target.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "scripts/run_ranker_current_target.py due" not in workflow
+    assert "scripts/run_ranker_current_target.py build" not in workflow
 
 
 def test_live_ledger_supersedes_older_formal_position(tmp_path: Path) -> None:

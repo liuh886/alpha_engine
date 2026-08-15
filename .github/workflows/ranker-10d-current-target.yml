@@ -8,7 +8,6 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/ranker-10d-current-target.yml"
-      - "scripts/run_ranker_current_target.py"
       - "scripts/run_us_x1_3_current_target.py"
       - "src/cli/main.py"
       - "src/research/ranker_current_target.py"
@@ -18,8 +17,10 @@ on:
       - "src/artifacts/strategy_signal_ledger.py"
       - "src/artifacts/strategy_operations.py"
       - "src/governance/active_strategy_catalog.py"
+      - "src/governance/strategy_runtime_capabilities.py"
       - "configs/strategies/registry.json"
       - "configs/models/us_x1_3.yaml"
+      - "configs/models/cn_x1_2.yaml"
       - "configs/research_universes/us_selected_equities_v2.yaml"
       - "configs/research_classifications/us87_sector_industry_v1.yaml"
       - "configs/factor_libraries/ohlcv.yaml"
@@ -59,6 +60,51 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
 
+      - name: Resolve active ranker runtime capabilities
+        id: runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ranker-current-target
+          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          from src.governance.active_strategy_catalog import load_active_strategy_catalog
+          from src.governance.strategy_runtime_capabilities import load_active_strategy_runtime_capabilities
+
+          active = load_active_strategy_catalog()
+          runtime = load_active_strategy_runtime_capabilities(active=active)
+          output = Path("artifacts/ranker-current-target")
+          for market in ("us", "cn"):
+              matches = [
+                  row for row in active.strategies
+                  if row.market == market and row.model_kind == "cross_sectional_ranker"
+              ]
+              if len(matches) != 1:
+                  raise SystemExit(f"expected one active {market} ranker, found {len(matches)}")
+              strategy = matches[0]
+              capability = runtime[strategy.strategy_id].current_target
+              payload = {
+                  "strategy_id": strategy.strategy_id,
+                  "model_version_id": strategy.model_version_id,
+                  "signal_ledger": strategy.signal_ledger,
+                  "status": capability.status,
+                  "adapter_id": capability.adapter_id,
+                  "reason": capability.reason,
+                  "research_only": True,
+                  "trade_ready": False,
+              }
+              (output / f"{market}_runtime.json").write_text(
+                  json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                  encoding="utf-8",
+              )
+              print(f"{market}_model_version_id={strategy.model_version_id}")
+              print(f"{market}_signal_ledger={strategy.signal_ledger}")
+              print(f"{market}_status={capability.status}")
+              print(f"{market}_adapter_id={capability.adapter_id or ''}")
+              print(f"{market}_reason={capability.reason or ''}")
+          PY
+
       - name: Resolve due 10-session decisions
         id: due
         shell: bash
@@ -66,32 +112,56 @@ jobs:
           set -euo pipefail
           as_of="$(date -u +%F)"
           mkdir -p artifacts/ranker-current-target
-          us_formal_ready="$(uv run python - <<'PY'
+          us_model="${{ steps.runtime.outputs.us_model_version_id }}"
+          us_ledger="${{ steps.runtime.outputs.us_signal_ledger }}"
+          us_formal_ready="$(uv run python - "$us_model" <<'PY'
           import json
+          import sys
           from pathlib import Path
           path = Path('data/research/formal_model_runs/catalog.json')
           try:
               rows = json.loads(path.read_text(encoding='utf-8')).get('records', [])
-              print('true' if any(row.get('model_version_id') == 'us_x1_3' for row in rows) else 'false')
+              print('true' if any(row.get('model_version_id') == sys.argv[1] for row in rows) else 'false')
           except Exception:
               print('false')
           PY
           )"
-          if [ "$us_formal_ready" = "true" ]; then
-            uv run python scripts/run_us_x1_3_current_target.py due \
-              --formal-root data/research/formal_model_runs \
-              --ledger-dir data/research/strategy_signal_ledgers/us_x1_3 \
-              --as-of "$as_of" \
-              --output artifacts/ranker-current-target/us_due.json
+          if [ "${{ steps.runtime.outputs.us_status }}" = "available" ]; then
+            case "${{ steps.runtime.outputs.us_adapter_id }}" in
+              us_x1_3_current_target_v1)
+                if [ "$us_formal_ready" = "true" ]; then
+                  uv run python scripts/run_us_x1_3_current_target.py due \
+                    --formal-root data/research/formal_model_runs \
+                    --ledger-dir "$us_ledger" \
+                    --as-of "$as_of" \
+                    --output artifacts/ranker-current-target/us_due.json
+                else
+                  uv run python - "$us_model" <<'PY'
+          import json, sys
+          from pathlib import Path
+          payload={"market":"us","model_version_id":sys.argv[1],"due":False,"signal_date":None,"reason":"awaiting_formal_promotion","research_only":True,"trade_ready":False}
+          Path("artifacts/ranker-current-target/us_due.json").write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+                fi
+                ;;
+              *) echo "Unknown available US current-target adapter" >&2; exit 1 ;;
+            esac
           else
-            printf '%s\n' '{"market":"us","model_version_id":"us_x1_3","due":false,"signal_date":null,"reason":"awaiting_formal_promotion","research_only":true,"trade_ready":false}' \
-              > artifacts/ranker-current-target/us_due.json
+            uv run python - "$us_model" "${{ steps.runtime.outputs.us_reason }}" <<'PY'
+          import json, sys
+          from pathlib import Path
+          payload={"market":"us","model_version_id":sys.argv[1],"due":False,"signal_date":None,"reason":sys.argv[2],"research_only":True,"trade_ready":False}
+          Path("artifacts/ranker-current-target/us_due.json").write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+          PY
           fi
-          uv run python scripts/run_ranker_current_target.py due \
-            --formal-root data/research/formal_model_runs \
-            --ledger-dir data/research/strategy_signal_ledgers/cn_x1_1 \
-            --as-of "$as_of" \
-            --output artifacts/ranker-current-target/cn_due.json
+          uv run python - "${{ steps.runtime.outputs.cn_model_version_id }}" "${{ steps.runtime.outputs.cn_status }}" "${{ steps.runtime.outputs.cn_reason }}" <<'PY'
+          import json, sys
+          from pathlib import Path
+          if sys.argv[2] == "available":
+              raise SystemExit("available CN current-target capability has no registered workflow Adapter")
+          payload={"market":"cn","model_version_id":sys.argv[1],"due":False,"signal_date":None,"reason":sys.argv[3],"research_only":True,"trade_ready":False}
+          Path("artifacts/ranker-current-target/cn_due.json").write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+          PY
           uv run python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           from pathlib import Path
@@ -116,33 +186,11 @@ jobs:
             --max-rounds 3
           uv run python scripts/run_us_x1_3_current_target.py build \
             --formal-root data/research/formal_model_runs \
-            --ledger-dir data/research/strategy_signal_ledgers/us_x1_3 \
+            --ledger-dir "${{ steps.runtime.outputs.us_signal_ledger }}" \
             --provider-dir artifacts/ranker-current-target/us_provider/data/providers/us \
             --signal-date "$date" \
             --market-cutoff "US close $date" \
             --output artifacts/ranker-current-target/us_signal.json
-
-      - name: Build due CN provider and current target
-        if: steps.due.outputs.cn_due == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          date="${{ steps.due.outputs.cn_date }}"
-          uv run python scripts/data/refresh_selected_pool_prices_v2.py \
-            --market cn \
-            --source-csv-dir data/csv_clean \
-            --output-root artifacts/ranker-current-target/cn_provider \
-            --start 2021-01-01 \
-            --cutoff "$date" \
-            --max-rounds 3 \
-            --full-refresh
-          uv run python scripts/run_ranker_current_target.py build \
-            --provider-dir artifacts/ranker-current-target/cn_provider/data/providers/cn \
-            --formal-root data/research/formal_model_runs \
-            --ledger-dir data/research/strategy_signal_ledgers/cn_x1_1 \
-            --signal-date "$date" \
-            --market-cutoff "CN close $date" \
-            --output artifacts/ranker-current-target/cn_signal.json
 
       - name: Seal due canonical decisions
         if: steps.due.outputs.us_due == 'true' || steps.due.outputs.cn_due == 'true'
@@ -190,18 +238,29 @@ jobs:
           import json
           from pathlib import Path
           from src.artifacts.strategy_signal_ledger import read_latest_evaluation
+          from src.governance.active_strategy_catalog import load_active_strategy_catalog
+          from src.governance.strategy_runtime_capabilities import load_active_strategy_runtime_capabilities
 
+          active = load_active_strategy_catalog()
+          runtime = load_active_strategy_runtime_capabilities(active=active)
           rows = {
-              "us": ("us_x1_3", Path("data/research/strategy_signal_ledgers/us_x1_3")),
-              "cn": ("cn_x1_1", Path("data/research/strategy_signal_ledgers/cn_x1_1")),
+              row.market: (row, runtime[row.strategy_id].current_target)
+              for row in active.strategies
+              if row.model_kind == "cross_sectional_ranker"
           }
           out = Path("artifacts/ranker-current-target")
           out.mkdir(parents=True, exist_ok=True)
-          for market, (model, ledger) in rows.items():
-              record = read_latest_evaluation(ledger, model_version_id=model)
-              status = "none"
-              error = ""
+          for market in ("us", "cn"):
+              strategy, capability = rows[market]
+              status = "runtime_blocked" if capability.status != "available" else "none"
+              error = capability.reason or ""
               deliver = False
+              record = None
+              if capability.status == "available":
+                  record = read_latest_evaluation(
+                      Path(strategy.signal_ledger),
+                      model_version_id=strategy.model_version_id,
+                  )
               if record is not None:
                   delivery = record.get("delivery", {})
                   status = str(delivery.get("status") or "pending")
