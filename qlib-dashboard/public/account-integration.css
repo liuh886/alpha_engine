@@ -1,23 +1,32 @@
 .research-topbar-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .alpha-account-slot {
   display: inline-flex;
   align-items: center;
+  gap: 0.125rem;
   flex: 0 0 auto;
+  margin-inline: 0.125rem;
+  padding-inline: 0.25rem;
+  border-inline: 1px solid hsl(var(--border) / 0.65);
 }
 
-.alpha-account-slot .hao-account-mount {
+.alpha-account-slot .hao-account-mount,
+.alpha-account-slot .hao-referral-mount {
   position: static;
   z-index: auto;
+  display: inline-flex;
+  align-items: center;
 }
 
-.alpha-account-slot .hao-account-trigger {
+.alpha-account-slot .hao-account-trigger,
+.alpha-account-slot .hao-referral-trigger {
   width: 2rem;
   height: 2rem;
+  min-width: 2rem;
   min-height: 2rem;
   justify-content: center;
   padding: 0;
@@ -27,14 +36,23 @@
   color: hsl(var(--muted-foreground));
   box-shadow: none;
   backdrop-filter: none;
+  font-family: inherit;
+  line-height: 1;
 }
 
-.alpha-account-slot .hao-account-trigger:hover {
+.alpha-account-slot .hao-account-trigger:hover,
+.alpha-account-slot .hao-referral-trigger:hover {
   transform: none;
   border-color: transparent;
   background: hsl(var(--accent));
   color: hsl(var(--accent-foreground));
   box-shadow: none;
+}
+
+.alpha-account-slot .hao-account-trigger:focus-visible,
+.alpha-account-slot .hao-referral-trigger:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
 
 .alpha-account-slot .hao-account-trigger-visual {
@@ -48,6 +66,34 @@
 .alpha-account-slot .hao-account-trigger svg {
   width: 1rem;
   height: 1rem;
+}
+
+.alpha-account-slot .hao-referral-trigger > span:last-child {
+  display: none;
+}
+
+.alpha-account-slot .hao-referral-trigger > span:first-child {
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  place-items: center;
+  overflow: hidden;
+  color: transparent;
+  font-size: 0;
+}
+
+.alpha-account-slot .hao-referral-trigger > span:first-child::before {
+  content: '';
+  width: 1rem;
+  height: 1rem;
+  background: currentColor;
+  color: hsl(var(--muted-foreground));
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M15 19a6 6 0 0 0-12 0M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m10-3v6m3-3h-6' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M15 19a6 6 0 0 0-12 0M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m10-3v6m3-3h-6' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.alpha-account-slot .hao-referral-trigger:hover > span:first-child::before {
+  color: hsl(var(--accent-foreground));
 }
 
 .alpha-account-slot .hao-account-trigger.is-pro {
