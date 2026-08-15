@@ -11,14 +11,13 @@ from src.reliability.events import ReliabilityEvent
 from src.reliability.failure_log import resolve_failure_event
 from src.reliability.governance_policy import GovernanceReliabilityPolicy
 
-from .core.base_agent import BaseAgent
 from .tools.data_tools import run_data_update
 from .tools.governance_tools import format_thought_stream_for_report
 
 log = structlog.get_logger()
 
 
-class ResearchAssistant(BaseAgent):
+class ResearchAssistant:
     """
     Unified research assistant for a single-user quant platform.
     Consolidates capabilities from Alpha, Risk, Governance, and Developer agents
@@ -40,7 +39,6 @@ class ResearchAssistant(BaseAgent):
     HIGH_PANIC_THRESHOLD = 75.0
 
     def __init__(self, llm_client=None, quality_index=None):
-        super().__init__(model_name="gpt-4o")
         self._llm = llm_client
         self._quality_index = quality_index
         self._memory_file = "artifacts/memory/factor_genes.json"

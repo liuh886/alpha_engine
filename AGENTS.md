@@ -75,13 +75,12 @@ the affected workstream, not unrelated research or product work.
 ## 1. Agent Runtime
 
 The agent system uses a single unified **ResearchAssistant**. An **AgentRouter**
-provides a thin dispatch facade, and **BaseAgent** provides shared utilities.
+provides a thin dispatch facade.
 
 | Component | Role | Location |
 | :--- | :--- | :--- |
 | **ResearchAssistant** | Unified research, risk, governance, and architecture assistant | `src/agents/research_assistant.py` |
 | **AgentRouter** | Thin task-dispatch facade | `src/agents/agent_router.py` |
-| **BaseAgent** | Shared agent utilities | `src/agents/core/base_agent.py` |
 
 The former Alpha, Risk, Governance, and Developer agents are conceptual roles,
 not separate runtime agents.
