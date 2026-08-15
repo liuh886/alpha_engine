@@ -96,6 +96,7 @@ jobs:
           src/governance/strategy_runtime_capabilities.py
           src/factors/ranker_snapshot.py
           src/artifacts/strategy_operations.py
+          src/artifacts/formal_bundle_reader.py
           src/artifacts/performance_semantics.py
           scripts/run_research_experiment.py
           scripts/run_active_research_experiments.py
@@ -115,6 +116,7 @@ jobs:
           scripts/check_legacy_web_boundary.py
           scripts/check_ci_governance.py
           tests/test_formal_baseline_onboarding.py
+          tests/test_formal_bundle_reader.py
           tests/test_rules_based_allocation_experiment_runner.py
           tests/test_rules_formal_replay_gate.py
           tests/test_ranker_training.py
@@ -154,6 +156,7 @@ jobs:
           tests/test_cross_sectional_experiment_runner.py
           tests/test_ranker_training.py
           tests/test_formal_baseline_onboarding.py
+          tests/test_formal_bundle_reader.py
           tests/test_rules_based_allocation_experiment_runner.py
           tests/test_rules_formal_replay_gate.py
           tests/test_ranker_current_target.py

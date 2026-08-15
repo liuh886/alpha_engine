@@ -12,6 +12,10 @@ from typing import Any
 
 import yaml
 
+from src.artifacts.formal_bundle_reader import (
+    FormalBundleReadError,
+    FormalBundleReader,
+)
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
     common_provider_cutoff,
@@ -20,7 +24,7 @@ from src.artifacts.formal_refresh import (
     sha256,
     write_object,
 )
-from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+from src.artifacts.model_run_bundle_v2 import validate_catalog
 from src.artifacts.model_run_exporter import update_catalog
 from src.artifacts.strategy_signal_ledger import read_latest_evaluation
 from src.governance.active_strategy_catalog import (
@@ -113,60 +117,6 @@ def _iso_date(value: object, *, label: str) -> str:
         return date.fromisoformat(str(value)).isoformat()
     except ValueError as exc:
         raise FormalRefreshError(f"invalid {label}: {value!r}") from exc
-
-
-def _formal_records(catalog: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
-    rows = catalog.get("records")
-    if not isinstance(rows, list):
-        raise FormalRefreshError("formal Bundle v2 catalog records are missing")
-    result: dict[str, Mapping[str, Any]] = {}
-    for row in rows:
-        if not isinstance(row, Mapping):
-            raise FormalRefreshError("formal Bundle v2 catalog record is invalid")
-        model_id = str(row.get("model_version_id") or "")
-        if not model_id or model_id in result:
-            raise FormalRefreshError(f"duplicate formal model identity: {model_id!r}")
-        result[model_id] = row
-    return result
-
-
-def _bundle_section(
-    formal_root: Path,
-    record: Mapping[str, Any],
-    *,
-    section_id: str,
-) -> Mapping[str, Any]:
-    manifest_path = formal_root / str(record.get("manifest_path") or "")
-    if not manifest_path.is_file() or sha256(manifest_path) != record.get("manifest_sha256"):
-        raise FormalRefreshError(
-            f"formal manifest digest mismatch: {record.get('model_version_id')}"
-        )
-    manifest = load_object(manifest_path)
-    validate_manifest(manifest)
-    declarations = manifest.get("sections")
-    if not isinstance(declarations, list):
-        raise FormalRefreshError("formal manifest sections are missing")
-    declaration = next(
-        (
-            row
-            for row in declarations
-            if isinstance(row, Mapping)
-            and row.get("section_id") == section_id
-            and row.get("availability_status") == "available"
-        ),
-        None,
-    )
-    if not isinstance(declaration, Mapping):
-        raise FormalRefreshError(
-            f"formal {section_id} section is unavailable: {record.get('model_version_id')}"
-        )
-    path = manifest_path.parent / str(declaration.get("path") or "")
-    if not path.is_file() or sha256(path) != declaration.get("sha256"):
-        raise FormalRefreshError(
-            f"formal {section_id} digest mismatch: {record.get('model_version_id')}"
-        )
-    value = load_object(path)
-    return value
 
 
 def _latest_settled_performance_end(performance: Mapping[str, Any]) -> str:
@@ -274,11 +224,15 @@ def build_task_plan(
     generated_at: str,
 ) -> dict[str, Any]:
     active = load_active_strategy_catalog()
-    catalog_path = formal_v2_root / "catalog.json"
-    formal_v2 = load_object(catalog_path)
-    validate_catalog(formal_v2)
+    repository = Path.cwd().resolve()
+    try:
+        relative_root = formal_v2_root.resolve().relative_to(repository)
+        reader = FormalBundleReader.open(repository, relative_root=relative_root)
+    except (ValueError, FormalBundleReadError) as exc:
+        raise FormalRefreshError(str(exc)) from exc
+    formal_v2 = reader.catalog
     _assert_formal_catalog_or_declared_transition(formal_v2, active)
-    records = _formal_records(formal_v2)
+    records = reader.records
     runtime = load_active_strategy_runtime_capabilities(active=active)
     ranker_strategies = [
         strategy
@@ -312,16 +266,14 @@ def build_task_plan(
         if record is None:
             continue
         target = _iso_date(cutoffs[market], label=f"{market} ranker cutoff")
-        performance = _bundle_section(
-            formal_v2_root,
-            record,
-            section_id="performance",
-        )
-        portfolio = _bundle_section(
-            formal_v2_root,
-            record,
-            section_id="portfolio",
-        )
+        try:
+            run = reader.load(model_id)
+            performance = run.section("performance")
+            portfolio = run.section("portfolio")
+        except FormalBundleReadError as exc:
+            raise FormalRefreshError(str(exc)) from exc
+        if not isinstance(performance, Mapping) or not isinstance(portfolio, Mapping):
+            raise FormalRefreshError(f"formal ranker sections are invalid: {model_id}")
         formal_signal = _latest_formal_signal_date(portfolio)
         ledger_signal = _latest_ledger_signal_date(
             Path(strategy.signal_ledger).parent,
