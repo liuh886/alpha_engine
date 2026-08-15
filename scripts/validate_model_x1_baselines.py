@@ -406,21 +406,36 @@ def _validate_cn_x1_2(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("cn_x1_2: promotion research boundary mismatch")
     package = load_formal_run(root, model_id).refresh_state()
     completeness = dict(package.get("evidence_completeness") or {})
+    cutoff = str(package.get("evidence_cutoff") or "")
+    try:
+        cutoff_date = date.fromisoformat(cutoff)
+    except ValueError as exc:
+        raise ValueError("cn_x1_2: formal evidence cutoff is invalid") from exc
     if (
         package.get("model_id") != model_id
         or completeness.get("status") != "complete"
         or completeness.get("missing") != []
-        or package.get("evidence_cutoff") != "2026-06-30"
+        or cutoff_date < date(2026, 6, 30)
     ):
         raise ValueError("cn_x1_2: complete formal Bundle v2 identity mismatch")
     publication = dict(config.get("formal_publication") or {})
     if (
-        publication.get("transition_status") != "materialized_complete_bundle_v2"
+        publication.get("transition_status") != "maintained_append_only_formal_refresh"
         or publication.get("evidence_completeness") != "complete_frontend_bundle_v2"
-        or publication.get("formal_manifest_sha256")
-        != package["evidence"]["accepted_formal_manifest_sha256"]
     ):
         raise ValueError("cn_x1_2: materialized publication binding mismatch")
+    evidence = dict(package.get("evidence") or {})
+    if cutoff == "2026-06-30":
+        if publication.get("formal_manifest_sha256") != evidence.get(
+            "accepted_formal_manifest_sha256"
+        ):
+            raise ValueError("cn_x1_2: initial formal publication binding mismatch")
+    elif (
+        evidence.get("refresh_adapter") != "refresh_ranker_formal.cn_x1_2"
+        or evidence.get("model_selection_reopened") is not False
+        or evidence.get("prospective_reporting_start") != "2026-07-01"
+    ):
+        raise ValueError("cn_x1_2: prospective formal refresh binding mismatch")
     return {
         "model_id": model_id,
         "display_name": "CN x1.2",
@@ -431,7 +446,7 @@ def _validate_cn_x1_2(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
         "promotion_authority": str(lineage["promotion_authority"]),
         "formal_acceptance_supported": False,
         "failed_gate": failed[0],
-        "formal_bundle_transition": "materialized_complete_bundle_v2",
+        "formal_bundle_transition": str(publication["transition_status"]),
         "evidence_completeness": "complete",
         "trade_ready": False,
     }

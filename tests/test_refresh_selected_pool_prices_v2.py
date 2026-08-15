@@ -18,6 +18,7 @@ def test_hardened_cn_router_uses_independent_sources_before_yahoo(monkeypatch):
         "akshare",
         "baostock",
         "efinance",
+        "tencent_qfq_history",
         "yfinance",
     ]
 
@@ -41,6 +42,7 @@ def test_hardened_cn_router_enables_tushare_only_with_token(monkeypatch):
         "akshare",
         "baostock",
         "efinance",
+        "tencent_qfq_history",
         "yfinance",
     ]
 
@@ -93,6 +95,7 @@ def test_manifest_does_not_count_two_eastmoney_transports_as_independent(
         "akshare_sina",
         "akshare",
         "baostock",
+        "tencent_qfq_history",
         "yfinance",
     ]
     assert payload["promotion_eligible"] is True
@@ -149,6 +152,7 @@ def test_cn_formal_auxiliary_allows_proven_last_resort_yahoo_fallback(
                             {"provider": "akshare", "ok": False},
                             {"provider": "baostock", "ok": False},
                             {"provider": "efinance", "ok": False},
+                            {"provider": "tencent_qfq_history", "ok": False},
                             {
                                 "provider": "yfinance",
                                 "ok": True,

@@ -208,7 +208,8 @@ def test_mtm_contract_targets_active_us_and_cn_rankers() -> None:
         if row.formal_refresh.adapter_id in RANKER_FORMAL_REFRESH_ADAPTERS
     }
     assert maintained == {"us_x1_3"}
-    assert capabilities["cn_x"].formal_refresh.status == "blocked"
+    assert capabilities["cn_x"].formal_refresh.status == "available"
+    assert capabilities["cn_x"].current_target.status == "blocked"
     performance = {
         "report": [
             {"date": "2026-07-29", "holding_end_date": "2026-07-29"}

@@ -128,6 +128,7 @@ def test_formal_planner_accepts_governed_cn_auxiliary_yahoo_fallback(
                         {"provider": "akshare", "ok": False},
                         {"provider": "baostock", "ok": False},
                         {"provider": "efinance", "ok": False},
+                        {"provider": "tencent_qfq_history", "ok": False},
                         {
                             "provider": "yfinance",
                             "provider_symbol": "515180.SS",
@@ -159,12 +160,10 @@ def test_plan_is_formal_v2_catalog_driven() -> None:
     assert {task["publication_input"] for task in plan["tasks"]} == {"native_bundle_v2"}
     assert "governed_evidence_model_ids" not in plan
     cn = next(task for task in plan["tasks"] if task["strategy_id"] == "cn_x")
-    assert cn["formal_refresh_capability_status"] == "blocked"
-    assert cn["formal_refresh_adapter_id"] is None
-    assert cn["formal_refresh_block_reason"] == (
-        "blocked_pending_maintained_cn_x1_2_formal_refresh_adapter"
-    )
-    assert plan["blocked_model_ids"] == ["cn_x1_2"]
+    assert cn["formal_refresh_capability_status"] == "available"
+    assert cn["formal_refresh_adapter_id"] == "cn_x1_2_formal_refresh_v1"
+    assert cn["formal_refresh_block_reason"] is None
+    assert plan["blocked_model_ids"] == []
 
 
 def test_ranker_daily_cutoff_uses_mtm_without_settled_rebuild() -> None:

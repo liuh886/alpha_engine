@@ -88,6 +88,7 @@ jobs:
           src/research/rules_formal_replay_gate.py
           src/research/qqq_authoritative_replay.py
           src/research/cn_x1_1_regime_gated.py
+          src/research/cn_x1_2_prospective.py
           src/research/byd_v1_3_candidate.py
           src/research/ranker_current_target.py
           src/research/us_x1_3_current_target.py
@@ -103,6 +104,7 @@ jobs:
           scripts/run_formal_refresh_transaction.py
           scripts/verify_rules_formal_replay.py
           scripts/refresh_ranker_formal.py
+          scripts/build_cn_x1_2_prospective_ledger.py
           scripts/sync_formal_bundle_v2.py
           scripts/run_ranker_current_target.py
           scripts/run_us_x1_3_current_target.py
@@ -129,6 +131,7 @@ jobs:
           tests/test_active_research_spec_validation.py
           tests/test_optimization_campaign.py
           tests/test_refresh_ranker_formal.py
+          tests/test_cn_x1_2_prospective.py
           tests/test_notebook_lab_contracts.py
 
       - name: Mypy type check

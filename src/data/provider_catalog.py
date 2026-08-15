@@ -109,6 +109,21 @@ _PROVIDER_CATALOG: dict[str, ProviderCapability] = {
         trade_calendar=False,
         usage_note="Independent historical fallback with bounded socket behaviour.",
     ),
+    "tencent_qfq_history": ProviderCapability(
+        name="tencent_qfq_history",
+        source_family="tencent_finance",
+        independent_group="tencent_finance",
+        markets=("cn",),
+        price_mode="qfq_adjusted",
+        volume_unit="provider_reported",
+        amount_unit="synthetic_adjusted_close_times_volume",
+        corporate_actions=False,
+        trade_calendar=False,
+        usage_note=(
+            "Credential-free paginated Tencent qfq history used only after earlier "
+            "CN sources fail; synthetic amount is not reported turnover."
+        ),
+    ),
     "tiingo": ProviderCapability(
         name="tiingo",
         source_family="tiingo_eod",
