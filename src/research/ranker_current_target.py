@@ -1,4 +1,4 @@
-"""Shared live-state helpers and governed CN x1.1 current-target inference."""
+"""Shared ranker helpers and the retained historical CN x1.1 Adapter."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve and build the governed CN x1.1 10-session current target."""
+"""Retained CN x1.1 current-target Adapter for historical diagnostics only."""
 
 from __future__ import annotations
 

@@ -1,6 +1,11 @@
 import { Dashboard } from '@/components/Dashboard';
 import { useOutletContext } from 'react-router-dom';
 import type { ModelData } from '@/lib/data-parser';
+import type { MarketEvidenceMarket } from '@/lib/market-evidence';
+
+function marketForModel(value: string | undefined): MarketEvidenceMarket | undefined {
+  return value === 'us' || value === 'cn' ? value : undefined;
+}
 
 export function DashboardPage() {
   const { models, selectedModelId } = useOutletContext<{ models: ModelData[], selectedModelId: string }>();
@@ -15,9 +20,10 @@ export function DashboardPage() {
   }
 
   return (
-    <Dashboard 
-      data={selectedModel.backtest} 
+    <Dashboard
+      data={selectedModel.backtest}
       params={{ ...selectedModel.params, id: selectedModel.run_id || selectedModel.id }}
+      market={marketForModel(selectedModel.market)}
     />
   );
 }

@@ -40,6 +40,10 @@ FORMAL_MARKET_AUXILIARIES: dict[str, tuple[str, ...]] = {
     "us": ("QQQI", "TQQQ", "SGOV", "TYGO"),
     "cn": ("515180",),
 }
+COMPARISON_REFERENCE_AUXILIARIES: dict[str, tuple[str, ...]] = {
+    "us": ("CGDV",),
+    "cn": (),
+}
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -155,6 +159,19 @@ def _governed_formal_auxiliary_yahoo_fallback(
 def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     market = str(payload.get("market", "")).strip().lower()
+    comparison_references = {
+        str(value).strip().upper()
+        for value in COMPARISON_REFERENCE_AUXILIARIES.get(market, ())
+        if str(value).strip()
+    }
+    payload["comparison_reference_symbols"] = sorted(comparison_references)
+    auxiliaries = payload.get("auxiliary_symbols", [])
+    if isinstance(auxiliaries, list):
+        payload["auxiliary_symbols"] = [
+            value
+            for value in auxiliaries
+            if str(value).strip().upper() not in comparison_references
+        ]
     provider_order = router.providers_for_market(market)
     selected_providers: dict[str, str] = {}
     quarantined: list[str] = []
@@ -281,8 +298,10 @@ def refresh_selected_pool_prices_v2(
     data_router = router or build_hardened_router(market)
     requested_auxiliaries = auxiliary_symbols
     if requested_auxiliaries is None and full_refresh:
-        requested_auxiliaries = FORMAL_MARKET_AUXILIARIES.get(
-            str(market).lower(), ()
+        market_key = str(market).lower()
+        requested_auxiliaries = (
+            *FORMAL_MARKET_AUXILIARIES.get(market_key, ()),
+            *COMPARISON_REFERENCE_AUXILIARIES.get(market_key, ()),
         )
     try:
         refresh_selected_pool_prices(
@@ -322,7 +341,7 @@ def main() -> None:
         default=None,
         help=(
             "Additional formal/reference security. On --full-refresh, the current "
-            "formal auxiliary set is used when this option is omitted."
+            "governed auxiliary and comparison-reference set is used when omitted."
         ),
     )
     parser.add_argument("--full-refresh", action="store_true")
