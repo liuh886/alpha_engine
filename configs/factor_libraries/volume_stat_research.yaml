@@ -1,0 +1,37 @@
+# Issue #966 Phase 1 canonical research factor library.
+# Only genuinely new Alpha Engine-owned definitions live here. Existing
+# price-volume correlation and price time-series-rank mechanisms reuse the
+# package-backed Qlib Alpha158 catalog instead of being redefined.
+schema_version: "2.0"
+
+catalog:
+  id: volume_stat_research
+  version: "1.0"
+
+defaults:
+  namespace: volume_stat_research
+  factor_version: "1.0"
+  source_name: AlphaEngine independent volume/stat research
+  source_version: issue-966-phase1
+  source_reference: docs/research/quantskills_volume_stat_alpha_review.md
+  availability_lag_sessions: 0
+  adjustment_requirement: adjusted
+  output_frequency: day
+  output_dtype: float64
+  missing_value_policy: preserve_nan_after_warmup
+  status: unvalidated_formula
+
+factors:
+  volume_stat_research.signed_volume_balance_10d:
+    display_name: 10-day signed volume balance
+    information_family: volume_flow
+    expression: "Sum(Sign($close-Ref($close,1))*$volume,10)/(Mean($volume,10)+1e-12)"
+    required_fields: [close, volume]
+    markets: [us, cn]
+    minimum_lookback: 10
+
+groups:
+  signed_volume_flow:
+    description: First-wave independent signed-volume/OBV-family mechanism for Issue #966
+    factor_ids:
+      - volume_stat_research.signed_volume_balance_10d
