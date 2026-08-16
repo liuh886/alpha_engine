@@ -54,7 +54,8 @@ walk_forward:
   last_test_year: 2025
   min_windows: 4
   train_embargo_sessions: 10
-  partial_window_policy: "complete_windows_only"
+  partial_window_policy: "allow_horizon_contained_partial_final_window"
+  min_partial_window_eligible_sessions: 10
 
 evaluation:
   benchmark_mode: "reference_only"
