@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "issue": 966,
+  "phase": 1,
+  "gate": "gate1_feature_quality",
+  "status": "pass",
+  "workflow": {
+    "run_id": 31941435349,
+    "head_sha": "7e74cb7870230cd07eff26f65f7170455f61d31d",
+    "workflow_name": "Issue 966 Phase1 Factor Quality"
+  },
+  "factor": {
+    "factor_id": "volume_stat_research.signed_volume_balance_10d",
+    "implementation_hash": "e6967a68708b5f557b252174f1e6f57cb3356ec9dd2d2f9751cddfd763a1d58d",
+    "factor_library": "configs/factor_libraries/volume_stat_research.yaml",
+    "factor_library_sha256": "4d034676a50f2d62c60659e119e0864004311981ecd9f963515cfe770d1a5cd5",
+    "status_after_gate": "candidate",
+    "expression_window": {
+      "past_sessions": 10,
+      "future_sessions": 0
+    }
+  },
+  "scope": "feature_mechanics_only_no_forward_label",
+  "checks_required": [
+    "finite_and_coverage",
+    "no_inf",
+    "not_near_constant",
+    "no_future_data",
+    "symbol_isolation",
+    "determinism"
+  ],
+  "markets": {
+    "us": {
+      "experiment_id": "us_issue966_phase1_feature_quality_v1",
+      "declared_contract_sha256": "3723d3f3007d263632062205ec244550aa6c29cf5006134d420191b2a5941322",
+      "universe_id": "us_selected_equities_v2",
+      "universe_source_sha256": "a80030e3410f38ab29add7da4a93093221f5cbaaa2c5e76c0ed5e854837e435a",
+      "requested_symbol_count": 87,
+      "provider_identity_sha256": "c78ade39f63823d2f7089947831387803caae51b53073ae25fed2000f2a6f36c",
+      "provider_manifest_sha256": "59ea154fb5b4922cbecf9a20197b6c792d7576ed120be9a1e71c3e61a8b3df4e",
+      "provider_cutoff": "2026-06-30",
+      "provider_calendar_last_day": "2026-06-24",
+      "provider_instrument_count": 88,
+      "finite_factor_rows": 108346,
+      "minimum_post_warmup_coverage": 1.0,
+      "maximum_end_gap_days": 6,
+      "inf_count": 0,
+      "near_constant": false,
+      "determinism_sha256": "9b31cc5f0c77051b5a2686cfdd4b255fa2e5bbdbe578f1968449724acd4e1dc6",
+      "symbol_isolation_probes": {
+        "AAOI": true,
+        "AEHR": true,
+        "KLAC": true
+      },
+      "all_checks_pass": true,
+      "artifact": {
+        "id": 9262151971,
+        "name": "issue966-phase1-us-31941435349",
+        "digest": "sha256:a48f7f40cfe85e264f466108c4b89ee514dffd9fa718bd9ac93223c3c1499076"
+      }
+    },
+    "cn": {
+      "experiment_id": "cn_issue966_phase1_feature_quality_v1",
+      "declared_contract_sha256": "8bc4eacd74517d52387258bed62e4a25c7a569b629af940c4983d0c804743989",
+      "universe_id": "cn_selected_equities_v3",
+      "universe_source_sha256": "4ce5b95e60d38a13e4852fb6f7a3a6437b55d6da0fb317ad553d114e85158529",
+      "requested_symbol_count": 130,
+      "provider_identity_sha256": "6f17a9eba541159a4cb472721b32758f6bac4892d1a917730fa1b62e9d455980",
+      "provider_manifest_sha256": "ecf67f1abaeccc29f3cb0c8874bb84bd591ccf297626c1cf370866a346c2d50c",
+      "provider_cutoff": "2026-06-30",
+      "provider_calendar_last_day": "2026-06-30",
+      "provider_instrument_count": 131,
+      "finite_factor_rows": 163608,
+      "minimum_post_warmup_coverage": 0.9978070175438597,
+      "maximum_end_gap_days": 0,
+      "inf_count": 0,
+      "near_constant": false,
+      "determinism_sha256": "8a64610cce478cd74c86fe2e55510f548a87a58f52c8d44c3cbcf1affa155296",
+      "symbol_isolation_probes": {
+        "000001": true,
+        "600009": true,
+        "688676": true
+      },
+      "all_checks_pass": true,
+      "artifact": {
+        "id": 9262153816,
+        "name": "issue966-phase1-cn-31941435349",
+        "digest": "sha256:70bb4c29b584a83f41949703941bb59f73da16c1a5aefedee9c063522d000043"
+      }
+    }
+  },
+  "decision": {
+    "gate1_pass": true,
+    "phase1_complete": true,
+    "phase2_allowed": true,
+    "model_baselines_changed": false,
+    "trade_ready": false
+  },
+  "reproduce": {
+    "workflow": ".github/workflows/issue966-phase1-factor-quality.yml",
+    "us_spec": "configs/research_paradigms/us_issue966_phase1_feature_quality_v1.yaml",
+    "cn_spec": "configs/research_paradigms/cn_issue966_phase1_feature_quality_v1.yaml",
+    "runner": "scripts/run_factor_feature_quality.py"
+  }
+}
