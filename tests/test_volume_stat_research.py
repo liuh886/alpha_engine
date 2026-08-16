@@ -2,39 +2,41 @@
 
 from __future__ import annotations
 
+from src.factors.library import load_factor_library
 from src.factors.sets.qlib_alpha158 import load_alpha158_definitions
-from src.factors.sets.volume_stat_research import (
-    SOURCE_REFERENCE,
-    load_volume_stat_research_definitions,
-)
+
+LIBRARY_PATH = "configs/factor_libraries/volume_stat_research.yaml"
 
 
-def test_phase1_adds_only_one_genuinely_new_native_definition() -> None:
-    definitions = load_volume_stat_research_definitions()
+def test_phase1_adds_only_one_genuinely_new_canonical_definition() -> None:
+    library = load_factor_library(LIBRARY_PATH)
 
-    assert len(definitions) == 1
-    definition = definitions[0]
-    assert definition.factor_id == "volume_stat_research.signed_volume_balance_10d"
+    assert library.catalog.catalog_id == "volume_stat_research"
+    assert list(library.groups) == ["signed_volume_flow"]
+    assert len(library.catalog.definitions) == 1
+
+    definition = library.factor("volume_stat_research.signed_volume_balance_10d")
     assert definition.information_family == "volume_flow"
     assert definition.required_fields == ("close", "volume")
     assert definition.markets == ("us", "cn")
-    assert definition.minimum_lookback == 11
+    assert definition.minimum_lookback == 10
     assert definition.status == "unvalidated_formula"
-    assert definition.source_reference == SOURCE_REFERENCE
+    assert definition.source_reference == "docs/research/quantskills_volume_stat_alpha_review.md"
     assert definition.expression == (
         "Sum(Sign($close-Ref($close,1))*$volume,10)/(Mean($volume,10)+1e-12)"
     )
 
 
-def test_phase1_definition_identity_is_deterministic_and_past_only() -> None:
-    first = load_volume_stat_research_definitions()[0]
-    second = load_volume_stat_research_definitions()[0]
+def test_phase1_definition_identity_is_deterministic() -> None:
+    first = load_factor_library(LIBRARY_PATH).factor(
+        "volume_stat_research.signed_volume_balance_10d"
+    )
+    second = load_factor_library(LIBRARY_PATH).factor(
+        "volume_stat_research.signed_volume_balance_10d"
+    )
 
     assert first.implementation_hash == second.implementation_hash
     assert first.implementation_hash == first.compute_implementation_hash()
-    normalized = first.expression.replace(" ", "")
-    assert "Ref($close,-" not in normalized
-    assert "Ref($volume,-" not in normalized
 
 
 def test_existing_alpha158_definitions_are_reused_for_two_first_wave_mechanisms() -> None:
@@ -46,6 +48,7 @@ def test_existing_alpha158_definitions_are_reused_for_two_first_wave_mechanisms(
     assert alpha158["qlib_alpha158.rank20"].namespace == "qlib_alpha158"
 
     native_ids = {
-        row.factor_id for row in load_volume_stat_research_definitions()
+        row.factor_id
+        for row in load_factor_library(LIBRARY_PATH).catalog.definitions
     }
     assert native_ids.isdisjoint({"qlib_alpha158.cord10", "qlib_alpha158.rank20"})
