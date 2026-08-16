@@ -1,0 +1,146 @@
+# Issue #966 Phase 2 — feature-only US x1.2 mechanism ablation.
+schema_version: '1.0'
+experiment_id: us_issue966_phase2_ablation_v1
+runner: cross_sectional_xgb_ranker_v1
+active: false
+status: preregistered_research
+parent_model_id: us_x1_2
+issue: 966
+research_only: true
+trade_ready: false
+automatic_promotion: false
+online_validation: exact_us_ranker_portfolio_v1
+
+purpose: >-
+  Measure incremental 10-session information and exact US x1.2 portfolio
+  economics from signed-volume flow, price-volume correlation, and price
+  time-series rank. Model calibration, US87, label, sector-cap portfolio,
+  costs and development windows are frozen. 2026H1/H2 are not used.
+
+snapshot:
+  policy: exact_selected_pool_source_rebuild
+  source_dir: data/csv_source
+  provider_identity_sha256: c78ade39f63823d2f7089947831387803caae51b53073ae25fed2000f2a6f36c
+  cutoff: '2026-06-30'
+
+fixed_model:
+  model_id: us_x1_2
+  frozen_spec: configs/research_paradigms/us_issue966_phase2_x1_2_v1.yaml
+
+factor_library:
+  source: configs/factor_libraries/ohlcv.yaml
+
+x1_2_calibration: &x1_2_calibration
+  n_gain_bins: 7
+  num_boost_round: 200
+  max_leaves: 31
+  max_depth: 0
+  min_child_weight: 1.0
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  reg_alpha: 0.0
+  reg_lambda: 1.0
+  seed: 42
+
+candidates:
+  - candidate_id: baseline_us_x1_2
+    role: baseline
+    factor_groups: [momentum_volatility_volume]
+    xgb_native: *x1_2_calibration
+
+  - candidate_id: us_x1_2_plus_signed_volume
+    role: challenger
+    factor_groups: [momentum_volatility_volume]
+    canonical_factor_additions:
+      library_sources:
+        - configs/factor_libraries/volume_stat_research.yaml
+      factor_ids:
+        - volume_stat_research.signed_volume_balance_10d
+    xgb_native: *x1_2_calibration
+
+  - candidate_id: us_x1_2_plus_cord10
+    role: challenger
+    factor_groups: [momentum_volatility_volume]
+    canonical_factor_additions:
+      library_sources:
+        - src/factors/sets/qlib_alpha158.py
+      factor_ids:
+        - qlib_alpha158.cord10
+    xgb_native: *x1_2_calibration
+
+  - candidate_id: us_x1_2_plus_rank20
+    role: challenger
+    factor_groups: [momentum_volatility_volume]
+    canonical_factor_additions:
+      library_sources:
+        - src/factors/sets/qlib_alpha158.py
+      factor_ids:
+        - qlib_alpha158.rank20
+    xgb_native: *x1_2_calibration
+
+  - candidate_id: us_x1_2_plus_all_three
+    role: challenger
+    factor_groups: [momentum_volatility_volume]
+    canonical_factor_additions:
+      library_sources:
+        - src/factors/sets/qlib_alpha158.py
+        - configs/factor_libraries/volume_stat_research.yaml
+      factor_ids:
+        - qlib_alpha158.cord10
+        - qlib_alpha158.rank20
+        - volume_stat_research.signed_volume_balance_10d
+    xgb_native: *x1_2_calibration
+
+windows:
+  candidate_selection: [2024H1, 2024H2, 2025H1, 2025H2]
+  consumed_reporting_only: []
+  consumed_reporting_may_enter_selection: false
+  new_holdout_reserved: true
+
+execution:
+  base_cost_bps: 20
+  cost_stress_bps: [20, 60]
+  exact_portfolio:
+    replay_id: exact_us_ranker_portfolio_v1
+    top_n: 15
+    weighting: equal_weight
+    maximum_names_per_sector: 4
+    sector_classification: configs/research_classifications/us87_sector_industry_v1.yaml
+    holding_sessions: 10
+    rebalance_sessions: 10
+
+# Harness thresholds are deliberately non-selective. Gate 2 is the explicit
+# incremental policy below, which compares every challenger to the frozen baseline.
+evaluation:
+  schema_version: '1.0'
+  baseline_candidate_id: baseline_us_x1_2
+  stress_cost_bps: 60
+  decision: issue966_phase2_diagnostic_complete
+  ranking: [gate_pass_count, worst_drawdown, compounded_relative_excess]
+  thresholds:
+    min_window_relative_excess: -1.0
+    min_worst_drawdown: -1.0
+    min_stress_compounded_relative_excess: -1.0
+    max_strongest_positive_window_share: 1.01
+    min_mean_rank_ic_improvement: -1.0
+    require_factor_baseline_dominance: false
+
+gate2_policy:
+  baseline_candidate_id: baseline_us_x1_2
+  must_beat_baseline_20bps: true
+  must_beat_baseline_60bps: true
+  minimum_positive_selection_windows: 3
+  maximum_drawdown_worsening_vs_baseline: 0.03
+  maximum_abs_mean_daily_rank_correlation_to_baseline_feature: 0.95
+  require_exact_score_reproduction: true
+  automatic_promotion: false
+
+stop_rules:
+  - no_hyperparameter_search
+  - no_portfolio_changes
+  - no_universe_changes
+  - no_cost_changes
+  - no_2026h1_or_2026h2_selection
+  - no_transform_search_before_gate2
+  - no_automatic_model_promotion
