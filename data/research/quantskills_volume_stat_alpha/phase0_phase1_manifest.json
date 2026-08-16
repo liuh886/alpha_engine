@@ -13,6 +13,7 @@
     "repository": "quantskills/skill-quant-factor-volume-stat-alpha",
     "commit": "b169f31106f748b8746c4c1028c162e95f7277f4",
     "factor_index": "factor_index.json",
+    "factor_index_blob_sha": "fb4b0545049ab55f84202fafa198973e5f6f8c66",
     "factor_count": 216,
     "license": "GPL-3.0-only",
     "validation_horizon_sessions": 5,
