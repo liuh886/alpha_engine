@@ -20,7 +20,7 @@ def test_phase1_adds_only_one_genuinely_new_canonical_definition() -> None:
     assert definition.required_fields == ("close", "volume")
     assert definition.markets == ("us", "cn")
     assert definition.minimum_lookback == 10
-    assert definition.status == "unvalidated_formula"
+    assert definition.status == "candidate"
     assert definition.source_reference == "docs/research/quantskills_volume_stat_alpha_review.md"
     assert definition.expression == (
         "Sum(Sign($close-Ref($close,1))*$volume,10)/(Mean($volume,10)+1e-12)"
