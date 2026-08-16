@@ -1,0 +1,45 @@
+# Issue #966 Phase 4 canonical distribution-risk research factors.
+# Both formulas passed exact-provider structural validation. Their downstream
+# diagnostic/control usefulness is tracked by evidence, not by duplicating formulas.
+schema_version: "2.0"
+
+catalog:
+  id: distribution_risk_research
+  version: "1.0"
+
+defaults:
+  namespace: distribution_risk_research
+  factor_version: "1.0"
+  source_name: AlphaEngine independent distribution-risk research
+  source_version: issue-966-phase4
+  source_reference: docs/research/quantskills_volume_stat_alpha_phase4.md
+  availability_lag_sessions: 0
+  adjustment_requirement: adjusted
+  output_frequency: day
+  output_dtype: float64
+  missing_value_policy: preserve_nan_after_warmup
+  status: candidate
+
+factors:
+  distribution_risk_research.ret_skew_20d:
+    display_name: 20-day return skewness
+    information_family: distribution_risk
+    expression: "Skew($close/Ref($close,1)-1,20)"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 21
+
+  distribution_risk_research.ret_kurt_20d:
+    display_name: 20-day return kurtosis
+    information_family: distribution_risk
+    expression: "Kurt($close/Ref($close,1)-1,20)"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 21
+
+groups:
+  distribution_risk_20d:
+    description: Diagnostic-only 20-session return distribution state for Issue #966 Phase 4
+    factor_ids:
+      - distribution_risk_research.ret_skew_20d
+      - distribution_risk_research.ret_kurt_20d

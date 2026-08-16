@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "issue": 966,
+  "phase": 4,
+  "gate": "distribution_risk_diagnostic_and_single_use_control",
+  "status": "complete",
+  "authoritative_workflow": {
+    "run_id": 31944559388,
+    "head_sha": "23980ac1aba5051611bed51e932afe5f94393057",
+    "workflow_name": "Issue 966 Phase4 Distribution Risk"
+  },
+  "factors": {
+    "distribution_risk_research.ret_skew_20d": {
+      "implementation_hash": "656a434221a827ba19cdeb4d43834b988a8b7ff83766e8a896256c2bfc618d8f",
+      "expression": "Skew($close/Ref($close,1)-1,20)",
+      "structural_status": "candidate"
+    },
+    "distribution_risk_research.ret_kurt_20d": {
+      "implementation_hash": "02793254df916c4cacd5f324e10b397656c42a70d278d4083e0ec86033fa77cf",
+      "expression": "Kurt($close/Ref($close,1)-1,20)",
+      "structural_status": "candidate"
+    }
+  },
+  "structural_quality": {
+    "us": {
+      "universe": "us_selected_equities_v2",
+      "candidate_count": 87,
+      "provider_identity_sha256": "c78ade39f63823d2f7089947831387803caae51b53073ae25fed2000f2a6f36c",
+      "cutoff": "2026-06-30",
+      "skew_finite_rows": 108176,
+      "kurt_finite_rows": 108091,
+      "both_all_checks_pass": true,
+      "future_sessions": 0
+    },
+    "cn": {
+      "universe": "cn_selected_equities_v3",
+      "candidate_count": 130,
+      "provider_identity_sha256": "6f17a9eba541159a4cb472721b32758f6bac4892d1a917730fa1b62e9d455980",
+      "cutoff": "2026-06-30",
+      "skew_finite_rows": 163360,
+      "kurt_finite_rows": 163230,
+      "both_all_checks_pass": true,
+      "future_sessions": 0
+    }
+  },
+  "diagnostic_gate": {
+    "us": {
+      "selection_windows": ["2024H1", "2024H2", "2025H1", "2025H2"],
+      "negative_median_skew20": {
+        "diagnostic_useful": true,
+        "control_candidate": true,
+        "strong_outcome_count": 2,
+        "strong_outcomes": {
+          "future_benchmark_loss_10d": {
+            "direct_spearman": 0.2112219990482571,
+            "partial_spearman_controlling_existing_risk": 0.24729187752801357,
+            "positive_window_share": 0.75,
+            "tail_spread": 0.027970156987718556
+          },
+          "future_drawdown_severity_10d": {
+            "direct_spearman": 0.23714553060047885,
+            "partial_spearman_controlling_existing_risk": 0.19510774756449384,
+            "positive_window_share": 0.75,
+            "tail_spread": 0.02447339799357942
+          }
+        }
+      },
+      "median_kurt20": {
+        "diagnostic_useful": false,
+        "control_candidate": false,
+        "strong_outcome_count": 0
+      },
+      "decision": "test_negative_median_skew20_once_as_exposure_control"
+    },
+    "cn": {
+      "selection_windows": ["2024H1", "2024H2", "2025H1", "2025H2", "2026H1"],
+      "negative_median_skew20": {
+        "diagnostic_useful": false,
+        "control_candidate": false,
+        "strong_outcome_count": 0
+      },
+      "median_kurt20": {
+        "diagnostic_useful": false,
+        "control_candidate": false,
+        "strong_outcome_count": 1,
+        "only_strong_outcome": "future_benchmark_loss_10d"
+      },
+      "decision": "keep_distribution_factors_diagnostic_only"
+    }
+  },
+  "us_single_use_control": {
+    "experiment_id": "us_issue966_phase4_skew_exposure_v1",
+    "risk_state": "negative_cross_sectional_median_skew20",
+    "threshold": "strictly_lagged_trailing_252_session_80th_percentile",
+    "normal_exposure": 1.0,
+    "high_risk_exposure": 0.5,
+    "high_risk_periods": 7,
+    "baseline_reproduction": true,
+    "control_reproduction": true,
+    "20bps": {
+      "baseline_relative_excess": 2.5928800852261,
+      "controlled_relative_excess": 2.6082036318287383,
+      "baseline_max_drawdown": -0.2621806154114197,
+      "controlled_max_drawdown": -0.24126837370849463,
+      "drawdown_improvement": 0.02091224170292505,
+      "relative_excess_retention_ratio": 1.0059098554884778,
+      "baseline_turnover": 21.8,
+      "controlled_turnover": 20.8
+    },
+    "60bps": {
+      "baseline_relative_excess": 2.255732957467732,
+      "controlled_relative_excess": 2.2851625164735547,
+      "baseline_max_drawdown": -0.26808977459224637,
+      "controlled_max_drawdown": -0.2457745394359092,
+      "relative_excess_retention_ratio": 1.0130465616102273
+    },
+    "all_preregistered_checks_pass": true,
+    "decision": "surviving_research_only_risk_control"
+  },
+  "artifacts": {
+    "us": {
+      "id": 9262958819,
+      "name": "issue966-phase4-us-31944559388",
+      "digest": "sha256:322e83e87741a24a111209735ed865fa4744dca9a434142aff9d9fdf0e036b7f"
+    },
+    "cn": {
+      "id": 9262950312,
+      "name": "issue966-phase4-cn-31944559388",
+      "digest": "sha256:f8a34805c6501dc3eee3f77d531220d437efa874ee2f6031c2def4a76142e3e0"
+    }
+  },
+  "decision": {
+    "phase4_complete": true,
+    "us_skew_risk_control_survives": true,
+    "us_kurtosis_control_rejected": true,
+    "cn_distribution_control_survivors": [],
+    "model_features_changed": false,
+    "portfolio_selection_changed": false,
+    "automatic_promotion": false,
+    "trade_ready": false,
+    "next": "phase5_factor_evidence_governance_then_phase6_smallest_winning_set_certification"
+  }
+}

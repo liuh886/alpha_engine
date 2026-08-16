@@ -1,0 +1,221 @@
+name: Issue 966 Phase4 Distribution Risk
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/issue966-phase4-distribution-risk.yml'
+      - 'configs/factor_libraries/distribution_risk_research.yaml'
+      - 'configs/research_paradigms/us_issue966_phase4_feature_quality_v1.yaml'
+      - 'configs/research_paradigms/cn_issue966_phase4_feature_quality_v1.yaml'
+      - 'configs/research_experiments/us_issue966_phase4_skew_exposure_v1.yaml'
+      - 'configs/research_experiments/us_issue966_phase2_ablation_v1.yaml'
+      - 'configs/research_experiments/cn_issue966_phase2_ablation_v1.yaml'
+      - 'configs/research_universes/us_selected_equities_v2.yaml'
+      - 'configs/research_universes/cn_selected_equities_v3.yaml'
+      - 'data/csv_source/**'
+      - 'src/research/distribution_risk_diagnostics.py'
+      - 'src/research/us_skew_exposure_control.py'
+      - 'src/research/factor_feature_quality.py'
+      - 'scripts/build_market_providers.py'
+      - 'scripts/run_factor_feature_quality.py'
+      - 'scripts/run_distribution_risk_diagnostics.py'
+      - 'scripts/run_us_skew_exposure_control.py'
+      - 'tests/test_distribution_risk_diagnostics.py'
+      - 'tests/test_us_skew_exposure_control.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: issue966-phase4-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate Phase4 code and contracts
+        run: |
+          uv run ruff check \
+            src/research/distribution_risk_diagnostics.py \
+            src/research/us_skew_exposure_control.py \
+            scripts/run_distribution_risk_diagnostics.py \
+            scripts/run_us_skew_exposure_control.py \
+            tests/test_distribution_risk_diagnostics.py \
+            tests/test_us_skew_exposure_control.py
+          uv run pytest \
+            tests/test_distribution_risk_diagnostics.py \
+            tests/test_us_skew_exposure_control.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+          uv run python - <<'PY'
+          from src.research.paradigm import load_research_paradigm_spec
+          for path in (
+              'configs/research_paradigms/us_issue966_phase4_feature_quality_v1.yaml',
+              'configs/research_paradigms/cn_issue966_phase4_feature_quality_v1.yaml',
+          ):
+              spec = load_research_paradigm_spec(path)
+              assert spec.walk_forward['test_end'] == '2026-06-30'
+              assert spec.factor_library['groups'] == ['distribution_risk_20d']
+          PY
+
+  diagnostic:
+    needs: contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        market: [us, cn]
+        include:
+          - market: us
+            quality_spec: configs/research_paradigms/us_issue966_phase4_feature_quality_v1.yaml
+            phase2_spec: configs/research_experiments/us_issue966_phase2_ablation_v1.yaml
+            universe: configs/research_universes/us_selected_equities_v2.yaml
+            benchmark: QQQ
+            expected_count: 87
+          - market: cn
+            quality_spec: configs/research_paradigms/cn_issue966_phase4_feature_quality_v1.yaml
+            phase2_spec: configs/research_experiments/cn_issue966_phase2_ablation_v1.yaml
+            universe: configs/research_universes/cn_selected_equities_v3.yaml
+            benchmark: '000300'
+            expected_count: 130
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Stage exact governed universe and benchmark sources
+        env:
+          MARKET: ${{ matrix.market }}
+          UNIVERSE: ${{ matrix.universe }}
+          BENCHMARK: ${{ matrix.benchmark }}
+          EXPECTED_COUNT: ${{ matrix.expected_count }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+          import yaml
+
+          universe_path = Path(os.environ['UNIVERSE'])
+          payload = yaml.safe_load(universe_path.read_text(encoding='utf-8'))
+          if payload.get('market') != os.environ['MARKET']:
+              raise SystemExit('selected-pool market identity mismatch')
+          symbols = [str(item) for item in payload.get('symbols', [])]
+          expected = int(os.environ['EXPECTED_COUNT'])
+          if len(symbols) != expected or int(payload.get('candidate_count', 0)) != expected:
+              raise SystemExit('selected-pool candidate count mismatch')
+          source = Path('data/csv_source')
+          stage = Path('artifacts/research/issue966_phase4') / os.environ['MARKET'] / 'csv_source'
+          stage.mkdir(parents=True, exist_ok=True)
+          for symbol in [*symbols, os.environ['BENCHMARK']]:
+              path = source / f'{symbol}.csv'
+              if not path.is_file():
+                  raise SystemExit(f'missing canonical source: {path}')
+              shutil.copy2(path, stage / path.name)
+          print(f'staged {len(symbols)} candidates plus benchmark')
+          PY
+      - name: Build deterministic exact-cutoff Qlib provider
+        run: >-
+          uv run python scripts/build_market_providers.py
+          --csv-dir artifacts/research/issue966_phase4/${{ matrix.market }}/csv_source
+          --markets ${{ matrix.market }}
+          --cutoff 2026-06-30
+      - name: Run structural factor quality
+        run: >-
+          uv run python scripts/run_factor_feature_quality.py
+          --spec ${{ matrix.quality_spec }}
+          --output artifacts/research/issue966_phase4/${{ matrix.market }}/factor_feature_quality.json
+      - name: Require both factors to pass structural quality
+        env:
+          MARKET: ${{ matrix.market }}
+          EXPECTED_COUNT: ${{ matrix.expected_count }}
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          path = Path('artifacts/research/issue966_phase4') / os.environ['MARKET'] / 'factor_feature_quality.json'
+          receipt = json.loads(path.read_text(encoding='utf-8'))
+          assert receipt['gate1_pass'] is True
+          assert receipt['provider']['cutoff'] == '2026-06-30'
+          assert receipt['universe']['requested_symbol_count'] == int(os.environ['EXPECTED_COUNT'])
+          assert receipt['factor_count'] == 2
+          for factor in receipt['factors']:
+              assert all(factor['checks'].values())
+          PY
+      - name: Run distribution-state diagnostics
+        run: >-
+          uv run python scripts/run_distribution_risk_diagnostics.py
+          --spec ${{ matrix.phase2_spec }}
+          --output artifacts/research/issue966_phase4/${{ matrix.market }}/distribution_risk_diagnostics.json
+      - name: Verify diagnostic-only boundary
+        env:
+          MARKET: ${{ matrix.market }}
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          path = Path('artifacts/research/issue966_phase4') / os.environ['MARKET'] / 'distribution_risk_diagnostics.json'
+          receipt = json.loads(path.read_text(encoding='utf-8'))
+          assert receipt['scope'] == 'distribution_state_diagnostic_only'
+          assert receipt['cutoff'] == '2026-06-30'
+          assert receipt['research_only'] is True
+          assert receipt['trade_ready'] is False
+          assert receipt['model_features_changed'] is False
+          assert receipt['portfolio_policy_changed'] is False
+          assert set(receipt['diagnostics']) == {'negative_median_skew20', 'median_kurt20'}
+          if os.environ['MARKET'] == 'cn':
+              assert receipt['control_candidates'] == []
+              assert '2026H2' not in receipt['selection_windows']
+          else:
+              assert receipt['control_candidates'] == ['negative_median_skew20']
+          PY
+      - name: Run preregistered single-use US skew exposure control
+        if: matrix.market == 'us'
+        run: >-
+          uv run python scripts/run_us_skew_exposure_control.py
+          --spec configs/research_experiments/us_issue966_phase4_skew_exposure_v1.yaml
+          --output artifacts/research/issue966_phase4/us/skew_exposure_control.json
+      - name: Verify single-use control boundary
+        if: matrix.market == 'us'
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          receipt = json.loads(Path('artifacts/research/issue966_phase4/us/skew_exposure_control.json').read_text(encoding='utf-8'))
+          assert receipt['status'] == 'completed'
+          assert receipt['runner'] == 'us_skew_exposure_control_v1'
+          assert receipt['selection_windows'] == ['2024H1', '2024H2', '2025H1', '2025H2']
+          assert receipt['research_only'] is True
+          assert receipt['trade_ready'] is False
+          assert receipt['automatic_promotion'] is False
+          assert receipt['gate4']['checks']['exact_full_exposure_baseline_reproduction'] is True
+          assert receipt['gate4']['checks']['deterministic_control_reproduction'] is True
+          PY
+      - name: Upload Phase4 evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: issue966-phase4-${{ matrix.market }}-${{ github.run_id }}
+          path: artifacts/research/issue966_phase4/${{ matrix.market }}/
+          if-no-files-found: error
+          retention-days: 90
