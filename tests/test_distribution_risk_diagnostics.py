@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from src.common.runtime_settings import PROJECT_ROOT
 from src.factors.library import load_factor_library
@@ -38,8 +39,8 @@ def test_future_drawdown_severity_is_forward_adverse_excursion() -> None:
 
     result = _future_drawdown_severity(close, horizon=2)
 
-    assert result.iloc[0] == 0.10
-    assert result.iloc[1] == -((90.0 / 95.0) - 1.0)
+    assert result.iloc[0] == pytest.approx(0.10)
+    assert result.iloc[1] == pytest.approx(-((90.0 / 95.0) - 1.0))
     assert np.isnan(result.iloc[-1])
 
 
