@@ -19,7 +19,7 @@ defaults:
   output_frequency: day
   output_dtype: float64
   missing_value_policy: preserve_nan_after_warmup
-  status: unvalidated_formula
+  status: candidate
 
 factors:
   volume_stat_research.signed_volume_balance_10d:
