@@ -1,0 +1,211 @@
+{
+  "schema_version": "1.0",
+  "issue": 966,
+  "phase": 2,
+  "gate": "gate2_incremental_ablation",
+  "status": "complete",
+  "workflow": {
+    "run_id": 31943349819,
+    "head_sha": "e0e0b4cc004152fc632e38f089ea80ad8a435860",
+    "workflow_name": "Issue 966 Phase2 Ablation"
+  },
+  "frozen_contract": {
+    "label_horizon_sessions": 10,
+    "base_cost_bps": 20,
+    "stress_cost_bps": 60,
+    "automatic_promotion": false,
+    "research_only": true,
+    "trade_ready": false
+  },
+  "us": {
+    "universe": "us_selected_equities_v2",
+    "candidate_count": 87,
+    "provider_identity_sha256": "c78ade39f63823d2f7089947831387803caae51b53073ae25fed2000f2a6f36c",
+    "cutoff": "2026-06-30",
+    "selection_windows": ["2024H1", "2024H2", "2025H1", "2025H2"],
+    "baseline": {
+      "candidate_id": "baseline_us_x1_2",
+      "factor_count": 7,
+      "relative_excess_20bps": 1.6706892505243864,
+      "relative_excess_60bps": 1.4534527938905026,
+      "worst_drawdown_20bps": -0.26218061541141957,
+      "mean_rank_ic": 0.04969875
+    },
+    "candidates": {
+      "us_x1_2_plus_signed_volume": {
+        "added_factor_ids": ["volume_stat_research.signed_volume_balance_10d"],
+        "relative_excess_20bps": 1.3195257261191897,
+        "relative_excess_60bps": 1.133484088672497,
+        "improvement_vs_baseline_20bps": -0.3511635244051967,
+        "improvement_vs_baseline_60bps": -0.3199687052180056,
+        "worst_drawdown_20bps": -0.2888791818488685,
+        "mean_rank_ic": 0.0502155,
+        "all_selection_windows_positive_excess": true,
+        "max_abs_mean_daily_rank_correlation_to_baseline": 0.6974299068641778,
+        "gate2_pass": false,
+        "reject_reason": "fails_incremental_economic_gate_at_20_and_60_bps"
+      },
+      "us_x1_2_plus_cord10": {
+        "added_factor_ids": ["qlib_alpha158.cord10"],
+        "relative_excess_20bps": 1.5158792388540183,
+        "relative_excess_60bps": 1.328740339861783,
+        "improvement_vs_baseline_20bps": -0.15481001167036812,
+        "improvement_vs_baseline_60bps": -0.12471245402871967,
+        "worst_drawdown_20bps": -0.2736008614415031,
+        "mean_rank_ic": 0.05056425,
+        "all_selection_windows_positive_excess": true,
+        "max_abs_mean_daily_rank_correlation_to_baseline": 0.5468785821712947,
+        "gate2_pass": false,
+        "reject_reason": "fails_incremental_economic_gate_at_20_and_60_bps"
+      },
+      "us_x1_2_plus_rank20": {
+        "added_factor_ids": ["qlib_alpha158.rank20"],
+        "relative_excess_20bps": 1.431264291625895,
+        "relative_excess_60bps": 1.2373140247572136,
+        "improvement_vs_baseline_20bps": -0.23942495889849136,
+        "improvement_vs_baseline_60bps": -0.216138769133289,
+        "worst_drawdown_20bps": -0.2830493445379858,
+        "mean_rank_ic": 0.04961475,
+        "all_selection_windows_positive_excess": true,
+        "max_abs_mean_daily_rank_correlation_to_baseline": 0.7618659292980138,
+        "gate2_pass": false,
+        "reject_reason": "fails_incremental_economic_gate_at_20_and_60_bps"
+      },
+      "us_x1_2_plus_all_three": {
+        "added_factor_ids": [
+          "volume_stat_research.signed_volume_balance_10d",
+          "qlib_alpha158.cord10",
+          "qlib_alpha158.rank20"
+        ],
+        "factor_count": 10,
+        "relative_excess_20bps": 2.1452741248708,
+        "relative_excess_60bps": 1.9067826402147348,
+        "improvement_vs_baseline_20bps": 0.4745848743464136,
+        "improvement_vs_baseline_60bps": 0.4533298463242321,
+        "worst_drawdown_20bps": -0.2514362299949212,
+        "drawdown_delta_vs_baseline": 0.010744385416498359,
+        "mean_rank_ic": 0.05240025,
+        "mean_rank_ic_improvement": 0.0027015000000000025,
+        "all_selection_windows_positive_excess": true,
+        "component_max_abs_mean_daily_rank_correlations": {
+          "volume_stat_research.signed_volume_balance_10d": 0.6974299068641778,
+          "qlib_alpha158.cord10": 0.5468785821712947,
+          "qlib_alpha158.rank20": 0.7618659292980138
+        },
+        "exact_score_reproduction": true,
+        "gate2_pass": true,
+        "decision": "surviving_joint_feature_set"
+      }
+    },
+    "decision": {
+      "individual_mechanism_survivors": [],
+      "joint_feature_set_survivor": "us_x1_2_plus_all_three",
+      "interpretation": "The three mechanisms are not individually incremental under the frozen US economics, but the preregistered joint set is materially better than the frozen baseline at both cost levels with improved drawdown and low-enough component redundancy. Treat this as complementarity evidence, not evidence that any one mechanism is independently promotable."
+    },
+    "artifact": {
+      "id": 9262665408,
+      "name": "issue966-phase2-us-31943349819",
+      "digest": "sha256:728ae6fb87bf32dd3faeb919f0d611c3c6281a23c4b7a3759d57025dadfc78bb"
+    }
+  },
+  "cn": {
+    "universe": "cn_selected_equities_v3",
+    "candidate_count": 130,
+    "provider_identity_sha256": "6f17a9eba541159a4cb472721b32758f6bac4892d1a917730fa1b62e9d455980",
+    "cutoff": "2026-06-30",
+    "selection_windows": ["2024H1", "2024H2", "2025H1", "2025H2", "2026H1"],
+    "reserved_holdout_start": "2026-07-01",
+    "baseline": {
+      "candidate_id": "baseline_cn_x1_2",
+      "factor_count": 17,
+      "relative_excess_20bps": 0.7566420588854332,
+      "relative_excess_60bps": 0.5156241713521426,
+      "worst_drawdown_20bps": -0.1477144267185888,
+      "mean_rank_ic": 0.034634399999999996,
+      "turnover_20bps": 37.284615384615385,
+      "deterministic_scores": true,
+      "deterministic_portfolio": true
+    },
+    "resolved_non_incremental_mechanism": {
+      "price_volume_correlation": {
+        "factor_id": "qlib_alpha158.cord5",
+        "status": "already_active_in_baseline",
+        "action": "no_duplicate_ablation"
+      }
+    },
+    "candidates": {
+      "cn_x1_2_plus_signed_volume": {
+        "added_factor_ids": ["volume_stat_research.signed_volume_balance_10d"],
+        "relative_excess_20bps": 0.36167196432805193,
+        "relative_excess_60bps": 0.18091640346437177,
+        "improvement_vs_baseline_20bps": -0.3949700945573813,
+        "improvement_vs_baseline_60bps": -0.3347077678877708,
+        "worst_drawdown_20bps": -0.20000522440492063,
+        "drawdown_delta_vs_baseline": -0.052290797686331825,
+        "mean_rank_ic": 0.030438200000000006,
+        "positive_window_count": 4,
+        "max_abs_mean_daily_rank_correlation_to_baseline": 0.7360160697917989,
+        "deterministic_scores": true,
+        "deterministic_portfolio": true,
+        "gate2_pass": false,
+        "reject_reason": "fails_20bps_60bps_and_drawdown_incremental_gates"
+      },
+      "cn_x1_2_plus_rank20": {
+        "added_factor_ids": ["qlib_alpha158.rank20"],
+        "relative_excess_20bps": 0.5521970693041283,
+        "relative_excess_60bps": 0.3370396021876796,
+        "improvement_vs_baseline_20bps": -0.20444498958130497,
+        "improvement_vs_baseline_60bps": -0.17858456916446297,
+        "worst_drawdown_20bps": -0.15079875520283603,
+        "drawdown_delta_vs_baseline": -0.003084328484247223,
+        "mean_rank_ic": 0.0297552,
+        "positive_window_count": 4,
+        "max_abs_mean_daily_rank_correlation_to_baseline": 0.7860115393350796,
+        "deterministic_scores": true,
+        "deterministic_portfolio": true,
+        "gate2_pass": false,
+        "reject_reason": "fails_incremental_economic_gate_at_20_and_60_bps"
+      },
+      "cn_x1_2_plus_signed_volume_rank20": {
+        "added_factor_ids": [
+          "volume_stat_research.signed_volume_balance_10d",
+          "qlib_alpha158.rank20"
+        ],
+        "relative_excess_20bps": 0.3280750038031526,
+        "relative_excess_60bps": 0.15215616798348863,
+        "improvement_vs_baseline_20bps": -0.42856705508228066,
+        "improvement_vs_baseline_60bps": -0.3634680033686539,
+        "worst_drawdown_20bps": -0.2143489489632351,
+        "drawdown_delta_vs_baseline": -0.06663452224464628,
+        "mean_rank_ic": 0.0284692,
+        "positive_window_count": 4,
+        "component_max_abs_mean_daily_rank_correlations": {
+          "volume_stat_research.signed_volume_balance_10d": 0.7360160697917989,
+          "qlib_alpha158.rank20": 0.7860115393350796
+        },
+        "deterministic_scores": true,
+        "deterministic_portfolio": true,
+        "gate2_pass": false,
+        "reject_reason": "fails_20bps_60bps_and_drawdown_incremental_gates"
+      }
+    },
+    "decision": {
+      "individual_mechanism_survivors": [],
+      "joint_feature_set_survivors": [],
+      "interpretation": "No new first-wave feature set improves the current CN x1.2 baseline under frozen 10D breadth-scaled economics. Preserve CN x1.2 unchanged."
+    },
+    "artifact": {
+      "id": 9262681224,
+      "name": "issue966-phase2-cn-31943349819",
+      "digest": "sha256:8ddd16a1f787f7c93c19a1628918f9ecef516b3c535f1e316eda46d2b00d3fa4"
+    }
+  },
+  "gate2_decision": {
+    "complete": true,
+    "us_individual_mechanism_survivors": [],
+    "us_joint_feature_set_survivor": "us_x1_2_plus_all_three",
+    "cn_survivors": [],
+    "phase3_transform_refinement_allowed_for_individual_mechanisms": false,
+    "reason": "No individual first-wave mechanism passes the frozen incremental economic gate in either market. The US joint set passes as a bundle, but Phase 3 is defined as mechanism-family refinement, so transform search would be post-hoc fishing rather than a preregistered refinement of an independently surviving mechanism."
+  }
+}
