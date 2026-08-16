@@ -1,0 +1,144 @@
+name: Issue 966 Phase6 Minimal Set
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/issue966-phase6-minimal-set.yml'
+      - 'configs/research_experiments/us_issue966_phase6_minimal_set_v1.yaml'
+      - 'configs/research_paradigms/us_issue966_phase2_x1_2_v1.yaml'
+      - 'configs/factor_libraries/ohlcv.yaml'
+      - 'configs/factor_libraries/volume_stat_research.yaml'
+      - 'configs/research_universes/us_selected_equities_v2.yaml'
+      - 'data/csv_source/**'
+      - 'src/research/ranker_execution.py'
+      - 'src/research/us_ranker_exact_portfolio_replay.py'
+      - 'src/research/factor_redundancy.py'
+      - 'src/research/us_issue966_minimal_set.py'
+      - 'scripts/build_market_providers.py'
+      - 'scripts/run_us_ranker_exact_portfolio_replay.py'
+      - 'scripts/run_factor_redundancy.py'
+      - 'scripts/select_us_issue966_minimal_set.py'
+      - 'tests/test_us_issue966_minimal_set.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: issue966-phase6-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate Phase6 selector contract
+        run: |
+          uv run ruff check \
+            src/research/us_issue966_minimal_set.py \
+            scripts/select_us_issue966_minimal_set.py \
+            tests/test_us_issue966_minimal_set.py
+          uv run pytest tests/test_us_issue966_minimal_set.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
+          uv run python - <<'PY'
+          from src.research.cross_sectional_experiment_runner import load_cross_sectional_experiment_spec
+          spec = load_cross_sectional_experiment_spec('configs/research_experiments/us_issue966_phase6_minimal_set_v1.yaml')
+          assert spec.contract.selection_windows == ('2024H1', '2024H2', '2025H1', '2025H2')
+          assert spec.contract.reporting_windows == ()
+          assert spec.contract.cutoff == '2026-06-30'
+          assert spec.raw['reporting_boundary']['fresh_untouched_us_holdout_available'] is False
+          assert len(spec.candidates) == 5
+          PY
+
+  exact-subsets:
+    needs: contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Stage exact US87 and QQQ sources
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from pathlib import Path
+          import yaml
+
+          universe = yaml.safe_load(Path('configs/research_universes/us_selected_equities_v2.yaml').read_text(encoding='utf-8'))
+          symbols = [str(value) for value in universe['symbols']]
+          if len(symbols) != 87 or int(universe['candidate_count']) != 87:
+              raise SystemExit('US87 identity drifted')
+          source = Path('data/csv_source')
+          stage = Path('artifacts/research/issue966_phase6/csv_source')
+          stage.mkdir(parents=True, exist_ok=True)
+          for symbol in [*symbols, 'QQQ']:
+              path = source / f'{symbol}.csv'
+              if not path.is_file():
+                  raise SystemExit(f'missing canonical source: {path}')
+              shutil.copy2(path, stage / path.name)
+          print('staged US87 plus QQQ')
+          PY
+      - name: Build exact-cutoff US provider
+        run: >-
+          uv run python scripts/build_market_providers.py
+          --csv-dir artifacts/research/issue966_phase6/csv_source
+          --markets us
+          --cutoff 2026-06-30
+      - name: Run exact subset matrix
+        run: >-
+          uv run python scripts/run_us_ranker_exact_portfolio_replay.py
+          --spec configs/research_experiments/us_issue966_phase6_minimal_set_v1.yaml
+          --output-dir artifacts/research/issue966_phase6/stage_b
+      - name: Run no-label redundancy diagnostics
+        run: >-
+          uv run python scripts/run_factor_redundancy.py
+          --spec configs/research_experiments/us_issue966_phase6_minimal_set_v1.yaml
+          --output artifacts/research/issue966_phase6/factor_redundancy.json
+      - name: Select smallest passing subset
+        run: >-
+          uv run python scripts/select_us_issue966_minimal_set.py
+          --spec configs/research_experiments/us_issue966_phase6_minimal_set_v1.yaml
+          --stage-b artifacts/research/issue966_phase6/stage_b/stage_b_receipt.json
+          --observations artifacts/research/issue966_phase6/stage_b/observations.json
+          --redundancy artifacts/research/issue966_phase6/factor_redundancy.json
+          --output artifacts/research/issue966_phase6/minimal_set_decision.json
+      - name: Verify Phase6 selection boundary
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          decision = json.loads(Path('artifacts/research/issue966_phase6/minimal_set_decision.json').read_text(encoding='utf-8'))
+          assert decision['status'] == 'completed'
+          assert decision['selection_windows'] == ['2024H1', '2024H2', '2025H1', '2025H2']
+          assert decision['fresh_untouched_us_holdout_available'] is False
+          assert decision['research_only'] is True
+          assert decision['trade_ready'] is False
+          assert decision['automatic_promotion'] is False
+          assert decision['selected_candidate_id'] is not None
+          assert decision['selected_factor_count'] in (9, 10)
+          PY
+      - name: Upload Phase6 subset evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: issue966-phase6-subsets-${{ github.run_id }}
+          path: artifacts/research/issue966_phase6/
+          if-no-files-found: error
+          retention-days: 90
