@@ -27,7 +27,6 @@ from src.research.cn_ranker_exact_portfolio_replay import (
     STRESS_COST_BPS,
     _frame_hash,
     _ledger,
-    _load_benchmark_returns,
     _score_hash,
     _write_json,
     economic_rebalance_dates,
@@ -305,16 +304,6 @@ def run_cn_x1_2_feature_ablation(
         features_test = features_all.loc[test_mask].copy()
         returns_test = returns_all.loc[test_mask].copy()
         returns_test.attrs.update(returns_all.attrs)
-        benchmark_raw = _load_benchmark_returns(
-            runtime,
-            benchmark_instrument=BENCHMARK,
-            return_expression=RETURN_EXPRESSION,
-            evaluation_dates=dates,
-            start=window.test_start,
-            end=window.test_end,
-            provenance="raw_forward_return",
-            horizon=10,
-        )
         cache[window.label] = {
             "features_train": features_train,
             "returns_train": returns_train,
@@ -339,7 +328,7 @@ def run_cn_x1_2_feature_ablation(
                 returns_test,
                 candidate_kind=CandidateKind.XGB_RANK_NDCG,
                 orientation=ScoreOrientation.ORIGINAL,
-                benchmark_returns=benchmark_raw,
+                benchmark_returns=None,
                 topk=15,
                 rebalance_days=10,
                 cost_bps=BASE_COST_BPS,
