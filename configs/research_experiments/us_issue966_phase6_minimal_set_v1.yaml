@@ -136,7 +136,7 @@ phase6_selection_policy:
   must_beat_baseline_60bps: true
   require_all_development_windows_positive_excess: true
   maximum_drawdown_worsening_vs_baseline: 0.03
-  maximum_abs_added_factor_pair_rank_correlation: 0.95
+  maximum_abs_component_rank_correlation_to_baseline: 0.95
   selection_order:
     - minimum_factor_count
     - maximum_20bps_relative_excess_improvement
