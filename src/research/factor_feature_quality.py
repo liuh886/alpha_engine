@@ -29,6 +29,7 @@ from src.research.spec_bound_execution import build_declared_execution_contract,
 
 FEATURE_QUALITY_SCHEMA_VERSION = "1.0"
 MIN_POST_WARMUP_COVERAGE = 0.90
+MAX_END_GAP_DAYS = 14
 
 
 class FactorFeatureQualityRuntime(Protocol):
@@ -85,7 +86,7 @@ class QlibFactorFeatureQualityRuntime:
         )
 
     def expression_window(self, expression: str) -> tuple[int, int]:
-        from qlib.data import ExpressionD
+        from qlib.data.data import ExpressionD
 
         parsed = ExpressionD.get_expression_instance(expression)
         left, right = parsed.get_extended_window_size()
@@ -174,7 +175,12 @@ def _frames_identical(left: pd.DataFrame, right: pd.DataFrame) -> bool:
     )
 
 
-def _symbol_quality(series: pd.Series, minimum_lookback: int) -> dict[str, Any]:
+def _symbol_quality(
+    series: pd.Series,
+    minimum_lookback: int,
+    *,
+    expected_end: str,
+) -> dict[str, Any]:
     numeric = pd.to_numeric(series, errors="coerce")
     values = numeric.to_numpy(dtype=float)
     finite_mask = np.isfinite(values)
@@ -188,6 +194,7 @@ def _symbol_quality(series: pd.Series, minimum_lookback: int) -> dict[str, Any]:
             "last_valid_date": None,
             "observed_warmup_sessions": None,
             "post_warmup_coverage": 0.0,
+            "end_gap_days": None,
             "minimum_lookback": minimum_lookback,
         }
 
@@ -196,13 +203,17 @@ def _symbol_quality(series: pd.Series, minimum_lookback: int) -> dict[str, Any]:
     eligible = values[first_position : last_position + 1]
     post_warmup_coverage = float(np.isfinite(eligible).mean())
     index = pd.DatetimeIndex(series.index)
+    first_valid = pd.Timestamp(index[first_position])
+    last_valid = pd.Timestamp(index[last_position])
+    end_gap_days = max(0, int((pd.Timestamp(expected_end) - last_valid).days))
     return {
         "finite_count": int(finite_mask.sum()),
         "inf_count": inf_count,
-        "first_valid_date": index[first_position].strftime("%Y-%m-%d"),
-        "last_valid_date": index[last_position].strftime("%Y-%m-%d"),
+        "first_valid_date": first_valid.strftime("%Y-%m-%d"),
+        "last_valid_date": last_valid.strftime("%Y-%m-%d"),
         "observed_warmup_sessions": first_position,
         "post_warmup_coverage": post_warmup_coverage,
+        "end_gap_days": end_gap_days,
         "minimum_lookback": minimum_lookback,
     }
 
@@ -227,7 +238,11 @@ def _factor_quality(
             missing_symbols.append(symbol)
             continue
         values = column.xs(symbol, level="instrument")
-        symbol_rows[symbol] = _symbol_quality(values, definition.minimum_lookback)
+        symbol_rows[symbol] = _symbol_quality(
+            values,
+            definition.minimum_lookback,
+            expected_end=end,
+        )
 
     finite = pd.to_numeric(column, errors="coerce").to_numpy(dtype=float)
     finite_values = finite[np.isfinite(finite)]
@@ -244,6 +259,8 @@ def _factor_quality(
             row["finite_count"] > 0
             and row["inf_count"] == 0
             and row["post_warmup_coverage"] >= MIN_POST_WARMUP_COVERAGE
+            and row["end_gap_days"] is not None
+            and row["end_gap_days"] <= MAX_END_GAP_DAYS
             for row in symbol_rows.values()
         )
     )
@@ -280,6 +297,7 @@ def _factor_quality(
         "near_constant": near_constant,
         "missing_symbols": missing_symbols,
         "minimum_post_warmup_coverage_required": MIN_POST_WARMUP_COVERAGE,
+        "maximum_end_gap_days_allowed": MAX_END_GAP_DAYS,
         "symbol_quality": symbol_rows,
         "expression_window": {
             "past_sessions": left_window,
@@ -422,11 +440,17 @@ def run_factor_feature_quality_from_files(
             f"provider={provider_cutoff!r}, expected={expected_cutoff!r}"
         )
     manifest_path = provider / "provider_manifest.json"
+    calendar = dict(manifest.get("calendar") or {})
+    instruments = dict(manifest.get("instruments") or {})
     provider_identity = {
         "provider_dir": str(provider),
         "provider_identity_sha256": manifest.get("provider_identity_sha256"),
         "provider_manifest_sha256": _sha256_file(manifest_path),
         "cutoff": provider_cutoff,
+        "calendar_first_day": calendar.get("first_day"),
+        "calendar_last_day": calendar.get("last_day"),
+        "session_count": calendar.get("session_count"),
+        "instrument_count": instruments.get("count"),
     }
     report = evaluate_factor_feature_quality(
         spec,
