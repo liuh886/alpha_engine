@@ -1,9 +1,9 @@
 """Shared market-data execution primitives for maintained cross-sectional rankers.
 
-This module deliberately owns only the stable data-facing substrate shared by
-research execution and exact economic replay: the canonical 10-session return
-expression, market runtime selection, governed universe resolution, candidate
-factor-expression resolution, and benchmark instrument resolution.
+This module owns only the stable data-facing substrate shared by research
+execution and exact economic replay: the canonical 10-session return expression,
+market runtime selection, governed universe resolution, canonical candidate
+factor resolution, and benchmark instrument resolution.
 
 Window policy, training, portfolio construction, costs, support gates and model
 promotion remain in their owning modules.
@@ -15,7 +15,8 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from src.common.runtime_settings import PROJECT_ROOT
-from src.research.factor_library import load_factor_library, select_factor_groups
+from src.factors.library import load_factor_library
+from src.factors.model_contract import resolve_canonical_factor_ids
 from src.research.multi_market_readiness import load_market_watchlist, normalize_market_symbols
 from src.research.qlib_execution_common import ExecutionRuntime, _resolve_benchmark_instrument
 
@@ -37,6 +38,7 @@ class RankerExperimentContract(Protocol):
     factor_library_path: Path
     candidates: tuple[RankerCandidateContract, ...]
     parent: RankerParentContract
+    raw: dict[str, Any]
 
 
 def runtime_for_market(market: str) -> ExecutionRuntime:
@@ -67,24 +69,90 @@ def _resolve_repository_file(raw: str) -> Path:
     return resolved
 
 
-def factor_expressions(spec: RankerExperimentContract) -> dict[str, tuple[str, ...]]:
-    """Resolve each declared candidate to its ordered, de-duplicated expressions."""
-
-    library = load_factor_library(spec.factor_library_path)
-    result: dict[str, tuple[str, ...]] = {}
-    for candidate in spec.candidates:
-        groups = select_factor_groups(library, list(candidate.factor_groups))
-        expressions: list[str] = []
-        seen: set[str] = set()
-        for group in groups:
-            for factor in group.factors:
-                if factor.expression not in seen:
-                    expressions.append(factor.expression)
-                    seen.add(factor.expression)
-        if not expressions:
-            raise ValueError(f"candidate {candidate.candidate_id} has no factors")
-        result[candidate.candidate_id] = tuple(expressions)
+def _raw_candidate_map(spec: RankerExperimentContract) -> dict[str, dict[str, Any]]:
+    rows = spec.raw.get("candidates")
+    if not isinstance(rows, list):
+        raise ValueError("ranker experiment requires candidate mappings")
+    result: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("ranker candidate entries must be mappings")
+        candidate_id = str(row.get("candidate_id", "")).strip()
+        if not candidate_id or candidate_id in result:
+            raise ValueError(f"invalid or duplicate candidate id: {candidate_id!r}")
+        result[candidate_id] = row
+    expected = {candidate.candidate_id for candidate in spec.candidates}
+    if set(result) != expected:
+        raise ValueError("raw candidate metadata differs from validated experiment candidates")
     return result
+
+
+def candidate_factor_contracts(
+    spec: RankerExperimentContract,
+) -> dict[str, dict[str, Any]]:
+    """Resolve candidate factors across maintained canonical libraries.
+
+    The primary factor groups continue to come from the experiment's declared
+    factor library. A candidate may then append explicit canonical factor IDs
+    from additional maintained library sources. Definitions are never copied
+    into the experiment spec and duplicate IDs/expressions fail closed through
+    :func:`resolve_canonical_factor_ids`.
+    """
+
+    factor_cfg = spec.raw.get("factor_library") or {}
+    primary_source = str(factor_cfg.get("source", "")).strip()
+    if not primary_source:
+        raise ValueError("ranker experiment requires factor_library.source")
+    primary = load_factor_library(spec.factor_library_path)
+    raw_candidates = _raw_candidate_map(spec)
+
+    contracts: dict[str, dict[str, Any]] = {}
+    for candidate in spec.candidates:
+        base_definitions = primary.factors_for_groups(candidate.factor_groups)
+        factor_ids = [definition.factor_id for definition in base_definitions]
+        library_sources = [primary_source]
+
+        additions = raw_candidates[candidate.candidate_id].get("canonical_factor_additions")
+        if additions is not None:
+            if not isinstance(additions, dict):
+                raise ValueError(
+                    f"candidate {candidate.candidate_id} canonical_factor_additions "
+                    "must be a mapping"
+                )
+            raw_sources = additions.get("library_sources")
+            raw_ids = additions.get("factor_ids")
+            if not isinstance(raw_sources, list) or not raw_sources:
+                raise ValueError(
+                    f"candidate {candidate.candidate_id} additions require library_sources"
+                )
+            if not isinstance(raw_ids, list) or not raw_ids:
+                raise ValueError(f"candidate {candidate.candidate_id} additions require factor_ids")
+            library_sources.extend(str(value).strip() for value in raw_sources)
+            factor_ids.extend(str(value).strip() for value in raw_ids)
+
+        definitions = resolve_canonical_factor_ids(
+            root=PROJECT_ROOT,
+            library_sources=library_sources,
+            factor_ids=factor_ids,
+        )
+        contracts[candidate.candidate_id] = {
+            "library_sources": tuple(library_sources),
+            "factor_ids": tuple(definition.factor_id for definition in definitions),
+            "expressions": tuple(definition.expression for definition in definitions),
+            "implementation_hashes": {
+                definition.factor_id: definition.implementation_hash for definition in definitions
+            },
+        }
+    return contracts
+
+
+def factor_expressions(spec: RankerExperimentContract) -> dict[str, tuple[str, ...]]:
+    """Resolve each declared candidate to ordered canonical expressions."""
+
+    return {
+        candidate_id: tuple(contract["expressions"])
+        for candidate_id, contract in candidate_factor_contracts(spec).items()
+    }
 
 
 def resolve_symbols(spec: RankerExperimentContract, runtime: ExecutionRuntime) -> list[str]:

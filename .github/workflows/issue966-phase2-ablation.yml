@@ -1,0 +1,190 @@
+name: Issue 966 Phase2 Ablation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/issue966-phase2-ablation.yml'
+      - 'configs/research_experiments/us_issue966_phase2_ablation_v1.yaml'
+      - 'configs/research_experiments/cn_issue966_phase2_ablation_v1.yaml'
+      - 'configs/research_paradigms/us_issue966_phase2_x1_2_v1.yaml'
+      - 'configs/research_paradigms/cn_x1_2_alpha158_breadth_scaled_development_v1.yaml'
+      - 'configs/factor_libraries/volume_stat_research.yaml'
+      - 'configs/factor_libraries/ohlcv.yaml'
+      - 'configs/research_universes/us_selected_equities_v2.yaml'
+      - 'configs/research_universes/cn_selected_equities_v3.yaml'
+      - 'data/csv_source/**'
+      - 'src/factors/**'
+      - 'src/research/ranker_execution.py'
+      - 'src/research/cn_x1_2_feature_ablation.py'
+      - 'src/research/factor_redundancy.py'
+      - 'src/research/us_ranker_exact_portfolio_replay.py'
+      - 'scripts/build_market_providers.py'
+      - 'scripts/run_us_ranker_exact_portfolio_replay.py'
+      - 'scripts/run_cn_x1_2_feature_ablation.py'
+      - 'scripts/run_factor_redundancy.py'
+      - 'tests/test_ranker_execution_factor_additions.py'
+      - 'tests/test_issue966_phase2_contract.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: issue966-phase2-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate Phase2 contracts
+        run: |
+          uv run ruff check \
+            src/research/ranker_execution.py \
+            src/research/cn_x1_2_feature_ablation.py \
+            src/research/factor_redundancy.py \
+            scripts/run_cn_x1_2_feature_ablation.py \
+            scripts/run_factor_redundancy.py \
+            tests/test_ranker_execution_factor_additions.py \
+            tests/test_issue966_phase2_contract.py
+          uv run pytest \
+            tests/test_ranker_execution_factor_additions.py \
+            tests/test_issue966_phase2_contract.py \
+            tests/test_cross_sectional_experiment_runner.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  ablation:
+    needs: contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        market: [us, cn]
+        include:
+          - market: us
+            spec: configs/research_experiments/us_issue966_phase2_ablation_v1.yaml
+            universe: configs/research_universes/us_selected_equities_v2.yaml
+            benchmark: QQQ
+            expected_count: 87
+          - market: cn
+            spec: configs/research_experiments/cn_issue966_phase2_ablation_v1.yaml
+            universe: configs/research_universes/cn_selected_equities_v3.yaml
+            benchmark: '000300'
+            expected_count: 130
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Stage exact governed universe and benchmark sources
+        env:
+          MARKET: ${{ matrix.market }}
+          UNIVERSE: ${{ matrix.universe }}
+          BENCHMARK: ${{ matrix.benchmark }}
+          EXPECTED_COUNT: ${{ matrix.expected_count }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+          import yaml
+
+          universe_path = Path(os.environ['UNIVERSE'])
+          payload = yaml.safe_load(universe_path.read_text(encoding='utf-8'))
+          if payload.get('market') != os.environ['MARKET']:
+              raise SystemExit('selected-pool market identity mismatch')
+          symbols = [str(item) for item in payload.get('symbols', [])]
+          expected = int(os.environ['EXPECTED_COUNT'])
+          if len(symbols) != expected or int(payload.get('candidate_count', 0)) != expected:
+              raise SystemExit('selected-pool candidate count mismatch')
+          source = Path('data/csv_source')
+          stage = Path('artifacts/research/issue966_phase2') / os.environ['MARKET'] / 'csv_source'
+          stage.mkdir(parents=True, exist_ok=True)
+          for symbol in [*symbols, os.environ['BENCHMARK']]:
+              path = source / f'{symbol}.csv'
+              if not path.is_file():
+                  raise SystemExit(f'missing canonical source: {path}')
+              shutil.copy2(path, stage / path.name)
+          print(f'staged {len(symbols)} candidates plus benchmark')
+          PY
+      - name: Build exact-cutoff provider
+        run: >-
+          uv run python scripts/build_market_providers.py
+          --csv-dir artifacts/research/issue966_phase2/${{ matrix.market }}/csv_source
+          --markets ${{ matrix.market }}
+          --cutoff 2026-06-30
+      - name: Run exact Phase2 ablation
+        shell: bash
+        run: |
+          output="artifacts/research/issue966_phase2/${{ matrix.market }}/evidence"
+          mkdir -p "$output"
+          if [[ '${{ matrix.market }}' == 'us' ]]; then
+            uv run python scripts/run_us_ranker_exact_portfolio_replay.py \
+              --spec '${{ matrix.spec }}' \
+              --output-dir "$output/stage_b"
+          else
+            uv run python scripts/run_cn_x1_2_feature_ablation.py \
+              --spec '${{ matrix.spec }}' \
+              --output-dir "$output/stage_b"
+          fi
+          uv run python scripts/run_factor_redundancy.py \
+            --spec '${{ matrix.spec }}' \
+            --output "$output/factor_redundancy.json"
+      - name: Verify Phase2 evidence boundary
+        env:
+          MARKET: ${{ matrix.market }}
+          EXPECTED_COUNT: ${{ matrix.expected_count }}
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path('artifacts/research/issue966_phase2') / os.environ['MARKET'] / 'evidence'
+          redundancy = json.loads((root / 'factor_redundancy.json').read_text(encoding='utf-8'))
+          assert redundancy['scope'] == 'selection_window_features_only_no_forward_label'
+          assert redundancy['cutoff'] == '2026-06-30'
+          assert redundancy['factors']
+          if os.environ['MARKET'] == 'us':
+              receipt = json.loads((root / 'stage_b/stage_b_receipt.json').read_text(encoding='utf-8'))
+              assert receipt['status'] == 'completed'
+              assert receipt['runner'] == 'exact_us_ranker_portfolio_v1'
+              assert len(receipt['candidates']) == 5
+              assert receipt['trade_ready'] is False
+          else:
+              receipt = json.loads((root / 'stage_b/phase2_receipt.json').read_text(encoding='utf-8'))
+              assert receipt['status'] == 'completed'
+              assert receipt['runner'] == 'cn_x1_2_feature_ablation_v1'
+              assert receipt['reserved_holdout_start'] == '2026-07-01'
+              assert len(receipt['candidates']) == 4
+              assert all(
+                  item['scores'] and item['portfolio']
+                  for item in (candidate['determinism'] for candidate in receipt['candidates'])
+              )
+              assert receipt['trade_ready'] is False
+          PY
+      - name: Upload Phase2 evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: issue966-phase2-${{ matrix.market }}-${{ github.run_id }}
+          path: artifacts/research/issue966_phase2/${{ matrix.market }}/
+          if-no-files-found: error
+          retention-days: 90
