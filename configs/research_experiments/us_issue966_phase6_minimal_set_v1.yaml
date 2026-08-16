@@ -1,0 +1,161 @@
+schema_version: '1.0'
+experiment_id: us_issue966_phase6_minimal_set_v1
+runner: cross_sectional_xgb_ranker_v1
+active: false
+status: preregistered_certification
+parent_model_id: us_x1_2
+issue: 966
+phase: 6
+research_only: true
+trade_ready: false
+automatic_promotion: false
+online_validation: exact_us_ranker_portfolio_v1
+
+purpose: >-
+  Identify the smallest subset of the Gate-2 surviving US joint feature bundle
+  that still beats the frozen US x1.2 baseline under identical development
+  economics. This is subset certification, not transform or hyperparameter search.
+
+snapshot:
+  policy: exact_selected_pool_source_rebuild
+  source_dir: data/csv_source
+  provider_identity_sha256: c78ade39f63823d2f7089947831387803caae51b53073ae25fed2000f2a6f36c
+  cutoff: '2026-06-30'
+
+fixed_model:
+  model_id: us_x1_2
+  frozen_spec: configs/research_paradigms/us_issue966_phase2_x1_2_v1.yaml
+
+factor_library:
+  source: configs/factor_libraries/ohlcv.yaml
+
+x1_2_calibration: &x1_2_calibration
+  n_gain_bins: 7
+  num_boost_round: 200
+  max_leaves: 31
+  max_depth: 0
+  min_child_weight: 1.0
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  reg_alpha: 0.0
+  reg_lambda: 1.0
+  seed: 42
+
+candidates:
+  - candidate_id: baseline_us_x1_2
+    role: baseline
+    factor_groups: [momentum_volatility_volume]
+    xgb_native: *x1_2_calibration
+
+  - candidate_id: us_x1_2_plus_signed_cord
+    role: challenger
+    factor_groups: [momentum_volatility_volume]
+    canonical_factor_additions:
+      library_sources:
+        - src/factors/sets/qlib_alpha158.py
+        - configs/factor_libraries/volume_stat_research.yaml
+      factor_ids:
+        - qlib_alpha158.cord10
+        - volume_stat_research.signed_volume_balance_10d
+    xgb_native: *x1_2_calibration
+
+  - candidate_id: us_x1_2_plus_signed_rank
+    role: challenger
+    factor_groups: [momentum_volatility_volume]
+    canonical_factor_additions:
+      library_sources:
+        - src/factors/sets/qlib_alpha158.py
+        - configs/factor_libraries/volume_stat_research.yaml
+      factor_ids:
+        - qlib_alpha158.rank20
+        - volume_stat_research.signed_volume_balance_10d
+    xgb_native: *x1_2_calibration
+
+  - candidate_id: us_x1_2_plus_cord_rank
+    role: challenger
+    factor_groups: [momentum_volatility_volume]
+    canonical_factor_additions:
+      library_sources:
+        - src/factors/sets/qlib_alpha158.py
+      factor_ids:
+        - qlib_alpha158.cord10
+        - qlib_alpha158.rank20
+    xgb_native: *x1_2_calibration
+
+  - candidate_id: us_x1_2_plus_all_three
+    role: challenger
+    factor_groups: [momentum_volatility_volume]
+    canonical_factor_additions:
+      library_sources:
+        - src/factors/sets/qlib_alpha158.py
+        - configs/factor_libraries/volume_stat_research.yaml
+      factor_ids:
+        - qlib_alpha158.cord10
+        - qlib_alpha158.rank20
+        - volume_stat_research.signed_volume_balance_10d
+    xgb_native: *x1_2_calibration
+
+windows:
+  candidate_selection: [2024H1, 2024H2, 2025H1, 2025H2]
+  consumed_reporting_only: []
+  consumed_reporting_may_enter_selection: false
+  new_holdout_reserved: true
+
+execution:
+  base_cost_bps: 20
+  cost_stress_bps: [20, 60]
+  exact_portfolio:
+    replay_id: exact_us_ranker_portfolio_v1
+    top_n: 15
+    weighting: equal_weight
+    maximum_names_per_sector: 4
+    sector_classification: configs/research_classifications/us87_sector_industry_v1.yaml
+    holding_sessions: 10
+    rebalance_sessions: 10
+
+# Keep the generic exact-replay harness non-selective. The Phase-6 decision
+# below is applied after the exact receipt is generated.
+evaluation:
+  schema_version: '1.0'
+  baseline_candidate_id: baseline_us_x1_2
+  stress_cost_bps: 60
+  decision: issue966_phase6_subset_diagnostic_complete
+  ranking: [gate_pass_count, worst_drawdown, compounded_relative_excess]
+  thresholds:
+    min_window_relative_excess: -1.0
+    min_worst_drawdown: -1.0
+    min_stress_compounded_relative_excess: -1.0
+    max_strongest_positive_window_share: 1.01
+    min_mean_rank_ic_improvement: -1.0
+    require_factor_baseline_dominance: false
+
+phase6_selection_policy:
+  baseline_candidate_id: baseline_us_x1_2
+  must_beat_baseline_20bps: true
+  must_beat_baseline_60bps: true
+  require_all_development_windows_positive_excess: true
+  maximum_drawdown_worsening_vs_baseline: 0.03
+  maximum_abs_added_factor_pair_rank_correlation: 0.95
+  selection_order:
+    - minimum_factor_count
+    - maximum_20bps_relative_excess_improvement
+    - maximum_60bps_relative_excess_improvement
+  automatic_promotion: false
+
+reporting_boundary:
+  development_selection_ends: '2025-12-31'
+  existing_consumed_reporting_window: 2026H1
+  existing_consumed_partial_window: 2026H2
+  reporting_windows_may_enter_selection: false
+  fresh_untouched_us_holdout_available: false
+
+stop_rules:
+  - no_single_factor_retest
+  - no_transform_search
+  - no_hyperparameter_search
+  - no_portfolio_changes
+  - no_universe_changes
+  - no_cost_changes
+  - no_reporting_window_selection
+  - no_automatic_x1_3_promotion
