@@ -107,15 +107,6 @@ def _diagnostic_summary(rows: list[dict[str, Any]], candidate_id: str) -> dict[s
     }
 
 
-def _candidate_rows(spec) -> dict[str, Any]:
-    rows = spec.raw.get("candidates") or []
-    return {
-        str(row["candidate_id"]): row
-        for row in rows
-        if isinstance(row, dict) and row.get("candidate_id")
-    }
-
-
 def _gate2_economic_checks(
     *,
     spec,
@@ -467,7 +458,6 @@ def run_cn_x1_2_feature_ablation(
     baseline_id = spec.contract.baseline_candidate_id
     if baseline_id not in results:
         raise ValueError("Phase-2 baseline candidate is missing")
-    raw_candidates = _candidate_rows(spec)
     baseline_factor_ids = set(factor_contracts[baseline_id]["factor_ids"])
     candidates: list[dict[str, Any]] = []
     gate2: dict[str, Any] = {}
