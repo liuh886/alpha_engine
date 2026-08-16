@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "catalog_id": "alpha_engine_factor_catalog",
+  "status": "validated_derived_index",
+  "workflow": {
+    "run_id": 31945275276,
+    "head_sha": "118f46abda9f51d7197fdb4f345bc95c35a83908",
+    "workflow_name": "Issue 966 Phase5 Factor Evidence"
+  },
+  "factor_count": 201,
+  "evidence_record_count": 9,
+  "index_sha256": "408780a13350dffc7b6ba388a1c341c63d269f3b32ae47ba636af06d19884666",
+  "market_status_counts": {
+    "candidate": 3,
+    "diagnostic_only": 3,
+    "independent_validation_required": 16,
+    "model_active": 24,
+    "rejected": 2,
+    "unvalidated_formula": 337,
+    "validated": 1
+  },
+  "artifact": {
+    "id": 9263114323,
+    "name": "issue966-phase5-factor-index-31945275276",
+    "digest": "sha256:717da8075ceed8b117ea53d14e37bf0d02f7d4618400b82d8029944515368d55"
+  },
+  "registry": "configs/factor_catalog.yaml",
+  "builder": "scripts/build_factor_research_index.py",
+  "reproduce": "uv run python scripts/build_factor_research_index.py --output artifacts/research/factor_index.json",
+  "note": "The full index is generated from canonical FactorLibraries and evidence; this manifest pins the validated build without checking in a redundant 250KB copy of derived data."
+}
