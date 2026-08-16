@@ -1,5 +1,6 @@
 # Issue #966 Phase 4 canonical distribution-risk research factors.
-# These start diagnostic-only. They are not active ranker features or controls.
+# Both formulas passed exact-provider structural validation. Their downstream
+# diagnostic/control usefulness is tracked by evidence, not by duplicating formulas.
 schema_version: "2.0"
 
 catalog:
@@ -17,7 +18,7 @@ defaults:
   output_frequency: day
   output_dtype: float64
   missing_value_policy: preserve_nan_after_warmup
-  status: unvalidated_formula
+  status: candidate
 
 factors:
   distribution_risk_research.ret_skew_20d:
