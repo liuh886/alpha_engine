@@ -1,0 +1,258 @@
+{
+  "schema_version": "1.0",
+  "records": [
+    {
+      "factor_id": "volume_stat_research.signed_volume_balance_10d",
+      "implementation_hash": "e6967a68708b5f557b252174f1e6f57cb3356ec9dd2d2f9751cddfd763a1d58d",
+      "market": "us",
+      "status": "candidate",
+      "use_case": "cross_sectional_alpha",
+      "target_horizon_sessions": 10,
+      "provider_identity_sha256": "c78ade39f63823d2f7089947831387803caae51b53073ae25fed2000f2a6f36c",
+      "universe_id": "us_selected_equities_v2",
+      "universe_count": 87,
+      "cutoff": "2026-06-30",
+      "validation": {
+        "usable_rows": 108346,
+        "minimum_post_warmup_coverage": 1.0,
+        "inf_count": 0,
+        "near_constant": false,
+        "future_sessions": 0,
+        "deterministic": true,
+        "symbol_isolation": true
+      },
+      "metrics": {
+        "single_relative_excess_20bps": 1.3195257261191897,
+        "single_relative_excess_60bps": 1.133484088672497,
+        "single_worst_drawdown_20bps": -0.2888791818488685,
+        "single_mean_rank_ic": 0.0502155,
+        "max_abs_mean_daily_rank_correlation_to_baseline": 0.6974299068641778,
+        "joint_three_factor_relative_excess_20bps": 2.1452741248708,
+        "joint_three_factor_relative_excess_60bps": 1.9067826402147348
+      },
+      "disposition": "single_mechanism_rejected_but_retained_as_component_of_gate2_surviving_us_joint_set",
+      "evidence_paths": [
+        "data/research/quantskills_volume_stat_alpha/gate1_feature_quality.json",
+        "data/research/quantskills_volume_stat_alpha/gate2_ablation.json"
+      ]
+    },
+    {
+      "factor_id": "volume_stat_research.signed_volume_balance_10d",
+      "implementation_hash": "e6967a68708b5f557b252174f1e6f57cb3356ec9dd2d2f9751cddfd763a1d58d",
+      "market": "cn",
+      "status": "rejected",
+      "use_case": "cross_sectional_alpha",
+      "target_horizon_sessions": 10,
+      "provider_identity_sha256": "6f17a9eba541159a4cb472721b32758f6bac4892d1a917730fa1b62e9d455980",
+      "universe_id": "cn_selected_equities_v3",
+      "universe_count": 130,
+      "cutoff": "2026-06-30",
+      "validation": {
+        "usable_rows": 163608,
+        "minimum_post_warmup_coverage": 0.9978070175438597,
+        "inf_count": 0,
+        "near_constant": false,
+        "future_sessions": 0,
+        "deterministic": true,
+        "symbol_isolation": true
+      },
+      "metrics": {
+        "relative_excess_20bps": 0.36167196432805193,
+        "relative_excess_60bps": 0.18091640346437177,
+        "worst_drawdown_20bps": -0.20000522440492063,
+        "mean_rank_ic": 0.030438200000000006,
+        "max_abs_mean_daily_rank_correlation_to_baseline": 0.7360160697917989
+      },
+      "disposition": "rejected_by_frozen_cn_incremental_economic_and_drawdown_gates",
+      "evidence_paths": [
+        "data/research/quantskills_volume_stat_alpha/gate1_feature_quality.json",
+        "data/research/quantskills_volume_stat_alpha/gate2_ablation.json"
+      ]
+    },
+    {
+      "factor_id": "qlib_alpha158.cord10",
+      "implementation_hash": "36ddd29eac24a8577cc6e33871ef89dc7585e2b9135a22fbd7214c96d5de2c55",
+      "market": "us",
+      "status": "candidate",
+      "use_case": "cross_sectional_alpha",
+      "target_horizon_sessions": 10,
+      "provider_identity_sha256": "c78ade39f63823d2f7089947831387803caae51b53073ae25fed2000f2a6f36c",
+      "universe_id": "us_selected_equities_v2",
+      "universe_count": 87,
+      "cutoff": "2026-06-30",
+      "validation": {
+        "exact_model_execution": true,
+        "exact_score_reproduction": true
+      },
+      "metrics": {
+        "single_relative_excess_20bps": 1.5158792388540183,
+        "single_relative_excess_60bps": 1.328740339861783,
+        "single_worst_drawdown_20bps": -0.2736008614415031,
+        "single_mean_rank_ic": 0.05056425,
+        "max_abs_mean_daily_rank_correlation_to_baseline": 0.5468785821712947,
+        "joint_three_factor_relative_excess_20bps": 2.1452741248708,
+        "joint_three_factor_relative_excess_60bps": 1.9067826402147348
+      },
+      "disposition": "single_mechanism_rejected_but_retained_as_component_of_gate2_surviving_us_joint_set",
+      "evidence_paths": ["data/research/quantskills_volume_stat_alpha/gate2_ablation.json"]
+    },
+    {
+      "factor_id": "qlib_alpha158.rank20",
+      "implementation_hash": "7977e12e5c2228b30530f179db0d4e0c23717f330571be2a435b2302e3bd6583",
+      "market": "us",
+      "status": "candidate",
+      "use_case": "cross_sectional_alpha",
+      "target_horizon_sessions": 10,
+      "provider_identity_sha256": "c78ade39f63823d2f7089947831387803caae51b53073ae25fed2000f2a6f36c",
+      "universe_id": "us_selected_equities_v2",
+      "universe_count": 87,
+      "cutoff": "2026-06-30",
+      "validation": {
+        "exact_model_execution": true,
+        "exact_score_reproduction": true
+      },
+      "metrics": {
+        "single_relative_excess_20bps": 1.431264291625895,
+        "single_relative_excess_60bps": 1.2373140247572136,
+        "single_worst_drawdown_20bps": -0.2830493445379858,
+        "single_mean_rank_ic": 0.04961475,
+        "max_abs_mean_daily_rank_correlation_to_baseline": 0.7618659292980138,
+        "joint_three_factor_relative_excess_20bps": 2.1452741248708,
+        "joint_three_factor_relative_excess_60bps": 1.9067826402147348
+      },
+      "disposition": "single_mechanism_rejected_but_retained_as_component_of_gate2_surviving_us_joint_set",
+      "evidence_paths": ["data/research/quantskills_volume_stat_alpha/gate2_ablation.json"]
+    },
+    {
+      "factor_id": "qlib_alpha158.rank20",
+      "implementation_hash": "7977e12e5c2228b30530f179db0d4e0c23717f330571be2a435b2302e3bd6583",
+      "market": "cn",
+      "status": "rejected",
+      "use_case": "cross_sectional_alpha",
+      "target_horizon_sessions": 10,
+      "provider_identity_sha256": "6f17a9eba541159a4cb472721b32758f6bac4892d1a917730fa1b62e9d455980",
+      "universe_id": "cn_selected_equities_v3",
+      "universe_count": 130,
+      "cutoff": "2026-06-30",
+      "validation": {
+        "exact_model_execution": true,
+        "exact_score_reproduction": true,
+        "exact_portfolio_reproduction": true
+      },
+      "metrics": {
+        "relative_excess_20bps": 0.5521970693041283,
+        "relative_excess_60bps": 0.3370396021876796,
+        "worst_drawdown_20bps": -0.15079875520283603,
+        "mean_rank_ic": 0.0297552,
+        "max_abs_mean_daily_rank_correlation_to_baseline": 0.7860115393350796
+      },
+      "disposition": "rejected_by_frozen_cn_incremental_economic_gate",
+      "evidence_paths": ["data/research/quantskills_volume_stat_alpha/gate2_ablation.json"]
+    },
+    {
+      "factor_id": "distribution_risk_research.ret_skew_20d",
+      "implementation_hash": "656a434221a827ba19cdeb4d43834b988a8b7ff83766e8a896256c2bfc618d8f",
+      "market": "us",
+      "status": "validated",
+      "use_case": "risk_control",
+      "target_horizon_sessions": 10,
+      "provider_identity_sha256": "c78ade39f63823d2f7089947831387803caae51b53073ae25fed2000f2a6f36c",
+      "universe_id": "us_selected_equities_v2",
+      "universe_count": 87,
+      "cutoff": "2026-06-30",
+      "validation": {
+        "usable_rows": 108176,
+        "inf_count": 0,
+        "near_constant": false,
+        "future_sessions": 0,
+        "structural_checks_pass": true,
+        "deterministic": true
+      },
+      "metrics": {
+        "benchmark_loss_direct_spearman": 0.2112219990482571,
+        "benchmark_loss_partial_spearman": 0.24729187752801357,
+        "drawdown_direct_spearman": 0.23714553060047885,
+        "drawdown_partial_spearman": 0.19510774756449384,
+        "controlled_drawdown_improvement_20bps": 0.02091224170292505,
+        "controlled_relative_excess_retention_20bps": 1.0059098554884778,
+        "controlled_relative_excess_retention_60bps": 1.0130465616102273,
+        "high_risk_rebalance_periods": 7
+      },
+      "disposition": "surviving_research_only_single_use_exposure_control",
+      "evidence_paths": ["data/research/quantskills_volume_stat_alpha/gate4_distribution_risk.json"]
+    },
+    {
+      "factor_id": "distribution_risk_research.ret_skew_20d",
+      "implementation_hash": "656a434221a827ba19cdeb4d43834b988a8b7ff83766e8a896256c2bfc618d8f",
+      "market": "cn",
+      "status": "diagnostic_only",
+      "use_case": "risk_diagnostic",
+      "target_horizon_sessions": 10,
+      "provider_identity_sha256": "6f17a9eba541159a4cb472721b32758f6bac4892d1a917730fa1b62e9d455980",
+      "universe_id": "cn_selected_equities_v3",
+      "universe_count": 130,
+      "cutoff": "2026-06-30",
+      "validation": {
+        "usable_rows": 163360,
+        "inf_count": 0,
+        "near_constant": false,
+        "future_sessions": 0,
+        "structural_checks_pass": true,
+        "deterministic": true
+      },
+      "metrics": {"strong_outcome_count": 0},
+      "disposition": "structurally_valid_but_no_incremental_cn_risk_utility",
+      "evidence_paths": ["data/research/quantskills_volume_stat_alpha/gate4_distribution_risk.json"]
+    },
+    {
+      "factor_id": "distribution_risk_research.ret_kurt_20d",
+      "implementation_hash": "02793254df916c4cacd5f324e10b397656c42a70d278d4083e0ec86033fa77cf",
+      "market": "us",
+      "status": "diagnostic_only",
+      "use_case": "risk_diagnostic",
+      "target_horizon_sessions": 10,
+      "provider_identity_sha256": "c78ade39f63823d2f7089947831387803caae51b53073ae25fed2000f2a6f36c",
+      "universe_id": "us_selected_equities_v2",
+      "universe_count": 87,
+      "cutoff": "2026-06-30",
+      "validation": {
+        "usable_rows": 108091,
+        "inf_count": 0,
+        "near_constant": false,
+        "future_sessions": 0,
+        "structural_checks_pass": true,
+        "deterministic": true
+      },
+      "metrics": {"strong_outcome_count": 0},
+      "disposition": "structurally_valid_but_no_incremental_us_risk_utility",
+      "evidence_paths": ["data/research/quantskills_volume_stat_alpha/gate4_distribution_risk.json"]
+    },
+    {
+      "factor_id": "distribution_risk_research.ret_kurt_20d",
+      "implementation_hash": "02793254df916c4cacd5f324e10b397656c42a70d278d4083e0ec86033fa77cf",
+      "market": "cn",
+      "status": "diagnostic_only",
+      "use_case": "risk_diagnostic",
+      "target_horizon_sessions": 10,
+      "provider_identity_sha256": "6f17a9eba541159a4cb472721b32758f6bac4892d1a917730fa1b62e9d455980",
+      "universe_id": "cn_selected_equities_v3",
+      "universe_count": 130,
+      "cutoff": "2026-06-30",
+      "validation": {
+        "usable_rows": 163230,
+        "inf_count": 0,
+        "near_constant": false,
+        "future_sessions": 0,
+        "structural_checks_pass": true,
+        "deterministic": true
+      },
+      "metrics": {
+        "strong_outcome_count": 1,
+        "benchmark_loss_direct_spearman": 0.08629544969938252,
+        "benchmark_loss_partial_spearman": 0.06436018986222129
+      },
+      "disposition": "structurally_valid_but_below_two_outcome_cn_utility_gate",
+      "evidence_paths": ["data/research/quantskills_volume_stat_alpha/gate4_distribution_risk.json"]
+    }
+  ]
+}
