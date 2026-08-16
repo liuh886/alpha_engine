@@ -1,0 +1,149 @@
+{
+  "schema_version": "1.0",
+  "issue": 966,
+  "phase": "0-1",
+  "status": "gate0_pass_gate1_pending",
+  "alpha_engine": {
+    "base_commit": "52b8ec3ade1bc02f61dd6ed037c7055b32237453",
+    "us_baseline": "us_x1_2",
+    "cn_baseline": "cn_x1_2",
+    "baseline_changes": false
+  },
+  "external_source": {
+    "repository": "quantskills/skill-quant-factor-volume-stat-alpha",
+    "commit": "b169f31106f748b8746c4c1028c162e95f7277f4",
+    "factor_index": "factor_index.json",
+    "factor_count": 216,
+    "license": "GPL-3.0-only",
+    "validation_horizon_sessions": 5,
+    "validation_universe": {
+      "cn": 98,
+      "us": 50
+    },
+    "local_code_vendored": false,
+    "row_level_metadata_policy": "pinned_external_factor_index_is_source_of_truth"
+  },
+  "mechanisms": [
+    {
+      "base": "volume_ratio",
+      "source_factor_count": 24,
+      "classification": "already_covered",
+      "alpha_engine_overlap": [
+        "ohlcv.liquidity.volume_vs_ma_5d",
+        "ohlcv.liquidity.volume_vs_ma_10d",
+        "ohlcv.liquidity.volume_vs_ma_20d"
+      ],
+      "phase1_action": "none"
+    },
+    {
+      "base": "volume_z",
+      "source_factor_count": 24,
+      "classification": "same_mechanism_new_transform",
+      "alpha_engine_overlap": [
+        "ohlcv.liquidity.volume_vs_ma_5d",
+        "ohlcv.liquidity.volume_vs_ma_10d",
+        "ohlcv.liquidity.volume_vs_ma_20d"
+      ],
+      "phase1_action": "defer"
+    },
+    {
+      "base": "dollar_volume",
+      "source_factor_count": 24,
+      "classification": "liquidity_related_deferred",
+      "alpha_engine_overlap": [],
+      "phase1_action": "defer"
+    },
+    {
+      "base": "price_volume_corr",
+      "source_factor_count": 24,
+      "classification": "existing_canonical_mechanism",
+      "alpha_engine_overlap": [
+        "qlib_alpha158.cord10"
+      ],
+      "active_overlap": {
+        "us_x1_2": [],
+        "cn_x1_2": [
+          "qlib_alpha158.cord5"
+        ]
+      },
+      "phase1_action": "reuse_qlib_alpha158_cord10_for_us_no_duplicate_cn_definition"
+    },
+    {
+      "base": "obv_slope",
+      "source_factor_count": 24,
+      "classification": "new_mechanism",
+      "alpha_engine_overlap": [],
+      "phase1_action": "independent_signed_volume_flow_proxy",
+      "native_factor_id": "volume_stat_research.signed_volume_balance_10d"
+    },
+    {
+      "base": "ts_rank_close",
+      "source_factor_count": 24,
+      "classification": "existing_canonical_mechanism",
+      "alpha_engine_overlap": [
+        "qlib_alpha158.rank20"
+      ],
+      "phase1_action": "reuse_qlib_alpha158_rank20"
+    },
+    {
+      "base": "ts_rank_volume",
+      "source_factor_count": 24,
+      "classification": "new_variant_deferred",
+      "alpha_engine_overlap": [],
+      "phase1_action": "defer_until_price_rank_ablation"
+    },
+    {
+      "base": "ret_skew",
+      "source_factor_count": 24,
+      "classification": "risk_or_regime_candidate",
+      "alpha_engine_overlap": [],
+      "phase1_action": "defer_to_distribution_phase"
+    },
+    {
+      "base": "ret_kurt",
+      "source_factor_count": 24,
+      "classification": "risk_or_regime_candidate",
+      "alpha_engine_overlap": [],
+      "phase1_action": "defer_to_distribution_phase"
+    }
+  ],
+  "first_wave": {
+    "mechanisms": [
+      {
+        "name": "signed_volume_flow",
+        "factor_id": "volume_stat_research.signed_volume_balance_10d",
+        "origin": "independent_alpha_engine_definition",
+        "validation_status": "unvalidated_formula"
+      },
+      {
+        "name": "price_volume_correlation",
+        "factor_id": "qlib_alpha158.cord10",
+        "origin": "existing_package_backed_alpha158",
+        "validation_status": "reuse_existing_definition"
+      },
+      {
+        "name": "price_time_series_rank",
+        "factor_id": "qlib_alpha158.rank20",
+        "origin": "existing_package_backed_alpha158",
+        "validation_status": "reuse_existing_definition"
+      }
+    ],
+    "new_native_definition_count": 1
+  },
+  "gates": {
+    "gate0": {
+      "status": "pass",
+      "reason": "corpus_reduced_to_mechanism_map_and_incremental_first_wave_resolved"
+    },
+    "gate1": {
+      "status": "pending",
+      "blocker": "governed_provider_feature_quality_not_run_for_signed_volume_balance_10d"
+    }
+  },
+  "handoff": {
+    "review_doc": "docs/research/quantskills_volume_stat_alpha_review.md",
+    "native_definition": "src/factors/sets/volume_stat_research.py",
+    "tests": "tests/test_volume_stat_research.py",
+    "next_action": "run_governed_provider_feature_quality_for_signed_volume_balance_10d_before_any_model_ablation"
+  }
+}
