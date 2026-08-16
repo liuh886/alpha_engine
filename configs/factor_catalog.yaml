@@ -1,0 +1,19 @@
+schema_version: "1.0"
+catalog_id: alpha_engine_factor_catalog
+
+# This registry lists canonical definition owners only. It does not copy formulas.
+library_sources:
+  - configs/factor_libraries/ohlcv.yaml
+  - configs/factor_libraries/strategy_inputs.yaml
+  - configs/factor_libraries/volume_stat_research.yaml
+  - configs/factor_libraries/distribution_risk_research.yaml
+  - src/factors/sets/qlib_alpha158.py
+
+# Active research baselines are read to derive model_active market status.
+active_model_sources:
+  - configs/models/us_x1_2.yaml
+  - configs/models/cn_x1_2.yaml
+
+# Normalized research evidence is a derived read model. Raw receipts remain authoritative.
+evidence_sources:
+  - data/research/factor_evidence/issue966.json
