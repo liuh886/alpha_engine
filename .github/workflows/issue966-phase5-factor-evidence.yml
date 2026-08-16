@@ -1,0 +1,79 @@
+name: Issue 966 Phase5 Factor Evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/issue966-phase5-factor-evidence.yml'
+      - 'configs/factor_catalog.yaml'
+      - 'configs/factor_libraries/**'
+      - 'configs/models/us_x1_2.yaml'
+      - 'configs/models/cn_x1_2.yaml'
+      - 'data/research/factor_evidence/**'
+      - 'data/research/factor_catalog/**'
+      - 'data/research/quantskills_volume_stat_alpha/**'
+      - 'docs/research/quantskills_volume_stat_alpha_phase5.md'
+      - 'src/factors/evidence.py'
+      - 'src/factors/research_index.py'
+      - 'scripts/build_factor_research_index.py'
+      - 'tests/test_factor_research_index.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: issue966-phase5-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  index:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate evidence/index code
+        run: |
+          uv run ruff check \
+            src/factors/evidence.py \
+            src/factors/research_index.py \
+            scripts/build_factor_research_index.py \
+            tests/test_factor_research_index.py
+          uv run pytest tests/test_factor_research_index.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Build canonical derived factor index
+        run: >-
+          uv run python scripts/build_factor_research_index.py
+          --output artifacts/research/issue966_phase5/factor_index.json
+      - name: Verify agent discovery queries
+        run: |
+          uv run python scripts/build_factor_research_index.py --market us --status validated > artifacts/research/issue966_phase5/us_validated.json
+          uv run python scripts/build_factor_research_index.py --market cn --status rejected > artifacts/research/issue966_phase5/cn_rejected.json
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          index = json.loads(Path('artifacts/research/issue966_phase5/factor_index.json').read_text(encoding='utf-8'))
+          assert index['factor_count'] >= 180
+          assert index['evidence_record_count'] == 9
+          factors = {row['factor_id']: row for row in index['factors']}
+          assert factors['ohlcv.momentum.ret_10d']['market_status']['us'] == 'model_active'
+          assert factors['qlib_alpha158.cord5']['market_status']['cn'] == 'model_active'
+          assert factors['distribution_risk_research.ret_skew_20d']['market_status']['us'] == 'validated'
+          assert factors['distribution_risk_research.ret_skew_20d']['market_status']['cn'] == 'diagnostic_only'
+          assert factors['volume_stat_research.signed_volume_balance_10d']['market_status']['cn'] == 'rejected'
+          PY
+      - name: Upload factor evidence index
+        uses: actions/upload-artifact@v6
+        with:
+          name: issue966-phase5-factor-index-${{ github.run_id }}
+          path: artifacts/research/issue966_phase5/
+          if-no-files-found: error
+          retention-days: 90
