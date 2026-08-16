@@ -1,10 +1,10 @@
 """Issue #966 Phase-6 minimal US feature-set decision over exact Stage-B evidence.
 
 The selector does not train a model. It consumes the frozen exact portfolio
-receipt plus no-label redundancy diagnostics, applies the preregistered subset
-gate, and chooses the smallest passing feature set. A separate certification
-step must then reproduce that selected candidate and evaluate any allowed risk
-control; reporting windows never enter this selection.
+receipt, its exact per-window observations, and no-label redundancy diagnostics,
+then chooses the smallest passing subset. Reporting windows never enter this
+selection. A separate certification step must reproduce the selected candidate
+and evaluate the already-approved skew risk control exactly once.
 """
 
 from __future__ import annotations
@@ -17,6 +17,8 @@ from src.research.cross_sectional_experiment_runner import load_cross_sectional_
 
 SCHEMA_VERSION = "1.0"
 RUNNER = "issue966_phase6_minimal_set_selector_v1"
+BASE_COST_BPS = 20
+STRESS_COST_BPS = 60
 
 
 def _load_json(path: str | Path) -> dict[str, Any]:
@@ -24,6 +26,18 @@ def _load_json(path: str | Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"expected JSON object: {path}")
     return payload
+
+
+def _load_observations(path: str | Path) -> list[dict[str, Any]]:
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(payload, list) or not payload:
+        raise ValueError("Stage-B observations must be a non-empty JSON list")
+    rows: list[dict[str, Any]] = []
+    for raw in payload:
+        if not isinstance(raw, dict):
+            raise ValueError("Stage-B observation row must be a mapping")
+        rows.append(dict(raw))
+    return rows
 
 
 def _candidate_map(receipt: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -42,22 +56,55 @@ def _candidate_map(receipt: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 
 def _metadata_map(receipt: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    rows = receipt.get("candidate_metadata")
-    if not isinstance(rows, list) or not rows:
-        raise ValueError("Stage-B receipt has no candidate_metadata")
-    result = {str(row["candidate_id"]): dict(row) for row in rows if isinstance(row, dict)}
-    if len(result) != len(rows):
-        raise ValueError("Stage-B candidate metadata contains invalid/duplicate identities")
+    raw = receipt.get("candidate_metadata")
+    if not isinstance(raw, dict) or not raw:
+        raise ValueError("Stage-B receipt has no candidate_metadata mapping")
+    result: dict[str, dict[str, Any]] = {}
+    for candidate_id, metadata in raw.items():
+        if not isinstance(metadata, dict):
+            raise ValueError(f"candidate metadata must be a mapping: {candidate_id}")
+        result[str(candidate_id)] = dict(metadata)
     return result
+
+
+def _exact_window_relative_excess(
+    observations: list[dict[str, Any]],
+    *,
+    candidate_id: str,
+    selection_windows: tuple[str, ...],
+    cost_bps: int,
+) -> dict[str, float]:
+    by_window: dict[str, float] = {}
+    for row in observations:
+        if str(row.get("candidate_id")) != candidate_id:
+            continue
+        if int(row.get("cost_bps", -1)) != cost_bps:
+            continue
+        window = str(row.get("window", ""))
+        if window not in selection_windows:
+            continue
+        if window in by_window:
+            raise ValueError(
+                f"duplicate Stage-B observation for {candidate_id}/{window}/{cost_bps}bps"
+            )
+        by_window[window] = float(row["relative_excess"])
+    missing = [window for window in selection_windows if window not in by_window]
+    if missing:
+        raise ValueError(
+            f"candidate {candidate_id} missing exact {cost_bps}bps observations: {missing}"
+        )
+    return {window: by_window[window] for window in selection_windows}
 
 
 def select_minimal_feature_set(
     spec_path: str | Path,
     stage_b_receipt_path: str | Path,
+    observations_path: str | Path,
     redundancy_receipt_path: str | Path,
 ) -> dict[str, Any]:
     spec = load_cross_sectional_experiment_spec(spec_path)
     stage_b = _load_json(stage_b_receipt_path)
+    observations = _load_observations(observations_path)
     redundancy = _load_json(redundancy_receipt_path)
     if spec.experiment_id != "us_issue966_phase6_minimal_set_v1":
         raise ValueError("unexpected Phase-6 minimal-set experiment id")
@@ -69,12 +116,23 @@ def select_minimal_feature_set(
         raise ValueError("Phase-6 selection requires completed exact US Stage-B evidence")
     if stage_b.get("provider_identity_sha256") != spec.contract.provider_identity_sha256:
         raise ValueError("Stage-B provider identity differs from Phase-6 contract")
+    observed_provider = stage_b.get("observed_provider_identity_sha256")
+    if observed_provider != spec.contract.provider_identity_sha256:
+        raise ValueError("Stage-B observed provider identity differs from Phase-6 contract")
     if redundancy.get("provider_identity_sha256") != spec.contract.provider_identity_sha256:
         raise ValueError("redundancy provider identity differs from Phase-6 contract")
-    if tuple(stage_b.get("selection_windows") or ()) != tuple(spec.contract.selection_windows):
+    selection_windows = tuple(spec.contract.selection_windows)
+    if tuple(stage_b.get("selection_windows") or ()) != selection_windows:
         raise ValueError("Stage-B selection windows drifted")
-    if tuple(redundancy.get("selection_windows") or ()) != tuple(spec.contract.selection_windows):
+    if tuple(redundancy.get("selection_windows") or ()) != selection_windows:
         raise ValueError("redundancy selection windows drifted")
+    observed_windows = {
+        str(row.get("window"))
+        for row in observations
+        if str(row.get("window")) in selection_windows
+    }
+    if observed_windows != set(selection_windows):
+        raise ValueError("Stage-B observations do not exactly cover Phase-6 selection windows")
 
     policy = dict(spec.raw.get("phase6_selection_policy") or {})
     baseline_id = str(policy.get("baseline_candidate_id", ""))
@@ -82,12 +140,16 @@ def select_minimal_feature_set(
     metadata = _metadata_map(stage_b)
     if baseline_id not in candidates or baseline_id not in metadata:
         raise ValueError("Phase-6 baseline candidate is missing from exact evidence")
+    if set(candidates) != set(metadata):
+        raise ValueError("Stage-B candidate and metadata identities differ")
     baseline = candidates[baseline_id]
     base20 = float(baseline["compounded_relative_excess"])
     base60 = float(baseline["stress_compounded_relative_excess"])
     base_dd = float(baseline["worst_drawdown"])
     max_dd_worsening = float(policy["maximum_drawdown_worsening_vs_baseline"])
-    max_component_redundancy = float(policy["maximum_abs_component_rank_correlation_to_baseline"])
+    max_component_redundancy = float(
+        policy["maximum_abs_component_rank_correlation_to_baseline"]
+    )
 
     candidate_added = redundancy.get("candidate_added_factor_ids")
     factor_redundancy = redundancy.get("factors")
@@ -114,11 +176,23 @@ def select_minimal_feature_set(
         improvement20 = float(row["compounded_relative_excess"]) - base20
         improvement60 = float(row["stress_compounded_relative_excess"]) - base60
         dd_delta = float(row["worst_drawdown"]) - base_dd
+        exact20 = _exact_window_relative_excess(
+            observations,
+            candidate_id=candidate_id,
+            selection_windows=selection_windows,
+            cost_bps=BASE_COST_BPS,
+        )
+        exact60 = _exact_window_relative_excess(
+            observations,
+            candidate_id=candidate_id,
+            selection_windows=selection_windows,
+            cost_bps=STRESS_COST_BPS,
+        )
         checks = {
             "beats_baseline_20bps": improvement20 > 0.0,
             "beats_baseline_60bps": improvement60 > 0.0,
-            "all_development_windows_positive_excess": bool(
-                row.get("all_development_windows_positive_excess")
+            "all_development_windows_positive_excess": all(
+                value > 0.0 for value in exact20.values()
             ),
             "drawdown_worsening_within_limit": dd_delta >= -max_dd_worsening,
             "component_redundancy_within_limit": max_corr <= max_component_redundancy,
@@ -130,6 +204,8 @@ def select_minimal_feature_set(
             "added_factor_ids": additions,
             "component_max_abs_rank_correlation_to_baseline": component_corr,
             "max_component_redundancy": max_corr,
+            "exact_window_relative_excess_20bps": exact20,
+            "exact_window_relative_excess_60bps": exact60,
             "checks": checks,
             "pass": all(checks.values()),
             "metrics": {
@@ -158,6 +234,8 @@ def select_minimal_feature_set(
     reporting = dict(spec.raw.get("reporting_boundary") or {})
     if reporting.get("reporting_windows_may_enter_selection") is not False:
         raise ValueError("Phase-6 reporting windows must be excluded from selection")
+    if reporting.get("fresh_untouched_us_holdout_available") is not False:
+        raise ValueError("Phase-6 contract must truthfully declare no fresh untouched US holdout")
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -165,7 +243,7 @@ def select_minimal_feature_set(
         "experiment_id": spec.experiment_id,
         "status": "completed",
         "provider_identity_sha256": spec.contract.provider_identity_sha256,
-        "selection_windows": list(spec.contract.selection_windows),
+        "selection_windows": list(selection_windows),
         "baseline": {
             "candidate_id": baseline_id,
             "factor_count": int(metadata[baseline_id]["factor_count"]),
@@ -181,9 +259,7 @@ def select_minimal_feature_set(
         "selected_added_factor_ids": None if selected is None else list(selected["added_factor_ids"]),
         "selection_rule": list(policy.get("selection_order") or []),
         "reporting_boundary": reporting,
-        "fresh_untouched_us_holdout_available": bool(
-            reporting.get("fresh_untouched_us_holdout_available")
-        ),
+        "fresh_untouched_us_holdout_available": False,
         "next": (
             "run_selected_candidate_reproduction_and_single_skew_control_certification"
             if selected is not None
