@@ -28,15 +28,14 @@ const content = Object.fromEntries(await Promise.all(Object.entries(files).map(a
 const html = await readFile(resolve(root, 'index.html'), 'utf8');
 
 for (const reference of [
-  'https://liuh886.github.io/admin/shared/account-shell.css?v=5',
-  'https://liuh886.github.io/admin/shared/account-upgrade.css?v=1',
-  'https://liuh886.github.io/admin/shared/account-shell.js?v=6',
-  'https://liuh886.github.io/admin/shared/account-upgrade.js?v=5',
+  'https://liuh886.github.io/admin/shared/account-shell.css?v=6',
+  'https://liuh886.github.io/admin/shared/account-shell.js?v=7',
   './account-integration.css',
 ]) {
   if (!html.includes(reference)) throw new Error(`index.html missing canonical account asset: ${reference}`);
 }
 if (html.includes('./account-shell/')) throw new Error('AlphaEngine must not ship a duplicated account-shell copy.');
+if (html.includes('account-upgrade.js') || html.includes('account-upgrade.css')) throw new Error('AlphaEngine must not load the retired secondary account-upgrade runtime.');
 
 for (const value of [
   'window.HaoAccountConfig',
