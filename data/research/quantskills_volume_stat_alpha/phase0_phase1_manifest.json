@@ -1,0 +1,99 @@
+{
+  "schema_version": "1.0",
+  "issue": 966,
+  "phase": "0-1",
+  "status": "phase1_complete_gate0_pass_gate1_pass",
+  "alpha_engine": {
+    "base_commit": "52b8ec3ade1bc02f61dd6ed037c7055b32237453",
+    "us_baseline": "us_x1_2",
+    "cn_baseline": "cn_x1_2",
+    "baseline_changes": false
+  },
+  "external_source": {
+    "repository": "quantskills/skill-quant-factor-volume-stat-alpha",
+    "commit": "b169f31106f748b8746c4c1028c162e95f7277f4",
+    "factor_index": "factor_index.json",
+    "factor_index_blob_sha": "fb4b0545049ab55f84202fafa198973e5f6f8c66",
+    "factor_count": 216,
+    "mechanism_count": 9,
+    "license": "GPL-3.0-only",
+    "validation_horizon_sessions": 5,
+    "validation_universe": {
+      "cn": 98,
+      "us": 50
+    },
+    "local_code_vendored": false,
+    "row_level_metadata_policy": "pinned_external_factor_index_is_source_of_truth"
+  },
+  "phase0": {
+    "gate0": "pass",
+    "mechanism_decisions": {
+      "volume_ratio": "already_covered",
+      "volume_z": "defer",
+      "dollar_volume": "defer",
+      "price_volume_corr": "reuse_qlib_alpha158",
+      "obv_slope": "new_signed_volume_flow_proxy",
+      "ts_rank_close": "reuse_qlib_alpha158",
+      "ts_rank_volume": "defer",
+      "ret_skew": "defer_to_risk_regime_research",
+      "ret_kurt": "defer_to_risk_regime_research"
+    }
+  },
+  "phase1": {
+    "canonical_library": "configs/factor_libraries/volume_stat_research.yaml",
+    "new_native_definition_count": 1,
+    "factor": {
+      "factor_id": "volume_stat_research.signed_volume_balance_10d",
+      "implementation_hash": "e6967a68708b5f557b252174f1e6f57cb3356ec9dd2d2f9751cddfd763a1d58d",
+      "status": "candidate"
+    },
+    "reused_definitions": [
+      "qlib_alpha158.cord10",
+      "qlib_alpha158.rank20"
+    ],
+    "gate1": {
+      "status": "pass",
+      "receipt": "data/research/quantskills_volume_stat_alpha/gate1_feature_quality.json",
+      "workflow_run_id": 31941435349,
+      "workflow_head_sha": "7e74cb7870230cd07eff26f65f7170455f61d31d",
+      "scope": "feature_mechanics_only_no_forward_label",
+      "us_universe_count": 87,
+      "cn_universe_count": 130
+    }
+  },
+  "first_wave_phase2": [
+    {
+      "mechanism": "signed_volume_flow",
+      "factor_id": "volume_stat_research.signed_volume_balance_10d",
+      "action": "ablate_as_new_mechanism"
+    },
+    {
+      "mechanism": "price_volume_correlation",
+      "factor_id": "qlib_alpha158.cord10",
+      "action": "us_probe_only_as_new_active_feature; cn_x1_2_already_contains_cord5"
+    },
+    {
+      "mechanism": "price_time_series_rank",
+      "factor_id": "qlib_alpha158.rank20",
+      "action": "ablate_using_existing_definition"
+    }
+  ],
+  "constraints": {
+    "second_factor_engine": false,
+    "compatibility_layer": false,
+    "external_runtime_dependency": false,
+    "external_code_vendored": false,
+    "model_baselines_changed": false,
+    "trade_ready": false
+  },
+  "handoff": {
+    "review_doc": "docs/research/quantskills_volume_stat_alpha_review.md",
+    "gate1_receipt": "data/research/quantskills_volume_stat_alpha/gate1_feature_quality.json",
+    "quality_workflow": ".github/workflows/issue966-phase1-factor-quality.yml",
+    "tests": [
+      "tests/test_volume_stat_research.py",
+      "tests/test_factor_feature_quality.py"
+    ],
+    "next_action": "phase2_mechanism_ablation_with_model_label_universe_portfolio_costs_and_data_boundaries_frozen"
+  }
+}
