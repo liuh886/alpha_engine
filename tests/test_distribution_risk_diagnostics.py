@@ -30,7 +30,7 @@ def test_phase4_library_contains_only_two_diagnostic_distribution_factors() -> N
     ]
     assert factors[0].expression == "Skew($close/Ref($close,1)-1,20)"
     assert factors[1].expression == "Kurt($close/Ref($close,1)-1,20)"
-    assert all(factor.status == "unvalidated_formula" for factor in factors)
+    assert all(factor.status == "candidate" for factor in factors)
     assert all("Ref($close,-" not in factor.expression.replace(" ", "") for factor in factors)
 
 
