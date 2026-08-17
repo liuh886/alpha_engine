@@ -1,4 +1,4 @@
-"""Shared ranker helpers and the retained historical CN x1.1 Adapter."""
+"""Shared helpers for maintained active cross-sectional ranker current targets."""
 
 from __future__ import annotations
 
@@ -10,56 +10,15 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import yaml
 
 from src.artifacts.strategy_signal_ledger import (
     StrategySignalLedgerError,
     read_latest_evaluation,
 )
-from src.data.market_provider import load_provider_manifest
 from src.factors.ranker_snapshot import build_ranker_factor_snapshot
-from src.research.cn130_cross_sectional_ranking import (
-    attach_classification,
-    build_feature_matrices,
-    fit_ranker,
-    forward_returns,
-    load_provider_panel,
-    make_label,
-    predict_ranker,
-    stack_return_frame,
-)
-import src.research.cn130_ranking_pipeline as cn_core
-from src.research.cn_x1_1_regime_gated import (
-    RegimeGateSpec,
-    build_regime_state,
-    regime_signal,
-)
-from src.research.xgb_ranker_explainability import (
-    attach_factor_contributions,
-    build_xgb_pred_contribs,
-)
 
-CN_MODEL_ID = "cn_x1_1"
-CN_FAMILY = "cn_ranker"
 REBALANCE_SESSIONS = 10
 COST_BPS = 20
-CN_CONFIG_LABEL = "configs/models/cn_x1_1.yaml"
-CN_FACTOR_COLUMNS = {
-    "ohlcv.momentum.ret_3d": "momentum_3",
-    "ohlcv.momentum.ret_5d": "momentum_5",
-    "ohlcv.momentum.ret_10d": "momentum_10",
-    "ohlcv.momentum.ret_20d": "momentum_20",
-    "ohlcv.reversal.inv_ret_1d": "reversal_1",
-    "ohlcv.reversal.inv_ret_3d": "reversal_3",
-    "ohlcv.reversal.inv_ret_5d": "reversal_5",
-    "ohlcv.volatility.std_ret_5d": "volatility_5",
-    "ohlcv.volatility.std_ret_10d": "volatility_10",
-    "ohlcv.volatility.std_ret_20d": "volatility_20",
-    "ohlcv.volatility.high_low_range_pct": "intraday_range",
-    "ohlcv.liquidity.volume_vs_ma_5d": "volume_ratio_5",
-    "ohlcv.liquidity.volume_vs_ma_10d": "volume_ratio_10",
-    "ohlcv.liquidity.volume_vs_ma_20d": "volume_ratio_20",
-}
 
 
 class RankerCurrentTargetError(ValueError):
@@ -71,10 +30,6 @@ def _json(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise RankerCurrentTargetError(f"JSON root must be an object: {path}")
     return payload
-
-
-def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _canonical_sha(payload: Mapping[str, Any]) -> str:
@@ -108,7 +63,7 @@ def _latest_formal_weights(
 
 
 def load_previous_state(*, formal_package: Path, ledger_dir: Path) -> tuple[str, dict[str, float]]:
-    """Bootstrap from formal once, then require the append-only ledger to lead live state."""
+    """Bootstrap one active model from its own formal state, then require its ledger."""
 
     formal_anchor, formal_weights = _latest_formal_weights(_json(formal_package))
     try:
@@ -171,14 +126,16 @@ def merge_governed_market_sessions(
     live_sessions: Sequence[pd.Timestamp],
     as_of: str,
 ) -> pd.DatetimeIndex:
-    """Join audited history with a bounded live increment for cadence checks."""
+    """Join audited history with a bounded live benchmark increment for cadence checks."""
 
     evidence = _json(evidence_path)
     bars = evidence.get("bars")
     if not isinstance(bars, list) or not bars:
         raise RankerCurrentTargetError("governed benchmark evidence has no bars")
     governed = [
-        str(row.get("time", "")) for row in bars if isinstance(row, dict) and row.get("time")
+        str(row.get("time", ""))
+        for row in bars
+        if isinstance(row, dict) and row.get("time")
     ]
     if not governed:
         raise RankerCurrentTargetError("governed benchmark evidence has no sessions")
@@ -194,7 +151,9 @@ def merge_governed_market_sessions(
 
 def _turnover(previous: Mapping[str, float], target: Mapping[str, float]) -> float:
     names = set(previous) | set(target)
-    return 0.5 * sum(abs(target.get(name, 0.0) - previous.get(name, 0.0)) for name in names)
+    return 0.5 * sum(
+        abs(target.get(name, 0.0) - previous.get(name, 0.0)) for name in names
+    )
 
 
 def _factor_summary(
@@ -225,7 +184,9 @@ def _factor_summary(
                 weighted += weight * float(value)
                 used += weight
         if used <= 0.0:
-            raise RankerCurrentTargetError(f"factor {factor_id} has no reference observations")
+            raise RankerCurrentTargetError(
+                f"factor {factor_id} has no reference observations"
+            )
         value = weighted / used
         factor_values[factor_id] = value
         references[factor_id] = {
@@ -263,34 +224,6 @@ def _explanation_summary(explanations: Mapping[str, Any]) -> dict[str, Any]:
             for row in rows
             if isinstance(row, Mapping)
         ],
-    }
-
-
-def _model_identity(
-    *,
-    formal_package: Path,
-    model_config: Path,
-    model_config_label: str,
-    provider_dir: Path,
-    market: str,
-) -> dict[str, Any]:
-    formal = _json(formal_package)
-    provider = load_provider_manifest(
-        provider_dir,
-        expected_market=market,
-        required=True,
-        verify_files=True,
-    )
-    if provider is None:
-        raise RankerCurrentTargetError("provider manifest is unavailable")
-    return {
-        "formal_backtest_id": formal.get("backtest_id"),
-        "formal_model_id": formal.get("model_id"),
-        "formal_evidence_cutoff": formal.get("evidence_cutoff"),
-        "formal_package_sha256": _sha256_file(formal_package),
-        "model_config_path": model_config_label,
-        "model_config_sha256": _sha256_file(model_config),
-        "provider_identity_sha256": provider["provider_identity_sha256"],
     }
 
 
@@ -354,160 +287,12 @@ def _select_cn_sector_breadth(
         lambda series: float(series.nlargest(min(3, len(series))).mean())
     )
     selected = list(
-        sector_scores.sort_values(ascending=False, kind="mergesort").head(sectors).index
+        sector_scores.sort_values(ascending=False, kind="mergesort")
+        .head(sectors)
+        .index
     )
-    pieces = [ranked.loc[ranked["sector"] == sector].head(names_per_sector) for sector in selected]
+    pieces = [
+        ranked.loc[ranked["sector"] == sector].head(names_per_sector)
+        for sector in selected
+    ]
     return pd.concat(pieces, ignore_index=False) if pieces else ranked.head(0)
-
-
-def score_cn_current_target(
-    *,
-    provider_dir: Path,
-    formal_package: Path,
-    ledger_dir: Path,
-    signal_date: str,
-    market_cutoff: str,
-    repository_root: Path,
-) -> dict[str, Any]:
-    """Refit CN x1.1 and apply its certified regime/sector sleeve."""
-
-    universe_path = repository_root / "configs/research_universes/cn_selected_equities_v3.yaml"
-    classification_path = (
-        repository_root / "configs/research_classifications/cn130_sector_industry_v1.yaml"
-    )
-    model_config_path = repository_root / CN_CONFIG_LABEL
-    universe = yaml.safe_load(universe_path.read_text(encoding="utf-8"))
-    classification = yaml.safe_load(classification_path.read_text(encoding="utf-8"))["symbols"]
-    symbols = [str(value) for value in universe["symbols"]]
-    panel = load_provider_panel(
-        provider_dir,
-        [*symbols, cn_core.BENCHMARK],
-    )
-    families, _ = build_feature_matrices(
-        panel,
-        symbols=symbols,
-        benchmark=cn_core.BENCHMARK,
-    )
-    features = families["current_cn_ohlcv"]
-    raw_returns = stack_return_frame(
-        forward_returns(
-            panel.fields["close"][symbols],
-            horizon=REBALANCE_SESSIONS,
-        ),
-        "raw_forward_return",
-    )
-    signal_ts = pd.Timestamp(signal_date)
-    half_start = pd.Timestamp(f"{signal_ts.year}-{'01-01' if signal_ts.month <= 6 else '07-01'}")
-    train_dates = cn_core.purged_training_dates(panel.calendar, half_start)
-    train_x = cn_core.slice_dates(features, train_dates)
-    train_raw = cn_core.slice_dates(raw_returns, train_dates)
-    benchmark_returns = forward_returns(
-        panel.fields["close"][[cn_core.BENCHMARK]],
-        horizon=REBALANCE_SESSIONS,
-    )[cn_core.BENCHMARK]
-    target_label = make_label(
-        train_raw,
-        mode="raw",
-        benchmark_returns=benchmark_returns,
-        classification=classification,
-    )
-    test_x = cn_core.slice_dates(
-        features,
-        pd.DatetimeIndex([signal_ts]),
-    )
-    if test_x.empty:
-        raise RankerCurrentTargetError(f"CN provider has no factor rows on {signal_date}")
-    cn_fit = fit_ranker(
-        train_x,
-        target_label,
-        group_keys=cn_core.date_key(train_x.index),
-        seed=42,
-    )
-    scores = predict_ranker(cn_fit, test_x)
-    day = scores.join(attach_classification(scores.index, classification)).reset_index()
-    gate = RegimeGateSpec()
-    state = build_regime_state(
-        panel.fields["close"],
-        symbols=symbols,
-        benchmark=cn_core.BENCHMARK,
-        long_ma_sessions=gate.long_ma_sessions,
-        momentum_sessions=gate.momentum_sessions,
-        breadth_ma_sessions=gate.breadth_ma_sessions,
-        breadth_threshold=gate.breadth_threshold,
-    )
-    risk_on = regime_signal(state, signal_ts, "two_of_three")
-    if risk_on:
-        chosen = _select_cn_sector_breadth(
-            day,
-            sectors=gate.sectors,
-            names_per_sector=gate.names_per_sector,
-        )
-        expected = gate.sectors * gate.names_per_sector
-        if len(chosen) != expected:
-            raise RankerCurrentTargetError("CN sector-breadth target is incomplete")
-        weight = 1.0 / len(chosen)
-        target = {str(symbol): weight for symbol in chosen["instrument"]}
-        factor_reference = target
-        explanation_instruments = list(target)
-        explanation_role = "selected_holding"
-    else:
-        target = {cn_core.BENCHMARK: 1.0}
-        ranked_names = [str(value) for value in day["instrument"]]
-        if not ranked_names:
-            raise RankerCurrentTargetError(
-                "CN risk-off decision has no cross-sectional factor rows"
-            )
-        reference_weight = 1.0 / len(ranked_names)
-        factor_reference = {symbol: reference_weight for symbol in ranked_names}
-        explanation_instruments = ranked_names[: gate.sectors * gate.names_per_sector]
-        explanation_role = "ranker_reference_vetoed_by_regime"
-    previous_date, previous = load_previous_state(
-        formal_package=formal_package,
-        ledger_dir=ledger_dir,
-    )
-    factor_evidence = _factor_summary(
-        model_family_id=CN_FAMILY,
-        signal_date=signal_date,
-        target_weights=factor_reference,
-        features=test_x,
-        factor_columns=CN_FACTOR_COLUMNS,
-    )
-    explanations = build_xgb_pred_contribs(
-        model=cn_fit.model,
-        features=test_x.loc[:, list(cn_fit.feature_names)],
-        scores=scores,
-        column_to_factor_id={column: factor_id for factor_id, column in CN_FACTOR_COLUMNS.items()},
-        instruments=explanation_instruments,
-        decision_role=explanation_role,
-    )
-    factor_evidence = attach_factor_contributions(factor_evidence, explanations)
-    state_row = state.loc[signal_ts]
-    return _signal_payload(
-        model_version_id=CN_MODEL_ID,
-        model_family_id=CN_FAMILY,
-        signal_date=signal_date,
-        market_cutoff=market_cutoff,
-        previous_weights=previous,
-        target_weights=target,
-        factor_evidence=factor_evidence,
-        model_identity=_model_identity(
-            formal_package=formal_package,
-            model_config=model_config_path,
-            model_config_label=CN_CONFIG_LABEL,
-            provider_dir=provider_dir,
-            market="cn",
-        ),
-        reason_code=("cn_x1_1_sector_breadth_risk_on" if risk_on else "cn_x1_1_csi300_risk_off"),
-        diagnostics={
-            "previous_signal_date": previous_date,
-            "ranking_id": "r0_cn_x1_0_raw_return_rank",
-            "feature_family": "current_cn_ohlcv",
-            "risk_on": risk_on,
-            "votes": int(state_row["votes"]),
-            "long_trend": bool(state_row["long_trend"]),
-            "medium_momentum": bool(state_row["medium_momentum"]),
-            "cross_sectional_breadth": bool(state_row["cross_sectional_breadth"]),
-            "breadth_value": float(state_row["breadth_value"]),
-            "model_explanations": _explanation_summary(explanations),
-        },
-    )
