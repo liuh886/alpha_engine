@@ -36,9 +36,9 @@ def test_active_runtime_capabilities_are_exact_and_fail_closed() -> None:
         "reason": None,
     }
     assert capabilities["cn_x"].current_target.as_dict() == {
-        "status": "blocked",
-        "adapter_id": None,
-        "reason": "blocked_pending_maintained_cn_x1_2_inference_adapter",
+        "status": "available",
+        "adapter_id": "cn_x1_2_current_target_v1",
+        "reason": None,
     }
     assert capabilities["qqq_rotation"].current_target.status == "not_applicable"
     assert capabilities["byd"].current_target.status == "not_applicable"
