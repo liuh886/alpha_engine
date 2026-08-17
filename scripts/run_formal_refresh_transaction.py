@@ -281,7 +281,6 @@ def build_task_plan(
         record = records.get(model_id)
         if record is None:
             continue
-        target = planned_cutoffs[model_id]
         try:
             run = reader.load(model_id)
             performance = run.section("performance")
@@ -295,6 +294,11 @@ def build_task_plan(
             Path(strategy.signal_ledger).parent,
             model_id,
         )
+        # A sealed decision is canonical state. If provider freshness temporarily
+        # trails it, plan the model at least through that decision and let the
+        # model task prove or block its own data coverage; never abort other models.
+        target = max(planned_cutoffs[model_id], ledger_signal)
+        planned_cutoffs[model_id] = target
         settled_required, mtm_required = _ranker_refresh_requirements(
             model_id=model_id,
             target=target,
