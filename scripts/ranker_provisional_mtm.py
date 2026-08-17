@@ -17,7 +17,8 @@ import pandas as pd
 from src.artifacts.formal_refresh import load_object, write_object
 from src.artifacts.strategy_signal_ledger import read_latest_evaluation
 from src.research.cn130_cross_sectional_ranking import read_qlib_feature
-from src.research.ranker_current_target import CN_MODEL_ID, next_due_session
+from src.research.cn_x1_2_current_target import MODEL_ID as CN_MODEL_ID
+from src.research.ranker_current_target import next_due_session
 from src.research.us_x1_3_current_target import MODEL_ID as US_MODEL_ID
 
 
