@@ -9,21 +9,30 @@ export function ChartBenchmarkControl({
   primaryKey,
   selectedKeys,
   loadingKeys = [],
+  failedKeys = [],
+  catalogsLoading = false,
   unavailableLabel,
+  onOpenChange,
   onPrimaryChange,
   onToggle,
+  onRetry,
 }: {
   options: PerformanceComparisonOption[];
   primaryKey: string | null;
   selectedKeys: string[];
   loadingKeys?: string[];
+  failedKeys?: string[];
+  catalogsLoading?: boolean;
   unavailableLabel?: string;
+  onOpenChange?: (open: boolean) => void;
   onPrimaryChange: (key: string) => void;
   onToggle: (key: string) => void;
+  onRetry: (key: string) => void;
 }) {
   const [query, setQuery] = useState('');
   const selected = new Set(selectedKeys);
   const loading = new Set(loadingKeys);
+  const failed = new Set(failedKeys);
   const primary = options.find(option => option.key === primaryKey) ?? null;
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -33,7 +42,7 @@ export function ChartBenchmarkControl({
   const groups = ['Benchmarks', 'US stock pool', 'CN stock pool'] as const;
 
   return (
-    <Popover.Root>
+    <Popover.Root onOpenChange={onOpenChange}>
       <Popover.Trigger asChild>
         <button
           type="button"
@@ -59,6 +68,7 @@ export function ChartBenchmarkControl({
             <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">
               Star sets the primary benchmark for Excess. Check any number of series to overlay.
             </p>
+            {catalogsLoading && <p className="mt-1 text-[10px] text-muted-foreground">Loading stock pools…</p>}
           </div>
           <div className="relative mb-2">
             <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
@@ -84,6 +94,7 @@ export function ChartBenchmarkControl({
                       const isPrimary = option.key === primaryKey;
                       const isSelected = selected.has(option.key);
                       const isLoading = loading.has(option.key);
+                      const isFailed = failed.has(option.key);
                       return (
                         <div key={option.key} className="group flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-muted/50">
                           <button
@@ -104,7 +115,18 @@ export function ChartBenchmarkControl({
                               {option.detail && <span className="block truncate text-[9px] text-muted-foreground">{option.detail}</span>}
                             </span>
                             {isLoading && <span className="text-[9px] text-muted-foreground">Loading</span>}
+                            {isFailed && <span className="text-[9px] text-destructive">Load failed</span>}
                           </button>
+                          {isFailed && (
+                            <button
+                              type="button"
+                              aria-label={`Retry ${option.label}`}
+                              onClick={() => onRetry(option.key)}
+                              className="rounded px-1.5 py-1 text-[9px] font-semibold text-destructive hover:bg-destructive/10"
+                            >
+                              Retry
+                            </button>
+                          )}
                           <button
                             type="button"
                             aria-label={`Use ${option.label} as primary benchmark`}

@@ -23,10 +23,10 @@ import { useGlobalStore } from '@/store/globalStore';
 const FAMILY_ORDER = ['qqq_rotation', 'cn_ranker', 'byd_allocation', 'us_ranker'];
 
 const fallbackFleetRows = [
-  { name: 'QQQR v4.3', detail: 'US systematic rotation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
-  { name: 'CN x1.1', detail: 'China equity ranking', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
-  { name: 'BYD v1.3', detail: 'Adaptive single-stock allocation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
-  { name: 'US x1.3', detail: 'Active US research baseline', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'QQQ rotation', detail: 'US systematic rotation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'China ranker', detail: 'China equity ranking', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'BYD allocation', detail: 'Adaptive single-stock allocation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'US ranker', detail: 'Active US research baseline', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
 ];
 
 const evidenceChecks = [
@@ -170,9 +170,10 @@ function FleetPreview({ runs }: { runs: GovernedRunSummary[] }) {
       }))
     : fallbackFleetRows;
   const evidenceCutoff = selectedRuns[0]?.evidenceCutoff;
+  const usingFallback = selectedRuns.length === 0;
 
   return (
-    <div className="landing-product-window landing-runs-window">
+    <div className="landing-product-window landing-runs-window" data-fallback={usingFallback ? 'true' : undefined}>
       <WindowChrome title="Strategy fleet" meta="Formal strategy surface" />
       <div className="landing-window-body">
         <div className="landing-preview-sidebar" aria-hidden="true">

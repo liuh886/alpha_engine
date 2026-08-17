@@ -29,7 +29,8 @@ function isInstalledDisplayMode(): boolean {
 }
 
 function isIosDevice(): boolean {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (/macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 }
 
 export function PwaInstallProvider({ children }: { children: ReactNode }) {

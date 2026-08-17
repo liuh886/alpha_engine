@@ -64,13 +64,18 @@ describe('Alpha Engine landing page', () => {
     const { container } = renderLanding();
 
     expect(screen.getByRole('heading', { name: /know what your systematic strategy is doing/i })).toBeInTheDocument();
-    expect(screen.getByText('QQQR v4.3')).toBeInTheDocument();
-    expect(screen.getByText('CN x1.1')).toBeInTheDocument();
-    expect(screen.getByText('BYD v1.3')).toBeInTheDocument();
-    expect(screen.getByText('US x1.3')).toBeInTheDocument();
+    expect(screen.getByText('QQQ rotation')).toBeInTheDocument();
+    expect(screen.getByText('China ranker')).toBeInTheDocument();
+    expect(screen.getByText('BYD allocation')).toBeInTheDocument();
+    expect(screen.getByText('US ranker')).toBeInTheDocument();
+    expect(screen.queryByText('QQQR v4.3')).not.toBeInTheDocument();
+    expect(screen.queryByText('CN x1.1')).not.toBeInTheDocument();
+    expect(screen.queryByText('BYD v1.3')).not.toBeInTheDocument();
+    expect(screen.queryByText('US x1.3')).not.toBeInTheDocument();
 
     const fleetTable = container.querySelector('.landing-run-table');
     expect(fleetTable).not.toBeNull();
+    expect(container.querySelector('.landing-runs-window')).toHaveAttribute('data-fallback', 'true');
     const fleet = within(fleetTable as HTMLElement);
     expect(fleet.getAllByText('CAGR', { exact: true })).toHaveLength(4);
     expect(fleet.getAllByText('MDD', { exact: true })).toHaveLength(4);

@@ -15,13 +15,8 @@ import {
   alignMarketBarsToPerformanceDates,
   buildPerformanceComparisonOptions,
 } from '@/lib/performanceComparisons';
-import {
-  loadMarketEvidenceCatalog,
-  loadSecurityMarketEvidence,
-  type MarketBar,
-  type MarketEvidenceCatalog,
-  type MarketEvidenceMarket,
-} from '@/lib/market-evidence';
+import type { MarketEvidenceMarket } from '@/lib/market-evidence';
+import { useMarketComparisons } from '@/hooks/useMarketComparisons';
 import type { ReportRow } from '@/lib/types';
 
 type RangeKey = '6m' | '1y' | '3y' | 'all';
@@ -33,7 +28,7 @@ const RANGE_OPTIONS: Array<{ key: RangeKey; label: string; months: number | null
   { key: 'all', label: 'All', months: null },
 ];
 
-const COMPARISON_STROKES = ['#06b6d4', '#8b5cf6', '#22c55e', '#ef4444', '#64748b', '#ec4899'];
+const COMPARISON_STROKES = ['hsl(var(--chart-2))', 'hsl(var(--chart-4))', 'hsl(var(--chart-3))', 'hsl(var(--chart-5))', 'hsl(var(--chart-1))'];
 
 function periodReturn(startValue: unknown, endValue: unknown) {
   const start = Number(startValue);
@@ -55,23 +50,18 @@ export function PerformanceCharts({
   const [selectedBenchmarkKey, setSelectedBenchmarkKey] = useState<BenchmarkKey | null>(null);
   const [selectedComparisonKeys, setSelectedComparisonKeys] = useState<string[] | null>(null);
   const [rangeKey, setRangeKey] = useState<RangeKey>('all');
-  const [marketCatalogs, setMarketCatalogs] = useState<MarketEvidenceCatalog[]>([]);
-  const [marketBars, setMarketBars] = useState<Record<string, MarketBar[]>>({});
-  const [loadingComparisonKeys, setLoadingComparisonKeys] = useState<string[]>([]);
+  const {
+    catalogs: marketCatalogs,
+    marketBars,
+    loadingKeys: loadingComparisonKeys,
+    failedKeys: failedComparisonKeys,
+    catalogsLoading,
+    ensureCatalogs,
+    requestComparison,
+  } = useMarketComparisons(market);
 
   useEffect(() => {
-    let cancelled = false;
-    setMarketCatalogs([]);
-    setMarketBars({});
     setSelectedComparisonKeys(null);
-    if (!market) return () => { cancelled = true; };
-
-    const markets: MarketEvidenceMarket[] = market === 'us' ? ['us', 'cn'] : ['cn', 'us'];
-    Promise.allSettled(markets.map(loadMarketEvidenceCatalog)).then(results => {
-      if (cancelled) return;
-      setMarketCatalogs(results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []));
-    });
-    return () => { cancelled = true; };
   }, [market]);
 
   const toggleVisibility = (entry: { dataKey?: unknown }) => {
@@ -124,22 +114,12 @@ export function PerformanceCharts({
   const excessBaseline = activeBenchmark?.label ?? null;
 
   const requestMarketComparison = (key: string) => {
-    if (marketBars[key] || loadingComparisonKeys.includes(key)) return;
     const option = comparisonOptions.find(candidate => candidate.key === key);
-    const symbol = option?.marketSymbol?.symbol;
-    const catalog = option?.market
-      ? marketCatalogs.find(candidate => candidate.market === option.market) ?? null
-      : null;
-    if (!catalog || !symbol) return;
-    setLoadingComparisonKeys(current => current.includes(key) ? current : [...current, key]);
-    loadSecurityMarketEvidence(catalog, symbol)
-      .then(evidence => {
-        setMarketBars(current => ({ ...current, [key]: evidence.bars }));
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        setLoadingComparisonKeys(current => current.filter(candidate => candidate !== key));
-      });
+    void requestComparison({
+      key,
+      market: option?.market,
+      symbol: option?.marketSymbol?.symbol,
+    });
   };
 
   const handlePrimaryBenchmarkChange = (key: string) => {
@@ -378,9 +358,13 @@ export function PerformanceCharts({
                 primaryKey={activeBenchmarkKey}
                 selectedKeys={activeComparisonKeys}
                 loadingKeys={loadingComparisonKeys}
+                failedKeys={failedComparisonKeys}
+                catalogsLoading={catalogsLoading}
                 unavailableLabel={declaredBenchmark ? `${declaredBenchmark.label} unavailable` : undefined}
+                onOpenChange={(open) => { if (open) void ensureCatalogs(); }}
                 onPrimaryChange={handlePrimaryBenchmarkChange}
                 onToggle={handleComparisonToggle}
+                onRetry={requestMarketComparison}
               />
               <div aria-label="Performance range" className="inline-flex rounded-md border bg-muted/20 p-0.5">
                 {RANGE_OPTIONS.map(option => (
@@ -445,7 +429,7 @@ export function PerformanceCharts({
                     hide={hiddenSeries[option.key]}
                     type="monotone"
                     dataKey={option.key}
-                    stroke={isPrimary ? '#f59e0b' : COMPARISON_STROKES[index % COMPARISON_STROKES.length]}
+                    stroke={isPrimary ? 'hsl(var(--chart-3))' : COMPARISON_STROKES[index % COMPARISON_STROKES.length]}
                     dot={false}
                     strokeWidth={isPrimary ? 1.7 : 1.25}
                     strokeDasharray={isPrimary ? '5 5' : undefined}

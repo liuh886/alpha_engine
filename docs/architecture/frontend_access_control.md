@@ -1,54 +1,29 @@
 # Alpha Engine frontend access control
 
-## Contract
+## Product contract
 
-Alpha Engine uses four monotonic product levels:
+Alpha Engine has four monotonic product levels: `public`, `authenticated`, `pro`, and `owner`. Owner inherits Pro; Pro inherits authenticated and public access. Account tier is never inferred from a model family.
 
-1. `public` — no sign-in required;
-2. `authenticated` — any signed-in account;
-3. `pro` — an active `alpha_engine.pro` entitlement;
-4. `owner` — verified `app_metadata.alpha_engine_role=owner`.
+The product has two deliberately different publication boundaries:
 
-Owner inherits Pro, Member and Guest access. Pro inherits Member and Guest
-access. A model family does not imply an account role. `qqq_rotation=pro` is an
-initial policy row that Owner may change, not a conditional in application code.
+- **Formal historical research evidence is public.** Retained backtests, benchmarks, performance and risk evidence published under the GitHub Pages formal catalog are designed to be inspectable without payment. The product must not describe those static artifacts as confidential or Pro-exclusive.
+- **Current strategy operations are the paid boundary.** Current holdings, target allocations, current signals and next-decision state are read from Supabase-backed strategy operation resources. Their minimum tier is resolved from `product_access_policies`, and access to protected rows is enforced at the Supabase/RLS boundary, including the `alpha_engine.pro` entitlement. React gates mirror that policy for navigation and presentation; they are not the security authority.
+
+This is the canonical product positioning: **public evidence earns trust; Pro unlocks current operational decision surfaces.**
 
 ## Policy resources
 
-`product_access_policies` stores the minimum tier for two resource types:
+`product_access_policies` stores minimum tiers for two resource types:
 
-- `model`: keyed by stable `model_family_id`;
-- `module`: keyed by the declared frontend module resource ID.
+- `strategy` — keyed by stable `strategy_id` for current operation snapshots;
+- `module` — keyed by a declared frontend module resource ID.
 
-Initial policy:
-
-| Resource | Minimum tier |
-| --- | --- |
-| `model:qqq_rotation` | `pro` |
-| `module:securities` | `authenticated` |
-
-The application keeps the same initial policy as a fail-safe while Supabase is
-loading or unavailable. A successfully loaded database row overrides the
-fail-safe. Owner changes are made from `/settings/access`.
+Owner changes policy rows from `/settings/access`. Browser defaults are fail-safe only while Supabase policy state is loading or unavailable; they do not create a second writable policy authority.
 
 ## Supabase boundary
 
-The migration in `supabase/migrations` creates the policy table, explicitly
-grants Data API access, enables RLS, and allows public policy reads. Only an
-authenticated JWT whose server-controlled `app_metadata.alpha_engine_role` is
-`owner` may insert, update or delete Alpha Engine policy rows. Writes must bind
-`updated_by` to `auth.uid()`.
+Policy writes require an authenticated JWT whose server-controlled `app_metadata.alpha_engine_role` is `owner`. Strategy operation reads are split by tier in RLS: public/authenticated rows can be selected at their declared tier, while Pro/Owner rows require the corresponding entitlement/role. Never place service-role credentials in browser assets or this repository.
 
-Provision the Owner role with the Supabase Admin API or Dashboard. Never place a
-service-role key in this repository or set Owner through `user_metadata`. After
-changing app metadata, refresh the user's session so the new JWT claim is
-present.
+## Static deployment boundary
 
-## Deployment boundary
-
-The current GitHub Pages deployment publishes research JSON as static assets.
-The access layer prevents unauthorized display and prevents gated React pages
-from fetching evidence, but it is not server-side confidentiality for those
-static URLs. If protected artifacts must be non-public at the transport layer,
-move them to private Supabase Storage or an authenticated API and enforce the
-same tier policy with RLS before claiming data-level protection.
+GitHub Pages serves the formal historical catalog as public static files by design. UI gating of those static URLs is a reading affordance, not confidentiality. If a future product decision makes a historical artifact genuinely private, that artifact must leave GitHub Pages and move behind an authenticated transport/RLS boundary before the product claims exclusivity. Until such a decision exists, no duplicate private copy or migration path should be maintained.
