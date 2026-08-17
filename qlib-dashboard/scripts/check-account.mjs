@@ -30,9 +30,32 @@ const html = await readFile(resolve(root, 'index.html'), 'utf8');
 for (const reference of [
   'https://liuh886.github.io/admin/shared/account-shell.css?v=6',
   'https://liuh886.github.io/admin/shared/account-shell.js?v=7',
+  'https://liuh886.github.io/admin/shared/product-referral.css?v=3',
+  'https://liuh886.github.io/admin/shared/product-referral.js?v=5',
   './account-integration.css',
 ]) {
-  if (!html.includes(reference)) throw new Error(`index.html missing canonical account asset: ${reference}`);
+  if (!html.includes(reference)) throw new Error(`index.html missing canonical shared asset: ${reference}`);
+}
+if (!html.includes('<link rel="preconnect" href="https://liuh886.github.io" crossorigin')) {
+  throw new Error('Shared asset origin must be preconnected before first paint.');
+}
+const scriptEnabledHtml = html.replace(/<noscript>[\s\S]*?<\/noscript>/g, '');
+for (const stylesheet of [
+  'https://liuh886.github.io/admin/shared/account-shell.css?v=6',
+  'https://liuh886.github.io/admin/shared/product-referral.css?v=3',
+]) {
+  if (!scriptEnabledHtml.includes(`<link rel="preload" href="${stylesheet}" as="style"`)) {
+    throw new Error(`Shared stylesheet must use preload-onload: ${stylesheet}`);
+  }
+}
+if (/<link\s+rel=["']stylesheet["'][^>]+liuh886\.github\.io\/admin\/shared\//i.test(scriptEnabledHtml)) {
+  throw new Error('Script-enabled first paint must not synchronously block on shared cross-origin styles.');
+}
+if (!html.includes('<script async src="https://liuh886.github.io/admin/shared/account-shell.js?v=7"')) {
+  throw new Error('Canonical account shell must remain non-blocking.');
+}
+if (!html.includes('<script defer src="https://liuh886.github.io/admin/shared/product-referral.js?v=5"')) {
+  throw new Error('Canonical referral runtime must remain deferred.');
 }
 if (html.includes('./account-shell/')) throw new Error('AlphaEngine must not ship a duplicated account-shell copy.');
 if (html.includes('account-upgrade.js') || html.includes('account-upgrade.css')) throw new Error('AlphaEngine must not load the retired secondary account-upgrade runtime.');

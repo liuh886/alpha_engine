@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useAlphaMembership } from '@/hooks/useAlphaMembership';
 import { cn } from '@/lib/utils';
 
-type ShareState = 'idle' | 'copied';
+type ShareState = 'idle' | 'copied' | 'failed';
 
 interface HaoReferralApi {
   open?: () => void;
@@ -17,7 +17,7 @@ declare global {
   }
 }
 
-export async function shareUrl({ title, text, url }: { title: string; text: string; url: string }): Promise<'shared' | 'copied' | 'cancelled'> {
+export async function shareUrl({ title, text, url }: { title: string; text: string; url: string }): Promise<'shared' | 'copied' | 'cancelled' | 'failed'> {
   if (typeof navigator.share === 'function') {
     try {
       await navigator.share({ title, text, url });
@@ -26,8 +26,12 @@ export async function shareUrl({ title, text, url }: { title: string; text: stri
       if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled';
     }
   }
-  await navigator.clipboard.writeText(url);
-  return 'copied';
+  try {
+    await navigator.clipboard.writeText(url);
+    return 'copied';
+  } catch {
+    return 'failed';
+  }
 }
 
 export function openReferralInvite(): 'referral' | 'account' | 'unavailable' {
@@ -45,6 +49,7 @@ export function openReferralInvite(): 'referral' | 'account' | 'unavailable' {
 export function ProductShareButton({ landing = false, className }: { landing?: boolean; className?: string }) {
   const [state, setState] = useState<ShareState>('idle');
   const [open, setOpen] = useState(false);
+  const [fallbackUrl, setFallbackUrl] = useState('');
   const membership = useAlphaMembership();
 
   useEffect(() => {
@@ -54,11 +59,17 @@ export function ProductShareButton({ landing = false, className }: { landing?: b
   }, [state]);
 
   const handleShare = async () => {
+    const url = window.location.href;
     const result = await shareUrl({
       title: 'Alpha Engine — Systematic Strategy Console',
       text: 'Inspect systematic strategies, current decisions, formal performance, risk and evidence in Alpha Engine.',
-      url: window.location.href,
+      url,
     });
+    if (result === 'failed') {
+      setFallbackUrl(url);
+      setState('failed');
+      return;
+    }
     if (result === 'copied') setState('copied');
     if (result !== 'cancelled') setOpen(false);
   };
@@ -104,7 +115,7 @@ export function ProductShareButton({ landing = false, className }: { landing?: b
           align="end"
           sideOffset={8}
           collisionPadding={12}
-          className="z-[2147482500] w-[min(19rem,calc(100vw-24px))] rounded-xl border border-border/80 bg-popover p-1.5 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          className="z-50 w-[min(19rem,calc(100vw-24px))] rounded-xl border border-border/80 bg-popover p-1.5 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
           <button
             type="button"
@@ -119,6 +130,19 @@ export function ProductShareButton({ landing = false, className }: { landing?: b
               <span className="mt-0.5 block text-xs leading-4 text-muted-foreground">Use your device share sheet, or copy the current view link.</span>
             </span>
           </button>
+
+          {state === 'failed' && (
+            <div role="status" className="mx-1 mb-1 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5">
+              <p className="text-xs font-medium text-destructive">Automatic copy failed. Select the link below and copy it manually.</p>
+              <input
+                aria-label="Share link for manual copy"
+                readOnly
+                value={fallbackUrl}
+                onFocus={(event) => event.currentTarget.select()}
+                className="mt-2 h-8 w-full rounded-md border bg-background px-2 font-mono text-[10px] text-foreground"
+              />
+            </div>
+          )}
 
           <div className="my-1 h-px bg-border/70" />
 

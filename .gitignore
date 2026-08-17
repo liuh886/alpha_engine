@@ -47,6 +47,7 @@ playwright-report/
 .coverage
 htmlcov/
 coverage.xml
+ruff_errors.txt
 
 # Project specific
 # /data/
