@@ -1,6 +1,15 @@
 name: Strategy Signal Delivery Outbox
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/strategy-signal-delivery-outbox.yml"
+      - "scripts/run_signal_delivery_outbox.py"
+      - "src/artifacts/strategy_signal_ledger.py"
+      - "configs/strategies/registry.json"
+      - "tests/test_signal_delivery_outbox.py"
+      - "tests/test_strategy_signal_ledger.py"
   workflow_run:
     workflows:
       - "QQQ Rotation v4.3 Signal Alert"
@@ -16,15 +25,44 @@ permissions:
   issues: write
 
 concurrency:
-  group: strategy-signal-delivery-outbox
+  group: strategy-signal-delivery-outbox-${{ github.event.pull_request.number || 'live' }}
   cancel-in-progress: false
 
 jobs:
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate outbox contract
+        run: |
+          uv run ruff check \
+            scripts/run_signal_delivery_outbox.py \
+            src/artifacts/strategy_signal_ledger.py \
+            tests/test_signal_delivery_outbox.py \
+            tests/test_strategy_signal_ledger.py
+          uv run pytest \
+            tests/test_signal_delivery_outbox.py \
+            tests/test_strategy_signal_ledger.py \
+            -q --strict-markers --tb=short
+
   deliver:
     if: >-
-      github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main')
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
