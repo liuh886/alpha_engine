@@ -15,17 +15,6 @@ on:
       - "scripts/run_qqq_v4_3_signal_alert.py"
       - "tests/test_qqq_v4_3_monitor_signal.py"
       - "tests/test_strategy_signal_ledger.py"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/qqq-v4-3-signal-alert.yml"
-      - "configs/research_paradigms/qqqi_qqq_tqqq_current_baseline.yaml"
-      - "configs/strategies/registry.json"
-      - "src/research/qqq_v4_3_monitor.py"
-      - "src/research/qqq_v4_3_signal_alerts.py"
-      - "src/factors/strategy_snapshot.py"
-      - "scripts/run_qqq_v4_3_monitor.py"
-      - "scripts/run_qqq_v4_3_signal_alert.py"
   schedule:
     - cron: "30 0 * * 2-6"
   workflow_dispatch:
