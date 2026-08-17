@@ -6,33 +6,24 @@ on:
     paths:
       - ".github/workflows/qqq-v4-3-signal-alert.yml"
       - "configs/research_paradigms/qqqi_qqq_tqqq_current_baseline.yaml"
-      - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
       - "configs/strategies/registry.json"
-      - "src/cli/main.py"
-      - "src/governance/active_strategy_catalog.py"
       - "src/research/qqq_v4_3_monitor.py"
       - "src/research/qqq_v4_3_signal_alerts.py"
       - "src/factors/strategy_snapshot.py"
       - "src/artifacts/strategy_signal_ledger.py"
-      - "src/artifacts/strategy_operations.py"
       - "scripts/run_qqq_v4_3_monitor.py"
       - "scripts/run_qqq_v4_3_signal_alert.py"
       - "tests/test_qqq_v4_3_monitor_signal.py"
-      - "tests/test_strategy_operations.py"
       - "tests/test_strategy_signal_ledger.py"
-      - "tests/test_active_strategy_catalog.py"
   push:
     branches: [main]
     paths:
       - ".github/workflows/qqq-v4-3-signal-alert.yml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_current_baseline.yaml"
       - "configs/strategies/registry.json"
-      - "src/cli/main.py"
-      - "src/governance/active_strategy_catalog.py"
       - "src/research/qqq_v4_3_monitor.py"
       - "src/research/qqq_v4_3_signal_alerts.py"
       - "src/factors/strategy_snapshot.py"
-      - "src/artifacts/strategy_signal_ledger.py"
-      - "src/artifacts/strategy_operations.py"
       - "scripts/run_qqq_v4_3_monitor.py"
       - "scripts/run_qqq_v4_3_signal_alert.py"
   schedule:
@@ -50,7 +41,6 @@ concurrency:
 
 permissions:
   contents: write
-  issues: write
 
 env:
   SIGNAL_ROOT: artifacts/signals/qqq_rotation_v4_3
@@ -73,30 +63,23 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Validate v4.3 signal and operations contracts
+      - name: Validate QQQ evaluation contract
         run: |
           uv run ruff check \
-            src/cli/main.py \
-            src/governance/active_strategy_catalog.py \
             src/research/qqq_v4_3_monitor.py \
             src/research/qqq_v4_3_signal_alerts.py \
             src/factors/strategy_snapshot.py \
             src/artifacts/strategy_signal_ledger.py \
-            src/artifacts/strategy_operations.py \
             scripts/run_qqq_v4_3_monitor.py \
             scripts/run_qqq_v4_3_signal_alert.py \
             tests/test_qqq_v4_3_monitor_signal.py \
-            tests/test_strategy_operations.py \
-            tests/test_strategy_signal_ledger.py \
-            tests/test_active_strategy_catalog.py
+            tests/test_strategy_signal_ledger.py
           uv run pytest \
             tests/test_qqq_v4_3_monitor_signal.py \
-            tests/test_strategy_operations.py \
             tests/test_strategy_signal_ledger.py \
-            tests/test_active_strategy_catalog.py \
             -q --strict-markers --tb=short
 
-  evaluate-and-deliver:
+  evaluate:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 50
@@ -109,7 +92,6 @@ jobs:
           fetch-depth: 0
       - name: Capture executed source revision
         id: source
-        shell: bash
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v6
         with:
@@ -119,30 +101,28 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Build governed QQQ QQQI TQQQ reference bundle
+      - name: Build governed QQQ reference bundle
         run: >-
           uv run python scripts/data/build_etf_reference_bundle.py
           --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
           --require-professional
-      - name: Evaluate current v4.3 allocation
+      - name: Evaluate current allocation
         run: >-
           uv run python scripts/run_qqq_v4_3_monitor.py
           --end-date "${{ inputs.end_date }}"
           --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
           --output-dir "$MONITOR_ROOT"
-      - name: Build factor-bound next-open decision alert
-        id: alert
+      - name: Build factor-bound decision
+        id: signal
         run: >-
           uv run python scripts/run_qqq_v4_3_signal_alert.py
           --summary "$MONITOR_ROOT/current_summary.json"
           --output-dir "$SIGNAL_ROOT"
           --github-output "$GITHUB_OUTPUT"
-
       - name: Seal canonical QQQ decision
         env:
           EXECUTION_SHA: ${{ steps.source.outputs.sha }}
         run: |
-          set -euo pipefail
           uv run alpha ops record-decision \
             --model-version-id "$MODEL_VERSION_ID" \
             --signal-json "$SIGNAL_ROOT/signal_alert.json" \
@@ -150,8 +130,7 @@ jobs:
             --workflow-run-id "$GITHUB_RUN_ID" \
             --commit-sha "$EXECUTION_SHA" \
             --created-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-
-      - name: Commit canonical QQQ decision before delivery
+      - name: Commit canonical QQQ decision
         run: |
           set -euo pipefail
           git config user.name "AlphaEngine Signal Agent"
@@ -160,220 +139,13 @@ jobs:
           if git diff --cached --quiet; then
             echo "Canonical QQQ decision already sealed."
           else
-            git commit -m "signal: seal QQQ v4.3 decision ${{ steps.alert.outputs.signal_date }}"
+            git commit -m "signal: seal QQQ v4.3 decision ${{ steps.signal.outputs.signal_date }}"
             git pull --rebase origin main
             git push origin HEAD:main
           fi
-
-      - name: Read durable delivery state
-        id: prior
-        run: |
-          set -euo pipefail
-          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
-          from pathlib import Path
-          from src.artifacts.strategy_signal_ledger import read_latest_evaluation
-
-          record = read_latest_evaluation(Path("data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3"), model_version_id="qqqi_qqq_tqqq_v4_3")
-          if record is None:
-              raise SystemExit("sealed QQQ decision is missing")
-          delivery = record.get("delivery", {})
-          print(f"status={delivery.get('status') or 'pending'}")
-          print(f"issue_number={delivery.get('github_issue_number') or ''}")
-          print(f"message_id={delivery.get('telegram_message_id') or ''}")
-          print(f"error={delivery.get('error') or ''}")
-          PY
-
-      - name: Ensure one GitHub issue for the sealed decision
-        id: issue
-        if: >-
-          steps.alert.outputs.should_alert == 'true' &&
-          steps.alert.outputs.data_freshness_ok == 'true' &&
-          steps.alert.outputs.factor_freshness_ok == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PRIOR_STATUS: ${{ steps.prior.outputs.status }}
-          PRIOR_ERROR: ${{ steps.prior.outputs.error }}
-          PRIOR_ISSUE_NUMBER: ${{ steps.prior.outputs.issue_number }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "$PRIOR_STATUS" = "sent" ] || [ "$PRIOR_STATUS" = "skipped_not_configured" ]; then
-            echo "issue_number=$PRIOR_ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
-            echo "ambiguous=false" >> "$GITHUB_OUTPUT"
-            echo "failed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$PRIOR_ERROR" = "ambiguous_external_delivery_state" ] || [ "$PRIOR_ERROR" = "telegram_transport_ambiguous" ]; then
-            echo "issue_number=$PRIOR_ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
-            echo "ambiguous=true" >> "$GITHUB_OUTPUT"
-            echo "failed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          signal_date="$(uv run python -c "import json; print(json.load(open('$SIGNAL_ROOT/signal_alert.json'))['signal_date'])")"
-          fingerprint="$(uv run python -c "import json; print(json.load(open('$SIGNAL_ROOT/signal_alert.json'))['fingerprint'])")"
-          marker="<!-- signal-decision:${MODEL_VERSION_ID}:${signal_date}:${fingerprint} -->"
-          existing="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues?state=all&per_page=100" \
-            --jq ".[] | select(.pull_request == null) | select((.body // \"\") | contains(\"${marker}\")) | .number" | head -n 1)"
-          if [ -n "$existing" ]; then
-            if [ "$PRIOR_STATUS" = "pending" ]; then
-              echo "issue_number=$existing" >> "$GITHUB_OUTPUT"
-              echo "ambiguous=true" >> "$GITHUB_OUTPUT"
-              echo "failed=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            echo "issue_number=$existing" >> "$GITHUB_OUTPUT"
-            echo "ambiguous=false" >> "$GITHUB_OUTPUT"
-            echo "failed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          body="$(cat "$SIGNAL_ROOT/signal_alert.md")"$'\n\n'"$marker"
-          set +e
-          issue_url="$(gh issue create --repo "$GITHUB_REPOSITORY" --title "${{ steps.alert.outputs.title }}" --body "$body")"
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ] || [ -z "$issue_url" ]; then
-            echo "issue_number=" >> "$GITHUB_OUTPUT"
-            echo "ambiguous=false" >> "$GITHUB_OUTPUT"
-            echo "failed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "issue_number=${issue_url##*/}" >> "$GITHUB_OUTPUT"
-            echo "ambiguous=false" >> "$GITHUB_OUTPUT"
-            echo "failed=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Send decision-grade Telegram alert once
-        id: telegram
-        if: >-
-          steps.alert.outputs.should_alert == 'true' &&
-          steps.alert.outputs.data_freshness_ok == 'true' &&
-          steps.alert.outputs.factor_freshness_ok == 'true'
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          PRIOR_STATUS: ${{ steps.prior.outputs.status }}
-          PRIOR_MESSAGE_ID: ${{ steps.prior.outputs.message_id }}
-          ISSUE_AMBIGUOUS: ${{ steps.issue.outputs.ambiguous }}
-          ISSUE_FAILED: ${{ steps.issue.outputs.failed }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "$PRIOR_STATUS" = "sent" ]; then
-            echo "status=sent" >> "$GITHUB_OUTPUT"
-            echo "message_id=$PRIOR_MESSAGE_ID" >> "$GITHUB_OUTPUT"
-            echo "error_class=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$PRIOR_STATUS" = "skipped_not_configured" ]; then
-            echo "status=skipped_not_configured" >> "$GITHUB_OUTPUT"
-            echo "message_id=" >> "$GITHUB_OUTPUT"
-            echo "error_class=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$ISSUE_AMBIGUOUS" = "true" ]; then
-            echo "status=failed" >> "$GITHUB_OUTPUT"
-            echo "message_id=" >> "$GITHUB_OUTPUT"
-            echo "error_class=ambiguous_external_delivery_state" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$ISSUE_FAILED" = "true" ]; then
-            echo "status=failed" >> "$GITHUB_OUTPUT"
-            echo "message_id=" >> "$GITHUB_OUTPUT"
-            echo "error_class=github_issue_delivery_failed" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
-            echo "status=skipped_not_configured" >> "$GITHUB_OUTPUT"
-            echo "message_id=" >> "$GITHUB_OUTPUT"
-            echo "error_class=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          set +e
-          response="$(curl --silent --show-error --write-out '\n%{http_code}' \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text@${SIGNAL_ROOT}/signal_alert_telegram.txt" \
-            --data-urlencode "disable_web_page_preview=true" 2>&1)"
-          curl_status=$?
-          set -e
-          http_code="$(printf '%s\n' "$response" | tail -n 1)"
-          body="$(printf '%s\n' "$response" | head -n -1)"
-          if [[ "$curl_status" -ne 0 ]]; then
-            echo "status=failed" >> "$GITHUB_OUTPUT"
-            echo "message_id=" >> "$GITHUB_OUTPUT"
-            echo "error_class=telegram_transport_ambiguous" >> "$GITHUB_OUTPUT"
-          elif [[ "$http_code" != "200" ]]; then
-            echo "status=failed" >> "$GITHUB_OUTPUT"
-            echo "message_id=" >> "$GITHUB_OUTPUT"
-            echo "error_class=telegram_api_rejected" >> "$GITHUB_OUTPUT"
-          else
-            echo "status=sent" >> "$GITHUB_OUTPUT"
-            echo "message_id=$(printf '%s' "$body" | python -c "import json,sys; print(json.load(sys.stdin)['result']['message_id'])")" >> "$GITHUB_OUTPUT"
-            echo "error_class=" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Persist delivery receipt and materialize operations evidence
-        env:
-          SHOULD_ALERT: ${{ steps.alert.outputs.should_alert }}
-          PRIOR_STATUS: ${{ steps.prior.outputs.status }}
-          PRIOR_ISSUE_NUMBER: ${{ steps.prior.outputs.issue_number }}
-          PRIOR_MESSAGE_ID: ${{ steps.prior.outputs.message_id }}
-          PRIOR_ERROR: ${{ steps.prior.outputs.error }}
-          ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
-          TELEGRAM_STATUS: ${{ steps.telegram.outputs.status }}
-          TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
-          TELEGRAM_ERROR_CLASS: ${{ steps.telegram.outputs.error_class }}
-          EXECUTION_SHA: ${{ steps.source.outputs.sha }}
-        run: |
-          set -euo pipefail
-          created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          if [[ "$SHOULD_ALERT" != "true" ]]; then
-            delivery_status="not_required"
-            issue_number=""
-            message_id=""
-            delivery_error=""
-          elif [[ "$PRIOR_STATUS" = "sent" || "$PRIOR_STATUS" = "skipped_not_configured" ]]; then
-            delivery_status="$PRIOR_STATUS"
-            issue_number="$PRIOR_ISSUE_NUMBER"
-            message_id="$PRIOR_MESSAGE_ID"
-            delivery_error="$PRIOR_ERROR"
-          else
-            delivery_status="${TELEGRAM_STATUS:-failed}"
-            issue_number="${ISSUE_NUMBER:-}"
-            message_id="${TELEGRAM_MESSAGE_ID:-}"
-            delivery_error="${TELEGRAM_ERROR_CLASS:-}"
-          fi
-          uv run alpha ops record-decision \
-            --model-version-id "$MODEL_VERSION_ID" \
-            --signal-json "$SIGNAL_ROOT/signal_alert.json" \
-            --delivery-status "$delivery_status" \
-            --github-issue-number "$issue_number" \
-            --telegram-message-id "$message_id" \
-            --delivery-error "$delivery_error" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --commit-sha "$EXECUTION_SHA" \
-            --created-at-utc "$created_at"
-          uv run alpha ops build \
-            --generated-at "$created_at" \
-            --output "$SIGNAL_ROOT/strategy-operations.json"
-          echo "delivery_status=$delivery_status" >> "$GITHUB_ENV"
-
-      - name: Commit QQQ delivery receipt
-        run: |
-          set -euo pipefail
-          git config user.name "AlphaEngine Signal Agent"
-          git config user.email "signal-agent@alphaengine.local"
-          git add "$LEDGER_DIR"
-          if git diff --cached --quiet; then
-            echo "QQQ delivery receipt already persisted."
-          else
-            git commit -m "signal: publish QQQ v4.3 delivery receipt"
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi
-
-      - name: Upload hash-bound decision and operations evidence
+      - name: Retain decision evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: qqq-v4-3-signal-${{ github.run_id }}
           path: |
@@ -382,8 +154,4 @@ jobs:
             artifacts/signals/qqq_rotation_v4_3
             data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3
           if-no-files-found: warn
-          retention-days: 90
-
-      - name: Fail visibly after persisting delivery failure
-        if: env.delivery_status == 'failed'
-        run: exit 1
+          retention-days: 30
