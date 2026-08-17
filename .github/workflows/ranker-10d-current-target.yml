@@ -116,7 +116,7 @@ jobs:
               --formal-root data/research/formal_model_runs \
               --provider-dir "$provider/data/providers/$market" \
               --signal-date "$date" \
-              --market-cutoff "${market^^} close $date" \
+              --market-cutoff "$date" \
               --output "artifacts/ranker-current-target/${market}_signal.json"
           done
       - name: Seal due canonical decisions
