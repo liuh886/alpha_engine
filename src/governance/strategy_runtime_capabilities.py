@@ -24,6 +24,7 @@ FORMAL_REFRESH_ADAPTERS: Mapping[str, str] = {
 }
 CURRENT_TARGET_ADAPTERS: Mapping[str, str] = {
     "us_x1_3": "us_x1_3_current_target_v1",
+    "cn_x1_2": "cn_x1_2_current_target_v1",
 }
 RANKER_FORMAL_REFRESH_ADAPTERS = frozenset({"us_x1_3_formal_refresh_v1"})
 
