@@ -16,17 +16,6 @@ on:
       - "tests/test_byd_signal_evidence.py"
       - "tests/test_strategy_signal_ledger.py"
       - "data/research/byd_v1_3_low_vol_prospective/**"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/byd-daily-signal-alert.yml"
-      - "configs/strategies/registry.json"
-      - "src/research/byd_signal_alerts.py"
-      - "src/research/byd_signal_evidence.py"
-      - "src/factors/strategy_snapshot.py"
-      - "configs/factor_libraries/strategy_inputs.yaml"
-      - "scripts/run_byd_signal_alert.py"
-      - "data/research/byd_v1_3_low_vol_prospective/**"
   workflow_run:
     workflows:
       - "BYD v1.3 Prospective Evidence"
