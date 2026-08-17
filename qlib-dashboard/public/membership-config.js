@@ -21,19 +21,19 @@
       en: 'AlphaEngine research account',
     },
     description: {
-      zh: '登录用于统一账户身份。正式模型的历史绩效与风险证据公开展示；AlphaEngine Pro 解锁高级模型的当前持仓、目标调仓与实时信号。',
-      en: 'Sign in to keep one account identity. Formal historical performance and risk evidence stay public; AlphaEngine Pro unlocks current holdings, target allocations, and live signals for advanced models.',
+      zh: '正式模型的历史绩效与风险证据公开展示。登录后可使用 Security Explorer；AlphaEngine Pro 解锁高级模型的当前持仓、目标调仓与实时信号。',
+      en: 'Formal historical performance and risk evidence stay public. Sign in to use Security Explorer; AlphaEngine Pro unlocks current holdings, target allocations, and live signals for advanced models.',
     },
     privacyNote: {
-      zh: '本地研究包、持仓文件、模型参数与实验数据不会上传到共享账户。AlphaEngine 是研究工具，不构成投资建议或收益承诺。',
-      en: 'Local research bundles, holdings files, model parameters, and experiment data are not uploaded to the shared account. AlphaEngine is a research tool, not investment advice or a return promise.',
+      zh: '本地研究包、持仓文件、模型参数与实验数据不会上传。AlphaEngine 是研究工具，不构成投资建议或收益承诺。',
+      en: 'Local research bundles, holdings files, model parameters, and experiment data are not uploaded. AlphaEngine is a research tool, not investment advice or a return promise.',
     },
     proUpgrade: {
       title: { zh: 'Free 与 AlphaEngine Pro', en: 'Free and AlphaEngine Pro' },
       freeTitle: { zh: '正式绩效公开', en: 'Formal performance stays public' },
       freeFeatures: [
         { zh: '查看正式模型的历史收益、风险与公开研究证据', en: 'View historical return, risk, and public research evidence for formal models' },
-        { zh: '登录后使用 Security Explorer，并沿用同一 Hao Apps 身份', en: 'Sign in to use Security Explorer with the same Hao Apps identity' },
+        { zh: '登录后使用 Security Explorer', en: 'Sign in to use Security Explorer' },
       ],
       proTitle: { zh: 'AlphaEngine Pro', en: 'AlphaEngine Pro' },
       proFeatures: [
