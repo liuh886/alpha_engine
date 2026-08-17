@@ -58,34 +58,34 @@ def test_current_target_uses_exact_formal_x1_3_stage_b_contract() -> None:
     assert set(factor_columns.values()) == set(columns)
 
 
-def test_production_ranker_workflow_routes_only_to_active_us_x1_3() -> None:
+def test_production_ranker_workflow_is_registry_driven_for_both_active_rankers() -> None:
     workflow = (ROOT / ".github/workflows/ranker-10d-current-target.yml").read_text(
         encoding="utf-8"
     )
-    assert "scripts/run_us_x1_3_current_target.py due" in workflow
-    assert "scripts/run_us_x1_3_current_target.py build" in workflow
-    assert "load_active_strategy_runtime_capabilities" in workflow
-    assert "steps.runtime.outputs.us_signal_ledger" in workflow
-    assert "us_x1_3_current_target_v1" in workflow
+    runner = (ROOT / "scripts/run_ranker_current_target.py").read_text(encoding="utf-8")
+
+    assert "scripts/run_ranker_current_target.py due" in workflow
+    assert "scripts/run_ranker_current_target.py build" in workflow
+    assert "for market in us cn" in workflow
+    assert "load_active_strategy_catalog" in runner
+    assert "load_active_strategy_runtime_capabilities" in runner
+    assert "us_x1_3_current_target_v1" in runner
+    assert "cn_x1_2_current_target_v1" in runner
     assert "cn_x1_1" not in workflow
-    assert "scripts/run_us_x1_2_current_target.py" not in workflow
-    assert "strategy_signal_ledgers/us_x1_2" not in workflow
-    assert "strategy_signal_ledgers/us_x1_1" not in workflow
+    assert "scripts/run_us_x1_3_current_target.py" not in workflow
+    assert not (ROOT / "scripts/run_us_x1_3_current_target.py").exists()
     assert not (ROOT / "scripts/run_us_x1_2_current_target.py").exists()
     assert not (ROOT / "src/research/us_x1_2_current_target.py").exists()
 
 
-def test_production_us_ranker_reuses_governed_history_and_refreshes_only_incrementally() -> None:
+def test_production_rankers_reuse_governed_history_and_do_not_deliver() -> None:
     workflow = (ROOT / ".github/workflows/ranker-10d-current-target.yml").read_text(
         encoding="utf-8"
     )
-    us_step = workflow.split("- name: Build due US x1.3 provider and current target", 1)[1].split(
-        "- name: Seal due canonical decisions", 1
-    )[0]
 
-    assert "--source-csv-dir data/csv_clean" in us_step
-    assert "--full-refresh" not in us_step
+    assert "--source-csv-dir data/csv_clean" in workflow
     assert "--full-refresh" not in workflow
-    assert "scripts/run_ranker_current_target.py due" not in workflow
-    assert "scripts/run_ranker_current_target.py build" not in workflow
+    assert "TELEGRAM_BOT_TOKEN" not in workflow
+    assert "api.telegram.org" not in workflow
+    assert "gh issue create" not in workflow
     assert "blocked_pending_maintained_cn_x1_2_inference_adapter" not in workflow
