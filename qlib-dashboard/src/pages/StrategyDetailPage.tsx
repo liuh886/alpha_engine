@@ -1,7 +1,8 @@
 import { ArrowLeft, ArrowUpRight, CalendarClock, Crown, Database, LockKeyhole, ShieldCheck } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { FormalBacktestReview } from '@/components/FormalBacktestReview';
+import { StrategyRuntimeStatusStrip } from '@/components/StrategyRuntimeStatusStrip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
@@ -10,6 +11,8 @@ import type { AccessTier } from '@/lib/model-access';
 import { STRATEGY_STATUS_LABEL } from '@/lib/strategy-operations';
 import type { StrategyFactorEvidence } from '@/lib/strategy-operations';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
+import { fetchSystemHealth } from '@/lib/system-health';
+import type { SystemHealthStrategy } from '@/lib/system-health';
 
 const ACCESS_TIER_LABEL: Record<AccessTier, string> = {
   public: 'Public',
@@ -84,6 +87,7 @@ export function StrategyDetailPage() {
   const selectedRuns = useMemo(() => run ? [run] : [], [run]);
   const { snapshots, loading } = useStrategyOperations(selectedRuns);
   const snapshot = run ? snapshots.get(run.modelVersionId) : undefined;
+  const [health, setHealth] = useState<SystemHealthStrategy | null>(null);
   const requiredTier = snapshot ? access.requiredTier('strategy', snapshot.strategyId) : 'public';
   const requiredTierLabel = ACCESS_TIER_LABEL[requiredTier];
   const liveLocked = Boolean(snapshot && !access.canAccess(requiredTier));
@@ -98,6 +102,17 @@ export function StrategyDetailPage() {
     if (run && run.key !== workspace.activeRunKey) workspace.selectRun(run);
   }, [run, workspace.activeRunKey, workspace.selectRun]);
 
+  useEffect(() => {
+    let active = true;
+    setHealth(null);
+    if (!run) return () => { active = false; };
+    void fetchSystemHealth().then((result) => {
+      if (!active) return;
+      setHealth(result.health?.strategies.find((row) => row.model_version_id === run.modelVersionId) ?? null);
+    });
+    return () => { active = false; };
+  }, [run]);
+
   if (!run) {
     return (
       <div className="research-empty-state">
@@ -110,8 +125,8 @@ export function StrategyDetailPage() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-7 pb-16">
-      <section className="border-b pb-6">
-        <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2 gap-2"><Link to="/strategies"><ArrowLeft className="h-4 w-4" />Strategies</Link></Button>
+      <section className="space-y-5 border-b pb-6">
+        <Button asChild variant="ghost" size="sm" className="-ml-2 gap-2"><Link to="/strategies"><ArrowLeft className="h-4 w-4" />Strategies</Link></Button>
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-4xl">
             <div className="flex flex-wrap items-center gap-2">
@@ -121,14 +136,24 @@ export function StrategyDetailPage() {
               {requiredTier !== 'public' && <Badge variant="outline"><Crown className="mr-1 h-3 w-3" />{requiredTierLabel} live</Badge>}
             </div>
             <h1 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">{run.title}</h1>
-            <p className="mt-3 text-sm text-muted-foreground">Evidence cutoff {run.evidenceCutoff} · {run.modelKind.replace(/_/g, ' ')}</p>
+            <p className="mt-3 text-sm text-muted-foreground">{run.modelKind.replace(/_/g, ' ')}</p>
           </div>
           <div className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Operating status</p>
             <p className="mt-1 font-semibold">{liveLocked ? 'Protected current operations' : snapshot ? STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading current operations' : 'Operating status unavailable'}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{liveLocked ? 'Formal historical evidence remains public below.' : snapshot?.latestCompletedSession ? `Latest session ${snapshot.latestCompletedSession}` : 'Formal evidence remains available below.'}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{liveLocked ? 'Formal historical evidence remains public below.' : snapshot?.stateLabel || 'Canonical operations state is unavailable.'}</p>
           </div>
         </div>
+        <StrategyRuntimeStatusStrip
+          dataThrough={health?.provider_cutoff ?? snapshot?.latestCompletedSession ?? null}
+          dataState={health?.stages.provider ?? 'unknown'}
+          performanceThrough={health?.formal_cutoff ?? run.evidenceCutoff ?? null}
+          performanceState={health?.stages.formal ?? 'unknown'}
+          signalThrough={health?.last_signal_evaluation ?? snapshot?.asOf ?? null}
+          signalState={health?.stages.signal ?? 'unknown'}
+          deliveryStatus={health?.delivery_status ?? snapshot?.deliveryStatus}
+          deliveryState={health?.delivery_state ?? 'unknown'}
+        />
       </section>
 
       <section aria-labelledby="strategy-now-heading" className="space-y-4">
@@ -218,7 +243,7 @@ export function StrategyDetailPage() {
                     })}
                   </div>
                 </div>
-                <p className="mt-4 text-xs text-muted-foreground">Rules-based strategies show cutoff-bound inputs and direct support/veto states. XGBoost rankers additionally show native pred_contribs for the current ranking decision. Model contributions explain the fitted score, not causality.</p>
+                <p className="mt-4 text-xs text-muted-foreground">Rules-based strategies show cutoff-bound inputs and direct support/veto states. XGBoost rankers show the canonical factor snapshot retained with the current decision. Model evidence explains the fitted score, not causality.</p>
               </div>
             ) : snapshot ? (
               <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground shadow-sm">
@@ -233,7 +258,7 @@ export function StrategyDetailPage() {
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Evidence</p>
           <h2 className="mt-1 text-2xl font-bold">Performance, risk, holdings and attribution</h2>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">The existing hash-verified Model Run Bundle v2 evidence is retained as the analytical depth beneath the strategy, rather than remaining a separate product mental model.</p>
+          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Hash-verified Model Run Bundle v2 remains the analytical record beneath the current operating state.</p>
         </div>
         <FormalBacktestReview run={run} />
       </section>
