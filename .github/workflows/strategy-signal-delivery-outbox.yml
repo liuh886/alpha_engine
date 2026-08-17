@@ -1,0 +1,102 @@
+name: Strategy Signal Delivery Outbox
+
+on:
+  workflow_run:
+    workflows:
+      - "QQQ Rotation v4.3 Signal Alert"
+      - "BYD v1.3 Daily Signal"
+      - "10D Ranker Current Target"
+    types: [completed]
+  schedule:
+    - cron: "15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: strategy-signal-delivery-outbox
+  cancel-in-progress: false
+
+jobs:
+  deliver:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate outbox contract
+        run: |
+          uv run ruff check \
+            scripts/run_signal_delivery_outbox.py \
+            src/artifacts/strategy_signal_ledger.py \
+            tests/test_signal_delivery_outbox.py \
+            tests/test_strategy_signal_ledger.py
+          uv run pytest \
+            tests/test_signal_delivery_outbox.py \
+            tests/test_strategy_signal_ledger.py \
+            -q --strict-markers --tb=short
+      - name: Drain canonical pending decisions
+        id: drain
+        shell: bash
+        run: |
+          set +e
+          created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          uv run python scripts/run_signal_delivery_outbox.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --commit-sha "$(git rev-parse HEAD)" \
+            --created-at-utc "$created_at" \
+            --output artifacts/signal-delivery-outbox/result.json
+          status=$?
+          set -e
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+      - name: Materialize Strategy Operations evidence
+        run: |
+          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          uv run alpha ops build \
+            --generated-at "$generated_at" \
+            --output artifacts/signal-delivery-outbox/strategy-operations.json
+      - name: Commit append-only delivery receipts
+        run: |
+          set -euo pipefail
+          git config user.name "AlphaEngine Delivery Outbox"
+          git config user.email "delivery-outbox@alphaengine.local"
+          git add data/research/strategy_signal_ledgers
+          if git diff --cached --quiet; then
+            echo "No pending delivery receipt changes."
+          else
+            git commit -m "ops: publish strategy delivery receipts"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Retain outbox evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: strategy-signal-delivery-${{ github.run_id }}
+          path: artifacts/signal-delivery-outbox
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after persisting delivery failure evidence
+        if: steps.drain.outputs.status != '0'
+        run: exit 1
