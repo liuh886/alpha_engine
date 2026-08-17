@@ -169,7 +169,17 @@ def accepted_records(root: Path) -> tuple[FormalModelRecord, ...]:
     return tuple(records)
 
 
-def common_provider_cutoff(manifest: Mapping[str, Any], *, market: str) -> str:
+MARKET_CLOCK_SYMBOLS = {"us": "QQQ", "cn": "000300"}
+
+
+def market_provider_cutoff(manifest: Mapping[str, Any], *, market: str) -> str:
+    """Return the governed market-session watermark from its benchmark clock.
+
+    Per-symbol coverage remains quality evidence for the model that consumes the
+    symbol. A lagging stock must never rewind the market clock for every active
+    strategy in that market.
+    """
+
     if manifest.get("market") != market:
         raise FormalRefreshError(f"provider manifest market mismatch: expected {market}")
     if manifest.get("status") != "selected_pool_price_refresh_ready":
@@ -181,17 +191,24 @@ def common_provider_cutoff(manifest: Mapping[str, Any], *, market: str) -> str:
     rows = manifest.get("records")
     if not isinstance(rows, list) or not rows:
         raise FormalRefreshError(f"{market} provider records are missing")
-    dates: list[date] = []
-    for row in rows:
-        if not isinstance(row, Mapping):
-            raise FormalRefreshError(f"{market} provider record is invalid")
-        last_date = row.get("last_date")
-        if last_date is None:
-            raise FormalRefreshError(
-                f"{market} provider record lacks last_date: {row.get('symbol')!r}"
-            )
-        dates.append(_date(last_date, label=f"{market} provider last_date"))
-    return min(dates).isoformat()
+
+    clock_symbol = MARKET_CLOCK_SYMBOLS.get(market)
+    if clock_symbol is None:
+        raise FormalRefreshError(f"unsupported market clock: {market}")
+    matches = [
+        row
+        for row in rows
+        if isinstance(row, Mapping)
+        and str(row.get("symbol") or "").strip().upper() == clock_symbol
+    ]
+    if len(matches) != 1:
+        raise FormalRefreshError(
+            f"{market} provider must contain exactly one market clock {clock_symbol}"
+        )
+    last_date = matches[0].get("last_date")
+    if last_date is None:
+        raise FormalRefreshError(f"{market} market clock {clock_symbol} lacks last_date")
+    return _date(last_date, label=f"{market} market clock last_date").isoformat()
 
 
 def build_plan(
