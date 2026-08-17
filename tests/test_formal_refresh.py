@@ -17,8 +17,8 @@ from scripts.run_formal_refresh_transaction import (
 )
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
-    common_provider_cutoff,
     load_object,
+    market_provider_cutoff,
     write_object,
 )
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
@@ -31,6 +31,7 @@ FORMAL_V2 = Path("data/research/formal_model_runs")
 
 
 def _provider_manifest(path: Path, *, market: str, cutoff: str) -> Path:
+    clock = "QQQ" if market == "us" else "000300"
     write_object(
         path,
         {
@@ -38,8 +39,8 @@ def _provider_manifest(path: Path, *, market: str, cutoff: str) -> Path:
             "status": "selected_pool_price_refresh_ready",
             "promotion_eligible": True,
             "records": [
+                {"symbol": clock, "last_date": cutoff},
                 {"symbol": "AAA", "last_date": cutoff},
-                {"symbol": "BBB", "last_date": cutoff},
             ],
             "research_only": True,
             "trade_ready": False,
@@ -77,32 +78,45 @@ def _non_regressing_cutoffs() -> dict[str, str]:
     return cutoffs
 
 
-def test_common_provider_cutoff_is_conservative() -> None:
+def test_market_provider_cutoff_uses_governed_benchmark_clock() -> None:
     manifest = {
         "market": "us",
         "status": "selected_pool_price_refresh_ready",
         "promotion_eligible": True,
         "records": [
-            {"symbol": "AAA", "last_date": "2026-08-05"},
-            {"symbol": "BBB", "last_date": "2026-08-04"},
+            {"symbol": "QQQ", "last_date": "2026-08-05"},
+            {"symbol": "EA", "last_date": "2026-08-04"},
         ],
         "research_only": True,
         "trade_ready": False,
     }
-    assert common_provider_cutoff(manifest, market="us") == "2026-08-04"
+    assert market_provider_cutoff(manifest, market="us") == "2026-08-05"
 
 
-def test_common_provider_cutoff_rejects_ineligible_provider() -> None:
+def test_market_provider_cutoff_requires_market_clock() -> None:
+    manifest = {
+        "market": "us",
+        "status": "selected_pool_price_refresh_ready",
+        "promotion_eligible": True,
+        "records": [{"symbol": "EA", "last_date": "2026-08-05"}],
+        "research_only": True,
+        "trade_ready": False,
+    }
+    with pytest.raises(FormalRefreshError, match="market clock QQQ"):
+        market_provider_cutoff(manifest, market="us")
+
+
+def test_market_provider_cutoff_rejects_ineligible_provider() -> None:
     manifest = {
         "market": "us",
         "status": "selected_pool_price_refresh_ready",
         "promotion_eligible": False,
-        "records": [{"symbol": "AAA", "last_date": "2026-08-05"}],
+        "records": [{"symbol": "QQQ", "last_date": "2026-08-05"}],
         "research_only": True,
         "trade_ready": False,
     }
     with pytest.raises(FormalRefreshError, match="not promotion eligible"):
-        common_provider_cutoff(manifest, market="us")
+        market_provider_cutoff(manifest, market="us")
 
 
 def test_formal_planner_accepts_governed_cn_auxiliary_yahoo_fallback(
@@ -145,7 +159,6 @@ def test_formal_planner_accepts_governed_cn_auxiliary_yahoo_fallback(
     manifest = _decorate_manifest(manifest_path, build_hardened_router("cn"))
     assert manifest["promotion_eligible"] is True
     assert manifest["formal_auxiliary_fallback_symbols"] == ["515180"]
-    assert common_provider_cutoff(manifest, market="cn") == "2026-08-07"
 
 
 def test_plan_is_formal_v2_catalog_driven() -> None:
@@ -164,6 +177,18 @@ def test_plan_is_formal_v2_catalog_driven() -> None:
     assert cn["formal_refresh_adapter_id"] == "cn_x1_2_formal_refresh_v1"
     assert cn["formal_refresh_block_reason"] is None
     assert plan["blocked_model_ids"] == []
+
+
+def test_plan_never_rewinds_accepted_model_evidence() -> None:
+    cutoffs = _non_regressing_cutoffs()
+    cutoffs["us"] = "2026-08-10"
+    plan = build_task_plan(
+        formal_v2_root=FORMAL_V2,
+        cutoffs=cutoffs,
+        generated_at="2026-08-13T10:30:00Z",
+    )
+    us = next(task for task in plan["tasks"] if task["model_version_id"] == "us_x1_3")
+    assert us["planned_provider_cutoff"] >= "2026-08-12"
 
 
 def test_ranker_daily_cutoff_uses_mtm_without_settled_rebuild() -> None:
@@ -238,6 +263,7 @@ def test_finalize_writes_v2_freshness_and_receipt(tmp_path: Path) -> None:
                 row.strategy_id for row in load_active_strategy_catalog().strategies
             ],
             "preview_catalog_sha256": "a" * 64,
+            "retained_strategy_ids": [],
             "research_only": True,
             "trade_ready": False,
         },
@@ -256,6 +282,7 @@ def test_finalize_writes_v2_freshness_and_receipt(tmp_path: Path) -> None:
     assert receipt["schema_version"] == "formal_refresh_receipt_v2"
     assert receipt["status"] == "candidate_ready_for_review"
     assert freshness["markets"] == {"cn": "2026-08-12", "us": "2026-08-10"}
+    assert freshness["cutoff_policy"] == "governed_benchmark_market_session"
     assert freshness["required_models"] == list(
         load_active_strategy_catalog().active_model_version_ids
     )
@@ -315,7 +342,9 @@ def test_strategy_results_are_uploaded_even_when_one_task_fails() -> None:
     end = workflow.index("\n\n  publish:", start)
     block = workflow[start:end]
     assert "if: always()" in block
-    assert "artifacts/formal-refresh/strategy-result" in block
+    transaction = Path("scripts/run_formal_refresh_transaction.py").read_text(encoding="utf-8")
+    assert "RETAIN_CURRENT_STATES" in transaction
+    assert '"retained_strategy_ids"' in transaction
 
 
 def test_cn_duplicate_evidence_concurrency_lives_in_repository_runner() -> None:

@@ -84,6 +84,32 @@ def test_provider_lag_is_delayed_not_formal_corruption(tmp_path: Path) -> None:
     assert us["provider_lag_exact"] is False
 
 
+def test_delivery_failure_degrades_strategy_health() -> None:
+    operations = _operations()
+    row = next(
+        item
+        for item in operations["records"]
+        if item["model_version_id"] == "qqqi_qqq_tqqq_v4_3"
+    )
+    row["delivery_status"] = "failed"
+    row["status"] = "current_no_change"
+    payload = build_system_health(
+        repository_root=Path.cwd(),
+        formal_catalog=FORMAL_CATALOG,
+        formal_freshness=FORMAL_FRESHNESS,
+        operations=operations,
+        model_data_readiness=MODEL_DATA,
+        generated_at="2026-08-13T09:30:00Z",
+    )
+    qqq = next(
+        item
+        for item in payload["strategies"]
+        if item["model_version_id"] == "qqqi_qqq_tqqq_v4_3"
+    )
+    assert qqq["stages"]["delivery"] == "blocked"
+    assert qqq["state"] == "blocked"
+
+
 def test_system_health_fails_closed_on_partial_operations_set() -> None:
     operations = _operations()
     operations["records"] = operations["records"][:-1]

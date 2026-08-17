@@ -93,7 +93,7 @@ def _publish_freshness_policy(
 ) -> str:
     source = _object(freshness_root / "freshness.json")
     if (
-        source.get("cutoff_policy") != "latest_completed_trading_session"
+        source.get("cutoff_policy") != "governed_benchmark_market_session"
         or source.get("research_only") is not True
         or source.get("trade_ready") is not False
         or not isinstance(source.get("markets"), dict)

@@ -12,14 +12,11 @@ from typing import Any
 
 import yaml
 
-from src.artifacts.formal_bundle_reader import (
-    FormalBundleReadError,
-    FormalBundleReader,
-)
+from src.artifacts.formal_bundle_reader import FormalBundleReadError, FormalBundleReader
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
-    common_provider_cutoff,
     load_object,
+    market_provider_cutoff,
     next_weekday_refresh_deadline,
     sha256,
     write_object,
@@ -42,6 +39,12 @@ PLAN_SCHEMA = "formal_refresh_plan_v4"
 FAN_IN_SCHEMA = "formal_strategy_fan_in_v2"
 REFRESH_RECEIPT_SCHEMA = "formal_refresh_receipt_v2"
 SUCCESS_STATES = {"current_no_change", "refreshed"}
+RETAIN_CURRENT_STATES = {
+    "data_blocked",
+    "execution_failed",
+    "invalid_evidence",
+    "runtime_blocked",
+}
 
 
 def _assert_declared_model_transition(
@@ -54,7 +57,11 @@ def _assert_declared_model_transition(
 ) -> None:
     if not isinstance(rows, list):
         raise FormalRefreshError(error_message) from cause
-    observed = {str(row.get("model_version_id") or "") for row in rows if isinstance(row, Mapping)}
+    observed = {
+        str(row.get("model_version_id") or "")
+        for row in rows
+        if isinstance(row, Mapping)
+    }
     expected = set(active.active_model_version_ids)
     missing = expected - observed
     extra = observed - expected
@@ -69,12 +76,15 @@ def _assert_declared_model_transition(
             raise FormalRefreshError(error_message) from cause
         config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
         lineage = config.get("lineage") if isinstance(config, Mapping) else None
-        predecessor = str(lineage.get("supersedes") or "") if isinstance(lineage, Mapping) else ""
+        predecessor = (
+            str(lineage.get("supersedes") or "") if isinstance(lineage, Mapping) else ""
+        )
         predecessor_row = next(
             (
                 row
                 for row in rows
-                if isinstance(row, Mapping) and row.get("model_version_id") == predecessor
+                if isinstance(row, Mapping)
+                and row.get("model_version_id") == predecessor
             ),
             None,
         )
@@ -92,7 +102,9 @@ def _assert_declared_model_transition(
         raise FormalRefreshError(error_message) from cause
 
 
-def _assert_formal_catalog_or_declared_transition(formal_v2: Mapping[str, object], active) -> None:
+def _assert_formal_catalog_or_declared_transition(
+    formal_v2: Mapping[str, object], active: Any
+) -> None:
     try:
         assert_formal_catalog_matches_active_strategies(formal_v2, active)
         return
@@ -107,8 +119,8 @@ def _assert_formal_catalog_or_declared_transition(formal_v2: Mapping[str, object
 
 def _cutoffs(us_manifest: Path, cn_manifest: Path) -> dict[str, str]:
     return {
-        "us": common_provider_cutoff(load_object(us_manifest), market="us"),
-        "cn": common_provider_cutoff(load_object(cn_manifest), market="cn"),
+        "us": market_provider_cutoff(load_object(us_manifest), market="us"),
+        "cn": market_provider_cutoff(load_object(cn_manifest), market="cn"),
     }
 
 
@@ -244,28 +256,31 @@ def build_task_plan(
 
     stale_ids: set[str] = set()
     mtm_ids: set[str] = set()
+    planned_cutoffs: dict[str, str] = {}
     for strategy in active.strategies:
         model_id = strategy.model_version_id
         record = records.get(model_id)
+        market_target = _iso_date(
+            cutoffs[strategy.market], label=f"{strategy.market} target cutoff"
+        )
         if record is None:
+            planned_cutoffs[model_id] = market_target
             stale_ids.add(model_id)
             continue
-        target = _iso_date(cutoffs[strategy.market], label=f"{strategy.market} target cutoff")
-        accepted = _iso_date(record.get("evidence_cutoff"), label=f"{model_id} formal cutoff")
-        if accepted > target:
-            raise FormalRefreshError(
-                f"target cutoff regresses formal evidence for {model_id}: {target} < {accepted}"
-            )
-        if model_id not in ranker_model_ids and accepted < target:
+        accepted = _iso_date(
+            record.get("evidence_cutoff"), label=f"{model_id} formal cutoff"
+        )
+        # Accepted evidence is immutable. A transient provider regression never
+        # asks a model to move backwards and never aborts unrelated strategies.
+        planned_cutoffs[model_id] = max(market_target, accepted)
+        if model_id not in ranker_model_ids and accepted < market_target:
             stale_ids.add(model_id)
 
     for strategy in ranker_strategies:
         model_id = strategy.model_version_id
-        market = strategy.market
         record = records.get(model_id)
         if record is None:
             continue
-        target = _iso_date(cutoffs[market], label=f"{market} ranker cutoff")
         try:
             run = reader.load(model_id)
             performance = run.section("performance")
@@ -279,6 +294,11 @@ def build_task_plan(
             Path(strategy.signal_ledger).parent,
             model_id,
         )
+        # A sealed decision is canonical state. If provider freshness temporarily
+        # trails it, plan the model at least through that decision and let the
+        # model task prove or block its own data coverage; never abort other models.
+        target = max(planned_cutoffs[model_id], ledger_signal)
+        planned_cutoffs[model_id] = target
         settled_required, mtm_required = _ranker_refresh_requirements(
             model_id=model_id,
             target=target,
@@ -302,7 +322,7 @@ def build_task_plan(
                 "model_version_id": model_id,
                 "model_kind": strategy.model_kind,
                 "market": strategy.market,
-                "planned_provider_cutoff": str(cutoffs[strategy.market]),
+                "planned_provider_cutoff": planned_cutoffs[model_id],
                 "publication_input": "native_bundle_v2",
                 "formal_refresh_required": model_id in stale_ids,
                 "mtm_refresh_required": model_id in mtm_ids,
@@ -315,9 +335,7 @@ def build_task_plan(
     blocked_ids = sorted(
         str(task["model_version_id"])
         for task in tasks
-        if (
-            task["formal_refresh_required"] or task["mtm_refresh_required"]
-        )
+        if (task["formal_refresh_required"] or task["mtm_refresh_required"])
         and task["formal_refresh_capability_status"] == "blocked"
     )
 
@@ -343,9 +361,11 @@ def _copy_tree(source: Path, target: Path) -> None:
     shutil.copytree(source, target)
 
 
-def _validate_task_receipt(task: Mapping[str, Any], receipt: Mapping[str, Any]) -> None:
+def _validate_task_receipt(task: Mapping[str, Any], receipt: Mapping[str, Any]) -> str:
     if receipt.get("schema_version") != TASK_RECEIPT_SCHEMA:
-        raise FormalRefreshError(f"invalid strategy receipt schema for {task.get('strategy_id')}")
+        raise FormalRefreshError(
+            f"invalid strategy receipt schema for {task.get('strategy_id')}"
+        )
     for field in (
         "strategy_id",
         "model_family_id",
@@ -367,10 +387,11 @@ def _validate_task_receipt(task: Mapping[str, Any], receipt: Mapping[str, Any]) 
             f"strategy receipt research boundary changed: {task.get('strategy_id')}"
         )
     status = str(receipt.get("execution_status") or "")
-    if status not in SUCCESS_STATES:
+    if status not in SUCCESS_STATES | RETAIN_CURRENT_STATES:
         raise FormalRefreshError(
-            f"strategy task is not publishable: {task.get('strategy_id')}={status or 'missing'}"
+            f"unsupported strategy task result: {task.get('strategy_id')}={status or 'missing'}"
         )
+    return status
 
 
 def _install_preview(source_root: Path, target_root: Path, *, model_id: str) -> None:
@@ -414,7 +435,9 @@ def _seal_preview_catalog(candidate_preview_root: Path) -> dict[str, Any]:
             config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
             lineage = config.get("lineage") if isinstance(config, Mapping) else None
             predecessor = (
-                str(lineage.get("supersedes") or "") if isinstance(lineage, Mapping) else ""
+                str(lineage.get("supersedes") or "")
+                if isinstance(lineage, Mapping)
+                else ""
             )
             candidates = manifests_by_model.get(predecessor, [])
         if len(candidates) != 1:
@@ -485,11 +508,12 @@ def assemble_strategy_results(
     _copy_tree(current_preview_root, candidate_preview_root)
     receipts: list[dict[str, Any]] = []
     changed: list[str] = []
+    retained: list[str] = []
     for strategy_id, task in expected.items():
         result_root = strategy_results_root / strategy_id
         receipt = load_object(result_root / "receipt.json")
-        _validate_task_receipt(task, receipt)
-        if str(receipt["execution_status"]) == "refreshed":
+        status = _validate_task_receipt(task, receipt)
+        if status == "refreshed":
             preview = result_root / "model-runs"
             catalog_path = preview / "catalog.json"
             expected_sha = str(receipt.get("output_sha256") or "")
@@ -505,6 +529,8 @@ def assemble_strategy_results(
                 model_id=str(task["model_version_id"]),
             )
             changed.append(strategy_id)
+        elif status in RETAIN_CURRENT_STATES:
+            retained.append(strategy_id)
         receipts.append(dict(receipt))
 
     _seal_preview_catalog(candidate_preview_root)
@@ -514,6 +540,7 @@ def assemble_strategy_results(
         "generated_at": plan.get("generated_at"),
         "expected_strategy_ids": list(expected),
         "changed_strategy_ids": changed,
+        "retained_strategy_ids": retained,
         "publication_contract": "active_preview_bundle_v2",
         "preview_catalog_sha256": sha256(candidate_preview_root / "catalog.json"),
         "receipts": receipts,
@@ -556,7 +583,7 @@ def finalize_refresh(
     ]
     freshness = {
         "schema_version": "1.0.0",
-        "cutoff_policy": "latest_completed_trading_session",
+        "cutoff_policy": "governed_benchmark_market_session",
         "declared_at": generated_at,
         "markets": dict(sorted(cutoffs.items())),
         "next_session_close_utc": {
@@ -577,6 +604,7 @@ def finalize_refresh(
         "target_cutoffs": dict(sorted(cutoffs.items())),
         "active_strategy_ids": [row.strategy_id for row in active.strategies],
         "active_model_version_ids": list(active.active_model_version_ids),
+        "retained_strategy_ids": list(fan_in.get("retained_strategy_ids") or []),
         "publication_contract": "active_preview_bundle_v2",
         "preview_catalog_sha256": fan_in["preview_catalog_sha256"],
         "strategy_fan_in_sha256": sha256(fan_in_receipt),
@@ -639,11 +667,15 @@ def main() -> None:
         if args.github_output:
             args.github_output.parent.mkdir(parents=True, exist_ok=True)
             with args.github_output.open("a", encoding="utf-8") as handle:
-                handle.write(f"refresh_required={str(bool(plan['refresh_required'])).lower()}\n")
+                handle.write(
+                    f"refresh_required={str(bool(plan['refresh_required'])).lower()}\n"
+                )
                 handle.write(f"us_cutoff={plan['target_cutoffs']['us']}\n")
                 handle.write(f"cn_cutoff={plan['target_cutoffs']['cn']}\n")
                 handle.write(
-                    "task_matrix=" + json.dumps(plan["tasks"], separators=(",", ":")) + "\n"
+                    "task_matrix="
+                    + json.dumps(plan["tasks"], separators=(",", ":"))
+                    + "\n"
                 )
         print(json.dumps(plan, indent=2, sort_keys=True))
         return

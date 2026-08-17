@@ -144,13 +144,13 @@ formal_publication:
   formal_manifest: data/research/formal_model_runs/cn_ranker/cn_x1_2/cn_x1_2-through-2026_06_30/manifest.json
   formal_manifest_sha256: fbc468baa3158e1d598c521084d481d6640566f7853aa6510aca346c7c52f630
   formal_bundle_catalog: data/research/formal_model_runs/catalog.json
-  current_target_activation: blocked_pending_maintained_cn_x1_2_inference_adapter
+  current_target_activation: maintained_cn_x1_2_current_target_v1
   evidence_completeness: complete_frontend_bundle_v2
 known_limitations:
 - The static CN130 universe carries survivorship bias.
 - The preregistered development decision was rejected because 2026H1 maximum drawdown worsened by 4.799 percentage points versus a 3 percentage-point limit.
 - The explicit user decision promotes the research baseline but does not establish that all preregistered gates passed.
-- The 2026H2 range is reporting-only: it may extend formal evidence but may not enter model selection, factor search, calibration or parameter fitting.
-- Formal Bundle v2 evidence is maintained append-only; current-target activation remains blocked until a separate CN x1.2 inference adapter is implemented and identity-bound.
+- The 2026H2 range is reporting-only: it may extend formal evidence and current inference but may not enter model selection, factor search, calibration or parameter fitting.
+- Formal Bundle v2 evidence is maintained append-only; current-target inference is identity-bound to the frozen CN x1.2 contract.
 - Research-only evidence is not authorization for live or automated trading.
 next_version: CN x1.3

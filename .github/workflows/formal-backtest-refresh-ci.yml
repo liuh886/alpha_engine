@@ -20,7 +20,7 @@ on:
       - "scripts/build_market_evidence.py"
       - "scripts/build_us_x1_3_preview.py"
       - "scripts/build_cn_x1_2_prospective_ledger.py"
-      - "scripts/run_us_x1_3_current_target.py"
+      - "scripts/run_ranker_current_target.py"
       - "scripts/govern_formal_provider_cache.py"
       - "scripts/ranker_provisional_mtm.py"
       - "scripts/refresh_ranker_formal.py"
@@ -29,6 +29,8 @@ on:
       - "scripts/data/**"
       - "tests/test_active_strategy_catalog.py"
       - "tests/test_strategy_runtime_capabilities.py"
+      - "tests/test_ranker_current_target.py"
+      - "tests/test_ranker_current_target_runtime.py"
       - "tests/test_formal_refresh.py"
       - "tests/test_formal_bundle_reader.py"
       - "tests/test_formal_strategy_refresh.py"
@@ -172,14 +174,18 @@ jobs:
             src/artifacts/us_x1_3_preview.py \
             src/research/us_x1_3_current_target.py \
             src/research/cn_x1_2_prospective.py \
+            src/research/cn_x1_2_current_target.py \
+            src/research/ranker_current_target.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py \
             scripts/build_us_x1_3_preview.py \
             scripts/build_cn_x1_2_prospective_ledger.py \
-            scripts/run_us_x1_3_current_target.py \
+            scripts/run_ranker_current_target.py \
             scripts/validate_model_x1_baselines.py \
             tests/test_active_strategy_catalog.py \
             tests/test_strategy_runtime_capabilities.py \
+            tests/test_ranker_current_target.py \
+            tests/test_ranker_current_target_runtime.py \
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \
@@ -196,6 +202,8 @@ jobs:
           uv run pytest \
             tests/test_active_strategy_catalog.py \
             tests/test_strategy_runtime_capabilities.py \
+            tests/test_ranker_current_target.py \
+            tests/test_ranker_current_target_runtime.py \
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \
@@ -231,6 +239,8 @@ jobs:
             src/research/qqq_authoritative_replay.py \
             src/research/rules_formal_replay_gate.py \
             src/research/cn_x1_2_prospective.py \
+            src/research/cn_x1_2_current_target.py \
+            src/research/ranker_current_target.py \
             src/research/us_x1_3_current_target.py \
             scripts/build_market_evidence.py \
             scripts/run_formal_refresh_transaction.py \
@@ -240,13 +250,15 @@ jobs:
             scripts/refresh_ranker_formal.py \
             scripts/build_cn_x1_2_prospective_ledger.py \
             scripts/build_us_x1_3_preview.py \
-            scripts/run_us_x1_3_current_target.py \
+            scripts/run_ranker_current_target.py \
             scripts/byd_formal_refresh_common.py \
             scripts/byd_v1_3_formal_builder.py \
             scripts/refresh_byd_v1_3_formal.py \
             scripts/refresh_qqq_v4_3_formal.py \
             tests/test_active_strategy_catalog.py \
             tests/test_strategy_runtime_capabilities.py \
+            tests/test_ranker_current_target.py \
+            tests/test_ranker_current_target_runtime.py \
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \
@@ -280,6 +292,8 @@ jobs:
           uv run pytest \
             tests/test_active_strategy_catalog.py \
             tests/test_strategy_runtime_capabilities.py \
+            tests/test_ranker_current_target.py \
+            tests/test_ranker_current_target_runtime.py \
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
             tests/test_formal_strategy_refresh.py \

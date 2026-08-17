@@ -133,11 +133,11 @@ def test_fan_in_accepts_complete_active_strategy_set(tmp_path: Path) -> None:
     assert fan_in["publication_contract"] == "active_preview_bundle_v2"
     assert fan_in["expected_strategy_ids"] == [row.strategy_id for row in active.strategies]
     assert fan_in["changed_strategy_ids"] == []
+    assert fan_in["retained_strategy_ids"] == []
     assert sha256(candidate_preview / "catalog.json") == fan_in["preview_catalog_sha256"]
     catalog = load_object(candidate_preview / "catalog.json")
     validate_catalog(catalog)
     observed = {row["model_version_id"] for row in catalog["records"]}
-    assert "cn_x1_1" not in observed
     expected = set(active.active_model_version_ids)
     if observed != expected:
         _assert_declared_model_transition(
@@ -164,22 +164,34 @@ def test_fan_in_fails_closed_on_missing_strategy_receipt(tmp_path: Path) -> None
         )
 
 
-def test_fan_in_fails_closed_on_blocked_strategy(tmp_path: Path) -> None:
+def test_fan_in_retains_current_preview_for_blocked_strategy(tmp_path: Path) -> None:
     tasks = _tasks()
+    blocked_task = tasks[0]
     plan = tmp_path / "plan.json"
     _write_plan(plan, tasks)
     results = tmp_path / "results"
     _seed_results(results, tasks, status="current_no_change")
-    blocked = results / str(tasks[0]["strategy_id"]) / "receipt.json"
-    write_object(blocked, _receipt(tasks[0], "invalid_evidence"))
-    with pytest.raises(FormalRefreshError, match="not publishable"):
-        assemble_strategy_results(
-            plan_path=plan,
-            strategy_results_root=results,
-            current_preview_root=NATIVE,
-            candidate_preview_root=tmp_path / "candidate-preview",
-            receipt_path=tmp_path / "fan-in.json",
-        )
+    blocked = results / str(blocked_task["strategy_id"]) / "receipt.json"
+    write_object(blocked, _receipt(blocked_task, "invalid_evidence"))
+
+    candidate = tmp_path / "candidate-preview"
+    fan_in = assemble_strategy_results(
+        plan_path=plan,
+        strategy_results_root=results,
+        current_preview_root=NATIVE,
+        candidate_preview_root=candidate,
+        receipt_path=tmp_path / "fan-in.json",
+    )
+
+    assert fan_in["status"] == "complete"
+    assert fan_in["changed_strategy_ids"] == []
+    assert fan_in["retained_strategy_ids"] == [blocked_task["strategy_id"]]
+    assert sha256(candidate / "catalog.json") == fan_in["preview_catalog_sha256"]
+    catalog = load_object(candidate / "catalog.json")
+    validate_catalog(catalog)
+    assert set(row["model_version_id"] for row in catalog["records"]) == set(
+        load_active_strategy_catalog(STRATEGIES).active_model_version_ids
+    )
 
 
 def test_fan_in_installs_only_digest_bound_refreshed_preview(tmp_path: Path) -> None:
@@ -317,7 +329,7 @@ def test_settled_report_ignores_provisional_observations() -> None:
 
 def test_task_rejects_runtime_adapter_identity_drift(tmp_path: Path) -> None:
     task = next(row for row in _tasks() if row["strategy_id"] == "us_x")
-    task["formal_refresh_adapter_id"] = "cn_x1_1_formal_refresh_v1"
+    task["formal_refresh_adapter_id"] = "unregistered_formal_refresh_v1"
     plan = tmp_path / "plan.json"
     _write_plan(plan, [task])
 

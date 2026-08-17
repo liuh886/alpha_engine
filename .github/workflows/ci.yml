@@ -15,6 +15,7 @@ on:
       - 'Makefile'
       - '.github/workflows/ci.yml'
       - '.github/workflows/ranker-10d-current-target.yml'
+      - '.github/workflows/strategy-signal-delivery-outbox.yml'
   pull_request:
     branches: [main]
     paths:
@@ -29,6 +30,7 @@ on:
       - 'Makefile'
       - '.github/workflows/ci.yml'
       - '.github/workflows/ranker-10d-current-target.yml'
+      - '.github/workflows/strategy-signal-delivery-outbox.yml'
   schedule:
     - cron: '17 2 * * 0'
   workflow_dispatch:
@@ -89,6 +91,7 @@ jobs:
           src/research/qqq_authoritative_replay.py
           src/research/cn_x1_1_regime_gated.py
           src/research/cn_x1_2_prospective.py
+          src/research/cn_x1_2_current_target.py
           src/research/byd_v1_3_candidate.py
           src/research/ranker_current_target.py
           src/research/us_x1_3_current_target.py
@@ -97,6 +100,7 @@ jobs:
           src/governance/strategy_runtime_capabilities.py
           src/factors/ranker_snapshot.py
           src/artifacts/strategy_operations.py
+          src/artifacts/system_health.py
           src/artifacts/formal_bundle_reader.py
           src/artifacts/performance_semantics.py
           scripts/run_research_experiment.py
@@ -107,7 +111,7 @@ jobs:
           scripts/build_cn_x1_2_prospective_ledger.py
           scripts/sync_formal_bundle_v2.py
           scripts/run_ranker_current_target.py
-          scripts/run_us_x1_3_current_target.py
+          scripts/run_signal_delivery_outbox.py
           scripts/validate_model_x1_baselines.py
           scripts/diagnose_byd_activity_decay.py
           scripts/screen_byd_successor_states.py
@@ -123,8 +127,11 @@ jobs:
           tests/test_rules_formal_replay_gate.py
           tests/test_ranker_training.py
           tests/test_ranker_current_target.py
+          tests/test_ranker_current_target_runtime.py
           tests/test_us_x1_3_current_target.py
           tests/test_strategy_runtime_capabilities.py
+          tests/test_signal_delivery_outbox.py
+          tests/test_system_health.py
           tests/test_model_x1_baselines.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py
@@ -163,8 +170,11 @@ jobs:
           tests/test_rules_based_allocation_experiment_runner.py
           tests/test_rules_formal_replay_gate.py
           tests/test_ranker_current_target.py
+          tests/test_ranker_current_target_runtime.py
           tests/test_us_x1_3_current_target.py
           tests/test_strategy_runtime_capabilities.py
+          tests/test_signal_delivery_outbox.py
+          tests/test_system_health.py
           tests/test_model_x1_baselines.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py

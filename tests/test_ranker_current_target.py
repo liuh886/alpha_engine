@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 import json
-from argparse import Namespace
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-import scripts.run_ranker_current_target as ranker_runner
 from src.artifacts.strategy_signal_ledger import seal_signal_decision
 from src.factors.library import load_factor_library
 from src.factors.ranker_snapshot import build_ranker_factor_snapshot
 from src.research.ranker_current_target import (
-    CN_FACTOR_COLUMNS,
     RankerCurrentTargetError,
     _select_cn_sector_breadth,
     load_previous_state,
@@ -87,7 +84,7 @@ def test_next_due_session_fails_if_anchor_is_not_provider_session() -> None:
         )
 
 
-def test_governed_sessions_fill_short_live_provider_window(tmp_path: Path) -> None:
+def test_governed_sessions_extend_audited_history_with_live_benchmark(tmp_path: Path) -> None:
     evidence = tmp_path / "benchmark.json"
     evidence.write_text(
         json.dumps(
@@ -110,84 +107,30 @@ def test_governed_sessions_fill_short_live_provider_window(tmp_path: Path) -> No
     assert next_due_session(anchor="2026-07-29", sessions=sessions) is None
 
 
-def test_retained_cn_x1_1_adapter_uses_governed_calendar_without_yahoo(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    evidence = tmp_path / "data/research/market_evidence/cn/symbols/000300.json"
-    evidence.parent.mkdir(parents=True)
-    evidence.write_text(
-        json.dumps({"bars": [{"time": "2026-08-12", "close": 1.0}]}),
-        encoding="utf-8",
-    )
-    formal = tmp_path / "portfolio.json"
-    formal.write_text("{}", encoding="utf-8")
-
-    monkeypatch.setattr(ranker_runner, "ROOT", tmp_path)
-    monkeypatch.setattr(ranker_runner, "_formal_portfolio", lambda _formal_root: formal)
-    monkeypatch.setattr(
-        ranker_runner,
-        "load_previous_state",
-        lambda **_kwargs: ("2026-08-12", {"000300": 1.0}),
-    )
-    monkeypatch.setattr(
-        ranker_runner,
-        "completed_market_date",
-        lambda _market, _as_of: "2026-08-13",
-    )
-
-    assert not hasattr(ranker_runner, "YFinanceAdapter")
-    output = tmp_path / "due.json"
-    args = Namespace(
-        formal_root=tmp_path,
-        ledger_dir=tmp_path / "ledger",
-        as_of="2026-08-14",
-        output=output,
-    )
-
-    assert ranker_runner._due(args) == 0
-    payload = json.loads(output.read_text(encoding="utf-8"))
-    assert payload["market"] == "cn"
-    assert payload["model_version_id"] == "cn_x1_1"
-    assert payload["due"] is False
-    assert payload["signal_date"] is None
-    assert payload["calendar_provider"] == (
-        "completed_session_gate+governed_market_evidence"
-    )
-    workflow = (ROOT / ".github/workflows/ranker-10d-current-target.yml").read_text(
-        encoding="utf-8"
-    )
-    assert "scripts/run_ranker_current_target.py due" not in workflow
-    assert "scripts/run_ranker_current_target.py build" not in workflow
-
-
-def test_live_ledger_supersedes_older_formal_position(tmp_path: Path) -> None:
+def test_live_ledger_supersedes_older_same_model_formal_position(tmp_path: Path) -> None:
     formal = tmp_path / "formal.json"
-    ledger = tmp_path / "ledger"
+    ledger = tmp_path / "test_model"
     _formal(formal, "2026-07-01", {"AAA": 1.0})
-    _live_ledger(
-        ledger,
-        "2026-07-15",
-        {"BBB": 0.5, "CCC": 0.5},
-    )
+    _live_ledger(ledger, "2026-07-15", {"BBB": 0.5, "CCC": 0.5})
     date, weights = load_previous_state(formal_package=formal, ledger_dir=ledger)
     assert date == "2026-07-15"
     assert weights == {"BBB": 0.5, "CCC": 0.5}
 
 
-def test_formal_state_ahead_of_existing_ledger_fails_closed(tmp_path: Path) -> None:
+def test_formal_state_ahead_of_existing_same_model_ledger_fails_closed(tmp_path: Path) -> None:
     formal = tmp_path / "formal.json"
-    ledger = tmp_path / "ledger"
+    ledger = tmp_path / "test_model"
     _formal(formal, "2026-07-15", {"AAA": 1.0})
     _live_ledger(ledger, "2026-07-01", {"BBB": 1.0})
     with pytest.raises(RankerCurrentTargetError, match="formal ranker state is ahead"):
         load_previous_state(formal_package=formal, ledger_dir=ledger)
 
 
-def test_us_ranker_snapshot_preserves_explicit_model_factor_order() -> None:
+def test_ranker_snapshot_preserves_explicit_model_factor_order() -> None:
     library = load_factor_library(ROOT / "configs/factor_libraries/ohlcv.yaml")
     ids = [
-        factor.factor_id for factor in library.factors_for_groups(["momentum_volatility_volume"])
+        factor.factor_id
+        for factor in library.factors_for_groups(["momentum_volatility_volume"])
     ]
     ids = list(reversed(ids))
     snapshot = build_ranker_factor_snapshot(
@@ -203,10 +146,11 @@ def test_us_ranker_snapshot_preserves_explicit_model_factor_order() -> None:
     assert snapshot["freshness"] == "current"
 
 
-def test_us_ranker_snapshot_accepts_new_canonical_factors_without_family_map() -> None:
+def test_ranker_snapshot_accepts_new_canonical_factors_without_family_map() -> None:
     library = load_factor_library(ROOT / "configs/factor_libraries/ohlcv.yaml")
     ids = [
-        factor.factor_id for factor in library.factors_for_groups(["us_short_reversal_liquidity"])
+        factor.factor_id
+        for factor in library.factors_for_groups(["us_short_reversal_liquidity"])
     ]
     snapshot = build_ranker_factor_snapshot(
         model_family_id="us_ranker",
@@ -218,12 +162,6 @@ def test_us_ranker_snapshot_accepts_new_canonical_factors_without_family_map() -
     )
     assert snapshot["groups"] == []
     assert [row["factor_id"] for row in snapshot["factors"]] == ids
-
-
-def test_cn_factor_mapping_matches_canonical_group() -> None:
-    library = load_factor_library(ROOT / "configs/factor_libraries/ohlcv.yaml")
-    ids = [factor.factor_id for factor in library.factors_for_groups(["cn_balanced_ohlcv"])]
-    assert list(CN_FACTOR_COLUMNS) == ids
 
 
 def test_cn_sector_breadth_selects_one_name_from_top_four_sectors() -> None:

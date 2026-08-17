@@ -72,7 +72,9 @@ def _state_max(states: Sequence[str]) -> str:
 def _factor_cutoff(operation: Mapping[str, Any]) -> str | None:
     rows = operation.get("factor_evidence")
     if isinstance(rows, list):
-        observed = [_date(row.get("observed_at")) for row in rows if isinstance(row, Mapping)]
+        observed = [
+            _date(row.get("observed_at")) for row in rows if isinstance(row, Mapping)
+        ]
         if any(observed):
             return _max_date(observed)
     return _date(operation.get("latest_completed_session"))
@@ -96,7 +98,7 @@ def _last_signal_change(strategy: ActiveStrategy, repository_root: Path) -> str 
 
 def _delivery_state(status_value: object) -> tuple[str, str | None]:
     status = str(status_value or "")
-    if status in {"sent"}:
+    if status == "sent":
         return "current", status
     if status in {"not_required", "unchanged", "suppressed"}:
         return "not_applicable", status
@@ -172,10 +174,14 @@ def build_system_health(
     if not isinstance(operation_rows, list) or not isinstance(formal_rows, list):
         raise SystemHealthError("formal/operations records are missing")
     operations_by_model = {
-        str(row.get("model_version_id")): row for row in operation_rows if isinstance(row, Mapping)
+        str(row.get("model_version_id")): row
+        for row in operation_rows
+        if isinstance(row, Mapping)
     }
     formal_by_model = {
-        str(row.get("model_version_id")): row for row in formal_rows if isinstance(row, Mapping)
+        str(row.get("model_version_id")): row
+        for row in formal_rows
+        if isinstance(row, Mapping)
     }
     expected_ids = set(strategies_by_model)
     if set(operations_by_model) != expected_ids or set(formal_by_model) != expected_ids:
@@ -233,7 +239,7 @@ def build_system_health(
                 "market_expected_cutoff": expected_cutoff,
                 "market_expected_cutoff_source": "max_governed_active_watermark",
                 "provider_cutoff": provider_cutoff,
-                "provider_cutoff_source": "provider_resolved_common_session",
+                "provider_cutoff_source": "governed_benchmark_market_session",
                 "provider_lag_sessions": 0 if state == "current" else None,
                 "provider_lag_exact": state == "current",
                 "provider_formal_consistency": (
@@ -253,7 +259,9 @@ def build_system_health(
         signal_evaluation = _date(operation.get("as_of")) or _date(
             operation.get("latest_completed_session")
         )
-        delivery_state, delivery_status = _delivery_state(operation.get("delivery_status"))
+        delivery_state, delivery_status = _delivery_state(
+            operation.get("delivery_status")
+        )
         formal_state = (
             "blocked"
             if formal_cutoff is None or provider_cutoff is None
@@ -270,7 +278,14 @@ def build_system_health(
         factor_state = _freshness_state(operation.get("factor_freshness"))
         signal_state = _operation_state(operation)
         internal_state = _state_max(
-            [market_state[strategy.market], formal_state, data_state, factor_state, signal_state]
+            [
+                market_state[strategy.market],
+                formal_state,
+                data_state,
+                factor_state,
+                signal_state,
+                delivery_state,
+            ]
         )
         strategies.append(
             {
