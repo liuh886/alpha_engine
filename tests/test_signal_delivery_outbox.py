@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import scripts.run_signal_delivery_outbox as outbox
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _active_strategy():
@@ -57,7 +60,9 @@ def test_no_change_is_finalized_without_transport(monkeypatch) -> None:
     monkeypatch.setattr(
         outbox,
         "_existing_issue",
-        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("transport must not run")),
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("transport must not run")
+        ),
     )
 
     results = outbox.drain_outbox(
@@ -101,7 +106,9 @@ def test_terminal_delivery_is_not_replayed(monkeypatch) -> None:
     monkeypatch.setattr(
         outbox,
         "_record",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("terminal receipt is immutable")),
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("terminal receipt is immutable")
+        ),
     )
 
     results = outbox.drain_outbox(
@@ -116,3 +123,24 @@ def test_terminal_delivery_is_not_replayed(monkeypatch) -> None:
     assert results[0].status == "sent"
     assert results[0].github_issue_number == 10
     assert results[0].telegram_message_id == 20
+
+
+def test_model_workflows_delegate_all_external_delivery_to_outbox() -> None:
+    model_workflows = [
+        ROOT / ".github/workflows/qqq-v4-3-signal-alert.yml",
+        ROOT / ".github/workflows/byd-daily-signal-alert.yml",
+        ROOT / ".github/workflows/ranker-10d-current-target.yml",
+    ]
+    for path in model_workflows:
+        text = path.read_text(encoding="utf-8")
+        assert "TELEGRAM_BOT_TOKEN" not in text
+        assert "api.telegram.org" not in text
+        assert "gh issue create" not in text
+        assert "--delivery-status pending" in text
+
+    delivery = (ROOT / ".github/workflows/strategy-signal-delivery-outbox.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "TELEGRAM_BOT_TOKEN" in delivery
+    assert "TELEGRAM_CHAT_ID" in delivery
+    assert "scripts/run_signal_delivery_outbox.py" in delivery
