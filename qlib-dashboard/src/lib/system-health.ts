@@ -22,10 +22,10 @@ export interface SystemHealthStrategy {
   formal_cutoff: string | null;
   model_data_cutoff: string | null;
   factor_cutoff: string | null;
-  last_signal_evaluation: null;
-  last_signal_change: null;
-  delivery_state: 'not_applicable';
-  delivery_status: null;
+  last_signal_evaluation: string | null;
+  last_signal_change: string | null;
+  delivery_state: SystemHealthState;
+  delivery_status: string | null;
   stages: Record<'provider' | 'formal' | 'model_data' | 'factor' | 'signal' | 'delivery', SystemHealthState>;
   formal_bundle_id: string;
   formal_run_id: string;
@@ -73,6 +73,10 @@ function state(value: unknown, label: string): SystemHealthState {
   return value as SystemHealthState;
 }
 
+function nullableString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
 export function parseSystemHealth(value: unknown): SystemHealthSnapshot {
   if (!isObject(value)
     || value.schema_version !== '1.0.0'
@@ -89,9 +93,9 @@ export function parseSystemHealth(value: unknown): SystemHealthSnapshot {
     return {
       market: String(item.market ?? ''),
       state: state(item.state, `market ${index}`),
-      market_expected_cutoff: typeof item.market_expected_cutoff === 'string' ? item.market_expected_cutoff : null,
+      market_expected_cutoff: nullableString(item.market_expected_cutoff),
       market_expected_cutoff_source: String(item.market_expected_cutoff_source ?? ''),
-      provider_cutoff: typeof item.provider_cutoff === 'string' ? item.provider_cutoff : null,
+      provider_cutoff: nullableString(item.provider_cutoff),
       provider_cutoff_source: String(item.provider_cutoff_source ?? ''),
       provider_lag_sessions: typeof item.provider_lag_sessions === 'number' ? item.provider_lag_sessions : null,
       provider_lag_exact: item.provider_lag_exact === true,
@@ -106,15 +110,15 @@ export function parseSystemHealth(value: unknown): SystemHealthSnapshot {
       model_version_id: String(item.model_version_id ?? ''),
       market: String(item.market ?? ''),
       state: state(item.state, `strategy ${index}`),
-      market_expected_cutoff: typeof item.market_expected_cutoff === 'string' ? item.market_expected_cutoff : null,
-      provider_cutoff: typeof item.provider_cutoff === 'string' ? item.provider_cutoff : null,
-      formal_cutoff: typeof item.formal_cutoff === 'string' ? item.formal_cutoff : null,
-      model_data_cutoff: typeof item.model_data_cutoff === 'string' ? item.model_data_cutoff : null,
-      factor_cutoff: typeof item.factor_cutoff === 'string' ? item.factor_cutoff : null,
-      last_signal_evaluation: null,
-      last_signal_change: null,
-      delivery_state: 'not_applicable' as const,
-      delivery_status: null,
+      market_expected_cutoff: nullableString(item.market_expected_cutoff),
+      provider_cutoff: nullableString(item.provider_cutoff),
+      formal_cutoff: nullableString(item.formal_cutoff),
+      model_data_cutoff: nullableString(item.model_data_cutoff),
+      factor_cutoff: nullableString(item.factor_cutoff),
+      last_signal_evaluation: nullableString(item.last_signal_evaluation),
+      last_signal_change: nullableString(item.last_signal_change),
+      delivery_state: state(item.delivery_state, `delivery ${index}`),
+      delivery_status: nullableString(item.delivery_status),
       stages: {
         provider: state(stages.provider, `provider ${index}`),
         formal: state(stages.formal, `formal ${index}`),
@@ -136,15 +140,15 @@ export function parseSystemHealth(value: unknown): SystemHealthSnapshot {
     strategies,
     deployment: {
       state: state(value.deployment.state, 'deployment'),
-      expected_commit_sha: typeof value.deployment.expected_commit_sha === 'string' ? value.deployment.expected_commit_sha : null,
-      workflow_run_id: typeof value.deployment.workflow_run_id === 'string' ? value.deployment.workflow_run_id : null,
+      expected_commit_sha: nullableString(value.deployment.expected_commit_sha),
+      workflow_run_id: nullableString(value.deployment.workflow_run_id),
       live_acceptance: String(value.deployment.live_acceptance ?? ''),
       receipt: 'deployment.json',
     },
     model_data: {
       state: state(value.model_data.state, 'model_data'),
-      evidence_cutoff: typeof value.model_data.evidence_cutoff === 'string' ? value.model_data.evidence_cutoff : null,
-      bundle_id: typeof value.model_data.bundle_id === 'string' ? value.model_data.bundle_id : null,
+      evidence_cutoff: nullableString(value.model_data.evidence_cutoff),
+      bundle_id: nullableString(value.model_data.bundle_id),
     },
     research_only: true,
     trade_ready: false,
@@ -180,7 +184,7 @@ export async function fetchSystemHealth(): Promise<LiveSystemHealth> {
     const status = health.state;
     const delayed = health.markets.filter((row) => row.state === 'delayed').map((row) => row.market.toUpperCase());
     const message = status === 'current'
-      ? 'Provider, model-data, factor, formal and signal stages are internally current.'
+      ? 'Provider, model-data, factor, formal, signal and delivery stages are current.'
       : status === 'delayed'
         ? `Pipeline is internally consistent but delayed${delayed.length ? ` in ${delayed.join(' / ')}` : ''}.`
         : status === 'blocked'
