@@ -3,8 +3,9 @@
 The command never overwrites the authoritative source directory. It can either
 refresh only missing/invalid symbols or rebuild the complete selected pool plus
 benchmark and explicitly declared auxiliary securities. Every provider attempt
-is recorded, the exact pool is validated, and only a complete provider or
-diagnostics-only blocked result is published.
+is recorded. A transient fetch failure may retain an already-validated canonical
+source as explicitly stale evidence; missing or invalid canonical sources still
+block the provider build.
 """
 
 from __future__ import annotations
@@ -220,6 +221,31 @@ def _fetch_with_retries(
     return last_response, combined_attempts
 
 
+def _retain_stale_source(
+    *,
+    source_path: Path,
+    output_path: Path,
+    symbol: str,
+    audit: dict[str, Any],
+    attempts: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if audit.get("status") != "ready":
+        return None
+    shutil.copy2(source_path, output_path)
+    return {
+        "symbol": symbol,
+        "action": "retained_stale_source",
+        "stale_reason": "provider_fetch_failed",
+        "source_sha256": audit["sha256"],
+        "output_sha256": _sha256(output_path),
+        "rows": audit["rows"],
+        "first_date": audit["first_date"],
+        "last_date": audit["last_date"],
+        "attempts": attempts,
+        "identity_contract": _identity_contract("us" if symbol == "QQQ" else "", symbol),
+    }
+
+
 def _base_manifest(
     *,
     market: str,
@@ -354,6 +380,17 @@ def refresh_selected_pool_prices(
                 max_rounds=max_rounds,
             )
             if not response.ok or response.result is None:
+                retained = _retain_stale_source(
+                    source_path=source_path,
+                    output_path=output_path,
+                    symbol=symbol,
+                    audit=before[symbol],
+                    attempts=attempt_rows,
+                )
+                if retained is not None:
+                    retained["identity_contract"] = _identity_contract(market_key, symbol)
+                    records.append(retained)
+                    continue
                 failure = {
                     "symbol": symbol,
                     "action": "fetch_failed",
@@ -425,6 +462,7 @@ def refresh_selected_pool_prices(
                     "failed_symbols": [row["symbol"] for row in failures],
                     "failures": failures,
                     "all_sources_ready": False,
+                    "all_sources_current": False,
                 }
             )
             shutil.rmtree(stage / "data", ignore_errors=True)
@@ -457,16 +495,23 @@ def refresh_selected_pool_prices(
             market=market_key,
             include_fields=DEFAULT_FIELDS,
         )
+        stale_symbols = sorted(
+            str(record["symbol"])
+            for record in records
+            if record.get("action") == "retained_stale_source"
+        )
         manifest.update(
             {
                 "status": "selected_pool_price_refresh_ready",
                 "failure_count": 0,
                 "failed_symbols": [],
+                "stale_symbols": stale_symbols,
                 "after": after,
                 "provider_identity_sha256": provider_manifest.get(
                     "provider_identity_sha256"
                 ),
                 "all_sources_ready": True,
+                "all_sources_current": not stale_symbols,
             }
         )
         _write_json(
