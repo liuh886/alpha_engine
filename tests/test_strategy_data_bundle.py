@@ -69,7 +69,7 @@ def _build_etf_bundle(tmp_path: Path) -> Path:
     return root
 
 
-def test_strategy_bundle_binds_tradables_and_signal_references(tmp_path: Path) -> None:
+def test_strategy_bundle_binds_all_tradables_and_signal_references(tmp_path: Path) -> None:
     etf_root = _build_etf_bundle(tmp_path)
     output = tmp_path / "strategy"
     manifest = build_strategy_data_bundle(
@@ -81,11 +81,13 @@ def test_strategy_bundle_binds_tradables_and_signal_references(tmp_path: Path) -
     )
 
     assert manifest["status"] == "ready"
-    assert manifest["expected_symbol_count"] == 5
-    assert manifest["ready_symbol_count"] == 5
+    assert manifest["expected_symbol_count"] == 6
+    assert manifest["ready_symbol_count"] == 6
     assert manifest["symbols"] == list(STRATEGY_DATA_SYMBOLS)
     assert manifest["roles"]["QQQI"] == "tradable"
+    assert manifest["roles"]["SGOV"] == "tradable"
     assert manifest["roles"]["^VIX"] == "signal_reference"
+    assert manifest["roles"]["^VXN"] == "signal_reference"
     assert manifest["first_date"] == "2024-01-30"
     assert manifest["professional_source_ready"] is True
 
