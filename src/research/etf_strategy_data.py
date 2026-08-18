@@ -8,6 +8,7 @@ import pandas as pd
 
 from src.data.strategy_data_bundle import (
     STRATEGY_MANIFEST_NAME,
+    STRATEGY_SGOV_DATA_SYMBOLS,
     build_strategy_data_bundle,
     load_strategy_data_bundle,
 )
@@ -45,6 +46,7 @@ def _strategy_bundle_root(
     *,
     start: str,
     end: str | None,
+    adapter: Any | None,
 ) -> Path:
     strategy_root = etf_root / STRATEGY_SUBDIR
     manifest = strategy_root / STRATEGY_MANIFEST_NAME
@@ -54,6 +56,15 @@ def _strategy_bundle_root(
             output_root=strategy_root,
             start=start,
             end=end,
+            component_id="strategy.qqqi_qqq_tqqq_sgov_vix_vxn_v1",
+            reference_adapter=adapter,
+            supplemental_symbols=("SGOV", "^VIX", "^VXN"),
+            supplemental_roles={
+                "SGOV": "tradable",
+                "^VIX": "signal_reference",
+                "^VXN": "signal_reference",
+            },
+            bundle_id="qqqi_qqq_tqqq_sgov_vix_vxn_strategy_data_v1",
         )
     return strategy_root
 
@@ -66,18 +77,26 @@ def fetch_governed_etf_strategy_bars(
     bundle_dir: str | Path | None = None,
     adapter: Any | None = None,
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, dict[str, Any]]:
-    """Load QQQ strategy inputs from one canonical composite data product.
+    """Load QQQ strategy inputs from one canonical six-symbol data product.
 
     Production callers provide the governed professional ETF bundle. This
-    function seals the complete strategy product exactly once under
+    function seals the complete QQQ v4.3 strategy product exactly once under
     ``strategy_data/`` and all subsequent model/replay reads consume that same
     manifest-bound product. There is no ETF-only compatibility read path.
     """
 
     requested = [str(value).strip().upper() for value in symbols]
     if bundle_dir is not None:
+        unknown = sorted(set(requested) - set(STRATEGY_SGOV_DATA_SYMBOLS))
+        if unknown:
+            raise ValueError(f"QQQ v4.3 requests undeclared strategy symbols: {unknown}")
         etf_root = Path(bundle_dir).resolve()
-        strategy_root = _strategy_bundle_root(etf_root, start=start, end=end)
+        strategy_root = _strategy_bundle_root(
+            etf_root,
+            start=start,
+            end=end,
+            adapter=adapter,
+        )
         strategy_manifest = strategy_root / STRATEGY_MANIFEST_NAME
         loaded, coverage, manifest = load_strategy_data_bundle(
             strategy_root,
