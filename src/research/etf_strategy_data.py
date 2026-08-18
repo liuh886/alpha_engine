@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -7,9 +8,16 @@ import pandas as pd
 
 from src.data.strategy_data_bundle import (
     STRATEGY_MANIFEST_NAME,
+    build_strategy_data_bundle,
     load_strategy_data_bundle,
 )
 from src.research.etf_rotation_experiment import fetch_adjusted_daily_bars
+
+STRATEGY_SUBDIR = "strategy_data"
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _clip_frame(
@@ -32,6 +40,24 @@ def _clip_frame(
     return local
 
 
+def _strategy_bundle_root(
+    etf_root: Path,
+    *,
+    start: str,
+    end: str | None,
+) -> Path:
+    strategy_root = etf_root / STRATEGY_SUBDIR
+    manifest = strategy_root / STRATEGY_MANIFEST_NAME
+    if not manifest.is_file():
+        build_strategy_data_bundle(
+            etf_bundle_root=etf_root,
+            output_root=strategy_root,
+            start=start,
+            end=end,
+        )
+    return strategy_root
+
+
 def fetch_governed_etf_strategy_bars(
     *,
     symbols: Sequence[str],
@@ -40,23 +66,21 @@ def fetch_governed_etf_strategy_bars(
     bundle_dir: str | Path | None = None,
     adapter: Any | None = None,
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, dict[str, Any]]:
-    """Load QQQ strategy inputs from the canonical composite data product.
+    """Load QQQ strategy inputs from one canonical composite data product.
 
-    Supplying ``bundle_dir`` is the production path and requires the complete
-    strategy-data manifest. Direct provider fetching remains available only for
-    isolated research callers that deliberately omit a governed bundle.
+    Production callers provide the governed professional ETF bundle. This
+    function seals the complete strategy product exactly once under
+    ``strategy_data/`` and all subsequent model/replay reads consume that same
+    manifest-bound product. There is no ETF-only compatibility read path.
     """
 
     requested = [str(value).strip().upper() for value in symbols]
     if bundle_dir is not None:
-        root = Path(bundle_dir).resolve()
-        strategy_manifest = root / STRATEGY_MANIFEST_NAME
-        if not strategy_manifest.is_file():
-            raise ValueError(
-                "governed QQQ strategy bundle is required; ETF-only compatibility data are not accepted"
-            )
+        etf_root = Path(bundle_dir).resolve()
+        strategy_root = _strategy_bundle_root(etf_root, start=start, end=end)
+        strategy_manifest = strategy_root / STRATEGY_MANIFEST_NAME
         loaded, coverage, manifest = load_strategy_data_bundle(
-            root,
+            strategy_root,
             symbols=requested,
         )
         bars = {
@@ -102,9 +126,3 @@ def fetch_governed_etf_strategy_bars(
         "trade_ready": False,
     }
     return direct_bars, coverage.sort_values("symbol").reset_index(drop=True), identity
-
-
-def _sha256(path: Path) -> str:
-    import hashlib
-
-    return hashlib.sha256(path.read_bytes()).hexdigest()
