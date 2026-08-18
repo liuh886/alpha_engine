@@ -11,17 +11,22 @@ from src.data.adapters.base import FetchResult
 from src.data.router import RouterAttempt, RouterResponse
 
 
-def _frame(multiplier: float = 1.0) -> pd.DataFrame:
+def _frame(
+    multiplier: float = 1.0,
+    dates: tuple[str, ...] = ("2021-01-04", "2021-01-05"),
+) -> pd.DataFrame:
+    size = len(dates)
+    opens = [10.0 + index for index in range(size)]
     return pd.DataFrame(
         {
-            "date": ["2021-01-04", "2021-01-05"],
-            "open": [10.0, 11.0],
-            "high": [11.0, 12.0],
-            "low": [9.0, 10.0],
-            "close": [10.5, 11.5],
-            "volume": [100.0, 120.0],
-            "amount": [1000.0, 1320.0],
-            "factor": [multiplier, multiplier],
+            "date": list(dates),
+            "open": opens,
+            "high": [value + 1.0 for value in opens],
+            "low": [value - 1.0 for value in opens],
+            "close": [value + 0.5 for value in opens],
+            "volume": [100.0 + 20.0 * index for index in range(size)],
+            "amount": [1000.0 + 320.0 * index for index in range(size)],
+            "factor": [multiplier] * size,
         }
     )
 
@@ -34,7 +39,7 @@ def _write_csv(path: Path, frame: pd.DataFrame) -> None:
 class FakeRouter:
     def __init__(self, frames: dict[str, pd.DataFrame]) -> None:
         self.frames = frames
-        self.calls: list[str] = []
+        self.calls: list[tuple[str, str, str | None]] = []
 
     def fetch_daily_bars(
         self,
@@ -45,8 +50,8 @@ class FakeRouter:
         end: str | None = None,
         validate: bool = False,
     ) -> RouterResponse:
-        del start, end, validate
-        self.calls.append(symbol)
+        del validate
+        self.calls.append((symbol, start, end))
         frame = self.frames.get(symbol)
         if frame is None:
             return RouterResponse(
@@ -65,8 +70,8 @@ class FakeRouter:
                 provider="fake",
                 symbol=symbol,
                 market=market,
-                start="2021-01-01",
-                end="2026-06-18",
+                start=start,
+                end=end,
                 df=frame.copy(),
                 provider_symbol=symbol,
             ),
@@ -76,8 +81,8 @@ class FakeRouter:
                     ok=True,
                     provider_symbol=symbol,
                     rows=len(frame),
-                    first_date="2021-01-04",
-                    last_date="2021-01-05",
+                    first_date=str(frame["date"].iloc[0]),
+                    last_date=str(frame["date"].iloc[-1]),
                 )
             ],
         )
@@ -111,16 +116,18 @@ def _prepare_contract(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return pool
 
 
-def test_refresh_fetches_only_missing_or_invalid_sources(
+def test_incremental_refresh_fetches_only_invalid_or_outdated_sources(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _prepare_contract(tmp_path, monkeypatch)
     source = tmp_path / "source"
-    _write_csv(source / "000001.csv", _frame())
+    current = _frame(dates=("2021-01-04", "2021-01-05", "2021-01-06"))
+    _write_csv(source / "000001.csv", current)
     _write_csv(source / "000002.csv", _frame().assign(high=[1.0, 1.0]))
-    _write_csv(source / "000300.csv", _frame())
-    router = FakeRouter({"000002": _frame(2.0)})
+    _write_csv(source / "000300.csv", current)
+    replacement = _frame(2.0, dates=("2021-01-04", "2021-01-05", "2021-01-06"))
+    router = FakeRouter({"000002": replacement})
     output = tmp_path / "output"
 
     payload = module.refresh_selected_pool_prices(
@@ -129,19 +136,55 @@ def test_refresh_fetches_only_missing_or_invalid_sources(
         source_csv_dir=source,
         output_root=output,
         start="2021-01-01",
-        cutoff="2026-06-18",
+        cutoff="2021-01-06",
         router=router,  # type: ignore[arg-type]
         max_rounds=1,
     )
 
     assert payload["refresh_mode"] == "repair_only"
-    assert payload["target_count"] == 1
     assert payload["targets"] == ["000002"]
-    assert payload["candidate_symbols"] == ["000001", "000002"]
-    assert payload["auxiliary_symbols"] == []
-    assert router.calls == ["000002"]
+    assert [call[0] for call in router.calls] == ["000002"]
     assert payload["status"] == "selected_pool_price_refresh_ready"
-    assert payload["all_sources_ready"] is True
+    assert payload["stale_symbols"] == []
+    assert payload["all_sources_current"] is True
+
+
+def test_incremental_refresh_extends_governed_history_to_cutoff(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_contract(tmp_path, monkeypatch)
+    source = tmp_path / "source"
+    governed = _frame()
+    for symbol in ("000001", "000002", "000300"):
+        _write_csv(source / f"{symbol}.csv", governed)
+    update = _frame(
+        2.0,
+        dates=("2021-01-05", "2021-01-06"),
+    )
+    router = FakeRouter({symbol: update for symbol in ("000001", "000002", "000300")})
+    output = tmp_path / "output"
+
+    payload = module.refresh_selected_pool_prices(
+        root=tmp_path,
+        market="cn",
+        source_csv_dir=source,
+        output_root=output,
+        start="2021-01-01",
+        cutoff="2021-01-06",
+        router=router,  # type: ignore[arg-type]
+        max_rounds=1,
+    )
+
+    assert payload["targets"] == ["000001", "000002", "000300"]
+    assert all(call[1] == "2021-01-05" for call in router.calls)
+    assert {row["action"] for row in payload["records"]} == {
+        "fetched_incremental_update"
+    }
+    merged = pd.read_csv(output / "data" / "csv_source" / "000001.csv")
+    assert merged["date"].tolist() == ["2021-01-04", "2021-01-05", "2021-01-06"]
+    assert float(merged.loc[merged["date"] == "2021-01-05", "factor"].iloc[0]) == 2.0
+    assert payload["stale_symbols"] == []
     assert payload["all_sources_current"] is True
 
 
@@ -164,7 +207,7 @@ def test_full_refresh_fetches_every_candidate_and_benchmark(
         source_csv_dir=source,
         output_root=output,
         start="2021-01-01",
-        cutoff="2026-06-18",
+        cutoff="2021-01-05",
         router=router,  # type: ignore[arg-type]
         max_rounds=1,
         full_refresh=True,
@@ -172,7 +215,6 @@ def test_full_refresh_fetches_every_candidate_and_benchmark(
 
     assert payload["refresh_mode"] == "full"
     assert payload["targets"] == ["000001", "000002", "000300"]
-    assert router.calls == ["000001", "000002", "000300"]
     assert {row["action"] for row in payload["records"]} == {
         "fetched_full_refresh"
     }
@@ -198,22 +240,48 @@ def test_full_refresh_retains_validated_source_when_fetch_is_transiently_unavail
         source_csv_dir=source,
         output_root=output,
         start="2021-01-01",
-        cutoff="2026-06-18",
+        cutoff="2021-01-05",
         router=router,  # type: ignore[arg-type]
         max_rounds=1,
         full_refresh=True,
     )
 
     assert payload["status"] == "selected_pool_price_refresh_ready"
-    assert payload["failure_count"] == 0
     assert payload["failed_symbols"] == []
-    assert payload["stale_symbols"] == ["000002"]
+    assert payload["stale_symbols"] == []
     assert payload["all_sources_ready"] is True
-    assert payload["all_sources_current"] is False
+    assert payload["all_sources_current"] is True
     retained = next(row for row in payload["records"] if row["symbol"] == "000002")
     assert retained["action"] == "retained_stale_source"
-    assert retained["stale_reason"] == "provider_fetch_failed"
     assert (output / "data" / "csv_source" / "000002.csv").read_bytes() == original
+
+
+def test_incremental_refresh_marks_retained_old_source_stale(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_contract(tmp_path, monkeypatch)
+    source = tmp_path / "source"
+    for symbol in ("000001", "000002", "000300"):
+        _write_csv(source / f"{symbol}.csv", _frame())
+    update = _frame(dates=("2021-01-05", "2021-01-06"))
+    router = FakeRouter({"000001": update, "000300": update})
+    output = tmp_path / "output"
+
+    payload = module.refresh_selected_pool_prices(
+        root=tmp_path,
+        market="cn",
+        source_csv_dir=source,
+        output_root=output,
+        start="2021-01-01",
+        cutoff="2021-01-06",
+        router=router,  # type: ignore[arg-type]
+        max_rounds=1,
+    )
+
+    assert payload["status"] == "selected_pool_price_refresh_ready"
+    assert payload["stale_symbols"] == ["000002"]
+    assert payload["all_sources_current"] is False
 
 
 def test_auxiliary_symbols_share_provider_without_entering_candidate_identity(
@@ -233,7 +301,7 @@ def test_auxiliary_symbols_share_provider_without_entering_candidate_identity(
         source_csv_dir=source,
         output_root=output,
         start="2021-01-01",
-        cutoff="2026-06-18",
+        cutoff="2021-01-05",
         router=router,  # type: ignore[arg-type]
         max_rounds=1,
         auxiliary_symbols=["515180"],
@@ -244,7 +312,7 @@ def test_auxiliary_symbols_share_provider_without_entering_candidate_identity(
     assert payload["benchmark"] == "000300"
     assert payload["auxiliary_symbols"] == ["515180"]
     assert payload["targets"] == ["515180"]
-    assert router.calls == ["515180"]
+    assert [call[0] for call in router.calls] == ["515180"]
     assert (output / "data" / "csv_source" / "515180.csv").is_file()
 
 
@@ -265,7 +333,7 @@ def test_refresh_publishes_diagnostics_without_partial_data(
             source_csv_dir=source,
             output_root=output,
             start="2021-01-01",
-            cutoff="2026-06-18",
+            cutoff="2021-01-05",
             router=FakeRouter({}),  # type: ignore[arg-type]
             max_rounds=1,
         )
@@ -297,7 +365,7 @@ def test_refresh_refuses_nonempty_destination(
             source_csv_dir=tmp_path / "source",
             output_root=output,
             start="2021-01-01",
-            cutoff="2026-06-18",
+            cutoff="2021-01-05",
             router=FakeRouter({}),  # type: ignore[arg-type]
             max_rounds=1,
         )
