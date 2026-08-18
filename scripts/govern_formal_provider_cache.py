@@ -10,9 +10,11 @@ from pathlib import Path
 from src.artifacts.formal_provider_cache import (
     build_provider_cache_contract,
     cache_key,
+    history_cache_prefix,
     load_contract,
     seal_provider_cache,
     verify_provider_cache,
+    verify_provider_history_source,
     write_contract,
 )
 
@@ -43,6 +45,11 @@ def main() -> int:
         child.add_argument("--contract", type=Path, required=True)
         child.add_argument("--receipt", type=Path, required=True)
 
+    history_parser = subparsers.add_parser("history")
+    history_parser.add_argument("--provider-root", type=Path, required=True)
+    history_parser.add_argument("--market", choices=("us", "cn"), required=True)
+    history_parser.add_argument("--cutoff", required=True)
+
     args = parser.parse_args()
     if args.command == "contract":
         contract = build_provider_cache_contract(
@@ -54,10 +61,17 @@ def main() -> int:
         write_contract(args.output, contract)
         values = {
             "cache_key": cache_key(contract),
+            "history_key_prefix": history_cache_prefix(contract),
             "contract_sha256": str(contract["contract_sha256"]),
         }
         _write_github_output(args.github_output, values)
         result: dict[str, object] = {**values, "contract": contract}
+    elif args.command == "history":
+        result = verify_provider_history_source(
+            provider_root=args.provider_root,
+            market=args.market,
+            requested_cutoff=args.cutoff,
+        )
     else:
         contract = load_contract(args.contract)
         if args.command == "seal":
