@@ -28,7 +28,14 @@ def _bars(
     professional: bool = False,
 ) -> pd.DataFrame:
     dates = pd.bdate_range(start, periods=periods)
-    base = {"QQQ": 400.0, "QQQI": 50.0, "TQQQ": 60.0, "VIX": 18.0}[symbol]
+    base = {
+        "QQQ": 400.0,
+        "QQQI": 50.0,
+        "TQQQ": 60.0,
+        "SGOV": 100.0,
+        "^VIX": 18.0,
+        "^VXN": 22.0,
+    }[symbol]
     close = pd.Series(base * np.cumprod(np.full(periods, 1.001)), index=dates)
     open_price = close * 0.999
     frame = pd.DataFrame(
@@ -315,7 +322,7 @@ def test_bundle_loader_rejects_modified_canonical_file(tmp_path: Path) -> None:
         load_etf_reference_bundle(tmp_path)
 
 
-def test_strategy_loader_uses_bundle_for_etfs_and_direct_fetch_for_vix(
+def test_strategy_loader_seals_one_six_symbol_governed_product(
     tmp_path: Path,
 ) -> None:
     build_etf_reference_bundle(
@@ -324,23 +331,29 @@ def test_strategy_loader_uses_bundle_for_etfs_and_direct_fetch_for_vix(
         primary_adapter=None,
         fallback_adapter=FakeAdapter("yfinance", _fallback_frames()),
     )
-    vix_adapter = FakeAdapter(
-        "yfinance", {"VIX": _bars("VIX", start="2024-01-29")}
+    supplemental = FakeAdapter(
+        "yfinance",
+        {
+            "SGOV": _bars("SGOV", start="2024-01-29"),
+            "^VIX": _bars("^VIX", start="2024-01-29"),
+            "^VXN": _bars("^VXN", start="2024-01-29"),
+        },
     )
     bars, coverage, identity = fetch_governed_etf_strategy_bars(
-        symbols=["QQQI", "QQQ", "TQQQ", "VIX"],
+        symbols=["QQQI", "QQQ", "TQQQ", "SGOV", "^VIX", "^VXN"],
         start="2024-01-30",
         bundle_dir=tmp_path,
-        adapter=vix_adapter,
+        adapter=supplemental,
     )
 
-    assert sorted(bars) == ["QQQ", "QQQI", "TQQQ", "VIX"]
-    assert identity["mode"] == "governed_etf_bundle"
+    assert sorted(bars) == ["QQQ", "QQQI", "SGOV", "TQQQ", "^VIX", "^VXN"]
+    assert identity["mode"] == "governed_strategy_data_bundle"
     assert identity["strategy_data_ready"] is True
-    assert set(coverage["data_mode"]) == {
-        "governed_etf_bundle",
-        "direct_reference_fetch",
-    }
+    assert identity["roles"]["SGOV"] == "tradable"
+    assert identity["roles"]["^VIX"] == "signal_reference"
+    assert identity["roles"]["^VXN"] == "signal_reference"
+    assert set(coverage["data_mode"]) == {"governed_strategy_data_bundle"}
+    assert (tmp_path / "strategy_data" / "strategy_data_manifest.json").is_file()
 
 
 def test_reconciliation_can_explain_action_window_difference() -> None:

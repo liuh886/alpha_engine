@@ -9,7 +9,7 @@ import pytest
 from src.data.adapters.base import FetchRequest, FetchResult
 from src.data.etf_reference_bundle import build_etf_reference_bundle
 from src.data.strategy_data_bundle import (
-    STRATEGY_DATA_SYMBOLS,
+    STRATEGY_SGOV_DATA_SYMBOLS,
     StrategyDataBundleError,
     build_strategy_data_bundle,
     load_strategy_data_bundle,
@@ -69,7 +69,7 @@ def _build_etf_bundle(tmp_path: Path) -> Path:
     return root
 
 
-def test_strategy_bundle_binds_tradables_and_signal_references(tmp_path: Path) -> None:
+def test_strategy_bundle_binds_all_tradables_and_signal_references(tmp_path: Path) -> None:
     etf_root = _build_etf_bundle(tmp_path)
     output = tmp_path / "strategy"
     manifest = build_strategy_data_bundle(
@@ -78,19 +78,27 @@ def test_strategy_bundle_binds_tradables_and_signal_references(tmp_path: Path) -
         start="2024-01-01",
         end="2024-03-15",
         reference_adapter=FakeAdapter("yfinance"),
+        supplemental_symbols=("SGOV", "^VIX", "^VXN"),
+        supplemental_roles={
+            "SGOV": "tradable",
+            "^VIX": "signal_reference",
+            "^VXN": "signal_reference",
+        },
     )
 
     assert manifest["status"] == "ready"
-    assert manifest["expected_symbol_count"] == 5
-    assert manifest["ready_symbol_count"] == 5
-    assert manifest["symbols"] == list(STRATEGY_DATA_SYMBOLS)
+    assert manifest["expected_symbol_count"] == 6
+    assert manifest["ready_symbol_count"] == 6
+    assert manifest["symbols"] == list(STRATEGY_SGOV_DATA_SYMBOLS)
     assert manifest["roles"]["QQQI"] == "tradable"
+    assert manifest["roles"]["SGOV"] == "tradable"
     assert manifest["roles"]["^VIX"] == "signal_reference"
+    assert manifest["roles"]["^VXN"] == "signal_reference"
     assert manifest["first_date"] == "2024-01-30"
     assert manifest["professional_source_ready"] is True
 
     bars, coverage, loaded = load_strategy_data_bundle(output)
-    assert set(bars) == set(STRATEGY_DATA_SYMBOLS)
+    assert set(bars) == set(STRATEGY_SGOV_DATA_SYMBOLS)
     assert set(coverage["status"]) == {"ready"}
     assert loaded["component_kind"] == "strategy_data_bundle"
     assert loaded["trade_ready"] is False

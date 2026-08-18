@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import warnings
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -14,8 +15,14 @@ from src.data.etf_reference_bundle import (
     load_etf_reference_bundle,
 )
 
+STRATEGY_TRADABLE_SUPPLEMENTS = ("SGOV",)
 STRATEGY_SIGNAL_REFERENCES = ("^VIX", "^VXN")
 STRATEGY_DATA_SYMBOLS = (*ETF_REFERENCE_SYMBOLS, *STRATEGY_SIGNAL_REFERENCES)
+STRATEGY_SGOV_DATA_SYMBOLS = (
+    *ETF_REFERENCE_SYMBOLS,
+    *STRATEGY_TRADABLE_SUPPLEMENTS,
+    *STRATEGY_SIGNAL_REFERENCES,
+)
 STRATEGY_MANIFEST_NAME = "strategy_data_manifest.json"
 ALLOWED_STRATEGY_ROLES = {"tradable", "signal_reference"}
 
@@ -74,6 +81,10 @@ def _load_manifest(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _default_role(symbol: str) -> str:
+    return "tradable" if symbol in STRATEGY_TRADABLE_SUPPLEMENTS else "signal_reference"
+
+
 def _normalise_supplemental_contract(
     supplemental_symbols: Sequence[str],
     supplemental_roles: Mapping[str, str] | None,
@@ -85,7 +96,7 @@ def _normalise_supplemental_contract(
         symbol = str(value).strip().upper()
         if not symbol or symbol in ETF_REFERENCE_SYMBOLS or symbol in symbols:
             continue
-        role = str(declared_roles.get(symbol, "signal_reference")).strip()
+        role = str(declared_roles.get(symbol, _default_role(symbol))).strip()
         if role not in ALLOWED_STRATEGY_ROLES:
             raise StrategyDataBundleError(f"unsupported strategy symbol role: {symbol}={role}")
         symbols.append(symbol)
@@ -96,6 +107,56 @@ def _normalise_supplemental_contract(
             f"supplemental roles reference undeclared symbols: {unknown_roles}"
         )
     return tuple(symbols), roles
+
+
+def _fetch_yahoo_signal_reference(
+    *, symbol: str, start: str, end: str | None
+) -> tuple[pd.DataFrame, str, str]:
+    """Fetch only date/open/close for a non-tradable strategy reference index."""
+
+    try:
+        import yfinance as yf
+    except Exception as exc:
+        raise StrategyDataBundleError(f"yfinance import failed: {exc}") from exc
+
+    provider_end = None
+    if end:
+        provider_end = (pd.Timestamp(end).normalize() + pd.Timedelta(days=1)).date().isoformat()
+    try:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*Timestamp.utcnow is deprecated.*")
+            raw = yf.download(
+                symbol,
+                start=start,
+                end=provider_end,
+                progress=False,
+                auto_adjust=False,
+                repair=True,
+                threads=False,
+            )
+    except Exception as exc:
+        raise StrategyDataBundleError(
+            f"Yahoo signal-reference download failed for {symbol}: {exc}"
+        ) from exc
+    if raw is None or raw.empty:
+        raise StrategyDataBundleError(f"Yahoo signal reference is empty: {symbol}")
+    frame = raw.copy()
+    if isinstance(frame.columns, pd.MultiIndex):
+        frame.columns = frame.columns.get_level_values(0)
+    frame = frame.reset_index()
+    frame.columns = [str(column).lower() for column in frame.columns]
+    if not {"date", "open", "close"}.issubset(frame.columns):
+        raise StrategyDataBundleError(
+            f"Yahoo signal reference lacks open/close fields: {symbol}"
+        )
+    frame = _normalise_strategy_frame(frame, symbol)
+    if end:
+        frame = frame.loc[frame["date"] <= pd.Timestamp(end).normalize()].copy()
+    if frame.empty:
+        raise StrategyDataBundleError(
+            f"Yahoo signal reference has no rows through requested cutoff: {symbol}"
+        )
+    return frame, "yfinance", symbol
 
 
 def build_strategy_data_bundle(
@@ -111,12 +172,12 @@ def build_strategy_data_bundle(
     supplemental_roles: Mapping[str, str] | None = None,
     bundle_id: str = "qqqi_qqq_tqqq_vix_vxn_strategy_data_v1",
 ) -> dict[str, Any]:
-    """Build one immutable strategy data identity for tradables and signals."""
+    """Build one immutable strategy data identity for declared tradables/signals."""
 
     etf_root = Path(etf_bundle_root).resolve()
     output = Path(output_root).resolve()
     output.mkdir(parents=True, exist_ok=True)
-    adapter = reference_adapter or YFinanceAdapter()
+    tradable_adapter = reference_adapter or YFinanceAdapter()
     supplemental, supplemental_role_map = _normalise_supplemental_contract(
         supplemental_symbols,
         supplemental_roles,
@@ -148,17 +209,26 @@ def build_strategy_data_bundle(
     supplemental_attempts: dict[str, dict[str, Any]] = {}
     for symbol in supplemental:
         try:
-            result = adapter.fetch_daily_bars(
-                FetchRequest(symbol=symbol, market="us", start=start, end=end)
-            )
-            frame = _normalise_strategy_frame(result.df, symbol)
+            if reference_adapter is None and roles[symbol] == "signal_reference":
+                frame, provider, provider_symbol = _fetch_yahoo_signal_reference(
+                    symbol=symbol,
+                    start=start,
+                    end=end,
+                )
+            else:
+                result = tradable_adapter.fetch_daily_bars(
+                    FetchRequest(symbol=symbol, market="us", start=start, end=end)
+                )
+                frame = _normalise_strategy_frame(result.df, symbol)
+                provider = result.provider
+                provider_symbol = result.provider_symbol or symbol
             frames[symbol] = frame
-            providers[symbol] = result.provider
+            providers[symbol] = provider
             supplemental_attempts[symbol] = {
                 "ok": True,
                 "role": roles[symbol],
-                "provider": result.provider,
-                "provider_symbol": result.provider_symbol or symbol,
+                "provider": provider,
+                "provider_symbol": provider_symbol,
                 "rows": int(len(frame)),
                 "first_date": frame["date"].min().date().isoformat(),
                 "last_date": frame["date"].max().date().isoformat(),
@@ -229,7 +299,7 @@ def build_strategy_data_bundle(
 
     status = "ready" if ready == expected and first_date and last_date else "blocked"
     manifest: dict[str, Any] = {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "bundle_id": bundle_id,
         "component_id": component_id,
         "component_kind": "strategy_data_bundle",
@@ -260,7 +330,7 @@ def build_strategy_data_bundle(
             "supplemental_attempts": supplemental_attempts,
             "etf_coverage_rows": int(len(etf_coverage)),
             "signal_references_are_non_tradable": True,
-            "role_contract_version": "1.0",
+            "role_contract_version": "1.1",
         },
     }
     _write_json(output / STRATEGY_MANIFEST_NAME, manifest)
@@ -276,12 +346,20 @@ def verify_strategy_data_bundle(bundle_root: str | Path) -> dict[str, Any]:
         )
     if manifest.get("trade_ready") is not False:
         raise StrategyDataBundleError("strategy data bundle violates trade-ready boundary")
-    symbols = [str(value).strip().upper() for value in manifest.get("symbols", [])]
+    symbols = tuple(str(value).strip().upper() for value in manifest.get("symbols", []))
+    if symbols not in {tuple(STRATEGY_DATA_SYMBOLS), tuple(STRATEGY_SGOV_DATA_SYMBOLS)}:
+        raise StrategyDataBundleError("strategy data symbol contract is not governed")
     roles = manifest.get("roles", {})
-    if not symbols or not isinstance(roles, dict) or set(symbols) != set(roles):
+    if not isinstance(roles, dict) or set(symbols) != set(roles):
         raise StrategyDataBundleError("strategy data symbol/role contract is invalid")
     if any(str(role) not in ALLOWED_STRATEGY_ROLES for role in roles.values()):
         raise StrategyDataBundleError("strategy data contains an unsupported symbol role")
+    if any(roles.get(symbol) != "tradable" for symbol in ETF_REFERENCE_SYMBOLS):
+        raise StrategyDataBundleError("ETF strategy roles must remain tradable")
+    if any(roles.get(symbol) != "signal_reference" for symbol in STRATEGY_SIGNAL_REFERENCES):
+        raise StrategyDataBundleError("VIX/VXN strategy roles must remain signal references")
+    if "SGOV" in symbols and roles.get("SGOV") != "tradable":
+        raise StrategyDataBundleError("SGOV strategy role must remain tradable")
     files = manifest.get("files", {})
     if not isinstance(files, dict):
         raise StrategyDataBundleError("strategy data file inventory must be a mapping")
@@ -315,7 +393,11 @@ def load_strategy_data_bundle(
 
     bars: dict[str, pd.DataFrame] = {}
     coverage = pd.read_csv(root / "coverage.csv")
-    records = {str(row.symbol): row for row in coverage.itertuples() if str(row.status) == "ready"}
+    records = {
+        str(row.symbol): row
+        for row in coverage.itertuples()
+        if str(row.status) == "ready"
+    }
     for symbol in requested:
         row = records.get(symbol)
         if row is None:
