@@ -1,11 +1,13 @@
-"""Refresh selected-pool prices into an isolated, manifest-bound provider.
+"""Build an isolated selected-pool provider through a requested market cutoff.
 
-The command never overwrites the authoritative source directory. It can either
-refresh only missing/invalid symbols or rebuild the complete selected pool plus
-benchmark and explicitly declared auxiliary securities. Every provider attempt
-is recorded. A transient fetch failure may retain an already-validated canonical
-source as explicitly stale evidence; missing or invalid canonical sources still
-block the provider build.
+The canonical source directory is never overwritten. Normal operation reuses
+validated history, refreshes only missing/invalid/out-of-date symbols, and
+merges newly fetched observations into that governed history. ``--full-refresh``
+remains the explicit expensive path that rebuilds every required symbol.
+
+A transient fetch failure may retain an already-validated canonical source as
+explicitly stale evidence. Missing/invalid canonical sources and provider
+identity/normalization failures still fail closed.
 """
 
 from __future__ import annotations
@@ -88,7 +90,11 @@ def _normalize_auxiliary_symbols(
     candidates: list[str],
     benchmark: str,
 ) -> list[str]:
-    auxiliary = [str(value).strip().upper() for value in (values or []) if str(value).strip()]
+    auxiliary = [
+        str(value).strip().upper()
+        for value in (values or [])
+        if str(value).strip()
+    ]
     if len(auxiliary) != len(set(auxiliary)):
         raise ValueError("auxiliary symbols must be unique")
     reserved = set(candidates) | {benchmark}
@@ -221,28 +227,52 @@ def _fetch_with_retries(
     return last_response, combined_attempts
 
 
+def _source_needs_refresh(audit: dict[str, Any], *, cutoff: str) -> bool:
+    if audit.get("status") != "ready":
+        return True
+    return pd.Timestamp(str(audit["last_date"])) < pd.Timestamp(cutoff)
+
+
+def _copy_through_cutoff(
+    *, source_path: Path, output_path: Path, symbol: str, cutoff: str
+) -> pd.DataFrame:
+    frame = _normalize_frame(pd.read_csv(source_path), symbol=symbol)
+    frame = frame.loc[frame["date"] <= pd.Timestamp(cutoff)].copy()
+    if frame.empty:
+        raise ValueError(f"{symbol} has no governed history through {cutoff}")
+    _write_csv(output_path, frame)
+    return frame
+
+
 def _retain_stale_source(
     *,
     source_path: Path,
     output_path: Path,
     symbol: str,
+    market: str,
+    cutoff: str,
     audit: dict[str, Any],
     attempts: list[dict[str, Any]],
 ) -> dict[str, Any] | None:
     if audit.get("status") != "ready":
         return None
-    shutil.copy2(source_path, output_path)
+    frame = _copy_through_cutoff(
+        source_path=source_path,
+        output_path=output_path,
+        symbol=symbol,
+        cutoff=cutoff,
+    )
     return {
         "symbol": symbol,
         "action": "retained_stale_source",
         "stale_reason": "provider_fetch_failed",
         "source_sha256": audit["sha256"],
         "output_sha256": _sha256(output_path),
-        "rows": audit["rows"],
-        "first_date": audit["first_date"],
-        "last_date": audit["last_date"],
+        "rows": int(len(frame)),
+        "first_date": frame["date"].min().date().isoformat(),
+        "last_date": frame["date"].max().date().isoformat(),
         "attempts": attempts,
-        "identity_contract": _identity_contract("us" if symbol == "QQQ" else "", symbol),
+        "identity_contract": _identity_contract(market, symbol),
     }
 
 
@@ -299,7 +329,7 @@ def refresh_selected_pool_prices(
     full_refresh: bool = False,
     auxiliary_symbols: list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
-    """Build one isolated selected-pool provider plus declared formal auxiliaries."""
+    """Build one isolated provider through ``cutoff`` for the selected pool."""
 
     project_root = Path(root).resolve()
     market_key = str(market).lower()
@@ -333,7 +363,7 @@ def refresh_selected_pool_prices(
         else [
             symbol
             for symbol in required
-            if before[symbol]["status"] != "ready"
+            if _source_needs_refresh(before[symbol], cutoff=cutoff)
         ]
     )
     target_set = set(targets)
@@ -355,27 +385,42 @@ def refresh_selected_pool_prices(
         for symbol in required:
             source_path = source_dir / f"{symbol}.csv"
             output_path = csv_out / f"{symbol}.csv"
+            audit = before[symbol]
+
             if symbol not in target_set:
-                shutil.copy2(source_path, output_path)
+                frame = _copy_through_cutoff(
+                    source_path=source_path,
+                    output_path=output_path,
+                    symbol=symbol,
+                    cutoff=cutoff,
+                )
                 records.append(
                     {
                         "symbol": symbol,
                         "action": "copied_verified_source",
-                        "source_sha256": before[symbol]["sha256"],
+                        "source_sha256": audit["sha256"],
                         "output_sha256": _sha256(output_path),
+                        "rows": int(len(frame)),
+                        "first_date": frame["date"].min().date().isoformat(),
+                        "last_date": frame["date"].max().date().isoformat(),
                         "attempts": [],
-                        "identity_contract": _identity_contract(
-                            market_key, symbol
-                        ),
+                        "identity_contract": _identity_contract(market_key, symbol),
                     }
                 )
                 continue
+
+            incremental = not full_refresh and audit.get("status") == "ready"
+            fetch_start = start
+            if incremental:
+                fetch_start = max(
+                    pd.Timestamp(start), pd.Timestamp(str(audit["last_date"]))
+                ).date().isoformat()
 
             response, attempt_rows = _fetch_with_retries(
                 data_router,
                 symbol=symbol,
                 market=market_key,
-                start=start,
+                start=fetch_start,
                 cutoff=cutoff,
                 max_rounds=max_rounds,
             )
@@ -384,51 +429,70 @@ def refresh_selected_pool_prices(
                     source_path=source_path,
                     output_path=output_path,
                     symbol=symbol,
-                    audit=before[symbol],
+                    market=market_key,
+                    cutoff=cutoff,
+                    audit=audit,
                     attempts=attempt_rows,
                 )
                 if retained is not None:
-                    retained["identity_contract"] = _identity_contract(market_key, symbol)
                     records.append(retained)
                     continue
                 failure = {
                     "symbol": symbol,
                     "action": "fetch_failed",
-                    "previous_status": before[symbol]["status"],
+                    "previous_status": audit["status"],
                     "attempts": attempt_rows,
                 }
                 records.append(failure)
                 failures.append(failure)
                 continue
+
             try:
                 identity = _validate_provider_identity(
                     market=market_key,
                     symbol=symbol,
                     provider_symbol=response.result.provider_symbol,
                 )
-                frame = _normalize_frame(response.result.df, symbol=symbol)
+                fetched = _normalize_frame(response.result.df, symbol=symbol)
+                fetched = fetched.loc[fetched["date"] <= pd.Timestamp(cutoff)].copy()
+                if fetched.empty:
+                    raise ValueError("provider returned no rows through cutoff")
+                if incremental:
+                    governed = _normalize_frame(
+                        pd.read_csv(source_path), symbol=symbol
+                    )
+                    frame = pd.concat([governed, fetched], ignore_index=True)
+                    frame = frame.drop_duplicates(subset=["date"], keep="last")
+                    frame = _normalize_frame(frame, symbol=symbol)
+                else:
+                    frame = fetched
                 frame = frame.loc[frame["date"] <= pd.Timestamp(cutoff)].copy()
                 if frame.empty:
-                    raise ValueError("provider returned no rows through cutoff")
+                    raise ValueError("provider output is empty through cutoff")
                 _write_csv(output_path, frame)
             except Exception as exc:
                 failure = {
                     "symbol": symbol,
                     "action": "normalization_or_identity_failed",
-                    "previous_status": before[symbol]["status"],
+                    "previous_status": audit["status"],
                     "error": f"{type(exc).__name__}: {exc}",
                     "attempts": attempt_rows,
                 }
                 records.append(failure)
                 failures.append(failure)
                 continue
+
             records.append(
                 {
                     "symbol": symbol,
                     "action": (
                         "fetched_full_refresh"
                         if full_refresh
-                        else "fetched_replacement"
+                        else (
+                            "fetched_incremental_update"
+                            if incremental
+                            else "fetched_replacement"
+                        )
                     ),
                     "provider": response.result.provider,
                     "provider_symbol": response.result.provider_symbol,
@@ -495,10 +559,11 @@ def refresh_selected_pool_prices(
             market=market_key,
             include_fields=DEFAULT_FIELDS,
         )
+        cutoff_ts = pd.Timestamp(cutoff)
         stale_symbols = sorted(
-            str(record["symbol"])
-            for record in records
-            if record.get("action") == "retained_stale_source"
+            symbol
+            for symbol, audit in after.items()
+            if pd.Timestamp(str(audit["last_date"])) < cutoff_ts
         )
         manifest.update(
             {
@@ -542,7 +607,7 @@ def main() -> None:
     parser.add_argument(
         "--full-refresh",
         action="store_true",
-        help="Fetch every candidate, benchmark, and auxiliary security.",
+        help="Rebuild every candidate, benchmark, and auxiliary security.",
     )
     args = parser.parse_args()
 
