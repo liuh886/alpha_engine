@@ -110,7 +110,8 @@ jobs:
               --output-root "$provider" \
               --start 2021-01-01 \
               --cutoff "$signal_date" \
-              --max-rounds 3; then
+              --max-rounds 3 \
+              --full-refresh; then
               failures+=("${market}:provider")
               echo "::error::${market} provider refresh failed"
               echo "::endgroup::"
