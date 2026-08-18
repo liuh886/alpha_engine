@@ -142,6 +142,7 @@ def test_refresh_fetches_only_missing_or_invalid_sources(
     assert router.calls == ["000002"]
     assert payload["status"] == "selected_pool_price_refresh_ready"
     assert payload["all_sources_ready"] is True
+    assert payload["all_sources_current"] is True
 
 
 def test_full_refresh_fetches_every_candidate_and_benchmark(
@@ -175,6 +176,44 @@ def test_full_refresh_fetches_every_candidate_and_benchmark(
     assert {row["action"] for row in payload["records"]} == {
         "fetched_full_refresh"
     }
+    assert payload["stale_symbols"] == []
+    assert payload["all_sources_current"] is True
+
+
+def test_full_refresh_retains_validated_source_when_fetch_is_transiently_unavailable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_contract(tmp_path, monkeypatch)
+    source = tmp_path / "source"
+    for symbol in ("000001", "000002", "000300"):
+        _write_csv(source / f"{symbol}.csv", _frame())
+    original = (source / "000002.csv").read_bytes()
+    router = FakeRouter({"000001": _frame(2.0), "000300": _frame(2.0)})
+    output = tmp_path / "output"
+
+    payload = module.refresh_selected_pool_prices(
+        root=tmp_path,
+        market="cn",
+        source_csv_dir=source,
+        output_root=output,
+        start="2021-01-01",
+        cutoff="2026-06-18",
+        router=router,  # type: ignore[arg-type]
+        max_rounds=1,
+        full_refresh=True,
+    )
+
+    assert payload["status"] == "selected_pool_price_refresh_ready"
+    assert payload["failure_count"] == 0
+    assert payload["failed_symbols"] == []
+    assert payload["stale_symbols"] == ["000002"]
+    assert payload["all_sources_ready"] is True
+    assert payload["all_sources_current"] is False
+    retained = next(row for row in payload["records"] if row["symbol"] == "000002")
+    assert retained["action"] == "retained_stale_source"
+    assert retained["stale_reason"] == "provider_fetch_failed"
+    assert (output / "data" / "csv_source" / "000002.csv").read_bytes() == original
 
 
 def test_auxiliary_symbols_share_provider_without_entering_candidate_identity(
@@ -238,6 +277,7 @@ def test_refresh_publishes_diagnostics_without_partial_data(
     assert payload["failed_symbols"] == ["000002"]
     assert payload["failure_count"] == 1
     assert payload["all_sources_ready"] is False
+    assert payload["all_sources_current"] is False
     assert not (output / "data").exists()
 
 
