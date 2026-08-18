@@ -17,7 +17,8 @@ from src.data.etf_reference_bundle import (
 
 STRATEGY_TRADABLE_SUPPLEMENTS = ("SGOV",)
 STRATEGY_SIGNAL_REFERENCES = ("^VIX", "^VXN")
-STRATEGY_DATA_SYMBOLS = (
+STRATEGY_DATA_SYMBOLS = (*ETF_REFERENCE_SYMBOLS, *STRATEGY_SIGNAL_REFERENCES)
+STRATEGY_SGOV_DATA_SYMBOLS = (
     *ETF_REFERENCE_SYMBOLS,
     *STRATEGY_TRADABLE_SUPPLEMENTS,
     *STRATEGY_SIGNAL_REFERENCES,
@@ -111,12 +112,7 @@ def _normalise_supplemental_contract(
 def _fetch_yahoo_signal_reference(
     *, symbol: str, start: str, end: str | None
 ) -> tuple[pd.DataFrame, str, str]:
-    """Fetch only the open/close fields consumed by a non-tradable signal index.
-
-    VIX/VXN are state inputs, not executable securities. Their strategy contract
-    does not consume adjusted OHLC envelopes, volume, amount, or corporate-action
-    fields, so those unrelated fields must not block the reference observation.
-    """
+    """Fetch only date/open/close for a non-tradable strategy reference index."""
 
     try:
         import yfinance as yf
@@ -169,17 +165,14 @@ def build_strategy_data_bundle(
     output_root: str | Path,
     start: str,
     end: str | None = None,
-    component_id: str = "strategy.qqqi_qqq_tqqq_sgov_vix_vxn_v1",
+    component_id: str = "strategy.qqqi_qqq_tqqq_vix_vxn_v1",
     pool_id: str = "qqqi_qqq_tqqq_reference_bundle_v1",
     reference_adapter: MarketDataAdapter | None = None,
-    supplemental_symbols: Sequence[str] = (
-        *STRATEGY_TRADABLE_SUPPLEMENTS,
-        *STRATEGY_SIGNAL_REFERENCES,
-    ),
+    supplemental_symbols: Sequence[str] = STRATEGY_SIGNAL_REFERENCES,
     supplemental_roles: Mapping[str, str] | None = None,
-    bundle_id: str = "qqqi_qqq_tqqq_sgov_vix_vxn_strategy_data_v1",
+    bundle_id: str = "qqqi_qqq_tqqq_vix_vxn_strategy_data_v1",
 ) -> dict[str, Any]:
-    """Build one immutable strategy data identity for tradables and signals."""
+    """Build one immutable strategy data identity for declared tradables/signals."""
 
     etf_root = Path(etf_bundle_root).resolve()
     output = Path(output_root).resolve()
@@ -353,18 +346,20 @@ def verify_strategy_data_bundle(bundle_root: str | Path) -> dict[str, Any]:
         )
     if manifest.get("trade_ready") is not False:
         raise StrategyDataBundleError("strategy data bundle violates trade-ready boundary")
-    symbols = [str(value).strip().upper() for value in manifest.get("symbols", [])]
+    symbols = tuple(str(value).strip().upper() for value in manifest.get("symbols", []))
+    if symbols not in {tuple(STRATEGY_DATA_SYMBOLS), tuple(STRATEGY_SGOV_DATA_SYMBOLS)}:
+        raise StrategyDataBundleError("strategy data symbol contract is not governed")
     roles = manifest.get("roles", {})
-    if symbols != list(STRATEGY_DATA_SYMBOLS):
-        raise StrategyDataBundleError("strategy data symbol contract is not canonical")
     if not isinstance(roles, dict) or set(symbols) != set(roles):
         raise StrategyDataBundleError("strategy data symbol/role contract is invalid")
     if any(str(role) not in ALLOWED_STRATEGY_ROLES for role in roles.values()):
         raise StrategyDataBundleError("strategy data contains an unsupported symbol role")
-    if roles.get("SGOV") != "tradable" or any(
-        roles.get(symbol) != "signal_reference" for symbol in STRATEGY_SIGNAL_REFERENCES
-    ):
-        raise StrategyDataBundleError("strategy data role contract is invalid")
+    if any(roles.get(symbol) != "tradable" for symbol in ETF_REFERENCE_SYMBOLS):
+        raise StrategyDataBundleError("ETF strategy roles must remain tradable")
+    if any(roles.get(symbol) != "signal_reference" for symbol in STRATEGY_SIGNAL_REFERENCES):
+        raise StrategyDataBundleError("VIX/VXN strategy roles must remain signal references")
+    if "SGOV" in symbols and roles.get("SGOV") != "tradable":
+        raise StrategyDataBundleError("SGOV strategy role must remain tradable")
     files = manifest.get("files", {})
     if not isinstance(files, dict):
         raise StrategyDataBundleError("strategy data file inventory must be a mapping")
@@ -398,7 +393,11 @@ def load_strategy_data_bundle(
 
     bars: dict[str, pd.DataFrame] = {}
     coverage = pd.read_csv(root / "coverage.csv")
-    records = {str(row.symbol): row for row in coverage.itertuples() if str(row.status) == "ready"}
+    records = {
+        str(row.symbol): row
+        for row in coverage.itertuples()
+        if str(row.status) == "ready"
+    }
     for symbol in requested:
         row = records.get(symbol)
         if row is None:
