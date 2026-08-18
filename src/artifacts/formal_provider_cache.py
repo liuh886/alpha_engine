@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import date
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -24,8 +25,10 @@ CONTRACT_PATHS = (
     "scripts/data/refresh_selected_pool_prices.py",
     "scripts/data/refresh_selected_pool_prices_v2.py",
     "src/artifacts/formal_provider_cache.py",
+    "src/data/market_provider.py",
     "src/data/provider_catalog.py",
     "src/data/router.py",
+    "src/data/symbol_identity.py",
     "src/data/validation/schema.py",
     "src/research/selected_pool_guard.py",
 )
@@ -86,7 +89,7 @@ def build_provider_cache_contract(
     start: str,
     requested_cutoff: str,
 ) -> dict[str, Any]:
-    """Bind a reusable provider build to all code and governance inputs."""
+    """Bind one current provider build to only its real code/governance inputs."""
 
     root = repository_root.resolve()
     market = market.strip().lower()
@@ -95,14 +98,13 @@ def build_provider_cache_contract(
     configured = [root / value for value in CONTRACT_PATHS]
     configured.append(root / MARKET_UNIVERSE_PATHS[market])
     configured.extend(sorted((root / "src/data/adapters").glob("*.py")))
-    configured.extend(sorted((root / "src/data").glob("*.py")))
     payload: dict[str, Any] = {
         "schema_version": CACHE_SCHEMA_VERSION,
         "evidence_type": "formal_provider_cache_contract",
         "market": market,
         "start": start,
         "requested_cutoff": requested_cutoff,
-        "refresh_mode": "full_refresh",
+        "refresh_mode": "incremental_refresh",
         "max_rounds": 3,
         "auxiliary_symbols": list(DEFAULT_AUXILIARIES[market]),
         "inputs": _relative_file_hashes(root, configured),
@@ -122,6 +124,13 @@ def cache_key(contract: Mapping[str, Any]) -> str:
     return f"formal-provider-{CACHE_SCHEMA_VERSION}-{market}-{cutoff}-{digest}"
 
 
+def history_cache_prefix(contract: Mapping[str, Any]) -> str:
+    market = str(contract.get("market", ""))
+    if market not in MARKET_UNIVERSE_PATHS:
+        raise FormalProviderCacheError("provider history cache market is invalid")
+    return f"formal-provider-{CACHE_SCHEMA_VERSION}-{market}-"
+
+
 def _tree_identity(root: Path) -> tuple[str, int]:
     if not root.is_dir():
         raise FormalProviderCacheError(f"provider cache tree is missing: {root}")
@@ -138,21 +147,36 @@ def _tree_identity(root: Path) -> tuple[str, int]:
     return _sha256_bytes(_canonical_json({"records": records})), len(records)
 
 
-def _validate_manifest(
+def _validate_provider_source(
     provider_root: Path,
-    contract: Mapping[str, Any],
+    *,
+    market: str,
+    maximum_cutoff: str | None = None,
 ) -> tuple[Path, dict[str, Any]]:
     manifest_path = provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
     manifest = _load_json(manifest_path)
-    market = str(contract.get("market", ""))
     if str(manifest.get("market", "")) != market:
-        raise FormalProviderCacheError("cached provider market does not match contract")
+        raise FormalProviderCacheError("cached provider market does not match request")
     if manifest.get("status") != "selected_pool_price_refresh_ready":
         raise FormalProviderCacheError("cached provider is not refresh ready")
     if manifest.get("promotion_eligible") is not True:
         raise FormalProviderCacheError("cached provider is not promotion eligible")
     if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
         raise FormalProviderCacheError("cached provider crossed research boundary")
+    cutoff = str(manifest.get("cutoff", ""))
+    try:
+        cutoff_date = date.fromisoformat(cutoff)
+    except ValueError as exc:
+        raise FormalProviderCacheError("cached provider cutoff is invalid") from exc
+    if maximum_cutoff is not None:
+        try:
+            maximum = date.fromisoformat(maximum_cutoff)
+        except ValueError as exc:
+            raise FormalProviderCacheError("requested provider cutoff is invalid") from exc
+        if cutoff_date > maximum:
+            raise FormalProviderCacheError(
+                f"cached provider history is ahead of request: {cutoff} > {maximum_cutoff}"
+            )
     records = [row for row in manifest.get("records", []) if isinstance(row, dict)]
     symbols = [str(row.get("symbol", "")).strip().upper() for row in records]
     if not symbols or len(symbols) != len(set(symbols)):
@@ -175,6 +199,62 @@ def _validate_manifest(
             raise FormalProviderCacheError(f"cached source identity is missing: {symbol}")
         if _sha256_file(source) != expected:
             raise FormalProviderCacheError(f"cached source hash mismatch: {symbol}")
+    return manifest_path, manifest
+
+
+def verify_provider_history_source(
+    *,
+    provider_root: Path,
+    market: str,
+    requested_cutoff: str,
+) -> dict[str, Any]:
+    """Validate an older cache strictly as hashed history, never as current output."""
+
+    _, manifest = _validate_provider_source(
+        provider_root.resolve(),
+        market=market,
+        maximum_cutoff=requested_cutoff,
+    )
+    return {
+        "schema_version": CACHE_SCHEMA_VERSION,
+        "evidence_type": "formal_provider_history_source",
+        "market": market,
+        "history_cutoff": str(manifest["cutoff"]),
+        "requested_cutoff": requested_cutoff,
+        "candidate_count": int(manifest.get("candidate_count", 0)),
+        "symbol_count": len(manifest.get("records", [])),
+        "research_only": True,
+        "trade_ready": False,
+    }
+
+
+def _validate_manifest(
+    provider_root: Path,
+    contract: Mapping[str, Any],
+) -> tuple[Path, dict[str, Any]]:
+    market = str(contract.get("market", ""))
+    requested_cutoff = str(contract.get("requested_cutoff", ""))
+    manifest_path, manifest = _validate_provider_source(
+        provider_root,
+        market=market,
+        maximum_cutoff=requested_cutoff,
+    )
+    if str(manifest.get("cutoff", "")) != requested_cutoff:
+        raise FormalProviderCacheError(
+            "cached provider cutoff does not match exact contract"
+        )
+    auxiliaries = {
+        str(value).strip().upper()
+        for value in contract.get("auxiliary_symbols", [])
+        if str(value).strip()
+    }
+    symbols = {
+        str(row.get("symbol", "")).strip().upper()
+        for row in manifest.get("records", [])
+        if isinstance(row, dict)
+    }
+    if not auxiliaries.issubset(symbols):
+        raise FormalProviderCacheError("cached provider auxiliary set is incomplete")
     return manifest_path, manifest
 
 
@@ -219,7 +299,7 @@ def verify_provider_cache(
     contract: Mapping[str, Any],
     receipt_path: Path,
 ) -> dict[str, Any]:
-    """Fail closed unless a restored cache matches its contract and receipt."""
+    """Fail closed unless a restored cache matches its exact contract and receipt."""
 
     provider_root = provider_root.resolve()
     receipt = _load_json(receipt_path)
