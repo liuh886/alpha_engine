@@ -67,100 +67,111 @@ jobs:
             tests/test_ranker_current_target_runtime.py \
             tests/test_strategy_signal_ledger.py \
             -q --strict-markers --tb=short
-      - name: Resolve due decisions from active registry
-        id: due
+      - name: Evaluate active markets independently
+        env:
+          EXECUTION_SHA: ${{ steps.source.outputs.sha }}
+        shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           mkdir -p artifacts/ranker-current-target
+          git config user.name "AlphaEngine Ranker Operations"
+          git config user.email "ranker-operations@alphaengine.local"
           as_of="$(date -u +%F)"
+          failures=()
+
           for market in us cn; do
-            uv run python scripts/run_ranker_current_target.py due \
+            echo "::group::${market} current target"
+            due_file="artifacts/ranker-current-target/${market}_due.json"
+
+            if ! uv run python scripts/run_ranker_current_target.py due \
               --market "$market" \
               --formal-root data/research/formal_model_runs \
               --as-of "$as_of" \
-              --output "artifacts/ranker-current-target/${market}_due.json"
-          done
-          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          from pathlib import Path
-          for market in ("us", "cn"):
-              payload = json.loads(Path(f"artifacts/ranker-current-target/{market}_due.json").read_text())
-              print(f"{market}_due={'true' if payload['due'] else 'false'}")
-              print(f"{market}_date={payload.get('signal_date') or ''}")
-          PY
-      - name: Build due current targets
-        env:
-          US_DUE: ${{ steps.due.outputs.us_due }}
-          US_DATE: ${{ steps.due.outputs.us_date }}
-          CN_DUE: ${{ steps.due.outputs.cn_due }}
-          CN_DATE: ${{ steps.due.outputs.cn_date }}
-        run: |
-          set -euo pipefail
-          for market in us cn; do
-            if [ "$market" = us ]; then
-              due="$US_DUE"; date="$US_DATE"
-            else
-              due="$CN_DUE"; date="$CN_DATE"
+              --output "$due_file"; then
+              failures+=("${market}:due")
+              echo "::error::${market} due resolution failed"
+              echo "::endgroup::"
+              continue
             fi
-            [ "$due" = true ] || continue
+
+            due="$(uv run python -c "import json; print('true' if json.load(open('$due_file'))['due'] else 'false')")"
+            signal_date="$(uv run python -c "import json; print(json.load(open('$due_file')).get('signal_date') or '')")"
+            if [ "$due" != "true" ]; then
+              echo "${market}: no decision due"
+              echo "::endgroup::"
+              continue
+            fi
+
             provider="artifacts/ranker-current-target/${market}_provider"
-            uv run python scripts/data/refresh_selected_pool_prices_v2.py \
+            signal="artifacts/ranker-current-target/${market}_signal.json"
+            if ! uv run python scripts/data/refresh_selected_pool_prices_v2.py \
               --market "$market" \
               --source-csv-dir data/csv_clean \
               --output-root "$provider" \
               --start 2021-01-01 \
-              --cutoff "$date" \
-              --max-rounds 3
-            uv run python scripts/run_ranker_current_target.py build \
+              --cutoff "$signal_date" \
+              --max-rounds 3; then
+              failures+=("${market}:provider")
+              echo "::error::${market} provider refresh failed"
+              echo "::endgroup::"
+              continue
+            fi
+
+            if ! uv run python scripts/run_ranker_current_target.py build \
               --market "$market" \
               --formal-root data/research/formal_model_runs \
               --provider-dir "$provider/data/providers/$market" \
-              --signal-date "$date" \
-              --market-cutoff "$date" \
-              --output "artifacts/ranker-current-target/${market}_signal.json"
-          done
-      - name: Seal due canonical decisions
-        if: steps.due.outputs.us_due == 'true' || steps.due.outputs.cn_due == 'true'
-        env:
-          EXECUTION_SHA: ${{ steps.source.outputs.sha }}
-          US_DUE: ${{ steps.due.outputs.us_due }}
-          CN_DUE: ${{ steps.due.outputs.cn_due }}
-        run: |
-          set -euo pipefail
-          created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          for market in us cn; do
-            if [ "$market" = us ]; then due="$US_DUE"; else due="$CN_DUE"; fi
-            [ "$due" = true ] || continue
-            signal="artifacts/ranker-current-target/${market}_signal.json"
+              --signal-date "$signal_date" \
+              --market-cutoff "$signal_date" \
+              --output "$signal"; then
+              failures+=("${market}:build")
+              echo "::error::${market} current-target build failed"
+              echo "::endgroup::"
+              continue
+            fi
+
             model="$(uv run python -c "import json; print(json.load(open('$signal'))['model_version_id'])")"
-            uv run alpha ops record-decision \
+            created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            if ! uv run alpha ops record-decision \
               --model-version-id "$model" \
               --signal-json "$signal" \
               --delivery-status pending \
               --workflow-run-id "$GITHUB_RUN_ID" \
               --commit-sha "$EXECUTION_SHA" \
-              --created-at-utc "$created_at"
+              --created-at-utc "$created_at"; then
+              failures+=("${market}:seal")
+              echo "::error::${market} canonical decision seal failed"
+              git reset -- data/research/strategy_signal_ledgers >/dev/null 2>&1 || true
+              echo "::endgroup::"
+              continue
+            fi
+
+            git add "data/research/strategy_signal_ledgers/$model"
+            if git diff --cached --quiet; then
+              echo "${market}: canonical decision already sealed"
+            else
+              git commit -m "ops: seal ${model} decision ${signal_date}"
+              if ! git pull --rebase origin main || ! git push origin HEAD:main; then
+                failures+=("${market}:publish")
+                echo "::error::${market} canonical decision publication failed"
+                git rebase --abort >/dev/null 2>&1 || true
+                git reset --hard origin/main >/dev/null 2>&1 || true
+                echo "::endgroup::"
+                continue
+              fi
+            fi
+            echo "::endgroup::"
           done
-      - name: Commit canonical ranker decisions
-        if: steps.due.outputs.us_due == 'true' || steps.due.outputs.cn_due == 'true'
-        run: |
-          set -euo pipefail
-          git config user.name "AlphaEngine Ranker Operations"
-          git config user.email "ranker-operations@alphaengine.local"
-          git add data/research/strategy_signal_ledgers
-          if git diff --cached --quiet; then
-            echo "Canonical ranker decisions already sealed."
-          else
-            git commit -m "ops: seal governed 10-session decisions"
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi
-      - name: Materialize Strategy Operations evidence
-        run: |
+
           generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           uv run alpha ops build \
             --generated-at "$generated_at" \
             --output artifacts/ranker-current-target/strategy-operations.json
+
+          if [ "${#failures[@]}" -gt 0 ]; then
+            printf 'Ranker market failures: %s\n' "${failures[*]}" >&2
+            exit 1
+          fi
       - name: Retain current-target evidence
         if: always()
         uses: actions/upload-artifact@v6
