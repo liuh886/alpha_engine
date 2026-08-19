@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 
 from scripts.run_cn130_ranking_batch import run as run_cn_ranking_batch
+from src.artifacts.formal_bundle_reader import FormalBundleReadError, FormalBundleReader
 from src.artifacts.formal_refresh import load_object, sha256
 from src.artifacts.qqq_v4_3_formal import (
     ASSETS,
@@ -35,8 +36,6 @@ QQQ_REFERENCE_CONTRACT = Path("configs/data/qqqi_qqq_tqqq_reference_bundle_v1.ya
 QQQ_BRIDGE_CONTRACT = Path(
     "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
 )
-QQQ_FORMAL_ROOT = Path("data/research/formal_backtests")
-QQQ_FORMAL_CATALOG = QQQ_FORMAL_ROOT / "catalog.json"
 
 # Historical economic rows are immutable accepted evidence. A current provider
 # snapshot is authoritative for reproducing the strategy decision path and for
@@ -185,35 +184,16 @@ def compare_qqq_authoritative_trace(
 
 
 def _accepted_qqq_reference(root: Path) -> tuple[dict[str, Any], Path, str]:
-    formal_root = (root / QQQ_FORMAL_ROOT).resolve()
-    catalog_path = (root / QQQ_FORMAL_CATALOG).resolve()
-    catalog = load_object(catalog_path)
-    records = catalog.get("records")
-    if not isinstance(records, list):
-        raise RulesFormalReplayError("QQQ formal catalog records are missing")
-    matches = [
-        row
-        for row in records
-        if isinstance(row, Mapping) and row.get("model_id") == QQQ_MODEL_ID
-    ]
-    if len(matches) != 1:
+    """Load the one accepted QQQ authority from Model Run Bundle v2 only."""
+
+    try:
+        run = FormalBundleReader.open(root).load(QQQ_MODEL_ID)
+        package = run.replay_trace()
+    except FormalBundleReadError as exc:
         raise RulesFormalReplayError(
-            f"expected one accepted QQQ formal catalog row, found {len(matches)}"
-        )
-    record = matches[0]
-    if record.get("publication_status") != "accepted_formal_baseline":
-        raise RulesFormalReplayError("QQQ formal catalog row is not accepted")
-    package_path = (formal_root / str(record.get("path") or "")).resolve()
-    package_path.relative_to(formal_root)
-    if not package_path.is_file():
-        raise RulesFormalReplayError("accepted QQQ formal package is missing")
-    digest = sha256(package_path)
-    if digest != str(record.get("sha256") or ""):
-        raise RulesFormalReplayError("accepted QQQ formal catalog hash mismatch")
-    package = load_object(package_path)
-    if package.get("model_id") != QQQ_MODEL_ID:
-        raise RulesFormalReplayError("accepted QQQ formal package identity mismatch")
-    return package, package_path, digest
+            f"accepted QQQ formal Bundle v2 is invalid: {exc}"
+        ) from exc
+    return package, run.manifest_path, sha256(run.manifest_path)
 
 
 def _report_boundary(package: Mapping[str, Any]) -> str:
@@ -444,9 +424,9 @@ def verify_qqq_authoritative_replay(
             "cumulative_continuity": continuity,
         },
         "frozen_economic_identity": {
-            "mode": "accepted_formal_prefix_retained_exact",
-            "accepted_package_path": str(accepted_path.relative_to(root)),
-            "accepted_package_sha256": accepted_sha,
+            "mode": "accepted_formal_bundle_v2_prefix_retained_exact",
+            "accepted_manifest_path": str(accepted_path.relative_to(root)),
+            "accepted_manifest_sha256": accepted_sha,
             "historical_economics_recomputed_from_current_provider": False,
         },
         "historical_challenger_policy": (
