@@ -39,12 +39,3 @@ cache:
   pointer: "artifacts/cache/data_recipes/qqq-rotation-sgov/latest.json"
   reuse_requires_ready_profile: true
   forbid_cross_cutoff_reuse: true
-
-research_commands:
-  qqqi-v4.2-sgov-recovery-release:
-    runner: "scripts/run_qqqi_v4_2_sgov_recovery_release_experiment.py"
-    output_dir: "artifacts/evidence/qqqi_qqq_tqqq_v4_2_sgov_recovery_release_v4_4_research"
-    runner_arguments:
-      data_bundle_flag: "--etf-data-bundle"
-      output_flag: "--output-dir"
-      cutoff_flag: "--end-date"
