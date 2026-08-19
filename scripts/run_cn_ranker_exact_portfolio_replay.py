@@ -41,25 +41,8 @@ def main() -> int:
     scaled_route = payload.get("development_runner") == SCALED_DEVELOPMENT_RUNNER_ID
     if (args.resume or args.checkpoint_dir is not None) and not scaled_route:
         raise ValueError("--resume/--checkpoint-dir are supported only by the #954 route")
-    if payload.get("rank_blend_diagnostic") is not None:
-        from src.research.cn_rank_blend_portfolio_replay import (
-            run_cn_rank_blend_portfolio_replay,
-        )
 
-        receipt = run_cn_rank_blend_portfolio_replay(
-            args.spec,
-            output_dir=args.output_dir,
-        )
-    elif payload.get("portfolio_mapping_diagnostic") is not None:
-        from src.research.cn_cal_deeper_portfolio_mapping_replay import (
-            run_cal_deeper_portfolio_mapping_replay,
-        )
-
-        receipt = run_cal_deeper_portfolio_mapping_replay(
-            args.spec,
-            output_dir=args.output_dir,
-        )
-    elif payload.get("development_runner") == DEVELOPMENT_RUNNER_ID:
+    if payload.get("development_runner") == DEVELOPMENT_RUNNER_ID:
         receipt = run_breadth_veto_development(
             args.spec,
             output_dir=args.output_dir,
