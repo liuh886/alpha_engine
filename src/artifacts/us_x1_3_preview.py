@@ -344,18 +344,10 @@ def _weights(value: object, *, label: str) -> dict[str, float]:
     return dict(sorted(weights.items()))
 
 
-def _same_weights(left: Mapping[str, float], right: Mapping[str, float]) -> bool:
-    return set(left) == set(right) and all(
-        math.isclose(left[key], right[key], rel_tol=0.0, abs_tol=1e-12)
-        for key in left
-    )
-
-
 def _project_current_signal(
     canonical_signal: Mapping[str, Any],
     *,
     expected_signal_date: str,
-    previous: Mapping[str, float],
     sectors: Mapping[str, str],
     panel: pd.DataFrame,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
@@ -368,10 +360,8 @@ def _project_current_signal(
         )
     current = _weights(canonical_signal.get("current_weights"), label="canonical current")
     target = _weights(canonical_signal.get("target_weights"), label="canonical target")
-    if not _same_weights(current, previous):
-        raise USX13PreviewError("US x1.3 canonical current weights differ from settled state")
-    if len(target) != 15:
-        raise USX13PreviewError("US x1.3 canonical target must contain 15 names")
+    if len(current) != 15 or len(target) != 15:
+        raise USX13PreviewError("US x1.3 canonical current and target must contain 15 names")
 
     expected_turnover = 0.5 * sum(
         abs(target.get(name, 0.0) - current.get(name, 0.0))
@@ -428,7 +418,7 @@ def _project_current_signal(
                 "rank": int(rank) if rank is not None else None,
                 "score": score,
                 "weight": weight,
-                "action": "BUY" if previous.get(instrument, 0.0) == 0 else "HOLD",
+                "action": "BUY" if current.get(instrument, 0.0) == 0 else "HOLD",
                 "price": price,
                 "price_basis": "governed_adjusted_close_signal_reference",
                 "market_amount": _market_value(panel, signal_date, instrument, "market_amount"),
@@ -445,8 +435,8 @@ def _project_current_signal(
         )
 
     trades: list[dict[str, Any]] = []
-    for instrument in sorted(set(previous) | set(target)):
-        old = previous.get(instrument, 0.0)
+    for instrument in sorted(set(current) | set(target)):
+        old = current.get(instrument, 0.0)
         new = target.get(instrument, 0.0)
         delta = new - old
         action = (
@@ -496,7 +486,7 @@ def _project_current_signal(
         "window": "current_target",
         "window_role": "prospective_unrealized",
         "model_version_id": MODEL_ID,
-        "previous_weights": dict(sorted(previous.items())),
+        "previous_weights": current,
         "target_weights": target,
         "ranked_targets": sorted(
             ranked_targets,
@@ -506,6 +496,7 @@ def _project_current_signal(
         "cost_bps": 20,
         "turnover": turnover,
         "signal_state": "prospective_unrealized",
+        "previous_state_authority": "canonical_strategy_signal_ledger",
         "canonical_signal_fingerprint": canonical_signal.get("fingerprint"),
         "research_only": RESEARCH_ONLY,
         "trade_ready": TRADE_READY,
@@ -820,7 +811,6 @@ def build_plan(
         current_signal, current_positions, current_trades = _project_current_signal(
             forward_signal,
             expected_signal_date=due_signal,
-            previous=previous,
             sectors=sectors,
             panel=panel,
         )
@@ -828,8 +818,6 @@ def build_plan(
         positions.extend(current_positions)
         trades.extend(current_trades)
     elif due_signal is not None:
-        # Settled evidence is still valid, but live state remains absent until the
-        # canonical ledger owns the due decision.
         pass
 
     for item in attribution.values():
@@ -1026,7 +1014,7 @@ def build_plan(
         "interpretation_notes": [
             "US x1.3 is the active research baseline and is not the accepted formal baseline.",
             "Entry and exit prices are adjusted-close prices used by the governed research return contract, not brokerage fills.",
-            "Live forward state is projected only from the canonical append-only signal ledger; preview inference does not create a second decision.",
+            "Historical settled evidence and live portfolio state are separate authorities; live current/target weights come only from the canonical append-only signal ledger.",
             "Amount is exposed as normalized notional on NAV=1 because no governed portfolio capital or quantity contract exists.",
             "US market amount is synthetic adjusted close multiplied by volume and is diagnostic only.",
             "The six-month untouched prospective acceptance gate remains pending; trade_ready=false.",
