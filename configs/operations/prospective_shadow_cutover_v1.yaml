@@ -17,12 +17,6 @@ markets:
     benchmark: "QQQ"
     pool_id: "us_small_pool_v1"
     rotation_spec: "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v2.yaml"
-  cn:
-    enabled: false
-    benchmark: "000300.SH"
-    pool_id: "cn_small_pool_v1"
-    rotation_spec: "configs/research_paradigms/cn_small_pool_sector_rotation_v1.yaml"
-    blocked_by: "Issue #223 live point-in-time provider completion"
 
 reserved_evidence_disposition:
   previous_plan:
