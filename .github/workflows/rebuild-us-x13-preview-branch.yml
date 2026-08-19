@@ -7,6 +7,7 @@ on:
       - ".github/workflows/rebuild-us-x13-preview-branch.yml"
       - "scripts/build_us_x1_3_preview.py"
       - "src/artifacts/us_x1_3_preview.py"
+      - "tests/test_us_x1_3_preview_publication.py"
 
 permissions:
   contents: write
