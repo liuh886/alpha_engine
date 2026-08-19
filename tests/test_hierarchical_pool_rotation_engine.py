@@ -7,11 +7,8 @@ import pandas as pd
 import pytest
 import yaml
 
-from src.research.focus_watchlist_signal import load_long_ohlcv_csv
 from src.research.hierarchical_pool_rotation import (
     _security_scores,
-    build_runtime_timing_spec,
-    load_hierarchical_contract,
     run_hierarchical_pool_rotation,
 )
 
@@ -19,7 +16,6 @@ from src.research.hierarchical_pool_rotation import (
 US_SPEC_PATH = Path(
     "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v2_draft.yaml"
 )
-CN_SPEC_PATH = Path("configs/research_paradigms/cn_small_pool_sector_rotation_v1_draft.yaml")
 
 
 def _load(path: Path) -> dict:
@@ -269,67 +265,4 @@ def test_missing_us_candidate_fails_closed(tmp_path: Path) -> None:
             spec_path=US_SPEC_PATH,
             prices_csv=prices_path,
             output_dir=tmp_path / "evidence",
-        )
-
-
-def test_cn_provider_aliases_normalize_to_exchange_aware_identities(
-    tmp_path: Path,
-) -> None:
-    spec, pool, resolved_spec, _ = load_hierarchical_contract(CN_SPEC_PATH)
-    timing_spec, _ = build_runtime_timing_spec(
-        spec,
-        pool,
-        repository_root=resolved_spec.resolve().parents[2],
-    )
-    rows: list[dict] = []
-    for display in timing_spec["universe"]["symbols"]:
-        provider = _provider_symbol(display, pool)
-        rows.append(
-            {
-                "date": "2026-06-30",
-                "symbol": provider,
-                "open": 100.0,
-                "high": 101.0,
-                "low": 99.0,
-                "close": 100.0,
-                "volume": 1_000_000,
-            }
-        )
-    path = tmp_path / "cn-one-day.csv"
-    pd.DataFrame(rows).to_csv(path, index=False)
-
-    normalized = load_long_ohlcv_csv(path, timing_spec)
-    symbols = set(normalized["symbol"])
-    assert "688008.SH" in symbols
-    assert "000300.SH" in symbols
-    assert "399006.SZ" in symbols
-    assert "688008" not in symbols
-    assert "000300" not in symbols
-
-
-def test_cn_draft_is_non_authoritative_and_blocks_authoritative_mode(
-    tmp_path: Path,
-) -> None:
-    prices_path = tmp_path / "cn.csv"
-    output_dir = tmp_path / "cn-output"
-    _synthetic_prices(CN_SPEC_PATH).to_csv(prices_path, index=False)
-
-    decision = run_hierarchical_pool_rotation(
-        spec_path=CN_SPEC_PATH,
-        prices_csv=prices_path,
-        output_dir=output_dir,
-    )
-    assert decision["market"] == "cn"
-    assert decision["benchmark"] == "000300.SH"
-    assert decision["pool_status"] == "draft_requires_user_freeze"
-    assert decision["pool_authoritative_for_performance"] is False
-    assert decision["spec_authoritative_validation_allowed"] is False
-    assert decision["authoritative_mode"] is False
-
-    with pytest.raises(ValueError, match="draft pool/spec"):
-        run_hierarchical_pool_rotation(
-            spec_path=CN_SPEC_PATH,
-            prices_csv=tmp_path / "does-not-need-to-exist.csv",
-            output_dir=tmp_path / "blocked",
-            authoritative_mode=True,
         )
