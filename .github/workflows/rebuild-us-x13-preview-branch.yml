@@ -30,7 +30,6 @@ jobs:
         with:
           ref: ${{ env.SOURCE_BRANCH }}
           fetch-depth: 0
-          lfs: true
 
       - name: Set up Python
         uses: actions/setup-python@v6
