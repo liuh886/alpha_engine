@@ -2,19 +2,19 @@
   "completed_defense_episode_count": 0,
   "cumulative_cost_scenarios_bps": {
     "20": {
-      "candidate_incremental_return": -0.0007979847760475334,
+      "candidate_incremental_return": 0.0013264639857237803,
       "strategy_returns": {
         "byd_v1_cash": -0.006819534229975388,
-        "fixed_75_25": -0.007612077121527672,
-        "v1_dividend_75_25": -0.007612077121527672
+        "fixed_75_25": -0.005502116110807087,
+        "v1_dividend_75_25": -0.005502116110807087
       }
     },
     "40": {
-      "candidate_incremental_return": -0.001780745150271934,
+      "candidate_incremental_return": 0.00034161412005695446,
       "strategy_returns": {
         "byd_v1_cash": -0.009773142545329128,
-        "fixed_75_25": -0.011536484219410559,
-        "v1_dividend_75_25": -0.011536484219410559
+        "fixed_75_25": -0.009434867068763064,
+        "v1_dividend_75_25": -0.009434867068763064
       }
     }
   },
@@ -22,9 +22,9 @@
   "market_states": [
     "bear"
   ],
-  "observation_count": 11,
-  "prospective_days": 6,
-  "prospective_eligible_observation_count": 2,
+  "observation_count": 12,
+  "prospective_days": 15,
+  "prospective_eligible_observation_count": 3,
   "re_evaluation_gate": {
     "at_least_12_months": false,
     "at_least_1_etf_dividend_cycle": false,
