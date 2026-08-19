@@ -1,55 +1,33 @@
 # Research notebooks
 
-The QQQI / QQQ / TQQQ research line uses historical, rolling and governed diagnostic notebook roles.
+Notebooks are optional human inspection surfaces. They are **not** research authority and they are not a permanent archive for every experiment.
 
-## Historical experiment snapshots
+## Retention rule
 
-Historical experiment notebooks preserve what was known at the time of the experiment. They should not be silently rewritten after a later hypothesis is created.
+Keep a notebook only while it is reachable from at least one current need:
 
-Current historical snapshot:
+- an active strategy or current baseline;
+- an open, preregistered research mission;
+- an active prospective-validation program;
+- a maintained diagnostic that is still required to interpret current formal evidence.
 
-- `16_qqqi_qqq_tqqq_vxn_v4_1_backtest_review.ipynb` — complete v4.1 backtest, buy/sell points, event study and long-history attack-layer context.
+Once a one-shot experiment is complete and its decision is durably recorded, delete the notebook from the live tree. Git history is the archive.
 
-## Rolling current-strategy review
+Completed research must retain the smallest durable evidence needed to understand and audit the decision, normally:
 
-- `17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb`
+- the result report or ResearchReceipt;
+- compact machine-readable snapshot / evidence identity;
+- experiment-ledger decision;
+- any immutable formal/prospective evidence that remains part of current governance.
 
-This notebook is the current human-readable comparison of:
+Do not keep a notebook merely because it once generated a chart. Do not create an `archive/` notebook tree, compatibility notebook, or refresh workflow for superseded experiments.
 
-- QQQ buy and hold;
-- historical v4.1 signal comparator;
-- current v4.2 50/50 bridge research baseline;
-- prospective evidence dated on or after 2026-08-01.
+## QQQ strategy authority
 
-It must be refreshed whenever the active baseline, canonical result snapshot or prospective review changes.
+The current QQQ strategy identity comes from `configs/strategies/registry.json` and the current Formal Bundle v2 evidence. Notebook names and historical version labels never define the active strategy.
 
-## Governed diagnostic notebooks
+A retained rolling or diagnostic notebook must read current canonical evidence rather than rebuilding strategy state independently. If a notebook becomes stale or its underlying one-shot runner is retired, delete it instead of adding a fallback path.
 
-- `18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb` — state-1 lifecycle, tail-risk and frozen SGOV defensive-asset studies.
-- `19_qqqi_qqq_tqqq_v4_2_state2_tail_diagnostics.ipynb` — state-2 episodes, intraday/overnight loss decomposition and execution/cost robustness.
-- `20_qqqi_qqq_tqqq_v4_2_risk_confirmation_ablation.ipynb` — corrected distinction between mechanical delay and one-session confirmation on `0→1`, `1→2` and combined risk-increasing transitions.
-- `21_qqqi_qqq_tqqq_v4_2_sgov_episode_attribution.ipynb` — drawdown-depth, recovery-duration and phase/state attribution for the frozen 50% QQQI / 50% SGOV defensive profile.
+## Development rule
 
-Notebooks 19 and 20 record a completed research decision:
-
-- v4.2 remains unchanged as the current research baseline;
-- close-based continuous state-2 volatility scaling is rejected;
-- bridge-entry confirmation is rejected;
-- leverage-entry confirmation is not promoted because the result is chronologically unstable and has a low event win rate;
-- no additional retrospective confirmation, persistence or threshold search is authorized on the current sample.
-
-Notebook 21 is a monitor-admission study, not a weight search. It explains whether the already frozen blended defensive profile improves major drawdown episodes consistently enough, and with a sufficiently small recovery penalty, to justify a separate prospective research monitor. Passing never replaces v4.2.
-
-Run the rolling notebook from the repository root:
-
-```bash
-uv sync --frozen --extra dev
-uv run python scripts/refresh_qqqi_vxn_current_notebook.py
-uv run python scripts/validate_qqqi_vxn_research_bundle.py --require-executed
-```
-
-The scheduled notebook-refresh workflow executes the rolling notebook weekly and opens or updates a pull request when the saved outputs change. Diagnostic notebooks are executed by their evidence workflows; workflow artifacts preserve the executed copy without repeatedly rewriting the branch.
-
-The full governance and result-storage policy is documented in:
-
-`docs/research/qqqi_vxn_research_result_and_notebook_policy.md`
+New research should prefer the maintained research runner/evaluator and durable receipts. Add a notebook only when visual inspection materially improves the research decision; delete it when that role ends.
