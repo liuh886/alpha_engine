@@ -1,11 +1,6 @@
 name: Rebuild US x1.3 Preview Branch
 
 on:
-  push:
-    branches:
-      - fix/us-x13-current-session-eligibility
-    paths:
-      - ".github/workflows/rebuild-us-x13-preview-branch.yml"
   pull_request:
     branches: [main]
     paths:
@@ -23,13 +18,13 @@ jobs:
     env:
       US_CUTOFF: "2026-08-18"
       GENERATED_AT: "2026-08-19T16:49:37Z"
-      SOURCE_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+      SOURCE_BRANCH: ${{ github.head_ref }}
     steps:
       - name: Check out source branch
         uses: actions/checkout@v6
         with:
           ref: ${{ env.SOURCE_BRANCH }}
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v6
