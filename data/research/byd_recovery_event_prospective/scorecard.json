@@ -3,7 +3,7 @@
   "automatic_promotion_allowed": false,
   "completed_recovery_lifecycle_count": 0,
   "event_market_states": [],
-  "first_prospective_signal_date": null,
+  "first_prospective_signal_date": "2026-08-19",
   "gates": {
     "at_least_2_event_market_states": false,
     "completed_10_recovery_lifecycles": false,
@@ -15,11 +15,11 @@
   },
   "largest_positive_lifecycle_share": 0.0,
   "largest_positive_quarter_share": 0.0,
-  "last_prospective_signal_date": null,
+  "last_prospective_signal_date": "2026-08-19",
   "launch_after": "2026-08-10",
-  "observation_count": 7,
+  "observation_count": 8,
   "prospective_days": 0,
-  "prospective_observation_count": 0,
+  "prospective_observation_count": 1,
   "research_only": true,
   "scenarios": {
     "primary": {
@@ -39,6 +39,6 @@
   },
   "schema_version": "byd_recovery_event_prospective_v1",
   "shadow_only": true,
-  "status": "awaiting_first_prospective_observation",
+  "status": "prospective_monitoring",
   "trade_ready": false
 }
