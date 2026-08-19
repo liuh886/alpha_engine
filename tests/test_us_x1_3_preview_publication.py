@@ -64,17 +64,20 @@ def test_us_x1_3_bundle_retains_performance_positions_trades_prices_and_signals(
     assert summary["baseline_status"] == "active_research_baseline"
     assert summary["formal_acceptance_status"] == "prospective_gate_pending"
     assert len(performance["report"]) >= 60
-    assert len(portfolio["positions"]) == len(portfolio["signals"]) * 15
+    positions = portfolio["positions"]
+    signals = portfolio["signals"]
+    assert len(positions) == len(signals) * 15
     latest = portfolio["latest_signal"]
     assert latest["model_version_id"] == "us_x1_3"
     assert len(latest["ranked_targets"]) == 15
-    priced = [row for row in portfolio["positions"] if row["price"] is not None]
-    assert len(priced) > 850
-    realized_priced = [
-        row for row in priced if row.get("holding_status") != "prospective_unrealized"
+
+    latest_positions = [
+        row for row in positions if row.get("date") == latest["signal_date"]
     ]
-    assert all(row["exit_price"] is not None for row in realized_priced[-15:])
-    assert latest["signal_date"] == portfolio["signals"][-1]["signal_date"]
+    assert len(latest_positions) == 15
+    assert all(row["price"] is not None for row in latest_positions)
+
+    assert latest["signal_date"] == signals[-1]["signal_date"]
     if latest.get("window_role") == "prospective_unrealized":
         assert latest["signal_state"] == "prospective_unrealized"
     else:

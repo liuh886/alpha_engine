@@ -15,6 +15,8 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any, Mapping
 
+import pandas as pd
+
 from src.artifacts.model_run_exporter import (
     RunExportPlan,
     SectionPlan,
@@ -23,8 +25,11 @@ from src.artifacts.model_run_exporter import (
 )
 from src.artifacts.strategy_signal_ledger import read_latest_evaluation
 from src.artifacts.us_x1_3_preview import build_plan
+from src.data.market_provider import load_provider_manifest
+from src.research.us_qlib_execution_adapter import QlibUSExecutionRuntime
 
 MODEL_ID = "us_x1_3"
+HOLDING_SESSIONS = 10
 
 
 class USX13ForwardProjectionError(ValueError):
@@ -186,6 +191,54 @@ def _assert_ledger_projection(plan: RunExportPlan, signal: Mapping[str, Any]) ->
     return plan
 
 
+def _latest_ledger_signal(root: Path) -> Mapping[str, Any] | None:
+    ledger_dir = root / "data" / "research" / "strategy_signal_ledgers" / MODEL_ID
+    record = read_latest_evaluation(ledger_dir, model_version_id=MODEL_ID)
+    if record is None:
+        return None
+    signal = record.get("signal")
+    if not isinstance(signal, Mapping):
+        raise USX13ForwardProjectionError("US x1.3 canonical ledger signal is missing")
+    return signal
+
+
+def _unsettled_forward_signal(
+    root: Path,
+    provider_dir: Path,
+) -> Mapping[str, Any] | None:
+    """Return the canonical signal only while its 10-session holding is still open."""
+
+    signal = _latest_ledger_signal(root)
+    if signal is None:
+        return None
+    signal_date = str(signal.get("signal_date") or "")
+    if not signal_date:
+        raise USX13ForwardProjectionError("US x1.3 canonical ledger signal date is missing")
+    provider = load_provider_manifest(
+        provider_dir,
+        expected_market="us",
+        required=True,
+        verify_files=True,
+    )
+    if provider is None:
+        raise USX13ForwardProjectionError("US provider manifest is unavailable")
+    cutoff = str(provider["calendar"]["last_day"])
+    if signal_date > cutoff:
+        raise USX13ForwardProjectionError(
+            f"US x1.3 ledger signal exceeds provider cutoff: {signal_date} > {cutoff}"
+        )
+    runtime = QlibUSExecutionRuntime(provider_uri=provider_dir)
+    runtime.initialize(root)
+    sessions = pd.DatetimeIndex(runtime.calendar(signal_date, cutoff)).normalize().unique()
+    signal_ts = pd.Timestamp(signal_date).normalize()
+    matches = [index for index, value in enumerate(sessions) if value == signal_ts]
+    if len(matches) != 1:
+        raise USX13ForwardProjectionError(
+            f"US x1.3 ledger signal is absent from provider calendar: {signal_date}"
+        )
+    return signal if len(sessions) <= HOLDING_SESSIONS else None
+
+
 def project_forward_state(plan: RunExportPlan, root: Path) -> RunExportPlan:
     """Publish live US x1.3 state only when the signal ledger already owns it."""
 
@@ -197,13 +250,9 @@ def project_forward_state(plan: RunExportPlan, root: Path) -> RunExportPlan:
     if not realized_date:
         raise USX13ForwardProjectionError("US x1.3 latest realized signal date is missing")
 
-    ledger_dir = root / "data" / "research" / "strategy_signal_ledgers" / MODEL_ID
-    record = read_latest_evaluation(ledger_dir, model_version_id=MODEL_ID)
-    if record is None:
+    signal = _latest_ledger_signal(root)
+    if signal is None:
         return _strip_unsealed_forward_state(plan)
-    signal = record.get("signal")
-    if not isinstance(signal, Mapping):
-        raise USX13ForwardProjectionError("US x1.3 canonical ledger signal is missing")
     ledger_date = str(signal.get("signal_date") or "")
     if not ledger_date:
         raise USX13ForwardProjectionError("US x1.3 canonical ledger signal date is missing")
@@ -227,14 +276,16 @@ def main() -> None:
         default=Path("data/research/model_runs"),
     )
     args = parser.parse_args()
-    plan = project_forward_state(
-        build_plan(
-            args.root,
-            provider_dir=args.provider_dir,
-            generated_at=args.generated_at,
-        ),
-        args.root.resolve(),
+    root = args.root.resolve()
+    provider_dir = args.provider_dir.resolve()
+    forward_signal = _unsettled_forward_signal(root, provider_dir)
+    plan = build_plan(
+        root,
+        provider_dir=provider_dir,
+        generated_at=args.generated_at,
+        forward_signal=forward_signal,
     )
+    plan = project_forward_state(plan, root)
     manifest = export_model_run(plan, output_root=args.output_root)
     catalog = update_catalog(
         [manifest],

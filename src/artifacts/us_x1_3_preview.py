@@ -1,10 +1,8 @@
 """Build the governed US x1.3 research-preview evidence bundle.
 
-The active US research baseline is not an accepted formal baseline.  This
-builder therefore publishes to the preview channel and preserves the pending
-prospective gate while retaining the full model evidence graph: performance,
-holdings, rebalance events, prices, normalized notional, outcomes, attribution,
-and rebalance signals.
+Historical evidence is recomputed from the frozen model contract. Live forward
+state is never inferred here independently: an already sealed canonical signal
+may be supplied explicitly and projected into the preview for provisional MTM.
 """
 
 from __future__ import annotations
@@ -92,10 +90,6 @@ def _score_sha(scores: pd.DataFrame) -> str:
     return hashlib.sha256(body.encode()).hexdigest()
 
 
-def _compound(values: list[float]) -> float:
-    return math.prod(1.0 + value for value in values) - 1.0
-
-
 def _finite(value: object) -> float | None:
     if isinstance(value, np.generic):
         value = value.item()
@@ -106,8 +100,6 @@ def _finite(value: object) -> float | None:
 
 
 def _json_safe(value: Any) -> Any:
-    """Normalize pandas/numpy scalars and reject non-finite JSON numbers."""
-
     if isinstance(value, Mapping):
         return {str(key): _json_safe(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
@@ -343,96 +335,108 @@ def _next_due_signal(calendar: list[str], last_signal: str, cutoff: str) -> str 
     return calendar[due] if due < len(calendar) and calendar[due] <= cutoff else None
 
 
-def _fit_current_signal(
-    runtime: QlibUSExecutionRuntime,
+def _weights(value: object, *, label: str) -> dict[str, float]:
+    if not isinstance(value, Mapping) or not value:
+        raise USX13PreviewError(f"{label} weights are missing")
+    weights = {str(key): float(weight) for key, weight in value.items()}
+    if not math.isclose(sum(weights.values()), 1.0, rel_tol=0.0, abs_tol=1e-6):
+        raise USX13PreviewError(f"{label} weights do not sum to one")
+    return dict(sorted(weights.items()))
+
+
+def _project_current_signal(
+    canonical_signal: Mapping[str, Any],
     *,
-    symbols: list[str],
+    expected_signal_date: str,
     sectors: Mapping[str, str],
-    expressions: list[str],
-    calibration: XGBNativeCalibration,
-    signal_date: str,
-    previous: Mapping[str, float],
     panel: pd.DataFrame,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
-    signal_ts = pd.Timestamp(signal_date)
-    half_start = pd.Timestamp(f"{signal_ts.year}-{'01-01' if signal_ts.month <= 6 else '07-01'}")
-    train_start = "2021-01-01"
-    train_end = (half_start - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
-    features = normalize_qlib_frame_index(
-        runtime.features(symbols, expressions, train_start, signal_date)
-    ).replace([np.inf, -np.inf], np.nan)
-    features.columns = [f"feature_{index}" for index in range(len(expressions))]
-    returns = normalize_qlib_frame_index(
-        runtime.features(symbols, [RETURN_EXPRESSION], train_start, train_end)
+    if canonical_signal.get("model_version_id") != MODEL_ID:
+        raise USX13PreviewError("US x1.3 forward signal model identity changed")
+    signal_date = str(canonical_signal.get("signal_date") or "")
+    if signal_date != expected_signal_date:
+        raise USX13PreviewError(
+            f"US x1.3 forward signal date mismatch: {signal_date} != {expected_signal_date}"
+        )
+    current = _weights(canonical_signal.get("current_weights"), label="canonical current")
+    target = _weights(canonical_signal.get("target_weights"), label="canonical target")
+    if len(current) != 15 or len(target) != 15:
+        raise USX13PreviewError("US x1.3 canonical current and target must contain 15 names")
+
+    expected_turnover = 0.5 * sum(
+        abs(target.get(name, 0.0) - current.get(name, 0.0))
+        for name in set(current) | set(target)
     )
-    returns.columns = ["return"]
-    dates = features.index.get_level_values("datetime")
-    train_features, train_returns = purge_training_tail(
-        features.loc[dates <= pd.Timestamp(train_end)].copy(),
-        returns.copy(),
-        holding_days=10,
-    )
-    valid, reason = validate_no_nan_inputs(
-        train_features, context=f"US x1.3 current signal/{signal_date}"
-    )
-    if not valid:
-        raise USX13PreviewError(reason)
-    x_rank, y_rank, groups = prepare_ranker_frame(train_features, train_returns)
-    fitted = fit_xgb_native_daily_ranker(
-        x_rank, y_rank, groups, calibration=calibration
-    )
-    scores = predict_xgb_native_daily_ranker(
-        fitted, features.loc[dates == signal_ts].copy()
-    )
-    ranked = sector_cap._ranked_day(scores.reset_index(), signal_ts)
-    selected, selection, _ = sector_cap._select_names(
-        ranked, dict(sectors), sector_cap=True
-    )
-    target = {instrument: 1 / 15 for instrument in selected}
-    ranked_index = selection.set_index("instrument")
-    targets = [
-        {
-            "instrument": instrument,
-            "sector": sectors[instrument],
-            "rank": int(ranked_index.loc[instrument, "rank"]),
-            "score": float(
-                ranked.loc[ranked["instrument"] == instrument, "score"].iloc[0]
-            ),
-            "target_weight": weight,
-            "reference_price": _market_value(panel, signal_date, instrument, "price"),
-        }
-        for instrument, weight in target.items()
-    ]
-    positions = [
-        {
-            "date": signal_date,
-            "holding_end_date": None,
-            "window": "current_target",
-            "window_role": "prospective_unrealized",
-            "instrument": row["instrument"],
-            "sector": row["sector"],
-            "rank": row["rank"],
-            "score": row["score"],
-            "weight": row["target_weight"],
-            "action": "BUY" if previous.get(str(row["instrument"]), 0.0) == 0 else "HOLD",
-            "price": row["reference_price"],
-            "price_basis": "governed_adjusted_close_signal_reference",
-            "market_amount": _market_value(panel, signal_date, str(row["instrument"]), "market_amount"),
-            "market_amount_semantics": "diagnostic_synthetic_adjusted_close_times_volume",
-            "entry_price": row["reference_price"],
-            "exit_price": None,
-            "realized_return": None,
-            "benchmark_return": None,
-            "excess_return": None,
-            "profitable": None,
-            "beat_benchmark": None,
-            "holding_status": "prospective_unrealized",
-        }
-        for row in targets
-    ]
+    turnover = float(canonical_signal.get("turnover_units") or 0.0)
+    if not math.isclose(expected_turnover, turnover, rel_tol=0.0, abs_tol=1e-12):
+        raise USX13PreviewError("US x1.3 canonical turnover does not reconcile")
+
+    diagnostics = canonical_signal.get("diagnostics")
+    diagnostic_map = dict(diagnostics) if isinstance(diagnostics, Mapping) else {}
+    ranks = diagnostic_map.get("selected_ranks")
+    rank_map = dict(ranks) if isinstance(ranks, Mapping) else {}
+    explanations = diagnostic_map.get("model_explanations")
+    explanation_map: dict[str, Mapping[str, Any]] = {}
+    if isinstance(explanations, Mapping):
+        rows = explanations.get("rows")
+        if isinstance(rows, list):
+            explanation_map = {
+                str(row.get("instrument")): row
+                for row in rows
+                if isinstance(row, Mapping) and row.get("instrument")
+            }
+
+    ranked_targets: list[dict[str, Any]] = []
+    positions: list[dict[str, Any]] = []
+    for instrument, weight in target.items():
+        price = _market_value(panel, signal_date, instrument, "price")
+        if price is None or price <= 0:
+            raise USX13PreviewError(
+                f"canonical US x1.3 target has no governed entry price: {instrument}/{signal_date}"
+            )
+        rank = rank_map.get(instrument)
+        explanation = explanation_map.get(instrument, {})
+        score = _finite(explanation.get("score"))
+        ranked_targets.append(
+            {
+                "instrument": instrument,
+                "sector": sectors[instrument],
+                "rank": int(rank) if rank is not None else None,
+                "score": score,
+                "target_weight": weight,
+                "reference_price": price,
+            }
+        )
+        positions.append(
+            {
+                "date": signal_date,
+                "holding_end_date": None,
+                "window": "current_target",
+                "window_role": "prospective_unrealized",
+                "instrument": instrument,
+                "sector": sectors[instrument],
+                "rank": int(rank) if rank is not None else None,
+                "score": score,
+                "weight": weight,
+                "action": "BUY" if current.get(instrument, 0.0) == 0 else "HOLD",
+                "price": price,
+                "price_basis": "governed_adjusted_close_signal_reference",
+                "market_amount": _market_value(panel, signal_date, instrument, "market_amount"),
+                "market_amount_semantics": "diagnostic_synthetic_adjusted_close_times_volume",
+                "entry_price": price,
+                "exit_price": None,
+                "realized_return": None,
+                "benchmark_return": None,
+                "excess_return": None,
+                "profitable": None,
+                "beat_benchmark": None,
+                "holding_status": "prospective_unrealized",
+            }
+        )
+
     trades: list[dict[str, Any]] = []
-    for instrument in sorted(set(previous) | set(target)):
-        old = previous.get(instrument, 0.0)
+    for instrument in sorted(set(current) | set(target)):
+        old = current.get(instrument, 0.0)
         new = target.get(instrument, 0.0)
         delta = new - old
         action = (
@@ -442,6 +446,10 @@ def _fit_current_signal(
             "DECREASE" if delta < 0 else "HOLD"
         )
         price = _market_value(panel, signal_date, instrument, "price")
+        if new > 0 and (price is None or price <= 0):
+            raise USX13PreviewError(
+                f"canonical US x1.3 target has no governed execution price: {instrument}/{signal_date}"
+            )
         trades.append(
             {
                 "date": signal_date,
@@ -471,19 +479,25 @@ def _fit_current_signal(
                 "holding_status": "prospective_unrealized",
             }
         )
+
     signal = {
         "signal_date": signal_date,
         "holding_end_date": None,
         "window": "current_target",
         "window_role": "prospective_unrealized",
         "model_version_id": MODEL_ID,
-        "previous_weights": dict(sorted(previous.items())),
-        "target_weights": dict(sorted(target.items())),
-        "ranked_targets": sorted(targets, key=lambda row: int(row["rank"])),
+        "previous_weights": current,
+        "target_weights": target,
+        "ranked_targets": sorted(
+            ranked_targets,
+            key=lambda row: (row["rank"] is None, row["rank"] or 999, row["instrument"]),
+        ),
         "execution_semantics": "signal_at_adjusted_close_target_applies_next_eligible_open",
         "cost_bps": 20,
-        "turnover": 0.5 * sum(abs(row["weight_delta"]) for row in trades),
+        "turnover": turnover,
         "signal_state": "prospective_unrealized",
+        "previous_state_authority": "canonical_strategy_signal_ledger",
+        "canonical_signal_fingerprint": canonical_signal.get("fingerprint"),
         "research_only": RESEARCH_ONLY,
         "trade_ready": TRADE_READY,
     }
@@ -540,6 +554,7 @@ def build_plan(
     *,
     provider_dir: Path,
     generated_at: str,
+    forward_signal: Mapping[str, Any] | None = None,
 ) -> RunExportPlan:
     root = root.resolve()
     provider_dir = provider_dir.resolve()
@@ -790,20 +805,20 @@ def build_plan(
 
     latest_realized_signal = signals[-1]
     due_signal = _next_due_signal(calendar, str(latest_realized_signal["signal_date"]), cutoff)
-    if due_signal:
-        current_signal, current_positions, current_trades = _fit_current_signal(
-            runtime,
-            symbols=symbols,
+    if forward_signal is not None:
+        if due_signal is None:
+            raise USX13PreviewError("canonical US x1.3 forward signal exists before a due session")
+        current_signal, current_positions, current_trades = _project_current_signal(
+            forward_signal,
+            expected_signal_date=due_signal,
             sectors=sectors,
-            expressions=expressions,
-            calibration=calibration,
-            signal_date=due_signal,
-            previous=previous,
             panel=panel,
         )
         signals.append(current_signal)
         positions.extend(current_positions)
         trades.extend(current_trades)
+    elif due_signal is not None:
+        pass
 
     for item in attribution.values():
         periods_held = int(item["periods_held"])
@@ -845,10 +860,6 @@ def build_plan(
     ]
     latest_signal = signals[-1]
 
-    # Keep the settled 10-session trace immutable, but project the currently
-    # open governed holding to the provider/evidence cutoff.  This is a
-    # provisional MTM point, not a settled period, and exists so charts never
-    # stop at an old holding-end date while fresher governed prices exist.
     if latest_signal.get("signal_state") == "prospective_unrealized":
         signal_date = str(latest_signal["signal_date"])
         target_weights = {
@@ -861,7 +872,7 @@ def build_plan(
             current = _market_value(panel, cutoff, instrument, "price")
             if entry is None or current is None or entry <= 0:
                 raise USX13PreviewError(
-                    f"missing provisional MTM price for {instrument}: {signal_date}/{cutoff}"
+                    f"missing provisional MTM price for canonical target {instrument}: {signal_date}/{cutoff}"
                 )
             gross_mtm += weight * (current / entry - 1.0)
         qqq_entry = _market_value(panel, signal_date, "QQQ", "price")
@@ -1003,6 +1014,7 @@ def build_plan(
         "interpretation_notes": [
             "US x1.3 is the active research baseline and is not the accepted formal baseline.",
             "Entry and exit prices are adjusted-close prices used by the governed research return contract, not brokerage fills.",
+            "Historical settled evidence and live portfolio state are separate authorities; live current/target weights come only from the canonical append-only signal ledger.",
             "Amount is exposed as normalized notional on NAV=1 because no governed portfolio capital or quantity contract exists.",
             "US market amount is synthetic adjusted close multiplied by volume and is diagnostic only.",
             "The six-month untouched prospective acceptance gate remains pending; trade_ready=false.",
@@ -1026,6 +1038,7 @@ def build_plan(
         "formal_acceptance_gate_passed": False,
         "historical_evidence_recomputed": True,
         "model_selection_reopened": False,
+        "forward_decision_authority": "canonical_strategy_signal_ledger",
         "research_only": RESEARCH_ONLY,
         "trade_ready": TRADE_READY,
     }
