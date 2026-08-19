@@ -6,6 +6,12 @@ on:
       - fix/us-x13-current-session-eligibility
     paths:
       - ".github/workflows/rebuild-us-x13-preview-branch.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/rebuild-us-x13-preview-branch.yml"
+      - "scripts/build_us_x1_3_preview.py"
+      - "src/artifacts/us_x1_3_preview.py"
 
 permissions:
   contents: write
@@ -16,11 +22,13 @@ jobs:
     timeout-minutes: 60
     env:
       US_CUTOFF: "2026-08-18"
+      GENERATED_AT: "2026-08-19T16:49:37Z"
+      SOURCE_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
     steps:
       - name: Check out source branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ env.SOURCE_BRANCH }}
           fetch-depth: 0
           lfs: true
 
@@ -39,7 +47,6 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
 
       - name: Restore exact US provider cache
-        id: provider_cache
         uses: actions/cache/restore@v4
         with:
           path: artifacts/formal-refresh/provider-us
@@ -62,11 +69,10 @@ jobs:
       - name: Rebuild US x1.3 preview from canonical signal ledger
         run: |
           rm -rf artifacts/us-preview
-          generated_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           uv run python scripts/build_us_x1_3_preview.py \
             --root . \
             --provider-dir artifacts/formal-refresh/provider-us/data/providers/us \
-            --generated-at "$generated_at" \
+            --generated-at "$GENERATED_AT" \
             --output-root artifacts/us-preview/model-runs
 
       - name: Install rebuilt US bundle into preview catalog
@@ -119,4 +125,4 @@ jobs:
             exit 0
           fi
           git commit -m "data: rebuild US x1.3 preview through ${US_CUTOFF}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git push origin "HEAD:${SOURCE_BRANCH}"
