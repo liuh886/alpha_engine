@@ -9,7 +9,6 @@ issue: 966
 research_only: true
 trade_ready: false
 automatic_promotion: false
-online_validation: exact_us_ranker_portfolio_v1
 
 purpose: >-
   Measure incremental 10-session information and exact US x1.2 portfolio
