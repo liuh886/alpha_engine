@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+import yaml
 
 from scripts.check_repository_model_runs import (
     RepositoryModelRunError,
@@ -13,6 +14,7 @@ from scripts.check_repository_model_runs import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+WORKFLOW = ROOT / ".github" / "workflows" / "repository-model-run-bridge.yml"
 
 
 def test_named_models_bind_to_immutable_repository_runs() -> None:
@@ -31,6 +33,29 @@ def test_named_models_bind_to_immutable_repository_runs() -> None:
         == "unavailable_source_artifact_did_not_retain_trace"
         for item in result["models"]
     )
+
+
+def test_bridge_trigger_matches_repository_catalog_allow_list() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    catalog = json.loads(
+        (ROOT / "data" / "research" / "catalog.json").read_text(encoding="utf-8")
+    )
+
+    assert '      - "data/research/**"' not in text
+    assert text.count('      - "data/research/catalog.json"') == 2
+    assert text.count('      - "data/research/model_data_bundle_v1/**"') == 2
+
+    for entry in catalog["published_models"]:
+        source = str(entry["source"])
+        assert text.count(f'      - "{source}"') == 2
+        model = yaml.safe_load((ROOT / source).read_text(encoding="utf-8"))
+        report = str((model.get("evidence_identity") or {}).get("result_report") or "")
+        if report:
+            assert text.count(f'      - "{report}"') == 2
+
+    for entry in catalog["published_runs"]:
+        source = str(entry["source"])
+        assert text.count(f'      - "{source}/**"') == 2
 
 
 def test_historical_runs_do_not_fabricate_equity_curves() -> None:
