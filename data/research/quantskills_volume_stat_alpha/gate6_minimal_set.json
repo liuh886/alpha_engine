@@ -1,0 +1,132 @@
+{
+  "schema_version": "1.0",
+  "issue": 966,
+  "phase": 6,
+  "gate": "smallest_winning_us_subset",
+  "status": "complete",
+  "authoritative_workflow": {
+    "run_id": 31945925114,
+    "head_sha": "1f46ab4480269a94b1f2ed02aee04f26fe183c6b",
+    "workflow_name": "Issue 966 Phase6 Minimal Set"
+  },
+  "artifact": {
+    "id": 9263322291,
+    "name": "issue966-phase6-subsets-31945925114",
+    "digest": "sha256:cd1f135907273bee056f537cb97aeb3c3d6196d3b3755974ac4f0fa2bf981467"
+  },
+  "contract": {
+    "provider_identity_sha256": "c78ade39f63823d2f7089947831387803caae51b53073ae25fed2000f2a6f36c",
+    "selection_windows": ["2024H1", "2024H2", "2025H1", "2025H2"],
+    "development_selection_ends": "2025-12-31",
+    "existing_consumed_reporting_window": "2026H1",
+    "existing_consumed_partial_window": "2026H2",
+    "fresh_untouched_us_holdout_available": false,
+    "reporting_windows_may_enter_selection": false
+  },
+  "baseline": {
+    "candidate_id": "baseline_us_x1_2",
+    "factor_count": 7,
+    "compounded_relative_excess_20bps": 1.6706892505243864,
+    "compounded_relative_excess_60bps": 1.4534527938905026,
+    "mean_rank_ic": 0.04969875,
+    "worst_drawdown": -0.26218061541141957
+  },
+  "candidates": {
+    "us_x1_2_plus_signed_cord": {
+      "added_factor_ids": [
+        "qlib_alpha158.cord10",
+        "volume_stat_research.signed_volume_balance_10d"
+      ],
+      "factor_count": 9,
+      "pass": true,
+      "compounded_relative_excess_20bps": 2.0928657079282016,
+      "compounded_relative_excess_60bps": 1.8641024505886175,
+      "improvement_vs_baseline_20bps": 0.42217645740381515,
+      "improvement_vs_baseline_60bps": 0.4106496566981148,
+      "mean_rank_ic": 0.050231,
+      "worst_drawdown": -0.2386041521759108,
+      "drawdown_delta_vs_baseline": 0.02357646323550877,
+      "max_component_redundancy": 0.6974299068641778,
+      "exact_window_relative_excess_20bps": {
+        "2024H1": 0.3752552226977057,
+        "2024H2": 0.3804161571118052,
+        "2025H1": 0.4521732821401596,
+        "2025H2": 0.12188743624281084
+      },
+      "exact_window_relative_excess_60bps": {
+        "2024H1": 0.35456256634252536,
+        "2024H2": 0.3559758715276171,
+        "2025H1": 0.419218260496123,
+        "2025H2": 0.09872328158881927
+      }
+    },
+    "us_x1_2_plus_cord_rank": {
+      "added_factor_ids": ["qlib_alpha158.cord10", "qlib_alpha158.rank20"],
+      "factor_count": 9,
+      "pass": true,
+      "compounded_relative_excess_20bps": 2.054906692559967,
+      "compounded_relative_excess_60bps": 1.830352118203372,
+      "improvement_vs_baseline_20bps": 0.3842174420355806,
+      "improvement_vs_baseline_60bps": 0.3768993243128693,
+      "worst_drawdown": -0.23892542620245272,
+      "max_component_redundancy": 0.7618659292980138
+    },
+    "us_x1_2_plus_all_three": {
+      "added_factor_ids": [
+        "qlib_alpha158.cord10",
+        "qlib_alpha158.rank20",
+        "volume_stat_research.signed_volume_balance_10d"
+      ],
+      "factor_count": 10,
+      "pass": true,
+      "compounded_relative_excess_20bps": 2.1452741248708,
+      "compounded_relative_excess_60bps": 1.9067826402147348,
+      "improvement_vs_baseline_20bps": 0.4745848743464136,
+      "improvement_vs_baseline_60bps": 0.4533298463242321,
+      "worst_drawdown": -0.2514362299949212,
+      "max_component_redundancy": 0.7618659292980138
+    },
+    "us_x1_2_plus_signed_rank": {
+      "added_factor_ids": [
+        "qlib_alpha158.rank20",
+        "volume_stat_research.signed_volume_balance_10d"
+      ],
+      "factor_count": 9,
+      "pass": false,
+      "failed_checks": ["beats_baseline_20bps", "beats_baseline_60bps"],
+      "compounded_relative_excess_20bps": 1.5379342675138816,
+      "compounded_relative_excess_60bps": 1.3300936685671787,
+      "improvement_vs_baseline_20bps": -0.1327549830105048,
+      "improvement_vs_baseline_60bps": -0.12335912532332394,
+      "worst_drawdown": -0.25685523068930705,
+      "max_component_redundancy": 0.7618659292980138
+    }
+  },
+  "selection": {
+    "rule": [
+      "minimum_factor_count",
+      "maximum_20bps_relative_excess_improvement",
+      "maximum_60bps_relative_excess_improvement"
+    ],
+    "passing_candidate_ids": [
+      "us_x1_2_plus_signed_cord",
+      "us_x1_2_plus_cord_rank",
+      "us_x1_2_plus_all_three"
+    ],
+    "selected_candidate_id": "us_x1_2_plus_signed_cord",
+    "selected_added_factor_ids": [
+      "qlib_alpha158.cord10",
+      "volume_stat_research.signed_volume_balance_10d"
+    ],
+    "selected_factor_count": 9
+  },
+  "decision": {
+    "phase6_subset_complete": true,
+    "promotion_eligible": false,
+    "promotion_blocker": "no_fresh_untouched_us_holdout",
+    "research_only": true,
+    "trade_ready": false,
+    "automatic_promotion": false,
+    "next": "selected_set_reproduction_and_single_frozen_skew_control_certification"
+  }
+}
