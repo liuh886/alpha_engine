@@ -67,6 +67,26 @@ def test_formal_candidate_ci_uses_bounded_research_paths() -> None:
         assert path in text, f"formal candidate CI lost required research input: {path}"
 
 
+def test_heavy_formal_refresh_uses_bounded_research_paths() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert '      - "src/research/**"' not in text
+    required = (
+        '      - "src/research/formal_model_replay.py"',
+        '      - "src/research/qqq_authoritative_replay.py"',
+        '      - "src/research/rules_formal_replay_gate.py"',
+        '      - "src/research/cn_x1_2_prospective.py"',
+        '      - "src/research/cn_x1_2_current_target.py"',
+        '      - "src/research/ranker_current_target.py"',
+        '      - "src/research/us_x1_3_current_target.py"',
+        '      - "src/research/replay_comparison.py"',
+        '      - "src/research/ranker_training.py"',
+        '      - "src/research/market_session_clock.py"',
+        '      - "src/research/byd_v1_3_low_vol_recovery.py"',
+    )
+    for path in required:
+        assert path in text, f"heavy formal refresh lost required research input: {path}"
+
+
 def test_heavy_formal_refresh_resolves_cutoff_per_completed_market_session() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "from src.research.market_session_clock import completed_market_date" in text
