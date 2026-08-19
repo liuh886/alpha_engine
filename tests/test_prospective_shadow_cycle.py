@@ -81,6 +81,7 @@ def test_cutover_contract_explicitly_repurposes_prior_reserved_evidence() -> Non
     assert payload["effective_as_of_date"] == "2026-07-31"
     assert payload["first_actionable_session"] == "2026-08-03"
     assert payload["truth_boundary"]["trade_ready"] is False
+    assert set(payload["markets"]) == {"us"}
     assert disposition["previous_plan"]["start"] == "2026-07-01"
     assert disposition["repurposed_for_forward_shadow_use"] is True
     assert disposition[
@@ -159,27 +160,6 @@ def test_prices_must_not_extend_beyond_or_stop_before_as_of(
             registry_db=registry,
             ledger_dir=tmp_path / "ledger-stale",
             workspace_dir=tmp_path / "workspace-stale",
-            cutover_contract=CUTOVER,
-        )
-
-
-def test_cn_remains_blocked_until_live_provider_is_complete(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _install_runtime_stubs(monkeypatch)
-    registry = _registry(tmp_path / "factor_registry.db")
-    with pytest.raises(ValueError, match="Issue #223"):
-        cycle.run_prospective_shadow_cycle(
-            market="cn",
-            as_of_date="2026-07-31",
-            prices_csv=_prices(tmp_path / "prices.csv"),
-            spec_path=Path(
-                "configs/research_paradigms/cn_small_pool_sector_rotation_v1.yaml"
-            ),
-            registry_db=registry,
-            ledger_dir=tmp_path / "ledger",
-            workspace_dir=tmp_path / "workspace",
             cutover_contract=CUTOVER,
         )
 
