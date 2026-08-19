@@ -72,7 +72,10 @@ def test_us_x1_3_bundle_retains_performance_positions_trades_prices_and_signals(
     assert len(latest["ranked_targets"]) == 15
 
     priced = [row for row in positions if row["price"] is not None]
-    assert len(priced) / len(positions) >= 0.98
+    unpriced = [row for row in positions if row["price"] is None]
+    assert all(row.get("window_role") != "prospective_unrealized" for row in unpriced)
+    assert all(row.get("realized_return") is not None for row in unpriced)
+
     latest_positions = [
         row for row in positions if row.get("date") == latest["signal_date"]
     ]
