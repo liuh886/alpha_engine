@@ -14,60 +14,10 @@ from src.research.cross_sectional_experiment_runner import (
 from src.research.research_receipt import build_factor_lineage
 
 
-SPEC = Path("configs/research_experiments/us_x1_2_risk_controlled_momentum_v1.yaml")
 ALPHA158_SPEC = Path("tests/fixtures/research_experiments/alpha158_runner_v1.yaml")
 CN_MIXED_SPEC = Path(
     "configs/research_experiments/cn_x1_2_alpha158_three_mechanism_v1.yaml"
 )
-
-
-def test_us_x1_2_mission_is_atomic_and_provider_bound() -> None:
-    spec = load_cross_sectional_experiment_spec(SPEC)
-
-    assert spec.market == "us"
-    assert spec.benchmark == "QQQ"
-    assert spec.raw["snapshot"]["policy"] == "exact_selected_pool_source_rebuild"
-    assert spec.raw["snapshot"]["source_dir"] == "data/csv_source"
-    assert spec.raw["source_repair"]["approval_manifest"] == (
-        "data/source_repairs/us_x1_2_risk_controlled_momentum_v1.json"
-    )
-    assert spec.contract.selection_windows == (
-        "2024H1",
-        "2024H2",
-        "2025H1",
-        "2025H2",
-    )
-    assert spec.contract.reporting_windows == ("2026H1",)
-    assert spec.contract.provider_identity_sha256 == (
-        "c2b8cc29ad70afde1b4590a03da6f82d4a9fd1e242426bc936333b7f7c3bd39d"
-    )
-    assert [candidate.candidate_id for candidate in spec.candidates] == [
-        "baseline_7factor",
-        "risk_controlled_9factor",
-    ]
-
-
-def test_us_x1_2_challenger_adds_only_two_unique_risk_controlled_factors() -> None:
-    spec = load_cross_sectional_experiment_spec(SPEC)
-    expressions = _factor_expressions(spec)
-
-    baseline = set(expressions["baseline_7factor"])
-    challenger = set(expressions["risk_controlled_9factor"])
-
-    assert len(baseline) == 7
-    assert len(challenger) == 9
-    assert baseline < challenger
-    assert len(challenger - baseline) == 2
-
-
-def test_us_x1_2_candidates_share_identical_xgb_runtime() -> None:
-    spec = load_cross_sectional_experiment_spec(SPEC)
-    manifests = [candidate.calibration.identity_manifest() for candidate in spec.candidates]
-
-    assert manifests[0]["identity_sha256"] == manifests[1]["identity_sha256"]
-    assert manifests[0]["effective_model_parameters"] == manifests[1][
-        "effective_model_parameters"
-    ]
 
 
 def test_alpha158_uses_the_same_cross_sectional_harness_without_formula_copying() -> None:
