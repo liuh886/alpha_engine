@@ -1,0 +1,231 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from threading import Barrier, Lock
+
+import pandas as pd
+
+from src.data import cn_selected_pool_event_sources as sources
+from src.data.exact_frame_cache import write_exact_frame_snapshot
+
+
+RETRIEVED = "2026-08-20T00:00:00+00:00"
+
+
+def test_provider_lanes_overlap_but_symbols_remain_sequential(monkeypatch) -> None:
+    symbols = ["000425", "600000"]
+    barriers = {symbol: Barrier(3) for symbol in symbols}
+    progress_order: list[str] = []
+    statement_started: set[str] = set()
+    lock = Lock()
+
+    def enter_lane(symbol: str) -> None:
+        if symbol == symbols[1]:
+            assert progress_order == [symbols[0]]
+        barriers[symbol].wait(timeout=2)
+
+    class FinancialClient:
+        def fetch_disclosures(self, *, symbol: str, **_kwargs):
+            enter_lane(symbol)
+            return pd.DataFrame()
+
+        def fetch_statement(self, *, symbol: str, **_kwargs):
+            with lock:
+                first_statement = symbol not in statement_started
+                statement_started.add(symbol)
+            if first_statement:
+                enter_lane(symbol)
+            return pd.DataFrame()
+
+    class ActionClient:
+        def fetch_dividends(self, *, symbol: str):
+            enter_lane(symbol)
+            return pd.DataFrame()
+
+    client = FinancialClient()
+    monkeypatch.setattr(sources, "AsharePublicFinancialClient", lambda: client)
+    monkeypatch.setattr(sources, "AsharePublicActionClient", lambda: ActionClient())
+
+    result = sources.populate_cn_selected_pool_event_sources(
+        symbols,
+        {},
+        RETRIEVED,
+        start_date="2021-01-01",
+        end_date="2026-07-31",
+        progress=lambda message: progress_order.append(json.loads(message)["symbol"]),
+    )
+
+    assert progress_order == symbols
+    assert result.source_reuse["execution"] == {
+        "symbol_order": "selected_pool_order",
+        "cross_symbol_concurrency": 1,
+        "provider_lane_count": 3,
+        "max_concurrency_per_provider": 1,
+        "elapsed_ms": result.source_reuse["execution"]["elapsed_ms"],
+    }
+    assert all(result.fundamentals[symbol].status == "partial" for symbol in symbols)
+    assert all(
+        result.corporate_actions[symbol].status == "no_event_observed"
+        for symbol in symbols
+    )
+
+
+def test_successful_lanes_are_reused_after_sibling_failure(monkeypatch, tmp_path: Path) -> None:
+    class DisclosureClient:
+        def fetch_disclosures(self, **_kwargs):
+            return pd.DataFrame()
+
+    class FailingStatementClient:
+        def __init__(self):
+            self.calls = 0
+
+        def fetch_statement(self, **_kwargs):
+            self.calls += 1
+            if self.calls == 3:
+                raise RuntimeError("statement lane failed")
+            return pd.DataFrame()
+
+    class ActionClient:
+        def fetch_dividends(self, **_kwargs):
+            return pd.DataFrame()
+
+    first_clients = iter([DisclosureClient(), FailingStatementClient()])
+    monkeypatch.setattr(
+        sources,
+        "AsharePublicFinancialClient",
+        lambda: next(first_clients),
+    )
+    monkeypatch.setattr(sources, "AsharePublicActionClient", lambda: ActionClient())
+
+    first = sources.populate_cn_selected_pool_event_sources(
+        ["000425"],
+        {},
+        RETRIEVED,
+        start_date="2021-01-01",
+        end_date="2026-07-31",
+        source_cache_root=tmp_path,
+        progress=lambda _message: None,
+    )
+
+    assert first.fundamentals["000425"].status == "provider_missing"
+    assert (tmp_path / "fundamentals/000425/cninfo/metadata.json").is_file()
+    assert not (tmp_path / "fundamentals/000425/sina/metadata.json").exists()
+    assert (tmp_path / "corporate_actions/000425/metadata.json").is_file()
+
+    class NoDisclosureFetch:
+        def fetch_disclosures(self, **_kwargs):
+            raise AssertionError("CNINFO lane should be reused")
+
+    class HealthyStatementClient:
+        def fetch_statement(self, **_kwargs):
+            return pd.DataFrame()
+
+    class NoActionFetch:
+        def fetch_dividends(self, **_kwargs):
+            raise AssertionError("Eastmoney lane should be reused")
+
+    second_clients = iter([NoDisclosureFetch(), HealthyStatementClient()])
+    monkeypatch.setattr(
+        sources,
+        "AsharePublicFinancialClient",
+        lambda: next(second_clients),
+    )
+    monkeypatch.setattr(sources, "AsharePublicActionClient", lambda: NoActionFetch())
+
+    second = sources.populate_cn_selected_pool_event_sources(
+        ["000425"],
+        {},
+        "2026-08-21T00:00:00+00:00",
+        start_date="2021-01-01",
+        end_date="2026-07-31",
+        source_cache_root=tmp_path,
+        progress=lambda _message: None,
+    )
+
+    lanes = second.source_reuse["provider_lanes"]
+    assert lanes["cninfo_disclosures"]["exact_cutoff_reuse_count"] == 1
+    assert lanes["sina_statements"]["source_fetch_count"] == 1
+    assert lanes["eastmoney_dividends"]["exact_cutoff_reuse_count"] == 1
+    assert second.source_reuse["fundamentals"]["mixed_source_reuse_count"] == 1
+    assert second.fundamentals["000425"].status == "partial"
+
+
+def test_legacy_combined_fundamental_cache_is_migrated_without_network(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    symbol = "000425"
+    base_identity = {
+        "market": "cn",
+        "symbol": symbol,
+        "exchange": "SZSE",
+        "start": "2021-01-01",
+        "cutoff": "2026-07-31",
+    }
+    empty = pd.DataFrame()
+    write_exact_frame_snapshot(
+        tmp_path / "fundamentals" / symbol,
+        identity={
+            **base_identity,
+            "source_provider": "akshare_sina_financial_report_cninfo_time",
+        },
+        retrieved_at=RETRIEVED,
+        frames={
+            "disclosures": empty,
+            "balance_sheet": empty,
+            "income_statement": empty,
+            "cash_flow_statement": empty,
+        },
+    )
+    write_exact_frame_snapshot(
+        tmp_path / "corporate_actions" / symbol,
+        identity={**base_identity, "source_provider": "akshare_eastmoney_dividend"},
+        retrieved_at=RETRIEVED,
+        frames={"dividends": empty},
+    )
+
+    class NoFinancialFetch:
+        def fetch_disclosures(self, **_kwargs):
+            raise AssertionError("legacy CNINFO cache should be reused")
+
+        def fetch_statement(self, **_kwargs):
+            raise AssertionError("legacy Sina cache should be reused")
+
+    class NoActionFetch:
+        def fetch_dividends(self, **_kwargs):
+            raise AssertionError("Eastmoney cache should be reused")
+
+    monkeypatch.setattr(
+        sources,
+        "AsharePublicFinancialClient",
+        lambda: NoFinancialFetch(),
+    )
+    monkeypatch.setattr(sources, "AsharePublicActionClient", lambda: NoActionFetch())
+
+    result = sources.populate_cn_selected_pool_event_sources(
+        [symbol],
+        {},
+        "2026-08-21T00:00:00+00:00",
+        start_date="2021-01-01",
+        end_date="2026-07-31",
+        source_cache_root=tmp_path,
+        progress=lambda _message: None,
+    )
+
+    lanes = result.source_reuse["provider_lanes"]
+    assert lanes["cninfo_disclosures"]["legacy_exact_cutoff_reuse_count"] == 1
+    assert lanes["sina_statements"]["legacy_exact_cutoff_reuse_count"] == 1
+    assert lanes["eastmoney_dividends"]["exact_cutoff_reuse_count"] == 1
+    assert (tmp_path / "fundamentals/000425/cninfo/metadata.json").is_file()
+    assert (tmp_path / "fundamentals/000425/sina/metadata.json").is_file()
+
+
+def test_workflow_versions_cache_but_restores_exact_v1_fallback() -> None:
+    text = Path(".github/workflows/selected-pool-event-population-ci.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "selected-pool-events-cn-v2-" in text
+    assert "selected-pool-events-cn-${{ hashFiles(" in text
+    assert "restore-keys: |" in text
+    assert "src/data/cn_selected_pool_event_sources.py" in text
