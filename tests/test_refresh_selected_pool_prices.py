@@ -282,6 +282,10 @@ def test_incremental_refresh_marks_retained_old_source_stale(
     assert payload["status"] == "selected_pool_price_refresh_ready"
     assert payload["stale_symbols"] == ["000002"]
     assert payload["all_sources_current"] is False
+    retained = pd.read_csv(output / "data" / "csv_source" / "000002.csv")
+    assert retained["date"].max() == "2021-01-05"
+    assert payload["before"]["000002"]["last_date"] == "2021-01-05"
+    assert payload["after"]["000002"]["last_date"] == "2021-01-05"
 
 
 def test_auxiliary_symbols_share_provider_without_entering_candidate_identity(
