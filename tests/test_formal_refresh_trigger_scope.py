@@ -93,6 +93,18 @@ def test_heavy_formal_refresh_keeps_source_and_release_gates() -> None:
         assert token in text, f"formal refresh lost required source/release gate: {token}"
 
 
+def test_heavy_formal_refresh_does_not_publish_after_explicit_cancellation() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    publish_job = (
+        "  publish:\n"
+        "    needs: [prepare, providers, plan, strategy]\n"
+        "    if: ${{ !cancelled() }}\n"
+    )
+    assert publish_job in text
+    assert "if: always()" not in text
+    assert text.count("if: ${{ !cancelled() }}") == 4
+
+
 def test_formal_candidate_ci_uses_bounded_research_paths() -> None:
     text = CI_WORKFLOW.read_text(encoding="utf-8")
     assert '      - "src/research/**"' not in text

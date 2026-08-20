@@ -336,12 +336,12 @@ def test_formal_refresh_yaml_contains_no_model_execution_recipe() -> None:
     assert "scripts/run_formal_strategy_refresh.py" in strategy_block
 
 
-def test_strategy_results_are_uploaded_even_when_one_task_fails() -> None:
+def test_strategy_results_are_uploaded_after_failure_unless_cancelled() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
     start = workflow.index("      - name: Upload bounded strategy receipt and evidence")
     end = workflow.index("\n\n  publish:", start)
     block = workflow[start:end]
-    assert "if: always()" in block
+    assert "if: ${{ !cancelled() }}" in block
     transaction = Path("scripts/run_formal_refresh_transaction.py").read_text(encoding="utf-8")
     assert "RETAIN_CURRENT_STATES" in transaction
     assert '"retained_strategy_ids"' in transaction
