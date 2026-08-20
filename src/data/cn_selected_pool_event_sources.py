@@ -119,6 +119,12 @@ def _acquire_lane(
                     {name: legacy_snapshot.frames[name] for name in frame_names},
                     frame_names,
                 )
+                write_exact_frame_snapshot(
+                    cache_root,
+                    identity=identity,
+                    retrieved_at=legacy_snapshot.retrieved_at,
+                    frames=frames,
+                )
                 return _LaneResult(
                     frames,
                     legacy_snapshot.retrieved_at,
