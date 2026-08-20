@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -22,6 +23,10 @@ STRATEGIES = Path("configs/strategies/registry.json")
 
 def _read(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _active_preview_root(tmp_path: Path) -> Path:
@@ -111,6 +116,14 @@ def test_sync_promotes_persisted_active_preview_set_deterministically(tmp_path: 
     assert receipt_a["native_promoted_model_ids"] == list(
         load_active_strategy_catalog(STRATEGIES).active_model_version_ids
     )
+    assert receipt_a["retained_inactive_model_version_ids"] == ["cn_x1_1"]
+    retained_path = (
+        "cn_ranker/cn_x1_1/cn_x1_1-through-2026_08_12/manifest.json"
+    )
+    assert receipt_a["retained_formal_manifests"] == {
+        retained_path: _sha256(first / retained_path)
+    }
+    assert (first / retained_path).read_bytes() == (FRESHNESS / retained_path).read_bytes()
     assert "source_built_model_ids" not in receipt_a
     assert "source_catalog_sha256" not in receipt_a
     assert "migration_receipt" not in receipt_a
