@@ -102,7 +102,7 @@ def build_provider_cache_contract(
         "market": market,
         "start": start,
         "requested_cutoff": requested_cutoff,
-        "refresh_mode": "full_refresh",
+        "refresh_mode": "incremental_from_governed_seed",
         "max_rounds": 3,
         "auxiliary_symbols": list(DEFAULT_AUXILIARIES[market]),
         "inputs": _relative_file_hashes(root, configured),
