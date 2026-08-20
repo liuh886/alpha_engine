@@ -11,26 +11,19 @@ from typing import Any
 import pandas as pd
 import yaml
 
-from src.data.corporate_actions.ashare_public_actions import (
-    AsharePublicActionClient,
-    eastmoney_dividend_to_events,
-)
+
 from src.data.corporate_actions.yfinance_events import (
     fetch_yfinance_actions,
     yfinance_actions_to_corporate_actions,
 )
-from src.data.fundamentals.ashare_public_financials import (
-    AsharePublicFinancialClient,
-    cninfo_period_disclosures,
-    sina_statement_to_events,
-)
+
 from src.data.fundamentals.sec_companyfacts import (
     SecCompanyFactsClient,
     companyfacts_to_events,
 )
-from src.data.exact_frame_cache import (
-    load_exact_frame_snapshot,
-    write_exact_frame_snapshot,
+
+from src.data.cn_selected_pool_event_sources import (
+    populate_cn_selected_pool_event_sources,
 )
 from src.data.model_data_bundle import ComponentSpec, build_model_data_bundle
 from src.data.selected_pool_event_population import (
@@ -38,13 +31,6 @@ from src.data.selected_pool_event_population import (
     publish_selected_pool_event_bundle,
     verify_selected_pool_event_bundle,
 )
-
-STATEMENTS = ("资产负债表", "利润表", "现金流量表")
-STATEMENT_CACHE_NAMES = {
-    "资产负债表": "balance_sheet",
-    "利润表": "income_statement",
-    "现金流量表": "cash_flow_statement",
-}
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -109,12 +95,6 @@ def _sec_mapping(symbols: list[str], identity_mapping_path: Path) -> dict[str, d
             "entity_id": entity_id,
         }
     return mapping
-
-
-def _cn_exchange(symbol: str) -> str:
-    if symbol.startswith(("4", "8", "9")):
-        return "BSE"
-    return "SSE" if symbol.startswith(("5", "6")) else "SZSE"
 
 
 def _fixture_population(symbols: list[str], *, kind: str) -> dict[str, SymbolPopulation]:
@@ -203,199 +183,6 @@ def _populate_us(
     return fundamentals, actions
 
 
-def _populate_cn(
-    symbols: list[str],
-    field_map: dict[str, Any],
-    retrieved_at: str,
-    *,
-    start_date: str,
-    end_date: str,
-    source_cache_root: Path | None = None,
-    refresh_source_cache: bool = False,
-) -> tuple[dict[str, SymbolPopulation], dict[str, SymbolPopulation], dict[str, Any]]:
-    financial_client = AsharePublicFinancialClient()
-    action_client = AsharePublicActionClient()
-    fundamentals: dict[str, SymbolPopulation] = {}
-    actions: dict[str, SymbolPopulation] = {}
-    start_compact = start_date.replace("-", "")
-    end_compact = end_date.replace("-", "")
-    fundamental_cache_modes: dict[str, str] = {}
-    action_cache_modes: dict[str, str] = {}
-    for symbol in symbols:
-        exchange = _cn_exchange(symbol)
-        try:
-            fundamental_identity = {
-                "market": "cn",
-                "symbol": symbol,
-                "exchange": exchange,
-                "start": start_date,
-                "cutoff": end_date,
-                "source_provider": "akshare_sina_financial_report_cninfo_time",
-            }
-            fundamental_names = ["disclosures", *STATEMENT_CACHE_NAMES.values()]
-            fundamental_snapshot = None
-            if source_cache_root is not None and not refresh_source_cache:
-                fundamental_snapshot = load_exact_frame_snapshot(
-                    source_cache_root / "fundamentals" / symbol,
-                    identity=fundamental_identity,
-                    frame_names=fundamental_names,
-                )
-            if fundamental_snapshot is None:
-                disclosure_frame = financial_client.fetch_disclosures(
-                    symbol=symbol,
-                    start_date=start_compact,
-                    end_date=end_compact,
-                )
-                statement_frames = {
-                    statement: financial_client.fetch_statement(
-                        symbol=symbol,
-                        exchange=exchange,
-                        statement=statement,
-                    )
-                    for statement in STATEMENTS
-                }
-                source_retrieved_at = retrieved_at
-                fundamental_cache_modes[symbol] = "source_fetch"
-                if source_cache_root is not None:
-                    write_exact_frame_snapshot(
-                        source_cache_root / "fundamentals" / symbol,
-                        identity=fundamental_identity,
-                        retrieved_at=source_retrieved_at,
-                        frames={
-                            "disclosures": disclosure_frame,
-                            **{
-                                STATEMENT_CACHE_NAMES[statement]: frame
-                                for statement, frame in statement_frames.items()
-                            },
-                        },
-                    )
-            else:
-                disclosure_frame = fundamental_snapshot.frames["disclosures"]
-                statement_frames = {
-                    statement: fundamental_snapshot.frames[cache_name]
-                    for statement, cache_name in STATEMENT_CACHE_NAMES.items()
-                }
-                source_retrieved_at = fundamental_snapshot.retrieved_at
-                fundamental_cache_modes[symbol] = "exact_cutoff_reuse"
-            disclosures = cninfo_period_disclosures(disclosure_frame)
-            events = []
-            for statement in STATEMENTS:
-                frame = statement_frames[statement]
-                events.extend(
-                    sina_statement_to_events(
-                        frame,
-                        disclosures=disclosures,
-                        symbol=symbol,
-                        exchange=exchange,
-                        statement=statement,
-                        field_map=field_map,
-                        retrieved_at=source_retrieved_at,
-                    )
-                )
-            unique = {event.event_id: event for event in events}
-            ordered = sorted(unique.values(), key=lambda event: event.event_id)
-            fundamentals[symbol] = SymbolPopulation(
-                symbol,
-                "ready" if ordered else "partial",
-                ordered,
-                ["akshare_sina_financial_report_cninfo_time"],
-            )
-        except Exception as exc:
-            fundamental_cache_modes.setdefault(symbol, "source_fetch_failed")
-            fundamentals[symbol] = SymbolPopulation(
-                symbol,
-                "provider_missing",
-                [],
-                ["akshare_sina_financial_report_cninfo_time"],
-                f"{type(exc).__name__}: {exc}",
-            )
-        try:
-            action_identity = {
-                "market": "cn",
-                "symbol": symbol,
-                "exchange": exchange,
-                "start": start_date,
-                "cutoff": end_date,
-                "source_provider": "akshare_eastmoney_dividend",
-            }
-            action_snapshot = None
-            if source_cache_root is not None and not refresh_source_cache:
-                action_snapshot = load_exact_frame_snapshot(
-                    source_cache_root / "corporate_actions" / symbol,
-                    identity=action_identity,
-                    frame_names=["dividends"],
-                )
-            if action_snapshot is None:
-                frame = action_client.fetch_dividends(symbol=symbol)
-                source_retrieved_at = retrieved_at
-                action_cache_modes[symbol] = "source_fetch"
-                if source_cache_root is not None:
-                    write_exact_frame_snapshot(
-                        source_cache_root / "corporate_actions" / symbol,
-                        identity=action_identity,
-                        retrieved_at=source_retrieved_at,
-                        frames={"dividends": frame},
-                    )
-            else:
-                frame = action_snapshot.frames["dividends"]
-                source_retrieved_at = action_snapshot.retrieved_at
-                action_cache_modes[symbol] = "exact_cutoff_reuse"
-            events = eastmoney_dividend_to_events(
-                frame,
-                symbol=symbol,
-                exchange=exchange,
-                retrieved_at=source_retrieved_at,
-            )
-            actions[symbol] = SymbolPopulation(
-                symbol,
-                "ready" if events else "no_event_observed",
-                events,
-                ["akshare_eastmoney_dividend"],
-            )
-        except Exception as exc:
-            action_cache_modes.setdefault(symbol, "source_fetch_failed")
-            actions[symbol] = SymbolPopulation(
-                symbol,
-                "provider_missing",
-                [],
-                ["akshare_eastmoney_dividend"],
-                f"{type(exc).__name__}: {exc}",
-            )
-    source_reuse = {
-        "schema_version": "1.0",
-        "identity_policy": "market_symbol_exchange_start_exact_cutoff_provider",
-        "expected_symbol_count": len(symbols),
-        "fundamentals": {
-            "exact_cutoff_reuse_count": sum(
-                mode == "exact_cutoff_reuse" for mode in fundamental_cache_modes.values()
-            ),
-            "source_fetch_count": sum(
-                mode == "source_fetch" for mode in fundamental_cache_modes.values()
-            ),
-            "source_fetch_failed_count": sum(
-                mode == "source_fetch_failed" for mode in fundamental_cache_modes.values()
-            ),
-            "modes": fundamental_cache_modes,
-        },
-        "corporate_actions": {
-            "exact_cutoff_reuse_count": sum(
-                mode == "exact_cutoff_reuse" for mode in action_cache_modes.values()
-            ),
-            "source_fetch_count": sum(
-                mode == "source_fetch" for mode in action_cache_modes.values()
-            ),
-            "source_fetch_failed_count": sum(
-                mode == "source_fetch_failed" for mode in action_cache_modes.values()
-            ),
-            "modes": action_cache_modes,
-        },
-        "cached_retrieved_at_is_preserved": True,
-        "research_only": True,
-        "trade_ready": False,
-    }
-    return fundamentals, actions, source_reuse
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--market", choices=("us", "cn"), required=True)
@@ -462,7 +249,7 @@ def main() -> int:
         )
         source_reuse = None
     else:
-        fundamentals, actions, source_reuse = _populate_cn(
+        population = populate_cn_selected_pool_event_sources(
             symbols,
             contract["fundamental_fields"]["cn"],
             retrieved_at,
@@ -471,6 +258,9 @@ def main() -> int:
             source_cache_root=args.source_cache_root,
             refresh_source_cache=args.refresh_source_cache,
         )
+        fundamentals = population.fundamentals
+        actions = population.corporate_actions
+        source_reuse = population.source_reuse
 
     manifest = publish_selected_pool_event_bundle(
         market=args.market,
