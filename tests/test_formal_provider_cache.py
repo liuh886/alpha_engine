@@ -84,6 +84,7 @@ def test_provider_cache_contract_binds_market_code_pool_and_cutoff() -> None:
     inputs = contract["inputs"]
     assert isinstance(inputs, dict)
     assert "configs/research_universes/us_selected_equities_v2.yaml" in inputs
+    assert "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml" in inputs
     assert "configs/pools/selected_pool_registry_v1.yaml" in inputs
     assert "scripts/data/refresh_selected_pool_prices_v2.py" in inputs
     assert "scripts/build_market_providers.py" in inputs
@@ -91,6 +92,11 @@ def test_provider_cache_contract_binds_market_code_pool_and_cutoff() -> None:
     assert "src/data/adapters/yfinance_adapter.py" in inputs
     assert contract["refresh_mode"] == "incremental_from_governed_seed"
     assert cache_key(contract).startswith("formal-provider-1.0.0-us-2026-08-07-")
+
+
+def test_governed_terminal_history_uses_stable_line_endings() -> None:
+    attributes = (Path.cwd() / ".gitattributes").read_text(encoding="utf-8")
+    assert "data/csv_clean/EA.csv text eol=lf" in attributes
 
 
 def test_sealed_provider_cache_verifies_exact_manifest_csv_and_qlib_bytes(

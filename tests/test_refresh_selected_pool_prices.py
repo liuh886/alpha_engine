@@ -33,7 +33,7 @@ def _frame(
 
 def _write_csv(path: Path, frame: pd.DataFrame) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    frame.to_csv(path, index=False)
+    frame.to_csv(path, index=False, lineterminator="\n")
 
 
 class FakeRouter:
@@ -113,7 +113,81 @@ def _prepare_contract(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         "build_market_provider",
         lambda **kwargs: {"provider_identity_sha256": "c" * 64},
     )
+    monkeypatch.setattr(module, "_terminal_listing_contracts", lambda *args: {})
     return pool
+
+
+def test_terminal_history_is_retained_without_refetching(tmp_path: Path) -> None:
+    source = tmp_path / "EA.csv"
+    frame = _frame(dates=("2021-01-04", "2026-08-04", "2026-08-10"))
+    _write_csv(source, frame)
+
+    retained = module._retained_terminal_history(
+        source,
+        symbol="EA",
+        start="2021-01-01",
+        contract={"terminal_date": "2026-08-04"},
+    )
+
+    assert retained["date"].max() == pd.Timestamp("2026-08-04")
+    assert "2026-08-10" not in retained["date"].dt.strftime("%Y-%m-%d").tolist()
+
+
+def test_full_refresh_routes_around_governed_terminal_listing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pool = tmp_path / "pool.yaml"
+    pool.write_text(
+        yaml.safe_dump({"market": "us", "candidate_count": 1, "symbols": ["EA"]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        module,
+        "resolve_selected_pool",
+        lambda *args, **kwargs: SimpleNamespace(pool_id="test_us_pool", pool_spec=pool),
+    )
+    monkeypatch.setattr(
+        module,
+        "_terminal_listing_contracts",
+        lambda *args: {
+            "EA": {
+                "market": "us",
+                "terminal_date": "2026-08-04",
+                "active_universe_after_terminal_date_allowed": False,
+                "historical_rows_retained": True,
+            }
+        },
+    )
+    monkeypatch.setattr(
+        module,
+        "build_market_provider",
+        lambda **kwargs: {"provider_identity_sha256": "c" * 64},
+    )
+    source = tmp_path / "source"
+    _write_csv(
+        source / "EA.csv",
+        _frame(dates=("2021-01-04", "2026-08-04", "2026-08-10")),
+    )
+    _write_csv(source / "QQQ.csv", _frame(dates=("2021-01-04", "2026-08-14")))
+    router = FakeRouter({"QQQ": _frame(2.0, dates=("2026-08-14",))})
+
+    payload = module.refresh_selected_pool_prices(
+        root=tmp_path,
+        market="us",
+        source_csv_dir=source,
+        output_root=tmp_path / "output",
+        start="2021-01-01",
+        cutoff="2026-08-14",
+        router=router,  # type: ignore[arg-type]
+        max_rounds=1,
+        full_refresh=True,
+    )
+
+    assert [call[0] for call in router.calls] == ["QQQ"]
+    ea_record = next(row for row in payload["records"] if row["symbol"] == "EA")
+    assert ea_record["action"] == "retained_governed_terminal_history"
+    assert ea_record["last_date"] == "2026-08-04"
 
 
 def test_incremental_refresh_fetches_only_invalid_or_outdated_sources(

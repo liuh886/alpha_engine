@@ -35,6 +35,9 @@ from src.data.validation.schema import validate_market_data
 from src.research.selected_pool_guard import resolve_selected_pool
 
 REGISTRY = Path("configs/pools/selected_pool_registry_v1.yaml")
+LIFECYCLE_REGISTRY = Path(
+    "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml"
+)
 BENCHMARKS = {"cn": "000300", "us": "QQQ"}
 CANONICAL_COLUMNS = (
     "date",
@@ -82,6 +85,87 @@ def _load_pool(path: Path, market: str) -> list[str]:
     if expected <= 0 or len(symbols) != expected or len(set(symbols)) != expected:
         raise ValueError("selected-pool identity is not exact")
     return symbols
+
+
+def _terminal_listing_contracts(
+    project_root: Path, market: str
+) -> dict[str, dict[str, Any]]:
+    """Load exact terminal-listing boundaries for one market."""
+
+    path = project_root / LIFECYCLE_REGISTRY
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    terminal = ((payload or {}).get("rules") or {}).get("terminal_listings")
+    if not isinstance(terminal, dict):
+        raise ValueError("terminal-listing lifecycle registry is invalid")
+    contracts: dict[str, dict[str, Any]] = {}
+    for raw_symbol, raw_contract in terminal.items():
+        if not isinstance(raw_contract, dict):
+            raise ValueError("terminal-listing contract must be a mapping")
+        if str(raw_contract.get("market") or "").lower() != market:
+            continue
+        symbol = str(raw_symbol).strip().upper()
+        terminal_date = str(raw_contract.get("terminal_date") or "")
+        try:
+            pd.Timestamp(terminal_date)
+        except ValueError as exc:
+            raise ValueError(f"invalid terminal date for {symbol}") from exc
+        if (
+            raw_contract.get("active_universe_after_terminal_date_allowed") is not False
+            or raw_contract.get("historical_rows_retained") is not True
+        ):
+            raise ValueError(f"terminal lifecycle boundary is incomplete: {symbol}")
+        contracts[symbol] = dict(raw_contract)
+    return contracts
+
+
+def _retained_terminal_history(
+    source_path: Path,
+    *,
+    symbol: str,
+    start: str,
+    contract: dict[str, Any],
+) -> pd.DataFrame:
+    """Return governed history closed exactly at the final trading session."""
+
+    if not source_path.is_file():
+        raise ValueError(f"governed terminal history is missing: {symbol}")
+    frame = _normalize_frame(pd.read_csv(source_path), symbol=symbol)
+    start_at = pd.Timestamp(start).normalize()
+    terminal_at = pd.Timestamp(str(contract["terminal_date"])).normalize()
+    if frame.iloc[0]["date"] > start_at + pd.Timedelta(days=10):
+        raise ValueError(
+            f"governed terminal history does not reach requested start: {symbol}"
+        )
+    frame = frame.loc[frame["date"] <= terminal_at].copy()
+    if frame.empty or frame.iloc[-1]["date"] != terminal_at:
+        raise ValueError(
+            f"governed terminal history does not close at terminal date: {symbol}"
+        )
+    return frame
+
+
+def _terminal_history_source(
+    project_root: Path,
+    default_source: Path,
+    *,
+    symbol: str,
+    contract: dict[str, Any],
+) -> Path:
+    """Resolve and verify the immutable history source declared by lifecycle."""
+
+    raw_path = str(contract.get("governed_history_path") or "").strip()
+    if not raw_path:
+        return default_source
+    root = project_root.resolve()
+    source = (root / raw_path).resolve()
+    try:
+        source.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"governed terminal history escapes repository: {symbol}") from exc
+    expected = str(contract.get("governed_history_sha256") or "").strip().lower()
+    if len(expected) != 64 or not source.is_file() or _sha256(source) != expected:
+        raise ValueError(f"governed terminal history identity mismatch: {symbol}")
+    return source
 
 
 def _normalize_auxiliary_symbols(
@@ -340,6 +424,7 @@ def refresh_selected_pool_prices(
         require_data_ready=False,
     )
     candidates = _load_pool(binding.pool_spec, market_key)
+    terminal_contracts = _terminal_listing_contracts(project_root, market_key)
     benchmark = BENCHMARKS[market_key]
     auxiliaries = _normalize_auxiliary_symbols(
         auxiliary_symbols,
@@ -386,6 +471,56 @@ def refresh_selected_pool_prices(
             source_path = source_dir / f"{symbol}.csv"
             output_path = csv_out / f"{symbol}.csv"
             audit = before[symbol]
+            terminal_contract = terminal_contracts.get(symbol)
+
+            if (
+                terminal_contract is not None
+                and pd.Timestamp(cutoff)
+                > pd.Timestamp(str(terminal_contract["terminal_date"]))
+            ):
+                try:
+                    terminal_source = _terminal_history_source(
+                        project_root,
+                        source_path,
+                        symbol=symbol,
+                        contract=terminal_contract,
+                    )
+                    frame = _retained_terminal_history(
+                        terminal_source,
+                        symbol=symbol,
+                        start=start,
+                        contract=terminal_contract,
+                    )
+                    _write_csv(output_path, frame)
+                except Exception as exc:
+                    failure = {
+                        "symbol": symbol,
+                        "action": "terminal_history_failed",
+                        "previous_status": audit["status"],
+                        "error": f"{type(exc).__name__}: {exc}",
+                        "attempts": [],
+                    }
+                    records.append(failure)
+                    failures.append(failure)
+                    continue
+                records.append(
+                    {
+                        "symbol": symbol,
+                        "action": "retained_governed_terminal_history",
+                        "source_path": str(
+                            terminal_contract.get("governed_history_path")
+                            or terminal_source.name
+                        ),
+                        "source_sha256": _sha256(terminal_source),
+                        "output_sha256": _sha256(output_path),
+                        "rows": int(len(frame)),
+                        "first_date": frame["date"].min().date().isoformat(),
+                        "last_date": frame["date"].max().date().isoformat(),
+                        "terminal_lifecycle": terminal_contract,
+                        "attempts": [],
+                    }
+                )
+                continue
 
             if symbol not in target_set:
                 frame = _copy_through_cutoff(

@@ -14,6 +14,7 @@ class FormalProviderCacheError(ValueError):
 
 CACHE_SCHEMA_VERSION = "1.0.0"
 CONTRACT_PATHS = (
+    "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml",
     "configs/pools/selected_pool_registry_v1.yaml",
     "configs/pools/reference_instrument_registry_v1.yaml",
     "pyproject.toml",

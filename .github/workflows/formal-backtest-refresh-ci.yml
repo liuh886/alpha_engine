@@ -9,6 +9,7 @@ on:
       - ".github/workflows/formal-backtest-refresh-ci.yml"
       - "configs/strategies/registry.json"
       - "configs/models/**"
+      - "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml"
       - "configs/research_experiments/cn_x1_2_alpha158_breadth_scaled_v1.yaml"
       - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
       - "src/artifacts/**"
@@ -67,6 +68,7 @@ on:
       - "scripts/refresh_byd_v1_3_formal.py"
       - "scripts/refresh_qqq_v4_3_formal.py"
       - "scripts/data/**"
+      - "data/csv_clean/EA.csv"
       - "tests/test_active_strategy_catalog.py"
       - "tests/test_strategy_runtime_capabilities.py"
       - "tests/test_ranker_current_target.py"
@@ -84,6 +86,9 @@ on:
       - "tests/test_rules_formal_replay_gate.py"
       - "tests/test_market_evidence.py"
       - "tests/test_formal_provider_cache.py"
+      - "tests/test_refresh_selected_pool_prices.py"
+      - "tests/test_refresh_selected_pool_prices_v2.py"
+      - "tests/test_selected_pool_governance.py"
       - "tests/test_strategy_operations.py"
       - "tests/test_system_health.py"
       - "tests/test_model_data_bundle.py"
@@ -287,6 +292,8 @@ jobs:
             scripts/run_formal_strategy_refresh.py \
             scripts/ranker_provisional_mtm.py \
             scripts/govern_formal_provider_cache.py \
+            scripts/data/refresh_selected_pool_prices.py \
+            scripts/data/refresh_selected_pool_prices_v2.py \
             scripts/refresh_ranker_formal.py \
             scripts/build_cn_x1_2_prospective_ledger.py \
             scripts/build_us_x1_3_preview.py \
@@ -312,6 +319,9 @@ jobs:
             tests/test_rules_formal_replay_gate.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
+            tests/test_refresh_selected_pool_prices.py \
+            tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_governance.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
             tests/test_model_data_bundle.py \
@@ -347,6 +357,9 @@ jobs:
             tests/test_rules_formal_replay_gate.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
+            tests/test_refresh_selected_pool_prices.py \
+            tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_governance.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \

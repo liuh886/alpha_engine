@@ -163,6 +163,7 @@ def _factor_summary(
     target_weights: Mapping[str, float],
     features: pd.DataFrame,
     factor_columns: Mapping[str, str],
+    library_sources: Sequence[str | Path] | None = None,
 ) -> dict[str, Any]:
     target_names = list(target_weights)
     instruments = features.index.get_level_values("instrument")
@@ -201,6 +202,7 @@ def _factor_summary(
         factor_values=factor_values,
         factor_references=references,
         data_freshness_ok=True,
+        library_sources=library_sources,
     )
 
 
