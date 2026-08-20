@@ -6,9 +6,11 @@ import pandas as pd
 import yaml
 
 from scripts.data.populate_selected_pool_events import (
-    _populate_cn,
     _populate_us,
     _sec_mapping,
+)
+from src.data.cn_selected_pool_event_sources import (
+    populate_cn_selected_pool_event_sources,
 )
 
 from src.data.corporate_actions.ashare_public_actions import (
@@ -128,50 +130,55 @@ def test_cn_sources_are_reused_only_for_the_exact_cutoff(monkeypatch, tmp_path: 
             )
 
     financial_client = FinancialClient()
-    action_client = ActionClient()
     monkeypatch.setattr(
-        "scripts.data.populate_selected_pool_events.AsharePublicFinancialClient",
+        "src.data.cn_selected_pool_event_sources.AsharePublicFinancialClient",
         lambda: financial_client,
     )
     monkeypatch.setattr(
-        "scripts.data.populate_selected_pool_events.AsharePublicActionClient",
-        lambda: action_client,
+        "src.data.cn_selected_pool_event_sources.AsharePublicActionClient",
+        lambda: ActionClient(),
     )
 
-    first_fundamentals, first_actions, first_reuse = _populate_cn(
+    first = populate_cn_selected_pool_event_sources(
         ["000425"],
         {},
         "2026-08-04T00:00:00+00:00",
         start_date="2021-01-01",
         end_date="2026-07-31",
         source_cache_root=tmp_path,
+        progress=lambda _message: None,
     )
-    assert first_fundamentals["000425"].status == "partial"
-    assert first_reuse["fundamentals"]["source_fetch_count"] == 1
-    assert first_reuse["corporate_actions"]["source_fetch_count"] == 1
+    assert first.fundamentals["000425"].status == "partial"
+    assert first.source_reuse["fundamentals"]["source_fetch_count"] == 1
+    assert first.source_reuse["corporate_actions"]["source_fetch_count"] == 1
     assert calls == {"disclosures": 1, "statements": 3, "actions": 1}
-    first_retrieved_at = first_actions["000425"].events[0].retrieved_at
+    first_retrieved_at = first.corporate_actions["000425"].events[0].retrieved_at
 
-    _, second_actions, second_reuse = _populate_cn(
+    second = populate_cn_selected_pool_event_sources(
         ["000425"],
         {},
         "2026-08-05T00:00:00+00:00",
         start_date="2021-01-01",
         end_date="2026-07-31",
         source_cache_root=tmp_path,
+        progress=lambda _message: None,
     )
     assert calls == {"disclosures": 1, "statements": 3, "actions": 1}
-    assert second_reuse["fundamentals"]["exact_cutoff_reuse_count"] == 1
-    assert second_reuse["corporate_actions"]["exact_cutoff_reuse_count"] == 1
-    assert second_actions["000425"].events[0].retrieved_at == first_retrieved_at
+    assert second.source_reuse["fundamentals"]["exact_cutoff_reuse_count"] == 1
+    assert second.source_reuse["corporate_actions"]["exact_cutoff_reuse_count"] == 1
+    assert (
+        second.corporate_actions["000425"].events[0].retrieved_at
+        == first_retrieved_at
+    )
 
-    _populate_cn(
+    populate_cn_selected_pool_event_sources(
         ["000425"],
         {},
         "2026-08-05T00:00:00+00:00",
         start_date="2021-01-01",
         end_date="2026-08-01",
         source_cache_root=tmp_path,
+        progress=lambda _message: None,
     )
     assert calls == {"disclosures": 2, "statements": 6, "actions": 2}
 
