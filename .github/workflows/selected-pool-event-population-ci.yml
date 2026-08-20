@@ -121,17 +121,13 @@ jobs:
           --cutoff 2026-07-31
           --fixture
           --output-root "artifacts/data/event_population/${{ matrix.market }}"
-      - name: Verify every selected symbol has an explicit status
-        run: |
-          uv run python - "artifacts/data/event_population/${{ matrix.market }}/event_population_manifest.json" <<'PY'
-          import json, sys
-          from pathlib import Path
-          payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-          assert payload["expected_symbol_count"] in {87, 130}
-          assert payload["fundamental_component"]["details"]["explicit_status_count"] == payload["expected_symbol_count"]
-          assert payload["corporate_action_component"]["details"]["explicit_status_count"] == payload["expected_symbol_count"]
-          assert payload["trade_ready"] is False
-          PY
+      - name: Verify sealed selected-pool evidence
+        run: >-
+          uv run python scripts/data/populate_selected_pool_events.py
+          --market "${{ matrix.market }}"
+          --cutoff 2026-07-31
+          --output-root "artifacts/data/event_population/${{ matrix.market }}"
+          --verify-only
       - uses: actions/upload-artifact@v4
         with:
           name: selected-pool-event-fixture-${{ matrix.market }}-${{ github.run_id }}
@@ -196,10 +192,10 @@ jobs:
           path: artifacts/cache/selected_pool_events/cn
           key: ${{ steps.event-source-cache.outputs.cache-primary-key }}
       - name: Upload source-bound event evidence
-        if: always() && steps.selected.outputs.run == 'true'
+        if: success() && steps.selected.outputs.run == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: selected-pool-event-live-${{ matrix.market }}-${{ github.run_id }}
           path: artifacts/data/event_population/${{ matrix.market }}
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 90

@@ -79,6 +79,34 @@ Relationships:
 - Feeds PromotionGates and PromotionDecisions.
 - May justify promoting a FactorCandidate or ModelVersion.
 
+### SelectedPoolEventBundle
+
+Definition: An immutable EvidenceBundle containing point-in-time fundamental
+events, explicit corporate actions, and per-symbol coverage for one exact
+selected pool, market, and evidence cutoff.
+
+Key invariants:
+
+- MUST preserve the exact selected-pool symbol closure and explicit status for
+  every candidate.
+- MUST bind every event store, coverage record, and component manifest by
+  relative path, digest, and byte size.
+- Source-bound publication MUST bind the population contract, pool spec,
+  selected-pool registry, reference-instrument registry, and lifecycle registry.
+- MUST be built in staging, verified through the same Interface used by
+  consumers, and published only as one complete directory.
+- MUST reject missing, extra, path-escaping, cross-market, post-cutoff, or
+  otherwise inconsistent evidence.
+- MUST remain `research_only=true` and `trade_ready=false`.
+
+Relationships:
+
+- Supplies fundamental and corporate-action DataComponents to model-data
+  readiness evaluation.
+- Binds one selected pool and its lifecycle-aware evidence cutoff.
+- Is produced by provider Adapters but owns its evidence closure and
+  verification semantics inside the data Module.
+
 ### FactorCandidate
 
 Definition: A proposed alpha factor or feature expression before it has earned a

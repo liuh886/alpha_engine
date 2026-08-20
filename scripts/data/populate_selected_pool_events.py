@@ -35,7 +35,8 @@ from src.data.exact_frame_cache import (
 from src.data.model_data_bundle import ComponentSpec, build_model_data_bundle
 from src.data.selected_pool_event_population import (
     SymbolPopulation,
-    build_selected_pool_event_artifacts,
+    publish_selected_pool_event_bundle,
+    verify_selected_pool_event_bundle,
 )
 
 STATEMENTS = ("资产负债表", "利润表", "现金流量表")
@@ -412,6 +413,11 @@ def main() -> int:
     parser.add_argument("--frontend-data-dir", type=Path, default=None)
     parser.add_argument("--source-cache-root", type=Path, default=None)
     parser.add_argument("--refresh-source-cache", action="store_true")
+    parser.add_argument(
+        "--verify-only",
+        action="store_true",
+        help="Verify an existing sealed bundle without contacting providers.",
+    )
     args = parser.parse_args()
 
     contract = _load_yaml(args.contract)
@@ -419,6 +425,28 @@ def main() -> int:
     pool_path = Path(str(market_contract["pool_spec"]))
     pool = _load_yaml(pool_path)
     symbols = _symbols(pool)
+    governance_paths = {
+        "population_contract": args.contract,
+        "pool_spec": pool_path,
+        "selected_pool_registry": Path("configs/pools/selected_pool_registry_v1.yaml"),
+        "reference_instrument_registry": Path(
+            "configs/pools/reference_instrument_registry_v1.yaml"
+        ),
+        "lifecycle_registry": Path(
+            "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml"
+        ),
+    }
+    if args.verify_only:
+        manifest = verify_selected_pool_event_bundle(
+            args.output_root,
+            expected_market=args.market,
+            expected_pool_id=str(pool["pool_id"]),
+            expected_symbols=symbols,
+            expected_cutoff=args.cutoff,
+            expected_governance_paths=governance_paths,
+        )
+        print(json.dumps(manifest, ensure_ascii=False, indent=2, default=str))
+        return 0
     retrieved_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
     if args.fixture:
@@ -444,7 +472,7 @@ def main() -> int:
             refresh_source_cache=args.refresh_source_cache,
         )
 
-    manifest = build_selected_pool_event_artifacts(
+    manifest = publish_selected_pool_event_bundle(
         market=args.market,
         pool_id=str(pool["pool_id"]),
         symbols=symbols,
@@ -453,9 +481,17 @@ def main() -> int:
         evidence_cutoff=args.cutoff,
         output_root=args.output_root,
         source_reuse=source_reuse,
+        governance_paths=governance_paths,
+        evidence_class="contract_fixture" if args.fixture else "source_bound",
     )
 
     if args.price_manifest and args.model_data_output:
+        if manifest.get("publication_eligible") is not True:
+            parser.error("contract fixtures cannot satisfy model-data readiness")
+        component_paths = {
+            str(record["component_kind"]): args.output_root / str(record["manifest_path"])
+            for record in manifest["components"]
+        }
         component_specs = [
             ComponentSpec(
                 component_id=f"prices.{pool['pool_id']}",
@@ -466,13 +502,13 @@ def main() -> int:
             ComponentSpec(
                 component_id=f"fundamentals.{pool['pool_id']}",
                 component_kind="fundamental_coverage",
-                manifest_path=args.output_root / "fundamentals/component_manifest.json",
+                manifest_path=component_paths["fundamental_coverage"],
                 market=args.market,
             ),
             ComponentSpec(
                 component_id=f"corporate_actions.{pool['pool_id']}",
                 component_kind="corporate_action_coverage",
-                manifest_path=args.output_root / "corporate_actions/component_manifest.json",
+                manifest_path=component_paths["corporate_action_coverage"],
                 market=args.market,
             ),
         ]
