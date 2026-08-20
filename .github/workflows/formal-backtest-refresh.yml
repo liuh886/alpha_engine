@@ -534,7 +534,7 @@ jobs:
             --generated-at "$GENERATED_AT" \
             --output-root artifacts/formal-refresh/strategy-result
       - name: Upload bounded strategy receipt and evidence
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v6
         with:
           name: formal-strategy-${{ matrix.task.strategy_id }}-${{ github.run_id }}
@@ -545,7 +545,7 @@ jobs:
 
   publish:
     needs: [prepare, providers, plan, strategy]
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     env:
@@ -842,7 +842,7 @@ jobs:
           pages_conclusion="$(gh run view "$pages_run" --repo "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')"
           test "$pages_conclusion" = "success"
       - name: Upsert refresh operating status
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/github-script@v8
         env:
           PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
@@ -911,7 +911,7 @@ jobs:
               });
             }
       - name: Upload bounded refresh evidence
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v6
         with:
           name: formal-backtest-refresh-${{ github.run_id }}
