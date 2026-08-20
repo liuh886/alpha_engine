@@ -275,7 +275,41 @@ def test_terminal_listing_stale_symbol_does_not_block_promotion(
     assert payload["unresolved_stale_symbols"] == []
     assert payload["promotion_eligible"] is True
     assert payload["promotion_blocker"] is None
-    assert payload["terminal_listing_evidence"]["EA"]["terminal_date"] == "2026-08-05"
+    assert payload["terminal_listing_evidence"]["EA"]["terminal_date"] == "2026-08-04"
+
+
+def test_governed_terminal_history_is_explicitly_promotable(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    path = tmp_path / "manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "market": "us",
+                "status": "selected_pool_price_refresh_ready",
+                "cutoff": "2026-08-19",
+                "stale_symbols": ["EA"],
+                "records": [
+                    {
+                        "symbol": "EA",
+                        "action": "retained_governed_terminal_history",
+                        "last_date": "2026-08-04",
+                        "attempts": [],
+                    }
+                ],
+                "failures": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    payload = _decorate_manifest(path, build_hardened_router("us"))
+
+    assert payload["promotion_eligible"] is True
+    assert payload["terminal_history_symbols"] == ["EA"]
+    assert payload["records"][0]["promotion_status"] == "governed_terminal_history"
 
 
 def test_mixed_terminal_and_unresolved_stale_symbols_remain_blocked(

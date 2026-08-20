@@ -40,6 +40,19 @@ def _resolve_source_path(source: str | Path) -> Path:
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
+def _canonical_source_id(source: str | Path) -> str:
+    """Return a repository-relative source ID independent of checkout location."""
+
+    root = PROJECT_ROOT.resolve()
+    resolved = _resolve_source_path(source).resolve()
+    try:
+        return resolved.relative_to(root).as_posix()
+    except ValueError as exc:
+        raise StrategyFactorSnapshotError(
+            f"factor library path escapes repository root: {source}"
+        ) from exc
+
+
 def build_ranker_factor_snapshot(
     *,
     model_family_id: str,
@@ -118,10 +131,16 @@ def build_ranker_factor_snapshot(
         catalog_id = "+".join(library.catalog.catalog_id for library in libraries)
         catalog_version = "+".join(library.catalog.catalog_version for library in libraries)
         catalog_implementation_hash = _combined_source_identity(
-            [(str(library.source_path), library.catalog.implementation_hash()) for library in libraries]
+            [
+                (_canonical_source_id(source), library.catalog.implementation_hash())
+                for source, library in zip(sources, libraries, strict=True)
+            ]
         )
         source_sha256 = _combined_source_identity(
-            [(str(library.source_path), library.source_sha256) for library in libraries]
+            [
+                (_canonical_source_id(source), library.source_sha256)
+                for source, library in zip(sources, libraries, strict=True)
+            ]
         )
 
     snapshot = {

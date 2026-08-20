@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -175,6 +176,21 @@ def test_ranker_snapshot_resolves_multi_library_factor_contract() -> None:
     assert snapshot["catalog_id"] == "alpha_engine_ohlcv+qlib_alpha158"
     assert len(snapshot["catalog_implementation_hash"]) == 64
     assert len(snapshot["source_sha256"]) == 64
+    libraries = [
+        load_factor_library(ROOT / "configs/factor_libraries/ohlcv.yaml"),
+        load_factor_library(ROOT / "src/factors/sets/qlib_alpha158.py"),
+    ]
+    expected_source_identity = hashlib.sha256(
+        "|".join(
+            (
+                "configs/factor_libraries/ohlcv.yaml:"
+                f"{libraries[0].source_sha256}",
+                "src/factors/sets/qlib_alpha158.py:"
+                f"{libraries[1].source_sha256}",
+            )
+        ).encode("utf-8")
+    ).hexdigest()
+    assert snapshot["source_sha256"] == expected_source_identity
 
 
 def test_ranker_snapshot_multi_library_rejects_unknown_factor() -> None:

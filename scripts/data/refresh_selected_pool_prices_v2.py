@@ -243,6 +243,7 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
     quarantined: list[str] = []
     governed_auxiliary_fallbacks: list[str] = []
     copied_legacy: list[str] = []
+    terminal_history: list[str] = []
 
     records = payload.get("records", [])
     if isinstance(records, list):
@@ -277,6 +278,9 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
             if record.get("action") == "copied_verified_source":
                 record["promotion_status"] = "legacy_source_not_refetched"
                 copied_legacy.append(symbol)
+            elif record.get("action") == "retained_governed_terminal_history":
+                record["promotion_status"] = "governed_terminal_history"
+                terminal_history.append(symbol)
 
     failures = payload.get("failures", [])
     if isinstance(failures, list):
@@ -328,6 +332,7 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
         set(governed_auxiliary_fallbacks)
     )
     payload["legacy_copied_symbols"] = sorted(set(copied_legacy))
+    payload["terminal_history_symbols"] = sorted(set(terminal_history))
     stale_symbols = payload.get("stale_symbols", [])
     if not isinstance(stale_symbols, list):
         stale_symbols = []

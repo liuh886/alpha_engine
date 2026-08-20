@@ -14,6 +14,7 @@ on:
       - "configs/factor_libraries/ohlcv.yaml"
       - "configs/data/**"
       - "configs/data_contracts/**"
+      - "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml"
       - "configs/pools/**"
       - "configs/research_universes/**"
       - "configs/research_classifications/**"
@@ -76,7 +77,12 @@ on:
       - "scripts/refresh_byd_v1_3_formal.py"
       - "scripts/refresh_qqq_v4_3_formal.py"
       - "scripts/data/**"
+      - "data/csv_clean/EA.csv"
       - "tests/test_formal_refresh.py"
+      - "tests/test_formal_provider_cache.py"
+      - "tests/test_refresh_selected_pool_prices.py"
+      - "tests/test_refresh_selected_pool_prices_v2.py"
+      - "tests/test_selected_pool_governance.py"
       - "tests/test_strategy_runtime_capabilities.py"
       - "tests/test_formal_bundle_reader.py"
       - "tests/test_formal_strategy_refresh.py"
@@ -170,6 +176,8 @@ jobs:
             src/research/cn_x1_2_prospective.py \
             scripts/build_market_evidence.py \
             scripts/govern_formal_provider_cache.py \
+            scripts/data/refresh_selected_pool_prices.py \
+            scripts/data/refresh_selected_pool_prices_v2.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py \
             scripts/ranker_provisional_mtm.py \
@@ -194,6 +202,9 @@ jobs:
             tests/test_rules_formal_replay_gate.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
+            tests/test_refresh_selected_pool_prices.py \
+            tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_governance.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
             tests/test_model_data_bundle.py \
@@ -225,6 +236,9 @@ jobs:
             tests/test_rules_formal_replay_gate.py \
             tests/test_market_evidence.py \
             tests/test_formal_provider_cache.py \
+            tests/test_refresh_selected_pool_prices.py \
+            tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_governance.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
             tests/test_model_data_bundle.py \
