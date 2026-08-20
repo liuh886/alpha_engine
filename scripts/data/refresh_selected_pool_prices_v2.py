@@ -16,6 +16,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from scripts.data.refresh_selected_pool_prices import refresh_selected_pool_prices
 from src.data.adapters.akshare_adapter import AkShareAdapter
 from src.data.adapters.akshare_sina_adapter import AkShareSinaAdapter
@@ -45,6 +47,56 @@ COMPARISON_REFERENCE_AUXILIARIES: dict[str, tuple[str, ...]] = {
     "us": ("CGDV",),
     "cn": (),
 }
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+LIFECYCLE_REGISTRY_PATH = REPO_ROOT / "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml"
+
+
+def _terminal_listing_entries(
+    market: str,
+    cutoff: str,
+    *,
+    registry_path: str | Path = LIFECYCLE_REGISTRY_PATH,
+) -> dict[str, dict[str, Any]]:
+    """Return declared terminal listings for the selected pool cutoff."""
+
+    market_key = str(market or "").strip().lower()
+    cutoff_key = str(cutoff or "").strip()
+    if not market_key or not cutoff_key:
+        return {}
+    spec = Path(registry_path)
+    if not spec.exists():
+        return {}
+    payload = yaml.safe_load(spec.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        return {}
+    rules = payload.get("rules")
+    if not isinstance(rules, dict):
+        return {}
+    entries = rules.get("terminal_listings")
+    if not isinstance(entries, dict):
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for raw_symbol, entry in entries.items():
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("market", "")).strip().lower() != market_key:
+            continue
+        if (
+            str(entry.get("active_universe_after_terminal_date_allowed", ""))
+            .strip()
+            .lower()
+            == "true"
+        ):
+            continue
+        terminal_date = str(entry.get("terminal_date") or "").strip()
+        if not terminal_date or terminal_date > cutoff_key:
+            continue
+        symbol = str(raw_symbol).strip().upper()
+        if symbol:
+            result[symbol] = entry
+    return result
+
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -162,6 +214,17 @@ def _governed_formal_auxiliary_yahoo_fallback(
 def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     market = str(payload.get("market", "")).strip().lower()
+    cutoff = str(payload.get("cutoff") or "").strip()
+    terminal_listings = _terminal_listing_entries(market, cutoff)
+    payload["lifecycle_declared_terminal_symbols"] = sorted(terminal_listings)
+    payload["terminal_listing_evidence"] = {
+        symbol: {
+            "terminal_date": entry.get("terminal_date"),
+            "reason": entry.get("reason"),
+            "event_type": entry.get("event_type"),
+        }
+        for symbol, entry in sorted(terminal_listings.items())
+    }
     comparison_references = {
         str(value).strip().upper()
         for value in COMPARISON_REFERENCE_AUXILIARIES.get(market, ())
@@ -265,16 +328,33 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
         set(governed_auxiliary_fallbacks)
     )
     payload["legacy_copied_symbols"] = sorted(set(copied_legacy))
+    stale_symbols = payload.get("stale_symbols", [])
+    if not isinstance(stale_symbols, list):
+        stale_symbols = []
+    stale_symbols = sorted(
+        str(value).strip().upper()
+        for value in stale_symbols
+        if str(value).strip()
+    )
+    lifecycle_declared = set(payload.get("lifecycle_declared_terminal_symbols", []))
+    payload["unresolved_stale_symbols"] = sorted(
+        symbol for symbol in stale_symbols if symbol not in lifecycle_declared
+    )
     payload["promotion_eligible"] = bool(
         payload.get("status") == "selected_pool_price_refresh_ready"
         and not quarantined
         and not copied_legacy
+        and not payload["unresolved_stale_symbols"]
     )
     if quarantined:
         payload["promotion_blocker"] = "CN symbols rely on Yahoo-only adjusted data"
     elif copied_legacy:
         payload["promotion_blocker"] = (
             "repair-only build contains legacy sources without provider-semantic refresh"
+        )
+    elif payload["unresolved_stale_symbols"]:
+        payload["promotion_blocker"] = (
+            "stale selected-pool sources without an explicit lifecycle declaration"
         )
     elif payload.get("status") != "selected_pool_price_refresh_ready":
         payload["promotion_blocker"] = "selected-pool refresh is not complete"

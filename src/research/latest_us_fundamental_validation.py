@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import gzip
 import hashlib
 import json
 import os
@@ -11,7 +10,6 @@ import re
 import time
 import urllib.error
 import urllib.request
-import zlib
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Mapping
@@ -98,46 +96,7 @@ def load_frozen_cik_mapping(
 
 
 class CompressedSecHttpClient(SecHttpClient):
-    """Decode SEC gzip/deflate responses before JSON parsing."""
-
-    def _get_json(self, url: str) -> Mapping[str, Any]:
-        elapsed = time.monotonic() - self._last_request_at
-        if elapsed < self.minimum_interval_seconds:
-            time.sleep(self.minimum_interval_seconds - elapsed)
-        request = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": self.user_agent,
-                "Accept-Encoding": "gzip, deflate",
-                "Accept": "application/json",
-            },
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                raw = response.read()
-                encoding = str(response.headers.get("Content-Encoding", "")).lower()
-                if encoding == "gzip":
-                    raw = gzip.decompress(raw)
-                elif encoding == "deflate":
-                    try:
-                        raw = zlib.decompress(raw)
-                    except zlib.error:
-                        raw = zlib.decompress(raw, -zlib.MAX_WBITS)
-                payload = json.loads(raw.decode("utf-8"))
-        except (
-            urllib.error.URLError,
-            TimeoutError,
-            UnicodeDecodeError,
-            OSError,
-            zlib.error,
-            json.JSONDecodeError,
-        ) as exc:
-            raise SecSourceError(f"SEC request failed: {url}") from exc
-        finally:
-            self._last_request_at = time.monotonic()
-        if not isinstance(payload, dict):
-            raise SecSourceError(f"SEC response must be an object: {url}")
-        return payload
+    """SEC HTTP client whose base implementation now decodes compressed responses."""
 
 
 def _fact_key(unit: str, entry: Mapping[str, Any]) -> tuple[str, ...] | None:

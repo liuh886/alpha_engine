@@ -236,6 +236,7 @@ def score_cn_x1_2_current_target(
         target_weights=factor_reference,
         features=features_test,
         factor_columns=factor_columns,
+        library_sources=factor_contract["library_sources"],
     )
 
     return _signal_payload(

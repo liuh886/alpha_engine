@@ -9,6 +9,7 @@ import pytest
 from src.artifacts.strategy_signal_ledger import seal_signal_decision
 from src.factors.library import load_factor_library
 from src.factors.ranker_snapshot import build_ranker_factor_snapshot
+from src.factors.strategy_snapshot import StrategyFactorSnapshotError
 from src.research.ranker_current_target import (
     RankerCurrentTargetError,
     _select_cn_sector_breadth,
@@ -144,6 +145,52 @@ def test_ranker_snapshot_preserves_explicit_model_factor_order() -> None:
     assert snapshot["groups"] == []
     assert [row["factor_id"] for row in snapshot["factors"]] == ids
     assert snapshot["freshness"] == "current"
+
+
+def test_ranker_snapshot_resolves_multi_library_factor_contract() -> None:
+    snapshot = build_ranker_factor_snapshot(
+        model_family_id="cn_ranker",
+        signal_date="2026-08-07",
+        latest_data_date="2026-08-07",
+        factor_values={
+            "ohlcv.momentum.ret_3d": 0.1,
+            "qlib_alpha158.cntd30": 0.2,
+            "qlib_alpha158.cord5": 0.3,
+            "qlib_alpha158.imin30": 0.4,
+        },
+        factor_references={},
+        data_freshness_ok=True,
+        library_sources=[
+            "configs/factor_libraries/ohlcv.yaml",
+            "src/factors/sets/qlib_alpha158.py",
+        ],
+    )
+
+    assert [row["factor_id"] for row in snapshot["factors"]] == [
+        "ohlcv.momentum.ret_3d",
+        "qlib_alpha158.cntd30",
+        "qlib_alpha158.cord5",
+        "qlib_alpha158.imin30",
+    ]
+    assert snapshot["catalog_id"] == "alpha_engine_ohlcv+qlib_alpha158"
+    assert len(snapshot["catalog_implementation_hash"]) == 64
+    assert len(snapshot["source_sha256"]) == 64
+
+
+def test_ranker_snapshot_multi_library_rejects_unknown_factor() -> None:
+    with pytest.raises(StrategyFactorSnapshotError, match="unknown canonical factor ids"):
+        build_ranker_factor_snapshot(
+            model_family_id="cn_ranker",
+            signal_date="2026-08-07",
+            latest_data_date="2026-08-07",
+            factor_values={"ohlcv.momentum.ret_3d": 0.1, "missing.factor": 0.2},
+            factor_references={},
+            data_freshness_ok=True,
+            library_sources=[
+                "configs/factor_libraries/ohlcv.yaml",
+                "src/factors/sets/qlib_alpha158.py",
+            ],
+        )
 
 
 def test_ranker_snapshot_accepts_new_canonical_factors_without_family_map() -> None:

@@ -211,3 +211,128 @@ def test_cn_formal_auxiliary_does_not_bypass_missing_preferred_attempts(
     assert payload["promotion_eligible"] is False
     assert payload["quarantined_symbols"] == ["515180"]
     assert payload["formal_auxiliary_fallback_symbols"] == []
+
+
+def test_stale_selected_pool_symbols_block_promotion(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    path = tmp_path / "manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "market": "us",
+                "status": "selected_pool_price_refresh_ready",
+                "cutoff": "2026-08-19",
+                "stale_symbols": ["FIX"],
+                "records": [
+                    {
+                        "symbol": "FIX",
+                        "action": "retained_stale_source",
+                        "provider": "yfinance",
+                        "attempts": [],
+                    }
+                ],
+                "failures": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    payload = _decorate_manifest(path, build_hardened_router("us"))
+    assert payload["promotion_eligible"] is False
+    assert payload["unresolved_stale_symbols"] == ["FIX"]
+    assert payload["promotion_blocker"] == (
+        "stale selected-pool sources without an explicit lifecycle declaration"
+    )
+
+
+def test_terminal_listing_stale_symbol_does_not_block_promotion(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    path = tmp_path / "manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "market": "us",
+                "status": "selected_pool_price_refresh_ready",
+                "cutoff": "2026-08-19",
+                "stale_symbols": ["EA"],
+                "records": [
+                    {
+                        "symbol": "EA",
+                        "action": "retained_stale_source",
+                        "provider": "yfinance",
+                        "attempts": [],
+                    }
+                ],
+                "failures": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    payload = _decorate_manifest(path, build_hardened_router("us"))
+    assert payload["lifecycle_declared_terminal_symbols"] == ["EA"]
+    assert payload["unresolved_stale_symbols"] == []
+    assert payload["promotion_eligible"] is True
+    assert payload["promotion_blocker"] is None
+    assert payload["terminal_listing_evidence"]["EA"]["terminal_date"] == "2026-08-05"
+
+
+def test_mixed_terminal_and_unresolved_stale_symbols_remain_blocked(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    path = tmp_path / "manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "market": "us",
+                "status": "selected_pool_price_refresh_ready",
+                "cutoff": "2026-08-19",
+                "stale_symbols": ["EA", "FIX"],
+                "records": [
+                    {
+                        "symbol": "EA",
+                        "action": "retained_stale_source",
+                        "provider": "yfinance",
+                        "attempts": [],
+                    }
+                ],
+                "failures": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    payload = _decorate_manifest(path, build_hardened_router("us"))
+    assert payload["lifecycle_declared_terminal_symbols"] == ["EA"]
+    assert payload["unresolved_stale_symbols"] == ["FIX"]
+    assert payload["promotion_eligible"] is False
+
+
+def test_current_selected_pool_remains_promotable_without_stale(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    path = tmp_path / "manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "market": "us",
+                "status": "selected_pool_price_refresh_ready",
+                "stale_symbols": [],
+                "records": [
+                    {
+                        "symbol": "AAPL",
+                        "action": "fetched_incremental_update",
+                        "provider": "yfinance",
+                        "attempts": [],
+                    }
+                ],
+                "failures": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    payload = _decorate_manifest(path, build_hardened_router("us"))
+    assert payload["promotion_eligible"] is True
+    assert payload["unresolved_stale_symbols"] == []
+    assert payload["promotion_blocker"] is None

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import os
 import time
 import urllib.error
 import urllib.request
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Protocol
@@ -81,8 +83,26 @@ class SecHttpClient:
         )
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+                raw = response.read()
+                encoding = str(
+                    response.headers.get("Content-Encoding", "") or ""
+                ).strip().lower()
+                if raw.startswith(b"\x1f\x8b") or encoding == "gzip":
+                    raw = gzip.decompress(raw)
+                elif encoding == "deflate":
+                    try:
+                        raw = zlib.decompress(raw)
+                    except zlib.error:
+                        raw = zlib.decompress(raw, -zlib.MAX_WBITS)
+                payload = json.loads(raw.decode("utf-8"))
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            OSError,
+            zlib.error,
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+        ) as exc:
             raise SecSourceError(f"SEC request failed: {url}") from exc
         finally:
             self._last_request_at = time.monotonic()

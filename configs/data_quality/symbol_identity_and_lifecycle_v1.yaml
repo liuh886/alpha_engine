@@ -35,6 +35,16 @@ rules:
       prospective_shadow_allowed: true
 
   terminal_listings:
+    EA:
+      market: "us"
+      terminal_date: "2026-08-05"
+      reason: "take-private acquisition completed; Nasdaq listing terminated"
+      event_type: "acquisition_take_private_delisting"
+      active_universe_after_terminal_date_allowed: false
+      historical_rows_retained: true
+      public_references:
+        - "https://www.miaxglobal.com/alert/2026/08/04/miax-exchange-group-options-markets-delisting-electronic-arts-inc-ea"
+        - "https://www.wienerborse.at/en/news/vienna-stock-exchange-news/electronic-arts-trading-suspension-08052026/"
     "600837":
       market: "cn"
       terminal_date: "2025-03-04"
