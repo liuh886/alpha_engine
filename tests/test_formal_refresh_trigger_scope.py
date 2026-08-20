@@ -25,6 +25,52 @@ def test_heavy_formal_refresh_does_not_trigger_from_its_own_outputs() -> None:
         assert path not in text, f"heavy formal refresh recursively watches {path}"
 
 
+def test_heavy_formal_refresh_excludes_independent_event_population_workstream() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    exclusions = (
+        (
+            '      - "configs/data/**"',
+            '      - "!configs/data/selected_pool_event_population_v1.yaml"',
+        ),
+        (
+            '      - "src/data/**"',
+            '      - "!src/data/selected_pool_event_population.py"',
+        ),
+        ('      - "src/data/**"', '      - "!src/data/fundamentals/**"'),
+        ('      - "src/data/**"', '      - "!src/data/corporate_actions/**"'),
+        (
+            '      - "scripts/data/**"',
+            '      - "!scripts/data/populate_selected_pool_events.py"',
+        ),
+    )
+    for broad_path, exclusion in exclusions:
+        assert broad_path in text
+        assert exclusion in text
+        assert text.index(broad_path) < text.index(exclusion), (
+            f"GitHub path exclusion must follow its positive pattern: {exclusion}"
+        )
+
+
+def test_formal_candidate_ci_excludes_independent_event_population_workstream() -> None:
+    text = CI_WORKFLOW.read_text(encoding="utf-8")
+    exclusions = (
+        '      - "!src/data/selected_pool_event_population.py"',
+        '      - "!src/data/fundamentals/**"',
+        '      - "!src/data/corporate_actions/**"',
+        '      - "!scripts/data/populate_selected_pool_events.py"',
+    )
+    for exclusion in exclusions:
+        assert exclusion in text
+        broad_path = (
+            '      - "scripts/data/**"'
+            if exclusion.startswith('      - "!scripts/')
+            else '      - "src/data/**"'
+        )
+        assert text.index(broad_path) < text.index(exclusion), (
+            f"GitHub path exclusion must follow its positive pattern: {exclusion}"
+        )
+
+
 def test_heavy_formal_refresh_keeps_source_and_release_gates() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     required = (
