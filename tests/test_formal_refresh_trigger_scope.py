@@ -103,6 +103,21 @@ def test_heavy_formal_refresh_resolves_cutoff_per_completed_market_session() -> 
     assert 'requested_cutoff="$(date -u +%Y-%m-%d)"' not in text
 
 
+def test_heavy_formal_refresh_reuses_previous_governed_provider_incrementally() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "us_seed_cutoff: ${{ steps.clock.outputs.us_seed_cutoff }}" in text
+    assert "cn_seed_cutoff: ${{ steps.clock.outputs.cn_seed_cutoff }}" in text
+    assert "Restore previous governed provider seed" in text
+    assert "Prepare governed provider seed" in text
+    assert "seed_source=governed_cache" in text
+    assert "Incrementally extend isolated selected-pool provider" in text
+    assert '--source-csv-dir "$SOURCE_CSV_DIR"' in text
+    assert "--auxiliary-symbol" in text
+    assert "--full-refresh" not in text
+    assert "formal-provider-1.0.0-${{ matrix.market }}-${{ matrix.market == 'us' &&" in text
+    assert "needs.prepare.outputs.us_seed_cutoff || needs.prepare.outputs.cn_seed_cutoff }}-" in text
+
+
 def test_heavy_formal_refresh_has_no_retired_us_x1_2_live_contract() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "test_us_x1_2_current_target.py" not in text
