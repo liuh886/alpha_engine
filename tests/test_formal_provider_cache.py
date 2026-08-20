@@ -27,7 +27,7 @@ def _contract() -> dict[str, object]:
         "market": "us",
         "start": "2021-01-01",
         "requested_cutoff": "2026-08-07",
-        "refresh_mode": "full_refresh",
+        "refresh_mode": "incremental_from_governed_seed",
         "max_rounds": 3,
         "auxiliary_symbols": ["QQQI", "TQQQ", "SGOV", "TYGO"],
         "inputs": {"contract.py": "a" * 64},
@@ -89,6 +89,7 @@ def test_provider_cache_contract_binds_market_code_pool_and_cutoff() -> None:
     assert "scripts/build_market_providers.py" in inputs
     assert "src/artifacts/formal_provider_cache.py" in inputs
     assert "src/data/adapters/yfinance_adapter.py" in inputs
+    assert contract["refresh_mode"] == "incremental_from_governed_seed"
     assert cache_key(contract).startswith("formal-provider-1.0.0-us-2026-08-07-")
 
 
