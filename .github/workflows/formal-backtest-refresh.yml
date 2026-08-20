@@ -120,6 +120,8 @@ jobs:
       generated_at: ${{ steps.clock.outputs.generated_at }}
       us_cutoff: ${{ steps.clock.outputs.us_cutoff }}
       cn_cutoff: ${{ steps.clock.outputs.cn_cutoff }}
+      us_seed_cutoff: ${{ steps.clock.outputs.us_seed_cutoff }}
+      cn_seed_cutoff: ${{ steps.clock.outputs.cn_seed_cutoff }}
     steps:
       - name: Check out triggering revision
         uses: actions/checkout@v6
@@ -236,14 +238,25 @@ jobs:
         id: clock
         run: |
           uv run python - <<'PY' >> "$GITHUB_OUTPUT"
-          from datetime import datetime, timezone
+          from datetime import date, datetime, timedelta, timezone
           from src.research.market_session_clock import completed_market_date
 
           now = datetime.now(timezone.utc)
           requested = now.date().isoformat()
+          us_cutoff = completed_market_date('us', requested, now_utc=now)
+          cn_cutoff = completed_market_date('cn', requested, now_utc=now)
+
+          def previous_completed(market: str, cutoff: str) -> str:
+              previous_requested = (
+                  date.fromisoformat(cutoff) - timedelta(days=1)
+              ).isoformat()
+              return completed_market_date(market, previous_requested, now_utc=now)
+
           print(f"generated_at={now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
-          print(f"us_cutoff={completed_market_date('us', requested, now_utc=now)}")
-          print(f"cn_cutoff={completed_market_date('cn', requested, now_utc=now)}")
+          print(f"us_cutoff={us_cutoff}")
+          print(f"cn_cutoff={cn_cutoff}")
+          print(f"us_seed_cutoff={previous_completed('us', us_cutoff)}")
+          print(f"cn_seed_cutoff={previous_completed('cn', cn_cutoff)}")
           PY
 
   providers:
@@ -283,23 +296,96 @@ jobs:
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
           key: ${{ steps.contract.outputs.cache_key }}-governed
+      - name: Restore previous governed provider seed
+        if: steps.provider_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: artifacts/formal-refresh/provider-${{ matrix.market }}
+          key: formal-provider-seed-${{ matrix.market }}-${{ github.run_id }}
+          restore-keys: |
+            formal-provider-1.0.0-${{ matrix.market }}-${{ matrix.market == 'us' && needs.prepare.outputs.us_seed_cutoff || needs.prepare.outputs.cn_seed_cutoff }}-
+      - name: Prepare governed provider seed
+        id: provider_seed
+        if: steps.provider_cache.outputs.cache-hit != 'true'
+        env:
+          MARKET: ${{ matrix.market }}
+        run: |
+          restored="artifacts/formal-refresh/provider-${MARKET}"
+          seed="artifacts/formal-refresh/provider-${MARKET}-seed"
+          if [ -d "$restored/data/csv_source" ]; then
+            python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          market = os.environ["MARKET"]
+          root = Path(f"artifacts/formal-refresh/provider-{market}")
+          manifest = json.loads(
+              (root / "artifacts/selected_pool_price_refresh_manifest.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          receipt = json.loads(
+              (root / "artifacts/formal-provider-cache-receipt.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          if manifest.get("status") != "selected_pool_price_refresh_ready":
+              raise SystemExit("previous provider seed is not refresh ready")
+          if manifest.get("promotion_eligible") is not True:
+              raise SystemExit("previous provider seed is not promotion eligible")
+          if receipt.get("evidence_type") != "formal_provider_cache_receipt":
+              raise SystemExit("previous provider seed is not governed cache evidence")
+          PY
+            rm -rf "$seed"
+            mv "$restored" "$seed"
+            echo "source_csv_dir=$seed/data/csv_source" >> "$GITHUB_OUTPUT"
+            echo "seed_source=governed_cache" >> "$GITHUB_OUTPUT"
+          else
+            echo "source_csv_dir=data/csv_clean" >> "$GITHUB_OUTPUT"
+            echo "seed_source=repository_bootstrap" >> "$GITHUB_OUTPUT"
+          fi
       - name: Install locked provider environment
         if: steps.provider_cache.outputs.cache-hit != 'true'
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen
-      - name: Rebuild isolated selected-pool provider
+      - name: Incrementally extend isolated selected-pool provider
         if: steps.provider_cache.outputs.cache-hit != 'true'
         env:
           MARKET: ${{ matrix.market }}
           REQUESTED_CUTOFF: ${{ matrix.market == 'us' && needs.prepare.outputs.us_cutoff || needs.prepare.outputs.cn_cutoff }}
+          SOURCE_CSV_DIR: ${{ steps.provider_seed.outputs.source_csv_dir }}
         run: |
           rm -rf "artifacts/formal-refresh/provider-${MARKET}"
-          uv run python scripts/data/refresh_selected_pool_prices_v2.py \
-            --root . --market "$MARKET" --source-csv-dir data/csv_clean \
-            --output-root "artifacts/formal-refresh/provider-${MARKET}" \
-            --start 2021-01-01 --cutoff "$REQUESTED_CUTOFF" --max-rounds 3 --full-refresh
+          args=(
+            --root .
+            --market "$MARKET"
+            --source-csv-dir "$SOURCE_CSV_DIR"
+            --output-root "artifacts/formal-refresh/provider-${MARKET}"
+            --start 2021-01-01
+            --cutoff "$REQUESTED_CUTOFF"
+            --max-rounds 3
+          )
+          while IFS= read -r symbol; do
+            args+=(--auxiliary-symbol "$symbol")
+          done < <(python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          market = os.environ["MARKET"]
+          contract = json.loads(
+              Path(f"artifacts/formal-refresh/provider-{market}-contract.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          for symbol in contract["auxiliary_symbols"]:
+              print(symbol)
+          PY
+          )
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py "${args[@]}"
       - name: Seal fresh provider cache
         if: steps.provider_cache.outputs.cache-hit != 'true'
         env:
