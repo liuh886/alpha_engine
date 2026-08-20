@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from scripts.byd_formal_publication_common import write_json
-from scripts.sync_formal_bundle_v2 import sync
+from scripts.sync_formal_bundle_v2 import FormalBundleV2SyncError, sync
 from src.artifacts.formal_evidence_standard import validate_formal_evidence_bundle
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
 from src.artifacts.us_x1_3_formal import MODEL_ID as US_X1_3
@@ -22,6 +24,10 @@ STRATEGIES = Path("configs/strategies/registry.json")
 
 def _read(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _active_preview_root(tmp_path: Path) -> Path:
@@ -111,6 +117,15 @@ def test_sync_promotes_persisted_active_preview_set_deterministically(tmp_path: 
     assert receipt_a["native_promoted_model_ids"] == list(
         load_active_strategy_catalog(STRATEGIES).active_model_version_ids
     )
+    assert receipt_a["retained_inactive_model_version_ids"] == ["cn_x1_1"]
+    retained_path = (
+        "cn_ranker/cn_x1_1/cn_x1_1-through-2026_08_12/manifest.json"
+    )
+    assert receipt_a["retained_formal_manifests"] == {
+        retained_path: _sha256(first / retained_path)
+    }
+    assert (first / retained_path).read_bytes() == (FRESHNESS / retained_path).read_bytes()
+    assert not (first / "cn_ranker/cn_x1_2/cn_x1_2-through-2026_06_30").exists()
     assert "source_built_model_ids" not in receipt_a
     assert "source_catalog_sha256" not in receipt_a
     assert "migration_receipt" not in receipt_a
@@ -134,6 +149,39 @@ def test_sync_promotes_persisted_active_preview_set_deterministically(tmp_path: 
     )
     assert freshness["date_range_end_required_models"] == [US_X1_3, "cn_x1_2"]
     assert freshness["freshness_receipt_required_models"] == [US_X1_3, "cn_x1_2"]
+
+
+def test_sync_rejects_corrupt_retained_formal_closure(tmp_path: Path) -> None:
+    preview = _active_preview_root(tmp_path)
+    retained = tmp_path / "retained"
+    shutil.copytree(FRESHNESS, retained)
+    summary = retained / (
+        "cn_ranker/cn_x1_1/cn_x1_1-through-2026_08_12/summary.json"
+    )
+    summary.write_bytes(summary.read_bytes() + b"\n")
+
+    with pytest.raises(FormalBundleV2SyncError, match="invalid retained formal bundle"):
+        sync(
+            FRESHNESS,
+            tmp_path / "output",
+            native_root=preview,
+            strategy_catalog=STRATEGIES,
+            retained_root=retained,
+        )
+
+
+def test_sync_rejects_retained_input_as_output(tmp_path: Path) -> None:
+    retained_output = tmp_path / "retained-output"
+    shutil.copytree(FRESHNESS, retained_output)
+
+    with pytest.raises(FormalBundleV2SyncError, match="must be separate"):
+        sync(
+            FRESHNESS,
+            retained_output,
+            native_root=_active_preview_root(tmp_path),
+            strategy_catalog=STRATEGIES,
+            retained_root=retained_output,
+        )
 
 
 def test_sync_fails_closed_when_preview_catalog_is_incomplete(tmp_path: Path) -> None:

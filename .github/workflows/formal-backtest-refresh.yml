@@ -611,6 +611,7 @@ jobs:
             --receipt "$REFRESH_RECEIPT"
           uv run python scripts/sync_formal_bundle_v2.py \
             --source-root "$CANDIDATE_FRESHNESS_ROOT" \
+            --retained-root "$CURRENT_FORMAL_V2_ROOT" \
             --native-root "$CANDIDATE_PREVIEW_ROOT" \
             --output-root "$CANDIDATE_V2_ROOT" \
             --receipt artifacts/formal-refresh/formal-v2-sync-receipt.json
@@ -682,6 +683,7 @@ jobs:
             tests/test_formal_refresh_metric_projection.py \
             tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_rules_formal_replay_gate.py \
             tests/test_market_evidence.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \

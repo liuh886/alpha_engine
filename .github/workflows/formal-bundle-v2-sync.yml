@@ -16,6 +16,7 @@ on:
       - src/artifacts/strategy_operations.py
       - src/artifacts/system_health.py
       - tests/test_sync_formal_bundle_v2.py
+      - tests/test_rules_formal_replay_gate.py
       - tests/test_strategy_operations.py
       - tests/test_system_health.py
       - tests/test_active_strategy_catalog.py
@@ -122,11 +123,13 @@ jobs:
           cp data/research/formal_model_runs/freshness.json artifacts/freshness-input/freshness.json
           uv run python scripts/sync_formal_bundle_v2.py \
             --source-root artifacts/freshness-input \
+            --retained-root data/research/formal_model_runs \
             --native-root data/research/model_runs \
             --output-root artifacts/bundle-a \
             --receipt artifacts/bundle-receipt-a.json
           uv run python scripts/sync_formal_bundle_v2.py \
             --source-root artifacts/freshness-input \
+            --retained-root data/research/formal_model_runs \
             --native-root data/research/model_runs \
             --output-root artifacts/bundle-b \
             --receipt artifacts/bundle-receipt-b.json
@@ -183,6 +186,7 @@ jobs:
             tests/test_active_strategy_catalog.py
           uv run pytest \
             tests/test_sync_formal_bundle_v2.py \
+            tests/test_rules_formal_replay_gate.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \

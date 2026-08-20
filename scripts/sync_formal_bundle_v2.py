@@ -114,23 +114,83 @@ def _publish_freshness_policy(
     return _sha256(destination)
 
 
+def _preserve_inactive_formal_runs(
+    source_root: Path,
+    output_root: Path,
+    *,
+    active_model_ids: set[str],
+) -> dict[str, str]:
+    """Copy validated predecessor bundles outside the active catalog.
+
+    The active catalog remains an exact four-model Interface. Historical model
+    versions are a separate immutable audit closure consumed through
+    ``load_retained_formal_run`` and must survive replacement of the active
+    publication tree.
+    """
+
+    retained: dict[str, str] = {}
+    for manifest in sorted(source_root.glob("*/*/*/manifest.json")):
+        relative = manifest.relative_to(source_root)
+        if len(relative.parts) != 4:
+            raise FormalBundleV2SyncError(
+                f"retained formal manifest has invalid layout: {relative.as_posix()}"
+            )
+        payload = _object(manifest)
+        model_family_id = str(payload.get("model_family_id") or "")
+        model_version_id = str(payload.get("model_version_id") or "")
+        if model_version_id in active_model_ids:
+            continue
+        if (
+            not model_family_id
+            or not model_version_id
+            or relative.parts[0] != model_family_id
+            or relative.parts[1] != model_version_id
+        ):
+            raise FormalBundleV2SyncError(
+                f"retained formal manifest identity mismatch: {relative.as_posix()}"
+            )
+        try:
+            validate_formal_evidence_bundle(manifest.parent)
+        except ValueError as exc:
+            raise FormalBundleV2SyncError(
+                f"invalid retained formal bundle: {relative.as_posix()}"
+            ) from exc
+        destination = output_root / relative.parent
+        if destination.exists():
+            raise FormalBundleV2SyncError(
+                f"retained formal destination already exists: {relative.parent.as_posix()}"
+            )
+        shutil.copytree(manifest.parent, destination)
+        validate_formal_evidence_bundle(destination)
+        retained[relative.as_posix()] = _sha256(destination / "manifest.json")
+    return retained
+
+
 def sync(
     source_root: Path,
     output_root: Path,
     *,
     native_root: Path = Path("data/research/model_runs"),
     strategy_catalog: Path = DEFAULT_CATALOG_PATH,
+    retained_root: Path | None = None,
 ) -> dict[str, Any]:
     """Promote exactly one persisted preview Bundle v2 for every active strategy.
 
-    ``source_root`` contains freshness policy only. ``native_root`` is the exact
-    active preview Bundle v2 catalog and is the sole model-evidence input.
+    ``source_root`` contains the freshness policy. ``retained_root`` defaults
+    to that same tree and may instead point at the accepted publication when a
+    candidate is built in isolation. ``native_root`` is the exact active
+    preview Bundle v2 catalog and is the sole input for active model evidence.
     """
 
     freshness_root = source_root.resolve()
     output_root = output_root.resolve()
     preview_root = native_root.resolve()
     strategy_catalog = strategy_catalog.resolve()
+    retained_source = (retained_root or freshness_root).resolve()
+    if retained_source == output_root:
+        raise FormalBundleV2SyncError(
+            "retained formal input and formal output must be separate directories"
+        )
     try:
         active = load_active_strategy_catalog(strategy_catalog)
     except ActiveStrategyCatalogError as exc:
@@ -154,6 +214,12 @@ def sync(
         manifests.append(manifest)
         promoted.append(model_id)
 
+    retained_manifests = _preserve_inactive_formal_runs(
+        retained_source,
+        output_root,
+        active_model_ids=set(active.active_model_version_ids),
+    )
+
     update_catalog(manifests, catalog_path=output_root / "catalog.json", channel="formal")
     freshness_sha = _publish_freshness_policy(
         freshness_root,
@@ -174,6 +240,13 @@ def sync(
         "active_strategy_ids": [row.strategy_id for row in active.strategies],
         "active_model_version_ids": list(active.active_model_version_ids),
         "native_promoted_model_ids": promoted,
+        "retained_inactive_model_version_ids": sorted(
+            {
+                Path(path).parts[1]
+                for path in retained_manifests
+            }
+        ),
+        "retained_formal_manifests": retained_manifests,
         "preview_catalog_sha256": _sha256(preview_root / "catalog.json"),
         "freshness_source_sha256": _sha256(freshness_root / "freshness.json"),
         "strategy_catalog_sha256": _sha256(strategy_catalog),
@@ -207,6 +280,11 @@ def main() -> None:
         default=Path("data/research/model_runs"),
         help="Exact active preview Bundle v2 catalog.",
     )
+    parser.add_argument(
+        "--retained-root",
+        type=Path,
+        help="Accepted formal root supplying validated inactive predecessor bundles.",
+    )
     parser.add_argument("--strategy-catalog", type=Path, default=DEFAULT_CATALOG_PATH)
     parser.add_argument("--receipt", type=Path)
     args = parser.parse_args()
@@ -219,6 +297,7 @@ def main() -> None:
         args.output_root,
         native_root=args.native_root,
         strategy_catalog=args.strategy_catalog,
+        retained_root=args.retained_root,
     )
     text = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
     if args.receipt:
