@@ -74,7 +74,12 @@ provider_role_rules:
 
 coverage:
   every_pool_symbol_requires_explicit_status: true
-  allowed_statuses: [ready, partial, provider_missing, identity_missing, conflict]
+  allowed_statuses:
+    [ready, partial, provider_missing, identity_missing, conflict, no_event_observed]
+  allowed_statuses_by_component:
+    fundamental_coverage: [ready, partial, provider_missing, identity_missing, conflict]
+    corporate_action_coverage:
+      [ready, partial, provider_missing, identity_missing, conflict, no_event_observed]
   no_forward_fill: true
   no_price_implied_events: true
   event_store_hash_binding_required: true
