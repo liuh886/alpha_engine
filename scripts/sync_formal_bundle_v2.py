@@ -187,6 +187,10 @@ def sync(
     preview_root = native_root.resolve()
     strategy_catalog = strategy_catalog.resolve()
     retained_source = (retained_root or freshness_root).resolve()
+    if retained_source == output_root:
+        raise FormalBundleV2SyncError(
+            "retained formal input and formal output must be separate directories"
+        )
     try:
         active = load_active_strategy_catalog(strategy_catalog)
     except ActiveStrategyCatalogError as exc:
