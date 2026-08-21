@@ -299,6 +299,7 @@ def test_cold_and_warm_fundamentals_are_byte_identical_and_progress_uses_stderr(
     assert captured.out == ""
     assert "cn_selected_pool_symbol_complete" in captured.err
 
+
 def test_workflow_versions_cache_but_restores_exact_v1_fallback() -> None:
     workflow = yaml.safe_load(
         Path(".github/workflows/selected-pool-event-population-ci.yml").read_text(
