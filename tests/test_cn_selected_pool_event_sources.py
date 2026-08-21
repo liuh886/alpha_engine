@@ -239,6 +239,7 @@ def test_workflow_versions_cache_but_restores_exact_v1_fallback() -> None:
     )
 
     assert restore["uses"] == "actions/cache/restore@v4"
+    assert "matrix.market == 'cn'" in restore["if"]
     assert "run" not in restore
     assert "env" not in restore
     assert "selected-pool-events-cn-v2-" in restore["with"]["key"]
