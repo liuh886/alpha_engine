@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import sys
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -164,6 +165,11 @@ def _legacy_snapshot(
 ) -> ExactFrameSnapshot | None:
     if cache_root is None or refresh_cache:
         return None
+    if (
+        (cache_root / "cninfo" / "metadata.json").is_file()
+        and (cache_root / "sina" / "metadata.json").is_file()
+    ):
+        return None
     return load_exact_frame_snapshot(
         cache_root,
         identity=identity,
@@ -252,7 +258,7 @@ def _fundamental_mode(cninfo: _LaneResult, sina: _LaneResult) -> str:
 
 
 def _default_progress(message: str) -> None:
-    print(message, flush=True)
+    print(message, file=sys.stderr, flush=True)
 
 
 def _emit_progress(
