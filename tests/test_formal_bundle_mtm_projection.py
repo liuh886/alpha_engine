@@ -6,7 +6,10 @@ from pathlib import Path
 
 from scripts.sync_formal_bundle_v2 import sync
 from src.artifacts.formal_bundle_reader import load_formal_run
-from src.artifacts.formal_preview_builder import build_preview_bundle
+from src.artifacts.formal_preview_builder import (
+    build_preview_bundle,
+    project_provisional_mtm_preview,
+)
 from src.artifacts.model_run_exporter import update_catalog
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.governance.model_contract import load_performance_semantics
@@ -123,3 +126,69 @@ def test_preview_migrates_schema_less_performance_semantics_from_model_contract(
     performance = _read(manifest_path.parent / performance_decl["path"])
 
     assert performance["performance_semantics"] == load_performance_semantics(strategy)
+
+
+def test_us_mtm_preview_preserves_native_evidence_closure(tmp_path: Path) -> None:
+    package = load_formal_run(Path.cwd(), US_MODEL_ID).refresh_state()
+    package["schema_version"] = "1.0.0"
+    package["record_type"] = "formal_model_backtest"
+    package["publication_status"] = "accepted_formal_baseline"
+    cutoff = package["evidence_cutoff"]
+    package["backtest_id"] = f"{US_MODEL_ID}-through-{cutoff.replace('-', '_')}"
+    latest = package["report"][-1]
+    package["provisional_mtm"] = {
+        "schema_version": "ranker_provisional_mtm_v1",
+        "as_of": cutoff,
+        "signal_date": latest["date"],
+        "entry_date": latest["date"],
+        "target_weights": {"TEST": 1.0},
+        "source": "strategy_signal_ledger",
+        "provider_identity_sha256": "a" * 64,
+        "performance_row": {
+            "date": cutoff,
+            "holding_end_date": cutoff,
+            "account": latest["account"],
+            "bench_qqq": latest["bench_qqq"],
+            "provisional_mtm": True,
+            "settlement_status": "provisional_mtm",
+            "mtm_as_of": cutoff,
+            "research_only": True,
+            "trade_ready": False,
+        },
+        "research_only": True,
+        "trade_ready": False,
+    }
+    package_path = tmp_path / "us-refresh-state.json"
+    _write(package_path, package)
+
+    catalog = _read(NATIVE / "catalog.json")
+    record = next(
+        row for row in catalog["records"] if row["model_version_id"] == US_MODEL_ID
+    )
+    base_run = (NATIVE / record["manifest_path"]).parent
+    strategy = load_active_strategy_catalog().by_model_version_id[US_MODEL_ID]
+    manifest_path = project_provisional_mtm_preview(
+        package_path,
+        strategy,
+        base_preview_run=base_run,
+        output_root=tmp_path / "preview",
+    )
+    manifest = _read(manifest_path)
+    sections = {row["section_id"]: row for row in manifest["sections"]}
+    performance = _read(manifest_path.parent / sections["performance"]["path"])
+    portfolio = _read(manifest_path.parent / sections["portfolio"]["path"])
+    trades = _read(manifest_path.parent / sections["trades"]["path"])
+    lineage = _read(manifest_path.parent / sections["lineage"]["path"])
+
+    assert performance["report"][-1]["provisional_mtm"] is True
+    assert portfolio["signals"]
+    assert trades["records"]
+    assert trades["analytics"]["quantity_available"] is False
+    for field in (
+        "builder_source_sha256",
+        "factor_library_sha256",
+        "universe_config_sha256",
+        "classification_config_sha256",
+    ):
+        assert len(lineage[field]) == 64
+    assert lineage["mtm_projection"]["provider_identity_sha256"] == "a" * 64
