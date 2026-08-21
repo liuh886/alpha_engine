@@ -323,10 +323,13 @@ def test_workflow_versions_cache_but_restores_exact_v1_fallback() -> None:
     assert "selected-pool-events-cn-v2-" in restore["with"]["key"]
     assert "${{ github.run_id }}" in restore["with"]["key"]
     restore_keys = restore["with"]["restore-keys"].splitlines()
-    assert len(restore_keys) == 2
+    assert len(restore_keys) == 3
     assert "selected-pool-events-cn-v2-" in restore_keys[0]
+    assert restore_keys[0].endswith("-")
     assert "${{ github.run_id }}" not in restore_keys[0]
-    assert "selected-pool-events-cn-${{ hashFiles(" in restore_keys[1]
-    assert "selected-pool-events-cn-v2-" not in restore_keys[1]
+    assert "selected-pool-events-cn-v2-" in restore_keys[1]
+    assert not restore_keys[1].endswith("-")
+    assert "selected-pool-events-cn-${{ hashFiles(" in restore_keys[2]
+    assert "selected-pool-events-cn-v2-" not in restore_keys[2]
     assert "uses" not in populate
     assert "populate_selected_pool_events.py" in populate["run"]
