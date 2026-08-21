@@ -92,6 +92,11 @@ def test_ranker_mtm_replaces_old_observation_and_advances_cutoff(
             }
         },
     )
+    monkeypatch.setattr(
+        mtm,
+        "load_provider_manifest",
+        lambda *_args, **_kwargs: {"provider_identity_sha256": "a" * 64},
+    )
 
     result = mtm.attach_ranker_provisional_mtm(
         package_path=package_path,
@@ -105,10 +110,12 @@ def test_ranker_mtm_replaces_old_observation_and_advances_cutoff(
     assert len(persisted["report"]) == 1
     assert persisted["report"][0]["account"] == 2.0
     assert persisted["evidence_cutoff"] == "2026-08-07"
+    assert persisted["backtest_id"] == "us_x1_3-through-2026_08_07"
     assert persisted["date_range"]["end"] == "2026-08-07"
     assert persisted["freshness"]["latest_completed_session"] == "2026-08-07"
     assert persisted["provisional_mtm"]["as_of"] == "2026-08-07"
     assert persisted["provisional_mtm"]["source"] == "strategy_signal_ledger"
+    assert persisted["provisional_mtm"]["provider_identity_sha256"] == "a" * 64
     performance_row = persisted["provisional_mtm"]["performance_row"]
     assert performance_row["provisional_mtm"] is True
     assert performance_row["turnover"] == 0.0
@@ -161,6 +168,11 @@ def test_ranker_mtm_fails_closed_when_due_signal_is_missing(
     (provider / "calendars").mkdir(parents=True)
     (provider / "calendars" / "day.txt").write_text("\n".join(sessions) + "\n")
     monkeypatch.setattr(mtm, "read_latest_evaluation", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        mtm,
+        "load_provider_manifest",
+        lambda *_args, **_kwargs: {"provider_identity_sha256": "a" * 64},
+    )
 
     with pytest.raises(
         mtm.RankerProvisionalMtmError,
