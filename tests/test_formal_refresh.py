@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import src.artifacts.formal_refresh as formal_refresh
 from scripts.data.refresh_selected_pool_prices_v2 import (
     _decorate_manifest,
     build_hardened_router,
@@ -28,6 +29,18 @@ from src.governance.strategy_runtime_capabilities import (
 )
 
 FORMAL_V2 = Path("data/research/formal_model_runs")
+
+
+def test_legacy_single_file_refresh_runtime_is_not_exported() -> None:
+    retired = {
+        "FormalModelRecord",
+        "FormalRefreshPlan",
+        "accepted_records",
+        "build_plan",
+        "verify_append_only_package",
+        "finalize_candidate_tree",
+    }
+    assert retired.isdisjoint(vars(formal_refresh))
 
 
 def _provider_manifest(path: Path, *, market: str, cutoff: str) -> Path:
@@ -347,11 +360,11 @@ def test_strategy_results_are_uploaded_after_failure_unless_cancelled() -> None:
     assert '"retained_strategy_ids"' in transaction
 
 
-def test_cn_duplicate_evidence_concurrency_lives_in_repository_runner() -> None:
+def test_cn_x1_2_duplicate_evidence_lives_in_maintained_adapter() -> None:
     runner = Path("scripts/run_formal_strategy_refresh.py").read_text(encoding="utf-8")
-    assert "subprocess.Popen(" in runner
+    assert "def _build_cn_x1_2_duplicate_ledgers(" in runner
     assert 'for suffix in ("a", "b")' in runner
-    assert "process.wait()" in runner
+    assert "scripts/build_cn_x1_2_prospective_ledger.py" in runner
     assert "--ledger-a" in runner
     assert "--ledger-b" in runner
 

@@ -311,20 +311,11 @@ def test_us_daily_mtm_fast_path_never_runs_historical_preview_builder(
     assert receipt["replay_verdict"] == "ledger_mtm_projection_no_historical_rebuild"
 
 
-def test_settled_report_ignores_provisional_observations() -> None:
-    assert runner._settled_report(
-        {
-            "report": [
-                {"date": "2026-07-30", "account": 1.1},
-                {
-                    "date": "2026-08-12",
-                    "account": 1.2,
-                    "provisional_mtm": True,
-                    "settlement_status": "provisional_mtm",
-                },
-            ]
-        }
-    ) == [{"date": "2026-07-30", "account": 1.1}]
+def test_strategy_refresh_runtime_has_no_cn_x1_1_predecessor_adapter() -> None:
+    assert not hasattr(runner, "_run_cn")
+    assert not hasattr(runner, "_run_cn_duplicate_ledgers")
+    source = Path("scripts/run_formal_strategy_refresh.py").read_text(encoding="utf-8")
+    assert "cn_x1_1" not in source
 
 
 def test_task_rejects_runtime_adapter_identity_drift(tmp_path: Path) -> None:
