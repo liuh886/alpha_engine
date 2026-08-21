@@ -301,6 +301,39 @@ def test_finalize_writes_v2_freshness_and_receipt(tmp_path: Path) -> None:
     )
 
 
+def test_finalize_marks_retained_strategy_candidate_as_degraded(tmp_path: Path) -> None:
+    us = _provider_manifest(tmp_path / "us.json", market="us", cutoff="2026-08-10")
+    cn = _provider_manifest(tmp_path / "cn.json", market="cn", cutoff="2026-08-12")
+    fan_in = tmp_path / "fan-in.json"
+    write_object(
+        fan_in,
+        {
+            "schema_version": "formal_strategy_fan_in_v2",
+            "status": "degraded",
+            "publication_contract": "active_preview_bundle_v2",
+            "expected_strategy_ids": [
+                row.strategy_id for row in load_active_strategy_catalog().strategies
+            ],
+            "preview_catalog_sha256": "a" * 64,
+            "retained_strategy_ids": ["us_x"],
+            "research_only": True,
+            "trade_ready": False,
+        },
+    )
+
+    receipt = finalize_refresh(
+        us_provider_manifest=us,
+        cn_provider_manifest=cn,
+        generated_at="2026-08-13T10:30:00Z",
+        fan_in_receipt=fan_in,
+        freshness_output=tmp_path / "freshness.json",
+        receipt_path=tmp_path / "receipt.json",
+    )
+
+    assert receipt["status"] == "candidate_ready_with_retained"
+    assert receipt["retained_strategy_ids"] == ["us_x"]
+
+
 def test_formal_refresh_parallelizes_and_seals_provider_builds() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
     assert "providers:\n    needs: prepare" in workflow
@@ -356,8 +389,20 @@ def test_strategy_results_are_uploaded_after_failure_unless_cancelled() -> None:
     block = workflow[start:end]
     assert "if: ${{ !cancelled() }}" in block
     transaction = Path("scripts/run_formal_refresh_transaction.py").read_text(encoding="utf-8")
-    assert "RETAIN_CURRENT_STATES" in transaction
+    assert 'FATAL_STATES = {"execution_failed"}' in transaction
     assert '"retained_strategy_ids"' in transaction
+
+
+def test_publish_status_uses_the_transaction_outcome() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "id: transaction" in workflow
+    assert 'echo "outcome=$(jq -r .status \\"$REFRESH_RECEIPT\\")"' in workflow
+    assert "TRANSACTION_STATUS: ${{ steps.transaction.outputs.outcome }}" in workflow
+    assert (
+        "process.env.TRANSACTION_STATUS !== 'candidate_ready_for_review'" in workflow
+    )
 
 
 def test_cn_x1_2_duplicate_evidence_lives_in_maintained_adapter() -> None:
