@@ -5,6 +5,7 @@ from pathlib import Path
 from threading import Barrier, Lock
 
 import pandas as pd
+import yaml
 
 from src.data import cn_selected_pool_event_sources as sources
 from src.data.exact_frame_cache import write_exact_frame_snapshot
@@ -222,10 +223,26 @@ def test_legacy_combined_fundamental_cache_is_migrated_without_network(
 
 
 def test_workflow_versions_cache_but_restores_exact_v1_fallback() -> None:
-    text = Path(".github/workflows/selected-pool-event-population-ci.yml").read_text(
-        encoding="utf-8"
+    workflow = yaml.safe_load(
+        Path(".github/workflows/selected-pool-event-population-ci.yml").read_text(
+            encoding="utf-8"
+        )
     )
-    assert "selected-pool-events-cn-v2-" in text
-    assert "selected-pool-events-cn-${{ hashFiles(" in text
-    assert "restore-keys: |" in text
-    assert "src/data/cn_selected_pool_event_sources.py" in text
+    steps = workflow["jobs"]["live-population"]["steps"]
+    restore = next(
+        step
+        for step in steps
+        if step.get("name") == "Restore exact-cutoff event source snapshots"
+    )
+    populate = next(
+        step for step in steps if step.get("name") == "Populate public primary event stores"
+    )
+
+    assert restore["uses"] == "actions/cache/restore@v4"
+    assert "run" not in restore
+    assert "env" not in restore
+    assert "selected-pool-events-cn-v2-" in restore["with"]["key"]
+    assert "selected-pool-events-cn-${{ hashFiles(" in restore["with"]["restore-keys"]
+    assert "selected-pool-events-cn-v2-" not in restore["with"]["restore-keys"]
+    assert "uses" not in populate
+    assert "populate_selected_pool_events.py" in populate["run"]
