@@ -185,10 +185,6 @@ jobs:
             ${{ runner.os }}-selected-pool-events-cn-v2-generation-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-selected-pool-events-cn-v2-generation-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}-
-            ${{ runner.os }}-selected-pool-events-cn-v2-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}-generation-
-            ${{ runner.os }}-selected-pool-events-cn-v2-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}-
-            ${{ runner.os }}-selected-pool-events-cn-v2-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}
-            ${{ runner.os }}-selected-pool-events-cn-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}
       - name: Populate public primary event stores
         if: steps.selected.outputs.run == 'true'
         env:
