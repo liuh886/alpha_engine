@@ -28,6 +28,7 @@ on:
       - "src/data/cn_selected_pool_event_sources.py"
       - "src/data/exact_frame_cache.py"
       - "scripts/data/populate_selected_pool_events.py"
+      - "tests/test_selected_pool_event_population.py"
       - "tests/test_cn_selected_pool_event_sources.py"
       - "tests/test_exact_frame_cache.py"
       - "tests/test_selected_pool_event_readiness.py"
