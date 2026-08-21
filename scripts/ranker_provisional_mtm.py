@@ -16,6 +16,7 @@ import pandas as pd
 
 from src.artifacts.formal_refresh import load_object, write_object
 from src.artifacts.strategy_signal_ledger import read_latest_evaluation
+from src.data.market_provider import load_provider_manifest
 from src.research.cn130_cross_sectional_ranking import read_qlib_feature
 from src.research.cn_x1_2_current_target import MODEL_ID as CN_MODEL_ID
 from src.research.ranker_current_target import next_due_session
@@ -166,6 +167,18 @@ def attach_ranker_provisional_mtm(
     model_id = str(package.get("model_id") or "")
     if model_id not in {US_MODEL_ID, CN_MODEL_ID}:
         raise RankerProvisionalMtmError(f"unsupported formal package: {model_id}")
+    expected_market = "us" if model_id == US_MODEL_ID else "cn"
+    try:
+        provider_manifest = load_provider_manifest(
+            provider_dir,
+            expected_market=expected_market,
+            required=True,
+            verify_files=True,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        raise RankerProvisionalMtmError(str(exc)) from exc
+    if provider_manifest is None:
+        raise RankerProvisionalMtmError("provider manifest is unavailable")
 
     evidence_cutoff = str(package.get("evidence_cutoff") or "")
     if not evidence_cutoff:
@@ -209,6 +222,7 @@ def attach_ranker_provisional_mtm(
         return None
 
     package["evidence_cutoff"] = cutoff
+    package["backtest_id"] = f"{model_id}-through-{cutoff.replace('-', '_')}"
     date_range = package.get("date_range")
     if isinstance(date_range, dict):
         date_range["end"] = cutoff
@@ -313,6 +327,7 @@ def attach_ranker_provisional_mtm(
         "entry_date": entry_date,
         "target_weights": target,
         "source": "strategy_signal_ledger",
+        "provider_identity_sha256": provider_manifest["provider_identity_sha256"],
         "performance_row": mtm_row,
         "research_only": True,
         "trade_ready": False,
