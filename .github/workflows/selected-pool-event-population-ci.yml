@@ -8,12 +8,14 @@ on:
       - "configs/data/selected_pool_event_population_v1.yaml"
       - "configs/providers/us_selected_equities_sec_cik_v3.yaml"
       - "src/data/selected_pool_event_population.py"
+      - "src/data/cn_selected_pool_event_sources.py"
       - "src/data/exact_frame_cache.py"
       - "src/data/fundamentals/**"
       - "src/data/corporate_actions/**"
       - "scripts/data/populate_selected_pool_events.py"
       - "scripts/data/build_us_selected_sec_mapping.py"
       - "tests/test_selected_pool_event_population.py"
+      - "tests/test_cn_selected_pool_event_sources.py"
       - "tests/test_exact_frame_cache.py"
       - "tests/test_selected_pool_event_readiness.py"
   push:
@@ -23,8 +25,11 @@ on:
       - "configs/data/selected_pool_event_population_v1.yaml"
       - "configs/providers/us_selected_equities_sec_cik_v3.yaml"
       - "src/data/selected_pool_event_population.py"
+      - "src/data/cn_selected_pool_event_sources.py"
       - "src/data/exact_frame_cache.py"
       - "scripts/data/populate_selected_pool_events.py"
+      - "tests/test_selected_pool_event_population.py"
+      - "tests/test_cn_selected_pool_event_sources.py"
       - "tests/test_exact_frame_cache.py"
       - "tests/test_selected_pool_event_readiness.py"
   schedule:
@@ -68,6 +73,7 @@ jobs:
         run: >-
           uv run ruff check
           src/data/selected_pool_event_population.py
+          src/data/cn_selected_pool_event_sources.py
           src/data/exact_frame_cache.py
           src/data/fundamentals/sec_companyfacts.py
           src/data/fundamentals/ashare_public_financials.py
@@ -78,18 +84,21 @@ jobs:
           scripts/data/populate_selected_pool_events.py
           scripts/data/build_us_selected_sec_mapping.py
           tests/test_selected_pool_event_population.py
+          tests/test_cn_selected_pool_event_sources.py
           tests/test_exact_frame_cache.py
           tests/test_selected_pool_event_readiness.py
       - name: Mypy event population paths
         run: >-
           uv run mypy --follow-imports=skip
           src/data/selected_pool_event_population.py
+          src/data/cn_selected_pool_event_sources.py
           src/data/exact_frame_cache.py
           scripts/data/populate_selected_pool_events.py
       - name: Test event population and stores
         run: >-
           uv run pytest
           tests/test_selected_pool_event_population.py
+          tests/test_cn_selected_pool_event_sources.py
           tests/test_exact_frame_cache.py
           tests/test_selected_pool_event_readiness.py
           tests/test_fundamental_event_store_contract.py
@@ -173,6 +182,8 @@ jobs:
         with:
           path: artifacts/cache/selected_pool_events/cn
           key: >-
+            ${{ runner.os }}-selected-pool-events-cn-v2-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}
+          restore-keys: |
             ${{ runner.os }}-selected-pool-events-cn-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}
       - name: Populate public primary event stores
         if: steps.selected.outputs.run == 'true'
