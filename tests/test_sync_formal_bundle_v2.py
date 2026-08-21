@@ -12,8 +12,16 @@ import pytest
 from scripts.byd_formal_publication_common import write_json
 from scripts.sync_formal_bundle_v2 import FormalBundleV2SyncError, sync
 from src.artifacts.formal_evidence_standard import validate_formal_evidence_bundle
-from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
-from src.artifacts.us_x1_3_formal import MODEL_ID as US_X1_3
+from src.artifacts.model_run_bundle_v2 import (
+    canonical_json_bytes,
+    compute_bundle_id,
+    validate_catalog,
+    validate_manifest,
+)
+from src.artifacts.us_x1_3_formal import (
+    MODEL_ID as US_X1_3,
+    USX13FormalPromotionError,
+)
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID as BYD_V13
 
@@ -34,6 +42,26 @@ def _active_preview_root(tmp_path: Path) -> Path:
     root = tmp_path / "preview"
     shutil.copytree(NATIVE, root)
     return root
+
+
+def _replace_us_trades(preview: Path, payload: object) -> None:
+    catalog_path = preview / "catalog.json"
+    catalog = _read(catalog_path)
+    record = next(row for row in catalog["records"] if row["model_version_id"] == US_X1_3)
+    manifest_path = preview / record["manifest_path"]
+    manifest = _read(manifest_path)
+    trades = next(row for row in manifest["sections"] if row["section_id"] == "trades")
+    trades_path = manifest_path.parent / trades["path"]
+    data = canonical_json_bytes(payload)
+    trades_path.write_bytes(data)
+    trades["sha256"] = hashlib.sha256(data).hexdigest()
+    trades["byte_size"] = len(data)
+    manifest["bundle_id"] = "0" * 64
+    manifest["bundle_id"] = compute_bundle_id(manifest)
+    manifest_path.write_bytes(canonical_json_bytes(manifest))
+    record["bundle_id"] = manifest["bundle_id"]
+    record["manifest_sha256"] = _sha256(manifest_path)
+    catalog_path.write_bytes(canonical_json_bytes(catalog))
 
 
 def test_formal_json_serializes_timestamps_and_numpy_scalars(tmp_path: Path) -> None:
@@ -226,6 +254,34 @@ def test_native_us_x1_3_formal_boundary_is_explicit(tmp_path: Path) -> None:
     assert summary["research_only"] is True
     assert summary["trade_ready"] is False
     validate_formal_evidence_bundle(run_dir)
+
+
+def test_sync_promotes_refreshed_us_x1_3_list_root_trades(tmp_path: Path) -> None:
+    preview = _active_preview_root(tmp_path)
+    catalog = _read(preview / "catalog.json")
+    record = next(row for row in catalog["records"] if row["model_version_id"] == US_X1_3)
+    run_dir = (preview / record["manifest_path"]).parent
+    records = _read(run_dir / "trades.json")["records"]
+    _replace_us_trades(preview, records)
+
+    output = tmp_path / "formal"
+    sync(FRESHNESS, output, native_root=preview, strategy_catalog=STRATEGIES)
+    formal_catalog = _read(output / "catalog.json")
+    formal_record = next(
+        row for row in formal_catalog["records"] if row["model_version_id"] == US_X1_3
+    )
+    formal_run = (output / formal_record["manifest_path"]).parent
+
+    assert _read(formal_run / "trades.json") == records
+    validate_formal_evidence_bundle(formal_run)
+
+
+def test_sync_rejects_malformed_us_x1_3_trade_rows(tmp_path: Path) -> None:
+    preview = _active_preview_root(tmp_path)
+    _replace_us_trades(preview, [{"symbol": "AAPL"}, "invalid-row"])
+
+    with pytest.raises(USX13FormalPromotionError, match="trade ledger records are invalid"):
+        sync(FRESHNESS, tmp_path / "formal", native_root=preview, strategy_catalog=STRATEGIES)
 
 
 def test_byd_v1_3_complete_ledgers_enter_native_formal_bundle(tmp_path: Path) -> None:
