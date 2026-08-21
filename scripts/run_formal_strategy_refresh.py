@@ -33,7 +33,7 @@ from src.research.formal_model_replay import replay_byd_v1_3
 from src.research.qqq_authoritative_replay import verify_qqq_authoritative_replay
 
 RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v2"
-PLAN_SCHEMA = "formal_refresh_plan_v4"
+PLAN_SCHEMA = "formal_refresh_plan_v5"
 QQQ_MODEL_ID = "qqqi_qqq_tqqq_v4_3"
 US_MODEL_ID = "us_x1_3"
 CN_X1_2_MODEL_ID = "cn_x1_2"
