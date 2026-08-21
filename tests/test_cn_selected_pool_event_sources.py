@@ -9,6 +9,7 @@ import yaml
 
 from src.data import cn_selected_pool_event_sources as sources
 from src.data.exact_frame_cache import write_exact_frame_snapshot
+from src.data.fundamentals.event_store import FundamentalEvent
 
 
 RETRIEVED = "2026-08-20T00:00:00+00:00"
@@ -221,6 +222,82 @@ def test_legacy_combined_fundamental_cache_is_migrated_without_network(
     assert (tmp_path / "fundamentals/000425/cninfo/metadata.json").is_file()
     assert (tmp_path / "fundamentals/000425/sina/metadata.json").is_file()
 
+
+def test_cold_and_warm_fundamentals_are_byte_identical_and_progress_uses_stderr(
+    monkeypatch,
+    tmp_path: Path,
+    capsys,
+) -> None:
+    class FinancialClient:
+        def fetch_disclosures(self, **_kwargs):
+            return pd.DataFrame()
+
+        def fetch_statement(self, **_kwargs):
+            return pd.DataFrame()
+
+    class ActionClient:
+        def fetch_dividends(self, **_kwargs):
+            return pd.DataFrame()
+
+    def events(*_args, symbol: str, exchange: str, retrieved_at: str, **_kwargs):
+        return [
+            FundamentalEvent(
+                market="cn",
+                symbol=symbol,
+                exchange=exchange,
+                entity_id=symbol,
+                fiscal_period_end="2025-12-31",
+                fiscal_year=2025,
+                fiscal_period="FY",
+                reported_at="2026-03-31",
+                available_at="2026-03-31T00:00:00+00:00",
+                filing_type="annual_report",
+                source_provider="fixture",
+                source_document_id="fixture-2025",
+                source_endpoint="fixture://financials",
+                field="revenue",
+                value=1.0,
+                unit="CNY",
+                currency="CNY",
+                is_quarterly=False,
+                is_derived=False,
+                derivation_rule="none",
+                revision_sequence=0,
+                supersedes_event_id="",
+                retrieved_at=retrieved_at,
+                source_hash="a" * 64,
+                event_id="fixture-event-1",
+            )
+        ]
+
+    monkeypatch.setattr(sources, "AsharePublicFinancialClient", lambda: FinancialClient())
+    monkeypatch.setattr(sources, "AsharePublicActionClient", lambda: ActionClient())
+    monkeypatch.setattr(sources, "cninfo_period_disclosures", lambda _frame: {})
+    monkeypatch.setattr(sources, "sina_statement_to_events", events)
+
+    cold = sources.populate_cn_selected_pool_event_sources(
+        ["000425"],
+        {},
+        RETRIEVED,
+        start_date="2021-01-01",
+        end_date="2026-07-31",
+        source_cache_root=tmp_path,
+    )
+    warm = sources.populate_cn_selected_pool_event_sources(
+        ["000425"],
+        {},
+        "2026-08-21T00:00:00+00:00",
+        start_date="2021-01-01",
+        end_date="2026-07-31",
+        source_cache_root=tmp_path,
+    )
+
+    assert [event.to_dict() for event in warm.fundamentals["000425"].events] == [
+        event.to_dict() for event in cold.fundamentals["000425"].events
+    ]
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "cn_selected_pool_symbol_complete" in captured.err
 
 def test_workflow_versions_cache_but_restores_exact_v1_fallback() -> None:
     workflow = yaml.safe_load(
