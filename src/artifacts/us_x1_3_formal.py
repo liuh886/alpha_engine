@@ -61,7 +61,7 @@ def _verify_source_bundle(run_dir: Path) -> dict[str, Any]:
 
 
 def _formal_completeness(value: object) -> dict[str, Any]:
-    completeness = copy.deepcopy(value) if isinstance(value, Mapping) else {}
+    completeness = copy.deepcopy(dict(value)) if isinstance(value, Mapping) else {}
     completeness.update(
         {
             "status": "complete",
@@ -134,11 +134,14 @@ def _rewrite_robustness(path: Path) -> None:
 
 
 def _rewrite_trades(path: Path) -> None:
-    source = _object(path)
-    records = source.get("records")
+    try:
+        source = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise USX13FormalPromotionError(f"invalid JSON: {path}") from exc
+    records = source.get("records") if isinstance(source, Mapping) else source
     if not isinstance(records, list) or not all(isinstance(row, Mapping) for row in records):
         raise USX13FormalPromotionError("US x1.3 preview trade ledger records are invalid")
-    path.write_bytes(canonical_json_bytes(records))
+    path.write_bytes(canonical_json_bytes([dict(row) for row in records]))
 
 
 def _rewrite_diagnostics(path: Path) -> None:
