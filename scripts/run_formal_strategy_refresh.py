@@ -14,7 +14,7 @@ import tempfile
 import zipfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any
 
 from scripts.ranker_provisional_mtm import attach_ranker_provisional_mtm
 from src.artifacts.formal_bundle_reader import load_formal_run
@@ -27,16 +27,11 @@ from src.governance.strategy_runtime_capabilities import (
 )
 from src.research.formal_model_replay import replay_byd_v1_3
 from src.research.qqq_authoritative_replay import verify_qqq_authoritative_replay
-from src.research.rules_formal_replay_gate import (
-    verify_cn_current_allocation_replay,
-    verify_cn_frozen_prefix,
-)
 
 RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v2"
 PLAN_SCHEMA = "formal_refresh_plan_v4"
 QQQ_MODEL_ID = "qqqi_qqq_tqqq_v4_3"
 US_MODEL_ID = "us_x1_3"
-CN_MODEL_ID = "cn_x1_1"
 CN_X1_2_MODEL_ID = "cn_x1_2"
 BYD_MODEL_ID = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
 BYD_PREDECESSOR = Path(
@@ -60,19 +55,6 @@ def _run(command: Sequence[str], *, cwd: Path) -> None:
 
 def _mapping(value: object) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
-
-
-def _settled_report(value: Mapping[str, Any]) -> list[dict[str, Any]]:
-    report = value.get("report")
-    if not isinstance(report, list):
-        return []
-    return [
-        dict(row)
-        for row in report
-        if isinstance(row, Mapping)
-        and row.get("provisional_mtm") is not True
-        and row.get("settlement_status") != "provisional_mtm"
-    ]
 
 
 def _verify_append_only_prefix(
@@ -370,175 +352,6 @@ def _run_qqq(
         "candidate_bundle_id": bundle_id,
         "output_sha256": output_sha,
         "replay_verdict": "exact_replay",
-    }
-
-
-def _run_cn_duplicate_ledgers(
-    *, root: Path, provider_dir: Path, result_root: Path
-) -> tuple[Path, Path]:
-    processes: list[tuple[subprocess.Popen[bytes], BinaryIO]] = []
-    outputs: list[Path] = []
-    for suffix in ("a", "b"):
-        output = result_root / f"cn-ledger-{suffix}"
-        outputs.append(output)
-        log_path = result_root / f"cn-ledger-{suffix}.log"
-        log = log_path.open("wb")
-        process = subprocess.Popen(
-            [
-                sys.executable,
-                "scripts/run_cn130_ranking_batch.py",
-                "--root",
-                str(root),
-                "--provider-dir",
-                str(provider_dir),
-                "--output-dir",
-                str(output),
-                "--window",
-                "2026H2_PARTIAL",
-                "--batch",
-                "r0r1",
-            ],
-            cwd=root,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-        )
-        processes.append((process, log))
-    failed = False
-    for process, log in processes:
-        if process.wait() != 0:
-            failed = True
-        log.close()
-    for suffix in ("a", "b"):
-        log_path = result_root / f"cn-ledger-{suffix}.log"
-        if log_path.is_file():
-            print(log_path.read_text(encoding="utf-8", errors="replace"), end="")
-    if failed:
-        raise subprocess.CalledProcessError(1, "run_cn130_ranking_batch.py")
-
-    relative = Path(
-        "score_ledgers/"
-        "2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
-    )
-    ledgers = (outputs[0] / relative, outputs[1] / relative)
-    if not all(path.is_file() for path in ledgers):
-        raise StrategyRefreshBlocked("invalid_evidence", "CN duplicate score ledgers are missing")
-    return ledgers
-
-
-def _run_cn(
-    *,
-    root: Path,
-    task: Mapping[str, Any],
-    provider_root: Path,
-    formal_v2_root: Path,
-    result_root: Path,
-    generated_at: str,
-) -> dict[str, Any]:
-    formal_required = bool(task.get("formal_refresh_required"))
-    mtm_required = bool(task.get("mtm_refresh_required"))
-    if not formal_required and not mtm_required:
-        return {
-            **_base_receipt(task),
-            "execution_status": "current_no_change",
-            "replay_verdict": "not_required_current_identity",
-        }
-
-    cutoff = str(task["planned_provider_cutoff"])
-    provider_dir = provider_root / "data" / "providers" / "cn"
-    provider_manifest = provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
-    ledger_a: Path | None = None
-    with tempfile.TemporaryDirectory(prefix="cn-refresh-state-") as temporary:
-        current_package = Path(temporary) / "current.json"
-        package = Path(temporary) / "candidate.json"
-        current_state = _materialize_refresh_state(
-            root=root, formal_v2_root=formal_v2_root, model_id=CN_MODEL_ID, target=current_package
-        )
-        if formal_required:
-            ledger_a, ledger_b = _run_cn_duplicate_ledgers(
-                root=root, provider_dir=provider_dir, result_root=result_root
-            )
-            _run(
-                [
-                    sys.executable,
-                    "scripts/refresh_ranker_formal.py",
-                    "cn",
-                    "--repository-root",
-                    str(root),
-                    "--current-package",
-                    str(current_package),
-                    "--provider-dir",
-                    str(provider_dir),
-                    "--provider-manifest",
-                    str(provider_manifest),
-                    "--ledger-a",
-                    str(ledger_a),
-                    "--ledger-b",
-                    str(ledger_b),
-                    "--cutoff",
-                    cutoff,
-                    "--generated-at",
-                    generated_at,
-                    "--output",
-                    str(package),
-                ],
-                cwd=root,
-            )
-        else:
-            write_object(package, current_state)
-
-        provisional = attach_ranker_provisional_mtm(
-            package_path=package,
-            provider_dir=provider_dir,
-            ledger_dir=root / "data/research/strategy_signal_ledgers" / CN_MODEL_ID,
-            cutoff=cutoff,
-        )
-        if mtm_required and provisional is None:
-            raise StrategyRefreshBlocked(
-                "invalid_evidence",
-                "CN x1.1 MTM fast path was planned but produced no valuation observation",
-            )
-        try:
-            candidate = load_object(package)
-            frozen = verify_cn_frozen_prefix(root, candidate)
-            report_changed = _settled_report(current_state) != _settled_report(candidate)
-            if report_changed:
-                if ledger_a is None:
-                    raise StrategyRefreshBlocked(
-                        "invalid_evidence",
-                        "CN settled formal trace changed without the governed current R0 score ledger",
-                    )
-                current_replay = verify_cn_current_allocation_replay(
-                    root,
-                    package_path=package,
-                    provider_dir=provider_dir,
-                    ledger_path=ledger_a,
-                )
-                replay_verdict: object = {
-                    "frozen_prefix": frozen,
-                    "current_allocation": current_replay,
-                }
-            else:
-                replay_verdict = {
-                    "frozen_prefix": frozen,
-                    "current_allocation": "not_required_no_settled_trace_change",
-                }
-        except StrategyRefreshBlocked:
-            raise
-        except (ValueError, KeyError, OSError) as exc:
-            raise StrategyRefreshBlocked("invalid_evidence", str(exc)) from exc
-        output_sha, bundle_id = _seal_preview(
-            root=root, task=task, evidence_path=package, result_root=result_root
-        )
-    freshness = _mapping(candidate.get("freshness"))
-    return {
-        **_base_receipt(task),
-        "execution_status": "refreshed",
-        "candidate_evidence_cutoff": candidate.get("evidence_cutoff"),
-        "performance_observation_end": freshness.get("latest_mtm_date")
-        or freshness.get("latest_realized_holding_end"),
-        "candidate_bundle_id": bundle_id,
-        "output_sha256": output_sha,
-        "replay_verdict": replay_verdict,
     }
 
 
