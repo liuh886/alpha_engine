@@ -183,7 +183,7 @@ def test_fan_in_retains_current_preview_for_blocked_strategy(tmp_path: Path) -> 
         receipt_path=tmp_path / "fan-in.json",
     )
 
-    assert fan_in["status"] == "complete"
+    assert fan_in["status"] == "degraded"
     assert fan_in["changed_strategy_ids"] == []
     assert fan_in["retained_strategy_ids"] == [blocked_task["strategy_id"]]
     assert sha256(candidate / "catalog.json") == fan_in["preview_catalog_sha256"]
@@ -192,6 +192,33 @@ def test_fan_in_retains_current_preview_for_blocked_strategy(tmp_path: Path) -> 
     assert set(row["model_version_id"] for row in catalog["records"]) == set(
         load_active_strategy_catalog(STRATEGIES).active_model_version_ids
     )
+
+
+def test_fan_in_records_execution_failure_and_refuses_candidate(tmp_path: Path) -> None:
+    tasks = _tasks()
+    failed_task = tasks[0]
+    plan = tmp_path / "plan.json"
+    _write_plan(plan, tasks)
+    results = tmp_path / "results"
+    _seed_results(results, tasks, status="current_no_change")
+    failed = results / str(failed_task["strategy_id"]) / "receipt.json"
+    write_object(failed, _receipt(failed_task, "execution_failed"))
+    candidate = tmp_path / "candidate-preview"
+    receipt_path = tmp_path / "fan-in.json"
+
+    with pytest.raises(FormalRefreshError, match="fatal strategy execution failure"):
+        assemble_strategy_results(
+            plan_path=plan,
+            strategy_results_root=results,
+            current_preview_root=NATIVE,
+            candidate_preview_root=candidate,
+            receipt_path=receipt_path,
+        )
+
+    fan_in = load_object(receipt_path)
+    assert fan_in["status"] == "failed"
+    assert fan_in["fatal_strategy_ids"] == [failed_task["strategy_id"]]
+    assert not candidate.exists()
 
 
 def test_fan_in_installs_only_digest_bound_refreshed_preview(tmp_path: Path) -> None:
