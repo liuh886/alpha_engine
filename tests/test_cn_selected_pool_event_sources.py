@@ -300,7 +300,7 @@ def test_cold_and_warm_fundamentals_are_byte_identical_and_progress_uses_stderr(
     assert "cn_selected_pool_symbol_complete" in captured.err
 
 
-def test_workflow_versions_cache_but_restores_exact_v1_fallback() -> None:
+def test_workflow_restores_only_the_latest_rolling_cache_generation() -> None:
     workflow = yaml.safe_load(
         Path(".github/workflows/selected-pool-event-population-ci.yml").read_text(
             encoding="utf-8"
@@ -323,20 +323,15 @@ def test_workflow_versions_cache_but_restores_exact_v1_fallback() -> None:
     assert "selected-pool-events-cn-v2-generation-" in restore["with"]["key"]
     assert restore["with"]["key"].endswith("-${{ github.run_id }}")
     restore_keys = restore["with"]["restore-keys"].splitlines()
-    assert len(restore_keys) == 5
+    assert len(restore_keys) == 1
     assert "selected-pool-events-cn-v2-generation-" in restore_keys[0]
     assert restore_keys[0].endswith("-")
     assert "${{ github.run_id }}" not in restore_keys[0]
-    assert "selected-pool-events-cn-v2-" in restore_keys[1]
-    assert restore_keys[1].endswith("-generation-")
-    assert "${{ github.run_id }}" not in restore_keys[1]
-    assert "selected-pool-events-cn-v2-" in restore_keys[2]
-    assert restore_keys[2].endswith("-")
-    assert "generation-" not in restore_keys[2]
-    assert "selected-pool-events-cn-v2-" in restore_keys[3]
-    assert not restore_keys[3].endswith("-")
-    assert not restore["with"]["key"].startswith(restore_keys[3])
-    assert "selected-pool-events-cn-${{ hashFiles(" in restore_keys[4]
-    assert "selected-pool-events-cn-v2-" not in restore_keys[4]
+    assert "selected-pool-events-cn-v2-${{ hashFiles(" not in restore["with"][
+        "restore-keys"
+    ]
+    assert "selected-pool-events-cn-${{ hashFiles(" not in restore["with"][
+        "restore-keys"
+    ]
     assert "uses" not in populate
     assert "populate_selected_pool_events.py" in populate["run"]
