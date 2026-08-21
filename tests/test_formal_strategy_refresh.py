@@ -62,12 +62,21 @@ def _receipt(task: dict[str, object], status: str) -> dict[str, object]:
 
 
 def _write_plan(path: Path, tasks: list[dict[str, object]]) -> None:
+    execution = [
+        task
+        for task in tasks
+        if task["formal_refresh_required"] or task["mtm_refresh_required"]
+    ]
     write_object(
         path,
         {
-            "schema_version": "formal_refresh_plan_v4",
+            "schema_version": "formal_refresh_plan_v5",
             "generated_at": "2026-08-13T00:00:00Z",
             "tasks": tasks,
+            "execution_task_matrix": execution,
+            "planned_noop_strategy_ids": [
+                task["strategy_id"] for task in tasks if task not in execution
+            ],
             "research_only": True,
             "trade_ready": False,
         },
@@ -75,7 +84,10 @@ def _write_plan(path: Path, tasks: list[dict[str, object]]) -> None:
 
 
 def _seed_results(root: Path, tasks: list[dict[str, object]], *, status: str) -> None:
+    root.mkdir(parents=True, exist_ok=True)
     for task in tasks:
+        if not task["formal_refresh_required"] and not task["mtm_refresh_required"]:
+            continue
         result = root / str(task["strategy_id"])
         result.mkdir(parents=True)
         write_object(result / "receipt.json", _receipt(task, status))
@@ -132,6 +144,10 @@ def test_fan_in_accepts_complete_active_strategy_set(tmp_path: Path) -> None:
     assert fan_in["status"] == "complete"
     assert fan_in["publication_contract"] == "active_preview_bundle_v2"
     assert fan_in["expected_strategy_ids"] == [row.strategy_id for row in active.strategies]
+    assert fan_in["executed_strategy_ids"] == []
+    assert fan_in["planned_noop_strategy_ids"] == [
+        row.strategy_id for row in active.strategies
+    ]
     assert fan_in["changed_strategy_ids"] == []
     assert fan_in["retained_strategy_ids"] == []
     assert sha256(candidate_preview / "catalog.json") == fan_in["preview_catalog_sha256"]
@@ -150,10 +166,11 @@ def test_fan_in_accepts_complete_active_strategy_set(tmp_path: Path) -> None:
 
 def test_fan_in_fails_closed_on_missing_strategy_receipt(tmp_path: Path) -> None:
     tasks = _tasks()
+    tasks[0]["formal_refresh_required"] = True
     plan = tmp_path / "plan.json"
     _write_plan(plan, tasks)
     results = tmp_path / "results"
-    _seed_results(results, tasks[:-1], status="current_no_change")
+    results.mkdir()
     with pytest.raises(FormalRefreshError, match="membership mismatch"):
         assemble_strategy_results(
             plan_path=plan,
@@ -167,6 +184,7 @@ def test_fan_in_fails_closed_on_missing_strategy_receipt(tmp_path: Path) -> None
 def test_fan_in_retains_current_preview_for_blocked_strategy(tmp_path: Path) -> None:
     tasks = _tasks()
     blocked_task = tasks[0]
+    blocked_task["formal_refresh_required"] = True
     plan = tmp_path / "plan.json"
     _write_plan(plan, tasks)
     results = tmp_path / "results"
@@ -197,6 +215,7 @@ def test_fan_in_retains_current_preview_for_blocked_strategy(tmp_path: Path) -> 
 def test_fan_in_records_execution_failure_and_refuses_candidate(tmp_path: Path) -> None:
     tasks = _tasks()
     failed_task = tasks[0]
+    failed_task["formal_refresh_required"] = True
     plan = tmp_path / "plan.json"
     _write_plan(plan, tasks)
     results = tmp_path / "results"
@@ -224,6 +243,7 @@ def test_fan_in_records_execution_failure_and_refuses_candidate(tmp_path: Path) 
 def test_fan_in_installs_only_digest_bound_refreshed_preview(tmp_path: Path) -> None:
     tasks = _tasks()
     qqq = next(task for task in tasks if task["strategy_id"] == "qqq_rotation")
+    qqq["formal_refresh_required"] = True
     plan = tmp_path / "plan.json"
     _write_plan(plan, tasks)
     results = tmp_path / "results"
@@ -252,6 +272,7 @@ def test_fan_in_installs_only_digest_bound_refreshed_preview(tmp_path: Path) -> 
 def test_fan_in_rejects_unbound_refreshed_digest(tmp_path: Path) -> None:
     tasks = _tasks()
     qqq = next(task for task in tasks if task["strategy_id"] == "qqq_rotation")
+    qqq["formal_refresh_required"] = True
     plan = tmp_path / "plan.json"
     _write_plan(plan, tasks)
     results = tmp_path / "results"
