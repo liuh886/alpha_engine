@@ -15,6 +15,7 @@ on:
       - "scripts/data/populate_selected_pool_events.py"
       - "scripts/data/build_us_selected_sec_mapping.py"
       - "tests/test_selected_pool_event_population.py"
+      - "tests/test_cn_selected_pool_event_sources.py"
       - "tests/test_exact_frame_cache.py"
       - "tests/test_selected_pool_event_readiness.py"
   push:
@@ -27,6 +28,7 @@ on:
       - "src/data/cn_selected_pool_event_sources.py"
       - "src/data/exact_frame_cache.py"
       - "scripts/data/populate_selected_pool_events.py"
+      - "tests/test_cn_selected_pool_event_sources.py"
       - "tests/test_exact_frame_cache.py"
       - "tests/test_selected_pool_event_readiness.py"
   schedule:
@@ -81,6 +83,7 @@ jobs:
           scripts/data/populate_selected_pool_events.py
           scripts/data/build_us_selected_sec_mapping.py
           tests/test_selected_pool_event_population.py
+          tests/test_cn_selected_pool_event_sources.py
           tests/test_exact_frame_cache.py
           tests/test_selected_pool_event_readiness.py
       - name: Mypy event population paths
@@ -94,6 +97,7 @@ jobs:
         run: >-
           uv run pytest
           tests/test_selected_pool_event_population.py
+          tests/test_cn_selected_pool_event_sources.py
           tests/test_exact_frame_cache.py
           tests/test_selected_pool_event_readiness.py
           tests/test_fundamental_event_store_contract.py
@@ -179,7 +183,8 @@ jobs:
           key: >-
             ${{ runner.os }}-selected-pool-events-cn-v2-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}
           restore-keys: |
-            ${{ runner.os }}-selected-pool-events-cn-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}      - name: Populate public primary event stores
+            ${{ runner.os }}-selected-pool-events-cn-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}
+      - name: Populate public primary event stores
         if: steps.selected.outputs.run == 'true'
         env:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
