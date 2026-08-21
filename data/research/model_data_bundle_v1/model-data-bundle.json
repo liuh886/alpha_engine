@@ -1,5 +1,5 @@
 {
-  "built_at": "2026-08-21T05:35:12+00:00",
+  "built_at": "2026-08-21T05:52:01+00:00",
   "bundle_id": "f2ec921d3362c94239fcd017864c3a2bb8de6f4d1884de4dfdb7eda6fb944bce",
   "components": [
     {
@@ -85,7 +85,7 @@
     },
     "model_data_readiness": {
       "path": "model-data-readiness.json",
-      "sha256": "00cde21e1023975d91fa0a48d52d7af5afef7004cf8a4beb9c57d1f2adb4bc7b"
+      "sha256": "82278fa083924166dad0667225c33d106de1d7118e26585b882841eca0688a36"
     },
     "training_profiles": {
       "path": "training-profiles.json",
