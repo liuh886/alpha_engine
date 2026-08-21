@@ -41,10 +41,10 @@ REFRESH_RECEIPT_SCHEMA = "formal_refresh_receipt_v2"
 SUCCESS_STATES = {"current_no_change", "refreshed"}
 RETAIN_CURRENT_STATES = {
     "data_blocked",
-    "execution_failed",
     "invalid_evidence",
     "runtime_blocked",
 }
+FATAL_STATES = {"execution_failed"}
 
 
 def _assert_declared_model_transition(
@@ -387,7 +387,7 @@ def _validate_task_receipt(task: Mapping[str, Any], receipt: Mapping[str, Any]) 
             f"strategy receipt research boundary changed: {task.get('strategy_id')}"
         )
     status = str(receipt.get("execution_status") or "")
-    if status not in SUCCESS_STATES | RETAIN_CURRENT_STATES:
+    if status not in SUCCESS_STATES | RETAIN_CURRENT_STATES | FATAL_STATES:
         raise FormalRefreshError(
             f"unsupported strategy task result: {task.get('strategy_id')}={status or 'missing'}"
         )
@@ -505,14 +505,45 @@ def assemble_strategy_results(
             f"expected={sorted(expected)}, observed={sorted(observed_dirs)}"
         )
 
-    _copy_tree(current_preview_root, candidate_preview_root)
     receipts: list[dict[str, Any]] = []
+    receipts_by_strategy: dict[str, dict[str, Any]] = {}
+    statuses: dict[str, str] = {}
+    for strategy_id, task in expected.items():
+        receipt = load_object(strategy_results_root / strategy_id / "receipt.json")
+        statuses[strategy_id] = _validate_task_receipt(task, receipt)
+        bound_receipt = dict(receipt)
+        receipts.append(bound_receipt)
+        receipts_by_strategy[strategy_id] = bound_receipt
+
+    fatal = [
+        strategy_id
+        for strategy_id in expected
+        if statuses[strategy_id] in FATAL_STATES
+    ]
+    if fatal:
+        fan_in = {
+            "schema_version": FAN_IN_SCHEMA,
+            "status": "failed",
+            "generated_at": plan.get("generated_at"),
+            "expected_strategy_ids": list(expected),
+            "fatal_strategy_ids": fatal,
+            "publication_contract": "active_preview_bundle_v2",
+            "receipts": receipts,
+            "research_only": True,
+            "trade_ready": False,
+        }
+        write_object(receipt_path, fan_in)
+        raise FormalRefreshError(
+            "fatal strategy execution failure: " + ", ".join(fatal)
+        )
+
+    _copy_tree(current_preview_root, candidate_preview_root)
     changed: list[str] = []
     retained: list[str] = []
     for strategy_id, task in expected.items():
         result_root = strategy_results_root / strategy_id
-        receipt = load_object(result_root / "receipt.json")
-        status = _validate_task_receipt(task, receipt)
+        receipt = receipts_by_strategy[strategy_id]
+        status = statuses[strategy_id]
         if status == "refreshed":
             preview = result_root / "model-runs"
             catalog_path = preview / "catalog.json"
@@ -531,12 +562,11 @@ def assemble_strategy_results(
             changed.append(strategy_id)
         elif status in RETAIN_CURRENT_STATES:
             retained.append(strategy_id)
-        receipts.append(dict(receipt))
 
     _seal_preview_catalog(candidate_preview_root)
     fan_in = {
         "schema_version": FAN_IN_SCHEMA,
-        "status": "complete",
+        "status": "degraded" if retained else "complete",
         "generated_at": plan.get("generated_at"),
         "expected_strategy_ids": list(expected),
         "changed_strategy_ids": changed,
@@ -555,12 +585,15 @@ def _validate_fan_in(path: Path) -> dict[str, Any]:
     receipt = load_object(path)
     if (
         receipt.get("schema_version") != FAN_IN_SCHEMA
-        or receipt.get("status") != "complete"
+        or receipt.get("status") not in {"complete", "degraded"}
         or receipt.get("publication_contract") != "active_preview_bundle_v2"
         or receipt.get("research_only") is not True
         or receipt.get("trade_ready") is not False
     ):
         raise FormalRefreshError("strategy fan-in receipt is invalid")
+    retained = receipt.get("retained_strategy_ids")
+    if not isinstance(retained, list) or bool(retained) != (receipt["status"] == "degraded"):
+        raise FormalRefreshError("strategy fan-in retained state is invalid")
     return receipt
 
 
@@ -599,7 +632,11 @@ def finalize_refresh(
     write_object(freshness_output, freshness)
     receipt = {
         "schema_version": REFRESH_RECEIPT_SCHEMA,
-        "status": "candidate_ready_for_review",
+        "status": (
+            "candidate_ready_with_retained"
+            if fan_in["status"] == "degraded"
+            else "candidate_ready_for_review"
+        ),
         "generated_at": generated_at,
         "target_cutoffs": dict(sorted(cutoffs.items())),
         "active_strategy_ids": [row.strategy_id for row in active.strategies],
