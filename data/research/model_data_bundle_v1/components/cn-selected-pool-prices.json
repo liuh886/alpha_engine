@@ -676,7 +676,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-20",
       "rows": 1365,
-      "sha256": "a6947a2ab295a99930fa277b2e7dd5656d37151b2aad2597b9016ee8d8506103",
+      "sha256": "71512ffbc2d8266c3829d74e039d9f934309a58b158d2ef11494c4a784d83399",
       "status": "ready",
       "symbol": "600547"
     },
@@ -700,7 +700,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-20",
       "rows": 1365,
-      "sha256": "31777c92a7dedd65f4d2303812320c495cf4e24a0caf1bbc507a89434240076d",
+      "sha256": "f7735af4a728a3ede39e0444b8f7c0de42cc43dd932560266d3018c5c0e03609",
       "status": "ready",
       "symbol": "600690"
     },
@@ -892,7 +892,7 @@
       "first_date": "2021-01-04",
       "last_date": "2026-08-20",
       "rows": 1365,
-      "sha256": "0b77911cba8990fe825514837a3d37b493205acc74374140c57dd355f58f04f2",
+      "sha256": "dff6bfdadec24611221a5c757b7540cb5a4f6fb03b65da4f42f7813d901e9bdc",
       "status": "ready",
       "symbol": "601899"
     },
@@ -2412,7 +2412,7 @@
     "schema_version": "1.2",
     "selection_mode": "credential_aware_fallback"
   },
-  "provider_identity_sha256": "afe36148984846763246ec3151cf95869e0e7b13153e9a2b15320e8ace94abfa",
+  "provider_identity_sha256": "38c1117d9146bd0c1e106f0a72839a23cfdab2d77de53a7557d96f7820dc6fcc",
   "quarantined_symbols": [],
   "records": [
     {
@@ -7702,7 +7702,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-20",
-      "output_sha256": "a6947a2ab295a99930fa277b2e7dd5656d37151b2aad2597b9016ee8d8506103",
+      "output_sha256": "71512ffbc2d8266c3829d74e039d9f934309a58b158d2ef11494c4a784d83399",
       "promotion_status": "source_semantics_recorded",
       "provider": "akshare_sina",
       "provider_contract": {
@@ -7894,7 +7894,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-20",
-      "output_sha256": "31777c92a7dedd65f4d2303812320c495cf4e24a0caf1bbc507a89434240076d",
+      "output_sha256": "f7735af4a728a3ede39e0444b8f7c0de42cc43dd932560266d3018c5c0e03609",
       "promotion_status": "source_semantics_recorded",
       "provider": "akshare_sina",
       "provider_contract": {
@@ -9430,7 +9430,7 @@
       "first_date": "2021-01-04",
       "identity_contract": null,
       "last_date": "2026-08-20",
-      "output_sha256": "0b77911cba8990fe825514837a3d37b493205acc74374140c57dd355f58f04f2",
+      "output_sha256": "dff6bfdadec24611221a5c757b7540cb5a4f6fb03b65da4f42f7813d901e9bdc",
       "promotion_status": "source_semantics_recorded",
       "provider": "akshare_sina",
       "provider_contract": {
