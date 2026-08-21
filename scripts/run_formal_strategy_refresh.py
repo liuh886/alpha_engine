@@ -18,8 +18,12 @@ from typing import Any
 
 from scripts.ranker_provisional_mtm import attach_ranker_provisional_mtm
 from src.artifacts.formal_bundle_reader import load_formal_run
-from src.artifacts.formal_preview_builder import build_preview_bundle
+from src.artifacts.formal_preview_builder import (
+    build_preview_bundle,
+    project_provisional_mtm_preview,
+)
 from src.artifacts.formal_refresh import load_object, sha256, write_object
+from src.artifacts.model_run_bundle_v2 import validate_catalog
 from src.artifacts.model_run_exporter import update_catalog
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.governance.strategy_runtime_capabilities import (
@@ -134,6 +138,9 @@ def _preview_record(root: Path, model_id: str) -> Mapping[str, Any] | None:
     if not catalog_path.is_file():
         return None
     catalog = load_object(catalog_path)
+    validate_catalog(catalog)
+    if catalog.get("channel") != "preview":
+        return None
     rows = catalog.get("records")
     if not isinstance(rows, list):
         return None
@@ -163,13 +170,46 @@ def _materialize_refresh_state(
 
 
 def _seal_preview(
-    *, root: Path, task: Mapping[str, Any], evidence_path: Path, result_root: Path
+    *,
+    root: Path,
+    task: Mapping[str, Any],
+    evidence_path: Path,
+    result_root: Path,
+    base_preview_root: Path | None = None,
 ) -> tuple[str, str]:
     strategy = load_active_strategy_catalog().by_strategy_id[str(task["strategy_id"])]
     preview_root = result_root / "model-runs"
     if preview_root.exists():
         shutil.rmtree(preview_root)
-    manifest = build_preview_bundle(evidence_path, strategy, output_root=preview_root)
+    base_preview_run = None
+    if base_preview_root is not None:
+        record = _preview_record(base_preview_root, strategy.model_version_id)
+        if record is None:
+            raise StrategyRefreshBlocked(
+                "invalid_evidence", "base preview bundle is missing"
+            )
+        manifest_path = base_preview_root / str(record["manifest_path"])
+        if (
+            not manifest_path.is_file()
+            or sha256(manifest_path) != record.get("manifest_sha256")
+        ):
+            raise StrategyRefreshBlocked(
+                "invalid_evidence", "base preview manifest identity changed"
+            )
+        base_preview_run = manifest_path.parent
+    if base_preview_run is None:
+        manifest = build_preview_bundle(
+            evidence_path,
+            strategy,
+            output_root=preview_root,
+        )
+    else:
+        manifest = project_provisional_mtm_preview(
+            evidence_path,
+            strategy,
+            base_preview_run=base_preview_run,
+            output_root=preview_root,
+        )
     catalog = update_catalog(
         [manifest], catalog_path=preview_root / "catalog.json", channel="preview"
     )
@@ -260,6 +300,7 @@ def _run_us(
             task=task,
             evidence_path=package,
             result_root=result_root,
+            base_preview_root=current_preview_root,
         )
     return {
         **_base_receipt(task),
