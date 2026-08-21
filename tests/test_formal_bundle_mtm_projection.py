@@ -9,10 +9,12 @@ from src.artifacts.formal_bundle_reader import load_formal_run
 from src.artifacts.formal_preview_builder import build_preview_bundle
 from src.artifacts.model_run_exporter import update_catalog
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
+from src.governance.model_contract import load_performance_semantics
 
 FRESHNESS = Path("data/research/formal_model_runs")
 NATIVE = Path("data/research/model_runs")
 MODEL_ID = "cn_x1_2"
+US_MODEL_ID = "us_x1_3"
 
 
 def _read(path: Path):
@@ -98,3 +100,26 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
         "report",
         "provisional_mtm.performance_row",
     ]
+
+
+def test_preview_migrates_schema_less_performance_semantics_from_model_contract(
+    tmp_path: Path,
+) -> None:
+    package = load_formal_run(Path.cwd(), US_MODEL_ID).refresh_state()
+    package["schema_version"] = "1.0.0"
+    package["record_type"] = "formal_model_backtest"
+    package["publication_status"] = "accepted_formal_baseline"
+    package["performance_semantics"].pop("schema_version", None)
+    package_path = tmp_path / "us-refresh-state.json"
+    _write(package_path, package)
+
+    strategy = load_active_strategy_catalog().by_model_version_id[US_MODEL_ID]
+    output = tmp_path / "preview"
+    manifest_path = build_preview_bundle(package_path, strategy, output_root=output)
+    manifest = _read(manifest_path)
+    performance_decl = next(
+        row for row in manifest["sections"] if row["section_id"] == "performance"
+    )
+    performance = _read(manifest_path.parent / performance_decl["path"])
+
+    assert performance["performance_semantics"] == load_performance_semantics(strategy)
