@@ -409,6 +409,46 @@ def test_strategy_results_are_uploaded_after_failure_unless_cancelled() -> None:
     assert '"retained_strategy_ids"' in transaction
 
 
+def test_run_scoped_artifacts_are_overwritable_for_failed_job_reruns() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    upload_names = (
+        "Transfer verified provider",
+        "Upload immutable plan",
+        "Upload bounded strategy receipt and evidence",
+        "Upload bounded refresh evidence",
+    )
+    for index, name in enumerate(upload_names):
+        start = workflow.index(f"      - name: {name}")
+        next_start = workflow.find("\n      - name:", start + 1)
+        block = workflow[start : next_start if next_start >= 0 else None]
+        assert "uses: actions/upload-artifact@v6" in block, (index, name)
+        assert "overwrite: true" in block, (index, name)
+
+
+def test_publish_validates_upstream_artifacts_before_installing_environments() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    publish_start = workflow.index("\n  publish:\n")
+    publish = workflow[publish_start:]
+    checkout = publish.index("      - name: Check out triggering revision")
+    downloads = tuple(
+        publish.index(f"      - name: {name}")
+        for name in (
+            "Download verified US provider",
+            "Download verified CN provider",
+            "Download immutable plan",
+            "Download all strategy results",
+        )
+    )
+    setup_python = publish.index("      - uses: actions/setup-python@v6")
+    install = publish.index("      - name: Install locked publication environments")
+    assert checkout < min(downloads)
+    assert max(downloads) < setup_python < install
+
+
 def test_publish_status_uses_the_transaction_outcome() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
