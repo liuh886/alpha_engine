@@ -13,6 +13,7 @@ from src.artifacts.model_run_bundle_v2 import canonical_json_bytes
 from src.artifacts.model_run_exporter import RunExportPlan, SectionPlan, export_model_run, update_catalog
 from src.artifacts.performance_semantics import build_performance_semantics, validate_performance_semantics
 from src.governance.active_strategy_catalog import ActiveStrategy
+from src.governance.model_contract import ModelContractError, load_performance_semantics
 
 
 class FormalBundleV2BuildError(ValueError):
@@ -263,11 +264,21 @@ def build_plan(source_path: Path, strategy: ActiveStrategy) -> RunExportPlan:
         "research_only": True,
         "trade_ready": False,
     }
-    semantics = dict(
-        package.get("performance_semantics")
-        if isinstance(package.get("performance_semantics"), Mapping)
-        else build_performance_semantics(portfolio_contract, trace_frequency=package.get("trace_frequency"))
-    )
+    retained_semantics = package.get("performance_semantics")
+    if isinstance(retained_semantics, Mapping) and "schema_version" not in retained_semantics:
+        try:
+            semantics = load_performance_semantics(strategy)
+        except ModelContractError as exc:
+            raise FormalBundleV2BuildError(str(exc)) from exc
+    else:
+        semantics = dict(
+            retained_semantics
+            if isinstance(retained_semantics, Mapping)
+            else build_performance_semantics(
+                portfolio_contract,
+                trace_frequency=package.get("trace_frequency"),
+            )
+        )
     validate_performance_semantics(semantics)
     performance = {
         "schema_version": "2.0.0",
