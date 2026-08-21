@@ -486,6 +486,7 @@ jobs:
 
   strategy:
     needs: [prepare, plan]
+    if: needs.plan.outputs.refresh_required == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     strategy:
@@ -588,6 +589,7 @@ jobs:
           name: formal-refresh-plan-${{ github.run_id }}
           path: artifacts/formal-refresh/plan
       - name: Download all strategy results
+        if: needs.plan.outputs.refresh_required == 'true'
         uses: actions/download-artifact@v6
         with:
           pattern: formal-strategy-*-${{ github.run_id }}

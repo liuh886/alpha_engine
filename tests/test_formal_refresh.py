@@ -181,7 +181,7 @@ def test_plan_is_formal_v2_catalog_driven() -> None:
         generated_at="2026-08-13T10:30:00Z",
     )
     active = load_active_strategy_catalog()
-    assert plan["schema_version"] == "formal_refresh_plan_v4"
+    assert plan["schema_version"] == "formal_refresh_plan_v5"
     assert plan["active_model_version_ids"] == list(active.active_model_version_ids)
     assert {task["publication_input"] for task in plan["tasks"]} == {"native_bundle_v2"}
     assert "governed_evidence_model_ids" not in plan
@@ -190,6 +190,15 @@ def test_plan_is_formal_v2_catalog_driven() -> None:
     assert cn["formal_refresh_adapter_id"] == "cn_x1_2_formal_refresh_v1"
     assert cn["formal_refresh_block_reason"] is None
     assert plan["blocked_model_ids"] == []
+    expected_execution = [
+        task
+        for task in plan["tasks"]
+        if task["formal_refresh_required"] or task["mtm_refresh_required"]
+    ]
+    assert plan["execution_task_matrix"] == expected_execution
+    assert set(plan["planned_noop_strategy_ids"]) == {
+        task["strategy_id"] for task in plan["tasks"] if task not in expected_execution
+    }
 
 
 def test_plan_never_rewinds_accepted_model_evidence() -> None:
@@ -363,9 +372,16 @@ def test_formal_refresh_fans_out_and_fans_in_preview_v2_atomically() -> None:
     assert "plan:\n    needs: [prepare, providers]" in workflow
     assert "strategy:\n    needs: [prepare, plan]" in workflow
     assert "task: ${{ fromJson(needs.plan.outputs.task_matrix) }}" in workflow
+    assert "if: needs.plan.outputs.refresh_required == 'true'" in workflow
     assert workflow.count("fail-fast: false") >= 2
     assert "uv run python scripts/run_formal_strategy_refresh.py" in workflow
     assert "pattern: formal-strategy-*-${{ github.run_id }}" in workflow
+    download_start = workflow.index("      - name: Download all strategy results")
+    download_end = workflow.index("      - name: Atomically fan in", download_start)
+    assert (
+        "if: needs.plan.outputs.refresh_required == 'true'"
+        in workflow[download_start:download_end]
+    )
     assert "run_formal_refresh_transaction.py assemble" in workflow
     assert '--candidate-preview-root "$CANDIDATE_PREVIEW_ROOT"' in workflow
     assert '--native-root "$CANDIDATE_PREVIEW_ROOT"' in workflow

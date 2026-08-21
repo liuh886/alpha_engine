@@ -35,7 +35,7 @@ from src.governance.strategy_runtime_capabilities import (
 )
 
 TASK_RECEIPT_SCHEMA = "formal_strategy_refresh_receipt_v2"
-PLAN_SCHEMA = "formal_refresh_plan_v4"
+PLAN_SCHEMA = "formal_refresh_plan_v5"
 FAN_IN_SCHEMA = "formal_strategy_fan_in_v2"
 REFRESH_RECEIPT_SCHEMA = "formal_refresh_receipt_v2"
 SUCCESS_STATES = {"current_no_change", "refreshed"}
@@ -338,6 +338,16 @@ def build_task_plan(
         if (task["formal_refresh_required"] or task["mtm_refresh_required"])
         and task["formal_refresh_capability_status"] == "blocked"
     )
+    execution_tasks = [
+        task
+        for task in tasks
+        if task["formal_refresh_required"] or task["mtm_refresh_required"]
+    ]
+    planned_noop_ids = [
+        str(task["strategy_id"])
+        for task in tasks
+        if not task["formal_refresh_required"] and not task["mtm_refresh_required"]
+    ]
 
     return {
         "schema_version": PLAN_SCHEMA,
@@ -350,6 +360,8 @@ def build_task_plan(
         "blocked_model_ids": blocked_ids,
         "refresh_required": bool(stale_ids or mtm_ids),
         "tasks": tasks,
+        "execution_task_matrix": execution_tasks,
+        "planned_noop_strategy_ids": planned_noop_ids,
         "research_only": True,
         "trade_ready": False,
     }
@@ -493,22 +505,45 @@ def assemble_strategy_results(
     expected = {str(task["strategy_id"]): task for task in tasks}
     if len(expected) != len(tasks):
         raise FormalRefreshError("formal refresh plan contains duplicate strategy tasks")
-
-    observed_dirs = {
-        path.name
-        for path in strategy_results_root.iterdir()
-        if path.is_dir() and (path / "receipt.json").is_file()
+    raw_execution = plan.get("execution_task_matrix")
+    if not isinstance(raw_execution, list):
+        raise FormalRefreshError("formal refresh plan execution matrix is missing")
+    execution_tasks = [dict(task) for task in raw_execution if isinstance(task, Mapping)]
+    if len(execution_tasks) != len(raw_execution):
+        raise FormalRefreshError("formal refresh execution matrix contains invalid tasks")
+    expected_execution = {
+        strategy_id: task
+        for strategy_id, task in expected.items()
+        if task.get("formal_refresh_required") or task.get("mtm_refresh_required")
     }
-    if observed_dirs != set(expected):
+    if execution_tasks != list(expected_execution.values()):
+        raise FormalRefreshError("formal refresh execution matrix does not match required tasks")
+    planned_noop = plan.get("planned_noop_strategy_ids")
+    expected_noop = [
+        strategy_id for strategy_id in expected if strategy_id not in expected_execution
+    ]
+    if planned_noop != expected_noop:
+        raise FormalRefreshError("formal refresh planned no-op set is invalid")
+
+    observed_dirs = (
+        {
+            path.name
+            for path in strategy_results_root.iterdir()
+            if path.is_dir() and (path / "receipt.json").is_file()
+        }
+        if strategy_results_root.is_dir()
+        else set()
+    )
+    if observed_dirs != set(expected_execution):
         raise FormalRefreshError(
             "strategy result membership mismatch: "
-            f"expected={sorted(expected)}, observed={sorted(observed_dirs)}"
+            f"expected={sorted(expected_execution)}, observed={sorted(observed_dirs)}"
         )
 
     receipts: list[dict[str, Any]] = []
     receipts_by_strategy: dict[str, dict[str, Any]] = {}
     statuses: dict[str, str] = {}
-    for strategy_id, task in expected.items():
+    for strategy_id, task in expected_execution.items():
         receipt = load_object(strategy_results_root / strategy_id / "receipt.json")
         statuses[strategy_id] = _validate_task_receipt(task, receipt)
         bound_receipt = dict(receipt)
@@ -517,7 +552,7 @@ def assemble_strategy_results(
 
     fatal = [
         strategy_id
-        for strategy_id in expected
+        for strategy_id in expected_execution
         if statuses[strategy_id] in FATAL_STATES
     ]
     if fatal:
@@ -526,6 +561,8 @@ def assemble_strategy_results(
             "status": "failed",
             "generated_at": plan.get("generated_at"),
             "expected_strategy_ids": list(expected),
+            "executed_strategy_ids": list(expected_execution),
+            "planned_noop_strategy_ids": expected_noop,
             "fatal_strategy_ids": fatal,
             "publication_contract": "active_preview_bundle_v2",
             "receipts": receipts,
@@ -540,7 +577,7 @@ def assemble_strategy_results(
     _copy_tree(current_preview_root, candidate_preview_root)
     changed: list[str] = []
     retained: list[str] = []
-    for strategy_id, task in expected.items():
+    for strategy_id, task in expected_execution.items():
         result_root = strategy_results_root / strategy_id
         receipt = receipts_by_strategy[strategy_id]
         status = statuses[strategy_id]
@@ -569,6 +606,8 @@ def assemble_strategy_results(
         "status": "degraded" if retained else "complete",
         "generated_at": plan.get("generated_at"),
         "expected_strategy_ids": list(expected),
+        "executed_strategy_ids": list(expected_execution),
+        "planned_noop_strategy_ids": expected_noop,
         "changed_strategy_ids": changed,
         "retained_strategy_ids": retained,
         "publication_contract": "active_preview_bundle_v2",
@@ -711,7 +750,7 @@ def main() -> None:
                 handle.write(f"cn_cutoff={plan['target_cutoffs']['cn']}\n")
                 handle.write(
                     "task_matrix="
-                    + json.dumps(plan["tasks"], separators=(",", ":"))
+                    + json.dumps(plan["execution_task_matrix"], separators=(",", ":"))
                     + "\n"
                 )
         print(json.dumps(plan, indent=2, sort_keys=True))
