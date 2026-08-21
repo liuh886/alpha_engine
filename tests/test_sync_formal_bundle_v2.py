@@ -261,7 +261,8 @@ def test_sync_promotes_refreshed_us_x1_3_list_root_trades(tmp_path: Path) -> Non
     catalog = _read(preview / "catalog.json")
     record = next(row for row in catalog["records"] if row["model_version_id"] == US_X1_3)
     run_dir = (preview / record["manifest_path"]).parent
-    records = _read(run_dir / "trades.json")["records"]
+    source_trades = _read(run_dir / "trades.json")
+    records = source_trades["records"] if isinstance(source_trades, dict) else source_trades
     _replace_us_trades(preview, records)
 
     output = tmp_path / "formal"

@@ -8,12 +8,14 @@ this module seals the run.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Mapping
 
 from src.artifacts.formal_bundle_v2_builder import FormalBundleV2BuildError, build_plan
+from src.artifacts.model_run_bundle_v2 import ModelRunBundleV2Error, validate_manifest
 from src.artifacts.model_run_exporter import RunExportPlan, SectionPlan, export_model_run
 from src.governance.active_strategy_catalog import ActiveStrategy
 from src.governance.model_contract import ModelContractError, load_performance_semantics
@@ -94,6 +96,105 @@ def _with_provisional_mtm(plan: RunExportPlan, source_path: Path) -> RunExportPl
     return replace(plan, sections=tuple(sections))
 
 
+def _base_preview_sections(
+    run_dir: Path,
+    plan: RunExportPlan,
+) -> dict[str, SectionPlan]:
+    manifest = _object(run_dir / "manifest.json")
+    try:
+        validate_manifest(manifest)
+    except ModelRunBundleV2Error as exc:
+        raise FormalPreviewBuildError(f"invalid base preview manifest: {run_dir}") from exc
+    if (
+        manifest.get("model_family_id") != plan.model_family_id
+        or manifest.get("model_version_id") != plan.model_version_id
+        or manifest.get("model_kind") != plan.model_kind
+        or manifest.get("publication_channel") != "preview"
+        or manifest.get("publication_status") != "ci_validated_preview"
+        or manifest.get("research_only") is not True
+        or manifest.get("trade_ready") is not False
+    ):
+        raise FormalPreviewBuildError("base preview identity or research boundary changed")
+
+    sections: dict[str, SectionPlan] = {}
+    for declaration in manifest["sections"]:
+        section_id = str(declaration["section_id"])
+        availability = str(declaration["availability_status"])
+        if availability != "available":
+            sections[section_id] = SectionPlan(
+                section_id,
+                availability,
+                bool(declaration["required_for_model_kind"]),
+                reason=str(declaration.get("reason") or ""),
+            )
+            continue
+        path = (run_dir / str(declaration["path"])).resolve()
+        try:
+            path.relative_to(run_dir.resolve())
+        except ValueError as exc:
+            raise FormalPreviewBuildError(f"base preview section escapes run: {section_id}") from exc
+        if not path.is_file():
+            raise FormalPreviewBuildError(f"base preview section is missing: {section_id}")
+        data = path.read_bytes()
+        if (
+            len(data) != declaration["byte_size"]
+            or hashlib.sha256(data).hexdigest() != declaration["sha256"]
+        ):
+            raise FormalPreviewBuildError(f"base preview section identity changed: {section_id}")
+        try:
+            payload = json.loads(data)
+        except json.JSONDecodeError as exc:
+            raise FormalPreviewBuildError(f"base preview section JSON is invalid: {section_id}") from exc
+        if not isinstance(payload, (dict, list)):
+            raise FormalPreviewBuildError(f"base preview section root is invalid: {section_id}")
+        sections[section_id] = SectionPlan(
+            section_id,
+            availability,
+            bool(declaration["required_for_model_kind"]),
+            payload=payload,
+        )
+    if set(sections) != {section.section_id for section in plan.sections}:
+        raise FormalPreviewBuildError("base preview section inventory changed")
+    return sections
+
+
+def _preserve_mtm_base_preview(
+    plan: RunExportPlan,
+    source_path: Path,
+    base_preview_run: Path,
+) -> RunExportPlan:
+    """Keep frozen native sections while replacing only the MTM performance view."""
+
+    package = _object(source_path)
+    provisional = package.get("provisional_mtm")
+    if not isinstance(provisional, Mapping):
+        raise FormalPreviewBuildError("base preview projection requires provisional MTM")
+    base = _base_preview_sections(base_preview_run.resolve(), plan)
+    projected: list[SectionPlan] = []
+    for section in plan.sections:
+        retained = base[section.section_id]
+        if section.section_id == "performance":
+            projected.append(
+                replace(
+                    section,
+                    required_for_model_kind=retained.required_for_model_kind,
+                )
+            )
+            continue
+        if section.section_id == "summary" and isinstance(retained.payload, Mapping):
+            summary = dict(retained.payload)
+            summary["run_id"] = plan.run_id
+            projected.append(replace(retained, payload=summary))
+            continue
+        if section.section_id == "lineage" and isinstance(retained.payload, Mapping):
+            lineage = dict(retained.payload)
+            lineage["mtm_projection"] = dict(provisional)
+            projected.append(replace(retained, payload=lineage))
+            continue
+        projected.append(retained)
+    return replace(plan, sections=tuple(projected))
+
+
 def _native_sections(
     plan: RunExportPlan,
     strategy: ActiveStrategy,
@@ -169,3 +270,27 @@ def build_preview_bundle(
         sections=_native_sections(plan, strategy),
     )
     return export_model_run(preview, output_root=output_root)
+
+
+def project_provisional_mtm_preview(
+    source_path: Path,
+    strategy: ActiveStrategy,
+    *,
+    base_preview_run: Path,
+    output_root: Path,
+) -> Path:
+    """Project one MTM row without flattening the native preview evidence closure."""
+
+    try:
+        plan = build_plan(source_path, strategy)
+    except FormalBundleV2BuildError as exc:
+        raise FormalPreviewBuildError(str(exc)) from exc
+    plan = _with_provisional_mtm(plan, source_path)
+    preview = replace(
+        plan,
+        publication_channel="preview",
+        publication_status="ci_validated_preview",
+        sections=_native_sections(plan, strategy),
+    )
+    preserved = _preserve_mtm_base_preview(preview, source_path, base_preview_run)
+    return export_model_run(preserved, output_root=output_root)
