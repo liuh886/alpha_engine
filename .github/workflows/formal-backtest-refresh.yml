@@ -602,6 +602,7 @@ jobs:
             --candidate-preview-root "$CANDIDATE_PREVIEW_ROOT" \
             --receipt "$FAN_IN_RECEIPT"
       - name: Build formal Bundle v2 from preview fan-in
+        id: transaction
         env:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
@@ -620,6 +621,7 @@ jobs:
             --native-root "$CANDIDATE_PREVIEW_ROOT" \
             --output-root "$CANDIDATE_V2_ROOT" \
             --receipt artifacts/formal-refresh/formal-v2-sync-receipt.json
+          echo "outcome=$(jq -r .status \"$REFRESH_RECEIPT\")" >> "$GITHUB_OUTPUT"
       - name: Build shared governed Market Evidence
         run: |
           rm -rf "$CANDIDATE_MARKET_EVIDENCE_ROOT"
@@ -851,10 +853,12 @@ jobs:
           REVIEWED_MERGE_SHA: ${{ steps.release.outputs.merge_sha }}
           PAGES_RUN_ID: ${{ steps.release.outputs.pages_run_id }}
           JOB_STATUS: ${{ job.status }}
+          TRANSACTION_STATUS: ${{ steps.transaction.outputs.outcome }}
         with:
           script: |
             const marker = '<!-- reviewed-formal-backtest-refresh -->';
-            const failed = process.env.JOB_STATUS !== 'success';
+            const failed = process.env.JOB_STATUS !== 'success'
+              || process.env.TRANSACTION_STATUS !== 'candidate_ready_for_review';
             const prNumber = process.env.PR_NUMBER || '';
             const mergeSha = process.env.REVIEWED_MERGE_SHA || '';
             const pagesRunId = process.env.PAGES_RUN_ID || '';
