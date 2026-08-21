@@ -434,6 +434,7 @@ jobs:
         with:
           name: formal-provider-${{ matrix.market }}-${{ github.run_id }}
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
+          overwrite: true
           if-no-files-found: error
           retention-days: 1
           compression-level: 1
@@ -481,6 +482,7 @@ jobs:
         with:
           name: formal-refresh-plan-${{ github.run_id }}
           path: artifacts/formal-refresh/plan.json
+          overwrite: true
           if-no-files-found: error
           retention-days: 1
 
@@ -540,6 +542,7 @@ jobs:
         with:
           name: formal-strategy-${{ matrix.task.strategy_id }}-${{ github.run_id }}
           path: artifacts/formal-refresh/strategy-result
+          overwrite: true
           if-no-files-found: warn
           retention-days: 30
           compression-level: 1
@@ -558,21 +561,6 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           lfs: true
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: qlib-dashboard/package-lock.json
-      - name: Install locked publication environments
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
-          cd qlib-dashboard
-          npm ci --no-audit --no-fund
       - name: Download verified US provider
         uses: actions/download-artifact@v6
         with:
@@ -595,6 +583,21 @@ jobs:
           pattern: formal-strategy-*-${{ github.run_id }}
           path: artifacts/formal-refresh/strategy-results
           merge-multiple: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+      - name: Install locked publication environments
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+          cd qlib-dashboard
+          npm ci --no-audit --no-fund
       - name: Atomically fan in active preview results
         run: |
           uv run python scripts/run_formal_refresh_transaction.py assemble \
@@ -932,5 +935,6 @@ jobs:
             artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json
             artifacts/formal-refresh/market-evidence/us/catalog.json
             artifacts/formal-refresh/market-evidence/cn/catalog.json
+          overwrite: true
           if-no-files-found: warn
           retention-days: 30
