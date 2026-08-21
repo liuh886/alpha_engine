@@ -320,19 +320,23 @@ def test_workflow_versions_cache_but_restores_exact_v1_fallback() -> None:
     assert "matrix.market == 'cn'" in restore["if"]
     assert "run" not in restore
     assert "env" not in restore
-    assert "selected-pool-events-cn-v2-" in restore["with"]["key"]
-    assert "generation-${{ github.run_id }}" in restore["with"]["key"]
+    assert "selected-pool-events-cn-v2-generation-" in restore["with"]["key"]
+    assert restore["with"]["key"].endswith("-${{ github.run_id }}")
     restore_keys = restore["with"]["restore-keys"].splitlines()
-    assert len(restore_keys) == 4
-    assert "selected-pool-events-cn-v2-" in restore_keys[0]
-    assert restore_keys[0].endswith("-generation-")
+    assert len(restore_keys) == 5
+    assert "selected-pool-events-cn-v2-generation-" in restore_keys[0]
+    assert restore_keys[0].endswith("-")
     assert "${{ github.run_id }}" not in restore_keys[0]
     assert "selected-pool-events-cn-v2-" in restore_keys[1]
-    assert restore_keys[1].endswith("-")
-    assert "generation-" not in restore_keys[1]
+    assert restore_keys[1].endswith("-generation-")
+    assert "${{ github.run_id }}" not in restore_keys[1]
     assert "selected-pool-events-cn-v2-" in restore_keys[2]
-    assert not restore_keys[2].endswith("-")
-    assert "selected-pool-events-cn-${{ hashFiles(" in restore_keys[3]
-    assert "selected-pool-events-cn-v2-" not in restore_keys[3]
+    assert restore_keys[2].endswith("-")
+    assert "generation-" not in restore_keys[2]
+    assert "selected-pool-events-cn-v2-" in restore_keys[3]
+    assert not restore_keys[3].endswith("-")
+    assert not restore["with"]["key"].startswith(restore_keys[3])
+    assert "selected-pool-events-cn-${{ hashFiles(" in restore_keys[4]
+    assert "selected-pool-events-cn-v2-" not in restore_keys[4]
     assert "uses" not in populate
     assert "populate_selected_pool_events.py" in populate["run"]
