@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -219,6 +220,43 @@ def test_sealed_provider_cache_binds_raw_publication_csv_and_qlib_bytes(tmp_path
     qlib_path.write_bytes(b"tampered")
     with pytest.raises(FormalProviderCacheError, match="feature-tree hash mismatch"):
         verify_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+
+@pytest.mark.parametrize("operation", ("seal", "verify"))
+def test_provider_cache_hashes_each_provider_file_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+) -> None:
+    root = _provider_tree(tmp_path)
+    contract = _contract()
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    if operation == "verify":
+        seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+    csv_path = (root / "data/csv_source/AAA.csv").resolve()
+    feature_path = (
+        root / "data/providers/us/features/aaa/day/close.day.bin"
+    ).resolve()
+    tracked_paths = {csv_path, feature_path}
+    read_counts: Counter[Path] = Counter()
+    original_open = Path.open
+
+    def counted_open(path: Path, *args: object, **kwargs: object):
+        mode = str(args[0]) if args else str(kwargs.get("mode", "r"))
+        resolved = path.resolve()
+        if resolved in tracked_paths and "r" in mode:
+            read_counts[resolved] += 1
+        return original_open(path, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(Path, "open", counted_open)
+    if operation == "seal":
+        seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+    else:
+        verify_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+    assert read_counts[csv_path] == 1
+    assert read_counts[feature_path] == 1
 
 
 @pytest.mark.parametrize("failure", ("missing", "tampered", "projection"))
