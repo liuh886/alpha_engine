@@ -413,21 +413,22 @@ def test_run_scoped_artifacts_are_overwritable_for_failed_job_reruns() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
     )
-    upload_names = (
-        "Transfer verified provider",
-        "Upload immutable plan",
-        "Upload bounded strategy receipt and evidence",
-        "Upload bounded refresh evidence",
+    upload_contracts = (
+        ("Transfer verified provider", 7),
+        ("Upload immutable plan", 7),
+        ("Upload bounded strategy receipt and evidence", 30),
+        ("Upload bounded refresh evidence", 30),
     )
-    assert workflow.count("uses: actions/upload-artifact@v6") == len(upload_names)
+    assert workflow.count("uses: actions/upload-artifact@v6") == len(upload_contracts)
     assert "github.run_attempt" not in workflow
-    for index, name in enumerate(upload_names):
+    for index, (name, retention_days) in enumerate(upload_contracts):
         start = workflow.index(f"      - name: {name}")
         next_start = workflow.find("\n      - name:", start + 1)
         block = workflow[start : next_start if next_start >= 0 else None]
         assert "uses: actions/upload-artifact@v6" in block, (index, name)
         assert "github.run_id" in block, (index, name)
         assert "overwrite: true" in block, (index, name)
+        assert f"retention-days: {retention_days}" in block, (index, name)
 
 
 def test_publish_validates_upstream_artifacts_before_installing_environments() -> None:

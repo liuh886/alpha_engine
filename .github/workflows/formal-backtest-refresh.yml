@@ -436,7 +436,7 @@ jobs:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
           overwrite: true
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
           compression-level: 1
 
   plan:
@@ -484,7 +484,7 @@ jobs:
           path: artifacts/formal-refresh/plan.json
           overwrite: true
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
 
   strategy:
     needs: [prepare, plan]
