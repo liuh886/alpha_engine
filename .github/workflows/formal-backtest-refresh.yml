@@ -88,6 +88,7 @@ on:
       - "tests/test_formal_provider_cache.py"
       - "tests/test_refresh_selected_pool_prices.py"
       - "tests/test_refresh_selected_pool_prices_v2.py"
+      - "tests/test_selected_pool_price_publication.py"
       - "tests/test_selected_pool_governance.py"
       - "tests/test_strategy_runtime_capabilities.py"
       - "tests/test_formal_bundle_reader.py"
@@ -213,6 +214,7 @@ jobs:
             tests/test_formal_provider_cache.py \
             tests/test_refresh_selected_pool_prices.py \
             tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
@@ -226,6 +228,7 @@ jobs:
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_publication_delta.py \
             src/artifacts/formal_provider_cache.py \
+            src/data/selected_pool_price_publication.py \
             src/dashboard/formal_bundle_market_events.py \
             src/dashboard/market_evidence.py \
             scripts/govern_formal_provider_cache.py \
@@ -250,6 +253,7 @@ jobs:
             tests/test_formal_provider_cache.py \
             tests/test_refresh_selected_pool_prices.py \
             tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
@@ -674,9 +678,9 @@ jobs:
           evidence_cutoff="$(printf '%s\n%s\n' "$US_CUTOFF" "$CN_CUTOFF" | sort | tail -1)"
           rm -rf "$CANDIDATE_MODEL_DATA_ROOT"
           mkdir -p "$CANDIDATE_MODEL_DATA_ROOT/components"
-          cp artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
+          cp artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_publication_manifest.json \
             "$CANDIDATE_MODEL_DATA_ROOT/components/us-selected-pool-prices.json"
-          cp artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json \
+          cp artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_publication_manifest.json \
             "$CANDIDATE_MODEL_DATA_ROOT/components/cn-selected-pool-prices.json"
           uv run python scripts/data/build_model_data_bundle.py \
             --component "prices.us_selected_equities_v2:selected_pool_prices:${CANDIDATE_MODEL_DATA_ROOT}/components/us-selected-pool-prices.json:us" \
@@ -998,7 +1002,9 @@ jobs:
             artifacts/formal-refresh/publication-delta-receipt.json
             artifacts/formal-refresh/freshness-input/freshness.json
             artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json
+            artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_publication_manifest.json
             artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json
+            artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_publication_manifest.json
             artifacts/formal-refresh/market-evidence/us/catalog.json
             artifacts/formal-refresh/market-evidence/cn/catalog.json
           overwrite: true

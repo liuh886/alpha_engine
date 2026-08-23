@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -21,9 +22,13 @@ from src.dashboard.market_evidence import (
     _chart_studies,
     _filter_factor_frame,
     _factor_stats,
+    _market_evidence_input_identity,
     _provider_symbol_for_formal_instrument,
     _reuse_market_evidence_tree,
     _trade_events,
+)
+from src.data.selected_pool_price_publication import (
+    write_selected_pool_price_publication_manifest,
 )
 from src.factors.library import load_factor_library
 
@@ -264,6 +269,30 @@ def test_content_addressed_market_evidence_reuse_verifies_every_file(
             destination_root=tmp_path / "rejected" / "us",
             expected_input_identity=identity,
         )
+
+
+def test_market_evidence_identity_ignores_only_transient_provider_error(
+    tmp_path: Path,
+) -> None:
+    source = json.loads(
+        Path(
+            "data/research/model_data_bundle_v1/components/cn-selected-pool-prices.json"
+        ).read_text(encoding="utf-8")
+    )
+    changed = copy.deepcopy(source)
+    changed["records"][-1]["attempts"][0]["error"] = "new transient error"
+    first = tmp_path / "first.json"
+    second = tmp_path / "second.json"
+    write_selected_pool_price_publication_manifest(first, source)
+    write_selected_pool_price_publication_manifest(second, changed)
+    library = load_factor_library("configs/factor_libraries/ohlcv.yaml")
+
+    assert first.read_bytes() == second.read_bytes()
+    assert _market_evidence_input_identity(
+        market="cn", manifest_path=first, packages=[], factor_library=library
+    ) == _market_evidence_input_identity(
+        market="cn", manifest_path=second, packages=[], factor_library=library
+    )
 
 
 def _formal_fixture_plan(model_id: str = "us_x9") -> RunExportPlan:

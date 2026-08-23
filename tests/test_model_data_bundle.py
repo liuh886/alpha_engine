@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
@@ -11,6 +12,9 @@ from src.data.model_data_bundle import (
     ModelDataBundleError,
     build_model_data_bundle,
     verify_model_data_bundle,
+)
+from src.data.selected_pool_price_publication import (
+    write_selected_pool_price_publication_manifest,
 )
 
 CONTRACT = Path("configs/data_contracts/model_data_bundle_v1.yaml")
@@ -432,6 +436,82 @@ def test_verifier_rejects_modified_frontend_index(tmp_path: Path) -> None:
     path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
     with pytest.raises(ModelDataBundleError, match="hash mismatch"):
         verify_model_data_bundle(output)
+
+
+def test_model_data_consumes_self_verified_provider_publication(tmp_path: Path) -> None:
+    source = json.loads(
+        Path(
+            "data/research/model_data_bundle_v1/components/cn-selected-pool-prices.json"
+        ).read_text(encoding="utf-8")
+    )
+    publication = tmp_path / "cn-selected-pool-prices.json"
+    write_selected_pool_price_publication_manifest(publication, source)
+    kwargs = {
+        "root": Path.cwd(),
+        "contract_path": CONTRACT,
+        "component_specs": [
+            ComponentSpec(
+                "prices.cn_selected_equities_v3",
+                "selected_pool_prices",
+                publication,
+                "cn",
+            )
+        ],
+        "evidence_cutoff": "2026-08-21",
+    }
+
+    manifest = build_model_data_bundle(output_root=tmp_path / "valid", **kwargs)
+    assert manifest["components"][0]["status"] == "ready"
+
+    payload = json.loads(publication.read_text(encoding="utf-8"))
+    payload["records"][0]["output_sha256"] = "0" * 64
+    publication.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ModelDataBundleError, match="identity mismatch"):
+        build_model_data_bundle(output_root=tmp_path / "tampered", **kwargs)
+
+
+def test_model_data_identity_ignores_provider_runtime_diagnostics(tmp_path: Path) -> None:
+    source = json.loads(
+        Path(
+            "data/research/model_data_bundle_v1/components/cn-selected-pool-prices.json"
+        ).read_text(encoding="utf-8")
+    )
+    changed = copy.deepcopy(source)
+    changed["records"][-1]["attempts"][0].update(
+        error="different transient error", round=77, circuit_breaker_open=True
+    )
+    changed["records"][-1]["action"] = "fetched_full_refresh"
+    publication = tmp_path / "cn-selected-pool-prices.json"
+    write_selected_pool_price_publication_manifest(publication, source)
+    stable_bytes = publication.read_bytes()
+
+    def build(path: Path, output: Path) -> dict[str, object]:
+        return build_model_data_bundle(
+            root=Path.cwd(),
+            contract_path=CONTRACT,
+            component_specs=[
+                ComponentSpec(
+                    "prices.cn_selected_equities_v3",
+                    "selected_pool_prices",
+                    path,
+                    "cn",
+                )
+            ],
+            output_root=output,
+            evidence_cutoff="2026-08-21",
+        )
+
+    first_bundle = build(publication, tmp_path / "first-bundle")
+    write_selected_pool_price_publication_manifest(publication, changed)
+    second_bundle = build(publication, tmp_path / "second-bundle")
+    assert stable_bytes == publication.read_bytes()
+    assert first_bundle["bundle_id"] == second_bundle["bundle_id"]
+
+    semantic = copy.deepcopy(source)
+    semantic["records"][0]["output_sha256"] = "0" * 64
+    write_selected_pool_price_publication_manifest(publication, semantic)
+    third_bundle = build(publication, tmp_path / "third-bundle")
+    assert third_bundle["bundle_id"] != first_bundle["bundle_id"]
 
 
 def test_bundle_keeps_embedded_component_paths_portable(tmp_path: Path) -> None:

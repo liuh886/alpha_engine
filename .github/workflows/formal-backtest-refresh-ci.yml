@@ -93,6 +93,7 @@ on:
       - "tests/test_formal_provider_cache.py"
       - "tests/test_refresh_selected_pool_prices.py"
       - "tests/test_refresh_selected_pool_prices_v2.py"
+      - "tests/test_selected_pool_price_publication.py"
       - "tests/test_selected_pool_governance.py"
       - "tests/test_strategy_operations.py"
       - "tests/test_system_health.py"
@@ -337,6 +338,7 @@ jobs:
             tests/test_formal_provider_cache.py \
             tests/test_refresh_selected_pool_prices.py \
             tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
@@ -352,6 +354,7 @@ jobs:
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_publication_delta.py \
             src/artifacts/formal_provider_cache.py \
+            src/data/selected_pool_price_publication.py \
             src/dashboard/market_evidence.py \
             scripts/govern_formal_provider_cache.py \
             scripts/build_market_evidence.py \
@@ -378,6 +381,7 @@ jobs:
             tests/test_formal_provider_cache.py \
             tests/test_refresh_selected_pool_prices.py \
             tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \

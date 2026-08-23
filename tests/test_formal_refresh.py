@@ -545,3 +545,16 @@ def test_formal_refresh_publishes_one_shared_model_data_bundle() -> None:
     assert workflow.count("scripts/data/build_model_data_bundle.py") == 1
     assert "data/research/model_data_bundle_v1" in workflow
     assert "cancel-in-progress: false" in workflow
+
+
+def test_model_data_consumes_publication_identity_and_retains_raw_diagnostics() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    start = workflow.index("      - name: Build shared Model Data Bundle")
+    end = workflow.index("      - name: Classify canonical publication delta")
+    block = workflow[start:end]
+    assert block.count("selected_pool_price_publication_manifest.json") == 2
+    assert "selected_pool_price_refresh_manifest.json" not in block
+    assert "provider-us/artifacts/selected_pool_price_refresh_manifest.json" in workflow
+    assert "provider-cn/artifacts/selected_pool_price_refresh_manifest.json" in workflow
