@@ -16,110 +16,70 @@ PUBLICATION_EVIDENCE_TYPE = "selected_pool_price_publication_v1"
 PUBLICATION_MANIFEST_NAME = "selected_pool_price_publication_manifest.json"
 
 _SOURCE_KEYS = {
-    "after",
-    "all_sources_current",
-    "all_sources_ready",
-    "auxiliary_symbols",
-    "before",
-    "benchmark",
-    "candidate_count",
-    "candidate_symbols",
-    "comparison_reference_symbols",
-    "cutoff",
-    "evidence_type",
-    "failed_symbols",
-    "failure_count",
-    "formal_auxiliary_fallback_symbols",
-    "identity_contracts",
-    "legacy_copied_symbols",
-    "lifecycle_declared_terminal_symbols",
-    "market",
-    "pool_id",
-    "promotion_blocker",
-    "promotion_eligible",
-    "provider_architecture",
-    "provider_identity_sha256",
-    "quarantined_symbols",
-    "records",
-    "refresh_mode",
-    "research_only",
-    "schema_version",
-    "selected_providers",
-    "stale_symbols",
-    "start",
-    "status",
-    "target_count",
-    "targets",
-    "terminal_history_symbols",
-    "terminal_listing_evidence",
-    "trade_ready",
+    "after", "all_sources_current", "all_sources_ready", "auxiliary_symbols",
+    "before", "benchmark", "candidate_count", "candidate_symbols", "comparison_reference_symbols",
+    "cutoff", "evidence_type", "failed_symbols", "failure_count",
+    "formal_auxiliary_fallback_symbols", "identity_contracts", "legacy_copied_symbols",
+    "lifecycle_declared_terminal_symbols", "market", "pool_id", "promotion_blocker",
+    "promotion_eligible", "provider_architecture", "provider_identity_sha256",
+    "quarantined_symbols", "records", "refresh_mode", "research_only", "schema_version",
+    "selected_providers", "stale_symbols", "start", "status", "target_count", "targets",
+    "terminal_history_symbols", "terminal_listing_evidence", "trade_ready",
     "unresolved_stale_symbols",
 }
 _OPERATIONAL_SOURCE_KEYS = {"after", "before", "refresh_mode", "target_count", "targets"}
-_RECORD_KEYS = {
-    "action",
-    "attempts",
-    "first_date",
-    "identity_contract",
-    "last_date",
-    "output_sha256",
-    "promotion_status",
-    "provider",
-    "provider_contract",
-    "provider_symbol",
-    "rows",
-    "source_path",
-    "source_sha256",
-    "stale_reason",
-    "symbol",
-    "terminal_lifecycle",
+_LIST_SOURCE_KEYS = {
+    "auxiliary_symbols", "candidate_symbols", "comparison_reference_symbols", "failed_symbols",
+    "formal_auxiliary_fallback_symbols", "legacy_copied_symbols",
+    "lifecycle_declared_terminal_symbols", "quarantined_symbols", "stale_symbols",
+    "terminal_history_symbols", "unresolved_stale_symbols",
 }
+_RECORD_KEYS = {
+    "action", "attempts", "first_date", "identity_contract", "last_date", "output_sha256",
+    "promotion_status", "provider", "provider_contract", "provider_symbol", "rows",
+    "source_path", "source_sha256", "stale_reason", "symbol", "terminal_lifecycle",
+}
+_PUBLICATION_RECORD_FIELDS = _RECORD_KEYS - {"action", "attempts", "provider_contract"}
 _ATTEMPT_KEYS = {
-    "circuit_breaker_open",
-    "cutoff_complete",
-    "error",
-    "first_date",
-    "independent_group",
-    "last_date",
-    "observed_last_date",
-    "ok",
-    "provider",
-    "provider_contract",
-    "provider_symbol",
-    "requested_cutoff",
-    "round",
-    "rows",
-    "schema_errors",
-    "source_family",
+    "circuit_breaker_open", "cutoff_complete", "error", "first_date", "independent_group",
+    "last_date", "observed_last_date", "ok", "provider", "provider_contract",
+    "provider_symbol", "requested_cutoff", "round", "rows", "schema_errors", "source_family",
 }
 _ARCHITECTURE_KEYS = {
-    "formal_auxiliary_boundary",
-    "health",
-    "independent_provider_order",
-    "provider_order",
-    "providers",
-    "public_source_boundary",
-    "same_source_warning",
-    "schema_version",
-    "selection_mode",
+    "formal_auxiliary_boundary", "health", "independent_provider_order", "provider_order",
+    "providers", "public_source_boundary", "same_source_warning", "schema_version", "selection_mode",
 }
-_ATTEMPT_OUTCOME_KEYS = tuple(sorted(_ATTEMPT_KEYS - {"error", "provider_contract"}))
+_PROVIDER_CONTRACT_KEYS = {
+    "amount_unit", "available", "corporate_actions", "credential_env", "credentialed",
+    "independent_group", "markets", "name", "price_mode", "research_only", "source_family",
+    "trade_calendar", "usage_note", "volume_unit",
+}
+_SEMANTIC_PROVIDER_CONTRACT_KEYS = _PROVIDER_CONTRACT_KEYS - {
+    "available", "credential_env", "usage_note",
+}
+_PUBLICATION_ARCHITECTURE_KEYS = {
+    "formal_auxiliary_fallback_authorizations", "schema_version",
+    "selected_provider_contracts", "selection_mode",
+}
+_FALLBACK_AUTHORIZATION_KEYS = {
+    "failed_preferred_providers", "selected_provider", "symbol",
+}
+_TERMINAL_LIFECYCLE_KEYS = {
+    "active_universe_after_terminal_date_allowed", "event_type", "governed_history_path",
+    "governed_history_sha256", "historical_rows_retained", "market", "public_references",
+    "reason", "suspension_effective_date", "terminal_date",
+}
 _DIAGNOSTICS_POLICY = {
-    "excluded_record_fields": ["attempts[].error", "attempts[].provider_contract"],
+    "excluded_operational_record_fields": ["action", "attempts", "provider_contract"],
     "excluded_top_level_fields": sorted(_OPERATIONAL_SOURCE_KEYS),
-    "excluded_provider_architecture_fields": ["health"],
+    "excluded_unused_provider_fields": [
+        "available", "credential_env", "health", "provider_order", "usage_note",
+    ],
     "full_diagnostics_retained_in_run_artifact": True,
 }
-_PUBLICATION_KEYS = (
-    _SOURCE_KEYS - _OPERATIONAL_SOURCE_KEYS
-) | {
-    "diagnostics_policy",
-    "publication_identity_sha256",
-    "source_evidence_type",
+_PUBLICATION_KEYS = (_SOURCE_KEYS - _OPERATIONAL_SOURCE_KEYS) | {
+    "diagnostics_policy", "publication_identity_sha256", "source_evidence_type",
     "source_schema_version",
-}
-_PUBLICATION_RECORD_KEYS = (_RECORD_KEYS - {"attempts", "provider_contract"}) | {
-    "attempt_outcomes"
 }
 
 
@@ -128,10 +88,7 @@ class SelectedPoolPricePublicationError(ValueError):
 
 
 def _canonical_json(value: Mapping[str, Any]) -> bytes:
-    return (
-        json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
-        + "\n"
-    ).encode("utf-8")
+    return (json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n").encode()
 
 
 def _sha256(value: bytes) -> str:
@@ -141,17 +98,15 @@ def _sha256(value: bytes) -> str:
 def _assert_exact_keys(value: Mapping[str, Any], expected: set[str], label: str) -> None:
     if set(value) != expected:
         raise SelectedPoolPricePublicationError(
-            f"unsupported {label} fields: "
-            f"missing={sorted(expected - set(value))} unknown={sorted(set(value) - expected)}"
+            f"unsupported {label} fields: missing={sorted(expected - set(value))} "
+            f"unknown={sorted(set(value) - expected)}"
         )
 
 
 def _assert_known_keys(value: Mapping[str, Any], expected: set[str], label: str) -> None:
     unknown = set(value) - expected
     if unknown:
-        raise SelectedPoolPricePublicationError(
-            f"unsupported {label} fields: {sorted(unknown)}"
-        )
+        raise SelectedPoolPricePublicationError(f"unsupported {label} fields: {sorted(unknown)}")
 
 
 def _is_sha256(value: object) -> bool:
@@ -159,42 +114,63 @@ def _is_sha256(value: object) -> bool:
     return len(text) == 64 and all(character in "0123456789abcdef" for character in text)
 
 
-def _project_attempt(value: Mapping[str, Any]) -> dict[str, Any]:
-    _assert_known_keys(value, _ATTEMPT_KEYS, "provider attempt")
-    if value.get("ok") is not True and value.get("ok") is not False:
-        raise SelectedPoolPricePublicationError("provider attempt outcome is invalid")
-    return {key: copy.deepcopy(value.get(key)) for key in _ATTEMPT_OUTCOME_KEYS}
+def _symbol_list(source: Mapping[str, Any], key: str) -> list[str]:
+    value = source.get(key)
+    if not isinstance(value, list):
+        raise SelectedPoolPricePublicationError(f"source {key} must be a list")
+    normalized = [str(item).strip().upper() for item in value]
+    if any(not item for item in normalized) or len(normalized) != len(set(normalized)):
+        raise SelectedPoolPricePublicationError(f"source {key} contains invalid symbols")
+    return sorted(normalized)
+
+
+def _project_provider_contract(value: Mapping[str, Any]) -> dict[str, Any]:
+    _assert_exact_keys(value, _PROVIDER_CONTRACT_KEYS, "provider contract")
+    markets = value.get("markets")
+    if not isinstance(markets, list) or not markets:
+        raise SelectedPoolPricePublicationError("provider contract markets are invalid")
+    projected = {key: copy.deepcopy(value[key]) for key in sorted(_SEMANTIC_PROVIDER_CONTRACT_KEYS)}
+    projected["markets"] = sorted(str(item).strip().lower() for item in markets)
+    if (
+        not str(projected["name"]).strip()
+        or not str(projected["source_family"]).strip()
+        or projected["research_only"] is not True
+    ):
+        raise SelectedPoolPricePublicationError("provider contract boundary is invalid")
+    return projected
 
 
 def _project_record(value: Mapping[str, Any]) -> dict[str, Any]:
     _assert_known_keys(value, _RECORD_KEYS, "provider record")
     symbol = str(value.get("symbol", "")).strip().upper()
-    output_sha = str(value.get("output_sha256", ""))
     attempts = value.get("attempts")
-    if not symbol or not _is_sha256(output_sha) or not isinstance(attempts, list):
+    if (
+        not symbol
+        or not _is_sha256(value.get("output_sha256"))
+        or not isinstance(value.get("rows"), int)
+        or int(value["rows"]) <= 0
+        or not isinstance(attempts, list)
+        or any(not isinstance(attempt, Mapping) for attempt in attempts)
+    ):
         raise SelectedPoolPricePublicationError("provider record identity is incomplete")
+    for attempt in attempts:
+        _assert_known_keys(attempt, _ATTEMPT_KEYS, "provider attempt")
+        if attempt.get("ok") is not True and attempt.get("ok") is not False:
+            raise SelectedPoolPricePublicationError("provider attempt outcome is invalid")
     projected = {
-        key: copy.deepcopy(item)
-        for key, item in value.items()
-        if key not in {"attempts", "provider_contract"}
+        key: copy.deepcopy(value[key])
+        for key in sorted(_PUBLICATION_RECORD_FIELDS)
+        if key in value
     }
     projected["symbol"] = symbol
-    projected["attempt_outcomes"] = [
-        _project_attempt(attempt)
-        for attempt in attempts
-        if isinstance(attempt, Mapping)
-    ]
-    if len(projected["attempt_outcomes"]) != len(attempts):
-        raise SelectedPoolPricePublicationError("provider attempts must be objects")
     return projected
 
 
-def build_selected_pool_price_publication_manifest(
-    source: Mapping[str, Any],
-) -> dict[str, Any]:
-    """Return stable, self-identifying provider publication evidence."""
-
-    _assert_exact_keys(source, _SOURCE_KEYS, "source manifest")
+def _validate_source_boundaries(source: Mapping[str, Any]) -> dict[str, list[str]]:
+    lists = {key: _symbol_list(source, key) for key in _LIST_SOURCE_KEYS}
+    stale = set(lists["stale_symbols"])
+    terminal = set(lists["terminal_history_symbols"])
+    lifecycle = set(lists["lifecycle_declared_terminal_symbols"])
     if (
         source.get("schema_version") != SOURCE_SCHEMA
         or source.get("evidence_type") != SOURCE_EVIDENCE_TYPE
@@ -202,41 +178,180 @@ def build_selected_pool_price_publication_manifest(
         or source.get("promotion_eligible") is not True
         or source.get("research_only") is not True
         or source.get("trade_ready") is not False
+        or source.get("all_sources_ready") is not True
         or source.get("failure_count") != 0
-        or source.get("failed_symbols") != []
+        or lists["failed_symbols"]
+        or lists["quarantined_symbols"]
+        or lists["legacy_copied_symbols"]
+        or lists["unresolved_stale_symbols"]
+        or source.get("promotion_blocker") is not None
+        or not isinstance(source.get("candidate_count"), int)
+        or source["candidate_count"] != len(lists["candidate_symbols"])
+        or not isinstance(source.get("all_sources_current"), bool)
+        or source.get("all_sources_current") is not (not stale)
+        or not stale <= terminal <= lifecycle
     ):
         raise SelectedPoolPricePublicationError("source manifest is not publication ready")
-    provider_identity = str(source.get("provider_identity_sha256", ""))
+    return lists
+
+
+def _fallback_authorization(
+    record: Mapping[str, Any], provider_order: list[str]
+) -> dict[str, Any]:
+    symbol = str(record.get("symbol", "")).strip().upper()
+    if record.get("action") != "fetched_full_refresh":
+        raise SelectedPoolPricePublicationError(f"formal fallback {symbol} was not fully refreshed")
+    try:
+        yahoo_index = provider_order.index("yfinance")
+    except ValueError as exc:
+        raise SelectedPoolPricePublicationError("Yahoo fallback is not configured") from exc
+    required = provider_order[:yahoo_index]
+    attempts = record.get("attempts")
+    if not isinstance(attempts, list):
+        raise SelectedPoolPricePublicationError("fallback attempts are invalid")
+    for provider in required:
+        matching = [
+            attempt for attempt in attempts
+            if isinstance(attempt, Mapping)
+            and str(attempt.get("provider", "")).strip().lower() == provider
+        ]
+        if not matching or any(attempt.get("ok") is not False for attempt in matching):
+            raise SelectedPoolPricePublicationError(
+                f"formal fallback {symbol} lacks failed proof for {provider}"
+            )
+    if not any(
+        isinstance(attempt, Mapping)
+        and str(attempt.get("provider", "")).strip().lower() == "yfinance"
+        and attempt.get("ok") is True
+        for attempt in attempts
+    ):
+        raise SelectedPoolPricePublicationError(f"formal fallback {symbol} lacks Yahoo success proof")
+    return {
+        "failed_preferred_providers": sorted(required),
+        "selected_provider": "yfinance",
+        "symbol": symbol,
+    }
+
+
+def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) -> dict[str, Any]:
+    """Return stable, self-identifying provider publication evidence."""
+
+    _assert_exact_keys(source, _SOURCE_KEYS, "source manifest")
+    lists = _validate_source_boundaries(source)
     records = source.get("records")
     architecture = source.get("provider_architecture")
+    selected = source.get("selected_providers")
     if (
-        not _is_sha256(provider_identity)
+        not _is_sha256(source.get("provider_identity_sha256"))
         or not isinstance(records, list)
         or not isinstance(architecture, Mapping)
+        or not isinstance(selected, Mapping)
     ):
         raise SelectedPoolPricePublicationError("source provider identity is incomplete")
     _assert_exact_keys(architecture, _ARCHITECTURE_KEYS, "provider architecture")
+    providers = architecture.get("providers")
+    provider_order_raw = architecture.get("provider_order")
+    if not isinstance(providers, Mapping) or not isinstance(provider_order_raw, list):
+        raise SelectedPoolPricePublicationError("source provider architecture is invalid")
+    provider_order = [str(item).strip().lower() for item in provider_order_raw]
+
+    raw_by_symbol = {
+        str(record.get("symbol", "")).strip().upper(): record
+        for record in records if isinstance(record, Mapping)
+    }
+    projected_records = [_project_record(record) for record in records if isinstance(record, Mapping)]
+    projected_records.sort(key=lambda record: str(record["symbol"]))
+    record_by_symbol = {str(record["symbol"]): record for record in projected_records}
+    if len(raw_by_symbol) != len(records) or len(record_by_symbol) != len(records) or not records:
+        raise SelectedPoolPricePublicationError("provider record symbols are invalid")
+
+    expected_symbols = set(lists["candidate_symbols"])
+    expected_symbols.update(lists["auxiliary_symbols"])
+    expected_symbols.update(lists["comparison_reference_symbols"])
+    benchmark = str(source.get("benchmark", "")).strip().upper()
+    if benchmark:
+        expected_symbols.add(benchmark)
+    if set(record_by_symbol) != expected_symbols:
+        raise SelectedPoolPricePublicationError("provider records do not match declared symbols")
+
+    normalized_selected = {
+        str(symbol).strip().upper(): str(provider).strip().lower()
+        for symbol, provider in selected.items()
+    }
+    provider_records = {
+        symbol: str(record.get("provider", "")).strip().lower()
+        for symbol, record in record_by_symbol.items()
+        if str(record.get("provider", "")).strip()
+    }
+    if normalized_selected != provider_records:
+        raise SelectedPoolPricePublicationError("selected provider mapping is inconsistent")
+
+    terminal = set(lists["terminal_history_symbols"])
+    for symbol, record in record_by_symbol.items():
+        provider = provider_records.get(symbol)
+        if provider:
+            contract = providers.get(provider)
+            if not isinstance(contract, Mapping) or raw_by_symbol[symbol].get("provider_contract") != contract:
+                raise SelectedPoolPricePublicationError(
+                    f"selected provider contract is inconsistent for {symbol}"
+                )
+            if not str(record.get("provider_symbol", "")).strip():
+                raise SelectedPoolPricePublicationError(f"selected provider symbol is missing for {symbol}")
+        else:
+            lifecycle = record.get("terminal_lifecycle")
+            if symbol not in terminal or not isinstance(lifecycle, Mapping):
+                raise SelectedPoolPricePublicationError(
+                    f"provider-less record is not governed terminal history: {symbol}"
+                )
+            _assert_exact_keys(lifecycle, _TERMINAL_LIFECYCLE_KEYS, "terminal lifecycle")
+            if (
+                record.get("promotion_status") != "governed_terminal_history"
+                or not _is_sha256(record.get("source_sha256"))
+                or record.get("source_sha256") != lifecycle.get("governed_history_sha256")
+                or record.get("source_path") != lifecycle.get("governed_history_path")
+                or record.get("last_date") != lifecycle.get("terminal_date")
+                or lifecycle.get("historical_rows_retained") is not True
+                or lifecycle.get("active_universe_after_terminal_date_allowed") is not False
+            ):
+                raise SelectedPoolPricePublicationError(
+                    f"terminal lifecycle contract is inconsistent for {symbol}"
+                )
+
+    selected_provider_contracts = {
+        provider: _project_provider_contract(providers[provider])
+        for provider in sorted(set(normalized_selected.values()))
+        if isinstance(providers.get(provider), Mapping)
+    }
+    if set(selected_provider_contracts) != set(normalized_selected.values()):
+        raise SelectedPoolPricePublicationError("selected provider contracts are incomplete")
+
+    fallback_symbols = set(lists["formal_auxiliary_fallback_symbols"])
+    if not fallback_symbols <= set(lists["auxiliary_symbols"]):
+        raise SelectedPoolPricePublicationError("formal fallback must be an auxiliary")
+    fallback_authorizations = []
+    for symbol in sorted(fallback_symbols):
+        if normalized_selected.get(symbol) != "yfinance":
+            raise SelectedPoolPricePublicationError(f"formal fallback provider is invalid for {symbol}")
+        fallback_authorizations.append(_fallback_authorization(raw_by_symbol[symbol], provider_order))
 
     projected = {
         key: copy.deepcopy(value)
         for key, value in source.items()
         if key not in _OPERATIONAL_SOURCE_KEYS | {"records", "provider_architecture"}
     }
+    projected.update(lists)
+    projected["selected_providers"] = dict(sorted(normalized_selected.items()))
     projected["source_schema_version"] = projected["schema_version"]
     projected["source_evidence_type"] = projected["evidence_type"]
     projected["schema_version"] = PUBLICATION_SCHEMA
     projected["evidence_type"] = PUBLICATION_EVIDENCE_TYPE
-    projected["records"] = [
-        _project_record(record) for record in records if isinstance(record, Mapping)
-    ]
-    if len(projected["records"]) != len(records):
-        raise SelectedPoolPricePublicationError("provider records must be objects")
-    symbols = [str(record["symbol"]) for record in projected["records"]]
-    if not symbols or len(symbols) != len(set(symbols)):
-        raise SelectedPoolPricePublicationError("provider record symbols are invalid")
-    projected_architecture = copy.deepcopy(dict(architecture))
-    projected_architecture.pop("health")
-    projected["provider_architecture"] = projected_architecture
+    projected["records"] = projected_records
+    projected["provider_architecture"] = {
+        "formal_auxiliary_fallback_authorizations": fallback_authorizations,
+        "schema_version": str(architecture.get("schema_version", "")),
+        "selected_provider_contracts": selected_provider_contracts,
+        "selection_mode": str(architecture.get("selection_mode", "")),
+    }
     projected["diagnostics_policy"] = copy.deepcopy(_DIAGNOSTICS_POLICY)
     projected["publication_identity_sha256"] = _sha256(_canonical_json(projected))
     return projected
@@ -255,36 +370,32 @@ def _validate_publication_shape(value: Mapping[str, Any]) -> None:
     records = value.get("records")
     if not isinstance(architecture, Mapping) or not isinstance(records, list):
         raise SelectedPoolPricePublicationError("publication manifest content is invalid")
-    _assert_exact_keys(
-        architecture,
-        _ARCHITECTURE_KEYS - {"health"},
-        "publication provider architecture",
-    )
-    symbols: list[str] = []
+    _assert_exact_keys(architecture, _PUBLICATION_ARCHITECTURE_KEYS, "publication architecture")
+    contracts = architecture.get("selected_provider_contracts")
+    authorizations = architecture.get("formal_auxiliary_fallback_authorizations")
+    if not isinstance(contracts, Mapping) or not isinstance(authorizations, list):
+        raise SelectedPoolPricePublicationError("publication provider contracts are invalid")
+    for contract in contracts.values():
+        if not isinstance(contract, Mapping):
+            raise SelectedPoolPricePublicationError("publication provider contract is invalid")
+        _assert_exact_keys(contract, _SEMANTIC_PROVIDER_CONTRACT_KEYS, "publication contract")
+    for authorization in authorizations:
+        if not isinstance(authorization, Mapping):
+            raise SelectedPoolPricePublicationError("fallback authorization is invalid")
+        _assert_exact_keys(authorization, _FALLBACK_AUTHORIZATION_KEYS, "fallback authorization")
+    symbols = []
     for record in records:
         if not isinstance(record, Mapping):
             raise SelectedPoolPricePublicationError("publication records must be objects")
-        _assert_known_keys(record, _PUBLICATION_RECORD_KEYS, "publication record")
+        _assert_known_keys(record, _PUBLICATION_RECORD_FIELDS, "publication record")
         symbol = str(record.get("symbol", "")).strip().upper()
-        if not symbol or not _is_sha256(record.get("output_sha256")):
+        if (
+            not symbol or not _is_sha256(record.get("output_sha256"))
+            or not isinstance(record.get("rows"), int) or int(record["rows"]) <= 0
+        ):
             raise SelectedPoolPricePublicationError("publication record identity is invalid")
-        outcomes = record.get("attempt_outcomes")
-        if not isinstance(outcomes, list):
-            raise SelectedPoolPricePublicationError("publication attempt outcomes are invalid")
-        for outcome in outcomes:
-            if not isinstance(outcome, Mapping):
-                raise SelectedPoolPricePublicationError(
-                    "publication attempt outcomes must be objects"
-                )
-            _assert_exact_keys(
-                outcome, set(_ATTEMPT_OUTCOME_KEYS), "publication attempt outcome"
-            )
-            if outcome.get("ok") is not True and outcome.get("ok") is not False:
-                raise SelectedPoolPricePublicationError(
-                    "publication attempt outcome is invalid"
-                )
         symbols.append(symbol)
-    if not symbols or len(symbols) != len(set(symbols)):
+    if symbols != sorted(symbols) or len(symbols) != len(set(symbols)):
         raise SelectedPoolPricePublicationError("publication symbols are invalid")
 
 
@@ -313,10 +424,7 @@ def load_selected_pool_price_publication_manifest(path: Path) -> dict[str, Any]:
     return value
 
 
-def write_selected_pool_price_publication_manifest(
-    path: Path,
-    source: Mapping[str, Any],
-) -> dict[str, Any]:
+def write_selected_pool_price_publication_manifest(path: Path, source: Mapping[str, Any]) -> dict[str, Any]:
     projected = build_selected_pool_price_publication_manifest(source)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(_canonical_json(projected))
@@ -324,8 +432,7 @@ def write_selected_pool_price_publication_manifest(
 
 
 def verify_selected_pool_price_publication_manifest(
-    path: Path,
-    source: Mapping[str, Any],
+    path: Path, source: Mapping[str, Any]
 ) -> dict[str, Any]:
     observed = load_selected_pool_price_publication_manifest(path)
     expected = build_selected_pool_price_publication_manifest(source)

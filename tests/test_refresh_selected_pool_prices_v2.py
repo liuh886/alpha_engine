@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts.data.refresh_selected_pool_prices_v2 import (
     FORMAL_MARKET_AUXILIARIES,
     MANIFEST_RELATIVE_PATH,
@@ -412,4 +414,34 @@ def test_successful_refresh_writes_stable_publication_manifest(
         output / "artifacts" / PUBLICATION_MANIFEST_NAME
     )
     assert result["records"][-1]["attempts"][0]["error"]
-    assert "error" not in publication["records"][-1]["attempt_outcomes"][0]
+    assert "attempts" not in publication["records"][-1]
+    assert "action" not in publication["records"][-1]
+
+
+def test_failed_refresh_removes_stale_publication_manifest(
+    tmp_path: Path, monkeypatch
+) -> None:
+    output = tmp_path / "provider-cn"
+    publication_path = output / "artifacts" / PUBLICATION_MANIFEST_NAME
+    publication_path.parent.mkdir(parents=True)
+    publication_path.write_text("stale", encoding="utf-8")
+
+    def failed_refresh(**kwargs):
+        raise RuntimeError("refresh failed")
+
+    monkeypatch.setattr(
+        "scripts.data.refresh_selected_pool_prices_v2.refresh_selected_pool_prices",
+        failed_refresh,
+    )
+    with pytest.raises(RuntimeError, match="refresh failed"):
+        refresh_selected_pool_prices_v2(
+            root=Path.cwd(),
+            market="cn",
+            source_csv_dir=tmp_path / "unused",
+            output_root=output,
+            start="2021-01-01",
+            cutoff="2026-08-21",
+            router=build_hardened_router("cn"),
+        )
+
+    assert not publication_path.exists()

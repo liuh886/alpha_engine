@@ -387,6 +387,8 @@ def refresh_selected_pool_prices_v2(
     router: MarketDataRouter | None = None,
 ) -> dict[str, Any]:
     destination = Path(output_root).resolve()
+    publication_path = destination / "artifacts" / PUBLICATION_MANIFEST_NAME
+    publication_path.unlink(missing_ok=True)
     data_router = router or build_hardened_router(market)
     requested_auxiliaries = auxiliary_symbols
     if requested_auxiliaries is None and full_refresh:
@@ -415,7 +417,7 @@ def refresh_selected_pool_prices_v2(
         raise
     manifest = _decorate_manifest(destination / MANIFEST_RELATIVE_PATH, data_router)
     write_selected_pool_price_publication_manifest(
-        destination / "artifacts" / PUBLICATION_MANIFEST_NAME,
+        publication_path,
         manifest,
     )
     return manifest
