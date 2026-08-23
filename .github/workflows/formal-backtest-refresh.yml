@@ -142,8 +142,28 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 0
+          fetch-depth: 1
           lfs: true
+          sparse-checkout: |
+            .github
+            configs
+            data/csv_clean
+            data/research/formal_model_runs
+            data/research/model_runs
+            data/research/model_data_bundle_v1
+            data/research/strategy_signal_ledgers
+            data/research/runs
+            data/research/historical_model_evidence
+            data/research/byd_prospective_shadow
+            data/research/byd_515180_prospective
+            data/research/cn_x1_1_regime_gated_candidate_v1
+            docs
+            qlib-dashboard
+            scripts
+            src
+            supabase
+            tests
+          sparse-checkout-cone-mode: true
       - name: Verify execution identity
         run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - uses: actions/setup-python@v6

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -352,6 +353,66 @@ def test_formal_refresh_parallelizes_and_seals_provider_builds() -> None:
     assert "uses: actions/cache/restore@v4" in workflow
     assert "uses: actions/cache/save@v4" in workflow
     assert "formal-provider-${{ matrix.market }}-${{ github.run_id }}" in workflow
+
+
+def test_formal_prepare_job_checkout_only_preflight_inputs() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
+    prepare_start = workflow.index("\n  prepare:\n")
+    providers_start = workflow.index("\n  providers:\n", prepare_start)
+    prepare = workflow[prepare_start:providers_start]
+    checkout_start = prepare.index("      - name: Check out triggering revision")
+    checkout_end = prepare.index("      - name: Verify execution identity", checkout_start)
+    checkout = prepare[checkout_start:checkout_end]
+
+    assert "fetch-depth: 1" in checkout
+    assert "lfs: true" in checkout
+    assert "sparse-checkout-cone-mode: true" in checkout
+    assert (
+        "sparse-checkout: |\n"
+        "            .github\n"
+        "            configs\n"
+        "            data/csv_clean\n"
+        "            data/research/formal_model_runs\n"
+        "            data/research/model_runs\n"
+        "            data/research/model_data_bundle_v1\n"
+        "            data/research/strategy_signal_ledgers\n"
+        "            data/research/runs\n"
+        "            data/research/historical_model_evidence\n"
+        "            data/research/byd_prospective_shadow\n"
+        "            data/research/byd_515180_prospective\n"
+        "            data/research/cn_x1_1_regime_gated_candidate_v1\n"
+        "            docs\n"
+        "            qlib-dashboard\n"
+        "            scripts\n"
+        "            src\n"
+        "            supabase\n"
+        "            tests\n"
+    ) in checkout
+    assert "fetch-depth: 0" not in checkout
+    assert "filter:" not in checkout
+    assert "            data/research\n" not in checkout
+    assert "            data/research/market_evidence\n" not in checkout
+
+    active = load_active_strategy_catalog()
+    for strategy in active.strategies:
+        assert Path(strategy.model_contract).is_file()
+        assert Path(strategy.signal_ledger).is_dir()
+
+    reader = FormalBundleReader.open(Path("."), relative_root=FORMAL_V2)
+    for model_version_id in reader.records:
+        reader.load(model_version_id)
+
+    research_catalog = json.loads(
+        Path("data/research/catalog.json").read_text(encoding="utf-8")
+    )
+    for entry in research_catalog["published_models"]:
+        source = Path(entry["source"])
+        assert source.is_file()
+        assert source.as_posix().startswith("configs/")
+    for entry in research_catalog["published_runs"]:
+        source = Path(entry["source"])
+        assert source.is_dir()
+        assert source.as_posix().startswith("data/research/runs/")
 
 
 def test_formal_provider_jobs_checkout_only_provider_build_inputs() -> None:
