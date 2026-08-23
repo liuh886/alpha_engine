@@ -272,11 +272,50 @@ def test_cutoff_change_requires_publication(tmp_path: Path) -> None:
     payload["markets"]["cn"] = "2026-08-22"
     _write(path, payload)
     _rewrite_sync_freshness_digest(candidate)
+    plan, fan_in, refresh = _documents()
+    plan["target_cutoffs"] = payload["markets"]
+    refresh["target_cutoffs"] = payload["markets"]
 
-    receipt = _classify(current, candidate)
+    receipt = _classify(current, candidate, documents=(plan, fan_in, refresh))
 
     assert receipt["publication_required"] is True
     assert "formal/freshness.json" in receipt["semantic_changed_paths"]
+
+
+def test_plan_cutoff_must_match_candidate_freshness(tmp_path: Path) -> None:
+    current = _roots(tmp_path, "current", stamp="2026-08-23T15:00:00Z")
+    candidate = _roots(tmp_path, "candidate", stamp="2026-08-23T16:00:00Z")
+    plan, fan_in, refresh = _documents()
+    plan["target_cutoffs"] = {"cn": "2026-08-22", "us": "2026-08-22"}
+    refresh["target_cutoffs"] = plan["target_cutoffs"]
+
+    with pytest.raises(FormalPublicationDeltaError, match="cutoff identity mismatch"):
+        _classify(current, candidate, documents=(plan, fan_in, refresh))
+
+
+def test_plan_model_identity_must_match_candidate_freshness(tmp_path: Path) -> None:
+    current = _roots(tmp_path, "current", stamp="2026-08-23T15:00:00Z")
+    candidate = _roots(tmp_path, "candidate", stamp="2026-08-23T16:00:00Z")
+    plan, fan_in, refresh = _documents()
+    plan["active_model_version_ids"] = ["cn_x1_3"]
+    refresh["active_model_version_ids"] = plan["active_model_version_ids"]
+
+    with pytest.raises(FormalPublicationDeltaError, match="model identity mismatch"):
+        _classify(current, candidate, documents=(plan, fan_in, refresh))
+
+
+def test_plan_strategy_identity_must_match_candidate_sync_receipt(tmp_path: Path) -> None:
+    current = _roots(tmp_path, "current", stamp="2026-08-23T15:00:00Z")
+    candidate = _roots(tmp_path, "candidate", stamp="2026-08-23T16:00:00Z")
+    plan, fan_in, refresh = _documents()
+    plan["active_strategy_ids"] = ["cn_y"]
+    plan["planned_noop_strategy_ids"] = ["cn_y"]
+    fan_in["expected_strategy_ids"] = ["cn_y"]
+    fan_in["planned_noop_strategy_ids"] = ["cn_y"]
+    refresh["active_strategy_ids"] = ["cn_y"]
+
+    with pytest.raises(FormalPublicationDeltaError, match="strategy identity mismatch"):
+        _classify(current, candidate, documents=(plan, fan_in, refresh))
 
 
 def test_missing_or_extra_file_requires_publication(tmp_path: Path) -> None:

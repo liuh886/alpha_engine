@@ -212,8 +212,8 @@ def _file_set(root: Path) -> set[str]:
     }
 
 
-def _root_digest(records: list[tuple[str, bytes]]) -> str:
-    payload = [{"path": path, "sha256": _sha256(value)} for path, value in records]
+def _root_digest(records: list[tuple[str, str]]) -> str:
+    payload = [{"path": path, "sha256": digest} for path, digest in records]
     return _sha256(canonical_json_bytes(payload))
 
 
@@ -299,6 +299,34 @@ def _preconditions(
     return summary, None
 
 
+def _assert_candidate_identity(
+    candidate: PublicationRoots,
+    plan: Mapping[str, Any],
+) -> None:
+    freshness_path = candidate.formal / "freshness.json"
+    freshness = _load_object(freshness_path)
+    _assert_document(
+        freshness,
+        path=freshness_path,
+        keys=_FRESHNESS_KEYS,
+        schema_version="1.0.0",
+    )
+    if freshness.get("markets") != plan.get("target_cutoffs"):
+        raise FormalPublicationDeltaError("candidate freshness cutoff identity mismatch")
+    if freshness.get("required_models") != plan.get("active_model_version_ids"):
+        raise FormalPublicationDeltaError("candidate freshness model identity mismatch")
+
+    sync_path = candidate.formal / "formal-bundle-v2-sync-receipt.json"
+    sync_receipt = _load_object(sync_path)
+    _project_sync_receipt(candidate)
+    if sync_receipt.get("active_strategy_ids") != plan.get("active_strategy_ids"):
+        raise FormalPublicationDeltaError("candidate sync strategy identity mismatch")
+    if sync_receipt.get("active_model_version_ids") != plan.get(
+        "active_model_version_ids"
+    ):
+        raise FormalPublicationDeltaError("candidate sync model identity mismatch")
+
+
 def classify_publication_delta(
     *,
     current: PublicationRoots,
@@ -312,6 +340,7 @@ def classify_publication_delta(
     preconditions, required_reason = _preconditions(plan, fan_in, refresh_receipt)
     if required_reason is not None:
         return _required(required_reason, preconditions=preconditions)
+    _assert_candidate_identity(candidate, plan)
 
     root_deltas: list[dict[str, Any]] = []
     semantic_changed: list[str] = []
@@ -322,8 +351,8 @@ def classify_publication_delta(
         missing = sorted(current_files - candidate_files)
         extra = sorted(candidate_files - current_files)
         common = sorted(current_files & candidate_files)
-        current_records: list[tuple[str, bytes]] = []
-        candidate_records: list[tuple[str, bytes]] = []
+        current_records: list[tuple[str, str]] = []
+        candidate_records: list[tuple[str, str]] = []
         root_semantic_changed: list[str] = []
         root_raw_metadata_only: list[str] = []
         for relative in common:
@@ -331,8 +360,8 @@ def classify_publication_delta(
             candidate_raw = (candidate.by_id()[root_id] / relative).read_bytes()
             current_semantic = _semantic_bytes(current, root_id, relative)
             candidate_semantic = _semantic_bytes(candidate, root_id, relative)
-            current_records.append((relative, current_semantic))
-            candidate_records.append((relative, candidate_semantic))
+            current_records.append((relative, _sha256(current_semantic)))
+            candidate_records.append((relative, _sha256(candidate_semantic)))
             qualified = f"{root_id}/{relative}"
             if current_semantic != candidate_semantic:
                 root_semantic_changed.append(qualified)
