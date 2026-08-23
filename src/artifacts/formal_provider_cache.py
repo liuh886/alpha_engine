@@ -8,7 +8,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from src.data.market_provider import load_provider_manifest
+from src.data.market_provider import (
+    load_provider_manifest,
+    verify_provider_manifest_file_identities,
+)
 from src.data.selected_pool_price_publication import (
     PUBLICATION_MANIFEST_NAME,
     SelectedPoolPricePublicationError,
@@ -190,24 +193,6 @@ def _index_tree(root: Path, *, raw_subtree: str | None = None) -> _TreeIndex:
     )
 
 
-def _verify_qlib_manifest_files(
-    qlib_manifest: Mapping[str, Any],
-    qlib_index: _TreeIndex,
-) -> None:
-    calendar = qlib_manifest.get("calendar")
-    instruments = qlib_manifest.get("instruments")
-    if not isinstance(calendar, dict) or not isinstance(instruments, dict):
-        raise ValueError("provider manifest calendar/instruments metadata is missing")
-    calendar_path = Path(str(calendar.get("path", ""))).as_posix()
-    instrument_path = Path(str(instruments.get("path", ""))).as_posix()
-    if qlib_index.file_hashes.get(calendar_path) != calendar.get("sha256"):
-        raise ValueError("provider calendar hash mismatch")
-    if qlib_index.file_hashes.get(instrument_path) != instruments.get("sha256"):
-        raise ValueError("provider instrument hash mismatch")
-    if qlib_index.raw_subtree_sha256 != qlib_manifest.get("features_sha256"):
-        raise ValueError("provider feature-tree hash mismatch")
-
-
 def _validate_manifest(
     provider_root: Path,
     contract: Mapping[str, Any],
@@ -262,7 +247,11 @@ def _validate_manifest(
             verify_files=False,
         )
         if isinstance(qlib_manifest, dict):
-            _verify_qlib_manifest_files(qlib_manifest, qlib_index)
+            verify_provider_manifest_file_identities(
+                qlib_manifest,
+                file_hashes=qlib_index.file_hashes,
+                features_sha256=str(qlib_index.raw_subtree_sha256),
+            )
     except (SelectedPoolPricePublicationError, FileNotFoundError, ValueError) as exc:
         raise FormalProviderCacheError(f"cached provider evidence is invalid: {exc}") from exc
     if not isinstance(qlib_manifest, dict):

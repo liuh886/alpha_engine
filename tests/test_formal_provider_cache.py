@@ -26,6 +26,27 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _legacy_tree_identity(root: Path) -> tuple[str, int]:
+    records = [
+        {
+            "path": path.relative_to(root).as_posix(),
+            "sha256": _sha256(path),
+        }
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    ]
+    encoded = (
+        json.dumps(
+            {"records": records},
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        + "\n"
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest(), len(records)
+
+
 def _contract() -> dict[str, object]:
     payload: dict[str, object] = {
         "schema_version": "1.1.0",
@@ -69,6 +90,7 @@ def _provider_tree(tmp_path: Path) -> Path:
     csv_path = root / "data/csv_source/AAA.csv"
     qlib_root = root / "data/providers/us"
     qlib_path = qlib_root / "features/aaa/day/close.day.bin"
+    qlib_volume_path = qlib_root / "features/aaa/day/volume.day.bin"
     calendar_path = qlib_root / "calendars/day.txt"
     instruments_path = qlib_root / "instruments/us.txt"
     csv_path.parent.mkdir(parents=True)
@@ -77,6 +99,7 @@ def _provider_tree(tmp_path: Path) -> Path:
     instruments_path.parent.mkdir(parents=True)
     csv_path.write_text("date,close\n2026-08-07,10\n", encoding="utf-8")
     qlib_path.write_bytes(b"verified qlib bytes")
+    qlib_volume_path.write_bytes(b"verified qlib volume bytes")
     calendar_path.write_text("2026-08-07\n", encoding="utf-8")
     instruments_path.write_text("AAA\t2026-08-07\t2026-08-07\n", encoding="utf-8")
     provider = write_provider_manifest(
@@ -222,6 +245,20 @@ def test_sealed_provider_cache_binds_raw_publication_csv_and_qlib_bytes(tmp_path
         verify_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
 
 
+def test_provider_cache_keeps_legacy_tree_receipt_identity(tmp_path: Path) -> None:
+    root = _provider_tree(tmp_path)
+    contract = _contract()
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    sealed = seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+    csv_digest, csv_count = _legacy_tree_identity(root / "data/csv_source")
+    qlib_digest, qlib_count = _legacy_tree_identity(root / "data/providers/us")
+    assert sealed["csv_tree_sha256"] == csv_digest
+    assert sealed["csv_file_count"] == csv_count
+    assert sealed["qlib_tree_sha256"] == qlib_digest
+    assert sealed["qlib_file_count"] == qlib_count
+
+
 @pytest.mark.parametrize("operation", ("seal", "verify"))
 def test_provider_cache_hashes_each_provider_file_once(
     tmp_path: Path,
@@ -235,10 +272,12 @@ def test_provider_cache_hashes_each_provider_file_once(
         seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
 
     csv_path = (root / "data/csv_source/AAA.csv").resolve()
-    feature_path = (
-        root / "data/providers/us/features/aaa/day/close.day.bin"
-    ).resolve()
-    tracked_paths = {csv_path, feature_path}
+    feature_paths = {
+        path.resolve()
+        for path in (root / "data/providers/us/features").rglob("*")
+        if path.is_file()
+    }
+    tracked_paths = {csv_path, *feature_paths}
     read_counts: Counter[Path] = Counter()
     original_open = Path.open
 
@@ -256,7 +295,7 @@ def test_provider_cache_hashes_each_provider_file_once(
         verify_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
 
     assert read_counts[csv_path] == 1
-    assert read_counts[feature_path] == 1
+    assert {read_counts[path] for path in feature_paths} == {1}
 
 
 @pytest.mark.parametrize("failure", ("missing", "tampered", "projection"))
