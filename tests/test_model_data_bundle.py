@@ -16,6 +16,7 @@ from src.data.model_data_bundle import (
 from src.data.selected_pool_price_publication import (
     write_selected_pool_price_publication_manifest,
 )
+from tests.selected_pool_price_fixtures import selected_pool_price_source
 
 CONTRACT = Path("configs/data_contracts/model_data_bundle_v1.yaml")
 
@@ -439,11 +440,7 @@ def test_verifier_rejects_modified_frontend_index(tmp_path: Path) -> None:
 
 
 def test_model_data_consumes_self_verified_provider_publication(tmp_path: Path) -> None:
-    source = json.loads(
-        Path(
-            "data/research/model_data_bundle_v1/components/cn-selected-pool-prices.json"
-        ).read_text(encoding="utf-8")
-    )
+    source = selected_pool_price_source("cn")
     publication = tmp_path / "cn-selected-pool-prices.json"
     write_selected_pool_price_publication_manifest(publication, source)
     kwargs = {
@@ -471,11 +468,7 @@ def test_model_data_consumes_self_verified_provider_publication(tmp_path: Path) 
 
 
 def test_model_data_identity_ignores_provider_runtime_diagnostics(tmp_path: Path) -> None:
-    source = json.loads(
-        Path(
-            "data/research/model_data_bundle_v1/components/cn-selected-pool-prices.json"
-        ).read_text(encoding="utf-8")
-    )
+    source = selected_pool_price_source("cn")
     changed = copy.deepcopy(source)
     changed["records"][-1]["attempts"][0].update(
         error="different transient error", round=77, circuit_breaker_open=True

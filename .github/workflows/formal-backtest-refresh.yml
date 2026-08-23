@@ -89,6 +89,7 @@ on:
       - "tests/test_refresh_selected_pool_prices.py"
       - "tests/test_refresh_selected_pool_prices_v2.py"
       - "tests/test_selected_pool_price_publication.py"
+      - "tests/selected_pool_price_fixtures.py"
       - "tests/test_selected_pool_governance.py"
       - "tests/test_strategy_runtime_capabilities.py"
       - "tests/test_formal_bundle_reader.py"
@@ -211,6 +212,7 @@ jobs:
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_rules_formal_replay_gate.py \
             tests/test_market_evidence.py \
+            tests/selected_pool_price_fixtures.py \
             tests/test_formal_provider_cache.py \
             tests/test_refresh_selected_pool_prices.py \
             tests/test_refresh_selected_pool_prices_v2.py \

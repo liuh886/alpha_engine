@@ -16,6 +16,7 @@ from src.data.selected_pool_price_publication import (
     PUBLICATION_MANIFEST_NAME,
     load_selected_pool_price_publication_manifest,
 )
+from tests.selected_pool_price_fixtures import selected_pool_price_source
 
 
 def test_hardened_cn_router_uses_independent_sources_before_yahoo(monkeypatch):
@@ -383,10 +384,7 @@ def test_current_selected_pool_remains_promotable_without_stale(tmp_path: Path, 
 def test_successful_refresh_writes_stable_publication_manifest(
     tmp_path: Path, monkeypatch
 ) -> None:
-    source = Path(
-        "data/research/model_data_bundle_v1/components/cn-selected-pool-prices.json"
-    )
-    source_payload = json.loads(source.read_text(encoding="utf-8"))
+    source_payload = selected_pool_price_source("cn")
 
     def fake_refresh(**kwargs):
         destination = Path(kwargs["output_root"])

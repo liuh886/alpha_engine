@@ -182,6 +182,24 @@ def test_heavy_formal_refresh_reuses_previous_governed_provider_incrementally() 
     assert "needs.prepare.outputs.us_seed_cutoff || needs.prepare.outputs.cn_seed_cutoff }}-" in text
 
 
+def test_declared_cutover_still_validates_provider_publication_interface() -> None:
+    text = CI_WORKFLOW.read_text(encoding="utf-8")
+    start = text.index("      - name: Validate declared model cutover")
+    end = text.index("      - name: Validate exact formal candidate contracts")
+    block = text[start:end]
+    for path in (
+        "src/artifacts/formal_provider_cache.py",
+        "src/data/selected_pool_price_publication.py",
+        "src/dashboard/market_evidence.py",
+        "tests/test_formal_provider_cache.py",
+        "tests/test_market_evidence.py",
+        "tests/test_model_data_bundle.py",
+        "tests/test_refresh_selected_pool_prices_v2.py",
+        "tests/test_selected_pool_price_publication.py",
+    ):
+        assert path in block
+
+
 def test_heavy_formal_refresh_has_no_retired_us_x1_2_live_contract() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "test_us_x1_2_current_target.py" not in text

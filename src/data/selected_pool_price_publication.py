@@ -10,6 +10,11 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from src.data.symbol_identity import (
+    selected_pool_provider_identity_contract,
+    validate_selected_pool_provider_identity,
+)
+
 SOURCE_SCHEMA = "1.2"
 SOURCE_EVIDENCE_TYPE = "selected_pool_price_refresh_v1"
 PUBLICATION_SCHEMA = "1.0.0"
@@ -149,6 +154,19 @@ def _project_provider_contract(value: Mapping[str, Any]) -> dict[str, Any]:
     return projected
 
 
+def _project_terminal_lifecycle(value: Mapping[str, Any]) -> dict[str, Any]:
+    _assert_exact_keys(value, _TERMINAL_LIFECYCLE_KEYS, "terminal lifecycle")
+    references = value.get("public_references")
+    if not isinstance(references, list):
+        raise SelectedPoolPricePublicationError("terminal public references must be a list")
+    normalized = [str(reference).strip() for reference in references]
+    if any(not reference for reference in normalized) or len(normalized) != len(set(normalized)):
+        raise SelectedPoolPricePublicationError("terminal public references are invalid")
+    projected = copy.deepcopy(dict(value))
+    projected["public_references"] = sorted(normalized)
+    return projected
+
+
 def _project_record(value: Mapping[str, Any]) -> dict[str, Any]:
     _assert_known_keys(value, _RECORD_KEYS, "provider record")
     symbol = str(value.get("symbol", "")).strip().upper()
@@ -172,6 +190,11 @@ def _project_record(value: Mapping[str, Any]) -> dict[str, Any]:
         if key in value
     }
     projected["symbol"] = symbol
+    lifecycle = projected.get("terminal_lifecycle")
+    if lifecycle is not None:
+        if not isinstance(lifecycle, Mapping):
+            raise SelectedPoolPricePublicationError("terminal lifecycle must be an object")
+        projected["terminal_lifecycle"] = _project_terminal_lifecycle(lifecycle)
     return projected
 
 
@@ -300,6 +323,24 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
         expected_symbols.add(benchmark)
     if set(record_by_symbol) != expected_symbols:
         raise SelectedPoolPricePublicationError("provider records do not match declared symbols")
+    identity_contracts = source.get("identity_contracts")
+    expected_identity_contracts = {
+        symbol: contract
+        for symbol in sorted(expected_symbols)
+        if (
+            contract := selected_pool_provider_identity_contract(market, symbol)
+        ) is not None
+    }
+    if not isinstance(identity_contracts, Mapping) or dict(identity_contracts) != (
+        expected_identity_contracts
+    ):
+        raise SelectedPoolPricePublicationError("provider identity contracts are inconsistent")
+    for symbol, raw_record in raw_by_symbol.items():
+        expected_contract = expected_identity_contracts.get(symbol)
+        if raw_record.get("identity_contract") != expected_contract:
+            raise SelectedPoolPricePublicationError(
+                f"record identity contract is inconsistent for {symbol}"
+            )
 
     normalized_selected = {
         str(symbol).strip().upper(): str(provider).strip().lower()
@@ -330,6 +371,14 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
                 )
             if not str(record.get("provider_symbol", "")).strip():
                 raise SelectedPoolPricePublicationError(f"selected provider symbol is missing for {symbol}")
+            try:
+                validate_selected_pool_provider_identity(
+                    market=market,
+                    symbol=symbol,
+                    provider_symbol=record.get("provider_symbol"),
+                )
+            except ValueError as exc:
+                raise SelectedPoolPricePublicationError(str(exc)) from exc
             if last_date != cutoff:
                 raise SelectedPoolPricePublicationError(
                     f"current provider record does not reach cutoff for {symbol}"
@@ -401,6 +450,8 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
         "selection_mode": str(architecture.get("selection_mode", "")),
     }
     projected["diagnostics_policy"] = copy.deepcopy(_DIAGNOSTICS_POLICY)
+    _validate_publication_shape(projected | {"publication_identity_sha256": "0" * 64})
+    _validate_publication_invariants(projected)
     projected["publication_identity_sha256"] = _sha256(_canonical_json(projected))
     return projected
 
@@ -447,6 +498,205 @@ def _validate_publication_shape(value: Mapping[str, Any]) -> None:
         raise SelectedPoolPricePublicationError("publication symbols are invalid")
 
 
+def _validate_publication_invariants(value: Mapping[str, Any]) -> None:
+    lists = {key: _symbol_list(value, key) for key in _LIST_SOURCE_KEYS}
+    if any(value.get(key) != normalized for key, normalized in lists.items()):
+        raise SelectedPoolPricePublicationError("publication symbol lists are not canonical")
+    stale = set(lists["stale_symbols"])
+    terminal = set(lists["terminal_history_symbols"])
+    lifecycle_symbols = set(lists["lifecycle_declared_terminal_symbols"])
+    start = _date_value(value.get("start"), "publication start")
+    cutoff = _date_value(value.get("cutoff"), "publication cutoff")
+    market = str(value.get("market", "")).strip().lower()
+    listing_evidence = value.get("terminal_listing_evidence")
+    if (
+        value.get("schema_version") != PUBLICATION_SCHEMA
+        or value.get("evidence_type") != PUBLICATION_EVIDENCE_TYPE
+        or value.get("status") != "selected_pool_price_refresh_ready"
+        or value.get("promotion_eligible") is not True
+        or value.get("research_only") is not True
+        or value.get("trade_ready") is not False
+        or value.get("all_sources_ready") is not True
+        or value.get("failure_count") != 0
+        or lists["failed_symbols"]
+        or lists["quarantined_symbols"]
+        or lists["legacy_copied_symbols"]
+        or lists["unresolved_stale_symbols"]
+        or value.get("promotion_blocker") is not None
+        or not isinstance(value.get("candidate_count"), int)
+        or value.get("candidate_count") != len(lists["candidate_symbols"])
+        or market not in {"cn", "us"}
+        or not str(value.get("pool_id", "")).strip()
+        or start > cutoff
+        or not isinstance(value.get("all_sources_current"), bool)
+        or value.get("all_sources_current") is not (not stale)
+        or not stale <= terminal <= lifecycle_symbols
+        or not isinstance(listing_evidence, Mapping)
+        or set(listing_evidence) != lifecycle_symbols
+    ):
+        raise SelectedPoolPricePublicationError("publication manifest boundary is invalid")
+    for symbol, evidence in listing_evidence.items():
+        if not isinstance(evidence, Mapping):
+            raise SelectedPoolPricePublicationError(
+                f"terminal listing evidence is invalid for {symbol}"
+            )
+        _assert_exact_keys(evidence, _TERMINAL_LISTING_KEYS, "terminal listing evidence")
+        _date_value(evidence.get("terminal_date"), f"terminal date for {symbol}")
+
+    records_raw = value.get("records")
+    selected_raw = value.get("selected_providers")
+    architecture = value.get("provider_architecture")
+    if (
+        not isinstance(records_raw, list)
+        or not isinstance(selected_raw, Mapping)
+        or not isinstance(architecture, Mapping)
+    ):
+        raise SelectedPoolPricePublicationError("publication content is incomplete")
+    records = {
+        str(record.get("symbol", "")).strip().upper(): record
+        for record in records_raw
+        if isinstance(record, Mapping)
+    }
+    expected_symbols = set(lists["candidate_symbols"])
+    expected_symbols.update(lists["auxiliary_symbols"])
+    expected_symbols.update(lists["comparison_reference_symbols"])
+    benchmark = str(value.get("benchmark", "")).strip().upper()
+    if benchmark:
+        expected_symbols.add(benchmark)
+    if len(records) != len(records_raw) or set(records) != expected_symbols:
+        raise SelectedPoolPricePublicationError(
+            "publication records do not match declared symbols"
+        )
+    selected = {
+        str(symbol).strip().upper(): str(provider).strip().lower()
+        for symbol, provider in selected_raw.items()
+    }
+    provider_records = {
+        symbol: str(record.get("provider", "")).strip().lower()
+        for symbol, record in records.items()
+        if str(record.get("provider", "")).strip()
+    }
+    if selected != provider_records:
+        raise SelectedPoolPricePublicationError("publication selected providers are inconsistent")
+
+    contracts = architecture.get("selected_provider_contracts")
+    if not isinstance(contracts, Mapping) or set(contracts) != set(selected.values()):
+        raise SelectedPoolPricePublicationError("publication provider contracts are incomplete")
+    for provider, contract in contracts.items():
+        if (
+            not isinstance(contract, Mapping)
+            or str(contract.get("name", "")).strip().lower() != provider
+            or market not in {
+                str(item).strip().lower() for item in contract.get("markets", [])
+            }
+            or contract.get("research_only") is not True
+        ):
+            raise SelectedPoolPricePublicationError(
+                f"publication provider contract is invalid for {provider}"
+            )
+
+    expected_identity_contracts = {
+        symbol: contract
+        for symbol in sorted(expected_symbols)
+        if (
+            contract := selected_pool_provider_identity_contract(market, symbol)
+        ) is not None
+    }
+    identity_contracts = value.get("identity_contracts")
+    if not isinstance(identity_contracts, Mapping) or dict(identity_contracts) != (
+        expected_identity_contracts
+    ):
+        raise SelectedPoolPricePublicationError("publication identity contracts are inconsistent")
+
+    fallback_symbols = set(lists["formal_auxiliary_fallback_symbols"])
+    if not fallback_symbols <= set(lists["auxiliary_symbols"]):
+        raise SelectedPoolPricePublicationError("publication fallback must be an auxiliary")
+    authorizations_raw = architecture.get("formal_auxiliary_fallback_authorizations")
+    if not isinstance(authorizations_raw, list):
+        raise SelectedPoolPricePublicationError("publication fallback proof is missing")
+    authorizations = {
+        str(authorization.get("symbol", "")).strip().upper(): authorization
+        for authorization in authorizations_raw
+        if isinstance(authorization, Mapping)
+    }
+    if len(authorizations) != len(authorizations_raw) or set(authorizations) != fallback_symbols:
+        raise SelectedPoolPricePublicationError("publication fallback proof is inconsistent")
+    for symbol, authorization in authorizations.items():
+        failed = authorization.get("failed_preferred_providers")
+        if (
+            authorization.get("selected_provider") != "yfinance"
+            or selected.get(symbol) != "yfinance"
+            or not isinstance(failed, list)
+            or not failed
+            or failed != sorted(set(str(provider).strip().lower() for provider in failed))
+            or "yfinance" in failed
+        ):
+            raise SelectedPoolPricePublicationError(
+                f"publication fallback proof is invalid for {symbol}"
+            )
+
+    for symbol, record in records.items():
+        first_date = _date_value(record.get("first_date"), f"first date for {symbol}")
+        last_date = _date_value(record.get("last_date"), f"last date for {symbol}")
+        if first_date < start or first_date > last_date or last_date > cutoff:
+            raise SelectedPoolPricePublicationError(
+                f"publication record date boundary is invalid for {symbol}"
+            )
+        expected_identity = expected_identity_contracts.get(symbol)
+        if record.get("identity_contract") != expected_identity:
+            raise SelectedPoolPricePublicationError(
+                f"publication record identity contract is invalid for {symbol}"
+            )
+        provider = provider_records.get(symbol)
+        if provider:
+            if (
+                last_date != cutoff
+                or not str(record.get("provider_symbol", "")).strip()
+                or record.get("promotion_status")
+                not in {
+                    "source_semantics_recorded",
+                    "formal_auxiliary_governed_yahoo_fallback",
+                }
+            ):
+                raise SelectedPoolPricePublicationError(
+                    f"publication provider record is invalid for {symbol}"
+                )
+            try:
+                validate_selected_pool_provider_identity(
+                    market=market,
+                    symbol=symbol,
+                    provider_symbol=record.get("provider_symbol"),
+                )
+            except ValueError as exc:
+                raise SelectedPoolPricePublicationError(str(exc)) from exc
+            if market == "cn" and provider == "yfinance" and symbol not in fallback_symbols:
+                raise SelectedPoolPricePublicationError(
+                    f"CN Yahoo provider is not an authorized formal auxiliary: {symbol}"
+                )
+        else:
+            lifecycle = record.get("terminal_lifecycle")
+            if symbol not in terminal or not isinstance(lifecycle, Mapping):
+                raise SelectedPoolPricePublicationError(
+                    f"publication terminal record is invalid for {symbol}"
+                )
+            _assert_exact_keys(lifecycle, _TERMINAL_LIFECYCLE_KEYS, "terminal lifecycle")
+            references = lifecycle.get("public_references")
+            if (
+                record.get("promotion_status") != "governed_terminal_history"
+                or not _is_sha256(record.get("source_sha256"))
+                or record.get("source_sha256") != lifecycle.get("governed_history_sha256")
+                or record.get("source_path") != lifecycle.get("governed_history_path")
+                or record.get("last_date") != lifecycle.get("terminal_date")
+                or lifecycle.get("historical_rows_retained") is not True
+                or lifecycle.get("active_universe_after_terminal_date_allowed") is not False
+                or not isinstance(references, list)
+                or references != sorted(set(str(reference).strip() for reference in references))
+            ):
+                raise SelectedPoolPricePublicationError(
+                    f"publication terminal lifecycle is invalid for {symbol}"
+                )
+
+
 def load_selected_pool_price_publication_manifest(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -460,15 +710,7 @@ def load_selected_pool_price_publication_manifest(path: Path) -> dict[str, Any]:
     value["publication_identity_sha256"] = declared
     if not _is_sha256(declared) or declared != actual:
         raise SelectedPoolPricePublicationError("publication manifest identity mismatch")
-    if (
-        value.get("schema_version") != PUBLICATION_SCHEMA
-        or value.get("evidence_type") != PUBLICATION_EVIDENCE_TYPE
-        or value.get("research_only") is not True
-        or value.get("trade_ready") is not False
-        or value.get("status") != "selected_pool_price_refresh_ready"
-        or value.get("promotion_eligible") is not True
-    ):
-        raise SelectedPoolPricePublicationError("publication manifest boundary is invalid")
+    _validate_publication_invariants(value)
     return value
 
 

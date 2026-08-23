@@ -30,6 +30,7 @@ from src.data.selected_pool_price_publication import (
     PUBLICATION_MANIFEST_NAME,
     SelectedPoolPricePublicationError,
     verify_selected_pool_price_publication_manifest,
+    write_selected_pool_price_publication_manifest,
 )
 from src.data.strategy_data_bundle import (
     STRATEGY_MANIFEST_NAME,
@@ -359,9 +360,9 @@ def _build_selected_pool_recipe(
     publication_path = output_root / "artifacts" / PUBLICATION_MANIFEST_NAME
 
     def product_manifest(payload: Mapping[str, Any]) -> Path:
-        if not publication_path.is_file():
-            return manifest_path
         try:
+            if not publication_path.is_file():
+                write_selected_pool_price_publication_manifest(publication_path, payload)
             verify_selected_pool_price_publication_manifest(publication_path, payload)
         except SelectedPoolPricePublicationError as exc:
             raise DataRecipeError(str(exc)) from exc

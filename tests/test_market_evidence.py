@@ -31,6 +31,7 @@ from src.data.selected_pool_price_publication import (
     write_selected_pool_price_publication_manifest,
 )
 from src.factors.library import load_factor_library
+from tests.selected_pool_price_fixtures import selected_pool_price_source
 
 
 def _price_frame(rows: int = 80) -> pd.DataFrame:
@@ -274,11 +275,7 @@ def test_content_addressed_market_evidence_reuse_verifies_every_file(
 def test_market_evidence_identity_ignores_only_transient_provider_error(
     tmp_path: Path,
 ) -> None:
-    source = json.loads(
-        Path(
-            "data/research/model_data_bundle_v1/components/cn-selected-pool-prices.json"
-        ).read_text(encoding="utf-8")
-    )
+    source = selected_pool_price_source("cn")
     changed = copy.deepcopy(source)
     changed["records"][-1]["attempts"][0]["error"] = "new transient error"
     first = tmp_path / "first.json"

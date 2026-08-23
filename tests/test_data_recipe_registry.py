@@ -16,6 +16,7 @@ from src.data.data_recipe import (
     prepare_data_recipe,
 )
 from src.data.strategy_data_bundle import load_strategy_data_bundle
+from tests.selected_pool_price_fixtures import selected_pool_price_source
 
 
 @dataclass
@@ -120,12 +121,6 @@ def test_selected_pool_recipe_builds_and_reuses_provider_snapshot(
         "configs/research_universes/us_selected_equities_v2.yaml",
         "configs/research_universes/cn_selected_equities_v3.yaml",
     )
-    pool = yaml.safe_load(
-        (tmp_path / "configs/research_universes/us_selected_equities_v2.yaml").read_text(
-            encoding="utf-8"
-        )
-    )
-    symbols = [str(value) for value in pool["symbols"]]
     calls: list[str] = []
 
     def fake_refresh(**kwargs: Any) -> dict[str, Any]:
@@ -137,28 +132,11 @@ def test_selected_pool_recipe_builds_and_reuses_provider_snapshot(
             json.dumps({"provider_id": "fixture-us87"}) + "\n",
             encoding="utf-8",
         )
-        manifest = {
-            "schema_version": "1.0",
-            "status": "selected_pool_price_refresh_ready",
-            "market": "us",
-            "pool_id": "us_selected_equities_v2",
-            "candidate_count": len(symbols),
-            "records": [
-                {
-                    "symbol": symbol,
-                    "first_date": "2021-01-04",
-                    "last_date": str(kwargs["cutoff"]),
-                }
-                for symbol in symbols
-            ],
-            "failures": [],
-            "selected_providers": {symbol: "fixture" for symbol in symbols},
-            "promotion_eligible": True,
-            "promotion_blocker": None,
-            "evidence_cutoff": str(kwargs["cutoff"]),
-            "research_only": True,
-            "trade_ready": False,
-        }
+        manifest = selected_pool_price_source("us")
+        manifest["cutoff"] = str(kwargs["cutoff"])
+        for record in manifest["records"]:
+            if record.get("symbol") != "EA":
+                record["last_date"] = str(kwargs["cutoff"])
         path = output / "artifacts/selected_pool_price_refresh_manifest.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
@@ -167,23 +145,26 @@ def test_selected_pool_recipe_builds_and_reuses_provider_snapshot(
     built = prepare_data_recipe(
         "us87-prices",
         root=tmp_path,
-        cutoff="2026-07-31",
+        cutoff="2026-08-21",
         refresh=True,
         selected_pool_refresher=fake_refresh,
     )
     assert built["profile_gate"]["status"] == "ready"
     assert Path(built["selected_pool_provider_root"]).is_dir()
-    assert calls == ["2026-07-31"]
+    assert calls == ["2026-08-21"]
+    assert Path(built["product_manifest_path"]).name == (
+        "selected_pool_price_publication_manifest.json"
+    )
 
     reused = prepare_data_recipe(
         "us87-prices",
         root=tmp_path,
-        cutoff="2026-07-31",
+        cutoff="2026-08-21",
         selected_pool_refresher=lambda **kwargs: (_ for _ in ()).throw(
             AssertionError(kwargs)
         ),
     )
     assert reused["status"] == "reused"
     assert data_recipe_status(
-        "us87-prices", root=tmp_path, cutoff="2026-07-31"
+        "us87-prices", root=tmp_path, cutoff="2026-08-21"
     )["status"] == "reused"
