@@ -16,6 +16,7 @@ from scripts.run_formal_refresh_transaction import (
     build_task_plan,
     finalize_refresh,
 )
+from src.artifacts.formal_provider_cache import build_provider_cache_contract
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
     load_object,
@@ -350,6 +351,43 @@ def test_formal_refresh_parallelizes_and_seals_provider_builds() -> None:
     assert "uses: actions/cache/restore@v4" in workflow
     assert "uses: actions/cache/save@v4" in workflow
     assert "formal-provider-${{ matrix.market }}-${{ github.run_id }}" in workflow
+
+
+def test_formal_provider_jobs_checkout_only_provider_build_inputs() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
+    providers_start = workflow.index("\n  providers:\n")
+    plan_start = workflow.index("\n  plan:\n", providers_start)
+    providers = workflow[providers_start:plan_start]
+    checkout_start = providers.index("      - name: Check out triggering revision")
+    checkout_end = providers.index("      - uses: actions/setup-python@v6", checkout_start)
+    checkout = providers[checkout_start:checkout_end]
+
+    assert "fetch-depth: 1" in checkout
+    assert "lfs: false" in checkout
+    assert "sparse-checkout-cone-mode: true" in checkout
+    assert (
+        "sparse-checkout: |\n"
+        "            configs\n"
+        "            data/csv_clean\n"
+        "            scripts\n"
+        "            src\n"
+    ) in checkout
+    assert "fetch-depth: 0" not in checkout
+    assert "lfs: true" not in checkout
+    assert "filter:" not in checkout
+
+    allowed_directories = ("configs/", "scripts/", "src/")
+    for market in ("us", "cn"):
+        contract = build_provider_cache_contract(
+            repository_root=Path("."),
+            market=market,
+            start="2021-01-01",
+            requested_cutoff="2026-08-21",
+        )
+        assert all(
+            "/" not in path or path.startswith(allowed_directories)
+            for path in contract["inputs"]
+        ), f"{market} provider contract escaped its sparse checkout closure"
 
 
 def test_formal_refresh_is_bundle_v2_only() -> None:
