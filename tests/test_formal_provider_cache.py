@@ -260,7 +260,7 @@ def test_provider_cache_keeps_legacy_tree_receipt_identity(tmp_path: Path) -> No
 
 
 @pytest.mark.parametrize("operation", ("seal", "verify"))
-def test_provider_cache_hashes_each_provider_file_once(
+def test_provider_cache_hashes_each_csv_and_feature_file_once(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     operation: str,
@@ -296,6 +296,41 @@ def test_provider_cache_hashes_each_provider_file_once(
 
     assert read_counts[csv_path] == 1
     assert {read_counts[path] for path in feature_paths} == {1}
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("csv", "cached source hash mismatch"),
+        ("calendar", "provider calendar hash mismatch"),
+        ("instruments", "provider instrument hash mismatch"),
+        ("extra_csv", "Qlib source identities do not match CSV bytes"),
+        ("extra_qlib", "qlib_tree_sha256 mismatch"),
+    ),
+)
+def test_provider_cache_rejects_indexed_tree_mutation(
+    tmp_path: Path,
+    mutation: str,
+    message: str,
+) -> None:
+    root = _provider_tree(tmp_path)
+    contract = _contract()
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+    targets = {
+        "csv": root / "data/csv_source/AAA.csv",
+        "calendar": root / "data/providers/us/calendars/day.txt",
+        "instruments": root / "data/providers/us/instruments/us.txt",
+        "extra_csv": root / "data/csv_source/EXTRA.csv",
+        "extra_qlib": root / "data/providers/us/metadata/extra.bin",
+    }
+    target = targets[mutation]
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(target.read_bytes() + b"mutation" if target.exists() else b"extra")
+
+    with pytest.raises(FormalProviderCacheError, match=message):
+        verify_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
 
 
 @pytest.mark.parametrize("failure", ("missing", "tampered", "projection"))
