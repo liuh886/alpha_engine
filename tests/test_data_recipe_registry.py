@@ -7,10 +7,12 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import pytest
 import yaml
 
 from src.data.adapters.base import FetchRequest, FetchResult
 from src.data.data_recipe import (
+    DataRecipeError,
     data_recipe_catalog,
     data_recipe_status,
     prepare_data_recipe,
@@ -168,3 +170,21 @@ def test_selected_pool_recipe_builds_and_reuses_provider_snapshot(
     assert data_recipe_status(
         "us87-prices", root=tmp_path, cutoff="2026-08-21"
     )["status"] == "reused"
+
+    def changed_refresh(**kwargs: Any) -> dict[str, Any]:
+        manifest = fake_refresh(**kwargs)
+        manifest["records"][0]["output_sha256"] = "0" * 64
+        path = Path(kwargs["output_root"]) / (
+            "artifacts/selected_pool_price_refresh_manifest.json"
+        )
+        path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+        return manifest
+
+    with pytest.raises(DataRecipeError, match="projection mismatch"):
+        prepare_data_recipe(
+            "us87-prices",
+            root=tmp_path,
+            cutoff="2026-08-21",
+            refresh=True,
+            selected_pool_refresher=changed_refresh,
+        )
