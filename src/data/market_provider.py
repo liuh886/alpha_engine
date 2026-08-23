@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import Path
-from typing import Any, Iterable
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Any, Iterable, Mapping
 
 SUPPORTED_MARKETS = ("cn", "us", "hk")
 PROVIDER_MANIFEST_SCHEMA_VERSION = "1.0"
@@ -58,6 +58,53 @@ def _identity_sha256(payload: dict[str, Any]) -> str:
         ensure_ascii=False,
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _provider_manifest_paths(payload: Mapping[str, Any]) -> tuple[str, str]:
+    calendar = payload.get("calendar")
+    instruments = payload.get("instruments")
+    if not isinstance(calendar, Mapping) or not isinstance(instruments, Mapping):
+        raise ValueError("provider manifest calendar/instruments metadata is missing")
+    return tuple(
+        _provider_relative_path(metadata.get("path", ""))
+        for metadata in (calendar, instruments)
+    )
+
+
+def _provider_relative_path(value: object) -> str:
+    raw = str(value).strip()
+    windows_path = PureWindowsPath(raw)
+    posix_path = PurePosixPath(raw.replace("\\", "/"))
+    if (
+        not raw
+        or posix_path.is_absolute()
+        or bool(windows_path.drive)
+        or bool(windows_path.root)
+        or ".." in posix_path.parts
+    ):
+        raise ValueError("provider manifest file path must stay within provider root")
+    return posix_path.as_posix()
+
+
+def verify_provider_manifest_file_identities(
+    payload: Mapping[str, Any],
+    *,
+    file_hashes: Mapping[str, str],
+    features_sha256: str,
+) -> None:
+    """Verify provider file identities using a precomputed byte index."""
+
+    calendar_path, instrument_path = _provider_manifest_paths(payload)
+    calendar = payload["calendar"]
+    instruments = payload["instruments"]
+    assert isinstance(calendar, Mapping)
+    assert isinstance(instruments, Mapping)
+    if file_hashes.get(calendar_path) != calendar.get("sha256"):
+        raise ValueError("provider calendar hash mismatch")
+    if file_hashes.get(instrument_path) != instruments.get("sha256"):
+        raise ValueError("provider instrument hash mismatch")
+    if features_sha256 != payload.get("features_sha256"):
+        raise ValueError("provider feature-tree hash mismatch")
 
 
 def write_provider_manifest(
@@ -161,19 +208,16 @@ def load_provider_manifest(
         raise ValueError("provider manifest identity hash mismatch")
 
     if verify_files:
-        calendar = payload.get("calendar")
-        instruments = payload.get("instruments")
-        if not isinstance(calendar, dict) or not isinstance(instruments, dict):
-            raise ValueError("provider manifest calendar/instruments metadata is missing")
-        calendar_path = provider / str(calendar.get("path", ""))
-        instrument_path = provider / str(instruments.get("path", ""))
-        if not calendar_path.is_file() or _sha256_file(calendar_path) != calendar.get("sha256"):
-            raise ValueError("provider calendar hash mismatch")
-        if not instrument_path.is_file() or _sha256_file(instrument_path) != instruments.get(
-            "sha256"
-        ):
-            raise ValueError("provider instrument hash mismatch")
-        if _sha256_tree(provider / "features") != payload.get("features_sha256"):
-            raise ValueError("provider feature-tree hash mismatch")
+        calendar_path, instrument_path = _provider_manifest_paths(payload)
+        file_hashes = {}
+        for relative in (calendar_path, instrument_path):
+            file_path = provider / relative
+            if file_path.is_file():
+                file_hashes[relative] = _sha256_file(file_path)
+        verify_provider_manifest_file_identities(
+            payload,
+            file_hashes=file_hashes,
+            features_sha256=_sha256_tree(provider / "features"),
+        )
 
     return payload

@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from src.data.market_provider import load_provider_manifest
+from src.data.market_provider import (
+    load_provider_manifest,
+    verify_provider_manifest_file_identities,
+)
 from src.data.selected_pool_price_publication import (
     PUBLICATION_MANIFEST_NAME,
     SelectedPoolPricePublicationError,
@@ -47,6 +51,17 @@ DEFAULT_AUXILIARIES = {
 }
 # Publication-only serializers cannot change provider source bytes.
 PROVIDER_CACHE_EXCLUDED_PATHS = frozenset({"src/data/model_data_bundle.py"})
+
+
+@dataclass(frozen=True)
+class _TreeIndex:
+    file_hashes: dict[str, str]
+    identity_sha256: str
+    raw_subtree_sha256: str | None = None
+
+    @property
+    def file_count(self) -> int:
+        return len(self.file_hashes)
 
 
 def _sha256_bytes(payload: bytes) -> str:
@@ -136,25 +151,54 @@ def cache_key(contract: Mapping[str, Any]) -> str:
     return f"formal-provider-{CACHE_SCHEMA_VERSION}-{market}-{cutoff}-{digest}"
 
 
-def _tree_identity(root: Path) -> tuple[str, int]:
+def _index_tree(root: Path, *, raw_subtree: str | None = None) -> _TreeIndex:
     if not root.is_dir():
         raise FormalProviderCacheError(f"provider cache tree is missing: {root}")
-    records = [
-        {
-            "path": path.relative_to(root).as_posix(),
-            "sha256": _sha256_file(path),
-        }
-        for path in sorted(root.rglob("*"))
-        if path.is_file()
-    ]
-    if not records:
+    paths = [path for path in sorted(root.rglob("*")) if path.is_file()]
+    if not paths:
         raise FormalProviderCacheError(f"provider cache tree is empty: {root}")
-    return _sha256_bytes(_canonical_json({"records": records})), len(records)
+    subtree_root = root / raw_subtree if raw_subtree is not None else None
+    subtree_digest = hashlib.sha256() if subtree_root is not None else None
+    file_hashes: dict[str, str] = {}
+    for path in paths:
+        relative = path.relative_to(root).as_posix()
+        file_digest = hashlib.sha256()
+        subtree_relative: bytes | None = None
+        if subtree_root is not None:
+            try:
+                subtree_relative = path.relative_to(subtree_root).as_posix().encode("utf-8")
+            except ValueError:
+                pass
+            else:
+                assert subtree_digest is not None
+                subtree_digest.update(len(subtree_relative).to_bytes(8, "big"))
+                subtree_digest.update(subtree_relative)
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                file_digest.update(chunk)
+                if subtree_relative is not None:
+                    assert subtree_digest is not None
+                    subtree_digest.update(chunk)
+        file_hashes[relative] = file_digest.hexdigest()
+    records = [
+        {"path": relative, "sha256": file_hashes[relative]}
+        for relative in file_hashes
+    ]
+    return _TreeIndex(
+        file_hashes=file_hashes,
+        identity_sha256=_sha256_bytes(_canonical_json({"records": records})),
+        raw_subtree_sha256=(
+            subtree_digest.hexdigest() if subtree_digest is not None else None
+        ),
+    )
 
 
 def _validate_manifest(
     provider_root: Path,
     contract: Mapping[str, Any],
+    *,
+    csv_index: _TreeIndex,
+    qlib_index: _TreeIndex,
 ) -> tuple[Path, Path, dict[str, Any], dict[str, Any]]:
     manifest_path = provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
     publication_path = provider_root / "artifacts" / PUBLICATION_MANIFEST_NAME
@@ -185,14 +229,13 @@ def _validate_manifest(
         raise FormalProviderCacheError("cached candidate identity is incomplete")
     if not candidate_symbols.issubset(set(symbols)):
         raise FormalProviderCacheError("cached candidates are outside the provider symbols")
-    csv_root = provider_root / "data" / "csv_source"
     for record in records:
         symbol = str(record.get("symbol", "")).strip().upper()
         expected = str(record.get("output_sha256", ""))
-        source = csv_root / f"{symbol}.csv"
-        if len(expected) != 64 or not source.is_file():
+        actual = csv_index.file_hashes.get(f"{symbol}.csv")
+        if len(expected) != 64 or actual is None:
             raise FormalProviderCacheError(f"cached source identity is missing: {symbol}")
-        if _sha256_file(source) != expected:
+        if actual != expected:
             raise FormalProviderCacheError(f"cached source hash mismatch: {symbol}")
     try:
         publication = verify_selected_pool_price_publication_manifest(
@@ -201,8 +244,14 @@ def _validate_manifest(
         qlib_manifest = load_provider_manifest(
             provider_root / "data" / "providers" / market,
             expected_market=market,
-            verify_files=True,
+            verify_files=False,
         )
+        if isinstance(qlib_manifest, dict):
+            verify_provider_manifest_file_identities(
+                qlib_manifest,
+                file_hashes=qlib_index.file_hashes,
+                features_sha256=str(qlib_index.raw_subtree_sha256),
+            )
     except (SelectedPoolPricePublicationError, FileNotFoundError, ValueError) as exc:
         raise FormalProviderCacheError(f"cached provider evidence is invalid: {exc}") from exc
     if not isinstance(qlib_manifest, dict):
@@ -217,8 +266,9 @@ def _validate_manifest(
     if not isinstance(qlib_sources, list):
         raise FormalProviderCacheError("cached Qlib source identities are missing")
     expected_sources = [
-        {"name": path.name, "sha256": _sha256_file(path)}
-        for path in sorted(csv_root.glob("*.csv"))
+        {"name": relative, "sha256": csv_index.file_hashes[relative]}
+        for relative in csv_index.file_hashes
+        if "/" not in relative and Path(relative).suffix.lower() == ".csv"
     ]
     if qlib_sources != expected_sources:
         raise FormalProviderCacheError("cached Qlib source identities do not match CSV bytes")
@@ -234,12 +284,18 @@ def seal_provider_cache(
     """Validate a fresh provider build and seal exact reusable bytes."""
 
     provider_root = provider_root.resolve()
-    manifest_path, publication_path, manifest, publication = _validate_manifest(
-        provider_root, contract
-    )
     market = str(contract["market"])
-    csv_digest, csv_count = _tree_identity(provider_root / "data" / "csv_source")
-    qlib_digest, qlib_count = _tree_identity(provider_root / "data" / "providers" / market)
+    csv_index = _index_tree(provider_root / "data" / "csv_source")
+    qlib_index = _index_tree(
+        provider_root / "data" / "providers" / market,
+        raw_subtree="features",
+    )
+    manifest_path, publication_path, manifest, publication = _validate_manifest(
+        provider_root,
+        contract,
+        csv_index=csv_index,
+        qlib_index=qlib_index,
+    )
     receipt: dict[str, Any] = {
         "schema_version": CACHE_SCHEMA_VERSION,
         "evidence_type": "formal_provider_cache_receipt",
@@ -255,10 +311,10 @@ def seal_provider_cache(
         "provider_cutoff": str(manifest.get("cutoff", "")),
         "candidate_count": int(manifest.get("candidate_count", 0)),
         "symbol_count": len(manifest.get("records", [])),
-        "csv_tree_sha256": csv_digest,
-        "csv_file_count": csv_count,
-        "qlib_tree_sha256": qlib_digest,
-        "qlib_file_count": qlib_count,
+        "csv_tree_sha256": csv_index.identity_sha256,
+        "csv_file_count": csv_index.file_count,
+        "qlib_tree_sha256": qlib_index.identity_sha256,
+        "qlib_file_count": qlib_index.file_count,
         "research_only": True,
         "trade_ready": False,
     }
@@ -282,8 +338,17 @@ def verify_provider_cache(
         raise FormalProviderCacheError("provider cache receipt crossed research boundary")
     if receipt.get("contract_sha256") != contract.get("contract_sha256"):
         raise FormalProviderCacheError("provider cache contract hash mismatch")
+    market = str(contract["market"])
+    csv_index = _index_tree(provider_root / "data" / "csv_source")
+    qlib_index = _index_tree(
+        provider_root / "data" / "providers" / market,
+        raw_subtree="features",
+    )
     manifest_path, publication_path, manifest, publication = _validate_manifest(
-        provider_root, contract
+        provider_root,
+        contract,
+        csv_index=csv_index,
+        qlib_index=qlib_index,
     )
     if _sha256_file(manifest_path) != receipt.get("provider_manifest_sha256"):
         raise FormalProviderCacheError("provider cache manifest hash mismatch")
@@ -297,14 +362,11 @@ def verify_provider_cache(
         receipt.get("provider_identity_sha256", "")
     ):
         raise FormalProviderCacheError("provider identity hash mismatch")
-    market = str(contract["market"])
-    csv_digest, csv_count = _tree_identity(provider_root / "data" / "csv_source")
-    qlib_digest, qlib_count = _tree_identity(provider_root / "data" / "providers" / market)
     expected = {
-        "csv_tree_sha256": csv_digest,
-        "csv_file_count": csv_count,
-        "qlib_tree_sha256": qlib_digest,
-        "qlib_file_count": qlib_count,
+        "csv_tree_sha256": csv_index.identity_sha256,
+        "csv_file_count": csv_index.file_count,
+        "qlib_tree_sha256": qlib_index.identity_sha256,
+        "qlib_file_count": qlib_index.file_count,
     }
     for key, value in expected.items():
         if receipt.get(key) != value:

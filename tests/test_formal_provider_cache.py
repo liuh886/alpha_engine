@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,7 @@ from src.artifacts.formal_provider_cache import (
     seal_provider_cache,
     verify_provider_cache,
 )
-from src.data.market_provider import write_provider_manifest
+from src.data.market_provider import load_provider_manifest, write_provider_manifest
 from src.data.selected_pool_price_publication import (
     PUBLICATION_MANIFEST_NAME,
     write_selected_pool_price_publication_manifest,
@@ -23,6 +24,40 @@ from src.data.selected_pool_price_publication import (
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _legacy_tree_identity(root: Path) -> tuple[str, int]:
+    records = [
+        {
+            "path": path.relative_to(root).as_posix(),
+            "sha256": _sha256(path),
+        }
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    ]
+    encoded = (
+        json.dumps(
+            {"records": records},
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        + "\n"
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest(), len(records)
+
+
+def _provider_identity(payload: dict[str, object]) -> str:
+    identity = {
+        key: value for key, value in payload.items() if key != "provider_identity_sha256"
+    }
+    encoded = json.dumps(
+        identity,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _contract() -> dict[str, object]:
@@ -66,22 +101,38 @@ def _provider_contract() -> dict[str, object]:
 def _provider_tree(tmp_path: Path) -> Path:
     root = tmp_path / "provider-us"
     csv_path = root / "data/csv_source/AAA.csv"
+    mixed_case_csv_paths = (
+        root / "data/csv_source/a.csv",
+        root / "data/csv_source/B.csv",
+    )
     qlib_root = root / "data/providers/us"
     qlib_path = qlib_root / "features/aaa/day/close.day.bin"
+    qlib_volume_path = qlib_root / "features/aaa/day/volume.day.bin"
     calendar_path = qlib_root / "calendars/day.txt"
     instruments_path = qlib_root / "instruments/us.txt"
+    mixed_case_paths = (
+        qlib_root / "metadata/B.txt",
+        qlib_root / "metadata/a.txt",
+    )
     csv_path.parent.mkdir(parents=True)
     qlib_path.parent.mkdir(parents=True)
     calendar_path.parent.mkdir(parents=True)
     instruments_path.parent.mkdir(parents=True)
+    for path in mixed_case_paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
     csv_path.write_text("date,close\n2026-08-07,10\n", encoding="utf-8")
+    for path in mixed_case_csv_paths:
+        path.write_text("date,close\n2026-08-07,11\n", encoding="utf-8")
     qlib_path.write_bytes(b"verified qlib bytes")
+    qlib_volume_path.write_bytes(b"verified qlib volume bytes")
     calendar_path.write_text("2026-08-07\n", encoding="utf-8")
     instruments_path.write_text("AAA\t2026-08-07\t2026-08-07\n", encoding="utf-8")
+    for path in mixed_case_paths:
+        path.write_text(path.name, encoding="utf-8")
     provider = write_provider_manifest(
         qlib_root,
         market="us",
-        source_csv_files=[csv_path],
+        source_csv_files=[csv_path, *mixed_case_csv_paths],
         cutoff="2026-08-07",
     )
     contract = _provider_contract()
@@ -218,6 +269,127 @@ def test_sealed_provider_cache_binds_raw_publication_csv_and_qlib_bytes(tmp_path
     qlib_path = root / "data/providers/us/features/aaa/day/close.day.bin"
     qlib_path.write_bytes(b"tampered")
     with pytest.raises(FormalProviderCacheError, match="feature-tree hash mismatch"):
+        verify_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+
+def test_provider_cache_keeps_legacy_tree_receipt_identity(tmp_path: Path) -> None:
+    root = _provider_tree(tmp_path)
+    contract = _contract()
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    sealed = seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+    csv_digest, csv_count = _legacy_tree_identity(root / "data/csv_source")
+    qlib_digest, qlib_count = _legacy_tree_identity(root / "data/providers/us")
+    assert sealed["csv_tree_sha256"] == csv_digest
+    assert sealed["csv_file_count"] == csv_count
+    assert sealed["qlib_tree_sha256"] == qlib_digest
+    assert sealed["qlib_file_count"] == qlib_count
+
+
+@pytest.mark.parametrize(
+    "calendar_path",
+    ("../outside.txt", "/tmp/outside.txt", "C:\\outside.txt"),
+)
+def test_provider_manifest_rejects_paths_outside_provider_root(
+    tmp_path: Path,
+    calendar_path: str,
+) -> None:
+    root = _provider_tree(tmp_path)
+    qlib_root = root / "data/providers/us"
+    manifest_path = qlib_root / "provider_manifest.json"
+    manifest: dict[str, object] = json.loads(manifest_path.read_text(encoding="utf-8"))
+    calendar = manifest["calendar"]
+    assert isinstance(calendar, dict)
+    calendar["path"] = calendar_path
+    manifest["provider_identity_sha256"] = _provider_identity(manifest)
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must stay within provider root"):
+        load_provider_manifest(qlib_root, expected_market="us")
+
+    contract = _contract()
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    with pytest.raises(FormalProviderCacheError, match="must stay within provider root"):
+        seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+
+@pytest.mark.parametrize("operation", ("seal", "verify"))
+def test_provider_cache_hashes_each_csv_and_feature_file_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+) -> None:
+    root = _provider_tree(tmp_path)
+    contract = _contract()
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    if operation == "verify":
+        seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+    csv_paths = {
+        path.resolve()
+        for path in (root / "data/csv_source").glob("*")
+        if path.is_file()
+    }
+    feature_paths = {
+        path.resolve()
+        for path in (root / "data/providers/us/features").rglob("*")
+        if path.is_file()
+    }
+    tracked_paths = {*csv_paths, *feature_paths}
+    read_counts: Counter[Path] = Counter()
+    original_open = Path.open
+
+    def counted_open(path: Path, *args: object, **kwargs: object):
+        mode = str(args[0]) if args else str(kwargs.get("mode", "r"))
+        resolved = path.resolve()
+        if resolved in tracked_paths and "r" in mode:
+            read_counts[resolved] += 1
+        return original_open(path, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(Path, "open", counted_open)
+    if operation == "seal":
+        seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+    else:
+        verify_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+    assert {read_counts[path] for path in csv_paths} == {1}
+    assert {read_counts[path] for path in feature_paths} == {1}
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("csv", "cached source hash mismatch"),
+        ("calendar", "provider calendar hash mismatch"),
+        ("instruments", "provider instrument hash mismatch"),
+        ("extra_csv", "Qlib source identities do not match CSV bytes"),
+        ("uppercase_csv", "Qlib source identities do not match CSV bytes"),
+        ("extra_qlib", "qlib_tree_sha256 mismatch"),
+    ),
+)
+def test_provider_cache_rejects_indexed_tree_mutation(
+    tmp_path: Path,
+    mutation: str,
+    message: str,
+) -> None:
+    root = _provider_tree(tmp_path)
+    contract = _contract()
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+    targets = {
+        "csv": root / "data/csv_source/AAA.csv",
+        "calendar": root / "data/providers/us/calendars/day.txt",
+        "instruments": root / "data/providers/us/instruments/us.txt",
+        "extra_csv": root / "data/csv_source/EXTRA.csv",
+        "uppercase_csv": root / "data/csv_source/EXTRA.CSV",
+        "extra_qlib": root / "data/providers/us/metadata/extra.bin",
+    }
+    target = targets[mutation]
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(target.read_bytes() + b"mutation" if target.exists() else b"extra")
+
+    with pytest.raises(FormalProviderCacheError, match=message):
         verify_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
 
 
