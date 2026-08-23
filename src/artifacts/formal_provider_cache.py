@@ -38,6 +38,8 @@ DEFAULT_AUXILIARIES = {
     "us": ("QQQI", "TQQQ", "CGDV", "SGOV", "TYGO"),
     "cn": ("515180",),
 }
+# Publication-only serializers cannot change provider source bytes.
+PROVIDER_CACHE_EXCLUDED_PATHS = frozenset({"src/data/model_data_bundle.py"})
 
 
 def _sha256_bytes(payload: bytes) -> str:
@@ -96,7 +98,11 @@ def build_provider_cache_contract(
     configured = [root / value for value in CONTRACT_PATHS]
     configured.append(root / MARKET_UNIVERSE_PATHS[market])
     configured.extend(sorted((root / "src/data/adapters").glob("*.py")))
-    configured.extend(sorted((root / "src/data").glob("*.py")))
+    configured.extend(
+        path
+        for path in sorted((root / "src/data").glob("*.py"))
+        if path.relative_to(root).as_posix() not in PROVIDER_CACHE_EXCLUDED_PATHS
+    )
     payload: dict[str, Any] = {
         "schema_version": CACHE_SCHEMA_VERSION,
         "evidence_type": "formal_provider_cache_contract",

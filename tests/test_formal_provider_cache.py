@@ -86,10 +86,17 @@ def test_provider_cache_contract_binds_market_code_pool_and_cutoff() -> None:
     assert "configs/research_universes/us_selected_equities_v2.yaml" in inputs
     assert "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml" in inputs
     assert "configs/pools/selected_pool_registry_v1.yaml" in inputs
+    assert "scripts/data/refresh_selected_pool_prices.py" in inputs
     assert "scripts/data/refresh_selected_pool_prices_v2.py" in inputs
     assert "scripts/build_market_providers.py" in inputs
     assert "src/artifacts/formal_provider_cache.py" in inputs
     assert "src/data/adapters/yfinance_adapter.py" in inputs
+    assert "src/data/market_provider.py" in inputs
+    assert "src/data/provider_catalog.py" in inputs
+    assert "src/data/router.py" in inputs
+    assert "src/data/symbol_identity.py" in inputs
+    assert "src/data/validation/schema.py" in inputs
+    assert "src/data/model_data_bundle.py" not in inputs
     assert contract["refresh_mode"] == "incremental_from_governed_seed"
     assert cache_key(contract).startswith("formal-provider-1.0.0-us-2026-08-07-")
 
