@@ -350,6 +350,7 @@ jobs:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
           key: formal-provider-seed-${{ matrix.market }}-${{ github.run_id }}
           restore-keys: |
+            formal-provider-1.1.0-${{ matrix.market }}-${{ matrix.market == 'us' && needs.prepare.outputs.us_seed_cutoff || needs.prepare.outputs.cn_seed_cutoff }}-
             formal-provider-1.0.0-${{ matrix.market }}-${{ matrix.market == 'us' && needs.prepare.outputs.us_seed_cutoff || needs.prepare.outputs.cn_seed_cutoff }}-
       - name: Prepare governed provider seed
         id: provider_seed

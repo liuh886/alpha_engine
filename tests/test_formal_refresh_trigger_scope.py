@@ -177,6 +177,7 @@ def test_heavy_formal_refresh_reuses_previous_governed_provider_incrementally() 
     assert '--source-csv-dir "$SOURCE_CSV_DIR"' in text
     assert "--auxiliary-symbol" in text
     assert "--full-refresh" not in text
+    assert "formal-provider-1.1.0-${{ matrix.market }}-${{ matrix.market == 'us' &&" in text
     assert "formal-provider-1.0.0-${{ matrix.market }}-${{ matrix.market == 'us' &&" in text
     assert "needs.prepare.outputs.us_seed_cutoff || needs.prepare.outputs.cn_seed_cutoff }}-" in text
 

@@ -6,6 +6,7 @@ import copy
 import hashlib
 import json
 from collections.abc import Mapping
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -69,6 +70,7 @@ _TERMINAL_LIFECYCLE_KEYS = {
     "governed_history_sha256", "historical_rows_retained", "market", "public_references",
     "reason", "suspension_effective_date", "terminal_date",
 }
+_TERMINAL_LISTING_KEYS = {"event_type", "reason", "terminal_date"}
 _DIAGNOSTICS_POLICY = {
     "excluded_operational_record_fields": ["action", "attempts", "provider_contract"],
     "excluded_top_level_fields": sorted(_OPERATIONAL_SOURCE_KEYS),
@@ -112,6 +114,13 @@ def _assert_known_keys(value: Mapping[str, Any], expected: set[str], label: str)
 def _is_sha256(value: object) -> bool:
     text = str(value)
     return len(text) == 64 and all(character in "0123456789abcdef" for character in text)
+
+
+def _date_value(value: object, label: str) -> date:
+    try:
+        return date.fromisoformat(str(value))
+    except ValueError as exc:
+        raise SelectedPoolPricePublicationError(f"invalid {label}: {value}") from exc
 
 
 def _symbol_list(source: Mapping[str, Any], key: str) -> list[str]:
@@ -171,6 +180,9 @@ def _validate_source_boundaries(source: Mapping[str, Any]) -> dict[str, list[str
     stale = set(lists["stale_symbols"])
     terminal = set(lists["terminal_history_symbols"])
     lifecycle = set(lists["lifecycle_declared_terminal_symbols"])
+    start = _date_value(source.get("start"), "source start")
+    cutoff = _date_value(source.get("cutoff"), "source cutoff")
+    listing_evidence = source.get("terminal_listing_evidence")
     if (
         source.get("schema_version") != SOURCE_SCHEMA
         or source.get("evidence_type") != SOURCE_EVIDENCE_TYPE
@@ -187,11 +199,23 @@ def _validate_source_boundaries(source: Mapping[str, Any]) -> dict[str, list[str
         or source.get("promotion_blocker") is not None
         or not isinstance(source.get("candidate_count"), int)
         or source["candidate_count"] != len(lists["candidate_symbols"])
+        or str(source.get("market", "")).strip().lower() not in {"cn", "us"}
+        or not str(source.get("pool_id", "")).strip()
+        or start > cutoff
         or not isinstance(source.get("all_sources_current"), bool)
         or source.get("all_sources_current") is not (not stale)
         or not stale <= terminal <= lifecycle
+        or not isinstance(listing_evidence, Mapping)
+        or set(listing_evidence) != lifecycle
     ):
         raise SelectedPoolPricePublicationError("source manifest is not publication ready")
+    for symbol, evidence in listing_evidence.items():
+        if not isinstance(evidence, Mapping):
+            raise SelectedPoolPricePublicationError(
+                f"terminal listing evidence is invalid for {symbol}"
+            )
+        _assert_exact_keys(evidence, _TERMINAL_LISTING_KEYS, "terminal listing evidence")
+        _date_value(evidence.get("terminal_date"), f"terminal date for {symbol}")
     return lists
 
 
@@ -254,6 +278,9 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
     if not isinstance(providers, Mapping) or not isinstance(provider_order_raw, list):
         raise SelectedPoolPricePublicationError("source provider architecture is invalid")
     provider_order = [str(item).strip().lower() for item in provider_order_raw]
+    market = str(source["market"]).strip().lower()
+    start = _date_value(source["start"], "source start")
+    cutoff = _date_value(source["cutoff"], "source cutoff")
 
     raw_by_symbol = {
         str(record.get("symbol", "")).strip().upper(): record
@@ -288,6 +315,12 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
 
     terminal = set(lists["terminal_history_symbols"])
     for symbol, record in record_by_symbol.items():
+        first_date = _date_value(record.get("first_date"), f"first date for {symbol}")
+        last_date = _date_value(record.get("last_date"), f"last date for {symbol}")
+        if first_date < start or first_date > last_date or last_date > cutoff:
+            raise SelectedPoolPricePublicationError(
+                f"provider record date boundary is invalid for {symbol}"
+            )
         provider = provider_records.get(symbol)
         if provider:
             contract = providers.get(provider)
@@ -297,6 +330,16 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
                 )
             if not str(record.get("provider_symbol", "")).strip():
                 raise SelectedPoolPricePublicationError(f"selected provider symbol is missing for {symbol}")
+            if last_date != cutoff:
+                raise SelectedPoolPricePublicationError(
+                    f"current provider record does not reach cutoff for {symbol}"
+                )
+            if market == "cn" and provider == "yfinance" and symbol not in set(
+                lists["formal_auxiliary_fallback_symbols"]
+            ):
+                raise SelectedPoolPricePublicationError(
+                    f"CN Yahoo provider is not an authorized formal auxiliary: {symbol}"
+                )
         else:
             lifecycle = record.get("terminal_lifecycle")
             if symbol not in terminal or not isinstance(lifecycle, Mapping):
@@ -324,6 +367,11 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
     }
     if set(selected_provider_contracts) != set(normalized_selected.values()):
         raise SelectedPoolPricePublicationError("selected provider contracts are incomplete")
+    if any(
+        str(contract.get("name", "")).strip().lower() != provider
+        for provider, contract in selected_provider_contracts.items()
+    ):
+        raise SelectedPoolPricePublicationError("selected provider contract names are inconsistent")
 
     fallback_symbols = set(lists["formal_auxiliary_fallback_symbols"])
     if not fallback_symbols <= set(lists["auxiliary_symbols"]):

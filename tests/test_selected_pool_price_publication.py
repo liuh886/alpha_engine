@@ -161,6 +161,35 @@ def test_selected_provider_mapping_mismatch_fails_closed() -> None:
         build_selected_pool_price_publication_manifest(source)
 
 
+def test_cn_yahoo_source_without_formal_auxiliary_proof_fails_closed() -> None:
+    source = _source()
+    record = next(
+        item for item in source["records"] if isinstance(item, dict) and item["symbol"] == "515180"
+    )
+    architecture = source["provider_architecture"]
+    contract = architecture["providers"]["yfinance"]
+    record.update(
+        provider="yfinance",
+        provider_contract=copy.deepcopy(contract),
+        provider_symbol="515180.SS",
+    )
+    source["selected_providers"]["515180"] = "yfinance"
+
+    with pytest.raises(SelectedPoolPricePublicationError, match="not an authorized"):
+        build_selected_pool_price_publication_manifest(source)
+
+
+def test_terminal_history_contract_mismatch_fails_closed() -> None:
+    source = _source("us")
+    record = next(
+        item for item in source["records"] if isinstance(item, dict) and item["symbol"] == "EA"
+    )
+    record["source_sha256"] = "0" * 64
+
+    with pytest.raises(SelectedPoolPricePublicationError, match="lifecycle contract"):
+        build_selected_pool_price_publication_manifest(source)
+
+
 def test_formal_yahoo_fallback_emits_normalized_proof_and_requires_all_failures() -> None:
     source = _source()
     record = next(
