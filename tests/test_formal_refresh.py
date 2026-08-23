@@ -415,6 +415,40 @@ def test_formal_prepare_job_checkout_only_preflight_inputs() -> None:
         assert source.as_posix().startswith("data/research/runs/")
 
 
+def test_formal_prepare_skips_unused_frontend_dependency_install() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
+    prepare_start = workflow.index("\n  prepare:\n")
+    providers_start = workflow.index("\n  providers:\n", prepare_start)
+    prepare = workflow[prepare_start:providers_start]
+
+    setup_node_start = prepare.index("      - uses: actions/setup-node@v6")
+    install_start = prepare.index(
+        "      - name: Install locked Python preflight environment",
+        setup_node_start,
+    )
+    setup_node = prepare[setup_node_start:install_start]
+    validate_start = prepare.index(
+        "      - name: Validate refresh implementation before network work",
+        install_start,
+    )
+    install = prepare[install_start:validate_start]
+    validate_end = prepare.index(
+        "      - name: Resolve immutable workflow start",
+        validate_start,
+    )
+    validate = prepare[validate_start:validate_end]
+
+    assert "node-version: 22" in setup_node
+    assert "cache:" not in setup_node
+    assert "cache-dependency-path:" not in setup_node
+    assert "uv sync --frozen --extra dev" in install
+    assert "npm ci" not in install
+    assert "npm run check:account" in validate
+    assert "uv run ruff check" in validate
+    assert "uv run mypy" in validate
+    assert "uv run pytest" in validate
+
+
 def test_formal_provider_jobs_checkout_only_provider_build_inputs() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
     providers_start = workflow.index("\n  providers:\n")

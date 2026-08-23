@@ -172,15 +172,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: qlib-dashboard/package-lock.json
-      - name: Install locked preflight environments
+      - name: Install locked Python preflight environment
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-          cd qlib-dashboard
-          npm ci --no-audit --no-fund
       - name: Validate refresh implementation before network work
         run: |
           uv run ruff check \
