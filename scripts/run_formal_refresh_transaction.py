@@ -13,6 +13,10 @@ from typing import Any
 import yaml
 
 from src.artifacts.formal_bundle_reader import FormalBundleReadError, FormalBundleReader
+from src.artifacts.formal_publication_delta import (
+    PublicationRoots,
+    classify_publication_delta,
+)
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
     load_object,
@@ -720,6 +724,18 @@ def main() -> None:
     finalize.add_argument("--freshness-output", type=Path, required=True)
     finalize.add_argument("--receipt", type=Path, required=True)
 
+    delta = subparsers.add_parser("publication-delta")
+    for state in ("current", "candidate"):
+        delta.add_argument(f"--{state}-formal-root", type=Path, required=True)
+        delta.add_argument(f"--{state}-preview-root", type=Path, required=True)
+        delta.add_argument(f"--{state}-market-evidence-root", type=Path, required=True)
+        delta.add_argument(f"--{state}-model-data-root", type=Path, required=True)
+    delta.add_argument("--plan", type=Path, required=True)
+    delta.add_argument("--fan-in-receipt", type=Path, required=True)
+    delta.add_argument("--refresh-receipt", type=Path, required=True)
+    delta.add_argument("--receipt", type=Path, required=True)
+    delta.add_argument("--github-output", type=Path)
+
     args = parser.parse_args()
     if args.command == "assemble":
         result = assemble_strategy_results(
@@ -754,6 +770,37 @@ def main() -> None:
                     + "\n"
                 )
         print(json.dumps(plan, indent=2, sort_keys=True))
+        return
+
+    if args.command == "publication-delta":
+        result = classify_publication_delta(
+            current=PublicationRoots(
+                formal=args.current_formal_root,
+                preview=args.current_preview_root,
+                market_evidence=args.current_market_evidence_root,
+                model_data=args.current_model_data_root,
+            ),
+            candidate=PublicationRoots(
+                formal=args.candidate_formal_root,
+                preview=args.candidate_preview_root,
+                market_evidence=args.candidate_market_evidence_root,
+                model_data=args.candidate_model_data_root,
+            ),
+            plan=load_object(args.plan),
+            fan_in=load_object(args.fan_in_receipt),
+            refresh_receipt=load_object(args.refresh_receipt),
+        )
+        write_object(args.receipt, result)
+        if args.github_output:
+            args.github_output.parent.mkdir(parents=True, exist_ok=True)
+            with args.github_output.open("a", encoding="utf-8") as handle:
+                handle.write(
+                    "publication_required="
+                    + str(bool(result["publication_required"])).lower()
+                    + "\n"
+                )
+                handle.write(f"status={result['status']}\n")
+        print(json.dumps(result, indent=2, sort_keys=True))
         return
 
     result = finalize_refresh(

@@ -84,6 +84,7 @@ on:
       - "!scripts/data/populate_selected_pool_events.py"
       - "data/csv_clean/EA.csv"
       - "tests/test_formal_refresh.py"
+      - "tests/test_formal_publication_delta.py"
       - "tests/test_formal_provider_cache.py"
       - "tests/test_refresh_selected_pool_prices.py"
       - "tests/test_refresh_selected_pool_prices_v2.py"
@@ -166,6 +167,7 @@ jobs:
             src/artifacts/formal_bundle_reader.py \
             src/artifacts/formal_bundle_v2_builder.py \
             src/artifacts/formal_refresh.py \
+            src/artifacts/formal_publication_delta.py \
             src/artifacts/formal_provider_cache.py \
             src/artifacts/us_x1_3_preview.py \
             src/artifacts/qqq_v4_3_formal.py \
@@ -198,6 +200,7 @@ jobs:
             tests/test_strategy_runtime_capabilities.py \
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
+            tests/test_formal_publication_delta.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_cn_x1_2_prospective.py \
             tests/test_refresh_ranker_formal.py \
@@ -221,6 +224,7 @@ jobs:
           uv run mypy \
             src/artifacts/formal_bundle_reader.py \
             src/artifacts/formal_refresh.py \
+            src/artifacts/formal_publication_delta.py \
             src/artifacts/formal_provider_cache.py \
             src/dashboard/formal_bundle_market_events.py \
             src/dashboard/market_evidence.py \
@@ -233,6 +237,7 @@ jobs:
             tests/test_strategy_runtime_capabilities.py \
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
+            tests/test_formal_publication_delta.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_cn_x1_2_prospective.py \
             tests/test_refresh_ranker_formal.py \
@@ -605,18 +610,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: qlib-dashboard/package-lock.json
-      - name: Install locked publication environments
+      - name: Install locked publication Python environment
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-          cd qlib-dashboard
-          npm ci --no-audit --no-fund
       - name: Atomically fan in active preview results
         run: |
           uv run python scripts/run_formal_refresh_transaction.py assemble \
@@ -685,7 +683,25 @@ jobs:
             --component "prices.cn_selected_equities_v3:selected_pool_prices:${CANDIDATE_MODEL_DATA_ROOT}/components/cn-selected-pool-prices.json:cn" \
             --evidence-cutoff "$evidence_cutoff" \
             --output-root "$CANDIDATE_MODEL_DATA_ROOT"
+      - name: Classify canonical publication delta
+        id: delta
+        run: |
+          uv run python scripts/run_formal_refresh_transaction.py publication-delta \
+            --current-formal-root data/research/formal_model_runs \
+            --current-preview-root data/research/model_runs \
+            --current-market-evidence-root data/research/market_evidence \
+            --current-model-data-root data/research/model_data_bundle_v1 \
+            --candidate-formal-root "$CANDIDATE_V2_ROOT" \
+            --candidate-preview-root "$CANDIDATE_PREVIEW_ROOT" \
+            --candidate-market-evidence-root "$CANDIDATE_MARKET_EVIDENCE_ROOT" \
+            --candidate-model-data-root "$CANDIDATE_MODEL_DATA_ROOT" \
+            --plan artifacts/formal-refresh/plan/plan.json \
+            --fan-in-receipt "$FAN_IN_RECEIPT" \
+            --refresh-receipt "$REFRESH_RECEIPT" \
+            --receipt artifacts/formal-refresh/publication-delta-receipt.json \
+            --github-output "$GITHUB_OUTPUT"
       - name: Install complete candidate and materialize read models
+        if: steps.delta.outputs.publication_required == 'true'
         env:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
@@ -701,7 +717,19 @@ jobs:
           uv run alpha ops build \
             --formal-catalog data/research/formal_model_runs/catalog.json \
             --generated-at "$GENERATED_AT"
+      - uses: actions/setup-node@v6
+        if: steps.delta.outputs.publication_required == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+      - name: Install locked frontend publication environment
+        if: steps.delta.outputs.publication_required == 'true'
+        run: |
+          cd qlib-dashboard
+          npm ci --no-audit --no-fund
       - name: Validate complete candidate publication
+        if: steps.delta.outputs.publication_required == 'true'
         run: |
           uv run pytest \
             tests/test_active_strategy_catalog.py \
@@ -743,6 +771,7 @@ jobs:
           test ! -e dist/data/formal-backtests
       - name: Open or update reviewed refresh PR
         id: pull_request
+        if: steps.delta.outputs.publication_required == 'true'
         env:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
           US_CUTOFF: ${{ needs.plan.outputs.us_cutoff }}
@@ -878,14 +907,26 @@ jobs:
           PAGES_RUN_ID: ${{ steps.release.outputs.pages_run_id }}
           JOB_STATUS: ${{ job.status }}
           TRANSACTION_STATUS: ${{ steps.transaction.outputs.outcome }}
+          PUBLICATION_REQUIRED: ${{ steps.delta.outputs.publication_required }}
+          PUBLICATION_DELTA_STATUS: ${{ steps.delta.outputs.status }}
         with:
           script: |
             const marker = '<!-- reviewed-formal-backtest-refresh -->';
-            const failed = process.env.JOB_STATUS !== 'success'
-              || process.env.TRANSACTION_STATUS !== 'candidate_ready_for_review';
             const prNumber = process.env.PR_NUMBER || '';
             const mergeSha = process.env.REVIEWED_MERGE_SHA || '';
             const pagesRunId = process.env.PAGES_RUN_ID || '';
+            const deltaStatus = process.env.PUBLICATION_DELTA_STATUS || '';
+            const publicationRequired = process.env.PUBLICATION_REQUIRED === 'true';
+            const deltaInvalid = publicationRequired
+              ? deltaStatus !== 'publication_required'
+              : deltaStatus !== 'semantic_no_change';
+            const releaseIncomplete = publicationRequired
+              && (!prNumber || !mergeSha || !pagesRunId);
+            const failed = process.env.JOB_STATUS !== 'success'
+              || process.env.TRANSACTION_STATUS !== 'candidate_ready_for_review'
+              || deltaInvalid
+              || releaseIncomplete;
+            const semanticNoChange = !failed && !publicationRequired;
             const status = failed ? 'blocked' : 'current';
             const body = [
               marker,
@@ -898,17 +939,22 @@ jobs:
               `- **Review PR**: ${prNumber ? `#${prNumber}` : 'none'}`,
               `- **Reviewed merge SHA**: ${mergeSha ? `\`${mergeSha}\`` : 'none'}`,
               `- **Pages acceptance run**: ${pagesRunId ? `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${pagesRunId}` : 'none'}`,
+              `- **Publication delta**: ${deltaStatus || 'unresolved'}`,
               '- Strategy execution: independent receipt-bound tasks',
               '- Canonical evidence transaction: one atomic Bundle v2 preview fan-in',
               '- Strategy Operations and System Health: generated from canonical evidence',
               '- Model selection reopened: no',
-              '- Pages live acceptance: required before current/closed status',
+              publicationRequired
+                ? '- Pages live acceptance: required before current/closed status'
+                : '- Candidate CI and Pages: intentionally skipped for semantic identity',
               '- Research only: yes',
               '- Trade ready: no',
               '',
               failed
-                ? 'The refresh failed closed before the complete reviewed publication and live Pages acceptance transaction finished.'
-                : 'All active strategy receipts passed the Bundle v2 fan-in and the reviewed evidence transaction reached live Pages acceptance.',
+                ? 'The refresh failed closed before the governed publication transaction finished.'
+                : semanticNoChange
+                  ? 'The candidate publication was semantically identical to current evidence; review PR, candidate CI and Pages were intentionally skipped.'
+                  : 'All active strategy receipts passed the Bundle v2 fan-in and the reviewed evidence transaction reached live Pages acceptance.',
             ].join('\n');
             const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
@@ -949,6 +995,7 @@ jobs:
             artifacts/formal-refresh/strategy-fan-in-receipt.json
             artifacts/formal-refresh/formal-refresh-receipt.json
             artifacts/formal-refresh/formal-v2-sync-receipt.json
+            artifacts/formal-refresh/publication-delta-receipt.json
             artifacts/formal-refresh/freshness-input/freshness.json
             artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json
             artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json
