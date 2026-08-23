@@ -182,6 +182,8 @@ def test_price_and_etf_profiles_are_ready_while_missing_inputs_block_others(
         "model-data-readiness.json",
         "training-profiles.json",
     ]
+    for path in output.glob("*.json"):
+        assert b"\r\n" not in path.read_bytes()
     assert (frontend / "model-data-readiness.json").is_file()
     assert (frontend / "data-components.json").is_file()
     assert (frontend / "training-profiles.json").is_file()

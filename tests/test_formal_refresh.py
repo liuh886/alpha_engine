@@ -448,9 +448,63 @@ def test_publish_validates_upstream_artifacts_before_installing_environments() -
         )
     )
     setup_python = publish.index("      - uses: actions/setup-python@v6")
-    install = publish.index("      - name: Install locked publication environments")
+    install = publish.index("      - name: Install locked publication Python environment")
+    delta = publish.index("      - name: Classify canonical publication delta")
+    setup_node = publish.index("      - uses: actions/setup-node@v6")
+    frontend_install = publish.index(
+        "      - name: Install locked frontend publication environment"
+    )
     assert checkout < min(downloads)
     assert max(downloads) < setup_python < install
+    assert install < delta < setup_node < frontend_install
+
+
+def test_semantic_no_change_skips_candidate_mutation_and_release() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    publish = workflow[workflow.index("\n  publish:\n") :]
+    model_bundle = publish.index("      - name: Build shared Model Data Bundle")
+    delta = publish.index("      - name: Classify canonical publication delta")
+    install = publish.index(
+        "      - name: Install complete candidate and materialize read models"
+    )
+    assert model_bundle < delta < install
+    delta_block = publish[delta:install]
+    assert "run_formal_refresh_transaction.py publication-delta" in delta_block
+    assert "artifacts/formal-refresh/publication-delta-receipt.json" in delta_block
+    for root in (
+        "data/research/formal_model_runs",
+        '"$CANDIDATE_V2_ROOT"',
+        "data/research/model_runs",
+        '"$CANDIDATE_PREVIEW_ROOT"',
+        "data/research/market_evidence",
+        '"$CANDIDATE_MARKET_EVIDENCE_ROOT"',
+        "data/research/model_data_bundle_v1",
+        '"$CANDIDATE_MODEL_DATA_ROOT"',
+    ):
+        assert root in delta_block
+
+    gated_steps = (
+        "Install complete candidate and materialize read models",
+        "Install locked frontend publication environment",
+        "Validate complete candidate publication",
+        "Open or update reviewed refresh PR",
+    )
+    for name in gated_steps:
+        start = publish.index(f"      - name: {name}")
+        end = publish.find("\n      - name:", start + 1)
+        block = publish[start : end if end >= 0 else None]
+        assert "if: steps.delta.outputs.publication_required == 'true'" in block
+    setup_node = publish.index("      - uses: actions/setup-node@v6")
+    setup_node_end = publish.index("      - name: Install locked frontend", setup_node)
+    assert (
+        "if: steps.delta.outputs.publication_required == 'true'"
+        in publish[setup_node:setup_node_end]
+    )
+    assert "PUBLICATION_REQUIRED: ${{ steps.delta.outputs.publication_required }}" in publish
+    assert "PUBLICATION_DELTA_STATUS: ${{ steps.delta.outputs.status }}" in publish
+    assert "semantic_no_change" in publish
 
 
 def test_publish_status_uses_the_transaction_outcome() -> None:
