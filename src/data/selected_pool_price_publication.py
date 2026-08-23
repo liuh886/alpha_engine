@@ -391,6 +391,7 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
                 )
         else:
             lifecycle = record.get("terminal_lifecycle")
+            listing = source["terminal_listing_evidence"].get(symbol)
             if symbol not in terminal or not isinstance(lifecycle, Mapping):
                 raise SelectedPoolPricePublicationError(
                     f"provider-less record is not governed terminal history: {symbol}"
@@ -404,6 +405,11 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
                 or record.get("last_date") != lifecycle.get("terminal_date")
                 or lifecycle.get("historical_rows_retained") is not True
                 or lifecycle.get("active_universe_after_terminal_date_allowed") is not False
+                or lifecycle.get("market") != market
+                or not isinstance(listing, Mapping)
+                or listing.get("terminal_date") != lifecycle.get("terminal_date")
+                or listing.get("event_type") != lifecycle.get("event_type")
+                or listing.get("reason") != lifecycle.get("reason")
             ):
                 raise SelectedPoolPricePublicationError(
                     f"terminal lifecycle contract is inconsistent for {symbol}"
@@ -675,6 +681,7 @@ def _validate_publication_invariants(value: Mapping[str, Any]) -> None:
                 )
         else:
             lifecycle = record.get("terminal_lifecycle")
+            listing = listing_evidence.get(symbol)
             if symbol not in terminal or not isinstance(lifecycle, Mapping):
                 raise SelectedPoolPricePublicationError(
                     f"publication terminal record is invalid for {symbol}"
@@ -689,6 +696,11 @@ def _validate_publication_invariants(value: Mapping[str, Any]) -> None:
                 or record.get("last_date") != lifecycle.get("terminal_date")
                 or lifecycle.get("historical_rows_retained") is not True
                 or lifecycle.get("active_universe_after_terminal_date_allowed") is not False
+                or lifecycle.get("market") != market
+                or not isinstance(listing, Mapping)
+                or listing.get("terminal_date") != lifecycle.get("terminal_date")
+                or listing.get("event_type") != lifecycle.get("event_type")
+                or listing.get("reason") != lifecycle.get("reason")
                 or not isinstance(references, list)
                 or references != sorted(set(str(reference).strip() for reference in references))
             ):

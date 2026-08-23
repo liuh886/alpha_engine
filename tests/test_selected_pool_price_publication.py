@@ -217,6 +217,18 @@ def test_terminal_history_contract_mismatch_fails_closed() -> None:
         build_selected_pool_price_publication_manifest(source)
 
 
+@pytest.mark.parametrize("mutation", ("listing_date", "lifecycle_market"))
+def test_terminal_listing_and_record_lifecycle_must_agree(mutation: str) -> None:
+    source = _source("us")
+    if mutation == "listing_date":
+        source["terminal_listing_evidence"]["EA"]["terminal_date"] = "2026-08-03"
+    else:
+        source["records"][-1]["terminal_lifecycle"]["market"] = "cn"
+
+    with pytest.raises(SelectedPoolPricePublicationError, match="lifecycle contract"):
+        build_selected_pool_price_publication_manifest(source)
+
+
 def test_terminal_reference_order_is_stable_but_membership_is_semantic() -> None:
     source = _source("us")
     reordered = copy.deepcopy(source)
@@ -270,6 +282,19 @@ def test_rehashed_publication_cannot_rewrite_authoritative_provider_symbol(
     _rewrite_publication(target, payload)
 
     with pytest.raises(SelectedPoolPricePublicationError, match="identity contracts"):
+        load_selected_pool_price_publication_manifest(target)
+
+
+def test_rehashed_publication_cannot_split_terminal_listing_evidence(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "publication.json"
+    write_selected_pool_price_publication_manifest(target, _source("us"))
+    payload = json.loads(target.read_text(encoding="utf-8"))
+    payload["terminal_listing_evidence"]["EA"]["terminal_date"] = "2026-08-03"
+    _rewrite_publication(target, payload)
+
+    with pytest.raises(SelectedPoolPricePublicationError, match="terminal lifecycle"):
         load_selected_pool_price_publication_manifest(target)
 
 
