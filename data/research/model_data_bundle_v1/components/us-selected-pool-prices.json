@@ -2,6 +2,751 @@
   "after": {
     "AAOI": {
       "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "d713f0e6547438be261bbaba91fc3169382753bc39f1bcdbf62eee5c0534bbb1",
+      "status": "ready",
+      "symbol": "AAOI"
+    },
+    "AAPL": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "b2e99e12629dfa8eaf58d5469583ad51c224f1625bc57c851c06817755c34f6f",
+      "status": "ready",
+      "symbol": "AAPL"
+    },
+    "ABBNY": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "b8c8a9e1990faa0fe9d0161254f8591b19a6b062f9236a30bc1f20b56573511b",
+      "status": "ready",
+      "symbol": "ABBNY"
+    },
+    "ADP": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "cd2d600f125ee5f69d5d315ce616fa67a1e4df5a4f972e2f5158b40ef6434e66",
+      "status": "ready",
+      "symbol": "ADP"
+    },
+    "ADSK": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "0375ab763cf69ef0005bdc6f299faa460e094a3f6069768ea3bf475697776749",
+      "status": "ready",
+      "symbol": "ADSK"
+    },
+    "AEHR": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "f16e7c1b1c0b11fa10fd3cabecc585115386e0e1e962821604afa47beb2c706d",
+      "status": "ready",
+      "symbol": "AEHR"
+    },
+    "ALAB": {
+      "first_date": "2024-03-20",
+      "last_date": "2026-08-21",
+      "rows": 608,
+      "sha256": "c58d7f57f24a3ad077b0ef7f627a5e77f0bed31f34937150d6abedac4e3f4145",
+      "status": "ready",
+      "symbol": "ALAB"
+    },
+    "AMAT": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "10ad2f42b29f999df9d99a9b21f753eda150b63bd55dc6eaee374cba8bab61c3",
+      "status": "ready",
+      "symbol": "AMAT"
+    },
+    "AMD": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "57f3e8a611db5761227979c4923c58001c7fb8c55a5f9c95dceb92ac616411cf",
+      "status": "ready",
+      "symbol": "AMD"
+    },
+    "AMZN": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "a3a1d87109f1263228aeaa5c0bf5887dd02da517bf7763b9712533f9abe3effb",
+      "status": "ready",
+      "symbol": "AMZN"
+    },
+    "ANET": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "8e065167cd46dc80163261c3ab491f0b6ef2afd6eff2cf893dd8cbd9b3f7db6c",
+      "status": "ready",
+      "symbol": "ANET"
+    },
+    "APP": {
+      "first_date": "2021-04-15",
+      "last_date": "2026-08-21",
+      "rows": 1345,
+      "sha256": "604547832f5f41117bc0b9063ec070ac6d80a0a97d302c6b0425df8e5f806c1a",
+      "status": "ready",
+      "symbol": "APP"
+    },
+    "ARM": {
+      "first_date": "2023-09-14",
+      "last_date": "2026-08-21",
+      "rows": 737,
+      "sha256": "67a552769f70c96370a8b58f7fb019bb2746b8e9c6c7dcfc06f41a8ff10ca020",
+      "status": "ready",
+      "symbol": "ARM"
+    },
+    "ASML": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "a1af2978c68a79336f86cc92d2b1e12b6b0a78248a16731f025a52b82c6329bf",
+      "status": "ready",
+      "symbol": "ASML"
+    },
+    "AVGO": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "068d6e0af931926b3eac613c4f03bb05dcaa37983c0678cf78bfb77fd1a9521d",
+      "status": "ready",
+      "symbol": "AVGO"
+    },
+    "AXON": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "93ceea9db4ba9e5624457aa1827a4f48e0c4696f1192d975e50673530d3d4676",
+      "status": "ready",
+      "symbol": "AXON"
+    },
+    "BE": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "619f33d39206cb031a06442eb0744d90ce15a82b5d37d62b80930c395d080bd3",
+      "status": "ready",
+      "symbol": "BE"
+    },
+    "BKNG": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "2e14785a286bb609eca3715b87da94fb8d6bac4c937694e49755013f0369a652",
+      "status": "ready",
+      "symbol": "BKNG"
+    },
+    "BKR": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "4ea51e27b68e673f4f15dd743888d50e82411c478a28f322ffb8f2aaf75ea9f6",
+      "status": "ready",
+      "symbol": "BKR"
+    },
+    "CDNS": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "4693346d770941fbd785ba68b71e1481609e487d350b90846c8cf3978aa894bc",
+      "status": "ready",
+      "symbol": "CDNS"
+    },
+    "CEG": {
+      "first_date": "2022-01-19",
+      "last_date": "2026-08-21",
+      "rows": 1152,
+      "sha256": "30c384ba0a034e6449db4b4b273541993f5f4f9caf356546fe738f021e3ad6e6",
+      "status": "ready",
+      "symbol": "CEG"
+    },
+    "CGDV": {
+      "first_date": "2022-02-24",
+      "last_date": "2026-08-21",
+      "rows": 1127,
+      "sha256": "fbed1a1ca1d99a111e663ffb5b78c3223b756a589ec9c8b2e3a7c5fcaedebaf6",
+      "status": "ready",
+      "symbol": "CGDV"
+    },
+    "COHR": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "8cc0bba5a541bbad270587037112bcc69814b6d8d1a81f9579df4ab6e57f06be",
+      "status": "ready",
+      "symbol": "COHR"
+    },
+    "COST": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "9b17f9c93de88eb3e2db5eefb4dfb6c09f5c4d41063bf3414de3e05a8189e984",
+      "status": "ready",
+      "symbol": "COST"
+    },
+    "CPRT": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "4f7369089c2d75e203102341ad3dac1602596a97ef0ed066939d23cbd2bdd410",
+      "status": "ready",
+      "symbol": "CPRT"
+    },
+    "CRCL": {
+      "first_date": "2025-06-05",
+      "last_date": "2026-08-21",
+      "rows": 305,
+      "sha256": "e5d8cc540d37d1c0a9f3139b9aee0295c001af7fd32e02d030425db23690953e",
+      "status": "ready",
+      "symbol": "CRCL"
+    },
+    "CRDO": {
+      "first_date": "2022-01-27",
+      "last_date": "2026-08-21",
+      "rows": 1146,
+      "sha256": "416b26782f129d1d0546fed458c80830ccae322543e2a416e8263b3b6723f15f",
+      "status": "ready",
+      "symbol": "CRDO"
+    },
+    "CRWD": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "4909ed0fae442685f0533aac555a2d04315f93940497c3b623bcf2d6baef4a19",
+      "status": "ready",
+      "symbol": "CRWD"
+    },
+    "CSCO": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "c7e85aea5461daa55ee6ca5fead93e46455a50b726e7f66b99bbafc85afd3bb1",
+      "status": "ready",
+      "symbol": "CSCO"
+    },
+    "CTAS": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "15443415469d2a40626a9270a634a8a1225da849840e75c6f027866671096221",
+      "status": "ready",
+      "symbol": "CTAS"
+    },
+    "DASH": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "418376056740a4ce975b8a7caf7a19ebbd39e95b7992a035308599513ae6b35c",
+      "status": "ready",
+      "symbol": "DASH"
+    },
+    "DDOG": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "33b7fa8adf03677cc15e675a68bb4056893aa98163f6a60ee3526e879908de94",
+      "status": "ready",
+      "symbol": "DDOG"
+    },
+    "EA": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-04",
+      "rows": 1402,
+      "sha256": "cde49c03dc12849d3fcfc2a2608ef893f2929e610583eab3951fe8ac1efabec4",
+      "status": "ready",
+      "symbol": "EA"
+    },
+    "EME": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "37a1a9c4fec0f8bab3debf7564970d043075b2d8260f8b56776ec34bd3ceaa1b",
+      "status": "ready",
+      "symbol": "EME"
+    },
+    "ETN": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "a6402ccad4f88e3d67fb0939d94c1f8af67acb52cb70c9d4445f2b2236aa8def",
+      "status": "ready",
+      "symbol": "ETN"
+    },
+    "FANG": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "9322561d7597345ba84d8cf62a5870a90e7762d316a4dd53b5e2ff6cff949cfb",
+      "status": "ready",
+      "symbol": "FANG"
+    },
+    "FIX": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "993fde4083ac7ebcaa3762d512d3843bcc6d73e8a55f6326f9d1de8e2b436b5f",
+      "status": "ready",
+      "symbol": "FIX"
+    },
+    "FN": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "d1b278d19651f0e98572a2ef7577ea4c4a474d1f679b3c4aaa72c556d4299f3b",
+      "status": "ready",
+      "symbol": "FN"
+    },
+    "GEHC": {
+      "first_date": "2022-12-15",
+      "last_date": "2026-08-21",
+      "rows": 923,
+      "sha256": "d7d8d5c5cc9a5df9a2f88f7f355c3b375eb9b483fbc294384bd847b9811aadae",
+      "status": "ready",
+      "symbol": "GEHC"
+    },
+    "GOOGL": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "77c83ba4cd796c9e61684f1a15a7590574b9c29cb2f135210adde1e03eff946e",
+      "status": "ready",
+      "symbol": "GOOGL"
+    },
+    "HIMS": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "f58cb0ca172ae4ec2a2b41656f8463a3d205f8dec619ca670cecdbfab39f2b0d",
+      "status": "ready",
+      "symbol": "HIMS"
+    },
+    "HIMX": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "2509f6bd1700f58c83a4ab2743dca953692604deb394212ef664e648343431d4",
+      "status": "ready",
+      "symbol": "HIMX"
+    },
+    "HON": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "1b30bf60190f08813966bff898d27be5678bf555ba19e7337862f8c329d87856",
+      "status": "ready",
+      "symbol": "HON"
+    },
+    "HOOD": {
+      "first_date": "2021-07-29",
+      "last_date": "2026-08-21",
+      "rows": 1272,
+      "sha256": "400fbdd3f52246e87b6bf456a10a94cb4c6a5d90cd53728a5a8be6e38a0fa3f5",
+      "status": "ready",
+      "symbol": "HOOD"
+    },
+    "INTC": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "3d72c660bc94e95d0281b3de6cfad84cb0b035b775993de3a943883212eb813b",
+      "status": "ready",
+      "symbol": "INTC"
+    },
+    "INTU": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "9988ae5b867234e8772cc3eb531982be9811524ab37d10a8c936d78c95078c24",
+      "status": "ready",
+      "symbol": "INTU"
+    },
+    "IREN": {
+      "first_date": "2021-11-17",
+      "last_date": "2026-08-21",
+      "rows": 1194,
+      "sha256": "c15924f3bb55a4126510baa4a7ea32facc476733e815d782d7d2ca3022e47c73",
+      "status": "ready",
+      "symbol": "IREN"
+    },
+    "ISRG": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "d401fc163598c7abe0e09418244b0ef49bb341e65fbcb34f1e78e3dd0c9aa8ec",
+      "status": "ready",
+      "symbol": "ISRG"
+    },
+    "KLAC": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "2734cf9eee584edbfd7bb1abe4b915fe14738eb8e10f383115475d283224b0fb",
+      "status": "ready",
+      "symbol": "KLAC"
+    },
+    "LIN": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "cac187c2b725450b2785c9051bf31b30f355fd32da4f034665ea578371ae55da",
+      "status": "ready",
+      "symbol": "LIN"
+    },
+    "LITE": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "7a6a959a1a02dcf8488791c5a58729a76979a74090c7df2f2c60e568bc2280cb",
+      "status": "ready",
+      "symbol": "LITE"
+    },
+    "LRCX": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "85581ae79a8105dc28eba4a3cb7953f522e948bc16d6987a177784e99ba86efb",
+      "status": "ready",
+      "symbol": "LRCX"
+    },
+    "MELI": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "311202d8fd04044dbb2b15b8be8e83913f5f6a6b4ba10f46371841aff9effbd8",
+      "status": "ready",
+      "symbol": "MELI"
+    },
+    "META": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "27da555f6c114ad95fb3d6ac2659c27b86db5b0bf49141300dc5dbefe9b49086",
+      "status": "ready",
+      "symbol": "META"
+    },
+    "MPWR": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "b15f3691c754fd190ed5a3b575cf54707d5a5b720b80e65a4515032bdc3a7d87",
+      "status": "ready",
+      "symbol": "MPWR"
+    },
+    "MRVL": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "56e8d55e23e06a30b0158cde0964022ca98e98190c9915496f3880bbd9fa6a73",
+      "status": "ready",
+      "symbol": "MRVL"
+    },
+    "MSFT": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "5475b3a149dec73711d753b55e10418eedda174d005771bca4d64ebacf59a475",
+      "status": "ready",
+      "symbol": "MSFT"
+    },
+    "MU": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "6fe57d1153c6aa172e7137e26f4c0c39640c88fa829a7ab736041c7a2291b0d4",
+      "status": "ready",
+      "symbol": "MU"
+    },
+    "NBIS": {
+      "first_date": "2024-10-21",
+      "last_date": "2026-08-21",
+      "rows": 460,
+      "sha256": "4bd5aea1affc8cc8cee3d66028b8c8c46045ca1a5102208c327f25a1958f15a6",
+      "status": "ready",
+      "symbol": "NBIS"
+    },
+    "NFLX": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "cad3c611c25ec35399025c7e446f003adbfd059448b7854960d75459846dac2b",
+      "status": "ready",
+      "symbol": "NFLX"
+    },
+    "NOK": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "906382ec144a704c53259efa95693096a44e3374c2e34c26dfd2ea72aa6d6e73",
+      "status": "ready",
+      "symbol": "NOK"
+    },
+    "NVDA": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "769f1beb1cdfb3c2577b793b233af3a00826fee185614d8be85a5d7ed6c2b295",
+      "status": "ready",
+      "symbol": "NVDA"
+    },
+    "ORCL": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "bdb699bdd993eb1e6986a242eea457808bb9face77bbfa2984990e2c88987a51",
+      "status": "ready",
+      "symbol": "ORCL"
+    },
+    "ORLY": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "c09438af9eec85997bdcbcfa467ddc13aec867b43a568a4279980d73c8a466e8",
+      "status": "ready",
+      "symbol": "ORLY"
+    },
+    "PANW": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "c6ec40496d87768408795ea3223120facfb15d54c9ad741f9e1dd6317a790d24",
+      "status": "ready",
+      "symbol": "PANW"
+    },
+    "PDD": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "807444678505dd8f5abec85362e81e7c4cb6aa909d0ef7059b2e94f69be766ff",
+      "status": "ready",
+      "symbol": "PDD"
+    },
+    "PEP": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "e417ac6b6173416e8507790aa594cabed516cc3696f4c2236f6a3c80f045fd30",
+      "status": "ready",
+      "symbol": "PEP"
+    },
+    "PLTR": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "621f54080a01cce45c35f6048cce3d4695794443f8ac83e0ad42f6f7c1442ae3",
+      "status": "ready",
+      "symbol": "PLTR"
+    },
+    "POET": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "eae4a9c4c21a840da3ee82c3eeab7245974bf9808880c51838fccdde3cc1b05b",
+      "status": "ready",
+      "symbol": "POET"
+    },
+    "PWR": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "44281534e0bd3a8637a50faf3cf552a9a8ecb3e47845a00679421be7e4fb9d54",
+      "status": "ready",
+      "symbol": "PWR"
+    },
+    "QCOM": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "f983f1ef999612a4fe933b1c5a2695da60aadcbcabb538b8a546763746dd7e79",
+      "status": "ready",
+      "symbol": "QCOM"
+    },
+    "QQQ": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "584c52f7b1eea3ffc79b2eb4bec4755483521d3606b4dcd84bb4d9550af7dab2",
+      "status": "ready",
+      "symbol": "QQQ"
+    },
+    "QQQI": {
+      "first_date": "2024-01-30",
+      "last_date": "2026-08-21",
+      "rows": 643,
+      "sha256": "4e667e1c78119dbd7ef878e195ca9eedbd3cca5d8bef2a4213f69681a1c3829a",
+      "status": "ready",
+      "symbol": "QQQI"
+    },
+    "REGN": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "7a5387af47f6c8826e5136c31284fc8b7c0fe7e1e9037924695f0ef150cad08c",
+      "status": "ready",
+      "symbol": "REGN"
+    },
+    "ROP": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "fc6c20d123621e9d7927b3468f9cc5e1526734606fcdbe8bdb95490bc9abe705",
+      "status": "ready",
+      "symbol": "ROP"
+    },
+    "SBGSY": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "67a5fafbd18e56a0f47b96a861578173686b856ec50fc89ab3fa1274ea222d4b",
+      "status": "ready",
+      "symbol": "SBGSY"
+    },
+    "SGOV": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "1592dd5b25df7292df3cb803ae2db60eabfd7367288b28b32e25eea1cd0ee7f3",
+      "status": "ready",
+      "symbol": "SGOV"
+    },
+    "SHOP": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "174c49191a0889595ccac244495cfcb6ad64abb7aa12ed26440fa09e8a63ae60",
+      "status": "ready",
+      "symbol": "SHOP"
+    },
+    "SNDK": {
+      "first_date": "2025-02-13",
+      "last_date": "2026-08-21",
+      "rows": 382,
+      "sha256": "980412bde727aa0004dc186dd0fff42f48faf708033910c8ecec0596340d8da4",
+      "status": "ready",
+      "symbol": "SNDK"
+    },
+    "SNPS": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "5d67f1856d2f752799bcc385c00b0703c5bd66470cde6e03520a706d6fedb6dc",
+      "status": "ready",
+      "symbol": "SNPS"
+    },
+    "TEM": {
+      "first_date": "2024-06-14",
+      "last_date": "2026-08-21",
+      "rows": 548,
+      "sha256": "944dcbccec2c343d883b3ced631751c7a236c0fee8f2ae059d447742ed78318c",
+      "status": "ready",
+      "symbol": "TEM"
+    },
+    "TIGO": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "18ccf4d39a4ba90c9352cf0fc5378dd1016022c37762b2b63ebb137591667609",
+      "status": "ready",
+      "symbol": "TIGO"
+    },
+    "TMUS": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "ad28a30d730f3fdeee94cbd660a7f8d17929c327637b927fee682fe0fa85d50c",
+      "status": "ready",
+      "symbol": "TMUS"
+    },
+    "TQQQ": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "9ffd65355b0c92bfc4e020055f76ade4f2758b8efbaa334c4072fbc953f58949",
+      "status": "ready",
+      "symbol": "TQQQ"
+    },
+    "TSLA": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "57a61bfdfaf6e37a9455f94bdbc27d88bbe515affcde7344ab7368c12447617d",
+      "status": "ready",
+      "symbol": "TSLA"
+    },
+    "TSM": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "a430738089db306550e4116c45d2fa02f042c38fab09408a35d319836bc6466d",
+      "status": "ready",
+      "symbol": "TSM"
+    },
+    "TTWO": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "9c0331c6e4d9222aad9607f435ddfb416400844f3c1bb91af412ade812ee4a60",
+      "status": "ready",
+      "symbol": "TTWO"
+    },
+    "TYGO": {
+      "first_date": "2021-09-03",
+      "last_date": "2026-08-21",
+      "rows": 1246,
+      "sha256": "306a6d63d867ae0e1a400b93522bbf26a916be620cc31dd6fff713069281eb05",
+      "status": "ready",
+      "symbol": "TYGO"
+    },
+    "VRT": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "4fcd52964a94df31d942213e9778c11fc34cb7ae25f3c14d24a4f1daea1ca027",
+      "status": "ready",
+      "symbol": "VRT"
+    },
+    "VRTX": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "1b1e4a241d124e9c4e1ece8b26a0c3467d4e660204206f689e8a93cfc50d6c87",
+      "status": "ready",
+      "symbol": "VRTX"
+    },
+    "WDC": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "ab8d4e2179b2e020b84a0686f605014d571a5699b4633b00ff3f8a32fffd885e",
+      "status": "ready",
+      "symbol": "WDC"
+    },
+    "WMT": {
+      "first_date": "2021-01-04",
+      "last_date": "2026-08-21",
+      "rows": 1415,
+      "sha256": "2e40efbda242c5b3c99a4421c555230f16d0c693f6d25eda70b6225f2091b5df",
+      "status": "ready",
+      "symbol": "WMT"
+    }
+  },
+  "all_sources_current": false,
+  "all_sources_ready": true,
+  "auxiliary_symbols": [
+    "QQQI",
+    "TQQQ",
+    "SGOV"
+  ],
+  "before": {
+    "AAOI": {
+      "first_date": "2021-01-04",
       "last_date": "2026-08-20",
       "rows": 1414,
       "sha256": "5e1ed2f774d62de96c9bc629aed682869a12d5a00ab958aa4ba37a29fc5ba146",
@@ -737,751 +1482,6 @@
       "symbol": "WMT"
     }
   },
-  "all_sources_current": false,
-  "all_sources_ready": true,
-  "auxiliary_symbols": [
-    "QQQI",
-    "TQQQ",
-    "SGOV"
-  ],
-  "before": {
-    "AAOI": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "9eb0d7313145dfd3f73f7891b7b8a6470e170b8f9974f426456a5e7ec78b6acb",
-      "status": "ready",
-      "symbol": "AAOI"
-    },
-    "AAPL": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "0d655db5e8baea5eb728c7b0e82af8b0359c91c021833917b8de62adbc57c024",
-      "status": "ready",
-      "symbol": "AAPL"
-    },
-    "ABBNY": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "19f81cf5589e1bb2a54b26d1a3933dde58db3328558e2e9a8388d88572e33a19",
-      "status": "ready",
-      "symbol": "ABBNY"
-    },
-    "ADP": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "f29fab264e2c922cbf1285b49f18cbfc6cdfe88d3923483e1250995b02e36628",
-      "status": "ready",
-      "symbol": "ADP"
-    },
-    "ADSK": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "20501172a0961f13c57b16f6ee32885cc18f002cff8b4f68d06de750c5384db8",
-      "status": "ready",
-      "symbol": "ADSK"
-    },
-    "AEHR": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "a7bba72aaa7dd00bb012d4ac57eaa700c55ad0e8f383785f1e97489b66b6556d",
-      "status": "ready",
-      "symbol": "AEHR"
-    },
-    "ALAB": {
-      "first_date": "2024-03-20",
-      "last_date": "2026-08-19",
-      "rows": 606,
-      "sha256": "736a4317351f2ac8464a0f27b87661a0625824325403e244c39b838a584b014d",
-      "status": "ready",
-      "symbol": "ALAB"
-    },
-    "AMAT": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "ed0bea70d677339b06e51c81fa08cb1a1fbc27dd41868212f80622f248f93b4e",
-      "status": "ready",
-      "symbol": "AMAT"
-    },
-    "AMD": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "0d03a3693b99bc6473bd1843e82ef91b0c880e88d8ff59489d55b5cb8ad73b84",
-      "status": "ready",
-      "symbol": "AMD"
-    },
-    "AMZN": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "f69b2d4603d2e9e79fe6240d6a39fad05a6cbde04c9c63ea0bfd476bdbf4d2cd",
-      "status": "ready",
-      "symbol": "AMZN"
-    },
-    "ANET": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "278b15302fc8c1c5483d1f36beb58fce71ce06550686b1507edb7963c779d6dd",
-      "status": "ready",
-      "symbol": "ANET"
-    },
-    "APP": {
-      "first_date": "2021-04-15",
-      "last_date": "2026-08-19",
-      "rows": 1343,
-      "sha256": "0c1fbc06a75963a2194106c9d14c8fd062446dbf426e453b6d905f6555fae2e3",
-      "status": "ready",
-      "symbol": "APP"
-    },
-    "ARM": {
-      "first_date": "2023-09-14",
-      "last_date": "2026-08-19",
-      "rows": 735,
-      "sha256": "4032cac2663b336324ecf10f05d27ce57f754ed95c8a1b95097872642cb56fb8",
-      "status": "ready",
-      "symbol": "ARM"
-    },
-    "ASML": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "72b656395e0ab7d8372cc3455f2cfe0a4fd1ea4114e9a74391f61b3deacc759c",
-      "status": "ready",
-      "symbol": "ASML"
-    },
-    "AVGO": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "0548d53fb6421b25d40ce75defc6cf6968eaf8fc971ac9816f6936048d444699",
-      "status": "ready",
-      "symbol": "AVGO"
-    },
-    "AXON": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "e38c6c63b8ee6896a8389cc146c0833fa14edffb2175093b2bb7ac8ef89f0a41",
-      "status": "ready",
-      "symbol": "AXON"
-    },
-    "BE": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "fb1c539d6a346bb25447fa6453dc98d6a4c8023dca7721b8380daceb891d1a43",
-      "status": "ready",
-      "symbol": "BE"
-    },
-    "BKNG": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "c06ff8f35932ddf8047a26f305b7182caf13c4a53dbdd207f57ae331c4777627",
-      "status": "ready",
-      "symbol": "BKNG"
-    },
-    "BKR": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "6877e2b9d554e7fe05b195e11e665a868d51385ad35e82b391be56fc3a6f642c",
-      "status": "ready",
-      "symbol": "BKR"
-    },
-    "CDNS": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "7cef14bfedb9115882be789c83581f3f74de16464bb7ee63a1a524294aa31ec2",
-      "status": "ready",
-      "symbol": "CDNS"
-    },
-    "CEG": {
-      "first_date": "2022-01-19",
-      "last_date": "2026-08-19",
-      "rows": 1150,
-      "sha256": "12dd989de29b21afadbbb8967f080f67822b4e259edb5e588c278c0c7b3dca17",
-      "status": "ready",
-      "symbol": "CEG"
-    },
-    "CGDV": {
-      "first_date": "2022-02-24",
-      "last_date": "2026-08-19",
-      "rows": 1125,
-      "sha256": "a516d1a0f95d126d5d3a3d1113ce3fcf924aafd8890b5ffd70d54ffe51cd0a20",
-      "status": "ready",
-      "symbol": "CGDV"
-    },
-    "COHR": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "03a932a18b272a70016cdf397a1d095f860166fa87d689dbf9d962c3f48b32d7",
-      "status": "ready",
-      "symbol": "COHR"
-    },
-    "COST": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "8509fecc8b25cf9b680b0e63cbe59a1aac16a6a7bd3c3c985b964a122256bcfe",
-      "status": "ready",
-      "symbol": "COST"
-    },
-    "CPRT": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "66eef7f2753ea0d622c4e26f91b0728cefc7319cc990582dae04b5b51e8f9ee8",
-      "status": "ready",
-      "symbol": "CPRT"
-    },
-    "CRCL": {
-      "first_date": "2025-06-05",
-      "last_date": "2026-08-19",
-      "rows": 303,
-      "sha256": "eb6323889544c915ebc7e5dc579dd38a2ed8c280eb24698f767b474e9e65ce6b",
-      "status": "ready",
-      "symbol": "CRCL"
-    },
-    "CRDO": {
-      "first_date": "2022-01-27",
-      "last_date": "2026-08-19",
-      "rows": 1144,
-      "sha256": "2036413bfa9d2a2cd0c477cd0f6a9aefc36870c260fd441e44f44ee3cb940ce2",
-      "status": "ready",
-      "symbol": "CRDO"
-    },
-    "CRWD": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "b600286fb2fed61723a57304871c0b269400449b9c9659a9da03b7b95ba4c9ef",
-      "status": "ready",
-      "symbol": "CRWD"
-    },
-    "CSCO": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "faae43861461dd2bcf27bd78c3b7250e6a8d90a5ce62d77f7aac903b1d2ee968",
-      "status": "ready",
-      "symbol": "CSCO"
-    },
-    "CTAS": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "f6ededb00fcdca8e79d5af511c5466b40b11947256dbd69e19578838e8a73987",
-      "status": "ready",
-      "symbol": "CTAS"
-    },
-    "DASH": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "3950ef0ebb67f00026938f86a3579f7d3cdb30ad32905da41c04652567b72038",
-      "status": "ready",
-      "symbol": "DASH"
-    },
-    "DDOG": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "d44821ad6f9ccd18cd2ff3c12094b6a27837309321a18029c8e5fd6e0e11884f",
-      "status": "ready",
-      "symbol": "DDOG"
-    },
-    "EA": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-04",
-      "rows": 1402,
-      "sha256": "cde49c03dc12849d3fcfc2a2608ef893f2929e610583eab3951fe8ac1efabec4",
-      "status": "ready",
-      "symbol": "EA"
-    },
-    "EME": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "99d82148a759b8e544233e2fbc9ace59524e8f8b503833a287511136fd6834d7",
-      "status": "ready",
-      "symbol": "EME"
-    },
-    "ETN": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "7af1f43527105aa3db532c031894d5b1409acdd79e84856576d360388b369d28",
-      "status": "ready",
-      "symbol": "ETN"
-    },
-    "FANG": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "c10847cdac27bb5eddfa5ec0a59b89d45cb99a82dde8a908f0f29d345c308ebf",
-      "status": "ready",
-      "symbol": "FANG"
-    },
-    "FIX": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "6b2ad80796ca0b31b7d0b0bf038d965cbc9047f8558e4c430c546c824ad3098b",
-      "status": "ready",
-      "symbol": "FIX"
-    },
-    "FN": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "6cb7998208ede9283c918142e4ed94722d497aa8e5513f5e0f4a79d6865183f2",
-      "status": "ready",
-      "symbol": "FN"
-    },
-    "GEHC": {
-      "first_date": "2022-12-15",
-      "last_date": "2026-08-19",
-      "rows": 921,
-      "sha256": "389e0e0e76773630b046ff9704b69e7144d82b9bd1f5a634f5e1cde4aa830181",
-      "status": "ready",
-      "symbol": "GEHC"
-    },
-    "GOOGL": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "4f8e4b67abacb84dfc6a1ddfc2c2504f2081c6deb79e35f135796af971bec2d2",
-      "status": "ready",
-      "symbol": "GOOGL"
-    },
-    "HIMS": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "dd54dbe62ab9f96148c14089d72c509a893cf6adff79c3f7a655ae29abc06d5e",
-      "status": "ready",
-      "symbol": "HIMS"
-    },
-    "HIMX": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "32c5fb185acf546c75fb062388d7be7db6956e7fe8952cb82011be787b7a1efe",
-      "status": "ready",
-      "symbol": "HIMX"
-    },
-    "HON": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "ae765371a24ece5fce5db4b1bea26022b99b8260b0ee71dea7098a2cb9126029",
-      "status": "ready",
-      "symbol": "HON"
-    },
-    "HOOD": {
-      "first_date": "2021-07-29",
-      "last_date": "2026-08-19",
-      "rows": 1270,
-      "sha256": "14c34333e9f678843261492bc51ee1919083128daaaf2084b64cb7b44b4ed3fc",
-      "status": "ready",
-      "symbol": "HOOD"
-    },
-    "INTC": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "ffdd427d9f8f2e325fc66641d689f08cc5334bce5b5e95e1cc80d83e11884999",
-      "status": "ready",
-      "symbol": "INTC"
-    },
-    "INTU": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "5747846da4c822e87ca6372ebc162fb27e33514935c7594ef3c5a53f4b6b23ae",
-      "status": "ready",
-      "symbol": "INTU"
-    },
-    "IREN": {
-      "first_date": "2021-11-17",
-      "last_date": "2026-08-19",
-      "rows": 1192,
-      "sha256": "892ccfb59682795f72aa67039a8646eda523802bf14e8e7614a052c8fd68087c",
-      "status": "ready",
-      "symbol": "IREN"
-    },
-    "ISRG": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "9d51bafb7ee885e83457c080cb1acf492f982a59b93813a88125103abe4742f5",
-      "status": "ready",
-      "symbol": "ISRG"
-    },
-    "KLAC": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "204c26e4ccf8d2ce6f6020afc5d0698231b3a82b5d67fa42579bae3745169f4a",
-      "status": "ready",
-      "symbol": "KLAC"
-    },
-    "LIN": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "5ab87f074c3350f766ded56a72097ad12c54bc73f946ea0e62a9e2404e4ac975",
-      "status": "ready",
-      "symbol": "LIN"
-    },
-    "LITE": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "335ca6fed9d69198468951eaa24302d4a2fc5d7680727318eb523e9c92501878",
-      "status": "ready",
-      "symbol": "LITE"
-    },
-    "LRCX": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "09c7b8201d06935e7d644cbede4028f30c8a12a862f29c1459f252214462ad63",
-      "status": "ready",
-      "symbol": "LRCX"
-    },
-    "MELI": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "661ff4fff31f5d9437b103cee414f0454bf4dcb66da5d27d933d6f6c935433fc",
-      "status": "ready",
-      "symbol": "MELI"
-    },
-    "META": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "0b709a6de403315893972d9d6abe4e46b42a5bf69a23486ade6d1a81f3b1a165",
-      "status": "ready",
-      "symbol": "META"
-    },
-    "MPWR": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "b3cee64f2c6787c7e40ca0af315342424742f7df9ad50b27c3109724ea71cd7b",
-      "status": "ready",
-      "symbol": "MPWR"
-    },
-    "MRVL": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "aa25dbbba49ca418320b1f4cee3b22e6009a927255c84de9f5852ca13249c869",
-      "status": "ready",
-      "symbol": "MRVL"
-    },
-    "MSFT": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "c88c9921a089aa1f59caa577831639ca46146b3ed9736e2109e5ab89dc6ead3b",
-      "status": "ready",
-      "symbol": "MSFT"
-    },
-    "MU": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "25d4f2b55ddbb656d9286a09004dc014787d5643ce66ec740e1ef979cff86157",
-      "status": "ready",
-      "symbol": "MU"
-    },
-    "NBIS": {
-      "first_date": "2024-10-21",
-      "last_date": "2026-08-19",
-      "rows": 458,
-      "sha256": "0ef16b311ada73f5b792b5abece726e1d71ed4b707f2ccc0a9b5b4039b5989ea",
-      "status": "ready",
-      "symbol": "NBIS"
-    },
-    "NFLX": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "c5522ad5a43d519cadddae6ef949e4dab633af2f811a55282fd0afd2964d0b35",
-      "status": "ready",
-      "symbol": "NFLX"
-    },
-    "NOK": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "38ddd79d43a736879031abfe825cec3d128cd0c7fae920fdf7e748b5f79a0db2",
-      "status": "ready",
-      "symbol": "NOK"
-    },
-    "NVDA": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "7438d329b5d9c70ce5e1d663af153e83f56e714a6bd5065a6b55c780ae618647",
-      "status": "ready",
-      "symbol": "NVDA"
-    },
-    "ORCL": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "19302d1a57cb6fe7d6ef711d56b444502f9077442742c00adaa1a025f878fdec",
-      "status": "ready",
-      "symbol": "ORCL"
-    },
-    "ORLY": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "41b5e2666da628ea654d2627938d9132b8b0fd6036f233da47c7ba4f0b2850fd",
-      "status": "ready",
-      "symbol": "ORLY"
-    },
-    "PANW": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "fa5a923c8e89d495374442aae99a1017bb0e4cdd34215e7ae8fbaa9c687e5c6a",
-      "status": "ready",
-      "symbol": "PANW"
-    },
-    "PDD": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "ad998a949125cacf30768e2de404bb19738a1a33d0d8fde7ba5501fb54ad5e8c",
-      "status": "ready",
-      "symbol": "PDD"
-    },
-    "PEP": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "208a4d05959740eb99853d7f10c8d208dcf9a597c5762bde1ed15a39a3c0e350",
-      "status": "ready",
-      "symbol": "PEP"
-    },
-    "PLTR": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "e5f050c4de16f360c35e378faed2afb58068028eaf9354b6ecc2b0b706d318b5",
-      "status": "ready",
-      "symbol": "PLTR"
-    },
-    "POET": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "b33bb06949348a575844299fe5f809d0efc498b58325428f647d801598619967",
-      "status": "ready",
-      "symbol": "POET"
-    },
-    "PWR": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "00c3f4eef68e8255d695c2692653961c736b45299cac6f6b366ef96e5a75ddab",
-      "status": "ready",
-      "symbol": "PWR"
-    },
-    "QCOM": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "e067c4d2f22f5b8a81f2ff3a015b086279092a11d501b971facc59362306cc0a",
-      "status": "ready",
-      "symbol": "QCOM"
-    },
-    "QQQ": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "648c4586b1f1245c06fcad1cd5ea32047051e9f0ffabea0b8399462ba00b59dd",
-      "status": "ready",
-      "symbol": "QQQ"
-    },
-    "QQQI": {
-      "first_date": "2024-01-30",
-      "last_date": "2026-08-19",
-      "rows": 641,
-      "sha256": "b2bc66bf5ef32458a78d8ded2eaf65e9646b7c2b1e3def3d3915e1a926fcfdd2",
-      "status": "ready",
-      "symbol": "QQQI"
-    },
-    "REGN": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "456705b6ddfcdb718461cc5ce532e2048799df841bc03900bcd1e2d0d72d8e76",
-      "status": "ready",
-      "symbol": "REGN"
-    },
-    "ROP": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "0b4f992c0805b5ef04c5ab35965502053795f432067160714db865d14792a832",
-      "status": "ready",
-      "symbol": "ROP"
-    },
-    "SBGSY": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "b391f1c09a2276cd89366b135197ac518724579a33294276e5d5f6186cf866c0",
-      "status": "ready",
-      "symbol": "SBGSY"
-    },
-    "SGOV": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "671cc3cf7344ddb87588c0060d8e7f151b958dc8f80fab626a4b1edabbf3c3dd",
-      "status": "ready",
-      "symbol": "SGOV"
-    },
-    "SHOP": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "b6e854d76630911c3036a1a0802b2a795fbecdfd587c9b52c63ad9a9dc39b9b3",
-      "status": "ready",
-      "symbol": "SHOP"
-    },
-    "SNDK": {
-      "first_date": "2025-02-13",
-      "last_date": "2026-08-19",
-      "rows": 380,
-      "sha256": "09eb4e39de5c5166f1f2c46bca7e7bf31fbfabb726359869bb2bc7a1f9d4f9bf",
-      "status": "ready",
-      "symbol": "SNDK"
-    },
-    "SNPS": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "01080cd526eeac2e03e0cff7f208d715654af0de855a13de1315af069a0494ca",
-      "status": "ready",
-      "symbol": "SNPS"
-    },
-    "TEM": {
-      "first_date": "2024-06-14",
-      "last_date": "2026-08-19",
-      "rows": 546,
-      "sha256": "8f3009632a748b4a1cfc853f1260e7676132420b6d57d9248c5aad59ef183dcc",
-      "status": "ready",
-      "symbol": "TEM"
-    },
-    "TIGO": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "17c68467af978f6fb95b2f7b2c039d63fa18e17b1a891735564d9c9b9d27f09a",
-      "status": "ready",
-      "symbol": "TIGO"
-    },
-    "TMUS": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "72baaaa48125d3c01822cd342e063ab515418c0e63948fc99e3071c3fa8adcbf",
-      "status": "ready",
-      "symbol": "TMUS"
-    },
-    "TQQQ": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "70d8cfb513037831ade5e496f2e54c802081864b851e5f807d18f43714840538",
-      "status": "ready",
-      "symbol": "TQQQ"
-    },
-    "TSLA": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "443b47d6ed2a9694cf8cc03e8854d7f80f535f0e3ec445379fbfd2e3f5b94793",
-      "status": "ready",
-      "symbol": "TSLA"
-    },
-    "TSM": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "610b3181ad966ab58910269ba5db9b9eac14a9bf8311460b4b2e2f382e016a0a",
-      "status": "ready",
-      "symbol": "TSM"
-    },
-    "TTWO": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "878ccf38ec34483065a1090df9f17350ecb51e5048286d5cb8f8885670937892",
-      "status": "ready",
-      "symbol": "TTWO"
-    },
-    "TYGO": {
-      "first_date": "2021-09-03",
-      "last_date": "2026-08-19",
-      "rows": 1244,
-      "sha256": "daaad8180772288b3abe7602826cf1894212a33ddd6702ce42e881af97783fa7",
-      "status": "ready",
-      "symbol": "TYGO"
-    },
-    "VRT": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "745d7db2785e32871c9e38271650066ff46b3cbf8210978bc46d277a01f78554",
-      "status": "ready",
-      "symbol": "VRT"
-    },
-    "VRTX": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "1f04a8e314898588f90df036048f3ecc39400748145d8197f3692b534792b512",
-      "status": "ready",
-      "symbol": "VRTX"
-    },
-    "WDC": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "25396bfd1a43df16fefc90bcd2f224f155539914f62634573b8bd0ed37bfb56e",
-      "status": "ready",
-      "symbol": "WDC"
-    },
-    "WMT": {
-      "first_date": "2021-01-04",
-      "last_date": "2026-08-19",
-      "rows": 1413,
-      "sha256": "c24422c646667e9804f553f70d4d3f1ccc7e6b19665f78d577b36415d18c79dd",
-      "status": "ready",
-      "symbol": "WMT"
-    }
-  },
   "benchmark": "QQQ",
   "candidate_count": 87,
   "candidate_symbols": [
@@ -1576,7 +1576,7 @@
   "comparison_reference_symbols": [
     "CGDV"
   ],
-  "cutoff": "2026-08-20",
+  "cutoff": "2026-08-21",
   "evidence_type": "selected_pool_price_refresh_v1",
   "failed_symbols": [],
   "failure_count": 0,
@@ -1638,7 +1638,7 @@
     "schema_version": "1.2",
     "selection_mode": "credential_aware_fallback"
   },
-  "provider_identity_sha256": "49cbb4b22daa0e2a78761cb7f6904a5257be9bd052a1cdadcb957901ac86b847",
+  "provider_identity_sha256": "ae918e14973d2830ab035805516ba40f1911d5d2cb3d208ab1f436150801dfe5",
   "quarantined_symbols": [],
   "records": [
     {
@@ -1646,10 +1646,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -1673,6 +1675,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "AAOI",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -1681,8 +1684,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "5e1ed2f774d62de96c9bc629aed682869a12d5a00ab958aa4ba37a29fc5ba146",
+      "last_date": "2026-08-21",
+      "output_sha256": "d713f0e6547438be261bbaba91fc3169382753bc39f1bcdbf62eee5c0534bbb1",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1706,7 +1709,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AAOI",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "AAOI"
     },
     {
@@ -1714,10 +1717,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -1741,6 +1746,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "AAPL",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -1749,8 +1755,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "ffadd3921e2029bf16b4ecd591276f6005d95305ed8feb61a0d67cdf7163667d",
+      "last_date": "2026-08-21",
+      "output_sha256": "b2e99e12629dfa8eaf58d5469583ad51c224f1625bc57c851c06817755c34f6f",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1774,7 +1780,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AAPL",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "AAPL"
     },
     {
@@ -1782,10 +1788,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -1809,6 +1817,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ABBNY",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -1817,8 +1826,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "266639debb07032b7596a13f8e8285af1fd65aca59d3bfab66da6624948fe53e",
+      "last_date": "2026-08-21",
+      "output_sha256": "b8c8a9e1990faa0fe9d0161254f8591b19a6b062f9236a30bc1f20b56573511b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1842,7 +1851,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ABBNY",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "ABBNY"
     },
     {
@@ -1850,10 +1859,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -1877,6 +1888,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ADP",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -1885,8 +1897,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "90d2b31aa16c1b8a44abe592ab805c45eb0a74b5d3c3b98513fef202497218b7",
+      "last_date": "2026-08-21",
+      "output_sha256": "cd2d600f125ee5f69d5d315ce616fa67a1e4df5a4f972e2f5158b40ef6434e66",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1910,7 +1922,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ADP",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "ADP"
     },
     {
@@ -1918,10 +1930,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -1945,6 +1959,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ADSK",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -1953,8 +1968,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "6efdfcc39da413163ab78c5c47edb46487ac3e169a6fad80cac88985ead38391",
+      "last_date": "2026-08-21",
+      "output_sha256": "0375ab763cf69ef0005bdc6f299faa460e094a3f6069768ea3bf475697776749",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -1978,7 +1993,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ADSK",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "ADSK"
     },
     {
@@ -1986,10 +2001,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2013,6 +2030,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ALAB",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2021,8 +2039,8 @@
       ],
       "first_date": "2024-03-20",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "075c0e95210dceb32716aca84807c20adb450275266cfd52d778756c2cdc36d1",
+      "last_date": "2026-08-21",
+      "output_sha256": "c58d7f57f24a3ad077b0ef7f627a5e77f0bed31f34937150d6abedac4e3f4145",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2046,7 +2064,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ALAB",
-      "rows": 607,
+      "rows": 608,
       "symbol": "ALAB"
     },
     {
@@ -2054,10 +2072,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2081,6 +2101,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "AMAT",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2089,8 +2110,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "c3adc52cdb1a07a6d4afbfe6eb828c446cfbe392084ab9bdd29363cad18de628",
+      "last_date": "2026-08-21",
+      "output_sha256": "10ad2f42b29f999df9d99a9b21f753eda150b63bd55dc6eaee374cba8bab61c3",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2114,7 +2135,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AMAT",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "AMAT"
     },
     {
@@ -2122,10 +2143,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2149,6 +2172,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "AMD",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2157,8 +2181,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "2ee03464f0ce9ee9cf2756fd1829fee0b4948d9ae99a253c185d80b27e96eaef",
+      "last_date": "2026-08-21",
+      "output_sha256": "57f3e8a611db5761227979c4923c58001c7fb8c55a5f9c95dceb92ac616411cf",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2182,7 +2206,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AMD",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "AMD"
     },
     {
@@ -2190,10 +2214,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2217,6 +2243,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "AMZN",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2225,8 +2252,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "4a1c05b915e0b865dd96a4bf7194f91b27318612fcef1c8873ac4bde1362eb55",
+      "last_date": "2026-08-21",
+      "output_sha256": "a3a1d87109f1263228aeaa5c0bf5887dd02da517bf7763b9712533f9abe3effb",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2250,7 +2277,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AMZN",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "AMZN"
     },
     {
@@ -2258,10 +2285,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2285,6 +2314,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ANET",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2293,8 +2323,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "b6b832a64597703e19c9829c9c7f8fe1485ad255b1cfab2391ef0316a328f6e2",
+      "last_date": "2026-08-21",
+      "output_sha256": "8e065167cd46dc80163261c3ab491f0b6ef2afd6eff2cf893dd8cbd9b3f7db6c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2318,7 +2348,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ANET",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "ANET"
     },
     {
@@ -2326,10 +2356,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2353,6 +2385,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "APP",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2361,8 +2394,8 @@
       ],
       "first_date": "2021-04-15",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "cfecc9b5828419da690d17ffdd033cfc33169c8ad319151634afbdb6197b6d45",
+      "last_date": "2026-08-21",
+      "output_sha256": "604547832f5f41117bc0b9063ec070ac6d80a0a97d302c6b0425df8e5f806c1a",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2386,7 +2419,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "APP",
-      "rows": 1344,
+      "rows": 1345,
       "symbol": "APP"
     },
     {
@@ -2394,10 +2427,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2421,6 +2456,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ARM",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2429,8 +2465,8 @@
       ],
       "first_date": "2023-09-14",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "5e2b41d61db13647652e22820a7bd928be1c339c323e9acacec3264d39234ea3",
+      "last_date": "2026-08-21",
+      "output_sha256": "67a552769f70c96370a8b58f7fb019bb2746b8e9c6c7dcfc06f41a8ff10ca020",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2454,7 +2490,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ARM",
-      "rows": 736,
+      "rows": 737,
       "symbol": "ARM"
     },
     {
@@ -2462,10 +2498,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2489,6 +2527,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ASML",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2497,8 +2536,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "00af0880396b8119008ce2ae160a338ae2042d385a80456fdb09c32110fc98b0",
+      "last_date": "2026-08-21",
+      "output_sha256": "a1af2978c68a79336f86cc92d2b1e12b6b0a78248a16731f025a52b82c6329bf",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2522,7 +2561,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ASML",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "ASML"
     },
     {
@@ -2530,10 +2569,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2557,6 +2598,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "AVGO",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2565,8 +2607,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "6a52f4d7fb33079f065b8d78bc279add26447084d013f2f4ec96b72562ccdd1f",
+      "last_date": "2026-08-21",
+      "output_sha256": "068d6e0af931926b3eac613c4f03bb05dcaa37983c0678cf78bfb77fd1a9521d",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2590,7 +2632,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AVGO",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "AVGO"
     },
     {
@@ -2598,10 +2640,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2625,6 +2669,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "AXON",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2633,8 +2678,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "23ba3414ff8d3e4e37978888b4597c0d2d3ed4908309d59ba733e17dfb40c24b",
+      "last_date": "2026-08-21",
+      "output_sha256": "93ceea9db4ba9e5624457aa1827a4f48e0c4696f1192d975e50673530d3d4676",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2658,7 +2703,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AXON",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "AXON"
     },
     {
@@ -2666,10 +2711,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2693,6 +2740,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "BE",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2701,8 +2749,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "d5a3a7f5fe1c5c254c7036a3af164c55ecba015afb8174555d3b815bb26df12c",
+      "last_date": "2026-08-21",
+      "output_sha256": "619f33d39206cb031a06442eb0744d90ce15a82b5d37d62b80930c395d080bd3",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2726,7 +2774,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "BE",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "BE"
     },
     {
@@ -2734,10 +2782,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2761,6 +2811,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "BKNG",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2769,8 +2820,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "cf1e6bd7183e843e9dc77484dbee1a5aa10e72f8319ca986df16aebcb93af56e",
+      "last_date": "2026-08-21",
+      "output_sha256": "2e14785a286bb609eca3715b87da94fb8d6bac4c937694e49755013f0369a652",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2794,7 +2845,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "BKNG",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "BKNG"
     },
     {
@@ -2802,10 +2853,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2829,6 +2882,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "BKR",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2837,8 +2891,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "9ef45af463693c6e31d593ecabbef35301e6aaf81a4f9280d84913c11701c172",
+      "last_date": "2026-08-21",
+      "output_sha256": "4ea51e27b68e673f4f15dd743888d50e82411c478a28f322ffb8f2aaf75ea9f6",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2862,7 +2916,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "BKR",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "BKR"
     },
     {
@@ -2870,10 +2924,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2897,6 +2953,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "CDNS",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2905,8 +2962,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "4e4672128c88425343eea72be5b5edbb6c80116bc80c6c344d8b4e05204708cd",
+      "last_date": "2026-08-21",
+      "output_sha256": "4693346d770941fbd785ba68b71e1481609e487d350b90846c8cf3978aa894bc",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2930,7 +2987,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CDNS",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "CDNS"
     },
     {
@@ -2938,10 +2995,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -2965,6 +3024,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "CEG",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -2973,8 +3033,8 @@
       ],
       "first_date": "2022-01-19",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "3cb2c4b9779c6cb7db44997cb014186c5c643c5816b49c1980a9b7876172da1a",
+      "last_date": "2026-08-21",
+      "output_sha256": "30c384ba0a034e6449db4b4b273541993f5f4f9caf356546fe738f021e3ad6e6",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -2998,7 +3058,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CEG",
-      "rows": 1151,
+      "rows": 1152,
       "symbol": "CEG"
     },
     {
@@ -3006,10 +3066,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3033,6 +3095,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "COHR",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3041,8 +3104,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "9ff79202b0a924f8d4b0a80193393fde1c693196a77932c4b774cf9640a68958",
+      "last_date": "2026-08-21",
+      "output_sha256": "8cc0bba5a541bbad270587037112bcc69814b6d8d1a81f9579df4ab6e57f06be",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3066,7 +3129,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "COHR",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "COHR"
     },
     {
@@ -3074,10 +3137,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3101,6 +3166,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "COST",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3109,8 +3175,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "22cb185afc293a4245b3d8949cf6affcdb1a955e5dc153c551f597955fe3d4de",
+      "last_date": "2026-08-21",
+      "output_sha256": "9b17f9c93de88eb3e2db5eefb4dfb6c09f5c4d41063bf3414de3e05a8189e984",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3134,7 +3200,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "COST",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "COST"
     },
     {
@@ -3142,10 +3208,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3169,6 +3237,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "CPRT",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3177,8 +3246,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "636f3d37aeefc5e4283e93bab42d8960d12cf870837ef37bb63b484393618e86",
+      "last_date": "2026-08-21",
+      "output_sha256": "4f7369089c2d75e203102341ad3dac1602596a97ef0ed066939d23cbd2bdd410",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3202,7 +3271,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CPRT",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "CPRT"
     },
     {
@@ -3210,10 +3279,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3237,6 +3308,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "CRCL",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3245,8 +3317,8 @@
       ],
       "first_date": "2025-06-05",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "46603c25def1a6ebb814760bfebb77fecdebbee2539c816f0c194c241c1b6c71",
+      "last_date": "2026-08-21",
+      "output_sha256": "e5d8cc540d37d1c0a9f3139b9aee0295c001af7fd32e02d030425db23690953e",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3270,7 +3342,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CRCL",
-      "rows": 304,
+      "rows": 305,
       "symbol": "CRCL"
     },
     {
@@ -3278,10 +3350,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3305,6 +3379,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "CRWD",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3313,8 +3388,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "9291d44b9ddb9e1cdc2fbf9773f73eff8f991690b42777d2f41c6a22c609c396",
+      "last_date": "2026-08-21",
+      "output_sha256": "4909ed0fae442685f0533aac555a2d04315f93940497c3b623bcf2d6baef4a19",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3338,7 +3413,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CRWD",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "CRWD"
     },
     {
@@ -3346,10 +3421,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3373,6 +3450,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "CSCO",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3381,8 +3459,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "eb9742d1561b0dbe1a9605c6dd43150ae2bc9fdd0446782133c53e379743c1e4",
+      "last_date": "2026-08-21",
+      "output_sha256": "c7e85aea5461daa55ee6ca5fead93e46455a50b726e7f66b99bbafc85afd3bb1",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3406,7 +3484,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CSCO",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "CSCO"
     },
     {
@@ -3414,10 +3492,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3441,6 +3521,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "CTAS",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3449,8 +3530,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "eb4481be5785a54deda10acca1969888cba2e4f97b3130288eaa53a33df959a4",
+      "last_date": "2026-08-21",
+      "output_sha256": "15443415469d2a40626a9270a634a8a1225da849840e75c6f027866671096221",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3474,7 +3555,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CTAS",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "CTAS"
     },
     {
@@ -3482,10 +3563,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3509,6 +3592,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "DASH",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3517,8 +3601,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "14f2aeb1e11d122d96ca52517c9aa2978a89f495b68bf1dc5c402d694ac1b151",
+      "last_date": "2026-08-21",
+      "output_sha256": "418376056740a4ce975b8a7caf7a19ebbd39e95b7992a035308599513ae6b35c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3542,7 +3626,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "DASH",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "DASH"
     },
     {
@@ -3550,10 +3634,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3577,6 +3663,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "DDOG",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3585,8 +3672,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "f1d84ee2924ea9642f32c54ac42bcf2c0f3fe2f75d9155c1f3849862cfb30767",
+      "last_date": "2026-08-21",
+      "output_sha256": "33b7fa8adf03677cc15e675a68bb4056893aa98163f6a60ee3526e879908de94",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3610,7 +3697,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "DDOG",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "DDOG"
     },
     {
@@ -3645,10 +3732,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3672,6 +3761,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "EME",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3680,8 +3770,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "1cc94d92da4edc55577b6d9aee694c9be56b2d3ea90058bb835452dfcf79c600",
+      "last_date": "2026-08-21",
+      "output_sha256": "37a1a9c4fec0f8bab3debf7564970d043075b2d8260f8b56776ec34bd3ceaa1b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3705,7 +3795,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "EME",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "EME"
     },
     {
@@ -3713,10 +3803,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3740,6 +3832,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ETN",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3748,8 +3841,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "d28c0dcf643c403121ed39488a72f46a7323f74a3458ced61fcaa684fa0be6e0",
+      "last_date": "2026-08-21",
+      "output_sha256": "a6402ccad4f88e3d67fb0939d94c1f8af67acb52cb70c9d4445f2b2236aa8def",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3773,7 +3866,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ETN",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "ETN"
     },
     {
@@ -3781,10 +3874,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3808,6 +3903,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "FANG",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3816,8 +3912,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "7f572f54ad620dc3c2349cfa852bc099d571148b1c8708f95f08dd7fde13eb71",
+      "last_date": "2026-08-21",
+      "output_sha256": "9322561d7597345ba84d8cf62a5870a90e7762d316a4dd53b5e2ff6cff949cfb",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3841,7 +3937,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "FANG",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "FANG"
     },
     {
@@ -3849,10 +3945,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3876,6 +3974,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "FIX",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3884,8 +3983,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "daf392770fd31490dd254759f181a823261f485a314da640eb0516f32b015498",
+      "last_date": "2026-08-21",
+      "output_sha256": "993fde4083ac7ebcaa3762d512d3843bcc6d73e8a55f6326f9d1de8e2b436b5f",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3909,7 +4008,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "FIX",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "FIX"
     },
     {
@@ -3917,10 +4016,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -3944,6 +4045,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "FN",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -3952,8 +4054,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "c41b1f282d06c248ef8a155846e1ff9570fe453a185d8a92a7ec46c6f4fd841f",
+      "last_date": "2026-08-21",
+      "output_sha256": "d1b278d19651f0e98572a2ef7577ea4c4a474d1f679b3c4aaa72c556d4299f3b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -3977,7 +4079,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "FN",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "FN"
     },
     {
@@ -3985,10 +4087,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4012,6 +4116,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "GEHC",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4020,8 +4125,8 @@
       ],
       "first_date": "2022-12-15",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "e2c3761355e26778ed81177634c2ae7b0c9de42a52b1783e835c60fc93011a41",
+      "last_date": "2026-08-21",
+      "output_sha256": "d7d8d5c5cc9a5df9a2f88f7f355c3b375eb9b483fbc294384bd847b9811aadae",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4045,7 +4150,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "GEHC",
-      "rows": 922,
+      "rows": 923,
       "symbol": "GEHC"
     },
     {
@@ -4053,10 +4158,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4080,6 +4187,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "GOOGL",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4088,8 +4196,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "373aff31249c1441b4ce1ae1bbbf99672e6dfe7ac988bdf85eda340e73286a4b",
+      "last_date": "2026-08-21",
+      "output_sha256": "77c83ba4cd796c9e61684f1a15a7590574b9c29cb2f135210adde1e03eff946e",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4113,7 +4221,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "GOOGL",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "GOOGL"
     },
     {
@@ -4121,10 +4229,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4148,6 +4258,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "HON",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4156,8 +4267,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "71ad9352df8b922635dcb0670e029052844465f24d265849d94fafcae3ba41eb",
+      "last_date": "2026-08-21",
+      "output_sha256": "1b30bf60190f08813966bff898d27be5678bf555ba19e7337862f8c329d87856",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4181,7 +4292,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "HON",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "HON"
     },
     {
@@ -4189,10 +4300,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4216,6 +4329,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "HOOD",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4224,8 +4338,8 @@
       ],
       "first_date": "2021-07-29",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "ec1bad1ca182af0f0002e82ac0af836b2a6ec99b64a562154a9d59774dc0e61e",
+      "last_date": "2026-08-21",
+      "output_sha256": "400fbdd3f52246e87b6bf456a10a94cb4c6a5d90cd53728a5a8be6e38a0fa3f5",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4249,7 +4363,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "HOOD",
-      "rows": 1271,
+      "rows": 1272,
       "symbol": "HOOD"
     },
     {
@@ -4257,10 +4371,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4284,6 +4400,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "INTC",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4292,8 +4409,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "8139c3b68d111ab936da2451263cb65e9ce08bbf711da9421a393b6ef81065ed",
+      "last_date": "2026-08-21",
+      "output_sha256": "3d72c660bc94e95d0281b3de6cfad84cb0b035b775993de3a943883212eb813b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4317,7 +4434,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "INTC",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "INTC"
     },
     {
@@ -4325,10 +4442,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4352,6 +4471,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "INTU",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4360,8 +4480,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "11b5f8f35f312f9175e46655a627900857441d443a0b14753cb64e8bf75e78fe",
+      "last_date": "2026-08-21",
+      "output_sha256": "9988ae5b867234e8772cc3eb531982be9811524ab37d10a8c936d78c95078c24",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4385,7 +4505,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "INTU",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "INTU"
     },
     {
@@ -4393,10 +4513,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4420,6 +4542,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "IREN",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4428,8 +4551,8 @@
       ],
       "first_date": "2021-11-17",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "f1eded044598c865e8876c40892a796bafc9a60fce01692e1fe54dbc42fe5025",
+      "last_date": "2026-08-21",
+      "output_sha256": "c15924f3bb55a4126510baa4a7ea32facc476733e815d782d7d2ca3022e47c73",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4453,7 +4576,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "IREN",
-      "rows": 1193,
+      "rows": 1194,
       "symbol": "IREN"
     },
     {
@@ -4461,10 +4584,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4488,6 +4613,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ISRG",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4496,8 +4622,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "729ed336356b3a91a29ab43a60e989bb4864ebcee8b1f17865871ba2bc030c40",
+      "last_date": "2026-08-21",
+      "output_sha256": "d401fc163598c7abe0e09418244b0ef49bb341e65fbcb34f1e78e3dd0c9aa8ec",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4521,7 +4647,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ISRG",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "ISRG"
     },
     {
@@ -4529,10 +4655,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4556,6 +4684,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "KLAC",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4564,8 +4693,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "85fec64658b561bda2ae9d554a5cf9e0c8e0a39603d1d3744629248b4d60e88b",
+      "last_date": "2026-08-21",
+      "output_sha256": "2734cf9eee584edbfd7bb1abe4b915fe14738eb8e10f383115475d283224b0fb",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4589,7 +4718,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "KLAC",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "KLAC"
     },
     {
@@ -4597,10 +4726,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4624,6 +4755,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "LIN",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4632,8 +4764,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "47f3d277bbe697f2032f6f7cbc0fed4ca827af3b109c5788d28015cec73440cd",
+      "last_date": "2026-08-21",
+      "output_sha256": "cac187c2b725450b2785c9051bf31b30f355fd32da4f034665ea578371ae55da",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4657,7 +4789,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "LIN",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "LIN"
     },
     {
@@ -4665,10 +4797,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4692,6 +4826,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "LITE",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4700,8 +4835,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "f0401cc54713fdd724398afde6cfb41f75e320e13495ccfd60f181bc749b90e5",
+      "last_date": "2026-08-21",
+      "output_sha256": "7a6a959a1a02dcf8488791c5a58729a76979a74090c7df2f2c60e568bc2280cb",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4725,7 +4860,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "LITE",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "LITE"
     },
     {
@@ -4733,10 +4868,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4760,6 +4897,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "LRCX",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4768,8 +4906,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "dd6cb7ebd0a2ea8c3dc628e3e7644c60607218f20d165f674c97ea5fe1c9db4d",
+      "last_date": "2026-08-21",
+      "output_sha256": "85581ae79a8105dc28eba4a3cb7953f522e948bc16d6987a177784e99ba86efb",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4793,7 +4931,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "LRCX",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "LRCX"
     },
     {
@@ -4801,10 +4939,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4828,6 +4968,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "MELI",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4836,8 +4977,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "bfe72d2b449147d9d741b596aabd72c71dcaf38f1e1b4a42cbb2e8b0174d8e38",
+      "last_date": "2026-08-21",
+      "output_sha256": "311202d8fd04044dbb2b15b8be8e83913f5f6a6b4ba10f46371841aff9effbd8",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4861,7 +5002,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "MELI",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "MELI"
     },
     {
@@ -4869,10 +5010,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4896,6 +5039,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "META",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4904,8 +5048,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "0f7261664c7318d54b93cdc55d944dc311d073926c91b469653da7296a17c33e",
+      "last_date": "2026-08-21",
+      "output_sha256": "27da555f6c114ad95fb3d6ac2659c27b86db5b0bf49141300dc5dbefe9b49086",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4929,7 +5073,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "META",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "META"
     },
     {
@@ -4937,10 +5081,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -4964,6 +5110,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "MPWR",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -4972,8 +5119,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "9042e328e7630992fe207e7b7a6cced2b61b9cbaae08e50dc38b3ad438b78498",
+      "last_date": "2026-08-21",
+      "output_sha256": "b15f3691c754fd190ed5a3b575cf54707d5a5b720b80e65a4515032bdc3a7d87",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -4997,7 +5144,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "MPWR",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "MPWR"
     },
     {
@@ -5005,10 +5152,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5032,6 +5181,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "MRVL",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5040,8 +5190,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "7a56dc4db082b4b00aea64ce74d463c7b8794396134520e385c773c595603ec2",
+      "last_date": "2026-08-21",
+      "output_sha256": "56e8d55e23e06a30b0158cde0964022ca98e98190c9915496f3880bbd9fa6a73",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5065,7 +5215,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "MRVL",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "MRVL"
     },
     {
@@ -5073,10 +5223,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5100,6 +5252,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "MSFT",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5108,8 +5261,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "7220f2612ba9862fad5bc8ca73a53475282aee6780275a8d3062d60f78032c24",
+      "last_date": "2026-08-21",
+      "output_sha256": "5475b3a149dec73711d753b55e10418eedda174d005771bca4d64ebacf59a475",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5133,7 +5286,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "MSFT",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "MSFT"
     },
     {
@@ -5141,10 +5294,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5168,6 +5323,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "MU",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5176,8 +5332,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "af80f04bb37f1e5b7c8aff2adb8b06ddc52ede1fbeb14aeca3c9aaaaa1000146",
+      "last_date": "2026-08-21",
+      "output_sha256": "6fe57d1153c6aa172e7137e26f4c0c39640c88fa829a7ab736041c7a2291b0d4",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5201,7 +5357,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "MU",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "MU"
     },
     {
@@ -5209,10 +5365,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5236,6 +5394,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "NBIS",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5244,8 +5403,8 @@
       ],
       "first_date": "2024-10-21",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "b7db276f201300234b8b9385fa60fed42d22c8c8862958222980690066827250",
+      "last_date": "2026-08-21",
+      "output_sha256": "4bd5aea1affc8cc8cee3d66028b8c8c46045ca1a5102208c327f25a1958f15a6",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5269,7 +5428,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "NBIS",
-      "rows": 459,
+      "rows": 460,
       "symbol": "NBIS"
     },
     {
@@ -5277,10 +5436,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5304,6 +5465,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "NFLX",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5312,8 +5474,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "283e01cdf0cd0dd684d589b0b8bcb6b6845b87148791bdf2f8d228ea207a0cb5",
+      "last_date": "2026-08-21",
+      "output_sha256": "cad3c611c25ec35399025c7e446f003adbfd059448b7854960d75459846dac2b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5337,7 +5499,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "NFLX",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "NFLX"
     },
     {
@@ -5345,10 +5507,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5372,6 +5536,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "NVDA",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5380,8 +5545,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "abace81d4513c25d15e90acbf3195ed471d63472e0c16979a7b7042d4cadd8df",
+      "last_date": "2026-08-21",
+      "output_sha256": "769f1beb1cdfb3c2577b793b233af3a00826fee185614d8be85a5d7ed6c2b295",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5405,7 +5570,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "NVDA",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "NVDA"
     },
     {
@@ -5413,10 +5578,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5440,6 +5607,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ORLY",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5448,8 +5616,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "141ec6535817662fe4f7d4badbadcb7adedf1d8f074bdcfa4c44fe6dec1eb73e",
+      "last_date": "2026-08-21",
+      "output_sha256": "c09438af9eec85997bdcbcfa467ddc13aec867b43a568a4279980d73c8a466e8",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5473,7 +5641,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ORLY",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "ORLY"
     },
     {
@@ -5481,10 +5649,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5508,6 +5678,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "PANW",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5516,8 +5687,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "4aca94ad2d05bed8944bab12f9cff775e74127b0829ebbedc424a0cf6e2c97d9",
+      "last_date": "2026-08-21",
+      "output_sha256": "c6ec40496d87768408795ea3223120facfb15d54c9ad741f9e1dd6317a790d24",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5541,7 +5712,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "PANW",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "PANW"
     },
     {
@@ -5549,10 +5720,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5576,6 +5749,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "PDD",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5584,8 +5758,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "87251ae544b3a4df64b184676df77c86a92ab211ce72b4c3f1db4f1f303ef541",
+      "last_date": "2026-08-21",
+      "output_sha256": "807444678505dd8f5abec85362e81e7c4cb6aa909d0ef7059b2e94f69be766ff",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5609,7 +5783,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "PDD",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "PDD"
     },
     {
@@ -5617,10 +5791,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5644,6 +5820,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "PEP",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5652,8 +5829,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "fb505ad01d1334ac1e022859eee7e93f9891cfa84ad5de15d1f911f98ee9fa54",
+      "last_date": "2026-08-21",
+      "output_sha256": "e417ac6b6173416e8507790aa594cabed516cc3696f4c2236f6a3c80f045fd30",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5677,7 +5854,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "PEP",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "PEP"
     },
     {
@@ -5685,10 +5862,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5712,6 +5891,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "PLTR",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5720,8 +5900,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "d7b8a9b6e0ef245cf5aa5d077434caf16270eecb8f2afca6b54f4409393e13f3",
+      "last_date": "2026-08-21",
+      "output_sha256": "621f54080a01cce45c35f6048cce3d4695794443f8ac83e0ad42f6f7c1442ae3",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5745,7 +5925,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "PLTR",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "PLTR"
     },
     {
@@ -5753,10 +5933,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5780,6 +5962,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "PWR",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5788,8 +5971,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "57d9f6b2bdf2f656eac6dce777bc17947f217d7bcb2c72a25ca7e99a50f752f5",
+      "last_date": "2026-08-21",
+      "output_sha256": "44281534e0bd3a8637a50faf3cf552a9a8ecb3e47845a00679421be7e4fb9d54",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5813,7 +5996,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "PWR",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "PWR"
     },
     {
@@ -5821,10 +6004,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5848,6 +6033,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "QCOM",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5856,8 +6042,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "49a5a3d7828a471a8beba3c2bd37e791b8c4c16795bd680c601645a1856d9b16",
+      "last_date": "2026-08-21",
+      "output_sha256": "f983f1ef999612a4fe933b1c5a2695da60aadcbcabb538b8a546763746dd7e79",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5881,7 +6067,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "QCOM",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "QCOM"
     },
     {
@@ -5889,10 +6075,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5916,6 +6104,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "REGN",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5924,8 +6113,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "43b1c2f108af71b020fcdcb300a4580def7087a8cffa53a0f9f7e59417f45f17",
+      "last_date": "2026-08-21",
+      "output_sha256": "7a5387af47f6c8826e5136c31284fc8b7c0fe7e1e9037924695f0ef150cad08c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -5949,7 +6138,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "REGN",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "REGN"
     },
     {
@@ -5957,10 +6146,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -5984,6 +6175,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ROP",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -5992,8 +6184,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "9f517f488e680da88e03cd115aa7c96a1bbca5b05275a8359b55500fb9d406a8",
+      "last_date": "2026-08-21",
+      "output_sha256": "fc6c20d123621e9d7927b3468f9cc5e1526734606fcdbe8bdb95490bc9abe705",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6017,7 +6209,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ROP",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "ROP"
     },
     {
@@ -6025,10 +6217,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6052,6 +6246,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "SBGSY",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6060,8 +6255,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "83063fab18d1e1436e800b41096bf21d8f53961a65091b940005dd672b3256c0",
+      "last_date": "2026-08-21",
+      "output_sha256": "67a5fafbd18e56a0f47b96a861578173686b856ec50fc89ab3fa1274ea222d4b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6085,7 +6280,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "SBGSY",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "SBGSY"
     },
     {
@@ -6093,10 +6288,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6120,6 +6317,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "SHOP",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6128,8 +6326,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "b7fd89fbdf8215547104793bc8765b83774f02ba75fe2bcb722387a2755d475a",
+      "last_date": "2026-08-21",
+      "output_sha256": "174c49191a0889595ccac244495cfcb6ad64abb7aa12ed26440fa09e8a63ae60",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6153,7 +6351,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "SHOP",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "SHOP"
     },
     {
@@ -6161,10 +6359,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6188,6 +6388,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "SNPS",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6196,8 +6397,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "a5d2679d34e4a30ce34186f18041d18ad8563cbbbd732dc09dd26c519c81fc08",
+      "last_date": "2026-08-21",
+      "output_sha256": "5d67f1856d2f752799bcc385c00b0703c5bd66470cde6e03520a706d6fedb6dc",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6221,7 +6422,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "SNPS",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "SNPS"
     },
     {
@@ -6229,10 +6430,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6256,6 +6459,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "SNDK",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6264,8 +6468,8 @@
       ],
       "first_date": "2025-02-13",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "61a684ee29f42874fa86f6b0629602fa472a31df31394feaf3992d8bcd0b3b9c",
+      "last_date": "2026-08-21",
+      "output_sha256": "980412bde727aa0004dc186dd0fff42f48faf708033910c8ecec0596340d8da4",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6289,7 +6493,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "SNDK",
-      "rows": 381,
+      "rows": 382,
       "symbol": "SNDK"
     },
     {
@@ -6297,10 +6501,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6324,6 +6530,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "TEM",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6332,8 +6539,8 @@
       ],
       "first_date": "2024-06-14",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "f3ba919e275f5a44efd0432138e1b06e760e1d1f9a5abc1415b5dad43bb9dbc5",
+      "last_date": "2026-08-21",
+      "output_sha256": "944dcbccec2c343d883b3ced631751c7a236c0fee8f2ae059d447742ed78318c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6357,7 +6564,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TEM",
-      "rows": 547,
+      "rows": 548,
       "symbol": "TEM"
     },
     {
@@ -6365,10 +6572,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6392,6 +6601,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "TIGO",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6404,8 +6614,8 @@
         "expected_provider_symbol": "TIGO",
         "forbidden_substitute": "TYGO"
       },
-      "last_date": "2026-08-20",
-      "output_sha256": "7d3baad45084c067edf978750cebeaa7f93ebdc85152217f0a5b85ab80b2defb",
+      "last_date": "2026-08-21",
+      "output_sha256": "18ccf4d39a4ba90c9352cf0fc5378dd1016022c37762b2b63ebb137591667609",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6429,7 +6639,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TIGO",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "TIGO"
     },
     {
@@ -6437,10 +6647,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6464,6 +6676,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "TYGO",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6472,8 +6685,8 @@
       ],
       "first_date": "2021-09-03",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "0b5c52f892ecfaed8d0a6df9c66e01b3cb4f3f2b56e89f08d04c0db2bec28a17",
+      "last_date": "2026-08-21",
+      "output_sha256": "306a6d63d867ae0e1a400b93522bbf26a916be620cc31dd6fff713069281eb05",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6497,7 +6710,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TYGO",
-      "rows": 1245,
+      "rows": 1246,
       "symbol": "TYGO"
     },
     {
@@ -6505,10 +6718,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6532,6 +6747,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "TMUS",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6540,8 +6756,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "c1ed5dafcbfcaae486eb8784ddda2ed6b1d313cf93a5fc83049b6fe41b97b848",
+      "last_date": "2026-08-21",
+      "output_sha256": "ad28a30d730f3fdeee94cbd660a7f8d17929c327637b927fee682fe0fa85d50c",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6565,7 +6781,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TMUS",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "TMUS"
     },
     {
@@ -6573,10 +6789,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6600,6 +6818,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "TSLA",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6608,8 +6827,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "85f0f908c27bc4cd9e6a06b50c13d76d92bf771d2834ee1cff805bd5070a40d2",
+      "last_date": "2026-08-21",
+      "output_sha256": "57a61bfdfaf6e37a9455f94bdbc27d88bbe515affcde7344ab7368c12447617d",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6633,7 +6852,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TSLA",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "TSLA"
     },
     {
@@ -6641,10 +6860,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6668,6 +6889,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "TTWO",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6676,8 +6898,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "ba40c2b0c6853866ef58f455c84491b4fdabeaf79d26f51d4b903e73fdee43b5",
+      "last_date": "2026-08-21",
+      "output_sha256": "9c0331c6e4d9222aad9607f435ddfb416400844f3c1bb91af412ade812ee4a60",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6701,7 +6923,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TTWO",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "TTWO"
     },
     {
@@ -6709,10 +6931,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6736,6 +6960,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "VRT",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6744,8 +6969,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "37032b9d03e4cf0cec04ecf71ca744cdb9b50bc7d19f4b5fc74f2dfadf710b7c",
+      "last_date": "2026-08-21",
+      "output_sha256": "4fcd52964a94df31d942213e9778c11fc34cb7ae25f3c14d24a4f1daea1ca027",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6769,7 +6994,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "VRT",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "VRT"
     },
     {
@@ -6777,10 +7002,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6804,6 +7031,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "VRTX",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6812,8 +7040,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "bb5d475f035214707036ae13433a956e66b08009aa28b2f859a7ef5b5d79f10d",
+      "last_date": "2026-08-21",
+      "output_sha256": "1b1e4a241d124e9c4e1ece8b26a0c3467d4e660204206f689e8a93cfc50d6c87",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6837,7 +7065,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "VRTX",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "VRTX"
     },
     {
@@ -6845,10 +7073,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6872,6 +7102,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "WDC",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6880,8 +7111,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "f251301b1822a09b302657b3122b7f9444e5a2fb17980499f5dd6a14d77b85d7",
+      "last_date": "2026-08-21",
+      "output_sha256": "ab8d4e2179b2e020b84a0686f605014d571a5699b4633b00ff3f8a32fffd885e",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6905,7 +7136,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "WDC",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "WDC"
     },
     {
@@ -6913,10 +7144,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -6940,6 +7173,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "WMT",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -6948,8 +7182,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "9484b67a6a698ff0baf8d6c3d5e1336cd6b2b86fe8474944bb73047bb843c03d",
+      "last_date": "2026-08-21",
+      "output_sha256": "2e40efbda242c5b3c99a4421c555230f16d0c693f6d25eda70b6225f2091b5df",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -6973,7 +7207,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "WMT",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "WMT"
     },
     {
@@ -6981,10 +7215,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7008,6 +7244,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "HIMS",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7016,8 +7253,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "932a265a3b803bdd523586e8c67ba42faa0813fcf7ed4daf1ee049cf55e5c71f",
+      "last_date": "2026-08-21",
+      "output_sha256": "f58cb0ca172ae4ec2a2b41656f8463a3d205f8dec619ca670cecdbfab39f2b0d",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7041,7 +7278,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "HIMS",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "HIMS"
     },
     {
@@ -7049,10 +7286,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7076,6 +7315,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "HIMX",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7084,8 +7324,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "89a2d57ab82d5bf261e9b90c716c165b812b4998674c71f86d4d55b4a50fe718",
+      "last_date": "2026-08-21",
+      "output_sha256": "2509f6bd1700f58c83a4ab2743dca953692604deb394212ef664e648343431d4",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7109,7 +7349,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "HIMX",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "HIMX"
     },
     {
@@ -7117,10 +7357,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7144,6 +7386,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "NOK",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7152,8 +7395,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "f18bd74de962374b0cfe82c18a667674920bdf0a5074ec23554576011ccafccd",
+      "last_date": "2026-08-21",
+      "output_sha256": "906382ec144a704c53259efa95693096a44e3374c2e34c26dfd2ea72aa6d6e73",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7177,7 +7420,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "NOK",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "NOK"
     },
     {
@@ -7185,10 +7428,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7212,6 +7457,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "TSM",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7220,8 +7466,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "29a49ba44e3b524a7ad4e4260fc306eff96b5d7507785344bb60f92f11f85216",
+      "last_date": "2026-08-21",
+      "output_sha256": "a430738089db306550e4116c45d2fa02f042c38fab09408a35d319836bc6466d",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7245,7 +7491,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TSM",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "TSM"
     },
     {
@@ -7253,10 +7499,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7280,6 +7528,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "CRDO",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7288,8 +7537,8 @@
       ],
       "first_date": "2022-01-27",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "d0dc145ca4d64e799f442d46c6aad2f0f3c196f16c76e159ac15ab58f938e46b",
+      "last_date": "2026-08-21",
+      "output_sha256": "416b26782f129d1d0546fed458c80830ccae322543e2a416e8263b3b6723f15f",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7313,7 +7562,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CRDO",
-      "rows": 1145,
+      "rows": 1146,
       "symbol": "CRDO"
     },
     {
@@ -7321,10 +7570,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7348,6 +7599,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "ORCL",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7356,8 +7608,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "441174ced71160ba617859f2fca52395d1243d55623a1dc17373025ed8d33bbc",
+      "last_date": "2026-08-21",
+      "output_sha256": "bdb699bdd993eb1e6986a242eea457808bb9face77bbfa2984990e2c88987a51",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7381,7 +7633,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "ORCL",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "ORCL"
     },
     {
@@ -7389,10 +7641,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7416,6 +7670,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "POET",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7424,8 +7679,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "c0f4877125b72669b432633ec1d5ecb0de793e0fb872099e1fbfa3f9cf666a56",
+      "last_date": "2026-08-21",
+      "output_sha256": "eae4a9c4c21a840da3ee82c3eeab7245974bf9808880c51838fccdde3cc1b05b",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7449,7 +7704,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "POET",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "POET"
     },
     {
@@ -7457,10 +7712,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7484,6 +7741,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "AEHR",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7492,8 +7750,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "b75c11a8824ec3bb66fb0a2c776068367920740ad0e90d21b84c49ac9fd4a8c4",
+      "last_date": "2026-08-21",
+      "output_sha256": "f16e7c1b1c0b11fa10fd3cabecc585115386e0e1e962821604afa47beb2c706d",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7517,7 +7775,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "AEHR",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "AEHR"
     },
     {
@@ -7525,10 +7783,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7552,6 +7812,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "QQQ",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7560,8 +7821,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "eb1a7525d9b13d85f6bbeaaa7f66b6d4d6c64b2f002db11e65186c2eb57d36d2",
+      "last_date": "2026-08-21",
+      "output_sha256": "584c52f7b1eea3ffc79b2eb4bec4755483521d3606b4dcd84bb4d9550af7dab2",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7585,7 +7846,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "QQQ",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "QQQ"
     },
     {
@@ -7593,10 +7854,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7620,6 +7883,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "QQQI",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7628,8 +7892,8 @@
       ],
       "first_date": "2024-01-30",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "91d2da96695fb82d77af9994f979afe58d676493244fe2b5145fad0ed33ef03a",
+      "last_date": "2026-08-21",
+      "output_sha256": "4e667e1c78119dbd7ef878e195ca9eedbd3cca5d8bef2a4213f69681a1c3829a",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7653,7 +7917,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "QQQI",
-      "rows": 642,
+      "rows": 643,
       "symbol": "QQQI"
     },
     {
@@ -7661,10 +7925,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7688,6 +7954,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "TQQQ",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7696,8 +7963,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "41ccf7bd02243c2295c7d47a41c98e4da4a0906be770b6612175be832e3813fb",
+      "last_date": "2026-08-21",
+      "output_sha256": "9ffd65355b0c92bfc4e020055f76ade4f2758b8efbaa334c4072fbc953f58949",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7721,7 +7988,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "TQQQ",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "TQQQ"
     },
     {
@@ -7729,10 +7996,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7756,6 +8025,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "CGDV",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7764,8 +8034,8 @@
       ],
       "first_date": "2022-02-24",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "1291c0ab07388d9210213f1bdafc3271b3b077ff9e1b5b51ad95bb03674db8bd",
+      "last_date": "2026-08-21",
+      "output_sha256": "fbed1a1ca1d99a111e663ffb5b78c3223b756a589ec9c8b2e3a7c5fcaedebaf6",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7789,7 +8059,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "CGDV",
-      "rows": 1126,
+      "rows": 1127,
       "symbol": "CGDV"
     },
     {
@@ -7797,10 +8067,12 @@
       "attempts": [
         {
           "circuit_breaker_open": false,
+          "cutoff_complete": true,
           "error": null,
-          "first_date": "2026-08-19",
+          "first_date": "2026-08-20",
           "independent_group": "yahoo_finance",
-          "last_date": "2026-08-20",
+          "last_date": "2026-08-21",
+          "observed_last_date": "2026-08-21",
           "ok": true,
           "provider": "yfinance",
           "provider_contract": {
@@ -7824,6 +8096,7 @@
             "volume_unit": "shares"
           },
           "provider_symbol": "SGOV",
+          "requested_cutoff": "2026-08-21",
           "round": 1,
           "rows": 2,
           "schema_errors": [],
@@ -7832,8 +8105,8 @@
       ],
       "first_date": "2021-01-04",
       "identity_contract": null,
-      "last_date": "2026-08-20",
-      "output_sha256": "1341b4bd6ff562a32bd63412eaf932a2e1c0849164851069919f8bfa83c6ef98",
+      "last_date": "2026-08-21",
+      "output_sha256": "1592dd5b25df7292df3cb803ae2db60eabfd7367288b28b32e25eea1cd0ee7f3",
       "promotion_status": "source_semantics_recorded",
       "provider": "yfinance",
       "provider_contract": {
@@ -7857,7 +8130,7 @@
         "volume_unit": "shares"
       },
       "provider_symbol": "SGOV",
-      "rows": 1414,
+      "rows": 1415,
       "symbol": "SGOV"
     }
   ],
