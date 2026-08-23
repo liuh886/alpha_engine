@@ -374,6 +374,7 @@ def test_formal_provider_jobs_checkout_only_provider_build_inputs() -> None:
     ) in checkout
     assert "fetch-depth: 0" not in checkout
     assert "lfs: true" not in checkout
+    assert "filter:" not in checkout
 
     allowed_directories = ("configs/", "scripts/", "src/")
     for market in ("us", "cn"):
