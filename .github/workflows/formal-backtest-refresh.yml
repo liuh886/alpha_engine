@@ -619,8 +619,17 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 0
-          lfs: true
+          fetch-depth: 1
+          lfs: false
+          sparse-checkout: |
+            configs
+            data/research/formal_model_runs
+            data/research/model_runs
+            data/research/market_evidence
+            data/research/model_data_bundle_v1
+            scripts
+            src
+          sparse-checkout-cone-mode: true
       - name: Download verified US provider
         uses: actions/download-artifact@v6
         with:
@@ -736,6 +745,22 @@ jobs:
             --refresh-receipt "$REFRESH_RECEIPT" \
             --receipt artifacts/formal-refresh/publication-delta-receipt.json \
             --github-output "$GITHUB_OUTPUT"
+      - name: Hydrate complete reviewed revision
+        if: steps.delta.outputs.publication_required == 'true'
+        run: |
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --unshallow --no-tags origin \
+              +refs/heads/main:refs/remotes/origin/main
+          else
+            git fetch --no-tags origin \
+              +refs/heads/main:refs/remotes/origin/main
+          fi
+          git lfs install --local
+          git sparse-checkout disable
+          git lfs pull
+          test "$(git rev-parse --is-shallow-repository)" = "false"
+          test "$(git config --bool core.sparseCheckout || true)" != "true"
+          test -n "$(git merge-base HEAD origin/main)"
       - name: Install complete candidate and materialize read models
         if: steps.delta.outputs.publication_required == 'true'
         env:

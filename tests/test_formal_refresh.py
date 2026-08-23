@@ -601,6 +601,78 @@ def test_run_scoped_artifacts_are_overwritable_for_failed_job_reruns() -> None:
         assert f"retention-days: {retention_days}" in block, (index, name)
 
 
+def test_publish_initial_checkout_only_materializes_delta_inputs() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    publish = workflow[workflow.index("\n  publish:\n") :]
+    checkout_start = publish.index("      - name: Check out triggering revision")
+    checkout_end = publish.index(
+        "      - name: Download verified US provider",
+        checkout_start,
+    )
+    checkout = publish[checkout_start:checkout_end]
+
+    assert "fetch-depth: 1" in checkout
+    assert "lfs: false" in checkout
+    assert "sparse-checkout-cone-mode: true" in checkout
+    assert (
+        "sparse-checkout: |\n"
+        "            configs\n"
+        "            data/research/formal_model_runs\n"
+        "            data/research/model_runs\n"
+        "            data/research/market_evidence\n"
+        "            data/research/model_data_bundle_v1\n"
+        "            scripts\n"
+        "            src\n"
+    ) in checkout
+    assert "fetch-depth: 0" not in checkout
+    assert "lfs: true" not in checkout
+    assert "filter:" not in checkout
+
+    for root in (
+        Path("data/research/formal_model_runs"),
+        Path("data/research/model_runs"),
+        Path("data/research/market_evidence"),
+        Path("data/research/model_data_bundle_v1"),
+    ):
+        assert root.is_dir()
+
+
+def test_publish_hydrates_complete_revision_before_candidate_publication() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    publish = workflow[workflow.index("\n  publish:\n") :]
+    delta = publish.index("      - name: Classify canonical publication delta")
+    hydrate = publish.index("      - name: Hydrate complete reviewed revision")
+    candidate_install = publish.index(
+        "      - name: Install complete candidate and materialize read models"
+    )
+    setup_node = publish.index("      - uses: actions/setup-node@v6")
+    validate = publish.index("      - name: Validate complete candidate publication")
+    pull_request = publish.index("      - name: Open or update reviewed refresh PR")
+
+    assert delta < hydrate < candidate_install < setup_node < validate < pull_request
+    hydrate_end = publish.index("\n      - name:", hydrate + 1)
+    block = publish[hydrate:hydrate_end]
+    assert "if: steps.delta.outputs.publication_required == 'true'" in block
+    assert "git fetch --unshallow --no-tags origin" in block
+    assert "git fetch --no-tags origin" in block
+    assert "+refs/heads/main:refs/remotes/origin/main" in block
+    assert "git lfs install --local" in block
+    assert "git sparse-checkout disable" in block
+    assert "git lfs pull" in block
+    assert (
+        block.index("git lfs install --local")
+        < block.index("git sparse-checkout disable")
+        < block.index("git lfs pull")
+    )
+    assert 'test "$(git rev-parse --is-shallow-repository)" = "false"' in block
+    assert 'git config --bool core.sparseCheckout || true' in block
+    assert 'test -n "$(git merge-base HEAD origin/main)"' in block
+
+
 def test_publish_validates_upstream_artifacts_before_installing_environments() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
@@ -620,13 +692,14 @@ def test_publish_validates_upstream_artifacts_before_installing_environments() -
     setup_python = publish.index("      - uses: actions/setup-python@v6")
     install = publish.index("      - name: Install locked publication Python environment")
     delta = publish.index("      - name: Classify canonical publication delta")
+    hydrate = publish.index("      - name: Hydrate complete reviewed revision")
     setup_node = publish.index("      - uses: actions/setup-node@v6")
     frontend_install = publish.index(
         "      - name: Install locked frontend publication environment"
     )
     assert checkout < min(downloads)
     assert max(downloads) < setup_python < install
-    assert install < delta < setup_node < frontend_install
+    assert install < delta < hydrate < setup_node < frontend_install
 
 
 def test_semantic_no_change_skips_candidate_mutation_and_release() -> None:
