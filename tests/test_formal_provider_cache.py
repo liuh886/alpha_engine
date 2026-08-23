@@ -15,7 +15,7 @@ from src.artifacts.formal_provider_cache import (
     seal_provider_cache,
     verify_provider_cache,
 )
-from src.data.market_provider import write_provider_manifest
+from src.data.market_provider import load_provider_manifest, write_provider_manifest
 from src.data.selected_pool_price_publication import (
     PUBLICATION_MANIFEST_NAME,
     write_selected_pool_price_publication_manifest,
@@ -45,6 +45,19 @@ def _legacy_tree_identity(root: Path) -> tuple[str, int]:
         + "\n"
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest(), len(records)
+
+
+def _provider_identity(payload: dict[str, object]) -> str:
+    identity = {
+        key: value for key, value in payload.items() if key != "provider_identity_sha256"
+    }
+    encoded = json.dumps(
+        identity,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _contract() -> dict[str, object]:
@@ -88,6 +101,10 @@ def _provider_contract() -> dict[str, object]:
 def _provider_tree(tmp_path: Path) -> Path:
     root = tmp_path / "provider-us"
     csv_path = root / "data/csv_source/AAA.csv"
+    mixed_case_csv_paths = (
+        root / "data/csv_source/a.csv",
+        root / "data/csv_source/B.csv",
+    )
     qlib_root = root / "data/providers/us"
     qlib_path = qlib_root / "features/aaa/day/close.day.bin"
     qlib_volume_path = qlib_root / "features/aaa/day/volume.day.bin"
@@ -104,6 +121,8 @@ def _provider_tree(tmp_path: Path) -> Path:
     for path in mixed_case_paths:
         path.parent.mkdir(parents=True, exist_ok=True)
     csv_path.write_text("date,close\n2026-08-07,10\n", encoding="utf-8")
+    for path in mixed_case_csv_paths:
+        path.write_text("date,close\n2026-08-07,11\n", encoding="utf-8")
     qlib_path.write_bytes(b"verified qlib bytes")
     qlib_volume_path.write_bytes(b"verified qlib volume bytes")
     calendar_path.write_text("2026-08-07\n", encoding="utf-8")
@@ -113,7 +132,7 @@ def _provider_tree(tmp_path: Path) -> Path:
     provider = write_provider_manifest(
         qlib_root,
         market="us",
-        source_csv_files=[csv_path],
+        source_csv_files=[csv_path, *mixed_case_csv_paths],
         cutoff="2026-08-07",
     )
     contract = _provider_contract()
@@ -267,6 +286,33 @@ def test_provider_cache_keeps_legacy_tree_receipt_identity(tmp_path: Path) -> No
     assert sealed["qlib_file_count"] == qlib_count
 
 
+@pytest.mark.parametrize(
+    "calendar_path",
+    ("../outside.txt", "/tmp/outside.txt", "C:\\outside.txt"),
+)
+def test_provider_manifest_rejects_paths_outside_provider_root(
+    tmp_path: Path,
+    calendar_path: str,
+) -> None:
+    root = _provider_tree(tmp_path)
+    qlib_root = root / "data/providers/us"
+    manifest_path = qlib_root / "provider_manifest.json"
+    manifest: dict[str, object] = json.loads(manifest_path.read_text(encoding="utf-8"))
+    calendar = manifest["calendar"]
+    assert isinstance(calendar, dict)
+    calendar["path"] = calendar_path
+    manifest["provider_identity_sha256"] = _provider_identity(manifest)
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must stay within provider root"):
+        load_provider_manifest(qlib_root, expected_market="us")
+
+    contract = _contract()
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    with pytest.raises(FormalProviderCacheError, match="must stay within provider root"):
+        seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+
 @pytest.mark.parametrize("operation", ("seal", "verify"))
 def test_provider_cache_hashes_each_csv_and_feature_file_once(
     tmp_path: Path,
@@ -279,13 +325,17 @@ def test_provider_cache_hashes_each_csv_and_feature_file_once(
     if operation == "verify":
         seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
 
-    csv_path = (root / "data/csv_source/AAA.csv").resolve()
+    csv_paths = {
+        path.resolve()
+        for path in (root / "data/csv_source").glob("*")
+        if path.is_file()
+    }
     feature_paths = {
         path.resolve()
         for path in (root / "data/providers/us/features").rglob("*")
         if path.is_file()
     }
-    tracked_paths = {csv_path, *feature_paths}
+    tracked_paths = {*csv_paths, *feature_paths}
     read_counts: Counter[Path] = Counter()
     original_open = Path.open
 
@@ -302,7 +352,7 @@ def test_provider_cache_hashes_each_csv_and_feature_file_once(
     else:
         verify_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
 
-    assert read_counts[csv_path] == 1
+    assert {read_counts[path] for path in csv_paths} == {1}
     assert {read_counts[path] for path in feature_paths} == {1}
 
 

@@ -267,7 +267,7 @@ def _validate_manifest(
         raise FormalProviderCacheError("cached Qlib source identities are missing")
     expected_sources = [
         {"name": relative, "sha256": csv_index.file_hashes[relative]}
-        for relative in sorted(csv_index.file_hashes)
+        for relative in csv_index.file_hashes
         if "/" not in relative and Path(relative).suffix.lower() == ".csv"
     ]
     if qlib_sources != expected_sources:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Iterable, Mapping
 
 SUPPORTED_MARKETS = ("cn", "us", "hk")
@@ -65,10 +65,25 @@ def _provider_manifest_paths(payload: Mapping[str, Any]) -> tuple[str, str]:
     instruments = payload.get("instruments")
     if not isinstance(calendar, Mapping) or not isinstance(instruments, Mapping):
         raise ValueError("provider manifest calendar/instruments metadata is missing")
-    return (
-        Path(str(calendar.get("path", ""))).as_posix(),
-        Path(str(instruments.get("path", ""))).as_posix(),
+    return tuple(
+        _provider_relative_path(metadata.get("path", ""))
+        for metadata in (calendar, instruments)
     )
+
+
+def _provider_relative_path(value: object) -> str:
+    raw = str(value).strip()
+    windows_path = PureWindowsPath(raw)
+    posix_path = PurePosixPath(raw.replace("\\", "/"))
+    if (
+        not raw
+        or posix_path.is_absolute()
+        or bool(windows_path.drive)
+        or bool(windows_path.root)
+        or ".." in posix_path.parts
+    ):
+        raise ValueError("provider manifest file path must stay within provider root")
+    return posix_path.as_posix()
 
 
 def verify_provider_manifest_file_identities(
