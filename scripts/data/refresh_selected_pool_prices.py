@@ -56,6 +56,7 @@ IDENTITY_CONTRACTS: dict[tuple[str, str], dict[str, str]] = {
         "forbidden_substitute": "TYGO",
     }
 }
+INCOMPLETE_CUTOFF_RETRY_SECONDS = 30.0
 
 
 def _sha256(path: Path) -> str:
@@ -301,13 +302,45 @@ def _fetch_with_retries(
             end=cutoff,
             validate=True,
         )
-        for attempt in _attempts(response):
-            combined_attempts.append({"round": round_number, **attempt})
         last_response = response
-        if response.ok:
+        cutoff_at = pd.Timestamp(cutoff).normalize()
+        observed_last_date: str | None = None
+        cutoff_complete = False
+        if response.ok and response.result is not None:
+            dates = pd.to_datetime(
+                response.result.df.get("date"), errors="coerce"
+            ).dropna()
+            if not dates.empty:
+                observed_at = pd.Timestamp(dates.max()).normalize()
+                observed_last_date = observed_at.date().isoformat()
+                cutoff_complete = observed_at >= cutoff_at
+
+        for attempt in _attempts(response):
+            row = {"round": round_number, **attempt}
+            if response.ok and attempt.get("ok") is True:
+                row.update(
+                    {
+                        "requested_cutoff": cutoff_at.date().isoformat(),
+                        "observed_last_date": observed_last_date,
+                        "cutoff_complete": cutoff_complete,
+                    }
+                )
+                if not cutoff_complete:
+                    row["ok"] = False
+                    row["error"] = (
+                        "provider response ended before requested cutoff"
+                    )
+            combined_attempts.append(row)
+
+        if response.ok and cutoff_complete:
             return response, combined_attempts
         if round_number < max_rounds:
-            time.sleep(float(round_number * 2))
+            delay = (
+                INCOMPLETE_CUTOFF_RETRY_SECONDS * round_number
+                if response.ok
+                else float(round_number * 2)
+            )
+            time.sleep(delay)
     return last_response, combined_attempts
 
 

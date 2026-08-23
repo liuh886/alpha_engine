@@ -148,6 +148,11 @@ def test_heavy_formal_refresh_uses_bounded_research_paths() -> None:
 def test_heavy_formal_refresh_resolves_cutoff_per_completed_market_session() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "from src.research.market_session_clock import completed_market_date" in text
+    assert "Resolve immutable workflow start" in text
+    assert 'gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"' in text
+    assert "RUN_CREATED_AT: ${{ steps.run_identity.outputs.created_at }}" in text
+    assert "os.environ['RUN_CREATED_AT']" in text
+    assert "datetime.now(timezone.utc)" not in text
     assert "us_cutoff: ${{ steps.clock.outputs.us_cutoff }}" in text
     assert "cn_cutoff: ${{ steps.clock.outputs.cn_cutoff }}" in text
     assert "completed_market_date('us', requested, now_utc=now)" in text

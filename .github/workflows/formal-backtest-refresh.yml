@@ -98,6 +98,7 @@ on:
       - "tests/test_refresh_byd_v1_3_formal.py"
       - "tests/test_system_health.py"
       - "tests/test_formal_refresh_trigger_scope.py"
+      - "tests/test_market_session_clock.py"
       - "pyproject.toml"
       - "uv.lock"
 
@@ -215,7 +216,8 @@ jobs:
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_us_x1_3_preview_publication.py \
-            tests/test_us_x1_3_current_target.py
+            tests/test_us_x1_3_current_target.py \
+            tests/test_market_session_clock.py
           uv run mypy \
             src/artifacts/formal_bundle_reader.py \
             src/artifacts/formal_refresh.py \
@@ -250,17 +252,34 @@ jobs:
             tests/test_repository_research_store.py \
             tests/test_us_x1_3_preview_publication.py \
             tests/test_us_x1_3_current_target.py \
+            tests/test_market_session_clock.py \
             -q --strict-markers --tb=short
           cd qlib-dashboard
           npm run check:account
+      - name: Resolve immutable workflow start
+        id: run_identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          created_at="$(
+            gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+              --jq '.created_at'
+          )"
+          test -n "$created_at"
+          echo "created_at=$created_at" >> "$GITHUB_OUTPUT"
       - name: Resolve transaction timestamp and completed market cutoffs
         id: clock
+        env:
+          RUN_CREATED_AT: ${{ steps.run_identity.outputs.created_at }}
         run: |
           uv run python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
           from datetime import date, datetime, timedelta, timezone
           from src.research.market_session_clock import completed_market_date
 
-          now = datetime.now(timezone.utc)
+          now = datetime.fromisoformat(
+              os.environ['RUN_CREATED_AT'].replace('Z', '+00:00')
+          ).astimezone(timezone.utc)
           requested = now.date().isoformat()
           us_cutoff = completed_market_date('us', requested, now_utc=now)
           cn_cutoff = completed_market_date('cn', requested, now_utc=now)
@@ -436,7 +455,7 @@ jobs:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
           overwrite: true
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
           compression-level: 1
 
   plan:
@@ -484,7 +503,7 @@ jobs:
           path: artifacts/formal-refresh/plan.json
           overwrite: true
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
 
   strategy:
     needs: [prepare, plan]

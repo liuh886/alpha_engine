@@ -88,6 +88,46 @@ class FakeRouter:
         )
 
 
+class SequenceRouter:
+    def __init__(self, frames: list[pd.DataFrame]) -> None:
+        self.frames = list(frames)
+        self.calls = 0
+
+    def fetch_daily_bars(
+        self,
+        *,
+        symbol: str,
+        market: str,
+        start: str,
+        end: str | None = None,
+        validate: bool = False,
+    ) -> RouterResponse:
+        del validate
+        frame = self.frames[min(self.calls, len(self.frames) - 1)].copy()
+        self.calls += 1
+        return RouterResponse(
+            result=FetchResult(
+                provider="fake",
+                symbol=symbol,
+                market=market,
+                start=start,
+                end=end,
+                df=frame,
+                provider_symbol=symbol,
+            ),
+            attempts=[
+                RouterAttempt(
+                    provider="fake",
+                    ok=True,
+                    provider_symbol=symbol,
+                    rows=len(frame),
+                    first_date=str(frame["date"].iloc[0]),
+                    last_date=str(frame["date"].iloc[-1]),
+                )
+            ],
+        )
+
+
 def _prepare_contract(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     pool = tmp_path / "pool.yaml"
     pool.write_text(
@@ -115,6 +155,69 @@ def _prepare_contract(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     )
     monkeypatch.setattr(module, "_terminal_listing_contracts", lambda *args: {})
     return pool
+
+
+def test_successful_but_incomplete_response_retries_until_cutoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    router = SequenceRouter(
+        [
+            _frame(dates=("2026-08-20",)),
+            _frame(dates=("2026-08-20", "2026-08-21")),
+        ]
+    )
+    delays: list[float] = []
+    monkeypatch.setattr(module.time, "sleep", delays.append)
+
+    response, attempts = module._fetch_with_retries(
+        router,  # type: ignore[arg-type]
+        symbol="FN",
+        market="us",
+        start="2026-08-20",
+        cutoff="2026-08-21",
+        max_rounds=3,
+    )
+
+    assert response.ok is True
+    assert router.calls == 2
+    assert delays == [module.INCOMPLETE_CUTOFF_RETRY_SECONDS]
+    assert attempts[0]["ok"] is False
+    assert attempts[0]["cutoff_complete"] is False
+    assert attempts[0]["observed_last_date"] == "2026-08-20"
+    assert attempts[0]["error"] == (
+        "provider response ended before requested cutoff"
+    )
+    assert attempts[1]["ok"] is True
+    assert attempts[1]["cutoff_complete"] is True
+    assert attempts[1]["observed_last_date"] == "2026-08-21"
+
+
+def test_incomplete_response_remains_fail_closed_after_bounded_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    router = SequenceRouter([_frame(dates=("2026-08-20",))])
+    delays: list[float] = []
+    monkeypatch.setattr(module.time, "sleep", delays.append)
+
+    response, attempts = module._fetch_with_retries(
+        router,  # type: ignore[arg-type]
+        symbol="FN",
+        market="us",
+        start="2026-08-20",
+        cutoff="2026-08-21",
+        max_rounds=3,
+    )
+
+    assert response.ok is True
+    assert router.calls == 3
+    assert delays == [
+        module.INCOMPLETE_CUTOFF_RETRY_SECONDS,
+        module.INCOMPLETE_CUTOFF_RETRY_SECONDS * 2,
+    ]
+    assert [attempt["ok"] for attempt in attempts] == [False, False, False]
+    assert {attempt["observed_last_date"] for attempt in attempts} == {
+        "2026-08-20"
+    }
 
 
 def test_terminal_history_is_retained_without_refetching(tmp_path: Path) -> None:

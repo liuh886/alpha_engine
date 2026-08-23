@@ -23,8 +23,9 @@ def completed_market_date(
 ) -> str:
     """Cap an as-of date so an in-progress regular session is never admitted.
 
-    This function only resolves the calendar boundary. Provider sessions remain
-    the authority for weekends and exchange holidays.
+    Weekends are excluded here because provider promotion requires every active
+    symbol to reach the requested cutoff. Provider sessions remain the
+    authority for exchange-specific holidays.
     """
 
     market_key = str(market).strip().lower()
@@ -50,4 +51,7 @@ def completed_market_date(
     if local_now.time().replace(tzinfo=None) < regular_close:
         latest_calendar_date -= timedelta(days=1)
 
-    return min(requested, latest_calendar_date).isoformat()
+    completed = min(requested, latest_calendar_date)
+    while completed.weekday() >= 5:
+        completed -= timedelta(days=1)
+    return completed.isoformat()

@@ -101,6 +101,7 @@ on:
       - "tests/test_us_x1_3_preview_publication.py"
       - "tests/test_us_x1_3_current_target.py"
       - "tests/test_formal_refresh_trigger_scope.py"
+      - "tests/test_market_session_clock.py"
       - "data/research/formal_model_runs/**"
       - "data/research/model_runs/**"
       - "data/research/market_evidence/**"
@@ -225,6 +226,7 @@ jobs:
             src/research/cn_x1_2_prospective.py \
             src/research/cn_x1_2_current_target.py \
             src/research/ranker_current_target.py \
+            src/research/market_session_clock.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py \
             scripts/build_us_x1_3_preview.py \
@@ -243,7 +245,8 @@ jobs:
             tests/test_formal_refresh_metric_projection.py \
             tests/test_model_x1_baselines.py \
             tests/test_us_x1_3_current_target.py \
-            tests/test_formal_refresh_trigger_scope.py
+            tests/test_formal_refresh_trigger_scope.py \
+            tests/test_market_session_clock.py
           uv run mypy \
             src/artifacts/formal_bundle_reader.py \
             scripts/run_formal_refresh_transaction.py \
@@ -262,6 +265,7 @@ jobs:
             tests/test_model_x1_baselines.py \
             tests/test_us_x1_3_current_target.py \
             tests/test_formal_refresh_trigger_scope.py \
+            tests/test_market_session_clock.py \
             -q --strict-markers --tb=short
           cd qlib-dashboard
           npm run check:account
@@ -277,6 +281,7 @@ jobs:
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_provider_cache.py \
             src/artifacts/us_x1_3_preview.py \
+            src/research/market_session_clock.py \
             src/artifacts/qqq_v4_3_formal.py \
             src/artifacts/strategy_operations.py \
             src/artifacts/system_health.py \
@@ -333,7 +338,8 @@ jobs:
             tests/test_sync_formal_bundle_v2.py \
             tests/test_us_x1_3_preview_publication.py \
             tests/test_us_x1_3_current_target.py \
-            tests/test_formal_refresh_trigger_scope.py
+            tests/test_formal_refresh_trigger_scope.py \
+            tests/test_market_session_clock.py
           uv run mypy \
             src/artifacts/formal_bundle_reader.py \
             src/artifacts/formal_refresh.py \
@@ -372,6 +378,7 @@ jobs:
             tests/test_us_x1_3_preview_publication.py \
             tests/test_us_x1_3_current_target.py \
             tests/test_formal_refresh_trigger_scope.py \
+            tests/test_market_session_clock.py \
             -q --strict-markers --tb=short
           cd qlib-dashboard
           npm run check:account
