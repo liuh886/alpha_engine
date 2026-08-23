@@ -323,8 +323,14 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 0
-          lfs: true
+          fetch-depth: 1
+          lfs: false
+          sparse-checkout: |
+            configs
+            data/csv_clean
+            scripts
+            src
+          sparse-checkout-cone-mode: true
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
