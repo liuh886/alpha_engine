@@ -17,6 +17,7 @@ from scripts.run_formal_refresh_transaction import (
     finalize_refresh,
 )
 from src.artifacts.formal_provider_cache import build_provider_cache_contract
+from src.artifacts.formal_bundle_reader import FormalBundleReader
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
     load_object,
@@ -388,6 +389,42 @@ def test_formal_provider_jobs_checkout_only_provider_build_inputs() -> None:
             "/" not in path or path.startswith(allowed_directories)
             for path in contract["inputs"]
         ), f"{market} provider contract escaped its sparse checkout closure"
+
+
+def test_formal_plan_job_checkout_only_plan_inputs() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
+    plan_start = workflow.index("\n  plan:\n")
+    strategy_start = workflow.index("\n  strategy:\n", plan_start)
+    plan = workflow[plan_start:strategy_start]
+    checkout_start = plan.index("      - name: Check out triggering revision")
+    checkout_end = plan.index("      - name: Download verified US provider", checkout_start)
+    checkout = plan[checkout_start:checkout_end]
+
+    assert "fetch-depth: 1" in checkout
+    assert "lfs: false" in checkout
+    assert "sparse-checkout-cone-mode: true" in checkout
+    assert (
+        "sparse-checkout: |\n"
+        "            configs\n"
+        "            data/research/formal_model_runs\n"
+        "            data/research/strategy_signal_ledgers\n"
+        "            scripts\n"
+        "            src\n"
+    ) in checkout
+    assert "fetch-depth: 0" not in checkout
+    assert "lfs: true" not in checkout
+    assert "filter:" not in checkout
+
+    active = load_active_strategy_catalog()
+    for strategy in active.strategies:
+        assert strategy.model_contract.startswith("configs/")
+        assert Path(strategy.model_contract).is_file()
+        assert strategy.signal_ledger.startswith("data/research/strategy_signal_ledgers/")
+        assert Path(strategy.signal_ledger).is_dir()
+
+    reader = FormalBundleReader.open(Path("."), relative_root=FORMAL_V2)
+    for model_version_id in reader.records:
+        reader.load(model_version_id)
 
 
 def test_formal_refresh_is_bundle_v2_only() -> None:

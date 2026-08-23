@@ -490,8 +490,15 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 0
-          lfs: true
+          fetch-depth: 1
+          lfs: false
+          sparse-checkout: |
+            configs
+            data/research/formal_model_runs
+            data/research/strategy_signal_ledgers
+            scripts
+            src
+          sparse-checkout-cone-mode: true
       - name: Download verified US provider
         uses: actions/download-artifact@v6
         with:
