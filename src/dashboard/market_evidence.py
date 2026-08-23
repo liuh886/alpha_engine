@@ -19,6 +19,11 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 import pandas as pd
 
+from src.data.selected_pool_price_publication import (
+    PUBLICATION_MANIFEST_NAME,
+    SelectedPoolPricePublicationError,
+    load_selected_pool_price_publication_manifest,
+)
 from src.dashboard.formal_bundle_market_events import (
     FormalMarketEventError,
     load_formal_market_runs,
@@ -32,7 +37,7 @@ class MarketEvidenceError(ValueError):
 
 
 DEFAULT_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
-MARKET_EVIDENCE_IDENTITY_VERSION = "2.0.0"
+MARKET_EVIDENCE_IDENTITY_VERSION = "3.0.0"
 SERIES_FACTOR_GROUP = {
     "us": "momentum_volatility_volume",
     "cn": "cn_balanced_ohlcv",
@@ -501,8 +506,11 @@ def build_market_evidence(
     provider_root = provider_root.resolve()
     formal_root = formal_root.resolve()
     output_root = output_root.resolve() / market
-    manifest_path = provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
-    manifest = _load_json(manifest_path)
+    manifest_path = provider_root / "artifacts" / PUBLICATION_MANIFEST_NAME
+    try:
+        manifest = load_selected_pool_price_publication_manifest(manifest_path)
+    except SelectedPoolPricePublicationError as exc:
+        raise MarketEvidenceError(str(exc)) from exc
     if (
         manifest.get("status") != "selected_pool_price_refresh_ready"
         or manifest.get("promotion_eligible") is not True

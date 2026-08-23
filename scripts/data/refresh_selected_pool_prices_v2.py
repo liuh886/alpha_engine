@@ -32,6 +32,10 @@ from src.data.provider_catalog import (
     provider_manifest_entry,
 )
 from src.data.router import MarketDataRouter
+from src.data.selected_pool_price_publication import (
+    PUBLICATION_MANIFEST_NAME,
+    write_selected_pool_price_publication_manifest,
+)
 
 MANIFEST_RELATIVE_PATH = Path(
     "artifacts/selected_pool_price_refresh_manifest.json"
@@ -383,6 +387,8 @@ def refresh_selected_pool_prices_v2(
     router: MarketDataRouter | None = None,
 ) -> dict[str, Any]:
     destination = Path(output_root).resolve()
+    publication_path = destination / "artifacts" / PUBLICATION_MANIFEST_NAME
+    publication_path.unlink(missing_ok=True)
     data_router = router or build_hardened_router(market)
     requested_auxiliaries = auxiliary_symbols
     if requested_auxiliaries is None and full_refresh:
@@ -409,7 +415,12 @@ def refresh_selected_pool_prices_v2(
         if manifest_path.is_file():
             _decorate_manifest(manifest_path, data_router)
         raise
-    return _decorate_manifest(destination / MANIFEST_RELATIVE_PATH, data_router)
+    manifest = _decorate_manifest(destination / MANIFEST_RELATIVE_PATH, data_router)
+    write_selected_pool_price_publication_manifest(
+        publication_path,
+        manifest,
+    )
+    return manifest
 
 
 def main() -> None:

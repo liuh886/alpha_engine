@@ -17,6 +17,12 @@ from typing import Any, Iterable, Mapping, Sequence
 
 import yaml
 
+from src.data.selected_pool_price_publication import (
+    PUBLICATION_EVIDENCE_TYPE,
+    SelectedPoolPricePublicationError,
+    load_selected_pool_price_publication_manifest,
+)
+
 ALLOWED_STATUSES = {
     "ready",
     "partial",
@@ -187,6 +193,13 @@ def _selected_pool_prices(
     path: Path,
     payload: Mapping[str, Any],
 ) -> DataComponent:
+    if payload.get("evidence_type") == PUBLICATION_EVIDENCE_TYPE:
+        try:
+            publication = load_selected_pool_price_publication_manifest(path)
+        except SelectedPoolPricePublicationError as exc:
+            raise ModelDataBundleError(str(exc)) from exc
+        if dict(payload) != publication:
+            raise ModelDataBundleError(f"provider publication manifest drift: {path}")
     records = [row for row in payload.get("records", []) if isinstance(row, dict)]
     failures = [row for row in payload.get("failures", []) if isinstance(row, dict)]
     expected = int(payload.get("candidate_count", payload.get("expected_candidate_count", 0)))

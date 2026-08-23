@@ -26,6 +26,12 @@ from src.data.model_data_bundle import (
     verify_model_data_bundle,
 )
 from src.data.model_data_profile import check_profile
+from src.data.selected_pool_price_publication import (
+    PUBLICATION_MANIFEST_NAME,
+    SelectedPoolPricePublicationError,
+    verify_selected_pool_price_publication_manifest,
+    write_selected_pool_price_publication_manifest,
+)
 from src.data.strategy_data_bundle import (
     STRATEGY_MANIFEST_NAME,
     build_strategy_data_bundle,
@@ -351,6 +357,17 @@ def _build_selected_pool_recipe(
         raise DataRecipeError("selected-pool recipe configuration is incomplete")
     output_root = _resolve(normalized_root, source_products["output_root"])
     manifest_path = output_root / MANIFEST_RELATIVE_PATH
+    publication_path = output_root / "artifacts" / PUBLICATION_MANIFEST_NAME
+
+    def product_manifest(payload: Mapping[str, Any]) -> Path:
+        try:
+            if not publication_path.is_file():
+                write_selected_pool_price_publication_manifest(publication_path, payload)
+            verify_selected_pool_price_publication_manifest(publication_path, payload)
+        except SelectedPoolPricePublicationError as exc:
+            raise DataRecipeError(str(exc)) from exc
+        return publication_path
+
     if not refresh:
         cached = _read_json(manifest_path)
         if (
@@ -365,7 +382,7 @@ def _build_selected_pool_recipe(
             == requested_cutoff
         ):
             provider_root = output_root / str(source_products["provider_relative_path"])
-            return manifest_path, provider_root
+            return product_manifest(cached), provider_root
 
     refresher = selected_pool_refresher or refresh_selected_pool_prices_v2
     refresher(
@@ -387,7 +404,7 @@ def _build_selected_pool_recipe(
     provider_root = output_root / str(source_products["provider_relative_path"])
     if not provider_root.is_dir():
         raise DataRecipeError(f"selected-pool provider is missing: {provider_root}")
-    return manifest_path, provider_root
+    return product_manifest(payload), provider_root
 
 
 def prepare_data_recipe(

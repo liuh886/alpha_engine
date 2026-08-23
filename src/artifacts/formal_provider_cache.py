@@ -7,12 +7,19 @@ import json
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from src.data.market_provider import load_provider_manifest
+from src.data.selected_pool_price_publication import (
+    PUBLICATION_MANIFEST_NAME,
+    SelectedPoolPricePublicationError,
+    verify_selected_pool_price_publication_manifest,
+)
+
 
 class FormalProviderCacheError(ValueError):
     """Raised when cached provider evidence is incomplete or has drifted."""
 
 
-CACHE_SCHEMA_VERSION = "1.0.0"
+CACHE_SCHEMA_VERSION = "1.1.0"
 CONTRACT_PATHS = (
     "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml",
     "configs/pools/selected_pool_registry_v1.yaml",
@@ -148,12 +155,17 @@ def _tree_identity(root: Path) -> tuple[str, int]:
 def _validate_manifest(
     provider_root: Path,
     contract: Mapping[str, Any],
-) -> tuple[Path, dict[str, Any]]:
+) -> tuple[Path, Path, dict[str, Any], dict[str, Any]]:
     manifest_path = provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
+    publication_path = provider_root / "artifacts" / PUBLICATION_MANIFEST_NAME
     manifest = _load_json(manifest_path)
     market = str(contract.get("market", ""))
     if str(manifest.get("market", "")) != market:
         raise FormalProviderCacheError("cached provider market does not match contract")
+    if str(manifest.get("start", "")) != str(contract.get("start", "")):
+        raise FormalProviderCacheError("cached provider start does not match contract")
+    if str(manifest.get("cutoff", "")) != str(contract.get("requested_cutoff", "")):
+        raise FormalProviderCacheError("cached provider cutoff does not match contract")
     if manifest.get("status") != "selected_pool_price_refresh_ready":
         raise FormalProviderCacheError("cached provider is not refresh ready")
     if manifest.get("promotion_eligible") is not True:
@@ -182,7 +194,35 @@ def _validate_manifest(
             raise FormalProviderCacheError(f"cached source identity is missing: {symbol}")
         if _sha256_file(source) != expected:
             raise FormalProviderCacheError(f"cached source hash mismatch: {symbol}")
-    return manifest_path, manifest
+    try:
+        publication = verify_selected_pool_price_publication_manifest(
+            publication_path, manifest
+        )
+        qlib_manifest = load_provider_manifest(
+            provider_root / "data" / "providers" / market,
+            expected_market=market,
+            verify_files=True,
+        )
+    except (SelectedPoolPricePublicationError, FileNotFoundError, ValueError) as exc:
+        raise FormalProviderCacheError(f"cached provider evidence is invalid: {exc}") from exc
+    if not isinstance(qlib_manifest, dict):
+        raise FormalProviderCacheError("cached Qlib provider manifest is missing")
+    provider_identity = str(manifest.get("provider_identity_sha256", ""))
+    if (
+        str(publication.get("provider_identity_sha256", "")) != provider_identity
+        or str(qlib_manifest.get("provider_identity_sha256", "")) != provider_identity
+    ):
+        raise FormalProviderCacheError("provider identity does not match Qlib bytes")
+    qlib_sources = qlib_manifest.get("source_csvs")
+    if not isinstance(qlib_sources, list):
+        raise FormalProviderCacheError("cached Qlib source identities are missing")
+    expected_sources = [
+        {"name": path.name, "sha256": _sha256_file(path)}
+        for path in sorted(csv_root.glob("*.csv"))
+    ]
+    if qlib_sources != expected_sources:
+        raise FormalProviderCacheError("cached Qlib source identities do not match CSV bytes")
+    return manifest_path, publication_path, manifest, publication
 
 
 def seal_provider_cache(
@@ -194,7 +234,9 @@ def seal_provider_cache(
     """Validate a fresh provider build and seal exact reusable bytes."""
 
     provider_root = provider_root.resolve()
-    manifest_path, manifest = _validate_manifest(provider_root, contract)
+    manifest_path, publication_path, manifest, publication = _validate_manifest(
+        provider_root, contract
+    )
     market = str(contract["market"])
     csv_digest, csv_count = _tree_identity(provider_root / "data" / "csv_source")
     qlib_digest, qlib_count = _tree_identity(provider_root / "data" / "providers" / market)
@@ -203,6 +245,10 @@ def seal_provider_cache(
         "evidence_type": "formal_provider_cache_receipt",
         "contract_sha256": str(contract["contract_sha256"]),
         "provider_manifest_sha256": _sha256_file(manifest_path),
+        "publication_manifest_sha256": _sha256_file(publication_path),
+        "publication_identity_sha256": str(
+            publication.get("publication_identity_sha256", "")
+        ),
         "provider_identity_sha256": str(manifest.get("provider_identity_sha256", "")),
         "market": market,
         "requested_cutoff": str(contract["requested_cutoff"]),
@@ -236,9 +282,17 @@ def verify_provider_cache(
         raise FormalProviderCacheError("provider cache receipt crossed research boundary")
     if receipt.get("contract_sha256") != contract.get("contract_sha256"):
         raise FormalProviderCacheError("provider cache contract hash mismatch")
-    manifest_path, manifest = _validate_manifest(provider_root, contract)
+    manifest_path, publication_path, manifest, publication = _validate_manifest(
+        provider_root, contract
+    )
     if _sha256_file(manifest_path) != receipt.get("provider_manifest_sha256"):
         raise FormalProviderCacheError("provider cache manifest hash mismatch")
+    if _sha256_file(publication_path) != receipt.get("publication_manifest_sha256"):
+        raise FormalProviderCacheError("provider cache publication manifest hash mismatch")
+    if publication.get("publication_identity_sha256") != receipt.get(
+        "publication_identity_sha256"
+    ):
+        raise FormalProviderCacheError("provider publication identity hash mismatch")
     if str(manifest.get("provider_identity_sha256", "")) != str(
         receipt.get("provider_identity_sha256", "")
     ):

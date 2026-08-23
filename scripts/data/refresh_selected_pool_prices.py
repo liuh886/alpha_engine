@@ -31,6 +31,10 @@ from src.data.adapters.base import MarketDataAdapter
 from src.data.adapters.efinance_adapter import EFinanceAdapter
 from src.data.adapters.yfinance_adapter import YFinanceAdapter
 from src.data.router import MarketDataRouter, RouterResponse
+from src.data.symbol_identity import (
+    selected_pool_provider_identity_contract,
+    validate_selected_pool_provider_identity,
+)
 from src.data.validation.schema import validate_market_data
 from src.research.selected_pool_guard import resolve_selected_pool
 
@@ -49,13 +53,6 @@ CANONICAL_COLUMNS = (
     "amount",
     "factor",
 )
-IDENTITY_CONTRACTS: dict[tuple[str, str], dict[str, str]] = {
-    ("us", "TIGO"): {
-        "expected_provider_symbol": "TIGO",
-        "expected_issuer": "Millicom International Cellular S.A.",
-        "forbidden_substitute": "TYGO",
-    }
-}
 INCOMPLETE_CUTOFF_RETRY_SECONDS = 30.0
 
 
@@ -257,28 +254,17 @@ def _attempts(response: RouterResponse) -> list[dict[str, Any]]:
 
 
 def _identity_contract(market: str, symbol: str) -> dict[str, str] | None:
-    return IDENTITY_CONTRACTS.get((market.lower(), symbol.upper()))
+    return selected_pool_provider_identity_contract(market, symbol)
 
 
 def _validate_provider_identity(
     *, market: str, symbol: str, provider_symbol: str | None
 ) -> dict[str, str] | None:
-    contract = _identity_contract(market, symbol)
-    if contract is None:
-        return None
-    observed = str(provider_symbol or symbol).strip().upper()
-    expected = contract["expected_provider_symbol"].upper()
-    forbidden = contract["forbidden_substitute"].upper()
-    if observed == forbidden:
-        raise ValueError(
-            f"forbidden identity substitution for {symbol}: observed={observed}"
-        )
-    if observed != expected:
-        raise ValueError(
-            f"provider identity mismatch for {symbol}: "
-            f"expected={expected} observed={observed}"
-        )
-    return contract
+    return validate_selected_pool_provider_identity(
+        market=market,
+        symbol=symbol,
+        provider_symbol=provider_symbol,
+    )
 
 
 def _fetch_with_retries(

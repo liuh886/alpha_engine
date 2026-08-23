@@ -93,6 +93,8 @@ on:
       - "tests/test_formal_provider_cache.py"
       - "tests/test_refresh_selected_pool_prices.py"
       - "tests/test_refresh_selected_pool_prices_v2.py"
+      - "tests/test_selected_pool_price_publication.py"
+      - "tests/selected_pool_price_fixtures.py"
       - "tests/test_selected_pool_governance.py"
       - "tests/test_strategy_operations.py"
       - "tests/test_system_health.py"
@@ -223,7 +225,12 @@ jobs:
             src/artifacts/formal_bundle_reader.py \
             src/artifacts/formal_bundle_v2_builder.py \
             src/artifacts/formal_publication_delta.py \
+            src/artifacts/formal_provider_cache.py \
             src/artifacts/us_x1_3_preview.py \
+            src/dashboard/market_evidence.py \
+            src/data/data_recipe.py \
+            src/data/model_data_bundle.py \
+            src/data/selected_pool_price_publication.py \
             src/research/us_x1_3_current_target.py \
             src/research/cn_x1_2_prospective.py \
             src/research/cn_x1_2_current_target.py \
@@ -231,6 +238,7 @@ jobs:
             src/research/market_session_clock.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py \
+            scripts/data/refresh_selected_pool_prices_v2.py \
             scripts/build_us_x1_3_preview.py \
             scripts/build_cn_x1_2_prospective_ledger.py \
             scripts/run_ranker_current_target.py \
@@ -249,10 +257,21 @@ jobs:
             tests/test_model_x1_baselines.py \
             tests/test_us_x1_3_current_target.py \
             tests/test_formal_refresh_trigger_scope.py \
-            tests/test_market_session_clock.py
+            tests/test_market_session_clock.py \
+            tests/selected_pool_price_fixtures.py \
+            tests/test_formal_provider_cache.py \
+            tests/test_market_evidence.py \
+            tests/test_model_data_bundle.py \
+            tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py
           uv run mypy \
             src/artifacts/formal_bundle_reader.py \
             src/artifacts/formal_publication_delta.py \
+            src/artifacts/formal_provider_cache.py \
+            src/dashboard/market_evidence.py \
+            src/data/data_recipe.py \
+            src/data/model_data_bundle.py \
+            src/data/selected_pool_price_publication.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py
           uv run pytest \
@@ -271,6 +290,11 @@ jobs:
             tests/test_us_x1_3_current_target.py \
             tests/test_formal_refresh_trigger_scope.py \
             tests/test_market_session_clock.py \
+            tests/test_formal_provider_cache.py \
+            tests/test_market_evidence.py \
+            tests/test_model_data_bundle.py \
+            tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py \
             -q --strict-markers --tb=short
           cd qlib-dashboard
           npm run check:account
@@ -334,9 +358,11 @@ jobs:
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_rules_formal_replay_gate.py \
             tests/test_market_evidence.py \
+            tests/selected_pool_price_fixtures.py \
             tests/test_formal_provider_cache.py \
             tests/test_refresh_selected_pool_prices.py \
             tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
@@ -352,6 +378,7 @@ jobs:
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_publication_delta.py \
             src/artifacts/formal_provider_cache.py \
+            src/data/selected_pool_price_publication.py \
             src/dashboard/market_evidence.py \
             scripts/govern_formal_provider_cache.py \
             scripts/build_market_evidence.py \
@@ -378,6 +405,7 @@ jobs:
             tests/test_formal_provider_cache.py \
             tests/test_refresh_selected_pool_prices.py \
             tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
