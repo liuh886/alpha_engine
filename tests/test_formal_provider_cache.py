@@ -93,15 +93,23 @@ def _provider_tree(tmp_path: Path) -> Path:
     qlib_volume_path = qlib_root / "features/aaa/day/volume.day.bin"
     calendar_path = qlib_root / "calendars/day.txt"
     instruments_path = qlib_root / "instruments/us.txt"
+    mixed_case_paths = (
+        qlib_root / "metadata/B.txt",
+        qlib_root / "metadata/a.txt",
+    )
     csv_path.parent.mkdir(parents=True)
     qlib_path.parent.mkdir(parents=True)
     calendar_path.parent.mkdir(parents=True)
     instruments_path.parent.mkdir(parents=True)
+    for path in mixed_case_paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
     csv_path.write_text("date,close\n2026-08-07,10\n", encoding="utf-8")
     qlib_path.write_bytes(b"verified qlib bytes")
     qlib_volume_path.write_bytes(b"verified qlib volume bytes")
     calendar_path.write_text("2026-08-07\n", encoding="utf-8")
     instruments_path.write_text("AAA\t2026-08-07\t2026-08-07\n", encoding="utf-8")
+    for path in mixed_case_paths:
+        path.write_text(path.name, encoding="utf-8")
     provider = write_provider_manifest(
         qlib_root,
         market="us",
@@ -305,6 +313,7 @@ def test_provider_cache_hashes_each_csv_and_feature_file_once(
         ("calendar", "provider calendar hash mismatch"),
         ("instruments", "provider instrument hash mismatch"),
         ("extra_csv", "Qlib source identities do not match CSV bytes"),
+        ("uppercase_csv", "Qlib source identities do not match CSV bytes"),
         ("extra_qlib", "qlib_tree_sha256 mismatch"),
     ),
 )
@@ -323,6 +332,7 @@ def test_provider_cache_rejects_indexed_tree_mutation(
         "calendar": root / "data/providers/us/calendars/day.txt",
         "instruments": root / "data/providers/us/instruments/us.txt",
         "extra_csv": root / "data/csv_source/EXTRA.csv",
+        "uppercase_csv": root / "data/csv_source/EXTRA.CSV",
         "extra_qlib": root / "data/providers/us/metadata/extra.bin",
     }
     target = targets[mutation]

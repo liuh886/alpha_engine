@@ -182,7 +182,7 @@ def _index_tree(root: Path, *, raw_subtree: str | None = None) -> _TreeIndex:
         file_hashes[relative] = file_digest.hexdigest()
     records = [
         {"path": relative, "sha256": file_hashes[relative]}
-        for relative in sorted(file_hashes)
+        for relative in file_hashes
     ]
     return _TreeIndex(
         file_hashes=file_hashes,
@@ -268,7 +268,7 @@ def _validate_manifest(
     expected_sources = [
         {"name": relative, "sha256": csv_index.file_hashes[relative]}
         for relative in sorted(csv_index.file_hashes)
-        if "/" not in relative and relative.endswith(".csv")
+        if "/" not in relative and Path(relative).suffix.lower() == ".csv"
     ]
     if qlib_sources != expected_sources:
         raise FormalProviderCacheError("cached Qlib source identities do not match CSV bytes")
