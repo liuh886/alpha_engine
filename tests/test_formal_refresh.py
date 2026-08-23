@@ -746,7 +746,10 @@ def test_publish_status_uses_the_transaction_outcome() -> None:
         encoding="utf-8"
     )
     assert "id: transaction" in workflow
-    assert 'echo "outcome=$(jq -r .status \\"$REFRESH_RECEIPT\\")"' in workflow
+    assert "outcome=\"$(jq -er '.status' \"$REFRESH_RECEIPT\")\"" in workflow
+    assert 'test "$outcome" = "candidate_ready_for_review"' in workflow
+    assert 'echo "outcome=$outcome" >> "$GITHUB_OUTPUT"' in workflow
+    assert '\\"$REFRESH_RECEIPT\\"' not in workflow
     assert "TRANSACTION_STATUS: ${{ steps.transaction.outputs.outcome }}" in workflow
     assert (
         "process.env.TRANSACTION_STATUS !== 'candidate_ready_for_review'" in workflow

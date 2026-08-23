@@ -688,7 +688,9 @@ jobs:
             --native-root "$CANDIDATE_PREVIEW_ROOT" \
             --output-root "$CANDIDATE_V2_ROOT" \
             --receipt artifacts/formal-refresh/formal-v2-sync-receipt.json
-          echo "outcome=$(jq -r .status \"$REFRESH_RECEIPT\")" >> "$GITHUB_OUTPUT"
+          outcome="$(jq -er '.status' "$REFRESH_RECEIPT")"
+          test "$outcome" = "candidate_ready_for_review"
+          echo "outcome=$outcome" >> "$GITHUB_OUTPUT"
       - name: Build shared governed Market Evidence
         run: |
           rm -rf "$CANDIDATE_MARKET_EVIDENCE_ROOT"
