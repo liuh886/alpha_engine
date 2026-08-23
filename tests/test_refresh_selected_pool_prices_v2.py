@@ -5,8 +5,14 @@ from pathlib import Path
 
 from scripts.data.refresh_selected_pool_prices_v2 import (
     FORMAL_MARKET_AUXILIARIES,
+    MANIFEST_RELATIVE_PATH,
     _decorate_manifest,
     build_hardened_router,
+    refresh_selected_pool_prices_v2,
+)
+from src.data.selected_pool_price_publication import (
+    PUBLICATION_MANIFEST_NAME,
+    load_selected_pool_price_publication_manifest,
 )
 
 
@@ -370,3 +376,40 @@ def test_current_selected_pool_remains_promotable_without_stale(tmp_path: Path, 
     assert payload["promotion_eligible"] is True
     assert payload["unresolved_stale_symbols"] == []
     assert payload["promotion_blocker"] is None
+
+
+def test_successful_refresh_writes_stable_publication_manifest(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = Path(
+        "data/research/model_data_bundle_v1/components/cn-selected-pool-prices.json"
+    )
+    source_payload = json.loads(source.read_text(encoding="utf-8"))
+
+    def fake_refresh(**kwargs):
+        destination = Path(kwargs["output_root"])
+        manifest_path = destination / "artifacts" / MANIFEST_RELATIVE_PATH.name
+        manifest_path.parent.mkdir(parents=True)
+        manifest_path.write_text(json.dumps(source_payload), encoding="utf-8")
+        return source_payload
+
+    monkeypatch.setattr(
+        "scripts.data.refresh_selected_pool_prices_v2.refresh_selected_pool_prices",
+        fake_refresh,
+    )
+    output = tmp_path / "provider-cn"
+    result = refresh_selected_pool_prices_v2(
+        root=Path.cwd(),
+        market="cn",
+        source_csv_dir=tmp_path / "unused",
+        output_root=output,
+        start="2021-01-01",
+        cutoff="2026-08-21",
+        router=build_hardened_router("cn"),
+    )
+
+    publication = load_selected_pool_price_publication_manifest(
+        output / "artifacts" / PUBLICATION_MANIFEST_NAME
+    )
+    assert result["records"][-1]["attempts"][0]["error"]
+    assert "error" not in publication["records"][-1]["attempt_outcomes"][0]
