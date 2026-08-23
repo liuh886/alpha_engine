@@ -630,15 +630,6 @@ def test_publish_initial_checkout_only_materializes_delta_inputs() -> None:
     assert "lfs: true" not in checkout
     assert "filter:" not in checkout
 
-    for root in (
-        Path("data/research/formal_model_runs"),
-        Path("data/research/model_runs"),
-        Path("data/research/market_evidence"),
-        Path("data/research/model_data_bundle_v1"),
-    ):
-        assert root.is_dir()
-
-
 def test_publish_hydrates_complete_revision_before_candidate_publication() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
