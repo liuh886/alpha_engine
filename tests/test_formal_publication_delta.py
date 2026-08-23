@@ -3,11 +3,13 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from scripts.run_formal_refresh_transaction import main as transaction_main
 from src.artifacts.formal_publication_delta import (
     FormalPublicationDeltaError,
     PublicationRoots,
@@ -353,3 +355,63 @@ def test_research_boundary_change_fails_closed(tmp_path: Path) -> None:
 
     with pytest.raises(FormalPublicationDeltaError, match="invalid research boundary"):
         _classify(current, candidate)
+
+
+def test_publication_delta_cli_writes_receipt_and_github_outputs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current = _roots(tmp_path, "current", stamp="2026-08-23T15:00:00Z")
+    candidate = _roots(tmp_path, "candidate", stamp="2026-08-23T16:00:00Z")
+    plan, fan_in, refresh = _documents()
+    plan_path = tmp_path / "plan.json"
+    fan_in_path = tmp_path / "fan-in.json"
+    refresh_path = tmp_path / "refresh.json"
+    receipt_path = tmp_path / "delta.json"
+    github_output = tmp_path / "github-output.txt"
+    for path, value in (
+        (plan_path, plan),
+        (fan_in_path, fan_in),
+        (refresh_path, refresh),
+    ):
+        _write(path, value)
+
+    args = ["publication-delta"]
+    for state, roots in (("current", current), ("candidate", candidate)):
+        args.extend(
+            [
+                f"--{state}-formal-root",
+                str(roots.formal),
+                f"--{state}-preview-root",
+                str(roots.preview),
+                f"--{state}-market-evidence-root",
+                str(roots.market_evidence),
+                f"--{state}-model-data-root",
+                str(roots.model_data),
+            ]
+        )
+    args.extend(
+        [
+            "--plan",
+            str(plan_path),
+            "--fan-in-receipt",
+            str(fan_in_path),
+            "--refresh-receipt",
+            str(refresh_path),
+            "--receipt",
+            str(receipt_path),
+            "--github-output",
+            str(github_output),
+        ]
+    )
+    monkeypatch.setattr(sys, "argv", ["run_formal_refresh_transaction.py", *args])
+
+    transaction_main()
+
+    assert json.loads(receipt_path.read_text(encoding="utf-8"))["status"] == (
+        "semantic_no_change"
+    )
+    assert github_output.read_text(encoding="utf-8").splitlines() == [
+        "publication_required=false",
+        "status=semantic_no_change",
+    ]
