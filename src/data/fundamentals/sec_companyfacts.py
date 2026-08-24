@@ -14,7 +14,7 @@ from src.data.fundamentals.event_store import FundamentalEvent, normalize_event_
 
 SEC_DATA_ROOT = "https://data.sec.gov"
 DEFAULT_SEC_USER_AGENT = (
-    "AlphaEngine research data pipeline https://github.com/liuh886/alpha_engine/issues"
+    "AlphaEngine Research liuh886@users.noreply.github.com"
 )
 
 
