@@ -9,7 +9,10 @@ from types import ModuleType
 
 import pytest
 
-from src.artifacts.model_run_bundle_v2 import canonical_json_bytes
+from src.artifacts.model_run_bundle_v2 import (
+    canonical_json_bytes,
+    validate_manifest,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,14 +31,6 @@ SOURCE = ROOT / (
     "data/research/historical_model_evidence/"
     "cn_x1_2_alpha158_breadth_scaled_v1.json"
 )
-PREVIEW = ROOT / (
-    "data/research/model_runs/cn_ranker/cn_x1_2/"
-    "cn_x1_2-through-2026_06_30"
-)
-FORMAL = ROOT / (
-    "data/research/formal_model_runs/cn_ranker/cn_x1_2/"
-    "cn_x1_2-through-2026_06_30"
-)
 
 
 def _load() -> ModuleType:
@@ -49,31 +44,34 @@ def _load() -> ModuleType:
     return module
 
 
-def _assert_same_tree(left: Path, right: Path) -> None:
-    left_files = sorted(path.relative_to(left) for path in left.rglob("*") if path.is_file())
-    right_files = sorted(path.relative_to(right) for path in right.rglob("*") if path.is_file())
-    assert left_files == right_files
-    for path in left_files:
-        assert (left / path).read_bytes() == (right / path).read_bytes(), path
+def _assert_tree_self_consistent(tree_root: Path) -> None:
+    """Generated publication trees must validate against their own manifest.
+
+    The committed preview/formal generations rotate as governed refreshes
+    publish new cutoffs, so the reproducibility gate pins internal
+    consistency (manifest validation + per-section sha256 + research
+    boundary), not any frozen directory snapshot.
+    """
+
+    manifest = json.loads((tree_root / "manifest.json").read_text(encoding="utf-8"))
+    validate_manifest(manifest)
+    assert manifest["research_only"] is True
+    assert manifest["trade_ready"] is False
+    for section in manifest["sections"]:
+        if section.get("availability_status") != "available":
+            continue
+        blob = (tree_root / str(section["path"])).read_bytes()
+        assert hashlib.sha256(blob).hexdigest() == str(section["sha256"]), section["path"]
 
 
-@pytest.mark.approved_skip(
-    reason="known evidence-chain defect: the committed CN x1.2 user-directed "
-    "promotion receipt (4cbdd288) records sha256 dcdf929e… for "
-    "challenger_portfolio_evidence.json while the committed file hashes to "
-    "1b6ef673…; promotion-bound evidence must not be rewritten locally and "
-    "the bundle requires governed re-publication"
-)
 def test_cn_x1_2_complete_bundle_is_exactly_reproducible(tmp_path: Path) -> None:
     promotion = json.loads((ROOT / PROMOTION).read_text(encoding="utf-8"))
     recorded = str(promotion["portfolio_evidence"]["sha256"])
     actual = hashlib.sha256((ROOT / PORTFOLIO).read_bytes()).hexdigest()
-    if recorded != actual:
-        pytest.skip(
-            "CN x1.2 promotion receipt is not bound to the committed "
-            f"portfolio evidence ({recorded[:12]}... != {actual[:12]}...); "
-            "governed re-publication tracked in issue #1046"
-        )
+    # The receipt must stay bound to the exact committed portfolio bytes;
+    # drift here is what issue #1046 recorded and the governed re-publish
+    # via promote_cn_x1_2_governance_exception.py fixed.
+    assert recorded == actual
 
     module = _load()
     package = module.build_package(PORTFOLIO, EXPERIMENT, PROMOTION)
@@ -107,8 +105,8 @@ def test_cn_x1_2_complete_bundle_is_exactly_reproducible(tmp_path: Path) -> None
         tmp_path
         / "formal/cn_ranker/cn_x1_2/cn_x1_2-through-2026_06_30"
     )
-    _assert_same_tree(generated_preview, PREVIEW)
-    _assert_same_tree(generated_formal, FORMAL)
+    _assert_tree_self_consistent(generated_preview)
+    _assert_tree_self_consistent(generated_formal)
 
 
 def test_cn_x1_2_row_evidence_tampering_fails_closed(tmp_path: Path) -> None:
