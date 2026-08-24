@@ -625,11 +625,51 @@ jobs:
             configs
             data/research/formal_model_runs
             data/research/model_runs
-            data/research/market_evidence
             data/research/model_data_bundle_v1
             scripts
             src
           sparse-checkout-cone-mode: true
+      - name: Resolve current Market Evidence tree
+        id: market_evidence_tree
+        run: |
+          tree="$(git rev-parse "${GITHUB_SHA}:data/research/market_evidence")"
+          test "$(git cat-file -t "$tree")" = "tree"
+          echo "oid=$tree" >> "$GITHUB_OUTPUT"
+      - name: Restore exact Market Evidence tree
+        id: market_evidence_cache
+        continue-on-error: true
+        uses: actions/cache/restore@v5
+        with:
+          path: data/research/market_evidence
+          key: formal-market-evidence-v1-${{ runner.os }}-${{ steps.market_evidence_tree.outputs.oid }}
+      - name: Materialize and verify current Market Evidence tree
+        id: market_evidence
+        env:
+          CACHE_HIT: ${{ steps.market_evidence_cache.outputs.cache-hit }}
+          EXPECTED_TREE: ${{ steps.market_evidence_tree.outputs.oid }}
+        run: |
+          verify_tree() {
+            local index_path root_tree actual_tree
+            index_path="$(mktemp)"
+            rm -f "$index_path"
+            GIT_INDEX_FILE="$index_path" git read-tree --empty
+            GIT_INDEX_FILE="$index_path" git add -f --sparse -- \
+              data/research/market_evidence
+            root_tree="$(GIT_INDEX_FILE="$index_path" git write-tree)"
+            actual_tree="$(git rev-parse "${root_tree}:data/research/market_evidence")"
+            rm -f "$index_path"
+            test "$actual_tree" = "$EXPECTED_TREE"
+          }
+
+          source=cache
+          if [ "$CACHE_HIT" != "true" ] || ! verify_tree; then
+            source=git
+            rm -rf data/research/market_evidence
+            git sparse-checkout add data/research/market_evidence
+            verify_tree
+          fi
+          echo "source=$source" >> "$GITHUB_OUTPUT"
+          echo "Verified Market Evidence source=$source tree=$EXPECTED_TREE"
       - name: Download verified US provider
         uses: actions/download-artifact@v6
         with:
@@ -747,6 +787,13 @@ jobs:
             --refresh-receipt "$REFRESH_RECEIPT" \
             --receipt artifacts/formal-refresh/publication-delta-receipt.json \
             --github-output "$GITHUB_OUTPUT"
+      - name: Save verified Market Evidence tree
+        if: success() && steps.market_evidence.outputs.source == 'git'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: data/research/market_evidence
+          key: formal-market-evidence-v1-${{ runner.os }}-${{ steps.market_evidence_tree.outputs.oid }}
       - name: Hydrate complete reviewed revision
         if: steps.delta.outputs.publication_required == 'true'
         run: |
