@@ -121,6 +121,38 @@ def _write_json(path: Path, payload: Any) -> None:
     )
 
 
+NAME_MAP_SOURCE = PROJECT_ROOT / "configs" / "name_map.yaml"
+
+
+def _publish_name_map(output_dir: Path) -> None:
+    """Publish the governed instrument-name registry for console display.
+
+    The strategy console resolves optional display names from a bundle
+    artifact whose path ends in ``name_map.json``; without it CN holdings
+    fall back to raw numeric symbols. The registry itself is governed data
+    (``configs/name_map.yaml``) and is republished verbatim.
+    """
+
+    registry = _read_yaml(NAME_MAP_SOURCE)
+    names = {
+        str(symbol): str(name)
+        for symbol, name in registry.items()
+        if isinstance(name, str) and name.strip()
+    }
+    if not names:
+        raise RepositoryResearchStoreError("governed name map registry is empty")
+    _write_json(
+        output_dir / "name_map.json",
+        {
+            "schema_version": "1.0",
+            "source": "configs/name_map.yaml",
+            "research_only": True,
+            "trade_ready": False,
+            "name_map": dict(sorted(names.items())),
+        },
+    )
+
+
 def _verify_inventory(source: Path, run_id: str) -> None:
     inventory = _read_json(source / "inventory.json")
     records = inventory.get("files")
@@ -331,6 +363,7 @@ def export_repository_research_data(
         raise RepositoryResearchStoreError("repository catalog publishes no models")
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    _publish_name_map(output_dir)
     published_runs = _verify_and_export_runs(catalog, output_dir)
     models: list[dict[str, Any]] = []
     evidence_cutoffs: list[str] = []
