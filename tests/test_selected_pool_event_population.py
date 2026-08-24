@@ -188,7 +188,9 @@ def test_sec_client_has_non_secret_declared_user_agent(monkeypatch):
     assert resolve_sec_user_agent() == DEFAULT_SEC_USER_AGENT
     client = SecCompanyFactsClient()
     assert "AlphaEngine" in str(client.user_agent)
-    assert "github.com/liuh886/alpha_engine/issues" in str(client.user_agent)
+    # SEC fair-access guidance expects a declared identity with a contact
+    # route; the checked-in default carries the owner's public noreply address.
+    assert "@" in str(client.user_agent)
 
 
 def test_sec_companyfacts_uses_conservative_post_filing_availability():
