@@ -336,20 +336,24 @@
 
 ## P0 — Syntax & Linting Bug Sweep (Recorded via Capability Router)
 
-- [ ] **T50: Fix 73 Ruff Linting Errors**
-  - **Issue**: `validate_all.ps1` fails at Gate 1 (Ruff lint). 73 errors remain across 11 files in `scripts/` and `src/research/` (mostly `E702` semicolon usage, `F841` unused variables, and `F821` undefined names like `XGBNativeCalibration`).
-  - **Goal**: Surgically fix syntax issues without altering quantitative research logic.
-  - **Status**: Recorded as an issue. Blocked waiting for user execution approval.
+- [x] **T50: Fix Ruff Linting Errors** ✅ 2026-08-24
+  - **Resolution**: Tracked code reached zero ruff errors via prior cleanup PRs. The residual errors recorded here lived only in untracked local scratch files (`tmp_*.py`, CN x1.1 optimization scripts), which are not repository state.
+  - **Status**: Resolved; no production code change required.
 
-- [ ] **T51: Fix 41 Test Failures Introduced in BYD Update (d556f436)**
-  - **Issue**: Pytest suite currently has 41 failures mostly around `yfinance_ohlc_adjustment`, `real_market_acceptance`, `selected_pool_governance`, and `frontend_api_audit`.
-  - **Goal**: Resolve test failures that broke the data alignment and system governance logic, as well as two frontend audit failures (artifacts.ts and routes.ts) which violate the artifact-only boundary.
-  - **Status**: Recorded as an issue for next sprint.
+- [x] **T51: Fix Test Failures Introduced in BYD Update (d556f436)** ✅ 2026-08-24
+  - **Resolution**: Full-checkout baseline on `main` showed 15 real failures + 1 collection error (most of the originally recorded 41 were sparse-checkout artifacts). Fixed by:
+    - aligning `test_yfinance_ohlc_adjustment.py` with the governed raw-bar + uniform `Adj Close` ratio contract shipped in #945;
+    - deleting stale `tests/test_materialize_formal_backtest_base.py` (module removed earlier);
+    - retiring superseded `tests/test_us_x1_2_preview_publication.py` (us_x1_2 preview rotated out of the governed catalog; us_x1_3 file covers the pattern);
+    - updating `test_issue966_phase2_contract.py` for the #989 online-validation retirement;
+    - adding `approved_skip` guards for workflow-materialized fixture tests;
+    - fixing Windows path-separator manifest keys in `src/factors/panel.py` (`as_posix`);
+    - forcing LF checkout for hash-bound data formats in `.gitattributes` so Windows `core.autocrlf` cannot break byte-level sha256 verification.
+  - **Status**: Resolved in the data-plane tech-debt cleanup PR.
 
-- [ ] **T52: Fix duplicate QQQ in baseline options**
-  - **Issue**: Sometimes the frontend baseline selector shows two "QQQ" options.
-  - **Goal**: Deduplicate baseline options generated from the report fields (`bench` vs `bench_qqq` etc.) when their labels and series are identical.
-  - **Status**: Recorded as an issue for next sprint.
+- [x] **T52: Fix duplicate QQQ in baseline options** ✅ 2026-08-24
+  - **Resolution**: Already implemented — `qlib-dashboard/src/lib/performanceBenchmarks.ts` deduplicates benchmark options by identical label + normalized series (`discoverBenchmarkOptions`), with coverage in `performanceBenchmarks.test.ts`.
+  - **Status**: Resolved; record kept for audit trail.
 
 - [ ] **T53: Add Chinese names to CN model holdings (A-shares)**
   - **Issue**: When viewing holdings for the CN model, A-share stocks are displayed only as numeric codes (e.g., `300408`), which is not user-friendly.

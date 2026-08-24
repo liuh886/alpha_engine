@@ -9,6 +9,8 @@ from types import ModuleType
 
 import pytest
 
+from _fixture_guards import require_workflow_fixture
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/promote_cn_x1_1_formal.py"
 EVIDENCE = ROOT / "data/research/cn_x1_1_regime_gated_candidate_v1"
@@ -32,7 +34,16 @@ def _seed_formal_root(target: Path) -> None:
     shutil.copy2(FORMAL_ROOT / "freshness.json", target / "freshness.json")
 
 
+@pytest.mark.approved_skip(
+    reason="requires workflow-materialized data/research/formal_backtests; "
+    "absent on clean checkouts"
+)
 def test_frozen_cn_x1_1_promotion_is_complete_and_reproducible(tmp_path: Path) -> None:
+    require_workflow_fixture(
+        str(FORMAL_ROOT / "catalog.json"),
+        str(FORMAL_ROOT / "freshness.json"),
+        str(EVIDENCE),
+    )
     module = _load()
     first = tmp_path / "first"
     second = tmp_path / "second"
@@ -83,7 +94,16 @@ def test_frozen_evidence_tampering_fails_closed(tmp_path: Path) -> None:
         module.verify_evidence(evidence)
 
 
+@pytest.mark.approved_skip(
+    reason="requires workflow-materialized data/research/formal_backtests; "
+    "absent on clean checkouts"
+)
 def test_catalog_replaces_cn_x1_0_with_cn_x1_1(tmp_path: Path) -> None:
+    require_workflow_fixture(
+        str(FORMAL_ROOT / "catalog.json"),
+        str(FORMAL_ROOT / "freshness.json"),
+        str(EVIDENCE),
+    )
     module = _load()
     target = tmp_path / "formal"
     _seed_formal_root(target)

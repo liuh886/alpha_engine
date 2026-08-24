@@ -43,6 +43,12 @@ data/research/formal_promotions/archive/*.zip binary
 # Governed terminal history is raw-byte hash bound by the lifecycle registry.
 data/csv_clean/EA.csv text eol=lf
 
+# Content-addressed research artifacts are verified byte-for-byte via sha256.
+# Force LF on checkout so Windows autocrlf cannot break hash verification.
+*.csv text eol=lf
+*.tsv text eol=lf
+*.jsonl text eol=lf
+
 # Durable large research-run evidence. Small JSON manifests and curves stay in normal Git.
 data/research/runs/**/*.parquet filter=lfs diff=lfs merge=lfs -text
 data/research/runs/**/*.pkl filter=lfs diff=lfs merge=lfs -text
