@@ -355,15 +355,18 @@ def run_cross_sectional_experiment(
         stage_id = f"window_{window.label}"
         if journal is not None:
             decision = journal.decide(stage_id=stage_id, fp=window_fingerprint)
-            recorded_artifact = (
-                str((decision.result or {}).get("artifact_path", ""))
-                if decision.action == "reuse"
-                else ""
-            )
-            if decision.action == "reuse" and recorded_artifact and Path(recorded_artifact).is_file():
-                reused = dict(decision.result or {})
-                reused["artifact_path"] = recorded_artifact
+            recorded = dict(decision.result or {})
+            recorded_artifact = str(recorded.get("artifact_path", ""))
+            recorded_observations = recorded.get("observations")
+            if (
+                decision.action == "reuse"
+                and recorded_artifact
+                and Path(recorded_artifact).is_file()
+                and isinstance(recorded_observations, list)
+            ):
+                reused = {**recorded, "artifact_path": recorded_artifact}
                 window_reports.append(recorded_artifact)
+                observations.extend(reused.pop("observations"))
                 continue
         evaluation_dates = evaluation_dates_by_window[window.label]
         features_all = normalize_qlib_frame_index(
@@ -473,12 +476,6 @@ def run_cross_sectional_experiment(
                 {key: value for key, value in report.items() if key != "artifact_path"},
             )
             window_reports.append(str(artifact))
-            if journal is not None:
-                journal.record(
-                    stage_id=stage_id,
-                    fp=window_fingerprint,
-                    result={**report, "artifact_path": str(artifact)},
-                )
 
         for candidate in spec.candidates:
             candidate_name = names_by_id[candidate.candidate_id]
@@ -506,6 +503,25 @@ def run_cross_sectional_experiment(
                         result=result,
                     )
                 )
+
+        if journal is not None and report.get("artifact_path"):
+            journal.record(
+                stage_id=stage_id,
+                fp=window_fingerprint,
+                result={
+                    **{
+                        key: value
+                        for key, value in report.items()
+                        if key != "artifact_path"
+                    },
+                    "artifact_path": str(artifact),
+                    "observations": [
+                        row
+                        for row in observations
+                        if row.get("window") == window.label
+                    ],
+                },
+            )
 
     receipt = evaluate_experiment(
         spec.contract,
