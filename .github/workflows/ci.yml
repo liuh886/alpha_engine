@@ -234,6 +234,7 @@ jobs:
           name: repository-health-failure-${{ github.run_id }}
           path: artifacts/pytest-full-report.xml
           if-no-files-found: ignore
+          retention-days: 30
 
       - name: Open or update the health-gate tracking issue
         if: failure()
