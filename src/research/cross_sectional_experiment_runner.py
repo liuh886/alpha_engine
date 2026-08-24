@@ -27,6 +27,7 @@ from src.research.experiment_harness import (
 from src.research.factor_library import load_factor_library, select_factor_groups
 from src.research.notebook_experiment_api import run_10d_experiment
 from src.research.paradigm import ResearchParadigmSpec
+from src.research.stage_journal import StageJournal, fingerprint
 from src.research.qlib_execution_common import (
     load_window_benchmark_returns,
     normalize_qlib_frame_index,
@@ -227,6 +228,7 @@ def run_cross_sectional_experiment(
     spec_path: str | Path,
     *,
     output_dir: str | Path | None = None,
+    resume_journal_root: str | Path | None = None,
 ) -> dict[str, Any]:
     spec = load_cross_sectional_experiment_spec(spec_path)
     output = (
@@ -235,6 +237,11 @@ def run_cross_sectional_experiment(
         else (PROJECT_ROOT / "artifacts" / "research_experiments" / spec.experiment_id).resolve()
     )
     output.mkdir(parents=True, exist_ok=True)
+    journal = (
+        StageJournal(Path(resume_journal_root).resolve())
+        if resume_journal_root is not None
+        else None
+    )
 
     runtime = _runtime_for_market(spec.market)
     runtime.initialize(PROJECT_ROOT)
@@ -318,6 +325,46 @@ def run_cross_sectional_experiment(
         }
 
     for window in windows:
+        window_fingerprint = fingerprint(
+            {
+                "experiment_id": spec.experiment_id,
+                "market": spec.market,
+                "symbols": list(symbols),
+                "union_expressions": union_expressions,
+                "expression_columns": expression_columns,
+                "window": {
+                    "label": window.label,
+                    "train_start": window.train_start,
+                    "train_end": window.train_end,
+                    "test_start": window.test_start,
+                    "test_end": window.test_end,
+                    "evaluation_dates": [str(item.date()) for item in evaluation_dates_by_window[window.label]],
+                },
+                "strategy": {
+                    key: strategy[key]
+                    for key in ("horizon_days", "rebalance_days", "top_n")
+                },
+                "cost_levels": cost_levels,
+                "provider_identity_sha256": observed_provider,
+                "candidate_parameter_identities": {
+                    candidate.candidate_id: candidate.calibration.identity_manifest()
+                    for candidate in spec.candidates
+                },
+            }
+        )
+        stage_id = f"window_{window.label}"
+        if journal is not None:
+            decision = journal.decide(stage_id=stage_id, fp=window_fingerprint)
+            recorded_artifact = (
+                str((decision.result or {}).get("artifact_path", ""))
+                if decision.action == "reuse"
+                else ""
+            )
+            if decision.action == "reuse" and recorded_artifact and Path(recorded_artifact).is_file():
+                reused = dict(decision.result or {})
+                reused["artifact_path"] = recorded_artifact
+                window_reports.append(recorded_artifact)
+                continue
         evaluation_dates = evaluation_dates_by_window[window.label]
         features_all = normalize_qlib_frame_index(
             runtime.features(
@@ -426,6 +473,12 @@ def run_cross_sectional_experiment(
                 {key: value for key, value in report.items() if key != "artifact_path"},
             )
             window_reports.append(str(artifact))
+            if journal is not None:
+                journal.record(
+                    stage_id=stage_id,
+                    fp=window_fingerprint,
+                    result={**report, "artifact_path": str(artifact)},
+                )
 
         for candidate in spec.candidates:
             candidate_name = names_by_id[candidate.candidate_id]
