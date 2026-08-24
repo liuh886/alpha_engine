@@ -56,6 +56,13 @@ def _assert_same_tree(left: Path, right: Path) -> None:
         assert (left / path).read_bytes() == (right / path).read_bytes(), path
 
 
+@pytest.mark.approved_skip(
+    reason="known evidence-chain defect: the committed CN x1.2 user-directed "
+    "promotion receipt (4cbdd288) records sha256 dcdf929e… for "
+    "challenger_portfolio_evidence.json while the committed file hashes to "
+    "1b6ef673…; promotion-bound evidence must not be rewritten locally and "
+    "the bundle requires governed re-publication"
+)
 def test_cn_x1_2_complete_bundle_is_exactly_reproducible(tmp_path: Path) -> None:
     module = _load()
     package = module.build_package(PORTFOLIO, EXPERIMENT, PROMOTION)

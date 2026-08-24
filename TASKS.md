@@ -349,6 +349,7 @@
     - adding `approved_skip` guards for workflow-materialized fixture tests;
     - fixing Windows path-separator manifest keys in `src/factors/panel.py` (`as_posix`);
     - forcing LF checkout for hash-bound data formats in `.gitattributes` so Windows `core.autocrlf` cannot break byte-level sha256 verification.
+  - **Known remaining blocker**: `test_cn_x1_2_complete_bundle_is_exactly_reproducible` carries an `approved_skip` — the committed CN x1.2 promotion receipt is not bound to the committed portfolio evidence (published inconsistent in `4cbdd288`). Requires governed re-publication; tracked in issue #1046. Local receipt patching is forbidden.
   - **Status**: Resolved in the data-plane tech-debt cleanup PR.
 
 - [x] **T52: Fix duplicate QQQ in baseline options** ✅ 2026-08-24
