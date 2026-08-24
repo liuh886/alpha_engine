@@ -4,6 +4,9 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
+from _fixture_guards import require_workflow_fixture
 from src.artifacts.formal_bundle_v2_builder import build_plan
 from src.artifacts.model_run_bundle_v2 import validate_manifest
 from src.artifacts.model_run_exporter import export_model_run
@@ -31,7 +34,12 @@ def _section(root: Path, manifest: dict, section_id: str):
     return row, payload
 
 
+@pytest.mark.approved_skip(
+    reason="requires workflow-materialized data/research/formal_backtests; "
+    "absent on clean checkouts"
+)
 def test_source_backed_active_formals_export_without_recomputation(tmp_path: Path) -> None:
+    require_workflow_fixture(str(SOURCE / "catalog.json"))
     active = load_active_strategy_catalog(STRATEGIES)
     source_catalog = _read(SOURCE / "catalog.json")
     source_ids = [row["model_id"] for row in source_catalog["records"]]
@@ -83,7 +91,12 @@ def test_source_backed_active_formals_export_without_recomputation(tmp_path: Pat
         assert decision["availability_status"] == "not_retained"
 
 
+@pytest.mark.approved_skip(
+    reason="requires workflow-materialized data/research/formal_backtests; "
+    "absent on clean checkouts"
+)
 def test_builder_uses_retained_metric_labels_only(tmp_path: Path) -> None:
+    require_workflow_fixture(str(SOURCE / "catalog.json"))
     active = load_active_strategy_catalog(STRATEGIES)
     for model_id in ("qqqi_qqq_tqqq_v4_3", BYD_V13):
         manifest_path = export_model_run(
@@ -108,7 +121,12 @@ def test_builder_uses_retained_metric_labels_only(tmp_path: Path) -> None:
             assert set(cross_sectional.values()) == {"not_applicable"}
 
 
+@pytest.mark.approved_skip(
+    reason="requires workflow-materialized data/research/formal_backtests; "
+    "absent on clean checkouts"
+)
 def test_byd_retained_benchmark_and_excess_metrics_are_available(tmp_path: Path) -> None:
+    require_workflow_fixture(str(SOURCE / f"{BYD_V13}.json"))
     active = load_active_strategy_catalog(STRATEGIES)
     manifest_path = export_model_run(
         build_plan(SOURCE / f"{BYD_V13}.json", active.by_model_version_id[BYD_V13]),

@@ -46,7 +46,9 @@ def test_us_phase2_matrix_is_exact_x1_2_feature_only_ablation() -> None:
         assert calibration["colsample_bytree"] == 0.8
         assert calibration["seed"] == 42
     assert "2026H1" not in raw["windows"]["candidate_selection"]
-    assert raw["online_validation"] == "exact_us_ranker_portfolio_v1"
+    # Issue 966 execution triggers were retired (#989); the online-validation
+    # hook must stay absent so the ablation cannot re-enter execution paths.
+    assert "online_validation" not in raw
 
 
 def test_cn_phase2_keeps_current_x1_2_signal_and_economic_contract() -> None:
