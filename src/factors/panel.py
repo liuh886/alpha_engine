@@ -467,7 +467,7 @@ def build_alpha158_panel(
         path = output / "panels" / f"{symbol}.csv.gz"
         path.parent.mkdir(parents=True, exist_ok=True)
         frame.reset_index().to_csv(path, index=False, compression="gzip")
-        files[str(path.relative_to(output))] = _sha256(path)
+        files[path.relative_to(output).as_posix()] = _sha256(path)
         symbol_quality = _quality_rows(
             frame,
             symbol=symbol,
@@ -492,7 +492,7 @@ def build_alpha158_panel(
     quality = pd.DataFrame(quality_rows)
     quality_path = output / "factor_quality.csv.gz"
     quality.to_csv(quality_path, index=False, compression="gzip")
-    files[str(quality_path.relative_to(output))] = _sha256(quality_path)
+    files[quality_path.relative_to(output).as_posix()] = _sha256(quality_path)
     status = "ready" if len(ready_symbols) == len(symbols) else "partial"
     manifest = {
         "schema_version": "1.1",
