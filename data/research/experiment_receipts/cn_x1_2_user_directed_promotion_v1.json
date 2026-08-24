@@ -18,7 +18,7 @@
     "holdings": "retained_exact_all_rebalance_targets_including_CSI300_sleeve",
     "path": "data/research/cn_x1_2_alpha158_breadth_scaled_v1/challenger_portfolio_evidence.json",
     "performance_trace": "retained_exact_non_overlapping_10_session_trace",
-    "sha256": "dcdf929ea24efa792b8ae04e316d518abeb98f8b76bd7ecaf5f65ecb5d535bdc"
+    "sha256": "1b6ef673e2b15624a7ad868dd953ebe2a9277315f85cdb4339185463c96d58ba"
   },
   "positive_evidence": {
     "aggregate_max_drawdown_20bps": -0.1477144267185888,
