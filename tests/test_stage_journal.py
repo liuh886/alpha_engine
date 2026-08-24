@@ -99,3 +99,40 @@ def test_unsafe_stage_id_is_rejected(tmp_path: Path) -> None:
 def test_canonical_bytes_reject_non_finite_floats() -> None:
     with pytest.raises(ValueError):
         canonical_bytes({"x": float("nan")})
+
+
+def test_roundtrip_preserves_observation_row_fidelity(tmp_path: Path) -> None:
+    """Observation rows recorded for resume must survive byte-exactly."""
+
+    rows = [
+        {
+            "candidate_id": "alpha158_baseline",
+            "window": "2024H1",
+            "cost_bps": 20,
+            "relative_excess": 0.04798990466643405,
+            "strategy_return": 0.113254261403144,
+            "benchmark_return": 0.06526435673670995,
+            "max_drawdown": -0.127254261403144,
+            "rank_ic": 0.031,
+            "icir": 0.62,
+        },
+        {
+            "candidate_id": "alpha158_challenger",
+            "window": "2024H1",
+            "cost_bps": 60,
+            "relative_excess": -0.002,
+            "strategy_return": 0.0,
+            "benchmark_return": 0.002,
+            "max_drawdown": -0.05,
+            "rank_ic": -0.01,
+            "icir": -0.1,
+        },
+    ]
+    journal = StageJournal(tmp_path)
+    fp = fingerprint({"stage": "window_2024H1"})
+    journal.record(stage_id="window_2024H1", fp=fp, result={"observations": rows})
+
+    reused = journal.decide(stage_id="window_2024H1", fp=fp)
+    assert reused.action == "reuse"
+    assert reused.result is not None
+    assert reused.result["observations"] == rows
