@@ -391,3 +391,15 @@
   - Pre-registered in `configs/research_experiments/us_x1_1_rank_aware_sector_cap_v1.yaml`
   - Requires deterministic reproduction score ledgers (not locally available)
   - Targeting drawdown reduction through 4-names-per-sector constraint
+## Framework Absorption Landings (2026-08-25)
+
+Source map: Issue #1052 (TradingAgents / ai-hedge-fund / FinRL-X / AI-Trader patterns, reshaped to governance).
+
+- [x] **T56: Land A3 — composed research mandates** (#1053)
+  - `src/governance/research_mandate.py` + first mandate `cn_training_mandate_v1`; hash-bound composition of pool/governance/reference inputs with fail-closed drift detection and unflippable research boundary; 8 hermetic gates. Feeds #826.
+
+- [x] **T57: Land A4 — crash-safe stage journal for experiment resume** (#1055)
+  - `src/research/stage_journal.py` + opt-in window-level resume in `run_cross_sectional_experiment(resume_journal_root=None)`; content-addressed fingerprints over inputs only; atomic records; corrupt entries fail closed; default-off preserves byte-identical reproducibility contracts.
+
+- [x] **T58: Repo hygiene sweep** 
+  - Weekly full-suite gate restored truthful (#1048) after #1047 closed the 15-failure debt; local scratch files removed leaving `ruff check .` at zero repo-wide; remote branches 21→12 via evidenced cleanup recorded on #763; CN x1.2 evidence chain rebound via canonical re-publication (#1051, closes #1046).
