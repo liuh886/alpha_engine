@@ -1,30 +1,16 @@
-"""The console bundle must publish the governed CN instrument-name registry."""
+"""Gate: the governed CN instrument-name registry covers the selected pool.
+
+Export wiring itself is exercised by the repository research store tests;
+this module guards registry completeness against pool membership drift.
+"""
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import yaml
 
-from src.artifacts.repository_research_store import (
-    DEFAULT_CATALOG,
-    NAME_MAP_SOURCE,
-    export_repository_research_data,
-)
-
-
-def test_export_publishes_governed_name_map_for_console(tmp_path: Path) -> None:
-    output = tmp_path / "site" / "data"
-
-    export_repository_research_data(output, catalog_path=DEFAULT_CATALOG)
-
-    payload = json.loads((output / "name_map.json").read_text(encoding="utf-8"))
-    assert payload["research_only"] is True
-    assert payload["trade_ready"] is False
-    assert payload["source"] == "configs/name_map.yaml"
-    name_map = payload["name_map"]
-    assert isinstance(name_map, dict) and name_map
+from src.artifacts.repository_research_store import NAME_MAP_SOURCE
 
 
 def test_name_map_covers_every_cn_selected_pool_symbol() -> None:

@@ -34,6 +34,11 @@ def test_repository_export_publishes_named_models_without_metadata_db(tmp_path: 
     assert manifest["stats"]["total_models"] == 3
     assert "metadata_db_missing" not in manifest.get("blocked_gates", [])
     assert (output / "repository-catalog.json").is_file()
+    assert (output / "name_map.json").is_file()
+    name_map = json.loads((output / "name_map.json").read_text(encoding="utf-8"))
+    assert name_map["research_only"] is True
+    assert name_map["trade_ready"] is False
+    assert "000001" in name_map["name_map"]
     assert (output.parent / "docs" / "models" / "us_x1_1.yaml").is_file()
     assert (output.parent / "docs" / "models" / "us_x1_0.yaml").is_file()
     assert (output.parent / "docs" / "models" / "cn_x1_0.yaml").is_file()
