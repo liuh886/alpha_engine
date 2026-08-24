@@ -1,0 +1,38 @@
+# CN selected-pool research mandate — composed identity for training missions.
+#
+# Consumes governed inputs by hash binding so experiments, trainings and the
+# console resolve one mission identity instead of reassembling files.
+# Authoring: refresh `sha256` values whenever a referenced file changes.
+schema_version: "1.0"
+mandate_id: cn_training_mandate_v1
+display_name: "CN Selected-Pool Research Mandate"
+market: cn
+purpose: >-
+  Authoritative composition for CN130 candidate-pool research and training
+  missions: pool, governance and reference instruments bound by content,
+  with cadence and cost schedule fixed for comparability.
+
+benchmark_symbol: "000300"
+rebalance_cadence: biweekly
+cost_schedule_bps:
+  base: 20
+  stress: 60
+
+bindings:
+  candidate_pool:
+    role: candidate_pool
+    ref: configs/research_universes/cn_selected_equities_v3.yaml
+    sha256: 4ce5b95e60d38a13e4852fb6f7a3a6437b55d6da0fb317ad553d114e85158529
+  reference_instruments:
+    role: reference_instruments
+    ref: configs/pools/reference_instrument_registry_v1.yaml
+    sha256: cf09971129007feee0684d1315645ad6bbd45da725eb20700bcb146b3b89cf15
+  selected_pool_governance:
+    role: pool_governance
+    ref: configs/pools/selected_pool_registry_v1.yaml
+    sha256: a7641f312b2f974fc06ea87f86eec0919f39fbfafe4837ab9677680f018eabe1
+
+evidence_boundaries:
+  research_only: true
+  trade_ready: false
+  automatic_promotion: false
