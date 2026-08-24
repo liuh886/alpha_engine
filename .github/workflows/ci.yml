@@ -140,6 +140,7 @@ jobs:
           tests/test_refresh_ranker_formal.py
           tests/test_cn_x1_2_prospective.py
           tests/test_notebook_lab_contracts.py
+          tests/test_yfinance_ohlc_adjustment.py
 
       - name: Mypy type check
         run: >-
@@ -182,6 +183,7 @@ jobs:
           tests/test_optimization_campaign.py
           tests/test_refresh_ranker_formal.py
           tests/test_notebook_lab_contracts.py
+          tests/test_yfinance_ohlc_adjustment.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Package build
@@ -192,6 +194,9 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -212,5 +217,49 @@ jobs:
       - name: Full repository Ruff
         run: uv run ruff check .
 
+      # The full suite must report every failure, not stop at the first one:
+      # --maxfail=1 previously hid the true failure inventory behind the
+      # earliest broken test for weeks.
       - name: Full repository tests
-        run: uv run pytest tests -q --strict-markers --tb=short --disable-warnings --maxfail=1
+        run: |
+          mkdir -p artifacts
+          uv run pytest tests -q --strict-markers --tb=short \
+            --disable-warnings \
+            --junitxml=artifacts/pytest-full-report.xml
+
+      - name: Upload full failure report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-health-failure-${{ github.run_id }}
+          path: artifacts/pytest-full-report.xml
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Open or update the health-gate tracking issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          {
+            echo "## Repository health gate failed"
+            echo ""
+            echo "- Run: ${RUN_URL}"
+            echo "- Commit: ${SHA}"
+            echo "- Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo ""
+            echo "The weekly full-suite job reports every failing test (no --maxfail)."
+            echo "Download \`repository-health-failure-${{ github.run_id }}\` for the JUnit report."
+          } > health-failure.md
+          existing="$(gh issue list \
+            --search "weekly repository health gate is failing in:title" \
+            --state open --json number --jq '.[0].number')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file health-failure.md
+          else
+            gh issue create \
+              --title "weekly repository health gate is failing" \
+              --body-file health-failure.md
+          fi
