@@ -601,14 +601,14 @@ def test_run_scoped_artifacts_are_overwritable_for_failed_job_reruns() -> None:
         assert f"retention-days: {retention_days}" in block, (index, name)
 
 
-def test_publish_initial_checkout_only_materializes_delta_inputs() -> None:
+def test_publish_initial_checkout_excludes_cacheable_market_evidence() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
     )
     publish = workflow[workflow.index("\n  publish:\n") :]
     checkout_start = publish.index("      - name: Check out triggering revision")
     checkout_end = publish.index(
-        "      - name: Download verified US provider",
+        "      - name: Resolve current Market Evidence tree",
         checkout_start,
     )
     checkout = publish[checkout_start:checkout_end]
@@ -621,7 +621,6 @@ def test_publish_initial_checkout_only_materializes_delta_inputs() -> None:
         "            configs\n"
         "            data/research/formal_model_runs\n"
         "            data/research/model_runs\n"
-        "            data/research/market_evidence\n"
         "            data/research/model_data_bundle_v1\n"
         "            scripts\n"
         "            src\n"
@@ -629,6 +628,60 @@ def test_publish_initial_checkout_only_materializes_delta_inputs() -> None:
     assert "fetch-depth: 0" not in checkout
     assert "lfs: true" not in checkout
     assert "filter:" not in checkout
+    assert "data/research/market_evidence" not in checkout
+
+
+def test_publish_market_evidence_cache_is_exact_and_fallback_safe() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    publish = workflow[workflow.index("\n  publish:\n") :]
+    checkout = publish.index("      - name: Check out triggering revision")
+    resolve = publish.index("      - name: Resolve current Market Evidence tree")
+    restore = publish.index("      - name: Restore exact Market Evidence tree")
+    verify = publish.index(
+        "      - name: Materialize and verify current Market Evidence tree"
+    )
+    build = publish.index("      - name: Build shared governed Market Evidence")
+    delta = publish.index("      - name: Classify canonical publication delta")
+    save = publish.index("      - name: Save verified Market Evidence tree")
+    hydrate = publish.index("      - name: Hydrate complete reviewed revision")
+    assert checkout < resolve < restore < verify < build < delta < save < hydrate
+
+    resolve_block = publish[resolve:restore]
+    assert '${GITHUB_SHA}:data/research/market_evidence' in resolve_block
+    assert 'git cat-file -t "$tree"' in resolve_block
+    assert 'echo "oid=$tree" >> "$GITHUB_OUTPUT"' in resolve_block
+
+    restore_block = publish[restore:verify]
+    assert "continue-on-error: true" in restore_block
+    assert "uses: actions/cache/restore@v5" in restore_block
+    assert "restore-keys:" not in restore_block
+    assert "formal-market-evidence-v1-${{ runner.os }}-" in restore_block
+    assert "steps.market_evidence_tree.outputs.oid" in restore_block
+
+    verify_block = publish[verify:publish.index("      - name: Download verified US provider")]
+    for token in (
+        'CACHE_HIT: ${{ steps.market_evidence_cache.outputs.cache-hit }}',
+        'EXPECTED_TREE: ${{ steps.market_evidence_tree.outputs.oid }}',
+        'GIT_INDEX_FILE="$index_path" git read-tree --empty',
+        "git add -f --sparse --",
+        'GIT_INDEX_FILE="$index_path" git write-tree',
+        '${root_tree}:data/research/market_evidence',
+        'test "$actual_tree" = "$EXPECTED_TREE"',
+        'rm -rf data/research/market_evidence',
+        "git sparse-checkout add data/research/market_evidence",
+        "if [ \"$CACHE_HIT\" != \"true\" ] || ! verify_tree",
+        'echo "source=$source" >> "$GITHUB_OUTPUT"',
+    ):
+        assert token in verify_block
+
+    save_block = publish[save:hydrate]
+    assert "success() && steps.market_evidence.outputs.source == 'git'" in save_block
+    assert "continue-on-error: true" in save_block
+    assert "uses: actions/cache/save@v5" in save_block
+    assert "restore-keys:" not in save_block
+    assert "steps.market_evidence_tree.outputs.oid" in save_block
 
 def test_publish_hydrates_complete_revision_before_candidate_publication() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
