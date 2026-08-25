@@ -11,6 +11,7 @@ from pathlib import Path
 import yaml
 
 from src.data.fundamentals.sec_companyfacts import resolve_sec_user_agent
+from src.data.sec_transport import SecTransport, read_sec_json_response
 
 SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 
@@ -48,8 +49,9 @@ def main() -> int:
             "User-Agent": resolve_sec_user_agent(args.user_agent),
         },
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    transport = SecTransport.from_env()
+    with transport.open(request, timeout=30) as response:
+        payload = read_sec_json_response(response)
     lookup = {
         str(row["ticker"]).strip().upper(): {
             "cik": str(int(row["cik_str"])).zfill(10),
@@ -70,6 +72,7 @@ def main() -> int:
             "url": SEC_TICKERS_URL,
             "declared_user_agent": True,
             "secret_required": False,
+            "transport": transport.evidence(),
         },
         "expected_symbol_count": expected,
         "mapped_symbol_count": len(mapped),

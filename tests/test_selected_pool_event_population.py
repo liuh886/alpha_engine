@@ -191,6 +191,7 @@ def test_sec_client_has_non_secret_declared_user_agent(monkeypatch):
     # SEC fair-access guidance expects a declared identity with a contact
     # route; the checked-in default carries the owner's public noreply address.
     assert "@" in str(client.user_agent)
+    assert client.transport_evidence()["egress_mode"] == "direct"
 
 
 def test_sec_companyfacts_uses_conservative_post_filing_availability():

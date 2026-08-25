@@ -189,6 +189,7 @@ def write_source_role_manifest(
     market: str,
     vwap_ready: bool,
     blocker: str | None = None,
+    field_semantics: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     provider = Path(provider_dir).resolve()
     manifest_path = Path(provider_manifest_path).resolve()
@@ -204,18 +205,21 @@ def write_source_role_manifest(
         "provider_manifest_path": str(manifest_path),
         "provider_manifest_sha256": _sha256(manifest_path),
         "provider_identity_sha256": provider_manifest.get("provider_identity_sha256"),
-        "field_semantics": {
-            "open": "same_source_qfq_adjusted",
-            "high": "same_source_qfq_adjusted",
-            "low": "same_source_qfq_adjusted",
-            "close": "same_source_qfq_adjusted",
-            "vwap": (
-                "reported_turnover_divided_by_reported_volume" if vwap_ready else "unavailable"
-            ),
-            "volume": "reported_shares_unadjusted",
-            "amount": "reported_CNY_turnover_unadjusted",
-            "factor": "same_source_qfq_close/raw_close_ratio",
-        },
+        "field_semantics": dict(
+            field_semantics
+            or {
+                "open": "same_source_qfq_adjusted",
+                "high": "same_source_qfq_adjusted",
+                "low": "same_source_qfq_adjusted",
+                "close": "same_source_qfq_adjusted",
+                "vwap": (
+                    "reported_turnover_divided_by_reported_volume" if vwap_ready else "unavailable"
+                ),
+                "volume": "reported_shares_unadjusted",
+                "amount": "reported_CNY_turnover_unadjusted",
+                "factor": "same_source_qfq_close/raw_close_ratio",
+            }
+        ),
         "vwap_ready": bool(vwap_ready),
         "blocker": blocker,
         "research_only": True,

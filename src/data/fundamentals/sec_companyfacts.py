@@ -6,11 +6,13 @@ import os
 import time
 import urllib.error
 import urllib.request
+import zlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
 
 from src.data.fundamentals.event_store import FundamentalEvent, normalize_event_record
+from src.data.sec_transport import SecTransport, SecTransportError, read_sec_json_response
 
 SEC_DATA_ROOT = "https://data.sec.gov"
 DEFAULT_SEC_USER_AGENT = (
@@ -39,9 +41,17 @@ class SecCompanyFactsClient:
     user_agent: str | None = None
     timeout_seconds: float = 30.0
     data_root: str = SEC_DATA_ROOT
+    minimum_interval_seconds: float = 0.12
+    transport: SecTransport | None = None
 
     def __post_init__(self) -> None:
         self.user_agent = resolve_sec_user_agent(self.user_agent)
+        self.transport = self.transport or SecTransport.from_env()
+        self._last_request_at = 0.0
+
+    def transport_evidence(self) -> dict[str, Any]:
+        assert self.transport is not None
+        return self.transport.evidence()
 
     def fetch_companyfacts(self, cik: str) -> dict[str, Any]:
         normalized = str(cik).strip().zfill(10)
@@ -54,21 +64,32 @@ class SecCompanyFactsClient:
                 "User-Agent": str(self.user_agent),
             },
         )
+        elapsed = time.monotonic() - self._last_request_at
+        if elapsed < self.minimum_interval_seconds:
+            time.sleep(self.minimum_interval_seconds - elapsed)
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                payload = json.loads(response.read().decode("utf-8"))
+            assert self.transport is not None
+            with self.transport.open(request, timeout=self.timeout_seconds) as response:
+                payload = read_sec_json_response(response)
         except urllib.error.HTTPError as exc:
             raise SecCompanyFactsError(
                 f"SEC companyfacts HTTP {exc.code} for CIK{normalized}"
-            ) from exc
-        except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+            ) from None
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            OSError,
+            zlib.error,
+            SecTransportError,
+            json.JSONDecodeError,
+        ) as exc:
             raise SecCompanyFactsError(
-                f"SEC companyfacts request failed for CIK{normalized}: {exc}"
-            ) from exc
+                f"SEC companyfacts request failed for CIK{normalized}: {type(exc).__name__}"
+            ) from None
+        finally:
+            self._last_request_at = time.monotonic()
         if not isinstance(payload, dict):
             raise SecCompanyFactsError("SEC companyfacts payload must be a mapping")
-        # Stay well below the SEC's current 10 requests/second fair-access ceiling.
-        time.sleep(0.11)
         return payload
 
 

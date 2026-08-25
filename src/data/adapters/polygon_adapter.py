@@ -97,7 +97,7 @@ class PolygonHttpClient:
                             path=path,
                             attempts=attempt,
                             retry_after_seconds=retry_after,
-                        ) from exc
+                        ) from None
                     time.sleep(
                         retry_after if retry_after is not None else min(2 ** (attempt - 1), 4)
                     )
@@ -107,7 +107,7 @@ class PolygonHttpClient:
                     path=path,
                     attempts=attempt,
                     retry_after_seconds=retry_after,
-                ) from exc
+                ) from None
             except (urllib.error.URLError, TimeoutError, OSError) as exc:
                 last_error = exc
                 if attempt >= self.max_attempts:
@@ -115,7 +115,8 @@ class PolygonHttpClient:
                 time.sleep(min(2 ** (attempt - 1), 4))
             except json.JSONDecodeError as exc:
                 raise DataFetchError(f"Polygon returned invalid JSON for {path}") from exc
-        raise DataFetchError(f"Polygon request failed for {path}: {last_error}")
+        error_name = type(last_error).__name__ if last_error is not None else "unknown"
+        raise DataFetchError(f"Polygon request failed for {path}: {error_name}")
 
 
 def _normalise_symbol(value: str) -> str:
@@ -162,7 +163,7 @@ def _bars(payload: Any, *, symbol: str) -> pd.DataFrame:
     if not isinstance(results, list) or not results:
         raise DataFetchError(f"Polygon returned no daily aggregates for {symbol}")
     frame = pd.DataFrame(results)
-    required = {"t", "o", "h", "l", "c", "v"}
+    required = {"t", "o", "h", "l", "c", "v", "vw"}
     missing = sorted(required.difference(frame.columns))
     if missing:
         raise DataFetchError(f"Polygon aggregates missing columns for {symbol}: {missing}")
@@ -175,25 +176,50 @@ def _bars(payload: Any, *, symbol: str) -> pd.DataFrame:
             "high": pd.to_numeric(frame["h"], errors="coerce"),
             "low": pd.to_numeric(frame["l"], errors="coerce"),
             "close": pd.to_numeric(frame["c"], errors="coerce"),
+            "vwap": pd.to_numeric(frame["vw"], errors="coerce"),
             "volume": pd.to_numeric(frame["v"], errors="coerce"),
         }
     )
-    out["amount"] = out["close"] * out["volume"]
+    out["amount"] = out["vwap"] * out["volume"]
     out["factor"] = 1.0
     out = (
-        out.dropna(subset=["date", "open", "high", "low", "close", "volume"])
+        out.dropna(subset=["date", "open", "high", "low", "close", "vwap", "volume"])
         .sort_values("date")
         .drop_duplicates(subset=["date"], keep="last")
         .reset_index(drop=True)
     )
     if out.empty:
         raise DataFetchError(f"Polygon returned no usable aggregates for {symbol}")
+    if (out[["vwap", "volume"]] <= 0).any().any():
+        raise DataFetchError(f"Polygon VWAP and volume must be positive for {symbol}")
+    relative_tolerance = out["close"].abs().clip(lower=1.0) * 1e-8
+    envelope_distance = pd.concat(
+        [(out["low"] - out["vwap"]).clip(lower=0.0), (out["vwap"] - out["high"]).clip(lower=0.0)],
+        axis=1,
+    ).max(axis=1)
+    strict_violations = envelope_distance > relative_tolerance
+    # Polygon publishes OHLC at cent precision while reported VWAP may carry
+    # finer precision. Half a cent is the maximum nearest-tick discrepancy.
+    tolerance = relative_tolerance.clip(lower=0.005)
+    outside_envelope = envelope_distance > tolerance
+    if outside_envelope.any():
+        first_index = outside_envelope[outside_envelope].index[0]
+        first = out.loc[first_index]
+        raise DataFetchError(
+            f"Polygon VWAP violates the OHLC envelope for {symbol}: "
+            f"sessions={int(outside_envelope.sum())}, "
+            f"max_distance={float(envelope_distance[outside_envelope].max()):.8f}, "
+            f"first_date={first['date'].date().isoformat()}, "
+            f"low={float(first['low']):.8f}, high={float(first['high']):.8f}, "
+            f"vwap={float(first['vwap']):.8f}"
+        )
+    out.attrs["rounded_envelope_tolerance_sessions"] = int(strict_violations.sum())
     from src.data.validation.schema import validate_market_data
 
     valid, _, errors = validate_market_data(out, symbol)
     if not valid:
         raise DataFetchError(f"Polygon schema validation failed for {symbol}: {'; '.join(errors)}")
-    return out[["date", "open", "high", "low", "close", "volume", "amount", "factor"]]
+    return out[["date", "open", "high", "low", "close", "vwap", "volume", "amount", "factor"]]
 
 
 @dataclass
@@ -249,7 +275,8 @@ class PolygonAdapter:
         metadata["elapsed_seconds"] = round(time.perf_counter() - started, 6)
         out.attrs["provider_metadata"] = metadata
         out.attrs["price_mode"] = "adjusted_daily_aggregates"
-        out.attrs["amount_semantics"] = "synthetic_adjusted_close_times_volume"
+        out.attrs["vwap_semantics"] = "reported_vwap"
+        out.attrs["amount_semantics"] = "derived_reported_vwap_times_reported_volume"
         return FetchResult(
             provider=self.name,
             symbol=symbol,

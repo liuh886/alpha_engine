@@ -10,6 +10,7 @@ on:
       - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
       - "configs/research_paradigms/cn_alpha158_cross_window_stability_v1.yaml"
       - "src/data/canonical_vwap.py"
+      - "src/data/adapters/polygon_adapter.py"
       - "src/factors/panel.py"
       - "src/factors/reusable_panel.py"
       - "src/factors/governance.py"
@@ -18,6 +19,7 @@ on:
       - "scripts/factors/build_alpha158_panel.py"
       - "scripts/run_cn_alpha158_stability_diagnostics.py"
       - "tests/test_canonical_vwap.py"
+      - "tests/test_polygon_adapter.py"
       - "tests/test_alpha158_panel.py"
       - "tests/test_reusable_alpha158_panel.py"
       - "tests/test_factor_governance.py"
@@ -32,6 +34,7 @@ on:
       - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
       - "configs/research_paradigms/cn_alpha158_cross_window_stability_v1.yaml"
       - "src/data/canonical_vwap.py"
+      - "src/data/adapters/polygon_adapter.py"
       - "src/factors/panel.py"
       - "src/factors/reusable_panel.py"
       - "src/factors/governance.py"
@@ -43,6 +46,12 @@ on:
     - cron: "41 7 2 * *"
   workflow_dispatch:
     inputs:
+      market:
+        description: "Live market evidence to build"
+        required: true
+        default: "both"
+        type: choice
+        options: [both, us, cn]
       cutoff:
         description: "Evidence cutoff (YYYY-MM-DD)"
         required: true
@@ -53,7 +62,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: alpha158-canonical-vwap-${{ github.event.pull_request.number || github.ref }}
+  group: alpha158-canonical-vwap-${{ github.event.pull_request.number || github.ref }}-${{ inputs.market || 'both' }}
   cancel-in-progress: true
 
 jobs:
@@ -74,6 +83,7 @@ jobs:
         run: >-
           uv run ruff check
           src/data/canonical_vwap.py
+          src/data/adapters/polygon_adapter.py
           src/factors/reusable_panel.py
           src/factors/governance.py
           src/research/alpha158_stability_diagnostics.py
@@ -81,6 +91,7 @@ jobs:
           scripts/factors/build_alpha158_panel.py
           scripts/run_cn_alpha158_stability_diagnostics.py
           tests/test_canonical_vwap.py
+          tests/test_polygon_adapter.py
           tests/test_alpha158_panel.py
           tests/test_reusable_alpha158_panel.py
           tests/test_factor_governance.py
@@ -89,6 +100,7 @@ jobs:
         run: >-
           uv run mypy --follow-imports=skip
           src/data/canonical_vwap.py
+          src/data/adapters/polygon_adapter.py
           src/factors/reusable_panel.py
           src/research/alpha158_stability_diagnostics.py
           scripts/data/build_canonical_vwap_provider.py
@@ -98,33 +110,98 @@ jobs:
         run: >-
           uv run pytest
           tests/test_canonical_vwap.py
+          tests/test_polygon_adapter.py
           tests/test_alpha158_panel.py
           tests/test_reusable_alpha158_panel.py
           tests/test_factor_governance.py
           tests/test_alpha158_stability_diagnostics.py
           tests/test_model_data_bundle.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: Verify US remains honestly blocked
-        run: >-
-          uv run python scripts/data/build_canonical_vwap_provider.py
-          --market us
-          --cutoff 2026-07-31
-          --output-root artifacts/data/canonical_vwap/us
-      - name: Check US blocker contract
+
+  live-us-panel:
+    if: >-
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      (inputs.market == '' || inputs.market == 'both' || inputs.market == 'us')
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    env:
+      POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Resolve current evidence cutoff
+        id: cutoff
+        shell: bash
+        run: |
+          cutoff="${{ inputs.cutoff }}"
+          if [ -z "$cutoff" ]; then cutoff="$(date -u -d '1 day ago' +%F)"; fi
+          echo "value=$cutoff" >> "$GITHUB_OUTPUT"
+      - name: Preflight same-record reported VWAP
         run: |
           uv run python - <<'PY'
           import json
           from pathlib import Path
-          path = Path("artifacts/data/canonical_vwap/us/factor_panel_manifest.json")
-          payload = json.loads(path.read_text(encoding="utf-8"))
-          assert payload["status"] == "blocked"
-          assert payload["expected_symbol_count"] == 87
-          assert "synthetic amount" in payload["blocker"]
-          assert payload["trade_ready"] is False
+          from src.data.adapters.base import FetchRequest
+          from src.data.adapters.polygon_adapter import PolygonAdapter
+
+          adapter = PolygonAdapter()
+          cutoff = "${{ steps.cutoff.outputs.value }}"
+          rows = []
+          failures = []
+          for symbol in ("AAPL", "MSFT", "NVDA"):
+              try:
+                  result = adapter.fetch_daily_bars(FetchRequest(
+                      symbol=symbol, market="us", start="2026-01-01", end=cutoff,
+                  ))
+                  rows.append({
+                      "symbol": symbol,
+                      "rows": len(result.df),
+                      "last_date": result.df["date"].max().date().isoformat(),
+                      "vwap_semantics": result.df.attrs["vwap_semantics"],
+                  })
+              except Exception as exc:
+                  failures.append({
+                      "symbol": symbol,
+                      "error": f"{type(exc).__name__}: {exc}",
+                  })
+          path = Path("artifacts/data/canonical_vwap/us/preflight.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps({
+              "status": "blocked" if failures else "passed",
+              "symbols": rows, "failures": failures,
+              "research_only": True, "trade_ready": False,
+          }, indent=2) + "\n", encoding="utf-8")
+          if failures:
+              raise SystemExit("Polygon reported VWAP preflight is blocked")
           PY
+      - name: Build exact US87 canonical VWAP provider and Alpha158 panels
+        run: >-
+          uv run python scripts/data/build_canonical_vwap_provider.py
+          --market us
+          --start 2021-01-01
+          --cutoff "${{ steps.cutoff.outputs.value }}"
+          --output-root artifacts/data/canonical_vwap/us
+      - name: Upload US provider, panels, quality and readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpha158-canonical-vwap-us-${{ github.run_id }}
+          path: artifacts/data/canonical_vwap/us
+          if-no-files-found: warn
+          retention-days: 90
 
   live-cn-panel:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: >-
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      (inputs.market == '' || inputs.market == 'both' || inputs.market == 'cn')
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 600
@@ -138,6 +215,13 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
+      - name: Resolve current evidence cutoff
+        id: cutoff
+        shell: bash
+        run: |
+          cutoff="${{ inputs.cutoff }}"
+          if [ -z "$cutoff" ]; then cutoff="$(date -u -d '1 day ago' +%F)"; fi
+          echo "value=$cutoff" >> "$GITHUB_OUTPUT"
       - name: Restore exact-cutoff CN source pairs
         id: vwap-cache
         uses: actions/cache/restore@v4
@@ -147,13 +231,13 @@ jobs:
             artifacts/data/canonical_vwap/cn/qfq
             artifacts/data/canonical_vwap/cn/cache_metadata
           key: >-
-            ${{ runner.os }}-alpha158-vwap-cn-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}
+            ${{ runner.os }}-alpha158-vwap-cn-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml') }}-${{ steps.cutoff.outputs.value }}
       - name: Build exact CN130 canonical VWAP provider and Alpha158 panels
         run: >-
           uv run python scripts/data/build_canonical_vwap_provider.py
           --market cn
           --start 2021-01-01
-          --cutoff "${{ inputs.cutoff || '2026-07-31' }}"
+          --cutoff "${{ steps.cutoff.outputs.value }}"
           --output-root artifacts/data/canonical_vwap/cn
       - name: Run CN Alpha158 cross-window stability diagnostics
         run: >-

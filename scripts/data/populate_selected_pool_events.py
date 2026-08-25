@@ -116,9 +116,10 @@ def _populate_us(
     retrieved_at: str,
     *,
     identity_mapping_path: Path,
+    sec_client: SecCompanyFactsClient | None = None,
 ) -> tuple[dict[str, SymbolPopulation], dict[str, SymbolPopulation]]:
     mapping = _sec_mapping(symbols, identity_mapping_path)
-    sec = SecCompanyFactsClient()
+    sec = sec_client or SecCompanyFactsClient()
     fundamentals: dict[str, SymbolPopulation] = {}
     actions: dict[str, SymbolPopulation] = {}
     for symbol in symbols:
@@ -241,13 +242,15 @@ def main() -> int:
         actions = _fixture_population(symbols, kind="corporate_actions")
         source_reuse = None
     elif args.market == "us":
+        sec_client = SecCompanyFactsClient()
         fundamentals, actions = _populate_us(
             symbols,
             contract["fundamental_fields"]["us"],
             retrieved_at,
             identity_mapping_path=Path(str(market_contract["identity_mapping"])),
+            sec_client=sec_client,
         )
-        source_reuse = None
+        source_reuse = {"fundamentals": {"transport": sec_client.transport_evidence()}}
     else:
         population = populate_cn_selected_pool_event_sources(
             symbols,
