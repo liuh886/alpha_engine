@@ -535,6 +535,11 @@ def build_market_evidence(
     ):
         raise MarketEvidenceError("selected-pool candidate identity is incomplete")
     benchmark = str(manifest.get("benchmark", "")).strip().upper()
+    comparison_references = [
+        str(value).strip().upper()
+        for value in manifest.get("comparison_reference_symbols", [])
+        if str(value).strip()
+    ]
     auxiliary_symbols = [
         str(value).strip().upper()
         for value in manifest.get("auxiliary_symbols", [])
@@ -653,8 +658,14 @@ def build_market_evidence(
             roles.append("benchmark")
         if symbol in auxiliary_symbols:
             roles.append("formal_auxiliary")
+        if symbol in comparison_references:
+            roles.append("comparison_reference")
         if symbol in events:
             roles.append("formal_traded")
+        if not roles:
+            raise MarketEvidenceError(
+                f"roleless security cannot be published into market evidence: {symbol}"
+            )
         source_instruments = sorted(
             {
                 str(event["source_instrument"])
