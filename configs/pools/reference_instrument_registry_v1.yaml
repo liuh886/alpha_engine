@@ -17,6 +17,40 @@ policy:
 markets:
   us:
     instruments:
+      CGDV:
+        canonical_symbol: "CGDV"
+        instrument_type: "dividend_value_equity_etf"
+        provider_aliases: ["CGDV"]
+        roles: ["comparison_reference"]
+        executable: true
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: true
+        adjusted_open_close_required: true
+      SGOV:
+        canonical_symbol: "SGOV"
+        instrument_type: "treasury_money_market_etf"
+        provider_aliases: ["SGOV"]
+        roles: ["cash_management_sleeve", "defensive_context"]
+        executable: true
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: true
+        adjusted_open_close_required: true
+      TYGO:
+        # Distinct issuer from CN/US ADR "TIGO" (Millicom) — never substitute.
+        canonical_symbol: "TYGO"
+        instrument_type: "solar_equity"
+        provider_aliases: ["TYGO"]
+        roles: ["comparison_reference"]
+        executable: true
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: true
+        adjusted_open_close_required: true
       QQQ:
         canonical_symbol: "QQQ"
         instrument_type: "equity_etf"
