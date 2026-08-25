@@ -37,6 +37,7 @@ provider_role_policy:
   validation_only_provider_forbidden: true
   validation_only_sources:
     - "tiingo"
+    - "polygon"
     - "tushare"
   validator_data_may_not_satisfy_required_fields: true
 
