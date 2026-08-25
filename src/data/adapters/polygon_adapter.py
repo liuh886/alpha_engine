@@ -97,7 +97,7 @@ class PolygonHttpClient:
                             path=path,
                             attempts=attempt,
                             retry_after_seconds=retry_after,
-                        ) from exc
+                        ) from None
                     time.sleep(
                         retry_after if retry_after is not None else min(2 ** (attempt - 1), 4)
                     )
@@ -107,7 +107,7 @@ class PolygonHttpClient:
                     path=path,
                     attempts=attempt,
                     retry_after_seconds=retry_after,
-                ) from exc
+                ) from None
             except (urllib.error.URLError, TimeoutError, OSError) as exc:
                 last_error = exc
                 if attempt >= self.max_attempts:
@@ -115,7 +115,8 @@ class PolygonHttpClient:
                 time.sleep(min(2 ** (attempt - 1), 4))
             except json.JSONDecodeError as exc:
                 raise DataFetchError(f"Polygon returned invalid JSON for {path}") from exc
-        raise DataFetchError(f"Polygon request failed for {path}: {last_error}")
+        error_name = type(last_error).__name__ if last_error is not None else "unknown"
+        raise DataFetchError(f"Polygon request failed for {path}: {error_name}")
 
 
 def _normalise_symbol(value: str) -> str:
@@ -202,9 +203,7 @@ def _bars(payload: Any, *, symbol: str) -> pd.DataFrame:
     valid, _, errors = validate_market_data(out, symbol)
     if not valid:
         raise DataFetchError(f"Polygon schema validation failed for {symbol}: {'; '.join(errors)}")
-    return out[
-        ["date", "open", "high", "low", "close", "vwap", "volume", "amount", "factor"]
-    ]
+    return out[["date", "open", "high", "low", "close", "vwap", "volume", "amount", "factor"]]
 
 
 @dataclass

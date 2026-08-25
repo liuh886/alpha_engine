@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import urllib.error
 
 import pandas as pd
 import pytest
 
 from src.data.adapters.base import DataFetchError, FetchRequest
-from src.data.adapters.polygon_adapter import PolygonAdapter
+from src.data.adapters.polygon_adapter import PolygonAdapter, PolygonHttpClient
 
 
 @dataclass
@@ -79,10 +80,7 @@ def test_polygon_adapter_validates_identity_and_normalizes_bars():
     assert result.df["vwap"].tolist() == pytest.approx([211.5, 212.75])
     assert result.df.iloc[0]["amount"] == pytest.approx(211500.0)
     assert result.df.attrs["vwap_semantics"] == "reported_vwap"
-    assert (
-        result.df.attrs["amount_semantics"]
-        == "derived_reported_vwap_times_reported_volume"
-    )
+    assert result.df.attrs["amount_semantics"] == "derived_reported_vwap_times_reported_volume"
     assert result.df.attrs["provider_metadata"]["primary_exchange"] == "XNAS"
     assert result.df.attrs["provider_metadata"]["request_count"] == 2
 
@@ -122,3 +120,17 @@ def test_polygon_adapter_requires_explicit_credential(monkeypatch):
                 end="2026-07-31",
             )
         )
+
+
+def test_polygon_http_errors_do_not_expose_api_key(monkeypatch):
+    secret = "polygon-secret-value"
+
+    def fail(request, timeout):
+        raise urllib.error.HTTPError(request.full_url, 403, "Forbidden", hdrs=None, fp=None)
+
+    monkeypatch.setattr("urllib.request.urlopen", fail)
+    with pytest.raises(DataFetchError) as captured:
+        PolygonHttpClient(api_key=secret, max_attempts=1).get_json("v2/aggs/test")
+
+    assert secret not in str(captured.value)
+    assert captured.value.__suppress_context__ is True

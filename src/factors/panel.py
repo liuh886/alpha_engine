@@ -314,6 +314,7 @@ def _blocked_manifest(
     catalog_path: Path,
     provider_manifest_path: Path,
     provider_hash: str,
+    provider_identity_sha256: str | None,
     source_role_path: Path,
     source_role_hash: str | None,
     blocker: str,
@@ -339,6 +340,7 @@ def _blocked_manifest(
         "catalog_sha256": _sha256(catalog_path),
         "provider_manifest_path": str(provider_manifest_path),
         "provider_manifest_sha256": provider_hash,
+        "provider_identity_sha256": provider_identity_sha256,
         "source_role_manifest_path": str(source_role_path),
         "source_role_manifest_sha256": source_role_hash,
         "field_coverage": dict(field_coverage or {}),
@@ -379,7 +381,7 @@ def build_alpha158_panel(
     catalog_path = output / "factor_catalog.json"
     _write_json(catalog_path, catalog)
     provider = Path(provider_uri).resolve()
-    provider_manifest_path, provider_hash, _ = _provider_manifest(provider)
+    provider_manifest_path, provider_hash, provider_manifest = _provider_manifest(provider)
 
     role_policy = contract.get("provider_role_policy", {})
     if not isinstance(role_policy, dict):
@@ -403,6 +405,7 @@ def build_alpha158_panel(
             catalog_path=catalog_path,
             provider_manifest_path=provider_manifest_path,
             provider_hash=provider_hash,
+            provider_identity_sha256=provider_manifest.get("provider_identity_sha256"),
             source_role_path=source_role_path,
             source_role_hash=source_role_hash,
             blocker=role_blocker,
@@ -423,6 +426,7 @@ def build_alpha158_panel(
             catalog_path=catalog_path,
             provider_manifest_path=provider_manifest_path,
             provider_hash=provider_hash,
+            provider_identity_sha256=provider_manifest.get("provider_identity_sha256"),
             source_role_path=source_role_path,
             source_role_hash=source_role_hash,
             blocker="true vwap field is unavailable for exact selected pool",
@@ -518,6 +522,7 @@ def build_alpha158_panel(
         "catalog_sha256": _sha256(catalog_path),
         "provider_manifest_path": str(provider_manifest_path),
         "provider_manifest_sha256": provider_hash,
+        "provider_identity_sha256": provider_manifest.get("provider_identity_sha256"),
         "source_role_manifest_path": str(source_role_path),
         "source_role_manifest_sha256": source_role_hash,
         "source_role": source_role,
