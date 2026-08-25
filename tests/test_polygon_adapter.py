@@ -14,6 +14,7 @@ from src.data.adapters.polygon_adapter import PolygonAdapter, PolygonHttpClient
 class FakePolygonClient:
     returned_ticker: str = "AAPL"
     include_vwap: bool = True
+    first_vwap: float = 211.5
 
     def get_json(self, path: str, *, params=None):
         if path.startswith("v3/reference/tickers/"):
@@ -39,7 +40,7 @@ class FakePolygonClient:
                     "l": 209.0,
                     "c": 212.0,
                     "v": 1000.0,
-                    "vw": 211.5,
+                    "vw": self.first_vwap,
                 },
                 {
                     "t": int(pd.Timestamp("2026-07-31", tz="UTC").timestamp() * 1000),
@@ -106,6 +107,18 @@ def test_polygon_adapter_rejects_missing_reported_vwap():
                 start="2026-07-30",
                 end="2026-07-31",
             )
+        )
+
+
+def test_polygon_adapter_allows_half_tick_rounding_only():
+    rounded = PolygonAdapter(client=FakePolygonClient(first_vwap=208.997)).fetch_daily_bars(
+        FetchRequest(symbol="AAPL", market="us", start="2026-07-30", end="2026-07-31")
+    )
+    assert rounded.df.attrs["rounded_envelope_tolerance_sessions"] == 1
+
+    with pytest.raises(DataFetchError, match="max_distance"):
+        PolygonAdapter(client=FakePolygonClient(first_vwap=208.99)).fetch_daily_bars(
+            FetchRequest(symbol="AAPL", market="us", start="2026-07-30", end="2026-07-31")
         )
 
 

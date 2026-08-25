@@ -170,8 +170,19 @@ def build_us(
                 raise CanonicalVwapError(f"{symbol}: Polygon bars contain missing values")
             if (frame[["open", "high", "low", "close", "vwap", "volume"]] <= 0).any().any():
                 raise CanonicalVwapError(f"{symbol}: Polygon bars must be positive")
-            if ((frame["vwap"] < frame["low"]) | (frame["vwap"] > frame["high"])).any():
-                raise CanonicalVwapError(f"{symbol}: reported VWAP violates OHLC envelope")
+            envelope_distance = pd.concat(
+                [
+                    (frame["low"] - frame["vwap"]).clip(lower=0.0),
+                    (frame["vwap"] - frame["high"]).clip(lower=0.0),
+                ],
+                axis=1,
+            ).max(axis=1)
+            if (envelope_distance > 0.005).any():
+                raise CanonicalVwapError(
+                    f"{symbol}: reported VWAP violates OHLC envelope; "
+                    f"sessions={int((envelope_distance > 0.005).sum())}, "
+                    f"max_distance={float(envelope_distance.max()):.8f}"
+                )
             frame["amount"] = frame["vwap"] * frame["volume"]
             frame["factor"] = 1.0
             frame = frame.sort_values("date").drop_duplicates("date", keep="last")
@@ -186,6 +197,7 @@ def build_us(
                     "adjustment_method": "polygon_adjusted_daily_aggregates",
                     "source_mode": source_mode,
                     "provider_metadata": metadata,
+                    "rounded_envelope_tolerance_sessions": int((envelope_distance > 1e-8).sum()),
                     "research_only": True,
                     "trade_ready": False,
                 }

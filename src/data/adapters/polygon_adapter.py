@@ -192,12 +192,23 @@ def _bars(payload: Any, *, symbol: str) -> pd.DataFrame:
         raise DataFetchError(f"Polygon returned no usable aggregates for {symbol}")
     if (out[["vwap", "volume"]] <= 0).any().any():
         raise DataFetchError(f"Polygon VWAP and volume must be positive for {symbol}")
-    tolerance = out["close"].abs().clip(lower=1.0) * 1e-8
-    outside_envelope = (out["vwap"] < out["low"] - tolerance) | (
-        out["vwap"] > out["high"] + tolerance
-    )
+    relative_tolerance = out["close"].abs().clip(lower=1.0) * 1e-8
+    envelope_distance = pd.concat(
+        [(out["low"] - out["vwap"]).clip(lower=0.0), (out["vwap"] - out["high"]).clip(lower=0.0)],
+        axis=1,
+    ).max(axis=1)
+    strict_violations = envelope_distance > relative_tolerance
+    # Polygon publishes OHLC at cent precision while reported VWAP may carry
+    # finer precision. Half a cent is the maximum nearest-tick discrepancy.
+    tolerance = relative_tolerance.clip(lower=0.005)
+    outside_envelope = envelope_distance > tolerance
     if outside_envelope.any():
-        raise DataFetchError(f"Polygon VWAP violates the OHLC envelope for {symbol}")
+        raise DataFetchError(
+            f"Polygon VWAP violates the OHLC envelope for {symbol}: "
+            f"sessions={int(outside_envelope.sum())}, "
+            f"max_distance={float(envelope_distance[outside_envelope].max()):.8f}"
+        )
+    out.attrs["rounded_envelope_tolerance_sessions"] = int(strict_violations.sum())
     from src.data.validation.schema import validate_market_data
 
     valid, _, errors = validate_market_data(out, symbol)
