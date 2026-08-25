@@ -189,6 +189,9 @@ jobs:
         if: steps.selected.outputs.run == 'true'
         env:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+          SEC_EGRESS_MODE: ${{ vars.SEC_EGRESS_MODE || 'direct' }}
+          SEC_EGRESS_PROXY_ID: ${{ vars.SEC_EGRESS_PROXY_ID || '' }}
+          SEC_EGRESS_PROXY_URL: ${{ secrets.SEC_EGRESS_PROXY_URL || '' }}
         run: >-
           uv run python scripts/data/populate_selected_pool_events.py
           --market "${{ matrix.market }}"

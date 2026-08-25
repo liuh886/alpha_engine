@@ -129,13 +129,21 @@ def test_compressed_sec_client_decodes_gzip(monkeypatch) -> None:
         def read(self) -> bytes:
             return compressed
 
-    monkeypatch.setattr(live.urllib.request, "urlopen", lambda *args, **kwargs: Response())
+    class Opener:
+        def open(self, *_args, **_kwargs):
+            return Response()
+
+    from src.data.sec_transport import SecTransport
+
     client = live.CompressedSecHttpClient(
         user_agent="AlphaEngine test contact@example.com",
-        ticker_mapping_url="https://example.invalid/tickers.json",
-        companyfacts_url_template="https://example.invalid/CIK{cik10}.json",
+        ticker_mapping_url="https://www.sec.gov/files/company_tickers.json",
+        companyfacts_url_template=(
+            "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik10}.json"
+        ),
         minimum_interval_seconds=0,
         timeout_seconds=1,
+        transport=SecTransport(mode="direct", proxy_id=None, _opener=Opener()),
     )
 
     assert client.companyfacts("0000320193") == expected

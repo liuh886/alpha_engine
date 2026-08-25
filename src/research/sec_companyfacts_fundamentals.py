@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import gzip
 import hashlib
 import json
 import os
@@ -16,6 +15,8 @@ from typing import Any, Mapping, Protocol
 
 import pandas as pd
 import yaml
+
+from src.data.sec_transport import SecTransport, SecTransportError, read_sec_json_response
 
 REQUIRED_OUTPUT_COLUMNS = (
     "symbol",
@@ -59,6 +60,7 @@ class SecHttpClient:
         companyfacts_url_template: str,
         minimum_interval_seconds: float,
         timeout_seconds: int,
+        transport: SecTransport | None = None,
     ) -> None:
         if not user_agent.strip():
             raise ValueError("SEC_USER_AGENT is required")
@@ -68,6 +70,7 @@ class SecHttpClient:
         self.minimum_interval_seconds = max(0.0, float(minimum_interval_seconds))
         self.timeout_seconds = int(timeout_seconds)
         self._last_request_at = 0.0
+        self.transport = transport or SecTransport.from_env()
 
     def _get_json(self, url: str) -> Mapping[str, Any]:
         elapsed = time.monotonic() - self._last_request_at
@@ -82,28 +85,20 @@ class SecHttpClient:
             },
         )
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                raw = response.read()
-                encoding = str(
-                    response.headers.get("Content-Encoding", "") or ""
-                ).strip().lower()
-                if raw.startswith(b"\x1f\x8b") or encoding == "gzip":
-                    raw = gzip.decompress(raw)
-                elif encoding == "deflate":
-                    try:
-                        raw = zlib.decompress(raw)
-                    except zlib.error:
-                        raw = zlib.decompress(raw, -zlib.MAX_WBITS)
-                payload = json.loads(raw.decode("utf-8"))
+            with self.transport.open(request, timeout=self.timeout_seconds) as response:
+                payload = read_sec_json_response(response)
         except (
             urllib.error.URLError,
             TimeoutError,
             OSError,
             zlib.error,
+            SecTransportError,
             UnicodeDecodeError,
             json.JSONDecodeError,
         ) as exc:
-            raise SecSourceError(f"SEC request failed: {url}") from exc
+            raise SecSourceError(
+                f"SEC request failed for approved endpoint: {type(exc).__name__}"
+            ) from None
         finally:
             self._last_request_at = time.monotonic()
         if not isinstance(payload, dict):

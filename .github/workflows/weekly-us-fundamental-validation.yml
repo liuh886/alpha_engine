@@ -18,7 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      SEC_EGRESS_MODE: ${{ vars.SEC_EGRESS_MODE || 'direct' }}
+      SEC_EGRESS_PROXY_ID: ${{ vars.SEC_EGRESS_PROXY_ID || '' }}
+      SEC_EGRESS_PROXY_URL: ${{ secrets.SEC_EGRESS_PROXY_URL || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
