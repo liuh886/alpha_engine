@@ -162,7 +162,7 @@ def _bars(payload: Any, *, symbol: str) -> pd.DataFrame:
     if not isinstance(results, list) or not results:
         raise DataFetchError(f"Polygon returned no daily aggregates for {symbol}")
     frame = pd.DataFrame(results)
-    required = {"t", "o", "h", "l", "c", "v"}
+    required = {"t", "o", "h", "l", "c", "v", "vw"}
     missing = sorted(required.difference(frame.columns))
     if missing:
         raise DataFetchError(f"Polygon aggregates missing columns for {symbol}: {missing}")
@@ -175,25 +175,36 @@ def _bars(payload: Any, *, symbol: str) -> pd.DataFrame:
             "high": pd.to_numeric(frame["h"], errors="coerce"),
             "low": pd.to_numeric(frame["l"], errors="coerce"),
             "close": pd.to_numeric(frame["c"], errors="coerce"),
+            "vwap": pd.to_numeric(frame["vw"], errors="coerce"),
             "volume": pd.to_numeric(frame["v"], errors="coerce"),
         }
     )
-    out["amount"] = out["close"] * out["volume"]
+    out["amount"] = out["vwap"] * out["volume"]
     out["factor"] = 1.0
     out = (
-        out.dropna(subset=["date", "open", "high", "low", "close", "volume"])
+        out.dropna(subset=["date", "open", "high", "low", "close", "vwap", "volume"])
         .sort_values("date")
         .drop_duplicates(subset=["date"], keep="last")
         .reset_index(drop=True)
     )
     if out.empty:
         raise DataFetchError(f"Polygon returned no usable aggregates for {symbol}")
+    if (out[["vwap", "volume"]] <= 0).any().any():
+        raise DataFetchError(f"Polygon VWAP and volume must be positive for {symbol}")
+    tolerance = out["close"].abs().clip(lower=1.0) * 1e-8
+    outside_envelope = (out["vwap"] < out["low"] - tolerance) | (
+        out["vwap"] > out["high"] + tolerance
+    )
+    if outside_envelope.any():
+        raise DataFetchError(f"Polygon VWAP violates the OHLC envelope for {symbol}")
     from src.data.validation.schema import validate_market_data
 
     valid, _, errors = validate_market_data(out, symbol)
     if not valid:
         raise DataFetchError(f"Polygon schema validation failed for {symbol}: {'; '.join(errors)}")
-    return out[["date", "open", "high", "low", "close", "volume", "amount", "factor"]]
+    return out[
+        ["date", "open", "high", "low", "close", "vwap", "volume", "amount", "factor"]
+    ]
 
 
 @dataclass
@@ -249,7 +260,8 @@ class PolygonAdapter:
         metadata["elapsed_seconds"] = round(time.perf_counter() - started, 6)
         out.attrs["provider_metadata"] = metadata
         out.attrs["price_mode"] = "adjusted_daily_aggregates"
-        out.attrs["amount_semantics"] = "synthetic_adjusted_close_times_volume"
+        out.attrs["vwap_semantics"] = "reported_vwap"
+        out.attrs["amount_semantics"] = "derived_reported_vwap_times_reported_volume"
         return FetchResult(
             provider=self.name,
             symbol=symbol,
