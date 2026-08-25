@@ -148,7 +148,6 @@ jobs:
         run: |
           uv run python - <<'PY'
           import json
-          import os
           from pathlib import Path
           from src.data.adapters.base import FetchRequest
           from src.data.adapters.polygon_adapter import PolygonAdapter
@@ -156,22 +155,32 @@ jobs:
           adapter = PolygonAdapter()
           cutoff = "${{ steps.cutoff.outputs.value }}"
           rows = []
+          failures = []
           for symbol in ("AAPL", "MSFT", "NVDA"):
-              result = adapter.fetch_daily_bars(FetchRequest(
-                  symbol=symbol, market="us", start="2026-01-01", end=cutoff,
-              ))
-              rows.append({
-                  "symbol": symbol,
-                  "rows": len(result.df),
-                  "last_date": result.df["date"].max().date().isoformat(),
-                  "vwap_semantics": result.df.attrs["vwap_semantics"],
-              })
+              try:
+                  result = adapter.fetch_daily_bars(FetchRequest(
+                      symbol=symbol, market="us", start="2026-01-01", end=cutoff,
+                  ))
+                  rows.append({
+                      "symbol": symbol,
+                      "rows": len(result.df),
+                      "last_date": result.df["date"].max().date().isoformat(),
+                      "vwap_semantics": result.df.attrs["vwap_semantics"],
+                  })
+              except Exception as exc:
+                  failures.append({
+                      "symbol": symbol,
+                      "error": f"{type(exc).__name__}: {exc}",
+                  })
           path = Path("artifacts/data/canonical_vwap/us/preflight.json")
           path.parent.mkdir(parents=True, exist_ok=True)
           path.write_text(json.dumps({
-              "status": "passed", "symbols": rows,
+              "status": "blocked" if failures else "passed",
+              "symbols": rows, "failures": failures,
               "research_only": True, "trade_ready": False,
           }, indent=2) + "\n", encoding="utf-8")
+          if failures:
+              raise SystemExit("Polygon reported VWAP preflight is blocked")
           PY
       - name: Build exact US87 canonical VWAP provider and Alpha158 panels
         run: >-

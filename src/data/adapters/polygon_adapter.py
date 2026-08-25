@@ -203,10 +203,15 @@ def _bars(payload: Any, *, symbol: str) -> pd.DataFrame:
     tolerance = relative_tolerance.clip(lower=0.005)
     outside_envelope = envelope_distance > tolerance
     if outside_envelope.any():
+        first_index = outside_envelope[outside_envelope].index[0]
+        first = out.loc[first_index]
         raise DataFetchError(
             f"Polygon VWAP violates the OHLC envelope for {symbol}: "
             f"sessions={int(outside_envelope.sum())}, "
-            f"max_distance={float(envelope_distance[outside_envelope].max()):.8f}"
+            f"max_distance={float(envelope_distance[outside_envelope].max()):.8f}, "
+            f"first_date={first['date'].date().isoformat()}, "
+            f"low={float(first['low']):.8f}, high={float(first['high']):.8f}, "
+            f"vwap={float(first['vwap']):.8f}"
         )
     out.attrs["rounded_envelope_tolerance_sessions"] = int(strict_violations.sum())
     from src.data.validation.schema import validate_market_data

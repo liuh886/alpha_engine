@@ -116,7 +116,7 @@ def test_polygon_adapter_allows_half_tick_rounding_only():
     )
     assert rounded.df.attrs["rounded_envelope_tolerance_sessions"] == 1
 
-    with pytest.raises(DataFetchError, match="max_distance"):
+    with pytest.raises(DataFetchError, match="first_date=2026-07-30"):
         PolygonAdapter(client=FakePolygonClient(first_vwap=208.99)).fetch_daily_bars(
             FetchRequest(symbol="AAPL", market="us", start="2026-07-30", end="2026-07-31")
         )
