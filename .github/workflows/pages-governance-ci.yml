@@ -5,24 +5,32 @@ on:
     branches: ["main"]
     paths:
       - ".github/workflows/deploy-pages.yml"
+      - ".github/workflows/byd-daily-signal-alert.yml"
+      - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/pages-release-receipt.yml"
+      - ".github/workflows/strategy-operations-release.yml"
       - ".github/workflows/pages-governance-ci.yml"
       - "scripts/detect_pages_impact.py"
       - "scripts/verify_pages_release.py"
       - "src/artifacts/pages_release_verification.py"
       - "tests/test_pages_impact.py"
       - "tests/test_pages_release_verification.py"
+      - "tests/test_strategy_operations_release.py"
   push:
     branches: ["main"]
     paths:
       - ".github/workflows/deploy-pages.yml"
+      - ".github/workflows/byd-daily-signal-alert.yml"
+      - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/pages-release-receipt.yml"
+      - ".github/workflows/strategy-operations-release.yml"
       - ".github/workflows/pages-governance-ci.yml"
       - "scripts/detect_pages_impact.py"
       - "scripts/verify_pages_release.py"
       - "src/artifacts/pages_release_verification.py"
       - "tests/test_pages_impact.py"
       - "tests/test_pages_release_verification.py"
+      - "tests/test_strategy_operations_release.py"
 
 permissions:
   contents: read
@@ -50,7 +58,8 @@ jobs:
             scripts/verify_pages_release.py \
             src/artifacts/pages_release_verification.py \
             tests/test_pages_impact.py \
-            tests/test_pages_release_verification.py
+            tests/test_pages_release_verification.py \
+            tests/test_strategy_operations_release.py
           uv run mypy \
             scripts/detect_pages_impact.py \
             scripts/verify_pages_release.py \
@@ -58,4 +67,5 @@ jobs:
           uv run pytest \
             tests/test_pages_impact.py \
             tests/test_pages_release_verification.py \
+            tests/test_strategy_operations_release.py \
             -q --strict-markers --tb=short

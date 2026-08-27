@@ -136,3 +136,31 @@ def test_pages_release_receipt_workflow_skips_operations_only_workflow_run() -> 
     # and preserves publication for push and manual workflow_dispatch deploys.
     condition = job["if"]
     assert "event != 'workflow_run'" in condition
+
+
+def test_deploy_pages_workflow_is_pages_only() -> None:
+    workflow_path = ROOT / ".github/workflows/deploy-pages.yml"
+    text = workflow_path.read_text(encoding="utf-8")
+    content = yaml.safe_load(text)
+
+    triggers = content.get("on") if "on" in content else content.get(True)
+    assert triggers is not None
+    assert triggers["push"]["branches"] == ["main"]
+    assert set(triggers) == {"push", "workflow_dispatch"}
+    assert set(content["jobs"]) == {"detect-impact", "build-and-deploy"}
+    assert "publish-current-operations" not in content["jobs"]
+    assert content["concurrency"] == {
+        "group": "pages-deployment",
+        "cancel-in-progress": False,
+    }
+
+
+def test_formal_refresh_explicitly_dispatches_and_waits_for_pages() -> None:
+    text = (ROOT / ".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    assert '"repos/${GITHUB_REPOSITORY}/actions/workflows/deploy-pages.yml/dispatches"' in text
+    assert "--arg target_sha \"$merge_sha\"" in text
+    assert "return_run_details: true" in text
+    assert "gh run watch \"$pages_run\"" in text
+    assert 'test "$pages_conclusion" = "success"' in text

@@ -124,6 +124,23 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
+      - name: Request strategy operations publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jq -nc \
+            --arg producer_workflow "$GITHUB_WORKFLOW" \
+            --arg producer_run_id "$GITHUB_RUN_ID" \
+            '{
+              event_type: "strategy_operations_publication",
+              client_payload: {
+                producer_workflow: $producer_workflow,
+                producer_run_id: $producer_run_id
+              }
+            }' | gh api \
+              --method POST \
+              "repos/${GITHUB_REPOSITORY}/dispatches" \
+              --input -
       - name: Retain decision evidence
         if: always()
         uses: actions/upload-artifact@v6

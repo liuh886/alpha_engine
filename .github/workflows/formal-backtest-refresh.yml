@@ -993,7 +993,11 @@ jobs:
           test "$current_main" = "$merge_sha"
           dispatch_payload="$(mktemp)"
           jq -nc --arg target_sha "$merge_sha" \
-            '{ref:"main",inputs:{target_sha:$target_sha}}' > "$dispatch_payload"
+            '{
+              ref: "main",
+              inputs: {target_sha: $target_sha},
+              return_run_details: true
+            }' > "$dispatch_payload"
           pages_run="$(gh api \
             --method POST \
             -H 'Accept: application/vnd.github+json' \
