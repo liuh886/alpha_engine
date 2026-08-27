@@ -17,7 +17,7 @@ on:
       - "10D Ranker Current Target"
     types: [completed]
   schedule:
-    - cron: "15 * * * *"
+    - cron: "15 */6 * * *"
   workflow_dispatch:
 
 permissions:

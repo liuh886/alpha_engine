@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+import yaml
+
 import scripts.run_signal_delivery_outbox as outbox
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -144,3 +146,25 @@ def test_model_workflows_delegate_all_external_delivery_to_outbox() -> None:
     assert "TELEGRAM_BOT_TOKEN" in delivery
     assert "TELEGRAM_CHAT_ID" in delivery
     assert "scripts/run_signal_delivery_outbox.py" in delivery
+
+
+def test_outbox_workflow_triggers_and_fallback_schedule() -> None:
+    workflow_path = ROOT / ".github/workflows/strategy-signal-delivery-outbox.yml"
+    text = workflow_path.read_text(encoding="utf-8")
+    assert 'cron: "15 */6 * * *"' in text
+    assert 'cron: "15 * * * *"' not in text
+
+    content = yaml.safe_load(text)
+    triggers = content.get("on") if "on" in content else content.get(True)
+    assert triggers is not None
+    assert "workflow_run" in triggers
+    assert triggers["workflow_run"]["workflows"] == [
+        "QQQ Rotation v4.3 Signal Alert",
+        "BYD v1.3 Daily Signal",
+        "10D Ranker Current Target",
+    ]
+    assert triggers["workflow_run"]["types"] == ["completed"]
+    assert "schedule" in triggers
+    assert triggers["schedule"] == [{"cron": "15 */6 * * *"}]
+    assert "workflow_dispatch" in triggers
+    assert "pull_request" in triggers

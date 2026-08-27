@@ -3,7 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import yaml
+
 from scripts.detect_pages_impact import decide_impact
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _repository(tmp_path: Path) -> Path:
@@ -107,3 +111,28 @@ def test_manual_dispatch_is_always_deployed(tmp_path: Path) -> None:
     )
     assert decision.deploy is True
     assert decision.reason == "manual_dispatch"
+
+
+def test_pages_release_receipt_workflow_skips_operations_only_workflow_run() -> None:
+    workflow_path = ROOT / ".github/workflows/pages-release-receipt.yml"
+    text = workflow_path.read_text(encoding="utf-8")
+    assert "if: github.event.workflow_run.event != 'workflow_run'" in text
+
+    content = yaml.safe_load(text)
+    triggers = content.get("on") if "on" in content else content.get(True)
+    assert triggers is not None
+    assert triggers["workflow_run"]["workflows"] == ["Deploy Strategy Console to Pages"]
+    assert triggers["workflow_run"]["types"] == ["completed"]
+
+    job = content["jobs"]["publish-receipt"]
+    assert job["if"] == "github.event.workflow_run.event != 'workflow_run'"
+    assert content["concurrency"] == {
+        "group": "pages-release-receipt-${{ github.event.workflow_run.event }}",
+        "cancel-in-progress": True,
+    }
+
+    # Contract behavior: skips for operations-only upstream workflow_run runs,
+    # isolates them from real receipts before the job condition is evaluated,
+    # and preserves publication for push and manual workflow_dispatch deploys.
+    condition = job["if"]
+    assert "event != 'workflow_run'" in condition
