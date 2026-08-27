@@ -1,0 +1,156 @@
+name: Publish Strategy Operations Runtime
+
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows:
+      - "QQQ Rotation v4.3 Signal Alert"
+      - "10D Ranker Current Target"
+      - "Reviewed Formal Backtest Refresh"
+    types: [completed]
+  repository_dispatch:
+    types: [strategy_operations_publication]
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force publication bypassing cache receipt"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: strategy-operations-publication
+  cancel-in-progress: false
+
+jobs:
+  publish-operations:
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'repository_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Resolve current canonical main SHA
+        id: revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          echo "$sha" | grep -Eq '^[0-9a-f]{40}$' || {
+            echo "Invalid resolved canonical SHA: $sha" >&2
+            exit 1
+          }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Restore publication idempotency receipt
+        id: cache
+        continue-on-error: true
+        uses: actions/cache/restore@v5
+        with:
+          path: artifacts/strategy-operations-publication-receipt.json
+          key: strategy-operations-publication-v1-${{ steps.revision.outputs.sha }}
+          lookup-only: true
+
+      - name: Checkout canonical revision
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.revision.outputs.sha }}
+
+      - name: Verify canonical revision identity
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
+        run: test "$(git rev-parse HEAD)" = "${{ steps.revision.outputs.sha }}"
+
+      - name: Setup Python
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Validate runtime publisher contract
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
+        run: |
+          uv run ruff check \
+            src/artifacts/strategy_operations_runtime.py \
+            src/cli/main.py \
+            tests/test_strategy_operations_runtime.py
+          uv run pytest tests/test_strategy_operations_runtime.py -q --strict-markers --tb=short
+
+      - name: Materialize current operations from canonical evidence
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
+        run: |
+          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          uv run alpha ops build --generated-at "$generated_at"
+
+      - name: Publish current operations through GitHub OIDC
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
+        run: uv run alpha ops publish
+
+      - name: Record publication receipt
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
+        env:
+          CANONICAL_SHA: ${{ steps.revision.outputs.sha }}
+          RUN_ID: ${{ github.run_id }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          mkdir -p artifacts
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = {
+              "schema_version": "1.0.0",
+              "status": "success",
+              "canonical_sha": os.environ["CANONICAL_SHA"],
+              "run_id": os.environ["RUN_ID"],
+              "event_name": os.environ["EVENT_NAME"],
+              "research_only": True,
+              "trade_ready": False,
+          }
+          Path("artifacts/strategy-operations-publication-receipt.json").write_text(
+              json.dumps(payload, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Retain publication artifacts
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
+        uses: actions/upload-artifact@v6
+        with:
+          name: strategy-operations-runtime-${{ github.run_id }}
+          path: |
+            data/research/strategy_operations/snapshots.json
+            artifacts/strategy-operations-publication-receipt.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Save successful publication receipt
+        # A forced re-publication may reuse an existing immutable receipt key;
+        # save only when this canonical revision did not already have one.
+        if: steps.cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: artifacts/strategy-operations-publication-receipt.json
+          key: strategy-operations-publication-v1-${{ steps.revision.outputs.sha }}
