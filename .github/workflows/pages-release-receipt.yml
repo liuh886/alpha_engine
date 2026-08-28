@@ -68,7 +68,7 @@ jobs:
 
       - name: Checkout deployed revision
         if: ${{ github.event.workflow_run.conclusion == 'success' && steps.impact.outputs.available == 'true' && steps.impact.outputs.deploy == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 

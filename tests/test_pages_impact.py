@@ -208,6 +208,8 @@ def test_pages_release_receipt_workflow_skips_operations_only_workflow_run() -> 
         "group": "pages-release-receipt-${{ github.event.workflow_run.event }}",
         "cancel-in-progress": True,
     }
+    steps = {step["name"]: step for step in job["steps"]}
+    assert steps["Checkout deployed revision"]["uses"] == "actions/checkout@v7"
 
     # Contract behavior: skips for operations-only upstream workflow_run runs,
     # isolates them from real receipts before the job condition is evaluated,
@@ -232,6 +234,26 @@ def test_deploy_pages_workflow_is_pages_only() -> None:
         "cancel-in-progress": False,
     }
 
+    detect_steps = {step["name"]: step for step in content["jobs"]["detect-impact"]["steps"]}
+    assert detect_steps["Checkout publication graph"]["uses"] == "actions/checkout@v7"
+    assert detect_steps["Record impact decision"]["uses"] == "actions/upload-artifact@v7"
+
+    deploy_steps = {
+        step["name"]: step for step in content["jobs"]["build-and-deploy"]["steps"]
+    }
+    expected_actions = {
+        "Checkout": "actions/checkout@v7",
+        "Setup Python": "actions/setup-python@v7",
+        "Setup Node": "actions/setup-node@v7",
+        "Setup Pages": "actions/configure-pages@v6",
+        "Upload Pages artifact": "actions/upload-pages-artifact@v5",
+        "Deploy to GitHub Pages": "actions/deploy-pages@v5",
+        "Upload live-browser evidence": "actions/upload-artifact@v7",
+    }
+    for name, action in expected_actions.items():
+        assert deploy_steps[name]["uses"] == action
+    assert "with" not in deploy_steps["Deploy to GitHub Pages"]
+
 
 def test_deploy_pages_impact_detection_fetches_only_diff_endpoints() -> None:
     workflow_path = ROOT / ".github/workflows/deploy-pages.yml"
@@ -240,7 +262,7 @@ def test_deploy_pages_impact_detection_fetches_only_diff_endpoints() -> None:
     by_name = {step["name"]: step for step in steps}
 
     checkout = by_name["Checkout publication graph"]
-    assert checkout["uses"] == "actions/checkout@v6"
+    assert checkout["uses"] == "actions/checkout@v7"
     assert checkout["with"]["fetch-depth"] == 1
     assert checkout["with"]["show-progress"] is False
     assert checkout["with"]["sparse-checkout"].splitlines() == [
