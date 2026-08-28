@@ -1,0 +1,23 @@
+name: Set up frozen Python environment
+description: Install the governed Python and uv toolchain and sync the locked dev environment.
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+
+    - name: Set up uv 0.12.7
+      uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      with:
+        version: "0.12.7"
+        enable-cache: true
+        cache-dependency-glob: |
+          pyproject.toml
+          uv.lock
+
+    - name: Sync frozen development environment
+      shell: bash
+      run: uv sync --frozen --extra dev

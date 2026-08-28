@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/selected-pool-event-population-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
       - "configs/data/selected_pool_event_population_v1.yaml"
       - "configs/providers/us_selected_equities_sec_cik_v3.yaml"
       - "src/data/selected_pool_event_population.py"
@@ -22,6 +23,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/selected-pool-event-population-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
       - "configs/data/selected_pool_event_population_v1.yaml"
       - "configs/providers/us_selected_equities_sec_cik_v3.yaml"
       - "src/data/selected_pool_event_population.py"
@@ -60,15 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Ruff event population paths
         run: >-
           uv run ruff check
@@ -114,15 +109,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Build exact-pool fixture evidence
         run: >-
           uv run python scripts/data/populate_selected_pool_events.py
@@ -137,7 +125,7 @@ jobs:
           --cutoff 2026-07-31
           --output-root "artifacts/data/event_population/${{ matrix.market }}"
           --verify-only
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: selected-pool-event-fixture-${{ matrix.market }}-${{ github.run_id }}
           path: artifacts/data/event_population/${{ matrix.market }}
@@ -163,22 +151,14 @@ jobs:
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.selected.outputs.run == 'true'
-      - uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-python-uv
         if: steps.selected.outputs.run == 'true'
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        if: steps.selected.outputs.run == 'true'
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
       - name: Restore exact-cutoff event source snapshots
         if: steps.selected.outputs.run == 'true' && matrix.market == 'cn'
         id: event-source-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: artifacts/cache/selected_pool_events/cn
           key: >-
@@ -201,13 +181,13 @@ jobs:
           --output-root "artifacts/data/event_population/${{ matrix.market }}"
       - name: Save exact-cutoff event source snapshots
         if: always() && steps.selected.outputs.run == 'true' && matrix.market == 'cn'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: artifacts/cache/selected_pool_events/cn
           key: ${{ steps.event-source-cache.outputs.cache-primary-key }}
       - name: Upload source-bound event evidence
         if: success() && steps.selected.outputs.run == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: selected-pool-event-live-${{ matrix.market }}-${{ github.run_id }}
           path: artifacts/data/event_population/${{ matrix.market }}

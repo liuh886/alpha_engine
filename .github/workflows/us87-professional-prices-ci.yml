@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/us87-professional-prices-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
       - "configs/data/us87_professional_prices_v1.yaml"
       - "docs/research/us87_validation_source_policy_2026-08-02.md"
       - "src/data/provider_catalog.py"
@@ -37,15 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Ruff professional providers
         run: >-
           uv run ruff check
@@ -82,15 +76,8 @@ jobs:
       TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
       POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Build one quota-bounded governed shard
         run: >-
           uv run python scripts/data/build_us87_professional_prices.py
@@ -98,7 +85,7 @@ jobs:
           --shard-index "${{ inputs.shard_index }}"
       - name: Upload canonical bars and validation evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: us87-governed-${{ inputs.cutoff }}-shard-${{ inputs.shard_index }}
           path: artifacts/data/us87_professional_prices_v1/shards

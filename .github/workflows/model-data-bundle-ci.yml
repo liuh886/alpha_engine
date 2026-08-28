@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/model-data-bundle-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
       - "configs/data_contracts/model_data_bundle_v1.yaml"
       - "src/data/model_data_bundle.py"
       - "src/artifacts/research_bundle.py"
@@ -19,6 +20,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/model-data-bundle-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
       - "configs/data_contracts/model_data_bundle_v1.yaml"
       - "src/data/model_data_bundle.py"
       - "src/artifacts/research_bundle.py"
@@ -43,15 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Ruff model data paths
         run: >-
           uv run ruff check
@@ -83,15 +78,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Create deterministic component fixtures
         run: |
           uv run python - <<'PY'
@@ -225,7 +213,7 @@ jobs:
           assert manifest["trade_ready"] is False
           PY
       - name: Upload data and research bundles
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: model-data-readiness-${{ github.run_id }}
           path: |
