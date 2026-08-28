@@ -60,6 +60,21 @@ def test_scheduled_workflow_restores_and_saves_state_in_order() -> None:
     assert "--state-restored" in content
 
 
+def test_scheduled_workflow_wires_governed_sec_egress_without_relaxing_gate() -> None:
+    content = WORKFLOW.read_text(encoding="utf-8")
+    live_run = content.index("Run latest complete US decision cycle")
+    summary = content.index("Build answer-first run summary")
+    live_block = content[live_run:summary]
+
+    assert "SEC_EGRESS_MODE: ${{ vars.SEC_EGRESS_MODE || 'direct' }}" in live_block
+    assert "SEC_EGRESS_PROXY_ID: ${{ vars.SEC_EGRESS_PROXY_ID || '' }}" in live_block
+    assert "SEC_EGRESS_PROXY_URL: ${{ secrets.SEC_EGRESS_PROXY_URL || '' }}" in live_block
+    assert "SEC_EGRESS_PROXY_URL" not in content[:live_run]
+    assert "SEC_EGRESS_PROXY_URL" not in content[summary:]
+    assert "Preserve governed failure status" in content
+    assert 'exit "$status"' in content
+
+
 def test_summary_surfaces_source_blockers_ticket_and_restored_state(
     tmp_path: Path,
 ) -> None:
