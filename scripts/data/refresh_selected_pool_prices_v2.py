@@ -47,6 +47,11 @@ FORMAL_MARKET_AUXILIARIES: dict[str, tuple[str, ...]] = {
     "us": ("QQQI", "TQQQ", "SGOV", "TYGO"),
     "cn": ("515180",),
 }
+_FORMAL_AUXILIARY_FETCH_ACTIONS = {
+    "fetched_full_refresh",
+    "fetched_incremental_update",
+    "fetched_replacement",
+}
 COMPARISON_REFERENCE_AUXILIARIES: dict[str, tuple[str, ...]] = {
     "us": ("CGDV",),
     "cn": (),
@@ -171,8 +176,9 @@ def _governed_formal_auxiliary_yahoo_fallback(
     auxiliary is different: it exists to publish evidence for an already accepted
     traded instrument, not to train or promote the CN ranker. The fallback is
     acceptable only when every configured provider ahead of Yahoo was attempted
-    and failed in the same full refresh and Yahoo itself succeeded. Adapter-level
-    schema and OHLC reconciliation still run before this manifest is produced.
+    and failed in the same governed fallback chain and Yahoo itself succeeded.
+    Adapter-level schema and OHLC reconciliation still run before this manifest
+    is produced.
     """
 
     symbol = str(record.get("symbol", "")).strip().upper()
@@ -180,7 +186,7 @@ def _governed_formal_auxiliary_yahoo_fallback(
         market != "cn"
         or symbol not in FORMAL_MARKET_AUXILIARIES.get(market, ())
         or str(record.get("provider", "")).strip().lower() != "yfinance"
-        or record.get("action") != "fetched_full_refresh"
+        or record.get("action") not in _FORMAL_AUXILIARY_FETCH_ACTIONS
     ):
         return False
 
@@ -326,7 +332,8 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
             "CN selected-pool members remain quarantined on Yahoo-only evidence. "
             "An explicitly declared formal auxiliary may use Yahoo only after "
             "every configured preferred provider was attempted and failed in the "
-            "same full refresh; adapter validation and normalization remain required."
+            "same governed fallback chain; adapter validation and normalization "
+            "remain required."
         ),
         "health": router.provider_health_snapshot(),
     }

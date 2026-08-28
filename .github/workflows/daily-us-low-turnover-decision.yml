@@ -45,6 +45,10 @@ jobs:
       - name: Run latest complete US decision cycle
         id: live_run
         shell: bash
+        env:
+          SEC_EGRESS_MODE: ${{ vars.SEC_EGRESS_MODE || 'direct' }}
+          SEC_EGRESS_PROXY_ID: ${{ vars.SEC_EGRESS_PROXY_ID || '' }}
+          SEC_EGRESS_PROXY_URL: ${{ secrets.SEC_EGRESS_PROXY_URL || '' }}
         run: |
           mkdir -p artifacts/operations
           set +e

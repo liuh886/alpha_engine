@@ -457,7 +457,8 @@ jobs:
               print(symbol)
           PY
           )
-          uv run python scripts/data/refresh_selected_pool_prices_v2.py "${args[@]}"
+          timeout --signal=TERM --kill-after=30s 30m \
+            uv run python scripts/data/refresh_selected_pool_prices_v2.py "${args[@]}"
       - name: Seal fresh provider cache
         if: steps.provider_cache.outputs.cache-hit != 'true'
         env:

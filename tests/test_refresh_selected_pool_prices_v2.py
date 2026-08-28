@@ -42,6 +42,15 @@ def test_selected_pool_router_does_not_circuit_break_across_symbols(monkeypatch)
     }
 
 
+def test_formal_refresh_bounds_provider_process_without_threads_or_global_patches():
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "timeout --signal=TERM --kill-after=30s 30m" in workflow
+    assert "refresh_selected_pool_prices_v2.py" in workflow
+
+
 def test_hardened_cn_router_enables_tushare_only_with_token(monkeypatch):
     monkeypatch.setenv("TUSHARE_TOKEN", "test-token")
     router = build_hardened_router("cn")
@@ -140,9 +149,14 @@ def test_cn_yahoo_only_source_is_quarantined(tmp_path: Path, monkeypatch):
     assert payload["promotion_blocker"] == "CN symbols rely on Yahoo-only adjusted data"
 
 
+@pytest.mark.parametrize(
+    "action",
+    ["fetched_full_refresh", "fetched_incremental_update", "fetched_replacement"],
+)
 def test_cn_formal_auxiliary_allows_proven_last_resort_yahoo_fallback(
     tmp_path: Path,
     monkeypatch,
+    action: str,
 ):
     monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
     path = tmp_path / "manifest.json"
@@ -154,7 +168,7 @@ def test_cn_formal_auxiliary_allows_proven_last_resort_yahoo_fallback(
                 "records": [
                     {
                         "symbol": "515180",
-                        "action": "fetched_full_refresh",
+                        "action": action,
                         "provider": "yfinance",
                         "attempts": [
                             {"provider": "akshare_sina", "ok": False},
