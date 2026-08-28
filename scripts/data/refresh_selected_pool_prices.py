@@ -134,7 +134,12 @@ def _retained_terminal_history(
         raise ValueError(
             f"governed terminal history does not reach requested start: {symbol}"
         )
-    frame = frame.loc[frame["date"] <= terminal_at].copy()
+    frame = _slice_requested_window(
+        frame,
+        symbol=symbol,
+        start=start,
+        cutoff=terminal_at.date().isoformat(),
+    )
     if frame.empty or frame.iloc[-1]["date"] != terminal_at:
         raise ValueError(
             f"governed terminal history does not close at terminal date: {symbol}"
@@ -183,12 +188,20 @@ def _normalize_auxiliary_symbols(
     return [symbol for symbol in auxiliary if symbol not in reserved]
 
 
+def _normalize_session_dates(values: pd.Series, *, symbol: str) -> pd.Series:
+    parsed = pd.to_datetime(values, errors="coerce")
+    try:
+        return parsed.dt.tz_localize(None).dt.normalize()
+    except (AttributeError, TypeError) as exc:
+        raise ValueError(f"{symbol} contains incompatible date values") from exc
+
+
 def _normalize_frame(frame: pd.DataFrame, *, symbol: str) -> pd.DataFrame:
     missing = sorted(set(CANONICAL_COLUMNS) - set(frame.columns))
     if missing:
         raise ValueError(f"{symbol} is missing columns: {missing}")
     result = frame.loc[:, list(CANONICAL_COLUMNS)].copy()
-    result["date"] = pd.to_datetime(result["date"], errors="coerce")
+    result["date"] = _normalize_session_dates(result["date"], symbol=symbol)
     for column in CANONICAL_COLUMNS[1:]:
         result[column] = pd.to_numeric(result[column], errors="coerce")
     if result["date"].isna().any():
@@ -199,6 +212,39 @@ def _normalize_frame(frame: pd.DataFrame, *, symbol: str) -> pd.DataFrame:
     ok, _, errors = validate_market_data(result, symbol)
     if not ok:
         raise ValueError(f"{symbol} schema validation failed: {errors}")
+    return result
+
+
+def _requested_window_bounds(
+    start: str, cutoff: str
+) -> tuple[pd.Timestamp, pd.Timestamp]:
+    try:
+        start_at = pd.Timestamp(start).tz_localize(None).normalize()
+        cutoff_at = pd.Timestamp(cutoff).tz_localize(None).normalize()
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"requested date window is invalid: {start} through {cutoff}"
+        ) from exc
+    if pd.isna(start_at) or pd.isna(cutoff_at) or start_at > cutoff_at:
+        raise ValueError(
+            f"requested date window is invalid: {start} through {cutoff}"
+        )
+    return start_at, cutoff_at
+
+
+def _slice_requested_window(
+    frame: pd.DataFrame,
+    *,
+    symbol: str,
+    start: str,
+    cutoff: str,
+) -> pd.DataFrame:
+    start_at, cutoff_at = _requested_window_bounds(start, cutoff)
+    result = frame.loc[frame["date"].between(start_at, cutoff_at)].copy()
+    if result.empty:
+        raise ValueError(
+            f"{symbol} has no governed history from {start} through {cutoff}"
+        )
     return result
 
 
@@ -289,15 +335,21 @@ def _fetch_with_retries(
             validate=True,
         )
         last_response = response
-        cutoff_at = pd.Timestamp(cutoff).normalize()
+        _, cutoff_at = _requested_window_bounds(start, cutoff)
         observed_last_date: str | None = None
         cutoff_complete = False
         if response.ok and response.result is not None:
-            dates = pd.to_datetime(
-                response.result.df.get("date"), errors="coerce"
-            ).dropna()
+            raw_dates = response.result.df.get("date")
+            try:
+                dates = (
+                    _normalize_session_dates(raw_dates, symbol=symbol).dropna()
+                    if isinstance(raw_dates, pd.Series)
+                    else pd.Series(dtype="datetime64[ns]")
+                )
+            except ValueError:
+                dates = pd.Series(dtype="datetime64[ns]")
             if not dates.empty:
-                observed_at = pd.Timestamp(dates.max()).normalize()
+                observed_at = pd.Timestamp(dates.max())
                 observed_last_date = observed_at.date().isoformat()
                 cutoff_complete = observed_at >= cutoff_at
 
@@ -336,13 +388,21 @@ def _source_needs_refresh(audit: dict[str, Any], *, cutoff: str) -> bool:
     return pd.Timestamp(str(audit["last_date"])) < pd.Timestamp(cutoff)
 
 
-def _copy_through_cutoff(
-    *, source_path: Path, output_path: Path, symbol: str, cutoff: str
+def _copy_requested_window(
+    *,
+    source_path: Path,
+    output_path: Path,
+    symbol: str,
+    start: str,
+    cutoff: str,
 ) -> pd.DataFrame:
     frame = _normalize_frame(pd.read_csv(source_path), symbol=symbol)
-    frame = frame.loc[frame["date"] <= pd.Timestamp(cutoff)].copy()
-    if frame.empty:
-        raise ValueError(f"{symbol} has no governed history through {cutoff}")
+    frame = _slice_requested_window(
+        frame,
+        symbol=symbol,
+        start=start,
+        cutoff=cutoff,
+    )
     _write_csv(output_path, frame)
     return frame
 
@@ -353,16 +413,18 @@ def _retain_stale_source(
     output_path: Path,
     symbol: str,
     market: str,
+    start: str,
     cutoff: str,
     audit: dict[str, Any],
     attempts: list[dict[str, Any]],
 ) -> dict[str, Any] | None:
     if audit.get("status") != "ready":
         return None
-    frame = _copy_through_cutoff(
+    frame = _copy_requested_window(
         source_path=source_path,
         output_path=output_path,
         symbol=symbol,
+        start=start,
         cutoff=cutoff,
     )
     return {
@@ -434,6 +496,7 @@ def refresh_selected_pool_prices(
 ) -> dict[str, Any]:
     """Build one isolated provider through ``cutoff`` for the selected pool."""
 
+    _requested_window_bounds(start, cutoff)
     project_root = Path(root).resolve()
     market_key = str(market).lower()
     binding = resolve_selected_pool(
@@ -542,10 +605,11 @@ def refresh_selected_pool_prices(
                 continue
 
             if symbol not in target_set:
-                frame = _copy_through_cutoff(
+                frame = _copy_requested_window(
                     source_path=source_path,
                     output_path=output_path,
                     symbol=symbol,
+                    start=start,
                     cutoff=cutoff,
                 )
                 records.append(
@@ -584,6 +648,7 @@ def refresh_selected_pool_prices(
                     output_path=output_path,
                     symbol=symbol,
                     market=market_key,
+                    start=start,
                     cutoff=cutoff,
                     audit=audit,
                     attempts=attempt_rows,
@@ -608,9 +673,12 @@ def refresh_selected_pool_prices(
                     provider_symbol=response.result.provider_symbol,
                 )
                 fetched = _normalize_frame(response.result.df, symbol=symbol)
-                fetched = fetched.loc[fetched["date"] <= pd.Timestamp(cutoff)].copy()
-                if fetched.empty:
-                    raise ValueError("provider returned no rows through cutoff")
+                fetched = _slice_requested_window(
+                    fetched,
+                    symbol=symbol,
+                    start=start,
+                    cutoff=cutoff,
+                )
                 if incremental:
                     governed = _normalize_frame(
                         pd.read_csv(source_path), symbol=symbol
@@ -620,9 +688,12 @@ def refresh_selected_pool_prices(
                     frame = _normalize_frame(frame, symbol=symbol)
                 else:
                     frame = fetched
-                frame = frame.loc[frame["date"] <= pd.Timestamp(cutoff)].copy()
-                if frame.empty:
-                    raise ValueError("provider output is empty through cutoff")
+                frame = _slice_requested_window(
+                    frame,
+                    symbol=symbol,
+                    start=start,
+                    cutoff=cutoff,
+                )
                 _write_csv(output_path, frame)
             except Exception as exc:
                 failure = {
