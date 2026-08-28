@@ -31,7 +31,7 @@ jobs:
       matched_paths_json: ${{ steps.impact.outputs.matched_paths_json }}
     steps:
       - name: Checkout publication graph
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.target_sha || github.sha }}
           fetch-depth: 1
@@ -65,7 +65,7 @@ jobs:
           cat artifacts/pages-impact-decision.json
       - name: Record impact decision
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: pages-impact-decision
           path: artifacts/pages-impact-decision.json
@@ -86,7 +86,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.target_sha || github.sha }}
           lfs: true
@@ -95,7 +95,7 @@ jobs:
       - name: Verify zero-server product boundary
         run: python scripts/check_legacy_web_boundary.py
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install governed publication runtime
@@ -108,7 +108,7 @@ jobs:
           generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           uv run alpha ops build --generated-at "$generated_at"
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -223,14 +223,12 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v6
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
-        with:
-          timeout: 1800000
+        uses: actions/deploy-pages@v5
       - name: Verify deployed frontend contracts
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
@@ -245,7 +243,7 @@ jobs:
         run: npx playwright test --config=playwright.live.config.ts
       - name: Upload live-browser evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: pages-live-browser-evidence
           path: qlib-dashboard/test-results/live-pages
