@@ -20,6 +20,7 @@ on:
       - "tests/test_sec_companyfacts_fundamentals.py"
       - "tests/test_latest_us_fundamental_validation.py"
       - ".github/workflows/fundamental-acceleration-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
   pull_request:
     branches: [main]
     paths:
@@ -39,6 +40,7 @@ on:
       - "tests/test_sec_companyfacts_fundamentals.py"
       - "tests/test_latest_us_fundamental_validation.py"
       - ".github/workflows/fundamental-acceleration-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
   workflow_dispatch:
 
 permissions:
@@ -49,15 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Ruff focused path
         run: >-
           uv run ruff check
