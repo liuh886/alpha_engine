@@ -10,6 +10,7 @@ on:
       - "tests/test_corporate_action_store_contract.py"
       - "docs/research/corporate_action_store_v1_2026-08-01.md"
       - ".github/workflows/corporate-action-store-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
   push:
     branches: [main]
     paths:
@@ -19,6 +20,7 @@ on:
       - "tests/test_corporate_action_store_contract.py"
       - "docs/research/corporate_action_store_v1_2026-08-01.md"
       - ".github/workflows/corporate-action-store-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
   workflow_dispatch:
 
 permissions:
@@ -29,15 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Ruff corporate-action files
         run: >-
           uv run ruff check

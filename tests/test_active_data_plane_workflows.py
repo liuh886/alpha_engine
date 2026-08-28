@@ -22,6 +22,11 @@ WORKFLOW_JOB_COUNTS = {
     "alpha158-panel-ci.yml": 2,
     "us87-professional-prices-ci.yml": 2,
     "model-data-bundle-ci.yml": 2,
+    "corporate-action-store-ci.yml": 1,
+    "etf-reference-bundle-ci.yml": 2,
+    "factor-knowledge-registry-ci.yml": 1,
+    "fundamental-acceleration-ci.yml": 1,
+    "researcher-data-cli-ci.yml": 1,
 }
 
 
@@ -46,16 +51,61 @@ def test_shared_python_environment_is_frozen_and_cache_safe() -> None:
 
 
 def test_active_data_plane_workflows_use_one_governed_environment_setup() -> None:
+    assert sum(WORKFLOW_JOB_COUNTS.values()) == 20
     root = Path(".github/workflows")
     for filename, job_count in WORKFLOW_JOB_COUNTS.items():
         content = (root / filename).read_text(encoding="utf-8")
+        workflow = yaml.safe_load(content)
+        triggers = workflow.get("on", workflow.get(True, {}))
         assert content.count("uses: actions/checkout@v7") == job_count
         assert content.count("uses: ./.github/actions/setup-python-uv") == job_count
-        assert '".github/actions/setup-python-uv/action.yml"' in content
+        for event in ("pull_request", "push"):
+            if event in triggers:
+                assert ".github/actions/setup-python-uv/action.yml" in triggers[event][
+                    "paths"
+                ]
         assert "curl -LsSf https://astral.sh/uv/install.sh" not in content
         assert "actions/checkout@v4" not in content
         assert "actions/setup-python@v5" not in content
         assert "actions/upload-artifact@v4" not in content
+
+
+def test_etf_live_bundle_keeps_provider_and_evidence_boundaries() -> None:
+    workflow = yaml.safe_load(
+        Path(".github/workflows/etf-reference-bundle-ci.yml").read_text(
+            encoding="utf-8"
+        )
+    )
+    live = workflow["jobs"]["live-bundle"]
+    steps = live["steps"]
+    upload = next(
+        step
+        for step in steps
+        if step.get("name") == "Upload ETF reference bundle and credential evidence"
+    )
+
+    assert live["if"] == "github.event_name != 'pull_request'"
+    assert live["needs"] == "contract"
+    assert live["env"] == {"TIINGO_API_TOKEN": "${{ secrets.TIINGO_API_TOKEN }}"}
+    assert steps[0]["uses"] == "actions/checkout@v7"
+    assert steps[1]["uses"] == "./.github/actions/setup-python-uv"
+    assert upload["if"] == "always()"
+    assert upload["uses"] == "actions/upload-artifact@v7"
+    assert upload["with"]["if-no-files-found"] == "error"
+    assert upload["with"]["retention-days"] == 90
+
+
+def test_researcher_cli_contract_stays_offline() -> None:
+    workflow = yaml.safe_load(
+        Path(".github/workflows/researcher-data-cli-ci.yml").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert workflow["jobs"]["contract"]["env"] == {
+        "TIINGO_API_TOKEN": "",
+        "TUSHARE_TOKEN": "",
+    }
 
 
 def test_domain_data_caches_use_current_runtime_without_changing_keys() -> None:
