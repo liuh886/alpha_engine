@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/alpha158-canonical-vwap-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
       - "configs/data/alpha158_panel_v1.yaml"
       - "configs/data_contracts/model_data_bundle_v1.yaml"
       - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
@@ -29,6 +30,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/alpha158-canonical-vwap-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
       - "configs/data/alpha158_panel_v1.yaml"
       - "configs/data_contracts/model_data_bundle_v1.yaml"
       - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
@@ -70,15 +72,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Lint canonical VWAP paths
         run: >-
           uv run ruff check
@@ -128,15 +123,8 @@ jobs:
     env:
       POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Resolve current evidence cutoff
         id: cutoff
         shell: bash
@@ -191,7 +179,7 @@ jobs:
           --output-root artifacts/data/canonical_vwap/us
       - name: Upload US provider, panels, quality and readiness evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: alpha158-canonical-vwap-us-${{ github.run_id }}
           path: artifacts/data/canonical_vwap/us
@@ -206,15 +194,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 600
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Resolve current evidence cutoff
         id: cutoff
         shell: bash
@@ -224,7 +205,7 @@ jobs:
           echo "value=$cutoff" >> "$GITHUB_OUTPUT"
       - name: Restore exact-cutoff CN source pairs
         id: vwap-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             artifacts/data/canonical_vwap/cn/raw
@@ -247,7 +228,7 @@ jobs:
           --output artifacts/data/canonical_vwap/cn/alpha158/research/cn_alpha158_cross_window_stability_v1.json
       - name: Save exact-cutoff CN source pairs
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             artifacts/data/canonical_vwap/cn/raw
@@ -297,7 +278,7 @@ jobs:
           PY
       - name: Upload provider, panels, quality, readiness and diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: alpha158-canonical-vwap-cn-${{ github.run_id }}
           path: artifacts/data/canonical_vwap/cn

@@ -316,7 +316,7 @@ def test_workflow_restores_only_the_latest_rolling_cache_generation() -> None:
         step for step in steps if step.get("name") == "Populate public primary event stores"
     )
 
-    assert restore["uses"] == "actions/cache/restore@v4"
+    assert restore["uses"] == "actions/cache/restore@v6"
     assert "matrix.market == 'cn'" in restore["if"]
     assert "run" not in restore
     assert "env" not in restore

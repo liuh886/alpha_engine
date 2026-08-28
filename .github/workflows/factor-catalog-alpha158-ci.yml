@@ -13,6 +13,7 @@ on:
       - "tests/test_factor_asset_inventory.py"
       - "docs/research/factor_catalog_alpha158_v1_2026-08-01.md"
       - ".github/workflows/factor-catalog-alpha158-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
   push:
     branches: [main]
     paths:
@@ -25,6 +26,7 @@ on:
       - "tests/test_factor_asset_inventory.py"
       - "docs/research/factor_catalog_alpha158_v1_2026-08-01.md"
       - ".github/workflows/factor-catalog-alpha158-ci.yml"
+      - ".github/actions/setup-python-uv/action.yml"
   workflow_dispatch:
 
 permissions:
@@ -35,15 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Ruff factor catalog
         run: >-
           uv run ruff check
@@ -71,7 +66,7 @@ jobs:
           uv run python scripts/factors/build_factor_catalog.py
           uv run python scripts/factors/audit_existing_factor_assets.py
       - name: Upload catalog artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: factor-catalog-alpha158-${{ github.run_id }}
           path: artifacts/factor_catalog

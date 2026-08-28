@@ -6,6 +6,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 WORKFLOW_ROOT = Path('.github/workflows')
 LOCKFILES = {
     'npm': ('package-lock.json',),
@@ -13,7 +15,6 @@ LOCKFILES = {
     'yarn': ('yarn.lock',),
     'bun': ('bun.lock', 'bun.lockb'),
 }
-ACTION_RE = re.compile(r'uses:\s*([^\s@]+)@([^\s#]+)')
 RUN_ID_RE = re.compile(r'\brun-id\s*:\s*["\']?\d{6,}')
 RETENTION_RE = re.compile(r'retention-days:\s*(\d+)')
 LEGACY_ACTION_PREFIXES = (
@@ -58,6 +59,33 @@ def upload_blocks(text: str) -> list[str]:
     return blocks
 
 
+def iter_uses(value: Any):
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key == 'uses' and isinstance(child, str):
+                yield child
+            yield from iter_uses(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from iter_uses(child)
+
+
+def action_refs(text: str, seen: set[Path] | None = None) -> set[str]:
+    """Return external actions, including actions used by local composite actions."""
+    uses = tuple(iter_uses(yaml.safe_load(text)))
+    refs = {ref for ref in uses if not ref.startswith('./') and '@' in ref}
+    visited = set() if seen is None else seen
+    for local_ref in (ref for ref in uses if ref.startswith('./.github/actions/')):
+        action_root = Path(local_ref.removeprefix('./'))
+        candidates = (action_root / 'action.yml', action_root / 'action.yaml')
+        action_path = next((path for path in candidates if path.is_file()), None)
+        if action_path is None or action_path in visited:
+            continue
+        visited.add(action_path)
+        refs.update(action_refs(action_path.read_text(encoding='utf-8'), visited))
+    return refs
+
+
 def inspect_workflow(
     path: Path,
     governed: bool,
@@ -66,7 +94,7 @@ def inspect_workflow(
     max_days: int,
 ) -> tuple[dict[str, Any], list[str]]:
     text = path.read_text(encoding='utf-8')
-    actions = sorted({f'{name}@{version}' for name, version in ACTION_RE.findall(text)})
+    actions = sorted(action_refs(text))
     events = [event for event in ('pull_request', 'push', 'workflow_run', 'workflow_dispatch', 'schedule') if has_event(text, event)]
     permissions = top_permissions(text)
     violations: list[str] = []
