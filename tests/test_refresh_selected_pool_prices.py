@@ -157,6 +157,52 @@ def _prepare_contract(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return pool
 
 
+def test_normalize_frame_converts_intraday_timestamps_to_session_dates() -> None:
+    frame = _frame(
+        dates=("2021-01-04 09:30:00+08:00", "2021-01-05 15:00:00+08:00")
+    )
+
+    normalized = module._normalize_frame(frame, symbol="000300")
+
+    assert normalized["date"].tolist() == [
+        pd.Timestamp("2021-01-04"),
+        pd.Timestamp("2021-01-05"),
+    ]
+
+
+def test_copy_requested_window_fails_closed_when_window_is_empty(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.csv"
+    output = tmp_path / "output.csv"
+    _write_csv(source, _frame(dates=("2020-12-30", "2020-12-31")))
+
+    with pytest.raises(ValueError, match="has no governed history"):
+        module._copy_requested_window(
+            source_path=source,
+            output_path=output,
+            symbol="000300",
+            start="2021-01-01",
+            cutoff="2021-01-05",
+        )
+
+    assert not output.exists()
+
+
+def test_refresh_rejects_inverted_window_before_loading_contract(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="requested date window is invalid"):
+        module.refresh_selected_pool_prices(
+            root=tmp_path,
+            market="cn",
+            source_csv_dir=tmp_path / "source",
+            output_root=tmp_path / "output",
+            start="2021-01-06",
+            cutoff="2021-01-05",
+            router=FakeRouter({}),  # type: ignore[arg-type]
+            max_rounds=1,
+        )
+
+
 def test_successful_but_incomplete_response_retries_until_cutoff(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -220,9 +266,38 @@ def test_incomplete_response_remains_fail_closed_after_bounded_retries(
     }
 
 
+def test_timezone_aware_response_is_normalized_before_cutoff_comparison() -> None:
+    router = FakeRouter(
+        {
+            "000300": _frame(
+                dates=(
+                    "2021-01-04 09:30:00+08:00",
+                    "2021-01-05 15:00:00+08:00",
+                )
+            )
+        }
+    )
+
+    response, attempts = module._fetch_with_retries(
+        router,  # type: ignore[arg-type]
+        symbol="000300",
+        market="cn",
+        start="2021-01-01",
+        cutoff="2021-01-05",
+        max_rounds=1,
+    )
+
+    assert response.ok is True
+    assert attempts[0]["ok"] is True
+    assert attempts[0]["observed_last_date"] == "2021-01-05"
+    assert attempts[0]["cutoff_complete"] is True
+
+
 def test_terminal_history_is_retained_without_refetching(tmp_path: Path) -> None:
     source = tmp_path / "EA.csv"
-    frame = _frame(dates=("2021-01-04", "2026-08-04", "2026-08-10"))
+    frame = _frame(
+        dates=("2002-01-04", "2021-01-04", "2026-08-04", "2026-08-10")
+    )
     _write_csv(source, frame)
 
     retained = module._retained_terminal_history(
@@ -232,6 +307,7 @@ def test_terminal_history_is_retained_without_refetching(tmp_path: Path) -> None
         contract={"terminal_date": "2026-08-04"},
     )
 
+    assert retained["date"].min() == pd.Timestamp("2021-01-04")
     assert retained["date"].max() == pd.Timestamp("2026-08-04")
     assert "2026-08-10" not in retained["date"].dt.strftime("%Y-%m-%d").tolist()
 
@@ -299,7 +375,9 @@ def test_incremental_refresh_fetches_only_invalid_or_outdated_sources(
 ) -> None:
     _prepare_contract(tmp_path, monkeypatch)
     source = tmp_path / "source"
-    current = _frame(dates=("2021-01-04", "2021-01-05", "2021-01-06"))
+    current = _frame(
+        dates=("2002-01-04", "2021-01-04", "2021-01-05", "2021-01-06")
+    )
     _write_csv(source / "000001.csv", current)
     _write_csv(source / "000002.csv", _frame().assign(high=[1.0, 1.0]))
     _write_csv(source / "000300.csv", current)
@@ -324,6 +402,7 @@ def test_incremental_refresh_fetches_only_invalid_or_outdated_sources(
     assert payload["status"] == "selected_pool_price_refresh_ready"
     assert payload["stale_symbols"] == []
     assert payload["all_sources_current"] is True
+    assert {row["first_date"] for row in payload["records"]} == {"2021-01-04"}
 
 
 def test_incremental_refresh_extends_governed_history_to_cutoff(
@@ -365,6 +444,42 @@ def test_incremental_refresh_extends_governed_history_to_cutoff(
     assert payload["all_sources_current"] is True
 
 
+def test_incremental_refresh_clips_repository_bootstrap_to_declared_window(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_contract(tmp_path, monkeypatch)
+    source = tmp_path / "source"
+    governed = _frame(dates=("2002-01-04", "2021-01-04", "2021-01-05"))
+    for symbol in ("000001", "000002", "000300"):
+        _write_csv(source / f"{symbol}.csv", governed)
+    update = _frame(2.0, dates=("2021-01-05", "2021-01-06"))
+    router = FakeRouter({symbol: update for symbol in ("000001", "000002", "000300")})
+    output = tmp_path / "output"
+
+    payload = module.refresh_selected_pool_prices(
+        root=tmp_path,
+        market="cn",
+        source_csv_dir=source,
+        output_root=output,
+        start="2021-01-01",
+        cutoff="2021-01-06",
+        router=router,  # type: ignore[arg-type]
+        max_rounds=1,
+    )
+
+    assert {record["first_date"] for record in payload["records"]} == {
+        "2021-01-04"
+    }
+    for symbol in ("000001", "000002", "000300"):
+        frame = pd.read_csv(output / "data" / "csv_source" / f"{symbol}.csv")
+        assert frame["date"].tolist() == [
+            "2021-01-04",
+            "2021-01-05",
+            "2021-01-06",
+        ]
+
+
 def test_full_refresh_fetches_every_candidate_and_benchmark(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -373,8 +488,9 @@ def test_full_refresh_fetches_every_candidate_and_benchmark(
     source = tmp_path / "source"
     for symbol in ("000001", "000002", "000300"):
         _write_csv(source / f"{symbol}.csv", _frame())
+    refreshed = _frame(2.0, dates=("2002-01-04", "2021-01-04", "2021-01-05"))
     router = FakeRouter(
-        {symbol: _frame(2.0) for symbol in ("000001", "000002", "000300")}
+        {symbol: refreshed for symbol in ("000001", "000002", "000300")}
     )
     output = tmp_path / "output"
 
@@ -397,6 +513,7 @@ def test_full_refresh_fetches_every_candidate_and_benchmark(
     }
     assert payload["stale_symbols"] == []
     assert payload["all_sources_current"] is True
+    assert {row["first_date"] for row in payload["records"]} == {"2021-01-04"}
 
 
 def test_full_refresh_retains_validated_source_when_fetch_is_transiently_unavailable(
@@ -405,9 +522,9 @@ def test_full_refresh_retains_validated_source_when_fetch_is_transiently_unavail
 ) -> None:
     _prepare_contract(tmp_path, monkeypatch)
     source = tmp_path / "source"
+    governed = _frame(dates=("2002-01-04", "2021-01-04", "2021-01-05"))
     for symbol in ("000001", "000002", "000300"):
-        _write_csv(source / f"{symbol}.csv", _frame())
-    original = (source / "000002.csv").read_bytes()
+        _write_csv(source / f"{symbol}.csv", governed)
     router = FakeRouter({"000001": _frame(2.0), "000300": _frame(2.0)})
     output = tmp_path / "output"
 
@@ -430,7 +547,8 @@ def test_full_refresh_retains_validated_source_when_fetch_is_transiently_unavail
     assert payload["all_sources_current"] is True
     retained = next(row for row in payload["records"] if row["symbol"] == "000002")
     assert retained["action"] == "retained_stale_source"
-    assert (output / "data" / "csv_source" / "000002.csv").read_bytes() == original
+    retained_frame = pd.read_csv(output / "data" / "csv_source" / "000002.csv")
+    assert retained_frame["date"].tolist() == ["2021-01-04", "2021-01-05"]
 
 
 def test_incremental_refresh_marks_retained_old_source_stale(
