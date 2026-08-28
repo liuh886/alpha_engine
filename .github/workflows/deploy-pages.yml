@@ -34,8 +34,13 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ inputs.target_sha || github.sha }}
-          fetch-depth: 0
+          fetch-depth: 1
           show-progress: false
+          sparse-checkout: |
+            /configs/
+            /data/research/catalog.json
+            /scripts/detect_pages_impact.py
+          sparse-checkout-cone-mode: false
       - name: Resolve Pages publication impact
         id: impact
         env:
@@ -48,6 +53,13 @@ jobs:
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             python scripts/detect_pages_impact.py --manual --github-output "$GITHUB_OUTPUT"
           else
+            if [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]] && \
+               [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ] && \
+               ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+              # Tree-to-tree diff only needs the two endpoint commits. If this
+              # fetch is unavailable, the detector below fails closed.
+              git fetch --no-tags --depth=1 --filter=blob:none origin "$BEFORE_SHA" || true
+            fi
             python scripts/detect_pages_impact.py --before "$BEFORE_SHA" --after "$AFTER_SHA" --github-output "$GITHUB_OUTPUT"
           fi
           cat artifacts/pages-impact-decision.json

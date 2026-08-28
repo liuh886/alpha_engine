@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import yaml
 
-from scripts.detect_pages_impact import decide_impact
+from scripts.detect_pages_impact import decide_impact, git_changed_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -113,6 +115,82 @@ def test_manual_dispatch_is_always_deployed(tmp_path: Path) -> None:
     assert decision.reason == "manual_dispatch"
 
 
+def test_unavailable_commit_range_fails_closed(tmp_path: Path) -> None:
+    output = tmp_path / "decision.json"
+    subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/detect_pages_impact.py"),
+            "--repository-root",
+            str(tmp_path),
+            "--before",
+            "1" * 40,
+            "--after",
+            "2" * 40,
+            "--output",
+            str(output),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    decision = json.loads(output.read_text(encoding="utf-8"))
+    assert decision["deploy"] is True
+    assert decision["reason"].startswith("fail_closed_commit_range:")
+    assert decision["matched_paths"] == []
+
+
+def test_shallow_endpoint_fetch_resolves_multi_commit_diff(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    remote = tmp_path / "remote.git"
+    shallow = tmp_path / "shallow"
+
+    def git(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    git("init", "--initial-branch=main", str(source))
+    git("config", "user.email", "pages-impact@example.invalid", cwd=source)
+    git("config", "user.name", "Pages Impact Test", cwd=source)
+    (source / "baseline.txt").write_text("baseline\n", encoding="utf-8")
+    git("add", "baseline.txt", cwd=source)
+    git("commit", "-m", "baseline", cwd=source)
+    before = git("rev-parse", "HEAD", cwd=source).stdout.strip()
+
+    (source / "docs").mkdir()
+    (source / "docs/release.md").write_text("release\n", encoding="utf-8")
+    git("add", "docs/release.md", cwd=source)
+    git("commit", "-m", "docs", cwd=source)
+    (source / "qlib-dashboard").mkdir()
+    (source / "qlib-dashboard/App.tsx").write_text("export {}\n", encoding="utf-8")
+    git("add", "qlib-dashboard/App.tsx", cwd=source)
+    git("commit", "-m", "frontend", cwd=source)
+    after = git("rev-parse", "HEAD", cwd=source).stdout.strip()
+
+    git("clone", "--bare", str(source), str(remote))
+    git("clone", "--depth=1", remote.as_uri(), str(shallow))
+    assert git("rev-parse", "--is-shallow-repository", cwd=shallow).stdout.strip() == "true"
+    missing = subprocess.run(
+        ["git", "cat-file", "-e", f"{before}^{{commit}}"],
+        cwd=shallow,
+        capture_output=True,
+        text=True,
+    )
+    assert missing.returncode != 0
+
+    git("fetch", "--no-tags", "--depth=1", "origin", before, cwd=shallow)
+    assert git_changed_paths(shallow, before, after) == (
+        "docs/release.md",
+        "qlib-dashboard/App.tsx",
+    )
+
+
 def test_pages_release_receipt_workflow_skips_operations_only_workflow_run() -> None:
     workflow_path = ROOT / ".github/workflows/pages-release-receipt.yml"
     text = workflow_path.read_text(encoding="utf-8")
@@ -153,6 +231,38 @@ def test_deploy_pages_workflow_is_pages_only() -> None:
         "group": "pages-deployment",
         "cancel-in-progress": False,
     }
+
+
+def test_deploy_pages_impact_detection_fetches_only_diff_endpoints() -> None:
+    workflow_path = ROOT / ".github/workflows/deploy-pages.yml"
+    content = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+    steps = content["jobs"]["detect-impact"]["steps"]
+    by_name = {step["name"]: step for step in steps}
+
+    checkout = by_name["Checkout publication graph"]
+    assert checkout["uses"] == "actions/checkout@v6"
+    assert checkout["with"]["fetch-depth"] == 1
+    assert checkout["with"]["show-progress"] is False
+    assert checkout["with"]["sparse-checkout"].splitlines() == [
+        "/configs/",
+        "/data/research/catalog.json",
+        "/scripts/detect_pages_impact.py",
+    ]
+    assert checkout["with"]["sparse-checkout-cone-mode"] is False
+
+    detector = by_name["Resolve Pages publication impact"]["run"]
+    assert '[[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]]' in detector
+    assert 'git cat-file -e "${BEFORE_SHA}^{commit}"' in detector
+    fetch = (
+        'git fetch --no-tags --depth=1 --filter=blob:none origin "$BEFORE_SHA" || true'
+    )
+    assert fetch in detector
+    assert detector.index('if [ "$EVENT_NAME" = "workflow_dispatch" ]') < detector.index(
+        fetch
+    )
+    assert detector.index(fetch) < detector.index(
+        'python scripts/detect_pages_impact.py --before "$BEFORE_SHA"'
+    )
 
 
 def test_formal_refresh_explicitly_dispatches_and_waits_for_pages() -> None:
