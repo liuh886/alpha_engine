@@ -16,14 +16,16 @@ jobs:
         with:
           ref: fix/provider-effective-cutoff
           fetch-depth: 1
-      - name: Apply patch
-        run: python scripts/maintenance/patch_effective_provider_cutoff.py
-      - name: Commit target changes and remove helpers
+      - name: Materialize patched workflow as ordinary blob
         run: |
-          rm .github/workflows/apply-effective-provider-cutoff.yml
-          rm scripts/maintenance/patch_effective_provider_cutoff.py
+          python scripts/maintenance/patch_effective_provider_cutoff.py
+          mkdir -p artifacts/maintenance
+          cp .github/workflows/formal-backtest-refresh.yml artifacts/maintenance/formal-backtest-refresh.patched.yml
+          git restore .github/workflows/formal-backtest-refresh.yml
+      - name: Commit ordinary blob only
+        run: |
           git config user.name "AlphaEngine Maintenance Agent"
           git config user.email "maintenance-agent@alphaengine.local"
-          git add .github/workflows/formal-backtest-refresh.yml .github/workflows/apply-effective-provider-cutoff.yml scripts/maintenance/patch_effective_provider_cutoff.py
-          git commit -m "fix(ops): resolve formal provider effective cutoff"
+          git add artifacts/maintenance/formal-backtest-refresh.patched.yml
+          git commit -m "chore: materialize effective-cutoff workflow blob"
           git push origin HEAD:fix/provider-effective-cutoff
