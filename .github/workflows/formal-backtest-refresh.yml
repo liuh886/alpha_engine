@@ -202,6 +202,7 @@ jobs:
             src/research/cn_x1_2_prospective.py \
             scripts/build_market_evidence.py \
             scripts/govern_formal_provider_cache.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
             scripts/data/refresh_selected_pool_prices.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             scripts/run_formal_refresh_transaction.py \
@@ -234,6 +235,7 @@ jobs:
             tests/test_refresh_selected_pool_prices_v2.py \
             tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
+            tests/test_resolve_formal_provider_cutoff.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
             tests/test_model_data_bundle.py \
@@ -250,6 +252,7 @@ jobs:
             src/dashboard/formal_bundle_market_events.py \
             src/dashboard/market_evidence.py \
             scripts/govern_formal_provider_cache.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
             scripts/build_market_evidence.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py
@@ -273,6 +276,7 @@ jobs:
             tests/test_refresh_selected_pool_prices_v2.py \
             tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
+            tests/test_resolve_formal_provider_cutoff.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
             tests/test_model_data_bundle.py \
@@ -350,8 +354,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Resolve manifest-bound provider cache identity
-        id: contract
+      - name: Resolve requested provider cache identity
+        id: requested_contract
         env:
           MARKET: ${{ matrix.market }}
           REQUESTED_CUTOFF: ${{ matrix.market == 'us' && needs.prepare.outputs.us_cutoff || needs.prepare.outputs.cn_cutoff }}
@@ -361,31 +365,99 @@ jobs:
             --cutoff "$REQUESTED_CUTOFF" \
             --output "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
             --github-output "$GITHUB_OUTPUT"
-      - name: Restore exact governed provider cache
+      - name: Restore requested governed provider cache
         id: provider_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: artifacts/formal-refresh/provider-${{ matrix.market }}
+          key: ${{ steps.requested_contract.outputs.cache_key }}-governed
+      - name: Install locked provider environment
+        if: steps.provider_cache.outputs.cache-hit != 'true'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Resolve latest complete provider cutoff
+        id: readiness
+        if: steps.provider_cache.outputs.cache-hit != 'true'
+        env:
+          MARKET: ${{ matrix.market }}
+          REQUESTED_CUTOFF: ${{ matrix.market == 'us' && needs.prepare.outputs.us_cutoff || needs.prepare.outputs.cn_cutoff }}
+          SEED_CUTOFF: ${{ matrix.market == 'us' && needs.prepare.outputs.us_seed_cutoff || needs.prepare.outputs.cn_seed_cutoff }}
+        run: |
+          readiness="artifacts/formal-refresh/provider-${MARKET}-readiness.json"
+          if [ "$MARKET" = "us" ]; then
+            uv run python scripts/data/resolve_formal_provider_cutoff.py \
+              --market "$MARKET" \
+              --requested-cutoff "$REQUESTED_CUTOFF" \
+              --seed-cutoff "$SEED_CUTOFF" \
+              --output "$readiness" \
+              --github-output "$GITHUB_OUTPUT"
+          else
+            python - <<'PY2' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          from pathlib import Path
+
+          requested = os.environ["REQUESTED_CUTOFF"]
+          seed = os.environ["SEED_CUTOFF"]
+          payload = {
+              "schema_version": "1.0",
+              "evidence_type": "formal_provider_readiness_v1",
+              "market": os.environ["MARKET"],
+              "status": "current",
+              "requested_cutoff": requested,
+              "effective_cutoff": requested,
+              "effective_seed_cutoff": seed,
+              "research_only": True,
+              "trade_ready": False,
+          }
+          path = Path(f"artifacts/formal-refresh/provider-{os.environ['MARKET']}-readiness.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print("provider_status=current")
+          print(f"effective_cutoff={requested}")
+          print(f"effective_seed_cutoff={seed}")
+          PY2
+          fi
+      - name: Resolve effective provider cache identity
+        id: contract
+        if: steps.provider_cache.outputs.cache-hit != 'true'
+        env:
+          MARKET: ${{ matrix.market }}
+          EFFECTIVE_CUTOFF: ${{ steps.readiness.outputs.effective_cutoff }}
+        run: |
+          python -m scripts.govern_formal_provider_cache contract \
+            --root . --market "$MARKET" --start 2021-01-01 \
+            --cutoff "$EFFECTIVE_CUTOFF" \
+            --output "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Restore exact effective governed provider cache
+        id: effective_cache
+        if: steps.provider_cache.outputs.cache-hit != 'true'
         uses: actions/cache/restore@v4
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
           key: ${{ steps.contract.outputs.cache_key }}-governed
       - name: Restore previous governed provider seed
-        if: steps.provider_cache.outputs.cache-hit != 'true'
+        if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true'
         uses: actions/cache/restore@v4
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
           key: formal-provider-seed-${{ matrix.market }}-${{ github.run_id }}
           restore-keys: |
-            formal-provider-1.1.0-${{ matrix.market }}-${{ matrix.market == 'us' && needs.prepare.outputs.us_seed_cutoff || needs.prepare.outputs.cn_seed_cutoff }}-
-            formal-provider-1.0.0-${{ matrix.market }}-${{ matrix.market == 'us' && needs.prepare.outputs.us_seed_cutoff || needs.prepare.outputs.cn_seed_cutoff }}-
+            formal-provider-1.1.0-${{ matrix.market }}-${{ steps.readiness.outputs.effective_seed_cutoff }}-
+            formal-provider-1.0.0-${{ matrix.market }}-${{ steps.readiness.outputs.effective_seed_cutoff }}-
       - name: Prepare governed provider seed
         id: provider_seed
-        if: steps.provider_cache.outputs.cache-hit != 'true'
+        if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true'
         env:
           MARKET: ${{ matrix.market }}
         run: |
           restored="artifacts/formal-refresh/provider-${MARKET}"
           seed="artifacts/formal-refresh/provider-${MARKET}-seed"
           if [ -d "$restored/data/csv_source" ]; then
-            python - <<'PY'
+            python - <<'PY2'
           import json
           import os
           from pathlib import Path
@@ -408,7 +480,7 @@ jobs:
               raise SystemExit("previous provider seed is not promotion eligible")
           if receipt.get("evidence_type") != "formal_provider_cache_receipt":
               raise SystemExit("previous provider seed is not governed cache evidence")
-          PY
+          PY2
             rm -rf "$seed"
             mv "$restored" "$seed"
             echo "source_csv_dir=$seed/data/csv_source" >> "$GITHUB_OUTPUT"
@@ -417,17 +489,11 @@ jobs:
             echo "source_csv_dir=data/csv_clean" >> "$GITHUB_OUTPUT"
             echo "seed_source=repository_bootstrap" >> "$GITHUB_OUTPUT"
           fi
-      - name: Install locked provider environment
-        if: steps.provider_cache.outputs.cache-hit != 'true'
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen
       - name: Incrementally extend isolated selected-pool provider
-        if: steps.provider_cache.outputs.cache-hit != 'true'
+        if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true'
         env:
           MARKET: ${{ matrix.market }}
-          REQUESTED_CUTOFF: ${{ matrix.market == 'us' && needs.prepare.outputs.us_cutoff || needs.prepare.outputs.cn_cutoff }}
+          EFFECTIVE_CUTOFF: ${{ steps.readiness.outputs.effective_cutoff }}
           SOURCE_CSV_DIR: ${{ steps.provider_seed.outputs.source_csv_dir }}
         run: |
           rm -rf "artifacts/formal-refresh/provider-${MARKET}"
@@ -437,12 +503,12 @@ jobs:
             --source-csv-dir "$SOURCE_CSV_DIR"
             --output-root "artifacts/formal-refresh/provider-${MARKET}"
             --start 2021-01-01
-            --cutoff "$REQUESTED_CUTOFF"
+            --cutoff "$EFFECTIVE_CUTOFF"
             --max-rounds 3
           )
           while IFS= read -r symbol; do
             args+=(--auxiliary-symbol "$symbol")
-          done < <(python - <<'PY'
+          done < <(python - <<'PY2'
           import json
           import os
           from pathlib import Path
@@ -455,12 +521,12 @@ jobs:
           )
           for symbol in contract["auxiliary_symbols"]:
               print(symbol)
-          PY
+          PY2
           )
           timeout --signal=TERM --kill-after=30s 30m \
             uv run python scripts/data/refresh_selected_pool_prices_v2.py "${args[@]}"
       - name: Seal fresh provider cache
-        if: steps.provider_cache.outputs.cache-hit != 'true'
+        if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true'
         env:
           MARKET: ${{ matrix.market }}
         run: |
@@ -469,7 +535,7 @@ jobs:
             --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
             --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
       - name: Verify restored provider cache
-        if: steps.provider_cache.outputs.cache-hit == 'true'
+        if: steps.provider_cache.outputs.cache-hit == 'true' || steps.effective_cache.outputs.cache-hit == 'true'
         env:
           MARKET: ${{ matrix.market }}
         run: |
@@ -478,7 +544,7 @@ jobs:
             --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
             --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
       - name: Save exact governed provider cache
-        if: steps.provider_cache.outputs.cache-hit != 'true'
+        if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
@@ -770,6 +836,8 @@ jobs:
         env:
           US_CUTOFF: ${{ needs.plan.outputs.us_cutoff }}
           CN_CUTOFF: ${{ needs.plan.outputs.cn_cutoff }}
+          EXPECTED_US_CUTOFF: ${{ needs.prepare.outputs.us_cutoff }}
+          EXPECTED_CN_CUTOFF: ${{ needs.prepare.outputs.cn_cutoff }}
         run: |
           evidence_cutoff="$(printf '%s\n%s\n' "$US_CUTOFF" "$CN_CUTOFF" | sort | tail -1)"
           rm -rf "$CANDIDATE_MODEL_DATA_ROOT"
@@ -1030,6 +1098,8 @@ jobs:
           PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
           US_CUTOFF: ${{ needs.plan.outputs.us_cutoff }}
           CN_CUTOFF: ${{ needs.plan.outputs.cn_cutoff }}
+          EXPECTED_US_CUTOFF: ${{ needs.prepare.outputs.us_cutoff }}
+          EXPECTED_CN_CUTOFF: ${{ needs.prepare.outputs.cn_cutoff }}
           REVIEWED_MERGE_SHA: ${{ steps.release.outputs.merge_sha }}
           PAGES_RUN_ID: ${{ steps.release.outputs.pages_run_id }}
           JOB_STATUS: ${{ job.status }}
@@ -1054,14 +1124,20 @@ jobs:
               || deltaInvalid
               || releaseIncomplete;
             const semanticNoChange = !failed && !publicationRequired;
-            const status = failed ? 'blocked' : 'current';
+            const providerDelayed = !failed && (
+              (process.env.EXPECTED_US_CUTOFF && process.env.US_CUTOFF
+                && process.env.US_CUTOFF < process.env.EXPECTED_US_CUTOFF)
+              || (process.env.EXPECTED_CN_CUTOFF && process.env.CN_CUTOFF
+                && process.env.CN_CUTOFF < process.env.EXPECTED_CN_CUTOFF)
+            );
+            const status = failed ? 'blocked' : providerDelayed ? 'delayed' : 'current';
             const body = [
               marker,
               '',
               `## 正式回测与市场证据刷新：${status}`,
               '',
-              `- **US common cutoff**: \`${process.env.US_CUTOFF || 'unresolved'}\``,
-              `- **CN common cutoff**: \`${process.env.CN_CUTOFF || 'unresolved'}\``,
+              `- **US expected / provider cutoff**: \`${process.env.EXPECTED_US_CUTOFF || 'unresolved'} / ${process.env.US_CUTOFF || 'unresolved'}\``,
+              `- **CN expected / provider cutoff**: \`${process.env.EXPECTED_CN_CUTOFF || 'unresolved'} / ${process.env.CN_CUTOFF || 'unresolved'}\``,
               `- **Workflow run**: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               `- **Review PR**: ${prNumber ? `#${prNumber}` : 'none'}`,
               `- **Reviewed merge SHA**: ${mergeSha ? `\`${mergeSha}\`` : 'none'}`,
@@ -1079,9 +1155,11 @@ jobs:
               '',
               failed
                 ? 'The refresh failed closed before the governed publication transaction finished.'
-                : semanticNoChange
-                  ? 'The candidate publication was semantically identical to current evidence; review PR, candidate CI and Pages were intentionally skipped.'
-                  : 'All active strategy receipts passed the Bundle v2 fan-in and the reviewed evidence transaction reached live Pages acceptance.',
+                : providerDelayed
+                  ? 'Governed provider evidence remains valid but trails the latest completed market session; publication did not move any strategy backwards.'
+                  : semanticNoChange
+                    ? 'The candidate publication was semantically identical to current evidence; review PR, candidate CI and Pages were intentionally skipped.'
+                    : 'All active strategy receipts passed the Bundle v2 fan-in and the reviewed evidence transaction reached live Pages acceptance.',
             ].join('\n');
             const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
