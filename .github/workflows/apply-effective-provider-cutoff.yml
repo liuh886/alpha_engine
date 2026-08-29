@@ -1,0 +1,29 @@
+name: Apply effective provider cutoff patch
+
+on:
+  push:
+    branches: [fix/provider-effective-cutoff]
+    paths: [.github/workflows/apply-effective-provider-cutoff.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/provider-effective-cutoff
+          fetch-depth: 1
+      - name: Apply patch
+        run: python scripts/maintenance/patch_effective_provider_cutoff.py
+      - name: Commit target changes and remove helpers
+        run: |
+          rm .github/workflows/apply-effective-provider-cutoff.yml
+          rm scripts/maintenance/patch_effective_provider_cutoff.py
+          git config user.name "AlphaEngine Maintenance Agent"
+          git config user.email "maintenance-agent@alphaengine.local"
+          git add .github/workflows/formal-backtest-refresh.yml .github/workflows/apply-effective-provider-cutoff.yml scripts/maintenance/patch_effective_provider_cutoff.py
+          git commit -m "fix(ops): resolve formal provider effective cutoff"
+          git push origin HEAD:fix/provider-effective-cutoff
