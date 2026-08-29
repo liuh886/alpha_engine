@@ -1,6 +1,6 @@
 # Model-run frontend and decision-support handoff
 
-Status: proposed implementation sequence
+Status: historical implementation handoff; completed and superseded by [#1074](https://github.com/liuh886/alpha_engine/issues/1074)
 Related issue: [#434](https://github.com/liuh886/alpha_engine/issues/434)
 Baseline revision: `3f353ff03b78ed022d55b8299464afbdf84c5156`
 Boundary: `research_only=true`, `trade_ready=false`
@@ -18,9 +18,9 @@ work into reviewable pull requests so strategy experiments, provider work and
 frontend improvements can continue in parallel without weakening the formal
 publication boundary.
 
-## 2. Current state
+## 2. Baseline state (historical)
 
-The current release has several strong properties:
+The baseline release had several strong properties:
 
 - the formal catalog is an explicit allow-list;
 - package and catalog hashes are verified before publication and again in the
@@ -31,23 +31,23 @@ The current release has several strong properties:
 - local directories, file sets and ZIP bundles can be opened without upload;
 - missing evidence is generally shown instead of reconstructed.
 
-The current path is nevertheless model-specific:
+The baseline path was nevertheless model-specific:
 
 ```text
 model workflow
   -> model-specific source archive
-  -> scripts/build_formal_model_backtests.py
+  -> retired monolithic formal-package builder
   -> one monolithic formal JSON package
-  -> formal_backtests/catalog.json
+  -> retired formal-backtest catalog
   -> build-time copy
   -> browser parser and ModelData normalization
   -> Backtests / Models / Compare views
 ```
 
-The principal gaps are:
+The principal gaps at the baseline revision were:
 
-1. `scripts/build_formal_model_backtests.py` contains separate hard-coded
-   extraction logic for the three currently published models.
+1. The retired monolithic builder contained separate hard-coded extraction
+   logic for the three models published at that time.
 2. The formal catalog cannot also serve as a history of ordinary governed model
    iterations without weakening its accepted-baseline meaning.
 3. Metric names are free-form strings. The three packages use different names
@@ -97,9 +97,11 @@ contract:
 | preview | CI-validated branch research | candidates, failures, diagnostics | formal promotion |
 | formal | public accepted evidence | accepted named baselines | trade readiness |
 
-The existing `formal_backtests/catalog.json` remains the formal allow-list.
-A new `model_runs/catalog.json` indexes non-formal governed iterations. The
-frontend makes the active channel and publication status visible at all times.
+This target is now implemented by `formal_model_runs/catalog.json` as the
+accepted-baseline allow-list and `model_runs/catalog.json` for governed preview
+iterations. The legacy `formal_backtests` tree and its Schema 1.0 promotion
+transport are retired. The frontend makes the active channel and publication
+status visible at all times.
 
 ## 4. Model Run Bundle v2 outline
 
@@ -299,7 +301,7 @@ Required work:
 2. Move source-specific extraction into small registered adapters with explicit
    input contracts.
 3. Produce `model_runs/catalog.json` for local/preview iterations while keeping
-   `formal_backtests/catalog.json` as the accepted-baseline allow-list.
+   `formal_model_runs/catalog.json` as the accepted-baseline allow-list.
 4. Validate catalog order, duplicate identities, hashes, section availability,
    research boundary and channel rules.
 5. Integrate the exporter into reusable workflow steps so another agent can add
