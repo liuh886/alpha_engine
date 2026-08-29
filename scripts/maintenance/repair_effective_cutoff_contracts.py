@@ -3,13 +3,13 @@ import subprocess
 
 BASE = "c30d33bf59bf7161846bd3b6bec3b874c7ac9597"
 
-# Restore the long test file exactly; a prior Contents API write is intentionally discarded.
+# Restore the long test file exactly; discard the accidental whole-file placeholder write.
 original = subprocess.check_output(
     ["git", "show", f"{BASE}:tests/test_formal_refresh.py"], text=True
 )
 Path("tests/test_formal_refresh.py").write_text(original, encoding="utf-8")
 
-# Keep readiness as internal provider-build evidence; do not create a sixth run-scoped artifact class.
+# Readiness is internal provider-build evidence; keep the existing five run-scoped artifact classes.
 workflow_path = Path(".github/workflows/formal-backtest-refresh.yml")
 workflow = workflow_path.read_text(encoding="utf-8")
 start = workflow.index("      - name: Upload provider readiness evidence\n")
@@ -17,7 +17,7 @@ end = workflow.index("      - name: Upload failed provider diagnostics\n", start
 workflow = workflow[:start] + workflow[end:]
 workflow_path.write_text(workflow, encoding="utf-8")
 
-# Update the existing trigger-scope contract to the new effective-seed authority.
+# The effective provider watermark is now the seed-cache authority.
 scope_path = Path("tests/test_formal_refresh_trigger_scope.py")
 scope = scope_path.read_text(encoding="utf-8")
 old = '''    assert "formal-provider-1.1.0-${{ matrix.market }}-${{ matrix.market == 'us' &&" in text
@@ -39,41 +39,55 @@ if scope.count(old) != 1:
     raise SystemExit("effective-seed contract marker not found exactly once")
 scope_path.write_text(scope.replace(old, new, 1), encoding="utf-8")
 
-# Candidate CI must execute the new resolver contract before merge, not first in production.
+# Candidate CI must validate the resolver before merge.
 ci_path = Path(".github/workflows/formal-backtest-refresh-ci.yml")
 ci = ci_path.read_text(encoding="utf-8")
-script_marker = "            scripts/data/refresh_selected_pool_prices_v2.py \\\n"
-script_insert = (
-    "            scripts/data/resolve_formal_provider_cutoff.py \\\n"
-    + script_marker
-)
-if ci.count(script_marker) != 2:
-    raise SystemExit("expected resolver Ruff insertion marker twice")
-ci = ci.replace(script_marker, script_insert)
 
-test_marker = "            tests/test_formal_refresh_trigger_scope.py \\\n"
-test_insert = (
-    "            tests/test_resolve_formal_provider_cutoff.py \\\n"
-    + test_marker
+script_line = "            scripts/data/refresh_selected_pool_prices_v2.py"
+if script_line not in ci:
+    raise SystemExit("candidate Ruff refresh marker missing")
+ci = ci.replace(
+    script_line,
+    "            scripts/data/resolve_formal_provider_cutoff.py \\\n" + script_line,
 )
-if ci.count(test_marker) != 2:
-    raise SystemExit("expected resolver pytest insertion marker twice")
-ci = ci.replace(test_marker, test_insert)
 
-# Add the resolver to each candidate Mypy block only.
+test_line = "            tests/test_formal_refresh_trigger_scope.py"
+if test_line not in ci:
+    raise SystemExit("candidate pytest trigger-scope marker missing")
+ci = ci.replace(
+    test_line,
+    "            tests/test_resolve_formal_provider_cutoff.py \\\n" + test_line,
+)
+
+# Insert into every candidate Mypy block, without touching Ruff blocks.
 search_from = 0
-for _ in range(2):
-    mypy_start = ci.index("          uv run mypy \\\n", search_from)
-    pytest_start = ci.index("          uv run pytest \\\n", mypy_start)
+mypy_blocks = 0
+while True:
+    try:
+        mypy_start = ci.index("          uv run mypy ", search_from)
+    except ValueError:
+        break
+    pytest_start = ci.index("          uv run pytest ", mypy_start)
     block = ci[mypy_start:pytest_start]
-    marker = "            scripts/run_formal_refresh_transaction.py \\\n"
+    marker = "            scripts/run_formal_refresh_transaction.py"
     if marker not in block:
-        raise SystemExit("mypy resolver insertion marker missing")
-    block = block.replace(
-        marker,
-        "            scripts/data/resolve_formal_provider_cutoff.py \\\n" + marker,
-        1,
-    )
-    ci = ci[:mypy_start] + block + ci[pytest_start:]
+        raise SystemExit("candidate Mypy transaction marker missing")
+    if "scripts/data/resolve_formal_provider_cutoff.py" not in block:
+        block = block.replace(
+            marker,
+            "            scripts/data/resolve_formal_provider_cutoff.py \\\n" + marker,
+            1,
+        )
+        ci = ci[:mypy_start] + block + ci[pytest_start:]
     search_from = mypy_start + len(block)
+    mypy_blocks += 1
+if mypy_blocks != 2:
+    raise SystemExit(f"expected two candidate Mypy blocks, saw {mypy_blocks}")
+
+for required in (
+    "scripts/data/resolve_formal_provider_cutoff.py",
+    "tests/test_resolve_formal_provider_cutoff.py",
+):
+    if required not in ci:
+        raise SystemExit(f"candidate resolver contract missing: {required}")
 ci_path.write_text(ci, encoding="utf-8")
