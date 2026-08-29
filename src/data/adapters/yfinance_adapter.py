@@ -9,8 +9,8 @@ import pandas as pd
 
 from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
 
-# Small provider/repair rounding drift is tolerated only inside this narrow
-# envelope. Material raw OHLC inconsistencies still fail closed.
+# Small provider rounding drift is tolerated only inside this narrow envelope.
+# Material raw OHLC inconsistencies still fail closed.
 OHLC_ROUNDING_REL_TOL = 5e-4
 CN_ETF_PRICE_TICK = 1e-3
 CN_ETF_PREFIXES = ("15", "16", "51", "56", "58")
@@ -115,12 +115,12 @@ def _process_yfinance_df(
     *,
     absolute_tolerance: float = 0.0,
 ) -> pd.DataFrame:
-    """Normalize repaired Yahoo bars and apply one uniform adjustment ratio.
+    """Normalize raw Yahoo bars and apply one uniform adjustment ratio.
 
     yfinance's maintained ``auto_adjust`` algorithm multiplies raw Open/High/Low
     by ``Adj Close / Close`` and uses Adj Close as Close. Perform that operation
-    explicitly after ``repair=True`` so every OHLC field shares the same ratio
-    before the Alpha Engine envelope gate runs.
+    explicitly from un-repaired provider bars so Alpha Engine remains the sole
+    authority for deterministic OHLC reconciliation and envelope validation.
     """
 
     if df is None or df.empty:
@@ -264,7 +264,7 @@ class YFinanceAdapter:
                     end=provider_end,
                     progress=False,
                     auto_adjust=False,
-                    repair=True,
+                    repair=False,
                     threads=False,
                 )
         except Exception as exc:
