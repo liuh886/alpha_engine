@@ -1,0 +1,36 @@
+name: Diagnose Yahoo latest daily bar
+
+on:
+  push:
+    branches: [diag/yahoo-latest-bar]
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Probe Yahoo daily-bar modes
+        run: |
+          uv run python - <<'PY'
+          import yfinance as yf
+
+          print("yfinance", yf.__version__)
+          for ticker in ("QQQ", "AAPL"):
+              print(f"\n=== {ticker} start/end keepna=False ===")
+              print(yf.download(ticker, start="2026-08-27", end="2026-08-29", interval="1d", auto_adjust=False, repair=False, keepna=False, threads=False, progress=False).tail(5).to_string())
+              print(f"\n=== {ticker} start/end keepna=True ===")
+              print(yf.download(ticker, start="2026-08-27", end="2026-08-29", interval="1d", auto_adjust=False, repair=False, keepna=True, threads=False, progress=False).tail(5).to_string())
+              print(f"\n=== {ticker} period=5d keepna=False ===")
+              print(yf.download(ticker, period="5d", interval="1d", auto_adjust=False, repair=False, keepna=False, threads=False, progress=False).tail(5).to_string())
+              print(f"\n=== {ticker} Ticker.history period=5d keepna=True ===")
+              print(yf.Ticker(ticker).history(period="5d", interval="1d", auto_adjust=False, repair=False, keepna=True, raise_errors=True).tail(5).to_string())
+          PY
