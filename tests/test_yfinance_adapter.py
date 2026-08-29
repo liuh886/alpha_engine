@@ -73,7 +73,7 @@ def test_yfinance_translates_inclusive_end_and_clips_provider_rows(monkeypatch):
         "end": "2026-06-19",
         "progress": False,
         "auto_adjust": False,
-        "repair": True,
+        "repair": False,
         "threads": False,
     }
     assert result.end == "2026-06-18"
