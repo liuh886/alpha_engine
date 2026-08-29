@@ -53,7 +53,7 @@ CANONICAL_COLUMNS = (
     "amount",
     "factor",
 )
-INCOMPLETE_CUTOFF_RETRY_SECONDS = 30.0
+INCOMPLETE_CUTOFF_RETRY_SECONDS = 2.0
 
 
 def _sha256(path: Path) -> str:
