@@ -492,6 +492,18 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 1
+      - name: Upload failed provider diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: formal-provider-diagnostics-${{ matrix.market }}-${{ github.run_id }}
+          path: |
+            artifacts/formal-refresh/provider-${{ matrix.market }}-contract.json
+            artifacts/formal-refresh/provider-${{ matrix.market }}/artifacts/selected_pool_price_refresh_manifest.json
+          overwrite: true
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 1
 
   plan:
     needs: [prepare, providers]
