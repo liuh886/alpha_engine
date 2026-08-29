@@ -28,3 +28,4 @@ jobs:
           git add scripts/maintenance/formal-backtest-refresh.patched.yml
           git commit -m "chore: materialize effective-cutoff workflow blob"
           git push origin HEAD:fix/provider-effective-cutoff
+# one-shot helper; deleted after blob transfer
