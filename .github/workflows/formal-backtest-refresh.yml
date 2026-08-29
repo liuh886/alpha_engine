@@ -202,6 +202,7 @@ jobs:
             src/research/cn_x1_2_prospective.py \
             scripts/build_market_evidence.py \
             scripts/govern_formal_provider_cache.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
             scripts/data/refresh_selected_pool_prices.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             scripts/run_formal_refresh_transaction.py \
@@ -234,6 +235,7 @@ jobs:
             tests/test_refresh_selected_pool_prices_v2.py \
             tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
+            tests/test_resolve_formal_provider_cutoff.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
             tests/test_model_data_bundle.py \
@@ -250,6 +252,7 @@ jobs:
             src/dashboard/formal_bundle_market_events.py \
             src/dashboard/market_evidence.py \
             scripts/govern_formal_provider_cache.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
             scripts/build_market_evidence.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py
@@ -273,6 +276,7 @@ jobs:
             tests/test_refresh_selected_pool_prices_v2.py \
             tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
+            tests/test_resolve_formal_provider_cutoff.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
             tests/test_model_data_bundle.py \
@@ -1104,6 +1108,8 @@ jobs:
           PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
           US_CUTOFF: ${{ needs.plan.outputs.us_cutoff }}
           CN_CUTOFF: ${{ needs.plan.outputs.cn_cutoff }}
+          EXPECTED_US_CUTOFF: ${{ needs.prepare.outputs.us_cutoff }}
+          EXPECTED_CN_CUTOFF: ${{ needs.prepare.outputs.cn_cutoff }}
           REVIEWED_MERGE_SHA: ${{ steps.release.outputs.merge_sha }}
           PAGES_RUN_ID: ${{ steps.release.outputs.pages_run_id }}
           JOB_STATUS: ${{ job.status }}
