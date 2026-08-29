@@ -238,6 +238,7 @@ jobs:
             src/research/market_session_clock.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             scripts/build_us_x1_3_preview.py \
             scripts/build_cn_x1_2_prospective_ledger.py \
@@ -256,6 +257,7 @@ jobs:
             tests/test_formal_refresh_metric_projection.py \
             tests/test_model_x1_baselines.py \
             tests/test_us_x1_3_current_target.py \
+            tests/test_resolve_formal_provider_cutoff.py \
             tests/test_formal_refresh_trigger_scope.py \
             tests/test_market_session_clock.py \
             tests/selected_pool_price_fixtures.py \
@@ -272,6 +274,7 @@ jobs:
             src/data/data_recipe.py \
             src/data/model_data_bundle.py \
             src/data/selected_pool_price_publication.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py
           uv run pytest \
@@ -288,6 +291,7 @@ jobs:
             tests/test_formal_refresh_metric_projection.py \
             tests/test_model_x1_baselines.py \
             tests/test_us_x1_3_current_target.py \
+            tests/test_resolve_formal_provider_cutoff.py \
             tests/test_formal_refresh_trigger_scope.py \
             tests/test_market_session_clock.py \
             tests/test_formal_provider_cache.py \
@@ -332,6 +336,7 @@ jobs:
             scripts/ranker_provisional_mtm.py \
             scripts/govern_formal_provider_cache.py \
             scripts/data/refresh_selected_pool_prices.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             scripts/refresh_ranker_formal.py \
             scripts/build_cn_x1_2_prospective_ledger.py \
@@ -371,6 +376,7 @@ jobs:
             tests/test_sync_formal_bundle_v2.py \
             tests/test_us_x1_3_preview_publication.py \
             tests/test_us_x1_3_current_target.py \
+            tests/test_resolve_formal_provider_cutoff.py \
             tests/test_formal_refresh_trigger_scope.py \
             tests/test_market_session_clock.py
           uv run mypy \
@@ -382,6 +388,7 @@ jobs:
             src/dashboard/market_evidence.py \
             scripts/govern_formal_provider_cache.py \
             scripts/build_market_evidence.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py
           uv run pytest \
@@ -414,6 +421,7 @@ jobs:
             tests/test_repository_research_store.py \
             tests/test_us_x1_3_preview_publication.py \
             tests/test_us_x1_3_current_target.py \
+            tests/test_resolve_formal_provider_cutoff.py \
             tests/test_formal_refresh_trigger_scope.py \
             tests/test_market_session_clock.py \
             -q --strict-markers --tb=short
