@@ -1,0 +1,429 @@
+name: Formal Backtest Refresh CI
+run-name: Formal refresh candidate ${{ inputs.candidate_sha || github.sha }}
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/formal-backtest-refresh.yml"
+      - ".github/workflows/formal-backtest-refresh-ci.yml"
+      - "configs/strategies/registry.json"
+      - "configs/models/**"
+      - "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml"
+      - "configs/research_experiments/cn_x1_2_alpha158_breadth_scaled_v1.yaml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
+      - "src/artifacts/**"
+      - "src/data/**"
+      - "!src/data/selected_pool_event_population.py"
+      - "!src/data/fundamentals/**"
+      - "!src/data/corporate_actions/**"
+      - "src/dashboard/**"
+      - "src/factors/**"
+      - "src/governance/**"
+      - "src/research/byd_515180_allocation.py"
+      - "src/research/byd_v1_2_convex_momentum.py"
+      - "src/research/byd_v1_2_recovery_state.py"
+      - "src/research/byd_v1_2_trend_expansion.py"
+      - "src/research/byd_v1_3_low_vol_recovery.py"
+      - "src/research/cn130_cross_sectional_ranking.py"
+      - "src/research/cn_qlib_execution_adapter.py"
+      - "src/research/cn_ranker_exact_portfolio_replay.py"
+      - "src/research/cn_x1_1_regime_gated.py"
+      - "src/research/cn_x1_2_breadth_scaled_development.py"
+      - "src/research/cn_x1_2_current_target.py"
+      - "src/research/cn_x1_2_prospective.py"
+      - "src/research/cross_sectional_experiment_runner.py"
+      - "src/research/daily_ranker.py"
+      - "src/research/etf_rotation_experiment.py"
+      - "src/research/etf_strategy_data.py"
+      - "src/research/formal_model_replay.py"
+      - "src/research/market_session_clock.py"
+      - "src/research/multi_market_readiness.py"
+      - "src/research/qlib_execution_common.py"
+      - "src/research/qqq_authoritative_replay.py"
+      - "src/research/ranker_current_target.py"
+      - "src/research/ranker_execution.py"
+      - "src/research/ranker_training.py"
+      - "src/research/replay_comparison.py"
+      - "src/research/rolling_windows.py"
+      - "src/research/rules_formal_replay_gate.py"
+      - "src/research/universe_robustness.py"
+      - "src/research/us_qlib_execution_adapter.py"
+      - "src/research/us_x1_3_current_target.py"
+      - "src/research/v4_33_ma200_ma20_vix_release.py"
+      - "src/research/xgb_native_calibration.py"
+      - "src/research/xgb_ranker_explainability.py"
+      - "scripts/run_formal_refresh_transaction.py"
+      - "scripts/run_formal_strategy_refresh.py"
+      - "scripts/build_market_evidence.py"
+      - "scripts/build_us_x1_3_preview.py"
+      - "scripts/build_cn_x1_2_prospective_ledger.py"
+      - "scripts/run_ranker_current_target.py"
+      - "scripts/run_us_x1_1_rank_aware_sector_cap.py"
+      - "scripts/run_cn130_ranking_batch.py"
+      - "scripts/promote_cn_x1_1_formal.py"
+      - "scripts/byd_formal_publication_common.py"
+      - "scripts/byd_formal_refresh_common.py"
+      - "scripts/byd_v1_3_formal_builder.py"
+      - "scripts/govern_formal_provider_cache.py"
+      - "scripts/ranker_provisional_mtm.py"
+      - "scripts/refresh_ranker_formal.py"
+      - "scripts/refresh_byd_v1_3_formal.py"
+      - "scripts/refresh_qqq_v4_3_formal.py"
+      - "scripts/data/**"
+      - "!scripts/data/populate_selected_pool_events.py"
+      - "data/csv_clean/EA.csv"
+      - "tests/test_active_strategy_catalog.py"
+      - "tests/test_strategy_runtime_capabilities.py"
+      - "tests/test_ranker_current_target.py"
+      - "tests/test_ranker_current_target_runtime.py"
+      - "tests/test_formal_refresh.py"
+      - "tests/test_formal_publication_delta.py"
+      - "tests/test_formal_bundle_reader.py"
+      - "tests/test_formal_strategy_refresh.py"
+      - "tests/test_cn_x1_2_prospective.py"
+      - "tests/test_refresh_ranker_formal.py"
+      - "tests/test_formal_refresh_metric_projection.py"
+      - "tests/test_ranker_provisional_mtm.py"
+      - "tests/test_formal_bundle_mtm_projection.py"
+      - "tests/test_refresh_byd_v1_3_formal.py"
+      - "tests/test_refresh_qqq_v4_3_formal.py"
+      - "tests/test_rules_formal_replay_gate.py"
+      - "tests/test_market_evidence.py"
+      - "tests/test_formal_provider_cache.py"
+      - "tests/test_refresh_selected_pool_prices.py"
+      - "tests/test_refresh_selected_pool_prices_v2.py"
+      - "tests/test_selected_pool_price_publication.py"
+      - "tests/selected_pool_price_fixtures.py"
+      - "tests/test_selected_pool_governance.py"
+      - "tests/test_strategy_operations.py"
+      - "tests/test_system_health.py"
+      - "tests/test_model_data_bundle.py"
+      - "tests/test_repository_research_store.py"
+      - "tests/test_sync_formal_bundle_v2.py"
+      - "tests/test_us_x1_3_preview_publication.py"
+      - "tests/test_us_x1_3_current_target.py"
+      - "tests/test_formal_refresh_trigger_scope.py"
+      - "tests/test_market_session_clock.py"
+      - "data/research/formal_model_runs/**"
+      - "data/research/model_runs/**"
+      - "data/research/market_evidence/**"
+      - "data/research/model_data_bundle_v1/**"
+      - "qlib-dashboard/scripts/**"
+      - "qlib-dashboard/src/**"
+      - "qlib-dashboard/package.json"
+      - "qlib-dashboard/package-lock.json"
+      - "qlib-dashboard/vite.config.*"
+      - "qlib-dashboard/tsconfig*.json"
+      - "configs/pools/**"
+      - "configs/research_universes/**"
+      - "configs/research_classifications/**"
+      - "configs/factor_libraries/**"
+      - "configs/data_contracts/**"
+      - "pyproject.toml"
+      - "uv.lock"
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact reviewed-refresh candidate commit to validate
+        required: true
+        type: string
+      pr_number:
+        description: Reviewed-refresh PR carrying the candidate
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: formal-refresh-contract-${{ inputs.candidate_sha || github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.candidate_sha || github.sha }}
+          fetch-depth: 0
+          show-progress: false
+      - name: Verify candidate identity
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Classify formal backend impact
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            git diff --name-only origin/main...HEAD > changed-files.txt
+          else
+            git diff --name-only HEAD^1 HEAD^2 > changed-files.txt
+          fi
+          cat changed-files.txt
+          if grep -Ev '^qlib-dashboard/src/' changed-files.txt | grep -q .; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v6
+        if: steps.scope.outputs.backend == 'true'
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v6
+        if: steps.scope.outputs.backend == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+      - name: Install locked environment
+        if: steps.scope.outputs.backend == 'true'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+          cd qlib-dashboard
+          npm ci --no-audit --no-fund
+      - name: Resolve formal publication mode
+        if: steps.scope.outputs.backend == 'true'
+        id: mode
+        shell: bash
+        run: |
+          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          from scripts.run_formal_refresh_transaction import _assert_formal_catalog_or_declared_transition
+          from src.governance.active_strategy_catalog import load_active_strategy_catalog
+
+          formal = json.loads(Path("data/research/formal_model_runs/catalog.json").read_text(encoding="utf-8"))
+          active = load_active_strategy_catalog()
+          observed = {
+              str(row.get("model_version_id") or "")
+              for row in formal.get("records", [])
+              if isinstance(row, dict)
+          }
+          expected = set(active.active_model_version_ids)
+          if observed == expected:
+              print("cutover=false")
+              print("reason=exact_formal_identity")
+          else:
+              _assert_formal_catalog_or_declared_transition(formal, active)
+              print("cutover=true")
+              print("reason=declared_model_cutover_before_reviewed_refresh")
+          PY
+      - name: Validate declared model cutover
+        if: steps.scope.outputs.backend == 'true' && steps.mode.outputs.cutover == 'true'
+        run: |
+          uv run ruff check \
+            src/governance/active_strategy_catalog.py \
+            src/governance/strategy_runtime_capabilities.py \
+            src/artifacts/formal_bundle_reader.py \
+            src/artifacts/formal_bundle_v2_builder.py \
+            src/artifacts/formal_publication_delta.py \
+            src/artifacts/formal_provider_cache.py \
+            src/artifacts/us_x1_3_preview.py \
+            src/dashboard/market_evidence.py \
+            src/data/data_recipe.py \
+            src/data/model_data_bundle.py \
+            src/data/selected_pool_price_publication.py \
+            src/research/us_x1_3_current_target.py \
+            src/research/cn_x1_2_prospective.py \
+            src/research/cn_x1_2_current_target.py \
+            src/research/ranker_current_target.py \
+            src/research/market_session_clock.py \
+            scripts/run_formal_refresh_transaction.py \
+            scripts/run_formal_strategy_refresh.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
+            scripts/data/refresh_selected_pool_prices_v2.py \
+            scripts/build_us_x1_3_preview.py \
+            scripts/build_cn_x1_2_prospective_ledger.py \
+            scripts/run_ranker_current_target.py \
+            scripts/validate_model_x1_baselines.py \
+            tests/test_active_strategy_catalog.py \
+            tests/test_strategy_runtime_capabilities.py \
+            tests/test_ranker_current_target.py \
+            tests/test_ranker_current_target_runtime.py \
+            tests/test_formal_bundle_reader.py \
+            tests/test_formal_refresh.py \
+            tests/test_formal_publication_delta.py \
+            tests/test_formal_strategy_refresh.py \
+            tests/test_cn_x1_2_prospective.py \
+            tests/test_refresh_ranker_formal.py \
+            tests/test_formal_refresh_metric_projection.py \
+            tests/test_model_x1_baselines.py \
+            tests/test_us_x1_3_current_target.py \
+            tests/test_resolve_formal_provider_cutoff.py \
+            tests/test_formal_refresh_trigger_scope.py \
+            tests/test_market_session_clock.py \
+            tests/selected_pool_price_fixtures.py \
+            tests/test_formal_provider_cache.py \
+            tests/test_market_evidence.py \
+            tests/test_model_data_bundle.py \
+            tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py
+          uv run mypy \
+            src/artifacts/formal_bundle_reader.py \
+            src/artifacts/formal_publication_delta.py \
+            src/artifacts/formal_provider_cache.py \
+            src/dashboard/market_evidence.py \
+            src/data/data_recipe.py \
+            src/data/model_data_bundle.py \
+            src/data/selected_pool_price_publication.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
+            scripts/run_formal_refresh_transaction.py \
+            scripts/run_formal_strategy_refresh.py
+          uv run pytest \
+            tests/test_active_strategy_catalog.py \
+            tests/test_strategy_runtime_capabilities.py \
+            tests/test_ranker_current_target.py \
+            tests/test_ranker_current_target_runtime.py \
+            tests/test_formal_bundle_reader.py \
+            tests/test_formal_refresh.py \
+            tests/test_formal_publication_delta.py \
+            tests/test_formal_strategy_refresh.py \
+            tests/test_cn_x1_2_prospective.py \
+            tests/test_refresh_ranker_formal.py \
+            tests/test_formal_refresh_metric_projection.py \
+            tests/test_model_x1_baselines.py \
+            tests/test_us_x1_3_current_target.py \
+            tests/test_resolve_formal_provider_cutoff.py \
+            tests/test_formal_refresh_trigger_scope.py \
+            tests/test_market_session_clock.py \
+            tests/test_formal_provider_cache.py \
+            tests/test_market_evidence.py \
+            tests/test_model_data_bundle.py \
+            tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py \
+            -q --strict-markers --tb=short
+          cd qlib-dashboard
+          npm run check:account
+      - name: Validate exact formal candidate contracts
+        if: steps.scope.outputs.backend == 'true' && steps.mode.outputs.cutover != 'true'
+        run: |
+          test ! -e data/research/formal_backtests
+          uv run ruff check \
+            src/governance/active_strategy_catalog.py \
+            src/governance/strategy_runtime_capabilities.py \
+            src/artifacts/formal_bundle_reader.py \
+            src/artifacts/formal_bundle_v2_builder.py \
+            src/artifacts/formal_refresh.py \
+            src/artifacts/formal_publication_delta.py \
+            src/artifacts/formal_provider_cache.py \
+            src/artifacts/us_x1_3_preview.py \
+            src/research/market_session_clock.py \
+            src/artifacts/qqq_v4_3_formal.py \
+            src/artifacts/strategy_operations.py \
+            src/artifacts/system_health.py \
+            src/dashboard/market_evidence.py \
+            src/factors/library.py \
+            src/factors/panel.py \
+            src/data \
+            src/research/formal_model_replay.py \
+            src/research/qqq_authoritative_replay.py \
+            src/research/rules_formal_replay_gate.py \
+            src/research/cn_x1_2_prospective.py \
+            src/research/cn_x1_2_current_target.py \
+            src/research/ranker_current_target.py \
+            src/research/us_x1_3_current_target.py \
+            scripts/build_market_evidence.py \
+            scripts/run_formal_refresh_transaction.py \
+            scripts/run_formal_strategy_refresh.py \
+            scripts/ranker_provisional_mtm.py \
+            scripts/govern_formal_provider_cache.py \
+            scripts/data/refresh_selected_pool_prices.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
+            scripts/data/refresh_selected_pool_prices_v2.py \
+            scripts/refresh_ranker_formal.py \
+            scripts/build_cn_x1_2_prospective_ledger.py \
+            scripts/build_us_x1_3_preview.py \
+            scripts/run_ranker_current_target.py \
+            scripts/byd_formal_refresh_common.py \
+            scripts/byd_v1_3_formal_builder.py \
+            scripts/refresh_byd_v1_3_formal.py \
+            scripts/refresh_qqq_v4_3_formal.py \
+            tests/test_active_strategy_catalog.py \
+            tests/test_strategy_runtime_capabilities.py \
+            tests/test_ranker_current_target.py \
+            tests/test_ranker_current_target_runtime.py \
+            tests/test_formal_bundle_reader.py \
+            tests/test_formal_refresh.py \
+            tests/test_formal_publication_delta.py \
+            tests/test_formal_strategy_refresh.py \
+            tests/test_cn_x1_2_prospective.py \
+            tests/test_refresh_ranker_formal.py \
+            tests/test_formal_refresh_metric_projection.py \
+            tests/test_ranker_provisional_mtm.py \
+            tests/test_formal_bundle_mtm_projection.py \
+            tests/test_refresh_byd_v1_3_formal.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_rules_formal_replay_gate.py \
+            tests/test_market_evidence.py \
+            tests/selected_pool_price_fixtures.py \
+            tests/test_formal_provider_cache.py \
+            tests/test_refresh_selected_pool_prices.py \
+            tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py \
+            tests/test_selected_pool_governance.py \
+            tests/test_strategy_operations.py \
+            tests/test_system_health.py \
+            tests/test_model_data_bundle.py \
+            tests/test_repository_research_store.py \
+            tests/test_sync_formal_bundle_v2.py \
+            tests/test_us_x1_3_preview_publication.py \
+            tests/test_us_x1_3_current_target.py \
+            tests/test_resolve_formal_provider_cutoff.py \
+            tests/test_formal_refresh_trigger_scope.py \
+            tests/test_market_session_clock.py
+          uv run mypy \
+            src/artifacts/formal_bundle_reader.py \
+            src/artifacts/formal_refresh.py \
+            src/artifacts/formal_publication_delta.py \
+            src/artifacts/formal_provider_cache.py \
+            src/data/selected_pool_price_publication.py \
+            src/dashboard/market_evidence.py \
+            scripts/govern_formal_provider_cache.py \
+            scripts/build_market_evidence.py \
+            scripts/data/resolve_formal_provider_cutoff.py \
+            scripts/run_formal_refresh_transaction.py \
+            scripts/run_formal_strategy_refresh.py
+          uv run pytest \
+            tests/test_active_strategy_catalog.py \
+            tests/test_strategy_runtime_capabilities.py \
+            tests/test_ranker_current_target.py \
+            tests/test_ranker_current_target_runtime.py \
+            tests/test_formal_bundle_reader.py \
+            tests/test_formal_refresh.py \
+            tests/test_formal_publication_delta.py \
+            tests/test_formal_strategy_refresh.py \
+            tests/test_cn_x1_2_prospective.py \
+            tests/test_refresh_ranker_formal.py \
+            tests/test_formal_refresh_metric_projection.py \
+            tests/test_ranker_provisional_mtm.py \
+            tests/test_formal_bundle_mtm_projection.py \
+            tests/test_refresh_byd_v1_3_formal.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_rules_formal_replay_gate.py \
+            tests/test_market_evidence.py \
+            tests/test_formal_provider_cache.py \
+            tests/test_refresh_selected_pool_prices.py \
+            tests/test_refresh_selected_pool_prices_v2.py \
+            tests/test_selected_pool_price_publication.py \
+            tests/test_selected_pool_governance.py \
+            tests/test_sync_formal_bundle_v2.py \
+            tests/test_strategy_operations.py \
+            tests/test_system_health.py \
+            tests/test_model_data_bundle.py \
+            tests/test_repository_research_store.py \
+            tests/test_us_x1_3_preview_publication.py \
+            tests/test_us_x1_3_current_target.py \
+            tests/test_resolve_formal_provider_cutoff.py \
+            tests/test_formal_refresh_trigger_scope.py \
+            tests/test_market_session_clock.py \
+            -q --strict-markers --tb=short
+          cd qlib-dashboard
+          npm run check:account
