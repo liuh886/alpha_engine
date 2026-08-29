@@ -231,7 +231,19 @@ def _validate_source_boundaries(source: Mapping[str, Any]) -> dict[str, list[str
         or not isinstance(listing_evidence, Mapping)
         or set(listing_evidence) != lifecycle
     ):
-        raise SelectedPoolPricePublicationError("source manifest is not publication ready")
+        details: list[str] = []
+        if lists["unresolved_stale_symbols"]:
+            details.append(
+                "unresolved_stale_symbols="
+                + ",".join(lists["unresolved_stale_symbols"])
+            )
+        promotion_blocker = source.get("promotion_blocker")
+        if promotion_blocker is not None:
+            details.append(f"promotion_blocker={promotion_blocker}")
+        suffix = f": {'; '.join(details)}" if details else ""
+        raise SelectedPoolPricePublicationError(
+            f"source manifest is not publication ready{suffix}"
+        )
     for symbol, evidence in listing_evidence.items():
         if not isinstance(evidence, Mapping):
             raise SelectedPoolPricePublicationError(

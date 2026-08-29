@@ -585,6 +585,7 @@ def test_run_scoped_artifacts_are_overwritable_for_failed_job_reruns() -> None:
     )
     upload_contracts = (
         ("Transfer verified provider", 7),
+        ("Upload failed provider diagnostics", 7),
         ("Upload immutable plan", 7),
         ("Upload bounded strategy receipt and evidence", 30),
         ("Upload bounded refresh evidence", 30),
@@ -599,6 +600,20 @@ def test_run_scoped_artifacts_are_overwritable_for_failed_job_reruns() -> None:
         assert "github.run_id" in block, (index, name)
         assert "overwrite: true" in block, (index, name)
         assert f"retention-days: {retention_days}" in block, (index, name)
+
+
+def test_failed_provider_diagnostics_preserve_manifest_without_relaxing_gate() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    start = workflow.index("      - name: Upload failed provider diagnostics")
+    next_start = workflow.find("\n      - name:", start + 1)
+    block = workflow[start : next_start if next_start >= 0 else None]
+
+    assert "if: ${{ failure() }}" in block
+    assert "selected_pool_price_refresh_manifest.json" in block
+    assert "provider-${{ matrix.market }}-contract.json" in block
+    assert "formal-provider-${{ matrix.market }}-${{ github.run_id }}" not in block
 
 
 def test_publish_initial_checkout_excludes_cacheable_market_evidence() -> None:

@@ -178,6 +178,22 @@ def test_inconsistent_promotion_gate_fails_closed(field: str, value: object) -> 
         build_selected_pool_price_publication_manifest(source)
 
 
+def test_unresolved_stale_symbols_are_named_in_publication_error() -> None:
+    source = _source()
+    source["promotion_eligible"] = False
+    source["unresolved_stale_symbols"] = ["CRCL", "TEM"]
+    source["promotion_blocker"] = (
+        "stale selected-pool sources without an explicit lifecycle declaration"
+    )
+
+    with pytest.raises(SelectedPoolPricePublicationError) as caught:
+        build_selected_pool_price_publication_manifest(source)
+
+    message = str(caught.value)
+    assert "unresolved_stale_symbols=CRCL,TEM" in message
+    assert "promotion_blocker=stale selected-pool sources" in message
+
+
 def test_selected_provider_mapping_mismatch_fails_closed() -> None:
     source = _source()
     selected = source["selected_providers"]
