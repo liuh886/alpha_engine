@@ -144,6 +144,47 @@ def test_domain_data_caches_use_current_runtime_without_changing_keys() -> None:
     assert save["with"]["key"] == "${{ steps.vwap-cache.outputs.cache-primary-key }}"
 
 
+def test_us_alpha158_live_panel_uses_only_approved_alpaca_sip_credentials() -> None:
+    workflow = yaml.safe_load(
+        Path(".github/workflows/alpha158-canonical-vwap-ci.yml").read_text(
+            encoding="utf-8"
+        )
+    )
+    live = workflow["jobs"]["live-us-panel"]
+
+    assert live["env"] == {
+        "APCA_API_KEY_ID": "${{ secrets.APCA_API_KEY_ID }}",
+        "APCA_API_SECRET_KEY": "${{ secrets.APCA_API_SECRET_KEY }}",
+    }
+    content = Path(".github/workflows/alpha158-canonical-vwap-ci.yml").read_text(
+        encoding="utf-8"
+    )
+    live_block = content[content.index("  live-us-panel:") : content.index("  live-cn-panel:")]
+    assert "AlpacaAdapter" in live_block
+    assert '("ABBNY", "otc")' in live_block
+    assert '("SBGSY", "otc")' in live_block
+    assert "PolygonAdapter" not in live_block
+    assert "POLYGON_API_KEY" not in live_block
+    assert "feed=sip" not in live_block  # The adapter owns frozen request semantics.
+
+    contract = yaml.safe_load(
+        Path("configs/data/alpha158_panel_v1.yaml").read_text(encoding="utf-8")
+    )
+    source = contract["markets"]["us"]["canonical_vwap_source"]
+    assert source == {
+        "provider": "alpaca_market_data",
+        "endpoint": "historical_stock_bars",
+        "feed": "sip",
+        "symbol_feed_overrides": {"ABBNY": "otc", "SBGSY": "otc"},
+        "timeframe": "1Day",
+        "adjustment": "all",
+        "credential_env": ["APCA_API_KEY_ID", "APCA_API_SECRET_KEY"],
+        "credential_absence_status": "blocked",
+        "same_record_ohlcv_vwap_required": True,
+        "full_pool_live_preflight_required": True,
+    }
+
+
 def test_ci_policy_resolves_actions_inside_the_shared_composite() -> None:
     workflow = Path(
         ".github/workflows/fundamental-event-store-ci.yml"

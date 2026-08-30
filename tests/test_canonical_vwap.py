@@ -11,7 +11,18 @@ from src.data.canonical_vwap import (
     derive_adjusted_vwap,
     write_source_role_manifest,
 )
-from scripts.data.build_canonical_vwap_provider import _cached_cn_pair
+from scripts.data.build_canonical_vwap_provider import _cached_cn_pair, _us_feed
+
+
+def test_us_feed_policy_keeps_otc_adrs_explicit() -> None:
+    policy = {
+        "feed": "sip",
+        "symbol_feed_overrides": {"ABBNY": "otc", "SBGSY": "otc"},
+    }
+
+    assert _us_feed("AAPL", policy) == "sip"
+    assert _us_feed("ABBNY", policy) == "otc"
+    assert _us_feed("sbGsy", policy) == "otc"
 
 
 def _pair() -> tuple[pd.DataFrame, pd.DataFrame]:

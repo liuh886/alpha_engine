@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "1.2"
 contract_id: "alpha158_panel_v1"
 status: "active_research_factor_contract"
 research_only: true
@@ -15,6 +15,19 @@ markets:
     pool_id: "us_selected_equities_v2"
     pool_spec: "configs/research_universes/us_selected_equities_v2.yaml"
     expected_symbols: 87
+    canonical_vwap_source:
+      provider: "alpaca_market_data"
+      endpoint: "historical_stock_bars"
+      feed: "sip"
+      symbol_feed_overrides:
+        ABBNY: "otc"
+        SBGSY: "otc"
+      timeframe: "1Day"
+      adjustment: "all"
+      credential_env: ["APCA_API_KEY_ID", "APCA_API_SECRET_KEY"]
+      credential_absence_status: "blocked"
+      same_record_ohlcv_vwap_required: true
+      full_pool_live_preflight_required: true
   cn:
     pool_id: "cn_selected_equities_v3"
     pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
