@@ -350,8 +350,15 @@ def test_formal_refresh_parallelizes_and_seals_provider_builds() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
     assert "providers:\n    needs: prepare" in workflow
     assert "market: [us, cn]" in workflow
-    assert "uses: actions/cache/restore@v4" in workflow
-    assert "uses: actions/cache/save@v4" in workflow
+    assert "uses: actions/cache/restore@v6" in workflow
+    assert "uses: actions/cache/save@v6" in workflow
+    assert workflow.count("uses: actions/cache/restore@v6") == 4
+    assert workflow.count("uses: actions/cache/save@v6") == 2
+    assert workflow.count("uses: actions/cache/") == 6
+    assert "uses: actions/cache/restore@v4" not in workflow
+    assert "uses: actions/cache/save@v4" not in workflow
+    assert "uses: actions/cache/restore@v5" not in workflow
+    assert "uses: actions/cache/save@v5" not in workflow
     assert "formal-provider-${{ matrix.market }}-${{ github.run_id }}" in workflow
 
 
@@ -670,7 +677,7 @@ def test_publish_market_evidence_cache_is_exact_and_fallback_safe() -> None:
 
     restore_block = publish[restore:verify]
     assert "continue-on-error: true" in restore_block
-    assert "uses: actions/cache/restore@v5" in restore_block
+    assert "uses: actions/cache/restore@v6" in restore_block
     assert "restore-keys:" not in restore_block
     assert "formal-market-evidence-v1-${{ runner.os }}-" in restore_block
     assert "steps.market_evidence_tree.outputs.oid" in restore_block
@@ -694,7 +701,7 @@ def test_publish_market_evidence_cache_is_exact_and_fallback_safe() -> None:
     save_block = publish[save:hydrate]
     assert "success() && steps.market_evidence.outputs.source == 'git'" in save_block
     assert "continue-on-error: true" in save_block
-    assert "uses: actions/cache/save@v5" in save_block
+    assert "uses: actions/cache/save@v6" in save_block
     assert "restore-keys:" not in save_block
     assert "steps.market_evidence_tree.outputs.oid" in save_block
 

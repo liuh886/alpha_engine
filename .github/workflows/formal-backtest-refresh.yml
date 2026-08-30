@@ -367,7 +367,7 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
       - name: Restore requested governed provider cache
         id: provider_cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
           key: ${{ steps.requested_contract.outputs.cache_key }}-governed
@@ -435,13 +435,13 @@ jobs:
       - name: Restore exact effective governed provider cache
         id: effective_cache
         if: steps.provider_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
           key: ${{ steps.contract.outputs.cache_key }}-governed
       - name: Restore previous governed provider seed
         if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
           key: formal-provider-seed-${{ matrix.market }}-${{ github.run_id }}
@@ -545,7 +545,7 @@ jobs:
             --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
       - name: Save exact governed provider cache
         if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
           key: ${{ steps.contract.outputs.cache_key }}-governed
@@ -717,7 +717,7 @@ jobs:
       - name: Restore exact Market Evidence tree
         id: market_evidence_cache
         continue-on-error: true
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: data/research/market_evidence
           key: formal-market-evidence-v1-${{ runner.os }}-${{ steps.market_evidence_tree.outputs.oid }}
@@ -871,7 +871,7 @@ jobs:
       - name: Save verified Market Evidence tree
         if: success() && steps.market_evidence.outputs.source == 'git'
         continue-on-error: true
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: data/research/market_evidence
           key: formal-market-evidence-v1-${{ runner.os }}-${{ steps.market_evidence_tree.outputs.oid }}
