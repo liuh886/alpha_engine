@@ -93,7 +93,6 @@ module = [
     "src.dashboard.*",
     "src.data.*",
     "src.guardrails.*",
-    "src.manage_models",
     "src.models.artifact",
     "src.reliability.*",
     "src.reporting.*",
