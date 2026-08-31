@@ -26,7 +26,7 @@ bindings:
   reference_instruments:
     role: reference_instruments
     ref: configs/pools/reference_instrument_registry_v1.yaml
-    sha256: cf09971129007feee0684d1315645ad6bbd45da725eb20700bcb146b3b89cf15
+    sha256: 07161fd81a0ea95133584c0df8dc584cf27db7dad1ec36f96b7c9e3ff9614eba
   selected_pool_governance:
     role: pool_governance
     ref: configs/pools/selected_pool_registry_v1.yaml
