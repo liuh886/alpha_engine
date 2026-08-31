@@ -15,6 +15,26 @@ from scripts.check_repository_model_runs import (
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "repository-model-run-bridge.yml"
+BRIDGE_RUNTIME_PATHS = {
+    ".github/workflows/repository-model-run-bridge.yml",
+    "scripts/check_repository_model_runs.py",
+    "scripts/export_static_site_data.py",
+    "src/artifacts/repository_metadata_cache.py",
+    "src/artifacts/repository_research_store.py",
+    "src/cli/main.py",
+    "tests/test_repository_metadata_cache.py",
+    "tests/test_repository_model_run_bridge.py",
+    "tests/test_repository_research_store.py",
+}
+
+
+def _bridge_trigger_paths() -> tuple[set[str], set[str]]:
+    workflow = yaml.load(WORKFLOW.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+    triggers = workflow["on"]
+    return (
+        set(triggers["pull_request"]["paths"]),
+        set(triggers["push"]["paths"]),
+    )
 
 
 def test_named_models_bind_to_immutable_repository_runs() -> None:
@@ -36,26 +56,29 @@ def test_named_models_bind_to_immutable_repository_runs() -> None:
 
 
 def test_bridge_trigger_matches_repository_catalog_allow_list() -> None:
-    text = WORKFLOW.read_text(encoding="utf-8")
+    pull_paths, push_paths = _bridge_trigger_paths()
     catalog = json.loads(
         (ROOT / "data" / "research" / "catalog.json").read_text(encoding="utf-8")
     )
 
-    assert '      - "data/research/**"' not in text
-    assert text.count('      - "data/research/catalog.json"') == 2
-    assert text.count('      - "data/research/model_data_bundle_v1/**"') == 2
+    assert pull_paths == push_paths
+    assert "data/research/**" not in pull_paths
+    assert "configs/models/*.yaml" not in pull_paths
+    assert BRIDGE_RUNTIME_PATHS <= pull_paths
+    assert "data/research/catalog.json" in pull_paths
+    assert "data/research/model_data_bundle_v1/**" in pull_paths
 
     for entry in catalog["published_models"]:
         source = str(entry["source"])
-        assert text.count(f'      - "{source}"') == 2
+        assert source in pull_paths
         model = yaml.safe_load((ROOT / source).read_text(encoding="utf-8"))
         report = str((model.get("evidence_identity") or {}).get("result_report") or "")
         if report:
-            assert text.count(f'      - "{report}"') == 2
+            assert report in pull_paths
 
     for entry in catalog["published_runs"]:
         source = str(entry["source"])
-        assert text.count(f'      - "{source}/**"') == 2
+        assert f"{source}/**" in pull_paths
 
 
 def test_historical_runs_do_not_fabricate_equity_curves() -> None:
