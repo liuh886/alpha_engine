@@ -4,10 +4,48 @@
 
 The Alpha158 panel engine is already merged. The remaining field blocker is daily VWAP on the same adjusted-price basis as OHLC.
 
-The current US and CN providers cannot be treated identically:
+The US and CN providers cannot be treated identically:
 
-- **US87:** Yahoo amount is synthetic and no provider-reported daily VWAP/turnover exists in the canonical provider. Tiingo and Polygon remain validation-only. US Alpha158 therefore remains explicitly blocked.
+- **US87:** Alpaca historical market-data daily bars are the approved canonical
+  candidate. Listed candidates use SIP; the two explicitly identified OTC ADRs,
+  `ABBNY` and `SBGSY`, use Alpaca's OTC feed. The
+  bar contains provider-reported OHLC, volume and VWAP from the same aggregation;
+  the request is fixed to the governed feed mapping, `timeframe=1Day` and
+  `adjustment=all`. Missing
+  credentials, pagination ambiguity, identity mismatch, incomplete pool coverage or a
+  VWAP outside the same-record OHLC envelope blocks materialization. Yahoo amount
+  remains synthetic, Tiingo remains validation-only, and Polygon daily VWAP remains
+  rejected after the retained MSFT session-boundary mismatch evidence from run
+  `32806097341`.
 - **CN130:** AKShare transports Sina equity data with reported share volume and CNY turnover. The same endpoint supports raw and qfq OHLC. This permits a canonical adjusted VWAP without using a validation source.
+
+## US source decision
+
+Alpaca is selected because its listed-equity historical stock bars are derived from the CTA/UTP
+Securities Information Processor feeds covering all US exchanges. Alpaca documents the
+trade-condition rules used to update OHLC, volume and VWAP, including the rule that the
+VWAP numerator and denominator use trades eligible for both price-range and volume
+updates. Historical SIP data older than 15 minutes is available with API credentials,
+which is compatible with this end-of-day research contract.
+
+Primary references:
+
+- Alpaca historical stock-data feeds and SIP coverage:
+  <https://docs.alpaca.markets/docs/historical-stock-data-1>
+- Alpaca daily-bar aggregation and VWAP trade-condition rules:
+  <https://docs.alpaca.markets/docs/market-data-faq>
+- Alpaca historical bars request, adjustment and feed parameters:
+  <https://docs.alpaca.markets/reference/stockbarsingle-1>
+- ABB issuer listing record for the `ABBNY` OTC ADR:
+  <https://global.abb/group/en/investors/investor-and-shareholder-resources/share-listing>
+- Citi depositary-receipt record for the `SBGSY` OTC ADR:
+  <https://depositaryreceipts.citi.com/adr/guides/pgm_d.aspx?cusip=80687P106&pageId=15&subpageid=106&typeDisplay=T>
+
+This decision approves only the frozen historical daily-bar request and explicit
+SIP/OTC symbol mapping above. It does
+not approve IEX, snapshots, latest bars, overnight feeds, Polygon substitution, mixed
+provider rows, or browser-side reconstruction. The first source-bound US87 live run must
+still pass before `us_selected_alpha158_v1` may become ready.
 
 ## CN derivation
 
@@ -57,7 +95,7 @@ The command:
 6. registers price and factor-panel components in `model_data_bundle_v1`;
 7. exports the same readiness indexes for the frontend.
 
-## US fail-closed output
+## US execution
 
 ```bash
 uv run python scripts/data/build_canonical_vwap_provider.py \
@@ -66,10 +104,21 @@ uv run python scripts/data/build_canonical_vwap_provider.py \
   --output-root artifacts/data/canonical_vwap/us
 ```
 
-This writes a machine-readable blocked component. It does not copy Tiingo/Polygon data into canonical training tables and does not use `close` as VWAP.
+If credentials or any exact-pool source row are unavailable, the command writes the
+machine-readable VWAP audit and stops before constructing a canonical component. It
+does not copy Tiingo/Polygon data into canonical training tables and does not use
+`close` as VWAP.
+
+The live path additionally requires repository secrets `APCA_API_KEY_ID` and
+`APCA_API_SECRET_KEY`. Credentials are sent only as provider headers and are never
+written to manifests, errors or artifacts. Without both secrets the build fails closed
+and retains its blocked status.
 
 ## Closure boundary
 
-This implementation removes the CN engineering blocker and creates the actual panel workflow. Issue #325 may close only when the live CN130 artifact is reviewed and an approved canonical US VWAP source exists. Until then, `cn_selected_alpha158_v1` may become ready or partial while `us_selected_alpha158_v1` remains blocked.
+The CN profile is ready on reviewed main-branch evidence. The US source decision is now
+made, but Issue #325 may close only after an exact US87 live Alpaca artifact passes
+the existing provider, panel, model-data and frontend readiness gates. Until that run is
+reviewed, `us_selected_alpha158_v1` remains blocked.
 
 All artifacts are research-only and `trade_ready=false`.

@@ -12,8 +12,8 @@ import pandas as pd
 import yaml
 
 from scripts.build_market_providers import build_market_provider
+from src.data.adapters.alpaca_adapter import AlpacaAdapter
 from src.data.adapters.base import FetchRequest
-from src.data.adapters.polygon_adapter import PolygonAdapter
 from src.data.canonical_vwap import (
     CanonicalVwapError,
     derive_adjusted_vwap,
@@ -48,6 +48,15 @@ def _provider_symbol(symbol: str) -> str:
     if symbol.startswith(("4", "8", "92")):
         return f"bj{symbol}"
     return f"sz{symbol}"
+
+
+def _us_feed(symbol: str, source_policy: dict[str, Any]) -> str:
+    default_feed = str(source_policy.get("feed", "sip")).strip().lower()
+    overrides = {
+        str(key).strip().upper(): str(value).strip().lower()
+        for key, value in dict(source_policy.get("symbol_feed_overrides", {})).items()
+    }
+    return overrides.get(str(symbol).strip().upper(), default_feed)
 
 
 def _fetch_cn_pair(symbol: str, *, start: str, end: str) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -134,6 +143,7 @@ def build_us(
     cutoff: str,
     output_root: Path,
     fixture_dir: Path | None,
+    source_policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     pool_id, symbols = _pool_symbols(pool_path, "us")
     source_root = output_root / "source_csv"
@@ -142,34 +152,45 @@ def build_us(
     model_data = output_root / "model_data"
     frontend = output_root / "frontend"
     source_root.mkdir(parents=True, exist_ok=True)
-    adapter = None if fixture_dir is not None else PolygonAdapter()
+    policy = dict(source_policy or {})
+    feed_overrides = {
+        str(symbol).strip().upper(): str(feed).strip().lower()
+        for symbol, feed in dict(policy.get("symbol_feed_overrides", {})).items()
+    }
+    unknown_overrides = sorted(set(feed_overrides).difference(symbols))
+    if unknown_overrides:
+        raise CanonicalVwapError(
+            f"US VWAP feed overrides are outside the selected pool: {unknown_overrides}"
+        )
+    adapters: dict[str, AlpacaAdapter] = {}
     diagnostics: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
     for symbol in symbols:
         try:
+            feed = _us_feed(symbol, policy)
             if fixture_dir is None:
-                assert adapter is not None
+                adapter = adapters.setdefault(feed, AlpacaAdapter(feed=feed))
                 result = adapter.fetch_daily_bars(
                     FetchRequest(symbol=symbol, market="us", start=start, end=cutoff)
                 )
                 frame = result.df.copy()
                 metadata = dict(frame.attrs.get("provider_metadata", {}))
-                source_mode = "polygon_live"
+                source_mode = f"alpaca_{feed}_live"
             else:
                 frame = pd.read_csv(fixture_dir / f"{symbol}.csv")
                 metadata = {"fixture": True}
-                source_mode = "fixture"
+                source_mode = f"fixture_alpaca_{feed}"
             required = {"date", "open", "high", "low", "close", "vwap", "volume"}
             missing = sorted(required.difference(frame.columns))
             if missing:
-                raise CanonicalVwapError(f"{symbol}: Polygon bars missing columns: {missing}")
+                raise CanonicalVwapError(f"{symbol}: Alpaca bars missing columns: {missing}")
             frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
             for column in required.difference({"date"}):
                 frame[column] = pd.to_numeric(frame[column], errors="coerce")
             if frame[list(required)].isna().any().any() or frame.empty:
-                raise CanonicalVwapError(f"{symbol}: Polygon bars contain missing values")
+                raise CanonicalVwapError(f"{symbol}: Alpaca bars contain missing values")
             if (frame[["open", "high", "low", "close", "vwap", "volume"]] <= 0).any().any():
-                raise CanonicalVwapError(f"{symbol}: Polygon bars must be positive")
+                raise CanonicalVwapError(f"{symbol}: Alpaca bars must be positive")
             envelope_distance = pd.concat(
                 [
                     (frame["low"] - frame["vwap"]).clip(lower=0.0),
@@ -194,8 +215,9 @@ def build_us(
                     "first_date": frame["date"].min().date().isoformat(),
                     "last_date": frame["date"].max().date().isoformat(),
                     "vwap_semantics": "reported_vwap",
-                    "adjustment_method": "polygon_adjusted_daily_aggregates",
+                    "adjustment_method": "alpaca_sip_adjustment_all_daily_bars",
                     "source_mode": source_mode,
+                    "feed": feed,
                     "provider_metadata": metadata,
                     "rounded_envelope_tolerance_sessions": int((envelope_distance > 1e-8).sum()),
                     "research_only": True,
@@ -215,7 +237,8 @@ def build_us(
         "failed_symbol_count": len(failures),
         "failures": failures,
         "symbols": diagnostics,
-        "source_provider": "polygon",
+        "source_provider": "alpaca_market_data",
+        "source_feeds": sorted({row["feed"] for row in diagnostics}),
         "same_record_ohlcv_vwap": True,
         "retrieved_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "research_only": True,
@@ -238,16 +261,16 @@ def build_us(
         provider,
         provider_manifest=provider_manifest,
         provider_manifest_path=provider_manifest_path,
-        source_providers=["polygon"],
+        source_providers=["alpaca_market_data"],
         market="us",
         vwap_ready=True,
         field_semantics={
-            "open": "polygon_adjusted_daily_aggregate",
-            "high": "polygon_adjusted_daily_aggregate",
-            "low": "polygon_adjusted_daily_aggregate",
-            "close": "polygon_adjusted_daily_aggregate",
+            "open": "alpaca_adjusted_all_daily_bar",
+            "high": "alpaca_adjusted_all_daily_bar",
+            "low": "alpaca_adjusted_all_daily_bar",
+            "close": "alpaca_adjusted_all_daily_bar",
             "vwap": "reported_vwap",
-            "volume": "polygon_adjusted_daily_aggregate_volume",
+            "volume": "alpaca_adjusted_all_daily_bar_volume",
             "amount": "derived_reported_vwap_times_reported_volume",
             "factor": "identity_within_adjusted_aggregate_basis",
         },
@@ -267,11 +290,11 @@ def build_us(
         market="us",
         cutoff=cutoff,
         diagnostics=diagnostics,
-        providers=["polygon"],
+        providers=["alpaca_market_data"],
         provider_identity_sha256=provider_manifest.get("provider_identity_sha256"),
         provider_manifest_path=provider_manifest_path,
         source_role_manifest_path=source_role_path,
-        price_basis="polygon_adjusted_daily_aggregate",
+        price_basis="alpaca_adjusted_all_daily_bar_with_governed_feed_mapping",
         vwap_basis="reported_vwap_same_aggregate_record",
     )
     price_manifest_path = output_root / "price_component_manifest.json"
@@ -582,6 +605,7 @@ def main() -> int:
             cutoff=args.cutoff,
             output_root=args.output_root,
             fixture_dir=args.fixture_dir,
+            source_policy=dict(market_contract["canonical_vwap_source"]),
         )
     else:
         result = build_cn(

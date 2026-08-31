@@ -11,6 +11,7 @@ on:
       - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
       - "configs/research_paradigms/cn_alpha158_cross_window_stability_v1.yaml"
       - "src/data/canonical_vwap.py"
+      - "src/data/adapters/alpaca_adapter.py"
       - "src/data/adapters/polygon_adapter.py"
       - "src/factors/panel.py"
       - "src/factors/reusable_panel.py"
@@ -20,6 +21,7 @@ on:
       - "scripts/factors/build_alpha158_panel.py"
       - "scripts/run_cn_alpha158_stability_diagnostics.py"
       - "tests/test_canonical_vwap.py"
+      - "tests/test_alpaca_adapter.py"
       - "tests/test_polygon_adapter.py"
       - "tests/test_alpha158_panel.py"
       - "tests/test_reusable_alpha158_panel.py"
@@ -36,6 +38,7 @@ on:
       - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
       - "configs/research_paradigms/cn_alpha158_cross_window_stability_v1.yaml"
       - "src/data/canonical_vwap.py"
+      - "src/data/adapters/alpaca_adapter.py"
       - "src/data/adapters/polygon_adapter.py"
       - "src/factors/panel.py"
       - "src/factors/reusable_panel.py"
@@ -78,6 +81,7 @@ jobs:
         run: >-
           uv run ruff check
           src/data/canonical_vwap.py
+          src/data/adapters/alpaca_adapter.py
           src/data/adapters/polygon_adapter.py
           src/factors/reusable_panel.py
           src/factors/governance.py
@@ -86,6 +90,7 @@ jobs:
           scripts/factors/build_alpha158_panel.py
           scripts/run_cn_alpha158_stability_diagnostics.py
           tests/test_canonical_vwap.py
+          tests/test_alpaca_adapter.py
           tests/test_polygon_adapter.py
           tests/test_alpha158_panel.py
           tests/test_reusable_alpha158_panel.py
@@ -95,6 +100,7 @@ jobs:
         run: >-
           uv run mypy --follow-imports=skip
           src/data/canonical_vwap.py
+          src/data/adapters/alpaca_adapter.py
           src/data/adapters/polygon_adapter.py
           src/factors/reusable_panel.py
           src/research/alpha158_stability_diagnostics.py
@@ -105,6 +111,7 @@ jobs:
         run: >-
           uv run pytest
           tests/test_canonical_vwap.py
+          tests/test_alpaca_adapter.py
           tests/test_polygon_adapter.py
           tests/test_alpha158_panel.py
           tests/test_reusable_alpha158_panel.py
@@ -121,7 +128,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 600
     env:
-      POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+      APCA_API_KEY_ID: ${{ secrets.APCA_API_KEY_ID }}
+      APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-python-uv
@@ -132,25 +140,32 @@ jobs:
           cutoff="${{ inputs.cutoff }}"
           if [ -z "$cutoff" ]; then cutoff="$(date -u -d '1 day ago' +%F)"; fi
           echo "value=$cutoff" >> "$GITHUB_OUTPUT"
-      - name: Preflight same-record reported VWAP
+      - name: Preflight Alpaca SIP same-record reported VWAP
         run: |
           uv run python - <<'PY'
           import json
           from pathlib import Path
+          from src.data.adapters.alpaca_adapter import AlpacaAdapter
           from src.data.adapters.base import FetchRequest
-          from src.data.adapters.polygon_adapter import PolygonAdapter
 
-          adapter = PolygonAdapter()
           cutoff = "${{ steps.cutoff.outputs.value }}"
           rows = []
           failures = []
-          for symbol in ("AAPL", "MSFT", "NVDA"):
+          for symbol, feed in (
+              ("AAPL", "sip"),
+              ("MSFT", "sip"),
+              ("NVDA", "sip"),
+              ("ABBNY", "otc"),
+              ("SBGSY", "otc"),
+          ):
               try:
+                  adapter = AlpacaAdapter(feed=feed)
                   result = adapter.fetch_daily_bars(FetchRequest(
                       symbol=symbol, market="us", start="2026-01-01", end=cutoff,
                   ))
                   rows.append({
                       "symbol": symbol,
+                      "feed": feed,
                       "rows": len(result.df),
                       "last_date": result.df["date"].max().date().isoformat(),
                       "vwap_semantics": result.df.attrs["vwap_semantics"],
@@ -158,6 +173,7 @@ jobs:
               except Exception as exc:
                   failures.append({
                       "symbol": symbol,
+                      "feed": feed,
                       "error": f"{type(exc).__name__}: {exc}",
                   })
           path = Path("artifacts/data/canonical_vwap/us/preflight.json")
@@ -168,7 +184,7 @@ jobs:
               "research_only": True, "trade_ready": False,
           }, indent=2) + "\n", encoding="utf-8")
           if failures:
-              raise SystemExit("Polygon reported VWAP preflight is blocked")
+              raise SystemExit("Alpaca SIP reported VWAP preflight is blocked")
           PY
       - name: Build exact US87 canonical VWAP provider and Alpha158 panels
         run: >-
