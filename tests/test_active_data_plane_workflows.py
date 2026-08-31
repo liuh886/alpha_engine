@@ -185,6 +185,17 @@ def test_us_alpha158_live_panel_uses_only_approved_alpaca_sip_credentials() -> N
     }
 
 
+def test_sec_population_uses_public_identity_variable_and_secret_proxy_only() -> None:
+    content = Path(
+        ".github/workflows/selected-pool-event-population-ci.yml"
+    ).read_text(encoding="utf-8")
+    live_block = content[content.index("      - name: Populate public primary event stores") :]
+
+    assert "SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}" in live_block
+    assert "SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}" not in live_block
+    assert "SEC_EGRESS_PROXY_URL: ${{ secrets.SEC_EGRESS_PROXY_URL || '' }}" in live_block
+
+
 def test_ci_policy_resolves_actions_inside_the_shared_composite() -> None:
     workflow = Path(
         ".github/workflows/fundamental-event-store-ci.yml"

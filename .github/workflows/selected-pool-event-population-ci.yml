@@ -168,7 +168,7 @@ jobs:
       - name: Populate public primary event stores
         if: steps.selected.outputs.run == 'true'
         env:
-          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+          SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
           SEC_EGRESS_MODE: ${{ vars.SEC_EGRESS_MODE || 'direct' }}
           SEC_EGRESS_PROXY_ID: ${{ vars.SEC_EGRESS_PROXY_ID || '' }}
           SEC_EGRESS_PROXY_URL: ${{ secrets.SEC_EGRESS_PROXY_URL || '' }}
