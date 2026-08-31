@@ -5,8 +5,8 @@ import {
   BarChart3,
   Check,
   ChevronRight,
+  Code2,
   Database,
-  Github,
   Layers3,
   Moon,
   Orbit,
@@ -398,7 +398,7 @@ export function LandingPage() {
           <a href="#strategies">Strategies</a>
           <a href="#performance">Performance</a>
           <a href="#evidence">Evidence</a>
-          <a href="https://github.com/liuh886/alpha_engine" target="_blank" rel="noreferrer"><Github className="h-4 w-4" /><span className="sr-only">GitHub</span></a>
+          <a href="https://github.com/liuh886/alpha_engine" target="_blank" rel="noreferrer"><Code2 className="h-4 w-4" /><span className="sr-only">GitHub</span></a>
           <ProductShareButton landing />
           <ThemeButton />
           <AccountAction {...accountAction} className="landing-nav-cta" compact />

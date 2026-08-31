@@ -53,7 +53,7 @@ export function ModelExplainability({ featureImportance }: { featureImportance?:
               />
               <Tooltip
                 cursor={{ fill: 'rgba(0,0,0,0.03)' }}
-                formatter={(v: number) => [`${(v * 100).toFixed(1)}%`, 'Weight']}
+                formatter={(value) => [`${(Number(value ?? 0) * 100).toFixed(1)}%`, 'Weight']}
               />
               <Bar dataKey="value" radius={[0, 3, 3, 0]} barSize={18}>
                 {data.map((_, i) => (
