@@ -1,6 +1,6 @@
 import { runtimeCapabilities } from './runtime-capabilities';
 
-const SERVICE_WORKER_RELEASE = 'v4';
+const SERVICE_WORKER_RELEASE = 'v5';
 const SKIP_WAITING_MESSAGE = { type: 'SKIP_WAITING' } as const;
 
 function requestActivation(worker: ServiceWorker | null): void {

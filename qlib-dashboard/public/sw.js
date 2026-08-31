@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alpha-engine-shell-v4';
+const CACHE_NAME = 'alpha-engine-shell-v5';
 const APP_ROOT = new URL('./', self.location.href);
 const RESEARCH_ROOTS = [
   new URL('./bundle/', APP_ROOT).pathname,
@@ -11,6 +11,9 @@ const SHELL_URLS = [
   new URL('./index.html', APP_ROOT).toString(),
   new URL('./manifest.webmanifest', APP_ROOT).toString(),
   new URL('./icons/alpha-engine.svg', APP_ROOT).toString(),
+  new URL('./icons/alpha-engine-180.png', APP_ROOT).toString(),
+  new URL('./icons/alpha-engine-192.png', APP_ROOT).toString(),
+  new URL('./icons/alpha-engine-512.png', APP_ROOT).toString(),
 ];
 
 self.addEventListener('install', (event) => {

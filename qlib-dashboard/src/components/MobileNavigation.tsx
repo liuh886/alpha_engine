@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, Orbit, X } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,14 @@ export function MobileNavigation() {
     if (!open) return undefined;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [open]);
 
   return (
@@ -43,17 +50,27 @@ export function MobileNavigation() {
             onClick={() => setOpen(false)}
             aria-label="Dismiss strategy navigation"
           />
-          <div className="absolute inset-y-0 left-0 flex w-[min(86vw,340px)] flex-col border-r bg-card shadow-2xl">
-            <div className="flex h-16 items-center justify-between border-b px-4">
-              <Link to="/" onClick={() => setOpen(false)} aria-label="Back to Alpha Engine homepage">
-                <p className="text-sm font-bold">Alpha Engine</p>
-                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Strategy Console</p>
+          <div
+            className="absolute left-0 top-0 flex h-[100dvh] w-[min(86vw,340px)] flex-col border-r bg-card shadow-2xl"
+            style={{
+              paddingTop: 'env(safe-area-inset-top)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+              paddingLeft: 'env(safe-area-inset-left)',
+            }}
+          >
+            <div className="flex min-h-16 items-center justify-between border-b px-4">
+              <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)} aria-label="Back to Alpha Engine homepage">
+                <span className="research-brand-mark"><Orbit className="h-4 w-4" /></span>
+                <span>
+                  <span className="block text-sm font-bold">Alpha Engine</span>
+                  <span className="block text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Strategy Console</span>
+                </span>
               </Link>
               <Button type="button" variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close strategy navigation">
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <nav className="flex-1 space-y-5 overflow-y-auto p-3" aria-label="Mobile strategy console navigation">
+            <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-3" aria-label="Mobile strategy console navigation">
               {groups.map((group) => (
                 <section key={group.title}>
                   <p className="mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/75">{group.title}</p>

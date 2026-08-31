@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">Alpha Engine</title>
-  <desc id="desc">A rising research signal inside a dark rounded square.</desc>
+  <desc id="desc">A compact orbital research mark for Alpha Engine.</desc>
   <rect width="512" height="512" rx="112" fill="#0b0f14"/>
-  <path d="M112 360V152h48v160l72-88 56 52 64-116 42 24-94 170-62-58-70 86H112z" fill="#d7ff64"/>
-  <circle cx="352" cy="160" r="28" fill="#f7f9fb"/>
+  <circle cx="256" cy="256" r="110" fill="none" stroke="#4f8ff7" stroke-width="20"/>
+  <ellipse cx="256" cy="256" rx="164" ry="72" transform="rotate(32 256 256)" fill="none" stroke="#f7f9fb" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="30" fill="#4f8ff7"/>
+  <circle cx="372" cy="194" r="18" fill="#f7f9fb"/>
 </svg>
