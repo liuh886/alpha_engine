@@ -1,11 +1,12 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vitest/config'
 import path from 'path'
+import { fileURLToPath } from 'url'
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(fileURLToPath(new URL('.', import.meta.url)), './src'),
     },
   },
   test: {

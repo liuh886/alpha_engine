@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 import path from 'path'
 import { execSync } from 'child_process'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
 
 try {
   process.env.VITE_GIT_COMMIT_SHA = execSync('git rev-parse --short HEAD').toString().trim()
@@ -11,8 +13,7 @@ try {
 
 // Inject version from package.json so VITE_APP_VERSION is always in sync.
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const pkg = require('./package.json') as { version: string }
+  const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
   process.env.VITE_APP_VERSION = pkg.version
 } catch {
   process.env.VITE_APP_VERSION = 'unknown'
@@ -27,7 +28,7 @@ export default defineConfig({
   plugins: [viteSingleFile()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(fileURLToPath(new URL('.', import.meta.url)), './src'),
     },
   },
 })

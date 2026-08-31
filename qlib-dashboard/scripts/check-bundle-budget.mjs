@@ -7,9 +7,9 @@
  * The build is intentionally owned by the caller. This keeps CI to one
  * production build instead of rebuilding the application just to measure it.
  *
- * Because this project uses vite-plugin-singlefile, JS chunks are normally
- * inlined into dist/index.html as <script> tags. If standalone .js files are
- * present, those are measured instead.
+ * Because this project uses vite-plugin-singlefile, the application chunk is
+ * normally inlined into dist/index.html. Standalone runtime files such as the
+ * service worker are measured in addition to every inline script.
  *
  * Usage: npm run build && node scripts/check-bundle-budget.mjs
  * Exit 0 = pass, Exit 1 = missing/stale artifact or over budget.
@@ -60,28 +60,32 @@ if (jsFiles.length > 0) {
       gzipKB: gz.length / 1024,
     });
   }
-} else {
-  const html = readFileSync(INDEX, "utf-8");
-  const scriptRe = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
-  let match;
-  let index = 0;
-  while ((match = scriptRe.exec(html)) !== null) {
-    const body = match[1].trim();
-    if (!body) continue;
-    index += 1;
-    const raw = Buffer.from(body, "utf-8");
-    const gz = gzipSync(raw);
-    jsSegments.push({
-      label: `inline-script-${index}`,
-      rawKB: raw.length / 1024,
-      gzipKB: gz.length / 1024,
-    });
-  }
-  if (jsSegments.length === 0) {
-    console.error("✘ No JS assets found — neither standalone files nor inline scripts.");
-    process.exit(1);
-  }
-  console.log(`  Single-file mode: extracted ${jsSegments.length} inline <script> block(s):`);
+}
+
+const html = readFileSync(INDEX, "utf-8");
+const scriptRe = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+let match;
+let inlineCount = 0;
+while ((match = scriptRe.exec(html)) !== null) {
+  const body = match[1].trim();
+  if (!body) continue;
+  inlineCount += 1;
+  const raw = Buffer.from(body, "utf-8");
+  const gz = gzipSync(raw);
+  jsSegments.push({
+    label: `inline-script-${inlineCount}`,
+    rawKB: raw.length / 1024,
+    gzipKB: gz.length / 1024,
+  });
+}
+
+if (inlineCount > 0) {
+  console.log(`  Extracted ${inlineCount} inline <script> block(s):`);
+}
+
+if (jsSegments.length === 0) {
+  console.error("✘ No JS assets found — neither standalone files nor inline scripts.");
+  process.exit(1);
 }
 
 let totalRaw = 0;

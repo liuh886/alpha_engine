@@ -64,6 +64,9 @@ jobs:
       - name: Install dependencies
         working-directory: qlib-dashboard
         run: npm ci --no-audit --no-fund
+      - name: Audit moderate-or-higher dependency risks
+        working-directory: qlib-dashboard
+        run: npm run audit:dependencies
       - name: TypeScript
         working-directory: qlib-dashboard
         run: npx tsc --noEmit
