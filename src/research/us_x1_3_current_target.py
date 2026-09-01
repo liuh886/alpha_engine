@@ -15,7 +15,6 @@ import yaml
 import scripts.run_us_x1_1_rank_aware_sector_cap as sector_cap
 from src.data.market_provider import load_provider_manifest
 from src.factors.model_contract import resolve_model_factor_inputs
-from src.research.daily_ranker import prepare_ranker_frame
 from src.research.multi_market_readiness import normalize_market_symbols
 from src.research.qlib_execution_common import normalize_qlib_frame_index
 from src.research.ranker_current_target import (
@@ -25,13 +24,9 @@ from src.research.ranker_current_target import (
     load_previous_state,
 )
 from src.research.rolling_windows import purge_training_tail
-from src.research.universe_robustness import validate_no_nan_inputs
+from src.research.ranker_training import RankerTrainingInputError, fit_predict_ranker
 from src.research.us_qlib_execution_adapter import QlibUSExecutionRuntime
-from src.research.xgb_native_calibration import (
-    XGBNativeCalibration,
-    fit_xgb_native_daily_ranker,
-    predict_xgb_native_daily_ranker,
-)
+from src.research.xgb_native_calibration import XGBNativeCalibration
 from src.research.xgb_ranker_explainability import (
     attach_factor_contributions,
     build_xgb_pred_contribs,
@@ -247,26 +242,26 @@ def score_us_x1_3_current_target(
         returns.copy(),
         holding_days=10,
     )
-    valid, reason = validate_no_nan_inputs(
-        train_features,
-        context=f"US x1.3 current target/{signal_date}",
-    )
-    if not valid:
-        raise USX13CurrentTargetError(reason)
     test_features = features.loc[dates == signal_ts].copy()
     if len(test_features) != len(symbols):
         raise USX13CurrentTargetError(
             f"US x1.3 current cross-section has {len(test_features)} rows; expected {len(symbols)}"
         )
 
-    x_rank, y_rank, groups = prepare_ranker_frame(train_features, train_returns)
-    fitted = fit_xgb_native_daily_ranker(
-        x_rank,
-        y_rank,
-        groups,
-        calibration=calibration,
-    )
-    scores = predict_xgb_native_daily_ranker(fitted, test_features)
+    try:
+        training = fit_predict_ranker(
+            expressions=expressions,
+            expression_columns=dict(zip(expressions, columns, strict=True)),
+            features_train=train_features,
+            returns_train=train_returns,
+            features_test=test_features,
+            calibration=calibration,
+            context=f"US x1.3 current target/{signal_date}",
+        )
+    except RankerTrainingInputError as exc:
+        raise USX13CurrentTargetError(str(exc)) from exc
+    fitted = training.fitted
+    scores = training.scores
     ranked = sector_cap._ranked_day(scores.reset_index(), signal_ts)
     selected, selection, _ = sector_cap._select_names(ranked, sectors, sector_cap=True)
     if len(selected) != 15:

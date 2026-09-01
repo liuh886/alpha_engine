@@ -25,7 +25,9 @@ def test_current_target_uses_exact_formal_x1_3_stage_b_contract() -> None:
         "momentum_volatility_volume",
         "us_price_volume_pressure",
     ]
-    assert config["features"]["factor_order_semantics"] == "ordered_group_union_first_occurrence_wins"
+    assert (
+        config["features"]["factor_order_semantics"] == "ordered_group_union_first_occurrence_wins"
+    )
     assert calibration.num_boost_round == 200
     assert calibration.learning_rate == 0.05
     assert calibration.subsample == 0.8
@@ -89,3 +91,14 @@ def test_production_rankers_reuse_governed_history_and_do_not_deliver() -> None:
     assert "api.telegram.org" not in workflow
     assert "gh issue create" not in workflow
     assert "blocked_pending_maintained_cn_x1_2_inference_adapter" not in workflow
+
+
+def test_us_current_target_uses_canonical_ranker_training_plane() -> None:
+    source = (ROOT / "src/research/us_x1_3_current_target.py").read_text(encoding="utf-8")
+
+    assert "fit_predict_ranker(" in source
+    assert "except RankerTrainingInputError" in source
+    assert "except ValueError" not in source
+    assert "prepare_ranker_frame" not in source
+    assert "fit_xgb_native_daily_ranker" not in source
+    assert "predict_xgb_native_daily_ranker" not in source
