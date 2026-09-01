@@ -9,7 +9,7 @@
       "candidate_observation_start": "2026-04-16",
       "promotion_blocker": null,
       "promotion_eligible": true,
-      "provider_identity_sha256": "09c7ea9eb71b9ca06f40e20321805bf7c6e4de09e99f31ea0c54342d5c26135d",
+      "provider_identity_sha256": "c0d64d4c72566c7a4a418ef453534b522ba0325c6bdfbe644e800e743785139b",
       "requested_cutoff": "2026-08-31",
       "source_status": "selected_pool_price_refresh_ready"
     },
@@ -19,14 +19,13 @@
     "invalid_symbols": [],
     "last_date": "2026-08-31",
     "manifest_path": "components/cn-selected-pool-prices.json",
-    "manifest_sha256": "3d8930105495d5e23dd78827d2b84b107f2cc08afa2de11efe17f61ca1456a8a",
+    "manifest_sha256": "e49e727ba4fb2ebfff5af02309d386f405a9e4b03e5d9c7bf106b8ed32f217b6",
     "market": "cn",
     "missing_symbols": [],
     "not_yet_applicable_symbols": [],
     "pool_id": "cn_selected_equities_v3",
     "professional_source_ready": null,
     "providers": [
-      "AKSHARE",
       "AKSHARE_SINA",
       "TENCENT_QFQ_HISTORY"
     ],
@@ -46,7 +45,7 @@
       "candidate_observation_start": "2025-06-05",
       "promotion_blocker": null,
       "promotion_eligible": true,
-      "provider_identity_sha256": "8585ffc1b06de5ad383ef2d206963ba326b0775bed1db902f9cd4cd109d8e6b4",
+      "provider_identity_sha256": "121bf127711b4d9d3caabe86d0f110868789df0709fb2dce8f7cbc774666873e",
       "requested_cutoff": "2026-08-31",
       "source_status": "selected_pool_price_refresh_ready"
     },
@@ -56,7 +55,7 @@
     "invalid_symbols": [],
     "last_date": "2026-08-04",
     "manifest_path": "components/us-selected-pool-prices.json",
-    "manifest_sha256": "8c2db666ce1bdce3bb3f69d35af8f9d9447dc56dfe89bc2e601cd567f504de6f",
+    "manifest_sha256": "d525b6345ce7f6935def275bab80b3d3c3373137369a3b8091b2c4f109630f79",
     "market": "us",
     "missing_symbols": [],
     "not_yet_applicable_symbols": [],
