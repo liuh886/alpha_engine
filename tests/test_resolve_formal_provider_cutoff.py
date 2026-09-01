@@ -10,6 +10,7 @@ from src.data.router import RouterAttempt, RouterResponse
 class FakeRouter:
     def __init__(self, frame: pd.DataFrame | None) -> None:
         self.frame = frame
+        self.last_request: dict[str, object] | None = None
 
     def fetch_daily_bars(
         self,
@@ -20,7 +21,13 @@ class FakeRouter:
         end: str | None = None,
         validate: bool = False,
     ) -> RouterResponse:
-        del validate
+        self.last_request = {
+            "symbol": symbol,
+            "market": market,
+            "start": start,
+            "end": end,
+            "validate": validate,
+        }
         if self.frame is None:
             return RouterResponse(
                 result=None,
@@ -87,6 +94,29 @@ def test_resolver_marks_provider_wide_one_session_lag_delayed() -> None:
     assert payload["observed_cutoff"] == "2026-08-27"
     assert payload["effective_cutoff"] == "2026-08-27"
     assert payload["effective_seed_cutoff"] == "2026-08-26"
+
+
+def test_cn_resolver_uses_benchmark_watermark_before_admitting_cutoff() -> None:
+    router = FakeRouter(_frame("2026-08-31"))
+    payload = resolve_formal_provider_cutoff(
+        market="cn",
+        requested_cutoff="2026-09-01",
+        seed_cutoff="2026-08-31",
+        router=router,  # type: ignore[arg-type]
+    )
+
+    assert router.last_request == {
+        "symbol": "000300",
+        "market": "cn",
+        "start": "2026-08-31",
+        "end": "2026-09-01",
+        "validate": True,
+    }
+    assert payload["benchmark"] == "000300"
+    assert payload["status"] == "delayed"
+    assert payload["observed_cutoff"] == "2026-08-31"
+    assert payload["effective_cutoff"] == "2026-08-31"
+    assert payload["effective_seed_cutoff"] == "2026-08-28"
 
 
 def test_resolver_blocks_provider_failure() -> None:

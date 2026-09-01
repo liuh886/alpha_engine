@@ -179,7 +179,17 @@ def test_heavy_formal_refresh_reuses_previous_governed_provider_incrementally() 
     assert "--auxiliary-symbol" in text
     assert "--full-refresh" not in text
     assert "Resolve latest complete provider cutoff" in text
-    assert '--seed-cutoff "$SEED_CUTOFF"' in text
+    readiness_start = text.index("      - name: Resolve latest complete provider cutoff")
+    readiness_end = text.index(
+        "      - name: Resolve effective provider cache identity",
+        readiness_start,
+    )
+    readiness = text[readiness_start:readiness_end]
+    assert readiness.count("scripts/data/resolve_formal_provider_cutoff.py") == 1
+    assert '--market "$MARKET"' in readiness
+    assert '--seed-cutoff "$SEED_CUTOFF"' in readiness
+    assert 'if [ "$MARKET" = "us" ]; then' not in readiness
+    assert '"status": "current"' not in readiness
     assert (
         "formal-provider-1.1.0-${{ matrix.market }}-"
         "${{ steps.readiness.outputs.effective_seed_cutoff }}-"

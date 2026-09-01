@@ -386,40 +386,12 @@ jobs:
           SEED_CUTOFF: ${{ matrix.market == 'us' && needs.prepare.outputs.us_seed_cutoff || needs.prepare.outputs.cn_seed_cutoff }}
         run: |
           readiness="artifacts/formal-refresh/provider-${MARKET}-readiness.json"
-          if [ "$MARKET" = "us" ]; then
-            uv run python scripts/data/resolve_formal_provider_cutoff.py \
-              --market "$MARKET" \
-              --requested-cutoff "$REQUESTED_CUTOFF" \
-              --seed-cutoff "$SEED_CUTOFF" \
-              --output "$readiness" \
-              --github-output "$GITHUB_OUTPUT"
-          else
-            python - <<'PY2' >> "$GITHUB_OUTPUT"
-          import json
-          import os
-          from pathlib import Path
-
-          requested = os.environ["REQUESTED_CUTOFF"]
-          seed = os.environ["SEED_CUTOFF"]
-          payload = {
-              "schema_version": "1.0",
-              "evidence_type": "formal_provider_readiness_v1",
-              "market": os.environ["MARKET"],
-              "status": "current",
-              "requested_cutoff": requested,
-              "effective_cutoff": requested,
-              "effective_seed_cutoff": seed,
-              "research_only": True,
-              "trade_ready": False,
-          }
-          path = Path(f"artifacts/formal-refresh/provider-{os.environ['MARKET']}-readiness.json")
-          path.parent.mkdir(parents=True, exist_ok=True)
-          path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-          print("provider_status=current")
-          print(f"effective_cutoff={requested}")
-          print(f"effective_seed_cutoff={seed}")
-          PY2
-          fi
+          uv run python scripts/data/resolve_formal_provider_cutoff.py \
+            --market "$MARKET" \
+            --requested-cutoff "$REQUESTED_CUTOFF" \
+            --seed-cutoff "$SEED_CUTOFF" \
+            --output "$readiness" \
+            --github-output "$GITHUB_OUTPUT"
       - name: Resolve effective provider cache identity
         id: contract
         if: steps.provider_cache.outputs.cache-hit != 'true'
