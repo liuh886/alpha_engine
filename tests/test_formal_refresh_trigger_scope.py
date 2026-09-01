@@ -102,7 +102,8 @@ def test_heavy_formal_refresh_does_not_publish_after_explicit_cancellation() -> 
     )
     assert publish_job in text
     assert "if: always()" not in text
-    assert text.count("if: ${{ !cancelled() }}") == 4
+    assert "      - name: Resolve effective publication delta" in text
+    assert text.count("if: ${{ !cancelled() }}") == 5
 
 
 def test_formal_candidate_ci_uses_bounded_research_paths() -> None:

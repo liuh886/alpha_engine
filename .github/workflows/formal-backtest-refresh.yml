@@ -971,23 +971,52 @@ jobs:
           git config user.name "AlphaEngine Formal Refresh Agent"
           git config user.email "formal-refresh-agent@alphaengine.local"
           git fetch origin main
-          git checkout -B "$REFRESH_BRANCH"
+          git reset --hard origin/main
+          git checkout -B "$REFRESH_BRANCH" origin/main
+          uv run python scripts/run_formal_refresh_transaction.py publication-delta \
+            --current-formal-root data/research/formal_model_runs \
+            --current-preview-root data/research/model_runs \
+            --current-market-evidence-root data/research/market_evidence \
+            --current-model-data-root data/research/model_data_bundle_v1 \
+            --candidate-formal-root "$CANDIDATE_V2_ROOT" \
+            --candidate-preview-root "$CANDIDATE_PREVIEW_ROOT" \
+            --candidate-market-evidence-root "$CANDIDATE_MARKET_EVIDENCE_ROOT" \
+            --candidate-model-data-root "$CANDIDATE_MODEL_DATA_ROOT" \
+            --plan artifacts/formal-refresh/plan/plan.json \
+            --fan-in-receipt "$FAN_IN_RECEIPT" \
+            --refresh-receipt "$REFRESH_RECEIPT" \
+            --receipt artifacts/formal-refresh/publication-delta-latest-main-receipt.json
+          latest_publication_required="$(jq -er '.publication_required' artifacts/formal-refresh/publication-delta-latest-main-receipt.json)"
+          latest_delta_status="$(jq -er '.status' artifacts/formal-refresh/publication-delta-latest-main-receipt.json)"
+          echo "publication_required=$latest_publication_required" >> "$GITHUB_OUTPUT"
+          echo "delta_status=$latest_delta_status" >> "$GITHUB_OUTPUT"
+          if [ "$latest_publication_required" != "true" ]; then
+            test "$latest_delta_status" = "semantic_no_change"
+            echo "Latest main already contains semantically identical governed evidence."
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+            echo "candidate_sha=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          test "$latest_delta_status" = "publication_required"
+          rm -rf \
+            data/research/formal_model_runs \
+            data/research/model_runs \
+            data/research/market_evidence \
+            data/research/model_data_bundle_v1
+          cp -a "$CANDIDATE_V2_ROOT" data/research/formal_model_runs
+          cp -a "$CANDIDATE_PREVIEW_ROOT" data/research/model_runs
+          cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" data/research/market_evidence
+          cp -a "$CANDIDATE_MODEL_DATA_ROOT" data/research/model_data_bundle_v1
           git add \
             data/research/formal_model_runs \
             data/research/model_runs \
             data/research/market_evidence \
             data/research/model_data_bundle_v1
           if git diff --cached --quiet; then
-            echo "No canonical evidence bytes changed after refresh validation."
-            echo "pr_number=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git commit -m "data: publish governed evidence through US ${US_CUTOFF} and CN ${CN_CUTOFF}"
-          if ! git merge --no-edit origin/main; then
-            git merge --abort || true
-            echo "Reviewed refresh overlaps newer main changes; rerun from the latest main." >&2
+            echo "Latest-main delta requires publication but no canonical evidence bytes changed." >&2
             exit 1
           fi
+          git commit -m "data: publish governed evidence through US ${US_CUTOFF} and CN ${CN_CUTOFF}"
           git push --force origin "HEAD:${REFRESH_BRANCH}"
           body_file="$(mktemp)"
           cat > "$body_file" <<EOF
@@ -1020,6 +1049,25 @@ jobs:
           test -n "$number"
           echo "pr_number=$number" >> "$GITHUB_OUTPUT"
           echo "candidate_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Resolve effective publication delta
+        id: effective_delta
+        if: ${{ !cancelled() }}
+        env:
+          INITIAL_PUBLICATION_REQUIRED: ${{ steps.delta.outputs.publication_required }}
+          INITIAL_DELTA_STATUS: ${{ steps.delta.outputs.status }}
+          LATEST_PUBLICATION_REQUIRED: ${{ steps.pull_request.outputs.publication_required }}
+          LATEST_DELTA_STATUS: ${{ steps.pull_request.outputs.delta_status }}
+        run: |
+          publication_required="${LATEST_PUBLICATION_REQUIRED:-$INITIAL_PUBLICATION_REQUIRED}"
+          delta_status="${LATEST_DELTA_STATUS:-$INITIAL_DELTA_STATUS}"
+          if [ "$publication_required" = "true" ]; then
+            test "$delta_status" = "publication_required"
+          else
+            test "$publication_required" = "false"
+            test "$delta_status" = "semantic_no_change"
+          fi
+          echo "publication_required=$publication_required" >> "$GITHUB_OUTPUT"
+          echo "status=$delta_status" >> "$GITHUB_OUTPUT"
       - name: Wait for candidate checks, merge reviewed refresh, and verify Pages
         id: release
         if: steps.pull_request.outputs.pr_number != ''
@@ -1104,8 +1152,8 @@ jobs:
           PAGES_RUN_ID: ${{ steps.release.outputs.pages_run_id }}
           JOB_STATUS: ${{ job.status }}
           TRANSACTION_STATUS: ${{ steps.transaction.outputs.outcome }}
-          PUBLICATION_REQUIRED: ${{ steps.delta.outputs.publication_required }}
-          PUBLICATION_DELTA_STATUS: ${{ steps.delta.outputs.status }}
+          PUBLICATION_REQUIRED: ${{ steps.effective_delta.outputs.publication_required }}
+          PUBLICATION_DELTA_STATUS: ${{ steps.effective_delta.outputs.status }}
         with:
           script: |
             const marker = '<!-- reviewed-formal-backtest-refresh -->';
@@ -1201,6 +1249,7 @@ jobs:
             artifacts/formal-refresh/formal-refresh-receipt.json
             artifacts/formal-refresh/formal-v2-sync-receipt.json
             artifacts/formal-refresh/publication-delta-receipt.json
+            artifacts/formal-refresh/publication-delta-latest-main-receipt.json
             artifacts/formal-refresh/freshness-input/freshness.json
             artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json
             artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_publication_manifest.json

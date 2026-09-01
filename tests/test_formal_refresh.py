@@ -811,9 +811,57 @@ def test_semantic_no_change_skips_candidate_mutation_and_release() -> None:
         "if: steps.delta.outputs.publication_required == 'true'"
         in publish[setup_node:setup_node_end]
     )
-    assert "PUBLICATION_REQUIRED: ${{ steps.delta.outputs.publication_required }}" in publish
-    assert "PUBLICATION_DELTA_STATUS: ${{ steps.delta.outputs.status }}" in publish
+    assert (
+        "PUBLICATION_REQUIRED: "
+        "${{ steps.effective_delta.outputs.publication_required }}" in publish
+    )
+    assert (
+        "PUBLICATION_DELTA_STATUS: ${{ steps.effective_delta.outputs.status }}"
+        in publish
+    )
     assert "semantic_no_change" in publish
+
+
+def test_publish_reconciles_candidate_against_latest_main_before_pr() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    publish = workflow[workflow.index("\n  publish:\n") :]
+    pull_request = publish.index("      - name: Open or update reviewed refresh PR")
+    effective = publish.index("      - name: Resolve effective publication delta")
+    release = publish.index(
+        "      - name: Wait for candidate checks, merge reviewed refresh, and verify Pages"
+    )
+    block = publish[pull_request:effective]
+
+    assert pull_request < effective < release
+    assert "git fetch origin main" in block
+    assert "git reset --hard origin/main" in block
+    assert 'git checkout -B "$REFRESH_BRANCH" origin/main' in block
+    assert "publication-delta-latest-main-receipt.json" in block
+    assert block.count("run_formal_refresh_transaction.py publication-delta") == 1
+    assert 'if [ "$latest_publication_required" != "true" ]' in block
+    assert 'test "$latest_delta_status" = "semantic_no_change"' in block
+    assert 'echo "pr_number=" >> "$GITHUB_OUTPUT"' in block
+    assert 'echo "candidate_sha=" >> "$GITHUB_OUTPUT"' in block
+    assert 'test "$latest_delta_status" = "publication_required"' in block
+    assert (
+        "Latest-main delta requires publication but no canonical evidence bytes changed."
+        in block
+    )
+    assert "git merge --no-edit origin/main" not in block
+    assert block.index("git reset --hard origin/main") < block.index(
+        'cp -a "$CANDIDATE_V2_ROOT" data/research/formal_model_runs'
+    )
+
+    effective_block = publish[effective:release]
+    assert "LATEST_PUBLICATION_REQUIRED" in effective_block
+    assert "LATEST_DELTA_STATUS" in effective_block
+    assert 'LATEST_PUBLICATION_REQUIRED:-$INITIAL_PUBLICATION_REQUIRED' in effective_block
+    assert 'LATEST_DELTA_STATUS:-$INITIAL_DELTA_STATUS' in effective_block
+    assert 'echo "publication_required=$publication_required"' in effective_block
+    assert 'echo "status=$delta_status"' in effective_block
+    assert "publication-delta-latest-main-receipt.json" in publish
 
 
 def test_publish_status_uses_the_transaction_outcome() -> None:
