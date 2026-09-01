@@ -235,19 +235,24 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
         }
         for symbol, entry in sorted(terminal_listings.items())
     }
-    comparison_references = {
-        str(value).strip().upper()
-        for value in COMPARISON_REFERENCE_AUXILIARIES.get(market, ())
-        if str(value).strip()
-    }
-    payload["comparison_reference_symbols"] = sorted(comparison_references)
     auxiliaries = payload.get("auxiliary_symbols", [])
     if isinstance(auxiliaries, list):
+        materialized_auxiliaries = {
+            str(value).strip().upper()
+            for value in auxiliaries
+            if str(value).strip()
+        }
+        comparison_references = materialized_auxiliaries.intersection(
+            COMPARISON_REFERENCE_AUXILIARIES.get(market, ())
+        )
+        payload["comparison_reference_symbols"] = sorted(comparison_references)
         payload["auxiliary_symbols"] = [
             value
             for value in auxiliaries
             if str(value).strip().upper() not in comparison_references
         ]
+    else:
+        payload["comparison_reference_symbols"] = []
     provider_order = router.providers_for_market(market)
     selected_providers: dict[str, str] = {}
     quarantined: list[str] = []

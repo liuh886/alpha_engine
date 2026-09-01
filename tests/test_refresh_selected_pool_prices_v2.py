@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from scripts.data.refresh_selected_pool_prices_v2 import (
+    COMPARISON_REFERENCE_AUXILIARIES,
     FORMAL_MARKET_AUXILIARIES,
     MANIFEST_RELATIVE_PATH,
     _decorate_manifest,
@@ -76,6 +77,34 @@ def test_formal_auxiliary_universe_preserves_legacy_tygo_without_substitution():
     assert "TIGO" not in FORMAL_MARKET_AUXILIARIES["us"]
     assert set(FORMAL_MARKET_AUXILIARIES["us"]) == {"QQQI", "TQQQ", "SGOV", "TYGO"}
     assert FORMAL_MARKET_AUXILIARIES["cn"] == ("515180",)
+
+
+def test_manifest_declares_only_materialized_comparison_references(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "manifest.json"
+    payload = selected_pool_price_source("us")
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    decorated = _decorate_manifest(path, build_hardened_router("us"))
+
+    assert decorated["auxiliary_symbols"] == []
+    assert decorated["comparison_reference_symbols"] == []
+
+
+def test_manifest_moves_materialized_comparison_reference_to_its_own_role(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "manifest.json"
+    payload = selected_pool_price_source("us")
+    comparison_symbol = COMPARISON_REFERENCE_AUXILIARIES["us"][0]
+    payload["auxiliary_symbols"] = ["SGOV", comparison_symbol]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    decorated = _decorate_manifest(path, build_hardened_router("us"))
+
+    assert decorated["auxiliary_symbols"] == ["SGOV"]
+    assert decorated["comparison_reference_symbols"] == [comparison_symbol]
 
 
 def test_manifest_does_not_count_two_eastmoney_transports_as_independent(
@@ -428,6 +457,56 @@ def test_successful_refresh_writes_stable_publication_manifest(
     assert result["records"][-1]["attempts"][0]["error"]
     assert "attempts" not in publication["records"][-1]
     assert "action" not in publication["records"][-1]
+
+
+def test_repair_only_us_refresh_publishes_without_unrequested_comparison_reference(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source_payload = selected_pool_price_source("us")
+    source_payload.update(
+        {
+            "all_sources_current": True,
+            "candidate_count": 1,
+            "candidate_symbols": ["AAA"],
+            "lifecycle_declared_terminal_symbols": [],
+            "records": source_payload["records"][:1],
+            "stale_symbols": [],
+            "target_count": 1,
+            "targets": ["AAA"],
+            "terminal_history_symbols": [],
+            "terminal_listing_evidence": {},
+        }
+    )
+
+    def fake_refresh(**kwargs):
+        destination = Path(kwargs["output_root"])
+        manifest_path = destination / "artifacts" / MANIFEST_RELATIVE_PATH.name
+        manifest_path.parent.mkdir(parents=True)
+        manifest_path.write_text(json.dumps(source_payload), encoding="utf-8")
+        return source_payload
+
+    monkeypatch.setattr(
+        "scripts.data.refresh_selected_pool_prices_v2.refresh_selected_pool_prices",
+        fake_refresh,
+    )
+    output = tmp_path / "provider-us"
+
+    result = refresh_selected_pool_prices_v2(
+        root=Path.cwd(),
+        market="us",
+        source_csv_dir=tmp_path / "unused",
+        output_root=output,
+        start="2021-01-01",
+        cutoff="2026-08-21",
+        router=build_hardened_router("us"),
+    )
+
+    publication = load_selected_pool_price_publication_manifest(
+        output / "artifacts" / PUBLICATION_MANIFEST_NAME
+    )
+    assert result["comparison_reference_symbols"] == []
+    assert publication["comparison_reference_symbols"] == []
+    assert {record["symbol"] for record in publication["records"]} == {"AAA"}
 
 
 def test_failed_refresh_removes_stale_publication_manifest(
