@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
 
 import pandas as pd
+import requests
 
 from src.data.corporate_actions.event_store import (
     CorporateActionEvent,
@@ -164,7 +165,43 @@ class AsharePublicActionClient:
         return ak
 
     def fetch_dividends(self, *, symbol: str) -> pd.DataFrame:
-        return self._akshare().stock_fhps_detail_em(symbol=symbol)
+        try:
+            return self._akshare().stock_fhps_detail_em(symbol=symbol)
+        except TypeError as exc:
+            # AKShare currently dereferences result["pages"] when Eastmoney
+            # explicitly returns result=null for a symbol with no dividend
+            # records. Confirm the provider's exact empty response before
+            # converting it to an empty frame; every other failure remains
+            # fail-closed.
+            if str(exc) != "'NoneType' object is not subscriptable":
+                raise
+            response = requests.get(
+                "https://datacenter-web.eastmoney.com/api/data/v1/get",
+                params={
+                    "sortColumns": "REPORT_DATE",
+                    "sortTypes": "-1",
+                    "pageSize": "500",
+                    "pageNumber": "1",
+                    "reportName": "RPT_SHAREBONUS_DET",
+                    "columns": "ALL",
+                    "quoteColumns": "",
+                    "js": '{"data":(x),"pages":(tp)}',
+                    "source": "WEB",
+                    "client": "WEB",
+                    "filter": f'(SECURITY_CODE="{symbol}")',
+                },
+                timeout=20,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if (
+                payload.get("success") is False
+                and payload.get("code") == 9201
+                and payload.get("message") == "返回数据为空"
+                and payload.get("result") is None
+            ):
+                return pd.DataFrame()
+            raise
 
     def fetch_share_changes(
         self,
