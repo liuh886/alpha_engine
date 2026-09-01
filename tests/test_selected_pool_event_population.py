@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import pytest
 import yaml
 
 from scripts.data.populate_selected_pool_events import (
@@ -14,6 +15,7 @@ from src.data.cn_selected_pool_event_sources import (
 )
 
 from src.data.corporate_actions.ashare_public_actions import (
+    AsharePublicActionClient,
     eastmoney_dividend_to_events,
 )
 from src.data.corporate_actions.tiingo_events import (
@@ -36,6 +38,82 @@ from src.data.fundamentals.tushare_financials import tushare_indicator_to_events
 
 
 RETRIEVED = "2026-08-02T00:00:00+00:00"
+
+
+def test_eastmoney_explicit_empty_dividend_result_is_no_event(monkeypatch) -> None:
+    class Akshare:
+        def stock_fhps_detail_em(self, **_kwargs):
+            raise TypeError("'NoneType' object is not subscriptable")
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "success": False,
+                "code": 9201,
+                "message": "返回数据为空",
+                "result": None,
+            }
+
+    client = AsharePublicActionClient()
+    monkeypatch.setattr(client, "_akshare", lambda: Akshare())
+    monkeypatch.setattr(
+        "src.data.corporate_actions.ashare_public_actions.requests.get",
+        lambda *_args, **_kwargs: Response(),
+    )
+
+    assert client.fetch_dividends(symbol="688521").empty
+
+
+def test_eastmoney_unrelated_type_error_remains_fail_closed(monkeypatch) -> None:
+    class Akshare:
+        def stock_fhps_detail_em(self, **_kwargs):
+            raise TypeError("provider transform failed")
+
+    client = AsharePublicActionClient()
+    monkeypatch.setattr(client, "_akshare", lambda: Akshare())
+    monkeypatch.setattr(
+        "src.data.corporate_actions.ashare_public_actions.requests.get",
+        lambda *_args, **_kwargs: pytest.fail(
+            "unrelated TypeError must not trigger the empty-result probe"
+        ),
+    )
+
+    with pytest.raises(TypeError, match="provider transform failed"):
+        client.fetch_dividends(symbol="688521")
+
+
+@pytest.mark.parametrize("success", [True, None])
+def test_eastmoney_inconsistent_empty_result_remains_fail_closed(
+    monkeypatch, success
+) -> None:
+    class Akshare:
+        def stock_fhps_detail_em(self, **_kwargs):
+            raise TypeError("'NoneType' object is not subscriptable")
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "success": success,
+                "code": 9201,
+                "message": "返回数据为空",
+                "result": None,
+            }
+
+    client = AsharePublicActionClient()
+    monkeypatch.setattr(client, "_akshare", lambda: Akshare())
+    monkeypatch.setattr(
+        "src.data.corporate_actions.ashare_public_actions.requests.get",
+        lambda *_args, **_kwargs: Response(),
+    )
+
+    with pytest.raises(TypeError, match="NoneType"):
+        client.fetch_dividends(symbol="688521")
 
 
 def test_us87_sec_mapping_is_exact_and_keeps_tigo_tygo_distinct():
