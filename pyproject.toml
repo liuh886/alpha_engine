@@ -28,6 +28,7 @@ dependencies = [
     "mcp",
     "structlog>=24.1.0",
     "sqlalchemy<2.0",
+    "exchange-calendars>=4.13,<5",
 ]
 
 [project.scripts]
