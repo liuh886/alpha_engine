@@ -918,3 +918,24 @@ def test_model_data_consumes_publication_identity_and_retains_raw_diagnostics() 
     assert "selected_pool_price_refresh_manifest.json" not in block
     assert "provider-us/artifacts/selected_pool_price_refresh_manifest.json" in workflow
     assert "provider-cn/artifacts/selected_pool_price_refresh_manifest.json" in workflow
+
+
+def test_model_data_fetches_only_review_bound_cross_run_sources() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    start = workflow.index("      - name: Build shared Model Data Bundle")
+    end = workflow.index("      - name: Classify canonical publication delta")
+    block = workflow[start:end]
+
+    assert "scripts/data/fetch_governed_model_data.py" in block
+    assert "cn_alpha158_2026_08_31" in block
+    assert "cn_events_2026_08_31" in block
+    assert "GITHUB_TOKEN: ${{ github.token }}" in block
+    assert "latest successful" not in block.lower()
+    assert "gh run download" not in block
+    assert "factors.qlib_alpha158.panel.cn.v1:factor_panel" in block
+    assert "fundamentals.cn_selected_equities_v3:fundamental_coverage" in block
+    assert "corporate_actions.cn_selected_equities_v3:corporate_action_coverage" in block
+    assert block.count("governed-source-receipt.json") == 1
+    assert "--source-receipt" in block

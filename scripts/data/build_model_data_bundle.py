@@ -16,20 +16,23 @@ from src.data.model_data_bundle import (
 
 
 def _component_spec(value: str) -> ComponentSpec:
-    parts = value.split(":", 3)
-    if len(parts) not in {3, 4}:
+    parts = value.split(":", 2)
+    if len(parts) != 3:
         raise argparse.ArgumentTypeError(
             "component must be COMPONENT_ID:KIND:PATH[:MARKET]"
         )
-    component_id, kind, path = parts[:3]
-    market = parts[3] if len(parts) == 4 else None
+    component_id, kind, remainder = parts
+    path, separator, market = remainder.rpartition(":")
+    if not separator or market.strip().lower() not in {"cn", "global", "us"}:
+        path = remainder
+        market = None
     if not component_id.strip() or not kind.strip() or not path.strip():
         raise argparse.ArgumentTypeError("component fields must be non-empty")
     return ComponentSpec(
         component_id=component_id.strip(),
         component_kind=kind.strip(),
         manifest_path=Path(path),
-        market=market.strip() if market else None,
+        market=market.strip().lower() if market else None,
     )
 
 
@@ -60,6 +63,13 @@ def main() -> int:
         default=None,
         help="Optional static export data directory, for example artifacts/site/data",
     )
+    parser.add_argument(
+        "--source-receipt",
+        type=Path,
+        action="append",
+        default=[],
+        help="Verified governed-source receipt; repeat when multiple registries are used",
+    )
     args = parser.parse_args()
 
     root = args.root.resolve()
@@ -81,6 +91,7 @@ def main() -> int:
     frontend = args.frontend_data_dir
     if frontend is not None and not frontend.is_absolute():
         frontend = root / frontend
+    receipts = [path if path.is_absolute() else root / path for path in args.source_receipt]
 
     try:
         manifest = build_model_data_bundle(
@@ -90,6 +101,7 @@ def main() -> int:
             output_root=output,
             evidence_cutoff=args.evidence_cutoff,
             frontend_data_dir=frontend,
+            source_receipts=receipts,
         )
         verified = verify_model_data_bundle(output)
     except ModelDataBundleError as exc:

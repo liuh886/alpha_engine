@@ -208,9 +208,11 @@ def test_declared_cutover_still_validates_provider_publication_interface() -> No
     for path in (
         "src/artifacts/formal_provider_cache.py",
         "src/data/selected_pool_price_publication.py",
+        "src/data/governed_actions_artifact.py",
         "src/dashboard/market_evidence.py",
         "tests/test_formal_provider_cache.py",
         "tests/test_market_evidence.py",
+        "tests/test_governed_actions_artifact.py",
         "tests/test_model_data_bundle.py",
         "tests/test_refresh_selected_pool_prices_v2.py",
         "tests/test_selected_pool_price_publication.py",
