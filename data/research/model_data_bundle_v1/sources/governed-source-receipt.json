@@ -1,0 +1,65 @@
+{
+  "repository": "liuh886/alpha_engine",
+  "research_only": true,
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "artifact_digest": "sha256:8d06e5f03ac8ca927098503d866ff4ed476ed517882c1d1145e7dc1bb2ed9516",
+      "artifact_id": 9808180730,
+      "artifact_name": "alpha158-canonical-vwap-cn-33525712197",
+      "artifact_size_bytes": 124468630,
+      "component_manifests": [
+        {
+          "path": "alpha158/factor_panel_manifest.json",
+          "sha256": "782008f2719033d12398edd3c8117b7b579ef7eb252bc6c14277f19a5dbbf0ed"
+        }
+      ],
+      "evidence_cutoff": "2026-08-31",
+      "expires_at": "2026-11-30T15:26:09Z",
+      "head_sha": "b61d086a113add436b1b74cc899eb2b4c89d6f8d",
+      "installed_payload": "verified_component_manifests_only",
+      "market": "cn",
+      "pool_id": "cn_selected_equities_v3",
+      "research_only": true,
+      "source_id": "cn_alpha158_2026_08_31",
+      "source_kind": "alpha158_panel",
+      "trade_ready": false,
+      "training_payload_retrieval": "exact_artifact_locator_required",
+      "workflow_run_id": 33525712197
+    },
+    {
+      "artifact_digest": "sha256:19f56c969fdde29cc356a2cc96de94060549b982056328d59c19ae27889c9f51",
+      "artifact_id": 9808822820,
+      "artifact_name": "selected-pool-event-live-cn-33528559207",
+      "artifact_size_bytes": 2043215,
+      "component_manifests": [
+        {
+          "path": "event_population_manifest.json",
+          "sha256": "5e057764625a3eeb7e0ad20f1a79f4a1dbac862216f9b794ef5a680f90082d32"
+        },
+        {
+          "path": "fundamentals/component_manifest.json",
+          "sha256": "9d168069011cd27cb322f7ef33bf869b4095a4d9aa768cf2624611f9c9f712b6"
+        },
+        {
+          "path": "corporate_actions/component_manifest.json",
+          "sha256": "457e751ee55fe4141635574974c11be25870725c6e48758df8945a1540a0d5cc"
+        }
+      ],
+      "evidence_cutoff": "2026-08-31",
+      "expires_at": "2026-11-30T15:53:53Z",
+      "head_sha": "64169b371b8cd14ffe3fcdd569311d3ca20cd3d5",
+      "installed_payload": "verified_component_manifests_only",
+      "market": "cn",
+      "pool_id": "cn_selected_equities_v3",
+      "research_only": true,
+      "source_id": "cn_events_2026_08_31",
+      "source_kind": "selected_pool_events",
+      "trade_ready": false,
+      "training_payload_retrieval": "exact_artifact_locator_required",
+      "workflow_run_id": 33528559207
+    }
+  ],
+  "trade_ready": false,
+  "verification_policy": "exact_run_artifact_archive_and_component_hashes"
+}

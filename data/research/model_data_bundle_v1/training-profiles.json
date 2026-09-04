@@ -2,9 +2,7 @@
   {
     "candidate_count": 130,
     "candidate_pool_id": "cn_selected_equities_v3",
-    "failed_gates": [
-      "component:factors.qlib_alpha158.panel.cn.v1:required_component_missing"
-    ],
+    "failed_gates": [],
     "market": "cn",
     "profile_id": "cn_selected_alpha158_v1",
     "references": [
@@ -65,19 +63,44 @@
           "ready"
         ],
         "allow_not_yet_applicable": true,
-        "applicable_coverage_ratio": null,
+        "applicable_coverage_ratio": 1.0,
         "component_id": "factors.qlib_alpha158.panel.cn.v1",
-        "coverage_basis": "all_symbols",
-        "gate_reasons": [
-          "required_component_missing"
-        ],
-        "gate_status": "failed",
+        "coverage_basis": "applicable_symbols",
+        "gate_reasons": [],
+        "gate_status": "passed",
         "minimum_coverage_ratio": 1.0,
-        "observed": null
+        "observed": {
+          "component_id": "factors.qlib_alpha158.panel.cn.v1",
+          "component_kind": "factor_panel",
+          "coverage_ratio": 0.9923076923076923,
+          "details": {},
+          "evidence_cutoff": "2026-08-31",
+          "expected_symbol_count": 130,
+          "first_date": "2021-01-01",
+          "invalid_symbols": [],
+          "last_date": "2026-08-31",
+          "manifest_path": "sources/cn_alpha158_2026_08_31/alpha158/factor_panel_manifest.json",
+          "manifest_sha256": "782008f2719033d12398edd3c8117b7b579ef7eb252bc6c14277f19a5dbbf0ed",
+          "market": "cn",
+          "missing_symbols": [],
+          "not_yet_applicable_symbols": [
+            "301666"
+          ],
+          "pool_id": "cn_selected_equities_v3",
+          "professional_source_ready": false,
+          "providers": [
+            "QLIB_PROVIDER"
+          ],
+          "quarantined_symbols": [],
+          "ready_symbol_count": 129,
+          "research_only": true,
+          "status": "partial",
+          "trade_ready": false
+        }
       }
     ],
     "research_only": true,
-    "status": "blocked",
+    "status": "ready",
     "trade_ready": false
   },
   {
@@ -146,10 +169,7 @@
   {
     "candidate_count": 130,
     "candidate_pool_id": "cn_selected_equities_v3",
-    "failed_gates": [
-      "component:fundamentals.cn_selected_equities_v3:required_component_missing",
-      "component:corporate_actions.cn_selected_equities_v3:required_component_missing"
-    ],
+    "failed_gates": [],
     "market": "cn",
     "profile_id": "cn_selected_price_plus_fundamentals_v1",
     "references": [
@@ -213,12 +233,53 @@
         "applicable_coverage_ratio": null,
         "component_id": "fundamentals.cn_selected_equities_v3",
         "coverage_basis": "all_symbols",
-        "gate_reasons": [
-          "required_component_missing"
-        ],
-        "gate_status": "failed",
+        "gate_reasons": [],
+        "gate_status": "passed",
         "minimum_coverage_ratio": 0.8,
-        "observed": null
+        "observed": {
+          "component_id": "fundamentals.cn_selected_equities_v3",
+          "component_kind": "fundamental_coverage",
+          "coverage_ratio": 0.9923076923076923,
+          "details": {
+            "coverage_byte_size": 85839,
+            "coverage_path": "fundamentals/coverage.json",
+            "coverage_sha256": "afa481b068430b2528f65d53de1f9196659c4ba6bc258b493ef29cfd93ff8c9c",
+            "events_byte_size": 17544273,
+            "events_path": "fundamentals/events.jsonl",
+            "events_sha256": "166c64e130e46df6e5c86b952bd28e6a308a569b793b7f369ed8ea7f9e8877c7",
+            "explicit_status_count": 130,
+            "status_counts": {
+              "conflict": 0,
+              "identity_missing": 0,
+              "no_event_observed": 0,
+              "partial": 0,
+              "provider_missing": 1,
+              "ready": 129
+            }
+          },
+          "evidence_cutoff": "2026-08-31",
+          "expected_symbol_count": 130,
+          "first_date": "2021-02-03",
+          "invalid_symbols": [],
+          "last_date": "2026-08-30",
+          "manifest_path": "sources/cn_events_2026_08_31/fundamentals/component_manifest.json",
+          "manifest_sha256": "9d168069011cd27cb322f7ef33bf869b4095a4d9aa768cf2624611f9c9f712b6",
+          "market": "cn",
+          "missing_symbols": [
+            "301666"
+          ],
+          "not_yet_applicable_symbols": [],
+          "pool_id": "cn_selected_equities_v3",
+          "professional_source_ready": null,
+          "providers": [
+            "AKSHARE_SINA_FINANCIAL_REPORT_CNINFO_TIME"
+          ],
+          "quarantined_symbols": [],
+          "ready_symbol_count": 129,
+          "research_only": true,
+          "status": "partial",
+          "trade_ready": false
+        }
       },
       {
         "accepted_statuses": [
@@ -229,16 +290,55 @@
         "applicable_coverage_ratio": null,
         "component_id": "corporate_actions.cn_selected_equities_v3",
         "coverage_basis": "all_symbols",
-        "gate_reasons": [
-          "required_component_missing"
-        ],
-        "gate_status": "failed",
+        "gate_reasons": [],
+        "gate_status": "passed",
         "minimum_coverage_ratio": 1.0,
-        "observed": null
+        "observed": {
+          "component_id": "corporate_actions.cn_selected_equities_v3",
+          "component_kind": "corporate_action_coverage",
+          "coverage_ratio": 1.0,
+          "details": {
+            "coverage_byte_size": 72438,
+            "coverage_path": "corporate_actions/coverage.json",
+            "coverage_sha256": "7378457001e8b9be9948808d9e0db26e6389c94950d8ecac512c8cbab76f7f5e",
+            "events_byte_size": 2738253,
+            "events_path": "corporate_actions/events.jsonl",
+            "events_sha256": "491051104fe17a729925326ab72ba565c1fb91b343ab0fbb860266688871c163",
+            "explicit_status_count": 130,
+            "status_counts": {
+              "conflict": 0,
+              "identity_missing": 0,
+              "no_event_observed": 2,
+              "partial": 0,
+              "provider_missing": 0,
+              "ready": 128
+            }
+          },
+          "evidence_cutoff": "2026-08-31",
+          "expected_symbol_count": 130,
+          "first_date": "1991-03-03",
+          "invalid_symbols": [],
+          "last_date": "2026-08-28",
+          "manifest_path": "sources/cn_events_2026_08_31/corporate_actions/component_manifest.json",
+          "manifest_sha256": "457e751ee55fe4141635574974c11be25870725c6e48758df8945a1540a0d5cc",
+          "market": "cn",
+          "missing_symbols": [],
+          "not_yet_applicable_symbols": [],
+          "pool_id": "cn_selected_equities_v3",
+          "professional_source_ready": null,
+          "providers": [
+            "AKSHARE_EASTMONEY_DIVIDEND"
+          ],
+          "quarantined_symbols": [],
+          "ready_symbol_count": 130,
+          "research_only": true,
+          "status": "ready",
+          "trade_ready": false
+        }
       }
     ],
     "research_only": true,
-    "status": "blocked",
+    "status": "ready",
     "trade_ready": false
   },
   {
@@ -307,8 +407,8 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "390d8c53d12a386a2304ea61c60e7859b897120a2aa8d025137b6a13c9adb25f",
-            "requested_cutoff": "2026-09-02",
+            "provider_identity_sha256": "94bc67da35067baf91ab174816829bfe50f9676626cba01b5d92eb0de24a51e6",
+            "requested_cutoff": "2026-09-03",
             "source_status": "selected_pool_price_refresh_ready"
           },
           "evidence_cutoff": "2026-08-04",
@@ -317,7 +417,7 @@
           "invalid_symbols": [],
           "last_date": "2026-08-04",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "f8dce0825dfbdee23dd66967a82b70a2677762d18734a016cde1d7c76e63d1ab",
+          "manifest_sha256": "d53f09c8409af1b6b818866be68303d462e965ad60e82355e7446aacd0846d3c",
           "market": "us",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
@@ -384,8 +484,8 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "390d8c53d12a386a2304ea61c60e7859b897120a2aa8d025137b6a13c9adb25f",
-            "requested_cutoff": "2026-09-02",
+            "provider_identity_sha256": "94bc67da35067baf91ab174816829bfe50f9676626cba01b5d92eb0de24a51e6",
+            "requested_cutoff": "2026-09-03",
             "source_status": "selected_pool_price_refresh_ready"
           },
           "evidence_cutoff": "2026-08-04",
@@ -394,7 +494,7 @@
           "invalid_symbols": [],
           "last_date": "2026-08-04",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "f8dce0825dfbdee23dd66967a82b70a2677762d18734a016cde1d7c76e63d1ab",
+          "manifest_sha256": "d53f09c8409af1b6b818866be68303d462e965ad60e82355e7446aacd0846d3c",
           "market": "us",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
@@ -449,8 +549,8 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "390d8c53d12a386a2304ea61c60e7859b897120a2aa8d025137b6a13c9adb25f",
-            "requested_cutoff": "2026-09-02",
+            "provider_identity_sha256": "94bc67da35067baf91ab174816829bfe50f9676626cba01b5d92eb0de24a51e6",
+            "requested_cutoff": "2026-09-03",
             "source_status": "selected_pool_price_refresh_ready"
           },
           "evidence_cutoff": "2026-08-04",
@@ -459,7 +559,7 @@
           "invalid_symbols": [],
           "last_date": "2026-08-04",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "f8dce0825dfbdee23dd66967a82b70a2677762d18734a016cde1d7c76e63d1ab",
+          "manifest_sha256": "d53f09c8409af1b6b818866be68303d462e965ad60e82355e7446aacd0846d3c",
           "market": "us",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],

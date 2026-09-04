@@ -1,23 +1,33 @@
 {
-  "built_at": "2026-09-04T01:17:30+00:00",
-  "bundle_id": "34cf04caed709f73213dd2659310608c290df9ef64dcc3dd7200d555ba390db6",
+  "built_at": "2026-09-04T09:37:17+00:00",
+  "bundle_id": "99860d579f3c0b7ea7970ddad171c1946f92e64e54e2ca2387b12b6b6eba42c7",
   "evidence_cutoff": "2026-09-03",
   "research_only": true,
   "schema_version": "1.1",
+  "source_receipts": [
+    {
+      "path": "sources/governed-source-receipt.json",
+      "sha256": "00f7b6126c54d13505f61c168ca0fb1d82d270977a64d2a5ffa84c5489e51bfe",
+      "source_ids": [
+        "cn_alpha158_2026_08_31",
+        "cn_events_2026_08_31"
+      ]
+    }
+  ],
   "summary": {
     "blocked_component_count": 0,
     "blocked_training_profiles": [
-      "cn_selected_alpha158_v1",
-      "cn_selected_price_plus_fundamentals_v1",
       "qqqi_qqq_tqqq_rotation_v1",
       "us_selected_alpha158_v1",
       "us_selected_price_plus_fundamentals_v1"
     ],
-    "component_count": 2,
-    "partial_component_count": 0,
-    "ready_component_count": 2,
+    "component_count": 5,
+    "partial_component_count": 2,
+    "ready_component_count": 3,
     "ready_training_profiles": [
+      "cn_selected_alpha158_v1",
       "cn_selected_price_only_v1",
+      "cn_selected_price_plus_fundamentals_v1",
       "us_selected_price_only_v1"
     ]
   },
