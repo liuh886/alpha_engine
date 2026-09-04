@@ -267,14 +267,12 @@ def build_system_health(
             if formal_cutoff is None or provider_cutoff is None
             else ("delayed" if formal_cutoff < provider_cutoff else "current")
         )
-        data_state = model_data_state
-        if (
-            data_state == "current"
-            and provider_cutoff is not None
-            and model_data_cutoff is not None
-            and model_data_cutoff < provider_cutoff
-        ):
-            data_state = "delayed"
+        # The shared Model Data Bundle is a research/training-plane readiness
+        # report.  It is not an active runtime dependency until a frozen model
+        # contract explicitly binds a training profile.  Treating its aggregate
+        # component state as a runtime stage would let an unrelated future
+        # training profile block every active strategy.
+        data_state = "not_applicable"
         factor_state = _freshness_state(operation.get("factor_freshness"))
         signal_state = _operation_state(operation)
         internal_state = _state_max(
@@ -296,7 +294,8 @@ def build_system_health(
                 "market_expected_cutoff": market_expected[strategy.market],
                 "provider_cutoff": provider_cutoff,
                 "formal_cutoff": formal_cutoff,
-                "model_data_cutoff": model_data_cutoff,
+                "model_data_cutoff": None,
+                "model_data_binding": "not_declared",
                 "factor_cutoff": factor_cutoff,
                 "last_signal_evaluation": signal_evaluation,
                 "last_signal_change": last_changes[model_id],
@@ -332,8 +331,27 @@ def build_system_health(
         },
         "model_data": {
             "state": model_data_state,
+            "scope": "research_training_profiles",
             "evidence_cutoff": model_data_cutoff,
             "bundle_id": model_data.get("bundle_id"),
+            "summary": {
+                "component_count": int(model_data_summary.get("component_count", 0)),
+                "ready_component_count": int(
+                    model_data_summary.get("ready_component_count", 0)
+                ),
+                "partial_component_count": int(
+                    model_data_summary.get("partial_component_count", 0)
+                ),
+                "blocked_component_count": int(
+                    model_data_summary.get("blocked_component_count", 0)
+                ),
+                "ready_training_profile_count": len(
+                    model_data_summary.get("ready_training_profiles", [])
+                ),
+                "blocked_training_profile_count": len(
+                    model_data_summary.get("blocked_training_profiles", [])
+                ),
+            },
         },
         "research_only": True,
         "trade_ready": False,
@@ -347,6 +365,14 @@ def validate_system_health(payload: Mapping[str, Any]) -> None:
         raise SystemHealthError("system health research boundary is invalid")
     if payload.get("state") not in STATES:
         raise SystemHealthError("system health state is invalid")
+    model_data = payload.get("model_data")
+    if (
+        not isinstance(model_data, Mapping)
+        or model_data.get("state") not in STATES
+        or model_data.get("scope") != "research_training_profiles"
+        or not isinstance(model_data.get("summary"), Mapping)
+    ):
+        raise SystemHealthError("system health model-data scope is invalid")
     markets = payload.get("markets")
     strategies = payload.get("strategies")
     if not isinstance(markets, list) or not markets:
@@ -362,6 +388,12 @@ def validate_system_health(payload: Mapping[str, Any]) -> None:
             raise SystemHealthError("strategy health stages are missing")
         if any(value not in STATES for value in stages.values()):
             raise SystemHealthError("strategy stage state is invalid")
+        if (
+            row.get("model_data_binding") != "not_declared"
+            or row.get("model_data_cutoff") is not None
+            or stages.get("model_data") != "not_applicable"
+        ):
+            raise SystemHealthError("strategy model-data binding is invalid")
 
 
 def write_system_health(path: Path, payload: Mapping[str, Any]) -> bool:

@@ -70,6 +70,32 @@ def test_system_health_matches_active_or_declared_transition_strategy_set() -> N
         assert row["formal_run_id"]
 
 
+def test_research_model_data_readiness_does_not_block_unbound_runtime_models() -> None:
+    payload = _health()
+    readiness = json.loads(MODEL_DATA.read_text(encoding="utf-8"))
+
+    assert payload["model_data"]["scope"] == "research_training_profiles"
+    assert payload["model_data"]["summary"]["component_count"] == readiness[
+        "summary"
+    ]["component_count"]
+    assert payload["model_data"]["summary"][
+        "blocked_training_profile_count"
+    ] == len(readiness["summary"]["blocked_training_profiles"])
+
+    expected_global_state = (
+        "current"
+        if readiness["summary"]["blocked_component_count"] == 0
+        and readiness["summary"]["partial_component_count"] == 0
+        else "blocked"
+    )
+    assert payload["model_data"]["state"] == expected_global_state
+    for row in payload["strategies"]:
+        assert row["model_data_binding"] == "not_declared"
+        assert row["model_data_cutoff"] is None
+        assert row["stages"]["model_data"] == "not_applicable"
+        assert row["state"] != "blocked"
+
+
 def test_provider_lag_is_delayed_not_formal_corruption(tmp_path: Path) -> None:
     freshness = json.loads(FORMAL_FRESHNESS.read_text(encoding="utf-8"))
     freshness["markets"]["us"] = "2026-01-02"
@@ -122,3 +148,10 @@ def test_system_health_fails_closed_on_partial_operations_set() -> None:
             model_data_readiness=MODEL_DATA,
             generated_at="2026-08-13T09:30:00Z",
         )
+
+
+def test_system_health_validation_rejects_runtime_model_data_scope_drift() -> None:
+    payload = _health()
+    payload["strategies"][0]["model_data_binding"] = "implicit"
+    with pytest.raises(SystemHealthError, match="model-data binding"):
+        validate_system_health(payload)

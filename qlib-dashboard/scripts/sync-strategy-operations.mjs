@@ -65,6 +65,7 @@ function redactHealthRecord(record) {
     provider_cutoff: record.provider_cutoff,
     formal_cutoff: record.formal_cutoff,
     model_data_cutoff: record.model_data_cutoff,
+    model_data_binding: record.model_data_binding,
     factor_cutoff: record.factor_cutoff,
     last_signal_evaluation: null,
     last_signal_change: null,
