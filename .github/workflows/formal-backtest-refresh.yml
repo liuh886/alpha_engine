@@ -806,6 +806,7 @@ jobs:
           test "$status" -eq 0
       - name: Build shared Model Data Bundle
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           US_CUTOFF: ${{ needs.plan.outputs.us_cutoff }}
           CN_CUTOFF: ${{ needs.plan.outputs.cn_cutoff }}
           EXPECTED_US_CUTOFF: ${{ needs.prepare.outputs.us_cutoff }}
@@ -818,9 +819,19 @@ jobs:
             "$CANDIDATE_MODEL_DATA_ROOT/components/us-selected-pool-prices.json"
           cp artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_publication_manifest.json \
             "$CANDIDATE_MODEL_DATA_ROOT/components/cn-selected-pool-prices.json"
+          uv run python scripts/data/fetch_governed_model_data.py \
+            --source cn_alpha158_2026_08_31 \
+            --source cn_events_2026_08_31 \
+            --output-root "$CANDIDATE_MODEL_DATA_ROOT/sources" \
+            > artifacts/formal-refresh/governed-model-data.log
+          cat artifacts/formal-refresh/governed-model-data.log
           uv run python scripts/data/build_model_data_bundle.py \
             --component "prices.us_selected_equities_v2:selected_pool_prices:${CANDIDATE_MODEL_DATA_ROOT}/components/us-selected-pool-prices.json:us" \
             --component "prices.cn_selected_equities_v3:selected_pool_prices:${CANDIDATE_MODEL_DATA_ROOT}/components/cn-selected-pool-prices.json:cn" \
+            --component "factors.qlib_alpha158.panel.cn.v1:factor_panel:${CANDIDATE_MODEL_DATA_ROOT}/sources/cn_alpha158_2026_08_31/alpha158/factor_panel_manifest.json:cn" \
+            --component "fundamentals.cn_selected_equities_v3:fundamental_coverage:${CANDIDATE_MODEL_DATA_ROOT}/sources/cn_events_2026_08_31/fundamentals/component_manifest.json:cn" \
+            --component "corporate_actions.cn_selected_equities_v3:corporate_action_coverage:${CANDIDATE_MODEL_DATA_ROOT}/sources/cn_events_2026_08_31/corporate_actions/component_manifest.json:cn" \
+            --source-receipt "$CANDIDATE_MODEL_DATA_ROOT/sources/governed-source-receipt.json" \
             --evidence-cutoff "$evidence_cutoff" \
             --output-root "$CANDIDATE_MODEL_DATA_ROOT"
       - name: Classify canonical publication delta

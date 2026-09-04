@@ -229,6 +229,7 @@ jobs:
             src/artifacts/us_x1_3_preview.py \
             src/dashboard/market_evidence.py \
             src/data/data_recipe.py \
+            src/data/governed_actions_artifact.py \
             src/data/model_data_bundle.py \
             src/data/selected_pool_price_publication.py \
             src/research/us_x1_3_current_target.py \
@@ -239,6 +240,7 @@ jobs:
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py \
             scripts/data/resolve_formal_provider_cutoff.py \
+            scripts/data/fetch_governed_model_data.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             scripts/build_us_x1_3_preview.py \
             scripts/build_cn_x1_2_prospective_ledger.py \
@@ -263,6 +265,7 @@ jobs:
             tests/selected_pool_price_fixtures.py \
             tests/test_formal_provider_cache.py \
             tests/test_market_evidence.py \
+            tests/test_governed_actions_artifact.py \
             tests/test_model_data_bundle.py \
             tests/test_refresh_selected_pool_prices_v2.py \
             tests/test_selected_pool_price_publication.py
@@ -272,9 +275,11 @@ jobs:
             src/artifacts/formal_provider_cache.py \
             src/dashboard/market_evidence.py \
             src/data/data_recipe.py \
+            src/data/governed_actions_artifact.py \
             src/data/model_data_bundle.py \
             src/data/selected_pool_price_publication.py \
             scripts/data/resolve_formal_provider_cutoff.py \
+            scripts/data/fetch_governed_model_data.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py
           uv run pytest \
@@ -296,6 +301,7 @@ jobs:
             tests/test_market_session_clock.py \
             tests/test_formal_provider_cache.py \
             tests/test_market_evidence.py \
+            tests/test_governed_actions_artifact.py \
             tests/test_model_data_bundle.py \
             tests/test_refresh_selected_pool_prices_v2.py \
             tests/test_selected_pool_price_publication.py \
@@ -336,6 +342,7 @@ jobs:
             scripts/ranker_provisional_mtm.py \
             scripts/govern_formal_provider_cache.py \
             scripts/data/refresh_selected_pool_prices.py \
+            scripts/data/fetch_governed_model_data.py \
             scripts/data/resolve_formal_provider_cutoff.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             scripts/refresh_ranker_formal.py \
@@ -371,6 +378,7 @@ jobs:
             tests/test_selected_pool_governance.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
+            tests/test_governed_actions_artifact.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_sync_formal_bundle_v2.py \
@@ -384,10 +392,12 @@ jobs:
             src/artifacts/formal_refresh.py \
             src/artifacts/formal_publication_delta.py \
             src/artifacts/formal_provider_cache.py \
+            src/data/governed_actions_artifact.py \
             src/data/selected_pool_price_publication.py \
             src/dashboard/market_evidence.py \
             scripts/govern_formal_provider_cache.py \
             scripts/build_market_evidence.py \
+            scripts/data/fetch_governed_model_data.py \
             scripts/data/resolve_formal_provider_cutoff.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py
@@ -417,6 +427,7 @@ jobs:
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
+            tests/test_governed_actions_artifact.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_us_x1_3_preview_publication.py \

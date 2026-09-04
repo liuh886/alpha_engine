@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from scripts.data.build_model_data_bundle import _component_spec
 from src.data.model_data_bundle import (
     ComponentSpec,
     ModelDataBundleError,
@@ -538,3 +539,104 @@ def test_bundle_keeps_embedded_component_paths_portable(tmp_path: Path) -> None:
         "model-data-readiness.json",
         "training-profiles.json",
     ]
+
+
+def test_component_cli_spec_accepts_windows_absolute_path() -> None:
+    spec = _component_spec(
+        "factors.qlib_alpha158.panel.cn.v1:factor_panel:"
+        "C:/artifacts/alpha158/factor_panel_manifest.json:cn"
+    )
+
+    assert spec.component_id == "factors.qlib_alpha158.panel.cn.v1"
+    assert spec.component_kind == "factor_panel"
+    assert spec.manifest_path == Path(
+        "C:/artifacts/alpha158/factor_panel_manifest.json"
+    )
+    assert spec.market == "cn"
+
+
+def test_component_cli_spec_keeps_colon_path_without_known_market_suffix() -> None:
+    spec = _component_spec(
+        "fixture:factor_panel:C:/artifacts/global/factor_panel_manifest.json"
+    )
+
+    assert spec.manifest_path == Path(
+        "C:/artifacts/global/factor_panel_manifest.json"
+    )
+    assert spec.market is None
+
+
+def test_bundle_binds_portable_governed_source_receipt(tmp_path: Path) -> None:
+    output = tmp_path / "output"
+    prices = _price_manifest(
+        output / "components",
+        market="cn",
+        pool_id="cn_selected_equities_v3",
+        candidate_count=130,
+    )
+    receipt = _write_json(
+        output / "sources/governed-source-receipt.json",
+        {
+            "schema_version": "1.0",
+            "verification_policy": "exact_run_artifact_archive_and_component_hashes",
+            "sources": [
+                {
+                    "source_id": "cn_events_2026_08_31",
+                    "workflow_run_id": 33528559207,
+                    "artifact_id": 9808822820,
+                    "artifact_digest": "sha256:" + "1" * 64,
+                    "head_sha": "2" * 40,
+                    "research_only": True,
+                    "trade_ready": False,
+                }
+            ],
+            "research_only": True,
+            "trade_ready": False,
+        },
+    )
+
+    manifest = build_model_data_bundle(
+        root=Path.cwd(),
+        contract_path=CONTRACT,
+        component_specs=[
+            ComponentSpec(
+                "prices.cn_selected_equities_v3",
+                "selected_pool_prices",
+                prices,
+                "cn",
+            )
+        ],
+        output_root=output,
+        evidence_cutoff="2026-06-18",
+        source_receipts=[receipt],
+    )
+
+    record = manifest["source_receipts"][0]
+    assert record["path"] == "sources/governed-source-receipt.json"
+    assert record["source_ids"] == ["cn_events_2026_08_31"]
+    readiness = json.loads(
+        (output / "model-data-readiness.json").read_text(encoding="utf-8")
+    )
+    assert readiness["source_receipts"] == manifest["source_receipts"]
+    verify_model_data_bundle(output)
+
+    receipt.write_text("{}\n", encoding="utf-8")
+    with pytest.raises(ModelDataBundleError, match="source receipt hash mismatch"):
+        verify_model_data_bundle(output)
+
+
+def test_bundle_rejects_unbounded_source_receipt(tmp_path: Path) -> None:
+    receipt = _write_json(
+        tmp_path / "receipt.json",
+        {"sources": [], "research_only": True, "trade_ready": False},
+    )
+
+    with pytest.raises(ModelDataBundleError, match="requires sources"):
+        build_model_data_bundle(
+            root=Path.cwd(),
+            contract_path=CONTRACT,
+            component_specs=[],
+            output_root=tmp_path / "output",
+            evidence_cutoff="2026-06-18",
+            source_receipts=[receipt],
+        )

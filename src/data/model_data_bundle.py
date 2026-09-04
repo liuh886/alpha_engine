@@ -120,6 +120,46 @@ def _load_mapping(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _source_receipt_record(path: Path, output: Path) -> dict[str, Any]:
+    payload = _load_mapping(path)
+    if payload.get("research_only") is not True or payload.get("trade_ready") is not False:
+        raise ModelDataBundleError(f"source receipt research boundary changed: {path}")
+    sources = payload.get("sources")
+    if not isinstance(sources, list) or not sources:
+        raise ModelDataBundleError(f"source receipt requires sources: {path}")
+    source_ids: list[str] = []
+    for source in sources:
+        if not isinstance(source, dict):
+            raise ModelDataBundleError(f"invalid source receipt entry: {path}")
+        source_id = str(source.get("source_id", "")).strip()
+        artifact_digest = str(source.get("artifact_digest", "")).strip().lower()
+        head_sha = str(source.get("head_sha", "")).strip().lower()
+        if (
+            not source_id
+            or int(source.get("workflow_run_id", 0)) <= 0
+            or int(source.get("artifact_id", 0)) <= 0
+            or not artifact_digest.startswith("sha256:")
+            or not _SHA256.fullmatch(artifact_digest[7:])
+            or not re.fullmatch(r"[0-9a-f]{40}", head_sha)
+            or source.get("research_only") is not True
+            or source.get("trade_ready") is not False
+        ):
+            raise ModelDataBundleError(f"invalid governed source receipt: {path}")
+        source_ids.append(source_id)
+    if len(source_ids) != len(set(source_ids)):
+        raise ModelDataBundleError(f"duplicate governed source receipt IDs: {path}")
+    resolved = path.resolve()
+    try:
+        portable = resolved.relative_to(output).as_posix()
+    except ValueError:
+        portable = str(resolved)
+    return {
+        "path": portable,
+        "sha256": _sha256(resolved),
+        "source_ids": sorted(source_ids),
+    }
+
+
 def _clean_symbols(values: Iterable[Any]) -> tuple[str, ...]:
     return tuple(sorted({str(value).strip().upper() for value in values if str(value).strip()}))
 
@@ -589,6 +629,7 @@ def build_model_data_bundle(
     output_root: Path,
     evidence_cutoff: str,
     frontend_data_dir: Path | None = None,
+    source_receipts: Sequence[Path] = (),
 ) -> dict[str, Any]:
     normalized_root = root.resolve()
     output = output_root.resolve()
@@ -615,6 +656,12 @@ def build_model_data_bundle(
     if len(component_ids) != len(set(component_ids)):
         raise ModelDataBundleError("component IDs must be unique")
     components = {component.component_id: component for component in components_list}
+    receipt_records = [
+        _source_receipt_record(path.resolve(), output) for path in source_receipts
+    ]
+    receipt_paths = [record["path"] for record in receipt_records]
+    if len(receipt_paths) != len(set(receipt_paths)):
+        raise ModelDataBundleError("source receipt paths must be unique")
 
     profiles_payload = contract.get("profiles", {})
     if not isinstance(profiles_payload, dict):
@@ -642,9 +689,16 @@ def build_model_data_bundle(
         f"{component.component_id}:{component.manifest_sha256}"
         for component in sorted(components_list, key=lambda item: item.component_id)
     )
+    receipt_seed = "\n".join(
+        f"{record['path']}:{record['sha256']}" for record in sorted(
+            receipt_records, key=lambda item: str(item["path"])
+        )
+    )
     profile_seed = json.dumps(profile_results, sort_keys=True, separators=(",", ":"))
     bundle_id = hashlib.sha256(
-        f"{contract_hash}\n{cutoff}\n{component_seed}\n{profile_seed}".encode("utf-8")
+        f"{contract_hash}\n{cutoff}\n{component_seed}\n{receipt_seed}\n{profile_seed}".encode(
+            "utf-8"
+        )
     ).hexdigest()
 
     output.mkdir(parents=True, exist_ok=True)
@@ -677,6 +731,7 @@ def build_model_data_bundle(
         "trade_ready": False,
         "summary": summary,
         "components": component_payload,
+        "source_receipts": receipt_records,
         "training_profiles": profile_results,
     }
 
@@ -695,6 +750,7 @@ def build_model_data_bundle(
             "research_only": True,
             "trade_ready": False,
             "summary": summary,
+            "source_receipts": receipt_records,
         },
     )
     manifest["frontend_indexes"] = {
@@ -757,4 +813,13 @@ def verify_model_data_bundle(output_root: Path) -> list[str]:
             raise ModelDataBundleError(
                 f"source component hash mismatch: {component.get('component_id')}"
             )
+    for receipt in manifest.get("source_receipts", []):
+        if not isinstance(receipt, dict):
+            raise ModelDataBundleError("invalid source receipt record")
+        path = Path(str(receipt.get("path", "")))
+        if not path.is_absolute():
+            path = root / path
+        digest = str(receipt.get("sha256", "")).lower()
+        if not path.is_file() or not _SHA256.fullmatch(digest) or _sha256(path) != digest:
+            raise ModelDataBundleError(f"source receipt hash mismatch: {path}")
     return sorted(verified)
