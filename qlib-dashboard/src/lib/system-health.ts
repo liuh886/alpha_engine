@@ -21,6 +21,7 @@ export interface SystemHealthStrategy {
   provider_cutoff: string | null;
   formal_cutoff: string | null;
   model_data_cutoff: string | null;
+  model_data_binding: 'not_declared';
   factor_cutoff: string | null;
   last_signal_evaluation: string | null;
   last_signal_change: string | null;
@@ -46,8 +47,17 @@ export interface SystemHealthSnapshot {
   };
   model_data: {
     state: SystemHealthState;
+    scope: 'research_training_profiles';
     evidence_cutoff: string | null;
     bundle_id: string | null;
+    summary: {
+      component_count: number;
+      ready_component_count: number;
+      partial_component_count: number;
+      blocked_component_count: number;
+      ready_training_profile_count: number;
+      blocked_training_profile_count: number;
+    };
   };
   research_only: true;
   trade_ready: false;
@@ -104,6 +114,9 @@ export function parseSystemHealth(value: unknown): SystemHealthSnapshot {
   });
   const strategies = value.strategies.map((item, index) => {
     if (!isObject(item) || !isObject(item.stages)) throw new Error(`System health strategy ${index} is invalid.`);
+    if (item.model_data_binding !== undefined && item.model_data_binding !== 'not_declared') {
+      throw new Error(`System health model-data binding ${index} is invalid.`);
+    }
     const stages = item.stages;
     return {
       strategy_id: String(item.strategy_id ?? ''),
@@ -114,6 +127,7 @@ export function parseSystemHealth(value: unknown): SystemHealthSnapshot {
       provider_cutoff: nullableString(item.provider_cutoff),
       formal_cutoff: nullableString(item.formal_cutoff),
       model_data_cutoff: nullableString(item.model_data_cutoff),
+      model_data_binding: 'not_declared' as const,
       factor_cutoff: nullableString(item.factor_cutoff),
       last_signal_evaluation: nullableString(item.last_signal_evaluation),
       last_signal_change: nullableString(item.last_signal_change),
@@ -132,6 +146,9 @@ export function parseSystemHealth(value: unknown): SystemHealthSnapshot {
     };
   });
   if (markets.length === 0 || strategies.length === 0) throw new Error('System health records are empty.');
+  if (value.model_data.scope !== undefined && value.model_data.scope !== 'research_training_profiles') {
+    throw new Error('System health model-data scope is invalid.');
+  }
   return {
     schema_version: '1.0.0',
     generated_at: String(value.generated_at ?? ''),
@@ -147,8 +164,17 @@ export function parseSystemHealth(value: unknown): SystemHealthSnapshot {
     },
     model_data: {
       state: state(value.model_data.state, 'model_data'),
+      scope: 'research_training_profiles',
       evidence_cutoff: nullableString(value.model_data.evidence_cutoff),
       bundle_id: nullableString(value.model_data.bundle_id),
+      summary: {
+        component_count: Number(isObject(value.model_data.summary) ? value.model_data.summary.component_count ?? 0 : 0),
+        ready_component_count: Number(isObject(value.model_data.summary) ? value.model_data.summary.ready_component_count ?? 0 : 0),
+        partial_component_count: Number(isObject(value.model_data.summary) ? value.model_data.summary.partial_component_count ?? 0 : 0),
+        blocked_component_count: Number(isObject(value.model_data.summary) ? value.model_data.summary.blocked_component_count ?? 0 : 0),
+        ready_training_profile_count: Number(isObject(value.model_data.summary) ? value.model_data.summary.ready_training_profile_count ?? 0 : 0),
+        blocked_training_profile_count: Number(isObject(value.model_data.summary) ? value.model_data.summary.blocked_training_profile_count ?? 0 : 0),
+      },
     },
     research_only: true,
     trade_ready: false,
@@ -184,7 +210,7 @@ export async function fetchSystemHealth(): Promise<LiveSystemHealth> {
     const status = health.state;
     const delayed = health.markets.filter((row) => row.state === 'delayed').map((row) => row.market.toUpperCase());
     const message = status === 'current'
-      ? 'Provider, model-data, factor, formal, signal and delivery stages are current.'
+      ? 'All applicable runtime stages are current; research training-data readiness is reported separately.'
       : status === 'delayed'
         ? `Pipeline is internally consistent but delayed${delayed.length ? ` in ${delayed.join(' / ')}` : ''}.`
         : status === 'blocked'

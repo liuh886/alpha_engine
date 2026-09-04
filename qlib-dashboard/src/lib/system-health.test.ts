@@ -24,7 +24,8 @@ const sample = {
     market_expected_cutoff: '2026-08-14',
     provider_cutoff: '2026-08-14',
     formal_cutoff: '2026-08-12',
-    model_data_cutoff: '2026-08-12',
+    model_data_cutoff: null,
+    model_data_binding: 'not_declared',
     factor_cutoff: '2026-08-13',
     last_signal_evaluation: '2026-08-13',
     last_signal_change: '2026-08-13',
@@ -33,7 +34,7 @@ const sample = {
     stages: {
       provider: 'current',
       formal: 'delayed',
-      model_data: 'delayed',
+      model_data: 'not_applicable',
       factor: 'current',
       signal: 'current',
       delivery: 'current',
@@ -49,9 +50,18 @@ const sample = {
     receipt: 'deployment.json',
   },
   model_data: {
-    state: 'current',
+    state: 'blocked',
+    scope: 'research_training_profiles',
     evidence_cutoff: '2026-08-12',
     bundle_id: 'c'.repeat(64),
+    summary: {
+      component_count: 5,
+      ready_component_count: 3,
+      partial_component_count: 2,
+      blocked_component_count: 0,
+      ready_training_profile_count: 4,
+      blocked_training_profile_count: 3,
+    },
   },
   research_only: true,
   trade_ready: false,
@@ -67,6 +77,9 @@ describe('system health contract', () => {
     expect(strategy.last_signal_evaluation).toBe('2026-08-13');
     expect(strategy.delivery_state).toBe('current');
     expect(strategy.delivery_status).toBe('sent');
+    expect(strategy.stages.model_data).toBe('not_applicable');
+    expect(parsed.model_data.state).toBe('blocked');
+    expect(parsed.model_data.summary.blocked_training_profile_count).toBe(3);
   });
 
   it('fails closed on unsupported delivery states', () => {
@@ -74,5 +87,12 @@ describe('system health contract', () => {
       ...sample,
       strategies: [{ ...sample.strategies[0], delivery_state: 'maybe' }],
     })).toThrow(/Invalid system-health state/);
+  });
+
+  it('fails closed when research readiness is presented as another scope', () => {
+    expect(() => parseSystemHealth({
+      ...sample,
+      model_data: { ...sample.model_data, scope: 'active_runtime' },
+    })).toThrow(/model-data scope/);
   });
 });

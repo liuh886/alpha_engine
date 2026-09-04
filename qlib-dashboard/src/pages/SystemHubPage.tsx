@@ -46,6 +46,22 @@ export function SystemHubPage() {
           </div>
         </div>
 
+        {health?.health?.model_data ? (
+          <div className="mt-4 rounded-xl border bg-muted/20 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold">Research training data</p>
+              <p className={`text-[10px] font-mono ${stateTone(health.health.model_data.state)}`}>{health.health.model_data.state}</p>
+            </div>
+            <p className="mt-1 text-[10px] font-mono text-muted-foreground">
+              components {health.health.model_data.summary.ready_component_count}/{health.health.model_data.summary.component_count} ready
+              {' · '}{health.health.model_data.summary.partial_component_count} partial
+              {' · '}{health.health.model_data.summary.blocked_training_profile_count} blocked profiles
+              {' · '}through {health.health.model_data.evidence_cutoff ?? '—'}
+            </p>
+            <p className="mt-1 text-[10px] text-muted-foreground">Reported separately from active runtime health until a frozen model contract explicitly binds a training profile.</p>
+          </div>
+        ) : null}
+
         {health?.health?.markets.length ? (
           <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-2">
             {health.health.markets.map((market) => (
