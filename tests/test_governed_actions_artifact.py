@@ -81,8 +81,11 @@ def test_checked_in_registry_freezes_exact_current_cn_sources() -> None:
         "cn_alpha158",
         "cn_events",
     }
-    assert registry.sources["cn_alpha158"].artifact_id == 9808180730
-    assert registry.sources["cn_events"].artifact_id == 9808822820
+    assert registry.sources["cn_alpha158"].artifact_id == 9961938297
+    assert registry.sources["cn_events"].artifact_id == 9962408566
+    assert {source.evidence_cutoff for source in registry.sources.values()} == {
+        "2026-09-04"
+    }
 
 
 def test_formal_refresh_source_roles_and_manifest_paths_match_registry() -> None:
