@@ -1,0 +1,39 @@
+{
+  "component_id": "corporate_actions.cn_selected_equities_v3",
+  "component_kind": "corporate_action_coverage",
+  "coverage_ratio": 1.0,
+  "details": {
+    "coverage_byte_size": 72440,
+    "coverage_path": "corporate_actions/coverage.json",
+    "coverage_sha256": "297290b8f960f07e460a8d2f3316a060c94ee332b66d2abea82eb5a9d202f564",
+    "events_byte_size": 2741195,
+    "events_path": "corporate_actions/events.jsonl",
+    "events_sha256": "2853a7ef2e644ed2a4a9f0cc6238735045ef60b81e062235f1bdb0393b70a083",
+    "explicit_status_count": 130,
+    "status_counts": {
+      "conflict": 0,
+      "identity_missing": 0,
+      "no_event_observed": 2,
+      "partial": 0,
+      "provider_missing": 0,
+      "ready": 128
+    }
+  },
+  "evidence_cutoff": "2026-09-04",
+  "expected_symbol_count": 130,
+  "first_date": "1991-03-03",
+  "invalid_symbols": [],
+  "last_date": "2026-09-03",
+  "market": "cn",
+  "missing_symbols": [],
+  "pool_id": "cn_selected_equities_v3",
+  "providers": [
+    "akshare_eastmoney_dividend"
+  ],
+  "quarantined_symbols": [],
+  "ready_symbol_count": 130,
+  "research_only": true,
+  "schema_version": "1.0",
+  "status": "ready",
+  "trade_ready": false
+}

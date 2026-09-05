@@ -1,18 +1,18 @@
 {
-  "built_at": "2026-09-04T18:40:16+00:00",
-  "bundle_id": "88e522a75e148d81ad61f5f005ae29422d5b8bc8d5ad04fc2c947bd17701714b",
+  "built_at": "2026-09-05T04:05:50+00:00",
+  "bundle_id": "8d97072b21912231de84fbf01d72b11d701fb2be3a65e2f406416a7df50c00d9",
   "components": [
     {
       "component_id": "corporate_actions.cn_selected_equities_v3",
       "component_kind": "corporate_action_coverage",
       "coverage_ratio": 1.0,
       "details": {
-        "coverage_byte_size": 72438,
+        "coverage_byte_size": 72440,
         "coverage_path": "corporate_actions/coverage.json",
-        "coverage_sha256": "7378457001e8b9be9948808d9e0db26e6389c94950d8ecac512c8cbab76f7f5e",
-        "events_byte_size": 2738253,
+        "coverage_sha256": "297290b8f960f07e460a8d2f3316a060c94ee332b66d2abea82eb5a9d202f564",
+        "events_byte_size": 2741195,
         "events_path": "corporate_actions/events.jsonl",
-        "events_sha256": "491051104fe17a729925326ab72ba565c1fb91b343ab0fbb860266688871c163",
+        "events_sha256": "2853a7ef2e644ed2a4a9f0cc6238735045ef60b81e062235f1bdb0393b70a083",
         "explicit_status_count": 130,
         "status_counts": {
           "conflict": 0,
@@ -23,13 +23,13 @@
           "ready": 128
         }
       },
-      "evidence_cutoff": "2026-08-31",
+      "evidence_cutoff": "2026-09-04",
       "expected_symbol_count": 130,
       "first_date": "1991-03-03",
       "invalid_symbols": [],
-      "last_date": "2026-08-28",
-      "manifest_path": "sources/cn_events_2026_08_31/corporate_actions/component_manifest.json",
-      "manifest_sha256": "457e751ee55fe4141635574974c11be25870725c6e48758df8945a1540a0d5cc",
+      "last_date": "2026-09-03",
+      "manifest_path": "sources/cn_events/corporate_actions/component_manifest.json",
+      "manifest_sha256": "b550b8574c687bfda5f7e1712e61da94cd84fdf1455dd5292a9e46b8f1b145a5",
       "market": "cn",
       "missing_symbols": [],
       "not_yet_applicable_symbols": [],
@@ -49,13 +49,13 @@
       "component_kind": "factor_panel",
       "coverage_ratio": 0.9923076923076923,
       "details": {},
-      "evidence_cutoff": "2026-08-31",
+      "evidence_cutoff": "2026-09-04",
       "expected_symbol_count": 130,
       "first_date": "2021-01-01",
       "invalid_symbols": [],
-      "last_date": "2026-08-31",
-      "manifest_path": "sources/cn_alpha158_2026_08_31/alpha158/factor_panel_manifest.json",
-      "manifest_sha256": "782008f2719033d12398edd3c8117b7b579ef7eb252bc6c14277f19a5dbbf0ed",
+      "last_date": "2026-09-04",
+      "manifest_path": "sources/cn_alpha158/alpha158/factor_panel_manifest.json",
+      "manifest_sha256": "8a29ce0965b60ddf4d05f145fcc6961a846e6b15692511ad0445b9788fbf22a0",
       "market": "cn",
       "missing_symbols": [],
       "not_yet_applicable_symbols": [
@@ -79,10 +79,10 @@
       "details": {
         "coverage_byte_size": 85839,
         "coverage_path": "fundamentals/coverage.json",
-        "coverage_sha256": "afa481b068430b2528f65d53de1f9196659c4ba6bc258b493ef29cfd93ff8c9c",
-        "events_byte_size": 17544273,
+        "coverage_sha256": "d51ad70fd9bc3be965a225a66bbb9bb21860aace207e49fab1ebab9d88f1a6ff",
+        "events_byte_size": 17586623,
         "events_path": "fundamentals/events.jsonl",
-        "events_sha256": "166c64e130e46df6e5c86b952bd28e6a308a569b793b7f369ed8ea7f9e8877c7",
+        "events_sha256": "6517c67504ff00897682ab9555249d8b33642bfee6f1a382f507eb655f4a7238",
         "explicit_status_count": 130,
         "status_counts": {
           "conflict": 0,
@@ -93,13 +93,13 @@
           "ready": 129
         }
       },
-      "evidence_cutoff": "2026-08-31",
+      "evidence_cutoff": "2026-09-04",
       "expected_symbol_count": 130,
       "first_date": "2021-02-03",
       "invalid_symbols": [],
-      "last_date": "2026-08-30",
-      "manifest_path": "sources/cn_events_2026_08_31/fundamentals/component_manifest.json",
-      "manifest_sha256": "9d168069011cd27cb322f7ef33bf869b4095a4d9aa768cf2624611f9c9f712b6",
+      "last_date": "2026-09-01",
+      "manifest_path": "sources/cn_events/fundamentals/component_manifest.json",
+      "manifest_sha256": "059c03b7fd6b46d3ea4797fa69b669d5f02094d7f7d1e9376b73d9f3cd11aa36",
       "market": "cn",
       "missing_symbols": [
         "301666"
@@ -162,8 +162,8 @@
         "candidate_observation_start": "2025-06-05",
         "promotion_blocker": null,
         "promotion_eligible": true,
-        "provider_identity_sha256": "94bc67da35067baf91ab174816829bfe50f9676626cba01b5d92eb0de24a51e6",
-        "requested_cutoff": "2026-09-03",
+        "provider_identity_sha256": "e4647de6b9ba542474b28a5a89854dd3ed3c105edbaed44b7ecd454e477b0f20",
+        "requested_cutoff": "2026-09-04",
         "source_status": "selected_pool_price_refresh_ready"
       },
       "evidence_cutoff": "2026-08-04",
@@ -172,7 +172,7 @@
       "invalid_symbols": [],
       "last_date": "2026-08-04",
       "manifest_path": "components/us-selected-pool-prices.json",
-      "manifest_sha256": "d53f09c8409af1b6b818866be68303d462e965ad60e82355e7446aacd0846d3c",
+      "manifest_sha256": "52012c9e84dab82d4df0f87a1fd06f1eec8a249dfeb059a2146002dc78c88c60",
       "market": "us",
       "missing_symbols": [],
       "not_yet_applicable_symbols": [],
@@ -195,15 +195,15 @@
   "frontend_indexes": {
     "data_components": {
       "path": "data-components.json",
-      "sha256": "ea518ffcce159aa97f44931b2f098d522a738aadf5dfa314b9b6378d8d56a3df"
+      "sha256": "1299f7e7b2ba54aec42ffc8912cab8522ab205c34f5c420070109111f0dd6bb5"
     },
     "model_data_readiness": {
       "path": "model-data-readiness.json",
-      "sha256": "2b9a056b1ceab1d07b8ab9407d7b894764d8e341de8979776349d26c6f451afd"
+      "sha256": "e0f35856f984598185e3386d02ab8d253e4099675db4e4e004933a35ea26810d"
     },
     "training_profiles": {
       "path": "training-profiles.json",
-      "sha256": "5c6d2c2df14723baee6cc3250e10c1e9ffb38b0bdfbed19f1e790c41c8d9a141"
+      "sha256": "0042020eadf39606a7bec58b87aeef99ad33c513327d22bb4c9ee080e25b50f0"
     }
   },
   "research_only": true,
@@ -211,10 +211,10 @@
   "source_receipts": [
     {
       "path": "sources/governed-source-receipt.json",
-      "sha256": "00f7b6126c54d13505f61c168ca0fb1d82d270977a64d2a5ffa84c5489e51bfe",
+      "sha256": "c9c3cd81f757d9081d6e3c182de1371756442f08315a2d396b9fa2d9f236a0a2",
       "source_ids": [
-        "cn_alpha158_2026_08_31",
-        "cn_events_2026_08_31"
+        "cn_alpha158",
+        "cn_events"
       ]
     }
   ],
@@ -312,13 +312,13 @@
             "component_kind": "factor_panel",
             "coverage_ratio": 0.9923076923076923,
             "details": {},
-            "evidence_cutoff": "2026-08-31",
+            "evidence_cutoff": "2026-09-04",
             "expected_symbol_count": 130,
             "first_date": "2021-01-01",
             "invalid_symbols": [],
-            "last_date": "2026-08-31",
-            "manifest_path": "sources/cn_alpha158_2026_08_31/alpha158/factor_panel_manifest.json",
-            "manifest_sha256": "782008f2719033d12398edd3c8117b7b579ef7eb252bc6c14277f19a5dbbf0ed",
+            "last_date": "2026-09-04",
+            "manifest_path": "sources/cn_alpha158/alpha158/factor_panel_manifest.json",
+            "manifest_sha256": "8a29ce0965b60ddf4d05f145fcc6961a846e6b15692511ad0445b9788fbf22a0",
             "market": "cn",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [
@@ -481,10 +481,10 @@
             "details": {
               "coverage_byte_size": 85839,
               "coverage_path": "fundamentals/coverage.json",
-              "coverage_sha256": "afa481b068430b2528f65d53de1f9196659c4ba6bc258b493ef29cfd93ff8c9c",
-              "events_byte_size": 17544273,
+              "coverage_sha256": "d51ad70fd9bc3be965a225a66bbb9bb21860aace207e49fab1ebab9d88f1a6ff",
+              "events_byte_size": 17586623,
               "events_path": "fundamentals/events.jsonl",
-              "events_sha256": "166c64e130e46df6e5c86b952bd28e6a308a569b793b7f369ed8ea7f9e8877c7",
+              "events_sha256": "6517c67504ff00897682ab9555249d8b33642bfee6f1a382f507eb655f4a7238",
               "explicit_status_count": 130,
               "status_counts": {
                 "conflict": 0,
@@ -495,13 +495,13 @@
                 "ready": 129
               }
             },
-            "evidence_cutoff": "2026-08-31",
+            "evidence_cutoff": "2026-09-04",
             "expected_symbol_count": 130,
             "first_date": "2021-02-03",
             "invalid_symbols": [],
-            "last_date": "2026-08-30",
-            "manifest_path": "sources/cn_events_2026_08_31/fundamentals/component_manifest.json",
-            "manifest_sha256": "9d168069011cd27cb322f7ef33bf869b4095a4d9aa768cf2624611f9c9f712b6",
+            "last_date": "2026-09-01",
+            "manifest_path": "sources/cn_events/fundamentals/component_manifest.json",
+            "manifest_sha256": "059c03b7fd6b46d3ea4797fa69b669d5f02094d7f7d1e9376b73d9f3cd11aa36",
             "market": "cn",
             "missing_symbols": [
               "301666"
@@ -536,12 +536,12 @@
             "component_kind": "corporate_action_coverage",
             "coverage_ratio": 1.0,
             "details": {
-              "coverage_byte_size": 72438,
+              "coverage_byte_size": 72440,
               "coverage_path": "corporate_actions/coverage.json",
-              "coverage_sha256": "7378457001e8b9be9948808d9e0db26e6389c94950d8ecac512c8cbab76f7f5e",
-              "events_byte_size": 2738253,
+              "coverage_sha256": "297290b8f960f07e460a8d2f3316a060c94ee332b66d2abea82eb5a9d202f564",
+              "events_byte_size": 2741195,
               "events_path": "corporate_actions/events.jsonl",
-              "events_sha256": "491051104fe17a729925326ab72ba565c1fb91b343ab0fbb860266688871c163",
+              "events_sha256": "2853a7ef2e644ed2a4a9f0cc6238735045ef60b81e062235f1bdb0393b70a083",
               "explicit_status_count": 130,
               "status_counts": {
                 "conflict": 0,
@@ -552,13 +552,13 @@
                 "ready": 128
               }
             },
-            "evidence_cutoff": "2026-08-31",
+            "evidence_cutoff": "2026-09-04",
             "expected_symbol_count": 130,
             "first_date": "1991-03-03",
             "invalid_symbols": [],
-            "last_date": "2026-08-28",
-            "manifest_path": "sources/cn_events_2026_08_31/corporate_actions/component_manifest.json",
-            "manifest_sha256": "457e751ee55fe4141635574974c11be25870725c6e48758df8945a1540a0d5cc",
+            "last_date": "2026-09-03",
+            "manifest_path": "sources/cn_events/corporate_actions/component_manifest.json",
+            "manifest_sha256": "b550b8574c687bfda5f7e1712e61da94cd84fdf1455dd5292a9e46b8f1b145a5",
             "market": "cn",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -645,8 +645,8 @@
               "candidate_observation_start": "2025-06-05",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "94bc67da35067baf91ab174816829bfe50f9676626cba01b5d92eb0de24a51e6",
-              "requested_cutoff": "2026-09-03",
+              "provider_identity_sha256": "e4647de6b9ba542474b28a5a89854dd3ed3c105edbaed44b7ecd454e477b0f20",
+              "requested_cutoff": "2026-09-04",
               "source_status": "selected_pool_price_refresh_ready"
             },
             "evidence_cutoff": "2026-08-04",
@@ -655,7 +655,7 @@
             "invalid_symbols": [],
             "last_date": "2026-08-04",
             "manifest_path": "components/us-selected-pool-prices.json",
-            "manifest_sha256": "d53f09c8409af1b6b818866be68303d462e965ad60e82355e7446aacd0846d3c",
+            "manifest_sha256": "52012c9e84dab82d4df0f87a1fd06f1eec8a249dfeb059a2146002dc78c88c60",
             "market": "us",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -722,8 +722,8 @@
               "candidate_observation_start": "2025-06-05",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "94bc67da35067baf91ab174816829bfe50f9676626cba01b5d92eb0de24a51e6",
-              "requested_cutoff": "2026-09-03",
+              "provider_identity_sha256": "e4647de6b9ba542474b28a5a89854dd3ed3c105edbaed44b7ecd454e477b0f20",
+              "requested_cutoff": "2026-09-04",
               "source_status": "selected_pool_price_refresh_ready"
             },
             "evidence_cutoff": "2026-08-04",
@@ -732,7 +732,7 @@
             "invalid_symbols": [],
             "last_date": "2026-08-04",
             "manifest_path": "components/us-selected-pool-prices.json",
-            "manifest_sha256": "d53f09c8409af1b6b818866be68303d462e965ad60e82355e7446aacd0846d3c",
+            "manifest_sha256": "52012c9e84dab82d4df0f87a1fd06f1eec8a249dfeb059a2146002dc78c88c60",
             "market": "us",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -787,8 +787,8 @@
               "candidate_observation_start": "2025-06-05",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "94bc67da35067baf91ab174816829bfe50f9676626cba01b5d92eb0de24a51e6",
-              "requested_cutoff": "2026-09-03",
+              "provider_identity_sha256": "e4647de6b9ba542474b28a5a89854dd3ed3c105edbaed44b7ecd454e477b0f20",
+              "requested_cutoff": "2026-09-04",
               "source_status": "selected_pool_price_refresh_ready"
             },
             "evidence_cutoff": "2026-08-04",
@@ -797,7 +797,7 @@
             "invalid_symbols": [],
             "last_date": "2026-08-04",
             "manifest_path": "components/us-selected-pool-prices.json",
-            "manifest_sha256": "d53f09c8409af1b6b818866be68303d462e965ad60e82355e7446aacd0846d3c",
+            "manifest_sha256": "52012c9e84dab82d4df0f87a1fd06f1eec8a249dfeb059a2146002dc78c88c60",
             "market": "us",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],

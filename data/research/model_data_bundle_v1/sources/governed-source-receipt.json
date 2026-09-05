@@ -4,60 +4,60 @@
   "schema_version": "1.0",
   "sources": [
     {
-      "artifact_digest": "sha256:8d06e5f03ac8ca927098503d866ff4ed476ed517882c1d1145e7dc1bb2ed9516",
-      "artifact_id": 9808180730,
-      "artifact_name": "alpha158-canonical-vwap-cn-33525712197",
-      "artifact_size_bytes": 124468630,
+      "artifact_digest": "sha256:d9f01b7eb64b147d6549f497821d793d2d7997ee494a523d4685e49730b47541",
+      "artifact_id": 9961938297,
+      "artifact_name": "alpha158-canonical-vwap-cn-33940840760",
+      "artifact_size_bytes": 124842752,
       "component_manifests": [
         {
           "path": "alpha158/factor_panel_manifest.json",
-          "sha256": "782008f2719033d12398edd3c8117b7b579ef7eb252bc6c14277f19a5dbbf0ed"
+          "sha256": "8a29ce0965b60ddf4d05f145fcc6961a846e6b15692511ad0445b9788fbf22a0"
         }
       ],
-      "evidence_cutoff": "2026-08-31",
-      "expires_at": "2026-11-30T15:26:09Z",
-      "head_sha": "b61d086a113add436b1b74cc899eb2b4c89d6f8d",
+      "evidence_cutoff": "2026-09-04",
+      "expires_at": "2026-12-04T03:04:31Z",
+      "head_sha": "793aa7be12951ce7e8877f2c59861789cccf1839",
       "installed_payload": "verified_component_manifests_only",
       "market": "cn",
       "pool_id": "cn_selected_equities_v3",
       "research_only": true,
-      "source_id": "cn_alpha158_2026_08_31",
+      "source_id": "cn_alpha158",
       "source_kind": "alpha158_panel",
       "trade_ready": false,
       "training_payload_retrieval": "exact_artifact_locator_required",
-      "workflow_run_id": 33525712197
+      "workflow_run_id": 33940840760
     },
     {
-      "artifact_digest": "sha256:19f56c969fdde29cc356a2cc96de94060549b982056328d59c19ae27889c9f51",
-      "artifact_id": 9808822820,
-      "artifact_name": "selected-pool-event-live-cn-33528559207",
-      "artifact_size_bytes": 2043215,
+      "artifact_digest": "sha256:0d1c9d29d799162bff3aac86490ccd07c985d35a0a2142ecb42c26164fb02055",
+      "artifact_id": 9962408566,
+      "artifact_name": "selected-pool-event-live-cn-33942729365",
+      "artifact_size_bytes": 2047606,
       "component_manifests": [
         {
           "path": "event_population_manifest.json",
-          "sha256": "5e057764625a3eeb7e0ad20f1a79f4a1dbac862216f9b794ef5a680f90082d32"
+          "sha256": "7357b0da5c869a0d166d3ee74639e36301d162eaa39780cc858c2fda8c604aaf"
         },
         {
           "path": "fundamentals/component_manifest.json",
-          "sha256": "9d168069011cd27cb322f7ef33bf869b4095a4d9aa768cf2624611f9c9f712b6"
+          "sha256": "059c03b7fd6b46d3ea4797fa69b669d5f02094d7f7d1e9376b73d9f3cd11aa36"
         },
         {
           "path": "corporate_actions/component_manifest.json",
-          "sha256": "457e751ee55fe4141635574974c11be25870725c6e48758df8945a1540a0d5cc"
+          "sha256": "b550b8574c687bfda5f7e1712e61da94cd84fdf1455dd5292a9e46b8f1b145a5"
         }
       ],
-      "evidence_cutoff": "2026-08-31",
-      "expires_at": "2026-11-30T15:53:53Z",
-      "head_sha": "64169b371b8cd14ffe3fcdd569311d3ca20cd3d5",
+      "evidence_cutoff": "2026-09-04",
+      "expires_at": "2026-12-04T03:45:23Z",
+      "head_sha": "793aa7be12951ce7e8877f2c59861789cccf1839",
       "installed_payload": "verified_component_manifests_only",
       "market": "cn",
       "pool_id": "cn_selected_equities_v3",
       "research_only": true,
-      "source_id": "cn_events_2026_08_31",
+      "source_id": "cn_events",
       "source_kind": "selected_pool_events",
       "trade_ready": false,
       "training_payload_retrieval": "exact_artifact_locator_required",
-      "workflow_run_id": 33528559207
+      "workflow_run_id": 33942729365
     }
   ],
   "trade_ready": false,

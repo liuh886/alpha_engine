@@ -1,16 +1,16 @@
 {
-  "built_at": "2026-09-04T18:40:16+00:00",
-  "bundle_id": "88e522a75e148d81ad61f5f005ae29422d5b8bc8d5ad04fc2c947bd17701714b",
+  "built_at": "2026-09-05T04:05:50+00:00",
+  "bundle_id": "8d97072b21912231de84fbf01d72b11d701fb2be3a65e2f406416a7df50c00d9",
   "evidence_cutoff": "2026-09-04",
   "research_only": true,
   "schema_version": "1.1",
   "source_receipts": [
     {
       "path": "sources/governed-source-receipt.json",
-      "sha256": "00f7b6126c54d13505f61c168ca0fb1d82d270977a64d2a5ffa84c5489e51bfe",
+      "sha256": "c9c3cd81f757d9081d6e3c182de1371756442f08315a2d396b9fa2d9f236a0a2",
       "source_ids": [
-        "cn_alpha158_2026_08_31",
-        "cn_events_2026_08_31"
+        "cn_alpha158",
+        "cn_events"
       ]
     }
   ],
