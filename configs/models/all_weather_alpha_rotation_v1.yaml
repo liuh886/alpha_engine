@@ -1,0 +1,99 @@
+schema_version: '1.0'
+model_id: all_weather_alpha_rotation_v1
+display_name: All Weather Multi Asset Alpha Rotation v1
+release_date: '2026-09-05'
+status: research_candidate
+research_only: true
+trade_ready: false
+market: cn
+benchmark: '000300'
+objective: Multi-asset cross-industry momentum rotation with dividend ETF defensive sleeve.
+lineage:
+  parent: null
+  supersedes: null
+  selected_candidate: all_weather_multi_asset_alpha_rotation
+  source_document: 全天候多资产阿尔法轮动量化交易模型技术文档与评估报告
+universe:
+  universe_id: all_weather_cn_27_equity_etf_v1
+  membership_mode: static_curated
+  survivorship_bias: true
+  instruments:
+  - '002463'
+  - '688183'
+  - '002837'
+  - '688008'
+  - '300548'
+  - '002156'
+  - '603629'
+  - '300017'
+  - '601899'
+  - '600150'
+  - '601872'
+  - '600426'
+  - '688676'
+  - '301291'
+  - '600522'
+  - '002594'
+  - '300274'
+  - '002709'
+  - '601012'
+  - '300408'
+  - '300782'
+  - '300133'
+  - '600026'
+  - '600938'
+  - '600900'
+  - '002281'
+  - '601939'
+  - '515180'
+features:
+  library: custom_all_weather_technical
+  indicators:
+  - sma_5_20_60
+  - bias_20
+  - macd_hist
+  - rsi_14
+  - atr_14
+  - momentum_20d
+score:
+  formula: w1*SMA20_slope+w2*MACD_hist+w3*momentum20-w4*overheat_penalty
+  weights:
+    trend_slope: 0.35
+    macd_hist: 0.35
+    momentum_20d: 0.20
+    overheat_penalty: 0.10
+portfolio_construction:
+  selection:
+    max_active_assets: 5
+    ranking: descending_score
+  active_weight:
+    min: 0.15
+    max: 0.20
+  defensive_asset: '515180'
+  defensive_rule: remaining_cash_weight
+execution:
+  rebalance: daily_signal_next_session_execution
+  execution_delay_sessions: 1
+  no_same_session_execution: true
+risk:
+  entry:
+  - close_above_sma20
+  - sma5_above_sma20
+  - macd_hist_positive
+  - bias_range_0.2_to_4.5_percent
+  - rsi_range_40_to_62
+  exit:
+  - peak_profit_15_percent_trailing_8_percent
+  - macd_breakdown
+  - close_below_sma20_stop
+  - hard_stop_loss_4_percent
+cost:
+  stock_buy_sell_assumption: 0.0015
+  etf_round_trip_assumption: 0.0002
+validation:
+  required:
+  - no_lookahead_bias
+  - shift_execution_delay
+  - turnover_reconciliation
+  - drawdown_stress_test
+next_version: all_weather_alpha_rotation_v1.1
