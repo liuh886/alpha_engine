@@ -144,6 +144,47 @@ def test_domain_data_caches_use_current_runtime_without_changing_keys() -> None:
     assert save["with"]["key"] == "${{ steps.vwap-cache.outputs.cache-primary-key }}"
 
 
+def test_monthly_live_data_workflows_resolve_cutoffs_at_runtime() -> None:
+    root = Path(".github/workflows")
+    for filename in (
+        "alpha158-canonical-vwap-ci.yml",
+        "selected-pool-event-population-ci.yml",
+    ):
+        workflow = yaml.safe_load((root / filename).read_text(encoding="utf-8"))
+        triggers = workflow.get("on", workflow.get(True, {}))
+        cutoff = triggers["workflow_dispatch"]["inputs"]["cutoff"]
+        assert cutoff["required"] is False
+        assert cutoff["default"] == ""
+        for job in workflow["jobs"].values():
+            for step in job.get("steps", []):
+                if step.get("id") == "cutoff":
+                    assert step["env"]["REQUESTED_CUTOFF"] == "${{ inputs.cutoff }}"
+                    assert '${{ inputs.cutoff }}' not in step["run"]
+                    assert 'cutoff="$REQUESTED_CUTOFF"' in step["run"]
+                    assert 'date -u -d "$cutoff" +%F' in step["run"]
+
+    events = yaml.safe_load(
+        (root / "selected-pool-event-population-ci.yml").read_text(encoding="utf-8")
+    )
+    steps = events["jobs"]["live-population"]["steps"]
+    cutoff_step = next(step for step in steps if step.get("id") == "cutoff")
+    restore = next(step for step in steps if step.get("id") == "event-source-cache")
+    populate = next(
+        step
+        for step in steps
+        if step.get("name") == "Populate public primary event stores"
+    )
+
+    assert "date -u -d '1 day ago' +%F" in cutoff_step["run"]
+    assert 'date -u -d "$cutoff" +%F' in cutoff_step["run"]
+    assert "${{ steps.cutoff.outputs.value }}" in restore["with"]["key"]
+    assert "${{ steps.cutoff.outputs.value }}" in restore["with"]["restore-keys"]
+    assert '--cutoff "${{ steps.cutoff.outputs.value }}"' in populate["run"]
+    assert "inputs.cutoff || '2026-07-31'" not in (
+        root / "selected-pool-event-population-ci.yml"
+    ).read_text(encoding="utf-8")
+
+
 def test_us_alpha158_live_panel_uses_only_approved_alpaca_sip_credentials() -> None:
     workflow = yaml.safe_load(
         Path(".github/workflows/alpha158-canonical-vwap-ci.yml").read_text(
