@@ -58,9 +58,9 @@ on:
         type: choice
         options: [both, us, cn]
       cutoff:
-        description: "Evidence cutoff (YYYY-MM-DD)"
-        required: true
-        default: "2026-07-31"
+        description: "Evidence cutoff (YYYY-MM-DD; blank uses previous UTC day)"
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -136,9 +136,15 @@ jobs:
       - name: Resolve current evidence cutoff
         id: cutoff
         shell: bash
+        env:
+          REQUESTED_CUTOFF: ${{ inputs.cutoff }}
         run: |
-          cutoff="${{ inputs.cutoff }}"
+          cutoff="$REQUESTED_CUTOFF"
           if [ -z "$cutoff" ]; then cutoff="$(date -u -d '1 day ago' +%F)"; fi
+          if [ "$(date -u -d "$cutoff" +%F)" != "$cutoff" ]; then
+            echo "cutoff must be a real date in YYYY-MM-DD form" >&2
+            exit 1
+          fi
           echo "value=$cutoff" >> "$GITHUB_OUTPUT"
       - name: Preflight Alpaca SIP same-record reported VWAP
         run: |
@@ -215,9 +221,15 @@ jobs:
       - name: Resolve current evidence cutoff
         id: cutoff
         shell: bash
+        env:
+          REQUESTED_CUTOFF: ${{ inputs.cutoff }}
         run: |
-          cutoff="${{ inputs.cutoff }}"
+          cutoff="$REQUESTED_CUTOFF"
           if [ -z "$cutoff" ]; then cutoff="$(date -u -d '1 day ago' +%F)"; fi
+          if [ "$(date -u -d "$cutoff" +%F)" != "$cutoff" ]; then
+            echo "cutoff must be a real date in YYYY-MM-DD form" >&2
+            exit 1
+          fi
           echo "value=$cutoff" >> "$GITHUB_OUTPUT"
       - name: Restore exact-cutoff CN source pairs
         id: vwap-cache

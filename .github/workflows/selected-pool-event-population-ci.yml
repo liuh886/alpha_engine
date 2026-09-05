@@ -45,9 +45,9 @@ on:
         type: choice
         options: [us, cn, both]
       cutoff:
-        description: "Evidence cutoff (YYYY-MM-DD)"
-        required: true
-        default: "2026-07-31"
+        description: "Evidence cutoff (YYYY-MM-DD; blank uses previous UTC day)"
+        required: false
+        default: ""
         type: string
 
 concurrency:
@@ -151,6 +151,20 @@ jobs:
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: Resolve current evidence cutoff
+        if: steps.selected.outputs.run == 'true'
+        id: cutoff
+        shell: bash
+        env:
+          REQUESTED_CUTOFF: ${{ inputs.cutoff }}
+        run: |
+          cutoff="$REQUESTED_CUTOFF"
+          if [ -z "$cutoff" ]; then cutoff="$(date -u -d '1 day ago' +%F)"; fi
+          if [ "$(date -u -d "$cutoff" +%F)" != "$cutoff" ]; then
+            echo "cutoff must be a real date in YYYY-MM-DD form" >&2
+            exit 1
+          fi
+          echo "value=$cutoff" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
         if: steps.selected.outputs.run == 'true'
       - uses: ./.github/actions/setup-python-uv
@@ -162,9 +176,9 @@ jobs:
         with:
           path: artifacts/cache/selected_pool_events/cn
           key: >-
-            ${{ runner.os }}-selected-pool-events-cn-v2-generation-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}-${{ github.run_id }}
+            ${{ runner.os }}-selected-pool-events-cn-v2-generation-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ steps.cutoff.outputs.value }}-${{ github.run_id }}
           restore-keys: |
-            ${{ runner.os }}-selected-pool-events-cn-v2-generation-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}-
+            ${{ runner.os }}-selected-pool-events-cn-v2-generation-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-${{ steps.cutoff.outputs.value }}-
       - name: Populate public primary event stores
         if: steps.selected.outputs.run == 'true'
         env:
@@ -176,7 +190,7 @@ jobs:
           uv run python scripts/data/populate_selected_pool_events.py
           --market "${{ matrix.market }}"
           --start 2021-01-01
-          --cutoff "${{ inputs.cutoff || '2026-07-31' }}"
+          --cutoff "${{ steps.cutoff.outputs.value }}"
           ${{ matrix.market == 'cn' && '--source-cache-root artifacts/cache/selected_pool_events/cn' || '' }}
           --output-root "artifacts/data/event_population/${{ matrix.market }}"
       - name: Save exact-cutoff event source snapshots
