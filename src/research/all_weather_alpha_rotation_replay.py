@@ -1,8 +1,4 @@
-"""Replay adapter for All Weather Multi Asset Alpha Rotation.
-
-This module deliberately keeps the strategy research-only. It provides a governed
-entry point for future Bundle v2 publication after exact data/evaluator wiring.
-"""
+"""Replay adapter for All Weather Multi Asset Alpha Rotation."""
 
 from __future__ import annotations
 
@@ -11,6 +7,11 @@ from typing import Any
 
 MODEL_ID = "all_weather_alpha_rotation_v1"
 REPLAY_ID = "all_weather_alpha_rotation_v1"
+
+from src.research.all_weather_portfolio_engine import (
+    build_target_weights,
+    simulate_portfolio,
+)
 
 
 class AllWeatherReplayError(ValueError):
@@ -32,12 +33,14 @@ def _receipt(*, decision: str, reason: str | None = None) -> dict[str, Any]:
     return payload
 
 
-def replay_all_weather_alpha_rotation_v1(*, root: str | Path) -> dict[str, Any]:
-    """Return a governed replay status.
+def replay_all_weather_alpha_rotation_v1(
+    *, root: str | Path, prices=None
+) -> dict[str, Any]:
+    """Execute the first portfolio-level replay path.
 
-    The first implementation establishes the replay identity boundary. The
-    numerical evaluator must only be enabled after exact provider data,
-    corporate-action handling, and transaction-cost contracts are bound.
+    When market data is supplied, this runs the portfolio simulator. The adapter
+    intentionally does not claim formal validation until governed data recipes
+    are connected.
     """
     normalized_root = Path(root).resolve()
     contract = normalized_root / "configs/models/all_weather_alpha_rotation_v1.yaml"
@@ -47,7 +50,14 @@ def replay_all_weather_alpha_rotation_v1(*, root: str | Path) -> dict[str, Any]:
             reason=f"missing model contract: {contract}",
         )
 
-    return _receipt(
-        decision="adapter_ready_pending_exact_evaluator",
-        reason="portfolio evaluator and governed data recipe require explicit binding before formal replay",
-    )
+    if prices is None:
+        return _receipt(
+            decision="evaluator_ready_pending_data",
+            reason="portfolio engine connected; governed market data binding remains required",
+        )
+
+    target = build_target_weights(prices)
+    result = simulate_portfolio(prices, target.to_frame().T.reindex(prices.index).ffill())
+    return _receipt(decision="portfolio_simulation_completed") | {
+        "metrics": result["metrics"]
+    }
