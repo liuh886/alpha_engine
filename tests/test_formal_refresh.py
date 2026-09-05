@@ -929,8 +929,8 @@ def test_model_data_fetches_only_review_bound_cross_run_sources() -> None:
     block = workflow[start:end]
 
     assert "scripts/data/fetch_governed_model_data.py" in block
-    assert "cn_alpha158_2026_08_31" in block
-    assert "cn_events_2026_08_31" in block
+    assert "--source cn_alpha158 " in block
+    assert "--source cn_events " in block
     assert "GITHUB_TOKEN: ${{ github.token }}" in block
     assert "latest successful" not in block.lower()
     assert "gh run download" not in block

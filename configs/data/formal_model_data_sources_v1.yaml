@@ -4,7 +4,9 @@ research_only: true
 trade_ready: false
 
 sources:
-  cn_alpha158_2026_08_31:
+  # Stable roles, immutable locators: updates change only this reviewed registry.
+  # Dates and run/artifact hashes below, not role names, identify the evidence.
+  cn_alpha158:
     source_kind: "alpha158_panel"
     workflow_path: ".github/workflows/alpha158-canonical-vwap-ci.yml"
     workflow_run_id: 33525712197
@@ -25,7 +27,7 @@ sources:
       - path: "alpha158/factor_panel_manifest.json"
         sha256: "782008f2719033d12398edd3c8117b7b579ef7eb252bc6c14277f19a5dbbf0ed"
 
-  cn_events_2026_08_31:
+  cn_events:
     source_kind: "selected_pool_events"
     workflow_path: ".github/workflows/selected-pool-event-population-ci.yml"
     workflow_run_id: 33528559207

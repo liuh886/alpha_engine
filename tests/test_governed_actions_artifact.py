@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import zipfile
 from pathlib import Path
 
@@ -77,11 +78,30 @@ def test_checked_in_registry_freezes_exact_current_cn_sources() -> None:
 
     assert registry.repository == "liuh886/alpha_engine"
     assert set(registry.sources) == {
-        "cn_alpha158_2026_08_31",
-        "cn_events_2026_08_31",
+        "cn_alpha158",
+        "cn_events",
     }
-    assert registry.sources["cn_alpha158_2026_08_31"].artifact_id == 9808180730
-    assert registry.sources["cn_events_2026_08_31"].artifact_id == 9808822820
+    assert registry.sources["cn_alpha158"].artifact_id == 9808180730
+    assert registry.sources["cn_events"].artifact_id == 9808822820
+
+
+def test_formal_refresh_source_roles_and_manifest_paths_match_registry() -> None:
+    registry = load_governed_source_registry(REGISTRY)
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    source_ids = re.findall(r"--source ([a-z0-9_.-]+)\s", workflow)
+    assert len(source_ids) == len(set(source_ids))
+    assert set(source_ids) == set(registry.sources)
+    component_paths = re.findall(
+        r"\$\{CANDIDATE_MODEL_DATA_ROOT\}/sources/([^:]+):cn", workflow
+    )
+    assert len(component_paths) == 3
+    for path in component_paths:
+        source_id, relative = path.split("/", 1)
+        assert relative in {
+            binding.path for binding in registry.sources[source_id].component_manifests
+        }
 
 
 @pytest.mark.parametrize(
