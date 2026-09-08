@@ -441,6 +441,65 @@ def _retain_stale_source(
     }
 
 
+def _log_stale_diagnostics(
+    *,
+    records: list[dict[str, Any]],
+    cutoff: str,
+    audits: dict[str, Any] | None = None,
+) -> None:
+    """Print one compact line per stale/failed symbol for CI triage.
+
+    Print-only: the manifest schema is unchanged. Each line names the seed
+    last date, the requested cutoff, every provider tried with its round, and
+    the distinct error classes, so the next 515180-style outage is diagnosable
+    from the workflow log without downloading artifacts.
+    """
+
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        if record.get("action") not in {"retained_stale_source", "fetch_failed"}:
+            continue
+        attempts = record.get("attempts")
+        if not isinstance(attempts, list):
+            attempts = []
+        providers = sorted(
+            {
+                str(attempt.get("provider"))
+                for attempt in attempts
+                if isinstance(attempt, dict) and attempt.get("provider")
+            }
+        )
+        rounds = sorted(
+            {
+                attempt.get("round")
+                for attempt in attempts
+                if isinstance(attempt, dict) and attempt.get("round") is not None
+            }
+        )
+        errors = sorted(
+            {
+                str(attempt.get("error") or "")[:160]
+                for attempt in attempts
+                if isinstance(attempt, dict) and not attempt.get("ok")
+            }
+        )
+        seed_last_date: object = None
+        if isinstance(audits, dict):
+            audit = audits.get(str(record.get("symbol"))) or {}
+            if isinstance(audit, dict):
+                seed_last_date = audit.get("last_date")
+        print(
+            "[stale-diagnostic] "
+            f"symbol={record.get('symbol')} action={record.get('action')} "
+            f"seed_last_date={seed_last_date} requested_cutoff={cutoff} "
+            f"providers_tried={','.join(providers) or 'none'} "
+            f"rounds={','.join(str(round_number) for round_number in rounds) or 'none'} "
+            f"error_classes={errors[:3] or ['none']}",
+            flush=True,
+        )
+
+
 def _base_manifest(
     *,
     market: str,
@@ -744,6 +803,7 @@ def refresh_selected_pool_prices(
             full_refresh=full_refresh,
         )
         if failures:
+            _log_stale_diagnostics(records=records, cutoff=cutoff, audits=before)
             manifest.update(
                 {
                     "status": "selected_pool_price_refresh_blocked",
@@ -790,6 +850,8 @@ def refresh_selected_pool_prices(
             for symbol, audit in after.items()
             if pd.Timestamp(str(audit["last_date"])) < cutoff_ts
         )
+        if stale_symbols:
+            _log_stale_diagnostics(records=records, cutoff=cutoff, audits=after)
         manifest.update(
             {
                 "status": "selected_pool_price_refresh_ready",

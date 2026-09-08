@@ -690,3 +690,35 @@ def test_tigo_identity_contract_rejects_tygo() -> None:
         module._validate_provider_identity(
             market="us", symbol="TIGO", provider_symbol="TYGO"
         )
+
+
+def test_stale_diagnostics_prints_one_line_per_stale_symbol(capsys) -> None:
+    records = [
+        {
+            "symbol": "515180",
+            "action": "retained_stale_source",
+            "attempts": [
+                {"round": 1, "provider": "efinance", "ok": False, "error": "boom-a"},
+                {"round": 2, "provider": "efinance", "ok": False, "error": "boom-a"},
+                {"round": 3, "provider": "efinance", "ok": False, "error": "boom-b"},
+            ],
+        },
+        {"symbol": "600900", "action": "fetched_incremental_update", "attempts": []},
+        {
+            "symbol": "600000",
+            "action": "fetch_failed",
+            "attempts": "not-a-list",
+        },
+    ]
+    audits = {"515180": {"last_date": "2026-09-04"}, "600000": {"last_date": "2026-09-01"}}
+
+    module._log_stale_diagnostics(
+        records=records, cutoff="2026-09-05", audits=audits
+    )
+
+    out = capsys.readouterr().out
+    assert "[stale-diagnostic] symbol=515180 action=retained_stale_source" in out
+    assert "seed_last_date=2026-09-04 requested_cutoff=2026-09-05" in out
+    assert "providers_tried=efinance rounds=1,2,3" in out
+    assert "600900" not in out
+    assert "symbol=600000 action=fetch_failed" in out

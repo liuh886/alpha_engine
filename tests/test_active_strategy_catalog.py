@@ -8,6 +8,7 @@ import pytest
 from scripts.run_formal_refresh_transaction import (
     _assert_formal_catalog_or_declared_transition,
 )
+from src.artifacts.model_run_bundle_v2 import MODEL_KINDS
 from src.governance.active_strategy_catalog import (
     ActiveStrategyCatalogError,
     assert_formal_catalog_matches_active_strategies,
@@ -91,6 +92,31 @@ def test_catalog_rejects_missing_model_contract() -> None:
 
     with pytest.raises(ActiveStrategyCatalogError, match="model_contract"):
         validate_active_strategy_catalog(payload)
+
+
+def test_every_registry_model_kind_is_a_supported_bundle_kind() -> None:
+    """Registering an unknown model_kind must fail here, not in the weekly gate.
+
+    Regression guard for the 2026-09-06 health-gate outage, when an
+    `all_weather_alpha_rotation` row with kind
+    `rules_based_multi_asset_allocation` passed review and then broke full
+    suite collection because no consumer knows that kind. A new kind may only
+    be registered together with its MODEL_KINDS membership and consumer
+    handling; until then the registry must not contain it.
+    """
+
+    registry = json.loads(CATALOG.read_text(encoding="utf-8"))
+    unknown = sorted(
+        {
+            str(strategy.get("model_kind"))
+            for strategy in registry["strategies"]
+            if strategy.get("model_kind") not in MODEL_KINDS
+        }
+    )
+    assert unknown == [], (
+        f"registry uses model_kind values unknown to Bundle v2: {unknown} "
+        f"(supported: {sorted(MODEL_KINDS)})"
+    )
 
 
 def test_formal_catalog_fails_closed_when_active_model_is_missing() -> None:
