@@ -44,14 +44,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: ./.github/actions/setup-python-uv
       - name: Validate QQQ evaluation contract
         run: |
           uv run ruff check \
@@ -82,14 +75,7 @@ jobs:
       - name: Capture executed source revision
         id: source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: ./.github/actions/setup-python-uv
       - name: Build governed QQQ reference bundle
         run: >-
           uv run python scripts/data/build_etf_reference_bundle.py

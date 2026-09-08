@@ -1,8 +1,9 @@
 name: CN27 Current Target
 
 on:
-  schedule:
-    - cron: "45 22 * * 1-5"
+  # No schedule: the publisher is dormant until a governed prospective source
+  # exists. A daily cron would only retain expiring data_blocked receipts.
+  # Re-add the schedule when prospective_source_available flips true.
   workflow_dispatch:
   push:
     branches: [main]
@@ -34,14 +35,7 @@ jobs:
       - name: Capture executed source revision
         id: source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install locked environment
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: ./.github/actions/setup-python-uv
       - name: Validate CN_27 current-target runtime
         run: |
           uv run ruff check \

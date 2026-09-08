@@ -429,27 +429,28 @@ def test_formal_prepare_skips_unused_frontend_dependency_install() -> None:
     prepare = workflow[prepare_start:providers_start]
 
     setup_node_start = prepare.index("      - uses: actions/setup-node@v6")
-    install_start = prepare.index(
-        "      - name: Install locked Python preflight environment",
-        setup_node_start,
+    setup_python_start = prepare.index(
+        "      - uses: ./.github/actions/setup-python-uv"
     )
-    setup_node = prepare[setup_node_start:install_start]
     validate_start = prepare.index(
         "      - name: Validate refresh implementation before network work",
-        install_start,
+        setup_node_start,
     )
-    install = prepare[install_start:validate_start]
+    setup_node = prepare[setup_node_start:validate_start]
+    between = prepare[setup_python_start:validate_start]
     validate_end = prepare.index(
         "      - name: Resolve immutable workflow start",
         validate_start,
     )
     validate = prepare[validate_start:validate_end]
 
+    assert setup_python_start < setup_node_start
     assert "node-version: 22" in setup_node
     assert "cache:" not in setup_node
     assert "cache-dependency-path:" not in setup_node
-    assert "uv sync --frozen --extra dev" in install
-    assert "npm ci" not in install
+    assert "      - uses: ./.github/actions/setup-python-uv" in between
+    assert "curl -LsSf https://astral.sh/uv/install.sh" not in between
+    assert "npm ci" not in between
     assert "npm run check:account" in validate
     assert "uv run ruff check" in validate
     assert "uv run mypy" in validate
@@ -755,8 +756,7 @@ def test_publish_validates_upstream_artifacts_before_installing_environments() -
             "Download all strategy results",
         )
     )
-    setup_python = publish.index("      - uses: actions/setup-python@v6")
-    install = publish.index("      - name: Install locked publication Python environment")
+    setup_python = publish.index("      - uses: ./.github/actions/setup-python-uv")
     delta = publish.index("      - name: Classify canonical publication delta")
     hydrate = publish.index("      - name: Hydrate complete reviewed revision")
     setup_node = publish.index("      - uses: actions/setup-node@v6")
@@ -764,8 +764,8 @@ def test_publish_validates_upstream_artifacts_before_installing_environments() -
         "      - name: Install locked frontend publication environment"
     )
     assert checkout < min(downloads)
-    assert max(downloads) < setup_python < install
-    assert install < delta < hydrate < setup_node < frontend_install
+    assert max(downloads) < setup_python
+    assert setup_python < delta < hydrate < setup_node < frontend_install
 
 
 def test_semantic_no_change_skips_candidate_mutation_and_release() -> None:

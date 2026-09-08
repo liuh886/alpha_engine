@@ -74,18 +74,9 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
         run: test "$(git rev-parse HEAD)" = "${{ steps.revision.outputs.sha }}"
 
-      - name: Setup Python
+      - name: Setup governed Python environment
+        uses: ./.github/actions/setup-python-uv
         if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install locked environment
-        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
 
       - name: Validate runtime publisher contract
         if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true

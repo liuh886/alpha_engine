@@ -2,7 +2,9 @@ name: Daily US Low-Turnover Decision
 
 on:
   schedule:
-    - cron: "30 23 * * 1-5"
+    # 21:30 UTC: ahead of the 22:30 ranker wave and clear of the 23:30 formal
+    # refresh collision (both jobs contend for runners and TUSHARE quota).
+    - cron: "30 21 * * 1-5"
   workflow_dispatch:
 
 permissions:
@@ -20,14 +22,7 @@ jobs:
       SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT || 'AlphaEngine research https://github.com/liuh886/alpha_engine' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: ./.github/actions/setup-python-uv
       - name: Prepare persistent state root
         run: |
           mkdir -p artifacts/decision_ledger

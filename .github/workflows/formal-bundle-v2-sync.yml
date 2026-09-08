@@ -48,9 +48,7 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
+      - uses: ./.github/actions/setup-python-uv
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -58,9 +56,6 @@ jobs:
           cache-dependency-path: qlib-dashboard/package-lock.json
       - name: Install locked environments
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
           cd qlib-dashboard
           npm ci --no-audit --no-fund
 

@@ -90,8 +90,7 @@ def test_release_uses_exact_revision_and_success_only_idempotency_receipt() -> N
     gated_names = {
         "Checkout canonical revision",
         "Verify canonical revision identity",
-        "Setup Python",
-        "Install locked environment",
+        "Setup governed Python environment",
         "Validate runtime publisher contract",
         "Materialize current operations from canonical evidence",
         "Publish current operations through GitHub OIDC",

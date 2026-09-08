@@ -166,17 +166,10 @@ jobs:
           sparse-checkout-cone-mode: true
       - name: Verify execution identity
         run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
+      - uses: ./.github/actions/setup-python-uv
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-      - name: Install locked Python preflight environment
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
       - name: Validate refresh implementation before network work
         run: |
           uv run ruff check \
@@ -743,14 +736,7 @@ jobs:
           pattern: formal-strategy-*-${{ github.run_id }}
           path: artifacts/formal-refresh/strategy-results
           merge-multiple: true
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install locked publication Python environment
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - uses: ./.github/actions/setup-python-uv
       - name: Atomically fan in active preview results
         run: |
           uv run python scripts/run_formal_refresh_transaction.py assemble \

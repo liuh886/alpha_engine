@@ -171,10 +171,8 @@ jobs:
           else
             echo "backend=false" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/setup-python@v6
+      - uses: ./.github/actions/setup-python-uv
         if: steps.scope.outputs.backend == 'true'
-        with:
-          python-version: "3.12"
       - uses: actions/setup-node@v6
         if: steps.scope.outputs.backend == 'true'
         with:
@@ -184,9 +182,6 @@ jobs:
       - name: Install locked environment
         if: steps.scope.outputs.backend == 'true'
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
           cd qlib-dashboard
           npm ci --no-audit --no-fund
       - name: Resolve formal publication mode
