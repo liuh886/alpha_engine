@@ -1,0 +1,111 @@
+{
+  "cn_27_v1_0_locked_test": {
+    "annual_one_way_turnover": 20.531467980733172,
+    "annual_volatility": 0.18699745755901373,
+    "cagr": 0.2746988422914962,
+    "calmar": 2.0777830116887293,
+    "end_date": "2026-09-04",
+    "maximum_drawdown": -0.13220766593342836,
+    "observations": 246,
+    "sharpe_log_excess": 1.1937306116730524,
+    "start_date": "2025-09-01",
+    "total_return": 0.2673538451475903,
+    "transaction_cost_paid": 0.02085583463995333
+  },
+  "double_cost_by_window": {
+    "development": {
+      "annual_one_way_turnover": 6.212429115236671,
+      "annual_volatility": 0.1579909547423665,
+      "average_equity_exposure": 0.7472848321978756,
+      "average_holding_count": 7.925619834710743,
+      "cagr": 0.16418838871325137,
+      "calmar": 2.1482693038572944,
+      "end_date": "2024-08-30",
+      "maximum_drawdown": -0.07642821522350352,
+      "observations": 242,
+      "sharpe_log_excess": 0.8378070308816682,
+      "start_date": "2023-09-01",
+      "total_return": 0.15718632478300432,
+      "transaction_cost_paid": 0.015445256480045261
+    },
+    "locked_test": {
+      "annual_one_way_turnover": 5.981327857646447,
+      "annual_volatility": 0.309111417191144,
+      "average_equity_exposure": 0.7522529400191154,
+      "average_holding_count": 8.0,
+      "cagr": 0.7810522320434716,
+      "calmar": 4.0096125269412415,
+      "end_date": "2026-09-04",
+      "maximum_drawdown": -0.19479494010841547,
+      "observations": 246,
+      "sharpe_log_excess": 1.8064713101469532,
+      "start_date": "2025-09-01",
+      "total_return": 0.7567427268735616,
+      "transaction_cost_paid": 0.01722203593810674
+    },
+    "selection_validation": {
+      "annual_one_way_turnover": 6.554824842050955,
+      "annual_volatility": 0.3169211042907073,
+      "average_equity_exposure": 0.7522666130216855,
+      "average_holding_count": 8.08298755186722,
+      "cagr": 0.3220489347679927,
+      "calmar": 1.356612389783066,
+      "end_date": "2025-08-29",
+      "maximum_drawdown": -0.23739200466795907,
+      "observations": 241,
+      "sharpe_log_excess": 0.8387334778884372,
+      "start_date": "2024-09-02",
+      "total_return": 0.3060354932614844,
+      "transaction_cost_paid": 0.01857519434136075
+    }
+  },
+  "primary_by_window": {
+    "development": {
+      "annual_one_way_turnover": 6.212429115236671,
+      "annual_volatility": 0.15801527687668562,
+      "average_equity_exposure": 0.7472848321978756,
+      "average_holding_count": 7.925619834710743,
+      "cagr": 0.17357796702221018,
+      "calmar": 2.2824773770985276,
+      "end_date": "2024-08-30",
+      "maximum_drawdown": -0.07604805583784646,
+      "observations": 242,
+      "sharpe_log_excess": 0.8885806994522902,
+      "start_date": "2023-09-01",
+      "total_return": 0.16614763748146544,
+      "transaction_cost_paid": 0.007722628240022631
+    },
+    "locked_test": {
+      "annual_one_way_turnover": 5.981327857646447,
+      "annual_volatility": 0.30922623427266477,
+      "average_equity_exposure": 0.7522529400191154,
+      "average_holding_count": 8.0,
+      "cagr": 0.7967362237765225,
+      "calmar": 4.110843520223897,
+      "end_date": "2026-09-04",
+      "maximum_drawdown": -0.19381331832672832,
+      "observations": 246,
+      "sharpe_log_excess": 1.8342815266880443,
+      "start_date": "2025-09-01",
+      "total_return": 0.7718427385944724,
+      "transaction_cost_paid": 0.00861101796905337
+    },
+    "selection_validation": {
+      "annual_one_way_turnover": 6.554824842050955,
+      "annual_volatility": 0.3171776048748733,
+      "average_equity_exposure": 0.7522666130216855,
+      "average_holding_count": 8.08298755186722,
+      "cagr": 0.33484248478436185,
+      "calmar": 1.4340153944799727,
+      "end_date": "2025-08-29",
+      "maximum_drawdown": -0.23349992341315706,
+      "observations": 241,
+      "sharpe_log_excess": 0.8692917114280645,
+      "start_date": "2024-09-02",
+      "total_return": 0.31811985158345646,
+      "transaction_cost_paid": 0.009287597170680374
+    }
+  },
+  "schema_version": "1.0",
+  "selected_recipe_id": "c2_risk_adjusted_momentum"
+}

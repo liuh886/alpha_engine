@@ -1,0 +1,29 @@
+{
+  "decision": "no_staggered_candidate_passed_frozen_gate",
+  "experiment_id": "cn_27_v1_3_staggered_sleeve_discovery_v1",
+  "identity": {
+    "concentration_manifest_file_sha256": "172cf546270b481668e85ea89d1dcded5028254e6a496e672ca8653990bb432c",
+    "contract_sha256": "44f64c817dfce58d8a14152d62ed25878f24bcefaa4013134e1b14afe7b5f4d9",
+    "implementation_sha256": "e9f72ef7e9024cc56993cb932e9bc47d026dc9ea801f160c960aafb0297fa2f2",
+    "pool_sha256": "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458",
+    "source_prices_sha256": "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35"
+  },
+  "manifest_identity_sha256": "0c3fe3e965d995f589e0aa6be776f461247fa954fdd4c463e38219dc9e9343b1",
+  "outputs": {
+    "attribution.csv": "c4702ae9d571aad0d837c87b5cbc84e7bfe818d97d282813ced73ff05332cae6",
+    "attribution_summary.json": "cdc29b28238254c226dbba6fe97df69ff336c5f100f99a25e63888c6fc3de170",
+    "bootstrap.json": "48a66e70660d6d54e7b8946dea08bd2a8791bc62c6974231d7c59b0cf72213bc",
+    "candidate_summary.csv": "14f1286311ad314e75ab5487e7d856a32ff894acc45fab47fd5f8ffdba804392",
+    "concentration_audit.csv": "c4702ae9d571aad0d837c87b5cbc84e7bfe818d97d282813ced73ff05332cae6",
+    "decision.json": "5769ca5c242a4e4b45dd39bebb590f45619718c90e5cbaa1f82c916013eeb671",
+    "leave_one_sector_out.csv": "2f880c581c2616224afb01dbe26dab6a97f66316ef7b530e23e577a7b7f1df06",
+    "parameter_robustness.csv": "e9c2325322f99429ad6ec743e37663e84eb1d7cb0fd7735bd8d62ac84bbe9337",
+    "report.md": "bc534c8e2769ac99accd6c39c8844bba00f9bd476135fd89b901a69f07984219",
+    "selected_daily.csv": "c4702ae9d571aad0d837c87b5cbc84e7bfe818d97d282813ced73ff05332cae6",
+    "selected_recipe.json": "2db943535d7441c2c04a4b329a872b9f49e3bd5dd728555be71ad491ea01f5d0"
+  },
+  "research_only": true,
+  "schema_version": "1.0",
+  "selection_identity_sha256": "b48607ee49e9dd6ba48ae9eeb1345c8719fc814517de98377f7049594aac8eab",
+  "trade_ready": false
+}

@@ -180,10 +180,16 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
         "qqq_rotation",
         "us_x",
         "cn_x",
+        "cn_27",
         "byd",
     }
     assert all("current_operations_access" not in row for row in observed.values())
-    assert all(row["status"] == "awaiting_observation" for row in observed.values())
+    assert observed["cn_27_v1_3"]["status"] == "pipeline_unavailable"
+    assert all(
+        row["status"] == "awaiting_observation"
+        for model_id, row in observed.items()
+        if model_id != "cn_27_v1_3"
+    )
     assert observed[US_MODEL]["decision_cadence"] == "Every 10 provider sessions"
     assert observed[CN_MODEL]["decision_cadence"] == "Every 10 provider sessions"
     assert observed[CN_MODEL]["model_version_id"] == "cn_x1_2"

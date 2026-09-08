@@ -1,0 +1,118 @@
+schema_version: "1.0"
+model_version_id: "cn_27_v1_1_risk_adjusted_momentum"
+display_name: "CN_27 V1.1"
+created_at: "2026-09-06"
+status: "frozen_retrospective_candidate"
+market: "cn"
+research_only: true
+trade_ready: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+automatic_promotion_allowed: false
+selected_pool_readiness_claim_allowed: false
+
+lineage:
+  predecessor: "cn_27_v1_0"
+  discovery_experiment: "configs/research_experiments/cn_27_sharpe_1_discovery_v1.yaml"
+  discovery_experiment_sha256: "43622640d017c65eb7bae614344ca2659151691ef3aa0d5e4a47c6d03f5fd0bd"
+  sealed_screen_manifest: "artifacts/evidence/cn_27_sharpe_1_discovery_v1/screen/evidence_manifest.json"
+  sealed_screen_manifest_file_sha256: "127d9b676ceacd7458969e67898d36eb042f83953bcc9e6525d2d7b28286b639"
+  sealed_selection_identity_sha256: "8ef183eea01f0305e104f3124b0de66580359dbc26814a564ac0674ac917b8cf"
+  holdout_manifest: "artifacts/evidence/cn_27_sharpe_1_discovery_v1/holdout/evidence_manifest.json"
+  holdout_manifest_file_sha256: "b96f931414bc98e950313bd046e800df08435339281ea91f52d8d6feb7f3d03d"
+  holdout_manifest_identity_sha256: "5662df052d244be655a4816d8d88899ab0849f14abd41817547b0fdb3423386b"
+
+identity:
+  pool_spec: "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"
+  pool_sha256: "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458"
+  source_prices: "artifacts/evidence/cn_all_weather_alpha_rotation_v1/source_ohlcv.csv"
+  source_prices_sha256: "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35"
+  defensive_etf: "515180"
+  market_reference: "000300"
+
+factor_model:
+  normalization: "daily_cross_sectional_percentile"
+  combination:
+    risk_adjusted_momentum_20: 0.35
+    risk_adjusted_momentum_60: 0.35
+    trend_60: 0.15
+    drawdown_60: 0.15
+  formulas:
+    risk_adjusted_momentum_20: "return_20 / annualized_volatility_20"
+    risk_adjusted_momentum_60: "return_60 / annualized_volatility_60"
+    trend_60: "close / SMA60 - 1"
+    drawdown_60: "close / rolling_max_close_60 - 1"
+  availability_lag_sessions: 0
+  forward_values_forbidden: true
+
+portfolio:
+  rebalance_sessions: 10
+  top_k: 8
+  exit_rank_buffer: 4
+  maximum_names_per_sector: 2
+  weighting: "inverse_volatility_20"
+  maximum_single_security_weight: 0.15
+  maximum_equity_exposure: 0.75
+  residual_asset: "515180"
+  daily_target_rebalancing_between_scheduled_sessions: false
+  absolute_momentum_filter: "none"
+  allow_short: false
+  allow_leverage: false
+
+execution:
+  signal_time: "scheduled_session_close"
+  execution_time: "next_eligible_session_open"
+  return_measurement: "adjusted_open_to_adjusted_open"
+  missing_or_one_price_trade_policy: "defer"
+
+costs:
+  stock_buy_rate: 0.0005
+  stock_sell_rate: 0.0010
+  etf_buy_rate: 0.0002
+  etf_sell_rate: 0.0002
+  stress_multiplier: 2.0
+
+evaluation:
+  full_window: {start: "2023-09-01", end: "2026-09-04", sessions: 729}
+  development: {start: "2023-09-01", end: "2024-08-30", sessions: 242}
+  selection_validation: {start: "2024-09-02", end: "2025-08-29", sessions: 241}
+  locked_test: {start: "2025-09-01", end: "2026-09-04", sessions: 246}
+  annual_sessions: 252
+  annual_risk_free_rate: 0.02
+
+support_gates:
+  full_window_minimum_sharpe_log_excess: 1.0
+  full_window_maximum_annual_one_way_turnover: 8.0
+  full_window_maximum_drawdown_magnitude: 0.25
+  full_window_double_cost_minimum_sharpe_log_excess: 0.90
+  locked_test_minimum_sharpe_log_excess: 1.0
+  locked_test_maximum_annual_one_way_turnover: 8.0
+  maximum_single_name_positive_contribution_share: 0.35
+  maximum_single_sector_positive_contribution_share: 0.55
+  minimum_average_holding_count: 7.0
+
+promotion_boundary:
+  historical_support_does_not_authorize_formal_promotion: true
+  prospective_start_after: "2026-09-04"
+  minimum_forward_months: 12
+  parameters_mutable_during_prospective_window: false
+
+evidence:
+  output_dir: "artifacts/evidence/cn_27_v1_1"
+  expected_outputs:
+    - daily.csv
+    - double_cost_daily.csv
+    - metrics.json
+    - attribution.csv
+    - byd_comparison_daily.csv
+    - comparison.json
+    - decision.json
+    - report.md
+    - evidence_manifest.json
+
+prohibited:
+  - modify the selected factor weights or portfolio policy on observed history
+  - change pool membership
+  - use synthetic scenario results as evidence
+  - describe retrospective locked-test evidence as a fresh historical holdout
+  - automatic formal promotion

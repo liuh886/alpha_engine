@@ -1,0 +1,104 @@
+schema_version: "1.0"
+validation_id: "cn_27_v1_3_prospective_validation_v1"
+created_at: "2026-09-07"
+status: "frozen_before_first_observation"
+research_only: true
+trade_ready: false
+automatic_promotion_allowed: false
+selected_pool_readiness_claim_allowed: false
+
+lineage:
+  challenger_contract: "configs/research_candidates/cn_27_v1_3_prospective_challenger.yaml"
+  challenger_contract_sha256: "65b18343a49286471751b83920b32c18bbc3fcaaf7a19f9f2b9d15ae8b464327"
+  historical_discovery_contract: "configs/research_experiments/cn_27_v1_3_projected_concentration_discovery_v1.yaml"
+  historical_discovery_contract_sha256: "4381ac0562b05a1209aac7fa7bba782607fa26742802ff9d19ded6a94ada98a6"
+  historical_manifest: "artifacts/evidence/cn_27_v1_3_projected_concentration_discovery_v1/evidence_manifest.json"
+  historical_manifest_file_sha256: "78900e0fbf26f17ae97b5734f6d37138ce3df56a427bbf945284f9136acfd948"
+  historical_manifest_identity_sha256: "1a096efea0488079d8c08840fae80501742358e748dad4c5d7ec79b1f62c957e"
+  implementation: "src/research/cn27_v1_3_prospective.py"
+  implementation_sha256: "19c5155d075d5aa23158373e12ffaa23628e360878b2d1dbf4808f7f452c6010"
+
+observation_contract:
+  starts_strictly_after: "2026-09-04"
+  minimum_calendar_months: 12
+  minimum_sessions: 240
+  chronological_folds: 6
+  annual_sessions: 252
+  annual_risk_free_rate: 0.02
+  immutable_same_date_inputs: true
+  append_only: true
+  allow_historical_overlap: false
+
+required_run_variants:
+  base: {cost_multiplier: 1.0, execution_delay_sessions: 1, rebalance_phase_offset: 0}
+  double_cost: {cost_multiplier: 2.0, execution_delay_sessions: 1, rebalance_phase_offset: 0}
+  delay_2: {cost_multiplier: 1.0, execution_delay_sessions: 2, rebalance_phase_offset: 0}
+  phase_8: {cost_multiplier: 1.0, execution_delay_sessions: 1, rebalance_phase_offset: 8}
+  phase_15: {cost_multiplier: 1.0, execution_delay_sessions: 1, rebalance_phase_offset: 15}
+  phase_22: {cost_multiplier: 1.0, execution_delay_sessions: 1, rebalance_phase_offset: 22}
+
+required_input_files:
+  adjusted_ohlcv.csv: [date, symbol, open, high, low, close, volume]
+  raw_ohlcv.csv: [date, symbol, open, high, low, close, volume]
+  tradability.csv: [date, symbol, listed, suspended, one_price, tradable, available_at]
+  corporate_actions.csv: [event_id, symbol, effective_date, available_at, event_type, adjustment_factor]
+
+source_manifest_required_fields:
+  - schema_version
+  - candidate_id
+  - validation_contract_sha256
+  - provider_name
+  - query_identity
+  - extracted_at
+  - revision_policy
+  - files
+  - research_only
+  - trade_ready
+
+prospective_gate:
+  maximum_annual_one_way_turnover: 2.20
+  maximum_drawdown_magnitude: 0.20
+  minimum_sharpe_log_excess: 1.10
+  minimum_double_cost_sharpe_log_excess: 1.08
+  minimum_positive_fold_share: 1.0
+  minimum_fold_sharpe_25th_percentile: 0.50
+  minimum_worst_timing_perturbation_sharpe: 0.90
+  minimum_bootstrap_sharpe_percentile_05: 0.30
+  minimum_bootstrap_probability_sharpe_above_zero: 0.98
+  minimum_bootstrap_probability_sharpe_above_one: 0.60
+  minimum_parameter_neighborhood_sharpe: 1.00
+  maximum_parameter_neighborhood_drawdown_magnitude: 0.22
+  maximum_post_drift_single_equity_sleeve_share: 0.28
+  maximum_post_drift_sector_equity_sleeve_share: 0.55
+  maximum_post_drift_sector_share_p95: 0.50
+  minimum_post_drift_effective_names_median: 8.0
+  minimum_post_drift_effective_names_p05: 6.0
+  maximum_single_name_positive_contribution_share: 0.20
+  maximum_single_sector_positive_contribution_share: 0.45
+  minimum_leave_one_sector_out_sharpe: 0.20
+  minimum_leave_one_sector_out_median_sharpe: 0.80
+
+bootstrap:
+  samples: 2000
+  block_sessions: 20
+  seed: 20260907
+
+evidence:
+  output_dir: "artifacts/evidence/cn_27_v1_3_prospective_validation_v1"
+  expected_outputs:
+    - daily_variants.csv
+    - prospective_metrics.json
+    - concentration_audit.csv
+    - attribution.csv
+    - attribution_summary.json
+    - decision.json
+    - report.md
+    - evidence_manifest.json
+
+stop_rules:
+  - no_candidate_pool_factor_cost_execution_or_gate_change_after_first_observation
+  - no_same_date_input_replacement
+  - no_historical_overlap
+  - no_synthetic_or_scenario_data_as_evidence
+  - no_automatic_promotion
+  - formal_v1_3_packaging_only_after_every_gate_passes

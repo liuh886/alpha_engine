@@ -1,0 +1,97 @@
+schema_version: "1.0"
+experiment_id: "cn_27_v1_4_risk_overlay_discovery_v1"
+created_at: "2026-09-06"
+status: "frozen_pre_screen"
+research_only: true
+trade_ready: false
+automatic_promotion_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+selected_pool_readiness_claim_allowed: false
+
+iteration_semantics:
+  type: "third_order_retrospective_portfolio_construction_test"
+  source_of_hypothesis: "CN_27 V1.2 drawdown and conditional block-bootstrap weakness"
+  fresh_confirmation_claim_allowed: false
+  multiple_testing_caveat_required: true
+
+lineage:
+  model_contract: "configs/research_paradigms/cn_27_v1_2.yaml"
+  model_contract_sha256: "c5ad58cc355a0cc0b2d1f68ecdcffc22d88695bf641873dc0f13a8f8443f72b2"
+  model_manifest: "artifacts/evidence/cn_27_v1_2/evidence_manifest.json"
+  model_manifest_file_sha256: "0cc544c89ac4176a89e21aa9f0f0e52dd861eb047a564461faba41ae916bbc68"
+  model_manifest_identity_sha256: "82faef390a89bd5ddf44b38d9b0b6ffb06b595881f27415d222ba4a41d086237"
+  stability_contract: "configs/research_experiments/cn_27_v1_3_stability_discovery_v1.yaml"
+  stability_contract_sha256: "535d283bc4a541d4d459ab86cabf2bf61a61196400bda74700d278aa108a5fc4"
+  stability_manifest: "artifacts/evidence/cn_27_v1_3_stability_discovery_v1/evidence_manifest.json"
+  stability_manifest_file_sha256: "f685696ce04d9de1b26e2482a95a65016320a5ffa7cd6ffa93ba44c616d138a8"
+  stability_manifest_identity_sha256: "15a47ac6b7840435e6b3fe781529d8fb25f82a9f68065f723f6b475243716975"
+
+objective:
+  primary: "reduce drawdown and improve resampling robustness without changing the V1.2 signal"
+  signal_frozen: true
+  interpretation: "portfolio-construction ablation on fully consumed history"
+
+frozen_signal:
+  factor_mode: "fixed"
+  factors: {residual_momentum_120: 0.18, risk_adjusted_momentum_20: 0.16, trend_efficiency_120: 0.15, risk_adjusted_momentum_120: 0.15, positive_day_share_60: 0.14, trend_120: 0.12, short_term_reversal_5: 0.10}
+  top_k: 12
+  rebalance_sessions: 30
+  exit_rank_buffer: 10
+  maximum_names_per_sector: 3
+  absolute_momentum_filter: "none"
+
+candidate_recipes:
+  - {id: "p0_v1_2_control", weighting: "inverse_volatility", covariance_lookback: 60, covariance_shrinkage: 0.0, exposure_policy: "reference_volatility_target", portfolio_target_annual_volatility: 0.18}
+  - {id: "p1_sector_equal_reference", weighting: "sector_equal_inverse_volatility", covariance_lookback: 120, covariance_shrinkage: 0.5, exposure_policy: "reference_volatility_target", portfolio_target_annual_volatility: 0.18}
+  - {id: "p2_correlation_penalty_reference", weighting: "correlation_penalized_inverse_volatility", covariance_lookback: 120, covariance_shrinkage: 0.5, exposure_policy: "reference_volatility_target", portfolio_target_annual_volatility: 0.18}
+  - {id: "p3_shrink_minimum_variance_reference", weighting: "shrinkage_minimum_variance", covariance_lookback: 120, covariance_shrinkage: 0.5, exposure_policy: "reference_volatility_target", portfolio_target_annual_volatility: 0.18}
+  - {id: "p4_sector_equal_portfolio_target", weighting: "sector_equal_inverse_volatility", covariance_lookback: 120, covariance_shrinkage: 0.5, exposure_policy: "portfolio_volatility_target", portfolio_target_annual_volatility: 0.18}
+  - {id: "p5_diversified_blend_portfolio_target", weighting: "sector_correlation_blend", covariance_lookback: 120, covariance_shrinkage: 0.5, exposure_policy: "portfolio_volatility_target", portfolio_target_annual_volatility: 0.18}
+
+parameter_perturbations:
+  covariance_lookback_multipliers: [0.75, 1.25]
+  covariance_shrinkage_offsets: [-0.25, 0.25]
+  portfolio_target_volatility_offsets: [-0.02, 0.02]
+  minimum_neighborhood_sharpe: 0.85
+  maximum_neighborhood_drawdown_magnitude: 0.22
+
+robustness_tests:
+  cost_multiplier: 2.0
+  execution_delay_sessions: 2
+  rebalance_phase_fractions: [0.25, 0.50, 0.75]
+  block_bootstrap: {samples: 1000, block_sessions: 20, seed: 20260906}
+
+selection_gate:
+  maximum_full_window_annual_one_way_turnover: 2.0
+  maximum_full_window_drawdown_magnitude: 0.20
+  minimum_full_window_sharpe_log_excess: 1.0
+  minimum_double_cost_full_window_sharpe_log_excess: 1.0
+  minimum_positive_fold_share: 1.0
+  minimum_fold_sharpe_25th_percentile: 0.50
+  minimum_worst_timing_perturbation_sharpe: 0.90
+  minimum_bootstrap_sharpe_percentile_05: 0.30
+  minimum_bootstrap_probability_sharpe_above_zero: 0.98
+  minimum_bootstrap_probability_sharpe_above_one: 0.60
+  minimum_drawdown_improvement_vs_control: 0.01
+  primary_ranking: "maximize_minimum_of_timing_cost_bootstrap_and_parameter_robustness"
+  tiebreakers: ["minimize_drawdown", "minimize_turnover", "lexical_recipe_id"]
+
+evidence:
+  output_dir: "artifacts/evidence/cn_27_v1_4_risk_overlay_discovery_v1"
+  expected_outputs:
+    - candidate_summary.csv
+    - parameter_robustness.csv
+    - selected_recipe.json
+    - selected_daily.csv
+    - bootstrap.json
+    - decision.json
+    - report.md
+    - evidence_manifest.json
+
+stop_rules:
+  - no_signal_or_pool_change
+  - no_recipe_or_gate_change_after_screening
+  - no_post_result_parameter_addition
+  - no_claim_of_fresh_holdout
+  - no_automatic_promotion

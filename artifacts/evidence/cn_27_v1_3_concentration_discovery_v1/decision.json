@@ -1,0 +1,58 @@
+{
+  "all_selection_gates_passed": false,
+  "automatic_promotion_allowed": false,
+  "decision": "no_concentration_governed_candidate_passed_frozen_gate",
+  "failure_reasons_by_recipe": {
+    "g0_unconstrained_control": [
+      "post_drift_single_share",
+      "post_drift_sector_share",
+      "post_drift_sector_p95",
+      "effective_names_median",
+      "effective_names_p05"
+    ],
+    "g1_light_25_50_n7": [
+      "timing_perturbation_sharpe",
+      "bootstrap_p05"
+    ],
+    "g2_balanced_22_45_n8": [
+      "drawdown",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one"
+    ],
+    "g3_balanced_20_45_n9": [
+      "drawdown",
+      "full_sharpe",
+      "double_cost_sharpe",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one"
+    ],
+    "g4_strict_20_40_n9": [
+      "drawdown",
+      "full_sharpe",
+      "double_cost_sharpe",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one"
+    ],
+    "g5_strict_18_40_n10": [
+      "drawdown",
+      "full_sharpe",
+      "double_cost_sharpe",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one"
+    ]
+  },
+  "fresh_historical_holdout": false,
+  "prospective_validation_required": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe_id": null,
+  "trade_ready": false
+}

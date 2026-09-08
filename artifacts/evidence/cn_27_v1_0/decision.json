@@ -1,0 +1,35 @@
+{
+  "benchmark": "000300.SH",
+  "benchmark_challenge": {
+    "all_frozen_gates_passed": true,
+    "benchmark_model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+    "common_window": {
+      "end": "2026-08-24",
+      "sessions": 720,
+      "start": "2023-09-01"
+    },
+    "fresh_historical_holdout": false,
+    "historical_risk_return_dominance": true,
+    "turnover_efficiency_vs_benchmark": false
+  },
+  "candidate_count": 27,
+  "claim_audit": {
+    "all_claims_reproduced": false,
+    "comparisons": {},
+    "source_status": "retracted_not_a_model_gate"
+  },
+  "decision": "historical_common_window_challenge_passed_no_fresh_holdout",
+  "defensive_etf": "515180.SH",
+  "experiment_id": "cn_27_v1_0",
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_pool_readiness_claimed": false,
+  "strategy_specific_pool": true,
+  "stress_window": {
+    "average_etf_weight": 0.8821428571428571,
+    "minimum_etf_weight": 0.55,
+    "observations": 14,
+    "total_return": 0.013026148775585611
+  },
+  "trade_ready": false
+}

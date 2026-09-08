@@ -1,0 +1,109 @@
+schema_version: "1.0"
+experiment_id: "cn_all_weather_alpha_rotation_v1"
+created_at: "2026-09-05"
+status: "frozen_strategy_specific_research_contract"
+market: "cn"
+research_only: true
+trade_ready: false
+authoritative_validation_allowed: false
+selected_pool_readiness_claim_allowed: false
+
+source:
+  document_sha256: "778daf7ef7bc0571530295b303b0b4ce4ac1fab2b93d310f552ff3a59973c505"
+  imported_claims_are_unverified: true
+  claimed_evaluation_window: {start: "2023-09-01", end: "2026-09-04"}
+
+identity:
+  pool_spec: "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"
+  reference_registry: "configs/pools/reference_instrument_registry_v1.yaml"
+  defensive_etf: "515180.SH"
+  benchmark: "000300.SH"
+
+data:
+  fetch_start: "2023-05-01"
+  evaluation_start: "2023-09-01"
+  cutoff: "2026-09-04"
+  required_columns: [date, symbol, open, high, low, close, volume]
+  adjustment_basis: "provider_qfq_or_uniform_adjusted_ohlcv"
+  forbid_raw_adjusted_mixing_within_symbol: true
+  forbid_cross_provider_row_stitching: true
+  forbid_forward_fill_of_signals: true
+  require_every_candidate_status: true
+  ordered_providers: [akshare, efinance, tencent_qfq_history, yfinance, akshare_sina]
+
+factors:
+  sma_windows: [5, 10, 20, 60]
+  sma20_slope_definition: "one_session_difference"
+  ema_fast: 12
+  ema_slow: 26
+  macd_signal: 9
+  rsi_window: 14
+  rsi_method: "simple_rolling_gain_loss_as_documented"
+  atr_window: 14
+  atr_true_range_method: "max_abs_close_change_and_abs_close_open_as_documented"
+  momentum_window: 20
+  score:
+    slope_sma20: 0.35
+    macd_hist: 0.35
+    close_ratio_20: 0.20
+    excess_bias_penalty: 0.10
+    bias_penalty_threshold: 0.05
+
+entry:
+  require_sma5_above_sma20: true
+  require_close_above_sma20: true
+  require_macd_above_signal: true
+  minimum_macd_hist: 0.20
+  bias20: {minimum: 0.002, maximum: 0.045}
+  rsi14: {minimum: 40.0, maximum: 62.0}
+
+exit:
+  divergence_profit_threshold: 0.08
+  divergence_rsi_threshold: 70.0
+  trailing_activation_profit: 0.15
+  trailing_peak_ratio: 0.92
+  trend_break_sma20_ratio: 0.975
+  hard_stop_entry_ratio: 0.96
+
+portfolio:
+  maximum_stock_positions: 5
+  stock_target_weight: 0.15
+  maximum_stock_weight: 0.75
+  residual_asset: "515180.SH"
+  fill_vacancies_by_score: true
+  replace_held_position_only_on_exit: true
+  daily_target_weight_rebalancing: true
+  allow_short: false
+  allow_leverage: false
+
+execution:
+  signal_time: "session_close_t"
+  execution_time: "next_eligible_session_open"
+  return_measurement: "adjusted_open_to_adjusted_open"
+  a_share_t_plus_one: true
+  infer_one_price_lock_from_ohlc: true
+  missing_bar_trade_policy: "defer_without_signal_forward_fill"
+
+costs:
+  stock_buy_rate: 0.0005
+  stock_sell_rate: 0.0010
+  etf_buy_rate: 0.0002
+  etf_sell_rate: 0.0002
+  charge_initial_entry: true
+
+metrics:
+  annual_sessions: 252
+  annual_risk_free_rate: 0.02
+  turnover_definition: "one_way_half_sum_absolute_traded_asset_weight_change"
+
+evidence:
+  preserve_external_claims_as_unverified: true
+  stress_window: {start: "2024-01-22", end: "2024-02-08"}
+  expected_outputs:
+    - decision.json
+    - evidence_manifest.json
+    - coverage.csv
+    - daily.csv
+    - trades.csv
+    - metrics.json
+    - report.md

@@ -1,0 +1,25 @@
+{
+  "all_support_gates_passed": true,
+  "automatic_promotion_allowed": false,
+  "decision": "historically_supported_pending_prospective_validation",
+  "fresh_historical_holdout": false,
+  "model_version_id": "cn_27_v1_1_risk_adjusted_momentum",
+  "prospective_validation_required": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_pool_readiness_claimed": false,
+  "sharpe_target_reached": true,
+  "support_gate_results": {
+    "full_window_double_cost_minimum_sharpe_log_excess": true,
+    "full_window_maximum_annual_one_way_turnover": true,
+    "full_window_maximum_drawdown_magnitude": true,
+    "full_window_minimum_sharpe_log_excess": true,
+    "locked_test_maximum_annual_one_way_turnover": true,
+    "locked_test_minimum_sharpe_log_excess": true,
+    "maximum_single_name_positive_contribution_share": true,
+    "maximum_single_sector_positive_contribution_share": true,
+    "minimum_average_holding_count": true
+  },
+  "trade_ready": false,
+  "turnover_reduced_vs_v1_0": true
+}

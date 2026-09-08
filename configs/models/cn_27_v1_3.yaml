@@ -1,0 +1,161 @@
+schema_version: "1.0"
+model_id: "cn_27_v1_3"
+display_name: "CN_27 V1.3"
+release_date: "2026-09-07"
+status: "accepted_formal_baseline"
+market: "cn"
+asset_class: "strategy_specific_equity_allocation"
+research_only: true
+trade_ready: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+automatic_promotion_allowed: false
+selected_pool_readiness_claim_allowed: false
+
+lineage:
+  predecessor: "cn_27_v1_2_stable_all7_low_turnover"
+  selected_candidate: "k2_projected_22_45_n8"
+  source_experiment: "cn_27_v1_3_projected_concentration_discovery_v1"
+  promotion_authority: "explicit_user_direction_2026_09_07"
+  adoption_decision: "user_directed_formal_research_baseline_with_prospective_gate_pending"
+  promotion_note: >-
+    The user explicitly authorized publication as a formal research baseline while
+    prospective observations accumulate. The historical frozen gate remains failed
+    on timing perturbation and bootstrap p05; neither result is relabeled as passed.
+
+universe:
+  universe_id: "cn_all_weather_alpha_rotation_v1"
+  source: "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"
+  declared_candidate_count: 27
+  membership_mode: "frozen_strategy_specific"
+  active_selected_pool: "cn_selected_equities_v3"
+  selected_pool_overlap_count: 22
+  authoritative_for_selected_pool_readiness: false
+
+references:
+  defensive_etf:
+    instrument: "515180"
+    role: "executable_defensive_sleeve"
+    candidate_eligible: false
+  benchmark:
+    instrument: "000300"
+    role: "non_executable_benchmark"
+    candidate_eligible: false
+
+factor_model:
+  normalization: "daily_cross_sectional_percentile"
+  availability_lag_sessions: 0
+  forward_values_forbidden: true
+  combination:
+    residual_momentum_120: 0.18
+    risk_adjusted_momentum_20: 0.16
+    trend_efficiency_120: 0.15
+    risk_adjusted_momentum_120: 0.15
+    positive_day_share_60: 0.14
+    trend_120: 0.12
+    short_term_reversal_5: 0.10
+
+portfolio:
+  rebalance_sessions: 30
+  top_k: 12
+  exit_rank_buffer: 10
+  maximum_names_per_sector: 3
+  weighting: "shrinkage_minimum_variance_projected"
+  covariance_lookback: 120
+  covariance_shrinkage: 0.50
+  maximum_single_equity_sleeve_share: 0.22
+  maximum_sector_equity_sleeve_share: 0.45
+  minimum_effective_names: 8.0
+  maximum_single_security_weight: 0.15
+  equity_exposure: "reference_volatility_target_0_18"
+  minimum_equity_exposure: 0.25
+  maximum_equity_exposure: 0.75
+  residual_asset: "515180"
+  allow_short: false
+  allow_leverage: false
+
+execution:
+  signal_time: "scheduled_session_close"
+  execution_time: "next_eligible_session_open_with_locked_target_daily_retry"
+  return_measurement: "adjusted_open_to_adjusted_open"
+  missing_or_one_price_trade_policy: "retain_target_and_retry_each_session"
+
+costs:
+  stock_buy_rate: 0.0005
+  stock_sell_rate: 0.0010
+  etf_buy_rate: 0.0002
+  etf_sell_rate: 0.0002
+  stress_multiplier: 2.0
+
+performance_semantics:
+  schema_version: "formal_performance_semantics_v1"
+  trace_frequency: "daily_open_to_open"
+  signal_time: "scheduled_session_close_t"
+  execution_time: "next_eligible_session_open_t_plus_1_with_locked_target_daily_retry"
+  return_measurement: "prior_adjusted_open_to_current_adjusted_open"
+  price_basis: "governed_front_adjusted_open"
+  performance_date_field: "date"
+  holding_end_offset_sessions: 1
+  cost:
+    rate_bps: 10.0
+    turnover_formula: "asymmetric instrument-level buy/sell weight change; stocks 5/10bps and ETF 2/2bps"
+    row_cost_field: "transaction_cost"
+    net_return_formula: "gross_return - transaction_cost"
+
+historical_evidence:
+  evaluation_start: "2023-09-01"
+  evaluation_end: "2026-09-04"
+  sessions: 729
+  full_total_return: 1.2735932648
+  full_cagr: 0.3283365400
+  full_annual_volatility: 0.2313827935
+  full_sharpe_log_excess: 1.1566901619
+  full_maximum_drawdown: -0.1949682429
+  full_annual_one_way_turnover: 1.6606122894
+  double_cost_full_sharpe: 1.1478581460
+  positive_fold_share: 1.0
+  fold_sharpe_25th_percentile: 0.6021184270
+  parameter_neighborhood_minimum_sharpe: 1.0808291805
+  leave_one_sector_out_minimum_sharpe: 1.1021341188
+
+preregistered_gate_exception:
+  original_decision: "no_projected_candidate_passed_frozen_gate"
+  supported: false
+  passed_gates: 19
+  total_gates: 21
+  failed_gates:
+    - gate: "timing_perturbation_sharpe"
+      observed: 0.8292502701
+      required: 0.90
+    - gate: "bootstrap_p05"
+      observed: 0.2551808420
+      required: 0.30
+  interpretation: "explicit_user_governance_exception_not_gate_pass"
+
+prospective_validation:
+  status: "pending"
+  contract: "configs/research_experiments/cn_27_v1_3_prospective_validation_v1.yaml"
+  observation_start_strictly_after: "2026-09-04"
+  minimum_calendar_months: 12
+  minimum_expected_sessions: 240
+  parameters_mutable: false
+  pool_mutable: false
+  costs_mutable: false
+  paper_trading_only: true
+  order_submission_allowed: false
+  interpretation: "pending gate constrains trade readiness and does not invalidate formal research publication"
+
+formal_publication:
+  publication_status: "accepted_formal_baseline"
+  promotion_receipt: "data/research/experiment_receipts/cn_27_v1_3_user_directed_promotion_v1.json"
+  preview_bundle_catalog: "data/research/model_runs/catalog.json"
+  formal_bundle_catalog: "data/research/formal_model_runs/catalog.json"
+  current_target_activation: "not_applicable_until_governed_prospective_source_is_available"
+  formal_refresh_adapter: "blocked_pending_cn_27_v1_3_prospective_source_adapter"
+
+known_limitations:
+  - "The 27-name strategy-specific pool is not the governed CN130 selected model pool."
+  - "All historical evidence has been consumed and is not a fresh holdout."
+  - "The frozen historical screen failed timing-perturbation Sharpe and bootstrap-p05 gates."
+  - "The formal publication is an explicit user-directed governance exception, not statistical gate support."
+  - "Prospective validation is pending; no live or automated trading is authorized."

@@ -1,0 +1,28 @@
+{
+  "all_support_gates_passed": true,
+  "automatic_promotion_allowed": false,
+  "decision": "historically_supported_pending_prospective_validation",
+  "fresh_historical_holdout": false,
+  "model_version_id": "cn_27_v1_2_stable_all7_low_turnover",
+  "prospective_validation_required": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_pool_readiness_claimed": false,
+  "support_gate_results": {
+    "double_cost_full_window_minimum_sharpe_log_excess": true,
+    "full_window_maximum_annual_one_way_turnover": true,
+    "full_window_maximum_drawdown_magnitude": true,
+    "full_window_minimum_sharpe_log_excess": true,
+    "maximum_single_name_positive_contribution_share": true,
+    "maximum_single_sector_positive_contribution_share": true,
+    "minimum_fold_sharpe_25th_percentile": true,
+    "minimum_positive_fold_share": true,
+    "minimum_stable_selected_factor_share": true,
+    "minimum_worst_timing_perturbation_sharpe": true,
+    "walk_forward_maximum_annual_one_way_turnover": true,
+    "walk_forward_maximum_drawdown_magnitude": true,
+    "walk_forward_minimum_positive_validation_fold_share": true,
+    "walk_forward_minimum_sharpe_log_excess": true
+  },
+  "trade_ready": false
+}

@@ -1,0 +1,55 @@
+{
+  "annual_one_way_turnover": 17.702046629807437,
+  "annual_volatility": 0.22541338033662844,
+  "average_etf_weight": 0.7331275720164608,
+  "average_stock_weight": 0.26687242798353905,
+  "baselines": {
+    "buy_hold_515180": {
+      "annual_volatility": 0.19325257674730265,
+      "cagr": 0.08783239646916674,
+      "calmar": 0.487848104733238,
+      "end_date": "2026-09-04",
+      "maximum_drawdown": -0.1800404585300064,
+      "observations": 729,
+      "sharpe_log_excess": 0.33858162169987416,
+      "start_date": "2023-09-01",
+      "total_return": 0.2757589065255781
+    },
+    "buy_hold_csi300": {
+      "annual_volatility": 0.20354095523643304,
+      "cagr": 0.0683414881598341,
+      "calmar": 0.3568174503672106,
+      "end_date": "2026-09-04",
+      "maximum_drawdown": -0.1915306779124788,
+      "observations": 729,
+      "sharpe_log_excess": 0.23102022793342997,
+      "start_date": "2023-09-01",
+      "total_return": 0.21074922868031076
+    },
+    "equal_weight_27": {
+      "annual_volatility": 0.3140623178552612,
+      "cagr": 0.4868167822962972,
+      "calmar": 2.2168716114321203,
+      "end_date": "2026-09-04",
+      "maximum_drawdown": -0.21959629045987417,
+      "observations": 729,
+      "sharpe_log_excess": 1.2169434167134645,
+      "start_date": "2023-09-01",
+      "total_return": 2.150041008750788
+    }
+  },
+  "cagr": 0.10689282438278824,
+  "calmar": 0.4810523693405726,
+  "end_date": "2026-09-04",
+  "maximum_drawdown": -0.22220621120589656,
+  "observations": 729,
+  "profit_factor": 1.251125699336665,
+  "research_only": true,
+  "round_trips": 183,
+  "sharpe_log_excess": 0.3687890823525787,
+  "start_date": "2023-09-01",
+  "total_return": 0.341501365893377,
+  "trade_ready": false,
+  "transaction_cost_paid": 0.052030761750965535,
+  "win_rate": 0.36065573770491804
+}

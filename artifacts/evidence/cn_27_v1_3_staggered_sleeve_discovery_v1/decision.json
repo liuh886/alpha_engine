@@ -1,0 +1,69 @@
+{
+  "all_selection_gates_passed": false,
+  "automatic_promotion_allowed": false,
+  "decision": "no_staggered_candidate_passed_frozen_gate",
+  "failure_reasons_by_recipe": {
+    "h0_g1_single": [
+      "timing_perturbation_sharpe",
+      "bootstrap_p05"
+    ],
+    "h1_g1_dual": [
+      "drawdown",
+      "full_sharpe",
+      "double_cost_sharpe",
+      "positive_fold_share",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one",
+      "parameter_drawdown"
+    ],
+    "h2_g1_triple": [
+      "drawdown",
+      "full_sharpe",
+      "positive_fold_share",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_one"
+    ],
+    "h3_g1_quad": [
+      "drawdown",
+      "full_sharpe",
+      "double_cost_sharpe",
+      "positive_fold_share",
+      "fold_sharpe_25th_percentile",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one",
+      "parameter_minimum_sharpe"
+    ],
+    "h4_g1_five": [
+      "drawdown",
+      "full_sharpe",
+      "double_cost_sharpe",
+      "positive_fold_share",
+      "fold_sharpe_25th_percentile",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one",
+      "parameter_minimum_sharpe",
+      "parameter_drawdown"
+    ],
+    "h5_g2_triple": [
+      "drawdown",
+      "full_sharpe",
+      "double_cost_sharpe",
+      "positive_fold_share",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one"
+    ]
+  },
+  "fresh_historical_holdout": false,
+  "prospective_validation_required": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe_id": null,
+  "trade_ready": false
+}

@@ -1,0 +1,49 @@
+schema_version: "1.0"
+candidate_id: "cn_27_v1_2_stable_all7_low_turnover"
+display_name: "CN_27 V1.2"
+status: "historically_supported_pending_prospective_validation"
+market: "cn"
+research_only: true
+trade_ready: false
+promotion_authorized: false
+automatic_promotion_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+model_contract: "configs/research_paradigms/cn_27_v1_2.yaml"
+pool_contract: "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"
+predecessor: "cn_27_v1_1_risk_adjusted_momentum"
+selected_recipe_id: "s1_stable_all7_30_vol_target"
+decision: "historically_supported_pending_prospective_validation"
+evidence:
+  manifest: "artifacts/evidence/cn_27_v1_2/evidence_manifest.json"
+  manifest_identity_sha256: "82faef390a89bd5ddf44b38d9b0b6ffb06b595881f27415d222ba4a41d086237"
+  full_window:
+    sharpe_log_excess: 1.1182969096156454
+    cagr: 0.33049356341675873
+    annual_one_way_turnover: 1.5747380882810456
+    maximum_drawdown: -0.21173423941045466
+  double_cost_full_window:
+    sharpe_log_excess: 1.1103706993612468
+  walk_forward:
+    observations: 485
+    sharpe_log_excess: 1.1894019335833637
+    annual_one_way_turnover: 1.9241613079143318
+    maximum_drawdown: -0.21201218225991214
+    positive_validation_fold_share: 1.0
+  factor_stability:
+    selected_factor_count: 7
+    stable_selected_factor_count: 7
+    stable_selected_factor_share: 1.0
+  concentration:
+    maximum_single_name_positive_contribution_share: 0.10731637587026949
+    maximum_single_sector_positive_contribution_share: 0.2943931399304586
+caveats:
+  second_order_retrospective_selection: true
+  multiple_testing_caveat_required: true
+  pseudo_walk_forward_does_not_restore_freshness: true
+  v1_1_execution_deviation_retained_in_lineage: true
+prospective_validation:
+  required: true
+  earliest_start_after: "2026-09-04"
+  minimum_months: 12
+  contract_mutation_allowed: false

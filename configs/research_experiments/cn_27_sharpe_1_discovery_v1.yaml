@@ -1,0 +1,177 @@
+schema_version: "1.0"
+experiment_id: "cn_27_sharpe_1_discovery_v1"
+created_at: "2026-09-06"
+status: "frozen_pre_screen"
+market: "cn"
+research_only: true
+trade_ready: false
+automatic_promotion_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+
+objective:
+  primary: "identify a lower-turnover CN_27 successor candidate with locked-test Sharpe at least 1.0"
+  turnover_direction: "materially_below_cn_27_v1_0"
+  baseline_model: "cn_27_v1_0"
+  comparison_model: "byd_v1_3_recovery_event_low_vol_confirmation_v1"
+
+identity:
+  pool_spec: "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"
+  pool_sha256: "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458"
+  source_prices: "artifacts/evidence/cn_all_weather_alpha_rotation_v1/source_ohlcv.csv"
+  source_prices_sha256: "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35"
+  cn_27_v1_0_manifest: "artifacts/evidence/cn_27_v1_0/evidence_manifest.json"
+  cn_27_v1_0_manifest_file_sha256: "b5bd3c16165ce0d32ddf46f5ee4693224640ea3edcb72b65de312af42010962f"
+  defensive_etf: "515180"
+  market_reference: "000300"
+
+windows:
+  warmup_start: "2023-05-01"
+  development: {start: "2023-09-01", end: "2024-08-30", sessions: 242}
+  selection_validation: {start: "2024-09-02", end: "2025-08-29", sessions: 241}
+  locked_test: {start: "2025-09-01", end: "2026-09-04", sessions: 246}
+  locked_test_may_enter_selection: false
+
+factor_diagnostics:
+  forward_horizon_sessions: 10
+  execution_delay_sessions: 1
+  minimum_cross_section_size: 15
+  minimum_absolute_mean_rank_ic: 0.01
+  require_same_direction_development_and_validation: true
+  factors:
+    - {id: momentum_5, family: momentum, direction: 1}
+    - {id: momentum_20, family: momentum, direction: 1}
+    - {id: momentum_60, family: momentum, direction: 1}
+    - {id: momentum_120, family: momentum, direction: 1}
+    - {id: trend_20, family: trend, direction: 1}
+    - {id: trend_60, family: trend, direction: 1}
+    - {id: slope_20_10, family: trend, direction: 1}
+    - {id: low_volatility_20, family: volatility, direction: 1}
+    - {id: low_volatility_60, family: volatility, direction: 1}
+    - {id: low_downside_20, family: downside_risk, direction: 1}
+    - {id: low_downside_60, family: downside_risk, direction: 1}
+    - {id: drawdown_60, family: drawdown, direction: 1}
+    - {id: drawdown_120, family: drawdown, direction: 1}
+    - {id: risk_adjusted_momentum_20, family: risk_adjusted_momentum, direction: 1}
+    - {id: risk_adjusted_momentum_60, family: risk_adjusted_momentum, direction: 1}
+    - {id: volume_confirmation_20, family: liquidity, direction: 1}
+
+execution:
+  signal_time: "scheduled_session_close"
+  execution_time: "next_eligible_session_open"
+  return_measurement: "adjusted_open_to_adjusted_open"
+  missing_or_one_price_trade_policy: "defer"
+  allow_short: false
+  allow_leverage: false
+  daily_target_rebalancing_between_scheduled_sessions: false
+
+portfolio_constraints:
+  maximum_single_security_weight: 0.15
+  maximum_equity_exposure: 0.75
+  residual_asset: "515180"
+
+regime_contract:
+  reference_sma_sessions: 120
+  breadth_sma_sessions: 60
+  strong: {reference_above_sma: true, minimum_breadth: 0.50, equity_exposure: 0.75}
+  medium: {reference_above_sma_or_minimum_breadth: 0.35, equity_exposure: 0.45}
+  weak: {equity_exposure: 0.20}
+
+costs:
+  primary: {stock_buy: 0.0005, stock_sell: 0.0010, etf_buy: 0.0002, etf_sell: 0.0002}
+  stress_multiplier: 2.0
+
+candidate_recipes:
+  - id: "c0_equal_weight_control"
+    factors: {}
+    top_k: 27
+    rebalance_sessions: 20
+    exit_rank_buffer: 0
+    maximum_names_per_sector: 27
+    weighting: "equal"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+  - id: "c1_balanced_momentum_lowvol"
+    factors: {momentum_20: 0.25, momentum_60: 0.25, trend_60: 0.20, low_volatility_20: 0.15, low_downside_20: 0.15}
+    top_k: 8
+    rebalance_sessions: 10
+    exit_rank_buffer: 4
+    maximum_names_per_sector: 2
+    weighting: "equal"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+  - id: "c2_risk_adjusted_momentum"
+    factors: {risk_adjusted_momentum_20: 0.35, risk_adjusted_momentum_60: 0.35, trend_60: 0.15, drawdown_60: 0.15}
+    top_k: 8
+    rebalance_sessions: 10
+    exit_rank_buffer: 4
+    maximum_names_per_sector: 2
+    weighting: "inverse_volatility_20"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+  - id: "c3_slow_diversified_momentum"
+    factors: {momentum_60: 0.30, momentum_120: 0.25, trend_60: 0.15, low_volatility_60: 0.20, drawdown_120: 0.10}
+    top_k: 10
+    rebalance_sessions: 20
+    exit_rank_buffer: 5
+    maximum_names_per_sector: 3
+    weighting: "inverse_volatility_20"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "momentum_60_positive"
+
+  - id: "c4_regime_scaled_balanced"
+    factors: {momentum_20: 0.30, momentum_60: 0.25, trend_60: 0.20, low_volatility_20: 0.15, drawdown_60: 0.10}
+    top_k: 8
+    rebalance_sessions: 10
+    exit_rank_buffer: 4
+    maximum_names_per_sector: 2
+    weighting: "equal"
+    equity_exposure: "market_regime_0_20_0_45_0_75"
+    absolute_momentum_filter: "momentum_60_positive"
+
+  - id: "c5_regime_scaled_risk_adjusted"
+    factors: {risk_adjusted_momentum_20: 0.30, risk_adjusted_momentum_60: 0.30, trend_60: 0.15, low_downside_60: 0.15, drawdown_120: 0.10}
+    top_k: 8
+    rebalance_sessions: 10
+    exit_rank_buffer: 4
+    maximum_names_per_sector: 2
+    weighting: "inverse_volatility_20"
+    equity_exposure: "market_regime_0_20_0_45_0_75"
+    absolute_momentum_filter: "momentum_60_positive"
+
+  - id: "c6_broad_low_risk"
+    factors: {low_volatility_20: 0.30, low_downside_60: 0.25, momentum_60: 0.20, trend_60: 0.15, drawdown_120: 0.10}
+    top_k: 12
+    rebalance_sessions: 20
+    exit_rank_buffer: 6
+    maximum_names_per_sector: 3
+    weighting: "inverse_volatility_20"
+    equity_exposure: "market_regime_0_20_0_45_0_75"
+    absolute_momentum_filter: "momentum_60_positive"
+
+selection_gate:
+  maximum_annual_one_way_turnover_each_window: 8.0
+  maximum_drawdown_magnitude_each_window: 0.30
+  minimum_sharpe_each_selection_window: 0.30
+  primary_ranking: "maximize_minimum_development_validation_sharpe"
+  tiebreakers: ["maximize_mean_sharpe", "minimize_turnover", "minimize_drawdown"]
+  exactly_one_candidate_selected_before_locked_test: true
+
+locked_test_gate:
+  minimum_sharpe_log_excess: 1.0
+  maximum_annual_one_way_turnover: 8.0
+  maximum_drawdown_magnitude: 0.25
+  stress_cost_minimum_sharpe_log_excess: 0.80
+  must_outperform_cn_27_v1_0_sharpe: true
+  target_decision: "cn_27_sharpe_1_candidate_supported_retrospective_only"
+
+stop_rules:
+  - no_pool_membership_change
+  - no_locked_test_metrics_during_screening_or_selection
+  - no_candidate_recipe_change_after_screening
+  - no_new_factor_after_screening
+  - no_threshold_or_cost_change_after_locked_test
+  - no_automatic_promotion

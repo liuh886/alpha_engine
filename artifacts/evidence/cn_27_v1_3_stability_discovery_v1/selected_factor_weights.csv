@@ -1,0 +1,8 @@
+date,factor_id,weight
+fixed,residual_momentum_120,0.18
+fixed,risk_adjusted_momentum_20,0.16
+fixed,trend_efficiency_120,0.15
+fixed,risk_adjusted_momentum_120,0.15
+fixed,positive_day_share_60,0.14
+fixed,trend_120,0.12
+fixed,short_term_reversal_5,0.1

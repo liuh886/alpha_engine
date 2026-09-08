@@ -1,0 +1,27 @@
+{
+  "decision": "retrospective_candidate_identified",
+  "experiment_id": "cn_27_v1_2_robustness_discovery_v1",
+  "identity": {
+    "contract_sha256": "753ea925d8f2aede60f4db4f0613a6a7b157005ac71ef89ba8c8353ec13602bf",
+    "implementation_sha256": "e6bc963cbc90ab440c685284b5eb6dbbd574fd6e7118647772d24ed7863d38b7",
+    "pool_sha256": "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458",
+    "predecessor_manifest_file_sha256": "805eaceeaf4795d513715d8ba8e481a9110818a71d8229b8221c21bd879e554a",
+    "source_prices_sha256": "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35"
+  },
+  "manifest_identity_sha256": "71e1271aba944e96a492e653aac2c5bf25cc028f7fa69c7381d9eb9a763d3bdc",
+  "outputs": {
+    "bootstrap.json": "7c123cbcc248f54c038116acb861606fedc8163539ed92c778be8a9f1c7a2f7c",
+    "candidate_summary.csv": "73d274f306301e137fc866cd9ac99ab34689385dde0fe207e73fd29d1f5c5f70",
+    "decision.json": "1f426a0354098942531b020a80bbcf609492270f9c69afb3845f4b118b778661",
+    "factor_diagnostics.csv": "b4b6023afa098fa98a049ff28b1099f36def59686fed770f8f0389d660682a9e",
+    "factor_stability_summary.csv": "2b37a9f01dbd9e020ed5a9da9af483348746f7a1fb95e3ec8dd13b2a3124d759",
+    "report.md": "5629f24da60882481f987c68a398181179c0914bf39a98c7745809ee3e1f7dca",
+    "selected_daily.csv": "1f9283e8d0fe1e62d3bffbf6e15c54798a66d970714fb98106ac2ebbff44c8e6",
+    "selected_factor_weights.csv": "7d4695324bf48b302a43439d5dc576bc3e75adfd8a906a01d3318a656b0841dd",
+    "selected_recipe.json": "d4188889bcbc8058b5023036d96a24f38709b8a54db6d652011ba3d15decba24"
+  },
+  "research_only": true,
+  "schema_version": "1.0",
+  "selection_identity_sha256": "f2d89e55f7ab256ad389235a539334cd998ca2c838457750f1d78497aa40adc3",
+  "trade_ready": false
+}

@@ -1,0 +1,18 @@
+{
+  "all_selection_gates_passed": true,
+  "automatic_promotion_allowed": false,
+  "control_recipe_audit": {
+    "annual_one_way_turnover": 6.30302270232667,
+    "full_sharpe_log_excess": 1.240153023518741,
+    "maximum_drawdown": -0.23349992341315784,
+    "recipe_id": "r0_v1_1_corrected_control",
+    "trade_lock_episodes": 3
+  },
+  "decision": "retrospective_candidate_identified",
+  "fresh_historical_holdout": false,
+  "prospective_validation_required": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe_id": "r9_stable_pullback30_vol_target",
+  "trade_ready": false
+}

@@ -1,0 +1,61 @@
+schema_version: "1.0"
+pool_id: "cn_all_weather_alpha_rotation_v1"
+created_at: "2026-09-05"
+market: "cn"
+status: "frozen_strategy_specific_research_pool"
+candidate_count: 27
+authoritative_for_selected_pool_readiness: false
+research_only: true
+trade_ready: false
+
+governance:
+  purpose: "independently scoped all-weather rotation experiment"
+  active_selected_pool: "cn_selected_equities_v3"
+  active_selected_pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
+  selected_pool_overlap_count: 22
+  strategy_specific_exceptions: ["002156", "002281", "300274", "601939", "688183"]
+  selected_pool_readiness_claim_allowed: false
+  post_result_membership_changes_allowed: false
+  silent_symbol_substitution_allowed: false
+  market_isolation_required: true
+
+symbols:
+  - {symbol: "002463", canonical_id: "CN.002463.SZ", name: "沪电股份", sector: "ai_compute"}
+  - {symbol: "688183", canonical_id: "CN.688183.SH", name: "生益电子", sector: "ai_compute"}
+  - {symbol: "002837", canonical_id: "CN.002837.SZ", name: "英维克", sector: "ai_compute"}
+  - {symbol: "688008", canonical_id: "CN.688008.SH", name: "澜起科技", sector: "ai_compute"}
+  - {symbol: "300548", canonical_id: "CN.300548.SZ", name: "长芯博创", sector: "ai_compute"}
+  - {symbol: "002156", canonical_id: "CN.002156.SZ", name: "通富微电", sector: "ai_compute"}
+  - {symbol: "603629", canonical_id: "CN.603629.SH", name: "利通电子", sector: "ai_compute"}
+  - {symbol: "300017", canonical_id: "CN.300017.SZ", name: "网宿科技", sector: "ai_compute"}
+  - {symbol: "601899", canonical_id: "CN.601899.SH", name: "紫金矿业", sector: "resources_shipping"}
+  - {symbol: "600150", canonical_id: "CN.600150.SH", name: "中国船舶", sector: "resources_shipping"}
+  - {symbol: "601872", canonical_id: "CN.601872.SH", name: "招商轮船", sector: "resources_shipping"}
+  - {symbol: "600426", canonical_id: "CN.600426.SH", name: "华鲁恒升", sector: "resources_shipping"}
+  - {symbol: "688676", canonical_id: "CN.688676.SH", name: "金盘科技", sector: "power_grid"}
+  - {symbol: "301291", canonical_id: "CN.301291.SZ", name: "明阳电气", sector: "power_grid"}
+  - {symbol: "600522", canonical_id: "CN.600522.SH", name: "中天科技", sector: "power_grid"}
+  - {symbol: "002594", canonical_id: "CN.002594.SZ", name: "比亚迪", sector: "new_energy"}
+  - {symbol: "300274", canonical_id: "CN.300274.SZ", name: "阳光电源", sector: "new_energy"}
+  - {symbol: "002709", canonical_id: "CN.002709.SZ", name: "天赐材料", sector: "new_energy"}
+  - {symbol: "601012", canonical_id: "CN.601012.SH", name: "隆基绿能", sector: "new_energy"}
+  - {symbol: "300408", canonical_id: "CN.300408.SZ", name: "三环集团", sector: "consumer_technology"}
+  - {symbol: "300782", canonical_id: "CN.300782.SZ", name: "卓胜微", sector: "consumer_technology"}
+  - {symbol: "300133", canonical_id: "CN.300133.SZ", name: "华策影视", sector: "consumer_technology"}
+  - {symbol: "600026", canonical_id: "CN.600026.SH", name: "中远海能", sector: "added_defense_and_growth"}
+  - {symbol: "600938", canonical_id: "CN.600938.SH", name: "中国海油", sector: "added_defense_and_growth"}
+  - {symbol: "600900", canonical_id: "CN.600900.SH", name: "长江电力", sector: "added_defense_and_growth"}
+  - {symbol: "002281", canonical_id: "CN.002281.SZ", name: "光迅科技", sector: "added_defense_and_growth"}
+  - {symbol: "601939", canonical_id: "CN.601939.SH", name: "建设银行", sector: "added_defense_and_growth"}
+
+references:
+  defensive_etf:
+    symbol: "515180"
+    canonical_id: "515180.SH"
+    role: "executable_defensive_sleeve"
+    candidate_eligible: false
+  benchmark:
+    symbol: "000300"
+    canonical_id: "000300.SH"
+    role: "non_executable_benchmark"
+    candidate_eligible: false

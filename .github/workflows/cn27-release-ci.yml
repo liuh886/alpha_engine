@@ -1,0 +1,49 @@
+name: CN27 Formal Research Release
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cn27-release-ci.yml'
+      - 'configs/**/cn_27*'
+      - 'configs/**/cn_all_weather*'
+      - 'configs/strategies/**'
+      - 'src/research/cn27*'
+      - 'src/research/all_weather_alpha_rotation.py'
+      - 'src/artifacts/formal_bundle_v2_builder.py'
+      - 'scripts/publish_cn_27*'
+      - 'tests/test_cn27*'
+      - 'tests/test_publish_cn_27*'
+      - 'artifacts/evidence/cn_27*/**'
+      - 'artifacts/evidence/cn_all_weather_alpha_rotation_v1/**'
+      - 'data/research/formal_model_runs/cn_27_rotation/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cn27-release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frozen-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Verify retained failures, frozen execution and formal publication
+        run: >-
+          uv run pytest tests/test_cn27*.py
+          tests/test_all_weather_alpha_rotation.py
+          tests/test_publish_cn_27_v1_3_user_directed.py
+          tests/test_active_strategy_catalog.py
+          tests/test_strategy_runtime_capabilities.py
+          -q --strict-markers --tb=short

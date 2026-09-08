@@ -1,0 +1,29 @@
+{
+  "decision": "historically_supported_pending_prospective_validation",
+  "identity": {
+    "discovery_implementation_sha256": "e6bc963cbc90ab440c685284b5eb6dbbd574fd6e7118647772d24ed7863d38b7",
+    "evidence_implementation_sha256": "fb1d61361c741d30fff682f7a2f772522af1278bab603ed5814efe78c016a411",
+    "model_contract_sha256": "c5ad58cc355a0cc0b2d1f68ecdcffc22d88695bf641873dc0f13a8f8443f72b2",
+    "pool_sha256": "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458",
+    "robustness_discovery_manifest_file_sha256": "e7b4b51af5d9cea4873216c78b38ae1345738d9c78dd6e3779548e0aefd344b8",
+    "source_prices_sha256": "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35",
+    "stability_discovery_manifest_file_sha256": "f685696ce04d9de1b26e2482a95a65016320a5ffa7cd6ffa93ba44c616d138a8"
+  },
+  "manifest_identity_sha256": "82faef390a89bd5ddf44b38d9b0b6ffb06b595881f27415d222ba4a41d086237",
+  "model_version_id": "cn_27_v1_2_stable_all7_low_turnover",
+  "outputs": {
+    "attribution.csv": "42adf0ebd7863a0fc20d73ea4b323bf1e747dfd00db3bbc2aef42c9d746f1814",
+    "attribution.json": "0dcccd1d52e399afce676dfe87349095c75c0faa6773aaf1e1f68c3b08759da0",
+    "comparison.json": "9ef89864f04748406c5a9b7e25186a18c613b559699f4dbb393420454f2cc1ef",
+    "daily.csv": "abe9da5372e93aa360afe1b3065bd5129ed59edd20624b9572122b9c664c8ecd",
+    "decision.json": "18103a1e250be729dbe869ac512ac6517150456573a855d918814f6569a12c1d",
+    "double_cost_daily.csv": "55e2619a2bcb616b872ee26c15adb053097853cade018b6bc2f90adc5312d560",
+    "metrics.json": "95d97dcb0b9c0c7d9816692b64aeb91a2b492079283fe823fefcbeef6cc0eb08",
+    "report.md": "6b85d0faaddd3a5c70633305f00eb6f9202b2bd8b87339cc243e0e5005f16e1c",
+    "walk_forward_daily.csv": "6165c909ca649774ee3e36a1fab5e33e3ab5549349795f63459b75068baee61a",
+    "walk_forward_selection.csv": "581ad90f59e6ace26f8037f4ee239d314d1c23a8c41bedcb8f4290ae3e64c9e3"
+  },
+  "research_only": true,
+  "schema_version": "1.0",
+  "trade_ready": false
+}

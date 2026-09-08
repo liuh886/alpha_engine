@@ -94,6 +94,7 @@ def test_active_preview_catalog_is_exact_active_strategy_set(tmp_path: Path) -> 
         "qqqi_qqq_tqqq_v4_3",
         US_X1_3,
         "cn_x1_2",
+        "cn_27_v1_3",
         BYD_V13,
     }
     assert "us_x1_2" not in preview_ids

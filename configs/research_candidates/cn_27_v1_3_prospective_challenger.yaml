@@ -1,0 +1,77 @@
+schema_version: "1.0"
+candidate_id: "cn_27_v1_3_projected_k2_prospective_challenger"
+display_name: "CN_27 V1.3 prospective challenger"
+created_at: "2026-09-07"
+status: "historical_gate_failed_prospective_observation_only"
+market: "cn"
+research_only: true
+trade_ready: false
+promotion_authorized: false
+automatic_promotion_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+selected_pool_readiness_claim_allowed: false
+
+lineage:
+  discovery_contract: "configs/research_experiments/cn_27_v1_3_projected_concentration_discovery_v1.yaml"
+  discovery_contract_sha256: "4381ac0562b05a1209aac7fa7bba782607fa26742802ff9d19ded6a94ada98a6"
+  discovery_manifest: "artifacts/evidence/cn_27_v1_3_projected_concentration_discovery_v1/evidence_manifest.json"
+  discovery_manifest_file_sha256: "78900e0fbf26f17ae97b5734f6d37138ce3df56a427bbf945284f9136acfd948"
+  discovery_manifest_identity_sha256: "1a096efea0488079d8c08840fae80501742358e748dad4c5d7ec79b1f62c957e"
+  incumbent_model_contract: "configs/research_paradigms/cn_27_v1_2.yaml"
+  incumbent_model_contract_sha256: "c5ad58cc355a0cc0b2d1f68ecdcffc22d88695bf641873dc0f13a8f8443f72b2"
+
+frozen_challenger:
+  recipe_id: "k2_projected_22_45_n8"
+  signal: "CN_27 V1.2 stable seven-factor signal, unchanged"
+  covariance_lookback: 120
+  covariance_shrinkage: 0.50
+  projection: "minimum squared Euclidean distance to unconstrained minimum-variance weights"
+  maximum_single_equity_sleeve_share: 0.22
+  maximum_sector_equity_sleeve_share: 0.45
+  minimum_effective_names: 8.0
+  rebalance_sessions: 30
+  execution: "next eligible open with locked-target daily retry"
+  costs: "stock buy 0.05%, stock sell 0.10%, ETF buy/sell 0.02%"
+
+historical_audit:
+  full_sharpe_log_excess: 1.1566901619
+  maximum_drawdown: -0.1949682429
+  annual_one_way_turnover: 1.6606122894
+  double_cost_sharpe_log_excess: 1.1478581460
+  fold_sharpe_25th_percentile: 0.6021184270
+  positive_fold_share: 1.0
+  parameter_neighborhood_minimum_sharpe: 1.0808291805
+  parameter_neighborhood_maximum_drawdown_magnitude: 0.2166639395
+  leave_one_sector_out_minimum_sharpe: 1.1021341188
+  maximum_post_drift_single_equity_sleeve_share: 0.2459355206
+  maximum_post_drift_sector_equity_sleeve_share: 0.4855907300
+  post_drift_sector_share_p95: 0.4680197001
+  post_drift_effective_names_median: 8.4112518289
+  bootstrap_probability_sharpe_above_one: 0.6095
+  failed_frozen_gates:
+    worst_timing_perturbation_sharpe: {observed: 0.8292502701, required: 0.90}
+    bootstrap_sharpe_percentile_05: {observed: 0.2551808420, required: 0.30}
+
+prospective_protocol:
+  observation_start_strictly_after: "2026-09-04"
+  minimum_calendar_months: 12
+  minimum_expected_sessions: 240
+  parameter_mutation_allowed: false
+  pool_mutation_allowed: false
+  cost_mutation_allowed: false
+  evidence_append_only: true
+  paper_trading_only: true
+  order_submission_allowed: false
+  formal_v1_3_creation_allowed_before_gate: false
+
+required_external_evidence:
+  - source-bound adjusted and raw OHLCV for all 27 candidates, defensive ETF, and CSI 300 reference
+  - point-in-time corporate actions, listing, suspension, one-price and tradability events
+  - provider identity, extraction timestamp, query parameters, file hashes and revision policy
+  - daily target, executed weight, deferral, cost, turnover and equity ledger
+
+decision:
+  formal_v1_3_created: false
+  reason: "no historical candidate passed the frozen V1.3 completion gate"
+  next_decision_requires: "unchanged prospective evidence or a genuinely sealed independent dataset"

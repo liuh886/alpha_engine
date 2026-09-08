@@ -1,0 +1,23 @@
+schema_version: "1.0"
+candidate_id: "cn_27_v1_0"
+display_name: "CN_27 V1.0"
+status: "historical_challenge_passed_pending_prospective_validation"
+market: "cn"
+research_only: true
+trade_ready: false
+promotion_authorized: false
+automatic_promotion_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+model_contract: "configs/research_paradigms/cn_27_v1_0.yaml"
+pool_contract: "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"
+benchmark_model_version_id: "byd_v1_3_recovery_event_low_vol_confirmation_v1"
+comparison_scope: "exact_common_daily_open_to_open_history"
+post_challenge_parameter_changes_allowed: false
+historical_challenge_evidence:
+  decision: "historical_common_window_challenge_passed_no_fresh_holdout"
+  evidence_manifest: "artifacts/evidence/cn_27_v1_0/evidence_manifest.json"
+  evidence_manifest_identity_sha256: "3f8565733bc6c73ad156de52780b791ad4ad467848b2789d570159c9d1b11890"
+  common_window: {start: "2023-09-01", end: "2026-08-24", sessions: 720}
+  risk_return_dominance: true
+  turnover_efficiency_vs_benchmark: false

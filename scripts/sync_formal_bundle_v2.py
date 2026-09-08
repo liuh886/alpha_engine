@@ -122,7 +122,7 @@ def _preserve_inactive_formal_runs(
 ) -> dict[str, str]:
     """Copy validated predecessor bundles outside the active catalog.
 
-    The active catalog remains an exact four-model Interface. Historical model
+    The active catalog remains an exact active-model interface. Historical model
     versions are a separate immutable audit closure consumed through
     ``load_retained_formal_run`` and must survive replacement of the active
     publication tree.
