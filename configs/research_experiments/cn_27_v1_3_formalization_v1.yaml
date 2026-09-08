@@ -1,0 +1,37 @@
+schema_version: "1.0"
+formalization_id: "cn_27_v1_3_formalization_v1"
+created_at: "2026-09-07"
+status: "frozen_before_prospective_result"
+research_only: true
+trade_ready: false
+automatic_promotion_allowed: false
+
+lineage:
+  prospective_validation_contract: "configs/research_experiments/cn_27_v1_3_prospective_validation_v1.yaml"
+  prospective_validation_contract_sha256: "7ec181cb52c8c404d7ce1c2bebb5adbb5b061db93b8f607f88984639b3f6b291"
+  prospective_implementation: "src/research/cn27_v1_3_prospective.py"
+  prospective_implementation_sha256: "19c5155d075d5aa23158373e12ffaa23628e360878b2d1dbf4808f7f452c6010"
+  challenger_contract: "configs/research_candidates/cn_27_v1_3_prospective_challenger.yaml"
+  challenger_contract_sha256: "65b18343a49286471751b83920b32c18bbc3fcaaf7a19f9f2b9d15ae8b464327"
+  implementation: "src/research/cn27_v1_3_formalize.py"
+  implementation_sha256: "a3f6f5944534f57ba24c23dd1d9739243d2db5ce7448120003acc6ccc17ceae2"
+
+required_prospective_decision: "prospective_gate_passed_formal_v1_3_packaging_authorized"
+formal_output: "configs/research_paradigms/cn_27_v1_3.yaml"
+
+formal_boundary:
+  status: "frozen_formal_research_candidate"
+  replaces_active_baseline: false
+  promotion_authorized: false
+  automatic_promotion_allowed: false
+  selected_pool_readiness_claim_allowed: false
+  research_only: true
+  trade_ready: false
+
+stop_rules:
+  - reject_incomplete_or_failed_prospective_evidence
+  - independently_recompute_all_gate_decisions_from_metrics
+  - reject_manifest_or_output_hash_mismatch
+  - never_modify_v1_1_or_v1_2
+  - never_overwrite_a_different_v1_3_contract
+  - never_mark_trade_ready

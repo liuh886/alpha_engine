@@ -1,0 +1,36 @@
+schema_version: "1.0"
+candidate_id: "cn_27_v1_1_risk_adjusted_momentum"
+display_name: "CN_27 V1.1"
+status: "historically_supported_pending_prospective_validation"
+market: "cn"
+research_only: true
+trade_ready: false
+promotion_authorized: false
+automatic_promotion_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+model_contract: "configs/research_paradigms/cn_27_v1_1.yaml"
+pool_contract: "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"
+predecessor: "cn_27_v1_0"
+selected_recipe_id: "c2_risk_adjusted_momentum"
+decision: "historically_supported_pending_prospective_validation"
+evidence:
+  manifest: "artifacts/evidence/cn_27_v1_1/evidence_manifest.json"
+  manifest_identity_sha256: "df7149f06de6e1e8b60bcfe7c6f74ce313248aa8bb9a89929c9192f888a007e1"
+  full_window:
+    sharpe_log_excess: 1.2152262656239552
+    annual_one_way_turnover: 6.247636880387627
+    maximum_drawdown: -0.23349992341315762
+  locked_test:
+    sharpe_log_excess: 1.8342815266880443
+    annual_one_way_turnover: 5.981327857646447
+  factor_stability:
+    selected_factor_count: 4
+    same_direction_factor_count: 1
+    same_direction_share: 0.25
+    caveat_required: true
+prospective_validation:
+  required: true
+  earliest_start_after: "2026-09-04"
+  minimum_months: 12
+  contract_mutation_allowed: false

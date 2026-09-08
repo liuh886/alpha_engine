@@ -55,3 +55,8 @@ data/research/runs/**/*.pkl filter=lfs diff=lfs merge=lfs -text
 data/research/runs/**/*.bin filter=lfs diff=lfs merge=lfs -text
 data/research/runs/**/*.joblib filter=lfs diff=lfs merge=lfs -text
 data/research/runs/**/*.onnx filter=lfs diff=lfs merge=lfs -text
+
+# CN27 predecessor evidence was sealed with Windows line endings. Preserve the
+# original bytes rather than invalidating frozen source and lineage hashes.
+artifacts/evidence/cn_27*/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+artifacts/evidence/cn_all_weather_alpha_rotation_v1/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

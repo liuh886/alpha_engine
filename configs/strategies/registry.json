@@ -50,6 +50,21 @@
       "historical_evidence_access": "public"
     },
     {
+      "strategy_id": "cn_27",
+      "display_name": "CN_27 V1.3",
+      "model_family_id": "cn_27_rotation",
+      "model_version_id": "cn_27_v1_3",
+      "model_kind": "rules_based_allocation",
+      "market": "cn",
+      "benchmark_id": "000300",
+      "formal_status": "accepted_formal_baseline",
+      "model_contract": "configs/models/cn_27_v1_3.yaml",
+      "decision_cadence": "Every 30 completed CN market sessions",
+      "next_decision_policy": "Evaluate at close; locked target applies to the next eligible open with daily retry.",
+      "signal_ledger": "data/research/strategy_signal_ledgers/cn_27_v1_3",
+      "historical_evidence_access": "public"
+    },
+    {
       "strategy_id": "byd",
       "display_name": "BYD v1.3",
       "model_family_id": "byd_allocation",
@@ -62,21 +77,6 @@
       "decision_cadence": "Every completed CN market session",
       "next_decision_policy": "Evaluate after the common close; target applies to the next independently confirmed eligible open.",
       "signal_ledger": "data/research/strategy_signal_ledgers/byd_v1_3_recovery_event_low_vol_confirmation_v1",
-      "historical_evidence_access": "public"
-    },
-    {
-      "strategy_id": "all_weather_alpha_rotation",
-      "display_name": "All Weather Multi Asset Alpha Rotation v1",
-      "model_family_id": "all_weather_alpha_rotation",
-      "model_version_id": "all_weather_alpha_rotation_v1",
-      "model_kind": "rules_based_multi_asset_allocation",
-      "market": "cn",
-      "benchmark_id": "000300",
-      "formal_status": "research_candidate",
-      "model_contract": "configs/models/all_weather_alpha_rotation_v1.yaml",
-      "decision_cadence": "Every completed CN market session",
-      "next_decision_policy": "Evaluate at close; target applies to the next eligible open.",
-      "signal_ledger": "data/research/strategy_signal_ledgers/all_weather_alpha_rotation_v1",
       "historical_evidence_access": "public"
     }
   ]

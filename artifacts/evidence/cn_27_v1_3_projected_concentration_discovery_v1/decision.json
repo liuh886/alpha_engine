@@ -1,0 +1,56 @@
+{
+  "all_selection_gates_passed": false,
+  "automatic_promotion_allowed": false,
+  "decision": "no_projected_candidate_passed_frozen_gate",
+  "failure_reasons_by_recipe": {
+    "k0_projected_28_52_n6": [
+      "drawdown",
+      "full_sharpe",
+      "double_cost_sharpe",
+      "positive_fold_share",
+      "fold_sharpe_25th_percentile",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one",
+      "parameter_minimum_sharpe",
+      "post_drift_single_share",
+      "post_drift_sector_share",
+      "post_drift_sector_p95",
+      "effective_names_median",
+      "effective_names_p05"
+    ],
+    "k1_projected_25_50_n7": [
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "post_drift_sector_p95"
+    ],
+    "k2_projected_22_45_n8": [
+      "timing_perturbation_sharpe",
+      "bootstrap_p05"
+    ],
+    "k3_projected_20_45_n9": [
+      "timing_perturbation_sharpe",
+      "bootstrap_p05"
+    ],
+    "k4_projected_20_40_n9": [
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_one"
+    ],
+    "k5_projected_18_40_n10": [
+      "drawdown",
+      "full_sharpe",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one"
+    ]
+  },
+  "fresh_historical_holdout": false,
+  "prospective_validation_required": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe_id": null,
+  "trade_ready": false
+}

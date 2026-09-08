@@ -1,0 +1,27 @@
+{
+  "contract_identity": {
+    "pool_sha256": "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458",
+    "reference_registry_sha256": "89caad51b98f08b2869cdae1bc226bb3d3686af9e0ea64cc64c42ae83792e3b2",
+    "source_document_sha256": "778daf7ef7bc0571530295b303b0b4ce4ac1fab2b93d310f552ff3a59973c505",
+    "spec_sha256": "8ab11302b28eeacd48fd89d18eb6ae11dde83a3efee1c01dafcc748162a3814a"
+  },
+  "experiment_id": "cn_all_weather_alpha_rotation_v1",
+  "manifest_identity_sha256": "8201e50ca3b0e346ae02c6e5478884024991601a131081d0841245519fd2eb35",
+  "outputs": {
+    "coverage.csv": "0654f651d47dbda9606fba64040ff5f15e31496a9bfe127109c3928fbf8e21e5",
+    "daily.csv": "94e0c66950994d48bdceddd6739c43868d45920b6a6562258e1d4ffcb3bbea10",
+    "decision.json": "2b1ac46517b096f39c54e5a6c550f3e7247c22795bb734331679670af20906ef",
+    "factor_signal_history.csv": "e530d60c3ef0fcf3161f40307692e8650f181e5eef0696f147db2ae88525960c",
+    "metrics.json": "c7bd050cb9f460c7790c1c16bea88c6dd72a9cd3af1482da4bc1958921101f0f",
+    "report.md": "b3fcbcafc632202d0f4be0d3598675aa8d6c4b2ab50249c9c091383072999b7f",
+    "round_trips.csv": "efad07d30f8cd893d7fabeba24cf4ef1e31d83ebeb5ea670987b12af2c35eed4",
+    "trades.csv": "0de1f024fd8a4a5cd15ae425e266c408f183615b5419dda39fc896704ae4c781"
+  },
+  "research_only": true,
+  "schema_version": "1.0",
+  "source_prices": {
+    "path": "D:\\Documents\\GitHub\\alpha_engine\\artifacts\\evidence\\cn_all_weather_alpha_rotation_v1\\source_ohlcv.csv",
+    "sha256": "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35"
+  },
+  "trade_ready": false
+}

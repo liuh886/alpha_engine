@@ -29,6 +29,7 @@ def test_committed_active_strategy_catalog_matches_or_declares_formal_cutover() 
         "qqqi_qqq_tqqq_v4_3",
         "us_x1_3",
         "cn_x1_2",
+        "cn_27_v1_3",
         "byd_v1_3_recovery_event_low_vol_confirmation_v1",
     )
     assert all("current_operations_access" not in strategy for strategy in registry["strategies"])

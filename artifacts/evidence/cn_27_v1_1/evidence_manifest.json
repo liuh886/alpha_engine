@@ -1,0 +1,30 @@
+{
+  "decision": "historically_supported_pending_prospective_validation",
+  "identity": {
+    "byd_benchmark_manifest_sha256": "306d1d0ea4bb95a2e81ab44bcf6fc1bb990bf326828d3548b2e61ded0477deeb",
+    "byd_benchmark_performance_sha256": "fe7649e0bbd658a496308c842c2815972a162323eb79e7da3a63c6aa11d7ab64",
+    "discovery_implementation_sha256": "3c5a18f5cc2e331155b439b37dd1d9034efcfb1a3c9e4e64a4bcda5a4572290a",
+    "evidence_implementation_sha256": "477191441dbccc886ab694789a188bff431d05d0accdab2c07cc1cad71512649",
+    "holdout_manifest_file_sha256": "b96f931414bc98e950313bd046e800df08435339281ea91f52d8d6feb7f3d03d",
+    "model_contract_sha256": "22ed6ca6cfcc299fad14d984de485e418af68389d057fcddf2f0d9f205744b20",
+    "pool_sha256": "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458",
+    "predecessor_daily_sha256": "1f48b2b1f616282de19482b12e2c0c0cbe94d55bc328abfbfd18f49651de5010",
+    "sealed_screen_manifest_file_sha256": "127d9b676ceacd7458969e67898d36eb042f83953bcc9e6525d2d7b28286b639",
+    "source_prices_sha256": "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35"
+  },
+  "manifest_identity_sha256": "df7149f06de6e1e8b60bcfe7c6f74ce313248aa8bb9a89929c9192f888a007e1",
+  "model_version_id": "cn_27_v1_1_risk_adjusted_momentum",
+  "outputs": {
+    "attribution.csv": "22d7be05b8c8ed93582a17eb24af0142f04f1a11b73527aee270d82fbddb5faa",
+    "byd_comparison_daily.csv": "9857b9712caf40f9f47db80f9b582e3b067863168555f2be9660d34b9a99dab7",
+    "comparison.json": "ecc20bdf78166273142c3f88fb31c3b98dc1369b1da57a1d5755e1bfdbdb7f57",
+    "daily.csv": "fb3b1ab4d6f2ca697290c4afa6c1f55f54b1361d6253a5731462c10687d07697",
+    "decision.json": "1f21f2174027c4e17266b11a52afe6f590348588e5d345a72cc50c7195947380",
+    "double_cost_daily.csv": "ab1ee2ed8ac2df0ac6336ca35c9eb0557059ad31d6b306408bc1f78ef2cc77c6",
+    "metrics.json": "d106880f05921cc397fe54b5d77a74bc2e85c6516c61d8cbb38dafa5fe8ac02b",
+    "report.md": "1de5acf3391b3dc2b7aba7a1c5eb10939a9f9b3ef2d27ab7542e0ff1d77b0b73"
+  },
+  "research_only": true,
+  "schema_version": "1.0",
+  "trade_ready": false
+}

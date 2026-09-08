@@ -1,0 +1,21 @@
+{
+  "automatic_promotion_allowed": false,
+  "decision": "no_staggered_candidate_passed_frozen_gate",
+  "experiment_id": "cn_27_v1_3_staggered_sleeve_discovery_v1",
+  "fresh_historical_holdout": false,
+  "frozen_constraint_recipe": null,
+  "frozen_risk_model": {
+    "covariance_lookback": 120,
+    "covariance_shrinkage": 0.5,
+    "exposure_policy": "reference_volatility_target",
+    "minimum_variance_blend_step": 0.05,
+    "weighting": "shrinkage_minimum_variance"
+  },
+  "historical_evidence_consumed": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe": null,
+  "selected_recipe_id": null,
+  "selection_identity_sha256": "b48607ee49e9dd6ba48ae9eeb1345c8719fc814517de98377f7049594aac8eab",
+  "trade_ready": false
+}

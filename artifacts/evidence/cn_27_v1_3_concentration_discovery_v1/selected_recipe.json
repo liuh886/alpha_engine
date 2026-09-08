@@ -1,0 +1,20 @@
+{
+  "automatic_promotion_allowed": false,
+  "decision": "no_concentration_governed_candidate_passed_frozen_gate",
+  "experiment_id": "cn_27_v1_3_concentration_discovery_v1",
+  "fresh_historical_holdout": false,
+  "frozen_risk_model": {
+    "covariance_lookback": 120,
+    "covariance_shrinkage": 0.5,
+    "exposure_policy": "reference_volatility_target",
+    "minimum_variance_blend_step": 0.05,
+    "weighting": "shrinkage_minimum_variance"
+  },
+  "historical_evidence_consumed": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe": null,
+  "selected_recipe_id": null,
+  "selection_identity_sha256": "ff2dc0d1b988752dc30dd815768b65440aadd2b2024ba5879c30300967d70c3c",
+  "trade_ready": false
+}

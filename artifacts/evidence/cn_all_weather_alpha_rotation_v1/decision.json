@@ -1,0 +1,73 @@
+{
+  "benchmark": "000300.SH",
+  "candidate_count": 27,
+  "claim_audit": {
+    "all_claims_reproduced": false,
+    "comparisons": {
+      "annual_one_way_turnover": {
+        "claimed": 0.156,
+        "difference": 17.54604662980744,
+        "observed": 17.702046629807437,
+        "reproduced": false,
+        "tolerance": 0.005
+      },
+      "annual_volatility": {
+        "claimed": 0.1323,
+        "difference": 0.09311338033662844,
+        "observed": 0.22541338033662844,
+        "reproduced": false,
+        "tolerance": 0.005
+      },
+      "cagr": {
+        "claimed": 0.5365,
+        "difference": -0.42960717561721173,
+        "observed": 0.10689282438278824,
+        "reproduced": false,
+        "tolerance": 0.005
+      },
+      "calmar": {
+        "claimed": 4.03,
+        "difference": -3.548947630659428,
+        "observed": 0.4810523693405726,
+        "reproduced": false,
+        "tolerance": 0.05
+      },
+      "maximum_drawdown": {
+        "claimed": -0.1332,
+        "difference": -0.08900621120589655,
+        "observed": -0.22220621120589656,
+        "reproduced": false,
+        "tolerance": 0.005
+      },
+      "sharpe_log_excess": {
+        "claimed": 3.9,
+        "difference": -3.5312109176474213,
+        "observed": 0.3687890823525787,
+        "reproduced": false,
+        "tolerance": 0.05
+      },
+      "total_return": {
+        "claimed": 2.4641,
+        "difference": -2.122598634106623,
+        "observed": 0.341501365893377,
+        "reproduced": false,
+        "tolerance": 0.005
+      }
+    },
+    "source_status": "unverified_external_claims"
+  },
+  "decision": "external_performance_claims_not_reproduced",
+  "defensive_etf": "515180.SH",
+  "experiment_id": "cn_all_weather_alpha_rotation_v1",
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_pool_readiness_claimed": false,
+  "strategy_specific_pool": true,
+  "stress_window": {
+    "average_etf_weight": 0.8821428571428571,
+    "minimum_etf_weight": 0.55,
+    "observations": 14,
+    "total_return": 0.013026148775585611
+  },
+  "trade_ready": false
+}

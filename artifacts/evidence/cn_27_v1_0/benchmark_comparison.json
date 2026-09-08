@@ -1,0 +1,55 @@
+{
+  "all_frozen_gates_passed": true,
+  "benchmark": {
+    "annual_one_way_turnover": 0.9992267982203362,
+    "annual_volatility": 0.3309800074387259,
+    "cagr": 0.10307650588942852,
+    "calmar": 0.2795075003124028,
+    "end_date": "2026-08-24",
+    "financing_cost_paid": 0.0004395053947192946,
+    "maximum_drawdown": -0.36877903374407095,
+    "observations": 720,
+    "sharpe_log_excess": 0.23998238444212497,
+    "start_date": "2023-09-01",
+    "total_return": 0.3235196241211369,
+    "transaction_cost_paid": 0.011419734836803842
+  },
+  "benchmark_manifest": "data/research/formal_model_runs/byd_allocation/byd_v1_3_recovery_event_low_vol_confirmation_v1/byd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_08_25/manifest.json",
+  "benchmark_manifest_sha256": "306d1d0ea4bb95a2e81ab44bcf6fc1bb990bf326828d3548b2e61ded0477deeb",
+  "benchmark_model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+  "benchmark_performance_sha256": "fe7649e0bbd658a496308c842c2815972a162323eb79e7da3a63c6aa11d7ab64",
+  "challenger": {
+    "annual_one_way_turnover": 17.49458859024696,
+    "annual_volatility": 0.2258191583617232,
+    "cagr": 0.11353851368011036,
+    "calmar": 0.5109601260196343,
+    "end_date": "2026-08-24",
+    "maximum_drawdown": -0.22220621120589656,
+    "observations": 720,
+    "sharpe_log_excess": 0.39514305540301253,
+    "start_date": "2023-09-01",
+    "total_return": 0.3597014162344254,
+    "transaction_cost_paid": 0.05073523573363682
+  },
+  "challenger_model_version_id": "cn_27_v1_0",
+  "common_window": {
+    "end": "2026-08-24",
+    "sessions": 720,
+    "start": "2023-09-01"
+  },
+  "decision": "historical_common_window_challenge_passed_no_fresh_holdout",
+  "fresh_historical_holdout": false,
+  "gate_results": {
+    "cagr_strictly_above_benchmark": true,
+    "calmar_strictly_above_benchmark": true,
+    "maximum_annual_one_way_turnover": true,
+    "maximum_drawdown_not_worse_than_benchmark": true,
+    "sharpe_log_excess_strictly_above_benchmark": true,
+    "total_return_strictly_above_benchmark": true
+  },
+  "historical_risk_return_dominance": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "trade_ready": false,
+  "turnover_efficiency_vs_benchmark": false
+}

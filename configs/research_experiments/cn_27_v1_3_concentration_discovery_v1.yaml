@@ -1,0 +1,115 @@
+schema_version: "1.0"
+experiment_id: "cn_27_v1_3_concentration_discovery_v1"
+created_at: "2026-09-06"
+status: "frozen_pre_screen"
+research_only: true
+trade_ready: false
+automatic_promotion_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+selected_pool_readiness_claim_allowed: false
+
+iteration_semantics:
+  type: "fourth_order_retrospective_concentration_governance_test"
+  source_of_hypothesis: "post-screen concentration audit of V1.4 shrinkage-minimum-variance candidate"
+  fresh_confirmation_claim_allowed: false
+  multiple_testing_caveat_required: true
+
+lineage:
+  risk_overlay_contract: "configs/research_experiments/cn_27_v1_4_risk_overlay_discovery_v1.yaml"
+  risk_overlay_contract_sha256: "30c8b2df49b81aac701731583b5322da3a49de29e0d9200bafe1939ef6a28906"
+  risk_overlay_manifest: "artifacts/evidence/cn_27_v1_4_risk_overlay_discovery_v1/evidence_manifest.json"
+  risk_overlay_manifest_file_sha256: "4000772757392b1d6a8f483b32cce6c500f59af9ebdb4c8d3c0fd3c2cb2a00a7"
+  risk_overlay_manifest_identity_sha256: "46287c7d53a64d7b1d61389d1de12008635bad061e4caf5f86fc068392640378"
+  risk_overlay_selection_identity_sha256: "63a1e9a924a30e9988ca079217e4a5c318009844a00fb93e9714a4dde7f692dd"
+
+objective:
+  primary: "retain the V1.4 risk improvement while governing equity-sleeve concentration"
+  signal_frozen: true
+  covariance_family_frozen: true
+  interpretation: "fully consumed historical ablation; no promotion authority"
+
+frozen_signal:
+  factor_mode: "fixed"
+  factors: {residual_momentum_120: 0.18, risk_adjusted_momentum_20: 0.16, trend_efficiency_120: 0.15, risk_adjusted_momentum_120: 0.15, positive_day_share_60: 0.14, trend_120: 0.12, short_term_reversal_5: 0.10}
+  top_k: 12
+  rebalance_sessions: 30
+  exit_rank_buffer: 10
+  maximum_names_per_sector: 3
+  absolute_momentum_filter: "none"
+
+frozen_risk_model:
+  weighting: "shrinkage_minimum_variance"
+  covariance_lookback: 120
+  covariance_shrinkage: 0.50
+  exposure_policy: "reference_volatility_target"
+  minimum_variance_blend_step: 0.05
+
+candidate_recipes:
+  - {id: "g0_unconstrained_control", concentration_governance: false, maximum_single_equity_sleeve_share: 1.00, maximum_sector_equity_sleeve_share: 1.00, minimum_effective_names: 1.0}
+  - {id: "g1_light_25_50_n7", concentration_governance: true, maximum_single_equity_sleeve_share: 0.25, maximum_sector_equity_sleeve_share: 0.50, minimum_effective_names: 7.0}
+  - {id: "g2_balanced_22_45_n8", concentration_governance: true, maximum_single_equity_sleeve_share: 0.22, maximum_sector_equity_sleeve_share: 0.45, minimum_effective_names: 8.0}
+  - {id: "g3_balanced_20_45_n9", concentration_governance: true, maximum_single_equity_sleeve_share: 0.20, maximum_sector_equity_sleeve_share: 0.45, minimum_effective_names: 9.0}
+  - {id: "g4_strict_20_40_n9", concentration_governance: true, maximum_single_equity_sleeve_share: 0.20, maximum_sector_equity_sleeve_share: 0.40, minimum_effective_names: 9.0}
+  - {id: "g5_strict_18_40_n10", concentration_governance: true, maximum_single_equity_sleeve_share: 0.18, maximum_sector_equity_sleeve_share: 0.40, minimum_effective_names: 10.0}
+
+parameter_perturbations:
+  covariance_lookbacks: [90, 150]
+  covariance_shrinkages: [0.25, 0.75]
+  sector_cap_offsets: [-0.05, 0.05]
+  effective_name_offsets: [-1.0, 1.0]
+  minimum_neighborhood_sharpe: 1.00
+  maximum_neighborhood_drawdown_magnitude: 0.22
+
+robustness_tests:
+  cost_multiplier: 2.0
+  execution_delay_sessions: 2
+  rebalance_phase_fractions: [0.25, 0.50, 0.75]
+  block_bootstrap: {samples: 2000, block_sessions: 20, seed: 20260906}
+  leave_one_sector_out: true
+
+selection_gate:
+  maximum_full_window_annual_one_way_turnover: 2.20
+  maximum_full_window_drawdown_magnitude: 0.20
+  minimum_full_window_sharpe_log_excess: 1.10
+  minimum_double_cost_full_window_sharpe_log_excess: 1.08
+  minimum_positive_fold_share: 1.0
+  minimum_fold_sharpe_25th_percentile: 0.50
+  minimum_worst_timing_perturbation_sharpe: 0.90
+  minimum_bootstrap_sharpe_percentile_05: 0.30
+  minimum_bootstrap_probability_sharpe_above_zero: 0.98
+  minimum_bootstrap_probability_sharpe_above_one: 0.60
+  maximum_post_drift_single_equity_sleeve_share: 0.28
+  maximum_post_drift_sector_equity_sleeve_share: 0.55
+  maximum_post_drift_sector_share_p95: 0.50
+  minimum_post_drift_effective_names_median: 8.0
+  minimum_post_drift_effective_names_p05: 6.0
+  maximum_single_name_positive_contribution_share: 0.20
+  maximum_single_sector_positive_contribution_share: 0.45
+  minimum_leave_one_sector_out_sharpe: 0.20
+  minimum_leave_one_sector_out_median_sharpe: 0.80
+  primary_ranking: "maximize_minimum_robustness_score"
+  tiebreakers: ["maximize_leave_one_sector_out_minimum_sharpe", "minimize_drawdown", "minimize_turnover", "lexical_recipe_id"]
+
+evidence:
+  output_dir: "artifacts/evidence/cn_27_v1_3_concentration_discovery_v1"
+  expected_outputs:
+    - candidate_summary.csv
+    - parameter_robustness.csv
+    - leave_one_sector_out.csv
+    - concentration_audit.csv
+    - attribution.csv
+    - attribution_summary.json
+    - selected_recipe.json
+    - selected_daily.csv
+    - bootstrap.json
+    - decision.json
+    - report.md
+    - evidence_manifest.json
+
+stop_rules:
+  - no_signal_pool_or_covariance_family_change
+  - no_candidate_recipe_or_gate_change_after_screening
+  - no_post_result_parameter_addition
+  - no_claim_of_fresh_holdout
+  - no_automatic_promotion

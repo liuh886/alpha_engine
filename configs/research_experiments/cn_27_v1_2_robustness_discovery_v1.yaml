@@ -1,0 +1,252 @@
+schema_version: "1.0"
+experiment_id: "cn_27_v1_2_robustness_discovery_v1"
+created_at: "2026-09-06"
+status: "frozen_pre_screen"
+market: "cn"
+research_only: true
+trade_ready: false
+automatic_promotion_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+
+objective:
+  primary: "find a more stable and lower-turnover retrospective successor to CN_27 V1.1"
+  full_window_minimum_sharpe_log_excess: 1.0
+  annual_one_way_turnover_direction: "below_cn_27_v1_1"
+  factor_stability_direction: "more_consistent_across_six_chronological_folds"
+
+lineage:
+  predecessor_model: "cn_27_v1_1_risk_adjusted_momentum"
+  predecessor_contract: "configs/research_paradigms/cn_27_v1_1.yaml"
+  predecessor_contract_sha256: "22ed6ca6cfcc299fad14d984de485e418af68389d057fcddf2f0d9f205744b20"
+  predecessor_manifest: "artifacts/evidence/cn_27_v1_1/evidence_manifest.json"
+  predecessor_manifest_file_sha256: "805eaceeaf4795d513715d8ba8e481a9110818a71d8229b8221c21bd879e554a"
+  predecessor_execution_deviation: "locked target differences were not retried after the first eligible execution attempt"
+
+identity:
+  pool_spec: "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"
+  pool_sha256: "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458"
+  source_prices: "artifacts/evidence/cn_all_weather_alpha_rotation_v1/source_ohlcv.csv"
+  source_prices_sha256: "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35"
+  defensive_etf: "515180"
+  market_reference: "000300"
+
+evaluation:
+  full_window: {start: "2023-09-01", end: "2026-09-04", sessions: 729}
+  chronological_folds:
+    - {id: "f1", start: "2023-09-01", end: "2024-03-07", sessions: 122}
+    - {id: "f2", start: "2024-03-08", end: "2024-09-03", sessions: 122}
+    - {id: "f3", start: "2024-09-04", end: "2025-03-12", sessions: 122}
+    - {id: "f4", start: "2025-03-13", end: "2025-09-04", sessions: 121}
+    - {id: "f5", start: "2025-09-05", end: "2026-03-12", sessions: 121}
+    - {id: "f6", start: "2026-03-13", end: "2026-09-04", sessions: 121}
+  annual_sessions: 252
+  annual_risk_free_rate: 0.02
+  interpretation: "retrospective robustness only; no fold is a fresh holdout"
+
+factor_diagnostics:
+  forward_horizon_sessions: 20
+  execution_delay_sessions: 1
+  label_availability_delay_sessions: 21
+  minimum_cross_section_size: 15
+  factors:
+    - {id: "short_term_reversal_5", family: "reversal", direction: 1, formula: "-return_5"}
+    - {id: "trend_20", family: "trend", direction: 1, formula: "close / SMA20 - 1"}
+    - {id: "trend_60", family: "trend", direction: 1, formula: "close / SMA60 - 1"}
+    - {id: "trend_120", family: "trend", direction: 1, formula: "close / SMA120 - 1"}
+    - {id: "risk_adjusted_momentum_20", family: "risk_adjusted_momentum", direction: 1, formula: "return_20 / annualized_volatility_20"}
+    - {id: "risk_adjusted_momentum_60", family: "risk_adjusted_momentum", direction: 1, formula: "return_60 / annualized_volatility_60"}
+    - {id: "risk_adjusted_momentum_120", family: "risk_adjusted_momentum", direction: 1, formula: "return_120 / annualized_volatility_120"}
+    - {id: "trend_efficiency_60", family: "path_efficiency", direction: 1, formula: "return_60 / sum(abs(daily_return), 60)"}
+    - {id: "trend_efficiency_120", family: "path_efficiency", direction: 1, formula: "return_120 / sum(abs(daily_return), 120)"}
+    - {id: "residual_momentum_60", family: "residual_momentum", direction: 1, formula: "return_60 - beta_60 * market_return_60"}
+    - {id: "residual_momentum_120", family: "residual_momentum", direction: 1, formula: "return_120 - beta_120 * market_return_120"}
+    - {id: "low_beta_60", family: "market_risk", direction: 1, formula: "-beta_60"}
+    - {id: "low_market_correlation_60", family: "diversification", direction: 1, formula: "-correlation(stock_return, market_return, 60)"}
+    - {id: "low_volatility_60", family: "volatility", direction: 1, formula: "-annualized_volatility_60"}
+    - {id: "drawdown_60", family: "drawdown", direction: 1, formula: "close / rolling_max_close_60 - 1"}
+    - {id: "drawdown_120", family: "drawdown", direction: 1, formula: "close / rolling_max_close_120 - 1"}
+    - {id: "volatility_contraction_20_60", family: "volatility_regime", direction: 1, formula: "-(volatility_20 / volatility_60)"}
+    - {id: "positive_day_share_60", family: "trend_consistency", direction: 1, formula: "mean(daily_return > 0, 60)"}
+
+execution:
+  signal_time: "scheduled_session_close"
+  base_execution_time: "next_eligible_session_open"
+  return_measurement: "adjusted_open_to_adjusted_open"
+  missing_or_one_price_trade_policy: "retain_target_and_retry_each_session"
+  daily_target_rebalancing_between_scheduled_sessions: false
+  allow_short: false
+  allow_leverage: false
+
+portfolio_constraints:
+  maximum_single_security_weight: 0.15
+  maximum_equity_exposure: 0.75
+  residual_asset: "515180"
+  reference_volatility_target:
+    lookback_sessions: 60
+    target_annual_volatility: 0.18
+    minimum_equity_exposure: 0.25
+    maximum_equity_exposure: 0.75
+
+costs:
+  primary: {stock_buy: 0.0005, stock_sell: 0.0010, etf_buy: 0.0002, etf_sell: 0.0002}
+  stress_multiplier: 2.0
+
+dynamic_factor_weighting:
+  mode: "trailing_positive_rank_ic"
+  lookback_sessions: 120
+  minimum_observations: 60
+  label_availability_delay_sessions: 21
+  maximum_factor_weight: 0.25
+  equal_prior_shrinkage: 0.50
+  fallback: "equal_weight_factor_pool"
+
+candidate_recipes:
+  - id: "r0_v1_1_corrected_control"
+    factor_mode: "fixed"
+    factors: {risk_adjusted_momentum_20: 0.35, risk_adjusted_momentum_60: 0.35, trend_60: 0.15, drawdown_60: 0.15}
+    top_k: 8
+    rebalance_sessions: 10
+    exit_rank_buffer: 4
+    maximum_names_per_sector: 2
+    weighting: "inverse_volatility_20"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+  - id: "r1_v1_1_slow20"
+    factor_mode: "fixed"
+    factors: {risk_adjusted_momentum_20: 0.35, risk_adjusted_momentum_60: 0.35, trend_60: 0.15, drawdown_60: 0.15}
+    top_k: 8
+    rebalance_sessions: 20
+    exit_rank_buffer: 8
+    maximum_names_per_sector: 2
+    weighting: "inverse_volatility_20"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+  - id: "r2_v1_1_slow30"
+    factor_mode: "fixed"
+    factors: {risk_adjusted_momentum_20: 0.35, risk_adjusted_momentum_60: 0.35, trend_60: 0.15, drawdown_60: 0.15}
+    top_k: 8
+    rebalance_sessions: 30
+    exit_rank_buffer: 10
+    maximum_names_per_sector: 2
+    weighting: "inverse_volatility_20"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+  - id: "r3_stable_trend_pullback20"
+    factor_mode: "fixed"
+    factors: {short_term_reversal_5: 0.25, trend_20: 0.20, trend_60: 0.30, trend_efficiency_60: 0.25}
+    top_k: 10
+    rebalance_sessions: 20
+    exit_rank_buffer: 8
+    maximum_names_per_sector: 2
+    weighting: "inverse_volatility_60"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+  - id: "r4_long_efficient_trend20"
+    factor_mode: "fixed"
+    factors: {risk_adjusted_momentum_60: 0.25, risk_adjusted_momentum_120: 0.25, trend_efficiency_60: 0.20, trend_efficiency_120: 0.15, drawdown_120: 0.15}
+    top_k: 10
+    rebalance_sessions: 20
+    exit_rank_buffer: 8
+    maximum_names_per_sector: 2
+    weighting: "inverse_volatility_60"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+  - id: "r5_residual_lowbeta20"
+    factor_mode: "fixed"
+    factors: {residual_momentum_60: 0.30, residual_momentum_120: 0.20, low_beta_60: 0.20, low_market_correlation_60: 0.15, trend_60: 0.15}
+    top_k: 10
+    rebalance_sessions: 20
+    exit_rank_buffer: 8
+    maximum_names_per_sector: 2
+    weighting: "inverse_volatility_60"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+  - id: "r6_contraction_trend20"
+    factor_mode: "fixed"
+    factors: {trend_60: 0.25, trend_120: 0.25, volatility_contraction_20_60: 0.20, low_volatility_60: 0.15, short_term_reversal_5: 0.15}
+    top_k: 10
+    rebalance_sessions: 20
+    exit_rank_buffer: 8
+    maximum_names_per_sector: 2
+    weighting: "inverse_volatility_60"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+  - id: "r7_dynamic_ic20"
+    factor_mode: "trailing_positive_rank_ic"
+    factor_pool: [short_term_reversal_5, trend_20, trend_60, trend_120, risk_adjusted_momentum_60, risk_adjusted_momentum_120, trend_efficiency_60, trend_efficiency_120, residual_momentum_60, residual_momentum_120, low_beta_60, low_market_correlation_60, low_volatility_60, drawdown_120, volatility_contraction_20_60, positive_day_share_60]
+    top_k: 10
+    rebalance_sessions: 20
+    exit_rank_buffer: 8
+    maximum_names_per_sector: 2
+    weighting: "inverse_volatility_60"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+  - id: "r8_dynamic_ic20_vol_target"
+    factor_mode: "trailing_positive_rank_ic"
+    factor_pool: [short_term_reversal_5, trend_20, trend_60, trend_120, risk_adjusted_momentum_60, risk_adjusted_momentum_120, trend_efficiency_60, trend_efficiency_120, residual_momentum_60, residual_momentum_120, low_beta_60, low_market_correlation_60, low_volatility_60, drawdown_120, volatility_contraction_20_60, positive_day_share_60]
+    top_k: 10
+    rebalance_sessions: 20
+    exit_rank_buffer: 8
+    maximum_names_per_sector: 2
+    weighting: "inverse_volatility_60"
+    equity_exposure: "reference_volatility_target_0_18"
+    absolute_momentum_filter: "none"
+
+  - id: "r9_stable_pullback30_vol_target"
+    factor_mode: "fixed"
+    factors: {short_term_reversal_5: 0.25, trend_20: 0.20, trend_60: 0.30, trend_efficiency_60: 0.25}
+    top_k: 12
+    rebalance_sessions: 30
+    exit_rank_buffer: 10
+    maximum_names_per_sector: 3
+    weighting: "inverse_volatility_60"
+    equity_exposure: "reference_volatility_target_0_18"
+    absolute_momentum_filter: "none"
+
+robustness_tests:
+  cost_multipliers: [1.0, 2.0]
+  execution_delay_sessions: [1, 2]
+  rebalance_phase_fractions: [0.0, 0.3333333333, 0.6666666667]
+  block_bootstrap: {seed: 20260906, samples: 1000, block_sessions: 20}
+
+selection_gate:
+  maximum_full_window_annual_one_way_turnover: 5.0
+  maximum_full_window_drawdown_magnitude: 0.25
+  minimum_full_window_sharpe_log_excess: 0.80
+  minimum_double_cost_full_window_sharpe_log_excess: 0.75
+  minimum_positive_fold_share: 0.6666666667
+  minimum_fold_sharpe_25th_percentile: 0.0
+  minimum_worst_timing_perturbation_sharpe: 0.65
+  primary_ranking: "maximize_minimum_robustness_sharpe"
+  tiebreakers: ["maximize_fold_sharpe_25th_percentile", "minimize_turnover", "minimize_drawdown"]
+
+evidence:
+  output_dir: "artifacts/evidence/cn_27_v1_2_robustness_discovery_v1"
+  expected_outputs:
+    - factor_diagnostics.csv
+    - factor_stability_summary.csv
+    - candidate_summary.csv
+    - selected_recipe.json
+    - selected_daily.csv
+    - selected_factor_weights.csv
+    - bootstrap.json
+    - decision.json
+    - report.md
+    - evidence_manifest.json
+
+stop_rules:
+  - no_pool_membership_change
+  - no_candidate_recipe_change_after_screening
+  - no_new_factor_after_screening
+  - no_threshold_or_cost_change_after_screening
+  - no_claim_of_fresh_holdout
+  - no_automatic_promotion

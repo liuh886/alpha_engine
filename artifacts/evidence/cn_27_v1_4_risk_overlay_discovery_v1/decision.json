@@ -1,0 +1,77 @@
+{
+  "all_selection_gates_passed": true,
+  "automatic_promotion_allowed": false,
+  "control_recipe_audit": {
+    "bootstrap_probability_sharpe_above_one": 0.589,
+    "bootstrap_probability_sharpe_above_zero": 0.988,
+    "bootstrap_sharpe_percentile_05": 0.24610561070881493,
+    "delay_two_full_sharpe": 1.0996852746402586,
+    "double_cost_full_sharpe": 1.1103706993612465,
+    "exposure_policy": "reference_volatility_target",
+    "fold_sharpe_25th_percentile": 0.7645572922013926,
+    "fold_sharpes": "[1.6727420384389586, 0.34908286033326913, 0.8390760403250624, 0.9301098934888905, 2.4971049330453847, 0.7397177094935026]",
+    "full_annual_one_way_turnover": 1.574738088281046,
+    "full_annual_volatility": 0.24086991503241273,
+    "full_cagr": 0.3304935634167585,
+    "full_maximum_drawdown": -0.21173423941045477,
+    "full_sharpe_log_excess": 1.1182969096156454,
+    "full_total_return": 1.28429006194449,
+    "parameter_neighborhood_maximum_drawdown_magnitude": 0.21173423941045477,
+    "parameter_neighborhood_median_sharpe": 1.1182969096156454,
+    "parameter_neighborhood_minimum_sharpe": 1.1182969096156454,
+    "phase_sharpes": "{\"0\": 1.1182969096156454, \"15\": 0.9834642045933162, \"22\": 0.8841904621595261, \"8\": 0.9219715916003273}",
+    "positive_fold_share": 1.0,
+    "recipe_id": "p0_v1_2_control",
+    "weighting": "inverse_volatility",
+    "worst_timing_perturbation_sharpe": 0.8841904621595261
+  },
+  "decision": "retrospective_risk_overlay_candidate_identified",
+  "failure_reasons_by_recipe": {
+    "p0_v1_2_control": [
+      "drawdown",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_one",
+      "drawdown_improvement_vs_control"
+    ],
+    "p1_sector_equal_reference": [
+      "drawdown",
+      "positive_fold_share",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one",
+      "parameter_drawdown",
+      "drawdown_improvement_vs_control"
+    ],
+    "p2_correlation_penalty_reference": [
+      "drawdown",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_one",
+      "drawdown_improvement_vs_control"
+    ],
+    "p3_shrink_minimum_variance_reference": [],
+    "p4_sector_equal_portfolio_target": [
+      "drawdown",
+      "positive_fold_share",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_zero",
+      "bootstrap_probability_above_one",
+      "parameter_drawdown"
+    ],
+    "p5_diversified_blend_portfolio_target": [
+      "positive_fold_share",
+      "timing_perturbation_sharpe",
+      "bootstrap_p05",
+      "bootstrap_probability_above_one"
+    ]
+  },
+  "fresh_historical_holdout": false,
+  "prospective_validation_required": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe_id": "p3_shrink_minimum_variance_reference",
+  "trade_ready": false
+}

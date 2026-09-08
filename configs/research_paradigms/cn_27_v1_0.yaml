@@ -1,0 +1,145 @@
+schema_version: "1.0"
+experiment_id: "cn_27_v1_0"
+model_version_id: "cn_27_v1_0"
+display_name: "CN_27 V1.0"
+created_at: "2026-09-05"
+status: "frozen_historical_challenger_contract"
+market: "cn"
+research_only: true
+trade_ready: false
+authoritative_validation_allowed: false
+selected_pool_readiness_claim_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+automatic_promotion_allowed: false
+
+source:
+  corrected_document_sha256: "61ec7be6c45f76a935738760bcd1016b7e75bbca3378d85a5bc35f7e09b854ca"
+  original_synthetic_claims_status: "retracted_by_originator"
+  first_real_bottom_up_implementation: "cn_all_weather_alpha_rotation_v1"
+  first_real_bottom_up_manifest_sha256: "8201e50ca3b0e346ae02c6e5478884024991601a131081d0841245519fd2eb35"
+  post_v1_clarification: "SMA20 slope is the three-session relative change"
+
+identity:
+  pool_spec: "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"
+  reference_registry: "configs/pools/reference_instrument_registry_v1.yaml"
+  defensive_etf: "515180.SH"
+  benchmark: "000300.SH"
+
+data:
+  fetch_start: "2023-05-01"
+  evaluation_start: "2023-09-01"
+  cutoff: "2026-09-04"
+  required_columns: [date, symbol, open, high, low, close, volume]
+  adjustment_basis: "provider_qfq_or_uniform_adjusted_ohlcv"
+  forbid_raw_adjusted_mixing_within_symbol: true
+  forbid_cross_provider_row_stitching: true
+  forbid_forward_fill_of_signals: true
+  require_every_candidate_status: true
+  ordered_providers: [akshare, efinance, tencent_qfq_history, yfinance, akshare_sina]
+
+factors:
+  sma_windows: [5, 10, 20, 60]
+  sma20_slope_definition: "three_session_relative"
+  sma20_slope_periods: 3
+  ema_fast: 12
+  ema_slow: 26
+  macd_signal: 9
+  rsi_window: 14
+  rsi_method: "simple_rolling_gain_loss_as_documented"
+  atr_window: 14
+  atr_true_range_method: "max_abs_close_change_and_abs_close_open_as_documented"
+  momentum_window: 20
+  score_normalization: "none_v1_confirmed_unnormalized"
+  score:
+    slope_sma20: 0.35
+    macd_hist: 0.35
+    close_ratio_20: 0.20
+    excess_bias_penalty: 0.10
+    bias_penalty_threshold: 0.05
+
+entry:
+  require_sma5_above_sma20: true
+  require_close_above_sma20: true
+  require_macd_above_signal: true
+  minimum_macd_hist: 0.20
+  bias20: {minimum: 0.002, maximum: 0.045}
+  rsi14: {minimum: 40.0, maximum: 62.0}
+
+exit:
+  divergence_profit_threshold: 0.08
+  divergence_rsi_threshold: 70.0
+  trailing_activation_profit: 0.15
+  trailing_peak_ratio: 0.92
+  trend_break_sma20_ratio: 0.975
+  hard_stop_entry_ratio: 0.96
+
+portfolio:
+  maximum_stock_positions: 5
+  stock_target_weight: 0.15
+  maximum_stock_weight: 0.75
+  residual_asset: "515180.SH"
+  fill_vacancies_by_score: true
+  replace_held_position_only_on_exit: true
+  daily_target_weight_rebalancing: true
+  allow_short: false
+  allow_leverage: false
+
+execution:
+  signal_time: "session_close_t"
+  execution_time: "next_eligible_session_open"
+  return_measurement: "adjusted_open_to_adjusted_open"
+  a_share_t_plus_one: true
+  infer_one_price_lock_from_ohlc: true
+  missing_bar_trade_policy: "defer_without_signal_forward_fill"
+
+costs:
+  stock_buy_rate: 0.0005
+  stock_sell_rate: 0.0010
+  etf_buy_rate: 0.0002
+  etf_sell_rate: 0.0002
+  charge_initial_entry: true
+
+metrics:
+  annual_sessions: 252
+  annual_risk_free_rate: 0.02
+  turnover_definition: "one_way_half_sum_absolute_traded_asset_weight_change"
+
+challenge:
+  objective: "historically outperform the accepted BYD v1.3 formal baseline on risk-adjusted net returns"
+  interpretation: "retrospective_historical_challenge_not_fresh_validation"
+  benchmark_model_version_id: "byd_v1_3_recovery_event_low_vol_confirmation_v1"
+  benchmark_manifest: "data/research/formal_model_runs/byd_allocation/byd_v1_3_recovery_event_low_vol_confirmation_v1/byd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_08_25/manifest.json"
+  benchmark_manifest_sha256: "306d1d0ea4bb95a2e81ab44bcf6fc1bb990bf326828d3548b2e61ded0477deeb"
+  benchmark_performance_sha256: "fe7649e0bbd658a496308c842c2815972a162323eb79e7da3a63c6aa11d7ab64"
+  common_window: {start: "2023-09-01", end: "2026-08-24", required_sessions: 720}
+  require_exact_session_alignment: true
+  benchmark_turnover_normalization: "half_sum_absolute_weight_change"
+  gates:
+    total_return_strictly_above_benchmark: true
+    cagr_strictly_above_benchmark: true
+    sharpe_log_excess_strictly_above_benchmark: true
+    maximum_drawdown_not_worse_than_benchmark: true
+    calmar_strictly_above_benchmark: true
+    maximum_annual_one_way_turnover: 20.0
+
+evidence:
+  external_synthetic_claims_status: "retracted_not_a_model_gate"
+  stress_window: {start: "2024-01-22", end: "2024-02-08"}
+  expected_outputs:
+    - decision.json
+    - evidence_manifest.json
+    - coverage.csv
+    - daily.csv
+    - trades.csv
+    - metrics.json
+    - benchmark_comparison.json
+    - benchmark_comparison_daily.csv
+    - report.md
+
+prohibited:
+  - overwrite or reinterpret cn_all_weather_alpha_rotation_v1 evidence
+  - alter pool membership after observing this challenge
+  - tune thresholds, factors, costs, or benchmark window after observing this challenge
+  - describe retrospective challenge evidence as fresh validation
+  - automatic formal promotion

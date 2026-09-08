@@ -13,6 +13,7 @@ dependencies = [
     "pyyaml",
     "tabulate",
     "scikit-learn",
+    "scipy",
     "lightgbm",
     "matplotlib",
     "yfinance",

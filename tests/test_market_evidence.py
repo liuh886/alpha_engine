@@ -386,6 +386,7 @@ def test_repository_formal_bundle_v2_projects_current_market_models() -> None:
     }
     assert {row["model_id"] for row in cn} == {
         "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "cn_27_v1_3",
         "cn_x1_2",
     }
 

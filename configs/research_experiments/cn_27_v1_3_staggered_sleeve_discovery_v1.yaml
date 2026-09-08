@@ -1,0 +1,120 @@
+schema_version: "1.0"
+experiment_id: "cn_27_v1_3_staggered_sleeve_discovery_v1"
+created_at: "2026-09-06"
+status: "frozen_pre_screen"
+research_only: true
+trade_ready: false
+automatic_promotion_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+selected_pool_readiness_claim_allowed: false
+
+iteration_semantics:
+  type: "fifth_order_retrospective_timing_diversification_test"
+  source_of_hypothesis: "g1 concentration candidate failed only timing and bootstrap-p05 gates"
+  fresh_confirmation_claim_allowed: false
+  multiple_testing_caveat_required: true
+
+lineage:
+  concentration_contract: "configs/research_experiments/cn_27_v1_3_concentration_discovery_v1.yaml"
+  concentration_contract_sha256: "87ba6f3f024f51692a856ef09e39c8513cbf27a5f702f95701498c1758075b95"
+  concentration_manifest: "artifacts/evidence/cn_27_v1_3_concentration_discovery_v1/evidence_manifest.json"
+  concentration_manifest_file_sha256: "172cf546270b481668e85ea89d1dcded5028254e6a496e672ca8653990bb432c"
+  concentration_manifest_identity_sha256: "351e0ea9811e4666ea14d1c02a6b0a64d06405ffddc98b6e6a86439f1f729b59"
+
+objective:
+  primary: "reduce timing dependence and return-path variance without weakening concentration governance"
+  signal_frozen: true
+  covariance_family_frozen: true
+  constraints_frozen: true
+  interpretation: "fully consumed historical ablation; no promotion authority"
+
+frozen_signal:
+  factor_mode: "fixed"
+  factors: {residual_momentum_120: 0.18, risk_adjusted_momentum_20: 0.16, trend_efficiency_120: 0.15, risk_adjusted_momentum_120: 0.15, positive_day_share_60: 0.14, trend_120: 0.12, short_term_reversal_5: 0.10}
+  top_k: 12
+  rebalance_sessions: 30
+  exit_rank_buffer: 10
+  maximum_names_per_sector: 3
+  absolute_momentum_filter: "none"
+
+frozen_risk_model:
+  weighting: "shrinkage_minimum_variance"
+  covariance_lookback: 120
+  covariance_shrinkage: 0.50
+  exposure_policy: "reference_volatility_target"
+  minimum_variance_blend_step: 0.05
+
+frozen_constraint_recipes:
+  g1: {concentration_governance: true, maximum_single_equity_sleeve_share: 0.25, maximum_sector_equity_sleeve_share: 0.50, minimum_effective_names: 7.0}
+  g2: {concentration_governance: true, maximum_single_equity_sleeve_share: 0.22, maximum_sector_equity_sleeve_share: 0.45, minimum_effective_names: 8.0}
+
+candidate_recipes:
+  - {id: "h0_g1_single", constraint_id: "g1", sleeve_offsets: [0]}
+  - {id: "h1_g1_dual", constraint_id: "g1", sleeve_offsets: [0, 15]}
+  - {id: "h2_g1_triple", constraint_id: "g1", sleeve_offsets: [0, 10, 20]}
+  - {id: "h3_g1_quad", constraint_id: "g1", sleeve_offsets: [0, 8, 15, 22]}
+  - {id: "h4_g1_five", constraint_id: "g1", sleeve_offsets: [0, 6, 12, 18, 24]}
+  - {id: "h5_g2_triple", constraint_id: "g2", sleeve_offsets: [0, 10, 20]}
+
+parameter_perturbations:
+  covariance_lookbacks: [90, 150]
+  covariance_shrinkages: [0.25, 0.75]
+  sector_cap_offsets: [-0.05, 0.05]
+  effective_name_offsets: [-1.0, 1.0]
+  minimum_neighborhood_sharpe: 1.00
+  maximum_neighborhood_drawdown_magnitude: 0.22
+
+robustness_tests:
+  cost_multiplier: 2.0
+  execution_delay_sessions: 2
+  global_phase_offsets: [8, 15, 22]
+  block_bootstrap: {samples: 2000, block_sessions: 20, seed: 20260906}
+  leave_one_sector_out: true
+  internal_sleeve_order_netting: false
+
+selection_gate:
+  maximum_full_window_annual_one_way_turnover: 2.20
+  maximum_full_window_drawdown_magnitude: 0.20
+  minimum_full_window_sharpe_log_excess: 1.10
+  minimum_double_cost_full_window_sharpe_log_excess: 1.08
+  minimum_positive_fold_share: 1.0
+  minimum_fold_sharpe_25th_percentile: 0.50
+  minimum_worst_timing_perturbation_sharpe: 0.90
+  minimum_bootstrap_sharpe_percentile_05: 0.30
+  minimum_bootstrap_probability_sharpe_above_zero: 0.98
+  minimum_bootstrap_probability_sharpe_above_one: 0.60
+  maximum_post_drift_single_equity_sleeve_share: 0.28
+  maximum_post_drift_sector_equity_sleeve_share: 0.55
+  maximum_post_drift_sector_share_p95: 0.50
+  minimum_post_drift_effective_names_median: 8.0
+  minimum_post_drift_effective_names_p05: 6.0
+  maximum_single_name_positive_contribution_share: 0.20
+  maximum_single_sector_positive_contribution_share: 0.45
+  minimum_leave_one_sector_out_sharpe: 0.20
+  minimum_leave_one_sector_out_median_sharpe: 0.80
+  primary_ranking: "maximize_minimum_robustness_score"
+  tiebreakers: ["maximize_leave_one_sector_out_minimum_sharpe", "minimize_drawdown", "minimize_turnover", "lexical_recipe_id"]
+
+evidence:
+  output_dir: "artifacts/evidence/cn_27_v1_3_staggered_sleeve_discovery_v1"
+  expected_outputs:
+    - candidate_summary.csv
+    - parameter_robustness.csv
+    - leave_one_sector_out.csv
+    - concentration_audit.csv
+    - attribution.csv
+    - attribution_summary.json
+    - selected_recipe.json
+    - selected_daily.csv
+    - bootstrap.json
+    - decision.json
+    - report.md
+    - evidence_manifest.json
+
+stop_rules:
+  - no_signal_pool_covariance_or_constraint_change
+  - no_candidate_recipe_or_gate_change_after_screening
+  - no_post_result_parameter_addition
+  - no_claim_of_fresh_holdout
+  - no_automatic_promotion

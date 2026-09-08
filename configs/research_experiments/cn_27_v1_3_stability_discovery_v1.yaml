@@ -1,0 +1,139 @@
+schema_version: "1.0"
+experiment_id: "cn_27_v1_3_stability_discovery_v1"
+created_at: "2026-09-06"
+status: "frozen_pre_screen"
+research_only: true
+trade_ready: false
+automatic_promotion_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+
+iteration_semantics:
+  type: "second_order_retrospective_hypothesis_test"
+  source_of_hypothesis: "V1.2 six-fold factor stability diagnostics"
+  fresh_confirmation_claim_allowed: false
+  multiple_testing_caveat_required: true
+
+base_experiment:
+  contract: "configs/research_experiments/cn_27_v1_2_robustness_discovery_v1.yaml"
+  contract_sha256: "753ea925d8f2aede60f4db4f0613a6a7b157005ac71ef89ba8c8353ec13602bf"
+  evidence_manifest: "artifacts/evidence/cn_27_v1_2_robustness_discovery_v1/evidence_manifest.json"
+  evidence_manifest_file_sha256: "e7b4b51af5d9cea4873216c78b38ae1345738d9c78dd6e3779548e0aefd344b8"
+  evidence_manifest_identity_sha256: "71e1271aba944e96a492e653aac2c5bf25cc028f7fa69c7381d9eb9a763d3bdc"
+
+objective:
+  primary: "test whether factors positive in at least four of six V1.2 folds can retain Sharpe at least 1 with turnover below 3x"
+  factor_stability_gate: "at least 75 percent of recipe factors positive in at least four of six folds"
+  interpretation: "post-diagnostic retrospective evidence only"
+
+candidate_recipes:
+  - id: "s0_v1_2_control"
+    factor_mode: "fixed"
+    factors: {short_term_reversal_5: 0.25, trend_20: 0.20, trend_60: 0.30, trend_efficiency_60: 0.25}
+    top_k: 12
+    rebalance_sessions: 30
+    exit_rank_buffer: 10
+    maximum_names_per_sector: 3
+    weighting: "inverse_volatility_60"
+    equity_exposure: "reference_volatility_target_0_18"
+    absolute_momentum_filter: "none"
+
+  - id: "s1_stable_all7_30_vol_target"
+    factor_mode: "fixed"
+    factors: {residual_momentum_120: 0.18, risk_adjusted_momentum_20: 0.16, trend_efficiency_120: 0.15, risk_adjusted_momentum_120: 0.15, positive_day_share_60: 0.14, trend_120: 0.12, short_term_reversal_5: 0.10}
+    top_k: 12
+    rebalance_sessions: 30
+    exit_rank_buffer: 10
+    maximum_names_per_sector: 3
+    weighting: "inverse_volatility_60"
+    equity_exposure: "reference_volatility_target_0_18"
+    absolute_momentum_filter: "none"
+
+  - id: "s2_stable_momentum4_30_vol_target"
+    factor_mode: "fixed"
+    factors: {residual_momentum_120: 0.30, risk_adjusted_momentum_20: 0.25, trend_efficiency_120: 0.25, risk_adjusted_momentum_120: 0.20}
+    top_k: 10
+    rebalance_sessions: 30
+    exit_rank_buffer: 10
+    maximum_names_per_sector: 3
+    weighting: "inverse_volatility_60"
+    equity_exposure: "reference_volatility_target_0_18"
+    absolute_momentum_filter: "none"
+
+  - id: "s3_stable_trend_consistency30_vol_target"
+    factor_mode: "fixed"
+    factors: {trend_efficiency_120: 0.30, positive_day_share_60: 0.25, trend_120: 0.25, short_term_reversal_5: 0.20}
+    top_k: 12
+    rebalance_sessions: 30
+    exit_rank_buffer: 10
+    maximum_names_per_sector: 3
+    weighting: "inverse_volatility_60"
+    equity_exposure: "reference_volatility_target_0_18"
+    absolute_momentum_filter: "none"
+
+  - id: "s4_stable_dynamic7_30_vol_target"
+    factor_mode: "trailing_positive_rank_ic"
+    factor_pool: [residual_momentum_120, risk_adjusted_momentum_20, trend_efficiency_120, risk_adjusted_momentum_120, positive_day_share_60, trend_120, short_term_reversal_5]
+    top_k: 12
+    rebalance_sessions: 30
+    exit_rank_buffer: 10
+    maximum_names_per_sector: 3
+    weighting: "inverse_volatility_60"
+    equity_exposure: "reference_volatility_target_0_18"
+    absolute_momentum_filter: "none"
+
+  - id: "s5_stable_all7_20_vol_target"
+    factor_mode: "fixed"
+    factors: {residual_momentum_120: 0.18, risk_adjusted_momentum_20: 0.16, trend_efficiency_120: 0.15, risk_adjusted_momentum_120: 0.15, positive_day_share_60: 0.14, trend_120: 0.12, short_term_reversal_5: 0.10}
+    top_k: 12
+    rebalance_sessions: 20
+    exit_rank_buffer: 8
+    maximum_names_per_sector: 3
+    weighting: "inverse_volatility_60"
+    equity_exposure: "reference_volatility_target_0_18"
+    absolute_momentum_filter: "none"
+
+  - id: "s6_stable_all7_30_fixed75"
+    factor_mode: "fixed"
+    factors: {residual_momentum_120: 0.18, risk_adjusted_momentum_20: 0.16, trend_efficiency_120: 0.15, risk_adjusted_momentum_120: 0.15, positive_day_share_60: 0.14, trend_120: 0.12, short_term_reversal_5: 0.10}
+    top_k: 12
+    rebalance_sessions: 30
+    exit_rank_buffer: 10
+    maximum_names_per_sector: 3
+    weighting: "inverse_volatility_60"
+    equity_exposure: "fixed_0_75"
+    absolute_momentum_filter: "none"
+
+selection_gate:
+  maximum_full_window_annual_one_way_turnover: 3.0
+  maximum_full_window_drawdown_magnitude: 0.25
+  minimum_full_window_sharpe_log_excess: 1.0
+  minimum_double_cost_full_window_sharpe_log_excess: 0.90
+  minimum_positive_fold_share: 0.8333333333
+  minimum_fold_sharpe_25th_percentile: 0.30
+  minimum_worst_timing_perturbation_sharpe: 0.80
+  minimum_stable_selected_factor_share: 0.75
+  primary_ranking: "maximize_minimum_robustness_sharpe"
+  tiebreakers: ["maximize_fold_sharpe_25th_percentile", "minimize_turnover", "minimize_drawdown"]
+
+evidence:
+  output_dir: "artifacts/evidence/cn_27_v1_3_stability_discovery_v1"
+  expected_outputs:
+    - factor_diagnostics.csv
+    - factor_stability_summary.csv
+    - candidate_summary.csv
+    - selected_recipe.json
+    - selected_daily.csv
+    - selected_factor_weights.csv
+    - bootstrap.json
+    - decision.json
+    - report.md
+    - evidence_manifest.json
+
+stop_rules:
+  - no_pool_membership_change
+  - no_candidate_recipe_change_after_screening
+  - no_factor_set_change_after_screening
+  - no_threshold_or_cost_change_after_screening
+  - no_claim_of_fresh_holdout
+  - no_automatic_promotion

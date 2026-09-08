@@ -1,0 +1,29 @@
+{
+  "automatic_promotion_allowed": false,
+  "decision": "retrospective_candidate_identified",
+  "experiment_id": "cn_27_v1_2_robustness_discovery_v1",
+  "fresh_historical_holdout": false,
+  "historical_evidence_consumed": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe": {
+    "absolute_momentum_filter": "none",
+    "equity_exposure": "reference_volatility_target_0_18",
+    "exit_rank_buffer": 10,
+    "factor_mode": "fixed",
+    "factors": {
+      "short_term_reversal_5": 0.25,
+      "trend_20": 0.2,
+      "trend_60": 0.3,
+      "trend_efficiency_60": 0.25
+    },
+    "id": "r9_stable_pullback30_vol_target",
+    "maximum_names_per_sector": 3,
+    "rebalance_sessions": 30,
+    "top_k": 12,
+    "weighting": "inverse_volatility_60"
+  },
+  "selected_recipe_id": "r9_stable_pullback30_vol_target",
+  "selection_identity_sha256": "f2d89e55f7ab256ad389235a539334cd998ca2c838457750f1d78497aa40adc3",
+  "trade_ready": false
+}

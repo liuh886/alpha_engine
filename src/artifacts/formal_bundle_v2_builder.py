@@ -334,7 +334,7 @@ def build_plan(source_path: Path, strategy: ActiveStrategy) -> RunExportPlan:
         "source_evidence": evidence,
         "source_freshness": package.get("freshness"),
         "source_evidence_completeness": completeness,
-        "historical_evidence_recomputed": False,
+        "historical_evidence_recomputed": evidence.get("historical_evidence_recomputed") is True,
         "model_selection_reopened": False,
         "research_only": True,
         "trade_ready": False,

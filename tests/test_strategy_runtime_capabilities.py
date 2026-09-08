@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_active_runtime_capabilities_are_exact_and_fail_closed() -> None:
     capabilities = load_active_strategy_runtime_capabilities(repository_root=ROOT)
 
-    assert set(capabilities) == {"qqq_rotation", "us_x", "cn_x", "byd"}
+    assert set(capabilities) == {"qqq_rotation", "us_x", "cn_x", "cn_27", "byd"}
     assert capabilities["us_x"].formal_refresh.as_dict() == {
         "status": "available",
         "adapter_id": "us_x1_3_formal_refresh_v1",
@@ -41,6 +41,12 @@ def test_active_runtime_capabilities_are_exact_and_fail_closed() -> None:
         "reason": None,
     }
     assert capabilities["qqq_rotation"].current_target.status == "not_applicable"
+    assert capabilities["cn_27"].formal_refresh.as_dict() == {
+        "status": "blocked",
+        "adapter_id": None,
+        "reason": "blocked_pending_maintained_cn_27_v1_3_formal_refresh_adapter",
+    }
+    assert capabilities["cn_27"].current_target.status == "not_applicable"
     assert capabilities["byd"].current_target.status == "not_applicable"
 
 

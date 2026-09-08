@@ -123,6 +123,17 @@ markets:
 
   cn:
     instruments:
+      DIVIDEND_ETF_515180:
+        canonical_symbol: "515180.SH"
+        instrument_type: "dividend_equity_etf"
+        provider_aliases: ["515180.SH", "515180", "SH515180", "sh.515180"]
+        roles: ["defensive_sleeve", "cash_management_sleeve"]
+        executable: true
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: true
+        adjusted_open_close_required: true
       CSI300:
         canonical_symbol: "000300.SH"
         instrument_type: "equity_index"

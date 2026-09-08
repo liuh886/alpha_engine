@@ -1,0 +1,5 @@
+date,factor_id,weight
+fixed,short_term_reversal_5,0.25
+fixed,trend_20,0.2
+fixed,trend_60,0.3
+fixed,trend_efficiency_60,0.25

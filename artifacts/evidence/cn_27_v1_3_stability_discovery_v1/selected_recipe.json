@@ -1,0 +1,32 @@
+{
+  "automatic_promotion_allowed": false,
+  "decision": "retrospective_candidate_identified",
+  "experiment_id": "cn_27_v1_3_stability_discovery_v1",
+  "fresh_historical_holdout": false,
+  "historical_evidence_consumed": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe": {
+    "absolute_momentum_filter": "none",
+    "equity_exposure": "reference_volatility_target_0_18",
+    "exit_rank_buffer": 10,
+    "factor_mode": "fixed",
+    "factors": {
+      "positive_day_share_60": 0.14,
+      "residual_momentum_120": 0.18,
+      "risk_adjusted_momentum_120": 0.15,
+      "risk_adjusted_momentum_20": 0.16,
+      "short_term_reversal_5": 0.1,
+      "trend_120": 0.12,
+      "trend_efficiency_120": 0.15
+    },
+    "id": "s1_stable_all7_30_vol_target",
+    "maximum_names_per_sector": 3,
+    "rebalance_sessions": 30,
+    "top_k": 12,
+    "weighting": "inverse_volatility_60"
+  },
+  "selected_recipe_id": "s1_stable_all7_30_vol_target",
+  "selection_identity_sha256": "2c70f988fc323784c3525fe2cac06e3c42b4917ca0c6debb0165743b21b37dc2",
+  "trade_ready": false
+}

@@ -1,0 +1,151 @@
+schema_version: "1.0"
+model_version_id: "cn_27_v1_2_stable_all7_low_turnover"
+display_name: "CN_27 V1.2"
+created_at: "2026-09-06"
+status: "frozen_retrospective_candidate"
+market: "cn"
+research_only: true
+trade_ready: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+automatic_promotion_allowed: false
+selected_pool_readiness_claim_allowed: false
+
+lineage:
+  predecessor: "cn_27_v1_1_risk_adjusted_momentum"
+  robustness_discovery_contract: "configs/research_experiments/cn_27_v1_2_robustness_discovery_v1.yaml"
+  robustness_discovery_contract_sha256: "753ea925d8f2aede60f4db4f0613a6a7b157005ac71ef89ba8c8353ec13602bf"
+  robustness_discovery_manifest: "artifacts/evidence/cn_27_v1_2_robustness_discovery_v1/evidence_manifest.json"
+  robustness_discovery_manifest_file_sha256: "e7b4b51af5d9cea4873216c78b38ae1345738d9c78dd6e3779548e0aefd344b8"
+  robustness_discovery_manifest_identity_sha256: "71e1271aba944e96a492e653aac2c5bf25cc028f7fa69c7381d9eb9a763d3bdc"
+  stability_discovery_contract: "configs/research_experiments/cn_27_v1_3_stability_discovery_v1.yaml"
+  stability_discovery_contract_sha256: "535d283bc4a541d4d459ab86cabf2bf61a61196400bda74700d278aa108a5fc4"
+  stability_discovery_manifest: "artifacts/evidence/cn_27_v1_3_stability_discovery_v1/evidence_manifest.json"
+  stability_discovery_manifest_file_sha256: "f685696ce04d9de1b26e2482a95a65016320a5ffa7cd6ffa93ba44c616d138a8"
+  stability_discovery_manifest_identity_sha256: "15a47ac6b7840435e6b3fe781529d8fb25f82a9f68065f723f6b475243716975"
+  sealed_selection_identity_sha256: "2c70f988fc323784c3525fe2cac06e3c42b4917ca0c6debb0165743b21b37dc2"
+
+identity:
+  pool_spec: "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"
+  pool_sha256: "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458"
+  source_prices: "artifacts/evidence/cn_all_weather_alpha_rotation_v1/source_ohlcv.csv"
+  source_prices_sha256: "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35"
+  defensive_etf: "515180"
+  market_reference: "000300"
+
+factor_model:
+  selected_recipe_id: "s1_stable_all7_30_vol_target"
+  normalization: "daily_cross_sectional_percentile"
+  combination:
+    residual_momentum_120: 0.18
+    risk_adjusted_momentum_20: 0.16
+    trend_efficiency_120: 0.15
+    risk_adjusted_momentum_120: 0.15
+    positive_day_share_60: 0.14
+    trend_120: 0.12
+    short_term_reversal_5: 0.10
+  stability_contract:
+    chronological_folds: 6
+    minimum_positive_fold_count: 4
+    selected_factor_count: 7
+    stable_selected_factor_count: 7
+    stable_selected_factor_share: 1.0
+  availability_lag_sessions: 0
+  forward_values_forbidden: true
+
+portfolio:
+  rebalance_sessions: 30
+  top_k: 12
+  exit_rank_buffer: 10
+  maximum_names_per_sector: 3
+  weighting: "inverse_volatility_60"
+  maximum_single_security_weight: 0.15
+  equity_exposure: "reference_volatility_target_0_18"
+  reference_volatility_lookback_sessions: 60
+  reference_target_annual_volatility: 0.18
+  minimum_equity_exposure: 0.25
+  maximum_equity_exposure: 0.75
+  residual_asset: "515180"
+  absolute_momentum_filter: "none"
+  allow_short: false
+  allow_leverage: false
+
+execution:
+  signal_time: "scheduled_session_close"
+  execution_time: "next_eligible_session_open"
+  return_measurement: "adjusted_open_to_adjusted_open"
+  missing_or_one_price_trade_policy: "retain_target_and_retry_each_session"
+
+costs:
+  stock_buy_rate: 0.0005
+  stock_sell_rate: 0.0010
+  etf_buy_rate: 0.0002
+  etf_sell_rate: 0.0002
+  stress_multiplier: 2.0
+
+evaluation:
+  full_window: {start: "2023-09-01", end: "2026-09-04", sessions: 729}
+  chronological_folds: [f1, f2, f3, f4, f5, f6]
+  annual_sessions: 252
+  annual_risk_free_rate: 0.02
+
+walk_forward_audit:
+  type: "expanding_prior_fold_recipe_selection"
+  candidate_menu: "configs/research_experiments/cn_27_v1_3_stability_discovery_v1.yaml"
+  minimum_training_folds: 2
+  validation_folds: [f3, f4, f5, f6]
+  selection_information: "prior-fold base-cost performance only"
+  ranking:
+    - maximize_minimum_prior_fold_sharpe
+    - maximize_median_prior_fold_sharpe
+    - minimize_prior_fold_annual_one_way_turnover
+    - lexical_recipe_id
+  switch_cost_policy: "additional asymmetric cost from prior selected end weights to new selected start weights"
+  limitations:
+    - factor_set_was_derived_from_consumed_v1_2_diagnostics
+    - pseudo_walk_forward_does_not_restore_freshness
+
+support_gates:
+  full_window_minimum_sharpe_log_excess: 1.0
+  full_window_maximum_annual_one_way_turnover: 2.0
+  full_window_maximum_drawdown_magnitude: 0.25
+  double_cost_full_window_minimum_sharpe_log_excess: 1.0
+  minimum_positive_fold_share: 1.0
+  minimum_fold_sharpe_25th_percentile: 0.50
+  minimum_worst_timing_perturbation_sharpe: 0.90
+  minimum_stable_selected_factor_share: 1.0
+  maximum_single_name_positive_contribution_share: 0.35
+  maximum_single_sector_positive_contribution_share: 0.55
+  walk_forward_minimum_sharpe_log_excess: 0.50
+  walk_forward_minimum_positive_validation_fold_share: 0.75
+  walk_forward_maximum_annual_one_way_turnover: 5.0
+  walk_forward_maximum_drawdown_magnitude: 0.30
+
+promotion_boundary:
+  historical_support_does_not_authorize_formal_promotion: true
+  prospective_start_after: "2026-09-04"
+  minimum_forward_months: 12
+  parameters_mutable_during_prospective_window: false
+
+evidence:
+  output_dir: "artifacts/evidence/cn_27_v1_2"
+  expected_outputs:
+    - daily.csv
+    - double_cost_daily.csv
+    - metrics.json
+    - attribution.csv
+    - attribution.json
+    - walk_forward_selection.csv
+    - walk_forward_daily.csv
+    - comparison.json
+    - decision.json
+    - report.md
+    - evidence_manifest.json
+
+prohibited:
+  - modify V1.1 artifacts or contracts
+  - change selected recipe after this contract is frozen
+  - change pool membership
+  - claim a fresh historical holdout
+  - use synthetic scenario results as evidence
+  - automatic formal promotion

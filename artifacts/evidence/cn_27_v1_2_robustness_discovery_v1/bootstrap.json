@@ -1,0 +1,12 @@
+{
+  "block_sessions": 20,
+  "interpretation": "uncertainty conditional on consumed history; not a fresh validation",
+  "method": "circular_moving_block_bootstrap",
+  "probability_sharpe_above_one": 0.644,
+  "probability_sharpe_above_zero": 0.987,
+  "samples": 1000,
+  "seed": 20260906,
+  "sharpe_percentile_05": 0.31500712460215513,
+  "sharpe_percentile_50": 1.1864149146967176,
+  "sharpe_percentile_95": 2.0510491589895574
+}

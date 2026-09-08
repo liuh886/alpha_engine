@@ -1,0 +1,30 @@
+{
+  "contract_identity": {
+    "implementation_sha256": "61ec6415a6e7dc9da0a812bcf34c77ebb8c53f92c304dd1218844cf05a500962",
+    "pool_sha256": "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458",
+    "reference_registry_sha256": "89caad51b98f08b2869cdae1bc226bb3d3686af9e0ea64cc64c42ae83792e3b2",
+    "source_document_sha256": "61ec7be6c45f76a935738760bcd1016b7e75bbca3378d85a5bc35f7e09b854ca",
+    "spec_sha256": "e8e030e2ff1f4a80f8e2e8f827bb29861452860bb49cc9bd28c134b72567b568"
+  },
+  "experiment_id": "cn_27_v1_0",
+  "manifest_identity_sha256": "3f8565733bc6c73ad156de52780b791ad4ad467848b2789d570159c9d1b11890",
+  "outputs": {
+    "benchmark_comparison.json": "6cf71d9e3d547c309b7ad23e05ff74dd8ed47647b6fd23111f8ee9bb3cfb8166",
+    "benchmark_comparison_daily.csv": "8ae6166344bbe4f7005c96834b73f3af1d13fb70199720392ccccbfd50873d35",
+    "coverage.csv": "eed8159c2d2554e4a02e9639524c9304dea1d9ab8fd9eaaf565292ed7cf5e4ef",
+    "daily.csv": "1f48b2b1f616282de19482b12e2c0c0cbe94d55bc328abfbfd18f49651de5010",
+    "decision.json": "d3473cf46af069f48760d65948255991fb12568f04c55fa2e8e6dfa10598a1a8",
+    "factor_signal_history.csv": "8feef311a0fc04cc0f8b8d814de94fd0f7d4686013c3e3209e989a89088fa01d",
+    "metrics.json": "c7bd050cb9f460c7790c1c16bea88c6dd72a9cd3af1482da4bc1958921101f0f",
+    "report.md": "7527b09b4e70523de34eb7f6859d7455edc8eda895c3b4863fb933cd88edd862",
+    "round_trips.csv": "efad07d30f8cd893d7fabeba24cf4ef1e31d83ebeb5ea670987b12af2c35eed4",
+    "trades.csv": "0de1f024fd8a4a5cd15ae425e266c408f183615b5419dda39fc896704ae4c781"
+  },
+  "research_only": true,
+  "schema_version": "1.0",
+  "source_prices": {
+    "path": "D:\\Documents\\GitHub\\alpha_engine\\artifacts\\evidence\\cn_all_weather_alpha_rotation_v1\\source_ohlcv.csv",
+    "sha256": "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35"
+  },
+  "trade_ready": false
+}

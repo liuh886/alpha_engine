@@ -1,0 +1,20 @@
+{
+  "automatic_promotion_allowed": false,
+  "decision": "retrospective_risk_overlay_candidate_identified",
+  "experiment_id": "cn_27_v1_4_risk_overlay_discovery_v1",
+  "fresh_historical_holdout": false,
+  "historical_evidence_consumed": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe": {
+    "covariance_lookback": 120,
+    "covariance_shrinkage": 0.5,
+    "exposure_policy": "reference_volatility_target",
+    "id": "p3_shrink_minimum_variance_reference",
+    "portfolio_target_annual_volatility": 0.18,
+    "weighting": "shrinkage_minimum_variance"
+  },
+  "selected_recipe_id": "p3_shrink_minimum_variance_reference",
+  "selection_identity_sha256": "63a1e9a924a30e9988ca079217e4a5c318009844a00fb93e9714a4dde7f692dd",
+  "trade_ready": false
+}

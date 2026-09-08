@@ -1,0 +1,26 @@
+{
+  "decision": "retrospective_risk_overlay_candidate_identified",
+  "experiment_id": "cn_27_v1_4_risk_overlay_discovery_v1",
+  "identity": {
+    "contract_sha256": "30c8b2df49b81aac701731583b5322da3a49de29e0d9200bafe1939ef6a28906",
+    "implementation_sha256": "0a8a96ceb229d71da84b8c555baf8adf8827fdb96e4f6af9dcd2560385f2e789",
+    "model_manifest_file_sha256": "0cc544c89ac4176a89e21aa9f0f0e52dd861eb047a564461faba41ae916bbc68",
+    "pool_sha256": "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458",
+    "source_prices_sha256": "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35",
+    "stability_manifest_file_sha256": "f685696ce04d9de1b26e2482a95a65016320a5ffa7cd6ffa93ba44c616d138a8"
+  },
+  "manifest_identity_sha256": "46287c7d53a64d7b1d61389d1de12008635bad061e4caf5f86fc068392640378",
+  "outputs": {
+    "bootstrap.json": "4ad7cb36eb8cf250fbc94ed082f5cb93b799899e5721d30192e182d20e413e32",
+    "candidate_summary.csv": "baedeec682c9fb67153b2ac6d5f6a0cfe211b1f95a026ee610f687276dd39f39",
+    "decision.json": "5ebf6bde233b8915d8a69493ad32d68b211a61a99e7051ed0a1ad4d08afee1a5",
+    "parameter_robustness.csv": "28a25da4398f3e21326c6c02056485f8ec3666abdf28463d056715247d89b9da",
+    "report.md": "5029f037dd71f563c54e098ce8875c4dbb691aaf58a7e9a11b37eb2ec47704f4",
+    "selected_daily.csv": "9c03066d30da6dd5c8efa6a2a5ea5a28cec7a1fa82db13ae9961de748a6280fd",
+    "selected_recipe.json": "73c7eb4df05e6146aa1bcb629480e560164638eaa57c969d027d56921ee72b06"
+  },
+  "research_only": true,
+  "schema_version": "1.0",
+  "selection_identity_sha256": "63a1e9a924a30e9988ca079217e4a5c318009844a00fb93e9714a4dde7f692dd",
+  "trade_ready": false
+}

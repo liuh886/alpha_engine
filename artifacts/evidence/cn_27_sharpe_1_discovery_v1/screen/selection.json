@@ -1,0 +1,28 @@
+{
+  "decision": "candidate_selected_for_locked_test",
+  "experiment_id": "cn_27_sharpe_1_discovery_v1",
+  "fresh_historical_holdout": false,
+  "locked_test_metrics_observed": false,
+  "ranking_rule": "maximize_minimum_development_validation_sharpe",
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe": {
+    "absolute_momentum_filter": "none",
+    "equity_exposure": "fixed_0_75",
+    "exit_rank_buffer": 4,
+    "factors": {
+      "drawdown_60": 0.15,
+      "risk_adjusted_momentum_20": 0.35,
+      "risk_adjusted_momentum_60": 0.35,
+      "trend_60": 0.15
+    },
+    "id": "c2_risk_adjusted_momentum",
+    "maximum_names_per_sector": 2,
+    "rebalance_sessions": 10,
+    "top_k": 8,
+    "weighting": "inverse_volatility_20"
+  },
+  "selected_recipe_id": "c2_risk_adjusted_momentum",
+  "selection_identity_sha256": "8ef183eea01f0305e104f3124b0de66580359dbc26814a564ac0674ac917b8cf",
+  "trade_ready": false
+}

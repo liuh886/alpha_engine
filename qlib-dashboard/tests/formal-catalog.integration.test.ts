@@ -30,6 +30,7 @@ describe('published formal catalog', () => {
     expect(result.errors).toEqual([]);
     expect(result.runs.map((run) => run.modelVersionId).sort()).toEqual([
       BYD_V13,
+      'cn_27_v1_3',
       'cn_x1_2',
       'qqqi_qqq_tqqq_v4_3',
       'us_x1_3',
@@ -54,6 +55,14 @@ describe('published formal catalog', () => {
     expect(cn?.trades.length).toBeGreaterThan(0);
     expect(cn?.attribution.length).toBeGreaterThan(0);
     expect(cn?.robustness.windowSummary.length).toBeGreaterThanOrEqual(5);
+
+    const cn27 = evidenceByModel.get('cn_27_v1_3');
+    expect(cn27).toBeDefined();
+    expect(cn27?.performance.report).toHaveLength(729);
+    expect(cn27?.portfolio.positions.length).toBeGreaterThan(0);
+    expect(cn27?.trades.length).toBeGreaterThan(0);
+    expect(cn27?.attribution.length).toBeGreaterThan(0);
+    expect(cn27?.robustness.windowSummary.length).toBeGreaterThanOrEqual(21);
 
     const byd = evidenceByModel.get(BYD_V13);
     expect(byd).toBeDefined();

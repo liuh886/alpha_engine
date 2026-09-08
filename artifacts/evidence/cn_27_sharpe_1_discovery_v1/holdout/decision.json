@@ -1,0 +1,20 @@
+{
+  "all_locked_test_gates_passed": true,
+  "automatic_promotion_allowed": false,
+  "decision": "cn_27_sharpe_1_candidate_supported_retrospective_only",
+  "experiment_id": "cn_27_sharpe_1_discovery_v1",
+  "fresh_historical_holdout": false,
+  "locked_test_gate_results": {
+    "maximum_annual_one_way_turnover": true,
+    "maximum_drawdown_magnitude": true,
+    "minimum_sharpe_log_excess": true,
+    "outperform_cn_27_v1_0_sharpe": true,
+    "stress_cost_minimum_sharpe_log_excess": true
+  },
+  "locked_test_opened": true,
+  "locked_test_opened_after_sealed_selection": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "selected_recipe_id": "c2_risk_adjusted_momentum",
+  "trade_ready": false
+}
