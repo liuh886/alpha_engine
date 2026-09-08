@@ -149,6 +149,43 @@ def test_same_model_and_signal_date_with_different_decision_fails_closed(
     assert len(list((ledger / "records").glob("*.json"))) == 1
 
 
+def test_reseal_with_restated_provenance_but_same_decision_is_idempotent(
+    tmp_path: Path,
+) -> None:
+    ledger = tmp_path / MODEL
+    first_signal = _signal(fingerprint="decision-a", target_state=1)
+    first_signal["data_context"] = {"manifest_sha256": "a" * 64}
+    first = _seal(ledger, first_signal, run_id="seal-1")
+    before = (ledger / "records" / "2026-08-12.json").read_bytes()
+
+    restated = _signal(fingerprint="decision-a", target_state=1)
+    restated["data_context"] = {"manifest_sha256": "b" * 64}
+    restated["markdown"] = "# restated rendering"
+    second = _seal(
+        ledger, restated, run_id="seal-2", created_at="2026-08-14T00:00:00Z"
+    )
+
+    assert second == first
+    assert (ledger / "records" / "2026-08-12.json").read_bytes() == before
+    assert len(list((ledger / "records").glob("*.json"))) == 1
+
+
+def test_reseal_with_same_fingerprint_but_different_decision_fails_closed(
+    tmp_path: Path,
+) -> None:
+    ledger = tmp_path / MODEL
+    _seal(ledger, _signal(fingerprint="decision-a", target_state=1))
+
+    with pytest.raises(StrategySignalLedgerError, match="canonical decision conflict"):
+        _seal(
+            ledger,
+            _signal(fingerprint="decision-a", target_state=0),
+            run_id="seal-2",
+        )
+
+    assert len(list((ledger / "records").glob("*.json"))) == 1
+
+
 def test_older_signal_cannot_move_latest_backward(tmp_path: Path) -> None:
     ledger = tmp_path / MODEL
     _seal(ledger, _signal(signal_date="2026-08-13", fingerprint="new"))

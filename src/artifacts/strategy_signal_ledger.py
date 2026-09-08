@@ -73,6 +73,23 @@ def _signal_copy(signal: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _decision_projection(normalized_signal: Mapping[str, Any]) -> dict[str, Any]:
+    """Decision-grade content of a normalized signal.
+
+    Provenance envelopes such as ``data_context`` describe *which vendor bytes*
+    produced the signal, not the decision itself: vendors restate history and
+    rebuilds shift manifest digests while the decision stays identical. The
+    projection keeps everything else, so two projections are equal only when
+    the decisions themselves are equal.
+    """
+
+    return {
+        str(key): value
+        for key, value in normalized_signal.items()
+        if key != "data_context"
+    }
+
+
 def _json_object(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -282,6 +299,24 @@ def seal_signal_decision(
             and existing.get("signal_sha256") == signal_sha256
             and existing.get("signal") == normalized_signal
         ):
+            if latest is None or latest.get("signal_date") == signal_date:
+                (ledger_root / "latest.json").write_bytes(canonical_json_bytes(existing))
+                _write_manifest(
+                    ledger_root,
+                    model_version_id=model_version_id,
+                    latest=existing,
+                )
+            return existing_path
+        if existing.get("fingerprint") == fingerprint and _decision_projection(
+            existing.get("signal") or {}
+        ) == _decision_projection(normalized_signal):
+            # Same model, signal date and decision under restated provenance:
+            # the vendor revised history (or the bundle was rebuilt) without
+            # changing the decision. Keep the originally sealed bytes canonical
+            # and succeed idempotently. A genuine decision change still fails
+            # closed below because the projection covers all decision-grade
+            # content, so a reused fingerprint cannot smuggle in new weights,
+            # states, overlays or orders.
             if latest is None or latest.get("signal_date") == signal_date:
                 (ledger_root / "latest.json").write_bytes(canonical_json_bytes(existing))
                 _write_manifest(
