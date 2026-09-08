@@ -7,11 +7,10 @@ performance and attribution tables suitable for notebook inspection.
 """
 
 from __future__ import annotations
-from src.research.economics import relative_excess
+from src.research.economics import compound_returns, relative_excess
 
 import hashlib
 import json
-import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -183,11 +182,6 @@ def _max_drawdown(period_returns: pd.Series) -> float:
     running_peak = np.maximum.accumulate(np.concatenate(([1.0], equity.to_numpy(dtype=float))))[1:]
     drawdown = equity.to_numpy(dtype=float) / running_peak - 1.0
     return float(drawdown.min())
-
-
-def _compound(values: pd.Series | list[float]) -> float:
-    array = np.asarray(values, dtype=float)
-    return float(np.prod(1.0 + array) - 1.0)
 
 
 def _expected_window(summary: dict[str, Any], window: str) -> dict[str, Any]:
@@ -462,9 +456,9 @@ def _build_window(
 
     expected = _expected_window(summary, window)
     observed = {
-        "total_return": _compound(periods["net_return"]),
-        "benchmark_return": _compound(periods["qqq_return"]),
-        "excess_return": _compound(periods["net_return"]) - _compound(periods["qqq_return"]),
+        "total_return": compound_returns(periods["net_return"]),
+        "benchmark_return": compound_returns(periods["qqq_return"]),
+        "excess_return": compound_returns(periods["net_return"]) - compound_returns(periods["qqq_return"]),
         "turnover": float(periods["turnover"].sum()),
         "costs": float(periods["transaction_cost"].sum()),
         "max_drawdown": _max_drawdown(periods["net_return"]),
@@ -538,9 +532,9 @@ def _security_summary(attribution: pd.DataFrame, trades: pd.DataFrame) -> pd.Dat
 def _window_summary(periods: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for window, group in periods.groupby("window", sort=False):
-        gross = _compound(group["gross_return"])
-        net = _compound(group["net_return"])
-        benchmark = _compound(group["qqq_return"])
+        gross = compound_returns(group["gross_return"])
+        net = compound_returns(group["net_return"])
+        benchmark = compound_returns(group["qqq_return"])
         rows.append(
             {
                 "window": window,
@@ -568,9 +562,9 @@ def _regime_summary(periods: pd.DataFrame) -> pd.DataFrame:
             {
                 "qqq_regime": regime,
                 "periods": int(len(group)),
-                "gross_selection_return": _compound(group["gross_return"]),
-                "net_strategy_return": _compound(group["net_return"]),
-                "qqq_return": _compound(group["qqq_return"]),
+                "gross_selection_return": compound_returns(group["gross_return"]),
+                "net_strategy_return": compound_returns(group["net_return"]),
+                "qqq_return": compound_returns(group["qqq_return"]),
                 "arithmetic_excess_contribution": float(group["excess_return"].sum()),
                 "turnover": float(group["turnover"].sum()),
                 "transaction_cost": float(group["transaction_cost"].sum()),
@@ -656,8 +650,8 @@ def build_complete_backtest(
     security_attribution = _security_summary(attribution, trades)
     regime_attribution = _regime_summary(periods)
 
-    observed_strategy = _compound(window_attribution["net_strategy_return"])
-    observed_benchmark = _compound(window_attribution["qqq_return"])
+    observed_strategy = compound_returns(window_attribution["net_strategy_return"])
+    observed_benchmark = compound_returns(window_attribution["qqq_return"])
     observed_relative = relative_excess(observed_strategy, observed_benchmark)
     expected_cost = summary["run_a"]["cost_stress"][str(BASE_COST_BPS)]
     aggregate_rows = [

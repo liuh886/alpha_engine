@@ -19,7 +19,7 @@ and documents static-current-membership / survivorship bias.
 """
 
 from __future__ import annotations
-from src.research.economics import relative_excess
+from src.research.economics import compound_returns, relative_excess
 
 import argparse
 import json
@@ -716,8 +716,8 @@ def _aggregate_cohort(
     # Compounded across windows
     all_period_returns = [r for p in valid for r in p["candidate_v2"]["period_returns"]]
     all_bench_returns = [r for p in valid for r in p["candidate_v2"]["benchmark_period_returns"]]
-    compounded_portfolio = float(np.prod(1.0 + np.asarray(all_period_returns)) - 1.0) if all_period_returns else 0.0
-    compounded_benchmark = float(np.prod(1.0 + np.asarray(all_bench_returns)) - 1.0) if all_bench_returns else 0.0
+    compounded_portfolio = compound_returns(all_period_returns)
+    compounded_benchmark = compound_returns(all_bench_returns)
     compounded_rel_excess = (
         relative_excess(compounded_portfolio, compounded_benchmark)
         if compounded_benchmark > -1.0

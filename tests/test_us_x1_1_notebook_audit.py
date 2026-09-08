@@ -5,13 +5,13 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.research.economics import compound_returns as _compound
 from src.research.us_x1_1_notebook_audit import (
     BASE_COST_BPS,
     EXPECTED_PARAMETER_IDENTITY,
     EXPECTED_PROVIDER_IDENTITY,
     TOPK,
     WINDOWS,
-    _compound,
     _max_drawdown,
     _security_summary,
     _window_summary,

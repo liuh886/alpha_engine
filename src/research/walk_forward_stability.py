@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from math import prod
 from typing import Any
 
 import pandas as pd
 
+from src.research.economics import compound_returns
 from src.research.ten_day_model_gates import evaluate_model_gates
 
 
@@ -109,8 +109,8 @@ def summarize_walk_forward_reports(
         mean_rank_ic = sum(rank_ics) / n_windows if n_windows else 0.0
         mean_spread = sum(spreads) / n_windows if n_windows else 0.0
         worst_drawdown = min(drawdowns) if drawdowns else 0.0
-        compounded_total_return = prod(1.0 + value for value in total_returns) - 1.0
-        compounded_benchmark_return = prod(1.0 + value for value in benchmark_returns) - 1.0
+        compounded_total_return = compound_returns(total_returns)
+        compounded_benchmark_return = compound_returns(benchmark_returns)
         benchmark_base = 1.0 + compounded_benchmark_return
         compounded_relative_excess_return = (
             (1.0 + compounded_total_return) / benchmark_base - 1.0 if benchmark_base > 0.0 else None

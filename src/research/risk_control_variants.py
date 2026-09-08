@@ -17,7 +17,7 @@ execution slippage beyond the configured turnover cost, or broker constraints.
 """
 
 from __future__ import annotations
-from src.research.economics import relative_excess
+from src.research.economics import compound_returns, relative_excess
 
 from dataclasses import dataclass
 from typing import Any
@@ -590,11 +590,11 @@ def aggregate_variant_reports(
             continue
         all_period_returns = [r for report in reports for r in report.period_returns]
         all_benchmark_returns = [r for report in reports for r in report.benchmark_period_returns]
-        compounded_portfolio = float(np.prod(1.0 + np.asarray(all_period_returns)) - 1.0)
-        compounded_benchmark = float(np.prod(1.0 + np.asarray(all_benchmark_returns)) - 1.0)
-        compounded_relative_excess = (1.0 + compounded_portfolio) / (
-            1.0 + compounded_benchmark
-        ) - 1.0
+        compounded_portfolio = compound_returns(all_period_returns)
+        compounded_benchmark = compound_returns(all_benchmark_returns)
+        compounded_relative_excess = relative_excess(
+            compounded_portfolio, compounded_benchmark
+        )
         positive_excess_windows = sum(report.excess_return > 0 for report in reports)
         worst_drawdown = min(report.max_drawdown for report in reports)
         passes = (

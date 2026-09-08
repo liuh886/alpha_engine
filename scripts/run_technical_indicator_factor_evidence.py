@@ -16,12 +16,11 @@ diagnostic only and cannot make a factor or model trade-ready.
 """
 
 from __future__ import annotations
-from src.research.economics import relative_excess
+from src.research.economics import compound_returns, relative_excess
 
 import argparse
 import hashlib
 import json
-import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -495,9 +494,9 @@ def _economic_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "compounded_benchmark_return": 0.0,
             "compounded_relative_excess": 0.0,
         }
-    portfolio = math.prod(1.0 + float(row["total_return"]) for row in rows) - 1.0
-    benchmark = (
-        math.prod(1.0 + float(row["benchmark_return"]) for row in rows) - 1.0
+    portfolio = compound_returns([float(row["total_return"]) for row in rows])
+    benchmark = compound_returns(
+        [float(row["benchmark_return"]) for row in rows]
     )
     relative = relative_excess(portfolio, benchmark)
     return {

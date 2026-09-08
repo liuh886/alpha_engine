@@ -18,7 +18,7 @@ Labels:
 """
 
 from __future__ import annotations
-from src.research.economics import relative_excess
+from src.research.economics import compound_returns, relative_excess
 
 import argparse
 import json
@@ -372,13 +372,13 @@ def run(
         pr for r in window_results
         for pr in r["result"]["top_k_long"]["period_returns"]
     ]
-    cp = float(np.prod(1.0 + np.asarray(all_top_period_returns, dtype=float)) - 1.0)
+    cp = compound_returns(all_top_period_returns)
 
     all_bench_period_returns = [
         pr for r in window_results
         for pr in r["result"]["top_k_long"]["benchmark_period_returns"]
     ]
-    cb = float(np.prod(1.0 + np.asarray(all_bench_period_returns, dtype=float)) - 1.0)
+    cb = compound_returns(all_bench_period_returns)
     ce = relative_excess(cp, cb)
 
     positive_excess_window_ratio = float(
