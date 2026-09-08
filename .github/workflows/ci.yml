@@ -187,7 +187,10 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-      issues: write
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -197,29 +200,56 @@ jobs:
       - uses: ./.github/actions/setup-python-uv
 
       - name: Full repository Ruff
+        if: matrix.shard == 0
         run: uv run ruff check .
 
       # The full suite must report every failure, not stop at the first one:
       # --maxfail=1 previously hid the true failure inventory behind the
-      # earliest broken test for weeks.
-      - name: Full repository tests
+      # earliest broken test for weeks. Files are bin-packed by size into 4
+      # deterministic shards so no shard list needs maintenance.
+      - name: Full repository tests (shard ${{ matrix.shard }}/4)
         run: |
           mkdir -p artifacts
-          uv run pytest tests -q --strict-markers --tb=short \
+          files="$(uv run python - <<'PY'
+          from pathlib import Path
+          shards, loads = [[] for _ in range(4)], [0] * 4
+          candidates = sorted(
+              Path("tests").glob("test_*.py"),
+              key=lambda p: p.stat().st_size,
+              reverse=True,
+          )
+          for path in candidates:
+              index = loads.index(min(loads))
+              shards[index].append(path.as_posix())
+              loads[index] += path.stat().st_size
+          print(" ".join(shards[${{ matrix.shard }}]))
+          PY
+          )"
+          # shellcheck disable=SC2086
+          uv run pytest $files -q --strict-markers --tb=short \
             --disable-warnings \
-            --junitxml=artifacts/pytest-full-report.xml
+            --junitxml=artifacts/pytest-shard-${{ matrix.shard }}-report.xml
 
-      - name: Upload full failure report
-        if: failure()
-        uses: actions/upload-artifact@v4
+      - name: Upload shard report
+        if: always()
+        uses: actions/upload-artifact@v6
         with:
-          name: repository-health-failure-${{ github.run_id }}
-          path: artifacts/pytest-full-report.xml
-          if-no-files-found: ignore
+          name: repository-health-shard-${{ matrix.shard }}-${{ github.run_id }}
+          path: artifacts/pytest-shard-${{ matrix.shard }}-report.xml
+          if-no-files-found: error
           retention-days: 30
 
+  repository-health-report:
+    if: always() && github.event_name != 'pull_request'
+    needs: [repository-health]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
       - name: Open or update the health-gate tracking issue
-        if: failure()
+        if: needs.repository-health.result != 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -233,7 +263,7 @@ jobs:
             echo "- Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo ""
             echo "The weekly full-suite job reports every failing test (no --maxfail)."
-            echo "Download \`repository-health-failure-${{ github.run_id }}\` for the JUnit report."
+            echo "Download \`repository-health-shard-{0..3}-${{ github.run_id }}\` for the per-shard JUnit reports."
           } > health-failure.md
           existing="$(gh issue list \
             --search "weekly repository health gate is failing in:title" \
