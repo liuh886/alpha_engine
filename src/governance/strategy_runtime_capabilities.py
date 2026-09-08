@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Mapping
+from typing import Any, Literal, Mapping
 
 import yaml  # type: ignore[import-untyped]
 
@@ -26,6 +26,7 @@ FORMAL_REFRESH_ADAPTERS: Mapping[str, str] = {
 CURRENT_TARGET_ADAPTERS: Mapping[str, str] = {
     "us_x1_3": "us_x1_3_current_target_v1",
     "cn_x1_2": "cn_x1_2_current_target_v1",
+    "cn_27_v1_3": "cn_27_current_target_v1",
 }
 RANKER_FORMAL_REFRESH_ADAPTERS = frozenset({"us_x1_3_formal_refresh_v1"})
 
@@ -94,6 +95,16 @@ def _not_applicable(reason: str) -> RuntimeCapability:
     return RuntimeCapability(status="not_applicable", reason=reason)
 
 
+def _ranker_activation(contract: Mapping[str, Any]) -> str:
+    publication = contract.get("formal_publication")
+    activation = (
+        publication.get("current_target_activation")
+        if isinstance(publication, Mapping)
+        else None
+    )
+    return activation if isinstance(activation, str) else ""
+
+
 def resolve_strategy_runtime_capabilities(
     strategy: ActiveStrategy,
     *,
@@ -115,19 +126,31 @@ def resolve_strategy_runtime_capabilities(
     )
 
     if strategy.model_kind != "cross_sectional_ranker":
-        current_target = _not_applicable(
-            "not_managed_by_cross_sectional_ranker_current_target_runtime"
-        )
-    else:
-        publication = contract.get("formal_publication")
-        activation = (
-            publication.get("current_target_activation")
-            if isinstance(publication, Mapping)
-            else None
-        )
-        if isinstance(activation, str) and activation.startswith("blocked_"):
-            current_target = _blocked(activation)
+        dormant_adapter = CURRENT_TARGET_ADAPTERS.get(strategy.model_version_id)
+        if dormant_adapter is None:
+            current_target = _not_applicable(
+                "not_managed_by_cross_sectional_ranker_current_target_runtime"
+            )
         else:
+            # A dormant publisher exists but its frozen contract gates activation
+            # on a governed prospective source (e.g. CN_27 V1.3). The adapter is
+            # maintained and tested; the source is not yet available.
+            contract = _load_ranker_contract(strategy, repository_root)
+            publication = contract.get("formal_publication")
+            activation = (
+                publication.get("current_target_activation")
+                if isinstance(publication, Mapping)
+                else None
+            )
+            if not isinstance(activation, str) or not activation:
+                raise StrategyRuntimeCapabilityError(
+                    "model contract current-target activation is missing: "
+                    f"{strategy.strategy_id}"
+                )
+            current_target = RuntimeCapability(status="blocked", adapter_id=dormant_adapter, reason=activation)
+    elif _ranker_activation(contract).startswith("blocked_"):
+        current_target = _blocked(_ranker_activation(contract))
+    else:
             current_adapter = CURRENT_TARGET_ADAPTERS.get(strategy.model_version_id)
             current_target = (
                 _available(current_adapter)

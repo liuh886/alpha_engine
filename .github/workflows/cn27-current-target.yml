@@ -1,0 +1,143 @@
+name: CN27 Current Target
+
+on:
+  schedule:
+    - cron: "45 22 * * 1-5"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cn27-current-target.yml"
+      - "scripts/run_cn_27_current_target.py"
+      - "src/research/cn_27_current_target.py"
+      - "src/governance/strategy_runtime_capabilities.py"
+      - "configs/strategies/registry.json"
+      - "configs/models/cn_27_v1_3.yaml"
+      - "data/research/formal_model_runs/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cn27-current-target
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Capture executed source revision
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate CN_27 current-target runtime
+        run: |
+          uv run ruff check \
+            scripts/run_cn_27_current_target.py \
+            src/research/cn_27_current_target.py \
+            src/governance/strategy_runtime_capabilities.py \
+            tests/test_cn_27_current_target.py \
+            tests/test_strategy_runtime_capabilities.py
+          uv run pytest \
+            tests/test_cn_27_current_target.py \
+            tests/test_strategy_runtime_capabilities.py \
+            tests/test_strategy_signal_ledger.py \
+            -q --strict-markers --tb=short
+      - name: Evaluate CN_27 current target
+        env:
+          EXECUTION_SHA: ${{ steps.source.outputs.sha }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p artifacts/cn27-current-target
+          git config user.name "AlphaEngine CN27 Operations"
+          git config user.email "cn27-operations@alphaengine.local"
+          as_of="$(date -u +%F)"
+          failures=()
+
+          echo "::group::cn_27 prospective source status"
+          if ! uv run python scripts/run_cn_27_current_target.py status \
+            --formal-root data/research/formal_model_runs \
+            --output artifacts/cn27-current-target/status.json; then
+            failures+=("status")
+            echo "::error::cn_27 prospective status failed"
+          fi
+          echo "::endgroup::"
+
+          echo "::group::cn_27 current target"
+          due_file="artifacts/cn27-current-target/due.json"
+          signal="artifacts/cn27-current-target/signal.json"
+          if ! uv run python scripts/run_cn_27_current_target.py due \
+            --formal-root data/research/formal_model_runs \
+            --evidence-path data/research/market_evidence/cn/symbols/000300.json \
+            --as-of "$as_of" \
+            --output "$due_file"; then
+            failures+=("due")
+            echo "::error::cn_27 due resolution failed"
+          else
+            # Dormant proof: build exits 0 with a data_blocked receipt until a
+            # governed prospective source exists; seal only real signals.
+            if ! uv run python scripts/run_cn_27_current_target.py build \
+              --formal-root data/research/formal_model_runs \
+              --signal-date "$as_of" \
+              --market-cutoff "$as_of" \
+              --output "$signal"; then
+              failures+=("build")
+              echo "::error::cn_27 current-target build failed"
+            elif uv run python -c "import json,sys; sys.exit(0 if 'target_weights' in json.load(open('$signal')) else 1)"; then
+              model="cn_27_v1_3"
+              created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              if ! uv run alpha ops record-decision \
+                --model-version-id "$model" \
+                --signal-json "$signal" \
+                --delivery-status pending \
+                --workflow-run-id "$GITHUB_RUN_ID" \
+                --commit-sha "$EXECUTION_SHA" \
+                --created-at-utc "$created_at"; then
+                failures+=("seal")
+                echo "::error::cn_27 canonical decision seal failed"
+                git reset -- data/research/strategy_signal_ledgers >/dev/null 2>&1 || true
+              else
+                git add "data/research/strategy_signal_ledgers/$model"
+                if git diff --cached --quiet; then
+                  echo "cn_27: canonical decision already sealed"
+                else
+                  git commit -m "ops: seal ${model} decision ${as_of}"
+                  if ! git pull --rebase origin main || ! git push origin HEAD:main; then
+                    failures+=("publish")
+                    echo "::error::cn_27 canonical decision publication failed"
+                    git rebase --abort >/dev/null 2>&1 || true
+                    git reset --hard origin/main >/dev/null 2>&1 || true
+                  fi
+                fi
+              fi
+            else
+              echo "cn_27: dormant, data_blocked receipt retained"
+            fi
+          fi
+          echo "::endgroup::"
+
+          if [ "${#failures[@]}" -gt 0 ]; then
+            printf 'CN_27 failures: %s\n' "${failures[*]}" >&2
+            exit 1
+          fi
+      - name: Retain current-target evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cn27-current-target-${{ github.run_id }}
+          path: artifacts/cn27-current-target
+          if-no-files-found: error
+          retention-days: 30
