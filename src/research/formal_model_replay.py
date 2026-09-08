@@ -32,7 +32,8 @@ from src.research.v4_33_ma200_ma20_vix_release import run_v4_33_comparison
 RUNNER_ID = "formal_model_replay_v2"
 QQQ_REPLAY_ID = "qqq_v4_3"
 BYD_REPLAY_ID = "byd_v1_3"
-REPLAY_IDS = (QQQ_REPLAY_ID, BYD_REPLAY_ID)
+CN27_REPLAY_ID = "cn_27_v1_3"
+REPLAY_IDS = (QQQ_REPLAY_ID, BYD_REPLAY_ID, CN27_REPLAY_ID)
 
 BYD_PREDECESSOR_PACKAGE = Path(
     "data/research/historical_model_evidence/byd_v1_2_convex_momentum_budget_v1.json"
@@ -452,6 +453,10 @@ def replay_formal_models(
                     refresh_data=refresh_data,
                 )
             )
+        elif current == CN27_REPLAY_ID:
+            from src.research.cn27_v1_3_replay import replay_cn_27_v1_3
+
+            results.append(replay_cn_27_v1_3(root=root))
         else:
             results.append(replay_byd_v1_3(root=root))
 

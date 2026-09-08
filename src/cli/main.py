@@ -48,6 +48,7 @@ from src.governance.active_strategy_catalog import (
 )
 from src.research.formal_model_replay import (
     BYD_REPLAY_ID,
+    CN27_REPLAY_ID,
     QQQ_REPLAY_ID,
     FormalModelReplayError,
     replay_formal_models,
@@ -126,7 +127,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     replay.add_argument(
         "model",
-        choices=[QQQ_REPLAY_ID, BYD_REPLAY_ID, "all"],
+        choices=[QQQ_REPLAY_ID, BYD_REPLAY_ID, CN27_REPLAY_ID, "all"],
         help="Accepted formal baseline to replay.",
     )
     replay.add_argument(

@@ -65,6 +65,10 @@ def test_all_replay_requires_every_model_to_match(monkeypatch, tmp_path: Path) -
         lambda **kwargs: {"decision": "exact_replay"},
     )
     monkeypatch.setattr(
+        "src.research.cn27_v1_3_replay.replay_cn_27_v1_3",
+        lambda **kwargs: {"decision": "exact_replay"},
+    )
+    monkeypatch.setattr(
         replay,
         "replay_byd_v1_3",
         lambda **kwargs: {"decision": "invalid_evidence"},
