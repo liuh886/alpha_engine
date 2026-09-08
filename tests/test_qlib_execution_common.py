@@ -256,7 +256,7 @@ def test_shared_runtime_protocol_is_structural() -> None:
 
 
 def test_thin_adapters_do_not_duplicate_execution_logic() -> None:
-    """Thin adapters delegate to execute_qlib_plan; they must not re-implement it."""
+    """Thin adapters delegate to the shared engine; they must not re-implement it."""
     cn_source = Path(
         "src/research/cn_qlib_execution_adapter.py"
     ).read_text(encoding="utf-8")
@@ -265,8 +265,11 @@ def test_thin_adapters_do_not_duplicate_execution_logic() -> None:
     ).read_text(encoding="utf-8")
 
     # Thin adapters must delegate, not own execution logic.
-    assert "execute_qlib_plan(" in cn_source
-    assert "execute_qlib_plan(" in us_source
+    assert "execute_market_qlib_plan(" in cn_source
+    assert "execute_market_qlib_plan(" in us_source
+    # The shared runtime itself must live exactly once, in the common engine.
+    assert "class MarketQlibExecutionRuntime" not in cn_source
+    assert "class MarketQlibExecutionRuntime" not in us_source
 
     # These execution-only identifiers must NOT appear in the thin adapters.
     for forbidden in (

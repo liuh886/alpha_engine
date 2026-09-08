@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from src.research.economics import relative_excess
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -162,7 +163,7 @@ def mature_outcomes_from_immutable_observations(
                 scenarios[str(cost)] = {
                     "base_return": base_return,
                     "shadow_return": shadow_return,
-                    "incremental_return": ((1.0 + shadow_return) / (1.0 + base_return) - 1.0),
+                    "incremental_return": (relative_excess(shadow_return, base_return)),
                 }
             settlement_records = [
                 row for row in records if signal_date <= pd.Timestamp(row["signal_date"]) <= exit_

@@ -6,6 +6,7 @@ execution can support a research conclusion.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 from dataclasses import dataclass
 from typing import Any
@@ -420,7 +421,7 @@ def period_relative_concentration(
         start, end = EVALUATION_WINDOWS[window]
         candidate_return = window_metrics(candidate, start=start, end=end)["total_return"]
         v1_return = window_metrics(v1, start=start, end=end)["total_return"]
-        relative = (1.0 + candidate_return) / (1.0 + v1_return) - 1.0
+        relative = relative_excess(candidate_return, v1_return)
         rows.append(
             {
                 "window": window,

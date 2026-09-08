@@ -11,6 +11,7 @@ import pandas as pd
 from src.research.cn130_cross_sectional_ranking import compound, max_drawdown
 from src.research.cn130_ranking_pipeline import turnover
 from src.research.cn130_tail_factor_discovery import PortfolioVariant, choose_holdings
+from src.research.economics import relative_excess
 
 
 @dataclass(frozen=True)
@@ -127,7 +128,7 @@ def run_sector_breadth_portfolio(
                 "window": window,
                 "total_return": total_return,
                 "benchmark_return": benchmark_return,
-                "relative_excess": (1.0 + total_return) / (1.0 + benchmark_return) - 1.0,
+                "relative_excess": relative_excess(total_return, benchmark_return),
                 "max_drawdown": max_drawdown(group["net_return"]),
                 "benchmark_hit_rate": float(group["benchmark_hit"].mean()),
                 "turnover": float(group["turnover"].sum()),
@@ -149,7 +150,7 @@ def run_sector_breadth_portfolio(
         "windows": list(windows),
         "total_return": total_return,
         "benchmark_return": benchmark_return,
-        "relative_excess": (1.0 + total_return) / (1.0 + benchmark_return) - 1.0,
+        "relative_excess": relative_excess(total_return, benchmark_return),
         "max_drawdown": max_drawdown(periods["net_return"]),
         "turnover": float(periods["turnover"].sum()),
         "positive_excess_windows": int((window_results["relative_excess"] > 0.0).sum()),

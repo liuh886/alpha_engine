@@ -7,6 +7,7 @@ selection evidence.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 import math
 from pathlib import Path
@@ -312,7 +313,7 @@ def build_package(
                 "bench_byd_v1_2": benchmark,
                 "period_return": net,
                 "benchmark_return": benchmark_net,
-                "relative_excess_return": (1.0 + net) / (1.0 + benchmark_net) - 1.0,
+                "relative_excess_return": relative_excess(net, benchmark_net),
                 "gross_return": float(row["gross_return"]),
                 "transaction_cost": float(row["cost"]),
                 "financing_cost": float(row["financing_cost"]),
@@ -427,10 +428,9 @@ def build_package(
             }
         )
 
-    stress_relative = (
-        (1.0 + candidate_stress_metrics["total_return"])
-        / (1.0 + champion_stress_metrics["total_return"])
-        - 1.0
+    stress_relative = relative_excess(
+        candidate_stress_metrics["total_return"],
+        champion_stress_metrics["total_return"],
     )
     actual_end = pd.Timestamp(candidate.index.max()).strftime("%Y-%m-%d")
 

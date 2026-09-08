@@ -15,6 +15,7 @@ diagnostic/falsification evidence only.  They cannot promote the signal.
 """
 
 from __future__ import annotations
+from src.research.economics import compound_returns, relative_excess
 
 import argparse
 import hashlib
@@ -490,10 +491,6 @@ def _evaluate_window(
     }
 
 
-def _compound(values: list[float]) -> float:
-    return float(np.prod([1.0 + value for value in values]) - 1.0)
-
-
 def _mean(values: list[float]) -> float:
     finite = [float(value) for value in values if np.isfinite(value)]
     if not finite:
@@ -517,13 +514,13 @@ def aggregate_window_reports(
     benchmark_returns = [
         float(item["portfolio"]["benchmark_return"]) for item in full
     ]
-    relative_excess = [
+    window_relative_excess = [
         float(item["portfolio"]["relative_excess_return"]) for item in full
     ]
-    candidate_total = _compound(portfolio_returns)
-    benchmark_total = _compound(benchmark_returns)
+    candidate_total = compound_returns(portfolio_returns)
+    benchmark_total = compound_returns(benchmark_returns)
     compounded_relative_excess = (
-        (1.0 + candidate_total) / (1.0 + benchmark_total) - 1.0
+        relative_excess(candidate_total, benchmark_total)
     )
     tail = summarize_window_diagnostics(
         [item["selection_tail_diagnostics"] for item in full]
@@ -531,7 +528,7 @@ def aggregate_window_reports(
     worst_drawdown = min(
         float(item["portfolio"]["max_drawdown"]) for item in full
     )
-    positive_excess_windows = sum(value > 0.0 for value in relative_excess)
+    positive_excess_windows = sum(value > 0.0 for value in window_relative_excess)
     minimum_score_coverage = min(
         float(item["score_coverage"]["minimum_observed_ratio"])
         for item in full

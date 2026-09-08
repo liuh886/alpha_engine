@@ -7,6 +7,7 @@ repository-pinned BYD canonical v1 snapshot and treats all history through
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 from dataclasses import dataclass
 from typing import Any, Mapping
@@ -246,7 +247,7 @@ def attribute_overlay_events(
         base_block = base.daily.reindex(candidate_block.index)
         candidate_return = float((1.0 + candidate_block["net_return"]).prod() - 1.0)
         base_return = float((1.0 + base_block["net_return"]).prod() - 1.0)
-        relative = (1.0 + candidate_return) / (1.0 + base_return) - 1.0
+        relative = relative_excess(candidate_return, base_return)
         row.update(
             {
                 "candidate_return": candidate_return,

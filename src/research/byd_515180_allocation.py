@@ -6,6 +6,7 @@ only after its independent canonical quality gate passes.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 import json
 from dataclasses import dataclass
@@ -341,7 +342,7 @@ def period_concentration(
         start, end = WINDOWS[window]
         candidate_return = window_metrics(candidate, start, end)["total_return"]
         baseline_return = window_metrics(baseline, start, end)["total_return"]
-        relative = (1.0 + candidate_return) / (1.0 + baseline_return) - 1.0
+        relative = relative_excess(candidate_return, baseline_return)
         rows.append(
             {
                 "window": window,

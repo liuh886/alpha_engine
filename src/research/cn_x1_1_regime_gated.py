@@ -11,6 +11,7 @@ import pandas as pd
 from src.research.cn130_cross_sectional_ranking import compound, max_drawdown
 from src.research.cn130_ranking_pipeline import turnover
 from src.research.cn130_tail_factor_discovery import PortfolioVariant, choose_holdings
+from src.research.economics import relative_excess
 
 #: Explicit risk-on rules accepted by :func:`regime_signal`. ``two_of_three`` remains
 #: the legacy default; ``breadth_veto`` is the Issue #947 challenger rule.
@@ -363,7 +364,7 @@ def run_regime_portfolio(
                 "window": window,
                 "total_return": total_return,
                 "benchmark_return": benchmark_return,
-                "relative_excess": ((1.0 + total_return) / (1.0 + benchmark_return) - 1.0),
+                "relative_excess": (relative_excess(total_return, benchmark_return)),
                 "max_drawdown": max_drawdown(group["net_return"]),
                 "all_period_hit_rate": float(group["benchmark_hit"].mean()),
                 "risk_on_share": float(group["risk_on"].mean()),
@@ -389,7 +390,7 @@ def run_regime_portfolio(
         "windows": list(windows),
         "total_return": total_return,
         "benchmark_return": benchmark_return,
-        "relative_excess": (1.0 + total_return) / (1.0 + benchmark_return) - 1.0,
+        "relative_excess": relative_excess(total_return, benchmark_return),
         "max_drawdown": max_drawdown(periods["net_return"]),
         "positive_excess_windows": int((window_results["relative_excess"] > 0.0).sum()),
         "all_period_hit_rate": float(periods["benchmark_hit"].mean()),

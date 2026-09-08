@@ -32,6 +32,7 @@ from src.research.byd_v1_2_trend_expansion_prospective import (
     rebuild_byd_dataset,
     source_records,
 )
+from src.research.economics import relative_excess
 
 SCHEMA_VERSION = "byd_recovery_event_prospective_v1"
 CANDIDATE_MODEL_ID = "byd_recovery_event_hold20_v1"
@@ -554,10 +555,8 @@ def _relative_daily(
     champion: pd.DataFrame,
 ) -> pd.Series:
     common = candidate.index.intersection(champion.index)
-    return (
-        (1.0 + candidate.loc[common, "net_return"])
-        / (1.0 + champion.loc[common, "net_return"])
-        - 1.0
+    return relative_excess(
+        candidate.loc[common, "net_return"], champion.loc[common, "net_return"]
     )
 
 

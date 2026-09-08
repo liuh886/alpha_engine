@@ -7,6 +7,7 @@ an immutable JSON record. The CSV ledger is a derived index only.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 import hashlib
 import json
@@ -386,7 +387,7 @@ def mature_outcomes(
                 "exit_open_date": exit_.strftime("%Y-%m-%d"),
                 "base_return": base_return,
                 "shadow_return": shadow_return,
-                "incremental_return": ((1.0 + shadow_return) / (1.0 + base_return) - 1.0),
+                "incremental_return": (relative_excess(shadow_return, base_return)),
                 "cost_bps_per_turnover_unit": primary_cost_bps,
                 "base_snapshot_sha256": SNAPSHOT_SHA256,
                 "observation_data_version": observation["data_version"],

@@ -7,6 +7,7 @@ The result is research-only and requires prospective confirmation.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 from typing import Any, Mapping
 
@@ -187,7 +188,7 @@ def _defense_episodes(candidate_daily: pd.DataFrame, benchmark_daily: pd.DataFra
         benchmark_block = aligned_benchmark.loc[block.index]
         candidate_return = float((1.0 + block["net_return"]).prod() - 1.0)
         buy_hold_return = float((1.0 + benchmark_block["net_return"]).prod() - 1.0)
-        relative_return = float((1.0 + candidate_return) / (1.0 + buy_hold_return) - 1.0)
+        relative_return = float(relative_excess(candidate_return, buy_hold_return))
         records.append(
             {
                 "episode_id": int(raw_id),

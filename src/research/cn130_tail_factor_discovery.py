@@ -7,6 +7,7 @@ portfolio return.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Sequence
@@ -370,7 +371,7 @@ def run_portfolio(
                 "window": window,
                 "total_return": total,
                 "benchmark_return": benchmark,
-                "relative_excess": (1.0 + total) / (1.0 + benchmark) - 1.0,
+                "relative_excess": relative_excess(total, benchmark),
                 "max_drawdown": max_drawdown(group["net_return"]),
             }
         )
@@ -385,7 +386,7 @@ def run_portfolio(
         "cost_bps": cost_bps,
         "total_return": total,
         "benchmark_return": benchmark,
-        "relative_excess": (1.0 + total) / (1.0 + benchmark) - 1.0,
+        "relative_excess": relative_excess(total, benchmark),
         "max_drawdown": max_drawdown(periods["net_return"]),
         "turnover": float(periods["turnover"].sum()),
         "positive_excess_windows": int(sum(row["relative_excess"] > 0.0 for row in window_results)),

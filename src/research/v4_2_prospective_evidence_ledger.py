@@ -6,6 +6,7 @@ observations only after the declared trading-session horizons exist.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 import base64
 import hashlib
@@ -340,7 +341,7 @@ def _path_metrics(future: pd.DataFrame, horizon: int) -> dict[str, Any]:
         if {"QQQ_open", "QQQ_close"}.issubset(future.columns):
             sample = future.iloc[:horizon]
             intraday = sample["QQQ_close"].astype(float) / sample["QQQ_open"].astype(float) - 1.0
-            overnight = (1.0 + qqq.to_numpy()) / (1.0 + intraday.to_numpy()) - 1.0
+            overnight = relative_excess(qqq.to_numpy(), intraday.to_numpy())
             result["qqq_intraday_log_return"] = float(np.log1p(intraday).sum())
             result["qqq_overnight_log_return"] = float(np.log1p(overnight).sum())
     return result

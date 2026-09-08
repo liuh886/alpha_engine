@@ -9,6 +9,7 @@ increment is budgeted after that state becomes active.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 from dataclasses import dataclass
 from typing import Any
@@ -323,7 +324,7 @@ def decide(
         cagr_delta = float(primary["cagr"] - baseline_primary["cagr"])
         mdd_delta = float(primary["max_drawdown"] - baseline_primary["max_drawdown"])
         stress_relative = float(
-            (1.0 + stress["total_return"]) / (1.0 + baseline_stress["total_return"]) - 1.0
+            relative_excess(stress["total_return"], baseline_stress["total_return"])
         )
 
         gates = {

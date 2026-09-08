@@ -7,6 +7,7 @@ positions, company actions, or outcomes already recorded.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 import hashlib
 import json
@@ -328,7 +329,7 @@ def mature_outcomes_from_observations(
                 scenarios[str(cost)] = {
                     "base_return": base_return,
                     "shadow_return": shadow_return,
-                    "incremental_return": ((1.0 + shadow_return) / (1.0 + base_return) - 1.0),
+                    "incremental_return": (relative_excess(shadow_return, base_return)),
                 }
             outcomes.append(
                 {

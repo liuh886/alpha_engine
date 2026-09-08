@@ -7,6 +7,7 @@ US x1.1 evidence is used only for a bounded data-revision comparison.
 """
 
 from __future__ import annotations
+from src.research.economics import compound_returns, relative_excess
 
 import argparse
 import hashlib
@@ -135,12 +136,8 @@ def _write_ledger(path: Path, frame: pd.DataFrame) -> str:
     return _sha256_bytes(payload)
 
 
-def _compound(values: list[float]) -> float:
-    return math.prod(1.0 + value for value in values) - 1.0
-
-
 def _relative(strategy: float, benchmark: float) -> float:
-    return (1.0 + strategy) / (1.0 + benchmark) - 1.0
+    return relative_excess(strategy, benchmark)
 
 
 def _aggregate(window_rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -148,8 +145,8 @@ def _aggregate(window_rows: list[dict[str, Any]]) -> dict[str, Any]:
     costs: dict[str, Any] = {}
     for cost in COST_STRESS_BPS:
         metrics = [dict(row["cost_stress"][str(cost)]) for row in ordered]
-        strategy = _compound([float(item["total_return"]) for item in metrics])
-        benchmark = _compound([float(item["benchmark_return"]) for item in metrics])
+        strategy = compound_returns([float(item["total_return"]) for item in metrics])
+        benchmark = compound_returns([float(item["benchmark_return"]) for item in metrics])
         costs[str(cost)] = {
             "compounded_strategy_return": strategy,
             "compounded_benchmark_return": benchmark,

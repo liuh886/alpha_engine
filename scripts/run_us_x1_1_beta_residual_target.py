@@ -11,6 +11,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.research.economics import compound_returns
 from scripts.run_us_x1_1_deterministic_reproduction import (
     COST_STRESS_BPS,
     EXPECTED_PROVIDER,
@@ -272,10 +273,6 @@ def _selection_comparison(
     }
 
 
-def _compound(values: pd.Series | list[float]) -> float:
-    return float(math.prod(1.0 + float(value) for value in values) - 1.0)
-
-
 def _regime_summary(periods: pd.DataFrame) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for (model, regime), group in periods.groupby(["model", "regime"], sort=True):
@@ -284,8 +281,8 @@ def _regime_summary(periods: pd.DataFrame) -> list[dict[str, Any]]:
                 "model": str(model),
                 "regime": str(regime),
                 "n_periods": int(len(group)),
-                "compounded_net_return": _compound(group["net_return"]),
-                "compounded_benchmark_return": _compound(
+                "compounded_net_return": compound_returns(group["net_return"]),
+                "compounded_benchmark_return": compound_returns(
                     group["benchmark_return"]
                 ),
                 "arithmetic_excess": float(group["simple_excess"].sum()),
@@ -332,7 +329,7 @@ def _leave_one_name_out(holdings: pd.DataFrame, periods: pd.DataFrame) -> pd.Dat
                 {
                     "model": str(model),
                     "excluded_instrument": str(instrument),
-                    "compounded_net_return": _compound(counterfactual),
+                    "compounded_net_return": compound_returns(counterfactual),
                 }
             )
     return pd.DataFrame(rows)
@@ -354,8 +351,8 @@ def _decision(
         (periods["model"] == "beta_residual")
         & (periods["regime"] == "QQQ_DOWN")
     ]
-    baseline_down_return = _compound(baseline_down["net_return"])
-    challenger_down_return = _compound(challenger_down["net_return"])
+    baseline_down_return = compound_returns(baseline_down["net_return"])
+    challenger_down_return = compound_returns(challenger_down["net_return"])
     down_improvement = (
         (challenger_down_return - baseline_down_return) / abs(baseline_down_return)
         if baseline_down_return < 0.0

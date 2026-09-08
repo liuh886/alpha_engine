@@ -7,6 +7,7 @@ forces the final version decision to ``data_blocked``.
 """
 
 from __future__ import annotations
+from src.research.economics import compound_returns, relative_excess
 
 import argparse
 import json
@@ -79,12 +80,8 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     )
 
 
-def _compound(values: list[float]) -> float:
-    return math.prod(1.0 + value for value in values) - 1.0
-
-
 def _relative(strategy_return: float, benchmark_return: float) -> float:
-    return (1.0 + strategy_return) / (1.0 + benchmark_return) - 1.0
+    return relative_excess(strategy_return, benchmark_return)
 
 
 def _candidate_name(calibration_id: str, calibration: XGBNativeCalibration) -> str:
@@ -214,8 +211,8 @@ def _aggregate_candidate(
     aggregates: dict[str, Any] = {}
     for cost in COST_STRESS_BPS:
         rows = [dict(item["cost_stress"][str(cost)]) for item in ordered]
-        strategy = _compound([float(row["total_return"]) for row in rows])
-        benchmark = _compound([float(row["benchmark_return"]) for row in rows])
+        strategy = compound_returns([float(row["total_return"]) for row in rows])
+        benchmark = compound_returns([float(row["benchmark_return"]) for row in rows])
         aggregates[str(cost)] = {
             "compounded_strategy_return": strategy,
             "compounded_benchmark_return": benchmark,

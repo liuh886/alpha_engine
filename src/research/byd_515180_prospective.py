@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from src.research.economics import relative_excess
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -378,7 +379,7 @@ def mature_horizon_outcomes(
                 candidate = returns["v1_dividend_75_25"]
                 scenarios[cost_key] = {
                     "strategy_returns": returns,
-                    "candidate_incremental_return": ((1.0 + candidate) / (1.0 + baseline) - 1.0),
+                    "candidate_incremental_return": (relative_excess(candidate, baseline)),
                 }
             settlement = [
                 row for row in ordered if signal_date <= pd.Timestamp(row["signal_date"]) <= exit_
@@ -447,7 +448,7 @@ def mature_defense_episodes(
             scenarios[str(int(cost))] = {
                 "strategy_returns": returns,
                 "candidate_incremental_return": (
-                    (1.0 + returns["v1_dividend_75_25"]) / (1.0 + returns["byd_v1_cash"]) - 1.0
+                    relative_excess(returns["v1_dividend_75_25"], returns["byd_v1_cash"])
                 ),
             }
         outcomes.append(
@@ -528,7 +529,7 @@ def _scorecard(
         candidate = strategy_returns["v1_dividend_75_25"]
         cumulative[str(int(cost))] = {
             "strategy_returns": strategy_returns,
-            "candidate_incremental_return": ((1.0 + candidate) / (1.0 + baseline) - 1.0),
+            "candidate_incremental_return": (relative_excess(candidate, baseline)),
         }
     eligible = [row for row in observations if row["prospective_eligible"]]
     dates = [pd.Timestamp(row["signal_date"]) for row in eligible]

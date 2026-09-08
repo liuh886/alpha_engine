@@ -14,11 +14,15 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 import numpy as np
 import pandas as pd
+
+from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
+from src.data.market_provider import load_provider_manifest, market_provider_path
 
 from src.research.daily_ranker import prepare_ranker_frame
 from src.research.daily_ranker_model import (
@@ -103,6 +107,124 @@ class ExecutionRuntime(Protocol):
 
     def metadata(self) -> dict[str, Any]:
         """Return non-contract provider metadata for audit output."""
+
+
+# ---------------------------------------------------------------------------
+# Shared market runtime (one implementation behind both thin adapters)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class MarketQlibExecutionRuntime:
+    """Production Qlib runtime parameterized by market.
+
+    The US and CN adapters previously carried byte-near-duplicate copies of
+    this class. The only behavioral differences are the ``market`` tag and
+    the symbol-discovery call, both preserved exactly below.
+    """
+
+    market: Literal["us", "cn"]
+    provider_uri: str | Path | None = None
+    _resolved_provider_uri: str = ""
+    _provider_identity_sha256: str = ""
+
+    def initialize(self, repository_root: Path) -> None:
+        provider = (
+            Path(self.provider_uri)
+            if self.provider_uri is not None
+            else market_provider_path(repository_root, self.market)
+        )
+        manifest = load_provider_manifest(
+            provider,
+            expected_market=self.market,
+            required=self.provider_uri is None,
+            verify_files=True,
+        )
+        self._provider_identity_sha256 = (
+            "" if manifest is None else str(manifest["provider_identity_sha256"])
+        )
+        self._resolved_provider_uri = str(provider.resolve())
+        safe_qlib_init(
+            build_qlib_init_cfg(
+                None,
+                market=self.market,
+                provider_uri_default=self._resolved_provider_uri,
+            )
+        )
+
+    def available_symbols(self) -> set[str]:
+        from qlib.data import D
+
+        if self.market == "us":
+            values = D.list_instruments(
+                D.instruments("all"),
+                freq="day",
+                as_list=True,
+            )
+            if isinstance(values, dict):
+                return {str(item) for item in values}
+            if hasattr(values, "tolist"):
+                return {str(item) for item in values.tolist()}
+            return {str(item) for item in values}
+        instruments = D.list_instruments(D.instruments("all"), level="market")
+        if hasattr(instruments, "tolist"):
+            return {str(item) for item in instruments.tolist()}
+        return {str(item) for item in instruments}
+
+    def date_coverage(
+        self,
+        symbols: Sequence[str],
+        start: str,
+        end: str,
+    ) -> dict[str, dict[str, Any]]:
+        return load_symbol_date_coverage(list(symbols), start, end)
+
+    def calendar(self, start: str, end: str) -> pd.DatetimeIndex:
+        from qlib.data import D
+
+        values = D.calendar(start_time=start, end_time=end, freq="day")
+        return pd.DatetimeIndex(values)
+
+    def features(
+        self,
+        symbols: Sequence[str],
+        expressions: Sequence[str],
+        start: str,
+        end: str,
+    ) -> pd.DataFrame:
+        from qlib.data import D
+
+        return D.features(
+            list(symbols),
+            list(expressions),
+            start_time=start,
+            end_time=end,
+        )
+
+    def metadata(self) -> dict[str, Any]:
+        return {
+            "provider": "qlib",
+            "provider_uri": self._resolved_provider_uri,
+            "provider_identity_sha256": self._provider_identity_sha256,
+            "market": self.market,
+        }
+
+
+def execute_market_qlib_plan(
+    plan: SpecBoundExecutionPlan,
+    run_dir: Path,
+    *,
+    market: Literal["us", "cn"],
+    runtime: ExecutionRuntime | None = None,
+) -> SpecBoundExecutionResult:
+    """Execute one spec-bound plan with the shared market runtime."""
+
+    return execute_qlib_plan(
+        plan,
+        run_dir,
+        market=market,
+        runtime=runtime if runtime is not None else MarketQlibExecutionRuntime(market),
+    )
 
 
 # ---------------------------------------------------------------------------

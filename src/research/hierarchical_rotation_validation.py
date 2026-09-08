@@ -20,6 +20,10 @@ from src.research.focus_watchlist_signal import (
     load_long_ohlcv_csv,
     sha256_file,
 )
+from src.research.focus_watchlist_validation import (
+    _compound,
+    _max_drawdown,
+)
 from src.research.hierarchical_pool_rotation import (
     BASKET_SCORE_FIELDS,
     SECURITY_SCORE_FIELDS,
@@ -95,20 +99,6 @@ def _load_observed_slice(
         ),
     }
     return observed, identity
-
-
-def _compound(returns: pd.Series) -> float:
-    clean = returns.dropna().astype(float)
-    return float((1.0 + clean).prod() - 1.0) if not clean.empty else 0.0
-
-
-def _max_drawdown(returns: pd.Series) -> float:
-    clean = returns.fillna(0.0).astype(float)
-    if clean.empty:
-        return 0.0
-    equity = (1.0 + clean).cumprod()
-    drawdown = equity / equity.cummax() - 1.0
-    return float(drawdown.min())
 
 
 def _annualized_return(total_return: float, sessions: int) -> float:

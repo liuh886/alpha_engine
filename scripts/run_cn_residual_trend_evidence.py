@@ -10,6 +10,7 @@ This runner is diagnostic only and can never promote a signal.
 """
 
 from __future__ import annotations
+from src.research.economics import compound_returns, relative_excess
 
 import argparse
 import hashlib
@@ -294,10 +295,6 @@ def _evaluate_cn_window(
     }
 
 
-def _compound(values: list[float]) -> float:
-    return float(np.prod([1.0 + value for value in values]) - 1.0)
-
-
 def aggregate_cn_reports(reports: list[dict[str, Any]]) -> dict[str, Any]:
     if len(reports) != REQUIRED_WINDOWS:
         raise ValueError(f"CN aggregate requires {REQUIRED_WINDOWS} windows")
@@ -305,14 +302,14 @@ def aggregate_cn_reports(reports: list[dict[str, Any]]) -> dict[str, Any]:
     if len(labels) != len(set(labels)):
         raise ValueError("CN window labels must be unique")
 
-    candidate_total = _compound(
+    candidate_total = compound_returns(
         [float(item["portfolio"]["total_return"]) for item in reports]
     )
-    benchmark_total = _compound(
+    benchmark_total = compound_returns(
         [float(item["portfolio"]["benchmark_return"]) for item in reports]
     )
     compounded_relative_excess = (
-        (1.0 + candidate_total) / (1.0 + benchmark_total) - 1.0
+        relative_excess(candidate_total, benchmark_total)
     )
     positive_excess_windows = sum(
         float(item["portfolio"]["relative_excess_return"]) > 0.0

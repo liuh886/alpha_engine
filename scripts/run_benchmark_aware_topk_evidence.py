@@ -18,6 +18,7 @@ Labels:
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 import argparse
 import json
@@ -378,7 +379,7 @@ def run(
         for pr in r["result"]["top_k_long"]["benchmark_period_returns"]
     ]
     cb = float(np.prod(1.0 + np.asarray(all_bench_period_returns, dtype=float)) - 1.0)
-    ce = (1.0 + cp) / (1.0 + cb) - 1.0
+    ce = relative_excess(cp, cb)
 
     positive_excess_window_ratio = float(
         np.mean([x > 0 for x in top_excess_returns])

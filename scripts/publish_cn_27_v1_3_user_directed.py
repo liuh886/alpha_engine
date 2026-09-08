@@ -8,6 +8,7 @@ artifacts without claiming that prospective validation passed.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 import argparse
 import hashlib
@@ -240,7 +241,7 @@ def build_source_package(
             "Total Return": total_return,
             "Annualized Return": float(full["cagr"]),
             "Benchmark Return": benchmark_total,
-            "Compounded Relative Excess Return": (1.0 + total_return) / (1.0 + benchmark_total) - 1.0,
+            "Compounded Relative Excess Return": relative_excess(total_return, benchmark_total),
             "Annualized Volatility": float(full["annual_volatility"]),
             "Sharpe Ratio": float(full["sharpe_log_excess"]),
             "Max Drawdown": float(full["maximum_drawdown"]),

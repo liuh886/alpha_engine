@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from src.research.economics import relative_excess
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -425,7 +426,7 @@ def mature_outcomes(records: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
                     "baseline_return": baseline_return,
                     "candidate_return": candidate_return,
                     "relative_terminal_wealth": (
-                        (1.0 + candidate_return) / (1.0 + baseline_return) - 1.0
+                        relative_excess(candidate_return, baseline_return)
                     ),
                     **SCENARIOS[scenario],
                 }

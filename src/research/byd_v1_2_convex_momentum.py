@@ -6,6 +6,7 @@ by this module never authorize formal promotion.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 from dataclasses import dataclass
 from typing import Any, Iterable
@@ -381,7 +382,7 @@ def evaluate_decision(
         for power, momentum in NEIGHBOR_SPECS
     )
     stress_relative = float(
-        (1.0 + candidate_stress["total_return"]) / (1.0 + baseline_stress["total_return"]) - 1.0
+        relative_excess(candidate_stress["total_return"], baseline_stress["total_return"])
     )
     gates = {
         "cagr_improvement_gte_0_50pp": float(candidate_primary["cagr"] - baseline_primary["cagr"])

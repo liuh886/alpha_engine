@@ -16,6 +16,7 @@ diagnostic only and cannot make a factor or model trade-ready.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 import argparse
 import hashlib
@@ -498,7 +499,7 @@ def _economic_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     benchmark = (
         math.prod(1.0 + float(row["benchmark_return"]) for row in rows) - 1.0
     )
-    relative = (1.0 + portfolio) / (1.0 + benchmark) - 1.0
+    relative = relative_excess(portfolio, benchmark)
     return {
         "n_windows": len(rows),
         "positive_excess_ratio": (

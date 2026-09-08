@@ -17,6 +17,7 @@ execution slippage beyond the configured turnover cost, or broker constraints.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 from dataclasses import dataclass
 from typing import Any
@@ -460,7 +461,7 @@ def evaluate_variant_weights(
         benchmark_values.append(benchmark_values[-1] * (1.0 + benchmark_return))
         benchmark_period_returns.append(benchmark_return)
 
-        relative_excess = (1.0 + portfolio_return) / (1.0 + benchmark_return) - 1.0
+        period_relative_excess = relative_excess(portfolio_return, benchmark_return)
         period_details.append(
             PeriodDetail(
                 date=str(date.date()),
@@ -471,14 +472,14 @@ def evaluate_variant_weights(
                 gross_return=gross_return,
                 net_return=portfolio_return,
                 benchmark_return=benchmark_return,
-                relative_excess=relative_excess,
+                relative_excess=period_relative_excess,
             )
         )
 
     total_return = portfolio_values[-1] / portfolio_values[0] - 1.0
     benchmark_return = benchmark_values[-1] / benchmark_values[0] - 1.0
     excess_return = total_return - benchmark_return
-    relative_excess_return = (1.0 + total_return) / (1.0 + benchmark_return) - 1.0
+    relative_excess_return = relative_excess(total_return, benchmark_return)
     portfolio_array = np.asarray(portfolio_values, dtype=float)
     max_drawdown = float((portfolio_array / np.maximum.accumulate(portfolio_array) - 1.0).min())
     returns_array = np.asarray(period_returns, dtype=float)

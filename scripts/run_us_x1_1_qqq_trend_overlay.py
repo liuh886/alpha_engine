@@ -8,6 +8,7 @@ window is excluded.
 """
 
 from __future__ import annotations
+from src.research.economics import compound_returns, relative_excess
 
 import argparse
 import hashlib
@@ -179,10 +180,6 @@ def _compare_selection_identity(observed: pd.DataFrame, expected: pd.DataFrame) 
         raise AssertionError("selection target weights differ beyond CSV tolerance")
 
 
-def _compounded(values: list[float] | pd.Series) -> float:
-    return float(np.prod(1.0 + np.asarray(values, dtype=float)) - 1.0)
-
-
 def _state_evidence(periods: pd.DataFrame, baseline: pd.DataFrame) -> dict[str, Any]:
     if len(periods) != len(baseline):
         raise ValueError("variant and baseline period counts differ")
@@ -209,8 +206,8 @@ def _state_evidence(periods: pd.DataFrame, baseline: pd.DataFrame) -> dict[str, 
         return {
             "n_periods": int(mask.sum()),
             "arithmetic_net_return_contribution": float(subset["net_return"].sum()),
-            "compounded_net_return": _compounded(subset["net_return"].tolist()),
-            "compounded_benchmark_return": _compounded(
+            "compounded_net_return": compound_returns(subset["net_return"].tolist()),
+            "compounded_benchmark_return": compound_returns(
                 subset["benchmark_return"].tolist()
             ),
             "arithmetic_excess_contribution": float(subset["excess_return"].sum()),
@@ -252,9 +249,9 @@ def _aggregate(
     benchmark_return = float(
         np.prod([1.0 + row["benchmark_return"] for row in window_results]) - 1.0
     )
-    relative_excess = float((1.0 + strategy_return) / (1.0 + benchmark_return) - 1.0)
+    total_relative_excess = float(relative_excess(strategy_return, benchmark_return))
     relative_windows = [
-        float((1.0 + row["total_return"]) / (1.0 + row["benchmark_return"]) - 1.0)
+        float(relative_excess(row["total_return"], row["benchmark_return"]))
         for row in window_results
     ]
     positive = [value for value in relative_windows if value > 0]
@@ -269,14 +266,14 @@ def _aggregate(
         "cost_bps": cost_bps,
         "compounded_strategy_return": strategy_return,
         "compounded_benchmark_return": benchmark_return,
-        "compounded_relative_excess_return": relative_excess,
+        "compounded_relative_excess_return": total_relative_excess,
         "worst_drawdown": min(float(row["max_drawdown"]) for row in window_results),
         "positive_excess_windows": sum(row["excess_return"] > 0 for row in window_results),
         "strongest_positive_window_share": (
             max(positive) / sum(positive) if positive else 0.0
         ),
         "average_gross_exposure": weighted_gross / total_periods if total_periods else 0.0,
-        "positive_relative_excess": relative_excess > 0,
+        "positive_relative_excess": total_relative_excess > 0,
     }
 
 

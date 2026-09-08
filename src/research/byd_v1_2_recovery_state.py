@@ -6,6 +6,7 @@ extension and never treats history through 2026-08-03 as a fresh holdout.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 import hashlib
 import json
@@ -660,7 +661,7 @@ def _defense_episodes(
         bench = benchmark_daily.loc[block.index]
         candidate_return = float((1.0 + block["net_return"]).prod() - 1.0)
         benchmark_return = float((1.0 + bench["net_return"]).prod() - 1.0)
-        relative = (1.0 + candidate_return) / (1.0 + benchmark_return) - 1.0
+        relative = relative_excess(candidate_return, benchmark_return)
         rows.append(
             {
                 "episode_id": int(raw_id),

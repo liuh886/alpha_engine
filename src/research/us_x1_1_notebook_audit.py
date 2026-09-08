@@ -7,6 +7,7 @@ performance and attribution tables suitable for notebook inspection.
 """
 
 from __future__ import annotations
+from src.research.economics import relative_excess
 
 import hashlib
 import json
@@ -657,7 +658,7 @@ def build_complete_backtest(
 
     observed_strategy = _compound(window_attribution["net_strategy_return"])
     observed_benchmark = _compound(window_attribution["qqq_return"])
-    observed_relative = (1.0 + observed_strategy) / (1.0 + observed_benchmark) - 1.0
+    observed_relative = relative_excess(observed_strategy, observed_benchmark)
     expected_cost = summary["run_a"]["cost_stress"][str(BASE_COST_BPS)]
     aggregate_rows = [
         (
