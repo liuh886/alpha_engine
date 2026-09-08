@@ -274,13 +274,16 @@ def _default_router(market: str) -> MarketDataRouter:
     adapters: list[MarketDataAdapter]
     policy: dict[str, list[str]]
     if market == "cn":
+        # Yahoo is quarantined last for CN, matching the hardened v2 chain:
+        # domestic providers first, Yahoo only as a last resort so a vendor
+        # outage surfaces as stale evidence instead of silently winning.
         adapters = [
-            YFinanceAdapter(),
             EFinanceAdapter(),
             AkShareAdapter(),
             BaoStockAdapter(),
+            YFinanceAdapter(),
         ]
-        policy = {"cn": ["yfinance", "efinance", "akshare", "baostock"]}
+        policy = {"cn": ["efinance", "akshare", "baostock", "yfinance"]}
     elif market == "us":
         adapters = [YFinanceAdapter()]
         policy = {"us": ["yfinance"]}

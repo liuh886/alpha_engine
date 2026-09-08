@@ -126,6 +126,9 @@ env:
   REFRESH_RECEIPT: artifacts/formal-refresh/formal-refresh-receipt.json
   FAN_IN_RECEIPT: artifacts/formal-refresh/strategy-fan-in-receipt.json
   REFRESH_BRANCH: automation/formal-backtest-refresh
+  # Single declaration inherited by every job: both providers and strategy
+  # need the CN vendor chain. TIINGO stays job-scoped (strategy only).
+  TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
 
 jobs:
   prepare:
@@ -329,8 +332,6 @@ jobs:
       fail-fast: false
       matrix:
         market: [us, cn]
-    env:
-      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
     steps:
       - name: Check out triggering revision
         uses: actions/checkout@v6
@@ -601,7 +602,6 @@ jobs:
         task: ${{ fromJson(needs.plan.outputs.task_matrix) }}
     env:
       TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
-      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
     steps:
       - name: Check out triggering revision
         uses: actions/checkout@v6

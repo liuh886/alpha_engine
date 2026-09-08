@@ -670,13 +670,13 @@ def test_refresh_refuses_nonempty_destination(
         )
 
 
-def test_default_cn_router_prioritizes_yfinance() -> None:
+def test_default_cn_router_quarantines_yfinance_last() -> None:
     router = module._default_router("cn")
     assert router.providers_for_market("cn") == [
-        "yfinance",
         "efinance",
         "akshare",
         "baostock",
+        "yfinance",
     ]
 
 

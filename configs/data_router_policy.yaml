@@ -2,14 +2,14 @@ policy:
   us:
     - yfinance
   cn:
-    - yfinance
     - efinance
     - akshare
     - baostock
+    - yfinance
   "cn:000300":
     - akshare
-    - yfinance
     - efinance
     - baostock
+    - yfinance
   hk:
     - yfinance
