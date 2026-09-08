@@ -240,7 +240,7 @@ jobs:
           retention-days: 30
 
   repository-health-report:
-    if: always() && github.event_name != 'pull_request'
+    if: always() && needs.repository-health.result == 'failure'
     needs: [repository-health]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -248,8 +248,12 @@ jobs:
       contents: read
       issues: write
     steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          show-progress: false
+
       - name: Open or update the health-gate tracking issue
-        if: needs.repository-health.result != 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
