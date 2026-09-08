@@ -93,7 +93,11 @@ def test_research_model_data_readiness_does_not_block_unbound_runtime_models() -
         assert row["model_data_binding"] == "not_declared"
         assert row["model_data_cutoff"] is None
         assert row["stages"]["model_data"] == "not_applicable"
-        assert row["state"] != "blocked"
+        if row["strategy_id"] == "cn_27":
+            assert row["state"] == "blocked"
+            assert row["stages"]["signal"] == "blocked"
+        else:
+            assert row["state"] != "blocked"
 
 
 def test_provider_lag_is_delayed_not_formal_corruption(tmp_path: Path) -> None:
