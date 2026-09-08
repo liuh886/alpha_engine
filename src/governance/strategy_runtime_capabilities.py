@@ -21,6 +21,7 @@ FORMAL_REFRESH_ADAPTERS: Mapping[str, str] = {
     "us_x1_3": "us_x1_3_formal_refresh_v1",
     "cn_x1_2": "cn_x1_2_formal_refresh_v1",
     "byd_v1_3_recovery_event_low_vol_confirmation_v1": "byd_v1_3_formal_refresh_v1",
+    "cn_27_v1_3": "cn_27_v1_3_formal_refresh_v1",
 }
 CURRENT_TARGET_ADAPTERS: Mapping[str, str] = {
     "us_x1_3": "us_x1_3_current_target_v1",

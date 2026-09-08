@@ -151,7 +151,7 @@ formal_publication:
   preview_bundle_catalog: "data/research/model_runs/catalog.json"
   formal_bundle_catalog: "data/research/formal_model_runs/catalog.json"
   current_target_activation: "not_applicable_until_governed_prospective_source_is_available"
-  formal_refresh_adapter: "blocked_pending_cn_27_v1_3_prospective_source_adapter"
+  formal_refresh_adapter: "cn_27_v1_3_formal_refresh_v1"
 
 known_limitations:
   - "The 27-name strategy-specific pool is not the governed CN130 selected model pool."

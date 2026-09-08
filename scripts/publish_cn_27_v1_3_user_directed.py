@@ -19,6 +19,20 @@ from typing import Any, Mapping
 import numpy as np
 import pandas as pd
 
+from scripts.cn27_v1_3_formal_common import (
+    FAILED_GATES,
+    Cn27V13FormalError as Cn27V13PublicationError,
+    _benchmark_path,
+    _object,
+    _repository_path,
+    _sha256,
+    _write,
+    build_attribution_payload,
+    build_backtest_rows,
+    build_window_summary,
+    compare_retained_metrics,
+    load_k2_context,
+)
 from src.artifacts.formal_evidence_standard import validate_formal_evidence_bundle
 from src.artifacts.formal_preview_builder import build_preview_bundle
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes
@@ -29,16 +43,6 @@ from src.governance.active_strategy_catalog import (
     load_active_strategy_catalog,
 )
 from src.research.all_weather_alpha_rotation import canonical_sha256, sha256_file
-from src.research.cn27_v1_2 import (
-    _block_bootstrap_sharpe,
-    compute_v1_2_features,
-    score_v1_2_features,
-)
-from src.research.cn27_v1_3 import concentration_audit, contribution_attribution
-from src.research.cn27_v1_3_projected import (
-    load_projected_discovery_contract,
-    run_projected_recipe,
-)
 
 
 MODEL_ID = "cn_27_v1_3"
@@ -49,7 +53,6 @@ EXPERIMENT_ID = "cn_27_v1_3_projected_concentration_discovery_v1"
 BACKTEST_ID = "cn_27_v1_3-through-2026_09_04"
 GENERATED_AT = "2026-09-07T12:00:00+08:00"
 EVIDENCE_CUTOFF = "2026-09-04"
-FAILED_GATES = ["timing_perturbation_sharpe", "bootstrap_p05"]
 CONTRACT = Path(
     "configs/research_experiments/cn_27_v1_3_projected_concentration_discovery_v1.yaml"
 )
@@ -58,40 +61,6 @@ DISCOVERY_ROOT = Path(
 )
 CANDIDATE = Path("configs/research_candidates/cn_27_v1_3_prospective_challenger.yaml")
 MODEL_CONTRACT = Path("configs/models/cn_27_v1_3.yaml")
-
-
-class Cn27V13PublicationError(ValueError):
-    """Raised when the user-directed publication boundary cannot be proven."""
-
-
-def _object(path: Path) -> dict[str, Any]:
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise Cn27V13PublicationError(f"invalid JSON: {path}") from exc
-    if not isinstance(value, dict):
-        raise Cn27V13PublicationError(f"JSON root must be an object: {path}")
-    return value
-
-
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def _write(path: Path, payload: Mapping[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(canonical_json_bytes(payload))
-
-
-def _repository_path(path: Path) -> str:
-    return path.resolve().relative_to(Path.cwd().resolve()).as_posix()
-
-
-def _close(left: object, right: object, label: str) -> None:
-    if not isinstance(left, (int, float)) or not isinstance(right, (int, float)):
-        raise Cn27V13PublicationError(f"non-numeric comparison: {label}")
-    if abs(float(left) - float(right)) > 1e-10:
-        raise Cn27V13PublicationError(f"historical evidence drifted: {label}")
 
 
 def _verify_discovery() -> tuple[dict[str, Any], pd.Series]:
@@ -202,27 +171,6 @@ def build_promotion_receipt() -> dict[str, Any]:
     return receipt
 
 
-def _benchmark_path(bars: pd.DataFrame, dates: pd.DatetimeIndex) -> pd.Series:
-    benchmark = (
-        bars.loc[bars["symbol"].astype(str).str.zfill(6).eq("000300")]
-        .sort_values("date")
-        .set_index("date")["open"]
-        .reindex(dates)
-        .ffill()
-        .pct_change(fill_method=None)
-        .fillna(0.0)
-    )
-    return benchmark.astype(float)
-
-
-def _action(previous: float, target: float) -> str:
-    if previous <= 1e-12:
-        return "BUY"
-    if target <= 1e-12:
-        return "SELL"
-    return "INCREASE" if target > previous else "DECREASE"
-
-
 def build_source_package(
     promotion_path: Path,
     *,
@@ -241,224 +189,33 @@ def build_source_package(
     ):
         raise Cn27V13PublicationError("promotion receipt boundary drifted")
 
-    contract = load_projected_discovery_contract(CONTRACT)
-    recipe = next(
-        (dict(row) for row in contract.spec["candidate_recipes"] if row["id"] == RECIPE_ID),
-        None,
-    )
-    if recipe is None:
-        raise Cn27V13PublicationError("frozen k2 recipe is missing")
-    bars = pd.read_csv(contract.prices_path, dtype={"symbol": str}, parse_dates=["date"])
-    features = compute_v1_2_features(bars, contract)
-    scoring_recipe = {**contract.spec["frozen_signal"], "id": "frozen_v1_2_signal"}
-    scored, _ = score_v1_2_features(features, scoring_recipe, contract)
-    result = run_projected_recipe(
-        bars,
-        features,
-        contract,
-        recipe,
-        scored_features=scored,
-    )
-    full = result.metrics_by_window["development"]
-    comparisons = {
-        "total_return": "full_total_return",
-        "cagr": "full_cagr",
-        "annual_volatility": "full_annual_volatility",
-        "sharpe_log_excess": "full_sharpe_log_excess",
-        "maximum_drawdown": "full_maximum_drawdown",
-        "annual_one_way_turnover": "full_annual_one_way_turnover",
-        "transaction_cost_paid": "full_transaction_cost_paid",
-    }
-    for observed, expected in comparisons.items():
-        _close(full[observed], retained[expected], observed)
+    context = load_k2_context(CONTRACT)
+    contract = context.contract
+    result = context.result
+    full = context.full
+    compare_retained_metrics(context, retained)
 
-    bootstrap_policy = contract.spec["robustness_tests"]["block_bootstrap"]
-    bootstrap = _block_bootstrap_sharpe(
-        result.daily["net_return"],
-        samples=int(bootstrap_policy["samples"]),
-        block_sessions=int(bootstrap_policy["block_sessions"]),
-        seed=int(bootstrap_policy["seed"]),
-    )
-    _close(
-        bootstrap["sharpe_percentile_05"],
-        retained["bootstrap_sharpe_percentile_05"],
-        "bootstrap_sharpe_percentile_05",
-    )
-    audit, audit_summary = concentration_audit(result.daily, contract)
-    attribution, attribution_summary = contribution_attribution(result.daily, bars, contract)
-    for key, value in audit_summary.items():
-        _close(value, retained[key], key)
-    for key in (
-        "maximum_single_name_positive_contribution_share",
-        "maximum_single_sector_positive_contribution_share",
-    ):
-        _close(attribution_summary[key], retained[key], key)
-
-    daily = result.daily.copy()
-    dates = pd.DatetimeIndex(daily.index)
-    benchmark_return = _benchmark_path(bars, dates)
-    benchmark_equity = (1.0 + benchmark_return).cumprod()
-    open_returns = {
-        symbol: (
-            bars.loc[bars["symbol"].astype(str).str.zfill(6).eq(symbol)]
-            .sort_values("date")
-            .set_index("date")["open"]
-            .reindex(dates)
-            .ffill()
-            .pct_change(fill_method=None)
-            .fillna(0.0)
-        )
-        for symbol in (*contract.candidate_symbols, contract.defensive_symbol)
-    }
-    previous: dict[str, float] = {"CASH": 1.0}
-    report: list[dict[str, Any]] = []
-    positions: list[dict[str, Any]] = []
-    trades: list[dict[str, Any]] = []
-    names = {
-        str(row["symbol"]).zfill(6): str(row["name"])
-        for row in contract.pool["symbols"]
-    }
-    sectors = {
-        str(row["symbol"]).zfill(6): str(row["sector"])
-        for row in contract.pool["symbols"]
-    }
-    for date, row in daily.iterrows():
-        date_text = pd.Timestamp(date).date().isoformat()
-        weights = {key: float(value) for key, value in json.loads(str(row["asset_weights"])).items()}
-        if float(row["cash_weight"]) > 1e-12:
-            weights["CASH"] = float(row["cash_weight"])
-        report.append(
-            {
-                "date": date_text,
-                "gross_return": float(row["gross_return"]),
-                "transaction_cost": float(row["transaction_cost"]),
-                "net_return": float(row["net_return"]),
-                "account": float(row["equity"]),
-                "benchmark_return": float(benchmark_return.loc[date]),
-                "benchmark_account": float(benchmark_equity.loc[date]),
-                "drawdown": float(row["equity"] / daily.loc[:date, "equity"].max() - 1.0),
-                "one_way_turnover": float(row["one_way_turnover"]),
-                "equity_exposure": float(row["equity_exposure"]),
-                "etf_weight": float(row["etf_weight"]),
-                "cash_weight": float(row["cash_weight"]),
-                "holding_count": int(row["holding_count"]),
-                "pending_execution": bool(row["pending_execution"]),
-                "target_drift_due_to_trade_lock": float(row["target_drift_due_to_trade_lock"]),
-            }
-        )
-        for symbol, weight in sorted(weights.items()):
-            if symbol == "CASH":
-                name, sector, role = "Cash", "cash", "cash"
-            elif symbol == contract.defensive_symbol:
-                name, sector, role = "Dividend ETF 515180", "defensive_etf", "defensive_etf"
-            else:
-                name, sector, role = names[symbol], sectors[symbol], "candidate_equity"
-            positions.append(
-                {
-                    "date": date_text,
-                    "instrument": symbol,
-                    "name": name,
-                    "sector": sector,
-                    "role": role,
-                    "weight": weight,
-                }
-            )
-        gross_factor = 1.0 + float(row["gross_return"])
-        before = {
-            symbol: previous.get(symbol, 0.0)
-            * (1.0 + float(open_returns[symbol].loc[date]))
-            / gross_factor
-            for symbol in previous
-            if symbol != "CASH"
-        }
-        before["CASH"] = previous.get("CASH", 0.0) / gross_factor
-        changes = {
-            symbol: weights.get(symbol, 0.0) - before.get(symbol, 0.0)
-            for symbol in sorted(set(weights) | set(before))
-        }
-        changed_total = sum(abs(value) for value in changes.values())
-        for symbol, delta in changes.items():
-            if abs(delta) <= 1e-12:
-                continue
-            trades.append(
-                {
-                    "date": date_text,
-                    "instrument": symbol,
-                    "action": _action(before.get(symbol, 0.0), weights.get(symbol, 0.0)),
-                    "previous_weight": before.get(symbol, 0.0),
-                    "target_weight": weights.get(symbol, 0.0),
-                    "weight_delta": delta,
-                    "transaction_cost": (
-                        float(row["transaction_cost"]) * abs(delta) / changed_total
-                        if changed_total > 1e-12
-                        else 0.0
-                    ),
-                    "reason": "scheduled_rank_and_project_or_locked_target_retry",
-                }
-            )
-        previous = weights
-
-    attribution_rows = attribution.copy()
-    attribution_rows["date"] = pd.to_datetime(attribution_rows["date"]).dt.strftime("%Y-%m-%d")
-    attribution_payload = attribution_rows.to_dict(orient="records")
-    gross_by_symbol = attribution.groupby(["symbol", "sector"], as_index=False)[
-        "gross_contribution"
-    ].sum()
-    for row in gross_by_symbol.to_dict(orient="records"):
-        attribution_payload.append(
-            {
-                "date": None,
-                "symbol": row["symbol"],
-                "sector": row["sector"],
-                "gross_contribution": float(row["gross_contribution"]),
-                "attribution_level": "full_window_instrument",
-            }
-        )
-
-    window_summary: list[dict[str, Any]] = [
-        {"test": "chronological_fold", "fold": name, **metrics}
-        for name, metrics in result.metrics_by_window.items()
-        if name != "development"
-    ]
-    window_summary.extend(
-        {
-            "test": "timing_perturbation",
-            "variant": key,
-            "sharpe_log_excess": float(value),
-        }
-        for key, value in json.loads(str(retained["phase_sharpes"])).items()
-    )
-    window_summary.append(
-        {
-            "test": "execution_delay",
-            "variant": "two_sessions",
-            "sharpe_log_excess": float(retained["delay_two_full_sharpe"]),
-        }
-    )
+    report, positions, trades = build_backtest_rows(context.bars, contract, result)
+    attribution_payload = build_attribution_payload(context.attribution)
     parameters = pd.read_csv(DISCOVERY_ROOT / "parameter_robustness.csv")
-    for row in parameters.loc[parameters["recipe_id"].eq(RECIPE_ID)].to_dict(orient="records"):
-        window_summary.append({"test": "parameter_neighborhood", **row})
     sectors_frame = pd.read_csv(DISCOVERY_ROOT / "leave_one_sector_out.csv")
-    for row in sectors_frame.loc[sectors_frame["recipe_id"].eq(RECIPE_ID)].to_dict(orient="records"):
-        window_summary.append({"test": "leave_one_sector_out", **row})
-    window_summary.extend(
-        [
-            {
-                "test": "block_bootstrap",
-                "samples": int(bootstrap_policy["samples"]),
-                "block_sessions": int(bootstrap_policy["block_sessions"]),
-                **bootstrap,
-            },
-            {
-                "test": "frozen_gate_result",
-                "supported": False,
-                "passed": 19,
-                "total": 21,
-                "failed_gates": FAILED_GATES,
-            },
-        ]
+    window_summary = build_window_summary(
+        result=result,
+        phase_sharpes=json.loads(str(retained["phase_sharpes"])),
+        delay_two_full_sharpe=float(retained["delay_two_full_sharpe"]),
+        parameter_rows=parameters.loc[parameters["recipe_id"].eq(RECIPE_ID)].to_dict(
+            orient="records"
+        ),
+        sector_rows=sectors_frame.loc[sectors_frame["recipe_id"].eq(RECIPE_ID)].to_dict(
+            orient="records"
+        ),
+        bootstrap=context.bootstrap,
+        bootstrap_policy=context.bootstrap_policy,
+        failed_gates=FAILED_GATES,
     )
 
+    dates = pd.DatetimeIndex(result.daily.index)
+    benchmark_equity = (1.0 + _benchmark_path(context.bars, dates)).cumprod()
     benchmark_total = float(benchmark_equity.iloc[-1] - 1.0)
     total_return = float(full["total_return"])
     package = {

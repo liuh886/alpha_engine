@@ -29,6 +29,7 @@ from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.governance.strategy_runtime_capabilities import (
     load_active_strategy_runtime_capabilities,
 )
+from src.research.cn27_v1_3_replay import replay_cn_27_v1_3
 from src.research.formal_model_replay import replay_byd_v1_3
 from src.research.qqq_authoritative_replay import verify_qqq_authoritative_replay
 
@@ -38,6 +39,7 @@ QQQ_MODEL_ID = "qqqi_qqq_tqqq_v4_3"
 US_MODEL_ID = "us_x1_3"
 CN_X1_2_MODEL_ID = "cn_x1_2"
 BYD_MODEL_ID = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
+CN27_MODEL_ID = "cn_27_v1_3"
 BYD_PREDECESSOR = Path(
     "data/research/historical_model_evidence/byd_v1_2_convex_momentum_budget_v1.json"
 )
@@ -605,6 +607,81 @@ def _run_byd(
     }
 
 
+def _run_cn_27(
+    *,
+    root: Path,
+    task: Mapping[str, Any],
+    provider_root: Path,
+    formal_v2_root: Path,
+    result_root: Path,
+    generated_at: str,
+) -> dict[str, Any]:
+    if not bool(task.get("formal_refresh_required")):
+        return {
+            **_base_receipt(task),
+            "execution_status": "current_no_change",
+            "replay_verdict": "not_required_current_identity",
+        }
+
+    incumbent = replay_cn_27_v1_3(root=root)
+    decision = str(incumbent.get("decision") or "")
+    if decision != "exact_replay":
+        status = "data_blocked" if decision == "data_blocked" else "invalid_evidence"
+        raise StrategyRefreshBlocked(status, f"CN_27 incumbent replay verdict: {decision}")
+
+    cutoff = str(task["planned_provider_cutoff"])
+    with tempfile.TemporaryDirectory(prefix="cn27-refresh-state-") as temporary:
+        current = Path(temporary) / "current.json"
+        package = Path(temporary) / "candidate.json"
+        _materialize_refresh_state(
+            root=root, formal_v2_root=formal_v2_root, model_id=CN27_MODEL_ID, target=current
+        )
+        _run(
+            [
+                sys.executable,
+                "scripts/refresh_cn_27_v1_3_formal.py",
+                "--current-package",
+                str(current),
+                "--provider-dir",
+                str(provider_root / "data" / "providers" / "cn"),
+                "--provider-manifest",
+                str(
+                    provider_root
+                    / "artifacts"
+                    / "selected_pool_price_refresh_manifest.json"
+                ),
+                "--cutoff",
+                cutoff,
+                "--generated-at",
+                generated_at,
+                "--output",
+                str(package),
+            ],
+            cwd=root,
+        )
+        candidate = load_object(package)
+        current_state = load_object(current)
+        output_sha, bundle_id = _seal_preview(
+            root=root, task=task, evidence_path=package, result_root=result_root
+        )
+    return {
+        **_base_receipt(task),
+        "execution_status": "refreshed",
+        "candidate_evidence_cutoff": candidate.get("evidence_cutoff"),
+        "performance_observation_end": _mapping(candidate.get("date_range")).get("end"),
+        "candidate_bundle_id": bundle_id,
+        "output_sha256": output_sha,
+        "replay_verdict": {
+            "incumbent": "exact_replay",
+            "frozen_prefix_rows": {
+                field: len(current_state.get(field) or [])
+                for field in ("report", "positions", "trades")
+            },
+            "model_selection_reopened": False,
+        },
+    }
+
+
 def execute_strategy(
     *,
     root: Path,
@@ -660,6 +737,14 @@ def execute_strategy(
         "byd_v1_3_formal_refresh_v1": lambda: _run_byd(
             root=root,
             task=task,
+            formal_v2_root=formal_v2_root,
+            result_root=result_root,
+            generated_at=generated_at,
+        ),
+        "cn_27_v1_3_formal_refresh_v1": lambda: _run_cn_27(
+            root=root,
+            task=task,
+            provider_root=provider_root,
             formal_v2_root=formal_v2_root,
             result_root=result_root,
             generated_at=generated_at,
