@@ -334,12 +334,46 @@ def _verify_events(source: GovernedSource, root: Path) -> None:
             raise GovernedActionsArtifactError(f"event bundle {key} mismatch")
 
 
+def _verify_reference_bundle(source: GovernedSource, root: Path) -> None:
+    manifest = _load_json(root / "bundle_manifest.json")
+    raw_symbols = manifest.get("symbols", [])
+    symbols = sorted(
+        {str(symbol).strip().upper() for symbol in raw_symbols if str(symbol).strip()}
+    )
+    if not symbols:
+        raise GovernedActionsArtifactError("reference bundle symbols are missing")
+    if manifest.get("strategy_data_ready") is not True:
+        raise GovernedActionsArtifactError("reference bundle strategy data is not ready")
+    if manifest.get("professional_source_ready") is not True:
+        raise GovernedActionsArtifactError(
+            "reference bundle professional source is not ready"
+        )
+    if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
+        raise GovernedActionsArtifactError("reference bundle research boundary mismatch")
+    reconciliation = manifest.get("reconciliation_status", {})
+    if not isinstance(reconciliation, dict):
+        raise GovernedActionsArtifactError("reference bundle reconciliation is invalid")
+    quarantined = sorted(
+        symbol
+        for symbol, status in reconciliation.items()
+        if str(status).lower() == "quarantine"
+    )
+    if quarantined:
+        raise GovernedActionsArtifactError(
+            f"reference bundle quarantined symbols: {quarantined}"
+        )
+    if str(manifest.get("common_history_end", "")) != source.evidence_cutoff:
+        raise GovernedActionsArtifactError("reference bundle cutoff mismatch")
+
+
 def verify_extracted_source(source: GovernedSource, root: Path) -> None:
     _verify_bound_manifests(source, root)
     if source.source_kind == "alpha158_panel":
         _verify_alpha158(source, root)
     elif source.source_kind == "selected_pool_events":
         _verify_events(source, root)
+    elif source.source_kind == "etf_reference_bundle":
+        _verify_reference_bundle(source, root)
     else:
         raise GovernedActionsArtifactError(
             f"unsupported governed source kind: {source.source_kind}"

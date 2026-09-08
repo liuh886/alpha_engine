@@ -17,6 +17,7 @@ from src.data.governed_actions_artifact import (
     _validate_remote_metadata,
     _verify_bound_manifests,
     load_governed_source_registry,
+    verify_extracted_source,
 )
 
 
@@ -222,3 +223,77 @@ def test_receipt_contract_stays_json_serializable() -> None:
         "path": "manifest.json",
         "sha256": "b" * 64,
     }
+
+
+def _reference_manifest(**overrides) -> dict:
+    payload = {
+        "bundle_id": "qqqi_qqq_tqqq_reference_bundle_v1",
+        "symbols": ["QQQ", "QQQI", "TQQQ"],
+        "strategy_data_ready": True,
+        "professional_source_ready": True,
+        "selected_providers": {"QQQ": "tiingo", "QQQI": "tiingo", "TQQQ": "tiingo"},
+        "reconciliation_status": {
+            "QQQ": "consensus",
+            "QQQI": "consensus",
+            "TQQQ": "consensus",
+        },
+        "common_history_start": "2024-01-30",
+        "common_history_end": "2026-09-04",
+        "research_only": True,
+        "trade_ready": False,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _reference_source(**overrides) -> GovernedSource:
+    values = {
+        "source_kind": "etf_reference_bundle",
+        "market": "us",
+        "pool_id": "qqqi_qqq_tqqq_reference_bundle_v1",
+        "evidence_cutoff": "2026-09-04",
+        "expected_symbol_count": 3,
+    }
+    values.update(overrides)
+    return _source(**values)
+
+
+def _write_reference_source(tmp_path: Path, manifest: dict) -> GovernedSource:
+    path = tmp_path / "bundle_manifest.json"
+    path.write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return _reference_source(
+        component_manifests=(ManifestBinding("bundle_manifest.json", digest),)
+    )
+
+
+def test_reference_bundle_source_verifies(tmp_path: Path) -> None:
+    source = _write_reference_source(tmp_path, _reference_manifest())
+    verify_extracted_source(source, tmp_path)
+
+
+def test_reference_bundle_quarantine_fails_closed(tmp_path: Path) -> None:
+    manifest = _reference_manifest(
+        reconciliation_status={
+            "QQQ": "quarantine",
+            "QQQI": "consensus",
+            "TQQQ": "consensus",
+        }
+    )
+    source = _write_reference_source(tmp_path, manifest)
+    with pytest.raises(GovernedActionsArtifactError, match="quarantined"):
+        verify_extracted_source(source, tmp_path)
+
+
+def test_reference_bundle_cutoff_mismatch_fails_closed(tmp_path: Path) -> None:
+    manifest = _reference_manifest(common_history_end="2026-09-03")
+    source = _write_reference_source(tmp_path, manifest)
+    with pytest.raises(GovernedActionsArtifactError, match="cutoff mismatch"):
+        verify_extracted_source(source, tmp_path)
+
+
+def test_reference_bundle_unready_strategy_data_fails_closed(tmp_path: Path) -> None:
+    manifest = _reference_manifest(strategy_data_ready=False)
+    source = _write_reference_source(tmp_path, manifest)
+    with pytest.raises(GovernedActionsArtifactError, match="not ready"):
+        verify_extracted_source(source, tmp_path)
