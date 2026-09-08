@@ -11,6 +11,14 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Version bump script (scripts/bump_version.py)
 - Strategy registry test suite (tests/test_strategy_registry.py)
 - Declare scipy as an explicit runtime dependency (already imported by factor/research modules; pins uv.lock for reproducible `--frozen` installs)
+- CN_27 V1.3 formal research baseline with frozen evidence (registry, Bundle v2, decision ledger, Pages)
+- Maintained `cn_27_v1_3_formal_refresh_v1` adapter: exact incumbent replay, append-only refresh over provider-extended bars with restatement guards; wired into `alpha research replay` (`cn_27_v1_3`)
+- `etf_reference_bundle` governed-source verifier so the QQQ reference bundle can unblock the rotation training profile
+- T47.3-T47.7 portfolio operation modules (`src/portfolio/`: construction, paper ledger, attribution, operations gates, retraining policy; 119 tests)
+- Strategy access-policy coverage test: every registry strategy must declare a runtime tier (fails closed like `alpha ops publish`)
+### Fixed
+- Signal ledger reseal tolerates vendor history restatements when model, date, fingerprint and decision are identical (fixes false canonical-decision conflict on holiday-gap reruns)
+- Declare `cn_27` runtime access policy (unblocks Strategy Operations publication)
 
 ## [2.5.0] - 2026-05-28
 ### Added

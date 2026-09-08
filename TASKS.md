@@ -219,31 +219,31 @@
 
 **Dependency:** Do not begin T47 implementation against legacy/latest-discovered artifacts. T47 consumes only T46-validated DataSnapshot, ModelArtifact, BacktestEvidence, and SignalEvaluation identities.
 
-- [x] **T47: Continuous Model Operations and Portfolio Decision Loop** — T47.1-T47.2 complete ✅ 2026-06-21. T47.3-T47.8 pending.
+- [x] **T47: Continuous Model Operations and Portfolio Decision Loop** — T47.1-T47.7 complete ✅ 2026-09-08. T47.8 parked pending frontend-agent coordination.
   - [x] **T47.1 [P0] Establish Champion/Challenger lifecycle management** ✅
     - Deliver: ChampionIndex (SQLite), ChampionManager with declare/evaluate/promote/rollback
     - Accept: 16 tests covering declaration, evaluation, atomic promotion, rollback, history, cross-market isolation
   - [x] **T47.2 [P0] Add continuous model, feature, and signal drift monitoring** ✅
     - Deliver: ModelDriftMonitor with 6 check types (mean/std shift, PSI, IC decay, calibration, feature drift)
     - Accept: 17 tests covering all checks, insufficient evidence, report persistence, roundtrip
-  - [ ] **T47.3 [P0] Build a risk-constrained PortfolioConstruction module**
-    - Deliver: transform qualified stock signals into target weights using configurable position, sector, concentration, turnover, liquidity, cash, drawdown, and transaction-cost constraints; return an explainable advisory ExecutionPlan.
-    - Accept: identical inputs produce identical targets; every excluded/capped stock has a reason; infeasible constraints fail closed; total weights, cash, turnover, and exposure reconcile; no frontend or adapter reimplements portfolio rules.
-  - [ ] **T47.4 [P1] Implement an immutable paper-trading ledger**
-    - Deliver: simulate submitted orders, fills, slippage, fees, cash, positions, corporate-action adjustments, daily valuation, and NAV while preserving links to ExecutionPlan, ModelVersion, DataSnapshot, and market calendar.
-    - Accept: cash and position accounting reconcile on every event; replay from the ledger reproduces holdings and NAV; duplicate events are idempotent; failed/partial fills are explicit; no simulated event can be confused with a live brokerage order.
-  - [ ] **T47.5 [P1] Add post-decision performance and execution attribution**
-    - Deliver: decompose realized paper performance into market/benchmark, stock selection, factor/sector exposure, timing, turnover, costs/slippage, and execution deviation; compare expected versus realized signal and portfolio outcomes.
-    - Accept: attribution reconciles to portfolio return within tolerance; every contribution references source positions/trades; unexplained residual is reported; results feed drift and lifecycle decisions without rewriting historical evidence.
-  - [ ] **T47.6 [P0] Automate continue, retrain, demote, stop, and rollback decisions**
-    - Deliver: versioned operational gates combining drift, SignalEvaluation, paper performance, risk state, data freshness, and artifact health; record each decision and required recovery conditions.
-    - Accept: failed freshness/artifact/risk hard gates block new ExecutionPlans; degradation cannot silently retain Champion status; automatic actions are idempotent and auditable; retraining creates a Challenger and never overwrites the current Champion.
-  - [ ] **T47.7 [P1] Define evidence-driven retraining policy**
-    - Deliver: trigger retraining by schedule, accumulated new data, drift, performance decay, or policy change; include cooldown, minimum new observations, concurrency lock, resource budget, and no-change outcome.
-    - Accept: repeated alerts cannot create a training storm; unchanged data/config cannot create a duplicate candidate; every trigger records why retraining was or was not started; resource limits prevent concurrent heavy workflows from exhausting the reference machine.
-  - [ ] **T47.8 [P1] Deliver the Model Operations frontend and browser proof**
-    - Deliver: show Champion/Challengers, drift status, qualified signals, target/current portfolio, rebalance proposal, constraint explanations, paper fills, NAV, attribution, alerts, and lifecycle actions in one operator workflow.
-    - Accept: Playwright covers promotion, rebalance, partial failure, drift alert, demotion, retraining, and rollback using deterministic fixtures plus one archived real paper run; all displayed results expose model/snapshot/plan identities and evidence links.
+  - [x] **T47.3 [P0] Build a risk-constrained PortfolioConstruction module** ✅ 2026-09-08
+    - Deliver: `src/portfolio/construction.py` — deterministic advisory ExecutionPlan with explainable exclusions/caps; infeasible constraints fail closed; research-only boundary stamped.
+    - Accept: covered by `tests/test_t47_portfolio_construction.py`; part of the 119-test T47.3-T47.7 suite, all green.
+  - [x] **T47.4 [P1] Implement an immutable paper-trading ledger** ✅ 2026-09-08
+    - Deliver: `src/portfolio/paper_ledger.py` — replayable simulated fills/cash/positions/NAV with idempotent events; never confused with live orders.
+    - Accept: covered by `tests/test_t47_paper_ledger.py`; 119-test suite green.
+  - [x] **T47.5 [P1] Add post-decision performance and execution attribution** ✅ 2026-09-08
+    - Deliver: `src/portfolio/attribution.py` — realized-vs-expected decomposition with reported residual.
+    - Accept: covered by `tests/test_t47_attribution.py`; 119-test suite green.
+  - [x] **T47.6 [P0] Automate continue, retrain, demote, stop, and rollback decisions** ✅ 2026-09-08
+    - Deliver: `src/portfolio/operations_gates.py` — versioned operational gates; hard-gate failures block new plans; retraining creates a Challenger, never overwrites Champion.
+    - Accept: covered by `tests/test_t47_operations_gates.py`; 119-test suite green.
+  - [x] **T47.7 [P1] Define evidence-driven retraining policy** ✅ 2026-09-08
+    - Deliver: `src/portfolio/retraining_policy.py` — schedule/data/drift/performance triggers with cooldown, concurrency lock, resource budget, no-change outcome.
+    - Accept: covered by `tests/test_t47_retraining_policy.py`; 119-test suite green.
+  - [ ] **T47.8 [P1] Deliver the Model Operations frontend and browser proof** — PARKED
+    - Reason: a frontend-led update is in flight by another agent; backend defers all `qlib-dashboard/` edits to avoid collision.
+    - Next: schedule after the frontend update lands; backend modules above are the ready data source.
 
 **Execution waves:**
 1. **Lifecycle and monitoring:** T47.1-T47.2.
