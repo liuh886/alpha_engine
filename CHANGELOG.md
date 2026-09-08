@@ -10,6 +10,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Plugin API endpoints: GET /strategy/plugins, GET /strategy/plugins/{name}/schema, POST /strategy/plugins/{name}/validate
 - Version bump script (scripts/bump_version.py)
 - Strategy registry test suite (tests/test_strategy_registry.py)
+- Declare scipy as an explicit runtime dependency (already imported by factor/research modules; pins uv.lock for reproducible `--frozen` installs)
 
 ## [2.5.0] - 2026-05-28
 ### Added

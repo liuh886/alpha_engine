@@ -89,11 +89,12 @@ Strategy Operations 不是新的事实源，而是：
 
 当前 stable strategy 集合与 active model version **只从 `configs/strategies/registry.json` 读取**。README 不维护第二份 active-model 表。
 
-目前产品围绕四个稳定 strategy family 组织：
+目前产品围绕五个稳定 strategy family 组织：
 
 - `qqq_rotation` — rules-based allocation；
 - `us_x` — US cross-sectional ranker；
 - `cn_x` — CN cross-sectional ranker；
+- `cn_27` — CN rules-based allocation；
 - `byd` — BYD rules-based allocation。
 
 它们是独立研究策略。仓库没有定义跨 QQQ / US / CN / BYD 的统一资本配置合同，因此前端不会虚构总组合权重。

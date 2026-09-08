@@ -356,18 +356,14 @@
   - **Resolution**: Already implemented — `qlib-dashboard/src/lib/performanceBenchmarks.ts` deduplicates benchmark options by identical label + normalized series (`discoverBenchmarkOptions`), with coverage in `performanceBenchmarks.test.ts`.
   - **Status**: Resolved; record kept for audit trail.
 
-- [ ] **T53: Add Chinese names to CN model holdings (A-shares)**
-  - **Issue**: When viewing holdings for the CN model, A-share stocks are displayed only as numeric codes (e.g., `300408`), which is not user-friendly.
-  - **Goal**: Implement a stock metadata lookup or mapping so the frontend can display the company's Chinese name alongside the code (e.g., `300408 三环集团`).
-  - **Status**: Recorded as an issue for next sprint.
+- [x] **T53: Add Chinese names to CN model holdings (A-shares)** ✅ 2026-08-26
+  - **Resolution**: Governed registry `configs/name_map.yaml` (130/130 CN selected-pool symbols, gated by `tests/test_name_map_publication.py`) is published into bundles as `name_map.json` by `export_repository_research_data` (`src/artifacts/repository_research_store.py`); `PositionsTable.tsx` resolved it via `useNameMap` from a prior session. This session closed the last gap: `HoldingsSummary.tsx` now also renders the resolved Chinese name above the instrument code, with 4 new Vitest tests (`HoldingsSummary.test.tsx`). Also unblocked the local pre-test sync by regenerating the gitignored `data/research/strategy_operations` read model through the governed `alpha ops build` pipeline (no committed data changed).
+  - **Verification**: backend name-map/store tests 5 passed; frontend `npm run test` 137 passed, `lint`, `tsc`, production `build` all green; `ruff check .` clean.
+  - **Status**: Resolved.
 
-- [ ] **T54: Evaluate and resolve frontend missing data fallbacks**
-  - **Issue**: Various frontend components display fallbacks (e.g., `N/A`, `—`, `Unknown`, `Unavailable`) due to missing data in the payload. Identified areas:
-    1. **Attribution & Holdings**: Missing `semantics` (attribution context), missing valid `value` (causes chart exclusions), missing `turnover`.
-    2. **Core Metrics**: Some legacy or partially-retained bundles lack derived metrics (e.g., Information Ratio, Max Drawdown), displaying `Unavailable`.
-    3. **Model Metadata**: Legacy models (pre-T48) lack `Data Snapshot ID`, `latest_completed_session`, and `digest` signatures.
-  - **Goal**: Review the missing data inventory. Ensure the backend correctly populates high-value fields for new models. For legacy models, decide whether to backfill, hide unused fields, or improve the fallback UI to reduce confusion.
-  - **Status**: Recorded as an issue for evaluation.
+- [x] **T54: Evaluate and resolve frontend missing data fallbacks** ✅ 2026-08-26
+  - **Resolution**: Evaluation deliverable exists at `qlib-dashboard/docs/t54-missing-data-inventory-2026-08-24.md` with audited dispositions for all four fallback surfaces: (1) holdings names fixed via T53; (2) attribution semantics/turnover deferred to builder-level population for new publications; (3) legacy pre-T48 metric gaps keep honest `Unavailable` — backfilling legacy evidence is forbidden without governed re-publication; (4) legacy provenance identity fields same policy as (3).
+  - **Status**: Evaluation complete; residual items are governed re-publication follow-ups, not open frontend work.
 
 ## USx Iteration — 2026-08-11
 
@@ -387,10 +383,10 @@
   - Blocked by cross_sectional_experiment_runner provider identity strict matching
   - Experiment config committed for future run with matching provider
 
-- [ ] **T55.3 [Next] Run sector cap experiment once score ledgers are available**
-  - Pre-registered in `configs/research_experiments/us_x1_1_rank_aware_sector_cap_v1.yaml`
-  - Requires deterministic reproduction score ledgers (not locally available)
-  - Targeting drawdown reduction through 4-names-per-sector constraint
+- [x] **T55.3: Run sector cap experiment once score ledgers are available** ✅ 2026-08-26
+  - **Resolution**: Already executed as pre-registered before this entry was recorded. PR #433 (issue #432, closed 2026-08-03; workflow 30779386691 / artifact 8843152145) ran `us_x1_1_rank_aware_sector_cap_v1` on the deterministic Experiment 007 score ledgers with provider identity `5c09d0fb…` matching the frozen contract. All seven development gates passed: four positive-excess windows; +102.21% relative excess at 60 bps; 106.62% retention of baseline excess at 20 bps; worst-window drawdown improved 4.52 pp (-33.88% → -29.36%); turnover at 87.79% of baseline; strongest window share 32.91% (<55%); two materializations reproduced identical tree SHA `a9395adb…`. Decision: `rank_aware_sector_cap_supported_for_shadow`. Result report: `docs/research/us_x1_1_rank_aware_sector_cap_result_2026-08-03.md`; shadow contract operating at `data/research/us_x1_1_sector_cap_shadow/` (first eligible 2026-08-04).
+  - **Outcome absorbed**: the validated max-four-names-per-sector constraint became a core component of US x1.2 (`configs/models/us_x1_2.yaml`, `requirement_source: configs/research_experiments/us_x1_1_rank_aware_sector_cap_v1.yaml`, promoted via PRs #765/#767/#770) and continues in US x1.3. The 2026H1-consumption limitation recorded by the result report is superseded by the later certified baselines' own governance records.
+  - **Status**: Resolved; the earlier "score ledgers not locally available" note reflected session context that missed #433's governed completion.
 ## Framework Absorption Landings (2026-08-25)
 
 Source map: Issue #1052 (TradingAgents / ai-hedge-fund / FinRL-X / AI-Trader patterns, reshaped to governance).
