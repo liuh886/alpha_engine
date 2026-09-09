@@ -185,6 +185,15 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
     }
     assert all("current_operations_access" not in row for row in observed.values())
     assert observed["cn_27_v1_3"]["status"] == "pipeline_unavailable"
+    assert (
+        observed["cn_27_v1_3"]["state_label"]
+        == "Publisher dormant — awaiting governed source"
+    )
+    assert "cn_27_current_target_v1 is dormant" in observed["cn_27_v1_3"]["note"]
+    assert (
+        "not_applicable_until_governed_prospective_source_is_available"
+        in observed["cn_27_v1_3"]["note"]
+    )
     assert all(
         row["status"] == "awaiting_observation"
         for model_id, row in observed.items()

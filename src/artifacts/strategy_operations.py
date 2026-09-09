@@ -26,6 +26,10 @@ from src.governance.active_strategy_catalog import (
     assert_formal_catalog_matches_active_strategies,
     load_active_strategy_catalog,
 )
+from src.governance.strategy_runtime_capabilities import (
+    RuntimeCapability,
+    resolve_strategy_runtime_capabilities,
+)
 
 SCHEMA_VERSION = "2.2.0"
 QQQ_FAMILY = "qqq_rotation"
@@ -255,6 +259,7 @@ def _unavailable(
     strategy: ActiveStrategy,
     *,
     awaiting: bool,
+    capability: RuntimeCapability | None = None,
 ) -> dict[str, object]:
     cadence, next_policy = _cadence(strategy)
     if awaiting:
@@ -262,6 +267,22 @@ def _unavailable(
         state_label = "Awaiting first governed evaluation"
         note = (
             "The decision publisher exists, but no cutoff-bound evaluation has been committed yet."
+        )
+    elif (
+        capability is not None
+        and capability.status == "blocked"
+        and capability.adapter_id is not None
+        and capability.reason
+    ):
+        # A dormant publisher is maintained but its frozen contract gates
+        # activation on a governed source (e.g. CN_27 prospective evidence).
+        # Surface the contract reason instead of claiming no publisher exists.
+        status = "pipeline_unavailable"
+        state_label = "Publisher dormant — awaiting governed source"
+        note = (
+            "Formal historical evidence is available. "
+            f"Current-target publisher {capability.adapter_id} is dormant: "
+            f"{capability.reason}."
         )
     else:
         status = "pipeline_unavailable"
@@ -553,15 +574,24 @@ def build_operations_payload(
     ledger_root: Path,
     generated_at: str,
     strategy_catalog: Path = DEFAULT_CATALOG_PATH,
+    repository_root: Path = Path("."),
 ) -> dict[str, object]:
     records: list[dict[str, object]] = []
     formal_records, strategies = _formal_records(
         formal_catalog,
         strategy_catalog=strategy_catalog,
     )
+    root = repository_root.resolve()
+    capabilities = {
+        model_version_id: resolve_strategy_runtime_capabilities(
+            strategy, repository_root=root
+        ).current_target
+        for model_version_id, strategy in strategies.items()
+    }
     for formal in formal_records:
         model_version_id = str(formal["model_version_id"])
         strategy = strategies[model_version_id]
+        capability = capabilities[model_version_id]
         family = strategy.model_family_id
         try:
             ledger = read_latest_evaluation(
@@ -573,6 +603,7 @@ def build_operations_payload(
                 formal,
                 strategy,
                 awaiting=family in SUPPORTED_SIGNAL_FAMILIES,
+                capability=capability,
             )
             blocked["status"] = "blocked"
             blocked["decision_reason"] = str(exc)
@@ -585,6 +616,7 @@ def build_operations_payload(
                     formal,
                     strategy,
                     awaiting=family in SUPPORTED_SIGNAL_FAMILIES,
+                    capability=capability,
                 )
             )
         elif family == QQQ_FAMILY:
@@ -594,7 +626,7 @@ def build_operations_payload(
         elif family in RANKER_FAMILIES:
             records.append(_ranker(formal, strategy, ledger))
         else:
-            blocked = _unavailable(formal, strategy, awaiting=False)
+            blocked = _unavailable(formal, strategy, awaiting=False, capability=capability)
             blocked["status"] = "blocked"
             blocked["decision_reason"] = (
                 "A decision ledger exists but no governed operations adapter is registered."
