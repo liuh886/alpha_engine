@@ -410,7 +410,7 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
       - name: Restore exact effective governed provider cache
         id: effective_cache
-        if: steps.provider_cache.outputs.cache-hit != 'true'
+        if: steps.provider_cache.outputs.cache-hit != 'true' && inputs.full_refresh != true
         uses: actions/cache/restore@v6
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
