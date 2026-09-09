@@ -76,7 +76,14 @@ def test_formal_auxiliary_universe_preserves_legacy_tygo_without_substitution():
     assert "TYGO" in FORMAL_MARKET_AUXILIARIES["us"]
     assert "TIGO" not in FORMAL_MARKET_AUXILIARIES["us"]
     assert set(FORMAL_MARKET_AUXILIARIES["us"]) == {"QQQI", "TQQQ", "SGOV", "TYGO"}
-    assert FORMAL_MARKET_AUXILIARIES["cn"] == ("515180",)
+    assert FORMAL_MARKET_AUXILIARIES["cn"] == (
+        "515180",
+        "002156",
+        "002281",
+        "300274",
+        "601939",
+        "688183",
+    )
 
 
 def test_manifest_declares_only_materialized_comparison_references(

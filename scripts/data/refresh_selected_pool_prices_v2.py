@@ -45,7 +45,10 @@ FORMAL_MARKET_AUXILIARIES: dict[str, tuple[str, ...]] = {
     # retained only because accepted US x1.1 history actually traded it; it is
     # published separately rather than being rewritten or substituted as TIGO.
     "us": ("QQQI", "TQQQ", "SGOV", "TYGO"),
-    "cn": ("515180",),
+    # 515180 plus the five CN_27 strategy-specific names outside the selected
+    # pool. All are accepted holdings of a formal baseline, so the proven
+    # last-resort Yahoo fallback below applies to them exactly as to 515180.
+    "cn": ("515180", "002156", "002281", "300274", "601939", "688183"),
 }
 _FORMAL_AUXILIARY_FETCH_ACTIONS = {
     "fetched_full_refresh",

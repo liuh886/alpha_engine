@@ -47,7 +47,11 @@ MARKET_UNIVERSE_PATHS = {
 }
 DEFAULT_AUXILIARIES = {
     "us": ("QQQI", "TQQQ", "CGDV", "SGOV", "TYGO"),
-    "cn": ("515180",),
+    # 515180 is the defensive sleeve; the five strategy-specific names are the
+    # CN_27 candidates outside the selected pool. Without them the CN_27 formal
+    # refresh fails closed at provider-key resolution because the shared
+    # selected-pool provider never materializes their bars.
+    "cn": ("515180", "002156", "002281", "300274", "601939", "688183"),
 }
 # Publication-only serializers cannot change provider source bytes.
 PROVIDER_CACHE_EXCLUDED_PATHS = frozenset({"src/data/model_data_bundle.py"})
