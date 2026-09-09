@@ -36,6 +36,17 @@ RUN_ID_PATTERN = re.compile(r"\brun-id\s*:\s*['\"]?\d{6,}")
 ACTION_PATTERN = re.compile(r"uses:\s*([^\s@]+)@([^\s#]+)")
 NODE_PATTERN = re.compile(r"node-version:\s*['\"]?([^'\"\s]+)")
 
+RESEARCH_PARADIGM_ROOT = Path("configs/research_paradigms")
+RESEARCH_EXPERIMENT_ROOT = Path("configs/research_experiments")
+ARCHIVE_MARKER = "research_paradigms/archive"
+# Directories whose mentions prove history, not life: docs and the archive
+# itself never count as references for liveness purposes.
+NON_LIVE_REFERENCE_ROOTS = ("docs/", "artifacts/evidence/", "configs/research_paradigms/archive/")
+
+# File suffixes scanned for stem references. Notebooks and snapshots are
+# deliberately excluded: they are frozen evidence, not live callers.
+REFERENCE_SUFFIXES = (".py", ".yml", ".yaml", ".json")
+
 
 def load_yaml(path: Path) -> dict[str, Any]:
     payload = yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
@@ -184,6 +195,9 @@ def build_inventory() -> tuple[dict[str, Any], list[str]]:
         counts[record["tier"]] = counts.get(record["tier"], 0) + 1
         violations.extend(f"{path}: {message}" for message in record_violations)
 
+    research_assets = inspect_research_assets(Path("."))
+    violations.extend(archive_reference_violations(Path(".")))
+
     inventory = {
         "schema_version": "1.0.0",
         "policy": "four_tier_ci_governance",
@@ -191,8 +205,160 @@ def build_inventory() -> tuple[dict[str, Any], list[str]]:
         "tier_counts": dict(sorted(counts.items())),
         "violation_count": len(violations),
         "workflows": records,
+        "research_assets": research_assets,
     }
     return inventory, violations
+
+
+# Live-caller roots: the only places that can keep a paradigm alive.
+# data/, artifacts/, .venv and other bulk trees are history or tooling,
+# never callers.
+LIVE_SCAN_ROOTS = (".github/workflows", "src", "scripts", "tests", "configs")
+# Evidence trees: a mention here proves past life (sealed receipts/ledgers),
+# never current feeding.
+EVIDENCE_SCAN_ROOTS = ("data/research",)
+# The guard implementation itself names the archive it protects.
+ARCHIVE_GUARD_EXEMPT = {"scripts/check_ci_governance.py"}
+
+
+def _live_text_files(repo_root: Path) -> list[Path]:
+    """Collect scannable live-caller files, excluding history-only roots."""
+    files: list[Path] = []
+    for root in LIVE_SCAN_ROOTS:
+        scan_root = repo_root / root
+        if not scan_root.is_dir():
+            continue
+        for suffix in REFERENCE_SUFFIXES:
+            for path in scan_root.rglob(f"*{suffix}"):
+                relative = path.relative_to(repo_root).as_posix()
+                if relative.startswith(NON_LIVE_REFERENCE_ROOTS):
+                    continue
+                if "/archive/" in relative:
+                    continue
+                files.append(path)
+    return files
+
+
+def _paradigm_stems(repo_root: Path) -> list[str]:
+    paradigm_root = repo_root / RESEARCH_PARADIGM_ROOT
+    if not paradigm_root.is_dir():
+        return []
+    return sorted(
+        path.stem
+        for path in paradigm_root.glob("*.yaml")
+        if path.is_file()
+    )
+
+
+def inspect_research_assets(repo_root: Path) -> dict[str, Any]:
+    """Build the paradigm reference graph and derive lifecycle states.
+
+    Lifecycle is derived, never declared: scheduled (a workflow names the
+    stem), referenced_only (code/config names it but no workflow feeds it),
+    orphan_candidate (no live caller at all). Advisory only: the caller
+    prints suggestions but never fails the build.
+    """
+    stems = _paradigm_stems(repo_root)
+    code_texts: dict[str, str] = {}
+    for path in _live_text_files(repo_root):
+        try:
+            if path.suffix == ".json":
+                continue
+            code_texts[path.relative_to(repo_root).as_posix()] = path.read_text(
+                encoding="utf-8"
+            )
+        except (OSError, UnicodeDecodeError):
+            continue
+    evidence_texts: dict[str, str] = {}
+    for root in EVIDENCE_SCAN_ROOTS:
+        scan_root = repo_root / root
+        if not scan_root.is_dir():
+            continue
+        for path in scan_root.rglob("*.json"):
+            try:
+                evidence_texts[path.relative_to(repo_root).as_posix()] = path.read_text(
+                    encoding="utf-8"
+                )
+            except (OSError, UnicodeDecodeError):
+                continue
+    workflow_texts = {
+        name: body
+        for name, body in code_texts.items()
+        if name.startswith(".github/workflows/")
+    }
+    lifecycles: dict[str, str] = {}
+    paradigm_prefix = f"{RESEARCH_PARADIGM_ROOT.as_posix()}/"
+    for stem in stems:
+        own_file = f"{paradigm_prefix}{stem}.yaml"
+        scheduled = any(
+            stem in body for name, body in workflow_texts.items() if name != own_file
+        )
+        if scheduled:
+            lifecycles[stem] = "scheduled"
+            continue
+        # Paradigm-to-paradigm mentions (supersedes/bridges lineage notes) do
+        # not feed anything: only callers outside the paradigm directory
+        # confer referenced_only life.
+        referenced = any(
+            stem in body
+            for name, body in code_texts.items()
+            if name != own_file and not name.startswith(paradigm_prefix)
+        )
+        if referenced:
+            lifecycles[stem] = "referenced_only"
+            continue
+        evidenced = any(
+            stem in body for name, body in evidence_texts.items() if name != own_file
+        )
+        lifecycles[stem] = "evidence_only" if evidenced else "orphan_candidate"
+    experiment_root = repo_root / RESEARCH_EXPERIMENT_ROOT
+    experiment_count = (
+        len(list(experiment_root.glob("*.yaml"))) if experiment_root.is_dir() else 0
+    )
+    orphans = sorted(stem for stem, state in lifecycles.items() if state == "orphan_candidate")
+    referenced_only = sorted(
+        stem for stem, state in lifecycles.items() if state == "referenced_only"
+    )
+    evidence_only = sorted(
+        stem for stem, state in lifecycles.items() if state == "evidence_only"
+    )
+    return {
+        "paradigm_count": len(stems),
+        "experiment_count": experiment_count,
+        "scheduled_count": sum(1 for state in lifecycles.values() if state == "scheduled"),
+        "referenced_only": referenced_only,
+        "evidence_only": evidence_only,
+        "orphan_candidates": orphans,
+        "lifecycles": lifecycles,
+        "archive_suggestion": (
+            "consider archiving orphan candidates to "
+            "configs/research_paradigms/archive/ with provenance"
+            if orphans
+            else None
+        ),
+    }
+
+
+def archive_reference_violations(repo_root: Path) -> list[str]:
+    """Fail closed on new callers of the paradigm archive.
+
+    The archive is write-once history: live code must never import, schedule
+    or reference it. These are blocking violations, unlike zombie warnings.
+    """
+    violations: list[str] = []
+    for path in _live_text_files(repo_root):
+        relative = path.relative_to(repo_root).as_posix()
+        if relative in ARCHIVE_GUARD_EXEMPT:
+            continue
+        try:
+            body = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if ARCHIVE_MARKER in body:
+            violations.append(
+                f"{relative}: live file references the paradigm archive"
+            )
+    return violations
 
 
 def main() -> int:
@@ -210,6 +376,16 @@ def main() -> int:
     )
     for violation in violations:
         print(f"CI GOVERNANCE VIOLATION: {violation}")
+    research = inventory.get("research_assets", {})
+    orphans = research.get("orphan_candidates", [])
+    if orphans:
+        print(
+            f"CI GOVERNANCE ADVISORY: {len(orphans)} paradigm orphan candidates "
+            f"(no live caller): {', '.join(orphans[:10])}"
+            + ("..." if len(orphans) > 10 else "")
+        )
+        if research.get("archive_suggestion"):
+            print(f"CI GOVERNANCE ADVISORY: {research['archive_suggestion']}")
     if args.enforce and violations:
         return 1
     return 0
