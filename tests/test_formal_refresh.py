@@ -641,6 +641,7 @@ def test_publish_initial_checkout_excludes_cacheable_market_evidence() -> None:
     assert "sparse-checkout-cone-mode: true" in checkout
     assert (
         "sparse-checkout: |\n"
+        "            .github/actions/setup-python-uv\n"
         "            configs\n"
         "            data/research/formal_model_runs\n"
         "            data/research/model_runs\n"
