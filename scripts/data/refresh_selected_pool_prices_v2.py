@@ -123,6 +123,15 @@ def build_hardened_router(market: str) -> MarketDataRouter:
     adapters: list[MarketDataAdapter] = []
     providers: list[str] = []
     if market_key == "cn":
+        # The formal CN provider contract is QFQ-adjusted bars: the accepted
+        # frozen baselines (e.g. CN_27 V1.3 source_ohlcv) were materialized from
+        # tencent_qfq_history, and extend_bars refuses (rtol 1e-6) to splice raw
+        # eastmoney bars onto adjusted history. Tencent therefore leads so the
+        # provider reproduces frozen semantics; every later vendor is an
+        # availability fallback whose raw bars fail closed at the restatement
+        # gate instead of silently mixing adjustments.
+        adapters.append(TencentQfqHistoryAdapter())
+        providers.append("tencent_qfq_history")
         token = os.getenv("TUSHARE_TOKEN", "").strip()
         if token:
             adapters.append(TushareAdapter(token=token))
@@ -133,7 +142,6 @@ def build_hardened_router(market: str) -> MarketDataRouter:
                 AkShareAdapter(),
                 BaoStockAdapter(),
                 EFinanceAdapter(),
-                TencentQfqHistoryAdapter(),
                 YFinanceAdapter(),
             ]
         )
@@ -143,7 +151,6 @@ def build_hardened_router(market: str) -> MarketDataRouter:
                 "akshare",
                 "baostock",
                 "efinance",
-                "tencent_qfq_history",
                 "yfinance",
             ]
         )

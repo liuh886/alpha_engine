@@ -24,11 +24,11 @@ def test_hardened_cn_router_uses_independent_sources_before_yahoo(monkeypatch):
     monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
     router = build_hardened_router("cn")
     assert router.providers_for_market("cn") == [
+        "tencent_qfq_history",
         "akshare_sina",
         "akshare",
         "baostock",
         "efinance",
-        "tencent_qfq_history",
         "yfinance",
     ]
 
@@ -56,12 +56,12 @@ def test_hardened_cn_router_enables_tushare_only_with_token(monkeypatch):
     monkeypatch.setenv("TUSHARE_TOKEN", "test-token")
     router = build_hardened_router("cn")
     assert router.providers_for_market("cn") == [
+        "tencent_qfq_history",
         "tushare",
         "akshare_sina",
         "akshare",
         "baostock",
         "efinance",
-        "tencent_qfq_history",
         "yfinance",
     ]
 
@@ -146,10 +146,10 @@ def test_manifest_does_not_count_two_eastmoney_transports_as_independent(
     )
     payload = _decorate_manifest(path, build_hardened_router("cn"))
     assert payload["provider_architecture"]["independent_provider_order"] == [
+        "tencent_qfq_history",
         "akshare_sina",
         "akshare",
         "baostock",
-        "tencent_qfq_history",
         "yfinance",
     ]
     assert payload["promotion_eligible"] is True
