@@ -476,6 +476,10 @@ def test_workflow_wires_partial_degradation() -> None:
     assert "verify-partial" in text
     assert "selected_pool_price_refresh_partial" in text
     assert "full_refresh" in text
+    # A governed full refresh must bypass the cache restore so vendors are
+    # actually refetched; otherwise the flag is a no-op on cache hit.
+    restore_block = text.split("Restore requested governed provider cache")[1]
+    assert "inputs.full_refresh != true" in restore_block.split("uses: actions/cache/restore")[0]
 
 
 def test_cn27_data_stage_maps_to_data_blocked_exit(

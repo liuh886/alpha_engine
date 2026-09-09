@@ -367,6 +367,10 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
       - name: Restore requested governed provider cache
         id: provider_cache
+        # A governed full refresh must rebuild from vendors even when a cache
+        # exists: incremental seeds preserve the previous adjustment lineage,
+        # so only a full fetch flushes superseded vendor semantics.
+        if: inputs.full_refresh != true
         uses: actions/cache/restore@v6
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
