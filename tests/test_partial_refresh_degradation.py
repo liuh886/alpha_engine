@@ -475,3 +475,73 @@ def test_workflow_wires_partial_degradation() -> None:
     assert "--allow-partial" in text
     assert "verify-partial" in text
     assert "selected_pool_price_refresh_partial" in text
+    assert "full_refresh" in text
+
+
+def test_cn27_data_stage_maps_to_data_blocked_exit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import sys
+
+    import scripts.refresh_cn_27_v1_3_formal as cn27
+
+    def _blocked(**kwargs):
+        from src.artifacts.strategy_refresh_exit import DataBlockedError
+
+        raise DataBlockedError("provider restated frozen history for 002463.open")
+
+    monkeypatch.setattr(cn27, "refresh_cn_27_v1_3", _blocked)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "refresh_cn_27_v1_3_formal.py",
+            "--current-package",
+            str(tmp_path / "current.json"),
+            "--provider-dir",
+            str(tmp_path / "provider"),
+            "--provider-manifest",
+            str(tmp_path / "manifest.json"),
+            "--cutoff",
+            "2026-09-08",
+            "--generated-at",
+            "2026-09-09T00:00:00Z",
+            "--output",
+            str(tmp_path / "candidate.json"),
+        ],
+    )
+    assert cn27.main() == DATA_BLOCKED_EXIT_CODE
+
+
+def test_cn27_contract_errors_stay_fatal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import sys
+
+    import scripts.refresh_cn_27_v1_3_formal as cn27
+
+    def _broken(**kwargs):
+        raise cn27.Cn27V13RefreshError("frozen k2 recipe identity drifted")
+
+    monkeypatch.setattr(cn27, "refresh_cn_27_v1_3", _broken)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "refresh_cn_27_v1_3_formal.py",
+            "--current-package",
+            str(tmp_path / "current.json"),
+            "--provider-dir",
+            str(tmp_path / "provider"),
+            "--provider-manifest",
+            str(tmp_path / "manifest.json"),
+            "--cutoff",
+            "2026-09-08",
+            "--generated-at",
+            "2026-09-09T00:00:00Z",
+            "--output",
+            str(tmp_path / "candidate.json"),
+        ],
+    )
+    with pytest.raises(cn27.Cn27V13RefreshError, match="recipe identity drifted"):
+        cn27.main()

@@ -239,13 +239,20 @@ def refresh_cn_27_v1_3(
     frozen_bars = pd.read_csv(
         frozen_prices, dtype={"symbol": str}, parse_dates=["date"]
     )
-    _check_manifest_symbol_health(
-        manifest,
-        sorted(frozen_bars["symbol"].astype(str).unique().tolist()),
-    )
-    extended = extend_bars(
-        frozen_bars=frozen_bars, provider_dir=provider_dir, cutoff=cutoff
-    )
+    try:
+        _check_manifest_symbol_health(
+            manifest,
+            sorted(frozen_bars["symbol"].astype(str).unique().tolist()),
+        )
+        extended = extend_bars(
+            frozen_bars=frozen_bars, provider_dir=provider_dir, cutoff=cutoff
+        )
+    except Cn27V13RefreshError as exc:
+        # Provider-data stage (health flags, key resolution, overlap splice):
+        # vendor gaps, lag or restatements block this strategy honestly but
+        # must not melt the publish fan-in. Contract errors raised above and
+        # below stay fatal.
+        raise DataBlockedError(str(exc)) from exc
 
     context = load_k2_context(REPOSITORY_ROOT / contract_path)
     _check_recipe_identity(context.recipe, current)

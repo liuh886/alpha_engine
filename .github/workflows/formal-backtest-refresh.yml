@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "30 23 * * 1-5"
   workflow_dispatch:
+    inputs:
+      full_refresh:
+        description: "Rebuild every provider symbol from vendors (flushes stale seed semantics)"
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [main]
     paths:
@@ -490,7 +496,7 @@ jobs:
           PY2
           )
           timeout --signal=TERM --kill-after=30s 30m \
-            uv run python scripts/data/refresh_selected_pool_prices_v2.py "${args[@]}" --allow-partial
+            uv run python scripts/data/refresh_selected_pool_prices_v2.py "${args[@]}" --allow-partial ${{ inputs.full_refresh && '--full-refresh' || '' }}
       - name: Read provider refresh status
         id: provider_status
         if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true'
