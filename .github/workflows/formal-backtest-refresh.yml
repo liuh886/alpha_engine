@@ -4,12 +4,6 @@ on:
   schedule:
     - cron: "30 23 * * 1-5"
   workflow_dispatch:
-    inputs:
-      full_refresh:
-        description: "Rebuild every provider symbol from vendors (flushes stale seed semantics)"
-        required: false
-        default: false
-        type: boolean
   push:
     branches: [main]
     paths:
@@ -367,10 +361,6 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
       - name: Restore requested governed provider cache
         id: provider_cache
-        # A governed full refresh must rebuild from vendors even when a cache
-        # exists: incremental seeds preserve the previous adjustment lineage,
-        # so only a full fetch flushes superseded vendor semantics.
-        if: inputs.full_refresh != true
         uses: actions/cache/restore@v6
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
@@ -410,7 +400,7 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
       - name: Restore exact effective governed provider cache
         id: effective_cache
-        if: steps.provider_cache.outputs.cache-hit != 'true' && inputs.full_refresh != true
+        if: steps.provider_cache.outputs.cache-hit != 'true'
         uses: actions/cache/restore@v6
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}
@@ -500,7 +490,7 @@ jobs:
           PY2
           )
           timeout --signal=TERM --kill-after=30s 30m \
-            uv run python scripts/data/refresh_selected_pool_prices_v2.py "${args[@]}" --allow-partial ${{ inputs.full_refresh && '--full-refresh' || '' }}
+            uv run python scripts/data/refresh_selected_pool_prices_v2.py "${args[@]}" --allow-partial
       - name: Read provider refresh status
         id: provider_status
         if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true'

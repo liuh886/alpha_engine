@@ -1,0 +1,146 @@
+name: Formal Provider Reseed
+
+# Governed escape hatch: rebuild a market provider entirely from vendors,
+# flushing superseded seed semantics (e.g. a vendor-order change that
+# incremental repair preserves forever by concatenating seed history with a
+# fresh tail). Manual dispatch only. The automatic refresh path stays
+# strictly incremental (see test_heavy_formal_refresh_reuses_...); this
+# workflow never runs on schedule or push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      market:
+        description: "Market provider to rebuild"
+        required: false
+        default: "cn"
+        type: choice
+        options:
+          - cn
+          - us
+
+jobs:
+  reseed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+    steps:
+      - name: Check out triggering revision
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          lfs: false
+          sparse-checkout: |
+            configs
+            data/csv_clean
+            scripts
+            src
+          sparse-checkout-cone-mode: true
+      - name: Install locked provider environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Resolve latest complete cutoff
+        id: clock
+        run: |
+          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
+          from datetime import datetime, timezone
+          from src.research.market_session_clock import completed_market_date
+
+          now = datetime.now(timezone.utc)
+          print(f"cutoff={completed_market_date('${{ inputs.market }}', now.date().isoformat(), now_utc=now)}")
+          PY
+      - name: Resolve provider cache identity
+        id: contract
+        env:
+          MARKET: ${{ inputs.market }}
+          EFFECTIVE_CUTOFF: ${{ steps.clock.outputs.cutoff }}
+        run: |
+          python -m scripts.govern_formal_provider_cache contract \
+            --root . --market "$MARKET" --start 2021-01-01 \
+            --cutoff "$EFFECTIVE_CUTOFF" \
+            --output "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Fully rebuild provider from vendors
+        id: build
+        env:
+          MARKET: ${{ inputs.market }}
+          EFFECTIVE_CUTOFF: ${{ steps.clock.outputs.cutoff }}
+        run: |
+          rm -rf "artifacts/formal-refresh/provider-${MARKET}"
+          args=(
+            --root .
+            --market "$MARKET"
+            --source-csv-dir "data/csv_clean"
+            --output-root "artifacts/formal-refresh/provider-${MARKET}"
+            --start 2021-01-01
+            --cutoff "$EFFECTIVE_CUTOFF"
+            --max-rounds 3
+          )
+          while IFS= read -r symbol; do
+            args+=(--auxiliary-symbol "$symbol")
+          done < <(python - <<'PY2'
+          import json
+          import os
+          from pathlib import Path
+
+          market = os.environ["MARKET"]
+          contract = json.loads(
+              Path(f"artifacts/formal-refresh/provider-{market}-contract.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          for symbol in contract["auxiliary_symbols"]:
+              print(symbol)
+          PY2
+          )
+          timeout --signal=TERM --kill-after=30s 100m \
+            uv run python scripts/data/refresh_selected_pool_prices_v2.py "${args[@]}" --allow-partial --full-refresh
+      - name: Read provider refresh status
+        id: provider_status
+        env:
+          MARKET: ${{ inputs.market }}
+        run: |
+          status=$(python -c "import json; print(json.load(open('artifacts/formal-refresh/provider-${MARKET}/artifacts/selected_pool_price_refresh_manifest.json')).get('status', 'unknown'))")
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "provider refresh status: $status"
+      - name: Seal fresh provider cache
+        if: steps.provider_status.outputs.status == 'selected_pool_price_refresh_ready'
+        env:
+          MARKET: ${{ inputs.market }}
+        run: |
+          python -m scripts.govern_formal_provider_cache seal \
+            --provider-root "artifacts/formal-refresh/provider-${MARKET}" \
+            --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
+            --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
+      - name: Verify partial provider quarantine binding
+        if: steps.provider_status.outputs.status == 'selected_pool_price_refresh_partial'
+        env:
+          MARKET: ${{ inputs.market }}
+        run: |
+          python -m scripts.govern_formal_provider_cache verify-partial \
+            --provider-root "artifacts/formal-refresh/provider-${MARKET}" \
+            --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json"
+      - name: Save exact governed provider cache
+        if: steps.provider_status.outputs.status == 'selected_pool_price_refresh_ready'
+        uses: actions/cache/save@v6
+        with:
+          path: artifacts/formal-refresh/provider-${{ inputs.market }}
+          key: ${{ steps.contract.outputs.cache_key }}-governed
+          retention-days: 30
+      - name: Upload provider diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: reseed-provider-diagnostics-${{ inputs.market }}-${{ github.run_id }}
+          path: |
+            artifacts/formal-refresh/provider-${{ inputs.market }}-contract.json
+            artifacts/formal-refresh/provider-${{ inputs.market }}/artifacts/selected_pool_price_refresh_manifest.json
+          overwrite: true
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 1

@@ -475,15 +475,31 @@ def test_workflow_wires_partial_degradation() -> None:
     assert "--allow-partial" in text
     assert "verify-partial" in text
     assert "selected_pool_price_refresh_partial" in text
-    assert "full_refresh" in text
+    # Governance: the automatic path never carries a full rebuild flag.
+    assert "full_refresh" not in text
     # A governed full refresh must bypass the cache restore so vendors are
     # actually refetched; otherwise the flag is a no-op on cache hit.
     restore_block = text.split("Restore requested governed provider cache")[1]
-    assert "inputs.full_refresh != true" in restore_block.split("uses: actions/cache/restore")[0]
+    assert "uses: actions/cache/restore" in restore_block.split("Install locked")[0]
     # The publish job uses the composite python setup: its sparse checkout
     # must include the action directory.
     publish_block = text.split("publish:")[1]
     assert ".github/actions/setup-python-uv" in publish_block
+
+
+def test_governed_reseed_lives_outside_incremental_workflow() -> None:
+    main = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "--full-refresh" not in main
+    reseed = Path(".github/workflows/formal-provider-reseed.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "workflow_dispatch" in reseed
+    assert "\n  schedule:" not in reseed
+    assert "\n  push:" not in reseed
+    assert "--full-refresh" in reseed
+    assert "--allow-partial" in reseed
 
 
 def test_cn27_data_stage_maps_to_data_blocked_exit(
