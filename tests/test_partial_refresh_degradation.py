@@ -555,6 +555,36 @@ def test_cn27_contract_errors_stay_fatal(
         cn27.main()
 
 
+def test_cn27_requires_evidence_completeness_from_incumbent(
+    tmp_path: Path,
+) -> None:
+    import json
+
+    import scripts.refresh_cn_27_v1_3_formal as cn27
+
+    current = tmp_path / "current.json"
+    current.write_text(
+        json.dumps(
+            {
+                "model_id": "cn_27_v1_3",
+                "evidence_cutoff": "2026-09-04",
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        cn27.Cn27V13RefreshError, match="evidence completeness is missing"
+    ):
+        cn27.refresh_cn_27_v1_3(
+            current_package=current,
+            provider_dir=tmp_path / "provider",
+            provider_manifest=tmp_path / "manifest.json",
+            cutoff="2026-09-08",
+            generated_at="2026-09-09T00:00:00Z",
+            output=tmp_path / "candidate.json",
+        )
+
+
 def test_overlap_clears_half_cent_vendor_rounding() -> None:
     import scripts.refresh_cn_27_v1_3_formal as cn27
 

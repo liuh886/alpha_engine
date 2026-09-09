@@ -252,6 +252,12 @@ def refresh_cn_27_v1_3(
     prior_cutoff = str(current.get("evidence_cutoff") or "")
     if not prior_cutoff or not cutoff > prior_cutoff:
         raise Cn27V13RefreshError("refresh cutoff must extend beyond the current cutoff")
+    # The bundle builder requires the source completeness declaration; carry
+    # it from the incumbent package (fail closed when absent) instead of
+    # reconstructing it.
+    prior_completeness = current.get("evidence_completeness")
+    if not isinstance(prior_completeness, Mapping):
+        raise Cn27V13RefreshError("current package evidence completeness is missing")
     manifest = _check_provider_manifest(provider_manifest, cutoff)
     frozen_prices_rel = str(
         (current.get("evidence") or {}).get("source_prices") or ""
@@ -398,6 +404,7 @@ def refresh_cn_27_v1_3(
             failed_gates=list(FAILED_GATES),
         ),
         "evidence": evidence,
+        "evidence_completeness": dict(prior_completeness),
         "freshness": freshness,
         "interpretation_notes": list(current.get("interpretation_notes") or []),
     }
