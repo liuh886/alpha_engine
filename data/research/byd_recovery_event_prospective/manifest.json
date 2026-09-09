@@ -7,10 +7,10 @@
   "first_signal_date": "2026-08-10",
   "historical_retuning_allowed": false,
   "hold_common_open_eligible_sessions": 20,
-  "last_signal_date": "2026-09-08",
+  "last_signal_date": "2026-09-09",
   "launch_after": "2026-08-10",
-  "ledger_sha256": "350a192c2cdcd3048cc6b0d1a8df107e3ec3b5a6d41ca2ae2e0f7fb1591500c1",
-  "observation_count": 22,
+  "ledger_sha256": "f3341160b9b0fa4dd2067b5b5013451fd3b0be6edcc3daac2b30de2c9a8fe897",
+  "observation_count": 23,
   "observation_sha256": {
     "2026-08-10": "1c0672ec303115c8361979a2c3a01340d9f8e621446e0d805e74b2d4aacfd097",
     "2026-08-11": "d7cd94ef15f891c69820a4d33855dff6d226e9acb5d13717a24603eb6baa40f5",
@@ -33,7 +33,8 @@
     "2026-09-03": "01df581bee9a16c7b1f7bf71ac984326751edbb353a02656f4889682b4002dd5",
     "2026-09-04": "7f6533e9c894ec77e7b691930cd4991ee6491ade3eaba29495b19d30880a12e9",
     "2026-09-07": "99e9aebef9a08d86d47e615a9317bb1ca2edf64c116abefef960e69139380e4b",
-    "2026-09-08": "a311a03e7d47b83a0645557a979b0ec2aa8aa604fdee4800e31a013d6f1d87bf"
+    "2026-09-08": "a311a03e7d47b83a0645557a979b0ec2aa8aa604fdee4800e31a013d6f1d87bf",
+    "2026-09-09": "618ecefb7cc2a6fe37ac03f84b63d992eb00a81dca3b0461b5f4b5d3cf099b7f"
   },
   "outcome_count": 0,
   "outcome_sha256": {},
@@ -41,7 +42,7 @@
   "provider_fallback": false,
   "research_only": true,
   "schema_version": "byd_recovery_event_prospective_v1",
-  "scorecard_sha256": "06c91613ff7499e1ffac485c0b87a70c559cc137df2e0587fe83075d550aa76d",
+  "scorecard_sha256": "d11fe96241be7ccddcbeca56ad30a0deb500e3e7afe20a4bbd69c7506e8eeb4e",
   "shadow_only": true,
   "source_stores": [
     "data/research/byd_prospective_shadow",
