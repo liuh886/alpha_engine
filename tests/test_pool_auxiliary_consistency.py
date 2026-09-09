@@ -100,6 +100,7 @@ def test_strategy_source_files_are_cache_contract_inputs():
 def test_strategy_vendor_overrides_reproduce_frozen_provenance():
     from src.governance.auxiliary_derivation import (
         strategy_symbol_vendor_overrides,
+        strategy_vendor_provenance,
     )
 
     overrides = strategy_symbol_vendor_overrides(REPOSITORY_ROOT)["cn"]
@@ -107,8 +108,12 @@ def test_strategy_vendor_overrides_reproduce_frozen_provenance():
     assert overrides["000300"] == "akshare"
     assert overrides["515180"] == "tencent_qfq_history"
     assert overrides["002156"] == "tencent_qfq_history"
-    # 27 strategy symbols + benchmark + defensive sleeve, plus zero-pad aliases.
-    assert len(overrides) >= 29
+    # Pins must equal the sealed frozen coverage exactly: every provenance
+    # symbol pinned identically, no extras beyond zero-pad aliases.
+    provenance = strategy_vendor_provenance(REPOSITORY_ROOT)["cn"]
+    canonical = {key: value for key, value in overrides.items() if len(key) == 6}
+    assert canonical == provenance
+    assert len(overrides) == len(provenance) + 7  # 7 zero-pad aliases
 
 
 def test_hardened_router_pins_blessed_vendor_first():

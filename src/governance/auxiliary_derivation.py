@@ -33,9 +33,13 @@ REFERENCE_REGISTRY_PATH = "configs/pools/reference_instrument_registry_v1.yaml"
 
 # Sealed frozen-vendor provenance per strategy market. The accepted baseline
 # mixes vendors per symbol (tencent QFQ for most, akshare_sina for 301291,
-# akshare for the 000300 index); reproducing the blessed adjustment and
-# formatting per symbol is the only way a live refresh can pass the
-# restatement gate. Derived from sealed evidence, never hand-listed.
+# akshare for the 000300 index); reproducing the blessed vendor per symbol is
+# the only way a live refresh can pass the restatement gate. Pins live in a
+# sparse-checkout-safe config (not beside the evidence) and are verified
+# against the sealed coverage by test.
+STRATEGY_VENDOR_PINS = {
+    "cn": "configs/data/cn_strategy_vendor_pins_v1.yaml",
+}
 STRATEGY_VENDOR_PROVENANCE = {
     "cn": "artifacts/evidence/cn_all_weather_alpha_rotation_v1/coverage.csv",
 }
@@ -304,34 +308,58 @@ def strategy_symbol_vendor_overrides(
 ) -> dict[str, dict[str, str]]:
     """Map strategy symbols to their blessed frozen vendor per market.
 
-    Reads each market's sealed frozen-vendor provenance (coverage report) and
-    returns ``{market: {SYMBOL: vendor_name}}``. The live router puts the
-    blessed vendor first per symbol so refresh reproduces the accepted
-    adjustment and formatting instead of whichever vendor happens to win a
-    market-wide race. Fallbacks stay intact: pins reorder, never restrict.
+    Reads the versioned vendor-pins config (sparse-checkout safe, hash-bound
+    into the provider contract). Pins reorder the vendor chain per symbol;
+    fallbacks stay intact. Use :func:`strategy_vendor_provenance` to verify
+    the pins against the sealed frozen coverage.
     """
-    import csv
+    import yaml as _yaml
 
     root = Path(repository_root).resolve()
     overrides: dict[str, dict[str, str]] = {}
+    for market, relative in STRATEGY_VENDOR_PINS.items():
+        path = root / relative
+        if not path.is_file():
+            raise ValueError(f"strategy vendor pins are missing: {relative}")
+        document = _yaml.safe_load(path.read_text(encoding="utf-8"))
+        markets = (document or {}).get("markets", {})
+        pins = markets.get(market, {})
+        if not isinstance(pins, dict) or not pins:
+            raise ValueError(f"strategy vendor pins are empty: {relative}")
+        market_overrides: dict[str, str] = {}
+        for raw_symbol, vendor in pins.items():
+            symbol = normalize_symbol(raw_symbol)
+            vendor_name = str(vendor or "").strip().lower()
+            if symbol and vendor_name:
+                market_overrides[symbol] = vendor_name
+                # Alias without leading zeros: router callers pass both
+                # bare ("2156") and zero-padded ("002156") spellings, and
+                # a pin that silently misses reverts to the default chain.
+                stripped = symbol.lstrip("0")
+                if stripped and stripped != symbol:
+                    market_overrides.setdefault(stripped, vendor_name)
+        overrides[market] = market_overrides
+    return overrides
+
+
+def strategy_vendor_provenance(
+    repository_root: Path | str = REPOSITORY_ROOT,
+) -> dict[str, dict[str, str]]:
+    """Derive symbol->vendor directly from sealed frozen coverage (audit)."""
+    import csv
+
+    root = Path(repository_root).resolve()
+    provenance: dict[str, dict[str, str]] = {}
     for market, relative in STRATEGY_VENDOR_PROVENANCE.items():
         path = root / relative
         if not path.is_file():
             raise ValueError(f"strategy vendor provenance is missing: {relative}")
-        market_overrides: dict[str, str] = {}
+        market_provenance: dict[str, str] = {}
         with path.open("r", encoding="utf-8", newline="") as handle:
             for row in csv.DictReader(handle):
                 symbol = normalize_symbol(row.get("symbol"))
                 vendor = str(row.get("provider") or "").strip().lower()
                 if symbol and vendor:
-                    market_overrides[symbol] = vendor
-                    # Alias without leading zeros: router callers pass both
-                    # bare ("2156") and zero-padded ("002156") spellings, and
-                    # a pin that silently misses reverts to the default chain.
-                    stripped = symbol.lstrip("0")
-                    if stripped and stripped != symbol:
-                        market_overrides.setdefault(stripped, vendor)
-        if not market_overrides:
-            raise ValueError(f"strategy vendor provenance is empty: {relative}")
-        overrides[market] = market_overrides
-    return overrides
+                    market_provenance[symbol] = vendor
+        provenance[market] = market_provenance
+    return provenance

@@ -28,6 +28,7 @@ CACHE_SCHEMA_VERSION = "1.1.0"
 CONTRACT_PATHS = (
     "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml",
     "configs/data_contracts/qqq_rotation_sgov_model_data_v1.yaml",
+    "configs/data/cn_strategy_vendor_pins_v1.yaml",
     "configs/models/cn_27_v1_3.yaml",
     "configs/pools/cn_all_weather_alpha_rotation_v1.yaml",
     "configs/pools/selected_pool_registry_v1.yaml",
