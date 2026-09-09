@@ -26,8 +26,12 @@ class FormalProviderCacheError(ValueError):
 CACHE_SCHEMA_VERSION = "1.1.0"
 CONTRACT_PATHS = (
     "configs/data_quality/symbol_identity_and_lifecycle_v1.yaml",
+    "configs/data_contracts/qqq_rotation_sgov_model_data_v1.yaml",
+    "configs/models/cn_27_v1_3.yaml",
+    "configs/pools/cn_all_weather_alpha_rotation_v1.yaml",
     "configs/pools/selected_pool_registry_v1.yaml",
     "configs/pools/reference_instrument_registry_v1.yaml",
+    "configs/pools/us_small_pool_v2.yaml",
     "pyproject.toml",
     "uv.lock",
     "scripts/build_market_providers.py",
@@ -220,6 +224,24 @@ def _validate_manifest(
         raise FormalProviderCacheError("cached provider is not promotion eligible")
     if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
         raise FormalProviderCacheError("cached provider crossed research boundary")
+    contract_auxiliaries = {
+        str(value).strip().upper()
+        for value in contract.get("auxiliary_symbols", [])
+        if str(value).strip()
+    }
+    manifest_auxiliaries = {
+        str(value).strip().upper()
+        for value in manifest.get("auxiliary_symbols", [])
+        if str(value).strip()
+    } | {
+        str(value).strip().upper()
+        for value in manifest.get("comparison_reference_symbols", [])
+        if str(value).strip()
+    }
+    if manifest_auxiliaries != contract_auxiliaries:
+        raise FormalProviderCacheError(
+            "cached provider auxiliaries do not match contract"
+        )
     records = [row for row in manifest.get("records", []) if isinstance(row, dict)]
     symbols = [str(row.get("symbol", "")).strip().upper() for row in records]
     if not symbols or len(symbols) != len(set(symbols)):

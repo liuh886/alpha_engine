@@ -69,7 +69,7 @@ def _contract() -> dict[str, object]:
         "requested_cutoff": "2026-08-07",
         "refresh_mode": "incremental_from_governed_seed",
         "max_rounds": 3,
-        "auxiliary_symbols": ["QQQI", "TQQQ", "SGOV", "TYGO"],
+        "auxiliary_symbols": [],
         "inputs": {"contract.py": "a" * 64},
         "research_only": True,
         "trade_ready": False,
@@ -430,3 +430,15 @@ def test_provider_cache_rejects_contract_or_research_boundary_drift(tmp_path: Pa
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(FormalProviderCacheError, match="research boundary"):
         verify_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+
+def test_provider_cache_rejects_auxiliary_mismatch(tmp_path: Path) -> None:
+    root = _provider_tree(tmp_path)
+    contract = _contract()
+    mismatched = copy.deepcopy(contract)
+    mismatched["auxiliary_symbols"] = ["AAA"]
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    with pytest.raises(FormalProviderCacheError, match="auxiliaries do not match"):
+        seal_provider_cache(
+            provider_root=root, contract=mismatched, receipt_path=receipt
+        )
