@@ -693,6 +693,7 @@ jobs:
           fetch-depth: 1
           lfs: false
           sparse-checkout: |
+            .github/actions/setup-python-uv
             configs
             data/research/formal_model_runs
             data/research/model_runs

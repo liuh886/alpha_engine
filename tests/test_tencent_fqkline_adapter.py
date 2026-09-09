@@ -1,59 +1,74 @@
+"""Tencent qfq history: post-start listings clamp instead of failing over."""
+
 from __future__ import annotations
 
 import pandas as pd
 import pytest
 
-import src.data.adapters.tencent_fqkline_adapter as tencent
-from src.data.adapters.base import DataFetchError
+from src.data.adapters.base import FetchRequest
+from src.data.adapters.tencent_fqkline_adapter import TencentQfqHistoryAdapter
+from src.data.adapters.base import DataFetchError, HistoryStartUnreachable
 
 
-def _page(first: str, periods: int) -> pd.DataFrame:
-    dates = pd.bdate_range(first, periods=periods)
+def _frame(dates=("2021-06-15", "2021-06-16")) -> pd.DataFrame:
     return pd.DataFrame(
         {
-            "date": dates.strftime("%Y-%m-%d"),
-            "open": 1.0,
-            "high": 1.1,
-            "low": 0.9,
-            "close": 1.0,
-            "volume": 100.0,
-            "amount": float("nan"),
-            "factor": 1.0,
+            "date": list(dates),
+            "open": [10.0] * len(dates),
+            "high": [11.0] * len(dates),
+            "low": [9.0] * len(dates),
+            "close": [10.5] * len(dates),
+            "volume": [1200.0] * len(dates),
+            "amount": [12600.0] * len(dates),
+            "factor": [1.0] * len(dates),
         }
     )
 
 
-def test_history_fetch_paginates_and_deduplicates(monkeypatch) -> None:
-    newer = _page("2023-06-01", 640)
-    older = _page("2021-01-01", 500)
+def test_listing_boundary_refetches_from_available_start(monkeypatch) -> None:
+    import src.data.adapters.tencent_fqkline_adapter as module
+
     calls: list[str] = []
 
-    def fake_fetch(provider_symbol: str, start: str, end: str, *, count: int = 10):
-        assert provider_symbol == "sh515180"
-        assert start == "2021-01-01"
-        assert count == 640
-        calls.append(end)
-        return newer if len(calls) == 1 else older
+    def fake_history(provider_symbol: str, start: str, end: str) -> pd.DataFrame:
+        calls.append(start)
+        if start == "2021-01-01":
+            raise HistoryStartUnreachable(
+                "no reach",
+                provider_symbol=provider_symbol,
+                requested_start=start,
+                available_start="2021-06-15",
+            )
+        return _frame()
 
-    monkeypatch.setattr(tencent, "_fetch_rows", fake_fetch)
-    result = tencent._fetch_history_rows("sh515180", "2021-01-01", "2026-08-14")
+    monkeypatch.setattr(module, "_fetch_history_rows", fake_history)
+    monkeypatch.setattr(module, "_completed_session_guard", lambda *args, **kwargs: None)
 
-    assert len(calls) == 2
-    assert result.iloc[0]["date"] == pd.Timestamp("2021-01-01")
-    assert result.iloc[-1]["date"] <= pd.Timestamp("2026-08-14")
-    assert result["date"].is_unique
-    assert result["amount"].notna().all()
+    result = TencentQfqHistoryAdapter().fetch_daily_bars(
+        FetchRequest(symbol="688183", market="cn", start="2021-01-01", end="2021-06-16")
+    )
+
+    assert calls == ["2021-01-01", "2021-06-15"]
+    assert result.provider == "tencent_qfq_history"
+    assert result.start == "2021-06-15"
+    assert len(result.df) == 2
 
 
-def test_history_fetch_rejects_unverified_partial_history(monkeypatch) -> None:
-    partial_history = _page("2024-01-02", 100)
+def test_empty_history_stays_fatal(monkeypatch) -> None:
+    import src.data.adapters.tencent_fqkline_adapter as module
 
-    def fake_fetch(provider_symbol: str, start: str, end: str, *, count: int = 10):
-        assert provider_symbol == "sz301001"
-        assert start == "2021-01-01"
-        assert count == 640
-        return partial_history
+    def fake_history(provider_symbol: str, start: str, end: str) -> pd.DataFrame:
+        raise HistoryStartUnreachable(
+            "empty",
+            provider_symbol=provider_symbol,
+            requested_start=start,
+            available_start=None,
+        )
 
-    monkeypatch.setattr(tencent, "_fetch_rows", fake_fetch)
-    with pytest.raises(DataFetchError, match="independently governed start"):
-        tencent._fetch_history_rows("sz301001", "2021-01-01", "2026-08-14")
+    monkeypatch.setattr(module, "_fetch_history_rows", fake_history)
+    monkeypatch.setattr(module, "_completed_session_guard", lambda *args, **kwargs: None)
+
+    with pytest.raises(DataFetchError):
+        TencentQfqHistoryAdapter().fetch_daily_bars(
+            FetchRequest(symbol="XXXXXX", market="cn", start="2021-01-01", end="2021-06-16")
+        )

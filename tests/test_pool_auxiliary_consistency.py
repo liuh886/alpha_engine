@@ -95,3 +95,35 @@ def test_strategy_source_files_are_cache_contract_inputs():
         for source in sources:
             if source["kind"] in ("strategy_pool", "strategy_bundle"):
                 assert str(source["path"]) in CONTRACT_PATHS
+
+
+def test_strategy_vendor_overrides_reproduce_frozen_provenance():
+    from src.governance.auxiliary_derivation import (
+        strategy_symbol_vendor_overrides,
+    )
+
+    overrides = strategy_symbol_vendor_overrides(REPOSITORY_ROOT)["cn"]
+    assert overrides["301291"] == "akshare_sina"
+    assert overrides["000300"] == "akshare"
+    assert overrides["515180"] == "tencent_qfq_history"
+    assert overrides["002156"] == "tencent_qfq_history"
+    # 27 strategy symbols + benchmark + defensive sleeve, plus zero-pad aliases.
+    assert len(overrides) >= 29
+
+
+def test_hardened_router_pins_blessed_vendor_first():
+    from scripts.data.refresh_selected_pool_prices_v2 import build_hardened_router
+
+    router = build_hardened_router("cn")
+    assert router.providers_for_request("cn", "301291")[0] == "akshare_sina"
+    assert router.providers_for_request("cn", "000300")[0] == "akshare"
+    assert router.providers_for_request("cn", "002156")[0] == "tencent_qfq_history"
+    # Pins reorder, never restrict: the full market chain follows.
+    market_chain = router.providers_for_market("cn")
+    for symbol in ("301291", "000300", "002156"):
+        assert sorted(router.providers_for_request("cn", symbol)) == sorted(market_chain)
+    # Unpinned symbols keep the market chain verbatim.
+    assert router.providers_for_request("cn", "600000") == market_chain
+    # US has no strategy provenance: untouched.
+    us_router = build_hardened_router("us")
+    assert us_router.providers_for_request("us", "AAPL") == ["yfinance"]

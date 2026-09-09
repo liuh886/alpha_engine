@@ -9,7 +9,12 @@ import pandas as pd
 import requests
 
 from src.data.adapters.akshare_sina_adapter import _provider_symbol
-from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
+from src.data.adapters.base import (
+    DataFetchError,
+    FetchRequest,
+    FetchResult,
+    HistoryStartUnreachable,
+)
 
 _BAR_COLUMNS = ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
 _SHANGHAI = ZoneInfo("Asia/Shanghai")
@@ -126,10 +131,21 @@ def _fetch_history_rows(provider_symbol: str, start: str, end: str) -> pd.DataFr
         frame["date"].between(start_ts, pd.Timestamp(end).normalize())
     ].copy()
     frame = frame.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
-    if frame.empty or frame.iloc[0]["date"] > start_ts + pd.Timedelta(days=10):
-        raise DataFetchError(
+    if frame.empty:
+        raise HistoryStartUnreachable(
+            f"Tencent history is empty for {provider_symbol}",
+            provider_symbol=provider_symbol,
+            requested_start=start,
+            available_start=None,
+        )
+    available_start = frame.iloc[0]["date"].strftime("%Y-%m-%d")
+    if frame.iloc[0]["date"] > start_ts + pd.Timedelta(days=10):
+        raise HistoryStartUnreachable(
             f"Tencent history does not reach the requested or independently governed start: "
-            f"{provider_symbol}"
+            f"{provider_symbol}",
+            provider_symbol=provider_symbol,
+            requested_start=start,
+            available_start=available_start,
         )
     frame["amount"] = frame["amount"].fillna(frame["close"] * frame["volume"])
     return frame[_BAR_COLUMNS]
@@ -289,7 +305,21 @@ class TencentQfqHistoryAdapter:
             raise DataFetchError("Tencent qfq history requires CN symbol, start and end")
         _completed_session_guard(end)
         provider_symbol = _provider_symbol(symbol)
-        frame = _fetch_history_rows(provider_symbol, start, end)
+        try:
+            frame = _fetch_history_rows(provider_symbol, start, end)
+        except HistoryStartUnreachable as exc:
+            # Post-start listing (IPO): refetch from the vendor's actual
+            # earliest session instead of failing over to a worse vendor.
+            # The frame's own min date (surfaced in coverage.first_date, not
+            # the request) is the auditable truth downstream; short histories
+            # stay splice-safe because consumers verify overlap (extend_bars)
+            # rather than assuming global-start coverage. Matches the
+            # established vendor-is-truth semantics of the other adapters,
+            # which never validated first-date floors.
+            if exc.available_start is None:
+                raise
+            frame = _fetch_history_rows(provider_symbol, exc.available_start, end)
+            start = exc.available_start
         for row in frame.to_dict(orient="records"):
             prices = [float(row[key]) for key in ("open", "high", "low", "close")]
             if min(prices) <= 0:

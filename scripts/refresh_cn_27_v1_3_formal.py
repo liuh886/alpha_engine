@@ -46,7 +46,38 @@ FROZEN_CONTRACT = Path(
     "configs/research_experiments/cn_27_v1_3_projected_concentration_discovery_v1.yaml"
 )
 OVERLAP_RTOL = 1e-6
+# One cent absolute floor: vendors round to 2 decimals, so a ~4000-level
+# index carries up to half-a-cent representation noise that a pure relative
+# tolerance (1e-6) cannot clear. Semantic restatements (adjustment flips)
+# are percent-level and still fail loudly. Residual: sub-cent systematic
+# shifts on penny stocks could pass; accepted and noted.
+OVERLAP_ATOL = 0.01
 SOURCE_FIELDS = ("open", "high", "low", "close", "volume")
+# Volume is carried through the splice but excluded from the overlap gate:
+# no recipe consumes it, and vendors disagree on its units (lots vs shares)
+# by orders of magnitude. Gating on it blocks honest refreshes.
+VERIFY_FIELDS = ("open", "high", "low", "close")
+
+
+def _overlap_matches(expected: "pd.Series", observed: "pd.Series") -> bool:
+    """Whether provider overlap equals frozen history within noise.
+
+    Combined tolerance ``atol + rtol*|expected|``: the one-cent floor clears
+    vendor half-cent rounding on large index levels; the relative term keeps
+    micro-level precision on small prices. Adjustment flips (percent-level)
+    fail on either term.
+    """
+    expected_values = expected.astype(float).to_numpy()
+    observed_values = observed.astype(float).to_numpy()
+    both = ~(pd.isna(expected_values) | pd.isna(observed_values))
+    if not bool(both.any()):
+        return True
+    return bool(
+        (
+            abs(expected_values[both] - observed_values[both])
+            <= OVERLAP_ATOL + OVERLAP_RTOL * abs(expected_values[both])
+        ).all()
+    )
 
 
 def _resolve_provider_keys(provider_dir: Path, required: list[str]) -> dict[str, str]:
@@ -137,13 +168,10 @@ def extend_bars(
         shared = old.index.intersection(frame.index)
         if shared.empty:
             raise Cn27V13RefreshError(f"provider has no overlap for {symbol}")
-        for field in SOURCE_FIELDS:
-            expected = old.loc[shared, field].astype(float).to_numpy()
-            observed = frame.loc[shared, field].astype(float).to_numpy()
-            both = ~(pd.isna(expected) | pd.isna(observed))
-            if both.any() and not bool(
-                (abs(expected[both] - observed[both]) <= OVERLAP_RTOL * abs(expected[both])).all()
-            ):
+        for field in VERIFY_FIELDS:
+            expected = old.loc[shared, field].astype(float)
+            observed = frame.loc[shared, field].astype(float)
+            if not _overlap_matches(expected, observed):
                 raise Cn27V13RefreshError(
                     f"provider restated frozen history for {symbol}.{field}"
                 )

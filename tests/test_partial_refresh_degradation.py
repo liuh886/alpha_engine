@@ -480,6 +480,10 @@ def test_workflow_wires_partial_degradation() -> None:
     # actually refetched; otherwise the flag is a no-op on cache hit.
     restore_block = text.split("Restore requested governed provider cache")[1]
     assert "inputs.full_refresh != true" in restore_block.split("uses: actions/cache/restore")[0]
+    # The publish job uses the composite python setup: its sparse checkout
+    # must include the action directory.
+    publish_block = text.split("publish:")[1]
+    assert ".github/actions/setup-python-uv" in publish_block
 
 
 def test_cn27_data_stage_maps_to_data_blocked_exit(
@@ -549,3 +553,20 @@ def test_cn27_contract_errors_stay_fatal(
     )
     with pytest.raises(cn27.Cn27V13RefreshError, match="recipe identity drifted"):
         cn27.main()
+
+
+def test_overlap_clears_half_cent_vendor_rounding() -> None:
+    import scripts.refresh_cn_27_v1_3_formal as cn27
+
+    assert cn27.VERIFY_FIELDS == ("open", "high", "low", "close")
+    expected = pd.Series([4031.095, 3965.516, 3851.405])
+    observed = pd.Series([4031.09, 3965.52, 3851.41])
+    assert cn27._overlap_matches(expected, observed) is True
+
+
+def test_overlap_still_catches_adjustment_flips() -> None:
+    import scripts.refresh_cn_27_v1_3_formal as cn27
+
+    expected = pd.Series([17.465, 18.565, 17.565])
+    observed = pd.Series([17.57, 18.66, 17.67])
+    assert cn27._overlap_matches(expected, observed) is False

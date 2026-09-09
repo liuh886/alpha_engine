@@ -122,8 +122,7 @@ def build_hardened_router(market: str) -> MarketDataRouter:
     market_key = str(market or "").strip().lower()
     adapters: list[MarketDataAdapter] = []
     providers: list[str] = []
-    if market_key == "cn":
-        # The formal CN provider contract is QFQ-adjusted bars: the accepted
+    if market_key == "cn":        # The formal CN provider contract is QFQ-adjusted bars: the accepted
         # frozen baselines (e.g. CN_27 V1.3 source_ohlcv) were materialized from
         # tencent_qfq_history, and extend_bars refuses (rtol 1e-6) to splice raw
         # eastmoney bars onto adjusted history. Tencent therefore leads so the
@@ -163,9 +162,24 @@ def build_hardened_router(market: str) -> MarketDataRouter:
         providers.append("yfinance")
     else:
         raise ValueError(f"unsupported market: {market}")
+    policy: dict[str, list[str]] = {market_key: providers}
+    try:
+        from src.governance.auxiliary_derivation import (
+            strategy_symbol_vendor_overrides,
+        )
+
+        for symbol, preferred in strategy_symbol_vendor_overrides().get(
+            market_key, {}
+        ).items():
+            chain = [preferred] + [name for name in providers if name != preferred]
+            policy[f"{market_key}:{symbol}"] = chain
+    except (ImportError, ValueError, OSError):
+        # No sealed vendor provenance (or unreadable): market-wide order
+        # stands. Unit-test trees without the evidence file hit this path.
+        pass
     return MarketDataRouter(
         adapters=adapters,
-        policy={market_key: providers},
+        policy=policy,
     )
 
 
@@ -298,7 +312,7 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
                 if _governed_formal_auxiliary_yahoo_fallback(
                     record,
                     market=market,
-                    provider_order=provider_order,
+                    provider_order=router.providers_for_request(market, symbol),
                 ):
                     record["promotion_status"] = (
                         "formal_auxiliary_governed_yahoo_fallback"
