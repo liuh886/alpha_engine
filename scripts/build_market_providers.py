@@ -215,7 +215,7 @@ def build_market_provider(
             include_fields=include_fields,
             date_field_name="date",
             symbol_field_name="symbol",
-            lf_newlines=cutoff_ts is not None,
+            lf_newlines=True,
         )
         if cutoff_ts is not None:
             _verify_cutoff_provider(destination, cutoff_ts, market_key)

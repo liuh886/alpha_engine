@@ -49,3 +49,9 @@
 - `model_data_bundle` training profiles cover US87/CN130/QQQI rotation; **no `us_small_pool` profile** → gate恒 `blocked` for the 23-name contract.
 - `us_fundamental_acceleration` has factor-level sketch only; no frozen `research_experiments` spec with label/benchmark/cost/execution binding.
 - No development/falsification backtest + supported/not-supported receipt for the narrow contract.
+
+## Phase 3 addendum (2026-09-09)
+
+- `dump_all` text calendars/instruments unified to LF (`lf_newlines=True` default; explicit `True` in `build_market_providers`). Linux CI bytes unchanged; Windows local rebuilds now match CI. Bins unaffected (binary).
+- Verified: refresh `_write_csv` and `_stage_cutoff_source` already write LF; regression tests `tests/test_evidence_portability.py` lock LF output + dump determinism.
+- Deliberately unchanged (recorded decision): sealed CRLF evidence keeps its bytes (re-hashing would break replay); per-module JSON canonical forms stay frozen (changing them would relabel live bundle ids); pandas float repr stays default (locked deps make it deterministic; rewriting bytes would invalidate sealed evidence for zero failing symptom).

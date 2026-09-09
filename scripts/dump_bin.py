@@ -25,7 +25,8 @@ def dump_all(
     include_fields: str | list[str] | None = None,
     date_field_name: str = "date",
     symbol_field_name: str = "symbol",  # reserved for compatibility; files are per-symbol
-    lf_newlines: bool = False,  # write text calendars/instruments with LF on all platforms
+    lf_newlines: bool = True,  # text calendars/instruments always use LF: CRLF bytes
+    # would change calendar/instrument hashes between Windows and Linux CI.
 ):
     csv_dir = Path(data_path)
     output_dir = Path(qlib_dir)
