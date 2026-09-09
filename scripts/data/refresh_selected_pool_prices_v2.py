@@ -266,6 +266,15 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
     provider_order = router.providers_for_market(market)
     selected_providers: dict[str, str] = {}
     quarantined: list[str] = []
+    # v1 partial builds already name fetch-failure quarantines; v2 merges its
+    # own quality quarantines instead of overwriting them.
+    predeclared = payload.get("quarantined_symbols", [])
+    predeclared_set: set[str] = set()
+    if isinstance(predeclared, list):
+        predeclared_set = {
+            str(value).strip().upper() for value in predeclared if str(value).strip()
+        }
+        quarantined.extend(sorted(predeclared_set))
     governed_auxiliary_fallbacks: list[str] = []
     copied_legacy: list[str] = []
     terminal_history: list[str] = []
@@ -377,7 +386,7 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
         and not copied_legacy
         and not payload["unresolved_stale_symbols"]
     )
-    if quarantined:
+    if set(quarantined) - predeclared_set:
         payload["promotion_blocker"] = "CN symbols rely on Yahoo-only adjusted data"
     elif copied_legacy:
         payload["promotion_blocker"] = (
@@ -386,6 +395,11 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
     elif payload["unresolved_stale_symbols"]:
         payload["promotion_blocker"] = (
             "stale selected-pool sources without an explicit lifecycle declaration"
+        )
+    elif payload.get("status") == "selected_pool_price_refresh_partial":
+        payload["promotion_blocker"] = (
+            "partial selected-pool refresh: quarantined "
+            + ", ".join(sorted(set(quarantined)))
         )
     elif payload.get("status") != "selected_pool_price_refresh_ready":
         payload["promotion_blocker"] = "selected-pool refresh is not complete"
@@ -407,6 +421,7 @@ def refresh_selected_pool_prices_v2(
     full_refresh: bool = False,
     auxiliary_symbols: list[str] | tuple[str, ...] | None = None,
     router: MarketDataRouter | None = None,
+    allow_partial: bool = False,
 ) -> dict[str, Any]:
     destination = Path(output_root).resolve()
     publication_path = destination / "artifacts" / PUBLICATION_MANIFEST_NAME
@@ -431,6 +446,7 @@ def refresh_selected_pool_prices_v2(
             max_rounds=max_rounds,
             full_refresh=full_refresh,
             auxiliary_symbols=requested_auxiliaries,
+            allow_partial=allow_partial,
         )
     except Exception:
         manifest_path = destination / MANIFEST_RELATIVE_PATH
@@ -438,6 +454,10 @@ def refresh_selected_pool_prices_v2(
             _decorate_manifest(manifest_path, data_router)
         raise
     manifest = _decorate_manifest(destination / MANIFEST_RELATIVE_PATH, data_router)
+    if manifest.get("status") == "selected_pool_price_refresh_partial":
+        # Partial providers are degraded operating evidence, never promotion
+        # evidence: no publication projection is written for them.
+        return manifest
     write_selected_pool_price_publication_manifest(
         publication_path,
         manifest,
@@ -466,6 +486,14 @@ def main() -> None:
         ),
     )
     parser.add_argument("--full-refresh", action="store_true")
+    parser.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help=(
+            "Quarantine symbols that fail without a ready-source fallback "
+            "instead of melting the whole market build."
+        ),
+    )
     args = parser.parse_args()
 
     result = refresh_selected_pool_prices_v2(
@@ -478,6 +506,7 @@ def main() -> None:
         max_rounds=args.max_rounds,
         full_refresh=args.full_refresh,
         auxiliary_symbols=args.auxiliary_symbol,
+        allow_partial=args.allow_partial,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
 

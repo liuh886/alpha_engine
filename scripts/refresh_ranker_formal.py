@@ -19,6 +19,11 @@ from typing import Any, Mapping, Sequence
 import pandas as pd
 
 from src.artifacts.formal_refresh import FormalRefreshError, load_object, sha256, write_object
+from src.artifacts.strategy_refresh_exit import (
+    DATA_BLOCKED_EXIT_CODE,
+    DataBlockedError,
+    assert_shared_provider_coverage,
+)
 from src.artifacts.performance_semantics import build_performance_semantics
 from src.research.cn130_cross_sectional_ranking import forward_returns, load_provider_panel
 from src.research.cn_x1_1_regime_gated import (
@@ -545,6 +550,10 @@ def refresh_cn(
     symbols = [str(value).zfill(6) for value in universe["symbols"]]
     if len(symbols) != 130 or len(set(symbols)) != 130:
         raise RankerRefreshError("CN130 universe identity is not exact")
+    unavailable = assert_shared_provider_coverage(
+        provider_dir, symbols, label="CN ranker"
+    )
+    eligible_symbols = sorted(set(symbols) - {str(value) for value in unavailable})
     ledger = pd.read_csv(
         ledger_a,
         compression="infer",
@@ -817,6 +826,8 @@ def refresh_cn(
             "refresh_adapter": refresh_adapter,
             "score_ledger_sha256": sha256(ledger_a),
             "duplicate_score_ledger_sha256": sha256(ledger_b),
+            "eligible_symbols": eligible_symbols,
+            "quarantined_symbols": sorted(unavailable),
             "reporting_summary": summary,
             "model_selection_reopened": False,
             "prospective_reporting_start": "2026-07-01",
@@ -832,7 +843,7 @@ def refresh_cn(
     return {"model_id": model_id, "appended_periods": appended, "output_sha256": sha256(output)}
 
 
-def main() -> None:
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -862,35 +873,44 @@ def main() -> None:
     cn.add_argument("--trade-reason", default="regime_gated_sector_breadth_rebalance")
 
     args = parser.parse_args()
-    if args.command == "us":
-        result = refresh_us(
-            current_package=args.current_package,
-            run_a=args.run_a,
-            run_b=args.run_b,
-            calendar_path=args.calendar,
-            provider_manifest=args.provider_manifest,
-            cutoff=args.cutoff,
-            generated_at=args.generated_at,
-            output=args.output,
-        )
-    else:
-        result = refresh_cn(
-            repository_root=args.repository_root.resolve(),
-            current_package=args.current_package,
-            provider_dir=args.provider_dir,
-            provider_manifest=args.provider_manifest,
-            ledger_a=args.ledger_a,
-            ledger_b=args.ledger_b,
-            cutoff=args.cutoff,
-            generated_at=args.generated_at,
-            output=args.output,
-            model_id=args.model_id,
-            exposure_policy=args.exposure_policy,
-            refresh_adapter=args.refresh_adapter,
-            trade_reason=args.trade_reason,
-        )
+    try:
+        if args.command == "us":
+            result = refresh_us(
+                current_package=args.current_package,
+                run_a=args.run_a,
+                run_b=args.run_b,
+                calendar_path=args.calendar,
+                provider_manifest=args.provider_manifest,
+                cutoff=args.cutoff,
+                generated_at=args.generated_at,
+                output=args.output,
+            )
+        else:
+            result = refresh_cn(
+                repository_root=args.repository_root.resolve(),
+                current_package=args.current_package,
+                provider_dir=args.provider_dir,
+                provider_manifest=args.provider_manifest,
+                ledger_a=args.ledger_a,
+                ledger_b=args.ledger_b,
+                cutoff=args.cutoff,
+                generated_at=args.generated_at,
+                output=args.output,
+                model_id=args.model_id,
+                exposure_policy=args.exposure_policy,
+                refresh_adapter=args.refresh_adapter,
+                trade_reason=args.trade_reason,
+            )
+    except DataBlockedError as exc:
+        print(json.dumps({"data_blocked": str(exc)}, ensure_ascii=False))
+        return DATA_BLOCKED_EXIT_CODE
     print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

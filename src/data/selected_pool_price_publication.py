@@ -138,6 +138,52 @@ def _symbol_list(source: Mapping[str, Any], key: str) -> list[str]:
     return sorted(normalized)
 
 
+def _optional_symbol_set(source: Mapping[str, Any], key: str) -> set[str]:
+    value = source.get(key, [])
+    if not isinstance(value, list):
+        return set()
+    return {str(item).strip().upper() for item in value if str(item).strip()}
+
+
+def partial_eligible_symbols(source: Mapping[str, Any]) -> list[str]:
+    """Compute the consumable symbol set of a partial refresh manifest.
+
+    Eligible = audited materialized symbols minus every quality exclusion
+    (v1 fetch-failure quarantines, v2 Yahoo quarantines, legacy copies,
+    unresolved stale). No new manifest keys: everything derives from the
+    frozen v1.2 manifest schema, so old manifests keep validating.
+    """
+    after = source.get("after")
+    if isinstance(after, dict) and after:
+        materialized = {
+            str(symbol).strip().upper() for symbol in after if str(symbol).strip()
+        }
+    else:
+        required = (
+            _optional_symbol_set(source, "candidate_symbols")
+            | _optional_symbol_set(source, "auxiliary_symbols")
+            | _optional_symbol_set(source, "comparison_reference_symbols")
+        )
+        benchmark = str(source.get("benchmark", "")).strip().upper()
+        if benchmark:
+            required.add(benchmark)
+        materialized = required - _optional_symbol_set(source, "quarantined_symbols")
+    excluded = (
+        _optional_symbol_set(source, "quarantined_symbols")
+        | _optional_symbol_set(source, "legacy_copied_symbols")
+        | _optional_symbol_set(source, "unresolved_stale_symbols")
+    )
+    return sorted(materialized - excluded)
+
+
+def is_partial_eligible(source: Mapping[str, Any]) -> bool:
+    """Whether a partial manifest carries a consumable eligible set."""
+    return (
+        source.get("status") == "selected_pool_price_refresh_partial"
+        and bool(partial_eligible_symbols(source))
+    )
+
+
 def _project_provider_contract(value: Mapping[str, Any]) -> dict[str, Any]:
     _assert_exact_keys(value, _PROVIDER_CONTRACT_KEYS, "provider contract")
     markets = value.get("markets")

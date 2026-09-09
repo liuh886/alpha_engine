@@ -555,8 +555,16 @@ def refresh_selected_pool_prices(
     max_rounds: int = 2,
     full_refresh: bool = False,
     auxiliary_symbols: list[str] | tuple[str, ...] | None = None,
+    allow_partial: bool = False,
 ) -> dict[str, Any]:
-    """Build one isolated provider through ``cutoff`` for the selected pool."""
+    """Build one isolated provider through ``cutoff`` for the selected pool.
+
+    With ``allow_partial=True`` symbols that fail without a ready-source
+    fallback are quarantined (excluded from the provider, named in the
+    manifest) instead of melting the whole market build. A quarantined
+    benchmark is never degradable: without the market clock the provider
+    cannot watermark any strategy, so it still fails closed.
+    """
 
     _requested_window_bounds(start, cutoff)
     project_root = Path(root).resolve()
@@ -807,33 +815,64 @@ def refresh_selected_pool_prices(
         )
         if failures:
             _log_stale_diagnostics(records=records, cutoff=cutoff, audits=before)
-            manifest.update(
-                {
-                    "status": "selected_pool_price_refresh_blocked",
-                    "failure_count": len(failures),
-                    "failed_symbols": [row["symbol"] for row in failures],
-                    "failures": failures,
-                    "all_sources_ready": False,
-                    "all_sources_current": False,
-                }
-            )
-            shutil.rmtree(stage / "data", ignore_errors=True)
-            _write_json(
-                stage / "artifacts" / "selected_pool_price_refresh_manifest.json",
-                manifest,
-            )
-            stage.replace(destination)
-            raise RuntimeError(
-                "selected-pool refresh failed for symbols: "
-                + ", ".join(str(row["symbol"]) for row in failures)
-            )
+            quarantined = [str(row["symbol"]) for row in failures]
+            materialized = [
+                symbol
+                for symbol in required
+                if symbol not in set(quarantined)
+                and (csv_out / f"{symbol}.csv").is_file()
+            ]
+            if (
+                allow_partial
+                and materialized
+                and benchmark not in set(quarantined)
+            ):
+                manifest.update(
+                    {
+                        "status": "selected_pool_price_refresh_partial",
+                        "failure_count": len(failures),
+                        "failed_symbols": quarantined,
+                        "quarantined_symbols": sorted(quarantined),
+                        "all_sources_ready": False,
+                        "all_sources_current": False,
+                    }
+                )
+            else:
+                manifest.update(
+                    {
+                        "status": "selected_pool_price_refresh_blocked",
+                        "failure_count": len(failures),
+                        "failed_symbols": [row["symbol"] for row in failures],
+                        "failures": failures,
+                        "all_sources_ready": False,
+                        "all_sources_current": False,
+                    }
+                )
+                shutil.rmtree(stage / "data", ignore_errors=True)
+                _write_json(
+                    stage / "artifacts" / "selected_pool_price_refresh_manifest.json",
+                    manifest,
+                )
+                stage.replace(destination)
+                raise RuntimeError(
+                    "selected-pool refresh failed for symbols: "
+                    + ", ".join(str(row["symbol"]) for row in failures)
+                )
 
+        quarantined_symbols = [
+            str(value)
+            for value in manifest.get("quarantined_symbols", [])
+            if str(value).strip()
+        ]
+        covered = [
+            symbol for symbol in required if symbol not in set(quarantined_symbols)
+        ]
         after = {
             symbol: _audit_source(csv_out / f"{symbol}.csv", symbol)
-            for symbol in required
+            for symbol in covered
         }
         blocked = [
-            symbol for symbol in required if after[symbol]["status"] != "ready"
+            symbol for symbol in covered if after[symbol]["status"] != "ready"
         ]
         if blocked:
             raise RuntimeError(
@@ -857,18 +896,24 @@ def refresh_selected_pool_prices(
             _log_stale_diagnostics(records=records, cutoff=cutoff, audits=after)
         manifest.update(
             {
-                "status": "selected_pool_price_refresh_ready",
-                "failure_count": 0,
-                "failed_symbols": [],
                 "stale_symbols": stale_symbols,
                 "after": after,
                 "provider_identity_sha256": provider_manifest.get(
                     "provider_identity_sha256"
                 ),
-                "all_sources_ready": True,
-                "all_sources_current": not stale_symbols,
+                "all_sources_current": not stale_symbols
+                and not quarantined_symbols,
             }
         )
+        if not quarantined_symbols:
+            manifest.update(
+                {
+                    "status": "selected_pool_price_refresh_ready",
+                    "failure_count": 0,
+                    "failed_symbols": [],
+                    "all_sources_ready": True,
+                }
+            )
         _write_json(
             stage / "artifacts" / "selected_pool_price_refresh_manifest.json",
             manifest,
@@ -899,6 +944,15 @@ def main() -> None:
         action="store_true",
         help="Rebuild every candidate, benchmark, and auxiliary security.",
     )
+    parser.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help=(
+            "Quarantine symbols that fail without a ready-source fallback "
+            "instead of melting the whole market build. A quarantined "
+            "benchmark still fails closed."
+        ),
+    )
     args = parser.parse_args()
 
     payload = refresh_selected_pool_prices(
@@ -911,6 +965,7 @@ def main() -> None:
         max_rounds=args.max_rounds,
         full_refresh=args.full_refresh,
         auxiliary_symbols=args.auxiliary_symbol,
+        allow_partial=args.allow_partial,
     )
     print(json.dumps(payload, indent=2, sort_keys=True))
 

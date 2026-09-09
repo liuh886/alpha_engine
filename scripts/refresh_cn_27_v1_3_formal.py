@@ -34,6 +34,10 @@ from scripts.cn27_v1_3_formal_common import (
     run_k2_variant_battery,
 )
 from src.artifacts.formal_refresh import load_object
+from src.artifacts.strategy_refresh_exit import (
+    DataBlockedError,
+    assert_shared_provider_coverage,
+)
 from src.research.cn27_v1_3 import contribution_attribution
 from src.research.cn130_cross_sectional_ranking import load_provider_panel
 
@@ -115,6 +119,7 @@ def extend_bars(
     if cutoff_ts <= frozen_end:
         raise Cn27V13RefreshError("refresh cutoff must extend beyond the frozen bars")
     required = sorted(frozen["symbol"].astype(str).unique().tolist())
+    assert_shared_provider_coverage(provider_dir, required, label="CN_27 V1.3")
     keys = _resolve_provider_keys(provider_dir, required)
     panel = load_provider_panel(provider_dir, list(keys.values()), fields=SOURCE_FIELDS)
     new_frames: list[pd.DataFrame] = []
@@ -382,15 +387,22 @@ def main() -> int:
     parser.add_argument("--generated-at", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    summary = refresh_cn_27_v1_3(
-        current_package=args.current_package,
-        provider_dir=args.provider_dir,
-        provider_manifest=args.provider_manifest,
-        contract_path=args.contract,
-        cutoff=args.cutoff,
-        generated_at=args.generated_at,
-        output=args.output,
-    )
+    try:
+        summary = refresh_cn_27_v1_3(
+            current_package=args.current_package,
+            provider_dir=args.provider_dir,
+            provider_manifest=args.provider_manifest,
+            contract_path=args.contract,
+            cutoff=args.cutoff,
+            generated_at=args.generated_at,
+            output=args.output,
+        )
+    except DataBlockedError as exc:
+        # Exit 10 = governed data block (retain, degraded). The strategy
+        # runner maps it to data_blocked instead of execution_failed so one
+        # strategy's missing data no longer melts the whole publish fan-in.
+        print(json.dumps({"data_blocked": str(exc)}, ensure_ascii=False))
+        return 10
     print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
     return 0
 

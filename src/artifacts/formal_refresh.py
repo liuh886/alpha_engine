@@ -14,6 +14,8 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from src.data.selected_pool_price_publication import is_partial_eligible
+
 
 class FormalRefreshError(ValueError):
     """Raised when refresh evidence violates the publication contract."""
@@ -90,9 +92,15 @@ def market_provider_cutoff(manifest: Mapping[str, Any], *, market: str) -> str:
 
     if manifest.get("market") != market:
         raise FormalRefreshError(f"provider manifest market mismatch: expected {market}")
-    if manifest.get("status") != "selected_pool_price_refresh_ready":
+    status = manifest.get("status")
+    if status == "selected_pool_price_refresh_partial":
+        if not is_partial_eligible(manifest):
+            raise FormalRefreshError(
+                f"{market} partial provider refresh has no eligible symbols"
+            )
+    elif status != "selected_pool_price_refresh_ready":
         raise FormalRefreshError(f"{market} provider refresh is not ready")
-    if manifest.get("promotion_eligible") is not True:
+    elif manifest.get("promotion_eligible") is not True:
         raise FormalRefreshError(f"{market} provider refresh is not promotion eligible")
     if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
         raise FormalRefreshError(f"{market} provider refresh boundary is invalid")

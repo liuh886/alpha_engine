@@ -15,6 +15,7 @@ from src.data.market_provider import (
 from src.data.selected_pool_price_publication import (
     PUBLICATION_MANIFEST_NAME,
     SelectedPoolPricePublicationError,
+    partial_eligible_symbols,
     verify_selected_pool_price_publication_manifest,
 )
 
@@ -399,6 +400,74 @@ def verify_provider_cache(
             raise FormalProviderCacheError(f"provider cache {key} mismatch")
     return receipt
 
+
+def verify_partial_provider_cache(
+    *,
+    provider_root: Path,
+    contract: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate a partial provider structurally without sealing reuse.
+
+    Partial providers are never cache-reusable (the next run retries the
+    quarantined symbols), but strategies need a governed quarantine binding.
+    This check confirms market/cutoff identity, a non-empty eligible set and
+    quarantine membership inside the contracted symbol universe. Anything
+    else fails closed exactly like the full path.
+    """
+
+    provider_root = provider_root.resolve()
+    manifest_path = (
+        provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
+    )
+    manifest = _load_json(manifest_path)
+    market = str(contract.get("market", ""))
+    if str(manifest.get("market", "")) != market:
+        raise FormalProviderCacheError("partial provider market does not match contract")
+    if str(manifest.get("cutoff", "")) != str(contract.get("requested_cutoff", "")):
+        raise FormalProviderCacheError("partial provider cutoff does not match contract")
+    if manifest.get("status") != "selected_pool_price_refresh_partial":
+        raise FormalProviderCacheError("partial provider status is not partial")
+    if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
+        raise FormalProviderCacheError("partial provider crossed research boundary")
+    eligible = partial_eligible_symbols(manifest)
+    if not eligible:
+        raise FormalProviderCacheError("partial provider eligible set is empty")
+    quarantined = {
+        str(value).strip().upper()
+        for value in manifest.get("quarantined_symbols", [])
+        if str(value).strip()
+    }
+    if not quarantined:
+        raise FormalProviderCacheError("partial provider names no quarantine")
+    contracted = {
+        str(value).strip().upper()
+        for value in contract.get("auxiliary_symbols", [])
+    }
+    for field in ("candidate_symbols", "comparison_reference_symbols"):
+        values = manifest.get(field)
+        if isinstance(values, list):
+            contracted.update(
+                str(value).strip().upper() for value in values if str(value).strip()
+            )
+    benchmark = str(manifest.get("benchmark", "")).strip().upper()
+    if benchmark:
+        contracted.add(benchmark)
+    outside = sorted(quarantined - contracted)
+    if outside:
+        raise FormalProviderCacheError(
+            f"partial provider quarantines symbols outside the contract: {outside}"
+        )
+    return {
+        "schema_version": CACHE_SCHEMA_VERSION,
+        "evidence_type": "formal_provider_cache_partial_report",
+        "market": market,
+        "requested_cutoff": str(contract.get("requested_cutoff")),
+        "eligible_count": len(eligible),
+        "quarantined_symbols": sorted(quarantined),
+        "eligible_symbols": sorted(eligible),
+        "research_only": True,
+        "trade_ready": False,
+    }
 
 def load_contract(path: Path) -> dict[str, Any]:
     contract = _load_json(path)

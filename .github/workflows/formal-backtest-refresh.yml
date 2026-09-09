@@ -490,9 +490,18 @@ jobs:
           PY2
           )
           timeout --signal=TERM --kill-after=30s 30m \
-            uv run python scripts/data/refresh_selected_pool_prices_v2.py "${args[@]}"
-      - name: Seal fresh provider cache
+            uv run python scripts/data/refresh_selected_pool_prices_v2.py "${args[@]}" --allow-partial
+      - name: Read provider refresh status
+        id: provider_status
         if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true'
+        env:
+          MARKET: ${{ matrix.market }}
+        run: |
+          status=$(python -c "import json; print(json.load(open('artifacts/formal-refresh/provider-${MARKET}/artifacts/selected_pool_price_refresh_manifest.json')).get('status', 'unknown'))")
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "provider refresh status: $status"
+      - name: Seal fresh provider cache
+        if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true' && steps.provider_status.outputs.status == 'selected_pool_price_refresh_ready'
         env:
           MARKET: ${{ matrix.market }}
         run: |
@@ -500,6 +509,14 @@ jobs:
             --provider-root "artifacts/formal-refresh/provider-${MARKET}" \
             --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
             --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
+      - name: Verify partial provider quarantine binding
+        if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true' && steps.provider_status.outputs.status == 'selected_pool_price_refresh_partial'
+        env:
+          MARKET: ${{ matrix.market }}
+        run: |
+          python -m scripts.govern_formal_provider_cache verify-partial \
+            --provider-root "artifacts/formal-refresh/provider-${MARKET}" \
+            --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json"
       - name: Verify restored provider cache
         if: steps.provider_cache.outputs.cache-hit == 'true' || steps.effective_cache.outputs.cache-hit == 'true'
         env:
@@ -510,7 +527,7 @@ jobs:
             --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
             --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
       - name: Save exact governed provider cache
-        if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true'
+        if: steps.provider_cache.outputs.cache-hit != 'true' && steps.effective_cache.outputs.cache-hit != 'true' && steps.provider_status.outputs.status == 'selected_pool_price_refresh_ready'
         uses: actions/cache/save@v6
         with:
           path: artifacts/formal-refresh/provider-${{ matrix.market }}

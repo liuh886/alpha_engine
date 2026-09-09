@@ -12,6 +12,7 @@ from src.artifacts.formal_provider_cache import (
     cache_key,
     load_contract,
     seal_provider_cache,
+    verify_partial_provider_cache,
     verify_provider_cache,
     write_contract,
 )
@@ -43,6 +44,10 @@ def main() -> int:
         child.add_argument("--contract", type=Path, required=True)
         child.add_argument("--receipt", type=Path, required=True)
 
+    partial_parser = subparsers.add_parser("verify-partial")
+    partial_parser.add_argument("--provider-root", type=Path, required=True)
+    partial_parser.add_argument("--contract", type=Path, required=True)
+
     args = parser.parse_args()
     if args.command == "contract":
         contract = build_provider_cache_contract(
@@ -65,6 +70,11 @@ def main() -> int:
                 provider_root=args.provider_root,
                 contract=contract,
                 receipt_path=args.receipt,
+            )
+        elif args.command == "verify-partial":
+            result = verify_partial_provider_cache(
+                provider_root=args.provider_root,
+                contract=contract,
             )
         else:
             result = verify_provider_cache(

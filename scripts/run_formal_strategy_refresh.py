@@ -43,6 +43,9 @@ CN27_MODEL_ID = "cn_27_v1_3"
 BYD_PREDECESSOR = Path(
     "data/research/historical_model_evidence/byd_v1_2_convex_momentum_budget_v1.json"
 )
+# Strategy adapters exit 10 for a governed data block (retain, degraded);
+# any other non-zero exit remains an execution failure (fatal to publish).
+DATA_BLOCKED_EXIT_CODE = 10
 
 
 class StrategyRefreshBlocked(RuntimeError):
@@ -801,11 +804,28 @@ def main() -> int:
         write_object(receipt_path, receipt)
         print(json.dumps(receipt, indent=2, sort_keys=True))
         return 1
+    except subprocess.CalledProcessError as exc:
+        if exc.returncode == DATA_BLOCKED_EXIT_CODE:
+            receipt = {
+                **_base_receipt(task),
+                "execution_status": "data_blocked",
+                "reason": f"strategy adapter reported governed data block: {exc}",
+            }
+            write_object(receipt_path, receipt)
+            print(json.dumps(receipt, indent=2, sort_keys=True))
+            return 1
+        receipt = {
+            **_base_receipt(task),
+            "execution_status": "execution_failed",
+            "reason": str(exc),
+        }
+        write_object(receipt_path, receipt)
+        print(json.dumps(receipt, indent=2, sort_keys=True))
+        return 1
     except (
         OSError,
         ValueError,
         KeyError,
-        subprocess.CalledProcessError,
         tarfile.TarError,
         zipfile.BadZipFile,
     ) as exc:
