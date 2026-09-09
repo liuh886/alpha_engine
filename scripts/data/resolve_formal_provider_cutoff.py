@@ -4,17 +4,25 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import yaml
 
 from scripts.data.refresh_selected_pool_prices_v2 import build_hardened_router
 from src.data.router import MarketDataRouter
 from src.research.market_session_clock import completed_market_date
 
 BENCHMARKS = {"us": "QQQ", "cn": "000300"}
+# Strategy pools whose members must be complete before the market cutoff is
+# blessed: the benchmark-only probe over-promised when members lagged the
+# benchmark (vendor EOD delays), melting the whole market build. Symbols are
+# derived from the pool file, never hand-listed here.
+STRATEGY_POOL_PATHS = {"cn": "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"}
+PROBE_DELAY_SECONDS = 1.0
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -36,6 +44,52 @@ def _write_github_output(path: Path | None, values: dict[str, str]) -> None:
 def _previous_completed(market: str, cutoff: str) -> str:
     requested = (date.fromisoformat(cutoff) - timedelta(days=1)).isoformat()
     return completed_market_date(market, requested)
+
+
+def _strategy_probe_symbols(root: Path, market_key: str) -> list[str]:
+    """Derive strategy-critical symbols that gate the market cutoff."""
+    relative = STRATEGY_POOL_PATHS.get(market_key)
+    if not relative:
+        return []
+    pool = yaml.safe_load((root / relative).read_text(encoding="utf-8"))
+    symbols: list[str] = []
+    for entry in pool.get("symbols", []):
+        symbol = entry.get("symbol") if isinstance(entry, dict) else entry
+        if str(symbol or "").strip():
+            symbols.append(str(symbol).strip().upper())
+    references = pool.get("references", {})
+    if isinstance(references, dict):
+        for key, entry in references.items():
+            if not isinstance(entry, dict):
+                continue
+            role = str(entry.get("role") or "")
+            if "benchmark" in role.lower():
+                continue
+            symbol = entry.get("symbol") or entry.get("provider_symbol") or key
+            if str(symbol or "").strip():
+                symbols.append(
+                    str(symbol).strip().upper().lstrip("^").split(".", 1)[0]
+                )
+    return sorted(set(symbols))
+
+
+def _probe_watermark(
+    data_router: MarketDataRouter,
+    *,
+    market_key: str,
+    symbol: str,
+    start: str,
+    end: str,
+) -> str | None:
+    response = data_router.fetch_daily_bars(
+        symbol=symbol, market=market_key, start=start, end=end, validate=True
+    )
+    if not response.ok or response.result is None:
+        return None
+    dates = pd.to_datetime(response.result.df.get("date"), errors="coerce").dropna()
+    if dates.empty:
+        return None
+    return pd.Timestamp(dates.max()).tz_localize(None).date().isoformat()
 
 
 def resolve_formal_provider_cutoff(
@@ -64,7 +118,7 @@ def resolve_formal_provider_cutoff(
     )
     attempts = [attempt.to_dict() for attempt in response.attempts]
     base = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "evidence_type": "formal_provider_readiness_v1",
         "market": market_key,
         "benchmark": benchmark,
@@ -103,11 +157,46 @@ def resolve_formal_provider_cutoff(
             "blocker": "provider complete-session watermark regressed behind governed seed",
         }
 
-    effective = min(observed, requested)
+    # Strategy-critical members gate the cutoff: blessing a session the
+    # strategies cannot consume melts the market build downstream. The
+    # watermark read is vendor-independent (dates only), so fallback vendors
+    # stay representative even when their adjustment differs.
+    # (US has no strategy pool file: its floor stays the benchmark watermark,
+    # preserving benchmark-only behavior there.)
+    repository_root = Path(__file__).resolve().parents[2]
+    probe_symbols = [
+        symbol
+        for symbol in _strategy_probe_symbols(repository_root, market_key)
+        if symbol != benchmark
+    ]
+    watermarks: dict[str, str | None] = {}
+    for symbol in probe_symbols:
+        watermarks[symbol] = _probe_watermark(
+            data_router,
+            market_key=market_key,
+            symbol=symbol,
+            start=seed,
+            end=requested,
+        )
+        time.sleep(PROBE_DELAY_SECONDS)
+    failed = sorted(symbol for symbol, mark in watermarks.items() if mark is None)
+    if failed:
+        return {
+            **base,
+            "status": "blocked",
+            "observed_cutoff": observed,
+            "member_watermarks": watermarks,
+            "effective_cutoff": None,
+            "effective_seed_cutoff": None,
+            "blocker": "strategy-critical provider fetch failed: " + ", ".join(failed),
+        }
+    member_floor = min([observed] + [str(mark) for mark in watermarks.values() if mark])
+    effective = min(member_floor, requested)
     return {
         **base,
         "status": "current" if effective == requested else "delayed",
         "observed_cutoff": observed,
+        "member_watermarks": watermarks,
         "effective_cutoff": effective,
         "effective_seed_cutoff": _previous_completed(market_key, effective),
         "blocker": None,

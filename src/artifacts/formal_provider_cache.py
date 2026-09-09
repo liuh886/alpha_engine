@@ -225,6 +225,19 @@ def _validate_manifest(
         raise FormalProviderCacheError("cached provider is not promotion eligible")
     if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
         raise FormalProviderCacheError("cached provider crossed research boundary")
+    records = [row for row in manifest.get("records", []) if isinstance(row, dict)]
+    symbols = [str(row.get("symbol", "")).strip().upper() for row in records]
+    if not symbols or len(symbols) != len(set(symbols)):
+        raise FormalProviderCacheError("cached provider symbols are incomplete or duplicated")
+    candidate_symbols = {
+        str(value).strip().upper()
+        for value in manifest.get("candidate_symbols", [])
+        if str(value).strip()
+    }
+    if len(candidate_symbols) != int(manifest.get("candidate_count", 0)):
+        raise FormalProviderCacheError("cached candidate identity is incomplete")
+    if not candidate_symbols.issubset(set(symbols)):
+        raise FormalProviderCacheError("cached candidates are outside the provider symbols")
     contract_auxiliaries = {
         str(value).strip().upper()
         for value in contract.get("auxiliary_symbols", [])
@@ -239,23 +252,20 @@ def _validate_manifest(
         for value in manifest.get("comparison_reference_symbols", [])
         if str(value).strip()
     }
-    if manifest_auxiliaries != contract_auxiliaries:
+    # A contract auxiliary that is also a selected-pool candidate (or the
+    # benchmark) is materialized as a candidate, which is a stronger
+    # guarantee than auxiliary coverage: TYGO is the live case. Only
+    # auxiliaries materialized nowhere may fail the seal.
+    materialized = set(manifest_auxiliaries) | set(candidate_symbols)
+    benchmark = str(manifest.get("benchmark", "")).strip().upper()
+    if benchmark:
+        materialized.add(benchmark)
+    missing_auxiliaries = sorted(contract_auxiliaries - materialized)
+    if missing_auxiliaries:
         raise FormalProviderCacheError(
-            "cached provider auxiliaries do not match contract"
+            "cached provider auxiliaries do not match contract: "
+            + ", ".join(missing_auxiliaries)
         )
-    records = [row for row in manifest.get("records", []) if isinstance(row, dict)]
-    symbols = [str(row.get("symbol", "")).strip().upper() for row in records]
-    if not symbols or len(symbols) != len(set(symbols)):
-        raise FormalProviderCacheError("cached provider symbols are incomplete or duplicated")
-    candidate_symbols = {
-        str(value).strip().upper()
-        for value in manifest.get("candidate_symbols", [])
-        if str(value).strip()
-    }
-    if len(candidate_symbols) != int(manifest.get("candidate_count", 0)):
-        raise FormalProviderCacheError("cached candidate identity is incomplete")
-    if not candidate_symbols.issubset(set(symbols)):
-        raise FormalProviderCacheError("cached candidates are outside the provider symbols")
     for record in records:
         symbol = str(record.get("symbol", "")).strip().upper()
         expected = str(record.get("output_sha256", ""))

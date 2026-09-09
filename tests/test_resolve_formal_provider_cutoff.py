@@ -11,6 +11,7 @@ class FakeRouter:
     def __init__(self, frame: pd.DataFrame | None) -> None:
         self.frame = frame
         self.last_request: dict[str, object] | None = None
+        self.requests: list[dict[str, object]] = []
 
     def fetch_daily_bars(
         self,
@@ -28,6 +29,7 @@ class FakeRouter:
             "end": end,
             "validate": validate,
         }
+        self.requests.append(dict(self.last_request))
         if self.frame is None:
             return RouterResponse(
                 result=None,
@@ -96,7 +98,12 @@ def test_resolver_marks_provider_wide_one_session_lag_delayed() -> None:
     assert payload["effective_seed_cutoff"] == "2026-08-26"
 
 
-def test_cn_resolver_uses_benchmark_watermark_before_admitting_cutoff() -> None:
+def test_cn_resolver_uses_benchmark_watermark_before_admitting_cutoff(
+    monkeypatch,
+) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
     router = FakeRouter(_frame("2026-08-31"))
     payload = resolve_formal_provider_cutoff(
         market="cn",
@@ -105,7 +112,7 @@ def test_cn_resolver_uses_benchmark_watermark_before_admitting_cutoff() -> None:
         router=router,  # type: ignore[arg-type]
     )
 
-    assert router.last_request == {
+    assert router.requests[0] == {
         "symbol": "000300",
         "market": "cn",
         "start": "2026-08-31",
@@ -145,3 +152,89 @@ def test_resolver_blocks_regression_behind_governed_seed() -> None:
     assert payload["blocker"] == (
         "provider complete-session watermark regressed behind governed seed"
     )
+
+
+class LagRouter(FakeRouter):
+    """Benchmark is current but one strategy symbol lags (vendor EOD delay)."""
+
+    def fetch_daily_bars(self, *, symbol: str, **kwargs):
+        if symbol == "002156":
+            frame = _frame("2026-08-27", "2026-08-30")
+        else:
+            frame = _frame("2026-08-27", "2026-08-31")
+        self.frame = frame
+        return super().fetch_daily_bars(symbol=symbol, **kwargs)
+
+
+def test_cn_probe_lowers_cutoff_when_strategy_symbol_lags(
+    monkeypatch,
+) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
+    router = LagRouter(_frame("2026-08-31"))
+    payload = resolve_formal_provider_cutoff(
+        market="cn",
+        requested_cutoff="2026-09-01",
+        seed_cutoff="2026-08-31",
+        router=router,  # type: ignore[arg-type]
+    )
+
+    assert payload["status"] == "delayed"
+    assert payload["observed_cutoff"] == "2026-08-31"
+    assert payload["member_watermarks"]["002156"] == "2026-08-30"
+    assert payload["effective_cutoff"] == "2026-08-30"
+    assert payload["blocker"] is None
+
+
+def test_cn_probe_blocks_when_strategy_symbol_unavailable(
+    monkeypatch,
+) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
+
+    class DeadRouter(FakeRouter):
+        def fetch_daily_bars(self, *, symbol: str, **kwargs):
+            if symbol == "002156":
+                return RouterResponse(
+                    result=None,
+                    attempts=[
+                        RouterAttempt(
+                            provider="yfinance",
+                            ok=False,
+                            provider_symbol=symbol,
+                            error="provider unavailable",
+                        )
+                    ],
+                )
+            return super().fetch_daily_bars(symbol=symbol, **kwargs)
+
+    router = DeadRouter(_frame("2026-08-31"))
+    payload = resolve_formal_provider_cutoff(
+        market="cn",
+        requested_cutoff="2026-09-01",
+        seed_cutoff="2026-08-31",
+        router=router,  # type: ignore[arg-type]
+    )
+
+    assert payload["status"] == "blocked"
+    assert payload["effective_cutoff"] is None
+    assert "002156" in str(payload["blocker"])
+
+
+def test_us_probe_stays_benchmark_only(monkeypatch) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
+    router = FakeRouter(_frame("2026-08-27", "2026-08-28"))
+    payload = resolve_formal_provider_cutoff(
+        market="us",
+        requested_cutoff="2026-08-28",
+        seed_cutoff="2026-08-27",
+        router=router,  # type: ignore[arg-type]
+    )
+
+    assert payload["effective_cutoff"] == "2026-08-28"
+    assert payload["member_watermarks"] == {}
+    assert [request["symbol"] for request in router.requests] == ["QQQ"]

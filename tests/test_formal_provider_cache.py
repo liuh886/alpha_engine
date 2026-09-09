@@ -436,9 +436,22 @@ def test_provider_cache_rejects_auxiliary_mismatch(tmp_path: Path) -> None:
     root = _provider_tree(tmp_path)
     contract = _contract()
     mismatched = copy.deepcopy(contract)
-    mismatched["auxiliary_symbols"] = ["AAA"]
+    mismatched["auxiliary_symbols"] = ["ZZZ"]
     receipt = root / "artifacts/formal-provider-cache-receipt.json"
     with pytest.raises(FormalProviderCacheError, match="auxiliaries do not match"):
         seal_provider_cache(
             provider_root=root, contract=mismatched, receipt_path=receipt
         )
+
+
+def test_provider_cache_accepts_auxiliary_covered_as_candidate(
+    tmp_path: Path,
+) -> None:
+    # TYGO is the live case: a contract auxiliary that is also a
+    # selected-pool candidate is materialized as a candidate.
+    root = _provider_tree(tmp_path)
+    contract = _contract()
+    covered = copy.deepcopy(contract)
+    covered["auxiliary_symbols"] = ["AAA"]
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    seal_provider_cache(provider_root=root, contract=covered, receipt_path=receipt)
