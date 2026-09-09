@@ -131,6 +131,23 @@ jobs:
         with:
           path: artifacts/formal-refresh/provider-${{ inputs.market }}
           key: ${{ steps.contract.outputs.cache_key }}-governed
+      - name: Verify governed cache reservation
+        # actions/cache is immutable per key and concurrent same-key writers
+        # fail silently: prove the reservation landed instead of assuming it.
+        if: steps.provider_status.outputs.status == 'selected_pool_price_refresh_ready'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          key="${{ steps.contract.outputs.cache_key }}-governed"
+          for attempt in 1 2 3 4 5 6; do
+            if gh cache list --limit 100 --json key --jq '.[].key' | grep -qx "$key"; then
+              echo "cache key reserved: $key"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "cache key missing after save (concurrent writer won the race): $key"
+          exit 1
       - name: Upload provider diagnostics
         if: ${{ failure() }}
         uses: actions/upload-artifact@v6
