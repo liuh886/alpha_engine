@@ -1,0 +1,42 @@
+{
+  "inputs": {
+    "contract_sha256": "e94dce74fa65949896d07d7f09c30a1b065979eda87ba4dbbee7728530d190b8",
+    "pool_sha256": "453133fe64e2843fdb147222724efee20d961641c9fb0febcbb46638363ef5a0",
+    "source_payload_hashes": {
+      "AAOI": "049d0bb26abf86a5dffe79a0408fd8594f2adb2c79940f380e15923ef1640fe3",
+      "AAPL": "2d1974cf68b105aa4ae1a9da58bc95488993216dde40f8470bcf17eef4c8a472",
+      "ALAB": "8a16ca810b849c1f62bdd45fbe22d8ace692defe6ef714d9e88b17b8b8956205",
+      "AMD": "7a88466c7622fc1d640cc115be5e7badb7bea43b481750e4ae084e158da665e8",
+      "CRDO": "9268826a5bb93f1d16e90b9933d6dd8bf4b37d174455f3c3c08dcf3f2d038ede",
+      "HIMS": "31ee2482ec3a57351149a7fe8b40839e1488b14920c548bb4f23d16a46343e17",
+      "INTC": "5a55b6dd41cd28f35a7df53e10b783ffdc6dc248f70416a73a54121096540e3c",
+      "IREN": "ca6372a787bc178c98ef933bf2401b89160b9656370406510f90ce95ae772545",
+      "JD": "df962f85dde739294971c3d85d8b1b44105c77e7fa27864a3259a4fe46483b0b",
+      "KO": "b106be15ddd4378a66ee9da5e1a3325c89d9ede2d89bdaaf5419f15a7dc5f501",
+      "LITE": "7dce87fb02ba6645cdb297673128ee0054941a7bcff1fd2bc293edf27a0ca6d2",
+      "MSFT": "75bebe2eebf09fd5c1383646a761563922c8eb0f2cdb107a13e526572a5140c3",
+      "NBIS": "3515bd911eb092966b0e0cd6dc6ec470412ab6fdfbe7113c8135dcd6987c0c7d",
+      "NOK": "7c54bdc24f3d286060dd97495a34e409535406642a85341e4437e2b93d79f859",
+      "ORCL": "cf7cb9e13f6de42c4b3807469064dc164df211d21138c37f9a8ed79967a07924",
+      "PDD": "411bc522d6af7aa6a5e5fde8a8885a4c6d8a72d4c9e515277510e68125998012",
+      "POET": "b3630e29dd40b3280eb59ba55341d4d8812a9d9630ea4ea47b2f678ea4d538ae",
+      "TSLA": "7546c50f42aebd116fa8c665708f40e64200f14a4649444c3171deaf6311553e",
+      "TSM": "d39826bf49737592b6e460aff55b4fc52b3974d1d2862a3686b69e6d65b12b42",
+      "TYGO": "8801991a37374d35eb280c915129b27aae39176a21f3104848e1878bd0c6bc0e",
+      "VRT": "f7b14daf500383d19756508a3d30fe0f0d3a78b8626907efe901044ceb44b80b",
+      "WDC": "5a826008bf293e66dad92ae5bbde5a6e7c6f79e2dcecd0da541bbf3a72b3ad2c",
+      "WMT": "fcfc210b8a75734e57d20f2fc750aa8509752d015c4ddf251bf633dabccdc3be",
+      "ticker_mapping": "37b5741afb6ec56b204be67b5140e12f046afca65271ce8a7875e17d89716de8"
+    },
+    "user_agent_present": true,
+    "user_agent_sha256": "d463d3e0da7c73c4912c68aa4a52ead960151f03e145df82af6eb1b671814ad5"
+  },
+  "manifest_identity_sha256": "e1eb48f30c1ba9ac8593da918a776f79e9922e016a7a19f82478a40071c0bae0",
+  "outputs": {
+    "coverage_report.json": "b929d8bb32834d2d421030054620c2b95118bcafc6cea7bac999cad0d6f32638",
+    "decision.json": "e584e39275c1dde64d01ae6f1e2b69d2a5cbd283222425d3be219d21fc964b9a",
+    "fundamentals.csv": "d82a794ce5b113856aa1d09cb79d28c96568b9b5183290154a574126b573a0e2"
+  },
+  "schema_version": "1.0",
+  "source_contract_id": "sec_companyfacts_fundamentals_v2"
+}

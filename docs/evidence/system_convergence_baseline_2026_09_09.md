@@ -55,3 +55,10 @@
 - `dump_all` text calendars/instruments unified to LF (`lf_newlines=True` default; explicit `True` in `build_market_providers`). Linux CI bytes unchanged; Windows local rebuilds now match CI. Bins unaffected (binary).
 - Verified: refresh `_write_csv` and `_stage_cutoff_source` already write LF; regression tests `tests/test_evidence_portability.py` lock LF output + dump determinism.
 - Deliberately unchanged (recorded decision): sealed CRLF evidence keeps its bytes (re-hashing would break replay); per-module JSON canonical forms stay frozen (changing them would relabel live bundle ids); pandas float repr stays default (locked deps make it deterministic; rewriting bytes would invalidate sealed evidence for zero failing symptom).
+
+## Phase 5 addendum (2026-09-09): first closed narrow loop
+
+- Experiment `us_small_pool_fundamental_acceleration_v1`: **not_supported** (5 failed gates), evidence fully retained. Candidate trails equal-weight in both windows; SMA100 gate churns 7.8x/5.4x against a 4.0 ceiling; drawdown -0.41 breaches -0.35. No post-observation tuning performed.
+- Determinism: 3 consecutive runs (incl. one LF rewrite) return identical verdict + metrics (dev 2.0884 / fals 0.6411).
+- Training profile `us_small_pool_price_plus_fundamentals_v1`: prices green (23/23), fundamentals blocked at 0.609 < 0.80 with 9 named symbols — the gate correctly refuses model training. Corporate actions deliberately out of scope (adjusted bars + 40-session hold; no US store exists).
+- Data-plane fixes landed along the way: WDC restatement first-seen PIT resolution; LF writers for the narrow chain (incl. pandas to_csv os.linesep trap); v1/v2 pool gates generalized with v2 defaults.

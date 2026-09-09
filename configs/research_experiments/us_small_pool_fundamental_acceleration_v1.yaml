@@ -1,0 +1,81 @@
+schema_version: "1.0"
+experiment_id: "us_small_pool_fundamental_acceleration_v1"
+runner: "minimal_fundamental_validation_v1"
+active: false
+status: "completed_not_supported"
+research_only: true
+trade_ready: false
+automatic_promotion_allowed: false
+issue: null
+
+purpose: >-
+  First closed narrow loop on the strategy-specific 23-name US pool:
+  frozen factor contract + point-in-time SEC fundamentals + snapshot bars
+  through development (2021-01-01..2025-12-31) and falsification
+  (2026-01-01..2026-06-30) windows, decided by the contract's own gates.
+  Verdict not_supported is retained as cumulative research memory; no
+  factor, cost, turnover or membership field was tuned after observation.
+
+factor_contract: "configs/factors/us_fundamental_acceleration_v2.yaml"
+factor_contract_sha256: "af5626cf92424d0ec2044bc42ce01e087a7dfc42c94311c4b1477712f69b3383"
+pool_spec: "configs/pools/us_small_pool_v2.yaml"
+pool_spec_sha256: "453133fe64e2843fdb147222724efee20d961641c9fb0febcbb46638363ef5a0"
+source_contract: "configs/providers/sec_companyfacts_fundamentals_v2.yaml"
+source_contract_sha256: "e94dce74fa65949896d07d7f09c30a1b065979eda87ba4dbbee7728530d190b8"
+
+inputs:
+  prices_csv: "artifacts/market_snapshots/us_small_pool_v2/2026-09-08/prices.csv"
+  prices_csv_sha256: "76e4697b57b94a70a6f8eb71a194b7242717188eadd425a3f30645cd8d633f2e"
+  fundamentals_csv: "artifacts/evidence/sec_companyfacts_fundamentals_v2/fundamentals.csv"
+  fundamentals_csv_sha256: "b27a664a6dcb8d37e9d2b0f04795f3d844b2b9bb5fb5efb55e81bf53"
+  evidence_output: "artifacts/evidence/us_fundamental_acceleration_validation_v2"
+
+execution:
+  signal_time: "session_close"
+  execution_time: "next_session_open"
+  primary_cost_bps: 10
+  transaction_cost_bps_per_one_way_turnover: 10.0
+  annual_turnover_ceiling: 4.0
+  average_holding_sessions_floor: 40
+  maximum_drawdown_floor: -0.35
+  maximum_symbol_weight_ceiling: 0.40
+
+windows:
+  development_start: "2021-01-01"
+  development_end: "2025-12-31"
+  falsification_start: "2026-01-01"
+  falsification_end: "2026-06-30"
+  future_independent_window: "starts_strictly_after_2026-09-08"
+
+result_decision: "simple_fundamental_factor_not_supported"
+result_failed_gates:
+  - "development_equal_weight_relative_return"
+  - "development_maximum_drawdown"
+  - "falsification_equal_weight_relative_return"
+  - "annual_turnover"
+  - "maximum_symbol_weight"
+result_receipt: "data/research/experiment_receipts/us_small_pool_fundamental_acceleration_v1.json"
+result_decision_sha256: "6c2b2f85a6ac4da2deb38cdd0f89403c4abbc0a232b333cc874e46823513b17a"
+result_factor_manifest_sha256: "14e392775ba698a91b3bed7060082864029a1157e157b19bc21dfd7ef541c7c6"
+
+key_observations:
+  - "candidate_with_sma100 development total_return 2.0884 trails equal_weight_pool 3.7134 and QQQ 1.0277 on a relative basis; drawdown -0.4138 breaches the -0.35 floor"
+  - "candidate turnover 7.84x development / 5.44x falsification exceeds the 4.0 ceiling: the 20-session SMA100 gate churns"
+  - "attribution variant without_sma100 reaches 3.2782 development / 0.7185 falsification, but it is the attribution leg, not the candidate"
+  - "14/23 symbols factor-ready; ai_infrastructure_power, china_consumer_internet and defensive_consumer baskets fall below the 2-ready minimum, leaving 4 active baskets of 7"
+
+governance:
+  historical_evidence_consumed: true
+  fresh_holdout: false
+  post_result_parameter_change_allowed: false
+  post_result_pool_change_allowed: false
+  automatic_promotion_allowed: false
+  prospective_confirmation_required: false
+  prospective_not_applicable_reason: "rejected candidate has no future window to confirm; the declared future_independent_window stays reserved for a future candidate"
+
+stop_rules:
+  - "no_parameter_search_after_observation"
+  - "no_threshold_changes_after_observation"
+  - "no_pool_or_basket_changes_after_observation"
+  - "no_cost_or_turnover_redefinition_after_observation"
+  - "no_automatic_promotion"

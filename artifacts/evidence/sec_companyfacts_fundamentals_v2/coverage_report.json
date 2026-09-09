@@ -1,0 +1,287 @@
+{
+  "blocked_count": 9,
+  "candidate_count": 23,
+  "factor_ready_count": 14,
+  "research_only": true,
+  "rows": [
+    {
+      "cik": "0001158114",
+      "derived_q4_count": 27,
+      "direct_quarter_count": 78,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2012-09-30",
+      "last_fiscal_period_end": "2026-06-30",
+      "quarter_count": 105,
+      "reason_codes": [],
+      "symbol": "AAOI"
+    },
+    {
+      "cik": "0000320193",
+      "derived_q4_count": 37,
+      "direct_quarter_count": 104,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2008-06-28",
+      "last_fiscal_period_end": "2026-06-27",
+      "quarter_count": 141,
+      "reason_codes": [],
+      "symbol": "AAPL"
+    },
+    {
+      "cik": "0001736297",
+      "derived_q4_count": 2,
+      "direct_quarter_count": 16,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2023-03-31",
+      "last_fiscal_period_end": "2026-06-30",
+      "quarter_count": 18,
+      "reason_codes": [],
+      "symbol": "ALAB"
+    },
+    {
+      "cik": "0000002488",
+      "derived_q4_count": 31,
+      "direct_quarter_count": 82,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2011-12-31",
+      "last_fiscal_period_end": "2026-06-27",
+      "quarter_count": 113,
+      "reason_codes": [],
+      "symbol": "AMD"
+    },
+    {
+      "cik": "0001807794",
+      "derived_q4_count": 5,
+      "direct_quarter_count": 28,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2021-01-31",
+      "last_fiscal_period_end": "2026-08-01",
+      "quarter_count": 33,
+      "reason_codes": [],
+      "symbol": "CRDO"
+    },
+    {
+      "cik": "0001773751",
+      "derived_q4_count": 5,
+      "direct_quarter_count": 34,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2020-03-31",
+      "last_fiscal_period_end": "2026-06-30",
+      "quarter_count": 39,
+      "reason_codes": [],
+      "symbol": "HIMS"
+    },
+    {
+      "cik": "0000050863",
+      "derived_q4_count": 47,
+      "direct_quarter_count": 104,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2008-06-28",
+      "last_fiscal_period_end": "2026-06-27",
+      "quarter_count": 151,
+      "reason_codes": [],
+      "symbol": "INTC"
+    },
+    {
+      "cik": "0001878848",
+      "derived_q4_count": 0,
+      "direct_quarter_count": 0,
+      "factor_ready": false,
+      "first_fiscal_period_end": null,
+      "last_fiscal_period_end": null,
+      "quarter_count": 0,
+      "reason_codes": [
+        "GROSS_PROFIT_CONCEPT_NOT_FOUND",
+        "INSUFFICIENT_QUARTER_COVERAGE"
+      ],
+      "symbol": "IREN"
+    },
+    {
+      "cik": "0001549802",
+      "derived_q4_count": 0,
+      "direct_quarter_count": 0,
+      "factor_ready": false,
+      "first_fiscal_period_end": null,
+      "last_fiscal_period_end": null,
+      "quarter_count": 0,
+      "reason_codes": [
+        "GROSS_PROFIT_CONCEPT_NOT_FOUND",
+        "INSUFFICIENT_QUARTER_COVERAGE"
+      ],
+      "symbol": "JD"
+    },
+    {
+      "cik": "0000021344",
+      "derived_q4_count": 21,
+      "direct_quarter_count": 46,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2017-09-29",
+      "last_fiscal_period_end": "2026-04-03",
+      "quarter_count": 67,
+      "reason_codes": [],
+      "symbol": "KO"
+    },
+    {
+      "cik": "0001633978",
+      "derived_q4_count": 14,
+      "direct_quarter_count": 34,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2014-06-28",
+      "last_fiscal_period_end": "2025-06-28",
+      "quarter_count": 48,
+      "reason_codes": [],
+      "symbol": "LITE"
+    },
+    {
+      "cik": "0000789019",
+      "derived_q4_count": 41,
+      "direct_quarter_count": 84,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2011-06-30",
+      "last_fiscal_period_end": "2026-06-30",
+      "quarter_count": 125,
+      "reason_codes": [],
+      "symbol": "MSFT"
+    },
+    {
+      "cik": "0001513845",
+      "derived_q4_count": 0,
+      "direct_quarter_count": 0,
+      "factor_ready": false,
+      "first_fiscal_period_end": null,
+      "last_fiscal_period_end": null,
+      "quarter_count": 0,
+      "reason_codes": [
+        "GROSS_PROFIT_CONCEPT_NOT_FOUND",
+        "INSUFFICIENT_QUARTER_COVERAGE"
+      ],
+      "symbol": "NBIS"
+    },
+    {
+      "cik": "0000924613",
+      "derived_q4_count": 0,
+      "direct_quarter_count": 0,
+      "factor_ready": false,
+      "first_fiscal_period_end": null,
+      "last_fiscal_period_end": null,
+      "quarter_count": 0,
+      "reason_codes": [
+        "INSUFFICIENT_QUARTER_COVERAGE"
+      ],
+      "symbol": "NOK"
+    },
+    {
+      "cik": "0001341439",
+      "derived_q4_count": 3,
+      "direct_quarter_count": 12,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2015-11-30",
+      "last_fiscal_period_end": "2018-08-31",
+      "quarter_count": 15,
+      "reason_codes": [],
+      "symbol": "ORCL"
+    },
+    {
+      "cik": "0001737806",
+      "derived_q4_count": 0,
+      "direct_quarter_count": 0,
+      "factor_ready": false,
+      "first_fiscal_period_end": null,
+      "last_fiscal_period_end": null,
+      "quarter_count": 0,
+      "reason_codes": [
+        "INSUFFICIENT_QUARTER_COVERAGE"
+      ],
+      "symbol": "PDD"
+    },
+    {
+      "cik": "0001437424",
+      "derived_q4_count": 0,
+      "direct_quarter_count": 0,
+      "factor_ready": false,
+      "first_fiscal_period_end": null,
+      "last_fiscal_period_end": null,
+      "quarter_count": 0,
+      "reason_codes": [
+        "INSUFFICIENT_QUARTER_COVERAGE"
+      ],
+      "symbol": "POET"
+    },
+    {
+      "cik": "0001318605",
+      "derived_q4_count": 26,
+      "direct_quarter_count": 92,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2010-06-30",
+      "last_fiscal_period_end": "2026-06-30",
+      "quarter_count": 118,
+      "reason_codes": [],
+      "symbol": "TSLA"
+    },
+    {
+      "cik": "0001046179",
+      "derived_q4_count": 0,
+      "direct_quarter_count": 0,
+      "factor_ready": false,
+      "first_fiscal_period_end": null,
+      "last_fiscal_period_end": null,
+      "quarter_count": 0,
+      "reason_codes": [
+        "INSUFFICIENT_QUARTER_COVERAGE"
+      ],
+      "symbol": "TSM"
+    },
+    {
+      "cik": "0001855447",
+      "derived_q4_count": 4,
+      "direct_quarter_count": 20,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2022-06-30",
+      "last_fiscal_period_end": "2026-06-30",
+      "quarter_count": 24,
+      "reason_codes": [],
+      "symbol": "TYGO"
+    },
+    {
+      "cik": "0001674101",
+      "derived_q4_count": 0,
+      "direct_quarter_count": 0,
+      "factor_ready": false,
+      "first_fiscal_period_end": null,
+      "last_fiscal_period_end": null,
+      "quarter_count": 0,
+      "reason_codes": [
+        "GROSS_PROFIT_CONCEPT_NOT_FOUND",
+        "INSUFFICIENT_QUARTER_COVERAGE"
+      ],
+      "symbol": "VRT"
+    },
+    {
+      "cik": "0000106040",
+      "derived_q4_count": 20,
+      "direct_quarter_count": 48,
+      "factor_ready": true,
+      "first_fiscal_period_end": "2017-06-30",
+      "last_fiscal_period_end": "2026-07-03",
+      "quarter_count": 68,
+      "reason_codes": [],
+      "symbol": "WDC"
+    },
+    {
+      "cik": "0000104169",
+      "derived_q4_count": 0,
+      "direct_quarter_count": 0,
+      "factor_ready": false,
+      "first_fiscal_period_end": null,
+      "last_fiscal_period_end": null,
+      "quarter_count": 0,
+      "reason_codes": [
+        "GROSS_PROFIT_CONCEPT_NOT_FOUND",
+        "INSUFFICIENT_QUARTER_COVERAGE"
+      ],
+      "symbol": "WMT"
+    }
+  ],
+  "schema_version": "1.0",
+  "source_contract_id": "sec_companyfacts_fundamentals_v2",
+  "trade_ready": false
+}

@@ -1,0 +1,46 @@
+{
+  "inputs": {
+    "pool_id": "us_small_pool_v2",
+    "pool_sha256": "453133fe64e2843fdb147222724efee20d961641c9fb0febcbb46638363ef5a0",
+    "provider": "yfinance",
+    "requested_through": "2026-09-08",
+    "source_identities": {
+      "AAOI": "2d3afd1a3be6827b42b63321d50858e6e30ac876f80a42f8deca3bd42ae51b02",
+      "AAPL": "5ae8ed25fd5f4e627d0c8aec4fffecc31a972febe7b4d78fd6d1af7a23317ea0",
+      "ALAB": "915c807c64c5839c9fc09056ceaf9fdb4389ce697a51cf188afd0e968d2597e4",
+      "AMD": "5b827a821fe94a5e6af1e459c0eb18654cf9f0ee2685f912dce4c60a6de1b3e8",
+      "CRDO": "8ce096777913c7c0e9f0bbd6214c0b1f18631ff4303cd420a7283b750878d8e0",
+      "HIMS": "e9a270f21e69f96b85d37e0ec91377de7ea6c6f6c9e40b9ce8b2da8f80f689c3",
+      "INTC": "28a51a25869b012461cff0765f6231e424b565a05aa23571ff7d3a15927d6af1",
+      "IREN": "cada8bf5727ea7c412597584539394805bcd65cbc73422ece8fc7a5abd3c4f4f",
+      "JD": "bfe0e27395aa138df07851f950d85a382735869e4f3e708a92052dc5210ab7ce",
+      "KO": "9c0c361caab13adfb9c5aaf47193968091bf4acbf201b70ba54721b1bf76d7be",
+      "LITE": "cccb52c788db440a823d10fe2486c8f664297490e9c79c60d5536a30ea4563a6",
+      "MSFT": "b472245492bee228bbd4b460b9a12a7a122c2d6dce0f46b1910879b94ee4e8ec",
+      "NBIS": "183bd8ccf273421b9067dac233ac00350c5e31ba345b6c93813ba3f2ef6f87b3",
+      "NOK": "5719aa2d9f9f3ee64a604b34a71d13eaa1b8c32e7b5aef68cc9ed2128ee3f2bf",
+      "ORCL": "66be9816aeaa55a9e3a5359c2f8e35df4ca5df36ea7ecbfa471613788dee1190",
+      "PDD": "65bea77f3481de89c11c2762d521d7a4c3c48cdad650a3175918df8586585be4",
+      "POET": "afec8d37a371c2edf57f5d985b10619ae54fb994af5fe2fed7e62ccd574bf946",
+      "QQQ": "3b7c224beaee71833716b84a50a39952a87f75a1bb5f748eb3474a33cb160b6e",
+      "SOX": "3e0834435cbcbbaff6ecdff94d15bcf4eb4a00b392df1c23217a8c63fbadfcc1",
+      "TSLA": "c2b7b2b38a6762e311dd977f2d13c555482952e9d62f79168add39db5f81c069",
+      "TSM": "70f8569929872b83b30c0bfd13ebe89ca56e781997067017427a229c5fccef37",
+      "TYGO": "fceeabe52a5e05a3dbce92f092bd857acde16eb7b652d86e44753afbee0d404a",
+      "VRT": "fa12836ff0441d70fc86484ddab59259e06c594d3109609d246170206acd27cb",
+      "WDC": "3625f9118034a1125cae64ee97810e44b38da5d4b9d0812099dd146e549fdf56",
+      "WMT": "7de86b85d73201a659fccce4224d23992d0ab17f9b3fbd5a9af29f5fa6bc94bc"
+    },
+    "start_date": "2021-01-01"
+  },
+  "manifest_identity_sha256": "83e24bad9fdbaa9f811080cbf78fed74f9033cc2538550e0316b74ee8ed23b00",
+  "outputs": {
+    "coverage_report.json": "85a9f70ad17c0b904c76678e2087c8fdfc64f161e1fbf2044e3a72eef16043ec",
+    "decision.json": "29d5cc667e9dc52f91451b6ec7986e5dcb0e15b109249333e2fc71c0af3ea73a",
+    "prices.csv": "76e4697b57b94a70a6f8eb71a194b7242717188eadd425a3f30645cd8d633f2e"
+  },
+  "research_only": true,
+  "schema_version": "1.0",
+  "snapshot_id": "us_small_pool_v2_yfinance_snapshot_v1",
+  "trade_ready": false
+}

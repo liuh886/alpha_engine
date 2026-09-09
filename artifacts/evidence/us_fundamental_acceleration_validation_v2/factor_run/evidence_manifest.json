@@ -1,0 +1,18 @@
+{
+  "factor_contract_id": "us_fundamental_acceleration_v2",
+  "inputs": {
+    "contract_sha256": "af5626cf92424d0ec2044bc42ce01e087a7dfc42c94311c4b1477712f69b3383",
+    "fundamentals_sha256": "d82a794ce5b113856aa1d09cb79d28c96568b9b5183290154a574126b573a0e2",
+    "pool_sha256": "453133fe64e2843fdb147222724efee20d961641c9fb0febcbb46638363ef5a0",
+    "prices_sha256": "76e4697b57b94a70a6f8eb71a194b7242717188eadd425a3f30645cd8d633f2e"
+  },
+  "manifest_identity_sha256": "59257b893e8cf60c3dd1b8c0d3bf0cdefdc8e20ca1ac96238ec21b41e137264e",
+  "outputs": {
+    "decision.json": "fe05fca002d1e2f01785f2dbd7f97135b7aff5f7f970d300acc6381c7805a7b9",
+    "factor_scores.json": "52e0d40ea5cbb77594debc2a23b3378a1771391e7a8f1493166001e61d3b4326",
+    "selection_history.json": "cca2d99e8ca65fdc9aed2fa144d774da6ec6e5dfd44b10423c70d7de2814f7a8"
+  },
+  "schema_version": "1.0",
+  "score_row_count": 5037,
+  "selection_row_count": 511
+}

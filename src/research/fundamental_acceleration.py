@@ -37,10 +37,12 @@ def _canonical_hash(payload: Mapping[str, Any]) -> str:
 
 
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
-    path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str),
-        encoding="utf-8",
-    )
+    # LF on all platforms: evidence hashes must match between Windows runs
+    # and Linux CI (.gitattributes enforces eol=lf).
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str)
+        )
 
 
 def _repository_root(path: Path) -> Path:
@@ -63,8 +65,11 @@ def load_contract(path: str | Path) -> tuple[dict[str, Any], dict[str, Any], Pat
     root = _repository_root(resolved)
     pool_path = root / str(contract["pool_spec"])
     pool = yaml.safe_load(pool_path.read_text(encoding="utf-8"))
-    if not isinstance(pool, dict) or pool.get("pool_id") != "us_small_pool_v1":
-        raise ValueError("factor contract requires frozen us_small_pool_v1")
+    if not isinstance(pool, dict) or pool.get("pool_id") not in {
+        "us_small_pool_v1",
+        "us_small_pool_v2",
+    }:
+        raise ValueError("factor contract requires frozen us_small_pool_v1 or active us_small_pool_v2")
     return contract, pool, resolved, pool_path
 
 
@@ -117,9 +122,16 @@ def load_fundamentals(
     frame = frame.sort_values(
         ["symbol", "fiscal_period_end", "filed_date", "accession_id"]
     ).drop_duplicates(["symbol", "fiscal_period_end", "filed_date"], keep="last")
-    duplicates = frame.duplicated(["symbol", "fiscal_period_end"], keep=False)
-    if duplicates.any() and frame.loc[duplicates, "filed_date"].duplicated().any():
-        raise ValueError("ambiguous duplicate fundamental filing identity")
+    # Restated comparative columns (e.g. a 10-Q re-reporting prior quarters)
+    # legitimately repeat (symbol, fiscal_period_end) across filed_dates.
+    # Point-in-time resolution keeps the first-seen filing: the market traded
+    # on those numbers from the original filed_date, and availability must
+    # never be back-dated to a restatement. This matches the contract's
+    # duplicate_resolution (latest accession only breaks same-period same-day
+    # ties, already resolved above).
+    frame = frame.sort_values(
+        ["symbol", "fiscal_period_end", "filed_date", "accession_id"]
+    ).drop_duplicates(["symbol", "fiscal_period_end"], keep="first")
     return frame.reset_index(drop=True)
 
 

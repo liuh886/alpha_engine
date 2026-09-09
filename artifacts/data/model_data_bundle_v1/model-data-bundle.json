@@ -1,0 +1,553 @@
+{
+  "built_at": "2026-09-09T13:53:54+00:00",
+  "bundle_id": "475f44658df8f7206d5ca804f4df730994acc10dc2e86ee97ed573ca2f5a41a5",
+  "components": [
+    {
+      "component_id": "fundamentals.us_small_pool_v2",
+      "component_kind": "fundamental_coverage",
+      "coverage_ratio": 0.6086956521739131,
+      "details": {
+        "decision": null,
+        "source_status": "partial"
+      },
+      "evidence_cutoff": "2026-09-08",
+      "expected_symbol_count": 23,
+      "first_date": null,
+      "invalid_symbols": [],
+      "last_date": null,
+      "manifest_path": "components/us-small-pool-fundamentals.json",
+      "manifest_sha256": "0f7a0184e5bdacf1eb33f6f3af82cb51cf60ece0da6cab64f33bf633b7b1b2cd",
+      "market": "us",
+      "missing_symbols": [
+        "IREN",
+        "JD",
+        "NBIS",
+        "NOK",
+        "PDD",
+        "POET",
+        "TSM",
+        "VRT",
+        "WMT"
+      ],
+      "not_yet_applicable_symbols": [],
+      "pool_id": "us_small_pool_v2",
+      "professional_source_ready": null,
+      "providers": [
+        "SEC_EDGAR_COMPANYFACTS"
+      ],
+      "quarantined_symbols": [],
+      "ready_symbol_count": 14,
+      "research_only": true,
+      "status": "partial",
+      "trade_ready": false
+    },
+    {
+      "component_id": "prices.us_small_pool_v2",
+      "component_kind": "price_coverage",
+      "coverage_ratio": 1.0,
+      "details": {
+        "decision": null,
+        "source_status": "ready"
+      },
+      "evidence_cutoff": "2026-09-08",
+      "expected_symbol_count": 23,
+      "first_date": "2024-10-21",
+      "invalid_symbols": [],
+      "last_date": "2026-09-08",
+      "manifest_path": "components/us-small-pool-prices.json",
+      "manifest_sha256": "b00b5ed423ffb8e914aded778c53ea2c8b82b9dffedf0de10c1bfcfa6b3edc6b",
+      "market": "us",
+      "missing_symbols": [],
+      "not_yet_applicable_symbols": [],
+      "pool_id": "us_small_pool_v2",
+      "professional_source_ready": null,
+      "providers": [
+        "YFINANCE"
+      ],
+      "quarantined_symbols": [],
+      "ready_symbol_count": 23,
+      "research_only": true,
+      "status": "ready",
+      "trade_ready": false
+    }
+  ],
+  "contract_id": "model_data_bundle_v1",
+  "contract_path": "configs/data_contracts/model_data_bundle_v1.yaml",
+  "contract_sha256": "a4f7d3e352adcd994e74e1152e27a9a241ea307c04578b6f1ca2258fa81b7ac5",
+  "evidence_cutoff": "2026-09-08",
+  "frontend_indexes": {
+    "data_components": {
+      "path": "data-components.json",
+      "sha256": "1a4594e21d32ec1594122734ed5aa28ef3e819b17591d49831db3d1dd0c1a5c5"
+    },
+    "model_data_readiness": {
+      "path": "model-data-readiness.json",
+      "sha256": "96aa08cd1e88c1cd3119e0f10a91908bdfbc3ca608f867727072b661990c2e1d"
+    },
+    "training_profiles": {
+      "path": "training-profiles.json",
+      "sha256": "75cb9210fe28ac24482f1bb6f7850463f33822fe545fd11a8cbd42d75b984f38"
+    }
+  },
+  "research_only": true,
+  "schema_version": "1.1",
+  "source_receipts": [],
+  "summary": {
+    "blocked_component_count": 0,
+    "blocked_training_profiles": [
+      "cn_selected_alpha158_v1",
+      "cn_selected_price_only_v1",
+      "cn_selected_price_plus_fundamentals_v1",
+      "qqqi_qqq_tqqq_rotation_v1",
+      "us_selected_alpha158_v1",
+      "us_selected_price_only_v1",
+      "us_selected_price_plus_fundamentals_v1",
+      "us_small_pool_price_plus_fundamentals_v1"
+    ],
+    "component_count": 2,
+    "partial_component_count": 1,
+    "ready_component_count": 1,
+    "ready_training_profiles": []
+  },
+  "trade_ready": false,
+  "training_profiles": [
+    {
+      "candidate_count": 130,
+      "candidate_pool_id": "cn_selected_equities_v3",
+      "failed_gates": [
+        "component:prices.cn_selected_equities_v3:required_component_missing",
+        "component:factors.qlib_alpha158.panel.cn.v1:required_component_missing"
+      ],
+      "market": "cn",
+      "profile_id": "cn_selected_alpha158_v1",
+      "references": [
+        "000300.SH"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "prices.cn_selected_equities_v3",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        },
+        {
+          "accepted_statuses": [
+            "partial",
+            "ready"
+          ],
+          "allow_not_yet_applicable": true,
+          "applicable_coverage_ratio": null,
+          "component_id": "factors.qlib_alpha158.panel.cn.v1",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 130,
+      "candidate_pool_id": "cn_selected_equities_v3",
+      "failed_gates": [
+        "component:prices.cn_selected_equities_v3:required_component_missing"
+      ],
+      "market": "cn",
+      "profile_id": "cn_selected_price_only_v1",
+      "references": [
+        "000300.SH"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "prices.cn_selected_equities_v3",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 130,
+      "candidate_pool_id": "cn_selected_equities_v3",
+      "failed_gates": [
+        "component:prices.cn_selected_equities_v3:required_component_missing",
+        "component:fundamentals.cn_selected_equities_v3:required_component_missing",
+        "component:corporate_actions.cn_selected_equities_v3:required_component_missing"
+      ],
+      "market": "cn",
+      "profile_id": "cn_selected_price_plus_fundamentals_v1",
+      "references": [
+        "000300.SH"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "prices.cn_selected_equities_v3",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        },
+        {
+          "accepted_statuses": [
+            "partial",
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "fundamentals.cn_selected_equities_v3",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 0.8,
+          "observed": null
+        },
+        {
+          "accepted_statuses": [
+            "partial",
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "corporate_actions.cn_selected_equities_v3",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 3,
+      "candidate_pool_id": "qqqi_qqq_tqqq_reference_bundle_v1",
+      "failed_gates": [
+        "component:references.qqqi_qqq_tqqq_reference_bundle_v1:required_component_missing"
+      ],
+      "market": "us",
+      "profile_id": "qqqi_qqq_tqqq_rotation_v1",
+      "references": [
+        "VIX",
+        "VXN"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "references.qqqi_qqq_tqqq_reference_bundle_v1",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 87,
+      "candidate_pool_id": "us_selected_equities_v2",
+      "failed_gates": [
+        "component:prices.us_selected_equities_v2:required_component_missing",
+        "component:factors.qlib_alpha158.panel.us.v1:required_component_missing"
+      ],
+      "market": "us",
+      "profile_id": "us_selected_alpha158_v1",
+      "references": [
+        "QQQ"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "prices.us_selected_equities_v2",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        },
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "factors.qlib_alpha158.panel.us.v1",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 87,
+      "candidate_pool_id": "us_selected_equities_v2",
+      "failed_gates": [
+        "component:prices.us_selected_equities_v2:required_component_missing"
+      ],
+      "market": "us",
+      "profile_id": "us_selected_price_only_v1",
+      "references": [
+        "QQQ"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "prices.us_selected_equities_v2",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 87,
+      "candidate_pool_id": "us_selected_equities_v2",
+      "failed_gates": [
+        "component:prices.us_selected_equities_v2:required_component_missing",
+        "component:fundamentals.us_selected_equities_v2:required_component_missing",
+        "component:corporate_actions.us_selected_equities_v2:required_component_missing"
+      ],
+      "market": "us",
+      "profile_id": "us_selected_price_plus_fundamentals_v1",
+      "references": [
+        "QQQ"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "prices.us_selected_equities_v2",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        },
+        {
+          "accepted_statuses": [
+            "partial",
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "fundamentals.us_selected_equities_v2",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 0.8,
+          "observed": null
+        },
+        {
+          "accepted_statuses": [
+            "partial",
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "corporate_actions.us_selected_equities_v2",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "required_component_missing"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": null
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    },
+    {
+      "candidate_count": 23,
+      "candidate_pool_id": "us_small_pool_v2",
+      "failed_gates": [
+        "component:fundamentals.us_small_pool_v2:coverage=0.608696 below 0.800000"
+      ],
+      "market": "us",
+      "profile_id": "us_small_pool_price_plus_fundamentals_v1",
+      "references": [
+        "QQQ"
+      ],
+      "required_components": [
+        {
+          "accepted_statuses": [
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "prices.us_small_pool_v2",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [],
+          "gate_status": "passed",
+          "minimum_coverage_ratio": 1.0,
+          "observed": {
+            "component_id": "prices.us_small_pool_v2",
+            "component_kind": "price_coverage",
+            "coverage_ratio": 1.0,
+            "details": {
+              "decision": null,
+              "source_status": "ready"
+            },
+            "evidence_cutoff": "2026-09-08",
+            "expected_symbol_count": 23,
+            "first_date": "2024-10-21",
+            "invalid_symbols": [],
+            "last_date": "2026-09-08",
+            "manifest_path": "components/us-small-pool-prices.json",
+            "manifest_sha256": "b00b5ed423ffb8e914aded778c53ea2c8b82b9dffedf0de10c1bfcfa6b3edc6b",
+            "market": "us",
+            "missing_symbols": [],
+            "not_yet_applicable_symbols": [],
+            "pool_id": "us_small_pool_v2",
+            "professional_source_ready": null,
+            "providers": [
+              "YFINANCE"
+            ],
+            "quarantined_symbols": [],
+            "ready_symbol_count": 23,
+            "research_only": true,
+            "status": "ready",
+            "trade_ready": false
+          }
+        },
+        {
+          "accepted_statuses": [
+            "partial",
+            "ready"
+          ],
+          "allow_not_yet_applicable": false,
+          "applicable_coverage_ratio": null,
+          "component_id": "fundamentals.us_small_pool_v2",
+          "coverage_basis": "all_symbols",
+          "gate_reasons": [
+            "coverage=0.608696 below 0.800000"
+          ],
+          "gate_status": "failed",
+          "minimum_coverage_ratio": 0.8,
+          "observed": {
+            "component_id": "fundamentals.us_small_pool_v2",
+            "component_kind": "fundamental_coverage",
+            "coverage_ratio": 0.6086956521739131,
+            "details": {
+              "decision": null,
+              "source_status": "partial"
+            },
+            "evidence_cutoff": "2026-09-08",
+            "expected_symbol_count": 23,
+            "first_date": null,
+            "invalid_symbols": [],
+            "last_date": null,
+            "manifest_path": "components/us-small-pool-fundamentals.json",
+            "manifest_sha256": "0f7a0184e5bdacf1eb33f6f3af82cb51cf60ece0da6cab64f33bf633b7b1b2cd",
+            "market": "us",
+            "missing_symbols": [
+              "IREN",
+              "JD",
+              "NBIS",
+              "NOK",
+              "PDD",
+              "POET",
+              "TSM",
+              "VRT",
+              "WMT"
+            ],
+            "not_yet_applicable_symbols": [],
+            "pool_id": "us_small_pool_v2",
+            "professional_source_ready": null,
+            "providers": [
+              "SEC_EDGAR_COMPANYFACTS"
+            ],
+            "quarantined_symbols": [],
+            "ready_symbol_count": 14,
+            "research_only": true,
+            "status": "partial",
+            "trade_ready": false
+          }
+        }
+      ],
+      "research_only": true,
+      "status": "blocked",
+      "trade_ready": false
+    }
+  ]
+}

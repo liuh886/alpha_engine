@@ -17,14 +17,14 @@ def main() -> int:
     parser.add_argument(
         "--contract",
         type=Path,
-        default=Path("configs/factors/us_fundamental_acceleration_v1.yaml"),
+        default=Path("configs/factors/us_fundamental_acceleration_v2.yaml"),
     )
     parser.add_argument("--fundamentals-csv", type=Path, required=True)
     parser.add_argument("--prices-csv", type=Path, required=True)
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("artifacts/evidence/us_fundamental_acceleration_validation"),
+        default=Path("artifacts/evidence/us_fundamental_acceleration_validation_v2"),
     )
     parser.add_argument(
         "--registry-db",

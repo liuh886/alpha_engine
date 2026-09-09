@@ -1,0 +1,6043 @@
+{
+  "factor_contract_id": "us_fundamental_acceleration_v2",
+  "rows": [
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-01-04",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-01-04",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-01-04",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2021-01-04",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2021-01-04",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2021-01-04",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2021-01-04",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-02-02",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-02-02",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-02-02",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2021-02-02",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2021-02-02",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2021-02-02",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2021-02-02",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-03-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-03-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-03-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2021-03-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2021-03-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2021-03-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2021-03-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-03-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-03-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-03-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2021-03-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2021-03-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2021-03-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2021-03-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-04-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-04-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-04-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2021-04-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2021-04-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2021-04-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2021-04-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-05-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-05-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-05-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "KO"
+      ],
+      "basket": "defensive_consumer",
+      "date": "2021-05-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 1.0
+    },
+    {
+      "added_symbols": [
+        "MSFT"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2021-05-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.5
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2021-05-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "WDC"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2021-05-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-06-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-06-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-06-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2021-06-25",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [
+        "AAPL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2021-06-25",
+      "kept_symbols": [
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [
+        "AAOI"
+      ],
+      "basket": "optical_networking",
+      "date": "2021-06-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "AMD"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2021-06-25",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-07-26",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-07-26",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "TSLA"
+      ],
+      "basket": "consumer_growth",
+      "date": "2021-07-26",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2021-07-26",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2021-07-26",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2021-07-26",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAOI"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2021-07-26",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [
+        "WDC"
+      ],
+      "selected_symbols": [
+        "AMD"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-08-23",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-08-23",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-08-23",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2021-08-23",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2021-08-23",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [
+        "LITE"
+      ],
+      "basket": "optical_networking",
+      "date": "2021-08-23",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2021-08-23",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-09-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-09-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-09-21",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2021-09-21",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "KO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2021-09-21",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2021-09-21",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2021-09-21",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-10-19",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-10-19",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-10-19",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2021-10-19",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2021-10-19",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2021-10-19",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "INTC"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2021-10-19",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-11-16",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-11-16",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-11-16",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "KO"
+      ],
+      "basket": "defensive_consumer",
+      "date": "2021-11-16",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2021-11-16",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2021-11-16",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2021-11-16",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [
+        "INTC"
+      ],
+      "selected_symbols": [
+        "AMD"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2021-12-15",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2021-12-15",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2021-12-15",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2021-12-15",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2021-12-15",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2021-12-15",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2021-12-15",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-01-13",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-01-13",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2022-01-13",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-01-13",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2022-01-13",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [
+        "MSFT"
+      ],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2022-01-13",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [
+        "WDC"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2022-01-13",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-02-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-02-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2022-02-11",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "TSLA"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-02-11",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2022-02-11",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2022-02-11",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2022-02-11",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AMD",
+        "WDC"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-03-14",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-03-14",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2022-03-14",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-03-14",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2022-03-14",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAPL"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2022-03-14",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "LITE"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2022-03-14",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-04-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-04-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2022-04-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-04-11",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 1.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2022-04-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2022-04-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2022-04-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-05-10",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-05-10",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2022-05-10",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-05-10",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 1.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2022-05-10",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2022-05-10",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "WDC"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2022-05-10",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.5
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-06-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-06-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2022-06-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-06-08",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.5
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2022-06-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2022-06-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2022-06-08",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.5
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-07-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-07-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "HIMS"
+      ],
+      "basket": "consumer_growth",
+      "date": "2022-07-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-07-08",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2022-07-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2022-07-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2022-07-08",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "WDC"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-08-05",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-08-05",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "TSLA"
+      ],
+      "basket": "consumer_growth",
+      "date": "2022-08-05",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-08-05",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.5
+    },
+    {
+      "added_symbols": [
+        "AAPL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2022-08-05",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [
+        "LITE"
+      ],
+      "basket": "optical_networking",
+      "date": "2022-08-05",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "AMD"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2022-08-05",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-09-02",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-09-02",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2022-09-02",
+      "kept_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-09-02",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "KO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2022-09-02",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "AAOI"
+      ],
+      "basket": "optical_networking",
+      "date": "2022-09-02",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "LITE"
+      ],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2022-09-02",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AMD"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-10-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-10-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2022-10-03",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [
+        "TSLA"
+      ],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-10-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2022-10-03",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAPL"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2022-10-03",
+      "kept_symbols": [
+        "AAOI"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.5
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2022-10-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-10-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-10-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2022-10-31",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "HIMS"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-10-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "AAPL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2022-10-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.5
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2022-10-31",
+      "kept_symbols": [
+        "AAOI"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.5
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2022-10-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-11-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-11-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "HIMS"
+      ],
+      "basket": "consumer_growth",
+      "date": "2022-11-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [
+        "KO"
+      ],
+      "basket": "defensive_consumer",
+      "date": "2022-11-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "ORCL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2022-11-29",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAPL"
+      ],
+      "selected_symbols": [
+        "ORCL"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2022-11-29",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAOI"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2022-11-29",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2022-12-28",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2022-12-28",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2022-12-28",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2022-12-28",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2022-12-28",
+      "kept_symbols": [
+        "ORCL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "ORCL"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2022-12-28",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2022-12-28",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-01-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-01-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2023-01-27",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2023-01-27",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [
+        "AAPL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2023-01-27",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "ORCL"
+      ],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [
+        "CRDO"
+      ],
+      "basket": "optical_networking",
+      "date": "2023-01-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2023-01-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-02-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-02-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2023-02-27",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2023-02-27",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "KO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "MSFT"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2023-02-27",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [
+        "AAOI"
+      ],
+      "basket": "optical_networking",
+      "date": "2023-02-27",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "CRDO"
+      ],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [
+        "AMD"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2023-02-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-03-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-03-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2023-03-27",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "KO"
+      ],
+      "basket": "defensive_consumer",
+      "date": "2023-03-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2023-03-27",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2023-03-27",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAOI"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "INTC"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2023-03-27",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-04-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-04-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2023-04-25",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2023-04-25",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2023-04-25",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2023-04-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2023-04-25",
+      "kept_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-05-23",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-05-23",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "TSLA"
+      ],
+      "basket": "consumer_growth",
+      "date": "2023-05-23",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "HIMS"
+      ],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2023-05-23",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2023-05-23",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2023-05-23",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2023-05-23",
+      "kept_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-06-22",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-06-22",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2023-06-22",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2023-06-22",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2023-06-22",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [
+        "AAOI"
+      ],
+      "basket": "optical_networking",
+      "date": "2023-06-22",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2023-06-22",
+      "kept_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-07-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-07-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2023-07-21",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2023-07-21",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2023-07-21",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2023-07-21",
+      "kept_symbols": [
+        "AAOI"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2023-07-21",
+      "kept_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-08-18",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-08-18",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2023-08-18",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "TSLA"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2023-08-18",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "KO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "ORCL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2023-08-18",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "selected_symbols": [
+        "ORCL"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2023-08-18",
+      "kept_symbols": [
+        "AAOI"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2023-08-18",
+      "kept_symbols": [
+        "INTC"
+      ],
+      "removed_symbols": [
+        "AMD"
+      ],
+      "selected_symbols": [
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-09-18",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-09-18",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "TSLA"
+      ],
+      "basket": "consumer_growth",
+      "date": "2023-09-18",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2023-09-18",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "MSFT"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2023-09-18",
+      "kept_symbols": [
+        "ORCL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "MSFT",
+        "ORCL"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2023-09-18",
+      "kept_symbols": [
+        "AAOI"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2023-09-18",
+      "kept_symbols": [
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-10-16",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-10-16",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2023-10-16",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2023-10-16",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2023-10-16",
+      "kept_symbols": [
+        "MSFT"
+      ],
+      "removed_symbols": [
+        "ORCL"
+      ],
+      "selected_symbols": [
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2023-10-16",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAOI"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2023-10-16",
+      "kept_symbols": [
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-11-13",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-11-13",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2023-11-13",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "TSLA"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2023-11-13",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "AAPL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2023-11-13",
+      "kept_symbols": [
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "AAOI"
+      ],
+      "basket": "optical_networking",
+      "date": "2023-11-13",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [
+        "AMD"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2023-11-13",
+      "kept_symbols": [
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2023-12-12",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2023-12-12",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "HIMS"
+      ],
+      "basket": "consumer_growth",
+      "date": "2023-12-12",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "KO"
+      ],
+      "basket": "defensive_consumer",
+      "date": "2023-12-12",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2023-12-12",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2023-12-12",
+      "kept_symbols": [
+        "AAOI"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2023-12-12",
+      "kept_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-01-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-01-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2024-01-11",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-01-11",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-01-11",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2024-01-11",
+      "kept_symbols": [
+        "AAOI"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2024-01-11",
+      "kept_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-02-09",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-02-09",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2024-02-09",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-02-09",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-02-09",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2024-02-09",
+      "kept_symbols": [
+        "AAOI"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2024-02-09",
+      "kept_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-03-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-03-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2024-03-11",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-03-11",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-03-11",
+      "kept_symbols": [
+        "MSFT"
+      ],
+      "removed_symbols": [
+        "AAPL"
+      ],
+      "selected_symbols": [
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [
+        "CRDO"
+      ],
+      "basket": "optical_networking",
+      "date": "2024-03-11",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAOI"
+      ],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2024-03-11",
+      "kept_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-04-09",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-04-09",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2024-04-09",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-04-09",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-04-09",
+      "kept_symbols": [
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2024-04-09",
+      "kept_symbols": [
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [
+        "WDC"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2024-04-09",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [
+        "INTC"
+      ],
+      "selected_symbols": [
+        "AMD",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-05-07",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-05-07",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2024-05-07",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-05-07",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [
+        "AAPL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2024-05-07",
+      "kept_symbols": [
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2024-05-07",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "CRDO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2024-05-07",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [
+        "AMD"
+      ],
+      "selected_symbols": [
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "TYGO"
+      ],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-06-05",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-06-05",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2024-06-05",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-06-05",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-06-05",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [
+        "CRDO"
+      ],
+      "basket": "optical_networking",
+      "date": "2024-06-05",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2024-06-05",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-07-05",
+      "kept_symbols": [
+        "TYGO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-07-05",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2024-07-05",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-07-05",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-07-05",
+      "kept_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.08333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2024-07-05",
+      "kept_symbols": [
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2024-07-05",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-08-02",
+      "kept_symbols": [
+        "TYGO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-08-02",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "TSLA"
+      ],
+      "basket": "consumer_growth",
+      "date": "2024-08-02",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.08333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-08-02",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-08-02",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [
+        "MSFT"
+      ],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2024-08-02",
+      "kept_symbols": [
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2024-08-02",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "WDC"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-08-30",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "TYGO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-08-30",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2024-08-30",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [
+        "HIMS"
+      ],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-08-30",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-08-30",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2024-08-30",
+      "kept_symbols": [
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2024-08-30",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "TYGO"
+      ],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-09-30",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-09-30",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2024-09-30",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-09-30",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-09-30",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [
+        "AAOI"
+      ],
+      "basket": "optical_networking",
+      "date": "2024-09-30",
+      "kept_symbols": [
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [
+        "AMD"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2024-09-30",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-10-28",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "TYGO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-10-28",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "HIMS"
+      ],
+      "basket": "consumer_growth",
+      "date": "2024-10-28",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-10-28",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "KO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-10-28",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2024-10-28",
+      "kept_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [
+        "WDC"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2024-10-28",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-11-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-11-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2024-11-25",
+      "kept_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-11-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-11-25",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2024-11-25",
+      "kept_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [
+        "ALAB"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2024-11-25",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [
+        "AMD"
+      ],
+      "selected_symbols": [
+        "ALAB",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2024-12-24",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2024-12-24",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2024-12-24",
+      "kept_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2024-12-24",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2024-12-24",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2024-12-24",
+      "kept_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2024-12-24",
+      "kept_symbols": [
+        "ALAB"
+      ],
+      "removed_symbols": [
+        "WDC"
+      ],
+      "selected_symbols": [
+        "ALAB"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-01-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-01-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2025-01-27",
+      "kept_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2025-01-27",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "MSFT"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2025-01-27",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAPL"
+      ],
+      "selected_symbols": [
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2025-01-27",
+      "kept_symbols": [
+        "CRDO"
+      ],
+      "removed_symbols": [
+        "AAOI"
+      ],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2025-01-27",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "ALAB"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-02-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-02-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2025-02-25",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [
+        "TSLA"
+      ],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [
+        "KO"
+      ],
+      "basket": "defensive_consumer",
+      "date": "2025-02-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "AAPL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2025-02-25",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "MSFT"
+      ],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2025-02-25",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "CRDO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "INTC"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2025-02-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-03-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-03-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2025-03-25",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2025-03-25",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2025-03-25",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAPL"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2025-03-25",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2025-03-25",
+      "kept_symbols": [
+        "INTC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-04-23",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-04-23",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2025-04-23",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "HIMS"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2025-04-23",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.5
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2025-04-23",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2025-04-23",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2025-04-23",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "INTC"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "TYGO"
+      ],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-05-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.5
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-05-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "HIMS"
+      ],
+      "basket": "consumer_growth",
+      "date": "2025-05-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2025-05-21",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.3333333333333333
+    },
+    {
+      "added_symbols": [
+        "MSFT"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2025-05-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "MSFT"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "CRDO"
+      ],
+      "basket": "optical_networking",
+      "date": "2025-05-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [
+        "AMD"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2025-05-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-06-20",
+      "kept_symbols": [
+        "TYGO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-06-20",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "TSLA"
+      ],
+      "basket": "consumer_growth",
+      "date": "2025-06-20",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.08333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2025-06-20",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "KO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "ORCL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2025-06-20",
+      "kept_symbols": [
+        "MSFT"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "MSFT",
+        "ORCL"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2025-06-20",
+      "kept_symbols": [
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [
+        "WDC"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2025-06-20",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-07-21",
+      "kept_symbols": [
+        "TYGO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-07-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2025-07-21",
+      "kept_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2025-07-21",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2025-07-21",
+      "kept_symbols": [
+        "MSFT",
+        "ORCL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "MSFT",
+        "ORCL"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [
+        "AAOI"
+      ],
+      "basket": "optical_networking",
+      "date": "2025-07-21",
+      "kept_symbols": [
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2025-07-21",
+      "kept_symbols": [
+        "AMD",
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-08-18",
+      "kept_symbols": [
+        "TYGO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-08-18",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2025-08-18",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [
+        "HIMS"
+      ],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2025-08-18",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2025-08-18",
+      "kept_symbols": [
+        "MSFT",
+        "ORCL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "MSFT",
+        "ORCL"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2025-08-18",
+      "kept_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [
+        "ALAB"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2025-08-18",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [
+        "AMD"
+      ],
+      "selected_symbols": [
+        "ALAB",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-09-16",
+      "kept_symbols": [
+        "TYGO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-09-16",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2025-09-16",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2025-09-16",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2025-09-16",
+      "kept_symbols": [
+        "MSFT",
+        "ORCL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "MSFT",
+        "ORCL"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2025-09-16",
+      "kept_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2025-09-16",
+      "kept_symbols": [
+        "ALAB",
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "ALAB",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-10-14",
+      "kept_symbols": [
+        "TYGO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-10-14",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2025-10-14",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2025-10-14",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2025-10-14",
+      "kept_symbols": [
+        "MSFT",
+        "ORCL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "MSFT",
+        "ORCL"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2025-10-14",
+      "kept_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAOI",
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2025-10-14",
+      "kept_symbols": [
+        "ALAB",
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "ALAB",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-11-11",
+      "kept_symbols": [
+        "TYGO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-11-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2025-11-11",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [
+        "KO"
+      ],
+      "basket": "defensive_consumer",
+      "date": "2025-11-11",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [
+        "AAPL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2025-11-11",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "MSFT",
+        "ORCL"
+      ],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [
+        "LITE"
+      ],
+      "basket": "optical_networking",
+      "date": "2025-11-11",
+      "kept_symbols": [
+        "CRDO"
+      ],
+      "removed_symbols": [
+        "AAOI"
+      ],
+      "selected_symbols": [
+        "CRDO",
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.08333333333333333
+    },
+    {
+      "added_symbols": [
+        "INTC"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2025-11-11",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [
+        "ALAB"
+      ],
+      "selected_symbols": [
+        "INTC",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.08333333333333333
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2025-12-10",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "TYGO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2025-12-10",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2025-12-10",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2025-12-10",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2025-12-10",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2025-12-10",
+      "kept_symbols": [
+        "CRDO",
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO",
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2025-12-10",
+      "kept_symbols": [
+        "INTC",
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "INTC",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2026-01-09",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2026-01-09",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2026-01-09",
+      "kept_symbols": [
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2026-01-09",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2026-01-09",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2026-01-09",
+      "kept_symbols": [
+        "CRDO",
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO",
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2026-01-09",
+      "kept_symbols": [
+        "INTC",
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "INTC",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [
+        "TYGO"
+      ],
+      "basket": "ai_infrastructure_power",
+      "date": "2026-02-09",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2026-02-09",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2026-02-09",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "TSLA"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2026-02-09",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2026-02-09",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2026-02-09",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [
+        "CRDO"
+      ],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2026-02-09",
+      "kept_symbols": [
+        "INTC",
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "INTC",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2026-03-10",
+      "kept_symbols": [
+        "TYGO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2026-03-10",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2026-03-10",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2026-03-10",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2026-03-10",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "AAPL"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2026-03-10",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2026-03-10",
+      "kept_symbols": [
+        "INTC",
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "INTC",
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2026-04-08",
+      "kept_symbols": [
+        "TYGO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2026-04-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2026-04-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2026-04-08",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2026-04-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2026-04-08",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2026-04-08",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [
+        "INTC"
+      ],
+      "selected_symbols": [
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2026-05-06",
+      "kept_symbols": [
+        "TYGO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "TYGO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2026-05-06",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "HIMS"
+      ],
+      "basket": "consumer_growth",
+      "date": "2026-05-06",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2026-05-06",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [
+        "AAPL"
+      ],
+      "basket": "mega_cap_platforms",
+      "date": "2026-05-06",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2026-05-06",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2026-05-06",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.16666666666666666
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2026-06-04",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "TYGO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2026-06-04",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [
+        "TSLA"
+      ],
+      "basket": "consumer_growth",
+      "date": "2026-06-04",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2026-06-04",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "KO"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2026-06-04",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2026-06-04",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2026-06-04",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2026-07-06",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2026-07-06",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2026-07-06",
+      "kept_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS",
+        "TSLA"
+      ],
+      "target_weight_per_symbol": 0.125
+    },
+    {
+      "added_symbols": [
+        "KO"
+      ],
+      "basket": "defensive_consumer",
+      "date": "2026-07-06",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2026-07-06",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [
+        "CRDO"
+      ],
+      "basket": "optical_networking",
+      "date": "2026-07-06",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "LITE"
+      ],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2026-07-06",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2026-08-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2026-08-03",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2026-08-03",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [
+        "TSLA"
+      ],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2026-08-03",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2026-08-03",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2026-08-03",
+      "kept_symbols": [
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "semiconductor_compute",
+      "date": "2026-08-03",
+      "kept_symbols": [
+        "WDC"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "WDC"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2026-08-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2026-08-31",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2026-08-31",
+      "kept_symbols": [
+        "HIMS"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "HIMS"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2026-08-31",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2026-08-31",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [
+        "LITE"
+      ],
+      "basket": "optical_networking",
+      "date": "2026-08-31",
+      "kept_symbols": [
+        "CRDO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "CRDO",
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.1
+    },
+    {
+      "added_symbols": [
+        "AMD"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2026-08-31",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "WDC"
+      ],
+      "selected_symbols": [
+        "AMD"
+      ],
+      "target_weight_per_symbol": 0.2
+    },
+    {
+      "added_symbols": [],
+      "basket": "ai_infrastructure_power",
+      "date": "2026-09-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "china_consumer_internet",
+      "date": "2026-09-08",
+      "kept_symbols": [],
+      "removed_symbols": [],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "consumer_growth",
+      "date": "2026-09-08",
+      "kept_symbols": [],
+      "removed_symbols": [
+        "HIMS"
+      ],
+      "selected_symbols": [],
+      "target_weight_per_symbol": 0.0
+    },
+    {
+      "added_symbols": [],
+      "basket": "defensive_consumer",
+      "date": "2026-09-08",
+      "kept_symbols": [
+        "KO"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "KO"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "mega_cap_platforms",
+      "date": "2026-09-08",
+      "kept_symbols": [
+        "AAPL"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AAPL"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [],
+      "basket": "optical_networking",
+      "date": "2026-09-08",
+      "kept_symbols": [
+        "LITE"
+      ],
+      "removed_symbols": [
+        "CRDO"
+      ],
+      "selected_symbols": [
+        "LITE"
+      ],
+      "target_weight_per_symbol": 0.25
+    },
+    {
+      "added_symbols": [
+        "INTC"
+      ],
+      "basket": "semiconductor_compute",
+      "date": "2026-09-08",
+      "kept_symbols": [
+        "AMD"
+      ],
+      "removed_symbols": [],
+      "selected_symbols": [
+        "AMD",
+        "INTC"
+      ],
+      "target_weight_per_symbol": 0.125
+    }
+  ],
+  "schema_version": "1.0"
+}

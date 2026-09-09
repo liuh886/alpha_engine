@@ -1,0 +1,84 @@
+{
+  "average_holding_sessions": 89.66233766233766,
+  "candidate": "candidate_with_sma100",
+  "decision": "simple_fundamental_factor_not_supported",
+  "factor_contract_id": "us_fundamental_acceleration_v2",
+  "failed_gates": [
+    "development_equal_weight_relative_return",
+    "development_maximum_drawdown",
+    "falsification_equal_weight_relative_return",
+    "annual_turnover",
+    "maximum_symbol_weight"
+  ],
+  "independent_validation_completed": false,
+  "metrics": {
+    "candidate_with_sma100": {
+      "development": {
+        "annual_turnover": 7.841582052689352,
+        "max_drawdown": -0.41382669272443406,
+        "maximum_symbol_weight": 1.0,
+        "session_count": 1255,
+        "total_return": 2.0884446274354556
+      },
+      "falsification": {
+        "annual_turnover": 5.441340782122905,
+        "max_drawdown": -0.12575930442275518,
+        "maximum_symbol_weight": 0.25,
+        "session_count": 123,
+        "total_return": 0.6410964418920035
+      }
+    },
+    "candidate_without_sma100": {
+      "development": {
+        "annual_turnover": 0.6749039517014269,
+        "max_drawdown": -0.36208483253440116,
+        "maximum_symbol_weight": 0.2,
+        "session_count": 1255,
+        "total_return": 3.278226123156215
+      },
+      "falsification": {
+        "annual_turnover": 0.34008379888268153,
+        "max_drawdown": -0.08853228653903766,
+        "maximum_symbol_weight": 0.16666666666666666,
+        "session_count": 123,
+        "total_return": 0.7185472048843562
+      }
+    },
+    "equal_weight_pool": {
+      "development": {
+        "annual_turnover": 0.0,
+        "max_drawdown": -0.36751794768533286,
+        "maximum_symbol_weight": 0.043478260869565216,
+        "session_count": 1255,
+        "total_return": 3.7134365357386443
+      },
+      "falsification": {
+        "annual_turnover": 0.0,
+        "max_drawdown": -0.10963054448596321,
+        "maximum_symbol_weight": 0.043478260869565216,
+        "session_count": 123,
+        "total_return": 0.7732035053692603
+      }
+    },
+    "qqq": {
+      "development": {
+        "annual_turnover": 0.0,
+        "max_drawdown": -0.36693041278493366,
+        "maximum_symbol_weight": 1.0,
+        "session_count": 1255,
+        "total_return": 1.027721072482004
+      },
+      "falsification": {
+        "annual_turnover": 0.0,
+        "max_drawdown": -0.11087803694457987,
+        "maximum_symbol_weight": 1.0,
+        "session_count": 123,
+        "total_return": 0.17877584796954604
+      }
+    }
+  },
+  "performance_evaluated": true,
+  "research_only": true,
+  "schema_version": "1.0",
+  "trade_ready": false
+}

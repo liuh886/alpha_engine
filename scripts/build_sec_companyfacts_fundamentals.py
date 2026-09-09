@@ -11,8 +11,8 @@ from src.research.sec_companyfacts_fundamentals import (
     build_sec_companyfacts_fundamentals,
 )
 
-DEFAULT_CONTRACT = Path("configs/providers/sec_companyfacts_fundamentals_v1.yaml")
-DEFAULT_OUTPUT = Path("artifacts/evidence/sec_companyfacts_fundamentals_v1")
+DEFAULT_CONTRACT = Path("configs/providers/sec_companyfacts_fundamentals_v2.yaml")
+DEFAULT_OUTPUT = Path("artifacts/evidence/sec_companyfacts_fundamentals_v2")
 
 
 def main() -> int:

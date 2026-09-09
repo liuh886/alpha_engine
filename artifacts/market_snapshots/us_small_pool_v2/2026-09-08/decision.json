@@ -1,0 +1,14 @@
+{
+  "decision": "selected_us_pool_price_snapshot_ready",
+  "performance_evaluated": false,
+  "pool_id": "us_small_pool_v2",
+  "prices_csv": "D:\\Documents\\GitHub\\alpha_engine\\artifacts\\market_snapshots\\us_small_pool_v2\\2026-09-08\\prices.csv",
+  "provider": "yfinance",
+  "requested_through": "2026-09-08",
+  "research_only": true,
+  "resolved_as_of_date": "2026-09-08",
+  "row_count": 33229,
+  "schema_version": "1.0",
+  "symbol_count": 25,
+  "trade_ready": false
+}

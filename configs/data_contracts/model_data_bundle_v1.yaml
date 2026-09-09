@@ -89,6 +89,25 @@ profiles:
         accepted_statuses: ["ready", "partial"]
         minimum_coverage_ratio: 1.0
 
+  # Narrow-loop training profile for the strategy-specific 23-name US pool.
+  # Explicit candidate_symbols: us_small_pool_v2.yaml uses baskets (no flat
+  # symbols list), so the bundle cannot load it as a pool_spec. Corporate
+  # actions are deliberately not required: Yahoo bars are split/dividend
+  # adjusted, the strategy holds >=40 sessions, and no US corporate-action
+  # store exists yet (not even for the 87) — a separate data-plane workstream.
+  us_small_pool_price_plus_fundamentals_v1:
+    market: "us"
+    candidate_pool_id: "us_small_pool_v2"
+    candidate_symbols: ["ALAB", "TSM", "INTC", "AMD", "WDC", "CRDO", "POET", "AAOI", "LITE", "NOK", "VRT", "NBIS", "IREN", "TYGO", "AAPL", "MSFT", "ORCL", "PDD", "JD", "KO", "WMT", "TSLA", "HIMS"]
+    references: ["QQQ"]
+    required_components:
+      - component_id: "prices.us_small_pool_v2"
+        accepted_statuses: ["ready"]
+        minimum_coverage_ratio: 1.0
+      - component_id: "fundamentals.us_small_pool_v2"
+        accepted_statuses: ["ready", "partial"]
+        minimum_coverage_ratio: 0.8
+
   cn_selected_price_plus_fundamentals_v1:
     market: "cn"
     candidate_pool_id: "cn_selected_equities_v3"

@@ -1,0 +1,16 @@
+{
+  "decision": "fundamental_acceleration_scores_ready",
+  "factor_contract_id": "us_fundamental_acceleration_v2",
+  "independent_validation_completed": false,
+  "performance_evaluated": false,
+  "registered_card_ids": [
+    "factor_665efcd849dddfe5f7d073c7",
+    "factor_8cab5365af10e3378344ff56",
+    "factor_8627bfeda8ece8ed355ab231"
+  ],
+  "research_only": true,
+  "schema_version": "1.0",
+  "score_row_count": 5037,
+  "selection_row_count": 511,
+  "trade_ready": false
+}

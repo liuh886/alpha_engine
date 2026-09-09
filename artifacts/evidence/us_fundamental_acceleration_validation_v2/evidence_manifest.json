@@ -1,0 +1,15 @@
+{
+  "inputs": {
+    "contract_sha256": "af5626cf92424d0ec2044bc42ce01e087a7dfc42c94311c4b1477712f69b3383",
+    "factor_run_manifest_sha256": "14e392775ba698a91b3bed7060082864029a1157e157b19bc21dfd7ef541c7c6",
+    "fundamentals_sha256": "d82a794ce5b113856aa1d09cb79d28c96568b9b5183290154a574126b573a0e2",
+    "pool_sha256": "453133fe64e2843fdb147222724efee20d961641c9fb0febcbb46638363ef5a0",
+    "prices_sha256": "76e4697b57b94a70a6f8eb71a194b7242717188eadd425a3f30645cd8d633f2e"
+  },
+  "manifest_identity_sha256": "5844ac46be54563f46cdaa8d9d09b56777a07114bb10617460d1f332f3f7e259",
+  "outputs": {
+    "decision.json": "6c2b2f85a6ac4da2deb38cdd0f89403c4abbc0a232b333cc874e46823513b17a",
+    "report.md": "3394183f80d4452d6e7a4f64f5e6d98674aa3549472c97058c5e94f3eb1f7ba7"
+  },
+  "schema_version": "1.0"
+}

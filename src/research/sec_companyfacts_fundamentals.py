@@ -136,10 +136,12 @@ def _canonical_hash(payload: Mapping[str, Any]) -> str:
 
 
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
-    path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str),
-        encoding="utf-8",
-    )
+    # LF on all platforms: evidence hashes must match between Windows runs
+    # and Linux CI (.gitattributes enforces eol=lf).
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str)
+        )
 
 
 def _repository_root(path: Path) -> Path:
@@ -164,8 +166,11 @@ def load_source_contract(path: str | Path) -> SourceContract:
     root = _repository_root(resolved)
     pool_path = root / str(payload["pool_spec"])
     pool = yaml.safe_load(pool_path.read_text(encoding="utf-8"))
-    if not isinstance(pool, dict) or pool.get("pool_id") != "us_small_pool_v1":
-        raise ValueError("SEC source requires frozen us_small_pool_v1")
+    if not isinstance(pool, dict) or pool.get("pool_id") not in {
+        "us_small_pool_v1",
+        "us_small_pool_v2",
+    }:
+        raise ValueError("SEC source requires frozen us_small_pool_v1 or active us_small_pool_v2")
     return SourceContract(payload=payload, path=resolved, pool=pool, pool_path=pool_path)
 
 
@@ -602,7 +607,7 @@ def build_sec_companyfacts_fundamentals(
             ["symbol", "fiscal_period_end", "filed_date", "accession_id"]
         ).reset_index(drop=True)
     fundamentals_path = output / "fundamentals.csv"
-    fundamentals.to_csv(fundamentals_path, index=False)
+    fundamentals.to_csv(fundamentals_path, index=False, lineterminator="\n")
     coverage_payload = {
         "schema_version": "1.0",
         "source_contract_id": contract["source_contract_id"],

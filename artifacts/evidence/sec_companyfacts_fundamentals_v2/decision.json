@@ -1,0 +1,15 @@
+{
+  "candidate_count": 23,
+  "decision": "sec_companyfacts_source_ready_with_partial_coverage",
+  "factor_ready_count": 14,
+  "fundamental_row_count": 1065,
+  "performance_evaluated": false,
+  "pristine_historical_api_vintage_claim": false,
+  "research_only": true,
+  "schema_version": "1.0",
+  "source_contract_id": "sec_companyfacts_fundamentals_v2",
+  "source_run_completed": true,
+  "trade_ready": false,
+  "user_agent_present": true,
+  "user_agent_sha256": "d463d3e0da7c73c4912c68aa4a52ead960151f03e145df82af6eb1b671814ad5"
+}

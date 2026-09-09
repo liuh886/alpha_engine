@@ -9,8 +9,8 @@ from pathlib import Path
 
 from src.research.fundamental_acceleration import run_fundamental_acceleration
 
-DEFAULT_CONTRACT = Path("configs/factors/us_fundamental_acceleration_v1.yaml")
-DEFAULT_OUTPUT = Path("artifacts/evidence/us_fundamental_acceleration")
+DEFAULT_CONTRACT = Path("configs/factors/us_fundamental_acceleration_v2.yaml")
+DEFAULT_OUTPUT = Path("artifacts/evidence/us_fundamental_acceleration_v2")
 
 
 def main() -> int:

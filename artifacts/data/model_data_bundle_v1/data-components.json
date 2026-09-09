@@ -1,0 +1,70 @@
+[
+  {
+    "component_id": "fundamentals.us_small_pool_v2",
+    "component_kind": "fundamental_coverage",
+    "coverage_ratio": 0.6086956521739131,
+    "details": {
+      "decision": null,
+      "source_status": "partial"
+    },
+    "evidence_cutoff": "2026-09-08",
+    "expected_symbol_count": 23,
+    "first_date": null,
+    "invalid_symbols": [],
+    "last_date": null,
+    "manifest_path": "components/us-small-pool-fundamentals.json",
+    "manifest_sha256": "0f7a0184e5bdacf1eb33f6f3af82cb51cf60ece0da6cab64f33bf633b7b1b2cd",
+    "market": "us",
+    "missing_symbols": [
+      "IREN",
+      "JD",
+      "NBIS",
+      "NOK",
+      "PDD",
+      "POET",
+      "TSM",
+      "VRT",
+      "WMT"
+    ],
+    "not_yet_applicable_symbols": [],
+    "pool_id": "us_small_pool_v2",
+    "professional_source_ready": null,
+    "providers": [
+      "SEC_EDGAR_COMPANYFACTS"
+    ],
+    "quarantined_symbols": [],
+    "ready_symbol_count": 14,
+    "research_only": true,
+    "status": "partial",
+    "trade_ready": false
+  },
+  {
+    "component_id": "prices.us_small_pool_v2",
+    "component_kind": "price_coverage",
+    "coverage_ratio": 1.0,
+    "details": {
+      "decision": null,
+      "source_status": "ready"
+    },
+    "evidence_cutoff": "2026-09-08",
+    "expected_symbol_count": 23,
+    "first_date": "2024-10-21",
+    "invalid_symbols": [],
+    "last_date": "2026-09-08",
+    "manifest_path": "components/us-small-pool-prices.json",
+    "manifest_sha256": "b00b5ed423ffb8e914aded778c53ea2c8b82b9dffedf0de10c1bfcfa6b3edc6b",
+    "market": "us",
+    "missing_symbols": [],
+    "not_yet_applicable_symbols": [],
+    "pool_id": "us_small_pool_v2",
+    "professional_source_ready": null,
+    "providers": [
+      "YFINANCE"
+    ],
+    "quarantined_symbols": [],
+    "ready_symbol_count": 23,
+    "research_only": true,
+    "status": "ready",
+    "trade_ready": false
+  }
+]

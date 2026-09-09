@@ -164,7 +164,7 @@ def build_selected_us_pool_price_snapshot(
     prices_path = output / "prices.csv"
     csv_frame = combined.copy()
     csv_frame["date"] = csv_frame["date"].dt.strftime("%Y-%m-%d")
-    _write_immutable(prices_path, csv_frame.to_csv(index=False).encode("utf-8"))
+    _write_immutable(prices_path, csv_frame.to_csv(index=False, lineterminator="\n").encode("utf-8"))
 
     snapshot_id = f"{pool_id}_yfinance_snapshot_v1"
     coverage_payload = {

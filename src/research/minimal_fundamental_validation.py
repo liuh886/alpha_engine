@@ -34,10 +34,12 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str),
-        encoding="utf-8",
-    )
+    # LF on all platforms: evidence hashes must match between Windows runs
+    # and Linux CI (.gitattributes enforces eol=lf).
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str)
+        )
 
 
 def _load_contract(path: Path) -> tuple[dict[str, Any], dict[str, Any], Path]:
@@ -46,8 +48,11 @@ def _load_contract(path: Path) -> tuple[dict[str, Any], dict[str, Any], Path]:
         raise ValueError("fundamental contract must include validation gates")
     pool_path = path.resolve().parents[2] / str(contract["pool_spec"])
     pool = yaml.safe_load(pool_path.read_text(encoding="utf-8"))
-    if not isinstance(pool, dict) or pool.get("pool_id") != "us_small_pool_v1":
-        raise ValueError("validation requires frozen us_small_pool_v1")
+    if not isinstance(pool, dict) or pool.get("pool_id") not in {
+        "us_small_pool_v1",
+        "us_small_pool_v2",
+    }:
+        raise ValueError("validation requires frozen us_small_pool_v1 or active us_small_pool_v2")
     return contract, pool, pool_path
 
 
@@ -478,7 +483,8 @@ def run_minimal_fundamental_validation(
             f"Failed gates: `{', '.join(failed) if failed else 'none'}`",
         ]
     )
-    (output / "report.md").write_text(report + "\n", encoding="utf-8")
+    with (output / "report.md").open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(report + "\n")
     manifest: dict[str, Any] = {
         "schema_version": "1.0",
         "inputs": {

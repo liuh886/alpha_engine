@@ -54,10 +54,11 @@ def _canonical_hash(payload: Mapping[str, Any]) -> str:
 
 
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
-    path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str),
-        encoding="utf-8",
-    )
+    # LF on all platforms so snapshot hashes match Linux CI.
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str)
+        )
 
 
 def _repository_root(path: Path) -> Path:
@@ -249,7 +250,7 @@ def build_us_pool_price_snapshot(
     prices_path = output / "prices.csv"
     csv_frame = combined.copy()
     csv_frame["date"] = csv_frame["date"].dt.strftime("%Y-%m-%d")
-    csv_bytes = csv_frame.to_csv(index=False).encode("utf-8")
+    csv_bytes = csv_frame.to_csv(index=False, lineterminator="\n").encode("utf-8")
     _write_immutable(prices_path, csv_bytes)
 
     coverage_payload = {

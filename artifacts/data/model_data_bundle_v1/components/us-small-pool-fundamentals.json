@@ -1,0 +1,49 @@
+{
+  "candidate_count": 23,
+  "component_id": "fundamentals.us_small_pool_v2",
+  "coverage_ratio": 0.6086956521739131,
+  "evidence_cutoff": "2026-09-08",
+  "evidence_type": "us_small_pool_fundamental_coverage_v1",
+  "expected_symbol_count": 23,
+  "invalid_symbols": [],
+  "market": "us",
+  "missing_symbols": [
+    "IREN",
+    "JD",
+    "NBIS",
+    "NOK",
+    "PDD",
+    "POET",
+    "TSM",
+    "VRT",
+    "WMT"
+  ],
+  "pool_id": "us_small_pool_v2",
+  "providers": [
+    "sec_edgar_companyfacts"
+  ],
+  "quarantined_symbols": [],
+  "ready_symbol_count": 14,
+  "ready_symbols": [
+    "AAOI",
+    "AAPL",
+    "ALAB",
+    "AMD",
+    "CRDO",
+    "HIMS",
+    "INTC",
+    "KO",
+    "LITE",
+    "MSFT",
+    "ORCL",
+    "TSLA",
+    "TYGO",
+    "WDC"
+  ],
+  "research_only": true,
+  "schema_version": "1.0",
+  "source_coverage_path": "D:/Documents/GitHub/alpha_engine/artifacts/evidence/sec_companyfacts_fundamentals_v2/coverage_report.json",
+  "source_coverage_sha256": "b929d8bb32834d2d421030054620c2b95118bcafc6cea7bac999cad0d6f32638",
+  "status": "partial",
+  "trade_ready": false
+}
