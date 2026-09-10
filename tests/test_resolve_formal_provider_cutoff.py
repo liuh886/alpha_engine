@@ -244,5 +244,43 @@ def test_us_probe_covers_full_selected_universe(monkeypatch) -> None:
     assert payload["effective_cutoff"] == "2026-08-28"
     probed = [request["symbol"] for request in router.requests]
     assert probed[0] == "QQQ"
-    assert len(probed) == 1 + 87
-    assert len(payload["member_watermarks"]) == 87
+    # EA is lifecycle-terminal (taken private 2026-08-04): excluded from the
+    # watermark gate, named in terminal_excluded_symbols.
+    assert "EA" not in probed
+    assert len(probed) == 1 + 86
+    assert len(payload["member_watermarks"]) == 86
+    assert payload["terminal_excluded_symbols"] == ["EA"]
+
+
+def test_terminal_symbols_never_block_the_probe(monkeypatch) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
+
+    class DeadEaRouter(FakeRouter):
+        def fetch_daily_bars(self, *, symbol: str, **kwargs):
+            if symbol == "EA":
+                return RouterResponse(
+                    result=None,
+                    attempts=[
+                        RouterAttempt(
+                            provider="yfinance",
+                            ok=False,
+                            provider_symbol=symbol,
+                            error="delisted",
+                        )
+                    ],
+                )
+            return super().fetch_daily_bars(symbol=symbol, **kwargs)
+
+    router = DeadEaRouter(_frame("2026-08-27", "2026-09-09"))
+    payload = resolve_formal_provider_cutoff(
+        market="us",
+        requested_cutoff="2026-09-09",
+        seed_cutoff="2026-09-08",
+        router=router,  # type: ignore[arg-type]
+    )
+
+    assert payload["status"] == "current"
+    assert payload["effective_cutoff"] == "2026-09-09"
+    assert payload["blocker"] is None

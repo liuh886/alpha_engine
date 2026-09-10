@@ -13,7 +13,10 @@ from typing import Any
 import pandas as pd
 import yaml
 
-from scripts.data.refresh_selected_pool_prices_v2 import build_hardened_router
+from scripts.data.refresh_selected_pool_prices_v2 import (
+    _terminal_listing_entries,
+    build_hardened_router,
+)
 from src.data.router import MarketDataRouter
 from src.research.market_session_clock import completed_market_date
 
@@ -178,6 +181,12 @@ def resolve_formal_provider_cutoff(
         for symbol in _strategy_probe_symbols(repository_root, market_key)
         if symbol != benchmark
     ]
+    # Lifecycle-declared terminals (delisted/taken-private) carry governed
+    # retained history and need no fresh vendor session: probing them would
+    # block every run forever after delisting.
+    terminals = set(_terminal_listing_entries(market_key, requested))
+    terminal_excluded = sorted(set(probe_symbols) & terminals)
+    probe_symbols = [symbol for symbol in probe_symbols if symbol not in terminals]
     watermarks: dict[str, str | None] = {}
     for symbol in probe_symbols:
         watermarks[symbol] = _probe_watermark(
@@ -195,6 +204,7 @@ def resolve_formal_provider_cutoff(
             "status": "blocked",
             "observed_cutoff": observed,
             "member_watermarks": watermarks,
+            "terminal_excluded_symbols": terminal_excluded,
             "effective_cutoff": None,
             "effective_seed_cutoff": None,
             "blocker": "strategy-critical provider fetch failed: " + ", ".join(failed),
@@ -206,6 +216,7 @@ def resolve_formal_provider_cutoff(
         "status": "current" if effective == requested else "delayed",
         "observed_cutoff": observed,
         "member_watermarks": watermarks,
+        "terminal_excluded_symbols": terminal_excluded,
         "effective_cutoff": effective,
         "effective_seed_cutoff": _previous_completed(market_key, effective),
         "blocker": None,
