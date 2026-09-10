@@ -92,7 +92,7 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
     <PwaInstallContext.Provider value={value}>
       {children}
       {showBanner && (
-        <aside className="fixed bottom-3 left-3 right-3 z-[90] mx-auto flex max-w-xl items-center gap-3 rounded-xl border bg-card/95 p-3 shadow-2xl backdrop-blur sm:bottom-5 sm:left-auto sm:right-5 sm:w-[420px]" aria-label="Install Alpha Engine">
+        <aside className="fixed bottom-3 left-3 right-3 z-[55] mx-auto flex max-w-xl items-center gap-3 rounded-xl border bg-card/95 p-3 shadow-2xl backdrop-blur sm:bottom-5 sm:left-auto sm:right-5 sm:w-[420px] max-sm:mb-[env(safe-area-inset-bottom)]" aria-label="Install Alpha Engine">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
             <Download className="h-4 w-4" />
           </div>
@@ -103,10 +103,10 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
             </p>
           </div>
           {!iosManualInstall && (
-            <Button size="sm" className="h-8 shrink-0" onClick={() => void install()}>Install</Button>
+            <Button size="sm" className="h-9 shrink-0 [@media(pointer:coarse)]:min-h-[44px]" onClick={() => void install()}>Install</Button>
           )}
           {iosManualInstall && <Share className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
-          <button type="button" className="shrink-0 px-1 text-xs font-medium text-muted-foreground hover:text-foreground" onClick={dismissBanner} aria-label="Dismiss install prompt">Later</button>
+          <button type="button" className="shrink-0 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:min-h-[44px]" onClick={dismissBanner} aria-label="Dismiss install prompt">Later</button>
         </aside>
       )}
     </PwaInstallContext.Provider>

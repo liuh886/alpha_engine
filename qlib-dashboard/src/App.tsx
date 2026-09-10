@@ -9,6 +9,7 @@ import type { AccessTier } from './lib/model-access';
 import { AccessGate } from './components/AccessGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileNavigation } from './components/MobileNavigation';
+import { MobileTabBar } from './components/MobileTabBar';
 import { ProductShareButton } from './components/ProductShareButton';
 import { PwaInstallProvider } from './components/PwaInstall';
 import { ResearchContextBar } from './components/ResearchContextBar';
@@ -175,6 +176,7 @@ function Layout(props: LayoutProps) {
             </ErrorBoundary>
           )}
         </main>
+        <MobileTabBar />
       </div>
     </div>
   );
