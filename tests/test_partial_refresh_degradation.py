@@ -500,6 +500,9 @@ def test_governed_reseed_lives_outside_incremental_workflow() -> None:
     assert "\n  push:" not in reseed
     assert "--full-refresh" in reseed
     assert "--allow-partial" in reseed
+    # Contract and build must share the probed cutoff; a clock/build split
+    # rebuilt at an unpublished session while sealing another.
+    assert reseed.count("steps.readiness.outputs.effective_cutoff") >= 2
     # Sparse-checkout closure: everything the jobs read at runtime must be
     # checked out. Two incidents in two days (vendor pins unreadable, composite
     # action missing) came from adding a file dependency without auditing

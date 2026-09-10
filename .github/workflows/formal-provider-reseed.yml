@@ -91,7 +91,7 @@ jobs:
         id: build
         env:
           MARKET: ${{ inputs.market }}
-          EFFECTIVE_CUTOFF: ${{ steps.clock.outputs.cutoff }}
+          EFFECTIVE_CUTOFF: ${{ steps.readiness.outputs.effective_cutoff }}
         run: |
           rm -rf "artifacts/formal-refresh/provider-${MARKET}"
           args=(
