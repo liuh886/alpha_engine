@@ -26,29 +26,31 @@
           "coverage_ratio": 1.0,
           "details": {
             "benchmark": "000300",
-            "candidate_observation_cutoff": "2026-09-04",
+            "candidate_observation_cutoff": "2026-09-09",
             "candidate_observation_start": "2026-04-16",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "c44d2cdec4a44d64fb33751a6d679fda021cb9c4648a1332198e42ebc9aca966",
-            "requested_cutoff": "2026-09-04",
+            "provider_identity_sha256": "acb770f63007902f808ea226da7989aafc2b871abc56fddfb8271d7e47e853fd",
+            "requested_cutoff": "2026-09-09",
             "source_status": "selected_pool_price_refresh_ready"
           },
-          "evidence_cutoff": "2026-09-04",
+          "evidence_cutoff": "2026-09-09",
           "expected_symbol_count": 130,
           "first_date": "2026-04-16",
           "invalid_symbols": [],
-          "last_date": "2026-09-04",
+          "last_date": "2026-09-09",
           "manifest_path": "components/cn-selected-pool-prices.json",
-          "manifest_sha256": "bd503381e1d0066930254ccc377203319baa8d75bb07908a1b9c285114b14356",
+          "manifest_sha256": "0a8156ec3b53095574556571ad56982f2a7c4ea067e756256d3c784375bd59b2",
           "market": "cn",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
           "pool_id": "cn_selected_equities_v3",
           "professional_source_ready": null,
           "providers": [
+            "AKSHARE",
             "AKSHARE_SINA",
-            "TENCENT_QFQ_HISTORY"
+            "TENCENT_QFQ_HISTORY",
+            "TUSHARE"
           ],
           "quarantined_symbols": [],
           "ready_symbol_count": 130,
@@ -130,29 +132,31 @@
           "coverage_ratio": 1.0,
           "details": {
             "benchmark": "000300",
-            "candidate_observation_cutoff": "2026-09-04",
+            "candidate_observation_cutoff": "2026-09-09",
             "candidate_observation_start": "2026-04-16",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "c44d2cdec4a44d64fb33751a6d679fda021cb9c4648a1332198e42ebc9aca966",
-            "requested_cutoff": "2026-09-04",
+            "provider_identity_sha256": "acb770f63007902f808ea226da7989aafc2b871abc56fddfb8271d7e47e853fd",
+            "requested_cutoff": "2026-09-09",
             "source_status": "selected_pool_price_refresh_ready"
           },
-          "evidence_cutoff": "2026-09-04",
+          "evidence_cutoff": "2026-09-09",
           "expected_symbol_count": 130,
           "first_date": "2026-04-16",
           "invalid_symbols": [],
-          "last_date": "2026-09-04",
+          "last_date": "2026-09-09",
           "manifest_path": "components/cn-selected-pool-prices.json",
-          "manifest_sha256": "bd503381e1d0066930254ccc377203319baa8d75bb07908a1b9c285114b14356",
+          "manifest_sha256": "0a8156ec3b53095574556571ad56982f2a7c4ea067e756256d3c784375bd59b2",
           "market": "cn",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
           "pool_id": "cn_selected_equities_v3",
           "professional_source_ready": null,
           "providers": [
+            "AKSHARE",
             "AKSHARE_SINA",
-            "TENCENT_QFQ_HISTORY"
+            "TENCENT_QFQ_HISTORY",
+            "TUSHARE"
           ],
           "quarantined_symbols": [],
           "ready_symbol_count": 130,
@@ -193,29 +197,31 @@
           "coverage_ratio": 1.0,
           "details": {
             "benchmark": "000300",
-            "candidate_observation_cutoff": "2026-09-04",
+            "candidate_observation_cutoff": "2026-09-09",
             "candidate_observation_start": "2026-04-16",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "c44d2cdec4a44d64fb33751a6d679fda021cb9c4648a1332198e42ebc9aca966",
-            "requested_cutoff": "2026-09-04",
+            "provider_identity_sha256": "acb770f63007902f808ea226da7989aafc2b871abc56fddfb8271d7e47e853fd",
+            "requested_cutoff": "2026-09-09",
             "source_status": "selected_pool_price_refresh_ready"
           },
-          "evidence_cutoff": "2026-09-04",
+          "evidence_cutoff": "2026-09-09",
           "expected_symbol_count": 130,
           "first_date": "2026-04-16",
           "invalid_symbols": [],
-          "last_date": "2026-09-04",
+          "last_date": "2026-09-09",
           "manifest_path": "components/cn-selected-pool-prices.json",
-          "manifest_sha256": "bd503381e1d0066930254ccc377203319baa8d75bb07908a1b9c285114b14356",
+          "manifest_sha256": "0a8156ec3b53095574556571ad56982f2a7c4ea067e756256d3c784375bd59b2",
           "market": "cn",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
           "pool_id": "cn_selected_equities_v3",
           "professional_source_ready": null,
           "providers": [
+            "AKSHARE",
             "AKSHARE_SINA",
-            "TENCENT_QFQ_HISTORY"
+            "TENCENT_QFQ_HISTORY",
+            "TUSHARE"
           ],
           "quarantined_symbols": [],
           "ready_symbol_count": 130,
@@ -407,8 +413,8 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "e4647de6b9ba542474b28a5a89854dd3ed3c105edbaed44b7ecd454e477b0f20",
-            "requested_cutoff": "2026-09-04",
+            "provider_identity_sha256": "d89fdd0f41302f3cf59d95a7642b57f7145022d5dc8663e756da1572a59fe31a",
+            "requested_cutoff": "2026-09-09",
             "source_status": "selected_pool_price_refresh_ready"
           },
           "evidence_cutoff": "2026-08-04",
@@ -417,7 +423,7 @@
           "invalid_symbols": [],
           "last_date": "2026-08-04",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "52012c9e84dab82d4df0f87a1fd06f1eec8a249dfeb059a2146002dc78c88c60",
+          "manifest_sha256": "72994d7231b495e7483efead03dd43e006b0436fae97a8508fb16960a2356578",
           "market": "us",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
@@ -484,8 +490,8 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "e4647de6b9ba542474b28a5a89854dd3ed3c105edbaed44b7ecd454e477b0f20",
-            "requested_cutoff": "2026-09-04",
+            "provider_identity_sha256": "d89fdd0f41302f3cf59d95a7642b57f7145022d5dc8663e756da1572a59fe31a",
+            "requested_cutoff": "2026-09-09",
             "source_status": "selected_pool_price_refresh_ready"
           },
           "evidence_cutoff": "2026-08-04",
@@ -494,7 +500,7 @@
           "invalid_symbols": [],
           "last_date": "2026-08-04",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "52012c9e84dab82d4df0f87a1fd06f1eec8a249dfeb059a2146002dc78c88c60",
+          "manifest_sha256": "72994d7231b495e7483efead03dd43e006b0436fae97a8508fb16960a2356578",
           "market": "us",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
@@ -549,8 +555,8 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "e4647de6b9ba542474b28a5a89854dd3ed3c105edbaed44b7ecd454e477b0f20",
-            "requested_cutoff": "2026-09-04",
+            "provider_identity_sha256": "d89fdd0f41302f3cf59d95a7642b57f7145022d5dc8663e756da1572a59fe31a",
+            "requested_cutoff": "2026-09-09",
             "source_status": "selected_pool_price_refresh_ready"
           },
           "evidence_cutoff": "2026-08-04",
@@ -559,7 +565,7 @@
           "invalid_symbols": [],
           "last_date": "2026-08-04",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "52012c9e84dab82d4df0f87a1fd06f1eec8a249dfeb059a2146002dc78c88c60",
+          "manifest_sha256": "72994d7231b495e7483efead03dd43e006b0436fae97a8508fb16960a2356578",
           "market": "us",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
@@ -605,6 +611,55 @@
         ],
         "gate_status": "failed",
         "minimum_coverage_ratio": 1.0,
+        "observed": null
+      }
+    ],
+    "research_only": true,
+    "status": "blocked",
+    "trade_ready": false
+  },
+  {
+    "candidate_count": 23,
+    "candidate_pool_id": "us_small_pool_v2",
+    "failed_gates": [
+      "component:prices.us_small_pool_v2:required_component_missing",
+      "component:fundamentals.us_small_pool_v2:required_component_missing"
+    ],
+    "market": "us",
+    "profile_id": "us_small_pool_price_plus_fundamentals_v1",
+    "references": [
+      "QQQ"
+    ],
+    "required_components": [
+      {
+        "accepted_statuses": [
+          "ready"
+        ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
+        "component_id": "prices.us_small_pool_v2",
+        "coverage_basis": "all_symbols",
+        "gate_reasons": [
+          "required_component_missing"
+        ],
+        "gate_status": "failed",
+        "minimum_coverage_ratio": 1.0,
+        "observed": null
+      },
+      {
+        "accepted_statuses": [
+          "partial",
+          "ready"
+        ],
+        "allow_not_yet_applicable": false,
+        "applicable_coverage_ratio": null,
+        "component_id": "fundamentals.us_small_pool_v2",
+        "coverage_basis": "all_symbols",
+        "gate_reasons": [
+          "required_component_missing"
+        ],
+        "gate_status": "failed",
+        "minimum_coverage_ratio": 0.8,
         "observed": null
       }
     ],
