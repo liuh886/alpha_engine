@@ -43,7 +43,7 @@ export function MobileNavigation() {
       </Button>
 
       {open && (
-        <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="Strategy navigation">
+        <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Strategy navigation">
           <button
             type="button"
             className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1px]"

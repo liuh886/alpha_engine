@@ -1,5 +1,6 @@
-import { ArrowRight, CircleSlash2, Clock3, Crown, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ChevronDown, CircleSlash2, Clock3, Crown, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
@@ -57,6 +58,7 @@ export function StrategyFleet({
 }) {
   const navigate = useNavigate();
   const access = useAccessControl();
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm" aria-label="Formal strategy fleet">
@@ -69,52 +71,97 @@ export function StrategyFleet({
           const requiredTier = snapshot ? access.requiredTier('strategy', snapshot.strategyId) : 'owner';
           const liveLocked = !access.canAccess(requiredTier);
           const label = snapshot ? STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading operations' : 'Operating status unavailable';
+          const expanded = expandedKey === run.key;
+          const totalReturn = metricPercent(run, 'total_return');
+          const sharpe = metricDecimal(run, 'sharpe_ratio');
+          const maxDd = metricPercent(run, 'max_drawdown');
           return (
-            <button
+            <article
               key={run.key}
-              type="button"
-              onClick={() => navigate(`/strategies/${encodeURIComponent(run.modelVersionId)}`)}
-              className="group grid w-full gap-4 px-5 py-5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary lg:grid-cols-[minmax(220px,1.35fr)_112px_112px_88px_108px_minmax(210px,1fr)_36px] lg:items-center"
-              aria-label={liveLocked ? `${run.title}, historical evidence public, live operations require ${requiredTier}` : run.title}
+              className="group px-5 py-4 transition-colors hover:bg-muted/20 lg:grid lg:grid-cols-[minmax(220px,1.35fr)_112px_112px_88px_108px_minmax(210px,1fr)_36px] lg:items-center lg:gap-4 lg:py-5"
             >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="truncate text-base font-semibold">{run.title}</h3>
-                  {requiredTier !== 'public' && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-primary">
-                      <Crown className="h-3 w-3" /> {requiredTier === 'pro' ? 'Pro live' : requiredTier}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">{run.market.toUpperCase()} · {run.benchmark} · evidence {run.evidenceCutoff}</p>
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate(`/strategies/${encodeURIComponent(run.modelVersionId)}`)}
+                className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary lg:contents"
+                aria-label={liveLocked ? `${run.title}, historical evidence public, live operations require ${requiredTier}` : run.title}
+              >
+                <span className="block min-w-0">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="truncate text-base font-semibold">{run.title}</span>
+                    {requiredTier !== 'public' && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-primary">
+                        <Crown className="h-3 w-3" /> {requiredTier === 'pro' ? 'Pro live' : requiredTier}
+                      </span>
+                    )}
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">{run.market.toUpperCase()} · {run.benchmark} · evidence {run.evidenceCutoff}</span>
+                </span>
 
-              <div className="grid grid-cols-4 gap-3 lg:contents">
-                <PublicMetric label="Total return" value={metricPercent(run, 'total_return')} emphasis />
-                <PublicMetric label="CAGR" value={metricPercent(run, 'annualized_return')} />
-                <PublicMetric label="Sharpe" value={metricDecimal(run, 'sharpe_ratio')} />
-                <PublicMetric label="Max DD" value={metricPercent(run, 'max_drawdown')} />
-              </div>
+                <span className="mt-2 flex items-center gap-4 font-mono text-sm font-semibold tabular-nums lg:hidden" aria-label={`Total return ${totalReturn}, Sharpe ${sharpe}, max drawdown ${maxDd}`}>
+                  <span>{totalReturn}</span>
+                  <span className="text-muted-foreground">S {sharpe}</span>
+                  <span className="text-muted-foreground">DD {maxDd}</span>
+                </span>
 
-              {liveLocked ? (
-                <div className="rounded-lg border border-primary/15 bg-primary/[0.035] p-3 lg:border-0 lg:bg-transparent lg:p-0">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-primary"><LockKeyhole className="h-4 w-4" />Live holdings & signals</p>
-                  <p className="mt-1 text-xs text-muted-foreground">AlphaEngine {requiredTier === 'pro' ? 'Pro' : requiredTier} unlocks the current-operations layer.</p>
-                </div>
-              ) : (
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold', statusClass(snapshot?.status))}>
-                      <StatusIcon status={snapshot?.status} />{label}
-                    </span>
+                <span className="mt-3 hidden lg:contents">
+                  <PublicMetric label="Total return" value={metricPercent(run, 'total_return')} emphasis />
+                  <PublicMetric label="CAGR" value={metricPercent(run, 'annualized_return')} />
+                  <PublicMetric label="Sharpe" value={metricDecimal(run, 'sharpe_ratio')} />
+                  <PublicMetric label="Max DD" value={metricPercent(run, 'max_drawdown')} />
+                </span>
+              </button>
+
+              <div className="mt-3 lg:contents">
+                {liveLocked ? (
+                  <div className="rounded-lg border border-primary/15 bg-primary/[0.035] p-3 lg:border-0 lg:bg-transparent lg:p-0">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-primary"><LockKeyhole className="h-4 w-4" />Live holdings & signals</p>
+                    <p className="mt-1 text-xs text-muted-foreground">AlphaEngine {requiredTier === 'pro' ? 'Pro' : requiredTier} unlocks the current-operations layer.</p>
                   </div>
-                  <p className="mt-2 text-sm font-medium">{snapshot?.stateLabel || 'Formal evidence only'}</p>
-                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{allocationSummary(snapshot, 'current')} → {allocationSummary(snapshot, 'target')}</p>
+                ) : (
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold', statusClass(snapshot?.status))}>
+                        <StatusIcon status={snapshot?.status} />{label}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm font-medium">{snapshot?.stateLabel || 'Formal evidence only'}</p>
+                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{allocationSummary(snapshot, 'current')} → {allocationSummary(snapshot, 'target')}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-3 flex items-center justify-between lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setExpandedKey(expanded ? null : run.key)}
+                  aria-expanded={expanded}
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-primary hover:bg-primary/5"
+                >
+                  {expanded ? 'Hide details' : 'Strategy details'}
+                  <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/strategies/${encodeURIComponent(run.modelVersionId)}`)}
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-muted-foreground hover:text-primary"
+                  aria-label={`Open ${run.title} strategy detail`}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              {expanded && (
+                <div className="mt-2 space-y-2 rounded-lg border bg-muted/30 p-3 text-xs lg:hidden">
+                  <p><span className="font-semibold">CAGR:</span> <span className="font-mono tabular-nums">{metricPercent(run, 'annualized_return')}</span></p>
+                  <p><span className="font-semibold">Signal:</span> {label}</p>
+                  <p><span className="font-semibold">Allocations:</span> {allocationSummary(snapshot, 'current')} → {allocationSummary(snapshot, 'target')}</p>
+                  <p className="text-muted-foreground">Benchmark {run.benchmark} · evidence cutoff {run.evidenceCutoff}</p>
                 </div>
               )}
 
               <ArrowRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary lg:block" />
-            </button>
+            </article>
           );
         })}
       </div>

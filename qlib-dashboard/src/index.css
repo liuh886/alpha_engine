@@ -55,6 +55,13 @@
 
   * { @apply border-border; }
   html { background: hsl(var(--background)); }
+  :root {
+    --z-topbar: 30;
+    --z-banner: 55;
+    --z-drawer: 60;
+    --z-dialog: 70;
+    --z-toast: 80;
+  }
   body {
     @apply bg-background text-foreground antialiased;
     min-width: 320px;
@@ -81,39 +88,39 @@
   .research-brand-name { @apply text-sm font-bold tracking-tight; }
   .research-brand-subtitle { @apply text-[10px] uppercase tracking-[0.18em] text-muted-foreground; }
   .research-bundle-card { @apply mx-3 mt-3 rounded-lg border bg-muted/40 p-3; }
-  .research-bundle-label { @apply text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground; }
+  .research-bundle-label { @apply text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground; }
   .research-bundle-title { @apply mt-1 truncate text-xs font-semibold; }
-  .research-bundle-meta { @apply mt-1 text-[10px] text-muted-foreground; }
+  .research-bundle-meta { @apply mt-1 text-[11px] text-muted-foreground; }
   .research-nav { @apply flex-1 space-y-5 overflow-y-auto px-2 py-4; }
-  .research-nav-group h2 { @apply mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/75; }
+  .research-nav-group h2 { @apply mb-1.5 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/75; }
   .research-nav-link { @apply flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground; }
   .research-nav-link-active { @apply bg-primary/10 text-primary shadow-[inset_2px_0_0_hsl(var(--primary))]; }
-  .research-nav-tag { @apply ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300; }
+  .research-nav-tag { @apply ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300; }
   .research-nav-tag-dev { @apply bg-red-500/10 text-red-700 dark:text-red-300; }
   .research-sidebar-footer { @apply space-y-1 border-t p-2; }
   .research-sidebar-action { @apply flex min-h-8 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground; }
   .research-sidebar-action-active { @apply bg-amber-500/10 text-amber-700 dark:text-amber-300; }
   .research-panic-button { @apply flex min-h-8 w-full items-center justify-center gap-2 rounded-md bg-destructive/10 px-2 text-xs font-semibold text-destructive; }
-  .research-panic-confirm { @apply rounded-md border border-destructive/30 bg-destructive/5 p-2 text-[10px] text-destructive; }
+  .research-panic-confirm { @apply rounded-md border border-destructive/30 bg-destructive/5 p-2 text-[11px] text-destructive; }
   .research-panic-confirm p { @apply mb-1.5 text-center font-semibold; }
   .research-panic-confirm button { @apply flex-1 rounded bg-muted px-2 py-1 font-semibold text-foreground; }
-  .research-version { @apply pt-2 text-center font-mono text-[9px] text-muted-foreground/55; }
+  .research-version { @apply pt-2 text-center font-mono text-[10px] text-muted-foreground/55; }
 
   .research-topbar { @apply flex min-h-16 items-center justify-between gap-4 border-b bg-card/95 px-4 backdrop-blur md:px-7; }
-  .research-topbar-eyebrow { @apply text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground; }
+  .research-topbar-eyebrow { @apply text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground; }
   .research-topbar h1 { @apply text-base font-semibold tracking-tight md:text-lg; }
-  .research-context-bar { @apply flex min-h-9 items-center gap-4 overflow-x-auto whitespace-nowrap border-b bg-muted/35 px-4 text-[11px] text-muted-foreground md:px-7; }
+  .research-context-bar { @apply flex min-h-9 items-center gap-4 overflow-x-auto whitespace-nowrap border-b bg-muted/35 px-4 text-xs text-muted-foreground md:px-7; }
   .research-context-item { @apply flex shrink-0 items-center gap-1.5 whitespace-nowrap; }
-  .context-badge { @apply h-5 shrink-0 gap-0.5 whitespace-nowrap rounded-md px-1.5 text-[9px] font-semibold uppercase tracking-wide; }
+  .context-badge { @apply h-5 shrink-0 gap-0.5 whitespace-nowrap rounded-md px-1.5 text-[10px] font-semibold uppercase tracking-wide; }
 
   .research-page { @apply mx-auto w-full max-w-[1500px]; }
   .research-page-header { @apply flex flex-col gap-4 border-b pb-5 md:flex-row md:items-end md:justify-between; }
   .research-page-header h1 { @apply mt-1 text-2xl font-bold tracking-tight md:text-3xl; }
   .research-page-header p:not(.research-kicker) { @apply mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground; }
-  .research-kicker { @apply text-[10px] font-bold uppercase tracking-[0.2em] text-primary; }
+  .research-kicker { @apply text-[11px] font-bold uppercase tracking-[0.2em] text-primary; }
   .research-surface { @apply border-border/80 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]; }
   .research-stat { @apply rounded-lg bg-muted/50 p-2.5; }
-  .research-stat dt { @apply text-[9px] font-bold uppercase tracking-wider text-muted-foreground; }
+  .research-stat dt { @apply text-[10px] font-bold uppercase tracking-wider text-muted-foreground; }
   .research-stat dd { @apply mt-1 font-mono text-xs font-semibold; }
   .research-empty-state { @apply flex min-h-[60vh] flex-col items-center justify-center text-center; }
 
@@ -122,7 +129,17 @@
     .research-workspace { @apply min-h-screen; }
     .research-topbar { @apply sticky top-0 z-30; }
     .research-context-bar { @apply min-h-9; }
-    .research-main { @apply overflow-visible; }
+    .research-main { @apply overflow-visible pb-[calc(5.5rem+env(safe-area-inset-bottom))]; }
+    .research-nav-link { @apply text-sm; }
+  }
+
+  /* Commercial touch-target floor: coarse pointers get 44px minimum on
+     interactive chrome (nav rows, topbar actions, sidebar actions). */
+  @media (pointer: coarse) {
+    .research-nav-link { min-height: 44px; font-size: 14px; }
+    .research-topbar-actions > button,
+    .research-topbar-actions > a { min-height: 44px; min-width: 44px; }
+    .research-sidebar-action { min-height: 44px; }
   }
 }
 
