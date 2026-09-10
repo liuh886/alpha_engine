@@ -19,6 +19,13 @@ on:
           - cn
           - us
 
+# Same group as the automatic refresh: same-key cache writes are silently
+# skipped on conflict, so a reseed racing the scheduled run publishes
+# nothing while looking green. Queued (never cancelled) either way.
+concurrency:
+  group: reviewed-formal-backtest-refresh-live
+  cancel-in-progress: false
+
 jobs:
   reseed:
     runs-on: ubuntu-24.04

@@ -500,6 +500,21 @@ def test_governed_reseed_lives_outside_incremental_workflow() -> None:
     assert "\n  push:" not in reseed
     assert "--full-refresh" in reseed
     assert "--allow-partial" in reseed
+    # Sparse-checkout closure: everything the jobs read at runtime must be
+    # checked out. Two incidents in two days (vendor pins unreadable, composite
+    # action missing) came from adding a file dependency without auditing
+    # sparse sets.
+    assert "configs" in reseed  # vendor pins live under configs/data/
+    assert "reviewed-formal-backtest-refresh-live" in reseed  # no cache races
+
+
+def test_provider_sparse_sets_cover_runtime_dependencies() -> None:
+    text = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    providers = text.split("providers:")[1]
+    assert "configs" in providers  # universes, pools, pins, registries
+    assert "scripts" in providers and "src" in providers
 
 
 def test_cn27_data_stage_maps_to_data_blocked_exit(
