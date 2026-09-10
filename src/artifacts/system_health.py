@@ -62,6 +62,22 @@ def _max_date(values: Sequence[str | None]) -> str | None:
     return max(retained) if retained else None
 
 
+def _trading_sessions_between(start_iso: str, end_iso: str) -> int:
+    """Count weekdays in (start, end]: same calendar rule as operations."""
+    from datetime import date as _date
+    from datetime import timedelta
+
+    start = _date.fromisoformat(start_iso)
+    end = _date.fromisoformat(end_iso)
+    if end <= start:
+        return 0
+    return sum(
+        1
+        for offset in range(1, (end - start).days + 1)
+        if (start + timedelta(days=offset)).weekday() < 5
+    )
+
+
 def _state_max(states: Sequence[str]) -> str:
     invalid = set(states) - STATES
     if invalid:
@@ -245,6 +261,20 @@ def build_system_health(
                 "provider_formal_consistency": (
                     "current" if state in {"current", "delayed"} else state
                 ),
+                "staleness": {
+                    "as_of": provider_cutoff,
+                    "expected_cutoff": expected_cutoff,
+                    "sessions_behind": (
+                        None
+                        if provider_cutoff is None or expected_cutoff is None
+                        else _trading_sessions_between(provider_cutoff, expected_cutoff)
+                    ),
+                    "stale": bool(
+                        provider_cutoff is not None
+                        and expected_cutoff is not None
+                        and provider_cutoff < expected_cutoff
+                    ),
+                },
             }
         )
 

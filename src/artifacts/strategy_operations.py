@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,10 @@ from src.governance.strategy_runtime_capabilities import (
     RuntimeCapability,
     resolve_strategy_runtime_capabilities,
 )
+from src.research.market_session_clock import (
+    MarketSessionClockError,
+    completed_market_date,
+)
 
 SCHEMA_VERSION = "2.2.0"
 QQQ_FAMILY = "qqq_rotation"
@@ -49,6 +54,10 @@ STATUS_VALUES = {
     "delivery_failed",
 }
 FRESHNESS_VALUES = {"current", "stale", "blocked", "unknown"}
+# Display-truth detail states. Unlike `status` (pipeline-centric), these are
+# user-centric: can the user act, act with caution, browse history only, or
+# nothing at all. Closed enum: unknown values fail validation.
+STATE_DETAIL_VALUES = {"current", "degraded_delayed", "degraded_blocked", "blocked"}
 QQQ_STATE_LABELS = {0: "Defensive", 1: "Transition", 2: "Risk-on"}
 BYD_MODE_LABELS = {
     "defense": "Defensive",
@@ -59,6 +68,87 @@ BYD_MODE_LABELS = {
 
 class StrategyOperationsError(ValueError):
     """Raised when a governed operations snapshot cannot be constructed."""
+
+
+def _trading_sessions_between(start_iso: str, end_iso: str) -> int:
+    """Count weekdays in (start, end]: same calendar rule as the market clock."""
+    from datetime import date as _date
+
+    start = _date.fromisoformat(start_iso)
+    end = _date.fromisoformat(end_iso)
+    if end <= start:
+        return 0
+    return sum(
+        1
+        for offset in range(1, (end - start).days + 1)
+        if (start + timedelta(days=offset)).weekday() < 5
+    )
+
+
+def _staleness(
+    latest_completed_session: object,
+    *,
+    market: str,
+    generated_at: str,
+) -> dict[str, object]:
+    """Machine-readable staleness for display truth (additive, optional).
+
+    Mirrors the frontend formal-freshness rule: stale iff sessions completed
+    after the record's data date. An unknown data date counts as stale so
+    missing evidence can never render as current.
+    """
+    as_of = str(latest_completed_session or "").strip() or None
+    try:
+        from datetime import datetime, timezone
+
+        generated = datetime.fromisoformat(str(generated_at).replace("Z", "+00:00"))
+        if generated.tzinfo is None:
+            generated = generated.replace(tzinfo=timezone.utc)
+        expected = completed_market_date(
+            str(market), generated.date().isoformat(), now_utc=generated
+        )
+    except (MarketSessionClockError, ValueError):
+        expected = None
+    if as_of is None or expected is None:
+        return {
+            "as_of": as_of,
+            "expected_cutoff": expected,
+            "sessions_behind": None,
+            "stale": True,
+        }
+    try:
+        behind = _trading_sessions_between(as_of, expected)
+    except ValueError:
+        return {
+            "as_of": as_of,
+            "expected_cutoff": expected,
+            "sessions_behind": None,
+            "stale": True,
+        }
+    return {
+        "as_of": as_of,
+        "expected_cutoff": expected,
+        "sessions_behind": behind,
+        "stale": behind > 0,
+    }
+
+
+def _state_detail(status: object, *, has_history: bool, stale: bool) -> str:
+    """Map pipeline status to a user-actionable display state.
+
+    - current: healthy and fresh, act normally.
+    - degraded_delayed: functioning but behind, act with caution.
+    - degraded_blocked: live decisions unavailable, formal history browsable.
+    - blocked: nothing usable.
+    """
+    name = str(status or "")
+    if name in {"current_no_change", "target_pending_execution", "execution_observed"}:
+        return "degraded_delayed" if stale else "current"
+    if name == "stale":
+        return "degraded_delayed"
+    if name in {"pipeline_unavailable", "awaiting_observation"}:
+        return "degraded_blocked" if has_history else "blocked"
+    return "blocked"
 
 
 def _transition_predecessor_strategies(
@@ -593,6 +683,23 @@ def build_operations_payload(
         strategy = strategies[model_version_id]
         capability = capabilities[model_version_id]
         family = strategy.model_family_id
+
+        def _emit(record: dict[str, object]) -> None:
+            # Display-truth staleness rides every record so no consumer can
+            # render highlights without an as-of context.
+            staleness = _staleness(
+                record.get("latest_completed_session"),
+                market=strategy.market,
+                generated_at=generated_at,
+            )
+            record["staleness"] = staleness
+            record["state_detail"] = _state_detail(
+                record.get("status"),
+                has_history=bool(record.get("latest_completed_session")),
+                stale=bool(staleness.get("stale")),
+            )
+            records.append(record)
+
         try:
             ledger = read_latest_evaluation(
                 ledger_root / model_version_id,
@@ -608,10 +715,10 @@ def build_operations_payload(
             blocked["status"] = "blocked"
             blocked["decision_reason"] = str(exc)
             blocked["note"] = "Governed decision ledger failed validation; operations fail closed."
-            records.append(blocked)
+            _emit(blocked)
             continue
         if ledger is None:
-            records.append(
+            _emit(
                 _unavailable(
                     formal,
                     strategy,
@@ -620,11 +727,11 @@ def build_operations_payload(
                 )
             )
         elif family == QQQ_FAMILY:
-            records.append(_qqq(formal, strategy, ledger))
+            _emit(_qqq(formal, strategy, ledger))
         elif family == BYD_FAMILY:
-            records.append(_byd(formal, strategy, ledger))
+            _emit(_byd(formal, strategy, ledger))
         elif family in RANKER_FAMILIES:
-            records.append(_ranker(formal, strategy, ledger))
+            _emit(_ranker(formal, strategy, ledger))
         else:
             blocked = _unavailable(formal, strategy, awaiting=False, capability=capability)
             blocked["status"] = "blocked"
@@ -632,7 +739,7 @@ def build_operations_payload(
                 "A decision ledger exists but no governed operations adapter is registered."
             )
             blocked["note"] = "Backend adapter required before this decision can be published."
-            records.append(blocked)
+            _emit(blocked)
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -693,6 +800,10 @@ def validate_operations_payload(payload: object) -> None:
         seen_strategies.add(strategy_id)
         if value.get("status") not in STATUS_VALUES:
             raise StrategyOperationsError(f"invalid operations status for {model_id}")
+        # Tolerant of pre-staleness payloads: the builder always emits
+        # state_detail for new payloads; old snapshots simply lack it.
+        if "state_detail" in value and value.get("state_detail") not in STATE_DETAIL_VALUES:
+            raise StrategyOperationsError(f"invalid state detail for {model_id}")
         if (
             value.get("data_freshness") not in FRESHNESS_VALUES
             or value.get("factor_freshness") not in FRESHNESS_VALUES
