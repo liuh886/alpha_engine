@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from collections.abc import Mapping
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -20,8 +21,11 @@ BENCHMARKS = {"us": "QQQ", "cn": "000300"}
 # Strategy pools whose members must be complete before the market cutoff is
 # blessed: the benchmark-only probe over-promised when members lagged the
 # benchmark (vendor EOD delays), melting the whole market build. Symbols are
-# derived from the pool file, never hand-listed here.
+# derived from pool files, never hand-listed here.
 STRATEGY_POOL_PATHS = {"cn": "configs/pools/cn_all_weather_alpha_rotation_v1.yaml"}
+SELECTED_UNIVERSE_PATHS = {
+    "us": "configs/research_universes/us_selected_equities_v2.yaml",
+}
 PROBE_DELAY_SECONDS = 1.0
 
 
@@ -48,28 +52,33 @@ def _previous_completed(market: str, cutoff: str) -> str:
 
 def _strategy_probe_symbols(root: Path, market_key: str) -> list[str]:
     """Derive strategy-critical symbols that gate the market cutoff."""
-    relative = STRATEGY_POOL_PATHS.get(market_key)
-    if not relative:
-        return []
-    pool = yaml.safe_load((root / relative).read_text(encoding="utf-8"))
     symbols: list[str] = []
-    for entry in pool.get("symbols", []):
-        symbol = entry.get("symbol") if isinstance(entry, dict) else entry
-        if str(symbol or "").strip():
-            symbols.append(str(symbol).strip().upper())
-    references = pool.get("references", {})
-    if isinstance(references, dict):
-        for key, entry in references.items():
-            if not isinstance(entry, dict):
-                continue
-            role = str(entry.get("role") or "")
-            if "benchmark" in role.lower():
-                continue
-            symbol = entry.get("symbol") or entry.get("provider_symbol") or key
+    relative = STRATEGY_POOL_PATHS.get(market_key)
+    if relative:
+        pool = yaml.safe_load((root / relative).read_text(encoding="utf-8"))
+        for entry in pool.get("symbols", []):
+            symbol = entry.get("symbol") if isinstance(entry, dict) else entry
             if str(symbol or "").strip():
-                symbols.append(
-                    str(symbol).strip().upper().lstrip("^").split(".", 1)[0]
-                )
+                symbols.append(str(symbol).strip().upper())
+        references = pool.get("references", {})
+        if isinstance(references, dict):
+            for key, entry in references.items():
+                if not isinstance(entry, Mapping):
+                    continue
+                role = str(entry.get("role") or "")
+                if "benchmark" in role.lower():
+                    continue
+                symbol = entry.get("symbol") or entry.get("provider_symbol") or key
+                if str(symbol or "").strip():
+                    symbols.append(
+                        str(symbol).strip().upper().lstrip("^").split(".", 1)[0]
+                    )
+    universe_relative = SELECTED_UNIVERSE_PATHS.get(market_key)
+    if universe_relative:
+        universe = yaml.safe_load((root / universe_relative).read_text(encoding="utf-8"))
+        for value in universe.get("symbols", []):
+            if str(value or "").strip():
+                symbols.append(str(value).strip().upper())
     return sorted(set(symbols))
 
 

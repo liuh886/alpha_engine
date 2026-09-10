@@ -70,7 +70,10 @@ def _frame(*dates: str) -> pd.DataFrame:
     return pd.DataFrame({"date": list(dates)})
 
 
-def test_resolver_marks_complete_requested_cutoff_current() -> None:
+def test_resolver_marks_complete_requested_cutoff_current(monkeypatch) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
     payload = resolve_formal_provider_cutoff(
         market="us",
         requested_cutoff="2026-08-28",
@@ -84,7 +87,10 @@ def test_resolver_marks_complete_requested_cutoff_current() -> None:
     assert payload["blocker"] is None
 
 
-def test_resolver_marks_provider_wide_one_session_lag_delayed() -> None:
+def test_resolver_marks_provider_wide_one_session_lag_delayed(monkeypatch) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
     payload = resolve_formal_provider_cutoff(
         market="us",
         requested_cutoff="2026-08-28",
@@ -223,7 +229,7 @@ def test_cn_probe_blocks_when_strategy_symbol_unavailable(
     assert "002156" in str(payload["blocker"])
 
 
-def test_us_probe_stays_benchmark_only(monkeypatch) -> None:
+def test_us_probe_covers_full_selected_universe(monkeypatch) -> None:
     import scripts.data.resolve_formal_provider_cutoff as module
 
     monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
@@ -236,5 +242,7 @@ def test_us_probe_stays_benchmark_only(monkeypatch) -> None:
     )
 
     assert payload["effective_cutoff"] == "2026-08-28"
-    assert payload["member_watermarks"] == {}
-    assert [request["symbol"] for request in router.requests] == ["QQQ"]
+    probed = [request["symbol"] for request in router.requests]
+    assert probed[0] == "QQQ"
+    assert len(probed) == 1 + 87
+    assert len(payload["member_watermarks"]) == 87
