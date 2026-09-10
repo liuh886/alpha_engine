@@ -1,7 +1,7 @@
 {
-  "built_at": "2026-09-05T04:05:50+00:00",
-  "bundle_id": "8d97072b21912231de84fbf01d72b11d701fb2be3a65e2f406416a7df50c00d9",
-  "evidence_cutoff": "2026-09-04",
+  "built_at": "2026-09-10T13:37:20+00:00",
+  "bundle_id": "524d92759e4f4739cdafa8cd9a320ad0ddf9a52e0c0f94ceca30a8dccd9202e8",
+  "evidence_cutoff": "2026-09-09",
   "research_only": true,
   "schema_version": "1.1",
   "source_receipts": [
@@ -19,7 +19,8 @@
     "blocked_training_profiles": [
       "qqqi_qqq_tqqq_rotation_v1",
       "us_selected_alpha158_v1",
-      "us_selected_price_plus_fundamentals_v1"
+      "us_selected_price_plus_fundamentals_v1",
+      "us_small_pool_price_plus_fundamentals_v1"
     ],
     "component_count": 5,
     "partial_component_count": 2,
