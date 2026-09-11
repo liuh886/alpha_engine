@@ -150,7 +150,7 @@ formal_publication:
   promotion_receipt: "data/research/experiment_receipts/cn_27_v1_3_user_directed_promotion_v1.json"
   preview_bundle_catalog: "data/research/model_runs/catalog.json"
   formal_bundle_catalog: "data/research/formal_model_runs/catalog.json"
-  current_target_activation: "not_applicable_until_governed_prospective_source_is_available"
+  current_target_activation: "maintained_cn_27_current_target_v1"
   formal_refresh_adapter: "cn_27_v1_3_formal_refresh_v1"
 
 known_limitations:

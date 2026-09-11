@@ -3,7 +3,10 @@ name: CN27 Current Target
 on:
   # No schedule: the publisher is dormant until a governed prospective source
   # exists. A daily cron would only retain expiring data_blocked receipts.
-  # Re-add the schedule when prospective_source_available flips true.
+  # NOTE 2026-09-11: a monthly schedule is desired now that prospective
+  # evidence exists, but CI policy caps permanent entrypoints at 45 and the
+  # count is already at budget — re-add the schedule only together with
+  # retiring or consolidating an existing workflow.
   workflow_dispatch:
   push:
     branches: [main]

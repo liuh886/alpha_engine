@@ -1,4 +1,4 @@
-"""Dormant CN_27 V1.3 current-target publisher: blocked now, exact later."""
+"""Activated CN_27 V1.3 current-target publisher: prospective source live."""
 
 from __future__ import annotations
 
@@ -75,28 +75,38 @@ def _sealed_prospective_root(tmp_path: Path) -> Path:
     return formal
 
 
-def test_prospective_source_is_unavailable_on_current_main() -> None:
+def test_prospective_source_is_available_on_current_main() -> None:
     status = prospective_source_status(
         formal_root=REAL_FORMAL_ROOT, repository_root=ROOT
     )
-    assert status["prospective_source_available"] is False
-    assert status["active_evidence_cutoff"] == FROZEN_EVIDENCE_CUTOFF
+    assert status["prospective_source_available"] is True
+    assert status["active_evidence_cutoff"] > FROZEN_EVIDENCE_CUTOFF
     assert status["adapter_id"] == ADAPTER_ID
 
 
-def test_build_fails_closed_as_data_blocked_without_prospective_source(
+def test_build_requires_positions_covering_signal_date_on_current_main(
     tmp_path: Path,
 ) -> None:
+    # Prospective source is available (09-09 refresh), but the refreshed
+    # positions still end at the frozen cutoff, so no signal date can be
+    # scored yet. This pins the exact remaining data gap: the formal
+    # refresh must extend cn27 positions past the frozen cutoff (or the
+    # first monthly rebalance must publish them).
+    cutoff = str(
+        prospective_source_status(
+            formal_root=REAL_FORMAL_ROOT, repository_root=ROOT
+        )["active_evidence_cutoff"]
+    )
     with pytest.raises(CN27CurrentTargetError) as excinfo:
         score_cn_27_current_target(
             formal_root=REAL_FORMAL_ROOT,
             ledger_dir=tmp_path / "ledger",
-            signal_date="2026-09-08",
-            market_cutoff="2026-09-08",
+            signal_date=cutoff,
+            market_cutoff=cutoff,
             repository_root=ROOT,
         )
-    assert excinfo.value.status == "data_blocked"
-    assert FROZEN_EVIDENCE_CUTOFF in str(excinfo.value)
+    assert excinfo.value.status == "invalid_evidence"
+    assert "positions do not cover" in str(excinfo.value)
 
 
 def test_sealed_prospective_run_publishes_exact_frozen_recipe_target(
@@ -178,29 +188,34 @@ def _run_command(*argv: str) -> tuple[int, Path, Path]:
     return completed.returncode, output, completed.stdout
 
 
-def test_runner_status_reports_dormant_source() -> None:
+def test_runner_status_reports_available_source() -> None:
     code, output, _ = _run_command(
         "status", "--formal-root", "data/research/formal_model_runs"
     )
     assert code == 0
     payload = json.loads(output.read_text(encoding="utf-8"))
-    assert payload["prospective_source_available"] is False
+    assert payload["prospective_source_available"] is True
 
 
-def test_runner_build_writes_data_blocked_receipt() -> None:
-    code, output, _ = _run_command(
+def test_runner_build_reports_missing_positions_on_current_main() -> None:
+    status = prospective_source_status(
+        formal_root=REAL_FORMAL_ROOT, repository_root=ROOT
+    )
+    cutoff = str(status["active_evidence_cutoff"])
+    code, output, stdout = _run_command(
         "build",
         "--formal-root",
         "data/research/formal_model_runs",
         "--signal-date",
-        "2026-09-08",
+        cutoff,
         "--market-cutoff",
-        "2026-09-08",
+        cutoff,
     )
-    assert code == 0
-    payload = json.loads(output.read_text(encoding="utf-8"))
-    assert payload["decision"] == "data_blocked"
-    assert "target_weights" not in payload
+    # Build fails closed with invalid_evidence (not data_blocked: the
+    # source exists) because refreshed positions do not cover the
+    # prospective cutoff yet. The exact message is pinned by the
+    # sibling unit test above; here only the fail-closed exit matters.
+    assert code != 0
 
 
 def test_runner_due_is_not_due_while_dormant() -> None:

@@ -49,7 +49,7 @@ def test_active_runtime_capabilities_are_exact_and_fail_closed() -> None:
     assert capabilities["cn_27"].current_target.as_dict() == {
         "status": "blocked",
         "adapter_id": "cn_27_current_target_v1",
-        "reason": "not_applicable_until_governed_prospective_source_is_available",
+        "reason": "maintained_cn_27_current_target_v1",
     }
     assert capabilities["byd"].current_target.status == "not_applicable"
 
