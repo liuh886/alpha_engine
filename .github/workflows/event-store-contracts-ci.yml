@@ -1,25 +1,33 @@
-name: Corporate Action Store CI
+name: Event Store Contracts CI
 
 on:
   pull_request:
     branches: [main]
     paths:
+      - "configs/data_contracts/fundamental_event_store_v1.yaml"
       - "configs/data_contracts/corporate_action_store_v1.yaml"
+      - "src/data/fundamentals/**"
       - "src/data/corporate_actions/**"
-      - "scripts/data/audit_corporate_action_coverage.py"
+      - "scripts/data/**"
+      - "tests/test_fundamental_event_store_contract.py"
       - "tests/test_corporate_action_store_contract.py"
+      - "docs/research/fundamental_event_store_v1_2026-08-01.md"
       - "docs/research/corporate_action_store_v1_2026-08-01.md"
-      - ".github/workflows/corporate-action-store-ci.yml"
+      - ".github/workflows/event-store-contracts-ci.yml"
       - ".github/actions/setup-python-uv/action.yml"
   push:
     branches: [main]
     paths:
+      - "configs/data_contracts/fundamental_event_store_v1.yaml"
       - "configs/data_contracts/corporate_action_store_v1.yaml"
+      - "src/data/fundamentals/**"
       - "src/data/corporate_actions/**"
-      - "scripts/data/audit_corporate_action_coverage.py"
+      - "scripts/data/**"
+      - "tests/test_fundamental_event_store_contract.py"
       - "tests/test_corporate_action_store_contract.py"
+      - "docs/research/fundamental_event_store_v1_2026-08-01.md"
       - "docs/research/corporate_action_store_v1_2026-08-01.md"
-      - ".github/workflows/corporate-action-store-ci.yml"
+      - ".github/workflows/event-store-contracts-ci.yml"
       - ".github/actions/setup-python-uv/action.yml"
   workflow_dispatch:
 
@@ -27,7 +35,30 @@ permissions:
   contents: read
 
 jobs:
-  contract:
+  fundamentals-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
+      - name: Ruff fundamental event-store files
+        run: >-
+          uv run ruff check
+          src/data/fundamentals
+          scripts/data
+          tests/test_fundamental_event_store_contract.py
+      - name: Mypy fundamental event-store files
+        run: >-
+          uv run mypy
+          src/data/fundamentals
+          scripts/data/audit_fundamental_coverage.py
+      - name: Run fundamental event-store contract tests
+        run: >-
+          uv run pytest
+          tests/test_fundamental_event_store_contract.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  corporate-actions-contract:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

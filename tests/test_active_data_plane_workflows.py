@@ -16,13 +16,12 @@ action_refs = POLICY_MODULE.action_refs
 
 WORKFLOW_JOB_COUNTS = {
     "alpha158-canonical-vwap-ci.yml": 3,
-    "fundamental-event-store-ci.yml": 1,
+    "event-store-contracts-ci.yml": 2,
     "selected-pool-event-population-ci.yml": 3,
     "factor-catalog-alpha158-ci.yml": 1,
     "alpha158-panel-ci.yml": 2,
     "us87-professional-prices-ci.yml": 2,
     "model-data-bundle-ci.yml": 2,
-    "corporate-action-store-ci.yml": 1,
     "etf-reference-bundle-ci.yml": 2,
     "factor-knowledge-registry-ci.yml": 1,
     "fundamental-acceleration-ci.yml": 1,
@@ -239,7 +238,7 @@ def test_sec_population_uses_public_identity_variable_and_secret_proxy_only() ->
 
 def test_ci_policy_resolves_actions_inside_the_shared_composite() -> None:
     workflow = Path(
-        ".github/workflows/fundamental-event-store-ci.yml"
+        ".github/workflows/event-store-contracts-ci.yml"
     ).read_text(encoding="utf-8")
 
     refs = action_refs(workflow)
