@@ -1,11 +1,10 @@
 """Governed current-target publisher for the CN_27 V1.3 allocation model.
 
-Dormant by frozen contract: ``configs/models/cn_27_v1_3.yaml`` declares
-``current_target_activation: not_applicable_until_governed_prospective_source_is_available``.
-Until a sealed refreshed formal run extends beyond the frozen evidence cutoff,
-every call fails closed with ``status="data_blocked"`` and no weights are
-produced. Once governed fan-in advances the active formal run, the same code
-path publishes the recomputed frozen-recipe target with no contract change.
+Activated by governed contract: ``configs/models/cn_27_v1_3.yaml`` declares
+``current_target_activation: maintained_cn_27_current_target_v1`` after the
+sealed refreshed formal run extended beyond the frozen evidence cutoff
+(2026-09-09 > 2026-09-04). Calls without a governed prospective source fail
+closed with ``status="data_blocked"`` and no weights are produced.
 """
 
 from __future__ import annotations

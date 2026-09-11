@@ -1,9 +1,12 @@
 name: CN27 Current Target
 
 on:
-  # No schedule: the publisher is dormant until a governed prospective source
-  # exists. A daily cron would only retain expiring data_blocked receipts.
-  # Re-add the schedule when prospective_source_available flips true.
+  # Monthly cadence matches the frozen 30-session rebalance rhythm. The
+  # publisher itself stays fail-closed: without governed prospective
+  # evidence it retains data_blocked receipts and seals nothing.
+  # (A daily cron would only retain expiring data_blocked receipts.)
+  schedule:
+    - cron: "17 3 1 * *"
   workflow_dispatch:
   push:
     branches: [main]

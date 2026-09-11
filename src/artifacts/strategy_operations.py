@@ -39,6 +39,7 @@ from src.research.market_session_clock import (
 SCHEMA_VERSION = "2.2.0"
 QQQ_FAMILY = "qqq_rotation"
 BYD_FAMILY = "byd_allocation"
+CN27_FAMILY = "cn_27_rotation"
 US_RANKER_FAMILY = "us_ranker"
 CN_RANKER_FAMILY = "cn_ranker"
 RANKER_FAMILIES = {US_RANKER_FAMILY, CN_RANKER_FAMILY}
@@ -658,6 +659,58 @@ def _ranker(
     }
 
 
+def _cn27(
+    record: Mapping[str, Any],
+    strategy: ActiveStrategy,
+    ledger: Mapping[str, Any],
+) -> dict[str, object]:
+    signal = ledger.get("signal")
+    if not isinstance(signal, Mapping):
+        raise StrategyOperationsError("cn27 decision ledger signal is missing")
+    allocations = _allocations(signal.get("current_weights"), signal.get("target_weights"))
+    changed = _has_change(allocations)
+    data_fresh = signal.get("data_freshness_ok") is True
+    delivery_status, issue_number = _delivery(ledger)
+    latest = signal.get("latest_data_date") or ledger.get("latest_data_date")
+    factor_freshness, factors, factor_error = _factor_snapshot(signal, latest_data_date=latest)
+    cadence, next_policy = _cadence(strategy)
+    return {
+        **_identity(strategy, record),
+        "status": _status(
+            delivery_status=delivery_status,
+            data_fresh=data_fresh,
+            factor_freshness=factor_freshness,
+            changed=changed,
+        ),
+        "as_of": signal.get("signal_date"),
+        "latest_completed_session": latest,
+        "decision_cadence": cadence,
+        "next_decision_policy": next_policy,
+        "state_label": "CN27 monthly rebalance",
+        "decision_reason": str(signal.get("reason_code") or "Frozen monthly CN27 evaluation."),
+        "allocations": allocations,
+        "turnover": _finite(signal.get("turnover_units")),
+        "estimated_cost": _finite(signal.get("estimated_transaction_cost")),
+        "data_freshness": "current" if data_fresh else "stale",
+        "factor_freshness": factor_freshness,
+        "delivery_status": delivery_status,
+        "source_label": "Governed monthly CN27 decision ledger",
+        "source_href": (
+            f"https://github.com/liuh886/alpha_engine/issues/{issue_number}"
+            if issue_number
+            else None
+        ),
+        "note": factor_error
+        or (
+            "Target is published for the next eligible open."
+            if changed
+            else "The governed rebalance retained the existing target."
+        ),
+        "factor_evidence": factors,
+        "source_identity": _source(record, ledger),
+    }
+
+
 def build_operations_payload(
     *,
     formal_catalog: Path,
@@ -732,6 +785,8 @@ def build_operations_payload(
             _emit(_byd(formal, strategy, ledger))
         elif family in RANKER_FAMILIES:
             _emit(_ranker(formal, strategy, ledger))
+        elif family == CN27_FAMILY:
+            _emit(_cn27(formal, strategy, ledger))
         else:
             blocked = _unavailable(formal, strategy, awaiting=False, capability=capability)
             blocked["status"] = "blocked"

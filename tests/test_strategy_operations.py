@@ -191,7 +191,7 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
     )
     assert "cn_27_current_target_v1 is dormant" in observed["cn_27_v1_3"]["note"]
     assert (
-        "not_applicable_until_governed_prospective_source_is_available"
+        "maintained_cn_27_current_target_v1"
         in observed["cn_27_v1_3"]["note"]
     )
     assert all(
@@ -316,3 +316,85 @@ def test_generated_operations_identity_matches_formal_bundle_catalog(tmp_path: P
         assert identity["formal_bundle_id"] == catalog_record["bundle_id"]
         assert identity["formal_run_id"] == catalog_record["run_id"]
         assert identity["formal_evidence_cutoff"] == catalog_record["evidence_cutoff"]
+
+
+def _cn27_canonical_factor_evidence() -> dict[str, object]:
+    return {
+        "schema_version": "strategy_factor_snapshot_v1",
+        "freshness": "current",
+        "research_only": True,
+        "trade_ready": False,
+        "signal_date": "2026-09-09",
+        "observation_cutoff": "2026-09-09",
+        "factor_count": 1,
+        "factors": [
+            {
+                "factor_id": "cn27.frozen_combination_inputs",
+                "implementation_hash": "d" * 64,
+                "effect": "neutral",
+                "observed_at": "2026-09-09",
+            }
+        ],
+    }
+
+
+def _cn27_signal(*, canonical_factors: bool) -> dict[str, object]:
+    frozen = {
+        "model_family_id": "cn_27_rotation",
+        "signal_date": "2026-09-09",
+        "factors": {"residual_momentum_120": 0.18},
+        "normalization": "daily_cross_sectional_percentile",
+        "freshness": "frozen_contract",
+        "library_sources": ["configs/models/cn_27_v1_3.yaml#factor_model"],
+    }
+    return {
+        "model_family_id": "cn_27_rotation",
+        "research_only": True,
+        "trade_ready": False,
+        "fingerprint": "cn27-test-fingerprint",
+        "signal_date": "2026-09-09",
+        "latest_data_date": "2026-09-09",
+        "data_freshness_ok": True,
+        "current_weights": {"000001": 0.5, "CASH": 0.5},
+        "target_weights": {"000001": 0.4, "000002": 0.1, "CASH": 0.5},
+        "turnover_units": 0.2,
+        "estimated_transaction_cost": 0.0004,
+        "reason_code": "cn_27_v1_3_scheduled_monthly_target",
+        "factor_evidence": (
+            _cn27_canonical_factor_evidence() if canonical_factors else frozen
+        ),
+        "factor_freshness_ok": canonical_factors,
+    }
+
+
+def test_cn27_renderer_publishes_sealed_decision_with_canonical_factors() -> None:
+    from src.artifacts.strategy_operations import _cn27
+    from src.governance.active_strategy_catalog import load_active_strategy_catalog
+
+    active = load_active_strategy_catalog(Path("configs/strategies/registry.json"))
+    strategy = active.by_strategy_id["cn_27"]
+    ledger = {"signal": _cn27_signal(canonical_factors=True)}
+    record = {"model_version_id": "cn_27_v1_3"}
+
+    snapshot = _cn27(record, strategy, ledger)
+
+    assert snapshot["status"] == "target_pending_execution"
+    assert snapshot["state_label"] == "CN27 monthly rebalance"
+    assert snapshot["source_label"] == "Governed monthly CN27 decision ledger"
+    assert {row["asset"] for row in snapshot["allocations"]} == {
+        "000001",
+        "000002",
+        "CASH",
+    }
+
+
+def test_cn27_seal_rejects_non_canonical_factor_evidence(tmp_path: Path) -> None:
+    with pytest.raises(StrategySignalLedgerError, match="invalid signal factor evidence"):
+        seal_signal_decision(
+            ledger_root=tmp_path / "ledgers" / "cn_27_v1_3",
+            model_version_id="cn_27_v1_3",
+            signal=_cn27_signal(canonical_factors=False),
+            workflow_run_id="seal-12345",
+            commit_sha="a" * 40,
+            created_at_utc="2026-09-09T00:00:00Z",
+        )
