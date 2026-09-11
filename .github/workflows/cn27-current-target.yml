@@ -1,12 +1,12 @@
 name: CN27 Current Target
 
 on:
-  # Monthly cadence matches the frozen 30-session rebalance rhythm. The
-  # publisher itself stays fail-closed: without governed prospective
-  # evidence it retains data_blocked receipts and seals nothing.
-  # (A daily cron would only retain expiring data_blocked receipts.)
-  schedule:
-    - cron: "17 3 1 * *"
+  # No schedule: the publisher is dormant until a governed prospective source
+  # exists. A daily cron would only retain expiring data_blocked receipts.
+  # NOTE 2026-09-11: a monthly schedule is desired now that prospective
+  # evidence exists, but CI policy caps permanent entrypoints at 45 and the
+  # count is already at budget — re-add the schedule only together with
+  # retiring or consolidating an existing workflow.
   workflow_dispatch:
   push:
     branches: [main]
