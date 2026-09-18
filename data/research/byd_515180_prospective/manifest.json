@@ -16,9 +16,9 @@
     10,
     20
   ],
-  "last_signal_date": "2026-09-17",
-  "ledger_sha256": "b659468340358cee7b6af461e31eedaabb9fd68b3d3380dea0f6b39175bc57ad",
-  "observation_count": 33,
+  "last_signal_date": "2026-09-18",
+  "ledger_sha256": "d61e41388e8f43942aa10059c3588b7fabb19f16226f05a833a8ff6f6ac0eef6",
+  "observation_count": 34,
   "observation_sha256": {
     "2026-08-04": "ce1dacc2e7c97ee758cefd3dbc36b0d94fc6c55f1ffdbcab6a8c473c2462f7f7",
     "2026-08-05": "8ea4608a9598f6fc613d479bbcb619234745a32846cf31b0e66d1e94e2799bee",
@@ -52,14 +52,15 @@
     "2026-09-14": "78e9079eeb9ccd6c05c94dba2cb0a62e94d482e7b5b76636b02869cba10605c9",
     "2026-09-15": "e3856b621bc4ab89bf715f50a5606204b5778685548b439e3fa7686ac9b060ae",
     "2026-09-16": "5e12696c4219fc5ddd82bf645d9a8e16b9a92b3293eb5a460189b31e247a412e",
-    "2026-09-17": "1abc2edc5520b1e8fc2398ba474db80d61585d13c321767844a09ba04195dc28"
+    "2026-09-17": "1abc2edc5520b1e8fc2398ba474db80d61585d13c321767844a09ba04195dc28",
+    "2026-09-18": "f2831a043594ab8edcae7e6126b9e9b889c825cdc722e4e1cdaec781a5360f14"
   },
-  "outcome_count": 12,
-  "prospective_eligible_observation_count": 6,
+  "outcome_count": 15,
+  "prospective_eligible_observation_count": 7,
   "provider_history_may_not_overwrite_existing_observations": true,
   "research_only": true,
   "schema_version": "byd_515180_prospective_v1",
-  "scorecard_sha256": "b3ba1d7a07d51fa4212a9ee34137bf255851ddedb2c3f0be77dbac312aaac63a",
+  "scorecard_sha256": "3323d0a98921fbb3bca92e77c69ab937fa5c30d96e5ad5eb3bc50bd695d113b2",
   "shadow_only": true,
   "trade_ready": false
 }
