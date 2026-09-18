@@ -1,17 +1,17 @@
 {
-  "bundle_id": "8328a9cee133d80207ec0ed4dbfdf45027fcf4bb64aba81fec79930c087061e8",
+  "bundle_id": "249fecd838c1235ffd40140eb08728fae48aff01c5e462e81686e7a59a1f813c",
   "components": [
     {
       "component_id": "corporate_actions.us_selected_equities_v2",
       "component_kind": "corporate_action_coverage",
       "manifest_path": "corporate_actions/component_manifest.json",
-      "manifest_sha256": "470a8193b52a24ed8999c49044124098e5b1cdafb868bce900b94a48ba70683e"
+      "manifest_sha256": "c90fbfe5c870e8d3e8a6a077d6934d78de1d675b34d326c861dc58ad51496668"
     },
     {
       "component_id": "fundamentals.us_selected_equities_v2",
       "component_kind": "fundamental_coverage",
       "manifest_path": "fundamentals/component_manifest.json",
-      "manifest_sha256": "c5e9d8dc3d67a6a8448f8a3c973c81c7ca3c0645cdeee7fae3881181790b2698"
+      "manifest_sha256": "3a935415446939767cc3fc597a22f051ecdc86af0b0eac25ef83ff3f012dba4f"
     }
   ],
   "cutoff_filter": {
@@ -24,40 +24,40 @@
   "expected_symbol_count": 87,
   "files": [
     {
-      "byte_size": 1196,
+      "byte_size": 1157,
       "media_type": "application/json",
       "path": "corporate_actions/component_manifest.json",
-      "sha256": "470a8193b52a24ed8999c49044124098e5b1cdafb868bce900b94a48ba70683e"
+      "sha256": "c90fbfe5c870e8d3e8a6a077d6934d78de1d675b34d326c861dc58ad51496668"
     },
     {
-      "byte_size": 46385,
+      "byte_size": 44649,
       "media_type": "application/json",
       "path": "corporate_actions/coverage.json",
-      "sha256": "fe447dab3c7fbdfeb93f5f4861d1f0e5443fa209efd56de4c638c3fa55aa8170"
+      "sha256": "be4e3ea7bbb2762e123b3a43089a1153e8f500e86b255a421b40f60c95306869"
     },
     {
-      "byte_size": 3244265,
+      "byte_size": 3240695,
       "media_type": "application/x-ndjson",
       "path": "corporate_actions/events.jsonl",
-      "sha256": "843b58307493fefb016fb2572b27db527db4dc317befc492a4fc82a6e382ffa5"
+      "sha256": "16ea8ab0f7935eb6bd8e9b9013f5a2a5ef124a258040ada53bac17e505c8d632"
     },
     {
-      "byte_size": 1210,
+      "byte_size": 1169,
       "media_type": "application/json",
       "path": "fundamentals/component_manifest.json",
-      "sha256": "c5e9d8dc3d67a6a8448f8a3c973c81c7ca3c0645cdeee7fae3881181790b2698"
+      "sha256": "3a935415446939767cc3fc597a22f051ecdc86af0b0eac25ef83ff3f012dba4f"
     },
     {
-      "byte_size": 59998,
+      "byte_size": 57757,
       "media_type": "application/json",
       "path": "fundamentals/coverage.json",
-      "sha256": "fe97bc511afb200138a4ec0233d702163a73c8d3ebabd3aae6062ab0a90cabba"
+      "sha256": "d4e756342d98306f30f7392958f8e416d6a6c70782e7d8bcf094007e0d42a808"
     },
     {
-      "byte_size": 59269645,
+      "byte_size": 59198294,
       "media_type": "application/x-ndjson",
       "path": "fundamentals/events.jsonl",
-      "sha256": "3f61237fe687d2087393d3ce047d953abd31a2417fe59b5dd7700bd9f7b0bbbd"
+      "sha256": "d2450582e9819e4320879bd43aff68c90e53eb63ec1902b537309d825936d691"
     }
   ],
   "generated_at": "2026-09-17T16:15:55+00:00",

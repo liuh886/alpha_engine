@@ -89,6 +89,19 @@ def _action(
     )
 
 
+def test_population_writers_emit_lf_only(tmp_path: Path) -> None:
+    """Governed hashes are computed over these bytes; CRLF would break them."""
+
+    json_path = tmp_path / "coverage.json"
+    jsonl_path = tmp_path / "events.jsonl"
+    event_population._write_json(json_path, {"symbols": ["AAA"], "nested": {"ok": True}})
+    rows = event_population._write_jsonl(jsonl_path, [_fundamental("AAA")])
+
+    assert rows == 1
+    assert b"\r" not in json_path.read_bytes()
+    assert b"\r" not in jsonl_path.read_bytes()
+
+
 def test_builds_direct_components_and_explicit_symbol_statuses(tmp_path: Path) -> None:
     symbols = ["AAA", "BBB"]
     fundamentals = {
@@ -148,7 +161,7 @@ def test_fails_when_any_selected_symbol_has_no_explicit_status(tmp_path: Path) -
     populations = {
         "AAA": SymbolPopulation("AAA", "partial", [], ["fixture"]),
     }
-    with pytest.raises(SelectedPoolEventPopulationError, match="missing=\['BBB'\]"):
+    with pytest.raises(SelectedPoolEventPopulationError, match=r"missing=\['BBB'\]"):
         publish_selected_pool_event_bundle(
             market="us",
             pool_id="fixture_pool",

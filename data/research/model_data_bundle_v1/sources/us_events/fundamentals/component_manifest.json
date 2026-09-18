@@ -3,12 +3,12 @@
   "component_kind": "fundamental_coverage",
   "coverage_ratio": 0.9885057471264368,
   "details": {
-    "coverage_byte_size": 59998,
+    "coverage_byte_size": 57757,
     "coverage_path": "fundamentals/coverage.json",
-    "coverage_sha256": "fe97bc511afb200138a4ec0233d702163a73c8d3ebabd3aae6062ab0a90cabba",
-    "events_byte_size": 59269645,
+    "coverage_sha256": "d4e756342d98306f30f7392958f8e416d6a6c70782e7d8bcf094007e0d42a808",
+    "events_byte_size": 59198294,
     "events_path": "fundamentals/events.jsonl",
-    "events_sha256": "3f61237fe687d2087393d3ce047d953abd31a2417fe59b5dd7700bd9f7b0bbbd",
+    "events_sha256": "d2450582e9819e4320879bd43aff68c90e53eb63ec1902b537309d825936d691",
     "explicit_status_count": 87,
     "status_counts": {
       "conflict": 0,

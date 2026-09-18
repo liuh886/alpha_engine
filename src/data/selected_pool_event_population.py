@@ -67,9 +67,13 @@ def _sha256(path: Path) -> str:
 
 def _write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Content hashes are computed over these bytes, and .gitattributes forces
+    # ``eol=lf`` for JSON members. Writing through the platform default newline
+    # would emit CRLF on Windows and silently invalidate every recorded hash.
     path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
+        newline="\n",
     )
 
 
@@ -89,7 +93,7 @@ def _write_jsonl(path: Path, events: Iterable[Any]) -> int:
         ),
     )
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
         for row in rows:
             handle.write(
                 json.dumps(row, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n"

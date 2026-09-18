@@ -3,12 +3,12 @@
   "component_kind": "corporate_action_coverage",
   "coverage_ratio": 1.0,
   "details": {
-    "coverage_byte_size": 46385,
+    "coverage_byte_size": 44649,
     "coverage_path": "corporate_actions/coverage.json",
-    "coverage_sha256": "fe447dab3c7fbdfeb93f5f4861d1f0e5443fa209efd56de4c638c3fa55aa8170",
-    "events_byte_size": 3244265,
+    "coverage_sha256": "be4e3ea7bbb2762e123b3a43089a1153e8f500e86b255a421b40f60c95306869",
+    "events_byte_size": 3240695,
     "events_path": "corporate_actions/events.jsonl",
-    "events_sha256": "843b58307493fefb016fb2572b27db527db4dc317befc492a4fc82a6e382ffa5",
+    "events_sha256": "16ea8ab0f7935eb6bd8e9b9013f5a2a5ef124a258040ada53bac17e505c8d632",
     "explicit_status_count": 87,
     "status_counts": {
       "conflict": 0,
