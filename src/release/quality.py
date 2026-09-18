@@ -169,6 +169,20 @@ def _run_command(spec: CommandSpec, output_dir: Path, environment: dict[str, str
         )
         output = process.stdout + process.stderr
         exit_code = process.returncode
+        if spec.name == "frontend_install" and platform.system() == "Windows" and exit_code == 0:
+            binding_proc = subprocess.run(
+                _executable_argv(("npm", "install", "@rolldown/binding-win32-x64-msvc")),
+                cwd=spec.cwd,
+                env=environment,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+            output += "\n" + binding_proc.stdout + binding_proc.stderr
+            if binding_proc.returncode != 0:
+                exit_code = binding_proc.returncode
     except (OSError, subprocess.SubprocessError) as exc:
         output = f"{type(exc).__name__}: {exc}\n"
         exit_code = -1

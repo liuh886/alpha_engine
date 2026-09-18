@@ -177,7 +177,8 @@ def replay_cn_27_v1_3(*, root: str | Path) -> dict[str, Any]:
                 decision="invalid_evidence",
                 reason=f"recomputed CN_27 {name} differs from the published bundle",
             )
-    if context.bars["date"].max().date().isoformat() != cutoff:
+    expected_cutoff = str(source_evidence.get("refresh_of_evidence_cutoff") or cutoff)
+    if context.bars["date"].max().date().isoformat() != expected_cutoff:
         return _receipt(
             baseline=baseline,
             decision="invalid_evidence",

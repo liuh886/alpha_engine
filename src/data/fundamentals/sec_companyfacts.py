@@ -16,7 +16,7 @@ from src.data.sec_transport import SecTransport, SecTransportError, read_sec_jso
 
 SEC_DATA_ROOT = "https://data.sec.gov"
 DEFAULT_SEC_USER_AGENT = (
-    "AlphaEngine Research liuh886@users.noreply.github.com"
+    "AlphaEngine Research research@alphaengine.org"
 )
 
 
@@ -129,20 +129,42 @@ def companyfacts_to_events(
     facts = payload.get("facts", {})
     if not isinstance(facts, dict):
         raise SecCompanyFactsError("SEC companyfacts facts must be a mapping")
-    taxonomy = facts.get("us-gaap", {})
-    if not isinstance(taxonomy, dict):
+    taxonomies = [
+        facts.get("us-gaap"),
+        facts.get("ifrs-full"),
+    ]
+    available_taxonomies = [t for t in taxonomies if isinstance(t, dict)]
+    if not available_taxonomies:
         return []
 
     events: list[FundamentalEvent] = []
     for concept, definition in field_map.items():
-        concept_payload = taxonomy.get(concept)
-        if not isinstance(concept_payload, dict):
+        concept_payload = None
+        for taxonomy in available_taxonomies:
+            candidate = taxonomy.get(concept)
+            if isinstance(candidate, dict):
+                concept_payload = candidate
+                break
+        if concept_payload is None:
             continue
         units = concept_payload.get("units", {})
         if not isinstance(units, dict):
             continue
         expected_unit = str(definition.get("unit", ""))
-        preferred_units = [expected_unit, "USD", "USD/shares", "shares", "pure"]
+        preferred_units = [
+            expected_unit,
+            "USD",
+            "EUR",
+            "GBP",
+            "CNY",
+            "JPY",
+            "KRW",
+            "TWD",
+            "USD/shares",
+            "EUR/shares",
+            "shares",
+            "pure",
+        ]
         selected_rows: list[dict[str, Any]] = []
         selected_unit = ""
         for unit in preferred_units:
@@ -163,6 +185,11 @@ def companyfacts_to_events(
             try:
                 reported_at, available_at = _availability(filed)
                 fiscal_year, fiscal_period, is_quarterly = _fiscal_period(row)
+                currency = (
+                    selected_unit
+                    if selected_unit in {"USD", "EUR", "GBP", "CNY", "JPY", "KRW", "TWD"}
+                    else str(definition.get("currency", "USD"))
+                )
                 event = normalize_event_record(
                     {
                         "market": "us",
@@ -181,7 +208,7 @@ def companyfacts_to_events(
                         "field": str(definition["field"]),
                         "value": float(row["val"]),
                         "unit": selected_unit or expected_unit,
-                        "currency": str(definition.get("currency", "USD")),
+                        "currency": currency,
                         "is_quarterly": is_quarterly,
                         "is_derived": False,
                         "derivation_rule": "",

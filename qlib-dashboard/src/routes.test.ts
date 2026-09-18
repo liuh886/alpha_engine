@@ -42,7 +42,7 @@ describe('strategy-console route registry', () => {
   });
 
   it('keeps evidence tools as drill-down routes rather than primary navigation', () => {
-    for (const path of ['runs', 'backtests', 'review', 'compare', 'decisions', 'factors', 'reports', 'data', 'library', 'methodology', 'settings/access', 'strategies/:strategyId']) {
+    for (const path of ['runs', 'backtests', 'review', 'compare', 'decisions', 'factors', 'reports', 'data', 'library', 'methodology', 'settings/access', 'strategies/:strategyId', 'model-operations']) {
       expect(routes.find((route) => route.path === path)?.navVisible).toBe(false);
     }
     for (const removed of ['operations', 'dashboard', 'models', 'agent', 'backtest']) {

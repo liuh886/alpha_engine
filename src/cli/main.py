@@ -13,6 +13,11 @@ from src.artifacts.repository_run_store import (
     RepositoryRunStoreError,
     import_local_run,
 )
+from src.artifacts.model_operations import (
+    ModelOperationsError,
+    build_model_operations_payload,
+    write_model_operations_payload,
+)
 from src.artifacts.strategy_operations import (
     StrategyOperationsError,
     build_operations_payload,
@@ -228,6 +233,27 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("data/research/strategy_operations/snapshots.json"),
     )
+
+    model_ops = ops_commands.add_parser(
+        "model-ops",
+        help="Materialize and inspect the continuous Model Operations read model (T47.8).",
+    )
+    model_ops.add_argument(
+        "--output",
+        type=Path,
+        default=Path("data/research/model_operations/operations_summary.json"),
+        help="Target output JSON path for the model operations read model.",
+    )
+    model_ops.add_argument(
+        "--asof-date",
+        default=None,
+        help="As of date in YYYY-MM-DD format (defaults to current UTC date).",
+    )
+    model_ops.add_argument(
+        "--print-only",
+        action="store_true",
+        help="Print the payload without writing to disk.",
+    )
     return parser
 
 
@@ -361,6 +387,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             }
         elif args.group == "ops" and args.ops_command == "publish":
             payload = publish_strategy_operations(_resolve(root, args.input))
+        elif args.group == "ops" and args.ops_command == "model-ops":
+            model_ops_payload = build_model_operations_payload(
+                root=root,
+                asof_date=args.asof_date,
+            )
+            if not args.print_only:
+                target = _resolve(root, args.output)
+                write_model_operations_payload(model_ops_payload, target)
+            payload = model_ops_payload.to_dict()
         else:
             parser.error("unsupported command")
             return 2
@@ -373,6 +408,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         StrategySignalLedgerError,
         StrategyOperationsError,
         StrategyOperationsRuntimeError,
+        ModelOperationsError,
         SystemHealthError,
         OSError,
         json.JSONDecodeError,

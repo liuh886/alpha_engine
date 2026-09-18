@@ -1,0 +1,41 @@
+{
+  "component_id": "fundamentals.us_selected_equities_v2",
+  "component_kind": "fundamental_coverage",
+  "coverage_ratio": 0.9885057471264368,
+  "details": {
+    "coverage_byte_size": 59998,
+    "coverage_path": "fundamentals/coverage.json",
+    "coverage_sha256": "fe97bc511afb200138a4ec0233d702163a73c8d3ebabd3aae6062ab0a90cabba",
+    "events_byte_size": 59269645,
+    "events_path": "fundamentals/events.jsonl",
+    "events_sha256": "3f61237fe687d2087393d3ce047d953abd31a2417fe59b5dd7700bd9f7b0bbbd",
+    "explicit_status_count": 87,
+    "status_counts": {
+      "conflict": 0,
+      "identity_missing": 1,
+      "no_event_observed": 0,
+      "partial": 0,
+      "provider_missing": 0,
+      "ready": 86
+    }
+  },
+  "evidence_cutoff": "2026-09-09",
+  "expected_symbol_count": 87,
+  "first_date": "2009-06-04",
+  "invalid_symbols": [],
+  "last_date": "2026-09-03",
+  "market": "us",
+  "missing_symbols": [
+    "SBGSY"
+  ],
+  "pool_id": "us_selected_equities_v2",
+  "providers": [
+    "sec_companyfacts"
+  ],
+  "quarantined_symbols": [],
+  "ready_symbol_count": 86,
+  "research_only": true,
+  "schema_version": "1.0",
+  "status": "partial",
+  "trade_ready": false
+}

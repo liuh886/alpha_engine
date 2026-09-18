@@ -1,0 +1,555 @@
+{
+  "digest": "4c83a01e728ec339c202ea4fd65bfcbbe95177c6a240eeca660a23095c9ceab7",
+  "generated_at": "2026-09-17T16:43:45.260574+00:00",
+  "markets": [
+    {
+      "attribution": {
+        "attributed_days": 1,
+        "benchmark_return_sum": 0.01,
+        "compounded_return": 0.004998499999999906,
+        "contributions": {
+          "costs": -1e-06,
+          "market_exposure": 0.002,
+          "sector_effect": 0.0,
+          "slippage": -5e-07,
+          "stock_selection": 0.0030000000000000005,
+          "timing": 0.0
+        },
+        "cost_detail": [
+          {
+            "component": "costs",
+            "date": "2026-09-17",
+            "sources": "fill fees",
+            "value": -1e-06
+          },
+          {
+            "component": "slippage",
+            "date": "2026-09-17",
+            "sources": "exec-price deviation",
+            "value": -5e-07
+          }
+        ],
+        "data_snapshot_id": "snap_us_selected_v1",
+        "execution_comparison": {
+          "expected_vs_realized_weights": {},
+          "realized_costs": {
+            "fees": 0,
+            "slippage": 0
+          },
+          "realized_final_weights": {
+            "AAPL": 0.2
+          },
+          "trade_statistics": {
+            "count": 0,
+            "fill_ratio": null,
+            "filled_quantity": 0,
+            "requested_quantity": 0,
+            "source_refs": [],
+            "status_counts": {}
+          }
+        },
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "plan_id": null,
+        "reconciliation": {
+          "abs_residual": 9.454242944073599e-17,
+          "components_sum_matches_total": true,
+          "every_day_has_source_references": true,
+          "within_tolerance": true
+        },
+        "research_only": true,
+        "residual": -9.454242944073599e-17,
+        "schema_version": "paper_attribution_v1",
+        "sector_contribution": {
+          "__unclassified__": 0.0
+        },
+        "selection_detail": [
+          {
+            "component": "stock_selection",
+            "date": "2026-09-17",
+            "sources": "start-of-day holdings cross-section",
+            "value": 0.0030000000000000005
+          }
+        ],
+        "timing_detail": [],
+        "tolerance": 1e-06,
+        "total_return_arithmetic": 0.004998499999999906,
+        "trade_ready": false,
+        "venue": "paper_simulation",
+        "window_end": "2026-09-17",
+        "window_start": "2026-09-17"
+      },
+      "challenger": {
+        "challenge_passed": true,
+        "challenger_id": "challenger_us_next",
+        "comparison_summary": "Exceeds current Champion on excess return with acceptable drawdown tolerance.",
+        "evaluation_window": "2026-06-01..2026-09-09",
+        "metrics": {
+          "annualized_return": 0.255,
+          "excess_return_with_cost": 0.192,
+          "max_drawdown": -0.119
+        },
+        "status": "observing"
+      },
+      "champion": {
+        "artifact_id": "art_qqqi_qqq_tqqq_v4_3",
+        "declared_at": "2026-09-09T00:00:00Z",
+        "declared_by": "formal_catalog",
+        "metrics": {
+          "annualized_return": 0.248,
+          "excess_return_with_cost": 0.185,
+          "information_ratio": 1.45,
+          "max_drawdown": -0.124
+        },
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "previous_champion_id": null,
+        "promotion_reason": "Accepted formal baseline baseline promotion",
+        "snapshot_id": "snap_us_selected_v1"
+      },
+      "drift": {
+        "checked_at": "2026-09-17T00:00:00Z",
+        "checks": [
+          {
+            "baseline": 0.0,
+            "check_name": "population_stability_index",
+            "evidence_window": "latest_30_sessions",
+            "measured_value": 0.042,
+            "recommended_action": "none",
+            "severity": "ok",
+            "threshold": 0.25
+          },
+          {
+            "baseline": 0.062,
+            "check_name": "rank_ic_decay",
+            "evidence_window": "latest_60_sessions",
+            "measured_value": 0.058,
+            "recommended_action": "none",
+            "severity": "ok",
+            "threshold": 0.02
+          },
+          {
+            "baseline": 1.0,
+            "check_name": "return_calibration",
+            "evidence_window": "latest_60_sessions",
+            "measured_value": 0.98,
+            "recommended_action": "none",
+            "severity": "ok",
+            "threshold": 0.8
+          }
+        ],
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "overall_severity": "ok"
+      },
+      "execution_plan": {
+        "advisory_only": true,
+        "asof_date": "2026-09-17",
+        "cash_weight": 0.050000000000000044,
+        "champion_id": null,
+        "constraint_snapshot": {
+          "deleveraged_gross_exposure": null,
+          "drawdown_deleverage_threshold": null,
+          "max_names_per_sector": null,
+          "max_position_weight": 0.35,
+          "max_positions": 10,
+          "max_sector_weight": null,
+          "max_turnover": null,
+          "min_avg_daily_value": null,
+          "target_cash_weight": 0.05,
+          "transaction_cost_bps": 20.0,
+          "weight_scheme": "equal"
+        },
+        "data_snapshot_id": "snap_us_selected_v1",
+        "decisions": [
+          {
+            "detail": "rank 1",
+            "instrument": "AAPL",
+            "reason_code": "selected",
+            "score": 0.95,
+            "sector": "Technology",
+            "status": "selected",
+            "weight": null
+          },
+          {
+            "detail": "rank 2",
+            "instrument": "MSFT",
+            "reason_code": "selected",
+            "score": 0.88,
+            "sector": "Technology",
+            "status": "selected",
+            "weight": null
+          },
+          {
+            "detail": "rank 3",
+            "instrument": "NVDA",
+            "reason_code": "selected",
+            "score": 0.82,
+            "sector": "Technology",
+            "status": "selected",
+            "weight": null
+          }
+        ],
+        "expected_transaction_cost": 0.0019,
+        "gross_exposure": 0.95,
+        "market": "",
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "net_exposure": 0.95,
+        "one_sided_turnover": 0.475,
+        "plan_id": "6c7ebe633a5acb65b1d0f4a5245678459623aaee382099d1f6e44b545eac8177",
+        "reconciliation": {
+          "cash_non_negative": true,
+          "every_signal_has_one_decision": true,
+          "expected_cost_consistent": true,
+          "position_count_within_limit": true,
+          "sector_name_limits_respected": true,
+          "selected_decisions_match_weights": true,
+          "turnover_within_budget": true,
+          "weights_sum_with_cash_equals_one": true,
+          "weights_within_position_cap": true
+        },
+        "research_only": true,
+        "schema_version": "portfolio_construction_advisory_v1",
+        "target_weights": {
+          "AAPL": 0.31666666666666665,
+          "MSFT": 0.31666666666666665,
+          "NVDA": 0.31666666666666665
+        },
+        "trade_ready": false,
+        "traded_notional_fraction": 0.95,
+        "warnings": []
+      },
+      "gate_decision": {
+        "challenger_created": false,
+        "champion_id": "art_qqqi_qqq_tqqq_v4_3",
+        "champion_unchanged": true,
+        "decided_at": "2026-09-17T16:43:45.261199+00:00",
+        "decision": "continue",
+        "gates": [
+          {
+            "detail": "age=1.0d",
+            "name": "data_freshness",
+            "status": "pass"
+          },
+          {
+            "detail": "status=verified",
+            "name": "artifact_health",
+            "status": "pass"
+          },
+          {
+            "detail": "drawdown=-0.1240",
+            "name": "risk_state",
+            "status": "pass"
+          },
+          {
+            "detail": "severity=ok",
+            "name": "drift_monitoring",
+            "status": "pass"
+          },
+          {
+            "detail": "excess=0.1850",
+            "name": "paper_performance",
+            "status": "pass"
+          }
+        ],
+        "hard_blocks": [],
+        "market": "us",
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "plan_eligible": true,
+        "policy_version": "ops_gate_policy_v1",
+        "record_id": "4f0e18de3aec3efabb42608effc365cf211745005dce6ee94d89a88c935a9f53",
+        "recovery_conditions": [],
+        "research_only": true,
+        "schema_version": "operations_gate_v1",
+        "trade_ready": false
+      },
+      "market": "us",
+      "paper_ledger": {
+        "cash_balance": 979987.999,
+        "current_nav": 1000487.999,
+        "hash_chain_verified": true,
+        "initial_cash": 1000000.0,
+        "latest_digest": "",
+        "positions": {
+          "AAPL": 100.0
+        },
+        "recent_fills": [],
+        "total_events": 4,
+        "unrealized_pnl": 487.9989999999525
+      }
+    },
+    {
+      "attribution": {
+        "attributed_days": 1,
+        "benchmark_return_sum": 0.01,
+        "compounded_return": 0.004998499999999906,
+        "contributions": {
+          "costs": -1e-06,
+          "market_exposure": 0.002,
+          "sector_effect": 0.0,
+          "slippage": -5e-07,
+          "stock_selection": 0.0030000000000000005,
+          "timing": 0.0
+        },
+        "cost_detail": [
+          {
+            "component": "costs",
+            "date": "2026-09-17",
+            "sources": "fill fees",
+            "value": -1e-06
+          },
+          {
+            "component": "slippage",
+            "date": "2026-09-17",
+            "sources": "exec-price deviation",
+            "value": -5e-07
+          }
+        ],
+        "data_snapshot_id": "snap_cn_selected_v1",
+        "execution_comparison": {
+          "expected_vs_realized_weights": {},
+          "realized_costs": {
+            "fees": 0,
+            "slippage": 0
+          },
+          "realized_final_weights": {
+            "600519": 0.2
+          },
+          "trade_statistics": {
+            "count": 0,
+            "fill_ratio": null,
+            "filled_quantity": 0,
+            "requested_quantity": 0,
+            "source_refs": [],
+            "status_counts": {}
+          }
+        },
+        "model_version_id": "cn_x1_2",
+        "plan_id": null,
+        "reconciliation": {
+          "abs_residual": 9.454242944073599e-17,
+          "components_sum_matches_total": true,
+          "every_day_has_source_references": true,
+          "within_tolerance": true
+        },
+        "research_only": true,
+        "residual": -9.454242944073599e-17,
+        "schema_version": "paper_attribution_v1",
+        "sector_contribution": {
+          "__unclassified__": 0.0
+        },
+        "selection_detail": [
+          {
+            "component": "stock_selection",
+            "date": "2026-09-17",
+            "sources": "start-of-day holdings cross-section",
+            "value": 0.0030000000000000005
+          }
+        ],
+        "timing_detail": [],
+        "tolerance": 1e-06,
+        "total_return_arithmetic": 0.004998499999999906,
+        "trade_ready": false,
+        "venue": "paper_simulation",
+        "window_end": "2026-09-17",
+        "window_start": "2026-09-17"
+      },
+      "challenger": {
+        "challenge_passed": true,
+        "challenger_id": "challenger_cn_next",
+        "comparison_summary": "Exceeds current Champion on excess return with acceptable drawdown tolerance.",
+        "evaluation_window": "2026-06-01..2026-09-09",
+        "metrics": {
+          "annualized_return": 0.205,
+          "excess_return_with_cost": 0.148,
+          "max_drawdown": -0.158
+        },
+        "status": "observing"
+      },
+      "champion": {
+        "artifact_id": "art_cn_x1_2",
+        "declared_at": "2026-09-09T00:00:00Z",
+        "declared_by": "formal_catalog",
+        "metrics": {
+          "annualized_return": 0.198,
+          "excess_return_with_cost": 0.142,
+          "information_ratio": 1.12,
+          "max_drawdown": -0.165
+        },
+        "model_version_id": "cn_x1_2",
+        "previous_champion_id": null,
+        "promotion_reason": "Accepted formal baseline baseline promotion",
+        "snapshot_id": "snap_cn_selected_v1"
+      },
+      "drift": {
+        "checked_at": "2026-09-17T00:00:00Z",
+        "checks": [
+          {
+            "baseline": 0.0,
+            "check_name": "population_stability_index",
+            "evidence_window": "latest_30_sessions",
+            "measured_value": 0.042,
+            "recommended_action": "none",
+            "severity": "ok",
+            "threshold": 0.25
+          },
+          {
+            "baseline": 0.062,
+            "check_name": "rank_ic_decay",
+            "evidence_window": "latest_60_sessions",
+            "measured_value": 0.058,
+            "recommended_action": "none",
+            "severity": "ok",
+            "threshold": 0.02
+          },
+          {
+            "baseline": 1.0,
+            "check_name": "return_calibration",
+            "evidence_window": "latest_60_sessions",
+            "measured_value": 0.98,
+            "recommended_action": "none",
+            "severity": "ok",
+            "threshold": 0.8
+          }
+        ],
+        "model_version_id": "cn_x1_2",
+        "overall_severity": "ok"
+      },
+      "execution_plan": {
+        "advisory_only": true,
+        "asof_date": "2026-09-17",
+        "cash_weight": 0.050000000000000044,
+        "champion_id": null,
+        "constraint_snapshot": {
+          "deleveraged_gross_exposure": null,
+          "drawdown_deleverage_threshold": null,
+          "max_names_per_sector": null,
+          "max_position_weight": 0.35,
+          "max_positions": 10,
+          "max_sector_weight": null,
+          "max_turnover": null,
+          "min_avg_daily_value": null,
+          "target_cash_weight": 0.05,
+          "transaction_cost_bps": 20.0,
+          "weight_scheme": "equal"
+        },
+        "data_snapshot_id": "snap_cn_selected_v1",
+        "decisions": [
+          {
+            "detail": "rank 1",
+            "instrument": "600519",
+            "reason_code": "selected",
+            "score": 0.95,
+            "sector": "Consumer",
+            "status": "selected",
+            "weight": null
+          },
+          {
+            "detail": "rank 2",
+            "instrument": "300750",
+            "reason_code": "selected",
+            "score": 0.88,
+            "sector": "Industrials",
+            "status": "selected",
+            "weight": null
+          },
+          {
+            "detail": "rank 3",
+            "instrument": "002594",
+            "reason_code": "selected",
+            "score": 0.82,
+            "sector": "Consumer",
+            "status": "selected",
+            "weight": null
+          }
+        ],
+        "expected_transaction_cost": 0.0019,
+        "gross_exposure": 0.95,
+        "market": "",
+        "model_version_id": "cn_x1_2",
+        "net_exposure": 0.95,
+        "one_sided_turnover": 0.475,
+        "plan_id": "486384b9d0efb13cc1a073efaddb571962d4c5e0161e21363e3fd3dda47711de",
+        "reconciliation": {
+          "cash_non_negative": true,
+          "every_signal_has_one_decision": true,
+          "expected_cost_consistent": true,
+          "position_count_within_limit": true,
+          "sector_name_limits_respected": true,
+          "selected_decisions_match_weights": true,
+          "turnover_within_budget": true,
+          "weights_sum_with_cash_equals_one": true,
+          "weights_within_position_cap": true
+        },
+        "research_only": true,
+        "schema_version": "portfolio_construction_advisory_v1",
+        "target_weights": {
+          "002594": 0.31666666666666665,
+          "300750": 0.31666666666666665,
+          "600519": 0.31666666666666665
+        },
+        "trade_ready": false,
+        "traded_notional_fraction": 0.95,
+        "warnings": []
+      },
+      "gate_decision": {
+        "challenger_created": false,
+        "champion_id": "art_cn_x1_2",
+        "champion_unchanged": true,
+        "decided_at": "2026-09-17T16:43:45.265119+00:00",
+        "decision": "continue",
+        "gates": [
+          {
+            "detail": "age=1.0d",
+            "name": "data_freshness",
+            "status": "pass"
+          },
+          {
+            "detail": "status=verified",
+            "name": "artifact_health",
+            "status": "pass"
+          },
+          {
+            "detail": "drawdown=-0.1650",
+            "name": "risk_state",
+            "status": "pass"
+          },
+          {
+            "detail": "severity=ok",
+            "name": "drift_monitoring",
+            "status": "pass"
+          },
+          {
+            "detail": "excess=0.1420",
+            "name": "paper_performance",
+            "status": "pass"
+          }
+        ],
+        "hard_blocks": [],
+        "market": "cn",
+        "model_version_id": "cn_x1_2",
+        "plan_eligible": true,
+        "policy_version": "ops_gate_policy_v1",
+        "record_id": "9aba7c3757d52f1a63327e7a8036a84c3b28bc0e953b839f576c65b674b983ac",
+        "recovery_conditions": [],
+        "research_only": true,
+        "schema_version": "operations_gate_v1",
+        "trade_ready": false
+      },
+      "market": "cn",
+      "paper_ledger": {
+        "cash_balance": 849909.9924999999,
+        "current_nav": 1001909.9924999999,
+        "hash_chain_verified": true,
+        "initial_cash": 1000000.0,
+        "latest_digest": "",
+        "positions": {
+          "600519": 100.0
+        },
+        "recent_fills": [],
+        "total_events": 4,
+        "unrealized_pnl": 1909.9924999999348
+      }
+    }
+  ],
+  "research_only": true,
+  "schema_version": "model_operations_v1",
+  "trade_ready": false
+}

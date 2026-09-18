@@ -49,6 +49,7 @@ const ComparePage = lazy(() => import('./pages/ComparePage').then((m) => ({ defa
 const DecisionsPage = lazy(() => import('./pages/DecisionsPage').then((m) => ({ default: m.DecisionsPage })));
 const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then((m) => ({ default: m.MethodologyPage })));
 const AccessSettingsPage = lazy(() => import('./pages/AccessSettingsPage').then((m) => ({ default: m.AccessSettingsPage })));
+const ModelOperationsPage = lazy(() => import('./pages/ModelOperationsPage').then((m) => ({ default: m.ModelOperationsPage })));
 
 /** Product navigation is strategy-centric; evidence views remain drill-down routes. */
 export const routes: RouteDefinition[] = [
@@ -70,6 +71,7 @@ export const routes: RouteDefinition[] = [
   { path: 'data', title: 'Data Lineage', label: 'Data', releaseLevel: 'release', navGroup: 'System', icon: Database, component: EvidenceDataPage, navVisible: false },
   { path: 'library', title: 'Local Bundle Library', label: 'Library', releaseLevel: 'release', navGroup: 'System', icon: FolderArchive, component: LibraryPage, navVisible: false },
   { path: 'methodology', title: 'Methodology & Boundaries', label: 'Methodology', releaseLevel: 'release', navGroup: 'System', icon: BookOpen, component: MethodologyPage, navVisible: false },
+  { path: 'model-operations', title: 'Model Operations', label: 'Model Operations', releaseLevel: 'release', navGroup: 'System', icon: Settings2, component: ModelOperationsPage, navVisible: false },
   { path: 'settings/access', title: 'Access Settings', label: 'Access', releaseLevel: 'internal', navGroup: 'System', icon: SlidersHorizontal, component: AccessSettingsPage, navVisible: false, ownerOnly: true },
 ];
 

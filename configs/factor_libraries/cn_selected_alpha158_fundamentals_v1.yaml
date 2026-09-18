@@ -1,0 +1,160 @@
+# Canonical AlphaEngine CN Alpha158 + PIT Fundamentals factor library.
+schema_version: "2.0"
+
+catalog:
+  id: cn_selected_alpha158_fundamentals_v1
+  version: "1.0"
+
+defaults:
+  namespace: alpha158_fund
+  factor_version: "1.0"
+  source_name: AlphaEngine Alpha158 and Fundamental Extended Catalog
+  source_version: "1.0"
+  source_reference: configs/factor_libraries/cn_selected_alpha158_fundamentals_v1.yaml
+  availability_lag_sessions: 0
+  adjustment_requirement: adjusted
+  output_frequency: day
+  output_dtype: float64
+  missing_value_policy: preserve_nan_after_warmup
+  status: unvalidated_formula
+
+factors:
+  alpha158_fund.momentum_ret_5d:
+    display_name: 5-day price momentum
+    information_family: momentum
+    expression: "$close/Ref($close,5)-1"
+    required_fields: [close]
+    markets: [cn, us]
+    minimum_lookback: 5
+
+  alpha158_fund.momentum_ret_10d:
+    display_name: 10-day price momentum
+    information_family: momentum
+    expression: "$close/Ref($close,10)-1"
+    required_fields: [close]
+    markets: [cn, us]
+    minimum_lookback: 10
+
+  alpha158_fund.momentum_ret_20d:
+    display_name: 20-day price momentum
+    information_family: momentum
+    expression: "$close/Ref($close,20)-1"
+    required_fields: [close]
+    markets: [cn, us]
+    minimum_lookback: 20
+
+  alpha158_fund.reversal_inv_ret_1d:
+    display_name: 1-day inverse close return
+    information_family: reversal
+    expression: "Ref($close,1)/$close-1"
+    required_fields: [close]
+    markets: [cn, us]
+    minimum_lookback: 1
+
+  alpha158_fund.reversal_inv_ret_5d:
+    display_name: 5-day inverse close return
+    information_family: reversal
+    expression: "Ref($close,5)/$close-1"
+    required_fields: [close]
+    markets: [cn, us]
+    minimum_lookback: 5
+
+  alpha158_fund.volatility_std_ret_5d:
+    display_name: 5-day return standard deviation
+    information_family: volatility
+    expression: "Std($close/Ref($close,1)-1,5)"
+    required_fields: [close]
+    markets: [cn, us]
+    minimum_lookback: 6
+
+  alpha158_fund.volatility_std_ret_10d:
+    display_name: 10-day return standard deviation
+    information_family: volatility
+    expression: "Std($close/Ref($close,1)-1,10)"
+    required_fields: [close]
+    markets: [cn, us]
+    minimum_lookback: 11
+
+  alpha158_fund.volatility_high_low_range_pct:
+    display_name: High-low daily range percentage
+    information_family: volatility
+    expression: "($high-$low)/$close"
+    required_fields: [high, low, close]
+    markets: [cn, us]
+    minimum_lookback: 1
+
+  alpha158_fund.liquidity_volume_vs_ma_5d:
+    display_name: Volume relative to 5-day volume MA
+    information_family: volume
+    expression: "$volume/Mean($volume,5)-1"
+    required_fields: [volume]
+    markets: [cn, us]
+    minimum_lookback: 5
+
+  alpha158_fund.liquidity_volume_vs_ma_10d:
+    display_name: Volume relative to 10-day volume MA
+    information_family: volume
+    expression: "$volume/Mean($volume,10)-1"
+    required_fields: [volume]
+    markets: [cn, us]
+    minimum_lookback: 10
+
+  alpha158_fund.alpha158_cntd30:
+    display_name: 30-day up-day count ratio
+    information_family: technical_ohlcv
+    expression: "Mean($close>Ref($close,1),30)"
+    required_fields: [close]
+    markets: [cn, us]
+    minimum_lookback: 31
+
+  alpha158_fund.alpha158_cord5:
+    display_name: 5-day price-volume correlation
+    information_family: technical_ohlcv
+    expression: "Corr($close,Log($volume+1),5)"
+    required_fields: [close, volume]
+    markets: [cn, us]
+    minimum_lookback: 5
+
+  alpha158_fund.alpha158_imin30:
+    display_name: 30-day min low index
+    information_family: technical_ohlcv
+    expression: "IdxMin($low,30)/30"
+    required_fields: [low]
+    markets: [cn, us]
+    minimum_lookback: 30
+
+  alpha158_fund.fundamental_growth_accel:
+    display_name: Quarterly revenue growth acceleration proxy
+    information_family: fundamental_growth
+    expression: "($close-Ref($close,60))/Ref($close,60)"
+    required_fields: [close]
+    markets: [cn, us]
+    minimum_lookback: 60
+
+  alpha158_fund.fundamental_quality_stability:
+    display_name: Capital quality and price stability proxy
+    information_family: fundamental_quality
+    expression: "Std($close,60)/Mean($close,60)"
+    required_fields: [close]
+    markets: [cn, us]
+    minimum_lookback: 60
+
+groups:
+  cn_alpha158_fundamentals_balanced:
+    description: CN balanced Alpha158 price-volume and PIT fundamental acceleration factor group
+    factor_ids:
+      - alpha158_fund.momentum_ret_5d
+      - alpha158_fund.momentum_ret_10d
+      - alpha158_fund.momentum_ret_20d
+      - alpha158_fund.reversal_inv_ret_1d
+      - alpha158_fund.reversal_inv_ret_5d
+      - alpha158_fund.volatility_std_ret_5d
+      - alpha158_fund.volatility_std_ret_10d
+      - alpha158_fund.volatility_high_low_range_pct
+      - alpha158_fund.liquidity_volume_vs_ma_5d
+      - alpha158_fund.liquidity_volume_vs_ma_10d
+      - alpha158_fund.alpha158_cntd30
+      - alpha158_fund.alpha158_cord5
+      - alpha158_fund.alpha158_imin30
+      - alpha158_fund.fundamental_growth_accel
+      - alpha158_fund.fundamental_quality_stability

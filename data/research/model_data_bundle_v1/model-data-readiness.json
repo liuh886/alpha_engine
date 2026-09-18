@@ -1,6 +1,6 @@
 {
-  "built_at": "2026-09-10T13:37:20+00:00",
-  "bundle_id": "524d92759e4f4739cdafa8cd9a320ad0ddf9a52e0c0f94ceca30a8dccd9202e8",
+  "built_at": "2026-09-17T16:16:26+00:00",
+  "bundle_id": "38f8d3c05ed5281304c26b7e336652caab2fbd55c88ca12a03572120a8aaef1e",
   "evidence_cutoff": "2026-09-09",
   "research_only": true,
   "schema_version": "1.1",
@@ -19,17 +19,17 @@
     "blocked_training_profiles": [
       "qqqi_qqq_tqqq_rotation_v1",
       "us_selected_alpha158_v1",
-      "us_selected_price_plus_fundamentals_v1",
       "us_small_pool_price_plus_fundamentals_v1"
     ],
-    "component_count": 5,
-    "partial_component_count": 2,
-    "ready_component_count": 3,
+    "component_count": 7,
+    "partial_component_count": 3,
+    "ready_component_count": 4,
     "ready_training_profiles": [
       "cn_selected_alpha158_v1",
       "cn_selected_price_only_v1",
       "cn_selected_price_plus_fundamentals_v1",
-      "us_selected_price_only_v1"
+      "us_selected_price_only_v1",
+      "us_selected_price_plus_fundamentals_v1"
     ]
   },
   "trade_ready": false

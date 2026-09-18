@@ -524,10 +524,7 @@
   {
     "candidate_count": 87,
     "candidate_pool_id": "us_selected_equities_v2",
-    "failed_gates": [
-      "component:fundamentals.us_selected_equities_v2:required_component_missing",
-      "component:corporate_actions.us_selected_equities_v2:required_component_missing"
-    ],
+    "failed_gates": [],
     "market": "us",
     "profile_id": "us_selected_price_plus_fundamentals_v1",
     "references": [
@@ -590,12 +587,53 @@
         "applicable_coverage_ratio": null,
         "component_id": "fundamentals.us_selected_equities_v2",
         "coverage_basis": "all_symbols",
-        "gate_reasons": [
-          "required_component_missing"
-        ],
-        "gate_status": "failed",
+        "gate_reasons": [],
+        "gate_status": "passed",
         "minimum_coverage_ratio": 0.8,
-        "observed": null
+        "observed": {
+          "component_id": "fundamentals.us_selected_equities_v2",
+          "component_kind": "fundamental_coverage",
+          "coverage_ratio": 0.9885057471264368,
+          "details": {
+            "coverage_byte_size": 59998,
+            "coverage_path": "fundamentals/coverage.json",
+            "coverage_sha256": "fe97bc511afb200138a4ec0233d702163a73c8d3ebabd3aae6062ab0a90cabba",
+            "events_byte_size": 59269645,
+            "events_path": "fundamentals/events.jsonl",
+            "events_sha256": "3f61237fe687d2087393d3ce047d953abd31a2417fe59b5dd7700bd9f7b0bbbd",
+            "explicit_status_count": 87,
+            "status_counts": {
+              "conflict": 0,
+              "identity_missing": 1,
+              "no_event_observed": 0,
+              "partial": 0,
+              "provider_missing": 0,
+              "ready": 86
+            }
+          },
+          "evidence_cutoff": "2026-09-09",
+          "expected_symbol_count": 87,
+          "first_date": "2009-06-04",
+          "invalid_symbols": [],
+          "last_date": "2026-09-03",
+          "manifest_path": "sources/us_events/fundamentals/component_manifest.json",
+          "manifest_sha256": "c5e9d8dc3d67a6a8448f8a3c973c81c7ca3c0645cdeee7fae3881181790b2698",
+          "market": "us",
+          "missing_symbols": [
+            "SBGSY"
+          ],
+          "not_yet_applicable_symbols": [],
+          "pool_id": "us_selected_equities_v2",
+          "professional_source_ready": null,
+          "providers": [
+            "SEC_COMPANYFACTS"
+          ],
+          "quarantined_symbols": [],
+          "ready_symbol_count": 86,
+          "research_only": true,
+          "status": "partial",
+          "trade_ready": false
+        }
       },
       {
         "accepted_statuses": [
@@ -606,16 +644,55 @@
         "applicable_coverage_ratio": null,
         "component_id": "corporate_actions.us_selected_equities_v2",
         "coverage_basis": "all_symbols",
-        "gate_reasons": [
-          "required_component_missing"
-        ],
-        "gate_status": "failed",
+        "gate_reasons": [],
+        "gate_status": "passed",
         "minimum_coverage_ratio": 1.0,
-        "observed": null
+        "observed": {
+          "component_id": "corporate_actions.us_selected_equities_v2",
+          "component_kind": "corporate_action_coverage",
+          "coverage_ratio": 1.0,
+          "details": {
+            "coverage_byte_size": 46385,
+            "coverage_path": "corporate_actions/coverage.json",
+            "coverage_sha256": "fe447dab3c7fbdfeb93f5f4861d1f0e5443fa209efd56de4c638c3fa55aa8170",
+            "events_byte_size": 3244265,
+            "events_path": "corporate_actions/events.jsonl",
+            "events_sha256": "843b58307493fefb016fb2572b27db527db4dc317befc492a4fc82a6e382ffa5",
+            "explicit_status_count": 87,
+            "status_counts": {
+              "conflict": 0,
+              "identity_missing": 0,
+              "no_event_observed": 22,
+              "partial": 0,
+              "provider_missing": 0,
+              "ready": 65
+            }
+          },
+          "evidence_cutoff": "2026-09-09",
+          "expected_symbol_count": 87,
+          "first_date": "1962-02-06",
+          "invalid_symbols": [],
+          "last_date": "2026-09-08",
+          "manifest_path": "sources/us_events/corporate_actions/component_manifest.json",
+          "manifest_sha256": "470a8193b52a24ed8999c49044124098e5b1cdafb868bce900b94a48ba70683e",
+          "market": "us",
+          "missing_symbols": [],
+          "not_yet_applicable_symbols": [],
+          "pool_id": "us_selected_equities_v2",
+          "professional_source_ready": null,
+          "providers": [
+            "YFINANCE_ACTIONS"
+          ],
+          "quarantined_symbols": [],
+          "ready_symbol_count": 87,
+          "research_only": true,
+          "status": "ready",
+          "trade_ready": false
+        }
       }
     ],
     "research_only": true,
-    "status": "blocked",
+    "status": "ready",
     "trade_ready": false
   },
   {

@@ -1,0 +1,39 @@
+{
+  "component_id": "corporate_actions.us_selected_equities_v2",
+  "component_kind": "corporate_action_coverage",
+  "coverage_ratio": 1.0,
+  "details": {
+    "coverage_byte_size": 46385,
+    "coverage_path": "corporate_actions/coverage.json",
+    "coverage_sha256": "fe447dab3c7fbdfeb93f5f4861d1f0e5443fa209efd56de4c638c3fa55aa8170",
+    "events_byte_size": 3244265,
+    "events_path": "corporate_actions/events.jsonl",
+    "events_sha256": "843b58307493fefb016fb2572b27db527db4dc317befc492a4fc82a6e382ffa5",
+    "explicit_status_count": 87,
+    "status_counts": {
+      "conflict": 0,
+      "identity_missing": 0,
+      "no_event_observed": 22,
+      "partial": 0,
+      "provider_missing": 0,
+      "ready": 65
+    }
+  },
+  "evidence_cutoff": "2026-09-09",
+  "expected_symbol_count": 87,
+  "first_date": "1962-02-06",
+  "invalid_symbols": [],
+  "last_date": "2026-09-08",
+  "market": "us",
+  "missing_symbols": [],
+  "pool_id": "us_selected_equities_v2",
+  "providers": [
+    "yfinance_actions"
+  ],
+  "quarantined_symbols": [],
+  "ready_symbol_count": 87,
+  "research_only": true,
+  "schema_version": "1.0",
+  "status": "ready",
+  "trade_ready": false
+}

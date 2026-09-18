@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, BookOpen, CheckCircle2, Database, FolderArchive, SlidersHorizontal } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, BookOpen, CheckCircle2, Database, FolderArchive, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { fetchSystemHealth, type LiveSystemHealth } from '@/lib/system-health';
@@ -79,6 +79,9 @@ export function SystemHubPage() {
       </section>
 
       <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <Link to="/model-operations" className="group flex items-center gap-4 border-b p-5 hover:bg-muted/20">
+          <Activity className="h-5 w-5 text-primary" /><div className="flex-1"><h2 className="text-sm font-semibold">Model operations & paper simulation</h2><p className="mt-1 text-xs text-muted-foreground">Champion lifecycle, statistical drift, operational gates and paper ledger.</p></div><ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+        </Link>
         <Link to="/data" className="group flex items-center gap-4 border-b p-5 hover:bg-muted/20">
           <Database className="h-5 w-5 text-primary" /><div className="flex-1"><h2 className="text-sm font-semibold">Data lineage & readiness</h2><p className="mt-1 text-xs text-muted-foreground">Provider identity, coverage, cutoff and blockers.</p></div><ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
         </Link>

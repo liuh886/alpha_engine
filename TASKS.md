@@ -219,7 +219,7 @@
 
 **Dependency:** Do not begin T47 implementation against legacy/latest-discovered artifacts. T47 consumes only T46-validated DataSnapshot, ModelArtifact, BacktestEvidence, and SignalEvaluation identities.
 
-- [x] **T47: Continuous Model Operations and Portfolio Decision Loop** — T47.1-T47.7 complete ✅ 2026-09-08. T47.8 parked pending frontend-agent coordination.
+- [x] **T47: Continuous Model Operations and Portfolio Decision Loop** — T47.1-T47.8 complete ✅ 2026-09-18.
   - [x] **T47.1 [P0] Establish Champion/Challenger lifecycle management** ✅
     - Deliver: ChampionIndex (SQLite), ChampionManager with declare/evaluate/promote/rollback
     - Accept: 16 tests covering declaration, evaluation, atomic promotion, rollback, history, cross-market isolation
@@ -241,9 +241,9 @@
   - [x] **T47.7 [P1] Define evidence-driven retraining policy** ✅ 2026-09-08
     - Deliver: `src/portfolio/retraining_policy.py` — schedule/data/drift/performance triggers with cooldown, concurrency lock, resource budget, no-change outcome.
     - Accept: covered by `tests/test_t47_retraining_policy.py`; 119-test suite green.
-  - [ ] **T47.8 [P1] Deliver the Model Operations frontend and browser proof** — PARKED
-    - Reason: a frontend-led update is in flight by another agent; backend defers all `qlib-dashboard/` edits to avoid collision.
-    - Next: schedule after the frontend update lands; backend modules above are the ready data source.
+  - [x] **T47.8 [P1] Deliver the Model Operations frontend and browser proof** ✅ 2026-09-18
+    - Deliver: `src/artifacts/model_operations.py`, `data/research/model_operations/operations_summary.json` (schema: `model_operations_v1`), `alpha ops model-ops` CLI command, `qlib-dashboard/src/lib/model-operations.ts`, `qlib-dashboard/src/pages/ModelOperationsPage.tsx` and route `/model-operations`.
+    - Accept: covered by `tests/test_model_operations_artifact.py`, `tests/test_t47_operator_e2e.py` (5 fail-closed proof tests), 162 total backend T47 tests green, 157 frontend Vitest tests green, production single-file build verified.
 
 **Execution waves:**
 1. **Lifecycle and monitoring:** T47.1-T47.2.

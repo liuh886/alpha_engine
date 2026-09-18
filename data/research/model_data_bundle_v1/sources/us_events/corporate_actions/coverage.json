@@ -1,0 +1,1736 @@
+[
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "AAOI"
+  },
+  {
+    "error": null,
+    "event_count": 97,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 92,
+      "split": 5
+    },
+    "first_available_date": "1987-05-11",
+    "first_effective_date": "1987-05-11",
+    "first_event_date": "1987-05-11",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-10",
+    "latest_effective_date": "2026-08-10",
+    "latest_event_date": "2026-08-10",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "AAPL"
+  },
+  {
+    "error": null,
+    "event_count": 23,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 23
+    },
+    "first_available_date": "2003-12-05",
+    "first_effective_date": "2003-12-05",
+    "first_event_date": "2003-12-05",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-03-24",
+    "latest_effective_date": "2026-03-24",
+    "latest_event_date": "2026-03-24",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "ABBNY"
+  },
+  {
+    "error": null,
+    "event_count": 181,
+    "excluded_after_cutoff": 1,
+    "fields_or_types": {
+      "cash_dividend": 174,
+      "split": 7
+    },
+    "first_available_date": "1981-05-22",
+    "first_effective_date": "1981-05-22",
+    "first_event_date": "1981-05-22",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-06-12",
+    "latest_effective_date": "2026-06-12",
+    "latest_event_date": "2026-06-12",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "ADP"
+  },
+  {
+    "error": null,
+    "event_count": 67,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 63,
+      "split": 4
+    },
+    "first_available_date": "1987-03-30",
+    "first_effective_date": "1987-03-30",
+    "first_event_date": "1987-03-30",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2005-03-22",
+    "latest_effective_date": "2005-03-22",
+    "latest_event_date": "2005-03-22",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "ADSK"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "ALAB"
+  },
+  {
+    "error": null,
+    "event_count": 95,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 86,
+      "split": 9
+    },
+    "first_available_date": "1980-04-02",
+    "first_effective_date": "1980-04-02",
+    "first_event_date": "1980-04-02",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-20",
+    "latest_effective_date": "2026-08-20",
+    "latest_event_date": "2026-08-20",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "AMAT"
+  },
+  {
+    "error": null,
+    "event_count": 4,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 4
+    },
+    "first_available_date": "1980-10-24",
+    "first_effective_date": "1980-10-24",
+    "first_event_date": "1980-10-24",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2000-08-22",
+    "latest_effective_date": "2000-08-22",
+    "latest_event_date": "2000-08-22",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "AMD"
+  },
+  {
+    "error": null,
+    "event_count": 4,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 4
+    },
+    "first_available_date": "1998-06-02",
+    "first_effective_date": "1998-06-02",
+    "first_event_date": "1998-06-02",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2022-06-06",
+    "latest_effective_date": "2022-06-06",
+    "latest_event_date": "2022-06-06",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "AMZN"
+  },
+  {
+    "error": null,
+    "event_count": 2,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 2
+    },
+    "first_available_date": "2021-11-18",
+    "first_effective_date": "2021-11-18",
+    "first_event_date": "2021-11-18",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2024-12-04",
+    "latest_effective_date": "2024-12-04",
+    "latest_event_date": "2024-12-04",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "ANET"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "APP"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "ARM"
+  },
+  {
+    "error": null,
+    "event_count": 41,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 37,
+      "reverse_split": 1,
+      "split": 3
+    },
+    "first_available_date": "1997-05-12",
+    "first_effective_date": "1997-05-12",
+    "first_event_date": "1997-05-12",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-28",
+    "latest_effective_date": "2026-07-28",
+    "latest_event_date": "2026-07-28",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "ASML"
+  },
+  {
+    "error": null,
+    "event_count": 64,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 63,
+      "split": 1
+    },
+    "first_available_date": "2010-12-13",
+    "first_effective_date": "2010-12-13",
+    "first_event_date": "2010-12-13",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-06-22",
+    "latest_effective_date": "2026-06-22",
+    "latest_event_date": "2026-06-22",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "AVGO"
+  },
+  {
+    "error": null,
+    "event_count": 3,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 3
+    },
+    "first_available_date": "2004-02-11",
+    "first_effective_date": "2004-02-11",
+    "first_event_date": "2004-02-11",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2004-11-30",
+    "latest_effective_date": "2004-11-30",
+    "latest_event_date": "2004-11-30",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "AXON"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "BE"
+  },
+  {
+    "error": null,
+    "event_count": 12,
+    "excluded_after_cutoff": 1,
+    "fields_or_types": {
+      "cash_dividend": 10,
+      "reverse_split": 1,
+      "split": 1
+    },
+    "first_available_date": "2003-06-16",
+    "first_effective_date": "2003-06-16",
+    "first_event_date": "2003-06-16",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-06-05",
+    "latest_effective_date": "2026-06-05",
+    "latest_event_date": "2026-06-05",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "BKNG"
+  },
+  {
+    "error": null,
+    "event_count": 158,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 158
+    },
+    "first_available_date": "1987-04-28",
+    "first_effective_date": "1987-04-28",
+    "first_event_date": "1987-04-28",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-07",
+    "latest_effective_date": "2026-08-07",
+    "latest_event_date": "2026-08-07",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "BKR"
+  },
+  {
+    "error": null,
+    "event_count": 3,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 3
+    },
+    "first_available_date": "1995-10-31",
+    "first_effective_date": "1995-10-31",
+    "first_event_date": "1995-10-31",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "1997-11-17",
+    "latest_effective_date": "1997-11-17",
+    "latest_event_date": "1997-11-17",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "CDNS"
+  },
+  {
+    "error": null,
+    "event_count": 19,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 19
+    },
+    "first_available_date": "2022-02-24",
+    "first_effective_date": "2022-02-24",
+    "first_event_date": "2022-02-24",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-18",
+    "latest_effective_date": "2026-08-18",
+    "latest_event_date": "2026-08-18",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "CEG"
+  },
+  {
+    "error": null,
+    "event_count": 4,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 4
+    },
+    "first_available_date": "1995-09-08",
+    "first_effective_date": "1995-09-08",
+    "first_event_date": "1995-09-08",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2011-06-27",
+    "latest_effective_date": "2011-06-27",
+    "latest_event_date": "2011-06-27",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "COHR"
+  },
+  {
+    "error": null,
+    "event_count": 97,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 95,
+      "split": 2
+    },
+    "first_available_date": "1993-10-22",
+    "first_effective_date": "1993-10-22",
+    "first_event_date": "1993-10-22",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-24",
+    "latest_effective_date": "2026-07-24",
+    "latest_event_date": "2026-07-24",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "COST"
+  },
+  {
+    "error": null,
+    "event_count": 7,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 7
+    },
+    "first_available_date": "1999-01-29",
+    "first_effective_date": "1999-01-29",
+    "first_event_date": "1999-01-29",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2023-08-22",
+    "latest_effective_date": "2023-08-22",
+    "latest_event_date": "2023-08-22",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "CPRT"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "CRCL"
+  },
+  {
+    "error": null,
+    "event_count": 1,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 1
+    },
+    "first_available_date": "2026-07-02",
+    "first_effective_date": "2026-07-02",
+    "first_event_date": "2026-07-02",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-02",
+    "latest_effective_date": "2026-07-02",
+    "latest_event_date": "2026-07-02",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "CRWD"
+  },
+  {
+    "error": null,
+    "event_count": 71,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 62,
+      "split": 9
+    },
+    "first_available_date": "1991-03-18",
+    "first_effective_date": "1991-03-18",
+    "first_event_date": "1991-03-18",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-06",
+    "latest_effective_date": "2026-07-06",
+    "latest_event_date": "2026-07-06",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "CSCO"
+  },
+  {
+    "error": null,
+    "event_count": 64,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 58,
+      "split": 6
+    },
+    "first_available_date": "1987-03-10",
+    "first_effective_date": "1987-03-10",
+    "first_event_date": "1987-03-10",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-14",
+    "latest_effective_date": "2026-08-14",
+    "latest_event_date": "2026-08-14",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "CTAS"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "DASH"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "DDOG"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "EA"
+  },
+  {
+    "error": null,
+    "event_count": 62,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 60,
+      "split": 2
+    },
+    "first_available_date": "2006-02-13",
+    "first_effective_date": "2006-02-13",
+    "first_event_date": "2006-02-13",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-15",
+    "latest_effective_date": "2026-07-15",
+    "latest_event_date": "2026-07-15",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "EME"
+  },
+  {
+    "error": null,
+    "event_count": 222,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 216,
+      "split": 6
+    },
+    "first_available_date": "1972-08-01",
+    "first_effective_date": "1972-08-01",
+    "first_event_date": "1972-08-01",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-07",
+    "latest_effective_date": "2026-08-07",
+    "latest_event_date": "2026-08-07",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "ETN"
+  },
+  {
+    "error": null,
+    "event_count": 34,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 34
+    },
+    "first_available_date": "2018-05-18",
+    "first_effective_date": "2018-05-18",
+    "first_event_date": "2018-05-18",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-13",
+    "latest_effective_date": "2026-08-13",
+    "latest_event_date": "2026-08-13",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "FANG"
+  },
+  {
+    "error": null,
+    "event_count": 84,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 84
+    },
+    "first_available_date": "2005-11-28",
+    "first_effective_date": "2005-11-28",
+    "first_event_date": "2005-11-28",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-13",
+    "latest_effective_date": "2026-08-13",
+    "latest_event_date": "2026-08-13",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "FIX"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "FN"
+  },
+  {
+    "error": null,
+    "event_count": 14,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 14
+    },
+    "first_available_date": "2023-05-22",
+    "first_effective_date": "2023-05-22",
+    "first_event_date": "2023-05-22",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-24",
+    "latest_effective_date": "2026-07-24",
+    "latest_event_date": "2026-07-24",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "GEHC"
+  },
+  {
+    "error": null,
+    "event_count": 12,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 10,
+      "split": 2
+    },
+    "first_available_date": "2014-04-03",
+    "first_effective_date": "2014-04-03",
+    "first_event_date": "2014-04-03",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-09-04",
+    "latest_effective_date": "2026-09-04",
+    "latest_event_date": "2026-09-04",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "GOOGL"
+  },
+  {
+    "error": null,
+    "event_count": 269,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 258,
+      "reverse_split": 1,
+      "split": 10
+    },
+    "first_available_date": "1962-02-06",
+    "first_effective_date": "1962-02-06",
+    "first_event_date": "1962-02-06",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-14",
+    "latest_effective_date": "2026-08-14",
+    "latest_event_date": "2026-08-14",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "HON"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "HOOD"
+  },
+  {
+    "error": null,
+    "event_count": 136,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 128,
+      "split": 8
+    },
+    "first_available_date": "1980-10-09",
+    "first_effective_date": "1980-10-09",
+    "first_event_date": "1980-10-09",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2024-08-07",
+    "latest_effective_date": "2024-08-07",
+    "latest_event_date": "2024-08-07",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "INTC"
+  },
+  {
+    "error": null,
+    "event_count": 63,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 60,
+      "split": 3
+    },
+    "first_available_date": "1995-08-22",
+    "first_effective_date": "1995-08-22",
+    "first_event_date": "1995-08-22",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-09",
+    "latest_effective_date": "2026-07-09",
+    "latest_event_date": "2026-07-09",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "INTU"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "IREN"
+  },
+  {
+    "error": null,
+    "event_count": 3,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "reverse_split": 1,
+      "split": 2
+    },
+    "first_available_date": "2003-07-01",
+    "first_effective_date": "2003-07-01",
+    "first_event_date": "2003-07-01",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2021-10-05",
+    "latest_effective_date": "2021-10-05",
+    "latest_event_date": "2021-10-05",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "ISRG"
+  },
+  {
+    "error": null,
+    "event_count": 93,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 87,
+      "split": 6
+    },
+    "first_available_date": "1983-01-10",
+    "first_effective_date": "1983-01-10",
+    "first_event_date": "1983-01-10",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-17",
+    "latest_effective_date": "2026-08-17",
+    "latest_event_date": "2026-08-17",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "KLAC"
+  },
+  {
+    "error": null,
+    "event_count": 138,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 137,
+      "split": 1
+    },
+    "first_available_date": "1992-09-01",
+    "first_effective_date": "1992-09-01",
+    "first_event_date": "1992-09-01",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-09-03",
+    "latest_effective_date": "2026-09-03",
+    "latest_event_date": "2026-09-03",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "LIN"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "LITE"
+  },
+  {
+    "error": null,
+    "event_count": 52,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 49,
+      "split": 3
+    },
+    "first_available_date": "1993-09-16",
+    "first_effective_date": "1993-09-16",
+    "first_event_date": "1993-09-16",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-06-17",
+    "latest_effective_date": "2026-06-17",
+    "latest_event_date": "2026-06-17",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "LRCX"
+  },
+  {
+    "error": null,
+    "event_count": 28,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 28
+    },
+    "first_available_date": "2011-03-29",
+    "first_effective_date": "2011-03-29",
+    "first_event_date": "2011-03-29",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2017-12-28",
+    "latest_effective_date": "2017-12-28",
+    "latest_event_date": "2017-12-28",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "MELI"
+  },
+  {
+    "error": null,
+    "event_count": 10,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 10
+    },
+    "first_available_date": "2024-02-21",
+    "first_effective_date": "2024-02-21",
+    "first_event_date": "2024-02-21",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-06-15",
+    "latest_effective_date": "2026-06-15",
+    "latest_event_date": "2026-06-15",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "META"
+  },
+  {
+    "error": null,
+    "event_count": 50,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 50
+    },
+    "first_available_date": "2012-12-19",
+    "first_effective_date": "2012-12-19",
+    "first_event_date": "2012-12-19",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-06-30",
+    "latest_effective_date": "2026-06-30",
+    "latest_event_date": "2026-06-30",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "MPWR"
+  },
+  {
+    "error": null,
+    "event_count": 59,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 57,
+      "split": 2
+    },
+    "first_available_date": "2004-06-29",
+    "first_effective_date": "2004-06-29",
+    "first_event_date": "2004-06-29",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-10",
+    "latest_effective_date": "2026-07-10",
+    "latest_event_date": "2026-07-10",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "MRVL"
+  },
+  {
+    "error": null,
+    "event_count": 100,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 91,
+      "split": 9
+    },
+    "first_available_date": "1987-09-21",
+    "first_effective_date": "1987-09-21",
+    "first_event_date": "1987-09-21",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-20",
+    "latest_effective_date": "2026-08-20",
+    "latest_event_date": "2026-08-20",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "MSFT"
+  },
+  {
+    "error": null,
+    "event_count": 36,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 33,
+      "split": 3
+    },
+    "first_available_date": "1991-11-22",
+    "first_effective_date": "1991-11-22",
+    "first_event_date": "1991-11-22",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-06",
+    "latest_effective_date": "2026-07-06",
+    "latest_event_date": "2026-07-06",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "MU"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "NBIS"
+  },
+  {
+    "error": null,
+    "event_count": 3,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 3
+    },
+    "first_available_date": "2004-02-12",
+    "first_effective_date": "2004-02-12",
+    "first_event_date": "2004-02-12",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2025-11-17",
+    "latest_effective_date": "2025-11-17",
+    "latest_event_date": "2025-11-17",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "NFLX"
+  },
+  {
+    "error": null,
+    "event_count": 61,
+    "excluded_after_cutoff": 1,
+    "fields_or_types": {
+      "cash_dividend": 55,
+      "split": 6
+    },
+    "first_available_date": "2000-06-27",
+    "first_effective_date": "2000-06-27",
+    "first_event_date": "2000-06-27",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-06-04",
+    "latest_effective_date": "2026-06-04",
+    "latest_event_date": "2026-06-04",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "NVDA"
+  },
+  {
+    "error": null,
+    "event_count": 4,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 4
+    },
+    "first_available_date": "1997-09-02",
+    "first_effective_date": "1997-09-02",
+    "first_event_date": "1997-09-02",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2025-06-10",
+    "latest_effective_date": "2025-06-10",
+    "latest_event_date": "2025-06-10",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "ORLY"
+  },
+  {
+    "error": null,
+    "event_count": 2,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 2
+    },
+    "first_available_date": "2022-09-14",
+    "first_effective_date": "2022-09-14",
+    "first_event_date": "2022-09-14",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2024-12-16",
+    "latest_effective_date": "2024-12-16",
+    "latest_event_date": "2024-12-16",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "PANW"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "PDD"
+  },
+  {
+    "error": null,
+    "event_count": 223,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 219,
+      "split": 4
+    },
+    "first_available_date": "1972-06-05",
+    "first_effective_date": "1972-06-05",
+    "first_event_date": "1972-06-05",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-09-04",
+    "latest_effective_date": "2026-09-04",
+    "latest_event_date": "2026-09-04",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "PEP"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "PLTR"
+  },
+  {
+    "error": null,
+    "event_count": 32,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 31,
+      "split": 1
+    },
+    "first_available_date": "2000-04-10",
+    "first_effective_date": "2000-04-10",
+    "first_event_date": "2000-04-10",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-01",
+    "latest_effective_date": "2026-07-01",
+    "latest_event_date": "2026-07-01",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "PWR"
+  },
+  {
+    "error": null,
+    "event_count": 100,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 96,
+      "split": 4
+    },
+    "first_available_date": "1994-02-24",
+    "first_effective_date": "1994-02-24",
+    "first_event_date": "1994-02-24",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-09-03",
+    "latest_effective_date": "2026-09-03",
+    "latest_event_date": "2026-09-03",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "QCOM"
+  },
+  {
+    "error": null,
+    "event_count": 7,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 7
+    },
+    "first_available_date": "2025-02-20",
+    "first_effective_date": "2025-02-20",
+    "first_event_date": "2025-02-20",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-18",
+    "latest_effective_date": "2026-08-18",
+    "latest_event_date": "2026-08-18",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "REGN"
+  },
+  {
+    "error": null,
+    "event_count": 141,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 138,
+      "split": 3
+    },
+    "first_available_date": "1992-04-20",
+    "first_effective_date": "1992-04-20",
+    "first_event_date": "1992-04-20",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-08",
+    "latest_effective_date": "2026-07-08",
+    "latest_event_date": "2026-07-08",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "ROP"
+  },
+  {
+    "error": null,
+    "event_count": 17,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 17
+    },
+    "first_available_date": "2010-04-29",
+    "first_effective_date": "2010-04-29",
+    "first_event_date": "2010-04-29",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-05-12",
+    "latest_effective_date": "2026-05-12",
+    "latest_event_date": "2026-05-12",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "SBGSY"
+  },
+  {
+    "error": null,
+    "event_count": 1,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 1
+    },
+    "first_available_date": "2022-06-29",
+    "first_effective_date": "2022-06-29",
+    "first_event_date": "2022-06-29",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2022-06-29",
+    "latest_effective_date": "2022-06-29",
+    "latest_event_date": "2022-06-29",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "SHOP"
+  },
+  {
+    "error": null,
+    "event_count": 2,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 2
+    },
+    "first_available_date": "1995-09-11",
+    "first_effective_date": "1995-09-11",
+    "first_event_date": "1995-09-11",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2003-09-24",
+    "latest_effective_date": "2003-09-24",
+    "latest_event_date": "2003-09-24",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "SNPS"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "SNDK"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "TEM"
+  },
+  {
+    "error": null,
+    "event_count": 9,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 9
+    },
+    "first_available_date": "2019-05-03",
+    "first_effective_date": "2019-05-03",
+    "first_event_date": "2019-05-03",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-08",
+    "latest_effective_date": "2026-07-08",
+    "latest_event_date": "2026-07-08",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "TIGO"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "TYGO"
+  },
+  {
+    "error": null,
+    "event_count": 14,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 13,
+      "reverse_split": 1
+    },
+    "first_available_date": "2013-05-01",
+    "first_effective_date": "2013-05-01",
+    "first_event_date": "2013-05-01",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-28",
+    "latest_effective_date": "2026-08-28",
+    "latest_event_date": "2026-08-28",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "TMUS"
+  },
+  {
+    "error": null,
+    "event_count": 2,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 2
+    },
+    "first_available_date": "2020-08-31",
+    "first_effective_date": "2020-08-31",
+    "first_event_date": "2020-08-31",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2022-08-25",
+    "latest_effective_date": "2022-08-25",
+    "latest_event_date": "2022-08-25",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "TSLA"
+  },
+  {
+    "error": null,
+    "event_count": 2,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 1,
+      "split": 1
+    },
+    "first_available_date": "2005-04-12",
+    "first_effective_date": "2005-04-12",
+    "first_event_date": "2005-04-12",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2008-09-25",
+    "latest_effective_date": "2008-09-25",
+    "latest_event_date": "2008-09-25",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "TTWO"
+  },
+  {
+    "error": null,
+    "event_count": 14,
+    "excluded_after_cutoff": 1,
+    "fields_or_types": {
+      "cash_dividend": 14
+    },
+    "first_available_date": "2020-12-01",
+    "first_effective_date": "2020-12-01",
+    "first_event_date": "2020-12-01",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-06-15",
+    "latest_effective_date": "2026-06-15",
+    "latest_event_date": "2026-06-15",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "VRT"
+  },
+  {
+    "error": null,
+    "event_count": 1,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "split": 1
+    },
+    "first_available_date": "2000-08-24",
+    "first_effective_date": "2000-08-24",
+    "first_event_date": "2000-08-24",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2000-08-24",
+    "latest_effective_date": "2000-08-24",
+    "latest_event_date": "2000-08-24",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "VRTX"
+  },
+  {
+    "error": null,
+    "event_count": 39,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 37,
+      "split": 2
+    },
+    "first_available_date": "1997-06-04",
+    "first_effective_date": "1997-06-04",
+    "first_event_date": "1997-06-04",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-09-08",
+    "latest_effective_date": "2026-09-08",
+    "latest_event_date": "2026-09-08",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "WDC"
+  },
+  {
+    "error": null,
+    "event_count": 219,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 209,
+      "split": 10
+    },
+    "first_available_date": "1974-03-13",
+    "first_effective_date": "1974-03-13",
+    "first_event_date": "1974-03-13",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-08-21",
+    "latest_effective_date": "2026-08-21",
+    "latest_event_date": "2026-08-21",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "WMT"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "HIMS"
+  },
+  {
+    "error": null,
+    "event_count": 18,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 18
+    },
+    "first_available_date": "2007-10-03",
+    "first_effective_date": "2007-10-03",
+    "first_event_date": "2007-10-03",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-06-30",
+    "latest_effective_date": "2026-06-30",
+    "latest_event_date": "2026-06-30",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "HIMX"
+  },
+  {
+    "error": null,
+    "event_count": 43,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 39,
+      "split": 4
+    },
+    "first_available_date": "1995-03-30",
+    "first_effective_date": "1995-03-30",
+    "first_event_date": "1995-03-30",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2025-07-29",
+    "latest_effective_date": "2025-07-29",
+    "latest_event_date": "2025-07-29",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "NOK"
+  },
+  {
+    "error": null,
+    "event_count": 54,
+    "excluded_after_cutoff": 1,
+    "fields_or_types": {
+      "cash_dividend": 44,
+      "split": 10
+    },
+    "first_available_date": "1998-08-26",
+    "first_effective_date": "1998-08-26",
+    "first_event_date": "1998-08-26",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-06-11",
+    "latest_effective_date": "2026-06-11",
+    "latest_event_date": "2026-06-11",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "TSM"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "CRDO"
+  },
+  {
+    "error": null,
+    "event_count": 79,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "cash_dividend": 69,
+      "split": 10
+    },
+    "first_available_date": "1987-03-25",
+    "first_effective_date": "1987-03-25",
+    "first_event_date": "1987-03-25",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2026-07-10",
+    "latest_effective_date": "2026-07-10",
+    "latest_event_date": "2026-07-10",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "ORCL"
+  },
+  {
+    "error": null,
+    "event_count": 1,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {
+      "reverse_split": 1
+    },
+    "first_available_date": "2022-02-28",
+    "first_effective_date": "2022-02-28",
+    "first_event_date": "2022-02-28",
+    "kind": "corporate_action_coverage",
+    "latest_available_date": "2022-02-28",
+    "latest_effective_date": "2022-02-28",
+    "latest_event_date": "2022-02-28",
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "ready",
+    "symbol": "POET"
+  },
+  {
+    "error": null,
+    "event_count": 0,
+    "excluded_after_cutoff": 0,
+    "fields_or_types": {},
+    "first_available_date": null,
+    "first_effective_date": null,
+    "first_event_date": null,
+    "kind": "corporate_action_coverage",
+    "latest_available_date": null,
+    "latest_effective_date": null,
+    "latest_event_date": null,
+    "providers": [
+      "yfinance_actions"
+    ],
+    "status": "no_event_observed",
+    "symbol": "AEHR"
+  }
+]

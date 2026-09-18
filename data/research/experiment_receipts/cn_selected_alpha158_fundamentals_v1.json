@@ -1,0 +1,74 @@
+{
+  "artifact_id": "cd205728823540caa9ea93dc248d5685",
+  "artifact_manifest_path": "artifacts/artifacts/cd205728823540caa9ea93dc248d5685/manifest.json",
+  "created_at": "2026-09-18T07:13:54.013191+00:00",
+  "decision": "extended_alpha158_fundamentals_model_trained_and_validated",
+  "experiment_id": "cn_selected_alpha158_fundamentals_v1",
+  "gates": {
+    "artifact_registered": true,
+    "artifact_validated": true,
+    "inference_validated": true,
+    "reconstruction_checked": true
+  },
+  "metrics": {
+    "icir": -0.13785320720307478,
+    "mean_ic": -0.005547233220691066,
+    "mean_rank_ic": -0.016769601102738566,
+    "split_count": 3,
+    "splits": [
+      {
+        "ic": 0.007818068106864511,
+        "rank_ic": 0.017332564170902977,
+        "samples": 23968,
+        "split": 1,
+        "test_window": [
+          "2024-01-01",
+          "2024-12-31"
+        ],
+        "train_window": [
+          "2021-01-01",
+          "2023-12-31"
+        ]
+      },
+      {
+        "ic": 0.03567555001642511,
+        "rank_ic": 0.037267747939897705,
+        "samples": 24075,
+        "split": 2,
+        "test_window": [
+          "2025-01-01",
+          "2025-12-31"
+        ],
+        "train_window": [
+          "2021-01-01",
+          "2024-12-31"
+        ]
+      },
+      {
+        "ic": -0.060135317785362824,
+        "rank_ic": -0.10490911541901639,
+        "samples": 9310,
+        "split": 3,
+        "test_window": [
+          "2026-01-01",
+          "2026-06-30"
+        ],
+        "train_window": [
+          "2021-01-01",
+          "2025-12-31"
+        ]
+      }
+    ]
+  },
+  "research_only": true,
+  "schema_version": "1.0",
+  "snapshot_id": "4cd16a6755aa80e7f913d38bd38819bac5644501b18b57a66b2808bb501af624",
+  "source_shas": {
+    "factor_library": "10ba9ebb6a9ea1b42efcd9b59075543c295ee0f7a79e6a6ed2299bacaf4201dc",
+    "paradigm_spec": "a4435e34851d6ac3107259798a7ff91cdc916f35a9e45f626a3928b9280c9221",
+    "universe_spec": "4ce5b95e60d38a13e4852fb6f7a3a6437b55d6da0fb317ad553d114e85158529"
+  },
+  "status": "completed",
+  "supported": true,
+  "trade_ready": false
+}

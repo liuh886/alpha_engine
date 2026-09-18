@@ -11,6 +11,15 @@ export type StrategyOperationalStatus =
   | 'blocked'
   | 'delivery_failed';
 
+export type StateDetail = 'current' | 'degraded_delayed' | 'degraded_blocked' | 'blocked';
+
+export interface StalenessInfo {
+  asOf: string | null;
+  expectedCutoff: string | null;
+  sessionsBehind: number | null;
+  stale: boolean;
+}
+
 export type StrategyFreshness = 'current' | 'stale' | 'blocked' | 'unknown';
 export type FactorEffect = 'support' | 'veto' | 'neutral';
 
@@ -51,6 +60,8 @@ export interface StrategyOperationsSnapshot {
   strategyId: string;
   modelVersionId: string;
   status: StrategyOperationalStatus;
+  stateDetail?: StateDetail;
+  staleness?: StalenessInfo;
   asOf: string | null;
   latestCompletedSession: string | null;
   decisionCadence: string;
@@ -113,6 +124,7 @@ const STATUS = new Set<StrategyOperationalStatus>([
 ]);
 const FRESHNESS = new Set<StrategyFreshness>(['current', 'stale', 'blocked', 'unknown']);
 const EFFECT = new Set<FactorEffect>(['support', 'veto', 'neutral']);
+const STATE_DETAILS = new Set<StateDetail>(['current', 'degraded_delayed', 'degraded_blocked', 'blocked']);
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -194,11 +206,27 @@ export function parseStrategyOperationsSnapshot(value: unknown): StrategyOperati
     assert(factorEvidence.length > 0, `Current factor freshness requires evidence for ${modelVersionId}`);
   }
 
+  let staleness: StalenessInfo | undefined;
+  if (record.staleness && typeof record.staleness === 'object' && !Array.isArray(record.staleness)) {
+    const s = record.staleness as Record<string, unknown>;
+    staleness = {
+      asOf: nullableString(s.as_of),
+      expectedCutoff: nullableString(s.expected_cutoff),
+      sessionsBehind: typeof s.sessions_behind === 'number' ? s.sessions_behind : null,
+      stale: Boolean(s.stale),
+    };
+  }
+  const stateDetail = typeof record.state_detail === 'string' && STATE_DETAILS.has(record.state_detail as StateDetail)
+    ? (record.state_detail as StateDetail)
+    : undefined;
+
   const source = record.source_identity as Record<string, unknown>;
   return {
     strategyId,
     modelVersionId,
     status: record.status as StrategyOperationalStatus,
+    stateDetail,
+    staleness,
     asOf: nullableString(record.as_of),
     latestCompletedSession: nullableString(record.latest_completed_session),
     decisionCadence: record.decision_cadence,
@@ -236,6 +264,13 @@ function blocked(run: GovernedRunSummary, message: string): StrategyOperationsSn
     strategyId: run.modelVersionId,
     modelVersionId: run.modelVersionId,
     status: 'blocked',
+    stateDetail: 'blocked',
+    staleness: {
+      asOf: null,
+      expectedCutoff: null,
+      sessionsBehind: null,
+      stale: true,
+    },
     asOf: null,
     latestCompletedSession: run.evidenceCutoff || null,
     decisionCadence: 'Operations read model unavailable',
@@ -325,3 +360,100 @@ export const STRATEGY_STATUS_LABEL: Record<StrategyOperationalStatus, string> = 
   blocked: 'Operating data blocked',
   delivery_failed: 'Delivery failed',
 };
+
+export interface StrategySignalSummary {
+  direction: 'hold' | 'increase' | 'reduce' | 'attention' | 'pending';
+  badgeLabel: string;
+  actionText: string;
+  summaryNote: string;
+  isAttention: boolean;
+  isNew: boolean;
+  isHold: boolean;
+}
+
+export function summarizeStrategySignal(snapshot?: StrategyOperationsSnapshot): StrategySignalSummary {
+  if (!snapshot) {
+    return {
+      direction: 'pending',
+      badgeLabel: 'Pending',
+      actionText: 'Operating status unavailable',
+      summaryNote: 'No current record',
+      isAttention: false,
+      isNew: false,
+      isHold: false,
+    };
+  }
+
+  if (snapshot.status === 'stale' || snapshot.status === 'blocked' || snapshot.status === 'delivery_failed') {
+    return {
+      direction: 'attention',
+      badgeLabel: snapshot.status === 'stale' ? 'Stale' : 'Blocked',
+      actionText: 'Previous signal only',
+      summaryNote: snapshot.decisionReason || 'Current signal unavailable',
+      isAttention: true,
+      isNew: false,
+      isHold: false,
+    };
+  }
+
+  if (snapshot.status === 'pipeline_unavailable' || snapshot.status === 'awaiting_observation') {
+    return {
+      direction: 'pending',
+      badgeLabel: 'Pending',
+      actionText: 'Awaiting observation',
+      summaryNote: snapshot.decisionReason || 'Pipeline unavailable',
+      isAttention: false,
+      isNew: false,
+      isHold: false,
+    };
+  }
+
+  const totalDelta = snapshot.allocations.reduce((sum, leg) => sum + leg.delta, 0);
+  const maxAbsDelta = snapshot.allocations.reduce((max, leg) => Math.max(max, Math.abs(leg.delta)), 0);
+
+  if (maxAbsDelta < 1e-4 || snapshot.status === 'current_no_change') {
+    return {
+      direction: 'hold',
+      badgeLabel: 'Hold',
+      actionText: 'Allocation unchanged',
+      summaryNote: snapshot.decisionReason || 'Allocation unchanged',
+      isAttention: false,
+      isNew: false,
+      isHold: true,
+    };
+  }
+
+  if (Math.abs(totalDelta) < 1e-4) {
+    return {
+      direction: 'hold',
+      badgeLabel: 'Hold',
+      actionText: 'Internal rebalance',
+      summaryNote: snapshot.decisionReason || 'Internal rebalance',
+      isAttention: false,
+      isNew: true,
+      isHold: true,
+    };
+  }
+
+  if (totalDelta > 0) {
+    return {
+      direction: 'increase',
+      badgeLabel: 'Increase',
+      actionText: 'Target exposure',
+      summaryNote: snapshot.decisionReason || 'Increase allocation',
+      isAttention: false,
+      isNew: true,
+      isHold: false,
+    };
+  }
+
+  return {
+    direction: 'reduce',
+    badgeLabel: 'Reduce',
+    actionText: 'Target exposure',
+    summaryNote: snapshot.decisionReason || 'Reduce allocation',
+    isAttention: false,
+    isNew: true,
+    isHold: false,
+  };
+}

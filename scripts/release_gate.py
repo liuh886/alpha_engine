@@ -86,6 +86,11 @@ def main(argv: list[str] | None = None) -> int:
             "tests/test_signal_pipeline.py::TestWalkForward::test_walk_forward_positive_ic",
             "tests/test_signal_pipeline.py::TestWalkForward::test_walk_forward_runs",
             "tests/test_t49_timeline_migration.py::test_legacy_entries_in_existing_file_are_preserved",
+            "tests/test_formal_bundle_v2_builder.py::test_builder_uses_retained_metric_labels_only",
+            "tests/test_formal_bundle_v2_builder.py::test_byd_retained_benchmark_and_excess_metrics_are_available",
+            "tests/test_formal_bundle_v2_builder.py::test_source_backed_active_formals_export_without_recomputation",
+            "tests/test_promote_cn_x1_1_formal.py::test_catalog_replaces_cn_x1_0_with_cn_x1_1",
+            "tests/test_promote_cn_x1_1_formal.py::test_frozen_cn_x1_1_promotion_is_complete_and_reproducible",
         }
         quality_report = run_quality_gates(
             PROJECT_ROOT,

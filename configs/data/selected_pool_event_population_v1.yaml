@@ -47,12 +47,19 @@ markets:
 fundamental_fields:
   us:
     Revenues: {field: revenue, unit: USD, currency: USD}
+    Revenue: {field: revenue, unit: USD, currency: USD}
+    RevenueFromContractWithCustomerExcludingAssessedTax: {field: revenue, unit: USD, currency: USD}
+    SalesRevenueNet: {field: revenue, unit: USD, currency: USD}
     NetIncomeLoss: {field: net_income, unit: USD, currency: USD}
+    ProfitLoss: {field: net_income, unit: USD, currency: USD}
     Assets: {field: total_assets, unit: USD, currency: USD}
     Liabilities: {field: total_liabilities, unit: USD, currency: USD}
     StockholdersEquity: {field: stockholders_equity, unit: USD, currency: USD}
+    Equity: {field: stockholders_equity, unit: USD, currency: USD}
     EarningsPerShareDiluted: {field: diluted_eps, unit: USD/shares, currency: USD}
+    DilutedEarningsLossPerShare: {field: diluted_eps, unit: USD/shares, currency: USD}
     OperatingIncomeLoss: {field: operating_income, unit: USD, currency: USD}
+    ProfitLossFromOperatingActivities: {field: operating_income, unit: USD, currency: USD}
   cn:
     营业收入: {field: revenue, unit: CNY, currency: CNY}
     净利润: {field: net_income, unit: CNY, currency: CNY}
