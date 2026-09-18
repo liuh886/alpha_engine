@@ -1,5 +1,6 @@
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import pytest
@@ -52,3 +53,41 @@ def test_job_exception_captures_traceback(service):
     assert job["status"] == "failed"
     assert "Exception" in job["error"]
     assert "Traceback" in job["error"]
+
+
+def test_job_timeout_fails_instead_of_hanging(service):
+    job_id = "timeout_job"
+    cmd = [
+        sys.executable,
+        "-c",
+        "import time; print('working', flush=True); time.sleep(60)",
+    ]
+    log_path = service.project_root / "timeout.log"
+
+    service.create_job(
+        {
+            "id": job_id,
+            "type": "test",
+            "commands": [cmd],
+            "log_path": str(log_path),
+            "timeout_seconds": 1,
+        }
+    )
+
+    started = time.monotonic()
+    service.run_job(job_id)
+    elapsed = time.monotonic() - started
+
+    assert elapsed < 30, "run_job must return after killing the timed-out process"
+    job = service.get_job(job_id)
+    assert job["status"] == "failed"
+    assert "timed out" in (job["error"] or "").lower()
+    assert "working" in log_path.read_text(encoding="utf-8")
+
+
+def test_job_timeout_can_be_disabled(service):
+    from src.assistant.job_service import _resolve_job_timeout
+
+    assert _resolve_job_timeout({"timeout_seconds": 0}) is None
+    assert _resolve_job_timeout({"timeout_seconds": -1}) is None
+    assert _resolve_job_timeout({"timeout_seconds": 5}) == 5.0

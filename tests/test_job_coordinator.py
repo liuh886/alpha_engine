@@ -70,3 +70,42 @@ def test_job_coordinator_rejects_invalid_job():
 
     with pytest.raises(ValueError, match="job.commands is required"):
         coordinator.submit({"id": "job-1", "commands": []})
+
+
+def test_job_coordinator_caps_concurrent_jobs():
+    import threading
+    import time
+
+    class SlowService:
+        def __init__(self):
+            self._lock = threading.Lock()
+            self.active = 0
+            self.max_active = 0
+            self.finished = 0
+
+        def create_job(self, job: dict) -> None:
+            pass
+
+        def run_job(self, job_id: str) -> None:
+            with self._lock:
+                self.active += 1
+                self.max_active = max(self.max_active, self.active)
+            time.sleep(0.05)
+            with self._lock:
+                self.active -= 1
+                self.finished += 1
+
+    service = SlowService()
+    coordinator = JobCoordinator(service, max_concurrent_jobs=1)
+
+    for index in range(3):
+        coordinator.submit(
+            {"id": f"job-{index}", "type": "test", "commands": [["python"]]}
+        )
+
+    deadline = time.monotonic() + 5
+    while service.finished < 3 and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert service.finished == 3
+    assert service.max_active == 1

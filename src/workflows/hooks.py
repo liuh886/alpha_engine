@@ -162,6 +162,12 @@ def _repair_data(market: str, lookback_days: int = 60) -> bool:
     """
     logger.info("Attempting data repair", market=market.upper(), lookback_days=lookback_days)
     try:
+        timeout_seconds = float(
+            os.environ.get("ALPHA_ENGINE_DATA_REPAIR_TIMEOUT_SECONDS", "1800")
+        )
+    except (TypeError, ValueError):
+        timeout_seconds = 1800.0
+    try:
         cmd = [
             sys.executable,
             "scripts/update_data.py",
@@ -170,7 +176,7 @@ def _repair_data(market: str, lookback_days: int = 60) -> bool:
             "--lookback-days",
             str(lookback_days),
         ]
-        result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))
+        result = subprocess.run(cmd, cwd=str(PROJECT_ROOT), timeout=timeout_seconds)
         # Exit code 0 = success, 2 = succeeded with warnings (snapshot published)
         if result.returncode in (0, 2):
             logger.info(
@@ -179,9 +185,37 @@ def _repair_data(market: str, lookback_days: int = 60) -> bool:
             return True
         logger.error("Data repair failed", market=market.upper(), exit_code=result.returncode)
         return False
+    except subprocess.TimeoutExpired:
+        logger.error(
+            "Data repair timed out",
+            market=market.upper(),
+            timeout_seconds=timeout_seconds,
+        )
+        return False
     except Exception as e:
         logger.error("Data repair failed", market=market.upper(), error=str(e))
         return False
+
+
+def _update_dashboard_db(model_ids: list[str]) -> None:
+    """Update the dashboard DB for *model_ids* only.
+
+    ``build_dashboard_db`` performs an O(all models) filesystem scan when called
+    without an id. After training only the freshly registered model changed, so
+    the incremental path keeps the post-training hook cheap. A missing DB still
+    requires one full rebuild.
+    """
+    from scripts.build_dashboard_db import DASHBOARD_DB_PATH, main as build_dashboard_db
+
+    if not DASHBOARD_DB_PATH.exists():
+        build_dashboard_db()
+        logger.info("Dashboard DB rebuilt after training", mode="full")
+        return
+
+    unique_ids = list(dict.fromkeys(str(mid) for mid in model_ids if str(mid).strip()))
+    for model_id in unique_ids:
+        build_dashboard_db(model_id=model_id)
+    logger.info("Dashboard DB updated after training", mode="incremental", model_ids=unique_ids)
 
 
 def on_pipeline_start(
@@ -691,7 +725,7 @@ def run_training_pipeline(
                 )
 
             # 5. Finalize
-            register_model(
+            registered_entry = register_model(
                 market,
                 results["model_path"],
                 config,
@@ -741,7 +775,7 @@ def run_training_pipeline(
                     details=event_details,
                 )
 
-            # Auto-rebuild dashboard DB so frontend shows the new model
+            # Auto-update dashboard DB so frontend shows the new model
             try:
                 # First sync model_list.yaml to SQLite registry
                 import yaml
@@ -749,6 +783,10 @@ def run_training_pipeline(
                 from src.assistant.metadata_db import resolve_metadata_db_path
                 from src.assistant.model_registry_index import ModelRegistryIndex
                 from src.common import paths
+
+                new_model_ids: list[str] = []
+                if isinstance(registered_entry, dict) and registered_entry.get("id"):
+                    new_model_ids.append(str(registered_entry["id"]))
 
                 model_list_path = paths.get_artifacts_dir() / "models" / "model_list.yaml"
                 if model_list_path.exists():
@@ -760,12 +798,10 @@ def run_training_pipeline(
                     for m in ml_data.get("models", []):
                         if m["id"] not in existing:
                             index.upsert_entry(m)
+                            new_model_ids.append(str(m["id"]))
                             logger.info("Synced model to SQLite", model_id=m["id"])
 
-                from scripts.build_dashboard_db import main as build_dashboard_db
-
-                build_dashboard_db()
-                logger.info("Dashboard DB rebuilt after training", market=market)
+                _update_dashboard_db(new_model_ids)
             except Exception as exc:
                 logger.warning("Failed to rebuild dashboard DB", error=str(exc))
 

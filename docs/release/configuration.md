@@ -49,6 +49,11 @@ cp .env.example .env  # 仅在需要覆盖默认值时
 | `ALPHA_ENGINE_MAX_DRAWDOWN_THRESHOLD` | `0.15` | 回撤风控阻断阈值 |
 | `SCORING_TIMEOUT_SEC` | `60` | 推理超时秒数 |
 | `MAX_LEVERAGE` | `1.0` | 最大组合杠杆 |
+| `ALPHA_ENGINE_JOB_TIMEOUT_SECONDS` | `14400` | 单个 job 子命令超时秒数；`0` 禁用 |
+| `ALPHA_ENGINE_MAX_CONCURRENT_JOBS` | `2` | 调度器同时运行的 job 数上限 |
+| `ALPHA_ENGINE_DATA_REPAIR_TIMEOUT_SECONDS` | `1800` | 训练前数据修复子进程超时秒数 |
+| `ALPHA_ENGINE_ROUTER_FAILURE_THRESHOLD` | `5` | 同一数据源族连续失败熔断阈值；`0` 禁用 |
+| `ALPHA_ENGINE_UPDATE_WORKERS` | `4` | 行情更新时的并发下载数；`1` 关闭并发 |
 
 回撤超过阈值时，`src.guardrails.risk_monitor` 返回阻断信号。调用方必须停止工作流或拒绝 promotion；不存在浏览器远程停止机制。
 

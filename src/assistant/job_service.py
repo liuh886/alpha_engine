@@ -9,6 +9,7 @@ import subprocess
 import threading
 import time
 import urllib.request
+from collections import deque
 from pathlib import Path
 
 from src.assistant.metadata_db import connect
@@ -19,6 +20,83 @@ logger = get_logger(__name__)
 # Global registry for running processes
 _RUNNING_PROCS: dict[str, subprocess.Popen] = {}
 _PROCS_LOCK = threading.Lock()
+
+# A job that neither finishes nor fails blocks the whole queue. Four hours is
+# generous for the repository's heaviest local job while still bounding hangs.
+_DEFAULT_JOB_TIMEOUT_SECONDS = 4 * 60 * 60
+_OUTPUT_TAIL_LINES = 400
+
+
+def _resolve_job_timeout(job: dict) -> float | None:
+    """Return the per-command timeout for *job*.
+
+    Resolution order: ``job["timeout_seconds"]``, then
+    ``ALPHA_ENGINE_JOB_TIMEOUT_SECONDS``, then a four-hour default.
+    A non-positive value disables the timeout.
+    """
+    raw: object = job.get("timeout_seconds")
+    if raw is None:
+        raw = os.environ.get("ALPHA_ENGINE_JOB_TIMEOUT_SECONDS")
+    if raw is None:
+        return float(_DEFAULT_JOB_TIMEOUT_SECONDS)
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        logger.warning("Invalid job timeout; using default", value=str(raw))
+        return float(_DEFAULT_JOB_TIMEOUT_SECONDS)
+    return value if value > 0 else None
+
+
+def _terminate_process_tree(proc: subprocess.Popen) -> None:
+    """Terminate *proc* together with any child processes."""
+    if proc.poll() is not None:
+        return
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        else:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    except Exception:
+        logger.warning("Failed to terminate process tree", pid=proc.pid, exc_info=True)
+    try:
+        proc.wait(timeout=10)
+    except Exception:
+        with contextlib.suppress(Exception):
+            proc.kill()
+
+
+def _pump_output(
+    proc: subprocess.Popen,
+    log_path: Path | None,
+    header: str,
+    tail: deque[str],
+) -> None:
+    """Stream subprocess output to the job log while keeping a tail buffer."""
+    handle = None
+    try:
+        if log_path is not None:
+            handle = open(log_path, "a", encoding="utf-8")
+            handle.write(header)
+            handle.flush()
+        stream = proc.stdout
+        if stream is None:
+            return
+        for line in stream:
+            tail.append(line)
+            if handle is not None:
+                handle.write(line)
+                handle.flush()
+    except Exception:
+        logger.debug("Job output pump stopped early", exc_info=True)
+    finally:
+        if handle is not None:
+            with contextlib.suppress(Exception):
+                handle.close()
 
 
 class JobService:
@@ -261,10 +339,7 @@ class JobService:
             proc = _RUNNING_PROCS.get(str(job_id))
             if proc:
                 try:
-                    if os.name == "nt":
-                        proc.terminate()  # Windows
-                    else:
-                        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                    _terminate_process_tree(proc)
                     return True
                 except Exception:
                     logger.warning("Failed to kill job process", job_id=job_id, exc_info=True)
@@ -285,8 +360,9 @@ class JobService:
             error=None,
         )
 
-        log_path = Path(str(job.get("log_path") or ""))
-        if log_path:
+        log_path_value = str(job.get("log_path") or "").strip()
+        log_path = Path(log_path_value) if log_path_value else None
+        if log_path is not None:
             log_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -310,18 +386,49 @@ class JobService:
                 with _PROCS_LOCK:
                     _RUNNING_PROCS[str(job_id)] = proc
 
+                tail: deque[str] = deque(maxlen=_OUTPUT_TAIL_LINES)
+                reader = threading.Thread(
+                    target=_pump_output,
+                    args=(proc, log_path, f"\n=== {cmd_str} ===\n", tail),
+                    daemon=True,
+                    name=f"alpha-job-log-{str(job_id)[:8]}",
+                )
+                reader.start()
+
+                timeout_seconds = _resolve_job_timeout(job)
+                timed_out = False
                 try:
-                    stdout, _ = proc.communicate()
+                    if timeout_seconds is None:
+                        proc.wait()
+                    else:
+                        try:
+                            proc.wait(timeout=timeout_seconds)
+                        except subprocess.TimeoutExpired:
+                            timed_out = True
                 finally:
+                    if timed_out:
+                        _terminate_process_tree(proc)
+                    reader.join(timeout=15)
                     with _PROCS_LOCK:
                         if _RUNNING_PROCS.get(str(job_id)) == proc:
                             del _RUNNING_PROCS[str(job_id)]
 
-                if log_path:
-                    with open(log_path, "a", encoding="utf-8") as f:
-                        f.write(f"\n=== {cmd_str} ===\n")
-                        f.write(stdout)
-                        f.flush()
+                stdout = "".join(tail)
+
+                if timed_out:
+                    error = (
+                        f"Command timed out after {timeout_seconds:.0f}s: {cmd_str}\n\n"
+                        f"Last output:\n...{stdout[-1000:]}"
+                    )
+                    self._send_webhook_alert(str(job_id), error)
+                    self.update_job(
+                        str(job_id),
+                        status="failed",
+                        exit_code=proc.returncode,
+                        error=error,
+                        finished_at=time.time(),
+                    )
+                    return
 
                 if proc.returncode != 0:
                     if proc.returncode == 2:
