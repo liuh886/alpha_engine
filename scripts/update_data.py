@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 import argparse
 import copy
+import json
+import os
 import shutil
 import sys
+import threading
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -364,6 +370,215 @@ def _merge_existing(existing: pd.DataFrame | None, incoming: pd.DataFrame) -> pd
     return both.reset_index(drop=True)
 
 
+def _router_failure_threshold() -> int | None:
+    """Return the source-family circuit-breaker threshold for the router.
+
+    Repeated failures from one upstream (for example AKShare and EFinance over
+    Eastmoney) otherwise consume a full run in per-symbol network timeouts.
+    Set ``ALPHA_ENGINE_ROUTER_FAILURE_THRESHOLD=0`` to disable the breaker.
+    """
+    raw = os.environ.get("ALPHA_ENGINE_ROUTER_FAILURE_THRESHOLD", "5")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return 5
+    return value if value >= 1 else None
+
+
+def _resolve_update_workers(ticker_count: int) -> int:
+    """Resolve the per-market download concurrency.
+
+    Network fetching is the dominant cost of a data update; four workers keep
+    provider rate limits and adapter thread-safety margins while cutting wall
+    time roughly proportionally. ``ALPHA_ENGINE_UPDATE_WORKERS=1`` disables it.
+    """
+    raw = os.environ.get("ALPHA_ENGINE_UPDATE_WORKERS", "4")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = 4
+    if value <= 1:
+        return 1
+    return max(1, min(value, int(ticker_count)))
+
+
+def _resolve_fetch_start(existing: pd.DataFrame | None, args: object) -> str:
+    """Return the first date to fetch for one symbol."""
+    start = str(getattr(args, "start"))
+    if existing is None:
+        return start
+    last = existing["date"].max()
+    lookback = max(int(getattr(args, "lookback_days", 0)), 0)
+    return (pd.Timestamp(last) - pd.Timedelta(days=lookback)).strftime("%Y-%m-%d")
+
+
+def _download_symbol(
+    region: str,
+    ticker: object,
+    *,
+    args: object,
+    router: MarketDataRouter,
+    source_dir: Path,
+    resume_ledger: _ResumeLedger | None,
+) -> dict:
+    """Fetch one symbol without mutating shared run state.
+
+    All accounting, provenance, ledger and CSV writes stay in the caller
+    thread; workers only perform IO-bound provider calls.
+    """
+    qlib_ticker = str(ticker).upper()
+    csv_path = source_dir / f"{qlib_ticker}.csv"
+    if resume_ledger is not None and resume_ledger.should_skip(qlib_ticker, csv_path):
+        return {"status": "resumed"}
+    try:
+        existing = None if getattr(args, "full", False) else _load_existing_csv(csv_path)
+        start = _resolve_fetch_start(existing, args)
+        resp = router.fetch_daily_bars(
+            symbol=qlib_ticker,
+            market=region,
+            start=start,
+            end=getattr(args, "end", None),
+            validate=True,  # trigger fallback if data fails OHLCV schema
+        )
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+    return {"status": "fetched", "existing": existing, "start": start, "resp": resp}
+
+
+class _ResumeLedger:
+    """Per-symbol completion ledger so an interrupted update can resume.
+
+    A symbol is only skipped when the ledger's declared interval matches the
+    current invocation *and* the cached CSV is byte-identical to the file the
+    previous run produced (size + mtime). The ledger is deleted once a run
+    finishes without failures.
+    """
+
+    version = 1
+
+    def __init__(
+        self,
+        *,
+        path: Path,
+        market: str,
+        full: bool,
+        start: str,
+        end: str | None,
+        lookback_days: int,
+    ):
+        self.path = Path(path)
+        self.identity = {
+            "version": self.version,
+            "market": str(market).lower(),
+            "full": bool(full),
+            "start": str(start),
+            "end": None if end is None else str(end),
+            "lookback_days": int(lookback_days),
+        }
+        self._completed: dict[str, dict] = {}
+        self._failed: set[str] = set()
+        self._lock = threading.RLock()
+        self._load()
+
+    def _load(self) -> None:
+        if not self.path.is_file():
+            return
+        try:
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+        except Exception:
+            return
+        if not isinstance(payload, dict):
+            return
+        for key, value in self.identity.items():
+            if payload.get(key) != value:
+                return
+        completed = payload.get("completed")
+        if isinstance(completed, dict):
+            self._completed = {
+                str(symbol).upper(): record
+                for symbol, record in completed.items()
+                if isinstance(record, dict)
+            }
+        failed = payload.get("failed")
+        if isinstance(failed, list):
+            self._failed = {str(symbol).upper() for symbol in failed}
+
+    def should_skip(self, symbol: str, csv_path: Path) -> bool:
+        with self._lock:
+            record = self._completed.get(str(symbol).upper())
+        if not record or not csv_path.is_file():
+            return False
+        try:
+            stat = csv_path.stat()
+        except OSError:
+            return False
+        return (
+            int(record.get("csv_size", -1)) == int(stat.st_size)
+            and int(record.get("csv_mtime_ns", -1)) == int(stat.st_mtime_ns)
+        )
+
+    def mark_completed(self, symbol: str, csv_path: Path) -> None:
+        symbol = str(symbol).upper()
+        try:
+            stat = csv_path.stat()
+        except OSError:
+            return
+        with self._lock:
+            self._completed[symbol] = {
+                "csv_size": int(stat.st_size),
+                "csv_mtime_ns": int(stat.st_mtime_ns),
+            }
+            self._failed.discard(symbol)
+            self._save()
+
+    def mark_failed(self, symbol: str) -> None:
+        symbol = str(symbol).upper()
+        with self._lock:
+            self._completed.pop(symbol, None)
+            self._failed.add(symbol)
+            self._save()
+
+    def _save(self) -> None:
+        payload = dict(self.identity)
+        payload["completed"] = self._completed
+        payload["failed"] = sorted(self._failed)
+        payload["updated_at"] = time.time()
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            tmp_path = self.path.with_suffix(self.path.suffix + ".tmp")
+            tmp_path.write_text(
+                json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+            os.replace(tmp_path, self.path)
+        except Exception:
+            pass
+
+    def finish(self) -> None:
+        """Drop the ledger when the run had no failures."""
+        with self._lock:
+            if self._failed:
+                return
+            try:
+                self.path.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
+def _resumed_symbol_diagnostic(market: str, symbol: str) -> dict:
+    return {
+        "symbol": symbol,
+        "market": market,
+        "ok": True,
+        "final_state": "resumed",
+        "selected_provider": None,
+        "selected_provider_symbol": None,
+        "selected_rows": 0,
+        "selected_first_date": None,
+        "selected_last_date": None,
+        "attempts": [],
+    }
+
+
 def record_latest_snapshot_marker(
     *,
     provider_dir: str | Path,
@@ -481,6 +696,7 @@ def run_data_update(args) -> DataSnapshot:
     router = MarketDataRouter(
         adapters=[EFinanceAdapter(), AkShareAdapter(), BaoStockAdapter(), YFinanceAdapter()],
         policy=policy,
+        failure_threshold=_router_failure_threshold(),
     )
 
     # ------------------------------------------------------------------
@@ -497,6 +713,17 @@ def run_data_update(args) -> DataSnapshot:
     universe = build_selected_universe(regions)
     source_dir = _prepare_source_dir(DATA_DIR, requested_end=args.end)
 
+    resume_ledger = None
+    if not bool(getattr(args, "no_resume", False)):
+        resume_ledger = _ResumeLedger(
+            path=ARTIFACTS_DIR / "update_data" / f"resume_{str(args.market).lower()}.json",
+            market=str(args.market).lower(),
+            full=bool(args.full),
+            start=args.start,
+            end=args.end,
+            lookback_days=int(args.lookback_days),
+        )
+
     accounting = UpdateAccounting(configured=universe)
 
     # Non-selected markets are excluded and their existing bytes are reused.
@@ -512,61 +739,100 @@ def run_data_update(args) -> DataSnapshot:
     checker = ConsistencyChecker(threshold=0.02)
     consistency_reports: list[dict] = []
 
+    from concurrent.futures import ThreadPoolExecutor
+
     for reg, tickers in regions.items():
         if not tickers:
             continue
         print(f"Processing {reg.upper()} ({len(tickers)} tickers)...")
 
-        spot_check_done = False
+        # Spot consistency check runs once per market on the first declared
+        # symbol, before the parallel download phase.
+        spot_ticker = str(tickers[0]).upper()
+        try:
+            spot_csv = source_dir / f"{spot_ticker}.csv"
+            spot_existing = None if args.full else _load_existing_csv(spot_csv)
+            multi_res = router.fetch_multi_source_bars(
+                symbol=spot_ticker,
+                market=reg,
+                start=_resolve_fetch_start(spot_existing, args),
+                end=args.end,
+                limit=2,
+            )
+            if len(multi_res) >= 2:
+                p_name, f_name = list(multi_res.keys())[:2]
+                report = checker.check(
+                    multi_res[p_name].df.set_index("date"),
+                    multi_res[f_name].df.set_index("date"),
+                    spot_ticker,
+                )
+                report["providers"] = [p_name, f_name]
+                consistency_reports.append(report)
+                if not report["ok"]:
+                    print(f"    [!] Consistency Warning for {spot_ticker}: {report['warnings']}")
+                else:
+                    print(
+                        f"    [OK] Consistency check passed for {spot_ticker} "
+                        f"({p_name} vs {f_name})"
+                    )
+        except Exception as exc:
+            print(f"    [!] Consistency check failed for {spot_ticker}: {exc}")
 
-        for t in tickers:
+        workers = _resolve_update_workers(len(tickers))
+        if workers > 1:
+            print(f"  Downloading with {workers} workers ...")
+
+            def _download_for_region(ticker: object) -> dict:
+                return _download_symbol(
+                    reg,
+                    ticker,
+                    args=args,
+                    router=router,
+                    source_dir=source_dir,
+                    resume_ledger=resume_ledger,
+                )
+
+            with ThreadPoolExecutor(
+                max_workers=workers,
+                thread_name_prefix=f"alpha-update-{reg}",
+            ) as pool:
+                payloads = list(pool.map(_download_for_region, tickers))
+        else:
+            payloads = [
+                _download_symbol(
+                    reg,
+                    t,
+                    args=args,
+                    router=router,
+                    source_dir=source_dir,
+                    resume_ledger=resume_ledger,
+                )
+                for t in tickers
+            ]
+
+        for t, payload in zip(tickers, payloads):
             qlib_ticker = str(t).upper()
             accounting.add("attempted", reg, qlib_ticker)
+            csv_path = source_dir / f"{qlib_ticker}.csv"
+            status = payload["status"]
 
-            print(f"  Fetching {t} ...")
+            if status == "resumed":
+                print(f"  Skipping {t} (already updated in this run window)")
+                accounting.add("reused", reg, qlib_ticker, reason="resume ledger")
+                provider_diagnostics.append(_resumed_symbol_diagnostic(reg, qlib_ticker))
+                continue
+
+            if status == "error":
+                message = str(payload.get("error") or "unknown error")
+                print(f"    [!] Failed: {message}")
+                accounting.add("failed", reg, qlib_ticker, reason=message)
+                if resume_ledger is not None:
+                    resume_ledger.mark_failed(qlib_ticker)
+                continue
+
             try:
-                csv_path = source_dir / f"{qlib_ticker}.csv"
-                existing = None if args.full else _load_existing_csv(csv_path)
-
-                start = args.start
-                if existing is not None:
-                    last = existing["date"].max()
-                    lookback = max(int(args.lookback_days), 0)
-                    start = (pd.Timestamp(last) - pd.Timedelta(days=lookback)).strftime("%Y-%m-%d")
-
-                # Spot consistency check
-                if not spot_check_done:
-                    multi_res = router.fetch_multi_source_bars(
-                        symbol=qlib_ticker,
-                        market=reg,
-                        start=start,
-                        end=args.end,
-                        limit=2,
-                    )
-                    if len(multi_res) >= 2:
-                        p_name, f_name = list(multi_res.keys())[:2]
-                        report = checker.check(
-                            multi_res[p_name].df.set_index("date"),
-                            multi_res[f_name].df.set_index("date"),
-                            qlib_ticker,
-                        )
-                        report["providers"] = [p_name, f_name]
-                        consistency_reports.append(report)
-                        if not report["ok"]:
-                            print(f"    [!] Consistency Warning for {t}: {report['warnings']}")
-                        else:
-                            print(
-                                f"    [OK] Consistency check passed for {t} ({p_name} vs {f_name})"
-                            )
-                        spot_check_done = True
-
-                resp = router.fetch_daily_bars(
-                    symbol=qlib_ticker,
-                    market=reg,
-                    start=start,
-                    end=args.end,
-                    validate=True,  # trigger fallback if data fails OHLCV schema
-                )
+                existing = payload["existing"]
+                resp = payload["resp"]
 
                 # Record provider diagnostics
                 selected_attempt = resp.attempts[-1] if resp.ok and resp.attempts else None
@@ -626,6 +892,8 @@ def run_data_update(args) -> DataSnapshot:
                     )
                     print(f"    [!] Failed: {errs or 'unknown error'}")
                     accounting.add("failed", reg, qlib_ticker, reason=errs or "fetch failed")
+                    if resume_ledger is not None:
+                        resume_ledger.mark_failed(qlib_ticker)
                     continue
 
                 df_processed = resp.result.df
@@ -648,6 +916,8 @@ def run_data_update(args) -> DataSnapshot:
                     symbol_diag["validation_error"] = "schema validation failed"
                     symbol_diag["schema_errors"] = schema_errors
                     accounting.add("failed", reg, qlib_ticker, reason="schema validation failed")
+                    if resume_ledger is not None:
+                        resume_ledger.mark_failed(qlib_ticker)
                     continue
 
                 if args.full:
@@ -664,10 +934,14 @@ def run_data_update(args) -> DataSnapshot:
                 merged = _merge_existing(existing, validated_df)
                 merged.to_csv(csv_path, index=False)
                 accounting.add("updated", reg, qlib_ticker)
+                if resume_ledger is not None:
+                    resume_ledger.mark_completed(qlib_ticker, csv_path)
 
             except Exception as e:
                 print(f"    [!] Failed: {e}")
                 accounting.add("failed", reg, qlib_ticker, reason=str(e))
+                if resume_ledger is not None:
+                    resume_ledger.mark_failed(qlib_ticker)
 
     # Write provider diagnostics immediately after the download loop,
     # before dump_bin, so diagnostics are available even if dump_bin fails.
@@ -763,6 +1037,11 @@ def run_data_update(args) -> DataSnapshot:
 
     print(f"\n[published] snapshot_id={snapshot.snapshot_id}")
 
+    # A fully successful run drops its resume ledger; a failed symbol keeps it
+    # so the next invocation only retries the symbols that are still missing.
+    if resume_ledger is not None:
+        resume_ledger.finish()
+
     # Write provider diagnostics
     _write_provider_diagnostics(provider_diagnostics, ARTIFACTS_DIR)
 
@@ -805,6 +1084,14 @@ def main(argv=None):
         default="all",
         choices=["all", "cn", "us", "hk"],
         help="Limit updates to a single market (default: all).",
+    )
+    parser.add_argument(
+        "--no-resume",
+        action="store_true",
+        help=(
+            "Ignore the per-market resume ledger and re-fetch every symbol. "
+            "By default, symbols already completed for the same interval are skipped."
+        ),
     )
     parser.add_argument(
         "--strict",

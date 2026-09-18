@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
+from threading import Lock
 from typing import Any
 
 import pandas as pd
@@ -67,6 +68,7 @@ class MarketDataRouter:
         self._failure_threshold = failure_threshold
         self._group_failures: dict[str, int] = {}
         self._open_groups: set[str] = set()
+        self._state_lock = Lock()
 
     @staticmethod
     def _provider_list(value: object) -> list[str] | None:
@@ -127,26 +129,30 @@ class MarketDataRouter:
         if self._failure_threshold is None:
             return
         group = provider_capability(provider).independent_group
-        failures = self._group_failures.get(group, 0) + 1
-        self._group_failures[group] = failures
-        if failures >= self._failure_threshold:
-            self._open_groups.add(group)
+        with self._state_lock:
+            failures = self._group_failures.get(group, 0) + 1
+            self._group_failures[group] = failures
+            if failures >= self._failure_threshold:
+                self._open_groups.add(group)
 
     def _record_success(self, provider: str) -> None:
         group = provider_capability(provider).independent_group
-        self._group_failures[group] = 0
-        self._open_groups.discard(group)
+        with self._state_lock:
+            self._group_failures[group] = 0
+            self._open_groups.discard(group)
 
     def _is_open(self, provider: str) -> bool:
         group = provider_capability(provider).independent_group
-        return group in self._open_groups
+        with self._state_lock:
+            return group in self._open_groups
 
     def provider_health_snapshot(self) -> dict[str, Any]:
-        return {
-            "failure_threshold": self._failure_threshold,
-            "source_family_failures": dict(sorted(self._group_failures.items())),
-            "open_source_families": sorted(self._open_groups),
-        }
+        with self._state_lock:
+            return {
+                "failure_threshold": self._failure_threshold,
+                "source_family_failures": dict(sorted(self._group_failures.items())),
+                "open_source_families": sorted(self._open_groups),
+            }
 
     def fetch_daily_bars(
         self,

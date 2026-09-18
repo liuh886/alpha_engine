@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import socket
+import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 
@@ -9,6 +10,11 @@ import pandas as pd
 from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
 
 BAOSTOCK_SOCKET_TIMEOUT_SECONDS = 10.0
+
+# The baostock client keeps one process-global socket and patches module-level
+# state during a request, so concurrent calls from parallel update workers must
+# be serialized.
+_BAOSTOCK_LOCK = threading.Lock()
 
 
 class _FailClosedSocket(socket.socket):
@@ -104,7 +110,7 @@ class BaoStockAdapter:
         if not code:
             raise DataFetchError("invalid symbol")
 
-        with _baostock_socket_guard():
+        with _BAOSTOCK_LOCK, _baostock_socket_guard():
             login = bs.login()
             if getattr(login, "error_code", "0") != "0":
                 raise DataFetchError(f"baostock login failed: {getattr(login, 'error_msg', '')}")
