@@ -15,24 +15,24 @@
   },
   "largest_positive_lifecycle_share": 0.0,
   "largest_positive_quarter_share": 0.0,
-  "last_prospective_signal_date": "2026-09-17",
+  "last_prospective_signal_date": "2026-09-18",
   "launch_after": "2026-08-10",
-  "observation_count": 29,
-  "prospective_days": 29,
-  "prospective_observation_count": 4,
+  "observation_count": 30,
+  "prospective_days": 30,
+  "prospective_observation_count": 5,
   "research_only": true,
   "scenarios": {
     "primary": {
       "annual_financing_rate": 0.06,
-      "candidate_return": -0.05659684198232251,
-      "champion_return": -0.05659684198232251,
+      "candidate_return": -0.057930276746014475,
+      "champion_return": -0.057930276746014475,
       "cost_bps": 20.0,
       "relative_terminal_wealth": 0.0
     },
     "stress": {
       "annual_financing_rate": 0.1,
-      "candidate_return": -0.0603876156713381,
-      "champion_return": -0.0603876156713381,
+      "candidate_return": -0.061715692440014625,
+      "champion_return": -0.061715692440014625,
       "cost_bps": 40.0,
       "relative_terminal_wealth": 0.0
     }

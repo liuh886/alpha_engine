@@ -16,11 +16,11 @@
   },
   "largest_positive_lifecycle_share": 0.0,
   "largest_positive_quarter_share": 0.0,
-  "last_prospective_signal_date": "2026-09-17",
+  "last_prospective_signal_date": "2026-09-18",
   "launch_after": "2026-08-10",
-  "observation_count": 29,
-  "prospective_days": 29,
-  "prospective_observation_count": 4,
+  "observation_count": 30,
+  "prospective_days": 30,
+  "prospective_observation_count": 5,
   "research_only": true,
   "scenarios": {
     "primary": {
