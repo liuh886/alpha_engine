@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -17,6 +18,35 @@ def _parse_fields(include_fields) -> list[str]:
     if not text:
         return []
     return [x.strip().lower() for x in text.split(",") if x.strip()]
+
+
+def _write_bytes_incremental(path: Path, payload: bytes) -> str:
+    """Write *payload* while preserving existing bytes whenever possible.
+
+    Returns ``"unchanged"``, ``"appended"`` or ``"rewritten"``. Appending is
+    only used when the existing file is an exact prefix of the new payload --
+    the normal case when one more session is added to an append-only calendar.
+    Any other difference (corrected history, changed layout) falls back to a
+    full rewrite so stale bytes can never shadow new data.
+    """
+    if path.is_file():
+        existing = path.read_bytes()
+        if existing == payload:
+            return "unchanged"
+        if payload.startswith(existing):
+            with open(path, "ab") as handle:
+                handle.write(payload[len(existing) :])
+            return "appended"
+    temp_path = path.with_name(f"{path.name}.tmp")
+    temp_path.write_bytes(payload)
+    os.replace(temp_path, path)
+    return "rewritten"
+
+
+def _encode_text(text: str, *, lf_newlines: bool) -> bytes:
+    if lf_newlines:
+        return text.encode("utf-8")
+    return text.replace("\n", os.linesep).encode("utf-8")
 
 
 def dump_all(
@@ -117,31 +147,24 @@ def dump_all(
     sorted_dates = sorted(all_dates)
     date_map = {date: index for index, date in enumerate(sorted_dates)}
     n_days = len(sorted_dates)
+    write_stats: dict[str, int] = {"unchanged": 0, "appended": 0, "rewritten": 0}
 
     # Calendar.
-    newline = "\n" if lf_newlines else None
-    with open(
+    calendar_text = "".join(f"{date.strftime('%Y-%m-%d')}\n" for date in sorted_dates)
+    write_stats[_write_bytes_incremental(
         calendars_dir / "day.txt",
-        "w",
-        encoding="utf-8",
-        newline=newline,
-    ) as calendar_file:
-        for date in sorted_dates:
-            calendar_file.write(f"{date.strftime('%Y-%m-%d')}\n")
+        _encode_text(calendar_text, lf_newlines=lf_newlines),
+    )] += 1
 
     # Qlib uses `future=True` calendars for backtests and requires an extra boundary day.
     # Generate a minimal `day_future.txt` by appending one extra calendar day.
     if sorted_dates:
         future_last = sorted_dates[-1] + pd.Timedelta(days=1)
-        with open(
+        future_text = calendar_text + f"{future_last.strftime('%Y-%m-%d')}\n"
+        write_stats[_write_bytes_incremental(
             calendars_dir / "day_future.txt",
-            "w",
-            encoding="utf-8",
-            newline=newline,
-        ) as future_file:
-            for date in sorted_dates:
-                future_file.write(f"{date.strftime('%Y-%m-%d')}\n")
-            future_file.write(f"{future_last.strftime('%Y-%m-%d')}\n")
+            _encode_text(future_text, lf_newlines=lf_newlines),
+        )] += 1
 
     instrument_rows: dict[str, list[str]] = {"all": []}
 
@@ -175,24 +198,26 @@ def dump_all(
                     continue
 
             bin_path = feature_dir / f"{field}.day.bin"
-            with open(bin_path, "wb") as binary_file:
-                # Qlib expects a 4-byte header start_index (int32). Using 0 since
-                # the dump is aligned to the complete generated calendar.
-                np.array([0], dtype=np.int32).tofile(binary_file)
-                full_arr.tofile(binary_file)
+            # Qlib expects a 4-byte header start_index (int32). Using 0 since
+            # the dump is aligned to the complete generated calendar.
+            payload = np.array([0], dtype=np.int32).tobytes() + full_arr.tobytes()
+            write_stats[_write_bytes_incremental(bin_path, payload)] += 1
 
     for market, rows in sorted(instrument_rows.items()):
         if rows:
-            (instruments_dir / f"{market}.txt").write_text(
-                "\n".join(rows) + "\n",
-                encoding="utf-8",
-                newline=newline,
-            )
+            text = "\n".join(rows) + "\n"
+            write_stats[_write_bytes_incremental(
+                instruments_dir / f"{market}.txt",
+                _encode_text(text, lf_newlines=lf_newlines),
+            )] += 1
 
     market_counts = {
         market: len(rows) for market, rows in instrument_rows.items() if market != "all" and rows
     }
-    print(f"Dump complete: {len(data_cache)} instruments -> {output_dir} (markets={market_counts})")
+    print(
+        f"Dump complete: {len(data_cache)} instruments -> {output_dir} "
+        f"(markets={market_counts}, writes={write_stats})"
+    )
 
 
 if __name__ == "__main__":

@@ -1045,6 +1045,8 @@ def walk_forward_vectorized(
     model_threads: int | None = None,
     _selected_split_ids: frozenset[int] | None = None,
     _provider_sha256: str | None = None,
+    _shared_matrices: tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None] | None = None,
+    _matrices_preprocessed: bool = False,
 ) -> WalkForwardResult:
     """Vectorized walk-forward — pre-loads features once, trains LightGBM directly.
 
@@ -1068,8 +1070,10 @@ def walk_forward_vectorized(
         feature_profile: ``"alpha158"`` (default) or the predeclared
             ``"curated_us_momentum"`` research profile.
         use_model_matrix_cache: Reuse an exact-identity, manifest-bound matrix
-            snapshot across runs.  A provider, pool, factor, label, benchmark
-            or time-boundary change invalidates the snapshot.
+            snapshot across runs.  Factor, label, benchmark or time-boundary
+            changes invalidate the snapshot, as does any provider correction
+            inside the retained window; sessions appended after the window's
+            lookahead horizon do not.
         matrix_cache_dir: Optional cache root.  Defaults to the governed
             artifacts cache directory.
         refresh_model_matrix_cache: Rebuild even when an exact snapshot exists.
@@ -1142,13 +1146,23 @@ def walk_forward_vectorized(
     if not isinstance(provider_uri, (str, Path)):
         raise ValueError("Model matrix caching requires a local Qlib provider path")
     provider_root = Path(provider_uri)
+    # The matrix only depends on provider rows that expressions can reach:
+    # 120 calendar days of lookback (~60 trading days) and a horizon-scaled
+    # lookahead for forward-return labels. Sessions appended beyond that
+    # horizon leave the fingerprint -- and therefore the cache -- valid.
+    fingerprint_lookback_days = 120
+    fingerprint_lookahead_days = max(30, int(label_horizon) * 2 + 10)
     provider_sha256 = _provider_sha256 or fingerprint_model_provider(
         provider_root,
         instrument_file=instr_path,
         symbols=symbols,
+        start_time=train_start,
+        end_time=full_end,
+        lookback_days=fingerprint_lookback_days,
+        lookahead_days=fingerprint_lookahead_days,
     )
     cache_identity = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "market": market,
         "provider_sha256": provider_sha256,
         "symbols": symbols,
@@ -1158,6 +1172,12 @@ def walk_forward_vectorized(
         "train_start": train_start,
         "full_end": full_end,
         "benchmark_symbol": benchmark_symbol,
+        "fingerprint_scope": {
+            "start": train_start,
+            "end": full_end,
+            "lookback_days": fingerprint_lookback_days,
+            "lookahead_days": fingerprint_lookahead_days,
+        },
     }
     cache_key = model_matrix_cache_key(cache_identity)
     cache_base = (
@@ -1166,48 +1186,57 @@ def walk_forward_vectorized(
         else ARTIFACTS_DIR / "cache" / "model_matrices"
     )
     cache_path = cache_base / cache_key
-    snapshot = None
-    if use_model_matrix_cache and not refresh_model_matrix_cache:
-        snapshot = load_model_matrix_snapshot(cache_path, identity=cache_identity)
-
     cache_status = "disabled"
     benchmark_data = None
-    if snapshot is not None:
-        X_all = snapshot.features
-        y_all = snapshot.labels
-        benchmark_data = snapshot.benchmark
-        cache_status = "exact_identity_hit"
-        log.info(
-            "Vectorized WF: model matrix cache hit",
-            cache_key=cache_key,
-            X_shape=X_all.shape,
-        )
+    if _shared_matrices is not None:
+        # The parent already loaded and transformed this exact matrix in the
+        # same process; reusing it avoids one full cache hash and payload
+        # materialization per parallel split.
+        X_all, y_all, benchmark_data = _shared_matrices
+        cache_status = "shared_in_process"
+        log.info("Vectorized WF: using in-process shared matrix", cache_key=cache_key)
     else:
-        log.info("Vectorized WF: loading", n_features=len(all_exprs))
-        X_all = D.features(symbols, all_exprs, start_time=train_start, end_time=full_end)
-        y_all = D.features(symbols, label_expr, start_time=train_start, end_time=full_end)
-        X_all = _normalize_qlib_index(X_all)
-        y_all = _normalize_qlib_index(y_all)
-        if benchmark_symbol:
-            benchmark_data = D.features(
-                [benchmark_symbol],
-                label_expr,
-                start_time=train_start,
-                end_time=full_end,
-            )
-            if isinstance(benchmark_data.index, pd.MultiIndex):
-                benchmark_data = benchmark_data.xs(benchmark_symbol, level="instrument")
-        if use_model_matrix_cache:
-            write_model_matrix_snapshot(
-                cache_path,
-                identity=cache_identity,
-                features=X_all,
-                labels=y_all,
-                benchmark=benchmark_data,
-            )
-            cache_status = "refreshed" if refresh_model_matrix_cache else "built"
+        snapshot = None
+        if use_model_matrix_cache and not refresh_model_matrix_cache:
+            snapshot = load_model_matrix_snapshot(cache_path, identity=cache_identity)
 
-    X_all = X_all.fillna(0.0)
+        if snapshot is not None:
+            X_all = snapshot.features
+            y_all = snapshot.labels
+            benchmark_data = snapshot.benchmark
+            cache_status = "exact_identity_hit"
+            log.info(
+                "Vectorized WF: model matrix cache hit",
+                cache_key=cache_key,
+                X_shape=X_all.shape,
+            )
+        else:
+            log.info("Vectorized WF: loading", n_features=len(all_exprs))
+            X_all = D.features(symbols, all_exprs, start_time=train_start, end_time=full_end)
+            y_all = D.features(symbols, label_expr, start_time=train_start, end_time=full_end)
+            X_all = _normalize_qlib_index(X_all)
+            y_all = _normalize_qlib_index(y_all)
+            if benchmark_symbol:
+                benchmark_data = D.features(
+                    [benchmark_symbol],
+                    label_expr,
+                    start_time=train_start,
+                    end_time=full_end,
+                )
+                if isinstance(benchmark_data.index, pd.MultiIndex):
+                    benchmark_data = benchmark_data.xs(benchmark_symbol, level="instrument")
+            if use_model_matrix_cache:
+                write_model_matrix_snapshot(
+                    cache_path,
+                    identity=cache_identity,
+                    features=X_all,
+                    labels=y_all,
+                    benchmark=benchmark_data,
+                )
+                cache_status = "refreshed" if refresh_model_matrix_cache else "built"
+
+    if not _matrices_preprocessed:
+        X_all = X_all.fillna(0.0)
     y_series = y_all.iloc[:, 0]
     if benchmark_symbol:
         if benchmark_data is None:
@@ -1230,7 +1259,8 @@ def walk_forward_vectorized(
             .replace("+", "plus")
         )
 
-    X_all.columns = [_s(c) for c in X_all.columns]
+    if not _matrices_preprocessed:
+        X_all.columns = [_s(c) for c in X_all.columns]
 
     # --- Generate splits ---
     splits = generate_splits(
@@ -1288,7 +1318,9 @@ def walk_forward_vectorized(
             physical_cpus=resource_budget.physical_cpus,
             available_memory_gb=resource_budget.available_memory_gb,
         )
-        del X_all, y_all, y_series, benchmark_data
+        # Splits run as threads in this process, so they can share the already
+        # loaded matrix instead of each hashing and materializing the cache.
+        shared_matrices = (X_all, y_all, benchmark_data)
         future_to_split = {}
         with ThreadPoolExecutor(
             max_workers=resource_budget.split_workers,
@@ -1316,6 +1348,8 @@ def walk_forward_vectorized(
                     model_threads=resource_budget.threads_per_model,
                     _selected_split_ids=frozenset({split_id}),
                     _provider_sha256=provider_sha256,
+                    _shared_matrices=shared_matrices,
+                    _matrices_preprocessed=True,
                 )
                 future_to_split[future] = split_id
             for future in as_completed(future_to_split):
