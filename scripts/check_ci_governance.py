@@ -196,6 +196,7 @@ def build_inventory() -> tuple[dict[str, Any], list[str]]:
         violations.extend(f"{path}: {message}" for message in record_violations)
 
     research_assets = inspect_research_assets(Path("."))
+    dead_modules = inspect_dead_modules(Path("."))
     violations.extend(archive_reference_violations(Path(".")))
 
     inventory = {
@@ -206,6 +207,7 @@ def build_inventory() -> tuple[dict[str, Any], list[str]]:
         "violation_count": len(violations),
         "workflows": records,
         "research_assets": research_assets,
+        "dead_modules": dead_modules,
     }
     return inventory, violations
 
@@ -339,6 +341,43 @@ def inspect_research_assets(repo_root: Path) -> dict[str, Any]:
     }
 
 
+def inspect_dead_modules(repo_root: Path) -> dict[str, Any]:
+    """Advisory: maintained modules that no live caller references.
+
+    A module is 'unreferenced' when its stem never appears as a token in any
+    live file (src, scripts, tests, configs, workflows). Docs and evidence never
+    confer life, matching the paradigm lifecycle rules. This is advisory only:
+    it never fails the build and never deletes anything.
+    """
+
+    candidates = sorted(
+        {
+            path.stem
+            for path in (
+                *sorted((repo_root / "src" / "research").glob("*.py")),
+                *sorted((repo_root / "scripts").rglob("*.py")),
+            )
+            if path.name != "__init__.py"
+        }
+    )
+    if not candidates:
+        return {"module_count": 0, "unreferenced_count": 0, "unreferenced": []}
+    pattern = re.compile(r"\b(?:" + "|".join(re.escape(stem) for stem in candidates) + r")\b")
+    matched: set[str] = set()
+    for path in _live_text_files(repo_root):
+        try:
+            body = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        matched.update(pattern.findall(body))
+    unreferenced = sorted(set(candidates) - matched)
+    return {
+        "module_count": len(candidates),
+        "unreferenced_count": len(unreferenced),
+        "unreferenced": unreferenced,
+    }
+
+
 def archive_reference_violations(repo_root: Path) -> list[str]:
     """Fail closed on new callers of the paradigm archive.
 
@@ -386,6 +425,15 @@ def main() -> int:
         )
         if research.get("archive_suggestion"):
             print(f"CI GOVERNANCE ADVISORY: {research['archive_suggestion']}")
+    dead = inventory.get("dead_modules", {})
+    unreferenced = dead.get("unreferenced", [])
+    if unreferenced:
+        preview = ", ".join(unreferenced[:10]) + ("..." if len(unreferenced) > 10 else "")
+        print(
+            f"CI GOVERNANCE ADVISORY: {dead.get('unreferenced_count', 0)} of "
+            f"{dead.get('module_count', 0)} src/research+scripts modules have no live "
+            f"caller: {preview}"
+        )
     if args.enforce and violations:
         return 1
     return 0

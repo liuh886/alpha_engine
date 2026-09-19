@@ -6,6 +6,7 @@ from pathlib import Path
 
 from scripts.check_ci_governance import (
     archive_reference_violations,
+    inspect_dead_modules,
     inspect_research_assets,
 )
 
@@ -82,3 +83,29 @@ def test_clean_tree_has_no_archive_violations(tmp_path: Path) -> None:
     _tree(tmp_path)
 
     assert archive_reference_violations(tmp_path) == []
+
+
+def test_dead_module_inventory_flags_unreferenced(tmp_path: Path) -> None:
+    _tree(tmp_path)
+    research = tmp_path / "src" / "research"
+    research.mkdir(parents=True, exist_ok=True)
+    (research / "used_module.py").write_text("used_module\n", encoding="utf-8")
+    (research / "dead_module.py").write_text("nothing here\n", encoding="utf-8")
+    (tmp_path / "src" / "engine.py").write_text("import used_module\n", encoding="utf-8")
+
+    dead = inspect_dead_modules(tmp_path)
+
+    assert dead["unreferenced"] == ["dead_module"]
+    assert dead["module_count"] == 2
+
+
+def test_dead_module_docs_only_reference_is_not_life(tmp_path: Path) -> None:
+    _tree(tmp_path)
+    research = tmp_path / "src" / "research"
+    research.mkdir(parents=True, exist_ok=True)
+    (research / "lonely_module.py").write_text("pass\n", encoding="utf-8")
+    (tmp_path / "docs" / "notes.md").write_text("we tried lonely_module\n", encoding="utf-8")
+
+    dead = inspect_dead_modules(tmp_path)
+
+    assert "lonely_module" in dead["unreferenced"]
