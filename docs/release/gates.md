@@ -44,7 +44,7 @@ files.
 The one command runs and captures:
 
 1. `python -m ruff check .`
-2. `python -m mypy src/release scripts/release_gate.py`
+2. `python -m mypy` over the ratcheted typed scope: `src/release`, `scripts/release_gate.py`, `src/models/metric_contract.py`, `src/research/{economics,replay_comparison,ranker_execution,ranker_training,us_x1_3_current_target}.py` and `src/data/listing_lifecycle.py`
 3. `python -m pytest tests -q` with exact skipped-node accounting
 4. `npm ci`
 5. `npx tsc --noEmit`
@@ -54,10 +54,11 @@ The one command runs and captures:
 9. `npx playwright test` against the freshly built Vite preview
 10. `uv build`
 
-The mypy scope is the initial typed ratchet: all new release verification code
-and its CLI must remain typed while broader legacy typing debt is addressed.
-The checked-in approved-skip set is empty. Any pytest runtime or collection
-skip therefore fails the release gate and is listed by exact node ID and reason.
+The mypy scope is the typed ratchet: release verification code, the metric
+contract and the canonical data/ranker modules must remain typed while broader
+legacy typing debt is addressed. The approved-skip set is explicit and lives in
+`scripts/release_gate.py`; any pytest runtime or collection skip outside it
+fails the release gate and is listed by exact node ID and reason.
 
 ## Evidence
 

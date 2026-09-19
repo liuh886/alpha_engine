@@ -28,7 +28,14 @@ Dependency, external-source and operational-health signals. They remain visible 
 - uploaded artifact names;
 - action and Node.js versions;
 - hard-coded cross-run IDs;
+- an advisory `dead_modules` inventory: `src/research` + `scripts` modules whose
+  stem is referenced by no live file (code, tests, configs or workflows); docs
+  and sealed evidence never confer life;
 - warnings and blocking governance violations.
+
+The `dead_modules` inventory is advisory only: it never fails the build and
+never deletes anything. It exists so the cleanup backlog stays visible instead
+of depending on one-off manual scans.
 
 The core CI enforces the following drift rules:
 
