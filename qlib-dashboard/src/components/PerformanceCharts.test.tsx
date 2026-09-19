@@ -212,6 +212,23 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(screen.getByText("Capital Use")).toBeInTheDocument();
   });
 
+  it("labels chart max drawdown as a range-scoped approximation of the sealed metric", () => {
+    render(
+      <PerformanceCharts report={[
+        { date: "2026-01-01", account: 100 },
+        { date: "2026-01-02", account: 80 },
+        { date: "2026-01-03", account: 90 },
+      ]} />,
+    );
+
+    expect(screen.getByText("Max drawdown (chart)")).toBeInTheDocument();
+    expect(screen.getByTestId("max-drawdown-stat")).toHaveTextContent("-20.00%");
+
+    const provenance = screen.getByTestId("drawdown-provenance");
+    expect(provenance).toHaveTextContent(/equity\/peak/);
+    expect(provenance).toHaveTextContent(/sealed Bundle v2/i);
+  });
+
   it("handles empty report gracefully", () => {
     render(<PerformanceCharts report={[]} />);
     expect(equityChartData()).toEqual([]);

@@ -400,10 +400,17 @@ export function PerformanceCharts({
               <p data-testid="visible-excess-return" className={cn("mt-1 font-mono text-sm font-semibold tabular-nums", colorReturn(visibleSummary.excess))}>{formatPercent(visibleSummary.excess)}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Max drawdown</p>
-              <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-rose-600 dark:text-rose-400">{visibleMaxDrawdown ? formatPercent(visibleMaxDrawdown.value) : '—'}</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Max drawdown (chart)</p>
+              <p
+                data-testid="max-drawdown-stat"
+                title="Computed from the displayed equity series over the selected range: equity/peak − 1. The sealed Bundle v2 max-drawdown metric may differ."
+                className="mt-1 font-mono text-sm font-semibold tabular-nums text-rose-600 dark:text-rose-400"
+              >{visibleMaxDrawdown ? formatPercent(visibleMaxDrawdown.value) : '—'}</p>
             </div>
           </div>
+          <p data-testid="drawdown-provenance" className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+            Chart max drawdown is derived from the displayed equity series over the selected range (equity/peak − 1, equivalently (strategy − peak) / (1 + peak)). It is an approximation of the sealed Bundle v2 metric and can differ after rounding or range selection.
+          </p>
         </CardHeader>
         <CardContent className="h-[330px] pt-4 sm:h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -450,7 +457,13 @@ export function PerformanceCharts({
               <CardTitle className="text-sm font-semibold">Drawdown</CardTitle>
               <div className="flex items-center gap-3 font-mono text-[11px] tabular-nums">
                 {currentDrawdown !== null && <span className="text-muted-foreground">Current {formatPercent(currentDrawdown)}</span>}
-                {visibleMaxDrawdown && <span className="text-rose-600 dark:text-rose-400">Max {formatPercent(visibleMaxDrawdown.value)} · {visibleMaxDrawdown.date}</span>}
+                {visibleMaxDrawdown && (
+                  <span
+                    data-testid="drawdown-card-max"
+                    title="Chart-derived (equity/peak − 1) over the selected range; the sealed Bundle v2 metric may differ."
+                    className="text-rose-600 dark:text-rose-400"
+                  >Max {formatPercent(visibleMaxDrawdown.value)} · {visibleMaxDrawdown.date}</span>
+                )}
               </div>
             </div>
           </CardHeader>
