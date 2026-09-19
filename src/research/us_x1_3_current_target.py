@@ -13,6 +13,7 @@ import pandas as pd
 import yaml
 
 import scripts.run_us_x1_1_rank_aware_sector_cap as sector_cap
+from src.data.listing_lifecycle import ineligible_symbols
 from src.data.market_provider import load_provider_manifest
 from src.factors.model_contract import resolve_model_factor_inputs
 from src.research.multi_market_readiness import normalize_market_symbols
@@ -218,6 +219,8 @@ def score_us_x1_3_current_target(
     runtime.initialize(root)
     symbols = _symbols(root, config, runtime)
     sectors = _sectors(root, symbols)
+    ineligible = ineligible_symbols(root, market="us", as_of=signal_date, symbols=symbols)
+    eligible = [symbol for symbol in symbols if symbol not in ineligible]
 
     signal_ts = pd.Timestamp(signal_date)
     half_start = pd.Timestamp(f"{signal_ts.year}-{'01-01' if signal_ts.month <= 6 else '07-01'}")
@@ -242,11 +245,14 @@ def score_us_x1_3_current_target(
         returns.copy(),
         holding_days=10,
     )
-    test_features = features.loc[dates == signal_ts].copy()
-    if len(test_features) != len(symbols):
+    instruments = features.index.get_level_values("instrument")
+    test_features = features.loc[(dates == signal_ts) & instruments.isin(eligible)].copy()
+    if len(test_features) != len(eligible):
         raise USX13CurrentTargetError(
-            f"US x1.3 current cross-section has {len(test_features)} rows; expected {len(symbols)}"
+            f"US x1.3 current cross-section has {len(test_features)} rows; expected {len(eligible)}"
         )
+    if test_features.index.get_level_values("instrument").duplicated().any():
+        raise USX13CurrentTargetError("US x1.3 current cross-section contains duplicate instruments")
 
     try:
         training = fit_predict_ranker(
@@ -310,6 +316,14 @@ def score_us_x1_3_current_target(
             "train_start": train_start,
             "train_end": train_end,
             "selected_candidate": "mvv_plus_pressure",
+            "lifecycle_excluded_symbols": {
+                symbol: {
+                    "terminal_date": listing.terminal_date,
+                    "suspension_effective_date": listing.suspension_effective_date,
+                    "reason": listing.reason,
+                }
+                for symbol, listing in sorted(ineligible.items())
+            },
             "calibration_identity": fitted.identity_manifest,
             "top_n": 15,
             "maximum_names_per_sector": 4,

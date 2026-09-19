@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.data.listing_lifecycle import ineligible_symbols
 from src.data.market_provider import load_provider_manifest
 from src.research.cn130_cross_sectional_ranking import load_provider_panel
 from src.research.cn_x1_1_regime_gated import (
@@ -128,6 +129,8 @@ def score_cn_x1_2_current_target(
     classification, classification_sha256 = _portfolio_contract(spec)
     if set(symbols) != set(classification):
         raise CNX12CurrentTargetError("CN x1.2 current universe differs from classification")
+    ineligible = ineligible_symbols(root, market="cn", as_of=signal_date, symbols=symbols)
+    eligible = [symbol for symbol in symbols if symbol not in ineligible]
 
     expressions = tuple(str(value) for value in factor_contract["expressions"])
     factor_ids = [str(value) for value in factor_contract["factor_ids"]]
@@ -162,10 +165,11 @@ def score_cn_x1_2_current_target(
         returns_all.copy(),
         holding_days=HOLDING_SESSIONS,
     )
-    features_test = features_all.loc[test_mask].copy()
-    if len(features_test) != len(symbols):
+    instruments = features_all.index.get_level_values("instrument").astype(str).str.zfill(6)
+    features_test = features_all.loc[test_mask & instruments.isin(eligible)].copy()
+    if len(features_test) != len(eligible):
         raise CNX12CurrentTargetError(
-            f"CN x1.2 current cross-section has {len(features_test)} rows; expected {len(symbols)}"
+            f"CN x1.2 current cross-section has {len(features_test)} rows; expected {len(eligible)}"
         )
 
     scores = fit_predict_ranker_scores(
@@ -263,6 +267,14 @@ def score_cn_x1_2_current_target(
             "train_start": FROZEN_TRAIN_START,
             "train_end": FROZEN_TRAIN_END,
             "selected_candidate": "cn_x1_2_alpha158_breadth_scaled",
+            "lifecycle_excluded_symbols": {
+                symbol: {
+                    "terminal_date": listing.terminal_date,
+                    "suspension_effective_date": listing.suspension_effective_date,
+                    "reason": listing.reason,
+                }
+                for symbol, listing in sorted(ineligible.items())
+            },
             "factor_count": len(factor_ids),
             "classification_sha256": classification_sha256,
             "risk_on_eligible": bool(eligible),
