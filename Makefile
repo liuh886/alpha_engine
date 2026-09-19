@@ -125,8 +125,8 @@ ci:
 	cd qlib-dashboard && npm test
 	@echo "=== Gate 9: Static PWA build ==="
 	cd qlib-dashboard && npm run build
-	@echo "=== Gate 10: Release gate verification ==="
-	uv run python scripts/release_gate.py --candidate rc_20260620 --run-quality-gates --evidence-dir artifacts/release_gates
+	@echo "=== Gate 10: Release quality gate verification ==="
+	uv run python scripts/release_gate.py --run-quality-gates --evidence-dir artifacts/release_gates
 	@echo "=== Gate 11: Package build ==="
 	uv build
 	@echo "=== All research and static-product gates passed ==="

@@ -28,3 +28,20 @@ def test_resolve_metadata_db_path_defaults_under_project_root(tmp_path: Path, mo
     monkeypatch.delenv("TRADING_ASSISTANT_METADATA_DB_PATH", raising=False)
     out = resolve_metadata_db_path(tmp_path)
     assert str(out).replace("\\", "/").endswith("/artifacts/metadata/metadata.db")
+
+
+def test_metadata_db_is_isolated_from_production(tmp_path: Path):
+    """The autouse isolation fixture must redirect registry writes away from
+    the production artifacts/metadata/metadata.db."""
+    from src.assistant.metadata_db import resolve_metadata_db_path
+
+    production_artifacts = ROOT / "artifacts"
+    resolved = resolve_metadata_db_path(ROOT).resolve()
+    try:
+        resolved.relative_to(production_artifacts.resolve())
+    except ValueError:
+        return
+    pytest.fail(
+        "resolve_metadata_db_path(ROOT) points at production artifacts during "
+        f"tests: {resolved}"
+    )

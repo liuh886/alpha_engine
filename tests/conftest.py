@@ -20,6 +20,13 @@ def _isolate_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     artifact_root = tmp_path / "artifacts"
     artifact_root.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("TRADING_ARTIFACTS_DIR", str(artifact_root))
+    # resolve_metadata_db_path() reads this dedicated override rather than
+    # TRADING_ARTIFACTS_DIR; without it, tests that register models write
+    # directly into the production artifacts/metadata/metadata.db.
+    monkeypatch.setenv(
+        "TRADING_ASSISTANT_METADATA_DB_PATH",
+        str(artifact_root / "metadata" / "metadata.db"),
+    )
 
     try:
         import src.common.paths as _paths
