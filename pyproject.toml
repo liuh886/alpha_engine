@@ -111,6 +111,8 @@ module = [
     "src.research.replay_comparison",
     "src.research.ranker_training",
     "src.research.ranker_execution",
+    "src.research.us_x1_3_current_target",
+    "src.data.listing_lifecycle",
 ]
 ignore_errors = false
 disallow_untyped_defs = true

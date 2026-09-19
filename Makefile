@@ -90,7 +90,7 @@ lint:
 
 typecheck:
 	@echo "Running Python and TypeScript checks..."
-	@mypy src/release src/models/metric_contract.py
+	@mypy src/release src/models/metric_contract.py src/research/economics.py src/research/replay_comparison.py src/research/ranker_execution.py src/research/ranker_training.py src/research/us_x1_3_current_target.py src/data/listing_lifecycle.py
 	@cd qlib-dashboard && npx tsc --noEmit
 
 test:

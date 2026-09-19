@@ -130,7 +130,7 @@ def score_cn_x1_2_current_target(
     if set(symbols) != set(classification):
         raise CNX12CurrentTargetError("CN x1.2 current universe differs from classification")
     ineligible = ineligible_symbols(root, market="cn", as_of=signal_date, symbols=symbols)
-    eligible = [symbol for symbol in symbols if symbol not in ineligible]
+    tradable = [symbol for symbol in symbols if symbol not in ineligible]
 
     expressions = tuple(str(value) for value in factor_contract["expressions"])
     factor_ids = [str(value) for value in factor_contract["factor_ids"]]
@@ -166,10 +166,10 @@ def score_cn_x1_2_current_target(
         holding_days=HOLDING_SESSIONS,
     )
     instruments = features_all.index.get_level_values("instrument").astype(str).str.zfill(6)
-    features_test = features_all.loc[test_mask & instruments.isin(eligible)].copy()
-    if len(features_test) != len(eligible):
+    features_test = features_all.loc[test_mask & instruments.isin(tradable)].copy()
+    if len(features_test) != len(tradable):
         raise CNX12CurrentTargetError(
-            f"CN x1.2 current cross-section has {len(features_test)} rows; expected {len(eligible)}"
+            f"CN x1.2 current cross-section has {len(features_test)} rows; expected {len(tradable)}"
         )
 
     scores = fit_predict_ranker_scores(

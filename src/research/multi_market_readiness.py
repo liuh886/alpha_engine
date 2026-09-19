@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -178,7 +179,7 @@ def normalize_market_symbol(
 
 def normalize_market_symbols(
     market: str,
-    symbols: list[object],
+    symbols: Sequence[object],
     *,
     available_symbols: set[str] | None = None,
 ) -> list[NormalizedSymbol]:

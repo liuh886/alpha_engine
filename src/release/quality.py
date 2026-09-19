@@ -52,7 +52,20 @@ def build_quality_commands(project_root: Path, evidence_dir: Path) -> list[Comma
         CommandSpec("ruff", ("uv", "run", "ruff", "check", "."), root),
         CommandSpec(
             "mypy_ratchet",
-            ("uv", "run", "mypy", "src/release", "scripts/release_gate.py"),
+            (
+                "uv",
+                "run",
+                "mypy",
+                "src/release",
+                "scripts/release_gate.py",
+                "src/models/metric_contract.py",
+                "src/research/economics.py",
+                "src/research/replay_comparison.py",
+                "src/research/ranker_execution.py",
+                "src/research/ranker_training.py",
+                "src/research/us_x1_3_current_target.py",
+                "src/data/listing_lifecycle.py",
+            ),
             root,
         ),
         CommandSpec(
