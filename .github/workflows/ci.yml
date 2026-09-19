@@ -240,7 +240,8 @@ jobs:
           retention-days: 30
 
   repository-health-report:
-    if: always() && needs.repository-health.result == 'failure'
+    if: >-
+      always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     needs: [repository-health]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -253,29 +254,35 @@ jobs:
           fetch-depth: 1
           show-progress: false
 
-      - name: Open or update the health-gate tracking issue
+      - name: Open, update, or close the health-gate tracking issue
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SHA: ${{ github.sha }}
+          HEALTH_RESULT: ${{ needs.repository-health.result }}
         run: |
-          {
-            echo "## Repository health gate failed"
-            echo ""
-            echo "- Run: ${RUN_URL}"
-            echo "- Commit: ${SHA}"
-            echo "- Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            echo ""
-            echo "The weekly full-suite job reports every failing test (no --maxfail)."
-            echo "Download \`repository-health-shard-{0..3}-${{ github.run_id }}\` for the per-shard JUnit reports."
-          } > health-failure.md
           existing="$(gh issue list \
             --search "weekly repository health gate is failing in:title" \
             --state open --json number --jq '.[0].number')"
-          if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body-file health-failure.md
-          else
-            gh issue create \
-              --title "weekly repository health gate is failing" \
-              --body-file health-failure.md
+          if [ "${HEALTH_RESULT}" = "failure" ]; then
+            {
+              echo "## Repository health gate failed"
+              echo ""
+              echo "- Run: ${RUN_URL}"
+              echo "- Commit: ${SHA}"
+              echo "- Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              echo ""
+              echo "The weekly full-suite job reports every failing test (no --maxfail)."
+              echo "Download \`repository-health-shard-{0..3}-${{ github.run_id }}\` for the per-shard JUnit reports."
+            } > health-failure.md
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --body-file health-failure.md
+            else
+              gh issue create \
+                --title "weekly repository health gate is failing" \
+                --body-file health-failure.md
+            fi
+          elif [ "${HEALTH_RESULT}" = "success" ] && [ -n "$existing" ]; then
+            gh issue close "$existing" \
+              --comment "Repository health gate is green as of ${SHA} (${RUN_URL})."
           fi
