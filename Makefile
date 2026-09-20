@@ -90,7 +90,7 @@ lint:
 
 typecheck:
 	@echo "Running Python and TypeScript checks..."
-	@mypy src/release src/models/metric_contract.py src/research/economics.py src/research/replay_comparison.py src/research/ranker_execution.py src/research/ranker_training.py src/research/us_x1_3_current_target.py src/data/listing_lifecycle.py src/data/symbol_identity.py src/data/snapshot_manifest.py src/factors/ranker_snapshot.py src/governance/active_strategy_catalog.py src/research/formal_baseline.py src/artifacts/system_health.py src/data/model_data_bundle.py src/data/snapshot.py src/artifacts/formal_bundle_reader.py src/governance/strategy_runtime_capabilities.py src/research/factor_identity.py
+	@mypy src/release src/models/metric_contract.py src/research/economics.py src/research/replay_comparison.py src/research/ranker_execution.py src/research/ranker_training.py src/research/us_x1_3_current_target.py src/data/listing_lifecycle.py src/data/symbol_identity.py src/data/snapshot_manifest.py src/factors/ranker_snapshot.py src/governance/active_strategy_catalog.py src/research/formal_baseline.py src/artifacts/system_health.py src/data/model_data_bundle.py src/data/snapshot.py src/data/market_provider.py src/artifacts/formal_bundle_reader.py src/governance/strategy_runtime_capabilities.py src/research/factor_identity.py
 	@cd qlib-dashboard && npx tsc --noEmit
 
 test:
@@ -110,7 +110,7 @@ ci:
 	@echo "=== Gate 1: Ruff lint ==="
 	ruff check .
 	@echo "=== Gate 2: Mypy type check ==="
-	mypy src/release src/models/metric_contract.py src/research/economics.py src/research/replay_comparison.py src/research/ranker_execution.py src/research/ranker_training.py src/research/us_x1_3_current_target.py src/data/listing_lifecycle.py src/data/symbol_identity.py src/data/snapshot_manifest.py src/factors/ranker_snapshot.py src/governance/active_strategy_catalog.py src/research/formal_baseline.py src/artifacts/system_health.py src/data/model_data_bundle.py src/data/snapshot.py src/artifacts/formal_bundle_reader.py src/governance/strategy_runtime_capabilities.py src/research/factor_identity.py
+	mypy src/release src/models/metric_contract.py src/research/economics.py src/research/replay_comparison.py src/research/ranker_execution.py src/research/ranker_training.py src/research/us_x1_3_current_target.py src/data/listing_lifecycle.py src/data/symbol_identity.py src/data/snapshot_manifest.py src/factors/ranker_snapshot.py src/governance/active_strategy_catalog.py src/research/formal_baseline.py src/artifacts/system_health.py src/data/model_data_bundle.py src/data/snapshot.py src/data/market_provider.py src/artifacts/formal_bundle_reader.py src/governance/strategy_runtime_capabilities.py src/research/factor_identity.py
 	@echo "=== Gate 3: Full pytest collection ==="
 	pytest --collect-only -q
 	@echo "=== Gate 4: Python tests ==="

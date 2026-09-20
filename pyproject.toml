@@ -121,6 +121,7 @@ module = [
     "src.artifacts.system_health",
     "src.data.model_data_bundle",
     "src.data.snapshot",
+    "src.data.market_provider",
     "src.artifacts.formal_bundle_reader",
     "src.governance.strategy_runtime_capabilities",
     "src.research.factor_identity",

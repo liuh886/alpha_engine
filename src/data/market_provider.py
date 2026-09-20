@@ -65,9 +65,9 @@ def _provider_manifest_paths(payload: Mapping[str, Any]) -> tuple[str, str]:
     instruments = payload.get("instruments")
     if not isinstance(calendar, Mapping) or not isinstance(instruments, Mapping):
         raise ValueError("provider manifest calendar/instruments metadata is missing")
-    return tuple(
-        _provider_relative_path(metadata.get("path", ""))
-        for metadata in (calendar, instruments)
+    return (
+        _provider_relative_path(calendar.get("path", "")),
+        _provider_relative_path(instruments.get("path", "")),
     )
 
 

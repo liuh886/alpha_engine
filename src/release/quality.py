@@ -73,6 +73,7 @@ def build_quality_commands(project_root: Path, evidence_dir: Path) -> list[Comma
                 "src/artifacts/system_health.py",
                 "src/data/model_data_bundle.py",
                 "src/data/snapshot.py",
+                "src/data/market_provider.py",
                 "src/artifacts/formal_bundle_reader.py",
                 "src/governance/strategy_runtime_capabilities.py",
                 "src/research/factor_identity.py",
