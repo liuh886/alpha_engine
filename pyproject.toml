@@ -119,6 +119,11 @@ module = [
     "src.governance.active_strategy_catalog",
     "src.research.formal_baseline",
     "src.artifacts.system_health",
+    "src.data.model_data_bundle",
+    "src.data.snapshot",
+    "src.artifacts.formal_bundle_reader",
+    "src.governance.strategy_runtime_capabilities",
+    "src.research.factor_identity",
 ]
 ignore_errors = false
 disallow_untyped_defs = true

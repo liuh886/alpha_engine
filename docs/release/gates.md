@@ -44,7 +44,7 @@ files.
 The one command runs and captures:
 
 1. `python -m ruff check .`
-2. `python -m mypy` over the ratcheted typed scope: `src/release`, `scripts/release_gate.py`, `src/models/metric_contract.py`, `src/research/{economics,replay_comparison,ranker_execution,ranker_training,us_x1_3_current_target,formal_baseline}.py`, `src/data/{listing_lifecycle,symbol_identity,snapshot_manifest}.py`, `src/factors/ranker_snapshot.py`, `src/governance/active_strategy_catalog.py` and `src/artifacts/system_health.py`
+2. `python -m mypy` over the ratcheted typed scope: `src/release`, `scripts/release_gate.py`, `src/models/metric_contract.py`, `src/research/{economics,replay_comparison,ranker_execution,ranker_training,us_x1_3_current_target,formal_baseline,factor_identity}.py`, `src/data/{listing_lifecycle,symbol_identity,snapshot_manifest,model_data_bundle,snapshot}.py`, `src/factors/ranker_snapshot.py`, `src/governance/{active_strategy_catalog,strategy_runtime_capabilities}.py` and `src/artifacts/{system_health,formal_bundle_reader}.py`
 3. `python -m pytest tests -q` with exact skipped-node accounting
 4. `npm ci`
 5. `npx tsc --noEmit`
