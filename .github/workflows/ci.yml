@@ -189,6 +189,7 @@ jobs:
           tests/test_refresh_ranker_formal.py
           tests/test_notebook_lab_contracts.py
           tests/test_yfinance_ohlc_adjustment.py
+          tests/test_qlib_mlflow_recorder_smoke.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Package build
