@@ -58,7 +58,7 @@ scratch-script removal (`28942fe9`).
 | G4 | Canonical training plane | #1074 §4, #826 | not started | one reproducible trainer reproduces US x1.2 `r11_sampled` from immutable inputs | deterministic trained artifact + score trace; incumbent economic replay blocks candidate ranking | G2, G3 | high |
 | G5 | Obsolete-path removal / convergence | #1074 §2, #858 | 85 unreferenced modules, 45 workflows (36 tier-3), 63 active paradigms | delete/archive superseded paths per family; converge CI | `dead_modules` advisory converges to zero for non-authority code; workflow count reduced with canonical replacement, not wrappers | owner approval per family | medium |
 | G6 | Static-check ratchet | #1074 §5 | strict mypy scope now **25 entries (24 files + `src/release/`)** in `pyproject.toml` + `ci.yml` after the 2026-09-20 session; ruff `E,F` only | ratchet remaining canonical runtime/research modules; add ruff rules | CI-enforced typed scope covers the canonical runtime and research modules | per-module typing fixes; **next**: `cn_x1_2_current_target` protocol debt (`CrossSectionalExperimentSpec` vs `RankerExperimentContract` settable members, 2 errors) | low |
-| G7 | Dependency / security hygiene | #1074 §5 | `npm run audit:dependencies` **already wired (blocking) at `frontend-static-pwa.yml:67-69`** (from #1087); `npm audit` = 0 vulnerabilities (2026-09-20); 4 transitive lockfile bumps merged 2026-09-20 (`gitpython`, `anyio`, `cryptography`, `soupsieve`); old direct pins remain (`numpy<2`, `protobuf<4`, `sqlalchemy<2`, `setuptools==69.5.1`, `pyqlib 0.9.7`) | deliberate upgrades of the qlib-pinned direct dependencies with compatibility evidence | no known vulnerable maintained dependency; CI dependency audit remains blocking and green | compatibility testing for the remaining qlib-pinned direct dependencies | medium |
+| G7 | Dependency / security hygiene | #1074 §5 | `npm run audit:dependencies` **already wired (blocking) at `frontend-static-pwa.yml:67-69`** (from #1087); `npm audit` = 0 vulnerabilities; 4 transitive lockfile bumps merged 2026-09-20 (`gitpython`, `anyio`, `cryptography`, `soupsieve`); **183 open pip Dependabot alerts (23 critical, 95 high), dominated by `pyqlib 0.9.7` transitive pins** (see §9); old direct pins remain (`numpy<2`, `protobuf<4`, `sqlalchemy<2`, `setuptools==69.5.1`, `pyqlib 0.9.7`) | eliminate the `pyqlib`-rooted alert set via deliberate transitive overrides with qlib compatibility evidence; upgrade the qlib-pinned direct dependencies | no known vulnerable maintained dependency; CI dependency audit remains blocking and green | qlib compatibility testing (mlflow/jupyter stack) | medium |
 | G8 | Weekly full-suite safety net | #1074 §5, #1118 | auto-close on recovery landed; PR CI still runs a curated subset | decide the full-suite cadence for `main` | a full-suite regression is caught within one integration cycle | cost/cadence decision | low |
 
 Nothing in G1–G4 can be closed by unit tests alone; each requires a persisted,
@@ -211,3 +211,33 @@ Remaining and explicitly deferred (unchanged authority):
   and auto-close are in place, PR CI still runs a curated subset.
 
 No committed evidence, registry, or model artifact was modified by this session.
+
+## 9. G7 dependency-risk evidence — 2026-09-20
+
+GitHub reports **183 open Dependabot alerts** on `main` (23 critical, 95 high,
+54 medium, 11 low), all `pip`/`uv.lock`. `npm audit` reports 0, so this set is
+Python-only. Root cause: `pyqlib 0.9.7` transitively pins an obsolete stack.
+
+| Package | Alerts | Worst severity | Root | Patched version exists |
+| --- | --- | --- | --- | --- |
+| mlflow (1.27.0) | 73 | critical (22) | `pyqlib` → `mlflow` | yes (2.x/3.x) |
+| mistune | 16 | high | `pyqlib` → `nbconvert` | yes (3.2.1+) |
+| pillow / Pillow | 18 | high | `pyqlib` → `matplotlib`/notebooks | yes (12.3.0) |
+| tornado | 9 | high | `pyqlib` → `jupyter` | yes (6.5.5+) |
+| jupyterlab / jupyter-server | 14 | critical | `pyqlib` → `jupyter` | yes (4.5.x / 2.18+) |
+| setuptools (`==69.5.1`) | 6 | high | direct pin | yes (78.1.1+) |
+| python-multipart, sqlparse, pyjwt, starlette, protobuf, bleach, urllib3, Mako, pydantic-settings, lxml, idna, python-dotenv, mcp | remainder | high/medium | mixed (`mcp`, direct pins, transitive) | mostly yes |
+
+Verified non-destructively this session: `uv lock --upgrade-package mlflow`
+resolves `mlflow 3.16.1` under `pyqlib 0.9.7` (no hard `==1.27.0` pin), the
+lock passes `uv lock --check`, and `import mlflow` succeeds. That single change
+would remove **73 of 183 alerts including 22 critical**. It was **reverted**
+because it is a ~1085-line lock change that changes qlib's MLflow recorder
+surface and therefore requires dedicated qlib compatibility testing and owner
+sign-off, per this workstream's "deliberate upgrades" rule. No project module
+imports `mlflow` directly.
+
+Recommended next unit: land the `mlflow` override in an isolated PR with a qlib
+recorder smoke test, then proceed package-by-package (`mistune`, `pillow`,
+`tornado`, `jupyter*`) with the same evidence standard, and separately revisit
+the `setuptools==69.5.1` direct pin.
