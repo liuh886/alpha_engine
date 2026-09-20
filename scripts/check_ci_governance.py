@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -341,6 +342,34 @@ def inspect_research_assets(repo_root: Path) -> dict[str, Any]:
     }
 
 
+def _tracked_paths(repo_root: Path) -> set[str] | None:
+    """Return tracked paths under ``src/research`` and ``scripts``, else None.
+
+    The advisory must describe the committed repository, never a developer's
+    untracked scratch files. Outside a git checkout (tests) it returns None and
+    the caller falls back to the filesystem.
+    """
+
+    if not (repo_root / ".git").exists():
+        return None
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "--", "src/research", "scripts"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+
+
 def inspect_dead_modules(repo_root: Path) -> dict[str, Any]:
     """Advisory: maintained modules that no live caller references.
 
@@ -350,16 +379,20 @@ def inspect_dead_modules(repo_root: Path) -> dict[str, Any]:
     it never fails the build and never deletes anything.
     """
 
-    candidates = sorted(
-        {
-            path.stem
-            for path in (
-                *sorted((repo_root / "src" / "research").glob("*.py")),
-                *sorted((repo_root / "scripts").rglob("*.py")),
-            )
-            if path.name != "__init__.py"
-        }
-    )
+    tracked = _tracked_paths(repo_root)
+    candidate_paths = [
+        path
+        for path in (
+            *sorted((repo_root / "src" / "research").glob("*.py")),
+            *sorted((repo_root / "scripts").rglob("*.py")),
+        )
+        if path.name != "__init__.py"
+        and (
+            tracked is None
+            or path.relative_to(repo_root).as_posix() in tracked
+        )
+    ]
+    candidates = sorted({path.stem for path in candidate_paths})
     if not candidates:
         return {"module_count": 0, "unreferenced_count": 0, "unreferenced": []}
     pattern = re.compile(r"\b(?:" + "|".join(re.escape(stem) for stem in candidates) + r")\b")
