@@ -180,6 +180,14 @@ Actions taken this session (all `research_only=true`, `trade_ready=false`):
    canonical modules into strict mypy`. Verification: `mypy` 28 source files
    pass; `ruff` clean; 68 targeted tests pass; `check_ci_governance --enforce`
    0 violations.
+4. **Security-update PRs** — after the first merges, Dependabot opened four
+   security updates; three were merged: `#1126` sqlparse `0.5.5→0.6.0`, `#1127`
+   tornado `6.5.4→6.5.8`, `#1129` pyjwt `2.11.0→2.13.0` (all lockfile-only,
+   green CI). `#1128` mlflow `1.27.0→3.16.0` was **deliberately held** (see §9)
+   with an explanatory comment on the PR. Post-merge verification: `uv lock
+   --check` exits 0; `import mlflow/tornado/jwt/sqlparse` resolve to the locked
+   versions (mlflow stays 1.27.0); `from qlib.workflow import R` imports;
+   `tests/test_architecture_contract.py` 6 passed.
 
 Corrected/stale facts in this report:
 
@@ -228,14 +236,23 @@ Python-only. Root cause: `pyqlib 0.9.7` transitively pins an obsolete stack.
 | setuptools (`==69.5.1`) | 6 | high | direct pin | yes (78.1.1+) |
 | python-multipart, sqlparse, pyjwt, starlette, protobuf, bleach, urllib3, Mako, pydantic-settings, lxml, idna, python-dotenv, mcp | remainder | high/medium | mixed (`mcp`, direct pins, transitive) | mostly yes |
 
+Counts above are the pre-merge snapshot. The `sqlparse`, `tornado` and `pyjwt`
+security bumps were merged (see §8.4); GitHub's dependent rescans had not yet
+refreshed the alert list at record time, so those packages may still appear
+until the next scan.
+
 Verified non-destructively this session: `uv lock --upgrade-package mlflow`
 resolves `mlflow 3.16.1` under `pyqlib 0.9.7` (no hard `==1.27.0` pin), the
 lock passes `uv lock --check`, and `import mlflow` succeeds. That single change
-would remove **73 of 183 alerts including 22 critical**. It was **reverted**
-because it is a ~1085-line lock change that changes qlib's MLflow recorder
-surface and therefore requires dedicated qlib compatibility testing and owner
-sign-off, per this workstream's "deliberate upgrades" rule. No project module
-imports `mlflow` directly.
+would remove **73 of 183 alerts including 22 critical**. It was **reverted and
+its Dependabot PR `#1128` held** because it is a ~1085-line lock change that
+changes qlib's MLflow recorder surface and therefore requires dedicated qlib
+compatibility testing and owner sign-off, per this workstream's "deliberate
+upgrades" rule. This is not hypothetical: the project uses qlib's MLflow-backed
+recorder in `src/common/qlib_init.py` (`qlib.workflow.expm`, sqlite MLflow
+backend), `src/research/backtest.py` (`from qlib.workflow import R`) and
+`src/api/mcp_server.py`, against an API surface `pyqlib 0.9.7` was built for at
+mlflow 1.x. No project module imports `mlflow` directly.
 
 Recommended next unit: land the `mlflow` override in an isolated PR with a qlib
 recorder smoke test, then proceed package-by-package (`mistune`, `pillow`,
