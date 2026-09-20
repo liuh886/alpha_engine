@@ -53,18 +53,23 @@ scratch-script removal (`28942fe9`).
 | ID | Workstream | Authority | Current state | Gap to target | Acceptance (definition of done) | Prerequisite | Risk |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | G1 | Daily operation closure | #1074 §1, #1113 | code guard landed; refresh blocked at `EA/2026-09-11` | committed 2026-09-11 US x1.3 target is inconsistent with the corrected provider | a governed regeneration of that current target on the corrected provider, ledger re-sealed, then the next eligible session's formal refresh completes with no unexplained blocker | provider environment + governed regen run | medium |
-| G2 | US87/CN130 PIT event + fundamental closure | #1074 §3, #324 | readiness: prices/actions ready; `fundamentals.cn/us` **partial** | complete per-symbol PIT coverage and readiness manifests | `fundamentals.*` components ready; `us_small_pool_price_plus_fundamentals_v1` unblocked; 0 blocked components | provider data | high |
-| G3 | Canonical Alpha158 panel | #1074 §3, #325 | `factors.qlib_alpha158.panel.cn.v1` partial; `us_selected_alpha158_v1` **blocked** | materialize exact US87 Alpha158 panel with governed VWAP semantics | `us_selected_alpha158_v1` training profile ready | provider data + factor materialization | high |
+| G2 | US87/CN130 PIT event + fundamental closure | #1074 §3, #324 | readiness (`data/research/model_data_bundle_v1/model-data-readiness.json`, built 2026-09-18): prices/actions ready; `fundamentals.cn` **partial** 129/130 ( `301666` provider_missing); `fundamentals.us` **partial** 86/87 (`SBGSY` identity_missing); `us_selected_price_plus_fundamentals_v1` ready, `us_small_pool_price_plus_fundamentals_v1` blocked | close the two per-symbol PIT gaps and lift the blocked profile | `fundamentals.*` components ready; `us_small_pool_price_plus_fundamentals_v1` unblocked; 0 blocked components | provider data (`301666` CN report source; `SBGSY` US identity) | high |
+| G3 | Canonical Alpha158 panel | #1074 §3, #325 | `factors.qlib_alpha158.panel.cn.v1` **partial** 129/130 (`301666` not_yet_applicable); `us_selected_alpha158_v1` **blocked** | materialize exact US87 Alpha158 panel with governed VWAP semantics | `us_selected_alpha158_v1` training profile ready | provider data + factor materialization; shares the `301666` gap with G2 | high |
 | G4 | Canonical training plane | #1074 §4, #826 | not started | one reproducible trainer reproduces US x1.2 `r11_sampled` from immutable inputs | deterministic trained artifact + score trace; incumbent economic replay blocks candidate ranking | G2, G3 | high |
 | G5 | Obsolete-path removal / convergence | #1074 §2, #858 | 85 unreferenced modules, 45 workflows (36 tier-3), 63 active paradigms | delete/archive superseded paths per family; converge CI | `dead_modules` advisory converges to zero for non-authority code; workflow count reduced with canonical replacement, not wrappers | owner approval per family | medium |
-| G6 | Static-check ratchet | #1074 §5 | 11-file strict mypy; ruff `E,F` only | ratchet remaining canonical runtime/research modules; add ruff rules | CI-enforced typed scope covers the canonical runtime and research modules | per-module typing fixes (e.g. `cn_x1_2_current_target` protocol debt) | low |
-| G7 | Dependency / security hygiene | #1074 §5 | Dependabot alerts + automated fixes enabled; old pins remain (`numpy<2`, `protobuf<4`, `sqlalchemy<2`, `setuptools==69.5.1`, `pyqlib 0.9.7`) | deliberate upgrades with qlib compatibility; remove obsolete chains | no known vulnerable maintained dependency; `npm run audit:dependencies` wired into CI | compatibility testing | medium |
+| G6 | Static-check ratchet | #1074 §5 | strict mypy scope now **25 entries (24 files + `src/release/`)** in `pyproject.toml` + `ci.yml` after the 2026-09-20 session; ruff `E,F` only | ratchet remaining canonical runtime/research modules; add ruff rules | CI-enforced typed scope covers the canonical runtime and research modules | per-module typing fixes; **next**: `cn_x1_2_current_target` protocol debt (`CrossSectionalExperimentSpec` vs `RankerExperimentContract` settable members, 2 errors) | low |
+| G7 | Dependency / security hygiene | #1074 §5 | `npm run audit:dependencies` **already wired (blocking) at `frontend-static-pwa.yml:67-69`** (from #1087); `npm audit` = 0 vulnerabilities (2026-09-20); 4 transitive lockfile bumps merged 2026-09-20 (`gitpython`, `anyio`, `cryptography`, `soupsieve`); old direct pins remain (`numpy<2`, `protobuf<4`, `sqlalchemy<2`, `setuptools==69.5.1`, `pyqlib 0.9.7`) | deliberate upgrades of the qlib-pinned direct dependencies with compatibility evidence | no known vulnerable maintained dependency; CI dependency audit remains blocking and green | compatibility testing for the remaining qlib-pinned direct dependencies | medium |
 | G8 | Weekly full-suite safety net | #1074 §5, #1118 | auto-close on recovery landed; PR CI still runs a curated subset | decide the full-suite cadence for `main` | a full-suite regression is caught within one integration cycle | cost/cadence decision | low |
 
 Nothing in G1–G4 can be closed by unit tests alone; each requires a persisted,
 operator-visible artifact produced by a governed run.
 
-## 5. Backlog detail — 85 unreferenced modules
+## 5. Backlog detail — 84 unreferenced modules (2026-09-20 advisory)
+
+The 2026-09-19 advisory reported 85; the 2026-09-20 re-run reports **84 of 527**
+because `src/research/factor_identity.py` gained a live caller in
+`src/release/quality.py`. The family enumeration below is the 2026-09-19
+snapshot and is retained for continuity; treat the advisory count as current.
 
 Derived mechanically by `scripts/check_ci_governance.py` (`dead_modules`
 advisory, tracked files only; docs and sealed evidence never confer life).
@@ -145,7 +150,7 @@ capability is itself governed memory.
    provider and re-seal the ledger (unblocks the operating loop).
 2. **G2, G3** — PIT fundamentals and the US87 Alpha158 panel (unblock G4).
 3. **G4** — canonical training plane vertical slice (US x1.2).
-4. **G5** — per-family archival/deletion of the 85-module backlog; workflow
+4. **G5** — per-family archival/deletion of the 84-module backlog; workflow
    convergence.
 5. **G6, G7, G8** — static-check ratchet, dependency hygiene, full-suite cadence.
 
@@ -156,3 +161,53 @@ capability is itself governed memory.
 - A blocked or partial upstream component fails closed; it is never patched
   with validation-only providers or synthetic fields.
 - Deletions preserve git history; no committed evidence is rewritten.
+
+## 8. Session log — 2026-09-20 sync and triage
+
+Actions taken this session (all `research_only=true`, `trade_ready=false`):
+
+1. **Repository sync** — `main` fast-forwarded to `origin/main`; working tree
+   clean; no divergence.
+2. **Dependency PRs merged** — `#1121` gitpython `3.1.46→3.1.59`, `#1122` anyio
+   `4.12.1→4.14.2`, `#1123` cryptography `46.0.5→50.0.0`, `#1124` soupsieve
+   `2.8.3→2.9`. All four were lockfile-only transitive bumps with green CI;
+   `uv lock --check` exits 0 on the merged tree. This advances **G7**.
+3. **Strict-mypy ratchet (G6)** — five canonical modules made type-clean and
+   added to the strict scope in `pyproject.toml` and `.github/workflows/ci.yml`:
+   `src.research.ranker_current_target`, `src.research.drift_monitor`,
+   `src.research.stage_journal`, `src.governance.research_mandate`,
+   `src.artifacts.strategy_operations`. Commit `chore(typing): ratchet five more
+   canonical modules into strict mypy`. Verification: `mypy` 28 source files
+   pass; `ruff` clean; 68 targeted tests pass; `check_ci_governance --enforce`
+   0 violations.
+
+Corrected/stale facts in this report:
+
+- G7's "`npm run audit:dependencies` wired into CI" was **already satisfied**
+  by #1087 (`frontend-static-pwa.yml:67-69`, blocking step); `npm audit` is
+  currently 0 vulnerabilities. The remaining G7 work is the qlib-pinned direct
+  dependencies, not the audit wiring.
+- `dead_modules` advisory is now **84 of 527** (was 85); `factor_identity`
+  converged.
+
+Remaining and explicitly deferred (unchanged authority):
+
+- **G1** — blocked at the operational layer: the committed `2026-09-11` US x1.3
+  current target still contains terminal listing `EA`, so the formal refresh
+  correctly fails closed. Unblocking requires a **governed regeneration** of
+  that current target on the corrected provider and re-sealing the ledger. This
+  is a data/evidence publication action and was **not** performed in this
+  session; it needs the provider environment and owner-governed execution.
+- **G2** — close per-symbol PIT gaps: `301666` (CN, provider_missing) and
+  `SBGSY` (US, identity_missing).
+- **G3** — materialize the US87 Alpha158 panel (shares the `301666` blocker).
+- **G4** — canonical training plane; gated on G2/G3.
+- **G5** — per-family archival/deletion of the 84-module backlog; each family
+  still requires owner approval before deletion.
+- **G6 (next unit)** — `cn_x1_2_current_target` protocol debt: 2 remaining
+  strict-mypy errors from `CrossSectionalExperimentSpec` vs
+  `RankerExperimentContract` (settable protocol members).
+- **G8** — full-suite cadence for `main` remains an owner decision; weekly cron
+  and auto-close are in place, PR CI still runs a curated subset.
+
+No committed evidence, registry, or model artifact was modified by this session.
