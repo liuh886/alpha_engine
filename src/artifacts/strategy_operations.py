@@ -233,6 +233,12 @@ def _finite(value: object) -> float | None:
     return None
 
 
+def _mapping(value: object) -> Mapping[str, Any]:
+    if isinstance(value, Mapping):
+        return value
+    return {}
+
+
 def _weights(value: object) -> dict[str, float]:
     if not isinstance(value, Mapping):
         return {}
@@ -261,7 +267,7 @@ def _allocations(current: object, target: object) -> list[dict[str, object]]:
 
 
 def _has_change(allocations: Sequence[Mapping[str, object]]) -> bool:
-    return any(abs(float(row["delta"])) > 1e-9 for row in allocations)
+    return any(abs(_finite(row["delta"]) or 0.0) > 1e-9 for row in allocations)
 
 
 def _formal_records(
@@ -324,12 +330,10 @@ def _source(record: Mapping[str, Any], ledger: Mapping[str, Any] | None) -> dict
     }
     if ledger is None:
         return result
-    delivery = ledger.get("delivery") if isinstance(ledger.get("delivery"), Mapping) else {}
-    workflow = ledger.get("workflow") if isinstance(ledger.get("workflow"), Mapping) else {}
-    signal = ledger.get("signal") if isinstance(ledger.get("signal"), Mapping) else {}
-    factor_evidence = (
-        signal.get("factor_evidence") if isinstance(signal.get("factor_evidence"), Mapping) else {}
-    )
+    delivery = _mapping(ledger.get("delivery"))
+    workflow = _mapping(ledger.get("workflow"))
+    signal = _mapping(ledger.get("signal"))
+    factor_evidence = _mapping(signal.get("factor_evidence"))
     result.update(
         {
             "ledger_fingerprint": ledger.get("fingerprint"),
@@ -612,9 +616,7 @@ def _ranker(
     latest = signal.get("latest_data_date") or ledger.get("latest_data_date")
     factor_freshness, factors, factor_error = _factor_snapshot(signal, latest_data_date=latest)
     family = strategy.model_family_id
-    diagnostics = (
-        signal.get("diagnostics") if isinstance(signal.get("diagnostics"), Mapping) else {}
-    )
+    diagnostics = _mapping(signal.get("diagnostics"))
     if family == US_RANKER_FAMILY:
         state_label = "US Top-15 rebalance"
     elif diagnostics.get("risk_on") is False:

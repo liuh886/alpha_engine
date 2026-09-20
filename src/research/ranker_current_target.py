@@ -117,7 +117,7 @@ def next_due_session(
     due_index = int(matches[0]) + int(cadence)
     if due_index >= len(dates):
         return None
-    return pd.Timestamp(dates[due_index]).strftime("%Y-%m-%d")
+    return str(pd.Timestamp(dates[due_index]).strftime("%Y-%m-%d"))
 
 
 def merge_governed_market_sessions(

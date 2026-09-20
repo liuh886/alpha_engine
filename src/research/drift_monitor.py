@@ -566,11 +566,11 @@ class ModelDriftMonitor:
                     baseline=1.0,
                     details={"mode": "single_asset_time_series", "n_obs": int(len(aligned))},
                 )
-            slope = self._ols_slope(
+            estimated = self._ols_slope(
                 aligned["prediction"].to_numpy(dtype=float),
                 aligned["return"].to_numpy(dtype=float),
             )
-            if slope is None:
+            if estimated is None:
                 return self._inconclusive_check(
                     "calibration",
                     self.calibration_slope_threshold,
@@ -578,9 +578,10 @@ class ModelDriftMonitor:
                     "Prediction variance is zero; calibration slope is undefined.",
                     baseline=1.0,
                 )
+            slope = float(estimated)
             details = {
                 "mode": "single_asset_time_series",
-                "slope": round(float(slope), 6),
+                "slope": round(slope, 6),
                 "n_obs": int(len(aligned)),
                 "expected_slope": 1.0,
             }
@@ -723,7 +724,7 @@ class ModelDriftMonitor:
             return None
         for candidate in ("datetime", "date"):
             if candidate in index.names:
-                return index.names.index(candidate)
+                return int(index.names.index(candidate))
         for level in range(index.nlevels):
             values = index.get_level_values(level)
             if isinstance(values, pd.DatetimeIndex):

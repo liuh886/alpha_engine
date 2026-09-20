@@ -156,6 +156,11 @@ jobs:
           src/artifacts/formal_bundle_reader.py
           src/governance/strategy_runtime_capabilities.py
           src/research/factor_identity.py
+          src/research/ranker_current_target.py
+          src/research/drift_monitor.py
+          src/research/stage_journal.py
+          src/governance/research_mandate.py
+          src/artifacts/strategy_operations.py
 
       - name: Core release-contract tests
         if: github.event_name == 'pull_request'

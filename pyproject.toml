@@ -125,6 +125,11 @@ module = [
     "src.artifacts.formal_bundle_reader",
     "src.governance.strategy_runtime_capabilities",
     "src.research.factor_identity",
+    "src.research.ranker_current_target",
+    "src.research.drift_monitor",
+    "src.research.stage_journal",
+    "src.governance.research_mandate",
+    "src.artifacts.strategy_operations",
 ]
 ignore_errors = false
 disallow_untyped_defs = true
