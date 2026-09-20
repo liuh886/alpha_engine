@@ -24,21 +24,36 @@ TEN_SESSION_RETURN_EXPRESSION = "Ref($close, -10) / $close - 1"
 
 
 class RankerCandidateContract(Protocol):
-    candidate_id: str
-    factor_groups: tuple[str, ...]
+    @property
+    def candidate_id(self) -> str: ...
+
+    @property
+    def factor_groups(self) -> tuple[str, ...]: ...
 
 
 class RankerParentContract(Protocol):
-    universe: dict[str, Any]
+    @property
+    def universe(self) -> dict[str, Any]: ...
 
 
 class RankerExperimentContract(Protocol):
-    market: str
-    benchmark: str
-    factor_library_path: Path
-    candidates: tuple[RankerCandidateContract, ...]
-    parent: RankerParentContract
-    raw: dict[str, Any]
+    @property
+    def market(self) -> str: ...
+
+    @property
+    def benchmark(self) -> str: ...
+
+    @property
+    def factor_library_path(self) -> Path: ...
+
+    @property
+    def candidates(self) -> tuple[RankerCandidateContract, ...]: ...
+
+    @property
+    def parent(self) -> RankerParentContract: ...
+
+    @property
+    def raw(self) -> dict[str, Any]: ...
 
 
 def runtime_for_market(market: str) -> ExecutionRuntime:

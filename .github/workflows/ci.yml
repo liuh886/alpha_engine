@@ -86,6 +86,7 @@ jobs:
           src/research/byd_v1_3_candidate.py
           src/research/ranker_current_target.py
           src/research/us_x1_3_current_target.py
+          src/research/cn_x1_2_current_target.py
           src/research/optimization_campaign.py
           src/research/drift_monitor.py
           src/governance/strategy_runtime_capabilities.py
