@@ -101,3 +101,16 @@ this recovery does not promote their readiness or tune models on new outcomes.
 
 Remote CI, publication and Pages acceptance results are recorded below after
 execution; a successful local preview alone does not establish deployment.
+
+### Local acceptance
+
+- 72 targeted ledger, delivery, cadence, operations and forward-projection tests passed.
+- Two independent frozen-recipe scoring runs produced identical corrected signals.
+- Original decision and delivery files verified byte-for-byte against Git.
+- Production provider archive digest verified before replay.
+- Real US preview built through 2026-09-21, including retrospective provenance.
+- Ruff, strict typing, CI policy and CI governance passed (45 workflows).
+
+The corrective scorer implementation is commit
+`54f1d43f246932a74b831ae04e3c08f86c2fb9e7`; the following evidence commit
+records its actual run metadata.
