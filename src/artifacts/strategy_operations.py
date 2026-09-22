@@ -623,10 +623,13 @@ def _ranker(
         state_label = "CN risk-off · CSI300 fallback"
     else:
         state_label = "CN risk-on · sector 4×1"
+    retrospective = diagnostics.get("retrospective_correction") is True
+    if retrospective:
+        state_label = "Retrospective corrected target"
     cadence, next_policy = _cadence(strategy)
     return {
         **_identity(strategy, record),
-        "status": _status(
+        "status": "awaiting_observation" if retrospective else _status(
             delivery_status=delivery_status,
             data_fresh=data_fresh,
             factor_freshness=factor_freshness,
@@ -650,7 +653,8 @@ def _ranker(
             if issue_number
             else None
         ),
-        "note": factor_error
+        "note": "Retrospective source correction; not a new executable signal. Await the next scheduled evaluation."
+        if retrospective else factor_error
         or (
             "Target is published for the next eligible open."
             if changed
@@ -764,7 +768,7 @@ def build_operations_payload(
             blocked = _unavailable(
                 formal,
                 strategy,
-                awaiting=family in SUPPORTED_SIGNAL_FAMILIES,
+                awaiting=(family in SUPPORTED_SIGNAL_FAMILIES or capability.status == "available"),
                 capability=capability,
             )
             blocked["status"] = "blocked"
@@ -777,7 +781,7 @@ def build_operations_payload(
                 _unavailable(
                     formal,
                     strategy,
-                    awaiting=family in SUPPORTED_SIGNAL_FAMILIES,
+                    awaiting=(family in SUPPORTED_SIGNAL_FAMILIES or capability.status == "available"),
                     capability=capability,
                 )
             )

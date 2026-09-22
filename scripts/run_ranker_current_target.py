@@ -7,12 +7,15 @@ import argparse
 import hashlib
 import importlib.metadata
 import json
+import tempfile
 from pathlib import Path
 from typing import Any
 
 import exchange_calendars as xcals
 import pandas as pd
 
+from src.artifacts.strategy_signal_ledger import correct_latest_decision
+from src.data.listing_lifecycle import ineligible_symbols
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.governance.strategy_runtime_capabilities import load_active_strategy_runtime_capabilities
 from src.research.cn_x1_2_current_target import score_cn_x1_2_current_target
@@ -316,6 +319,56 @@ def _build(args: argparse.Namespace) -> int:
     return 0
 
 
+def _correct_lifecycle(args: argparse.Namespace) -> int:
+    manifest, portfolio, strategy, adapter = resolve_formal_bundle(
+        args.formal_root, market=args.market
+    )
+    ledger = Path(strategy.signal_ledger)
+    latest = _read(ledger / "latest.json")
+    date = str(latest["signal_date"])
+    original = ledger / "records" / f"{date}.json"
+    if _sha256(original) != args.expected_record_sha256:
+        raise RankerCurrentTargetCommandError("original decision digest mismatch")
+    old = _read(original)["signal"]
+    excluded = ineligible_symbols(
+        ROOT, market=args.market, as_of=date, symbols=list(old["target_weights"])
+    )
+    if not excluded:
+        raise RankerCurrentTargetCommandError("original target has no lifecycle violation")
+    # Reproduce the state available immediately BEFORE the original decision.
+    # Never feed the invalid target back as its own previous portfolio.
+    with tempfile.TemporaryDirectory(prefix="ranker-correction-") as temp:
+        prior = Path(temp) / strategy.model_version_id
+        prior.mkdir()
+        records = [_read(p) for p in (ledger / "records").glob("*.json")]
+        earlier = [r for r in records if r["signal_date"] < date]
+        if earlier:
+            previous = max(earlier, key=lambda r: r["signal_date"])
+            _write(prior / "latest.json", previous)
+        signal = ADAPTERS[adapter](
+            provider_dir=args.provider_dir, formal_manifest=manifest,
+            formal_portfolio=portfolio, ledger_dir=prior, signal_date=date,
+            market_cutoff=date, repository_root=ROOT,
+        )
+    if ineligible_symbols(ROOT, market=args.market, as_of=date,
+                          symbols=list(signal["target_weights"])):
+        raise RankerCurrentTargetCommandError("regenerated target still violates lifecycle")
+    if signal["current_weights"] != old["current_weights"]:
+        raise RankerCurrentTargetCommandError("correction changed the previous portfolio")
+    signal["should_alert"] = False
+    signal["diagnostics"]["retrospective_correction"] = True
+    signal["diagnostics"]["supersedes_record_sha256"] = args.expected_record_sha256
+    path = correct_latest_decision(
+        ledger_root=ledger, model_version_id=strategy.model_version_id, signal=signal,
+        expected_record_sha256=args.expected_record_sha256, reason=args.reason,
+        workflow_run_id=args.workflow_run_id, commit_sha=args.commit_sha,
+        created_at_utc=args.created_at,
+    )
+    _write(args.output, signal)
+    print(json.dumps({"correction": str(path), "excluded": sorted(excluded)}))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -343,6 +396,18 @@ def main() -> int:
     build.add_argument("--market-cutoff", required=True)
     build.add_argument("--output", type=Path, required=True)
     build.set_defaults(func=_build)
+
+    correction = subparsers.add_parser("correct-lifecycle")
+    correction.add_argument("--market", choices=("us", "cn"), required=True)
+    correction.add_argument("--formal-root", type=Path, default=Path("data/research/formal_model_runs"))
+    correction.add_argument("--provider-dir", type=Path, required=True)
+    correction.add_argument("--expected-record-sha256", required=True)
+    correction.add_argument("--reason", required=True)
+    correction.add_argument("--workflow-run-id", required=True)
+    correction.add_argument("--commit-sha", required=True)
+    correction.add_argument("--created-at", required=True)
+    correction.add_argument("--output", type=Path, required=True)
+    correction.set_defaults(func=_correct_lifecycle)
 
     args = parser.parse_args()
     return int(args.func(args))

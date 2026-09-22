@@ -286,3 +286,61 @@ def test_failed_delivery_can_retry_but_terminal_delivery_cannot_drift(
             issue_number=100,
             message_id=201,
         )
+
+
+def test_correction_preserves_original_delivery_and_is_idempotent(tmp_path: Path) -> None:
+    import hashlib
+    from src.artifacts.strategy_signal_ledger import correct_latest_decision
+
+    ledger = tmp_path / MODEL
+    original_signal = _signal()
+    original_path = _seal(ledger, original_signal)
+    original_bytes = original_path.read_bytes()
+    append_signal_evaluation(
+        ledger_root=ledger, model_version_id=MODEL, signal=original_signal,
+        delivery_status="sent", workflow_run_id="delivery-original",
+        commit_sha="a" * 40, created_at_utc="2026-08-13T01:00:00Z",
+        telegram_message_id=123,
+    )
+    receipt_bytes = {p: p.read_bytes() for p in ledger.glob("deliveries/**/*.json")}
+    corrected = _signal(fingerprint="corrected", target_state=0)
+    args = dict(
+        ledger_root=ledger, model_version_id=MODEL, signal=corrected,
+        expected_record_sha256=hashlib.sha256(original_bytes).hexdigest(),
+        reason="source lifecycle correction", workflow_run_id="recovery",
+        commit_sha="b" * 40, created_at_utc="2026-08-14T00:00:00Z",
+    )
+    path = correct_latest_decision(**args)
+    assert correct_latest_decision(**args) == path
+    assert original_path.read_bytes() == original_bytes
+    assert all(p.read_bytes() == content for p, content in receipt_bytes.items())
+    record = read_latest_evaluation(ledger, model_version_id=MODEL)
+    assert record["signal"] == corrected
+    assert record["delivery"]["status"] == "pending"
+    # A repeat seal resolves the correction, never revives the invalid original.
+    assert _seal(ledger, corrected) == path
+    with pytest.raises(StrategySignalLedgerError, match="different decision"):
+        _seal(ledger, original_signal)
+    original_path.write_bytes(original_bytes + b" ")
+    with pytest.raises(StrategySignalLedgerError, match="digest mismatch"):
+        read_latest_evaluation(ledger, model_version_id=MODEL)
+
+
+def test_correction_requires_exact_identity_and_cannot_alert(tmp_path: Path) -> None:
+    import hashlib
+    from src.artifacts.strategy_signal_ledger import correct_latest_decision
+
+    ledger = tmp_path / MODEL
+    original = _seal(ledger, _signal())
+    args = dict(
+        ledger_root=ledger, model_version_id=MODEL,
+        expected_record_sha256=hashlib.sha256(original.read_bytes()).hexdigest(),
+        reason="source correction", workflow_run_id="recovery",
+        commit_sha="b" * 40, created_at_utc="2026-08-14T00:00:00Z",
+    )
+    with pytest.raises(StrategySignalLedgerError, match="must not send an alert"):
+        correct_latest_decision(**args, signal=_signal(fingerprint="changed"))
+    args["expected_record_sha256"] = "0" * 64
+    with pytest.raises(StrategySignalLedgerError, match="exact latest record"):
+        correct_latest_decision(**args, signal=_signal(target_state=0))
+    assert not (ledger / "corrections").exists()

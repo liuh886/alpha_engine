@@ -199,7 +199,82 @@ def _record_paths_for_date(
             model_version_id=model_version_id,
         )
         matches.append(path)
+    correction = ledger_root / "corrections" / f"{signal_date}.json"
+    if correction.is_file():
+        _validate_correction(ledger_root, correction, model_version_id=model_version_id)
+        return [correction]
     return matches
+
+
+def _validate_correction(
+    ledger_root: Path, path: Path, *, model_version_id: str
+) -> dict[str, Any]:
+    record = _validate_decision_record(
+        _json_object(path), path=path, model_version_id=model_version_id
+    )
+    correction = record.get("correction")
+    if not isinstance(correction, dict) or not correction.get("reason"):
+        raise StrategySignalLedgerError("correction provenance is missing")
+    original = ledger_root / "records" / f"{record['signal_date']}.json"
+    original_record = _validate_decision_record(
+        _json_object(original), path=original, model_version_id=model_version_id
+    )
+    if hashlib.sha256(original.read_bytes()).hexdigest() != correction.get("supersedes_sha256"):
+        raise StrategySignalLedgerError("correction original digest mismatch")
+    if original_record["signal_date"] != record["signal_date"]:
+        raise StrategySignalLedgerError("correction changed signal date")
+    return record
+
+
+def correct_latest_decision(
+    *, ledger_root: Path, model_version_id: str, signal: Mapping[str, Any],
+    expected_record_sha256: str, reason: str, workflow_run_id: str,
+    commit_sha: str, created_at_utc: str,
+) -> Path:
+    """Append one explicit correction; preserve the original decision and receipts.
+
+    Corrections are retrospective research, never a newly actionable alert.
+    Normal sealing cannot revise a decision. The caller must name its exact bytes.
+    """
+    latest = _raw_latest_decision(ledger_root, model_version_id=model_version_id)
+    if latest is None:
+        raise StrategySignalLedgerError("no decision to correct")
+    date, cutoff, fingerprint, normalized, digest = _normalize_signal(signal)
+    if date != latest["signal_date"] or cutoff != date:
+        raise StrategySignalLedgerError("correction must retain latest decision cutoff")
+    if normalized.get("should_alert") is not False:
+        raise StrategySignalLedgerError("retrospective correction must not send an alert")
+    path = ledger_root / "corrections" / f"{date}.json"
+    provenance = {
+        "supersedes_sha256": expected_record_sha256,
+        "reason": _required_string(reason, label="correction reason"),
+        "retrospective": True,
+    }
+    if path.is_file():
+        existing = _validate_correction(ledger_root, path, model_version_id=model_version_id)
+        if existing["signal_sha256"] == digest and existing["correction"] == provenance:
+            return path
+        raise StrategySignalLedgerError("correction already exists with different content")
+    original = ledger_root / "records" / f"{date}.json"
+    if (hashlib.sha256(original.read_bytes()).hexdigest() != expected_record_sha256
+            or _json_object(original) != latest):
+        raise StrategySignalLedgerError("correction does not match the exact latest record")
+    record = {
+        "schema_version": SCHEMA_VERSION, "model_version_id": model_version_id,
+        "signal_date": date, "latest_data_date": cutoff, "fingerprint": fingerprint,
+        "signal_sha256": digest, "signal": normalized, "correction": provenance,
+        "workflow": {
+            "run_id": _required_string(workflow_run_id, label="workflow_run_id"),
+            "commit_sha": _required_string(commit_sha, label="commit_sha"),
+        },
+        "created_at_utc": _required_string(created_at_utc, label="created_at_utc"),
+        "research_only": True, "trade_ready": False,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(canonical_json_bytes(record))
+    (ledger_root / "latest.json").write_bytes(canonical_json_bytes(record))
+    _write_manifest(ledger_root, model_version_id=model_version_id, latest=record)
+    return path
 
 
 def _raw_latest_decision(
@@ -210,11 +285,14 @@ def _raw_latest_decision(
     path = ledger_root / "latest.json"
     if not path.is_file():
         return None
-    return _validate_decision_record(
-        _json_object(path),
-        path=path,
-        model_version_id=model_version_id,
+    record = _validate_decision_record(
+        _json_object(path), path=path, model_version_id=model_version_id,
     )
+    if "correction" in record:
+        correction_path = ledger_root / "corrections" / f"{record['signal_date']}.json"
+        if record != _validate_correction(ledger_root, correction_path, model_version_id=model_version_id):
+            raise StrategySignalLedgerError("latest correction differs from sealed record")
+    return record
 
 
 def _decision_record_bytes(payload: Mapping[str, Any]) -> bytes:
@@ -240,6 +318,7 @@ def _write_manifest(
         "latest_fingerprint": latest["fingerprint"],
         "latest_record_sha256": record_sha256,
         "record_count": len(list(records.glob("*.json"))),
+        "correction_count": len(list((ledger_root / "corrections").glob("*.json"))),
         "append_only_records": True,
         "research_only": True,
         "trade_ready": False,
@@ -380,6 +459,13 @@ def _delivery_receipts(
             raise StrategySignalLedgerError(f"delivery model identity mismatch: {path}")
         if payload.get("signal_date") != signal_date:
             raise StrategySignalLedgerError(f"delivery signal date mismatch: {path}")
+        if "correction" in decision:
+            original_path = ledger_root / "records" / f"{signal_date}.json"
+            original = _json_object(original_path)
+            if (payload.get("fingerprint") == original.get("fingerprint")
+                    and payload.get("signal_sha256") == original.get("signal_sha256")):
+                # Retained original delivery is not proof of delivery of the correction.
+                continue
         if payload.get("fingerprint") != decision.get("fingerprint"):
             raise StrategySignalLedgerError(f"delivery fingerprint mismatch: {path}")
         if payload.get("signal_sha256") != decision.get("signal_sha256"):
