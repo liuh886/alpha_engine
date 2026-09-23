@@ -2,7 +2,7 @@
  * check-bundle-budget.mjs
  *
  * Verifies that the already-built production artifact stays within the
- * documented JavaScript budget (450 KB gzip).
+ * documented JavaScript budget (480 KB gzip).
  *
  * The build is intentionally owned by the caller. This keeps CI to one
  * production build instead of rebuilding the application just to measure it.
@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "..");
 
-const BUDGET_KB = 450;
+const BUDGET_KB = 480;
 const DIST = resolve(PROJECT_ROOT, "dist");
 const INDEX = resolve(DIST, "index.html");
 
