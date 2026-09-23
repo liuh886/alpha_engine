@@ -1,12 +1,9 @@
 name: CN27 Current Target
 
 on:
-  # No schedule: the publisher is dormant until a governed prospective source
-  # exists. A daily cron would only retain expiring data_blocked receipts.
-  # NOTE 2026-09-11: a monthly schedule is desired now that prospective
-  # evidence exists, but CI policy caps permanent entrypoints at 45 and the
-  # count is already at budget — re-add the schedule only together with
-  # retiring or consolidating an existing workflow.
+  workflow_run:
+    workflows: [Reviewed Formal Backtest Refresh]
+    types: [completed]
   workflow_dispatch:
   push:
     branches: [main]
@@ -28,6 +25,10 @@ concurrency:
 
 jobs:
   evaluate:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -83,13 +84,14 @@ jobs:
             --output "$due_file"; then
             failures+=("due")
             echo "::error::cn_27 due resolution failed"
+          elif ! uv run python -c "import json,sys; sys.exit(0 if json.load(open('$due_file'))['due'] else 1)"; then
+            echo "cn_27: no decision due"
           else
-            # Dormant proof: build exits 0 with a data_blocked receipt until a
-            # governed prospective source exists; seal only real signals.
+            signal_date="$(uv run python -c "import json; print(json.load(open('$due_file'))['signal_date'])")"
             if ! uv run python scripts/run_cn_27_current_target.py build \
               --formal-root data/research/formal_model_runs \
-              --signal-date "$as_of" \
-              --market-cutoff "$as_of" \
+              --signal-date "$signal_date" \
+              --market-cutoff "$signal_date" \
               --output "$signal"; then
               failures+=("build")
               echo "::error::cn_27 current-target build failed"
@@ -111,7 +113,7 @@ jobs:
                 if git diff --cached --quiet; then
                   echo "cn_27: canonical decision already sealed"
                 else
-                  git commit -m "ops: seal ${model} decision ${as_of}"
+                  git commit -m "ops: seal ${model} decision ${signal_date}"
                   if ! git pull --rebase origin main || ! git push origin HEAD:main; then
                     failures+=("publish")
                     echo "::error::cn_27 canonical decision publication failed"

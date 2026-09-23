@@ -310,6 +310,8 @@ def attach_ranker_provisional_mtm(
     diagnostics = signal.get("diagnostics")
     if isinstance(diagnostics, Mapping):
         for key in (
+            "retrospective_correction",
+            "supersedes_record_sha256",
             "risk_on",
             "votes",
             "long_trend",

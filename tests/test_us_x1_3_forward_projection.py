@@ -192,3 +192,23 @@ def test_preview_rejects_state_that_differs_from_sealed_ledger(
         match="preview target differs from sealed ledger target",
     ):
         preview.project_forward_state(_plan(), Path("/repo"))
+
+
+def test_correction_is_labelled_without_changing_settled_history(monkeypatch) -> None:
+    monkeypatch.setattr(preview, "read_latest_evaluation", lambda *_a, **_kw: {
+        "signal": {
+            "signal_date": "2026-07-30", "target_weights": {"C": 1.0},
+            "turnover_units": 0.5,
+            "diagnostics": {"retrospective_correction": True,
+                            "supersedes_record_sha256": "a" * 64},
+        }
+    })
+    plan = _plan()
+    original = preview._section_payloads(plan)
+    result = preview._section_payloads(preview.project_forward_state(plan, Path("/repo")))
+    for section in ("summary", "portfolio", "trades", "performance"):
+        assert result[section]["retrospective_correction"]["prospective_evidence"] is False
+    historical = [r for r in original["performance"]["report"] if not preview._is_provisional_mtm(r)]
+    assert [r for r in result["performance"]["report"] if not preview._is_provisional_mtm(r)] == historical
+    assert all(r["retrospective_correction"] for r in result["performance"]["report"]
+               if preview._is_provisional_mtm(r))

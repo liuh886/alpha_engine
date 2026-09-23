@@ -95,7 +95,7 @@ def test_research_model_data_readiness_does_not_block_unbound_runtime_models() -
         assert row["stages"]["model_data"] == "not_applicable"
         if row["strategy_id"] == "cn_27":
             assert row["state"] == "blocked"
-            assert row["stages"]["signal"] == "blocked"
+            assert row["stages"]["signal"] == "current"
         else:
             assert row["state"] != "blocked"
 

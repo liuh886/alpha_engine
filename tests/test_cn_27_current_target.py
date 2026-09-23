@@ -218,7 +218,7 @@ def test_runner_build_reports_missing_positions_on_current_main() -> None:
     assert code != 0
 
 
-def test_runner_due_is_not_due_while_dormant() -> None:
+def test_runner_due_respects_activated_thirty_session_cadence() -> None:
     code, output, _ = _run_command(
         "due",
         "--formal-root",
@@ -231,4 +231,5 @@ def test_runner_due_is_not_due_while_dormant() -> None:
     assert code == 0
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["due"] is False
-    assert payload["status"] == "blocked"
+    assert payload["anchor"] == "2026-09-04"
+    assert payload["cadence_sessions"] == 30

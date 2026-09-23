@@ -132,9 +132,8 @@ def resolve_strategy_runtime_capabilities(
                 "not_managed_by_cross_sectional_ranker_current_target_runtime"
             )
         else:
-            # A dormant publisher exists but its frozen contract gates activation
-            # on a governed prospective source (e.g. CN_27 V1.3). The adapter is
-            # maintained and tested; the source is not yet available.
+            # Activation follows the exact contract; source readiness is checked
+            # by the adapter against the selected formal bundle.
             contract = _load_ranker_contract(strategy, repository_root)
             publication = contract.get("formal_publication")
             activation = (
@@ -147,7 +146,11 @@ def resolve_strategy_runtime_capabilities(
                     "model contract current-target activation is missing: "
                     f"{strategy.strategy_id}"
                 )
-            current_target = RuntimeCapability(status="blocked", adapter_id=dormant_adapter, reason=activation)
+            current_target = (
+                _available(dormant_adapter)
+                if activation == f"maintained_{dormant_adapter}"
+                else RuntimeCapability(status="blocked", adapter_id=dormant_adapter, reason=activation)
+            )
     elif _ranker_activation(contract).startswith("blocked_"):
         current_target = _blocked(_ranker_activation(contract))
     else:

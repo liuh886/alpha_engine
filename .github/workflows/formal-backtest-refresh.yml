@@ -63,6 +63,7 @@ on:
       - "src/research/v4_33_ma200_ma20_vix_release.py"
       - "src/research/xgb_native_calibration.py"
       - "src/research/xgb_ranker_explainability.py"
+      - "src/artifacts/strategy_signal_ledger.py"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/run_formal_strategy_refresh.py"
       - "scripts/build_market_evidence.py"

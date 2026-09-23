@@ -188,6 +188,19 @@ def _assert_ledger_projection(plan: RunExportPlan, signal: Mapping[str, Any]) ->
         raise USX13ForwardProjectionError(
             "US x1.3 provisional MTM must bind exactly one sealed ledger signal"
         )
+    diagnostics = signal.get("diagnostics")
+    if isinstance(diagnostics, Mapping) and diagnostics.get("retrospective_correction") is True:
+        correction = {
+            "signal_date": ledger_date,
+            "supersedes_record_sha256": diagnostics.get("supersedes_record_sha256"),
+            "prospective_evidence": False,
+        }
+        for section_id in ("summary", "portfolio", "trades", "performance"):
+            payloads[section_id]["retrospective_correction"] = correction
+        for row in payloads["performance"]["report"]:
+            if _is_provisional_mtm(row):
+                row["retrospective_correction"] = True
+        return _replace_payloads(plan, payloads)
     return plan
 
 
