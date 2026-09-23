@@ -26,21 +26,21 @@
           "coverage_ratio": 1.0,
           "details": {
             "benchmark": "000300",
-            "candidate_observation_cutoff": "2026-09-09",
+            "candidate_observation_cutoff": "2026-09-22",
             "candidate_observation_start": "2026-04-16",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "acb770f63007902f808ea226da7989aafc2b871abc56fddfb8271d7e47e853fd",
-            "requested_cutoff": "2026-09-09",
+            "provider_identity_sha256": "c38da4f6313653dd12cd053f7c2226ead27e15e585cf15c3abd589e9a94dfd0d",
+            "requested_cutoff": "2026-09-22",
             "source_status": "selected_pool_price_refresh_ready"
           },
-          "evidence_cutoff": "2026-09-09",
+          "evidence_cutoff": "2026-09-22",
           "expected_symbol_count": 130,
           "first_date": "2026-04-16",
           "invalid_symbols": [],
-          "last_date": "2026-09-09",
+          "last_date": "2026-09-22",
           "manifest_path": "components/cn-selected-pool-prices.json",
-          "manifest_sha256": "0a8156ec3b53095574556571ad56982f2a7c4ea067e756256d3c784375bd59b2",
+          "manifest_sha256": "55d86991fb32b542c10b3c0e1eb405441ff3de614acf91be6368727f04824f85",
           "market": "cn",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
@@ -49,8 +49,7 @@
           "providers": [
             "AKSHARE",
             "AKSHARE_SINA",
-            "TENCENT_QFQ_HISTORY",
-            "TUSHARE"
+            "TENCENT_QFQ_HISTORY"
           ],
           "quarantined_symbols": [],
           "ready_symbol_count": 130,
@@ -132,21 +131,21 @@
           "coverage_ratio": 1.0,
           "details": {
             "benchmark": "000300",
-            "candidate_observation_cutoff": "2026-09-09",
+            "candidate_observation_cutoff": "2026-09-22",
             "candidate_observation_start": "2026-04-16",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "acb770f63007902f808ea226da7989aafc2b871abc56fddfb8271d7e47e853fd",
-            "requested_cutoff": "2026-09-09",
+            "provider_identity_sha256": "c38da4f6313653dd12cd053f7c2226ead27e15e585cf15c3abd589e9a94dfd0d",
+            "requested_cutoff": "2026-09-22",
             "source_status": "selected_pool_price_refresh_ready"
           },
-          "evidence_cutoff": "2026-09-09",
+          "evidence_cutoff": "2026-09-22",
           "expected_symbol_count": 130,
           "first_date": "2026-04-16",
           "invalid_symbols": [],
-          "last_date": "2026-09-09",
+          "last_date": "2026-09-22",
           "manifest_path": "components/cn-selected-pool-prices.json",
-          "manifest_sha256": "0a8156ec3b53095574556571ad56982f2a7c4ea067e756256d3c784375bd59b2",
+          "manifest_sha256": "55d86991fb32b542c10b3c0e1eb405441ff3de614acf91be6368727f04824f85",
           "market": "cn",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
@@ -155,8 +154,7 @@
           "providers": [
             "AKSHARE",
             "AKSHARE_SINA",
-            "TENCENT_QFQ_HISTORY",
-            "TUSHARE"
+            "TENCENT_QFQ_HISTORY"
           ],
           "quarantined_symbols": [],
           "ready_symbol_count": 130,
@@ -197,21 +195,21 @@
           "coverage_ratio": 1.0,
           "details": {
             "benchmark": "000300",
-            "candidate_observation_cutoff": "2026-09-09",
+            "candidate_observation_cutoff": "2026-09-22",
             "candidate_observation_start": "2026-04-16",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "acb770f63007902f808ea226da7989aafc2b871abc56fddfb8271d7e47e853fd",
-            "requested_cutoff": "2026-09-09",
+            "provider_identity_sha256": "c38da4f6313653dd12cd053f7c2226ead27e15e585cf15c3abd589e9a94dfd0d",
+            "requested_cutoff": "2026-09-22",
             "source_status": "selected_pool_price_refresh_ready"
           },
-          "evidence_cutoff": "2026-09-09",
+          "evidence_cutoff": "2026-09-22",
           "expected_symbol_count": 130,
           "first_date": "2026-04-16",
           "invalid_symbols": [],
-          "last_date": "2026-09-09",
+          "last_date": "2026-09-22",
           "manifest_path": "components/cn-selected-pool-prices.json",
-          "manifest_sha256": "0a8156ec3b53095574556571ad56982f2a7c4ea067e756256d3c784375bd59b2",
+          "manifest_sha256": "55d86991fb32b542c10b3c0e1eb405441ff3de614acf91be6368727f04824f85",
           "market": "cn",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
@@ -220,8 +218,7 @@
           "providers": [
             "AKSHARE",
             "AKSHARE_SINA",
-            "TENCENT_QFQ_HISTORY",
-            "TUSHARE"
+            "TENCENT_QFQ_HISTORY"
           ],
           "quarantined_symbols": [],
           "ready_symbol_count": 130,
@@ -413,8 +410,8 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "d89fdd0f41302f3cf59d95a7642b57f7145022d5dc8663e756da1572a59fe31a",
-            "requested_cutoff": "2026-09-09",
+            "provider_identity_sha256": "b27dfc8b1f1077aa954f702a6d8aab5dc6ffcef34bb917aadfd5ddeef60fe29c",
+            "requested_cutoff": "2026-09-21",
             "source_status": "selected_pool_price_refresh_ready"
           },
           "evidence_cutoff": "2026-08-04",
@@ -423,7 +420,7 @@
           "invalid_symbols": [],
           "last_date": "2026-08-04",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "72994d7231b495e7483efead03dd43e006b0436fae97a8508fb16960a2356578",
+          "manifest_sha256": "1621a1d5720617a7edec03e3d2dc71098d35ef7e964954a81e587063db3f6960",
           "market": "us",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
@@ -490,8 +487,8 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "d89fdd0f41302f3cf59d95a7642b57f7145022d5dc8663e756da1572a59fe31a",
-            "requested_cutoff": "2026-09-09",
+            "provider_identity_sha256": "b27dfc8b1f1077aa954f702a6d8aab5dc6ffcef34bb917aadfd5ddeef60fe29c",
+            "requested_cutoff": "2026-09-21",
             "source_status": "selected_pool_price_refresh_ready"
           },
           "evidence_cutoff": "2026-08-04",
@@ -500,7 +497,7 @@
           "invalid_symbols": [],
           "last_date": "2026-08-04",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "72994d7231b495e7483efead03dd43e006b0436fae97a8508fb16960a2356578",
+          "manifest_sha256": "1621a1d5720617a7edec03e3d2dc71098d35ef7e964954a81e587063db3f6960",
           "market": "us",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
@@ -524,7 +521,10 @@
   {
     "candidate_count": 87,
     "candidate_pool_id": "us_selected_equities_v2",
-    "failed_gates": [],
+    "failed_gates": [
+      "component:fundamentals.us_selected_equities_v2:required_component_missing",
+      "component:corporate_actions.us_selected_equities_v2:required_component_missing"
+    ],
     "market": "us",
     "profile_id": "us_selected_price_plus_fundamentals_v1",
     "references": [
@@ -552,8 +552,8 @@
             "candidate_observation_start": "2025-06-05",
             "promotion_blocker": null,
             "promotion_eligible": true,
-            "provider_identity_sha256": "d89fdd0f41302f3cf59d95a7642b57f7145022d5dc8663e756da1572a59fe31a",
-            "requested_cutoff": "2026-09-09",
+            "provider_identity_sha256": "b27dfc8b1f1077aa954f702a6d8aab5dc6ffcef34bb917aadfd5ddeef60fe29c",
+            "requested_cutoff": "2026-09-21",
             "source_status": "selected_pool_price_refresh_ready"
           },
           "evidence_cutoff": "2026-08-04",
@@ -562,7 +562,7 @@
           "invalid_symbols": [],
           "last_date": "2026-08-04",
           "manifest_path": "components/us-selected-pool-prices.json",
-          "manifest_sha256": "72994d7231b495e7483efead03dd43e006b0436fae97a8508fb16960a2356578",
+          "manifest_sha256": "1621a1d5720617a7edec03e3d2dc71098d35ef7e964954a81e587063db3f6960",
           "market": "us",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
@@ -587,53 +587,12 @@
         "applicable_coverage_ratio": null,
         "component_id": "fundamentals.us_selected_equities_v2",
         "coverage_basis": "all_symbols",
-        "gate_reasons": [],
-        "gate_status": "passed",
+        "gate_reasons": [
+          "required_component_missing"
+        ],
+        "gate_status": "failed",
         "minimum_coverage_ratio": 0.8,
-        "observed": {
-          "component_id": "fundamentals.us_selected_equities_v2",
-          "component_kind": "fundamental_coverage",
-          "coverage_ratio": 0.9885057471264368,
-          "details": {
-            "coverage_byte_size": 57757,
-            "coverage_path": "fundamentals/coverage.json",
-            "coverage_sha256": "d4e756342d98306f30f7392958f8e416d6a6c70782e7d8bcf094007e0d42a808",
-            "events_byte_size": 59198294,
-            "events_path": "fundamentals/events.jsonl",
-            "events_sha256": "d2450582e9819e4320879bd43aff68c90e53eb63ec1902b537309d825936d691",
-            "explicit_status_count": 87,
-            "status_counts": {
-              "conflict": 0,
-              "identity_missing": 1,
-              "no_event_observed": 0,
-              "partial": 0,
-              "provider_missing": 0,
-              "ready": 86
-            }
-          },
-          "evidence_cutoff": "2026-09-09",
-          "expected_symbol_count": 87,
-          "first_date": "2009-06-04",
-          "invalid_symbols": [],
-          "last_date": "2026-09-03",
-          "manifest_path": "sources/us_events/fundamentals/component_manifest.json",
-          "manifest_sha256": "3a935415446939767cc3fc597a22f051ecdc86af0b0eac25ef83ff3f012dba4f",
-          "market": "us",
-          "missing_symbols": [
-            "SBGSY"
-          ],
-          "not_yet_applicable_symbols": [],
-          "pool_id": "us_selected_equities_v2",
-          "professional_source_ready": null,
-          "providers": [
-            "SEC_COMPANYFACTS"
-          ],
-          "quarantined_symbols": [],
-          "ready_symbol_count": 86,
-          "research_only": true,
-          "status": "partial",
-          "trade_ready": false
-        }
+        "observed": null
       },
       {
         "accepted_statuses": [
@@ -644,55 +603,16 @@
         "applicable_coverage_ratio": null,
         "component_id": "corporate_actions.us_selected_equities_v2",
         "coverage_basis": "all_symbols",
-        "gate_reasons": [],
-        "gate_status": "passed",
+        "gate_reasons": [
+          "required_component_missing"
+        ],
+        "gate_status": "failed",
         "minimum_coverage_ratio": 1.0,
-        "observed": {
-          "component_id": "corporate_actions.us_selected_equities_v2",
-          "component_kind": "corporate_action_coverage",
-          "coverage_ratio": 1.0,
-          "details": {
-            "coverage_byte_size": 44649,
-            "coverage_path": "corporate_actions/coverage.json",
-            "coverage_sha256": "be4e3ea7bbb2762e123b3a43089a1153e8f500e86b255a421b40f60c95306869",
-            "events_byte_size": 3240695,
-            "events_path": "corporate_actions/events.jsonl",
-            "events_sha256": "16ea8ab0f7935eb6bd8e9b9013f5a2a5ef124a258040ada53bac17e505c8d632",
-            "explicit_status_count": 87,
-            "status_counts": {
-              "conflict": 0,
-              "identity_missing": 0,
-              "no_event_observed": 22,
-              "partial": 0,
-              "provider_missing": 0,
-              "ready": 65
-            }
-          },
-          "evidence_cutoff": "2026-09-09",
-          "expected_symbol_count": 87,
-          "first_date": "1962-02-06",
-          "invalid_symbols": [],
-          "last_date": "2026-09-08",
-          "manifest_path": "sources/us_events/corporate_actions/component_manifest.json",
-          "manifest_sha256": "c90fbfe5c870e8d3e8a6a077d6934d78de1d675b34d326c861dc58ad51496668",
-          "market": "us",
-          "missing_symbols": [],
-          "not_yet_applicable_symbols": [],
-          "pool_id": "us_selected_equities_v2",
-          "professional_source_ready": null,
-          "providers": [
-            "YFINANCE_ACTIONS"
-          ],
-          "quarantined_symbols": [],
-          "ready_symbol_count": 87,
-          "research_only": true,
-          "status": "ready",
-          "trade_ready": false
-        }
+        "observed": null
       }
     ],
     "research_only": true,
-    "status": "ready",
+    "status": "blocked",
     "trade_ready": false
   },
   {
