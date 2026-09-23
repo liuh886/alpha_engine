@@ -14,6 +14,7 @@ def test_qlib_recorder_round_trip_with_sqlite_backend(tmp_path: Path) -> None:
         from pathlib import Path
 
         from qlib.workflow import QlibRecorder, R
+        from qlib.workflow.exp import MLflowExperiment
         from qlib.workflow.expm import MLflowExpManager
 
         root = Path(sys.argv[1]).resolve()
@@ -54,7 +55,9 @@ def test_qlib_recorder_round_trip_with_sqlite_backend(tmp_path: Path) -> None:
         assert recorder.list_metrics()["compat_metric"] == 1.25
         assert recorder.load_object("payload.pkl") == {"status": "ok"}
 
-        records = R.search_records([recorder.experiment_id])
+        records = R.search_records(
+            [recorder.experiment_id], max_results=MLflowExperiment.UNLIMITED
+        )
         assert any(run.info.run_id == recorder_id for run in records)
         assert db_path.exists()
         """
