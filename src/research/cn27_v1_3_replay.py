@@ -25,10 +25,10 @@ DISCOVERY_CONTRACT = Path(
     "configs/research_experiments/cn_27_v1_3_projected_concentration_discovery_v1.yaml"
 )
 # Same numeric bar the formal publication itself enforces when it compares a
-# fresh reconstruction against sealed summaries: cross-process float noise
-# (last-ulp BLAS reduction order) must never fail a replay whose decision
-# path is identical.
-FLOAT_TOLERANCE = 1e-10
+# fresh reconstruction against sealed summaries. Cross-environment float noise
+# from BLAS reduction order depends on thread count; it must never fail a replay
+# whose decision path is identical, so the bar matches the shared 1e-6 gate.
+FLOAT_TOLERANCE = 1e-6
 
 
 def _values_close(fresh: object, current: object) -> bool:
