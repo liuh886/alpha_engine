@@ -315,3 +315,10 @@ def test_execute_strategy_cn_27_missing_provider_fails_closed(
             result_root=tmp_path / "result",
             generated_at="2026-09-08T00:00:00Z",
         )
+
+
+def test_rows_close_enough_tolerates_blas_reduction_order_noise() -> None:
+    from src.research.cn27_v1_3_replay import rows_close_enough
+
+    assert rows_close_enough({"x": 1.0}, {"x": 1.0 + 1e-9})
+    assert not rows_close_enough({"x": 1.0}, {"x": 1.0 + 1e-3})
