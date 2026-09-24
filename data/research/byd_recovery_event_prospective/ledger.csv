@@ -32,3 +32,4 @@ signal_date,observation_sha256,prelaunch_seed,prospective_eligible,common_open_e
 2026-09-21,dcbf217ba9e16d1c8d448dda4b4f155d7917aa7bba769ebb25eda7ba1e6d5219,False,False,True,False,False,False,0,False,0,False,0.000000000000,bear,low,0.016820456280
 2026-09-22,526e4365aa4ad5a86daffadc531e92261ab0462f0bfd9daae540c8d86eb1d3fb,False,False,False,False,False,False,0,False,0,False,0.000000000000,bear,low,0.016797887992
 2026-09-23,dc97de42b69f73a4f05079894f7a76f81f8b9760875f958471425e419bae5d15,False,False,False,False,False,False,0,False,0,False,0.000000000000,bear,low,0.006958915737
+2026-09-24,24d96cf559505bba06592090825567b08455f79793347d45902ef3a54913c6ce,False,True,True,False,False,False,0,False,0,False,0.000000000000,bear,low,0.002329550455
