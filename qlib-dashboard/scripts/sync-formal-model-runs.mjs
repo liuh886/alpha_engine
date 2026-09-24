@@ -1,4 +1,4 @@
-import { copyFile, lstat, mkdir, readdir, rm } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,6 +27,37 @@ async function copyJsonTree(source, target) {
   }
 }
 
+function activeRunDirectories(catalog) {
+  if (!catalog || !Array.isArray(catalog.records)) {
+    throw new Error('Formal Model Run Bundle v2 catalog records are missing');
+  }
+  const directories = new Set();
+  for (const record of catalog.records) {
+    const manifestPath = String(record?.manifest_path ?? '');
+    if (!manifestPath.endsWith('/manifest.json') || manifestPath.startsWith('/') || manifestPath.includes('..')) {
+      throw new Error(`Formal catalog record has an unsafe manifest path: ${manifestPath}`);
+    }
+    directories.add(dirname(manifestPath));
+  }
+  return [...directories].sort();
+}
+
 await rm(targetRoot, { recursive: true, force: true });
-await copyJsonTree(sourceRoot, targetRoot);
-console.log(`Published formal Model Run Bundle v2 assets from ${sourceRoot}.`);
+await mkdir(targetRoot, { recursive: true });
+
+// Publish the catalog and every top-level policy read model.
+for (const entry of await readdir(sourceRoot, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await copyFile(join(sourceRoot, entry.name), join(targetRoot, entry.name));
+  }
+}
+
+// Publish only the catalog-active runs. Retained, pinned and superseded
+// bundles are repository audit closures consumed by governed workflows, not
+// static-site payload, so the browser bundle stays lean.
+const catalog = JSON.parse(await readFile(join(sourceRoot, 'catalog.json'), 'utf8'));
+const runDirectories = activeRunDirectories(catalog);
+for (const runDirectory of runDirectories) {
+  await copyJsonTree(join(sourceRoot, runDirectory), join(targetRoot, runDirectory));
+}
+console.log(`Published ${runDirectories.length} catalog-active formal Model Run Bundle v2 assets from ${sourceRoot}.`);
