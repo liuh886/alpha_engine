@@ -94,7 +94,6 @@ def replay_cn_27_v1_3(*, root: str | Path) -> dict[str, Any]:
     try:
         accepted = load_formal_run(normalized_root, MODEL_ID)
         baseline = accepted.identity
-        cutoff = accepted.evidence_cutoff
         lineage = accepted.section("lineage")
     except Exception as exc:
         return _receipt(baseline=None, decision="invalid_evidence", reason=str(exc))
@@ -177,11 +176,18 @@ def replay_cn_27_v1_3(*, root: str | Path) -> dict[str, Any]:
                 decision="invalid_evidence",
                 reason=f"recomputed CN_27 {name} differs from the published bundle",
             )
-    expected_cutoff = str(source_evidence.get("refresh_of_evidence_cutoff") or cutoff)
-    if context.bars["date"].max().date().isoformat() != expected_cutoff:
+    # The frozen lineage source is immutable: append-only refreshes advance the
+    # evidence cutoff and freshness metadata without extending the frozen trace.
+    # Require the recomputed bars to end exactly at the shared trace boundary,
+    # which the row comparison above already holds row-for-row.
+    try:
+        published_end = accepted.trace_end
+    except FormalBundleReadError as exc:
+        return _receipt(baseline=baseline, decision="invalid_evidence", reason=str(exc))
+    if context.bars["date"].max().date().isoformat() != published_end:
         return _receipt(
             baseline=baseline,
             decision="invalid_evidence",
-            reason="recomputed bars do not end at the published evidence cutoff",
+            reason="recomputed bars do not end at the published trace boundary",
         )
     return _receipt(baseline=baseline, decision="exact_replay", reason="ok")
