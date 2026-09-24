@@ -375,8 +375,9 @@ def inspect_dead_modules(repo_root: Path) -> dict[str, Any]:
 
     A module is 'unreferenced' when its stem never appears as a token in any
     live file (src, scripts, tests, configs, workflows). Docs and evidence never
-    confer life, matching the paradigm lifecycle rules. This is advisory only:
-    it never fails the build and never deletes anything.
+    confer life, matching the paradigm lifecycle rules. Archived modules are
+    write-once history, never candidates. This is advisory only: it never fails
+    the build and never deletes anything.
     """
 
     tracked = _tracked_paths(repo_root)
@@ -387,6 +388,7 @@ def inspect_dead_modules(repo_root: Path) -> dict[str, Any]:
             *sorted((repo_root / "scripts").rglob("*.py")),
         )
         if path.name != "__init__.py"
+        and "/archive/" not in path.relative_to(repo_root).as_posix()
         and (
             tracked is None
             or path.relative_to(repo_root).as_posix() in tracked

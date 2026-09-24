@@ -30,7 +30,9 @@ Dependency, external-source and operational-health signals. They remain visible 
 - hard-coded cross-run IDs;
 - an advisory `dead_modules` inventory: `src/research` + `scripts` modules whose
   stem is referenced by no live file (code, tests, configs or workflows); docs
-  and sealed evidence never confer life;
+  and sealed evidence never confer life; modules already moved to a governed
+  `/archive/` directory (see `scripts/archive/ARCHIVE_MANIFEST.json`) are
+  write-once history and never candidates;
 - warnings and blocking governance violations.
 
 The `dead_modules` inventory is advisory only: it never fails the build and
