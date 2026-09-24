@@ -1,8 +1,18 @@
-# Archived helper scripts (not on any active path)
+# Archived modules (not on any active path)
 
-These scripts are retained for manual diagnosis only. They are **not**
-referenced by any test, Makefile target, CI workflow, or active pipeline.
-Do not add new callers; delete outright once nobody needs them.
+These modules are retained for historical reference and manual diagnosis only.
+They are **not** referenced by any test, Makefile target, CI workflow, or active
+pipeline. Live code must never import, schedule or reference them.
+
+The machine-readable mapping (module, original path, archived path, reason)
+lives in [`ARCHIVE_MANIFEST.json`](ARCHIVE_MANIFEST.json). It also records the
+advisory-dead modules that intentionally stay outside the archive because
+sealed evidence or a notebook still names them.
+
+The CI governance dead-module advisory excludes this directory: an archived
+module is history, not a live candidate.
+
+## Earlier manual entries
 
 | Script | Purpose |
 |---|---|

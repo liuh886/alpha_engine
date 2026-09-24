@@ -1,0 +1,586 @@
+{
+  "schema_version": "1.0.0",
+  "status": "governed_archive",
+  "research_only": true,
+  "trade_ready": false,
+  "policy": "Write-once history. Live code must never import, schedule or reference archived modules; the CI governance dead-module scan excludes archive directories.",
+  "source": "scripts/check_ci_governance.py dead_modules advisory",
+  "archived_at": "2026-09-24",
+  "entry_count": 92,
+  "entries": [
+    {
+      "module": "aggregate_cn130_ranking_batches",
+      "original_path": "scripts/aggregate_cn130_ranking_batches.py",
+      "archived_path": "scripts/archive/aggregate_cn130_ranking_batches.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "archive_snapshots",
+      "original_path": "scripts/archive_snapshots.py",
+      "archived_path": "scripts/archive/archive_snapshots.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "audit_selected_pool_price_sources",
+      "original_path": "scripts/audit_selected_pool_price_sources.py",
+      "archived_path": "scripts/archive/audit_selected_pool_price_sources.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "benchmark_execution_engine",
+      "original_path": "scripts/benchmark_execution_engine.py",
+      "archived_path": "scripts/archive/benchmark_execution_engine.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "bind_v4_2_ledger_source",
+      "original_path": "scripts/bind_v4_2_ledger_source.py",
+      "archived_path": "scripts/archive/bind_v4_2_ledger_source.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "build_cn130_pit_event_families_phase3",
+      "original_path": "scripts/data/build_cn130_pit_event_families_phase3.py",
+      "archived_path": "scripts/archive/build_cn130_pit_event_families_phase3.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "build_cn_etf_candidate_bundle",
+      "original_path": "scripts/data/build_cn_etf_candidate_bundle.py",
+      "archived_path": "scripts/archive/build_cn_etf_candidate_bundle.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "build_us_raw_adjustment_snapshot",
+      "original_path": "scripts/data/build_us_raw_adjustment_snapshot.py",
+      "archived_path": "scripts/archive/build_us_raw_adjustment_snapshot.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "byd_v12_deep_dive",
+      "original_path": "scripts/byd_v12_deep_dive.py",
+      "archived_path": "scripts/archive/byd_v12_deep_dive.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "byd_v12_improvement_explorer",
+      "original_path": "scripts/byd_v12_improvement_explorer.py",
+      "archived_path": "scripts/archive/byd_v12_improvement_explorer.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "certify_cn_x1_1_regime_gated",
+      "original_path": "scripts/certify_cn_x1_1_regime_gated.py",
+      "archived_path": "scripts/archive/certify_cn_x1_1_regime_gated.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "check_multi_market_data_readiness",
+      "original_path": "scripts/check_multi_market_data_readiness.py",
+      "archived_path": "scripts/archive/check_multi_market_data_readiness.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "cleanup_stuck_jobs",
+      "original_path": "scripts/cleanup_stuck_jobs.py",
+      "archived_path": "scripts/archive/cleanup_stuck_jobs.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "compare_selected_pool_snapshots",
+      "original_path": "scripts/data/compare_selected_pool_snapshots.py",
+      "archived_path": "scripts/archive/compare_selected_pool_snapshots.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "create_us_x1_1_sector_cap_shadow_receipt",
+      "original_path": "scripts/create_us_x1_1_sector_cap_shadow_receipt.py",
+      "archived_path": "scripts/archive/create_us_x1_1_sector_cap_shadow_receipt.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "disk_quota_manager",
+      "original_path": "scripts/disk_quota_manager.py",
+      "archived_path": "scripts/archive/disk_quota_manager.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "expand_name_map",
+      "original_path": "scripts/expand_name_map.py",
+      "archived_path": "scripts/archive/expand_name_map.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "export_model_run_bundle",
+      "original_path": "scripts/export_model_run_bundle.py",
+      "archived_path": "scripts/archive/export_model_run_bundle.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "fetch_cn_current_provider_shard",
+      "original_path": "scripts/data/fetch_cn_current_provider_shard.py",
+      "archived_path": "scripts/archive/fetch_cn_current_provider_shard.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "fetch_cn_provider_shard",
+      "original_path": "scripts/data/fetch_cn_provider_shard.py",
+      "archived_path": "scripts/archive/fetch_cn_provider_shard.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "filter_us_universe",
+      "original_path": "scripts/utils/filter_us_universe.py",
+      "archived_path": "scripts/archive/filter_us_universe.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "finalize_qqqi_v4_2_rsi_vix_sgov_evidence",
+      "original_path": "scripts/finalize_qqqi_v4_2_rsi_vix_sgov_evidence.py",
+      "archived_path": "scripts/archive/finalize_qqqi_v4_2_rsi_vix_sgov_evidence.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "formalize_cn_27_v1_3",
+      "original_path": "scripts/formalize_cn_27_v1_3.py",
+      "archived_path": "scripts/archive/formalize_cn_27_v1_3.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "generate_arena_report",
+      "original_path": "scripts/generate_arena_report.py",
+      "archived_path": "scripts/archive/generate_arena_report.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "promote_cn_formal_freshness",
+      "original_path": "scripts/promote_cn_formal_freshness.py",
+      "archived_path": "scripts/archive/promote_cn_formal_freshness.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "promote_qqqi_v4_2_notebook_roles",
+      "original_path": "scripts/promote_qqqi_v4_2_notebook_roles.py",
+      "archived_path": "scripts/archive/promote_qqqi_v4_2_notebook_roles.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "rebuild_watchlist_data",
+      "original_path": "scripts/rebuild_watchlist_data.py",
+      "archived_path": "scripts/archive/rebuild_watchlist_data.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "register_all_runs",
+      "original_path": "scripts/utils/register_all_runs.py",
+      "archived_path": "scripts/archive/register_all_runs.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "register_existing_reports",
+      "original_path": "scripts/register_existing_reports.py",
+      "archived_path": "scripts/archive/register_existing_reports.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "repair_run_artifacts",
+      "original_path": "scripts/repair_run_artifacts.py",
+      "archived_path": "scripts/archive/repair_run_artifacts.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_all_weather_alpha_rotation",
+      "original_path": "scripts/run_all_weather_alpha_rotation.py",
+      "archived_path": "scripts/archive/run_all_weather_alpha_rotation.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_515180_trend_guard",
+      "original_path": "scripts/run_byd_515180_trend_guard.py",
+      "archived_path": "scripts/archive/run_byd_515180_trend_guard.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_convex_momentum_evidence",
+      "original_path": "scripts/run_byd_convex_momentum_evidence.py",
+      "archived_path": "scripts/archive/run_byd_convex_momentum_evidence.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_core_tactical_v1",
+      "original_path": "scripts/run_byd_core_tactical_v1.py",
+      "archived_path": "scripts/archive/run_byd_core_tactical_v1.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_defensive_sleeve_screen",
+      "original_path": "scripts/run_byd_defensive_sleeve_screen.py",
+      "archived_path": "scripts/archive/run_byd_defensive_sleeve_screen.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_improvement_experiments",
+      "original_path": "scripts/run_byd_improvement_experiments.py",
+      "archived_path": "scripts/archive/run_byd_improvement_experiments.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_mom_scaled",
+      "original_path": "scripts/run_byd_mom_scaled.py",
+      "archived_path": "scripts/archive/run_byd_mom_scaled.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_sma_atr_claim",
+      "original_path": "scripts/run_byd_sma_atr_claim.py",
+      "archived_path": "scripts/archive/run_byd_sma_atr_claim.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_trend_fix",
+      "original_path": "scripts/run_byd_trend_fix.py",
+      "archived_path": "scripts/archive/run_byd_trend_fix.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_v1_0",
+      "original_path": "scripts/run_byd_v1_0.py",
+      "archived_path": "scripts/archive/run_byd_v1_0.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_v1_2_extreme_defense",
+      "original_path": "scripts/run_byd_v1_2_extreme_defense.py",
+      "archived_path": "scripts/archive/run_byd_v1_2_extreme_defense.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_v1_2_formal",
+      "original_path": "scripts/run_byd_v1_2_formal.py",
+      "archived_path": "scripts/archive/run_byd_v1_2_formal.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_v1_2_promotion_challenge",
+      "original_path": "scripts/run_byd_v1_2_promotion_challenge.py",
+      "archived_path": "scripts/archive/run_byd_v1_2_promotion_challenge.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_v1_2_recovery_state",
+      "original_path": "scripts/run_byd_v1_2_recovery_state.py",
+      "archived_path": "scripts/archive/run_byd_v1_2_recovery_state.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_v1_2_trend_expansion",
+      "original_path": "scripts/run_byd_v1_2_trend_expansion.py",
+      "archived_path": "scripts/archive/run_byd_v1_2_trend_expansion.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_v1_2_trend_expansion_prospective",
+      "original_path": "scripts/run_byd_v1_2_trend_expansion_prospective.py",
+      "archived_path": "scripts/archive/run_byd_v1_2_trend_expansion_prospective.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_byd_v1_3_recovery_overlay",
+      "original_path": "scripts/run_byd_v1_3_recovery_overlay.py",
+      "archived_path": "scripts/archive/run_byd_v1_3_recovery_overlay.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn130_tail_factor_discovery",
+      "original_path": "scripts/run_cn130_tail_factor_discovery.py",
+      "archived_path": "scripts/archive/run_cn130_tail_factor_discovery.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn27_sharpe_discovery",
+      "original_path": "scripts/run_cn27_sharpe_discovery.py",
+      "archived_path": "scripts/archive/run_cn27_sharpe_discovery.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn27_sharpe_holdout",
+      "original_path": "scripts/run_cn27_sharpe_holdout.py",
+      "archived_path": "scripts/archive/run_cn27_sharpe_holdout.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_27_v1_0",
+      "original_path": "scripts/run_cn_27_v1_0.py",
+      "archived_path": "scripts/archive/run_cn_27_v1_0.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_27_v1_1",
+      "original_path": "scripts/run_cn_27_v1_1.py",
+      "archived_path": "scripts/archive/run_cn_27_v1_1.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_27_v1_2",
+      "original_path": "scripts/run_cn_27_v1_2.py",
+      "archived_path": "scripts/archive/run_cn_27_v1_2.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_27_v1_2_discovery",
+      "original_path": "scripts/run_cn_27_v1_2_discovery.py",
+      "archived_path": "scripts/archive/run_cn_27_v1_2_discovery.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_27_v1_3_discovery",
+      "original_path": "scripts/run_cn_27_v1_3_discovery.py",
+      "archived_path": "scripts/archive/run_cn_27_v1_3_discovery.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_27_v1_3_projected_discovery",
+      "original_path": "scripts/run_cn_27_v1_3_projected_discovery.py",
+      "archived_path": "scripts/archive/run_cn_27_v1_3_projected_discovery.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_27_v1_3_prospective",
+      "original_path": "scripts/run_cn_27_v1_3_prospective.py",
+      "archived_path": "scripts/archive/run_cn_27_v1_3_prospective.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_27_v1_3_stability_discovery",
+      "original_path": "scripts/run_cn_27_v1_3_stability_discovery.py",
+      "archived_path": "scripts/archive/run_cn_27_v1_3_stability_discovery.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_27_v1_3_staggered_discovery",
+      "original_path": "scripts/run_cn_27_v1_3_staggered_discovery.py",
+      "archived_path": "scripts/archive/run_cn_27_v1_3_staggered_discovery.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_27_v1_4_discovery",
+      "original_path": "scripts/run_cn_27_v1_4_discovery.py",
+      "archived_path": "scripts/archive/run_cn_27_v1_4_discovery.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_x1_1_regime_gated",
+      "original_path": "scripts/run_cn_x1_1_regime_gated.py",
+      "archived_path": "scripts/archive/run_cn_x1_1_regime_gated.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_cn_x1_1_sector_breadth",
+      "original_path": "scripts/run_cn_x1_1_sector_breadth.py",
+      "archived_path": "scripts/archive/run_cn_x1_1_sector_breadth.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_factor_redundancy",
+      "original_path": "scripts/run_factor_redundancy.py",
+      "archived_path": "scripts/archive/run_factor_redundancy.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_qqqi_qqq_tqqq_rotation",
+      "original_path": "scripts/run_qqqi_qqq_tqqq_rotation.py",
+      "archived_path": "scripts/archive/run_qqqi_qqq_tqqq_rotation.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_qqqi_qqq_tqqq_vix_v2",
+      "original_path": "scripts/run_qqqi_qqq_tqqq_vix_v2.py",
+      "archived_path": "scripts/archive/run_qqqi_qqq_tqqq_vix_v2.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_qqqi_qqq_tqqq_vix_v3_aggressive",
+      "original_path": "scripts/run_qqqi_qqq_tqqq_vix_v3_aggressive.py",
+      "archived_path": "scripts/archive/run_qqqi_qqq_tqqq_vix_v3_aggressive.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_qqqi_v4_23_xgb_lambdarank_state_machine",
+      "original_path": "scripts/run_qqqi_v4_23_xgb_lambdarank_state_machine.py",
+      "archived_path": "scripts/archive/run_qqqi_v4_23_xgb_lambdarank_state_machine.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_qqqi_v4_2_donor_state2_sgov_tqqq",
+      "original_path": "scripts/run_qqqi_v4_2_donor_state2_sgov_tqqq.py",
+      "archived_path": "scripts/archive/run_qqqi_v4_2_donor_state2_sgov_tqqq.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_real_market_research",
+      "original_path": "scripts/run_real_market_research.py",
+      "archived_path": "scripts/archive/run_real_market_research.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_risk_control_variants",
+      "original_path": "scripts/run_risk_control_variants.py",
+      "archived_path": "scripts/archive/run_risk_control_variants.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_spec_bound_factor_diagnostics",
+      "original_path": "scripts/run_spec_bound_factor_diagnostics.py",
+      "archived_path": "scripts/archive/run_spec_bound_factor_diagnostics.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_top_bottom_analysis",
+      "original_path": "scripts/run_top_bottom_analysis.py",
+      "archived_path": "scripts/archive/run_top_bottom_analysis.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_us_x1_1_beta_residual_target",
+      "original_path": "scripts/run_us_x1_1_beta_residual_target.py",
+      "archived_path": "scripts/archive/run_us_x1_1_beta_residual_target.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "run_us_x1_1_drawdown_attribution_phase_a_canonical",
+      "original_path": "scripts/run_us_x1_1_drawdown_attribution_phase_a_canonical.py",
+      "archived_path": "scripts/archive/run_us_x1_1_drawdown_attribution_phase_a_canonical.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "train_cn_best_v2",
+      "original_path": "scripts/train_cn_best_v2.py",
+      "archived_path": "scripts/archive/train_cn_best_v2.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "validate_qqqi_v4_24_probability_geometry",
+      "original_path": "scripts/validate_qqqi_v4_24_probability_geometry.py",
+      "archived_path": "scripts/archive/validate_qqqi_v4_24_probability_geometry.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "all_weather_alpha_rotation_replay",
+      "original_path": "src/research/all_weather_alpha_rotation_replay.py",
+      "archived_path": "src/research/archive/all_weather_alpha_rotation_replay.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "all_weather_portfolio_engine",
+      "original_path": "src/research/all_weather_portfolio_engine.py",
+      "archived_path": "src/research/archive/all_weather_portfolio_engine.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "byd_adaptive_expansion",
+      "original_path": "src/research/byd_adaptive_expansion.py",
+      "archived_path": "src/research/archive/byd_adaptive_expansion.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "byd_asymmetric",
+      "original_path": "src/research/byd_asymmetric.py",
+      "archived_path": "src/research/archive/byd_asymmetric.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "byd_mom_scaled",
+      "original_path": "src/research/byd_mom_scaled.py",
+      "archived_path": "src/research/archive/byd_mom_scaled.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "byd_multi_signal_blend",
+      "original_path": "src/research/byd_multi_signal_blend.py",
+      "archived_path": "src/research/archive/byd_multi_signal_blend.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "byd_tactical_etf",
+      "original_path": "src/research/byd_tactical_etf.py",
+      "archived_path": "src/research/archive/byd_tactical_etf.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "byd_vol_target",
+      "original_path": "src/research/byd_vol_target.py",
+      "archived_path": "src/research/archive/byd_vol_target.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "cn27_sharpe_holdout",
+      "original_path": "src/research/cn27_sharpe_holdout.py",
+      "archived_path": "src/research/archive/cn27_sharpe_holdout.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "excess_returns_training",
+      "original_path": "src/research/excess_returns_training.py",
+      "archived_path": "src/research/archive/excess_returns_training.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "factor_redundancy",
+      "original_path": "src/research/factor_redundancy.py",
+      "archived_path": "src/research/archive/factor_redundancy.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "v4_15_transition_event_policy",
+      "original_path": "src/research/v4_15_transition_event_policy.py",
+      "archived_path": "src/research/archive/v4_15_transition_event_policy.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "v4_23_xgb_lambdarank_state_machine",
+      "original_path": "src/research/v4_23_xgb_lambdarank_state_machine.py",
+      "archived_path": "src/research/archive/v4_23_xgb_lambdarank_state_machine.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "v4_24_xgb_adjacent_path_state_machine",
+      "original_path": "src/research/v4_24_xgb_adjacent_path_state_machine.py",
+      "archived_path": "src/research/archive/v4_24_xgb_adjacent_path_state_machine.py",
+      "reason": "no live caller (check_ci_governance dead_modules advisory)"
+    },
+    {
+      "module": "debug_jobs",
+      "original_path": "scripts/archive/debug_jobs.py",
+      "archived_path": "scripts/archive/debug_jobs.py",
+      "reason": "pre-existing archive entry retained"
+    },
+    {
+      "module": "debug_runs",
+      "original_path": "scripts/archive/debug_runs.py",
+      "archived_path": "scripts/archive/debug_runs.py",
+      "reason": "pre-existing archive entry retained"
+    }
+  ],
+  "preserved_outside_archive": [
+    {
+      "module": "byd_v2_regime_research",
+      "path": "scripts/byd_v2_regime_research.py",
+      "reason": "named as provenance by sealed research logs under data/research/byd_v2_experiments"
+    },
+    {
+      "module": "byd_v2_regime_round2",
+      "path": "scripts/byd_v2_regime_round2.py",
+      "reason": "named as provenance by sealed research logs under data/research/byd_v2_experiments"
+    },
+    {
+      "module": "run_factor_feature_quality",
+      "path": "scripts/run_factor_feature_quality.py",
+      "reason": "named as provenance by data/research/quantskills_volume_stat_alpha/gate1_feature_quality.json"
+    },
+    {
+      "module": "notebook_training_api",
+      "path": "src/research/notebook_training_api.py",
+      "reason": "imported by notebooks/end_to_end_training_pipeline.ipynb (notebooks are frozen evidence, not live callers)"
+    }
+  ]
+}

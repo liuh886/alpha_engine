@@ -40,6 +40,14 @@ def test_active_bundle_reader_exposes_digest_bound_identity() -> None:
     assert identity["manifest_path"].startswith("data/research/formal_model_runs/")
 
 
+def test_trace_end_is_the_retained_performance_boundary() -> None:
+    run = load_formal_run(Path.cwd(), "cn_27_v1_3")
+    performance = run.section("performance")
+    assert run.trace_end == performance["report"][-1]["date"]
+    # Append-only refreshes advance the cutoff without extending the frozen trace.
+    assert run.trace_end <= run.evidence_cutoff
+
+
 def test_catalog_scoped_reader_reuses_one_validated_run() -> None:
     reader = FormalBundleReader.open(Path.cwd())
     first = reader.load("us_x1_3")

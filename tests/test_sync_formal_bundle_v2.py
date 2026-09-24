@@ -180,6 +180,27 @@ def test_sync_promotes_persisted_active_preview_set_deterministically(tmp_path: 
     assert freshness["freshness_receipt_required_models"] == [US_X1_3, "cn_x1_2"]
 
 
+def test_sync_retains_pinned_benchmark_run_outside_active_catalog(tmp_path: Path) -> None:
+    preview = _active_preview_root(tmp_path)
+    output = tmp_path / "output"
+    receipt = sync(FRESHNESS, output, native_root=preview, strategy_catalog=STRATEGIES)
+
+    pinned_path = (
+        "byd_allocation/byd_v1_3_recovery_event_low_vol_confirmation_v1/"
+        "byd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_08_25/manifest.json"
+    )
+    assert receipt["retained_pinned_benchmark_manifests"] == {
+        pinned_path: _sha256(output / pinned_path)
+    }
+    assert (output / pinned_path).read_bytes() == (FRESHNESS / pinned_path).read_bytes()
+
+    catalog = _read(output / "catalog.json")
+    validate_catalog(catalog)
+    byd_records = [row for row in catalog["records"] if row["model_version_id"] == BYD_V13]
+    assert len(byd_records) == 1
+    assert byd_records[0]["evidence_cutoff"] != "2026-08-25"
+
+
 def test_sync_rejects_corrupt_retained_formal_closure(tmp_path: Path) -> None:
     preview = _active_preview_root(tmp_path)
     retained = tmp_path / "retained"

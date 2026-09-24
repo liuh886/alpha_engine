@@ -66,6 +66,29 @@ class FormalRun:
         return str(self.manifest["run_id"])
 
     @property
+    def trace_end(self) -> str:
+        """Last session date of the retained performance trace.
+
+        Append-only refreshes advance ``evidence_cutoff`` and freshness while
+        the frozen trace stays put, so callers must never infer the trace
+        boundary from the cutoff. This property is the single source of truth
+        for it; replay, refresh and health must all read it here.
+        """
+
+        performance = self.section("performance")
+        report = performance.get("report") if isinstance(performance, Mapping) else None
+        if not isinstance(report, list) or not report:
+            raise FormalBundleReadError(
+                f"formal performance trace is empty: {self.model_version_id}"
+            )
+        last = report[-1]
+        if not isinstance(last, Mapping) or not last.get("date"):
+            raise FormalBundleReadError(
+                f"formal performance trace has no boundary date: {self.model_version_id}"
+            )
+        return str(last["date"])
+
+    @property
     def identity(self) -> dict[str, Any]:
         return {
             "model_version_id": self.model_version_id,

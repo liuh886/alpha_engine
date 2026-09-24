@@ -195,8 +195,14 @@ def _run_command(spec: CommandSpec, output_dir: Path, environment: dict[str, str
         output = process.stdout + process.stderr
         exit_code = process.returncode
         if spec.name == "frontend_install" and platform.system() == "Windows" and exit_code == 0:
+            # The lockfile already pins this binding as a platform-gated optional
+            # dependency; some npm versions still skip it. Install it without
+            # --save so the quality gate can never rewrite package.json or the
+            # lockfile while verifying a release.
             binding_proc = subprocess.run(
-                _executable_argv(("npm", "install", "@rolldown/binding-win32-x64-msvc")),
+                _executable_argv(
+                    ("npm", "install", "--no-save", "@rolldown/binding-win32-x64-msvc")
+                ),
                 cwd=spec.cwd,
                 env=environment,
                 capture_output=True,
