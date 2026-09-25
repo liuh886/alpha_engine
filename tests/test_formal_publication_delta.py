@@ -87,6 +87,7 @@ def _roots(tmp_path: Path, name: str, *, stamp: str) -> PublicationRoots:
             "native_promoted_model_ids": ["cn_x1_2"],
             "retained_inactive_model_version_ids": [],
             "retained_formal_manifests": {},
+            "retained_pinned_benchmark_manifests": {},
             "preview_catalog_sha256": _sha(roots.preview / "catalog.json"),
             "freshness_source_sha256": freshness_sha,
             "strategy_catalog_sha256": "d" * 64,
