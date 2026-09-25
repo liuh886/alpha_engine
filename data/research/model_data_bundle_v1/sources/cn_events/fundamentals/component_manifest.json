@@ -1,22 +1,22 @@
 {
   "component_id": "fundamentals.cn_selected_equities_v3",
   "component_kind": "fundamental_coverage",
-  "coverage_ratio": 0.9923076923076923,
+  "coverage_ratio": 0.9769230769230769,
   "details": {
-    "coverage_byte_size": 85839,
+    "coverage_byte_size": 85622,
     "coverage_path": "fundamentals/coverage.json",
-    "coverage_sha256": "d51ad70fd9bc3be965a225a66bbb9bb21860aace207e49fab1ebab9d88f1a6ff",
-    "events_byte_size": 17586623,
+    "coverage_sha256": "cd4aa93b1413ba2f68a498103a91200859d00c92eaeb58b962d0a4abbb3d0bf2",
+    "events_byte_size": 17344963,
     "events_path": "fundamentals/events.jsonl",
-    "events_sha256": "6517c67504ff00897682ab9555249d8b33642bfee6f1a382f507eb655f4a7238",
+    "events_sha256": "1cf3eaf872ff054d4910aec2ecb0d1dc19c55db0f0944f193c619d078daf7dbe",
     "explicit_status_count": 130,
     "status_counts": {
       "conflict": 0,
       "identity_missing": 0,
       "no_event_observed": 0,
       "partial": 0,
-      "provider_missing": 1,
-      "ready": 129
+      "provider_missing": 3,
+      "ready": 127
     }
   },
   "evidence_cutoff": "2026-09-04",
@@ -26,14 +26,16 @@
   "last_date": "2026-09-01",
   "market": "cn",
   "missing_symbols": [
-    "301666"
+    "301309",
+    "301666",
+    "600276"
   ],
   "pool_id": "cn_selected_equities_v3",
   "providers": [
     "akshare_sina_financial_report_cninfo_time"
   ],
   "quarantined_symbols": [],
-  "ready_symbol_count": 129,
+  "ready_symbol_count": 127,
   "research_only": true,
   "schema_version": "1.0",
   "status": "partial",
