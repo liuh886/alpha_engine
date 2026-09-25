@@ -16,6 +16,7 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping, Sequence
+from urllib.parse import quote
 
 import requests
 import yaml
@@ -41,6 +42,16 @@ class ManifestBinding:
 
 
 @dataclass(frozen=True)
+class DurableRelease:
+    """Immutable GitHub Release asset that survives Actions artifact expiry."""
+
+    tag: str
+    asset_name: str
+    sha256: str
+    size_bytes: int
+
+
+@dataclass(frozen=True)
 class GovernedSource:
     source_id: str
     source_kind: str
@@ -60,6 +71,7 @@ class GovernedSource:
     max_uncompressed_bytes: int
     max_member_count: int
     component_manifests: tuple[ManifestBinding, ...]
+    durable_release: DurableRelease | None = None
 
 
 @dataclass(frozen=True)
@@ -94,6 +106,22 @@ def _positive_int(payload: Mapping[str, Any], key: str) -> int:
     if value <= 0:
         raise GovernedActionsArtifactError(f"governed source requires positive {key}")
     return value
+
+
+def _durable_release(row: Mapping[str, Any], source_id: str) -> DurableRelease | None:
+    raw = row.get("durable_release")
+    if raw is None:
+        return None
+    binding = _mapping(raw, f"{source_id}.durable_release")
+    digest = _required_text(binding, "sha256").lower()
+    if not _SHA256.fullmatch(digest):
+        raise GovernedActionsArtifactError(f"invalid durable release digest: {source_id}")
+    return DurableRelease(
+        tag=_required_text(binding, "tag"),
+        asset_name=_required_text(binding, "asset_name"),
+        sha256=digest,
+        size_bytes=_positive_int(binding, "size_bytes"),
+    )
 
 
 def load_governed_source_registry(path: Path) -> GovernedSourceRegistry:
@@ -148,6 +176,7 @@ def load_governed_source_registry(path: Path) -> GovernedSourceRegistry:
             max_uncompressed_bytes=_positive_int(row, "max_uncompressed_bytes"),
             max_member_count=_positive_int(row, "max_member_count"),
             component_manifests=tuple(bindings),
+            durable_release=_durable_release(row, source_id),
         )
         sources[source_id] = source
     if not sources:
@@ -244,6 +273,44 @@ def _download_archive(
         raise GovernedActionsArtifactError("artifact archive size mismatch")
     if f"sha256:{digest.hexdigest()}" != source.artifact_digest:
         raise GovernedActionsArtifactError("artifact archive digest mismatch")
+
+
+def _download_durable_release(
+    *,
+    repository: str,
+    release: DurableRelease,
+    destination: Path,
+) -> None:
+    """Download a public immutable release asset without a bearer token.
+
+    The release asset is the durable source of truth: it carries the same
+    content digest as the original Actions artifact but never expires, so the
+    governed fetch cannot be broken by artifact retention or purge.
+    """
+
+    url = (
+        f"https://github.com/{repository}/releases/download/"
+        f"{quote(release.tag, safe='')}/{quote(release.asset_name, safe='')}"
+    )
+    with requests.get(url, stream=True, timeout=(30, 300), allow_redirects=True) as asset:
+        asset.raise_for_status()
+        digest = hashlib.sha256()
+        size = 0
+        with destination.open("wb") as handle:
+            for chunk in asset.iter_content(chunk_size=256 * 1024):
+                if not chunk:
+                    continue
+                size += len(chunk)
+                if size > release.size_bytes:
+                    raise GovernedActionsArtifactError(
+                        "durable release asset exceeds declared size"
+                    )
+                digest.update(chunk)
+                handle.write(chunk)
+    if size != release.size_bytes:
+        raise GovernedActionsArtifactError("durable release asset size mismatch")
+    if digest.hexdigest() != release.sha256:
+        raise GovernedActionsArtifactError("durable release asset digest mismatch")
 
 
 def _safe_extract(source: GovernedSource, archive: Path, destination: Path) -> None:
@@ -402,27 +469,8 @@ def fetch_governed_sources(
             raise GovernedActionsArtifactError(
                 f"governed source destination already exists: {destination}"
             )
-        api_root = f"https://api.github.com/repos/{registry.repository}"
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {token}",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
-        run_response = requests.get(
-            f"{api_root}/actions/runs/{source.workflow_run_id}",
-            headers=headers,
-            timeout=30,
-        )
-        run_response.raise_for_status()
-        artifact_response = requests.get(
-            f"{api_root}/actions/artifacts/{source.artifact_id}",
-            headers=headers,
-            timeout=30,
-        )
-        artifact_response.raise_for_status()
-        run = _mapping(run_response.json(), "workflow run")
-        artifact = _mapping(artifact_response.json(), "artifact")
-        _validate_remote_metadata(source, run=run, artifact=artifact)
+        retrieval_method = "actions_artifact"
+        retrieval_note: str | None = None
         with tempfile.TemporaryDirectory(
             prefix=f"alpha-engine-{source_id}-", dir=output
         ) as temporary:
@@ -430,12 +478,53 @@ def fetch_governed_sources(
             archive = temp / "artifact.zip"
             extracted = temp / "extracted"
             extracted.mkdir()
-            _download_archive(
-                repository=registry.repository,
-                source=source,
-                token=token,
-                destination=archive,
-            )
+            if source.durable_release is not None:
+                try:
+                    _download_durable_release(
+                        repository=registry.repository,
+                        release=source.durable_release,
+                        destination=archive,
+                    )
+                    retrieval_method = "durable_release"
+                except (GovernedActionsArtifactError, OSError) as exc:
+                    retrieval_note = (
+                        "durable release unavailable; fell back to the Actions "
+                        f"artifact: {exc}"
+                    )
+            if retrieval_method != "durable_release":
+                api_root = f"https://api.github.com/repos/{registry.repository}"
+                headers = {
+                    "Accept": "application/vnd.github+json",
+                    "Authorization": f"Bearer {token}",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                }
+                try:
+                    run_response = requests.get(
+                        f"{api_root}/actions/runs/{source.workflow_run_id}",
+                        headers=headers,
+                        timeout=30,
+                    )
+                    run_response.raise_for_status()
+                    artifact_response = requests.get(
+                        f"{api_root}/actions/artifacts/{source.artifact_id}",
+                        headers=headers,
+                        timeout=30,
+                    )
+                    artifact_response.raise_for_status()
+                except requests.RequestException as exc:
+                    raise GovernedActionsArtifactError(
+                        f"no durable release or Actions artifact is available for "
+                        f"{source_id}: {exc}"
+                    ) from exc
+                run = _mapping(run_response.json(), "workflow run")
+                artifact = _mapping(artifact_response.json(), "artifact")
+                _validate_remote_metadata(source, run=run, artifact=artifact)
+                _download_archive(
+                    repository=registry.repository,
+                    source=source,
+                    token=token,
+                    destination=archive,
+                )
             _safe_extract(source, archive, extracted)
             verify_extracted_source(source, extracted)
             destination.mkdir()
@@ -462,6 +551,18 @@ def fetch_governed_sources(
                     {"path": row.path, "sha256": row.sha256}
                     for row in source.component_manifests
                 ],
+                "retrieval_method": retrieval_method,
+                "retrieval_note": retrieval_note,
+                "durable_release": (
+                    None
+                    if source.durable_release is None
+                    else {
+                        "tag": source.durable_release.tag,
+                        "asset_name": source.durable_release.asset_name,
+                        "sha256": source.durable_release.sha256,
+                        "size_bytes": source.durable_release.size_bytes,
+                    }
+                ),
                 "installed_payload": "verified_component_manifests_only",
                 "training_payload_retrieval": "exact_artifact_locator_required",
                 "research_only": True,
@@ -471,7 +572,9 @@ def fetch_governed_sources(
     receipt = {
         "schema_version": "1.0",
         "repository": registry.repository,
-        "verification_policy": "exact_run_artifact_archive_and_component_hashes",
+        "verification_policy": (
+            "durable_release_or_exact_run_artifact_archive_and_component_hashes"
+        ),
         "sources": receipts,
         "research_only": True,
         "trade_ready": False,
