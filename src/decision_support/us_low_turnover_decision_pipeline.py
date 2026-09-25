@@ -72,17 +72,20 @@ def _repository_root(path: Path) -> Path:
     raise ValueError(f"unable to resolve repository root from {path}")
 
 
-def _pool_membership(pool_path: Path) -> tuple[dict[str, str], list[str]]:
+def _pool_membership(pool_path: Path) -> tuple[dict[str, str], list[str], str]:
     pool = yaml.safe_load(pool_path.read_text(encoding="utf-8"))
-    if not isinstance(pool, dict) or pool.get("pool_id") != "us_small_pool_v1":
-        raise ValueError("US decision pipeline requires frozen us_small_pool_v1")
+    pool_id = pool.get("pool_id") if isinstance(pool, dict) else None
+    if pool_id not in {"us_small_pool_v1", "us_small_pool_v2", "us_small_pool_v3"}:
+        raise ValueError(
+            "US decision pipeline requires a reviewed us_small_pool_v1/v2/v3 pool"
+        )
     basket_by_symbol = {
         str(symbol).upper(): str(basket)
         for basket, meta in pool["baskets"].items()
         for symbol in meta["symbols"]
     }
     references = [str(symbol).upper() for symbol in pool.get("references", {})]
-    return basket_by_symbol, references
+    return basket_by_symbol, references, str(pool_id)
 
 
 def _verify_prices(
@@ -132,6 +135,7 @@ def _build_aligned_factor_artifacts(
     prices: pd.DataFrame,
     basket_by_symbol: Mapping[str, str],
     benchmark: str,
+    universe_version: str,
     output_dir: Path,
 ) -> Path:
     fundamental_manifest = _artifact_hash_verified(fundamental_scores_path)
@@ -287,7 +291,7 @@ def _build_aligned_factor_artifacts(
         "schema_version": "1.0",
         "scope": {
             "market": "us",
-            "universe_version": "us_small_pool_v1",
+            "universe_version": universe_version,
             "benchmark": benchmark,
             "start_date": pd.Timestamp(start_date).date().isoformat(),
             "end_date": pd.Timestamp(end_date).date().isoformat(),
@@ -345,7 +349,7 @@ def run_us_low_turnover_decision_pipeline(
     root = _repository_root(resolved_rotation)
     rotation_payload = yaml.safe_load(resolved_rotation.read_text(encoding="utf-8"))
     pool_path = root / str(rotation_payload["pool_spec"])
-    basket_by_symbol, references = _pool_membership(pool_path)
+    basket_by_symbol, references, universe_version = _pool_membership(pool_path)
     resolved_prices = Path(prices_csv).resolve()
     required_symbols = set(basket_by_symbol) | set(references)
     prices = _verify_prices(resolved_prices, required_symbols=required_symbols, as_of=as_of)
@@ -408,6 +412,7 @@ def run_us_low_turnover_decision_pipeline(
         prices=prices,
         basket_by_symbol=basket_by_symbol,
         benchmark=str(rotation_payload["benchmark"]),
+        universe_version=universe_version,
         output_dir=aligned_dir,
     )
     relationship_dir = run_root / "factor_relationship_map"

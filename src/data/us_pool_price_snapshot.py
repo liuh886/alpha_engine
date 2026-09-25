@@ -73,8 +73,13 @@ def load_pool_symbols(pool_path: str | Path = DEFAULT_POOL) -> tuple[list[PoolSy
     payload = yaml.safe_load(resolved.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("US pool must be a YAML mapping")
-    if payload.get("pool_id") != "us_small_pool_v1" or payload.get("market") != "us":
-        raise ValueError("price snapshot requires frozen us_small_pool_v1")
+    pool_id = payload.get("pool_id")
+    if pool_id not in {
+        "us_small_pool_v1",
+        "us_small_pool_v2",
+        "us_small_pool_v3",
+    } or payload.get("market") != "us":
+        raise ValueError("price snapshot requires a reviewed us_small_pool_v1/v2/v3 pool")
     symbols: list[PoolSymbol] = []
     for basket, meta in payload.get("baskets", {}).items():
         for raw_symbol in meta.get("symbols", []):
@@ -177,6 +182,9 @@ def build_us_pool_price_snapshot(
     if start >= target:
         raise ValueError("snapshot start_date must precede requested-through date")
     symbols, resolved_pool = load_pool_symbols(pool_path)
+    pool_id = str(
+        yaml.safe_load(resolved_pool.read_text(encoding="utf-8"))["pool_id"]
+    )
     provider = adapter or YFinanceAdapter()
     frames: list[pd.DataFrame] = []
     coverage: list[dict[str, Any]] = []
@@ -256,7 +264,7 @@ def build_us_pool_price_snapshot(
     coverage_payload = {
         "schema_version": "1.0",
         "snapshot_id": "us_small_pool_yfinance_snapshot_v1",
-        "pool_id": "us_small_pool_v1",
+        "pool_id": pool_id,
         "requested_through": target.isoformat(),
         "resolved_as_of_date": resolved_as_of.isoformat(),
         "provider": provider.name,
@@ -277,7 +285,7 @@ def build_us_pool_price_snapshot(
         "trade_ready": False,
         "performance_evaluated": False,
         "provider": provider.name,
-        "pool_id": "us_small_pool_v1",
+        "pool_id": pool_id,
         "requested_through": target.isoformat(),
         "resolved_as_of_date": resolved_as_of.isoformat(),
         "symbol_count": len(symbols),

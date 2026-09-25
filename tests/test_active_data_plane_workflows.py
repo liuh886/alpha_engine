@@ -15,9 +15,9 @@ action_refs = POLICY_MODULE.action_refs
 
 
 WORKFLOW_JOB_COUNTS = {
-    "alpha158-canonical-vwap-ci.yml": 3,
+    "alpha158-canonical-vwap-ci.yml": 4,
     "event-store-contracts-ci.yml": 2,
-    "selected-pool-event-population-ci.yml": 3,
+    "selected-pool-event-population-ci.yml": 4,
     "factor-catalog-alpha158-ci.yml": 1,
     "alpha158-panel-ci.yml": 2,
     "us87-professional-prices-ci.yml": 2,
@@ -50,7 +50,7 @@ def test_shared_python_environment_is_frozen_and_cache_safe() -> None:
 
 
 def test_active_data_plane_workflows_use_one_governed_environment_setup() -> None:
-    assert sum(WORKFLOW_JOB_COUNTS.values()) == 20
+    assert sum(WORKFLOW_JOB_COUNTS.values()) == 22
     root = Path(".github/workflows")
     for filename, job_count in WORKFLOW_JOB_COUNTS.items():
         content = (root / filename).read_text(encoding="utf-8")

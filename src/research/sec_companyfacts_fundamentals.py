@@ -174,8 +174,11 @@ def load_source_contract(path: str | Path) -> SourceContract:
     if not isinstance(pool, dict) or pool.get("pool_id") not in {
         "us_small_pool_v1",
         "us_small_pool_v2",
+        "us_small_pool_v3",
     }:
-        raise ValueError("SEC source requires frozen us_small_pool_v1 or active us_small_pool_v2")
+        raise ValueError(
+            "SEC source requires a reviewed us_small_pool_v1/v2/v3 pool"
+        )
     return SourceContract(payload=payload, path=resolved, pool=pool, pool_path=pool_path)
 
 
