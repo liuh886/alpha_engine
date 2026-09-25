@@ -220,6 +220,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
       - name: Resolve built artifact identity
         id: artifact
         env:
