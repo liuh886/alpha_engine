@@ -1,13 +1,13 @@
 {
-  "built_at": "2026-09-23T09:59:55+00:00",
-  "bundle_id": "90477c24e3710d6c97cb4766be1f933e95e3b838b5fc2fc217ff83b0669b108a",
-  "evidence_cutoff": "2026-09-22",
+  "built_at": "2026-09-25T15:17:47+00:00",
+  "bundle_id": "1cb79e28111da9c072aa7ca0786c6556d85811dbd38b3ff85aa43737d30e2894",
+  "evidence_cutoff": "2026-09-24",
   "research_only": true,
   "schema_version": "1.1",
   "source_receipts": [
     {
       "path": "sources/governed-source-receipt.json",
-      "sha256": "c9c3cd81f757d9081d6e3c182de1371756442f08315a2d396b9fa2d9f236a0a2",
+      "sha256": "214af471eef43a8c69d37c4c063a508aae0e0674addc20a77a2ea51dd27227df",
       "source_ids": [
         "cn_alpha158",
         "cn_events"
