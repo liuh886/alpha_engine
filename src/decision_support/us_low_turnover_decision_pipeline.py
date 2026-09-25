@@ -435,10 +435,76 @@ def run_us_low_turnover_decision_pipeline(
         output_dir=multifactor_dir,
     )
     _assert_truth_boundary(multifactor_decision, label="low-turnover multifactor")
-    if not bool(
-        multifactor_decision.get("turnover_diagnostics", {}).get("turnover_gate_passed", False)
-    ):
-        raise ValueError("low-turnover multifactor candidate failed turnover contract")
+    turnover_diagnostics = multifactor_decision.get("turnover_diagnostics", {})
+    turnover_gate_passed = bool(turnover_diagnostics.get("turnover_gate_passed", False))
+
+    input_identity = {
+        "as_of_date": as_of.isoformat(),
+        "prices_sha256": _sha256_file(resolved_prices),
+        "fundamentals_sha256": _sha256_file(resolved_fundamentals),
+        "registry_sha256": _sha256_file(registry_path),
+        "sec_contract_sha256": _sha256_file(Path(sec_contract).resolve()),
+        "fundamental_contract_sha256": _sha256_file(Path(fundamental_contract).resolve()),
+        "rotation_spec_sha256": _sha256_file(resolved_rotation),
+        "relationship_contract_sha256": _sha256_file(Path(relationship_contract).resolve()),
+        "multifactor_contract_sha256": _sha256_file(Path(multifactor_contract).resolve()),
+        "cutover_contract_sha256": _sha256_file(Path(cutover_contract).resolve()),
+    }
+    stage_manifest_hashes = {
+        "fundamental_manifest_sha256": _sha256_file(fundamental_dir / "evidence_manifest.json"),
+        "rotation_manifest_sha256": _sha256_file(rotation_dir / "evidence_manifest.json"),
+        "relationship_manifest_sha256": _sha256_file(
+            relationship_dir / "evidence_manifest.json"
+        ),
+        "multifactor_manifest_sha256": _sha256_file(multifactor_dir / "evidence_manifest.json"),
+    }
+    stage_decisions: dict[str, Any] = {
+        "legacy_migration": legacy_migration,
+        "history_backfill_card_count": history_backfill["card_count"],
+        "sec_decision": sec_decision,
+        "fundamental_decision": fundamental_decision,
+        "rotation_decision": rotation_decision,
+        "relationship_decision": relationship_decision,
+        "multifactor_decision": multifactor_decision,
+    }
+    manifest_path = run_root / "pipeline_run_manifest.json"
+
+    if not turnover_gate_passed:
+        # A failed candidate contract is a governed not-supported outcome, not an
+        # operational failure. Retain the complete failure record, stop before any
+        # diagnostic ticket, and return a manifest-bound decision.
+        not_supported: dict[str, Any] = {
+            "schema_version": "1.0",
+            "pipeline_id": "us_low_turnover_decision_pipeline_v1",
+            "market": "us",
+            "as_of_date": as_of.isoformat(),
+            "decision": "not_supported",
+            "supported": False,
+            "failed_gates": ["low_turnover_multifactor_turnover_contract"],
+            "failure_record": {
+                "multifactor_decision": multifactor_decision.get("decision"),
+                "turnover_diagnostics": turnover_diagnostics,
+            },
+            "research_only": True,
+            "diagnostic_only": True,
+            "trade_ready": False,
+            "automatic_order_routing": False,
+            "performance_evaluated": False,
+            "inputs": input_identity,
+            "stages": stage_decisions,
+            "outputs": dict(stage_manifest_hashes),
+        }
+        not_supported["pipeline_run_identity_sha256"] = _canonical_hash(not_supported)
+        if manifest_path.exists():
+            existing = _load_json(manifest_path)
+            if (
+                existing.get("pipeline_run_identity_sha256")
+                != not_supported["pipeline_run_identity_sha256"]
+            ):
+                raise ValueError("same-date pipeline run identity conflict")
+            return existing
+        _write_json(manifest_path, not_supported)
+        return not_supported
 
     shadow_workspace = run_root / "prospective_shadow"
     shadow_manifest = run_prospective_shadow_cycle(
@@ -458,23 +524,14 @@ def run_us_low_turnover_decision_pipeline(
     ticket = _load_json(ticket_path)
     _assert_truth_boundary(ticket, label="shadow ticket")
 
-    input_identity = {
-        "as_of_date": as_of.isoformat(),
-        "prices_sha256": _sha256_file(resolved_prices),
-        "fundamentals_sha256": _sha256_file(resolved_fundamentals),
-        "registry_sha256": _sha256_file(registry_path),
-        "sec_contract_sha256": _sha256_file(Path(sec_contract).resolve()),
-        "fundamental_contract_sha256": _sha256_file(Path(fundamental_contract).resolve()),
-        "rotation_spec_sha256": _sha256_file(resolved_rotation),
-        "relationship_contract_sha256": _sha256_file(Path(relationship_contract).resolve()),
-        "multifactor_contract_sha256": _sha256_file(Path(multifactor_contract).resolve()),
-        "cutover_contract_sha256": _sha256_file(Path(cutover_contract).resolve()),
-    }
     top_manifest: dict[str, Any] = {
         "schema_version": "1.0",
         "pipeline_id": "us_low_turnover_decision_pipeline_v1",
         "market": "us",
         "as_of_date": as_of.isoformat(),
+        "decision": "candidate_ready",
+        "supported": True,
+        "failed_gates": [],
         "research_only": True,
         "diagnostic_only": True,
         "trade_ready": False,
@@ -482,30 +539,18 @@ def run_us_low_turnover_decision_pipeline(
         "performance_evaluated": False,
         "inputs": input_identity,
         "stages": {
-            "legacy_migration": legacy_migration,
-            "history_backfill_card_count": history_backfill["card_count"],
-            "sec_decision": sec_decision,
-            "fundamental_decision": fundamental_decision,
-            "rotation_decision": rotation_decision,
-            "relationship_decision": relationship_decision,
-            "multifactor_decision": multifactor_decision,
+            **stage_decisions,
             "shadow_run_manifest_identity_sha256": shadow_manifest.get(
                 "run_manifest_identity_sha256"
             ),
         },
         "outputs": {
-            "fundamental_manifest_sha256": _sha256_file(fundamental_dir / "evidence_manifest.json"),
-            "rotation_manifest_sha256": _sha256_file(rotation_dir / "evidence_manifest.json"),
-            "relationship_manifest_sha256": _sha256_file(
-                relationship_dir / "evidence_manifest.json"
-            ),
-            "multifactor_manifest_sha256": _sha256_file(multifactor_dir / "evidence_manifest.json"),
+            **stage_manifest_hashes,
             "ticket_identity_sha256": ticket["ticket_identity_sha256"],
             "ticket_file_sha256": _sha256_file(ticket_path),
         },
     }
     top_manifest["pipeline_run_identity_sha256"] = _canonical_hash(top_manifest)
-    manifest_path = run_root / "pipeline_run_manifest.json"
     if manifest_path.exists():
         existing = _load_json(manifest_path)
         if (

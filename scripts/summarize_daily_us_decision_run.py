@@ -82,21 +82,42 @@ def build_summary(
     ticket = None
     if ticket_paths:
         ticket = json.loads(ticket_paths[-1].read_text(encoding="utf-8"))
+    latest_manifest = None
+    latest_paths = sorted(
+        (artifacts_root / "forward_shadow_runs").rglob("latest_run_manifest.json"),
+        key=lambda path: str(path),
+    )
+    if latest_paths:
+        latest_manifest = json.loads(latest_paths[-1].read_text(encoding="utf-8"))
     log_path = artifacts_root / "operations" / "daily_us_decision.log"
     log_tail: list[str] = []
     if log_path.is_file():
         log_tail = log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-12:]
 
-    status = "COMPLETED" if exit_code == 0 and ticket is not None else "BLOCKED"
+    decision = str((latest_manifest or {}).get("decision", ""))
+    if exit_code != 0:
+        status = "BLOCKED"
+    elif decision == "not_supported":
+        status = "NOT SUPPORTED"
+    elif ticket is not None:
+        status = "COMPLETED"
+    else:
+        status = "BLOCKED"
     lines = [
         f"# Daily US Decision — {status}",
         "",
         f"- Governed process exit code: `{exit_code}`",
         f"- Prior Decision Desk state restored: `{str(state_restored).lower()}`",
+        f"- Candidate decision: `{decision or 'not reached'}`",
         "- Mode: `diagnostic_only`",
         "- Trade ready: `false`",
         "- Automatic order routing: `false`",
     ]
+    failed_gates = (latest_manifest or {}).get("failed_gates")
+    if isinstance(failed_gates, list) and failed_gates:
+        lines.append(
+            "- Failed candidate gates: " + ", ".join(f"`{gate}`" for gate in failed_gates)
+        )
     if price_decision is not None:
         lines.extend(
             [

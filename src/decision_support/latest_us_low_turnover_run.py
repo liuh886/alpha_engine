@@ -105,11 +105,15 @@ def run_latest_us_low_turnover_decision(
     if pipeline_manifest.get("trade_ready") is not False:
         raise ValueError("latest US decision pipeline must remain trade_ready=false")
 
+    supported = pipeline_manifest.get("supported") is True
     wrapper: dict[str, Any] = {
         "schema_version": "1.0",
         "run_id": "latest_us_low_turnover_decision_v1",
         "market": "us",
         "as_of_date": as_of,
+        "decision": "candidate_ready" if supported else "not_supported",
+        "supported": supported,
+        "failed_gates": list(pipeline_manifest.get("failed_gates") or []),
         "research_only": True,
         "diagnostic_only": True,
         "trade_ready": False,
@@ -126,7 +130,9 @@ def run_latest_us_low_turnover_decision(
         },
         "outputs": {
             "pipeline_run_identity_sha256": pipeline_manifest["pipeline_run_identity_sha256"],
-            "ticket_identity_sha256": pipeline_manifest["outputs"]["ticket_identity_sha256"],
+            "ticket_identity_sha256": (
+                pipeline_manifest["outputs"]["ticket_identity_sha256"] if supported else None
+            ),
         },
     }
     wrapper["latest_run_identity_sha256"] = _canonical_hash(wrapper)

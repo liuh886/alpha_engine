@@ -174,6 +174,50 @@ def test_same_inputs_are_idempotent(tmp_path: Path) -> None:
     ]
 
 
+def test_failed_turnover_gate_records_a_governed_not_supported_decision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import src.decision_support.us_low_turnover_decision_pipeline as pipeline_module
+
+    def fake_multifactor(**kwargs):
+        output = Path(kwargs["output_dir"])
+        output.mkdir(parents=True, exist_ok=True)
+        (output / "evidence_manifest.json").write_text("{}\n", encoding="utf-8")
+        return {
+            "decision": "multifactor_candidate_failed_turnover_contract",
+            "turnover_diagnostics": {
+                "turnover_gate_passed": False,
+                "maximum_annual_turnover": 11.866666666666669,
+                "annual_turnover_ceiling": 4.0,
+            },
+            "research_only": True,
+            "trade_ready": False,
+        }
+
+    monkeypatch.setattr(
+        pipeline_module, "run_low_turnover_multifactor_pipeline", fake_multifactor
+    )
+
+    manifest = _run(tmp_path)
+
+    assert manifest["decision"] == "not_supported"
+    assert manifest["supported"] is False
+    assert manifest["failed_gates"] == ["low_turnover_multifactor_turnover_contract"]
+    assert (
+        manifest["failure_record"]["turnover_diagnostics"]["turnover_gate_passed"]
+        is False
+    )
+    assert "ticket_identity_sha256" not in manifest["outputs"]
+    assert not (tmp_path / "ledger" / "us" / f"{AS_OF}.json").exists()
+    run_root = tmp_path / "workspace" / "us_low_turnover_pipeline" / AS_OF
+    persisted = json.loads(
+        (run_root / "pipeline_run_manifest.json").read_text(encoding="utf-8")
+    )
+    assert persisted["pipeline_run_identity_sha256"] == manifest[
+        "pipeline_run_identity_sha256"
+    ]
+
+
 def test_missing_frozen_symbol_fails_closed(tmp_path: Path) -> None:
     prices = tmp_path / "prices.csv"
     fundamentals = tmp_path / "fundamentals.csv"

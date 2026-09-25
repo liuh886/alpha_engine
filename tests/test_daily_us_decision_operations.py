@@ -147,3 +147,45 @@ def test_summary_surfaces_source_blockers_ticket_and_restored_state(
     assert "Ticket identity: `ticket-123`" in completed
     assert "Daily US Decision — BLOCKED" in blocked
     assert "Prior Decision Desk state restored: `false`" in blocked
+
+
+def test_summary_reports_a_not_supported_candidate(tmp_path: Path) -> None:
+    _write_json(
+        tmp_path / "market_snapshots" / "us_small_pool_v1" / "2026-07-31" / "decision.json",
+        {"resolved_as_of_date": "2026-07-31", "symbol_count": 25, "row_count": 7000},
+    )
+    run_root = tmp_path / "forward_shadow_runs" / "us_low_turnover_pipeline" / "2026-07-31"
+    _write_json(
+        run_root / "sec_companyfacts" / "decision.json",
+        {
+            "decision": "sec_companyfacts_source_ready_with_partial_coverage",
+            "factor_ready_count": 23,
+            "candidate_count": 23,
+        },
+    )
+    _write_json(
+        run_root / "low_turnover_multifactor" / "decision.json",
+        {
+            "decision": "multifactor_candidate_failed_turnover_contract",
+            "turnover_diagnostics": {"turnover_gate_passed": False},
+        },
+    )
+    _write_json(
+        tmp_path
+        / "forward_shadow_runs"
+        / "latest_us_low_turnover_decision"
+        / "2026-07-31"
+        / "latest_run_manifest.json",
+        {
+            "decision": "not_supported",
+            "supported": False,
+            "failed_gates": ["low_turnover_multifactor_turnover_contract"],
+        },
+    )
+
+    summary = build_summary(artifacts_root=tmp_path, exit_code=0, state_restored=False)
+
+    assert "Daily US Decision — NOT SUPPORTED" in summary
+    assert "Candidate decision: `not_supported`" in summary
+    assert "Failed candidate gates: `low_turnover_multifactor_turnover_contract`" in summary
+    assert "Decision ticket: `not produced`" in summary
