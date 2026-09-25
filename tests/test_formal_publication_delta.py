@@ -11,11 +11,31 @@ import pytest
 
 from scripts.run_formal_refresh_transaction import main as transaction_main
 from src.artifacts.formal_publication_delta import (
+    _MODEL_DATA_BUNDLE_KEYS,
+    _READINESS_KEYS,
     FormalPublicationDeltaError,
     PublicationRoots,
     classify_publication_delta,
 )
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes
+
+
+def test_model_data_bundle_keys_match_the_classifier_allow_list() -> None:
+    bundle = json.loads(
+        Path("data/research/model_data_bundle_v1/model-data-bundle.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    readiness = json.loads(
+        Path("data/research/model_data_bundle_v1/model-data-readiness.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    # The classifier rejects unknown fields, so the committed read models and the
+    # builder contract must stay exactly aligned with the allow-lists.
+    assert set(bundle) == _MODEL_DATA_BUNDLE_KEYS
+    assert set(readiness) == _READINESS_KEYS
 
 
 def _write(path: Path, value: object) -> None:
@@ -107,6 +127,7 @@ def _roots(tmp_path: Path, name: str, *, stamp: str) -> PublicationRoots:
         "built_at": stamp,
         "bundle_id": "e" * 64,
         "evidence_cutoff": "2026-08-21",
+        "source_receipts": [],
         "summary": {"ready_component_count": 1},
         "research_only": True,
         "trade_ready": False,
@@ -137,6 +158,7 @@ def _roots(tmp_path: Path, name: str, *, stamp: str) -> PublicationRoots:
                     "sha256": _sha(roots.model_data / "training-profiles.json"),
                 },
             },
+            "source_receipts": [],
             "summary": {"ready_component_count": 1},
             "training_profiles": [{"profile_id": "cn_selected_price_only_v1"}],
             "research_only": True,
