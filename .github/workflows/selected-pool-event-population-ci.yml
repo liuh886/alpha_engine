@@ -207,3 +207,53 @@ jobs:
           path: artifacts/data/event_population/${{ matrix.market }}
           if-no-files-found: error
           retention-days: 90
+
+  publish-durable-cn-source:
+    if: >-
+      always() &&
+      github.event_name != 'pull_request' &&
+      (inputs.market == '' || inputs.market == 'both' || inputs.market == 'cn') &&
+      needs.live-population.result == 'success'
+    needs: [live-population]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Resolve built artifact identity
+        id: artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          name="selected-pool-event-live-cn-${GITHUB_RUN_ID}"
+          artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+            --jq ".artifacts[] | select(.name == \"${name}\") | .id")"
+          test -n "$artifact_id"
+          digest="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}" --jq '.digest')"
+          test -n "$digest"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          echo "artifact_id=${artifact_id}" >> "$GITHUB_OUTPUT"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+      - name: Download the exact reviewed artifact zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${{ steps.artifact.outputs.artifact_id }}/zip" \
+            > "${{ steps.artifact.outputs.name }}.zip"
+          observed="sha256:$(python3 -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "${{ steps.artifact.outputs.name }}.zip")"
+          test "$observed" = "${{ steps.artifact.outputs.digest }}"
+      - name: Publish the durable governed source release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: model-data-source-cn-events-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "durable release already exists: $TAG"
+            exit 0
+          fi
+          gh release create "$TAG" "${{ steps.artifact.outputs.name }}.zip" \
+            --title "Durable governed source: CN selected-pool events" \
+            --notes "Durable mirror of reviewed Actions artifact ${{ steps.artifact.outputs.artifact_id }} (${{ steps.artifact.outputs.digest }}) from run ${GITHUB_RUN_ID} (head ${GITHUB_SHA}). Pin it in configs/data/formal_model_data_sources_v1.yaml after review. research_only=true, trade_ready=false."

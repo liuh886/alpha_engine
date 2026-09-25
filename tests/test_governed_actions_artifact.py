@@ -9,10 +9,12 @@ from pathlib import Path
 import pytest
 
 from src.data.governed_actions_artifact import (
+    DurableRelease,
     GovernedActionsArtifactError,
     GovernedSource,
     ManifestBinding,
     _download_archive,
+    _download_durable_release,
     _safe_extract,
     _validate_remote_metadata,
     _verify_bound_manifests,
@@ -82,11 +84,20 @@ def test_checked_in_registry_freezes_exact_current_cn_sources() -> None:
         "cn_alpha158",
         "cn_events",
     }
-    assert registry.sources["cn_alpha158"].artifact_id == 9961938297
-    assert registry.sources["cn_events"].artifact_id == 9962408566
+    assert registry.sources["cn_alpha158"].artifact_id == 10870061820
+    assert registry.sources["cn_events"].artifact_id == 10869737672
     assert {source.evidence_cutoff for source in registry.sources.values()} == {
         "2026-09-04"
     }
+    # Every pinned source carries a durable release mirror whose content digest
+    # equals the original Actions artifact so fetch never depends on artifact
+    # retention.
+    for source in registry.sources.values():
+        assert source.durable_release is not None
+        assert source.durable_release.sha256 == source.artifact_digest.removeprefix(
+            "sha256:"
+        )
+        assert source.durable_release.size_bytes == source.artifact_size_bytes
 
 
 def test_formal_refresh_source_roles_and_manifest_paths_match_registry() -> None:
@@ -215,6 +226,90 @@ def test_download_does_not_forward_github_token_to_blob(monkeypatch, tmp_path: P
     assert destination.read_bytes() == payload
     assert calls[0]["headers"]["Authorization"] == "Bearer secret-token"
     assert "headers" not in calls[1]
+
+
+def test_durable_release_download_is_token_free_and_digest_bound(
+    monkeypatch, tmp_path: Path
+) -> None:
+    payload = b"durable-release-bytes"
+    release = DurableRelease(
+        tag="model-data-source-fixture",
+        asset_name="fixture.zip",
+        sha256=hashlib.sha256(payload).hexdigest(),
+        size_bytes=len(payload),
+    )
+    calls: list[dict] = []
+
+    class Response:
+        def __init__(self, body: bytes):
+            self.body = body
+
+        def raise_for_status(self):
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def iter_content(self, *, chunk_size):
+            assert chunk_size == 256 * 1024
+            yield self.body
+
+    def get(url, **kwargs):
+        calls.append({"url": url, **kwargs})
+        return Response(payload)
+
+    monkeypatch.setattr("src.data.governed_actions_artifact.requests.get", get)
+    destination = tmp_path / "asset.zip"
+
+    _download_durable_release(
+        repository="owner/repo", release=release, destination=destination
+    )
+
+    assert destination.read_bytes() == payload
+    assert calls[0]["url"] == (
+        "https://github.com/owner/repo/releases/download/"
+        "model-data-source-fixture/fixture.zip"
+    )
+    assert "headers" not in calls[0]
+
+
+def test_durable_release_digest_mismatch_fails_closed(
+    monkeypatch, tmp_path: Path
+) -> None:
+    release = DurableRelease(
+        tag="model-data-source-fixture",
+        asset_name="fixture.zip",
+        sha256="0" * 64,
+        size_bytes=3,
+    )
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def iter_content(self, *, chunk_size):
+            assert chunk_size == 256 * 1024
+            yield b"zip"
+
+    monkeypatch.setattr(
+        "src.data.governed_actions_artifact.requests.get",
+        lambda url, **kwargs: Response(),
+    )
+    with pytest.raises(GovernedActionsArtifactError, match="digest mismatch"):
+        _download_durable_release(
+            repository="owner/repo",
+            release=release,
+            destination=tmp_path / "asset.zip",
+        )
 
 
 def test_receipt_contract_stays_json_serializable() -> None:
