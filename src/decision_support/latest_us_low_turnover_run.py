@@ -54,6 +54,14 @@ def run_latest_us_low_turnover_decision(
     ledger_dir: str | Path,
     workspace_dir: str | Path,
     snapshot_root: str | Path,
+    pool_path: str | Path = "configs/pools/us_small_pool_v1.yaml",
+    sec_contract: str | Path = "configs/providers/sec_companyfacts_fundamentals_v1.yaml",
+    fundamental_contract: str | Path = "configs/factors/us_fundamental_acceleration_v1.yaml",
+    rotation_spec: str | Path = (
+        "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v2.yaml"
+    ),
+    multifactor_contract: str | Path = "configs/factors/us_low_turnover_multifactor_v1.yaml",
+    cutover_contract: str | Path = "configs/operations/prospective_shadow_cutover_v1.yaml",
     requested_through: str | None = None,
     start_date: str = "2024-01-01",
     fundamentals_csv: str | Path | None = None,
@@ -67,6 +75,7 @@ def run_latest_us_low_turnover_decision(
         output_root=snapshot_root,
         requested_through=requested_through,
         start_date=start_date,
+        pool_path=pool_path,
         adapter=price_adapter,
         now_utc=now_utc,
     )
@@ -86,6 +95,11 @@ def run_latest_us_low_turnover_decision(
         registry_db=registry_db,
         ledger_dir=ledger_dir,
         workspace_dir=workspace_dir,
+        sec_contract=sec_contract,
+        fundamental_contract=fundamental_contract,
+        rotation_spec=rotation_spec,
+        multifactor_contract=multifactor_contract,
+        cutover_contract=cutover_contract,
         sec_client=sec_client,
     )
     if pipeline_manifest.get("trade_ready") is not False:

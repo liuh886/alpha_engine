@@ -1,0 +1,41 @@
+schema_version: "1.0"
+mapping_id: "us_small_pool_sec_cik_v3"
+parent_mapping_id: "us_small_pool_sec_cik_v2"
+status: "frozen_source_identity"
+pool_id: "us_small_pool_v3"
+source:
+  authority: "U.S. Securities and Exchange Commission"
+  url: "https://www.sec.gov/files/company_tickers.json"
+  retrieved_date: "2026-08-01"
+  purpose: "bind the corrected selected pool to official ticker-to-CIK identities"
+
+symbols:
+  MU: "0000723125"
+  COHR: "0000820318"
+  ANET: "0001596532"
+  SMCI: "0001375365"
+  CORZ: "0001839341"
+  AMZN: "0001018724"
+  META: "0001326801"
+  AAOI: "0001158114"
+  AAPL: "0000320193"
+  ALAB: "0001736297"
+  AMD: "0000002488"
+  CRDO: "0001807794"
+  HIMS: "0001773751"
+  INTC: "0000050863"
+  KO: "0000021344"
+  LITE: "0001633978"
+  MSFT: "0000789019"
+  ORCL: "0001341439"
+  TSLA: "0001318605"
+  TYGO: "0001855447"
+  VRT: "0001674101"
+  WDC: "0000106040"
+  WMT: "0000104169"
+
+governance:
+  exact_pool_coverage_required: true
+  runtime_symbol_discovery_allowed: false
+  additions_or_removals_require_new_mapping_version: true
+  official_companyfacts_endpoint_unchanged: true

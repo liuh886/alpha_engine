@@ -326,6 +326,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
       - name: Resolve built artifact identity
         id: artifact
         env:
@@ -348,7 +349,7 @@ jobs:
           set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${{ steps.artifact.outputs.artifact_id }}/zip" \
             > "${{ steps.artifact.outputs.name }}.zip"
-          observed="sha256:$(python3 -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "${{ steps.artifact.outputs.name }}.zip")"
+          observed="sha256:$(uv run python -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "${{ steps.artifact.outputs.name }}.zip")"
           test "$observed" = "${{ steps.artifact.outputs.digest }}"
       - name: Publish the durable governed source release
         env:

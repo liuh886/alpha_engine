@@ -51,8 +51,11 @@ def _load_contract(path: Path) -> tuple[dict[str, Any], dict[str, Any], Path]:
     if not isinstance(pool, dict) or pool.get("pool_id") not in {
         "us_small_pool_v1",
         "us_small_pool_v2",
+        "us_small_pool_v3",
     }:
-        raise ValueError("validation requires frozen us_small_pool_v1 or active us_small_pool_v2")
+        raise ValueError(
+            "validation requires a reviewed us_small_pool_v1/v2/v3 pool"
+        )
     return contract, pool, pool_path
 
 

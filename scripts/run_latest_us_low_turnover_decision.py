@@ -34,7 +34,40 @@ def main() -> int:
     parser.add_argument(
         "--snapshot-root",
         type=Path,
-        default=Path("artifacts/market_snapshots/us_small_pool_v1"),
+        default=Path("artifacts/market_snapshots/us_small_pool_v3"),
+    )
+    parser.add_argument(
+        "--pool",
+        type=Path,
+        default=Path("configs/pools/us_small_pool_v3.yaml"),
+        help="Reviewed pool version whose symbols must all carry quarterly fundamentals.",
+    )
+    parser.add_argument(
+        "--sec-contract",
+        type=Path,
+        default=Path("configs/providers/sec_companyfacts_fundamentals_v3.yaml"),
+    )
+    parser.add_argument(
+        "--fundamental-contract",
+        type=Path,
+        default=Path("configs/factors/us_fundamental_acceleration_v3.yaml"),
+    )
+    parser.add_argument(
+        "--rotation-spec",
+        type=Path,
+        default=Path(
+            "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v4.yaml"
+        ),
+    )
+    parser.add_argument(
+        "--multifactor-contract",
+        type=Path,
+        default=Path("configs/factors/us_low_turnover_multifactor_v2.yaml"),
+    )
+    parser.add_argument(
+        "--cutover-contract",
+        type=Path,
+        default=Path("configs/operations/prospective_shadow_cutover_v2.yaml"),
     )
     parser.add_argument(
         "--fundamentals-csv",
@@ -48,6 +81,12 @@ def main() -> int:
         ledger_dir=args.ledger_dir,
         workspace_dir=args.workspace_dir,
         snapshot_root=args.snapshot_root,
+        pool_path=args.pool,
+        sec_contract=args.sec_contract,
+        fundamental_contract=args.fundamental_contract,
+        rotation_spec=args.rotation_spec,
+        multifactor_contract=args.multifactor_contract,
+        cutover_contract=args.cutover_contract,
         requested_through=args.requested_through,
         start_date=args.start_date,
         fundamentals_csv=args.fundamentals_csv,

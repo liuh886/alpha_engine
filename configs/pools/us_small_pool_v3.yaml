@@ -1,0 +1,125 @@
+schema_version: "1.0"
+pool_id: "us_small_pool_v3"
+parent_pool_id: "us_small_pool_v2"
+created_at: "2026-09-25"
+source: "user_predeclared_with_quarterly_fundamental_coverage_corrections"
+market: "us"
+membership_mode: "versioned_predeclared"
+status: "active_selected_pool"
+primary_basket_only: true
+silent_exclusion_allowed: false
+
+corrections_from_parent:
+  # The frozen SEC companyfacts source must build quarterly revenue and gross
+  # profit for every member. Members that only tag annual facts in XBRL were
+  # replaced by US filers with continuous quarterly coverage in the same theme.
+  - type: "quarterly_fundamental_coverage_replacement"
+    removed_symbol: "TSM"
+    added_symbol: "MU"
+    reason: "TSM tags only annual IFRS facts in companyfacts; MU is a US compute and storage filer with quarterly coverage"
+  - type: "quarterly_fundamental_coverage_replacement"
+    removed_symbol: "POET"
+    added_symbol: "COHR"
+    reason: "POET tags only annual IFRS facts in companyfacts; COHR is a US optical and photonics filer with quarterly coverage"
+  - type: "quarterly_fundamental_coverage_replacement"
+    removed_symbol: "NOK"
+    added_symbol: "ANET"
+    reason: "NOK tags only annual IFRS facts in companyfacts; ANET is a US networking filer with quarterly coverage"
+  - type: "quarterly_fundamental_coverage_replacement"
+    removed_symbol: "NBIS"
+    added_symbol: "SMCI"
+    reason: "NBIS does not report quarterly revenue and gross profit in the frozen form set; SMCI is a US AI-server infrastructure filer with quarterly coverage"
+  - type: "quarterly_fundamental_coverage_replacement"
+    removed_symbol: "IREN"
+    added_symbol: "CORZ"
+    reason: "IREN exposes only two usable quarters in companyfacts; CORZ is a US data-center infrastructure filer with an uninterrupted positive-revenue quarterly history"
+  - type: "quarterly_fundamental_coverage_replacement"
+    removed_symbol: "PDD"
+    added_symbol: "AMZN"
+    reason: "PDD tags only annual facts in companyfacts; AMZN is a US consumer-internet and e-commerce filer with quarterly coverage"
+  - type: "quarterly_fundamental_coverage_replacement"
+    removed_symbol: "JD"
+    added_symbol: "META"
+    reason: "JD tags only annual facts in companyfacts; META is a US consumer-internet platform filer with quarterly coverage"
+  - type: "basket_reclassification"
+    removed_basket: "china_consumer_internet"
+    added_basket: "consumer_internet_platforms"
+    reason: "the basket is renamed to describe its US consumer-internet membership after the coverage corrections"
+
+references:
+  QQQ:
+    role: "market_regime_and_benchmark"
+    provider_symbol: "QQQ"
+  SOX:
+    role: "semiconductor_cycle_context"
+    provider_symbol: "^SOX"
+
+baskets:
+  semiconductor_compute:
+    description: "semiconductor design, manufacturing, compute and storage"
+    symbols:
+      - "ALAB"
+      - "MU"
+      - "INTC"
+      - "AMD"
+      - "WDC"
+  optical_networking:
+    description: "high-speed connectivity, optical and communications infrastructure"
+    symbols:
+      - "CRDO"
+      - "COHR"
+      - "AAOI"
+      - "LITE"
+      - "ANET"
+  ai_infrastructure_power:
+    description: "AI infrastructure, data-center power and adjacent enabling capacity"
+    symbols:
+      - "VRT"
+      - "SMCI"
+      - "CORZ"
+      - "TYGO"
+  mega_cap_platforms:
+    description: "large technology platforms and enterprise software"
+    symbols:
+      - "AAPL"
+      - "MSFT"
+      - "ORCL"
+  consumer_internet_platforms:
+    description: "consumer internet platforms and e-commerce"
+    symbols:
+      - "AMZN"
+      - "META"
+  defensive_consumer:
+    description: "defensive consumer demand and large-scale retail"
+    symbols:
+      - "KO"
+      - "WMT"
+  consumer_growth:
+    description: "consumer-facing growth and high-beta discretionary exposure"
+    symbols:
+      - "TSLA"
+      - "HIMS"
+
+symbol_history_constraints:
+  TYGO:
+    public_trading_start: "2023-05-24"
+    pre_start_policy: "unavailable_not_backfilled"
+    eligible_after_start_only: true
+
+forward_only_symbols:
+  SNDK:
+    role: "storage_industry_successor_observation"
+    independent_history_start: "2025-02-24"
+    pre_start_policy: "unavailable_not_backfilled"
+    eligible_for_historical_validation: false
+    eligible_for_prospective_shadow: true
+
+membership_governance:
+  additions_require_new_pool_version: true
+  removals_require_new_pool_version: true
+  basket_reclassification_requires_new_pool_version: true
+  aliases_require_new_pool_version: true
+  changes_before_performance_review: true
+  retrospective_removal_allowed: false
+  short_history_policy: "diagnostic_or_forward_only"
+  delisted_symbol_policy: "retain_historical_membership_and_mark_unavailable_after_last_trade"
