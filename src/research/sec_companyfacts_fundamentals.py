@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -38,6 +39,10 @@ DIAGNOSTIC_COLUMNS = (
     "derivation",
     "source_url",
 )
+# SEC standard duration frames: CYyyyyQn (quarterly) or CYyyyy (annual).
+_FRAME_PERIOD = re.compile(r"^CY(\d{4})(?:Q([1-4]))?$")
+_DERIVED_GROSS_CONCEPT = "DerivedGrossProfitFromRevenueMinusCost"
+_DERIVED_GROSS_PRIORITY_BASE = 900
 
 
 class SecSourceError(RuntimeError):
@@ -222,6 +227,9 @@ def _normalise_fact_rows(
         return pd.DataFrame()
     accepted_forms = {str(value) for value in contract["forms"]["accepted"]}
     accepted_units = {str(value) for value in contract["unit_contract"]["accepted_currency_units"]}
+    infer_period_from_frame = bool(
+        contract["forms"].get("infer_quarter_from_standard_frame_when_fp_missing", False)
+    )
     rows: list[dict[str, Any]] = []
     for namespace, concept, priority in _concept_candidates(contract, field):
         namespace_facts = facts.get(namespace)
@@ -251,6 +259,15 @@ def _normalise_fact_rows(
                     continue
                 if not accession or filed < end:
                     continue
+                frame = str(entry.get("frame", "")).strip()
+                fy = entry.get("fy")
+                fp = str(entry.get("fp", "")).strip()
+                if not fp and infer_period_from_frame:
+                    match = _FRAME_PERIOD.fullmatch(frame)
+                    if match is not None:
+                        fp = f"Q{match.group(2)}" if match.group(2) else "FY"
+                        if fy in (None, ""):
+                            fy = match.group(1)
                 duration_days = int((end - start).days) + 1
                 rows.append(
                     {
@@ -265,9 +282,9 @@ def _normalise_fact_rows(
                         "value": float(value),
                         "accn": accession,
                         "form": form,
-                        "fy": entry.get("fy"),
-                        "fp": str(entry.get("fp", "")),
-                        "frame": str(entry.get("frame", "")),
+                        "fy": fy,
+                        "fp": fp,
+                        "frame": frame,
                         "duration_days": duration_days,
                     }
                 )
@@ -444,6 +461,71 @@ def _derive_q4(
     return pd.DataFrame(rows)
 
 
+def _derive_gross_from_revenue_minus_cost(
+    revenue_all: pd.DataFrame,
+    cost_all: pd.DataFrame,
+) -> pd.DataFrame:
+    """Derive gross profit as revenue minus cost under the frozen match keys.
+
+    Native gross-profit facts keep precedence: derived rows carry a high concept
+    priority so the direct-quarter pairing only falls back to them when a native
+    concept is absent for that accession.
+    """
+
+    if revenue_all.empty or cost_all.empty:
+        return pd.DataFrame()
+    dedupe = ["end", "filed", "accn", "unit"]
+    revenue = revenue_all.sort_values(
+        ["end", "filed", "accn", "concept_priority"]
+    ).drop_duplicates(dedupe, keep="first")
+    cost = cost_all.sort_values(
+        ["end", "filed", "accn", "concept_priority"]
+    ).drop_duplicates(dedupe, keep="first")
+    keys = ["namespace", "unit", "start", "end", "filed", "accn", "form", "fy", "fp"]
+    merged = revenue.merge(
+        cost,
+        on=keys,
+        suffixes=("_revenue", "_cost"),
+        how="inner",
+        validate="many_to_many",
+    )
+    if merged.empty:
+        return pd.DataFrame()
+    merged = merged.sort_values(
+        ["end", "filed", "accn", "concept_priority_revenue", "concept_priority_cost"]
+    ).drop_duplicates(dedupe, keep="first")
+    derived = merged.copy()
+    derived["field"] = "gross_profit"
+    derived["concept"] = _DERIVED_GROSS_CONCEPT
+    derived["concept_priority"] = (
+        _DERIVED_GROSS_PRIORITY_BASE + derived["concept_priority_revenue"].astype(int)
+    )
+    derived["value"] = derived["value_revenue"] - derived["value_cost"]
+    derived["duration_days"] = derived["duration_days_revenue"]
+    derived["frame"] = derived["frame_revenue"].where(
+        derived["frame_revenue"] != "", derived["frame_cost"]
+    )
+    return derived[
+        [
+            "field",
+            "namespace",
+            "concept",
+            "concept_priority",
+            "unit",
+            "start",
+            "end",
+            "filed",
+            "value",
+            "accn",
+            "form",
+            "fy",
+            "fp",
+            "frame",
+            "duration_days",
+        ]
+    ].reset_index(drop=True)
+
+
 def extract_company_quarters(
     companyfacts: Mapping[str, Any],
     *,
@@ -451,6 +533,16 @@ def extract_company_quarters(
 ) -> pd.DataFrame:
     revenue_all = _normalise_fact_rows(companyfacts, contract=contract, field="revenue")
     gross_all = _normalise_fact_rows(companyfacts, contract=contract, field="gross_profit")
+    gross_derivation = contract.get("derivations", {}).get(
+        "gross_profit_from_revenue_minus_cost", {}
+    )
+    if gross_derivation.get("enabled"):
+        cost_all = _normalise_fact_rows(
+            companyfacts, contract=contract, field="cost_of_revenue"
+        )
+        derived_gross = _derive_gross_from_revenue_minus_cost(revenue_all, cost_all)
+        if not derived_gross.empty:
+            gross_all = pd.concat([gross_all, derived_gross], ignore_index=True)
     direct = _pair_direct_quarters(_direct_quarters(revenue_all), _direct_quarters(gross_all))
     derived = _derive_q4(revenue_all, gross_all)
     frames = [frame for frame in (direct, derived) if not frame.empty]
@@ -464,6 +556,17 @@ def extract_company_quarters(
         keep="first",
     )
     return output.reset_index(drop=True)
+
+
+def _namespace_concepts_present(
+    facts: Mapping[str, Any],
+    namespaces: Mapping[str, Any],
+) -> bool:
+    return any(
+        isinstance(facts.get(namespace), dict)
+        and any(concept in facts[namespace] for concept in concepts)
+        for namespace, concepts in namespaces.items()
+    )
 
 
 def _coverage_row(
@@ -579,13 +682,15 @@ def build_sec_companyfacts_fundamentals(
         blocker = None
         facts = companyfacts.get("facts")
         if isinstance(facts, dict):
-            gross_found = any(
-                isinstance(facts.get(namespace), dict)
-                and any(concept in facts[namespace] for concept in concepts)
-                for namespace, concepts in contract["concepts"]["gross_profit"][
-                    "namespaces"
-                ].items()
+            gross_found = _namespace_concepts_present(
+                facts, contract["concepts"]["gross_profit"]["namespaces"]
             )
+            derivation = contract["derivations"]["gross_profit_from_revenue_minus_cost"]
+            if not gross_found and derivation.get("enabled"):
+                # A derivable gross profit is not a missing-gross blocker.
+                gross_found = _namespace_concepts_present(
+                    facts, contract["concepts"]["cost_of_revenue"]["namespaces"]
+                )
             if not gross_found:
                 blocker = "GROSS_PROFIT_CONCEPT_NOT_FOUND"
         coverage.append(

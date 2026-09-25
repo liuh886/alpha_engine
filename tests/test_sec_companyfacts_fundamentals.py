@@ -52,7 +52,13 @@ def _fact(
     }
 
 
-def _companyfacts(*, missing_gross: bool = False, fallback_revenue: bool = False) -> dict:
+def _companyfacts(
+    *,
+    missing_gross: bool = False,
+    fallback_revenue: bool = False,
+    cost_only: bool = False,
+    blank_fp: bool = False,
+) -> dict:
     quarter_periods = [
         ("2024-01-01", "2024-03-31", "2024-05-01", 100.0, 40.0, "q1-2024", 2024, "Q1", "CY2024Q1"),
         ("2024-04-01", "2024-06-30", "2024-08-01", 110.0, 44.0, "q2-2024", 2024, "Q2", "CY2024Q2"),
@@ -60,6 +66,10 @@ def _companyfacts(*, missing_gross: bool = False, fallback_revenue: bool = False
         ("2025-01-01", "2025-03-31", "2025-05-01", 130.0, 54.0, "q1-2025", 2025, "Q1", "CY2025Q1"),
         ("2025-04-01", "2025-06-30", "2025-08-01", 145.0, 62.0, "q2-2025", 2025, "Q2", "CY2025Q2"),
     ]
+
+    def _fp(value: str) -> str:
+        return "" if blank_fp else value
+
     revenue_entries = [
         _fact(
             start=start,
@@ -69,7 +79,7 @@ def _companyfacts(*, missing_gross: bool = False, fallback_revenue: bool = False
             accession=accession,
             form="10-Q",
             fy=fy,
-            fp=fp,
+            fp=_fp(fp),
             frame=frame,
         )
         for start, end, filed, revenue, _, accession, fy, fp, frame in quarter_periods
@@ -83,7 +93,7 @@ def _companyfacts(*, missing_gross: bool = False, fallback_revenue: bool = False
             accession=accession,
             form="10-Q",
             fy=fy,
-            fp=fp,
+            fp=_fp(fp),
             frame=frame,
         )
         for start, end, filed, _, gross, accession, fy, fp, frame in quarter_periods
@@ -97,7 +107,7 @@ def _companyfacts(*, missing_gross: bool = False, fallback_revenue: bool = False
             accession="fy-2024",
             form="10-K",
             fy=2024,
-            fp="FY",
+            fp=_fp("FY"),
             frame="CY2024",
         )
     )
@@ -110,7 +120,7 @@ def _companyfacts(*, missing_gross: bool = False, fallback_revenue: bool = False
             accession="fy-2024",
             form="10-K",
             fy=2024,
-            fp="FY",
+            fp=_fp("FY"),
             frame="CY2024",
         )
     )
@@ -120,7 +130,36 @@ def _companyfacts(*, missing_gross: bool = False, fallback_revenue: bool = False
             revenue_concept: {"units": {"USD": revenue_entries}},
         }
     }
-    if not missing_gross:
+    if cost_only:
+        cost_entries = [
+            _fact(
+                start=start,
+                end=end,
+                filed=filed,
+                value=revenue - gross,
+                accession=accession,
+                form="10-Q",
+                fy=fy,
+                fp=_fp(fp),
+                frame=frame,
+            )
+            for start, end, filed, revenue, gross, accession, fy, fp, frame in quarter_periods
+        ]
+        cost_entries.append(
+            _fact(
+                start="2024-01-01",
+                end="2024-12-31",
+                filed="2025-02-15",
+                value=460.0 - 188.0,
+                accession="fy-2024",
+                form="10-K",
+                fy=2024,
+                fp=_fp("FY"),
+                frame="CY2024",
+            )
+        )
+        facts["us-gaap"]["CostOfRevenue"] = {"units": {"USD": cost_entries}}
+    elif not missing_gross:
         facts["us-gaap"]["GrossProfit"] = {"units": {"USD": gross_entries}}
     return {"cik": 1, "entityName": "Test Company", "facts": facts}
 
@@ -169,6 +208,34 @@ def test_revenue_concept_fallback_is_recorded() -> None:
 
     assert not quarters.empty
     assert set(quarters["revenue_concept"]) == {"Revenues"}
+
+
+def test_gross_profit_is_derived_from_revenue_minus_cost() -> None:
+    contract = load_source_contract(CONTRACT).payload
+    quarters = extract_company_quarters(
+        _companyfacts(missing_gross=True, cost_only=True), contract=contract
+    )
+
+    assert len(quarters) == 6
+    assert set(quarters["gross_profit_concept"]) == {
+        "DerivedGrossProfitFromRevenueMinusCost"
+    }
+    direct = quarters[quarters["derivation"] == "direct_quarter"].sort_values(
+        "fiscal_period_end"
+    )
+    assert direct["gross_profit"].tolist() == pytest.approx(
+        [40.0, 44.0, 48.0, 54.0, 62.0]
+    )
+    q4 = quarters[quarters["fiscal_period"] == "Q4"].iloc[0]
+    assert q4["gross_profit"] == pytest.approx(56.0)
+
+
+def test_missing_fiscal_period_is_inferred_from_standard_frame() -> None:
+    contract = load_source_contract(CONTRACT).payload
+    quarters = extract_company_quarters(_companyfacts(blank_fp=True), contract=contract)
+
+    assert len(quarters) == 6
+    assert set(quarters["fiscal_period"]) == {"Q1", "Q2", "Q3", "Q4"}
 
 
 def test_missing_user_agent_writes_blocked_decision(tmp_path: Path, monkeypatch) -> None:
