@@ -37,6 +37,7 @@ _SYNC_RECEIPT_KEYS = {
     "native_promoted_model_ids",
     "retained_inactive_model_version_ids",
     "retained_formal_manifests",
+    "retained_pinned_benchmark_manifests",
     "preview_catalog_sha256",
     "freshness_source_sha256",
     "strategy_catalog_sha256",
