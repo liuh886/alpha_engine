@@ -17,7 +17,7 @@ from scripts.data.refresh_selected_pool_prices_v2 import (
     _terminal_listing_entries,
     build_hardened_router,
 )
-from src.data.router import MarketDataRouter
+from src.data.router import MarketDataRouter, RouterResponse
 from src.research.market_session_clock import completed_market_date
 
 BENCHMARKS = {"us": "QQQ", "cn": "000300"}
@@ -30,6 +30,11 @@ SELECTED_UNIVERSE_PATHS = {
     "us": "configs/research_universes/us_selected_equities_v2.yaml",
 }
 PROBE_DELAY_SECONDS = 1.0
+# Vendor EOD endpoints answer intermittently. A single transient failure must
+# not block a whole market, so each symbol is probed a bounded number of times
+# with linear backoff before it is recorded as failed.
+PROBE_ATTEMPTS = 3
+PROBE_RETRY_DELAY_SECONDS = 4.0
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -85,6 +90,28 @@ def _strategy_probe_symbols(root: Path, market_key: str) -> list[str]:
     return sorted(set(symbols))
 
 
+def _fetch_with_retries(
+    data_router: MarketDataRouter,
+    *,
+    market_key: str,
+    symbol: str,
+    start: str,
+    end: str,
+) -> "RouterResponse":
+    """Fetch one symbol, retrying transient vendor failures with linear backoff."""
+
+    response: RouterResponse | None = None
+    for attempt in range(PROBE_ATTEMPTS):
+        response = data_router.fetch_daily_bars(
+            symbol=symbol, market=market_key, start=start, end=end, validate=True
+        )
+        if response.ok and response.result is not None:
+            return response
+        time.sleep(PROBE_RETRY_DELAY_SECONDS * (attempt + 1))
+    assert response is not None
+    return response
+
+
 def _probe_watermark(
     data_router: MarketDataRouter,
     *,
@@ -93,8 +120,8 @@ def _probe_watermark(
     start: str,
     end: str,
 ) -> str | None:
-    response = data_router.fetch_daily_bars(
-        symbol=symbol, market=market_key, start=start, end=end, validate=True
+    response = _fetch_with_retries(
+        data_router, market_key=market_key, symbol=symbol, start=start, end=end
     )
     if not response.ok or response.result is None:
         return None
@@ -109,6 +136,7 @@ def resolve_formal_provider_cutoff(
     market: str,
     requested_cutoff: str,
     seed_cutoff: str,
+    published_cutoff: str | None = None,
     router: MarketDataRouter | None = None,
 ) -> dict[str, Any]:
     market_key = str(market).strip().lower()
@@ -120,15 +148,6 @@ def resolve_formal_provider_cutoff(
         raise ValueError("seed cutoff cannot exceed requested cutoff")
 
     benchmark = BENCHMARKS[market_key]
-    data_router = router or build_hardened_router(market_key)
-    response = data_router.fetch_daily_bars(
-        symbol=benchmark,
-        market=market_key,
-        start=seed,
-        end=requested,
-        validate=True,
-    )
-    attempts = [attempt.to_dict() for attempt in response.attempts]
     base = {
         "schema_version": "1.1",
         "evidence_type": "formal_provider_readiness_v1",
@@ -136,10 +155,35 @@ def resolve_formal_provider_cutoff(
         "benchmark": benchmark,
         "requested_cutoff": requested,
         "seed_cutoff": seed,
-        "attempts": attempts,
+        "attempts": [],
         "research_only": True,
         "trade_ready": False,
     }
+    # The governed catalog already published this session, which validated member
+    # coverage when it was sealed. Reuse it without any network probe: this keeps
+    # push-triggered refreshes free of vendor availability risk.
+    published_raw = str(published_cutoff or "").strip()
+    if published_raw:
+        published = date.fromisoformat(published_raw).isoformat()
+        if published >= requested:
+            return {
+                **base,
+                "status": "current" if published == requested else "delayed",
+                "observed_cutoff": published,
+                "published_cutoff": published,
+                "watermark_source": "published_catalog",
+                "member_watermarks": {},
+                "terminal_excluded_symbols": [],
+                "effective_cutoff": requested,
+                "effective_seed_cutoff": _previous_completed(market_key, requested),
+                "blocker": None,
+            }
+
+    data_router = router or build_hardened_router(market_key)
+    response = _fetch_with_retries(
+        data_router, market_key=market_key, symbol=benchmark, start=seed, end=requested
+    )
+    base["attempts"] = [attempt.to_dict() for attempt in response.attempts]
     if not response.ok or response.result is None:
         return {
             **base,
@@ -228,6 +272,14 @@ def main() -> int:
     parser.add_argument("--market", choices=("us", "cn"), required=True)
     parser.add_argument("--requested-cutoff", required=True)
     parser.add_argument("--seed-cutoff", required=True)
+    parser.add_argument(
+        "--published-cutoff",
+        default="",
+        help=(
+            "Governed catalog cutoff for the market. When it already covers the "
+            "requested session, readiness is reused without any network probe."
+        ),
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--github-output", type=Path)
     args = parser.parse_args()
@@ -236,6 +288,7 @@ def main() -> int:
         market=args.market,
         requested_cutoff=args.requested_cutoff,
         seed_cutoff=args.seed_cutoff,
+        published_cutoff=args.published_cutoff,
     )
     _write_json(args.output, payload)
     if payload["status"] == "blocked":

@@ -141,6 +141,8 @@ jobs:
       cn_cutoff: ${{ steps.clock.outputs.cn_cutoff }}
       us_seed_cutoff: ${{ steps.clock.outputs.us_seed_cutoff }}
       cn_seed_cutoff: ${{ steps.clock.outputs.cn_seed_cutoff }}
+      published_us: ${{ steps.published.outputs.us }}
+      published_cn: ${{ steps.published.outputs.cn }}
     steps:
       - name: Check out triggering revision
         uses: actions/checkout@v6
@@ -324,6 +326,24 @@ jobs:
           print(f"us_seed_cutoff={previous_completed('us', us_cutoff)}")
           print(f"cn_seed_cutoff={previous_completed('cn', cn_cutoff)}")
           PY
+      - name: Resolve published governed cutoffs
+        id: published
+        run: |
+          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          freshness = json.loads(
+              Path("data/research/formal_model_runs/freshness.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          markets = freshness.get("markets")
+          if not isinstance(markets, dict):
+              raise SystemExit("published freshness markets are missing")
+          print("us=" + str(markets.get("us") or ""))
+          print("cn=" + str(markets.get("cn") or ""))
+          PY
 
   providers:
     needs: prepare
@@ -379,12 +399,14 @@ jobs:
           MARKET: ${{ matrix.market }}
           REQUESTED_CUTOFF: ${{ matrix.market == 'us' && needs.prepare.outputs.us_cutoff || needs.prepare.outputs.cn_cutoff }}
           SEED_CUTOFF: ${{ matrix.market == 'us' && needs.prepare.outputs.us_seed_cutoff || needs.prepare.outputs.cn_seed_cutoff }}
+          PUBLISHED_CUTOFF: ${{ matrix.market == 'us' && needs.prepare.outputs.published_us || needs.prepare.outputs.published_cn }}
         run: |
           readiness="artifacts/formal-refresh/provider-${MARKET}-readiness.json"
           uv run python scripts/data/resolve_formal_provider_cutoff.py \
             --market "$MARKET" \
             --requested-cutoff "$REQUESTED_CUTOFF" \
             --seed-cutoff "$SEED_CUTOFF" \
+            --published-cutoff "$PUBLISHED_CUTOFF" \
             --output "$readiness" \
             --github-output "$GITHUB_OUTPUT"
       - name: Resolve effective provider cache identity
@@ -675,7 +697,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     env:
-      GH_TOKEN: ${{ github.token }}
+      # A dedicated token makes the reviewed refresh PR user-authored. PR runs
+      # created by github-actions[bot] require human approval that never arrives,
+      # so they expire as red checks; a user-authored PR runs its checks normally.
+      # Falls back to the workflow token when the secret is not configured.
+      GH_TOKEN: ${{ secrets.FORMAL_REFRESH_TOKEN || github.token }}
     steps:
       - name: Check out triggering revision
         uses: actions/checkout@v6

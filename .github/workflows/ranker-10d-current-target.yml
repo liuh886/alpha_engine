@@ -2,7 +2,10 @@ name: 10D Ranker Current Target
 
 on:
   schedule:
-    - cron: "30 22 * * 1-5"
+    # 03:00 UTC (23:00 ET): after vendor end-of-day publication for the completed
+    # US session; the earlier 22:30 UTC slot left most selected-pool symbols
+    # stale and blocked publication. Tue-Sat UTC covers Monday-Friday ET sessions.
+    - cron: "0 3 * * 2-6"
   workflow_dispatch:
   push:
     branches: [main]

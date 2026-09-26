@@ -70,6 +70,85 @@ def _frame(*dates: str) -> pd.DataFrame:
     return pd.DataFrame({"date": list(dates)})
 
 
+def test_published_cutoff_short_circuits_without_any_network(monkeypatch) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
+    router = FakeRouter(None)  # every network fetch would fail
+    payload = resolve_formal_provider_cutoff(
+        market="us",
+        requested_cutoff="2026-08-28",
+        seed_cutoff="2026-08-27",
+        published_cutoff="2026-08-28",
+        router=router,  # type: ignore[arg-type]
+    )
+
+    assert payload["status"] == "current"
+    assert payload["effective_cutoff"] == "2026-08-28"
+    assert payload["watermark_source"] == "published_catalog"
+    assert payload["blocker"] is None
+    assert router.requests == []
+
+
+def test_published_cutoff_ahead_of_request_reuses_without_network(monkeypatch) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
+    router = FakeRouter(None)
+    payload = resolve_formal_provider_cutoff(
+        market="us",
+        requested_cutoff="2026-08-26",
+        seed_cutoff="2026-08-25",
+        published_cutoff="2026-08-28",
+        router=router,  # type: ignore[arg-type]
+    )
+
+    assert payload["status"] == "delayed"
+    assert payload["effective_cutoff"] == "2026-08-26"
+    assert payload["blocker"] is None
+    assert router.requests == []
+
+
+def test_transient_probe_failure_is_retried(monkeypatch) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
+    monkeypatch.setattr(module, "PROBE_RETRY_DELAY_SECONDS", 0.0)
+
+    class FlakyOnceRouter(FakeRouter):
+        def __init__(self) -> None:
+            super().__init__(_frame("2026-08-27", "2026-08-28"))
+            self.calls = 0
+
+        def fetch_daily_bars(self, **kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                return RouterResponse(
+                    result=None,
+                    attempts=[
+                        RouterAttempt(
+                            provider="yfinance",
+                            ok=False,
+                            provider_symbol=kwargs["symbol"],
+                            error="transient vendor failure",
+                        )
+                    ],
+                )
+            return super().fetch_daily_bars(**kwargs)
+
+    router = FlakyOnceRouter()
+    payload = resolve_formal_provider_cutoff(
+        market="us",
+        requested_cutoff="2026-08-28",
+        seed_cutoff="2026-08-27",
+        router=router,  # type: ignore[arg-type]
+    )
+
+    assert payload["blocker"] is None
+    assert payload["status"] == "current"
+    assert router.calls > 1
+
+
 def test_resolver_marks_complete_requested_cutoff_current(monkeypatch) -> None:
     import scripts.data.resolve_formal_provider_cutoff as module
 

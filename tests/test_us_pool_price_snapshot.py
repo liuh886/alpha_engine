@@ -39,9 +39,15 @@ def _pool_maps() -> tuple[dict[str, str], dict[str, str]]:
 class FakeUsBarsAdapter:
     name = "fake_yfinance"
 
-    def __init__(self, *, stale_provider_symbol: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        stale_provider_symbol: str | None = None,
+        ahead_provider_symbol: str | None = None,
+    ) -> None:
         self.basket_by_canonical, self.provider_to_canonical = _pool_maps()
         self.stale_provider_symbol = stale_provider_symbol
+        self.ahead_provider_symbol = ahead_provider_symbol
 
     def fetch_daily_bars(self, req: FetchRequest) -> FetchResult:
         canonical = self.provider_to_canonical[req.symbol]
@@ -50,6 +56,10 @@ class FakeUsBarsAdapter:
         dates = pd.bdate_range(end=end, periods=periods)
         if req.symbol == self.stale_provider_symbol:
             dates = dates[:-1]
+        if req.symbol == self.ahead_provider_symbol:
+            dates = dates.append(
+                pd.bdate_range(start=end + pd.Timedelta(days=1), periods=1)
+            )
         symbols = sorted(self.provider_to_canonical.values())
         symbol_index = symbols.index(canonical)
         basket = self.basket_by_canonical.get(canonical, "reference")
@@ -178,6 +188,29 @@ def test_mixed_latest_session_fails_closed(tmp_path: Path) -> None:
             output_root=tmp_path / "snapshots",
             requested_through=AS_OF,
             adapter=FakeUsBarsAdapter(stale_provider_symbol="POET"),
+        )
+
+
+def test_reference_ahead_of_candidates_resolves_candidate_session(
+    tmp_path: Path,
+) -> None:
+    decision = build_us_pool_price_snapshot(
+        output_root=tmp_path / "snapshots",
+        requested_through=AS_OF,
+        adapter=FakeUsBarsAdapter(ahead_provider_symbol="^SOX"),
+    )
+
+    assert decision["resolved_as_of_date"] == AS_OF
+    frame = pd.read_csv(decision["prices_csv"])
+    assert frame["date"].max() == AS_OF
+
+
+def test_lagging_reference_still_fails_closed(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="latest session is missing frozen symbols"):
+        build_us_pool_price_snapshot(
+            output_root=tmp_path / "snapshots",
+            requested_through=AS_OF,
+            adapter=FakeUsBarsAdapter(stale_provider_symbol="^SOX"),
         )
 
 
