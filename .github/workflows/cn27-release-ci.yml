@@ -2,9 +2,6 @@ name: CN27 Formal Research Release
 
 on:
   pull_request:
-    # Explicit types keep the reviewed automation PR from re-triggering
-    # approval-gated runs when it flips from draft to ready.
-    types: [opened, synchronize, reopened]
     paths:
       - '.github/workflows/cn27-release-ci.yml'
       - 'configs/**/cn_27*'

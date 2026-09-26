@@ -3,9 +3,6 @@ run-name: Formal refresh candidate ${{ inputs.candidate_sha || github.sha }}
 
 on:
   pull_request:
-    # Explicit types keep the reviewed automation PR from re-triggering
-    # approval-gated runs when it flips from draft to ready.
-    types: [opened, synchronize, reopened]
     branches: [main]
     paths:
       - ".github/workflows/formal-backtest-refresh.yml"
