@@ -26,3 +26,5 @@ jobs:
           fi
           echo "identity: $(gh api user --jq '"login=\(.login) type=\(.type)"')"
           echo "repository: $(gh api "repos/${REPOSITORY}" --jq '.full_name')"
+          echo "permissions: $(gh api "repos/${REPOSITORY}" --jq '.permissions | tostring')"
+          echo "can push main: $(gh api "repos/${REPOSITORY}/branches/main" --jq '.name')"
