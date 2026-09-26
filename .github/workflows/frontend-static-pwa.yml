@@ -2,6 +2,9 @@ name: Frontend Static PWA
 
 on:
   pull_request:
+    # Explicit types keep the reviewed automation PR from re-triggering
+    # approval-gated runs when it flips from draft to ready.
+    types: [opened, synchronize, reopened]
     paths:
       - 'qlib-dashboard/**'
       - 'configs/strategies/registry.json'
