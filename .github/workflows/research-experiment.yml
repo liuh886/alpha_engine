@@ -2,9 +2,6 @@ name: Research Experiment
 
 on:
   pull_request:
-    # Explicit types keep the reviewed automation PR from re-triggering
-    # approval-gated runs when it flips from draft to ready.
-    types: [opened, synchronize, reopened]
     branches: [main]
     paths:
       - 'configs/research_experiments/**'
