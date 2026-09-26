@@ -226,11 +226,17 @@ def build_us_pool_price_snapshot(
         )
         frames.append(frame)
 
-    latest_dates = {row["latest_date"] for row in coverage}
-    if len(latest_dates) != 1:
+    # Reference instruments (benchmark index/ETF context) can publish a session
+    # before the equity candidates do. Resolve the session from the candidate
+    # symbols and require every symbol, references included, to cover it; a
+    # lagging reference still fails closed below.
+    candidate_latest = {
+        row["latest_date"] for row in coverage if row["role"] == "candidate"
+    }
+    if len(candidate_latest) != 1:
         details = ", ".join(f"{row['canonical_symbol']}={row['latest_date']}" for row in coverage)
         raise ValueError("US pool latest-session coverage is inconsistent: " + details)
-    resolved_as_of = date.fromisoformat(next(iter(latest_dates)))
+    resolved_as_of = date.fromisoformat(next(iter(candidate_latest)))
     if resolved_as_of > target:
         raise ValueError("provider returned rows beyond requested-through cutoff")
     if (target - resolved_as_of).days > MAX_STALE_CALENDAR_DAYS:
