@@ -2,9 +2,11 @@ name: Daily US Low-Turnover Decision
 
 on:
   schedule:
-    # 21:30 UTC: ahead of the 22:30 ranker wave and clear of the 23:30 formal
-    # refresh collision (both jobs contend for runners and TUSHARE quota).
-    - cron: "30 21 * * 1-5"
+    # 02:00 UTC (22:00 ET): vendor end-of-day bars for the completed US session
+    # are generally published by then. The earlier 21:30 UTC slot raced index
+    # and equity EOD publication and tripped the snapshot consistency gate.
+    # Tue-Sat UTC covers Monday-Friday ET sessions.
+    - cron: "0 2 * * 2-6"
   workflow_dispatch:
 
 permissions:
