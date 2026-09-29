@@ -8,10 +8,10 @@
   "first_signal_date": "2026-08-10",
   "historical_retuning_allowed": false,
   "hold_common_open_eligible_sessions": 20,
-  "last_signal_date": "2026-09-28",
+  "last_signal_date": "2026-09-29",
   "launch_after": "2026-08-10",
-  "ledger_sha256": "50ff115ee797dd51054130899d25a0e57d0717fdcfd47ad8fe45bde8ca0e54ca",
-  "observation_count": 35,
+  "ledger_sha256": "a3775de2b7e1999d534edda99cde84cf0ad66cc91590b188e1041154c07d719c",
+  "observation_count": 36,
   "observation_sha256": {
     "2026-08-10": "72287af74753f25545222eb4d49136481bb7aaf8bbde4b794e8e4e6e6bad1484",
     "2026-08-11": "1155c59dc5e65b5e724e91992f62c14d59dd6d14705db1314ec8459803580c63",
@@ -47,7 +47,8 @@
     "2026-09-22": "dc1aa19c5707bbca0bc7b14a9b631ec9ba3fec2c437f9d6f3845a1e2ffa2c875",
     "2026-09-23": "dd8e13f447d371d279e97efa462e986228a887c9f595e62299f89fd0ec77eea4",
     "2026-09-24": "09be8109bf1eb29f6c6d949a65db0f8ad7d55c12a3872d46afe39975d2caab09",
-    "2026-09-28": "1c178e17cd01f321446c16671153e3b073b280ae4648aa1c5e1e75546fad102e"
+    "2026-09-28": "1c178e17cd01f321446c16671153e3b073b280ae4648aa1c5e1e75546fad102e",
+    "2026-09-29": "788e6c5cfe7b34759da6f06dff9c4f817042c11dc8bf80d0852d7cbf166729dd"
   },
   "outcome_count": 0,
   "outcome_sha256": {},
@@ -56,7 +57,7 @@
   "required_entry_vol_state": "low",
   "research_only": true,
   "schema_version": "byd_v1_3_low_vol_prospective_v1",
-  "scorecard_sha256": "e92773966a3f4a0814cc6736eeb647e57e2237bdaef55ac7f867343b7ae786a1",
+  "scorecard_sha256": "381b53faa3943f391089e19c61ee16c305bae59914edea16732230cf5733922c",
   "shadow_only": true,
   "source_observation_sha256": {
     "2026-08-10": "1c0672ec303115c8361979a2c3a01340d9f8e621446e0d805e74b2d4aacfd097",
@@ -93,7 +94,8 @@
     "2026-09-22": "526e4365aa4ad5a86daffadc531e92261ab0462f0bfd9daae540c8d86eb1d3fb",
     "2026-09-23": "dc97de42b69f73a4f05079894f7a76f81f8b9760875f958471425e419bae5d15",
     "2026-09-24": "24d96cf559505bba06592090825567b08455f79793347d45902ef3a54913c6ce",
-    "2026-09-28": "d9bb4fcaa39d1cd0a22ea86f9e278d0d60d5a50ba06634e90eb722405e21df3c"
+    "2026-09-28": "d9bb4fcaa39d1cd0a22ea86f9e278d0d60d5a50ba06634e90eb722405e21df3c",
+    "2026-09-29": "47bfd5a899e4fea9f3f7bb5ee9e3aeb5aaaafd751561096eec196a0543f1133f"
   },
   "source_store": "data/research/byd_recovery_event_prospective",
   "trade_ready": false
