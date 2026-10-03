@@ -230,3 +230,5 @@ blocked 包括 US selected Alpha158、US selected price+fundamentals、US small-
 - 按后端/正式刷新 CI 的实际 mypy 命令检查，修复 Bundle v2 校验器的类型收窄及 model_contract 字典类型声明，未放宽任何校验。将 CN27 源恢复、决策回执测试加入原有 CI，不增加工作流。
 - CN27 小范围结构重构：独立源恢复与验证函数，数据扩展函数仅组织读取、验证及追加。恢复输入、容差、拒绝记录和输出身份保持不变。
 - 前端 JavaScript gzip 总量 468.07 KiB，低于既有 480 KiB 上限；全量 ESLint、TypeScript 通过。CN27 冻结价格冲突仍为数据阻塞，代码修复与 CI 通过不能替代源证据修复或持续运行验收。
+
+- PR #1167 首轮真实 GitHub 检查：后端、数据 CLI、实验、事件契约、冻结证据等通过；正式刷新检出范围测试暴露 3 处不一致，已收窄 prepare/plan，仅发布阶段读取 model_decisions，47 项本地回归通过。前端安全审计暴露 braces 无修复版本的依赖链，改用 Tailwind 4 官方 Vite 集成、兼容类名合并库和限定单入口的资产内联函数，移除旧插件及 PostCSS 配置。审计为 0，JS gzip 470.03 KiB，既有 480 KiB 上限保持；修复内联时的 Vite preload 占位符后，真实浏览器收益切换验收通过。现代浏览器要求随 Tailwind 4 生效；不等同于线上部署验收。

@@ -7,7 +7,7 @@
  * The build is intentionally owned by the caller. This keeps CI to one
  * production build instead of rebuilding the application just to measure it.
  *
- * Because this project uses vite-plugin-singlefile, the application chunk is
+ * Because this project inlines its generated application assets, the chunk is
  * normally inlined into dist/index.html. Standalone runtime files such as the
  * service worker are measured in addition to every inline script.
  *
