@@ -1,7 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { periodStartIndex, strategyPeriodSummary } from './performancePeriods';
+import { latestPerformanceObservation, periodStartIndex, strategyPeriodSummary } from './performancePeriods';
 
 describe('observed performance windows', () => {
+  it('explains the latest sparse or provisional change with actual boundaries', () => {
+    const observation = latestPerformanceObservation([
+      { date: '2026-09-01', holding_end_date: '2026-09-17', account_before: 1, account: 0.95 },
+      { date: '2026-09-30', account: 0.9, provisional_mtm: true },
+    ]);
+    expect(observation?.previousDate).toBe('2026-09-17');
+    expect(observation?.date).toBe('2026-09-30');
+    expect(observation?.observedReturn).toBeCloseTo(0.9 / 0.95 - 1);
+    expect(observation?.drawdown).toBeCloseTo(-0.1);
+    expect(observation?.drawdownChange).toBeCloseTo(-0.05);
+    expect(observation?.provisional).toBe(true);
+  });
+  it('does not invent risk or change from missing or misordered wealth evidence', () => {
+    expect(latestPerformanceObservation([{ date: '2026-01-01', account: NaN }])).toBeNull();
+    expect(latestPerformanceObservation([{ date: '2026-01-02', account: 1 }, { date: '2026-01-01', account: 2 }])).toBeNull();
+    expect(latestPerformanceObservation([{ date: '2026-01-01', account: 1 }])?.observedReturn).toBeNull();
+  });
   it('includes the first settled loss when initial capital is declared', () => {
     const result = strategyPeriodSummary([
       { date: '2026-01-01', account_before: 1, account: 0.95 },

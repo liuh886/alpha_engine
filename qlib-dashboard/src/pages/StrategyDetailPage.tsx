@@ -9,7 +9,9 @@ import { useAccessControl } from '@/hooks/useAccessControl';
 import { useStrategyOperations } from '@/hooks/useStrategyOperations';
 import type { AccessTier } from '@/lib/model-access';
 import { loadDecisionForRun, type DecisionLoadState } from '@/lib/model-run-decision';
-import { governedRunQuery } from '@/lib/governed-run';
+import { governedRunQuery, loadRunSection } from '@/lib/governed-run';
+import { latestPerformanceObservation } from '@/lib/performancePeriods';
+import type { ReportRow } from '@/lib/types';
 import { STRATEGY_STATUS_LABEL } from '@/lib/strategy-operations';
 import type { StrategyFactorEvidence } from '@/lib/strategy-operations';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
@@ -105,6 +107,18 @@ export function StrategyDetailPage() {
   }, [run, workspace.activeRunKey, workspace.selectRun]);
 
   const [decisionState, setDecisionState] = useState<DecisionLoadState | null>(null);
+  const [observation, setObservation] = useState<ReturnType<typeof latestPerformanceObservation>>(null);
+  const [observationPending, setObservationPending] = useState(true);
+  useEffect(() => {
+    let active = true;
+    setObservation(null);
+    setObservationPending(true);
+    if (run) void loadRunSection(run, 'performance').then(payload => {
+      const report = (payload as { report?: unknown })?.report;
+      if (active && Array.isArray(report)) setObservation(latestPerformanceObservation(report as ReportRow[]));
+    }).catch(() => { if (active) setObservation(null); }).finally(() => { if (active) setObservationPending(false); });
+    return () => { active = false; };
+  }, [run]);
   useEffect(() => {
     let active = true;
     setDecisionState(null);
@@ -174,6 +188,9 @@ export function StrategyDetailPage() {
             : decisionState?.state === 'error' ? 'Assessment evidence could not be verified.' : decisionState?.state === 'absent' ? 'No assessment is bound to this evidence bundle.' : 'Loading verified assessment…'}
         </p>
         {decisionState?.decision && (
+          <p className="mt-2 text-muted-foreground">{[...decisionState.decision.gates.filter(row => row.outcome === 'failed'), ...decisionState.decision.contradictory_evidence][0]?.statement || 'Retained evidence has no recorded counterevidence; this does not establish continued effectiveness.'}</p>
+        )}
+        {decisionState?.decision && (
           <p className="mt-2 text-muted-foreground">
             {decisionState.decision.gates.filter(row => row.outcome === 'failed').length} retained failed gates · {decisionState.decision.contradictory_evidence.length} counterevidence records. Evidence through {run.evidenceCutoff || 'unknown'}.
           </p>
@@ -188,6 +205,19 @@ export function StrategyDetailPage() {
           </details>
         )}
         <Link className="mt-3 inline-block text-primary underline" to={`/decisions?${governedRunQuery(run)}`}>Open manifest-bound assessment</Link>
+      </section>
+
+      <section aria-label="Latest retained change and risk" className="rounded-xl border bg-card p-5 text-sm">
+        <h2 className="font-semibold">Latest retained change and risk</h2>
+        {observation ? <>
+          <p className="mt-2 text-muted-foreground">{observation.previousDate || 'No prior observation'} → {observation.date} · {observation.provisional ? 'Provisional mark to market' : 'Retained settlement'} · research evidence.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <p>Observed return <strong className="block font-mono">{observation.observedReturn === null ? '—' : pct(observation.observedReturn)}</strong></p>
+            <p>Drawdown from observed peak <strong className="block font-mono">{pct(observation.drawdown)}</strong></p>
+            <p>Drawdown change <strong className="block font-mono">{observation.drawdownChange === null ? '—' : `${(observation.drawdownChange * 100).toFixed(2)} pp`}</strong></p>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">Dates bound this observation. Sparse settlements do not establish daily risk coverage; provisional marks do not establish execution or strategy validation.</p>
+        </> : <p className="mt-2 text-muted-foreground">{observationPending ? 'Loading verified observations…' : 'Change and risk observations could not be verified.'}</p>}
       </section>
 
       <section aria-labelledby="strategy-now-heading" className="space-y-4">
