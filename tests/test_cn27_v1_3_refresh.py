@@ -218,6 +218,11 @@ def test_refresh_truncated_extension_rebuilds_exact_prefix(tmp_path: Path) -> No
     candidate = json.loads(output.read_text(encoding="utf-8"))
     assert candidate["evidence_cutoff"] == FULL_CUTOFF
     assert candidate["backtest_id"] == "cn_27_v1_3-through-2026_09_04"
+    operating = candidate["evidence"]["operating_state"]
+    assert operating["as_of"] == FULL_CUTOFF
+    assert operating["last_rebalance_date"] < FULL_CUTOFF
+    assert operating["current_weights"] != operating["target_weights"]
+    assert operating["factor_evidence"]["observation_cutoff"] == FULL_CUTOFF
     from src.research.cn27_v1_3_replay import rows_close_enough
 
     for field in ("report", "positions", "trades"):
@@ -322,6 +327,32 @@ def test_rows_close_enough_tolerates_blas_reduction_order_noise() -> None:
 
     assert rows_close_enough({"x": 1.0}, {"x": 1.0 + 1e-9})
     assert not rows_close_enough({"x": 1.0}, {"x": 1.0 + 1e-3})
+
+
+def test_operating_cutoff_extends_observation_without_reopening_history_or_using_future_bars() -> None:
+    from scripts.cn27_v1_3_formal_common import load_k2_context
+    from src.research.cn27_v1_2 import compute_v1_2_features
+    from src.research.cn27_v1_3_projected import run_projected_recipe
+
+    context = load_k2_context(ROOT / "configs/research_experiments/cn_27_v1_3_projected_concentration_discovery_v1.yaml")
+    # Synthetic rows are test fixtures only; publication acceptance uses real bars.
+    extra = context.bars.loc[context.bars["date"].eq(pd.Timestamp(FULL_CUTOFF))].copy()
+    extra["date"] = pd.Timestamp("2026-09-07")
+    bars = pd.concat([context.bars, extra], ignore_index=True)
+
+    def observe(source):
+        return run_projected_recipe(source, compute_v1_2_features(source, context.contract),
+            context.contract, context.recipe, observation_end="2026-09-07")
+
+    observed = observe(bars)
+    assert observed.daily.index.max() == pd.Timestamp("2026-09-07")
+    pd.testing.assert_frame_equal(observed.daily.loc[:FULL_CUTOFF], context.result.daily, check_flags=False)
+    assert observed.metrics_by_window == context.result.metrics_by_window
+    future = extra.copy()
+    future["date"] = pd.Timestamp("2026-09-08")
+    future[list(FIELDS[:4])] *= 10.0
+    with_future = observe(pd.concat([bars, future], ignore_index=True))
+    assert with_future.daily.attrs["operating_state"] == observed.daily.attrs["operating_state"]
 
 
 def test_pinned_source_recovery_preserves_frozen_history(tmp_path: Path, monkeypatch) -> None:

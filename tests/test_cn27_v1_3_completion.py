@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import gzip
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -52,9 +54,17 @@ def test_v1_3_discovery_evidence_is_hash_bound_and_records_failure(
 
     assert canonical_sha256(body) == identity
     assert manifest["identity"]["contract_sha256"] == sha256_file(ROOT / contract)
-    assert manifest["identity"]["implementation_sha256"] == sha256_file(
-        ROOT / implementation
-    )
+    expected_implementation = manifest["identity"]["implementation_sha256"]
+    if (artifact_dir / "frozen_implementation_identity.json").is_file():
+        retained = json.loads((artifact_dir / "frozen_implementation_identity.json").read_text())
+        assert retained["source_path"] == implementation
+        assert retained["source_sha256"] == expected_implementation
+        assert retained["research_only"] is True and retained["trade_ready"] is False
+        source = gzip.decompress((artifact_dir / retained["snapshot_file"]).read_bytes())
+        assert hashlib.sha256(source).hexdigest() == expected_implementation
+        assert hashlib.sha1(b"blob " + str(len(source)).encode() + b"\0" + source).hexdigest() == retained["source_git_blob"]
+    else:
+        assert expected_implementation == sha256_file(ROOT / implementation)
     assert manifest["decision"] == expected_decision
     assert manifest["research_only"] is True
     assert manifest["trade_ready"] is False

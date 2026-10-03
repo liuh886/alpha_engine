@@ -16,6 +16,7 @@ from typing import Any
 import pandas as pd
 
 from src.artifacts.formal_bundle_reader import FormalBundleReadError, load_formal_run
+from src.artifacts.strategy_signal_ledger import read_latest_evaluation
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.governance.strategy_runtime_capabilities import (
     load_active_strategy_runtime_capabilities,
@@ -109,6 +110,24 @@ def _due(args: argparse.Namespace) -> int:
     portfolio_file = active.manifest_path.parent / "portfolio.json"
     if not portfolio_file.is_file():
         raise CN27CurrentTargetCommandError("CN_27 sealed portfolio file is missing")
+    status = prospective_source_status(formal_root=formal_dir, repository_root=ROOT)
+    if status["current_target_available"]:
+        completed_as_of = completed_market_date("cn", args.as_of)
+        previous = read_latest_evaluation(ledger_dir, model_version_id=MODEL_ID)
+        prior_date = str(previous.get("latest_data_date") or "") if previous else ""
+        cutoff = active.evidence_cutoff
+        payload = {
+            "strategy_id": STRATEGY_ID, "model_version_id": MODEL_ID,
+            "requested_as_of": args.as_of, "as_of": completed_as_of,
+            "due": prior_date < cutoff <= completed_as_of,
+            "signal_date": cutoff if prior_date < cutoff <= completed_as_of else None,
+            "cadence_sessions": REBALANCE_SESSIONS,
+            "reason": "publish verified observation; target changes only on frozen rebalance sessions",
+            "research_only": True, "trade_ready": False,
+        }
+        _write(args.output, payload)
+        print(json.dumps(payload, sort_keys=True))
+        return 0
     anchor, _ = load_previous_state(
         formal_package=portfolio_file, ledger_dir=ledger_dir
     )

@@ -151,7 +151,7 @@ def _decision_schedule(
     """Explain the existing frozen cadence; do not score or change a target."""
     staleness = _mapping(record.get("staleness"))
     expected = staleness.get("expected_cutoff")
-    anchor = record.get("as_of")
+    anchor = record.get("last_rebalance_date") or record.get("as_of")
     result: dict[str, object] = {
         "signal_date": anchor, "completed_through": expected,
         "cadence_sessions": None, "sessions_since_signal": None,
@@ -709,6 +709,7 @@ def _cn27(
     signal = ledger.get("signal")
     if not isinstance(signal, Mapping):
         raise StrategyOperationsError("cn27 decision ledger signal is missing")
+    pending_retry = _mapping(signal.get("diagnostics")).get("pending_execution_retry") is True
     allocations = _allocations(signal.get("current_weights"), signal.get("target_weights"))
     changed = _has_change(allocations)
     data_fresh = signal.get("data_freshness_ok") is True
@@ -722,13 +723,14 @@ def _cn27(
             delivery_status=delivery_status,
             data_fresh=data_fresh,
             factor_freshness=factor_freshness,
-            changed=changed,
+            changed=changed or pending_retry,
         ),
         "as_of": signal.get("signal_date"),
         "latest_completed_session": latest,
         "decision_cadence": cadence,
         "next_decision_policy": next_policy,
         "state_label": "CN27 30-session rebalance",
+        "last_rebalance_date": _mapping(signal.get("diagnostics")).get("last_rebalance_date"),
         "decision_reason": str(signal.get("reason_code") or "Frozen monthly CN27 evaluation."),
         "allocations": allocations,
         "turnover": _finite(signal.get("turnover_units")),
@@ -745,7 +747,7 @@ def _cn27(
         "note": factor_error
         or (
             "Target is published for the next eligible open."
-            if changed
+            if changed or pending_retry
             else "The governed rebalance retained the existing target."
         ),
         "factor_evidence": factors,

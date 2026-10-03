@@ -260,6 +260,7 @@ def run_projected_recipe(
     rebalance_phase_offset: int = 0,
     excluded_sectors: frozenset[str] = frozenset(),
     scored_features: pd.DataFrame | None = None,
+    observation_end: str | None = None,
 ) -> DiscoveryBacktestResult:
     if cost_multiplier <= 0.0:
         raise ValueError("cost multiplier must be positive")
@@ -285,6 +286,12 @@ def run_projected_recipe(
     close_returns = full_closes.pct_change(fill_method=None)
     start = pd.Timestamp(contract.spec["evaluation"]["full_window"]["start"])
     cutoff = pd.Timestamp(contract.spec["evaluation"]["full_window"]["end"])
+    if observation_end is not None:
+        cutoff = pd.Timestamp(observation_end)
+        if cutoff < pd.Timestamp(contract.spec["evaluation"]["full_window"]["end"]):
+            raise ValueError("observation end cannot precede the frozen historical window")
+        if cutoff not in full_calendar:
+            raise ValueError("observation end is not covered by the defensive instrument")
     calendar = full_calendar[(full_calendar >= start) & (full_calendar <= cutoff)]
     opens = {symbol: by_symbol[symbol]["open"].reindex(calendar).ffill() for symbol in assets}
     observed = {
@@ -351,6 +358,8 @@ def run_projected_recipe(
     daily_rows: list[dict[str, object]] = []
     equity = 1.0
     latest_target_diagnostics: dict[str, float] = {}
+    last_rebalance_date: str | None = None
+    last_target: dict[str, float] | None = None
 
     for step, date in enumerate(calendar):
         if step in scheduled_targets:
@@ -456,8 +465,20 @@ def run_projected_recipe(
                 target[contract.defensive_symbol] = 1.0 - sum(stock_target.values())
                 target["CASH"] = 0.0
                 scheduled_targets[step + execution_delay_sessions] = target
+                last_rebalance_date = date.date().isoformat()
+                last_target = {key: value for key, value in target.items() if value > 1e-12}
 
     daily = pd.DataFrame(daily_rows).set_index("date")
+    if observation_end is not None:
+        daily.attrs["operating_state"] = {
+            "as_of": observation_end,
+            "last_rebalance_date": last_rebalance_date,
+            "target_weights": last_target,
+            "current_weights": {key: value for key, value in weights.items() if value > 1e-12},
+            "pending_execution": active_target is not None or bool(scheduled_targets),
+            "research_only": True,
+            "trade_ready": False,
+        }
     fold_ids = tuple(str(row["id"]) for row in contract.spec["evaluation"]["chronological_folds"])
     return DiscoveryBacktestResult(
         recipe_id=str(recipe["id"]),

@@ -34,4 +34,33 @@ CN27 current-target 状态同时报告 source_available 和 current_target_avail
 
 ## 验收边界
 
+### CN27 运行观察接续修复
+
+源截止已到 2026-09-30，但 `run_projected_recipe` 使用历史合同的
+`evaluation.full_window.end=2026-09-04`，正式持仓因此没有推进。
+刷新现在显式传入观察截止；同一冻结策略计算器保持原来选股、风险、成本、
+30 会话相位和次日开盘重试逻辑。历史 report、positions、trades、收益指标及
+失败稳健性门禁仍封存在原有窗口。
+
+最新研究观察作为紧凑 `source_evidence.operating_state` 绑定到现有 Bundle v2
+lineage，包含当前模拟权重、锁定目标、最近调仓日、待执行状态、因子观察及
+来源/合同/实现哈希。它没有独立登记册或发布路径，也不代表账户真实成交或
+通过独立 prospective validation。行情有效但缺少该状态的旧正式包可在相同
+截止补齐一次；状态已存在且输入未变时，正式刷新仍是 no-op。
+
+current-target 从经 manifest 校验的观察读取目标，日常观察不重置 30 会话
+调仓锚点，价格漂移不生成重新配权。七个已有冻结输入只增加当前信号的规范
+目录绑定，不改变公式或声称独立验证通过；摘要明确为固定候选截面等权均值。
+公共决策账本现可校验、封存这些因子观察。
+
+旧 projected discovery 的实现哈希仍按原始字节核验。精确历史源码压缩快照及
+原 Git revision/blob 身份保存在该证据目录；它不是可导入或可调度的旧运行
+路径。历史 manifest、输出哈希和失败结论不修改；当前运行另绑定当前实现哈希。
+
+真实本地截止 2026-09-30 验收通过历史前缀 729 条 report、8745 条 positions、
+326 条 trades，并完成 preview 封存、正式包校验读取、决策封存及 operations
+投影。结果为 `current_no_change`、因子 `current`；最近调仓为 2026-08-25，
+已过 25 个会话、距下次调仓 5 个会话。相同输入的后续计划不再请求正式刷新。
+诊断位于 `artifacts/cn27-runtime-repair/`；本地验收不替代线上受审发布。
+
 代码及来源修复需经过 PR CI、正式刷新原子发布、运行平面发布和实际 Pages 验收。没有改动正式发布的全策略检查或将 retained/data_blocked 状态认作成功。CI/部署通过只证明工程链路；持续有效性由冻结合同及后续真实观察决定。

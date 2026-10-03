@@ -8,6 +8,7 @@ on:
       - "scripts/run_cn_27_current_target.py"
       - "src/research/cn_27_current_target.py"
       - "tests/test_cn_27_current_target.py"
+      - "configs/factor_libraries/strategy_inputs.yaml"
   workflow_run:
     workflows: [Reviewed Formal Backtest Refresh]
     types: [completed]
@@ -21,6 +22,7 @@ on:
       - "src/governance/strategy_runtime_capabilities.py"
       - "configs/strategies/registry.json"
       - "configs/models/cn_27_v1_3.yaml"
+      - "configs/factor_libraries/strategy_inputs.yaml"
       - "data/research/formal_model_runs/**"
 
 permissions:
@@ -140,6 +142,17 @@ jobs:
             printf 'CN_27 failures: %s\n' "${failures[*]}" >&2
             exit 1
           fi
+      - name: Request strategy operations publication
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jq -nc \
+            --arg producer_workflow "$GITHUB_WORKFLOW" \
+            --arg producer_run_id "$GITHUB_RUN_ID" \
+            '{event_type: "strategy_operations_publication", client_payload: {
+              producer_workflow: $producer_workflow, producer_run_id: $producer_run_id
+            }}' | gh api --method POST "repos/${GITHUB_REPOSITORY}/dispatches" --input -
       - name: Retain current-target evidence
         if: always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v6

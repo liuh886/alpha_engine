@@ -1,0 +1,10 @@
+{
+  "source_path": "src/research/cn27_v1_3_projected.py",
+  "source_revision": "6c41221da0825419f9ea2f8a61a04c2c063545a4",
+  "source_git_blob": "843e2661ecf74d6ee987e1ec5c25f1471d2058eb",
+  "source_sha256": "54a7a5b7cf129401fb582fbb2ba19af27676b0beff26a502d80afec6a5f918e4",
+  "snapshot_file": "frozen_implementation.py.gz",
+  "reason": "retain exact historical discovery implementation while the maintained evaluator gains an explicit operating observation cutoff",
+  "research_only": true,
+  "trade_ready": false
+}

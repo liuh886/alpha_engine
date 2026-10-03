@@ -431,6 +431,18 @@ def test_cn27_seal_rejects_non_canonical_factor_evidence(tmp_path: Path) -> None
         )
 
 
+def test_cn27_retained_target_keeps_locked_execution_retry_visible() -> None:
+    from src.artifacts.strategy_operations import _cn27
+
+    active = load_active_strategy_catalog(Path("configs/strategies/registry.json"))
+    signal = _cn27_signal(canonical_factors=True)
+    signal["current_weights"] = dict(signal["target_weights"])
+    signal["diagnostics"] = {"pending_execution_retry": True, "last_rebalance_date": "2026-08-25"}
+    snapshot = _cn27({"model_version_id": "cn_27_v1_3"}, active.by_strategy_id["cn_27"], {"signal": signal})
+    assert snapshot["status"] == "target_pending_execution"
+    assert snapshot["last_rebalance_date"] == "2026-08-25"
+
+
 def test_current_cn_eligibility_field_controls_risk_state(tmp_path: Path) -> None:
     for missing, expected in [(False, "CN risk-off · CSI300 fallback"), (True, "CN risk state unavailable")]:
         signal = _ranker_signal(family="cn_ranker", group="cn_balanced_ohlcv", current={"000300": 1.0}, target={"000300": 1.0})

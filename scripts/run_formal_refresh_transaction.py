@@ -279,6 +279,12 @@ def build_task_plan(
         planned_cutoffs[model_id] = max(market_target, accepted)
         if model_id not in ranker_model_ids and accepted < market_target:
             stale_ids.add(model_id)
+        if model_id == "cn_27_v1_3" and market_target >= accepted > "2026-09-04":
+            # One-time repair of source-only refreshes. Once the existing formal
+            # lineage binds an operating state, unchanged reads remain no-ops.
+            evidence = reader.load(model_id).refresh_state().get("evidence", {})
+            if not evidence.get("operating_state"):
+                stale_ids.add(model_id)
 
     for strategy in ranker_strategies:
         model_id = strategy.model_version_id
