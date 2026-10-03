@@ -28,6 +28,8 @@
 
 CN27 历史 trace 按原有合同保持在 2026-09-04；源截止推进不是历史收益 trace 自动延长，更不是前瞻验证完成。其既有独立 prospective contract 要求原始/调整行情、可交易性、公司行动、12 个月及至少 240 个会话。应通过该合同积累后续观察，不能把本轮来源核对替代为通过前瞻门禁。
 
+CN27 current-target 状态同时报告 source_available 和 current_target_available；后者必须核验截止日的 manifest-bound 持仓。行情已更新但持仓未覆盖时，命令保留 data_blocked 回执且不生成权重；损坏或不合法权重仍以 invalid_evidence 拒绝。该入口补充路径限定的 PR 验证，PR 不执行决策写入。
+
 新模型固定池数据计划继续按 AGENTS.md 执行。Alpaca 凭据缺失仍阻塞相关训练 profile。凭据及真实未来样本无法由代码修复生成；已有策略日常观察不以全部训练 profile 就绪为前提。
 
 ## 验收边界

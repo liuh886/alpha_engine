@@ -1,6 +1,13 @@
 name: CN27 Current Target
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/cn27-current-target.yml"
+      - "scripts/run_cn_27_current_target.py"
+      - "src/research/cn_27_current_target.py"
+      - "tests/test_cn_27_current_target.py"
   workflow_run:
     workflows: [Reviewed Formal Backtest Refresh]
     types: [completed]
@@ -34,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ github.event_name == 'pull_request' && github.sha || 'main' }}
           fetch-depth: 0
       - name: Capture executed source revision
         id: source
@@ -54,6 +61,7 @@ jobs:
             tests/test_strategy_signal_ledger.py \
             -q --strict-markers --tb=short
       - name: Evaluate CN_27 current target
+        if: github.event_name != 'pull_request'
         env:
           EXECUTION_SHA: ${{ steps.source.outputs.sha }}
         shell: bash
@@ -133,7 +141,7 @@ jobs:
             exit 1
           fi
       - name: Retain current-target evidence
-        if: always()
+        if: always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v6
         with:
           name: cn27-current-target-${{ github.run_id }}
