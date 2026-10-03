@@ -154,6 +154,76 @@ factors:
     minimum_lookback: 0
     output_dtype: bool
 
+  strategy.cn27.residual_momentum_120:
+    display_name: CN27 residual momentum 120
+    information_family: momentum
+    expression: "signal.factor_context.residual_momentum_120"
+    source_reference: src/research/cn27_v1_2.py#compute_v1_2_features
+    required_fields: [residual_momentum_120]
+    markets: [cn]
+    minimum_lookback: 120
+    adjustment_requirement: adjusted
+
+  strategy.cn27.risk_adjusted_momentum_20:
+    display_name: CN27 risk adjusted momentum 20
+    information_family: momentum
+    expression: "signal.factor_context.risk_adjusted_momentum_20"
+    source_reference: src/research/cn27_v1_2.py#compute_v1_2_features
+    required_fields: [risk_adjusted_momentum_20]
+    markets: [cn]
+    minimum_lookback: 20
+    adjustment_requirement: adjusted
+
+  strategy.cn27.trend_efficiency_120:
+    display_name: CN27 trend efficiency 120
+    information_family: trend
+    expression: "signal.factor_context.trend_efficiency_120"
+    source_reference: src/research/cn27_v1_2.py#compute_v1_2_features
+    required_fields: [trend_efficiency_120]
+    markets: [cn]
+    minimum_lookback: 120
+    adjustment_requirement: adjusted
+
+  strategy.cn27.risk_adjusted_momentum_120:
+    display_name: CN27 risk adjusted momentum 120
+    information_family: momentum
+    expression: "signal.factor_context.risk_adjusted_momentum_120"
+    source_reference: src/research/cn27_v1_2.py#compute_v1_2_features
+    required_fields: [risk_adjusted_momentum_120]
+    markets: [cn]
+    minimum_lookback: 120
+    adjustment_requirement: adjusted
+
+  strategy.cn27.positive_day_share_60:
+    display_name: CN27 positive day share 60
+    information_family: momentum
+    expression: "signal.factor_context.positive_day_share_60"
+    source_reference: src/research/cn27_v1_2.py#compute_v1_2_features
+    required_fields: [positive_day_share_60]
+    markets: [cn]
+    minimum_lookback: 60
+    adjustment_requirement: adjusted
+
+  strategy.cn27.trend_120:
+    display_name: CN27 trend 120
+    information_family: trend
+    expression: "signal.factor_context.trend_120"
+    source_reference: src/research/cn27_v1_2.py#compute_v1_2_features
+    required_fields: [trend_120]
+    markets: [cn]
+    minimum_lookback: 120
+    adjustment_requirement: adjusted
+
+  strategy.cn27.short_term_reversal_5:
+    display_name: CN27 short term reversal 5
+    information_family: reversal
+    expression: "signal.factor_context.short_term_reversal_5"
+    source_reference: src/research/cn27_v1_2.py#compute_v1_2_features
+    required_fields: [short_term_reversal_5]
+    markets: [cn]
+    minimum_lookback: 5
+    adjustment_requirement: adjusted
+
 groups:
   qqq_core:
     description: Core v4.x price and volatility inputs present in every governed QQQ evaluation.

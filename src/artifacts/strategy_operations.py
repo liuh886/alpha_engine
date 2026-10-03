@@ -151,7 +151,7 @@ def _decision_schedule(
     """Explain the existing frozen cadence; do not score or change a target."""
     staleness = _mapping(record.get("staleness"))
     expected = staleness.get("expected_cutoff")
-    anchor = record.get("as_of")
+    anchor = record.get("last_rebalance_date") or record.get("as_of")
     result: dict[str, object] = {
         "signal_date": anchor, "completed_through": expected,
         "cadence_sessions": None, "sessions_since_signal": None,
@@ -729,6 +729,7 @@ def _cn27(
         "decision_cadence": cadence,
         "next_decision_policy": next_policy,
         "state_label": "CN27 30-session rebalance",
+        "last_rebalance_date": _mapping(signal.get("diagnostics")).get("last_rebalance_date"),
         "decision_reason": str(signal.get("reason_code") or "Frozen monthly CN27 evaluation."),
         "allocations": allocations,
         "turnover": _finite(signal.get("turnover_units")),

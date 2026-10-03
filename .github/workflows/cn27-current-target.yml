@@ -8,6 +8,7 @@ on:
       - "scripts/run_cn_27_current_target.py"
       - "src/research/cn_27_current_target.py"
       - "tests/test_cn_27_current_target.py"
+      - "configs/factor_libraries/strategy_inputs.yaml"
   workflow_run:
     workflows: [Reviewed Formal Backtest Refresh]
     types: [completed]
@@ -21,6 +22,7 @@ on:
       - "src/governance/strategy_runtime_capabilities.py"
       - "configs/strategies/registry.json"
       - "configs/models/cn_27_v1_3.yaml"
+      - "configs/factor_libraries/strategy_inputs.yaml"
       - "data/research/formal_model_runs/**"
 
 permissions:

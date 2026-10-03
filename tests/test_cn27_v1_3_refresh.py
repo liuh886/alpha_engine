@@ -218,6 +218,11 @@ def test_refresh_truncated_extension_rebuilds_exact_prefix(tmp_path: Path) -> No
     candidate = json.loads(output.read_text(encoding="utf-8"))
     assert candidate["evidence_cutoff"] == FULL_CUTOFF
     assert candidate["backtest_id"] == "cn_27_v1_3-through-2026_09_04"
+    operating = candidate["evidence"]["operating_state"]
+    assert operating["as_of"] == FULL_CUTOFF
+    assert operating["last_rebalance_date"] < FULL_CUTOFF
+    assert operating["current_weights"] != operating["target_weights"]
+    assert operating["factor_evidence"]["observation_cutoff"] == FULL_CUTOFF
     from src.research.cn27_v1_3_replay import rows_close_enough
 
     for field in ("report", "positions", "trades"):

@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -354,7 +355,11 @@ def refresh_cn_27_v1_3(
     if current.get("model_id") != MODEL_ID:
         raise Cn27V13RefreshError("CN_27 refresh requires the accepted CN_27 V1.3 package")
     prior_cutoff = str(current.get("evidence_cutoff") or "")
-    if not prior_cutoff or not cutoff > prior_cutoff:
+    repair_operating_state = (
+        cutoff == prior_cutoff
+        and not (current.get("evidence") or {}).get("operating_state")
+    )
+    if not prior_cutoff or (not cutoff > prior_cutoff and not repair_operating_state):
         raise Cn27V13RefreshError("refresh cutoff must extend beyond the current cutoff")
     # The bundle builder requires the source completeness declaration; carry
     # it from the incumbent package (fail closed when absent) instead of
@@ -407,7 +412,50 @@ def refresh_cn_27_v1_3(
         context.contract,
         context.recipe,
         scored_features=scored,
+        observation_end=cutoff,
     )
+    operating_state = result.daily.attrs["operating_state"]
+    day = features.loc[features["date"].eq(pd.Timestamp(cutoff))]
+    if set(day["symbol"]) != set(context.contract.candidate_symbols):
+        raise DataBlockedError("CN_27 operating factors do not cover every frozen candidate")
+    combination = context.contract.spec["frozen_signal"]["factors"]
+    from src.factors.ranker_snapshot import build_ranker_factor_snapshot
+
+    factor_values = {}
+    for name in combination:
+        values = day[name]
+        if values.isna().any():
+            raise DataBlockedError(f"CN_27 operating factor is unavailable: {name}")
+        factor_values[f"strategy.cn27.{name}"] = float(values.mean())
+    operating_state["factor_evidence"] = build_ranker_factor_snapshot(
+        model_family_id="cn_27_rotation", signal_date=cutoff, latest_data_date=cutoff,
+        factor_values=factor_values, data_freshness_ok=True,
+        factor_references={
+            f"strategy.cn27.{name}": {
+                "aggregation": "frozen_candidate_equal_weight_mean",
+                "combination_weight": float(weight),
+                "normalization": "daily_cross_sectional_percentile",
+            }
+            for name, weight in combination.items()
+        },
+        library_path=REPOSITORY_ROOT / "configs/factor_libraries/strategy_inputs.yaml",
+    )
+    operating_state["source_bar_sha256"] = hashlib.sha256(
+        extended.to_csv(index=False, date_format="%Y-%m-%d").encode("utf-8")
+    ).hexdigest()
+    operating_state["recipe_id"] = RECIPE_ID
+    operating_state["contract_sha256"] = _sha256(REPOSITORY_ROOT / contract_path)
+    operating_state["implementation_sha256"] = {
+        path: _sha256(REPOSITORY_ROOT / path)
+        for path in (
+            "src/research/cn27_v1_2.py", "src/research/cn27_v1_3_projected.py",
+            "scripts/refresh_cn_27_v1_3_formal.py",
+        )
+    }
+    # Keep consumed historical evidence and its metrics sealed at their original
+    # window. Only the compact research operating state advances to the cutoff.
+    frozen_end = pd.Timestamp(context.contract.spec["evaluation"]["full_window"]["end"])
+    result = replace(result, daily=result.daily.loc[:frozen_end].copy())
     report, positions, trades = build_backtest_rows(
         extended, context.contract, result
     )
@@ -446,6 +494,7 @@ def refresh_cn_27_v1_3(
         "historical_evidence_recomputed": True,
         "exact_historical_reproduction": True,
         "model_selection_reopened": False,
+        "operating_state": operating_state,
     }
     freshness = {
         **(

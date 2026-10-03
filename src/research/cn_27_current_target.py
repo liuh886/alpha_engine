@@ -8,6 +8,7 @@ positions at that cutoff fail closed with ``status="data_blocked"``.
 from __future__ import annotations
 
 import hashlib
+import math
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -15,6 +16,8 @@ import pandas as pd
 import yaml
 
 from src.artifacts.formal_bundle_reader import FormalBundleReadError, load_formal_run
+from src.artifacts.strategy_signal_ledger import read_latest_evaluation
+from src.factors.strategy_snapshot import validate_strategy_factor_snapshot
 from src.research.ranker_current_target import (
     _canonical_sha,
     _signal_payload,
@@ -98,11 +101,51 @@ def _target_at_cutoff(
     target = {str(row["instrument"]): float(row["weight"]) for row in rows}
     if len(target) != len(rows):
         raise _invalid("CN_27 target instruments are not unique")
-    if any(weight < 0.0 for weight in target.values()):
+    if any(not math.isfinite(weight) or weight < 0.0 for weight in target.values()):
         raise _invalid("CN_27 forbids short sleeves in the current target")
     if abs(sum(target.values()) - 1.0) > 1e-9:
         raise _invalid("CN_27 target weights do not sum to one")
     return dict(sorted(target.items()))
+
+
+def _operating_state(state: Mapping[str, Any], cutoff: str) -> Mapping[str, Any] | None:
+    evidence = state.get("evidence")
+    operating = evidence.get("operating_state") if isinstance(evidence, Mapping) else None
+    if operating is None:
+        return None
+    if not isinstance(operating, Mapping) or operating.get("as_of") != cutoff:
+        raise _invalid("CN_27 operating state is not bound to the formal cutoff")
+    if operating.get("research_only") is not True or operating.get("trade_ready") is not False:
+        raise _invalid("CN_27 operating state research boundary changed")
+    if operating.get("recipe_id") != "k2_projected_22_45_n8":
+        raise _invalid("CN_27 operating recipe identity changed")
+    if type(operating.get("pending_execution")) is not bool:
+        raise _invalid("CN_27 operating execution state is invalid")
+    for field in ("source_bar_sha256", "contract_sha256"):
+        value = operating.get(field)
+        if not isinstance(value, str) or len(value) != 64:
+            raise _invalid(f"CN_27 operating identity is missing: {field}")
+    anchor = operating.get("last_rebalance_date")
+    if not isinstance(anchor, str) or anchor > cutoff:
+        raise _invalid("CN_27 operating rebalance anchor is invalid")
+    for field in ("target_weights", "current_weights"):
+        weights = operating.get(field)
+        if not isinstance(weights, Mapping) or not weights:
+            raise _invalid(f"CN_27 operating {field} is unavailable")
+        _target_at_cutoff([
+            {"date": cutoff, "instrument": name, "weight": weight}
+            for name, weight in weights.items()
+        ], cutoff)
+    try:
+        validate_strategy_factor_snapshot(operating.get("factor_evidence"))
+    except ValueError as exc:
+        raise _invalid(f"CN_27 operating factors are invalid: {exc}") from exc
+    factors = operating["factor_evidence"]
+    if factors.get("observation_cutoff") != cutoff or factors.get("freshness") != "current":
+        raise _invalid("CN_27 operating factors do not cover the cutoff")
+    if factors.get("model_family_id") != MODEL_FAMILY_ID:
+        raise _invalid("CN_27 operating factor family changed")
+    return operating
 
 
 def _asymmetric_cost(
@@ -140,6 +183,8 @@ def score_cn_27_current_target(
     """Publish the frozen-recipe CN_27 target, or fail closed as data_blocked."""
 
     root = repository_root.resolve()
+    if market_cutoff != signal_date:
+        raise _invalid("CN_27 market cutoff must equal the evaluation date")
     contract = _load_model_contract(root)
     activation = _activation_reason(contract)
 
@@ -194,7 +239,11 @@ def score_cn_27_current_target(
     positions = state.get("positions")
     if not isinstance(positions, list) or not positions:
         raise _invalid("CN_27 refreshed positions are unavailable")
-    target = _target_at_cutoff(positions, signal_date)
+    operating = _operating_state(state, signal_date)
+    target = (
+        dict(sorted(operating["target_weights"].items())) if operating
+        else _target_at_cutoff(positions, signal_date)
+    )
 
     portfolio_file = active.manifest_path.parent / "portfolio.json"
     if not portfolio_file.is_file():
@@ -206,6 +255,13 @@ def score_cn_27_current_target(
         )
     except ValueError as exc:
         raise _invalid(f"CN_27 previous state is invalid: {exc}") from exc
+    if (
+        operating and operating["last_rebalance_date"] <= previous_date
+        and read_latest_evaluation(Path(ledger_dir), model_version_id=MODEL_ID) is None
+    ):
+        # Price drift in observed holdings is not a new allocation decision.
+        # Bootstrap the same locked target when no scheduled rebalance occurred.
+        previous = dict(target)
 
     combination = contract.get("factor_model", {}).get("combination", {})
     factor_evidence = {
@@ -216,12 +272,16 @@ def score_cn_27_current_target(
         "freshness": "frozen_contract",
         "library_sources": [f"{MODEL_CONTRACT.as_posix()}#factor_model"],
     }
+    if operating:
+        factor_evidence = dict(operating["factor_evidence"])
     cost, cost_formula = _asymmetric_cost(
         previous=previous, target=target, contract=contract
     )
     report = state.get("report")
     pending_execution = False
-    if isinstance(report, list):
+    if operating:
+        pending_execution = bool(operating["pending_execution"])
+    if not operating and isinstance(report, list):
         pending_execution = any(
             isinstance(row, Mapping)
             and str(row.get("date", "")) == signal_date
@@ -258,6 +318,9 @@ def score_cn_27_current_target(
             "pending_execution_retry": pending_execution,
             "cost_formula": cost_formula,
             "model_selection_reopened": False,
+            "last_rebalance_date": operating["last_rebalance_date"] if operating else signal_date,
+            "operating_state_as_of": operating["as_of"] if operating else None,
+            "research_current_weights": dict(operating["current_weights"]) if operating else None,
         },
     )
     payload["estimated_transaction_cost"] = cost
@@ -295,7 +358,11 @@ def prospective_source_status(
     target_available = False
     blocking_reason = "no governed source beyond the frozen evidence cutoff"
     if available:
-        if not isinstance(positions, list) or not positions:
+        operating = _operating_state(state, active.evidence_cutoff)
+        if operating:
+            target_available = True
+            blocking_reason = ""
+        elif not isinstance(positions, list) or not positions:
             blocking_reason = "manifest-bound refreshed positions are unavailable"
         else:
             try:
