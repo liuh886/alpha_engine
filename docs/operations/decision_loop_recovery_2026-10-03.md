@@ -53,6 +53,10 @@ current-target 从经 manifest 校验的观察读取目标，日常观察不重�
 目录绑定，不改变公式或声称独立验证通过；摘要明确为固定候选截面等权均值。
 公共决策账本现可校验、封存这些因子观察。
 
+旧 projected discovery 的实现哈希仍按原始字节核验。精确历史源码压缩快照及
+原 Git revision/blob 身份保存在该证据目录；它不是可导入或可调度的旧运行
+路径。历史 manifest、输出哈希和失败结论不修改；当前运行另绑定当前实现哈希。
+
 真实本地截止 2026-09-30 验收通过历史前缀 729 条 report、8745 条 positions、
 326 条 trades，并完成 preview 封存、正式包校验读取、决策封存及 operations
 投影。结果为 `current_no_change`、因子 `current`；最近调仓为 2026-08-25，
