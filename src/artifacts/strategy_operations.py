@@ -709,6 +709,7 @@ def _cn27(
     signal = ledger.get("signal")
     if not isinstance(signal, Mapping):
         raise StrategyOperationsError("cn27 decision ledger signal is missing")
+    pending_retry = _mapping(signal.get("diagnostics")).get("pending_execution_retry") is True
     allocations = _allocations(signal.get("current_weights"), signal.get("target_weights"))
     changed = _has_change(allocations)
     data_fresh = signal.get("data_freshness_ok") is True
@@ -722,7 +723,7 @@ def _cn27(
             delivery_status=delivery_status,
             data_fresh=data_fresh,
             factor_freshness=factor_freshness,
-            changed=changed,
+            changed=changed or pending_retry,
         ),
         "as_of": signal.get("signal_date"),
         "latest_completed_session": latest,
@@ -746,7 +747,7 @@ def _cn27(
         "note": factor_error
         or (
             "Target is published for the next eligible open."
-            if changed
+            if changed or pending_retry
             else "The governed rebalance retained the existing target."
         ),
         "factor_evidence": factors,
