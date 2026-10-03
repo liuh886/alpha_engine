@@ -107,6 +107,9 @@ export function StrategyDetailPage() {
   }, [run, workspace.activeRunKey, workspace.selectRun]);
 
   const [decisionState, setDecisionState] = useState<DecisionLoadState | null>(null);
+  const primaryCounterevidence = decisionState?.decision?.contradictory_evidence.find(row => row.outcome === 'failed')
+    ?? decisionState?.decision?.gates.find(row => row.outcome === 'failed')
+    ?? decisionState?.decision?.contradictory_evidence[0];
   const [observation, setObservation] = useState<ReturnType<typeof latestPerformanceObservation>>(null);
   const [observationPending, setObservationPending] = useState(true);
   useEffect(() => {
@@ -188,7 +191,7 @@ export function StrategyDetailPage() {
             : decisionState?.state === 'error' ? 'Assessment evidence could not be verified.' : decisionState?.state === 'absent' ? 'No assessment is bound to this evidence bundle.' : 'Loading verified assessment…'}
         </p>
         {decisionState?.decision && (
-          <p className="mt-2 text-muted-foreground">{[...decisionState.decision.gates.filter(row => row.outcome === 'failed'), ...decisionState.decision.contradictory_evidence][0]?.statement || 'Retained evidence has no recorded counterevidence; this does not establish continued effectiveness.'}</p>
+          <p className="mt-2 text-muted-foreground">{primaryCounterevidence?.statement || 'Retained evidence has no recorded counterevidence; this does not establish continued effectiveness.'}</p>
         )}
         {decisionState?.decision && (
           <p className="mt-2 text-muted-foreground">
