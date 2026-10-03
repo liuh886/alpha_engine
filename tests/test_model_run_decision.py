@@ -129,7 +129,10 @@ def test_blocked_receipt_requires_blocked_gate() -> None:
 def test_pending_observation_receipt_verifies_actual_section_bytes(tmp_path: Path) -> None:
     import shutil
     from src.artifacts.model_run_decision import pending_observation_decision
-    source = Path("data/research/formal_model_runs/cn_ranker/cn_x1_2/cn_x1_2-through-2026_09_24")
+    formal_root = Path("data/research/formal_model_runs")
+    catalog = json.loads((formal_root / "catalog.json").read_text(encoding="utf-8"))
+    record = next(row for row in catalog["records"] if row["model_version_id"] == "cn_x1_2")
+    source = (formal_root / record["manifest_path"]).parent
     bundle = tmp_path / "bundle"
     shutil.copytree(source, bundle)
     decision = pending_observation_decision(bundle / "manifest.json")

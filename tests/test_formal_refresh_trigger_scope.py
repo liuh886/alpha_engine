@@ -7,6 +7,18 @@ WORKFLOW = Path(".github/workflows/formal-backtest-refresh.yml")
 CI_WORKFLOW = Path(".github/workflows/formal-backtest-refresh-ci.yml")
 
 
+def test_release_uses_workflow_dispatch_authority_and_verified_candidate_head() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    block = text.split(
+        "      - name: Wait for candidate checks, merge reviewed refresh, and verify Pages",
+        1,
+    )[1].split("      - name: Upsert refresh operating status", 1)[0]
+    assert "GH_TOKEN: ${{ github.token }}" in block.split("        run:", 1)[0]
+    assert 'gh run watch "$validation_run"' in block
+    assert 'test "$validation_conclusion" = "success"' in block
+    assert '--match-head-commit "$CANDIDATE_SHA"' in block
+
+
 def test_heavy_formal_refresh_does_not_trigger_from_its_own_outputs() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     forbidden_push_paths = (
