@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 
 from src.artifacts.strategy_operations import (
+    _staleness,
+    _decision_schedule,
     build_operations_payload,
     validate_operations_payload,
     write_operations_payload,
@@ -18,6 +20,7 @@ from src.artifacts.strategy_signal_ledger import (
 from src.factors.library import load_factor_library
 from src.factors.ranker_snapshot import build_ranker_factor_snapshot
 from src.factors.strategy_snapshot import build_strategy_factor_snapshot
+from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
 FORMAL_CATALOG = Path("data/research/formal_model_runs/catalog.json")
 FACTOR_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
@@ -25,6 +28,42 @@ QQQ_MODEL = "qqqi_qqq_tqqq_v4_3"
 BYD_MODEL = "byd_v1_3_recovery_event_low_vol_confirmation_v1"
 US_MODEL = "us_x1_3"
 CN_MODEL = "cn_x1_2"
+
+
+def test_cn_observation_does_not_expire_during_national_day() -> None:
+    result = _staleness("2026-09-30", market="cn", generated_at="2026-10-03T05:00:00Z")
+    assert result == {
+        "as_of": "2026-09-30", "expected_cutoff": "2026-09-30",
+        "sessions_behind": 0, "stale": False,
+    }
+
+
+def test_missing_observation_never_becomes_current() -> None:
+    result = _staleness(None, market="cn", generated_at="2026-10-03T05:00:00Z")
+    assert result["stale"] is True
+    assert result["sessions_behind"] is None
+
+
+def test_ranker_cadence_and_daily_observation_are_distinct() -> None:
+    strategy = load_active_strategy_catalog().by_model_version_id[CN_MODEL]
+    schedule = _decision_schedule(strategy, {
+        "as_of": "2026-09-17", "status": "current_no_change",
+        "staleness": {"expected_cutoff": "2026-09-30"},
+    }, root=Path(".").resolve())
+    assert schedule["cadence_sessions"] == 10
+    assert schedule["state"] == "within_cadence"
+    assert schedule["sessions_until_due"] == 2
+    assert _staleness("2026-09-17", market="cn", generated_at="2026-10-03T05:00:00Z")["stale"] is True
+
+
+def test_pending_execution_remains_visible_when_evaluation_not_due() -> None:
+    strategy = load_active_strategy_catalog().by_model_version_id[US_MODEL]
+    schedule = _decision_schedule(strategy, {
+        "as_of": "2026-09-25", "status": "target_pending_execution",
+        "staleness": {"expected_cutoff": "2026-10-02"},
+    }, root=Path(".").resolve())
+    assert schedule["execution_pending"] is True
+    assert schedule["state"] == "within_cadence"
 
 
 def _by_model(payload: dict[str, object]) -> dict[str, dict[str, object]]:

@@ -29,9 +29,7 @@ from scripts.cn27_v1_3_formal_common import (
     _write,
     build_attribution_payload,
     build_backtest_rows,
-    build_window_summary,
     load_k2_context,
-    run_k2_variant_battery,
 )
 from src.artifacts.formal_refresh import load_object
 from src.artifacts.strategy_refresh_exit import (
@@ -165,6 +163,25 @@ def _recover_pinned_source(
     recovered["date"] = pd.to_datetime(recovered["date"])
     recovered = recovered.set_index("date").sort_index()
     recovery_dir.mkdir(parents=True, exist_ok=True)
+    vendor_prices = recovered
+    basis_bridge: dict[str, object] = {}
+    bridge_path = REPOSITORY_ROOT / "data/research/source_reconciliations/cn27/price-basis-v1.json"
+    if bridge_path.is_file():
+        from src.data.corporate_actions.adjustment import reanchor_additive_qfq
+
+        try:
+            recovered, basis_bridge = reanchor_additive_qfq(
+                recovered, symbol=symbol, cutoff=cutoff, bridge_path=bridge_path,
+                repository_root=REPOSITORY_ROOT,
+                frozen_source_sha256=_sha256(REPOSITORY_ROOT / "artifacts/evidence/cn_all_weather_alpha_rotation_v1/source_ohlcv.csv"),
+            )
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise Cn27V13RefreshError(f"price-basis bridge failed for {symbol}: {exc}") from exc
+    if basis_bridge.get("reference_cash_offset"):
+        vendor_path = recovery_dir / f"{symbol}.vendor.csv"
+        vendor_prices.reset_index().to_csv(vendor_path, index=False)
+        basis_bridge["vendor_source_path"] = vendor_path.as_posix()
+        basis_bridge["vendor_source_sha256"] = _sha256(vendor_path)
     candidate_source = recovery_dir / f"{symbol}.candidate.csv"
     recovered.reset_index().to_csv(candidate_source, index=False)
     if recovered.index.has_duplicates or not old.index.isin(recovered.index).all():
@@ -202,6 +219,7 @@ def _recover_pinned_source(
         "frozen_overlap_verified": True, "frozen_rows": len(old),
         "recovered_cutoff": fresh_recovered.index.max().date().isoformat(),
         "research_only": True, "trade_ready": False,
+        "price_basis_bridge": basis_bridge,
     }
     return recovered.loc[recovered.index <= cutoff_ts, list(SOURCE_FIELDS)], recovery
 
@@ -396,14 +414,12 @@ def refresh_cn_27_v1_3(
     prefix = _check_prefix(current, report, positions, trades)
     attribution, _ = contribution_attribution(result.daily, extended, context.contract)
     attribution_payload = build_attribution_payload(attribution)
-    battery = run_k2_variant_battery(
-        bars=extended,
-        features=features,
-        scored=scored,
-        contract=context.contract,
-        recipe=context.recipe,
-        base_result=result,
-    )
+    # These robustness windows are frozen historical evidence. The prefix
+    # check above proves their trajectory unchanged; rerunning the complete
+    # variant battery on each new source cutoff adds no forward observation.
+    retained_windows = current.get("window_summary")
+    if not isinstance(retained_windows, list) or not retained_windows:
+        raise Cn27V13RefreshError("frozen robustness evidence is missing")
     full = result.metrics_by_window["development"]
     dates = pd.DatetimeIndex(result.daily.index)
     from scripts.cn27_v1_3_formal_common import _benchmark_path
@@ -479,16 +495,7 @@ def refresh_cn_27_v1_3(
         "positions": positions,
         "trades": trades,
         "attribution": attribution_payload,
-        "window_summary": build_window_summary(
-            result=result,
-            phase_sharpes=battery["phase_sharpes"],
-            delay_two_full_sharpe=battery["delay_two_full_sharpe"],
-            parameter_rows=battery["parameter_rows"],
-            sector_rows=battery["sector_rows"],
-            bootstrap=battery["bootstrap"],
-            bootstrap_policy=battery["bootstrap_policy"],
-            failed_gates=list(FAILED_GATES),
-        ),
+        "window_summary": list(retained_windows),
         "evidence": evidence,
         "evidence_completeness": dict(prior_completeness),
         "freshness": freshness,

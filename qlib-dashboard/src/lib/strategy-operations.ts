@@ -62,6 +62,14 @@ export interface StrategyOperationsSnapshot {
   status: StrategyOperationalStatus;
   stateDetail?: StateDetail;
   staleness?: StalenessInfo;
+  decisionSchedule?: {
+    signalDate: string | null;
+    completedThrough: string | null;
+    cadenceSessions: number | null;
+    sessionsUntilDue: number | null;
+    state: 'due' | 'within_cadence' | 'unknown';
+    executionPending: boolean;
+  };
   asOf: string | null;
   latestCompletedSession: string | null;
   decisionCadence: string;
@@ -221,12 +229,30 @@ export function parseStrategyOperationsSnapshot(value: unknown): StrategyOperati
     : undefined;
 
   const source = record.source_identity as Record<string, unknown>;
+  const schedule = record.decision_schedule && typeof record.decision_schedule === 'object'
+    ? record.decision_schedule as Record<string, unknown> : null;
+  if (record.decision_schedule !== undefined) {
+    assert(schedule && !Array.isArray(schedule), `Invalid decision schedule for ${modelVersionId}`);
+    assert(['due', 'within_cadence', 'unknown'].includes(String(schedule.state)), `Invalid decision schedule state for ${modelVersionId}`);
+    for (const field of ['cadence_sessions', 'sessions_until_due']) {
+      const value = schedule[field];
+      assert(value === null || typeof value === 'number' && Number.isInteger(value) && value >= (field === 'cadence_sessions' ? 1 : 0), `Invalid decision schedule ${field} for ${modelVersionId}`);
+    }
+  }
   return {
     strategyId,
     modelVersionId,
     status: record.status as StrategyOperationalStatus,
     stateDetail,
     staleness,
+    decisionSchedule: schedule ? {
+      signalDate: nullableString(schedule.signal_date),
+      completedThrough: nullableString(schedule.completed_through),
+      cadenceSessions: nullableNumber(schedule.cadence_sessions),
+      sessionsUntilDue: nullableNumber(schedule.sessions_until_due),
+      state: schedule.state === 'due' || schedule.state === 'within_cadence' ? schedule.state : 'unknown',
+      executionPending: schedule.execution_pending === true,
+    } : undefined,
     asOf: nullableString(record.as_of),
     latestCompletedSession: nullableString(record.latest_completed_session),
     decisionCadence: record.decision_cadence,

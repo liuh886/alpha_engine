@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from src.research.market_session_clock import completed_market_date
+import pytest
+
+from src.research.market_session_clock import (
+    MarketSessionClockError,
+    completed_market_date,
+    exchange_sessions,
+)
 
 
 def test_us_in_progress_session_is_excluded() -> None:
@@ -59,3 +65,16 @@ def test_weekend_requested_as_of_is_excluded_even_after_weekend() -> None:
         "2026-08-22",
         now_utc=datetime(2026, 8, 24, 22, 0, tzinfo=timezone.utc),
     ) == "2026-08-21"
+
+
+def test_cn_national_day_is_not_counted_as_a_session() -> None:
+    assert exchange_sessions("cn", "2026-09-30", "2026-10-03") == ["2026-09-30"]
+
+
+def test_us_exchange_holiday_is_not_counted_as_a_session() -> None:
+    assert exchange_sessions("us", "2026-07-02", "2026-07-06") == ["2026-07-02", "2026-07-06"]
+
+
+def test_unknown_market_calendar_fails_closed() -> None:
+    with pytest.raises(MarketSessionClockError):
+        exchange_sessions("invalid", "2026-09-30", "2026-10-03")

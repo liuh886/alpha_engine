@@ -15,6 +15,34 @@ export function initialAccount(report: ReportRow[]): number | null {
     : positiveNumber(report[0]?.account_before);
 }
 
+/** Latest retained wealth observation, without inventing intervening daily marks. */
+export function latestPerformanceObservation(report: ReportRow[]) {
+  if (!report.length) return null;
+  let peak = initialAccount(report);
+  if (peak === null) return null;
+  let previousAccount: number | null = null;
+  let previousDate: string | null = null;
+  let previousDrawdown: number | null = null;
+  for (let index = 0; index < report.length; index++) {
+    const row = report[index];
+    const account = positiveNumber(row.account);
+    const date = effectivePerformanceDate(row);
+    if (account === null || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || previousDate && date <= previousDate) return null;
+    peak = Math.max(peak, account);
+    const drawdown = account / peak - 1;
+    if (index === report.length - 1) return {
+      date, previousDate, drawdown,
+      observedReturn: previousAccount === null ? null : account / previousAccount - 1,
+      drawdownChange: previousDrawdown === null ? null : drawdown - previousDrawdown,
+      provisional: row.provisional_mtm === true || row.settlement_status === 'provisional_mtm',
+    };
+    previousAccount = account;
+    previousDate = date;
+    previousDrawdown = drawdown;
+  }
+  return null;
+}
+
 export function periodStartIndex(report: ReportRow[], period: PerformancePeriod): number {
   if (!report.length || period === 'all') return 0;
   const end = new Date(`${effectivePerformanceDate(report[report.length - 1])}T00:00:00Z`);

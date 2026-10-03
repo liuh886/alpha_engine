@@ -80,6 +80,8 @@ def test_prospective_source_is_available_on_current_main() -> None:
         formal_root=REAL_FORMAL_ROOT, repository_root=ROOT
     )
     assert status["prospective_source_available"] is True
+    assert status["current_target_available"] is False
+    assert "positions do not cover" in status["current_target_blocking_reason"]
     assert status["active_evidence_cutoff"] > FROZEN_EVIDENCE_CUTOFF
     assert status["adapter_id"] == ADAPTER_ID
 
@@ -105,7 +107,7 @@ def test_build_requires_positions_covering_signal_date_on_current_main(
             market_cutoff=cutoff,
             repository_root=ROOT,
         )
-    assert excinfo.value.status == "invalid_evidence"
+    assert excinfo.value.status == "data_blocked"
     assert "positions do not cover" in str(excinfo.value)
 
 
@@ -117,6 +119,8 @@ def test_sealed_prospective_run_publishes_exact_frozen_recipe_target(
         formal_root=formal, repository_root=tmp_path
     )
     assert status["prospective_source_available"] is True
+    assert status["current_target_available"] is True
+    assert status["current_target_blocking_reason"] == ""
 
     first = score_cn_27_current_target(
         formal_root=formal,
@@ -211,11 +215,12 @@ def test_runner_build_reports_missing_positions_on_current_main() -> None:
         "--market-cutoff",
         cutoff,
     )
-    # Build fails closed with invalid_evidence (not data_blocked: the
-    # source exists) because refreshed positions do not cover the
-    # prospective cutoff yet. The exact message is pinned by the
-    # sibling unit test above; here only the fail-closed exit matters.
-    assert code != 0
+    # A valid source with missing current positions is a retained data blocker,
+    # not corrupt evidence. The CLI succeeds in recording it without weights.
+    assert code == 0
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["decision"] == "data_blocked"
+    assert "target_weights" not in payload
 
 
 def test_runner_due_respects_activated_thirty_session_cadence() -> None:

@@ -1,10 +1,8 @@
 """Governed current-target publisher for the CN_27 V1.3 allocation model.
 
-Activated by governed contract: ``configs/models/cn_27_v1_3.yaml`` declares
-``current_target_activation: maintained_cn_27_current_target_v1`` after the
-sealed refreshed formal run extended beyond the frozen evidence cutoff
-(2026-09-09 > 2026-09-04). Calls without a governed prospective source fail
-closed with ``status="data_blocked"`` and no weights are produced.
+The governed activation contract permits this adapter, but a newer source
+cutoff alone does not establish a target. Calls without manifest-bound
+positions at that cutoff fail closed with ``status="data_blocked"``.
 """
 
 from __future__ import annotations
@@ -96,7 +94,7 @@ def _target_at_cutoff(
         if isinstance(row, dict) and str(row.get("date", "")) == signal_date
     ]
     if not rows:
-        raise _invalid(f"CN_27 refreshed positions do not cover {signal_date}")
+        raise _blocked(f"CN_27 refreshed positions do not cover {signal_date}")
     target = {str(row["instrument"]): float(row["weight"]) for row in rows}
     if len(target) != len(rows):
         raise _invalid("CN_27 target instruments are not unique")
@@ -289,12 +287,34 @@ def prospective_source_status(
     except FormalBundleReadError as exc:
         raise _invalid(f"CN_27 active formal run is unreadable: {exc}") from exc
     available = bool(active.evidence_cutoff > FROZEN_EVIDENCE_CUTOFF)
+    try:
+        state = active.refresh_state()
+    except FormalBundleReadError as exc:
+        raise _invalid(f"CN_27 refreshed state is incomplete: {exc}") from exc
+    positions = state.get("positions") if isinstance(state, Mapping) else None
+    target_available = False
+    blocking_reason = "no governed source beyond the frozen evidence cutoff"
+    if available:
+        if not isinstance(positions, list) or not positions:
+            blocking_reason = "manifest-bound refreshed positions are unavailable"
+        else:
+            try:
+                _target_at_cutoff(positions, active.evidence_cutoff)
+            except CN27CurrentTargetError as exc:
+                if exc.status != "data_blocked":
+                    raise
+                blocking_reason = str(exc)
+            else:
+                target_available = True
+                blocking_reason = ""
     return {
         "model_version_id": MODEL_ID,
         "adapter_id": ADAPTER_ID,
         "frozen_evidence_cutoff": FROZEN_EVIDENCE_CUTOFF,
         "active_evidence_cutoff": active.evidence_cutoff,
         "prospective_source_available": available,
+        "current_target_available": target_available,
+        "current_target_blocking_reason": blocking_reason,
         "current_target_activation": activation,
         "research_only": True,
         "trade_ready": False,

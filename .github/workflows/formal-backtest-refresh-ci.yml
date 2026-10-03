@@ -17,6 +17,9 @@ on:
       - "!src/data/selected_pool_event_population.py"
       - "!src/data/fundamentals/**"
       - "!src/data/corporate_actions/**"
+      - "src/data/corporate_actions/adjustment.py"
+      - "data/research/source_reconciliations/cn27/**"
+      - "tests/test_qfq_price_basis_bridge.py"
       - "src/dashboard/**"
       - "src/factors/**"
       - "src/governance/**"
@@ -368,6 +371,7 @@ jobs:
             tests/test_ranker_provisional_mtm.py \
             tests/test_formal_bundle_mtm_projection.py \
             tests/test_cn27_v1_3_refresh.py \
+            tests/test_qfq_price_basis_bridge.py \
             tests/test_model_run_decision.py \
             tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
@@ -419,6 +423,7 @@ jobs:
             tests/test_ranker_provisional_mtm.py \
             tests/test_formal_bundle_mtm_projection.py \
             tests/test_cn27_v1_3_refresh.py \
+            tests/test_qfq_price_basis_bridge.py \
             tests/test_model_run_decision.py \
             tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \

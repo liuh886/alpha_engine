@@ -77,13 +77,15 @@ def test_release_uses_exact_revision_and_success_only_idempotency_receipt() -> N
     assert "git/ref/heads/main" in revision["run"]
     assert "^[0-9a-f]{40}$" in revision["run"]
     assert 'echo "sha=$sha" >> "$GITHUB_OUTPUT"' in revision["run"]
+    assert '21600' in revision["run"]
+    assert 'echo "window=' in revision["run"]
 
     restore = by_name["Restore publication idempotency receipt"]
     assert restore["continue-on-error"] is True
     assert restore["uses"] == "actions/cache/restore@v5"
     assert restore["with"] == {
         "path": "artifacts/strategy-operations-publication-receipt.json",
-        "key": "strategy-operations-publication-v1-${{ steps.revision.outputs.sha }}",
+        "key": "strategy-operations-publication-v2-${{ steps.revision.outputs.sha }}-${{ steps.revision.outputs.window }}",
         "lookup-only": True,
     }
 
@@ -134,7 +136,7 @@ def test_release_uses_exact_revision_and_success_only_idempotency_receipt() -> N
     assert save["uses"] == "actions/cache/save@v5"
     assert save["with"] == {
         "path": "artifacts/strategy-operations-publication-receipt.json",
-        "key": "strategy-operations-publication-v1-${{ steps.revision.outputs.sha }}",
+        "key": "strategy-operations-publication-v2-${{ steps.revision.outputs.sha }}-${{ steps.revision.outputs.window }}",
     }
 
 

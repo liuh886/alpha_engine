@@ -11,7 +11,6 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-import exchange_calendars as xcals
 import pandas as pd
 
 from src.artifacts.strategy_signal_ledger import correct_latest_decision
@@ -19,7 +18,11 @@ from src.data.listing_lifecycle import ineligible_symbols
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.governance.strategy_runtime_capabilities import load_active_strategy_runtime_capabilities
 from src.research.cn_x1_2_current_target import score_cn_x1_2_current_target
-from src.research.market_session_clock import completed_market_date
+from src.research.market_session_clock import (
+    EXCHANGE_CALENDAR_IDS,
+    completed_market_date,
+    exchange_sessions,
+)
 from src.research.ranker_current_target import (
     load_previous_state,
     next_due_session,
@@ -31,7 +34,6 @@ ADAPTERS = {
     "us_x1_3_current_target_v1": score_us_x1_3_current_target,
     "cn_x1_2_current_target_v1": score_cn_x1_2_current_target,
 }
-EXCHANGE_CALENDAR_IDS = {"us": "XNYS", "cn": "XSHG"}
 
 
 class RankerCurrentTargetCommandError(ValueError):
@@ -137,7 +139,7 @@ def _exchange_sessions(*, market: str, start: str, end: str) -> pd.DatetimeIndex
     if calendar_id is None:
         raise RankerCurrentTargetCommandError(f"unsupported exchange calendar market: {market}")
     try:
-        sessions = xcals.get_calendar(calendar_id).sessions_in_range(start, end)
+        sessions = exchange_sessions(market, start, end)
     except Exception as exc:
         raise RankerCurrentTargetCommandError(
             f"unable to resolve {calendar_id} sessions from {start} through {end}: {exc}"
