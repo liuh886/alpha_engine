@@ -255,4 +255,27 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(equityChartData().length).toBeGreaterThan(0);
     expect(screen.getAllByTestId("chart-data").length).toBeGreaterThanOrEqual(1);
   });
+  it("includes initial losses, excludes before fields from benchmarks, and switches 1M/3M/1Y", () => {
+    render(<PerformanceCharts benchmarkId="000300" report={[
+      { date: "2025-01-01", account_before: 1, account: 0.95, bench_hs300_before: 1, bench_hs300: 0.96 },
+      { date: "2026-01-01", account: 1.1, bench_hs300: 1.02 },
+      { date: "2026-06-01", account: 1.2, bench_hs300: 1.05 },
+      { date: "2026-08-01", account: 1.3, bench_hs300: 1.1 },
+      { date: "2026-08-31", account: 1.43, bench_hs300: 1.2 },
+    ]} />);
+    expect(screen.getByTestId("visible-strategy-return")).toHaveTextContent("43.00%");
+    expect(screen.getByTestId("visible-benchmark-return")).toHaveTextContent("20.00%");
+    expect(screen.getByTestId("visible-excess-return")).toHaveTextContent("19.17%");
+    expect(equityChartData()[0].strategy).toBeCloseTo(-0.05);
+    expect(Object.keys(equityChartData()[0]).some(key => key.endsWith('_before'))).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: '1M' }));
+    expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('10.00%');
+    fireEvent.click(screen.getByRole('button', { name: '3M' }));
+    expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('19.17%');
+    fireEvent.click(screen.getByRole('button', { name: '1Y' }));
+    expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('30.00%');
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('43.00%');
+  });
+
 });

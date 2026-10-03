@@ -134,7 +134,7 @@ export function ModelOperationsPage() {
           <AlertTriangle className="h-8 w-8 text-amber-500" />
           <h2 className="mt-2 text-lg font-semibold">No operational data available for {activeMarket.toUpperCase()}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Run &quot;alpha ops model-ops&quot; to materialize the current operations snapshot.
+            Source-bound model operations evidence is unavailable. Use the existing strategy views for verified observations.
           </p>
         </div>
       ) : (

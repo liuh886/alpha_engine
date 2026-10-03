@@ -659,6 +659,8 @@ def _run_cn_27(
                 generated_at,
                 "--output",
                 str(package),
+                "--recovery-dir",
+                str(result_root / "cn_27-source-recovery"),
             ],
             cwd=root,
         )

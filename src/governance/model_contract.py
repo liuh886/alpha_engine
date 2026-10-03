@@ -74,7 +74,7 @@ def load_performance_semantics(
         raise ModelContractError(
             f"unsupported performance semantics schema: {strategy.model_contract}"
         )
-    semantics = {key: _text(raw.get(key), label=key) for key in REQUIRED_TEXT}
+    semantics: dict[str, Any] = {key: _text(raw.get(key), label=key) for key in REQUIRED_TEXT}
     offset = raw.get("holding_end_offset_sessions")
     if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
         raise ModelContractError("holding_end_offset_sessions must be a non-negative integer")

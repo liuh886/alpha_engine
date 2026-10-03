@@ -1,6 +1,7 @@
 import { CheckCircle2, Clock3, Database, ShieldAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useActiveResearchBundle } from '@/hooks/useActiveResearchBundle';
+import type { GovernedRunSummary } from '@/lib/governed-run';
 import { runtimeCapabilities } from '@/lib/runtime-capabilities';
 
 const RUNTIME_LABELS = {
@@ -8,7 +9,7 @@ const RUNTIME_LABELS = {
   local_artifact: 'Local artifact',
 } as const;
 
-export function ResearchContextBar() {
+export function ResearchContextBar({ run }: { run?: GovernedRunSummary | null }) {
   const bundle = useActiveResearchBundle();
   const manifest = bundle?.manifest;
 
@@ -16,14 +17,14 @@ export function ResearchContextBar() {
     <div className="research-context-bar" role="status" aria-label="Active research context">
       <div className="research-context-item min-w-0">
         <Database className="h-3.5 w-3.5" />
-        <span className="truncate font-medium">{manifest?.title || 'Loading research bundle'}</span>
+        <span className="truncate font-medium">{manifest?.title || run?.title || 'Formal research evidence'}</span>
       </div>
       <div className="research-context-item">
         <Clock3 className="h-3.5 w-3.5" />
-        <span>Cutoff {manifest?.evidence_cutoff || 'not declared'}</span>
+        <span>Cutoff {manifest?.evidence_cutoff || run?.evidenceCutoff || 'not declared'}</span>
       </div>
       <div className="research-context-item hidden lg:flex">
-        <span>{manifest?.scope.markets?.map((market) => market.toUpperCase()).join(' · ') || 'No market scope'}</span>
+        <span>{manifest?.scope.markets?.map((market) => market.toUpperCase()).join(' · ') || run?.market.toUpperCase() || 'No market scope'}</span>
       </div>
       <div className="ml-auto hidden items-center gap-2 sm:flex">
         <Badge variant="outline" className="context-badge">{RUNTIME_LABELS[runtimeCapabilities.mode]}</Badge>

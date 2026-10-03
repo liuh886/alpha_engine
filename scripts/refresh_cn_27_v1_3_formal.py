@@ -140,6 +140,7 @@ def extend_bars(
     frozen_bars: pd.DataFrame,
     provider_dir: Path,
     cutoff: str,
+    recovery_dir: Path | None = None,
 ) -> pd.DataFrame:
     """Append provider sessions after the frozen end, verifying the overlap."""
 
@@ -154,6 +155,7 @@ def extend_bars(
     keys = _resolve_provider_keys(provider_dir, required)
     panel = load_provider_panel(provider_dir, list(keys.values()), fields=SOURCE_FIELDS)
     new_frames: list[pd.DataFrame] = []
+    recoveries: list[dict[str, Any]] = []
     for symbol in required:
         key = keys[symbol]
         frame = pd.DataFrame(
@@ -168,6 +170,70 @@ def extend_bars(
         shared = old.index.intersection(frame.index)
         if shared.empty:
             raise Cn27V13RefreshError(f"provider has no overlap for {symbol}")
+        restated = any(
+            not _overlap_matches(old.loc[shared, field], frame.loc[shared, field])
+            for field in VERIFY_FIELDS
+        )
+        if restated and recovery_dir is not None:
+            # Re-read only an already governed source; never fit a price
+            # conversion or splice an unrelated vendor into the frozen basis.
+            from src.data.adapters.base import DataFetchError, FetchRequest
+            from src.data.adapters.tencent_fqkline_adapter import TencentQfqHistoryAdapter
+            from src.governance.auxiliary_derivation import strategy_symbol_vendor_overrides
+
+            preferred = strategy_symbol_vendor_overrides().get("cn", {}).get(symbol)
+            if preferred != "tencent_qfq_history":
+                raise Cn27V13RefreshError(f"no supported pinned recovery adapter for {symbol}")
+            try:
+                result = TencentQfqHistoryAdapter().fetch_daily_bars(FetchRequest(
+                    symbol=symbol, market="cn", start=old.index.min().date().isoformat(), end=cutoff,
+                ))
+            except DataFetchError as exc:
+                raise Cn27V13RefreshError(f"pinned source recovery failed for {symbol}: {exc}") from exc
+            recovered = result.df.copy()
+            recovered["date"] = pd.to_datetime(recovered["date"])
+            recovered = recovered.set_index("date").sort_index()
+            recovery_dir.mkdir(parents=True, exist_ok=True)
+            candidate_source = recovery_dir / f"{symbol}.candidate.csv"
+            recovered.reset_index().to_csv(candidate_source, index=False)
+            if recovered.index.has_duplicates or not old.index.isin(recovered.index).all():
+                raise Cn27V13RefreshError(f"pinned source recovery lacks frozen sessions for {symbol}")
+            for field in VERIFY_FIELDS:
+                expected = old[field].astype(float)
+                observed = recovered.loc[old.index, field].astype(float)
+                if observed.isna().any() or not _overlap_matches(expected, observed):
+                    mismatch = observed.isna() | (
+                        (expected - observed).abs() > OVERLAP_ATOL + OVERLAP_RTOL * expected.abs()
+                    )
+                    first = mismatch[mismatch].index[0]
+                    _write(recovery_dir / f"{symbol}.rejection.json", {
+                        "status": "blocked", "symbol": symbol, "field": field,
+                        "first_mismatch_date": first.date().isoformat(),
+                        "frozen_value": float(expected.loc[first]),
+                        "observed_value": None if pd.isna(observed.loc[first]) else float(observed.loc[first]),
+                        "source_path": candidate_source.as_posix(),
+                        "source_sha256": _sha256(candidate_source),
+                        "provider": result.provider, "cutoff": cutoff,
+                        "research_only": True, "trade_ready": False,
+                    })
+                    raise Cn27V13RefreshError(f"pinned source also restated frozen history for {symbol}.{field}")
+            fresh_recovered = recovered.loc[(recovered.index > frozen_end) & (recovered.index <= cutoff_ts)]
+            expected_sessions = frame.index[(frame.index > frozen_end) & (frame.index <= cutoff_ts)]
+            if not expected_sessions.isin(fresh_recovered.index).all() or fresh_recovered.empty:
+                raise Cn27V13RefreshError(f"pinned source recovery lacks extension sessions for {symbol}")
+            source_path = recovery_dir / f"{symbol}.csv"
+            candidate_source.replace(source_path)
+            recoveries.append({
+                "symbol": symbol, "provider": result.provider,
+                "provider_symbol": result.provider_symbol,
+                "source_path": source_path.as_posix(), "source_sha256": _sha256(source_path),
+                "shared_provider_overlap_rejected": True,
+                "frozen_overlap_verified": True, "frozen_rows": len(old),
+                "recovered_cutoff": fresh_recovered.index.max().date().isoformat(),
+                "research_only": True, "trade_ready": False,
+            })
+            frame = recovered.loc[recovered.index <= cutoff_ts, list(SOURCE_FIELDS)]
+            shared = old.index
         for field in VERIFY_FIELDS:
             expected = old.loc[shared, field].astype(float)
             observed = frame.loc[shared, field].astype(float)
@@ -191,6 +257,7 @@ def extend_bars(
     latest = combined["date"].max()
     if latest > cutoff_ts:
         raise Cn27V13RefreshError("extended bars exceed the refresh cutoff")
+    combined.attrs["provider_recoveries"] = recoveries
     return combined
 
 
@@ -245,6 +312,7 @@ def refresh_cn_27_v1_3(
     cutoff: str,
     generated_at: str,
     output: Path,
+    recovery_dir: Path | None = None,
 ) -> dict[str, Any]:
     current = load_object(current_package)
     if current.get("model_id") != MODEL_ID:
@@ -279,7 +347,7 @@ def refresh_cn_27_v1_3(
             sorted(frozen_bars["symbol"].astype(str).unique().tolist()),
         )
         extended = extend_bars(
-            frozen_bars=frozen_bars, provider_dir=provider_dir, cutoff=cutoff
+            frozen_bars=frozen_bars, provider_dir=provider_dir, cutoff=cutoff, recovery_dir=recovery_dir
         )
     except Cn27V13RefreshError as exc:
         # Provider-data stage (health flags, key resolution, overlap splice):
@@ -408,6 +476,7 @@ def refresh_cn_27_v1_3(
         "freshness": freshness,
         "interpretation_notes": list(current.get("interpretation_notes") or []),
     }
+    candidate["evidence"]["refresh_provider_recoveries"] = extended.attrs.get("provider_recoveries", [])
     _write(output, candidate)
     return {
         "candidate_backtest_id": candidate["backtest_id"],
@@ -428,6 +497,7 @@ def main() -> int:
     parser.add_argument("--cutoff", required=True)
     parser.add_argument("--generated-at", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--recovery-dir", type=Path, help="Retain verified rereads from the frozen pinned source")
     args = parser.parse_args()
     try:
         summary = refresh_cn_27_v1_3(
@@ -438,11 +508,22 @@ def main() -> int:
             cutoff=args.cutoff,
             generated_at=args.generated_at,
             output=args.output,
+            recovery_dir=args.recovery_dir,
         )
     except DataBlockedError as exc:
         # Exit 10 = governed data block (retain, degraded). The strategy
         # runner maps it to data_blocked instead of execution_failed so one
         # strategy's missing data no longer melts the whole publish fan-in.
+        if args.recovery_dir:
+            _write(args.recovery_dir / "status.json", {
+                "status": "blocked", "reason": str(exc), "cutoff": args.cutoff,
+                "shared_provider_manifest_sha256": _sha256(args.provider_manifest),
+                "retained_source_files": [
+                    {"path": path.as_posix(), "sha256": _sha256(path)}
+                    for path in sorted(args.recovery_dir.glob("*.csv"))
+                ],
+                "research_only": True, "trade_ready": False,
+            })
         print(json.dumps({"data_blocked": str(exc)}, ensure_ascii=False))
         return 10
     print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))

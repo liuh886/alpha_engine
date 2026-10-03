@@ -22,22 +22,7 @@ def test_build_model_operations_payload_defaults() -> None:
     assert payload.schema_version == SCHEMA_VERSION
     assert payload.research_only is True
     assert payload.trade_ready is False
-    assert len(payload.markets) == 2
-
-    markets = {m.market: m for m in payload.markets}
-    assert "us" in markets
-    assert "cn" in markets
-
-    us = markets["us"]
-    assert us.champion is not None
-    assert us.champion["model_version_id"] == "qqqi_qqq_tqqq_v4_3"
-    assert us.drift["overall_severity"] == "ok"
-    assert us.gate_decision["decision"] == "continue"
-    assert us.gate_decision["plan_eligible"] is True
-    assert us.execution_plan is not None
-    assert us.paper_ledger["hash_chain_verified"] is True
-    assert us.attribution["reconciliation"]["within_tolerance"] is True
-
+    assert payload.markets == []
     as_dict = payload.to_dict()
     assert as_dict["digest"] != ""
     validate_model_operations_payload(as_dict)
@@ -74,7 +59,7 @@ def test_write_model_operations_payload_roundtrip(tmp_path: Path) -> None:
     loaded = json.loads(written.read_text(encoding="utf-8"))
     validate_model_operations_payload(loaded)
     assert loaded["schema_version"] == SCHEMA_VERSION
-    assert len(loaded["markets"]) == 2
+    assert loaded["markets"] == []
 
 
 def test_fail_closed_gate_when_drift_critical() -> None:
@@ -96,3 +81,18 @@ def test_fail_closed_gate_when_drift_critical() -> None:
     assert snap.gate_decision["plan_eligible"] is False
     # When plan_eligible is False, no active execution plan should be materialized
     assert snap.execution_plan is None
+
+
+def test_missing_inputs_do_not_create_orders_or_passing_metrics(tmp_path: Path, monkeypatch) -> None:
+    import src.artifacts.model_operations as module
+    def forbidden(*args, **kwargs):
+        raise AssertionError("read model must not construct a paper ledger")
+    monkeypatch.setattr(module, "PaperTradingLedger", forbidden)
+    snapshot = build_market_operations_snapshot("us")
+    assert snapshot.champion is None
+    assert snapshot.challenger is None
+    assert snapshot.execution_plan is None
+    assert snapshot.gate_decision["plan_eligible"] is False
+    assert snapshot.drift["checks"] == []
+    assert snapshot.paper_ledger["availability_status"] == "absent"
+    assert snapshot.attribution["availability_status"] == "absent"

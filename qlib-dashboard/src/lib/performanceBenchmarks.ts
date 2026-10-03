@@ -126,7 +126,7 @@ function benchmarkFields(report: ReportRow[]): string[] {
   const fields: string[] = [];
   for (const row of report) {
     for (const key of Object.keys(row)) {
-      if ((key === 'bench' || key.startsWith('bench_')) && !fields.includes(key)) fields.push(key);
+      if ((key === 'bench' || key.startsWith('bench_')) && !key.endsWith('_before') && !fields.includes(key)) fields.push(key);
     }
   }
   return fields.sort((left, right) => {
@@ -156,7 +156,13 @@ export function discoverBenchmarkOptions(
       return Number.isFinite(Number(value)) ? Number(value) : undefined;
     });
     if (benchmarkLooksCorrupt(report, values)) return [];
-    const series = normalizeBenchmarkSeries(values);
+    const rawBefore = report[0][`${field}_before`];
+    const before = rawBefore != null && Number.isFinite(Number(rawBefore)) && Number(rawBefore) > 0 ? Number(rawBefore) : null;
+    const series = rawBefore === undefined
+      ? normalizeBenchmarkSeries(values)
+      : before !== null
+        ? values.map(value => value !== undefined && Number.isFinite(value) && value > 0 ? Number(value) / before - 1 : null)
+        : null;
     if (!series || !series.some(value => Number.isFinite(value))) return [];
     return [{ ...descriptor, series }];
   });

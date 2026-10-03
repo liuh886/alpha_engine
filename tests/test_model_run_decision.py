@@ -124,3 +124,35 @@ def test_blocked_receipt_requires_blocked_gate() -> None:
     decision["gates"][0]["outcome"] = "passed"
     with pytest.raises(ModelRunDecisionError, match="blocked gate"):
         validate_bound_decision(manifest, decision)
+
+
+def test_pending_observation_receipt_verifies_actual_section_bytes(tmp_path: Path) -> None:
+    import shutil
+    from src.artifacts.model_run_decision import pending_observation_decision
+    source = Path("data/research/formal_model_runs/cn_ranker/cn_x1_2/cn_x1_2-through-2026_09_24")
+    bundle = tmp_path / "bundle"
+    shutil.copytree(source, bundle)
+    decision = pending_observation_decision(bundle / "manifest.json")
+    assert decision["status"] == "pending_review"
+    assert decision["verdict"] == "blocked"
+    assert any(gate["outcome"] == "failed" for gate in decision["gates"])
+    assert any(row["outcome"] == "failed" for row in decision["contradictory_evidence"])
+    (bundle / "robustness.json").write_text('{}', encoding="utf-8")
+    with pytest.raises(ModelRunDecisionError, match="section hash mismatch"):
+        pending_observation_decision(bundle / "manifest.json")
+
+
+def test_missing_receipts_are_materialized_once_and_existing_receipts_preserved(tmp_path: Path) -> None:
+    from src.artifacts.model_run_decision import materialize_pending_observation_decisions
+    root = tmp_path / "decisions"
+    catalog = Path("data/research/formal_model_runs/catalog.json")
+    first = materialize_pending_observation_decisions(catalog_path=catalog, output_root=root)
+    assert len(first["records"]) == 5
+    assert all(row["verdict"] == "blocked" for row in first["records"])
+    before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*.json")}
+    materialize_pending_observation_decisions(catalog_path=catalog, output_root=root)
+    assert before == {path.relative_to(root): path.read_bytes() for path in root.rglob("*.json")}
+    receipt = root / first["records"][0]["path"]
+    receipt.write_text('{}', encoding="utf-8")
+    with pytest.raises(ModelRunDecisionError, match="existing receipt hash mismatch"):
+        materialize_pending_observation_decisions(catalog_path=catalog, output_root=root)

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -12,7 +12,10 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useAccessControl } from '@/hooks/useAccessControl';
-import type { GovernedRunSummary } from '@/lib/governed-run';
+import { loadRunSection, type GovernedRunSummary } from '@/lib/governed-run';
+import { discoverBenchmarkOptions, declaredBenchmarkDescriptor } from '@/lib/performanceBenchmarks';
+import { strategyPeriodSummary, type PerformancePeriod } from '@/lib/performancePeriods';
+import type { ReportRow } from '@/lib/types';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
 import {
   summarizeStrategySignal,
@@ -23,11 +26,12 @@ import { cn } from '@/lib/utils';
 
 type MarketFilter = 'all' | 'us' | 'cn';
 type SignalFilter = 'all' | 'new' | 'attention';
-type PeriodKey = '1m' | '3m' | 'ytd' | 'all';
+type PeriodKey = PerformancePeriod;
 
 const PERIOD_OPTIONS: Array<{ key: PeriodKey; label: string }> = [
-  { key: '1m', label: '1 month' },
-  { key: '3m', label: '3 months' },
+  { key: '1m', label: '1M' },
+  { key: '3m', label: '3M' },
+  { key: '1y', label: '1Y' },
   { key: 'ytd', label: 'YTD' },
   { key: 'all', label: 'All' },
 ];
@@ -108,6 +112,26 @@ export function StrategyFleet({
   const [marketFilter, setMarketFilter] = useState<MarketFilter>('all');
   const [signalFilter, setSignalFilter] = useState<SignalFilter>('all');
   const [period, setPeriod] = useState<PeriodKey>('all');
+  const [periodReports, setPeriodReports] = useState<Record<string, ReportRow[] | null>>({});
+  useEffect(() => {
+    if (period === 'all') return;
+    let active = true;
+    const pending = runs.filter(run => !(run.key in periodReports));
+    void Promise.all(pending.map(async run => {
+      try {
+        const payload = await loadRunSection(run, 'performance');
+        const rows = (payload as { report?: unknown })?.report;
+        if (!Array.isArray(rows)) throw new Error('Performance observations missing');
+        return [run.key, rows as ReportRow[]] as const;
+      } catch {
+        return [run.key, null] as const;
+      }
+    })).then(entries => {
+      if (active && entries.length) setPeriodReports(current => ({ ...current, ...Object.fromEntries(entries) }));
+    });
+    return () => { active = false; };
+  }, [runs, period, periodReports]);
+
 
   // Signal Drawer State
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -208,7 +232,7 @@ export function StrategyFleet({
           <span>Strategy</span>
           <span>Return</span>
           <span>Excess / benchmark</span>
-          <span>Drawdown</span>
+          <span>{period === 'all' ? 'Drawdown' : 'Drawdown (observed)'}</span>
           <span>Latest signal</span>
           <span>Applicable</span>
           <span />
@@ -222,9 +246,19 @@ export function StrategyFleet({
             const summary = summarizeStrategySignal(snapshot);
             const expanded = expandedKey === run.key;
 
-            const totalReturn = metricPercent(run, 'total_return');
-            const excessReturn = metricPercent(run, 'excess_return');
-            const maxDd = metricPercent(run, 'max_drawdown');
+            const rows = periodReports[run.key];
+            const window = rows ? strategyPeriodSummary(rows, period) : null;
+            const percent = (value: number | null | undefined) => value == null ? '—' : `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`;
+            const declared = rows ? declaredBenchmarkDescriptor(rows, run.benchmark) : null;
+            const benchmark = rows ? discoverBenchmarkOptions(rows, run.benchmark).find(option => option.key === declared?.key) : null;
+            const firstBenchmark = window && benchmark ? benchmark.series[window.startIndex] : null;
+            const lastBenchmark = benchmark?.series[benchmark.series.length - 1];
+            const benchmarkStart = window?.startIndex === 0 && benchmark && rows?.[0]?.[`${benchmark.field}_before`] !== undefined ? 0 : firstBenchmark;
+            const benchmarkReturn = benchmarkStart != null && lastBenchmark != null ? (1 + lastBenchmark) / (1 + benchmarkStart) - 1 : null;
+            const relativeExcess = window?.return != null && benchmarkReturn != null ? (1 + window.return) / (1 + benchmarkReturn) - 1 : null;
+            const totalReturn = period === 'all' ? metricPercent(run, 'total_return') : percent(window?.return);
+            const excessReturn = period === 'all' ? metricPercent(run, 'excess_return') : percent(relativeExcess);
+            const maxDd = period === 'all' ? metricPercent(run, 'max_drawdown') : percent(window?.drawdown);
             const sharpe = metricDecimal(run, 'sharpe_ratio');
 
             const applicableDate = snapshot?.asOf
@@ -234,6 +268,9 @@ export function StrategyFleet({
             return (
               <article
                 key={run.key}
+                data-testid={`fleet-${run.modelVersionId}`}
+                data-performance-period={period}
+                title={period === 'all' ? `Full evidence through ${run.evidenceCutoff}` : window?.startDate ? `Observed settlements: ${window.startDate} – ${window.endDate}` : run.key in periodReports ? 'Period evidence unavailable' : 'Loading verified period evidence'}
                 className="group px-5 py-4 transition-colors hover:bg-muted/20 lg:grid lg:grid-cols-[minmax(220px,1.4fr)_100px_130px_100px_minmax(200px,1.2fr)_110px_36px] lg:items-center lg:gap-4 lg:py-5"
               >
                 {/* 1. Strategy Title and Details */}
@@ -288,7 +325,7 @@ export function StrategyFleet({
                       {totalReturn}
                     </span>
                     <span className="block text-[11px] text-muted-foreground">
-                      {loading ? 'Updating' : 'Formal evidence'}
+                      {period === 'all' ? loading ? 'Updating' : 'Full formal evidence' : window?.startDate ? `${window.startDate} – ${window.endDate}` : run.key in periodReports ? 'Period evidence unavailable' : 'Loading period evidence'}
                     </span>
                   </div>
 
@@ -395,7 +432,7 @@ export function StrategyFleet({
                 {/* Mobile Expanded Drawer Info */}
                 {expanded && (
                   <div className="mt-2 space-y-2 rounded-lg border bg-muted/30 p-3 text-xs lg:hidden">
-                    <p><span className="font-semibold">Sharpe Ratio:</span> <span className="font-mono tabular-nums">{sharpe}</span></p>
+                    <p><span className="font-semibold">Sharpe Ratio (all):</span> <span className="font-mono tabular-nums">{sharpe}</span></p>
                     <p><span className="font-semibold">Benchmark:</span> {run.benchmark}</p>
                     <p><span className="font-semibold">Allocations:</span> {allocationSummary(snapshot, 'current')} → {allocationSummary(snapshot, 'target')}</p>
                     <p className="text-muted-foreground">Cutoff session: {run.evidenceCutoff}</p>
