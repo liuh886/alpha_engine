@@ -7,6 +7,10 @@ for execution — no new caller may reference this directory.
 
 | File | Reason |
 |---|---|
+| `byd_v1_2_promotion_challenge_v1.yaml` | Retired BYD challenger spec; zero live callers, bytes preserved (2026-10-03 user-directed pruning). |
+| `qqqi_qqq_tqqq_v4_2_rsi_vix_adaptive_sgov_v4_9_research.yaml` | Historical QQQ candidate; zero live callers, bytes preserved (2026-10-03). |
+| `qqqi_qqq_tqqq_vix_v2.yaml` | Historical QQQ v2 exploration; zero live callers, bytes preserved (2026-10-03). |
+| `qqqi_qqq_tqqq_vix_v3_aggressive.yaml` | Historical aggressive QQQ v3 exploration; zero live callers, bytes preserved (2026-10-03). |
 | `cn_x1_0_frozen_v1_2026_08_03.yaml` | Dated snapshot superseded by `../cn_x1_0_frozen_v1.yaml`; unreferenced. |
 | `qqqi_qqq_tqqq_converged_candidate.yaml` | Superseded QQQ candidate; zero live references (2026-09-09 governance pilot). |
 | `qqqi_qqq_tqqq_v4_2_qqq_proxy_long_history_v4_6_research.yaml` | Superseded v4.6 research; zero live references (2026-09-09 governance pilot). |

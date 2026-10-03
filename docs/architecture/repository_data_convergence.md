@@ -1,5 +1,126 @@
 # Repository Data Convergence
 
+## Lightweight operating contract
+
+Effective 2026-10-03 by user direction. This section governs simplification;
+it does not assert that daily reliability is already achieved. The existing
+selected-pool data program and research-only boundary remain in force.
+
+The core operating route is:
+
+```text
+Required data at a verified cutoff
+    → due evaluation using the active frozen strategy
+    → append-only decision evidence
+    → generated current state / explanation / health
+    → Console and eligible notification
+```
+
+Formal historical evidence continues through the existing reviewed atomic
+Bundle v2 publication transaction. Current operations must disclose its actual
+formal and decision cutoffs when those advance separately.
+
+### Keep the daily loop small
+
+| Activity | Operating rule |
+| --- | --- |
+| Read status / explain a decision | Read verified evidence; no fetch, training or replay |
+| Refresh market data | Fetch required deltas, verify identities and availability boundaries |
+| Evaluate a strategy | Respect exchange sessions and its declared cadence; retain required no-change evidence |
+| Reuse inputs | Exact contract, cutoff and implementation identity; verify transferred bytes |
+| Train / broad factor research | Separate explicit research execution; reuse the existing governed trainer/evaluator |
+| Publish | Existing reviewed release boundary; no alternate truth source |
+| Notify | Governed eligible decisions; retain health failures separately from allocation changes |
+
+A required validation is not skipped merely because it is expensive. Move it
+to the stage where its inputs exist, reuse a valid receipt only under its exact
+contract, and measure the remaining cost. Data revision, lifecycle, adjustment,
+PIT availability and execution boundaries remain mandatory.
+
+### One authority and a shrinking maintenance surface
+
+Use the existing strategy, data and evidence authorities listed below. Workflow
+tiers and required/release/advisory membership come from `.github/ci-policy.json`;
+do not maintain another required-workflow list in code. Filename classification
+is only a default for workflows not explicitly assigned by policy.
+
+The existing workflow count budget is a ceiling. A proposed permanent workflow,
+configuration knob, wrapper, database or service must identify the core user
+need, why an existing path cannot serve it, and what maintenance cost it adds.
+Prefer merging or replacing existing paths. No new scheduler or governance
+service is needed to implement this policy.
+
+Before retiring a path, inspect live callers, scheduled/dispatch entrypoints,
+tests and evidence consumers. An unreferenced inventory entry is a cleanup
+candidate, not proof that deletion is safe. Preserve immutable evidence and
+failure memory; do not preserve obsolete runnable implementations solely to
+keep a second execution route alive.
+
+Keep durable manifests and compact decisions with source hashes. Use the
+existing storage/retention classes below for bulk evidence and temporary
+artifacts. Rebuild projections instead of synchronizing duplicate databases.
+Avoid additional full-data copies when an existing durable verified source
+reference meets the evidence contract.
+
+### Accept usefulness and reliability, not task counts
+
+The current view should make these facts visible together: usable evidence
+cutoff, current governed state, target/change, reason and supporting evidence,
+material uncertainty/blocker, and next scheduled evaluation. A user should not
+need workflow logs to distinguish unchanged, not due, delayed and broken.
+
+Accept the operating loop over 20 eligible sessions of the existing strategies:
+record stage durations, cutoff lag, manual interventions, exact blockers and
+delivery/publication receipts in existing diagnostics. A legitimate block is
+reported truthfully; it does not count as a successful evidence refresh. A green
+notification worker alone is not a fresh decision or an accepted release.
+
+For each simplification, report the removed duplication or measured cost, the
+affected contract tests and any remaining production acceptance. Do not claim
+system-wide speed from a module import benchmark. Do not adjust model parameters,
+costs, factors or pool membership using this acceptance evidence.
+
+### Initial local implementation — 2026-10-03
+
+CI tier inventory now reads the existing CI policy instead of a competing
+hard-coded required-workflow list; policy changes trigger the affected checks.
+Data recipe catalog/cache paths defer selected-pool provider loading until an
+actual refresh. The shared source-manifest path remains unchanged.
+
+Local validation: 73 affected tests, Ruff, the shared publication module's mypy
+check, and both CI governance checks passed. One Windows cold module-import
+measurement changed from 4.871s to 1.582s; loaded adapter modules fell from 9 to
+3. These are local observations, not an end-to-end operating SLA. Workflow count
+remains 45; no production deployment or 20-session acceptance is claimed here.
+
+### Structural pruning — 2026-10-03
+
+The CLI now imports only the selected operation's executor and handles its
+declared errors; help and recipe discovery do not load providers, Qlib, replay
+engines or model operations. Recipe identity parsing is shared in a lightweight
+catalog module; the old executor consumes the same validation functions.
+Replay identities likewise have one lightweight contract.
+
+Two completed unsupported BYD v2 exploratory scripts (1,779 lines) were deleted
+from the maintained runtime. Their exact source revision and Git-blob hashes
+are recorded in `scripts/archive/ARCHIVE_MANIFEST.json`; experiment results,
+logs and failure evidence remain unchanged. Four unreferenced historical
+paradigms moved byte-identically into the existing archive.
+
+The 23-name low-turnover diagnostic and weekly fundamental validation workflows
+retain manual dispatch, state continuity and fail-closed gates; their default
+schedules were removed. Active fleet and selected-pool data schedules are
+unchanged. Permanent workflow count remains 45; scheduled workflows fell from
+14 to 12. Local CLI module import changed from 4.734s / 2,468 loaded modules
+to 0.169s / 124 modules in a single before/after measurement. This establishes
+startup isolation, not production data throughput or reliability acceptance.
+
+Validation: 137 affected tests, Ruff, scoped mypy and both CI governance checks
+passed. A real local `alpha ops build` generated all five strategy projections
+and their health snapshot under `artifacts/lightweight-acceptance/`; existing
+data delays and blocked training profiles remained explicit. No committed
+`data/research` evidence changed. These changes have not been deployed.
+
 ## Authority model
 
 Alpha Engine uses one-way evidence authority:

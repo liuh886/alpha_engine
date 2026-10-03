@@ -18,6 +18,7 @@ on:
       - 'src/research/formal_baseline.py'
       - 'src/research/formal_baseline_onboarding.py'
       - 'src/research/formal_model_replay.py'
+      - 'src/research/formal_replay_contract.py'
       - 'src/research/rules_based_allocation_experiment_runner.py'
       - 'src/research/byd_v1_3_candidate.py'
       - 'src/research/research_receipt.py'

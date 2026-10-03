@@ -4,11 +4,42 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from scripts.check_ci_governance import (
     archive_reference_violations,
+    classify,
     inspect_dead_modules,
     inspect_research_assets,
 )
+
+
+@pytest.mark.parametrize(
+    ("filename", "tier"),
+    [
+        ("ci-governance.yml", "tier_1_required_pr"),
+        ("provider-refresh.yml", "tier_2_main_release"),
+        ("deploy-diagnostic.yml", "tier_4_advisory"),
+        ("model-data-bundle-ci.yml", "tier_3_research_evidence"),
+    ],
+)
+def test_explicit_policy_owns_workflow_tiers(filename: str, tier: str) -> None:
+    policy = {
+        "required_pr_workflows": [".github/workflows/ci-governance.yml"],
+        "release_workflows": [".github/workflows/provider-refresh.yml"],
+        "advisory_workflows": [".github/workflows/deploy-diagnostic.yml"],
+    }
+    assert classify(filename, policy)[0] == tier
+
+
+def test_classifier_reads_the_canonical_policy(tmp_path: Path, monkeypatch) -> None:
+    policy = tmp_path / "ci-policy.json"
+    policy.write_text(
+        '{"required_pr_workflows": [".github/workflows/custom.yml"]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("scripts.check_ci_governance.POLICY_PATH", policy)
+    assert classify("custom.yml")[0] == "tier_1_required_pr"
 
 
 def _tree(root: Path) -> None:

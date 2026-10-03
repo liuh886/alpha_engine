@@ -87,7 +87,7 @@ def test_cli_replay_returns_nonzero_when_exact_replay_fails(
     capsys,
 ) -> None:
     monkeypatch.setattr(
-        cli,
+        replay,
         "replay_formal_models",
         lambda *args, **kwargs: {
             "status": "blocked",
@@ -119,7 +119,7 @@ def test_cli_replay_returns_zero_on_exact_replay(
     capsys,
 ) -> None:
     monkeypatch.setattr(
-        cli,
+        replay,
         "replay_formal_models",
         lambda *args, **kwargs: {
             "status": "completed",

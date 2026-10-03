@@ -5,59 +5,11 @@ import json
 from pathlib import Path
 from typing import Any, Sequence
 
-from src.artifacts.repository_metadata_cache import (
-    RepositoryMetadataCacheError,
-    rebuild_metadata_cache,
-)
-from src.artifacts.repository_run_store import (
-    RepositoryRunStoreError,
-    import_local_run,
-)
-from src.artifacts.model_operations import (
-    ModelOperationsError,
-    build_model_operations_payload,
-    write_model_operations_payload,
-)
-from src.artifacts.strategy_operations import (
-    StrategyOperationsError,
-    build_operations_payload,
-    validate_operations_payload,
-    write_operations_payload,
-)
-from src.artifacts.strategy_operations_runtime import (
-    StrategyOperationsRuntimeError,
-    publish_strategy_operations,
-)
-from src.artifacts.strategy_signal_ledger import (
-    StrategySignalLedgerError,
-    append_signal_evaluation,
-    parse_optional_int,
-)
-from src.artifacts.system_health import (
-    SystemHealthError,
-    build_system_health,
-    validate_system_health,
-    write_system_health,
-)
-from src.data.data_recipe import (
-    DataRecipeError,
-    data_recipe_catalog,
-    data_recipe_status,
-    prepare_data_recipe,
-    run_research_recipe,
-)
 from src.governance.active_strategy_catalog import (
     DEFAULT_CATALOG_PATH as DEFAULT_STRATEGY_CATALOG,
     ActiveStrategyCatalogError,
-    load_active_strategy_catalog,
 )
-from src.research.formal_model_replay import (
-    BYD_REPLAY_ID,
-    CN27_REPLAY_ID,
-    QQQ_REPLAY_ID,
-    FormalModelReplayError,
-    replay_formal_models,
-)
+from src.research.formal_replay_contract import REPLAY_IDS
 
 
 def _render(payload: dict[str, Any]) -> None:
@@ -132,7 +84,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     replay.add_argument(
         "model",
-        choices=[QQQ_REPLAY_ID, BYD_REPLAY_ID, CN27_REPLAY_ID, "all"],
+        choices=[*REPLAY_IDS, "all"],
         help="Accepted formal baseline to replay.",
     )
     replay.add_argument(
@@ -266,11 +218,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     root = args.root.resolve()
     exit_code = 0
+    errors: tuple[type[Exception], ...] = (
+        OSError, json.JSONDecodeError, ActiveStrategyCatalogError,
+    )
 
     try:
         if args.group == "data" and args.data_command == "list":
+            from src.data.data_recipe_catalog import DataRecipeError, data_recipe_catalog
+
+            errors += (DataRecipeError,)
             payload = data_recipe_catalog(root)
         elif args.group == "data" and args.data_command == "prepare":
+            from src.data.data_recipe import DataRecipeError, prepare_data_recipe
+
+            errors += (DataRecipeError,)
             payload = prepare_data_recipe(
                 args.recipe,
                 root=root,
@@ -279,12 +240,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 source_etf_bundle=args.source_etf_bundle,
             )
         elif args.group == "data" and args.data_command == "status":
+            from src.data.data_recipe import DataRecipeError, data_recipe_status
+
+            errors += (DataRecipeError,)
             payload = data_recipe_status(
                 args.recipe,
                 root=root,
                 cutoff=args.cutoff,
             )
         elif args.group == "research" and args.research_command == "run":
+            from src.data.data_recipe import DataRecipeError, run_research_recipe
+
+            errors += (DataRecipeError,)
             payload = run_research_recipe(
                 args.command,
                 recipe_id=args.recipe,
@@ -294,6 +261,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 source_etf_bundle=args.source_etf_bundle,
             )
         elif args.group == "research" and args.research_command == "replay":
+            from src.research.formal_model_replay import FormalModelReplayError, replay_formal_models
+
+            errors += (FormalModelReplayError,)
             payload = replay_formal_models(
                 args.model,
                 root=root,
@@ -302,6 +272,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             if payload.get("decision") != "exact_replay":
                 exit_code = 2
         elif args.group == "research" and args.research_command == "import-run":
+            from src.artifacts.repository_run_store import RepositoryRunStoreError, import_local_run
+
+            errors += (RepositoryRunStoreError,)
             payload = import_local_run(
                 args.source,
                 root=root,
@@ -309,11 +282,22 @@ def main(argv: Sequence[str] | None = None) -> int:
                 set_primary=args.set_primary,
             )
         elif args.group == "research" and args.research_command == "rebuild-index":
+            from src.artifacts.repository_metadata_cache import RepositoryMetadataCacheError, rebuild_metadata_cache
+
+            errors += (RepositoryMetadataCacheError,)
             payload = rebuild_metadata_cache(
                 root=root,
                 db_path=_resolve(root, args.output),
             )
         elif args.group == "ops" and args.ops_command == "record-decision":
+            from src.governance.active_strategy_catalog import (
+                load_active_strategy_catalog,
+            )
+            from src.artifacts.strategy_signal_ledger import (
+                StrategySignalLedgerError, append_signal_evaluation, parse_optional_int,
+            )
+
+            errors += (ActiveStrategyCatalogError, StrategySignalLedgerError)
             strategy_catalog = _resolve(root, args.strategy_catalog)
             active = load_active_strategy_catalog(strategy_catalog)
             strategy = active.by_model_version_id.get(args.model_version_id)
@@ -352,6 +336,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "trade_ready": False,
             }
         elif args.group == "ops" and args.ops_command == "build":
+            from src.artifacts.strategy_operations import (
+                StrategyOperationsError, build_operations_payload,
+                validate_operations_payload, write_operations_payload,
+            )
+            from src.artifacts.system_health import (
+                SystemHealthError, build_system_health, validate_system_health,
+                write_system_health,
+            )
+
+            errors += (StrategyOperationsError, SystemHealthError)
             output = _resolve(root, args.output)
             formal_catalog = _resolve(root, args.formal_catalog)
             operations = build_operations_payload(
@@ -386,8 +380,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "trade_ready": False,
             }
         elif args.group == "ops" and args.ops_command == "publish":
+            from src.artifacts.strategy_operations_runtime import StrategyOperationsRuntimeError, publish_strategy_operations
+
+            errors += (StrategyOperationsRuntimeError,)
             payload = publish_strategy_operations(_resolve(root, args.input))
         elif args.group == "ops" and args.ops_command == "model-ops":
+            from src.artifacts.model_operations import ModelOperationsError, build_model_operations_payload, write_model_operations_payload
+
+            errors += (ModelOperationsError,)
             model_ops_payload = build_model_operations_payload(
                 root=root,
                 asof_date=args.asof_date,
@@ -399,20 +399,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             parser.error("unsupported command")
             return 2
-    except (
-        DataRecipeError,
-        FormalModelReplayError,
-        RepositoryRunStoreError,
-        RepositoryMetadataCacheError,
-        ActiveStrategyCatalogError,
-        StrategySignalLedgerError,
-        StrategyOperationsError,
-        StrategyOperationsRuntimeError,
-        ModelOperationsError,
-        SystemHealthError,
-        OSError,
-        json.JSONDecodeError,
-    ) as exc:
+    except errors as exc:
         _render(
             {
                 "status": "blocked",

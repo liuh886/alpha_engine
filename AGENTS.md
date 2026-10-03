@@ -1,5 +1,41 @@
 # Alpha Engine: Agent Architecture
 
+## Lightweight operating governance
+
+User-directed priority (2026-10-03): keep Alpha Engine simple, responsive and
+useful for research decisions. Optimize for a reliable existing operating loop
+before expanding models, factors, dashboards or infrastructure.
+
+- Core value: refresh required data, evaluate due strategies, explain the
+  evidence-bound result and expose freshness/blockers in one current view.
+- The active strategy registry, selected-pool/reference registries, frozen
+  contracts and existing evidence stores remain the authorities. Reuse them;
+  do not add a parallel registry, evaluator, scheduler or state database.
+- Separate daily observation from heavy research. Retraining, full-history
+  replay and broad factor scans run only when their declared contract requires
+  them; a status read or unchanged decision must not initiate them.
+- Refresh incrementally and reuse verified inputs at an exact cutoff and
+  identity. Load provider/model dependencies only when that operation needs them.
+- Prefer existing commands and fewer permanent workflows. The workflow budget
+  in `.github/ci-policy.json` is a ceiling, not a target; retire a replaced path
+  rather than add wrappers or compatibility routes.
+- Scope a blocker to its affected contract. Keep independent valid evidence
+  readable with its actual cutoff. Preserve the existing atomic formal release
+  boundary; never label retained or stale evidence as freshly published.
+- Keep compact manifests, decisions and failure memory durable. Treat indexes,
+  consumer projections and caches as disposable; avoid copying full datasets
+  into each consumer or run when verified source references suffice.
+- Simplify only after checking callers and evidence dependencies. Remove unused
+  runtime paths with affected tests; preserve sealed evidence and failed research.
+- Assess changes by decision usefulness, manual interventions, elapsed runtime
+  and permanent complexity. Passing isolated tests alone is not operating closure.
+
+Implementation and acceptance rules live in
+[`docs/architecture/repository_data_convergence.md`](docs/architecture/repository_data_convergence.md#lightweight-operating-contract).
+This priority does not weaken the selected-pool readiness gates or the
+`research_only=true`, `trade_ready=false` boundary below. Independently scoped
+research remains permitted under the parallel work policy.
+
 ## 0. Current Active Program
 
 Alpha Engine is research-only. The current active program is to complete the

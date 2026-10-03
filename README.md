@@ -16,6 +16,8 @@ Alpha Engine 用固定研究契约、时间有效的数据、exact replay / walk
 
 产品架构说明：[`docs/product/strategy_console.md`](docs/product/strategy_console.md)
 
+轻量运行治理：优先让现有策略稳定更新、清楚解释、快速读取；日常观察与重型研究分开，复用验证过的数据，合并重复入口。具体规则和验收见 [`Repository Data Convergence`](docs/architecture/repository_data_convergence.md#lightweight-operating-contract)。
+
 ## 1. Strategy Console
 
 Strategy Console 按“用户要回答的问题”组织，而不是按仓库子系统组织：

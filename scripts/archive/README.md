@@ -9,6 +9,11 @@ lives in [`ARCHIVE_MANIFEST.json`](ARCHIVE_MANIFEST.json). It also records the
 advisory-dead modules that intentionally stay outside the archive because
 sealed evidence or a notebook still names them.
 
+`retired_from_runtime` records deleted exploratory executors by exact source
+revision and Git-blob digest. Their research outputs remain durable; restore
+source from that revision only for deliberate historical reproduction, rather
+than keeping another maintained execution route.
+
 The CI governance dead-module advisory excludes this directory: an archived
 module is history, not a live candidate.
 
