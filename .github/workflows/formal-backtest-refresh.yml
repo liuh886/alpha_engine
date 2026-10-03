@@ -156,7 +156,6 @@ jobs:
             configs
             data/csv_clean
             data/research/formal_model_runs
-            data/research/model_decisions
             data/research/model_runs
             data/research/model_data_bundle_v1
             data/research/strategy_signal_ledgers
@@ -598,7 +597,6 @@ jobs:
           sparse-checkout: |
             configs
             data/research/formal_model_runs
-            data/research/model_decisions
             data/research/strategy_signal_ledgers
             scripts
             src
