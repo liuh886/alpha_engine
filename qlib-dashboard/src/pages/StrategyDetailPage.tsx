@@ -174,6 +174,11 @@ export function StrategyDetailPage() {
             : decisionState?.state === 'error' ? 'Assessment evidence could not be verified.' : decisionState?.state === 'absent' ? 'No assessment is bound to this evidence bundle.' : 'Loading verified assessment…'}
         </p>
         {decisionState?.decision && (
+          <p className="mt-2 text-muted-foreground">
+            {decisionState.decision.gates.filter(row => row.outcome === 'failed').length} retained failed gates · {decisionState.decision.contradictory_evidence.length} counterevidence records. Evidence through {run.evidenceCutoff || 'unknown'}.
+          </p>
+        )}
+        {decisionState?.decision && (
           <details className="mt-3">
             <summary className="cursor-pointer font-medium">Retained counterevidence and next validation</summary>
             <ul className="mt-2 list-disc space-y-2 pl-5 text-muted-foreground">
@@ -213,6 +218,19 @@ export function StrategyDetailPage() {
           </div>
         ) : (
           <>
+            <div className="rounded-xl border bg-card p-4 text-sm" aria-label="Observation and evaluation cadence">
+              <p className="font-semibold">Observation and evaluation cadence</p>
+              <p className="mt-2 text-muted-foreground">Signal through {snapshot?.asOf || 'unknown'} · completed market through {snapshot?.decisionSchedule?.completedThrough || 'unknown'} · observed data through {snapshot?.latestCompletedSession || 'unknown'}.</p>
+              <p className="mt-2">
+                {snapshot?.decisionSchedule?.state === 'within_cadence'
+                  ? `Next evaluation in ${snapshot.decisionSchedule.sessionsUntilDue} exchange sessions; an unchanged target between evaluations is expected.`
+                  : snapshot?.decisionSchedule?.state === 'due'
+                    ? 'A scheduled evaluation is due. A retained signal does not establish that it completed.'
+                    : 'Evaluation timing cannot be verified from the retained signal and frozen contract.'}
+                {snapshot?.decisionSchedule?.executionPending ? ' Execution evidence is still pending; the target is not confirmed holdings.' : ''}
+              </p>
+              {snapshot?.dataFreshness !== 'current' && <p className="mt-2 text-muted-foreground">Daily data or risk observation remains {snapshot?.dataFreshness || 'unknown'}, even when the next target evaluation is not due.</p>}
+            </div>
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
               <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
                 <div className="grid grid-cols-[minmax(58px,1fr)_58px_58px_64px] border-b bg-muted/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground sm:grid-cols-[minmax(100px,1fr)_90px_90px_90px] sm:px-4 sm:text-[10px] sm:tracking-[0.14em]">

@@ -54,6 +54,9 @@ jobs:
             exit 1
           }
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          # Freshness changes even when no new decision changes canonical Git.
+          # Deduplicate within a scheduled observation window, not forever by SHA.
+          echo "window=$(($(date -u +%s) / 21600))" >> "$GITHUB_OUTPUT"
 
       - name: Restore publication idempotency receipt
         id: cache
@@ -61,7 +64,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: artifacts/strategy-operations-publication-receipt.json
-          key: strategy-operations-publication-v1-${{ steps.revision.outputs.sha }}
+          key: strategy-operations-publication-v2-${{ steps.revision.outputs.sha }}-${{ steps.revision.outputs.window }}
           lookup-only: true
 
       - name: Checkout canonical revision
@@ -85,7 +88,7 @@ jobs:
             src/artifacts/strategy_operations_runtime.py \
             src/cli/main.py \
             tests/test_strategy_operations_runtime.py
-          uv run pytest tests/test_strategy_operations_runtime.py -q --strict-markers --tb=short
+          uv run pytest tests/test_strategy_operations_runtime.py tests/test_strategy_operations_release.py tests/test_market_session_clock.py -q --strict-markers --tb=short
 
       - name: Materialize current operations from canonical evidence
         if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
@@ -144,4 +147,4 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: artifacts/strategy-operations-publication-receipt.json
-          key: strategy-operations-publication-v1-${{ steps.revision.outputs.sha }}
+          key: strategy-operations-publication-v2-${{ steps.revision.outputs.sha }}-${{ steps.revision.outputs.window }}

@@ -9,10 +9,32 @@ MARKET_CLOCKS = {
     "us": (ZoneInfo("America/New_York"), time(16, 0)),
     "cn": (ZoneInfo("Asia/Shanghai"), time(15, 0)),
 }
+EXCHANGE_CALENDAR_IDS = {"us": "XNYS", "cn": "XSHG"}
 
 
 class MarketSessionClockError(ValueError):
     """Raised when a market/session cutoff cannot be resolved."""
+
+
+def exchange_sessions(market: str, start: str, end: str) -> list[str]:
+    """Return exchange sessions, without treating a weekday as an observed bar.
+
+    The locked exchange calendar supplies scheduling only. Provider coverage
+    and completed-session guards must still pass before data can be admitted.
+    Unsupported calendar ranges fail closed rather than inventing weekdays.
+    """
+    import exchange_calendars as xcals
+
+    calendar_id = EXCHANGE_CALENDAR_IDS.get(market)
+    if calendar_id is None:
+        raise MarketSessionClockError(f"unsupported market clock: {market}")
+    try:
+        sessions = xcals.get_calendar(calendar_id).sessions_in_range(start, end)
+    except Exception as exc:
+        raise MarketSessionClockError(
+            f"cannot resolve {calendar_id} sessions from {start} through {end}: {exc}"
+        ) from exc
+    return [session.date().isoformat() for session in sessions]
 
 
 def completed_market_date(

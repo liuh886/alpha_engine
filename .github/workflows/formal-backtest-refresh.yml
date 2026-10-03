@@ -26,6 +26,8 @@ on:
       - "!src/data/selected_pool_event_population.py"
       - "!src/data/fundamentals/**"
       - "!src/data/corporate_actions/**"
+      - "src/data/corporate_actions/adjustment.py"
+      - "data/research/source_reconciliations/cn27/**"
       - "src/dashboard/market_evidence.py"
       - "src/dashboard/formal_bundle_market_events.py"
       - "src/factors/**"

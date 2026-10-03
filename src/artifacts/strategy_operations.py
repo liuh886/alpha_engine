@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
-from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +33,7 @@ from src.governance.strategy_runtime_capabilities import (
 from src.research.market_session_clock import (
     MarketSessionClockError,
     completed_market_date,
+    exchange_sessions,
 )
 
 SCHEMA_VERSION = "2.2.0"
@@ -71,21 +71,6 @@ class StrategyOperationsError(ValueError):
     """Raised when a governed operations snapshot cannot be constructed."""
 
 
-def _trading_sessions_between(start_iso: str, end_iso: str) -> int:
-    """Count weekdays in (start, end]: same calendar rule as the market clock."""
-    from datetime import date as _date
-
-    start = _date.fromisoformat(start_iso)
-    end = _date.fromisoformat(end_iso)
-    if end <= start:
-        return 0
-    return sum(
-        1
-        for offset in range(1, (end - start).days + 1)
-        if (start + timedelta(days=offset)).weekday() < 5
-    )
-
-
 def _staleness(
     latest_completed_session: object,
     *,
@@ -99,6 +84,7 @@ def _staleness(
     missing evidence can never render as current.
     """
     as_of = str(latest_completed_session or "").strip() or None
+    expected: str | None
     try:
         from datetime import datetime, timezone
 
@@ -108,6 +94,13 @@ def _staleness(
         expected = completed_market_date(
             str(market), generated.date().isoformat(), now_utc=generated
         )
+        # Resolve holidays separately from the close-time cap. The calendar is
+        # a scheduling authority, not proof that a provider supplied that bar.
+        from datetime import timedelta
+
+        start = (generated.date() - timedelta(days=32)).isoformat()
+        completed = exchange_sessions(market, start, expected)
+        expected = completed[-1] if completed else None
     except (MarketSessionClockError, ValueError):
         expected = None
     if as_of is None or expected is None:
@@ -118,8 +111,8 @@ def _staleness(
             "stale": True,
         }
     try:
-        behind = _trading_sessions_between(as_of, expected)
-    except ValueError:
+        behind = sum(session > as_of for session in exchange_sessions(market, min(as_of, expected), expected))
+    except (MarketSessionClockError, ValueError):
         return {
             "as_of": as_of,
             "expected_cutoff": expected,
@@ -150,6 +143,45 @@ def _state_detail(status: object, *, has_history: bool, stale: bool) -> str:
     if name in {"pipeline_unavailable", "awaiting_observation"}:
         return "degraded_blocked" if has_history else "blocked"
     return "blocked"
+
+
+def _decision_schedule(
+    strategy: ActiveStrategy, record: Mapping[str, object], *, root: Path
+) -> dict[str, object]:
+    """Explain the existing frozen cadence; do not score or change a target."""
+    staleness = _mapping(record.get("staleness"))
+    expected = staleness.get("expected_cutoff")
+    anchor = record.get("as_of")
+    result: dict[str, object] = {
+        "signal_date": anchor, "completed_through": expected,
+        "cadence_sessions": None, "sessions_since_signal": None,
+        "sessions_until_due": None, "state": "unknown",
+        "execution_pending": record.get("status") == "target_pending_execution",
+    }
+    if not isinstance(anchor, str) or not isinstance(expected, str):
+        return result
+    try:
+        contract = yaml.safe_load((root / strategy.model_contract).read_text(encoding="utf-8"))
+        section = (
+            "strategy" if strategy.model_family_id == US_RANKER_FAMILY
+            else "execution" if strategy.model_family_id == CN_RANKER_FAMILY
+            else "portfolio" if strategy.model_family_id == CN27_FAMILY else None
+        )
+        cadence = _mapping(_mapping(contract).get(section)).get("rebalance_sessions") if section else 1
+        if type(cadence) is not int or cadence < 1:
+            return result
+        sessions = exchange_sessions(strategy.market, anchor, expected)
+        if anchor not in sessions:
+            return result
+        elapsed = sum(session > anchor for session in sessions)
+    except (OSError, ValueError, yaml.YAMLError):
+        return result
+    result.update({
+        "cadence_sessions": cadence, "sessions_since_signal": elapsed,
+        "sessions_until_due": max(0, cadence - elapsed),
+        "state": "due" if elapsed >= cadence else "within_cadence",
+    })
+    return result
 
 
 def _transition_predecessor_strategies(
@@ -756,11 +788,19 @@ def build_operations_payload(
                 generated_at=generated_at,
             )
             record["staleness"] = staleness
+            # A field copied from an old signal describes its creation-time
+            # validity. It cannot remain "current" when today's check is stale.
+            record["signal_data_freshness"] = record.get("data_freshness")
+            if staleness["stale"] and record.get("data_freshness") == "current":
+                record["data_freshness"] = "stale"
+            if staleness["stale"] and record.get("factor_freshness") == "current":
+                record["factor_freshness"] = "stale"
             record["state_detail"] = _state_detail(
                 record.get("status"),
                 has_history=bool(record.get("latest_completed_session")),
                 stale=bool(staleness.get("stale")),
             )
+            record["decision_schedule"] = _decision_schedule(strategy, record, root=root)
             records.append(record)
 
         try:
@@ -869,6 +909,14 @@ def validate_operations_payload(payload: object) -> None:
         # state_detail for new payloads; old snapshots simply lack it.
         if "state_detail" in value and value.get("state_detail") not in STATE_DETAIL_VALUES:
             raise StrategyOperationsError(f"invalid state detail for {model_id}")
+        if "decision_schedule" in value:
+            schedule = value["decision_schedule"]
+            if not isinstance(schedule, Mapping) or schedule.get("state") not in {"due", "within_cadence", "unknown"}:
+                raise StrategyOperationsError(f"invalid decision schedule for {model_id}")
+            for field in ("cadence_sessions", "sessions_since_signal", "sessions_until_due"):
+                number = schedule.get(field)
+                if number is not None and (type(number) is not int or number < (1 if field == "cadence_sessions" else 0)):
+                    raise StrategyOperationsError(f"invalid decision schedule {field} for {model_id}")
         if (
             value.get("data_freshness") not in FRESHNESS_VALUES
             or value.get("factor_freshness") not in FRESHNESS_VALUES

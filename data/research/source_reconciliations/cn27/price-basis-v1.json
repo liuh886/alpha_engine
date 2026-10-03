@@ -1,0 +1,25 @@
+{
+  "schema_version": "additive_qfq_price_basis_bridge_v1",
+  "provider": "tencent_qfq_history",
+  "anchor_date": "2026-09-04",
+  "frozen_source_sha256": "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35",
+  "price_role": "anchored_adjusted_research_prices_not_raw_execution",
+  "research_only": true,
+  "trade_ready": false,
+  "events": [
+    {
+      "symbol": "300274",
+      "event_type": "cash_dividend_reference_adjustment",
+      "announced_at": "2026-09-15",
+      "ex_date": "2026-09-21",
+      "reference_cash_amount": 0.6351450,
+      "distributed_cash_amount": 0.64,
+      "total_distributed_cash": 1316790022.40,
+      "total_shares": 2073211424,
+      "source_document_id": "300274:2026-068",
+      "source_url": "https://file.finance.sina.com.cn/211.154.219.97:9494/MRGG/CNSESZ_STOCK/2026/2026-9/2026-09-15/12605360.PDF",
+      "source_path": "data/research/source_reconciliations/cn27/sources/300274-20260915.pdf",
+      "source_sha256": "142f2845a8a6586a773b3b94cab7e37a5d7e9c36dac5494c31bcd49375c15877"
+    }
+  ]
+}
