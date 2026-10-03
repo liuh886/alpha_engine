@@ -142,6 +142,17 @@ jobs:
             printf 'CN_27 failures: %s\n' "${failures[*]}" >&2
             exit 1
           fi
+      - name: Request strategy operations publication
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jq -nc \
+            --arg producer_workflow "$GITHUB_WORKFLOW" \
+            --arg producer_run_id "$GITHUB_RUN_ID" \
+            '{event_type: "strategy_operations_publication", client_payload: {
+              producer_workflow: $producer_workflow, producer_run_id: $producer_run_id
+            }}' | gh api --method POST "repos/${GITHUB_REPOSITORY}/dispatches" --input -
       - name: Retain current-target evidence
         if: always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v6

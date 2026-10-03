@@ -159,3 +159,13 @@ def test_byd_terminates_deep_workflow_chain_with_repository_dispatch() -> None:
     assert release_triggers["repository_dispatch"]["types"] == [
         "strategy_operations_publication"
     ]
+
+
+def test_cn27_publishes_sealed_observations_through_existing_dispatch() -> None:
+    content = yaml.safe_load((ROOT / ".github/workflows/cn27-current-target.yml").read_text())
+    steps = content["jobs"]["evaluate"]["steps"]
+    request = next(step for step in steps if step.get("name") == "Request strategy operations publication")
+    assert request["if"] == "github.event_name != 'pull_request'"
+    assert request["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert 'event_type: "strategy_operations_publication"' in request["run"]
+    assert '"repos/${GITHUB_REPOSITORY}/dispatches"' in request["run"]
