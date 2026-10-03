@@ -1,9 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
+import { loadRunSection } from '@/lib/governed-run';
 import { StrategyFleet } from './StrategyFleet';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import type { StrategyOperationsSnapshot } from '@/lib/strategy-operations';
+
+vi.mock('@/lib/governed-run', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/governed-run')>(), loadRunSection: vi.fn() }));
 
 vi.mock('@/hooks/useAccessControl', () => ({
   useAccessControl: () => ({
@@ -243,4 +246,33 @@ describe('StrategyFleet', () => {
     expect(screen.getAllByText('New target exposure').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole('heading', { name: 'US x1.3' })).toBeInTheDocument();
   });
+  it('updates verified period returns instead of retaining full-history figures', async () => {
+    vi.mocked(loadRunSection).mockResolvedValue({ report: [
+      { date: '2025-01-01', account_before: 1, account: 0.9 },
+      { date: '2026-01-01', account: 1 },
+      { date: '2026-06-01', account: 1.1 },
+      { date: '2026-08-01', account: 1.2 },
+      { date: '2026-08-31', account: 1.32 },
+    ] });
+    renderFleet();
+    const strategy = within(screen.getByTestId('fleet-us_x1_3'));
+    expect(strategy.getAllByText('+25.0%').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: '1M' }));
+    await waitFor(() => expect(strategy.getAllByText('+10.0%').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: '3M' }));
+    expect(strategy.getAllByText('+20.0%').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: '1Y' }));
+    expect(strategy.getAllByText('+32.0%').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    expect(strategy.getAllByText('+25.0%').length).toBeGreaterThan(0);
+    expect(loadRunSection).toHaveBeenCalledTimes(2);
+  });
+  it('shows unavailable period evidence after integrity/load failure', async () => {
+    vi.mocked(loadRunSection).mockRejectedValue(new Error('Section integrity mismatch'));
+    renderFleet();
+    fireEvent.click(screen.getByRole('button', { name: '1M' }));
+    await waitFor(() => expect(screen.getAllByText('Period evidence unavailable')).toHaveLength(2));
+    expect(within(screen.getByTestId('fleet-us_x1_3')).queryByText('+25.0%')).not.toBeInTheDocument();
+  });
+
 });

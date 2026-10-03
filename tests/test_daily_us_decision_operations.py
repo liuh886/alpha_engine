@@ -3,10 +3,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import yaml
+
 import scripts.setup_cron as setup_cron
 from scripts.summarize_daily_us_decision_run import build_summary
 
 WORKFLOW = Path(".github/workflows/daily-us-low-turnover-decision.yml")
+
+
+def test_diagnostic_research_is_manually_invoked() -> None:
+    for workflow in (WORKFLOW, Path(".github/workflows/weekly-us-fundamental-validation.yml")):
+        payload = yaml.load(workflow.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+        assert set(payload["on"]) == {"workflow_dispatch"}
 
 
 def _write_json(path: Path, payload: dict) -> None:

@@ -239,6 +239,56 @@ def test_resolver_blocks_regression_behind_governed_seed() -> None:
     )
 
 
+def test_holiday_probe_starts_at_last_sealed_session(monkeypatch) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
+    router = FakeRouter(_frame("2026-09-30"))
+    payload = resolve_formal_provider_cutoff(
+        market="cn", requested_cutoff="2026-10-02", seed_cutoff="2026-10-01",
+        published_cutoff="2026-09-24", router=router,  # type: ignore[arg-type]
+    )
+
+    assert payload["status"] == "delayed"
+    assert payload["effective_cutoff"] == "2026-09-30"
+    assert payload["probe_start"] == "2026-09-24"
+    assert all(row["start"] == "2026-09-24" for row in router.requests)
+
+
+def test_holiday_probe_still_blocks_regression_behind_sealed_session(monkeypatch) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
+    payload = resolve_formal_provider_cutoff(
+        market="cn", requested_cutoff="2026-10-02", seed_cutoff="2026-10-01",
+        published_cutoff="2026-09-24",
+        router=FakeRouter(_frame("2026-09-23")),  # type: ignore[arg-type]
+    )
+
+    assert payload["status"] == "blocked"
+    assert payload["effective_cutoff"] is None
+
+
+def test_member_regression_blocks_even_when_benchmark_is_current(monkeypatch) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
+
+    class RegressedMemberRouter(FakeRouter):
+        def fetch_daily_bars(self, *, symbol: str, **kwargs):
+            self.frame = _frame("2026-09-23" if symbol == "002156" else "2026-09-30")
+            return super().fetch_daily_bars(symbol=symbol, **kwargs)
+
+    payload = resolve_formal_provider_cutoff(
+        market="cn", requested_cutoff="2026-10-02", seed_cutoff="2026-10-01",
+        published_cutoff="2026-09-24",
+        router=RegressedMemberRouter(None),  # type: ignore[arg-type]
+    )
+
+    assert payload["status"] == "blocked"
+    assert "002156" in payload["blocker"]
+
+
 class LagRouter(FakeRouter):
     """Benchmark is current but one strategy symbol lags (vendor EOD delay)."""
 

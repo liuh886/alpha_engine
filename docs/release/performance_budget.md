@@ -1,6 +1,8 @@
 # Performance and Resource Budget
 
-Updated: 2026-06-20 (measured)
+Updated: 2026-10-03 (current build gate; older measurements below retained)
+
+The current JavaScript gzip budget is **480 KiB**, measured by `npm run check:bundle-budget`. After removing the vulnerable braces build dependency chain, the measured total is **470.03 KiB**. Tailwind 4 uses the existing theme configuration and scans declared UI source paths only. The single HTML artifact, public evidence URLs and service worker are retained. The tables below are historical measurements, not current runtime-readiness evidence.
 
 ## Dashboard Build
 
@@ -14,7 +16,7 @@ Updated: 2026-06-20 (measured)
 | API types (api-types.ts) | 101 | -- | -- |
 | node_modules (dev only) | 190 MB | -- | not shipped |
 
-The dashboard uses `vite-plugin-singlefile` to inline all JS and CSS into a
+The dashboard uses the scoped `inlineApplication` Vite build hook to inline generated JS and CSS into a
 single `index.html`.  There is no separate JS/CSS bundle -- everything ships as
 one file.  Gzip compression brings the transfer size to ~391 KB.
 

@@ -322,3 +322,34 @@ def test_rows_close_enough_tolerates_blas_reduction_order_noise() -> None:
 
     assert rows_close_enough({"x": 1.0}, {"x": 1.0 + 1e-9})
     assert not rows_close_enough({"x": 1.0}, {"x": 1.0 + 1e-3})
+
+
+def test_pinned_source_recovery_preserves_frozen_history(tmp_path: Path, monkeypatch) -> None:
+    from src.data.adapters.base import FetchResult
+    from src.data.adapters.tencent_fqkline_adapter import TencentQfqHistoryAdapter
+    bars = _frozen_bars()
+    extra = bars.loc[bars["date"] == bars["date"].max()].copy()
+    extra["date"] = extra["date"] + pd.Timedelta(days=7)
+    truthful = pd.concat([bars, extra], ignore_index=True)
+    restated = truthful.copy()
+    restated.loc[restated.symbol.eq("600900"), "close"] *= 1.01
+    provider = tmp_path / "provider"
+    _write_provider_panel(provider, restated, cutoff="2026-09-11")
+    def fetch(self, req):
+        return FetchResult(provider=self.name, symbol=req.symbol, market="cn", start=req.start, end=req.end,
+                           df=truthful.loc[truthful.symbol.eq(req.symbol)].copy(), provider_symbol="sh600900")
+    monkeypatch.setattr(TencentQfqHistoryAdapter, "fetch_daily_bars", fetch)
+    result = extend_bars(frozen_bars=bars, provider_dir=provider, cutoff="2026-09-11", recovery_dir=tmp_path / "recovery")
+    assert len(result.attrs["provider_recoveries"]) == 1
+    assert result.attrs["provider_recoveries"][0]["frozen_overlap_verified"] is True
+    pd.testing.assert_frame_equal(
+        bars.sort_values(["date", "symbol"]).reset_index(drop=True),
+        result.loc[result.date <= bars.date.max()].reset_index(drop=True), check_dtype=False,
+    )
+    # The source being pinned is not sufficient; its prices must reproduce history.
+    def wrong_fetch(self, req):
+        return FetchResult(provider=self.name, symbol=req.symbol, market="cn", start=req.start, end=req.end,
+                           df=restated.loc[restated.symbol.eq(req.symbol)].copy())
+    monkeypatch.setattr(TencentQfqHistoryAdapter, "fetch_daily_bars", wrong_fetch)
+    with pytest.raises(Cn27V13RefreshError, match="pinned source also restated"):
+        extend_bars(frozen_bars=bars, provider_dir=provider, cutoff="2026-09-11", recovery_dir=tmp_path / "rejected")

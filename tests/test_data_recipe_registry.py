@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -19,6 +21,30 @@ from src.data.data_recipe import (
 )
 from src.data.strategy_data_bundle import load_strategy_data_bundle
 from tests.selected_pool_price_fixtures import selected_pool_price_source
+
+
+def test_catalog_read_does_not_load_selected_pool_providers() -> None:
+    # A fresh process exposes accidental startup dependencies hidden by test imports.
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import json, sys; "
+            "from src.data.data_recipe import data_recipe_catalog; "
+            "data_recipe_catalog(); "
+            "print(json.dumps(sorted(sys.modules)))",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=30,
+    )
+    modules = set(json.loads(result.stdout))
+    assert "scripts.data.refresh_selected_pool_prices_v2" not in modules
+    assert "src.data.adapters.akshare_adapter" not in modules
+    assert "src.data.adapters.efinance_adapter" not in modules
+    assert "src.data.adapters.tushare_adapter" not in modules
 
 
 @dataclass

@@ -19,9 +19,13 @@ import type { MarketEvidenceMarket } from '@/lib/market-evidence';
 import { useMarketComparisons } from '@/hooks/useMarketComparisons';
 import type { ReportRow } from '@/lib/types';
 
-type RangeKey = '6m' | '1y' | '3y' | 'all';
+import { initialAccount, periodStartIndex, type PerformancePeriod } from '@/lib/performancePeriods';
+
+type RangeKey = PerformancePeriod;
 
 const RANGE_OPTIONS: Array<{ key: RangeKey; label: string; months: number | null }> = [
+  { key: '1m', label: '1M', months: 1 },
+  { key: '3m', label: '3M', months: 3 },
   { key: '6m', label: '6M', months: 6 },
   { key: '1y', label: '1Y', months: 12 },
   { key: '3y', label: '3Y', months: 36 },
@@ -143,13 +147,13 @@ export function PerformanceCharts({
 
   const chartData = useMemo(() => {
     if (!report.length) return [];
-    const initialAccount = Number(report[0].account);
-    if (!Number.isFinite(initialAccount) || initialAccount <= 0) return [];
+    const initial = initialAccount(report);
+    if (initial === null) return [];
 
     return report.map((row, index) => {
       const account = Number(row.account);
       const strategy = Number.isFinite(account)
-        ? (account / initialAccount) - 1
+        ? (account / initial) - 1
         : null as unknown as number;
       const activeValue = activeBenchmarkKey ? seriesByKey[activeBenchmarkKey]?.[index] ?? null : null;
       const value = Number(row.value);
@@ -179,42 +183,20 @@ export function PerformanceCharts({
     });
   }, [activeBenchmarkKey, declaredBenchmark, report, seriesByKey]);
 
-  const visibleChartData = useMemo(() => {
-    const selectedRange = RANGE_OPTIONS.find(option => option.key === rangeKey);
-    if (!selectedRange?.months || chartData.length < 2) return chartData;
-
-    const endTimestamp = Date.parse(`${chartData[chartData.length - 1].date}T00:00:00Z`);
-    if (!Number.isFinite(endTimestamp)) return chartData;
-
-    const threshold = new Date(endTimestamp);
-    threshold.setUTCMonth(threshold.getUTCMonth() - selectedRange.months);
-    const thresholdTimestamp = threshold.getTime();
-    const filtered = chartData.filter(row => {
-      const rowTimestamp = Date.parse(`${row.date}T00:00:00Z`);
-      return Number.isFinite(rowTimestamp) && rowTimestamp >= thresholdTimestamp;
-    });
-
-    return filtered.length ? filtered : chartData;
-  }, [chartData, rangeKey]);
-
-  const drawdownData = useMemo(() => {
-    if (!chartData.length) return [];
-    let peak = 0;
-    let initialized = false;
-    return chartData.map(row => {
-      if (!Number.isFinite(row.strategy)) return { date: row.date, drawdown: null as unknown as number };
-      if (!initialized) { peak = row.strategy; initialized = true; }
-      if (row.strategy > peak) peak = row.strategy;
-      const drawdown = (row.strategy - peak) / (1 + peak);
-      return { date: row.date, drawdown };
-    });
-  }, [chartData]);
+  const startIndex = useMemo(() => periodStartIndex(report, rangeKey), [report, rangeKey]);
+  const visibleChartData = useMemo(
+    () => startIndex < 0 ? [] : chartData.slice(startIndex),
+    [chartData, startIndex],
+  );
 
   const visibleDrawdownData = useMemo(() => {
-    if (visibleChartData.length === chartData.length) return drawdownData;
-    const visibleDates = new Set(visibleChartData.map(row => row.date));
-    return drawdownData.filter(row => visibleDates.has(row.date));
-  }, [chartData.length, drawdownData, visibleChartData]);
+    let peak = startIndex === 0 ? 0 : Number(visibleChartData[0]?.strategy);
+    return visibleChartData.map(row => {
+      if (!Number.isFinite(row.strategy) || !Number.isFinite(peak)) return { date: row.date, drawdown: null as unknown as number };
+      peak = Math.max(peak, row.strategy);
+      return { date: row.date, drawdown: (row.strategy - peak) / (1 + peak) };
+    });
+  }, [startIndex, visibleChartData]);
 
   const visibleMaxDrawdown = useMemo(() => {
     if (!visibleDrawdownData.length) return null;
@@ -243,26 +225,30 @@ export function PerformanceCharts({
     }
     const first = visibleChartData[0];
     const last = visibleChartData[visibleChartData.length - 1];
-    const strategy = periodReturn(first.strategy, last.strategy);
+    const strategy = periodReturn(startIndex === 0 ? 0 : first.strategy, last.strategy);
     const firstRecord = first as unknown as Record<string, unknown>;
     const lastRecord = last as unknown as Record<string, unknown>;
     const benchmark = activeBenchmarkKey
-      ? periodReturn(firstRecord[activeBenchmarkKey], lastRecord[activeBenchmarkKey])
+      ? periodReturn(
+        startIndex === 0 && benchmarkOptions.some(option => option.key === activeBenchmarkKey && report[0]?.[`${option.field}_before`] !== undefined)
+          ? 0 : firstRecord[activeBenchmarkKey],
+        lastRecord[activeBenchmarkKey],
+      )
       : null;
     return {
       strategy,
       benchmark,
-      excess: strategy !== null && benchmark !== null ? strategy - benchmark : null,
+      excess: strategy !== null && benchmark !== null ? (1 + strategy) / (1 + benchmark) - 1 : null,
     };
-  }, [activeBenchmarkKey, visibleChartData]);
+  }, [activeBenchmarkKey, visibleChartData, startIndex, benchmarkOptions, report]);
 
   const monthlyReturns = useMemo(() => {
     if (!report.length) return [];
-    const firstAccount = Number(report[0].account);
-    if (!Number.isFinite(firstAccount) || firstAccount <= 0) return [];
+    const firstAccount = initialAccount(report);
+    if (firstAccount === null) return [];
     const byMonth: Record<string, number[]> = {};
     let prevAccount = firstAccount;
-    for (let index = 1; index < report.length; index += 1) {
+    for (let index = report[0].account_before === undefined ? 1 : 0; index < report.length; index += 1) {
       const row = report[index];
       const account = Number(row.account);
       const date = effectivePerformanceDate(row);
@@ -386,6 +372,10 @@ export function PerformanceCharts({
               </div>
             </div>
           </div>
+          <p data-testid="visible-period-dates" className="mt-2 text-[10px] text-muted-foreground">
+            {visibleChartData.length ? `${visibleChartData[0].date} – ${visibleChartData[visibleChartData.length - 1].date}` : 'No observations in this range'}
+            {' · Returns use observed settlement boundaries; sparse traces do not imply daily coverage.'}
+          </p>
           <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3 sm:grid-cols-4">
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Strategy</p>
@@ -396,7 +386,7 @@ export function PerformanceCharts({
               <p data-testid="visible-benchmark-return" className={cn("mt-1 font-mono text-sm font-semibold tabular-nums", colorReturn(visibleSummary.benchmark))}>{formatPercent(visibleSummary.benchmark)}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Excess</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Relative excess</p>
               <p data-testid="visible-excess-return" className={cn("mt-1 font-mono text-sm font-semibold tabular-nums", colorReturn(visibleSummary.excess))}>{formatPercent(visibleSummary.excess)}</p>
             </div>
             <div>
@@ -537,7 +527,7 @@ export function PerformanceCharts({
           <CardHeader className="border-b pb-3">
             <CardTitle className="text-sm font-semibold">{excessBaseline ? 'Relative Performance & Capital Use' : 'Capital Use'}</CardTitle>
             <p className="mt-1 text-[10px] text-muted-foreground">
-              {excessBaseline ? `Excess vs ${excessBaseline}` : 'Portfolio usage'}{hasExposure ? ' · invested ratio' : ''}{hasTurnover ? ' · turnover' : ''}
+              {excessBaseline ? `Return difference vs ${excessBaseline}` : 'Portfolio usage'}{hasExposure ? ' · invested ratio' : ''}{hasTurnover ? ' · turnover' : ''}
             </p>
           </CardHeader>
           <CardContent className="h-[220px] pt-4 sm:h-[250px]">
@@ -549,7 +539,7 @@ export function PerformanceCharts({
                 {(hasExposure || hasTurnover) && <YAxis yAxisId="right" orientation="right" tickFormatter={value => `${(value * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={40} />}
                 <Tooltip content={<CustomTooltip />} />
                 <Legend verticalAlign="top" align="right" height={24} iconType="circle" onClick={toggleVisibility} wrapperStyle={{ fontSize: '11px', cursor: 'pointer' }} />
-                {excessBaseline && <Area yAxisId="left" hide={hiddenSeries.excess} type="monotone" dataKey="excess" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.08} name={`Excess vs ${excessBaseline}`} />}
+                {excessBaseline && <Area yAxisId="left" hide={hiddenSeries.excess} type="monotone" dataKey="excess" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.08} name={`Return difference vs ${excessBaseline}`} />}
                 {hasExposure && <Area yAxisId="right" hide={hiddenSeries.pos_ratio} type="monotone" dataKey="pos_ratio" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.05} name="Invested Ratio" />}
                 {hasTurnover && <Bar yAxisId="right" hide={hiddenSeries.turnover} dataKey="turnover" fill="hsl(var(--muted-foreground))" fillOpacity={0.2} maxBarSize={8} name="Turnover" />}
                 {excessBaseline && <ReferenceLine yAxisId="left" y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeOpacity={0.3} />}

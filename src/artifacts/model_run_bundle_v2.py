@@ -198,6 +198,7 @@ def validate_manifest(manifest: Mapping[str, Any], *, verify_bundle_id: bool = T
 
     comparability = manifest.get("comparability_key")
     _require(isinstance(comparability, Mapping), "comparability_key missing")
+    assert isinstance(comparability, Mapping)
     for key in ("market", "trace_frequency", "horizon"):
         _require(
             isinstance(comparability.get(key), str) and bool(str(comparability[key]).strip()),
@@ -214,6 +215,7 @@ def validate_manifest(manifest: Mapping[str, Any], *, verify_bundle_id: bool = T
 
     sections = manifest.get("sections")
     _require(isinstance(sections, list) and len(sections) >= 2, "sections are missing")
+    assert isinstance(sections, list)
     seen: set[str] = set()
     for value in sections:
         _require(isinstance(value, Mapping), "invalid section declaration")
@@ -240,13 +242,15 @@ def validate_catalog(catalog: Mapping[str, Any]) -> None:
     _require(catalog.get("trade_ready") is False, "catalog trade_ready must be false")
     records = catalog.get("records")
     _require(isinstance(records, list), "catalog records missing")
+    assert isinstance(records, list)
     identities: set[tuple[str, str, str]] = set()
     bundle_ids: set[str] = set()
     for record in records:
         _require(isinstance(record, Mapping), "invalid catalog record")
-        identity = tuple(
-            _require_slug(record.get(key), key)
-            for key in ("model_family_id", "model_version_id", "run_id")
+        identity = (
+            _require_slug(record.get("model_family_id"), "model_family_id"),
+            _require_slug(record.get("model_version_id"), "model_version_id"),
+            _require_slug(record.get("run_id"), "run_id"),
         )
         _require(identity not in identities, f"duplicate run identity: {identity}")
         identities.add(identity)
@@ -288,6 +292,7 @@ def validate_decision(
     for group in ("gates", "supporting_evidence", "contradictory_evidence"):
         claims = decision.get(group)
         _require(isinstance(claims, list), f"decision {group} missing")
+        assert isinstance(claims, list)
         for claim in claims:
             _require(isinstance(claim, Mapping), f"invalid decision claim in {group}")
             _require_slug(claim.get("claim_id"), "claim_id")

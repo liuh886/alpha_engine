@@ -435,6 +435,7 @@ export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
         </div>
       </section>
 
+      <p className="text-xs text-muted-foreground">Full evidence metrics · Interval returns appear with the selected chart range below.</p>
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" aria-label="Formal backtest headline metrics">
         {SUMMARY_METRICS.map((metricId) => <MetricCard key={metricId} metricId={metricId} metrics={evidence.metrics} />)}
       </section>

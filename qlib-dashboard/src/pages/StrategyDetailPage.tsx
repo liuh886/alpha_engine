@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import { useStrategyOperations } from '@/hooks/useStrategyOperations';
 import type { AccessTier } from '@/lib/model-access';
+import { loadDecisionForRun, type DecisionLoadState } from '@/lib/model-run-decision';
+import { governedRunQuery } from '@/lib/governed-run';
 import { STRATEGY_STATUS_LABEL } from '@/lib/strategy-operations';
 import type { StrategyFactorEvidence } from '@/lib/strategy-operations';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
@@ -102,6 +104,14 @@ export function StrategyDetailPage() {
     if (run && run.key !== workspace.activeRunKey) workspace.selectRun(run);
   }, [run, workspace.activeRunKey, workspace.selectRun]);
 
+  const [decisionState, setDecisionState] = useState<DecisionLoadState | null>(null);
+  useEffect(() => {
+    let active = true;
+    setDecisionState(null);
+    if (run) void loadDecisionForRun(run).then(value => { if (active) setDecisionState(value); });
+    return () => { active = false; };
+  }, [run]);
+
   useEffect(() => {
     let active = true;
     setHealth(null);
@@ -154,6 +164,25 @@ export function StrategyDetailPage() {
           deliveryStatus={health?.delivery_status ?? snapshot?.deliveryStatus}
           deliveryState={health?.delivery_state ?? 'unknown'}
         />
+      </section>
+
+      <section aria-label="Research tracking assessment" className="rounded-xl border bg-card p-5 text-sm">
+        <h2 className="font-semibold">Research tracking assessment</h2>
+        <p className="mt-2 text-muted-foreground">
+          {decisionState?.decision
+            ? decisionState.decision.status === 'pending_review' ? 'Continuing effectiveness awaits review. Formal acceptance does not establish validation.' : `Reviewed research result: ${decisionState.decision.verdict.replace(/_/g, ' ')}`
+            : decisionState?.state === 'error' ? 'Assessment evidence could not be verified.' : decisionState?.state === 'absent' ? 'No assessment is bound to this evidence bundle.' : 'Loading verified assessment…'}
+        </p>
+        {decisionState?.decision && (
+          <details className="mt-3">
+            <summary className="cursor-pointer font-medium">Retained counterevidence and next validation</summary>
+            <ul className="mt-2 list-disc space-y-2 pl-5 text-muted-foreground">
+              {[...decisionState.decision.gates.filter(row => row.outcome === 'failed'), ...decisionState.decision.contradictory_evidence].map(row => <li key={row.claim_id}>{row.statement}</li>)}
+            </ul>
+            <p className="mt-3 text-muted-foreground">{decisionState.decision.next_permitted_validation_step}</p>
+          </details>
+        )}
+        <Link className="mt-3 inline-block text-primary underline" to={`/decisions?${governedRunQuery(run)}`}>Open manifest-bound assessment</Link>
       </section>
 
       <section aria-labelledby="strategy-now-heading" className="space-y-4">

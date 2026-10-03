@@ -163,6 +163,7 @@ def resolve_formal_provider_cutoff(
     # coverage when it was sealed. Reuse it without any network probe: this keeps
     # push-triggered refreshes free of vendor availability risk.
     published_raw = str(published_cutoff or "").strip()
+    coverage_floor = seed
     if published_raw:
         published = date.fromisoformat(published_raw).isoformat()
         if published >= requested:
@@ -178,10 +179,16 @@ def resolve_formal_provider_cutoff(
                 "effective_seed_cutoff": _previous_completed(market_key, requested),
                 "blocker": None,
             }
+        # The caller's seed is a weekday, not an exchange session. During a
+        # holiday it may contain no bars. Probe from the last sealed session
+        # and require providers to cover that boundary instead.
+        coverage_floor = min(seed, published)
+
+    base["probe_start"] = coverage_floor
 
     data_router = router or build_hardened_router(market_key)
     response = _fetch_with_retries(
-        data_router, market_key=market_key, symbol=benchmark, start=seed, end=requested
+        data_router, market_key=market_key, symbol=benchmark, start=coverage_floor, end=requested
     )
     base["attempts"] = [attempt.to_dict() for attempt in response.attempts]
     if not response.ok or response.result is None:
@@ -203,7 +210,7 @@ def resolve_formal_provider_cutoff(
             "blocker": "benchmark provider returned no complete session",
         }
     observed = pd.Timestamp(dates.max()).tz_localize(None).date().isoformat()
-    if observed < seed:
+    if observed < coverage_floor:
         return {
             **base,
             "status": "blocked",
@@ -237,11 +244,14 @@ def resolve_formal_provider_cutoff(
             data_router,
             market_key=market_key,
             symbol=symbol,
-            start=seed,
+            start=coverage_floor,
             end=requested,
         )
         time.sleep(PROBE_DELAY_SECONDS)
-    failed = sorted(symbol for symbol, mark in watermarks.items() if mark is None)
+    failed = sorted(
+        symbol for symbol, mark in watermarks.items()
+        if mark is None or (published_raw and mark < published_raw)
+    )
     if failed:
         return {
             **base,

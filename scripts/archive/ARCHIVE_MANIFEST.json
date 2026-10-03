@@ -563,16 +563,6 @@
   ],
   "preserved_outside_archive": [
     {
-      "module": "byd_v2_regime_research",
-      "path": "scripts/byd_v2_regime_research.py",
-      "reason": "named as provenance by sealed research logs under data/research/byd_v2_experiments"
-    },
-    {
-      "module": "byd_v2_regime_round2",
-      "path": "scripts/byd_v2_regime_round2.py",
-      "reason": "named as provenance by sealed research logs under data/research/byd_v2_experiments"
-    },
-    {
       "module": "run_factor_feature_quality",
       "path": "scripts/run_factor_feature_quality.py",
       "reason": "named as provenance by data/research/quantskills_volume_stat_alpha/gate1_feature_quality.json"
@@ -581,6 +571,26 @@
       "module": "notebook_training_api",
       "path": "src/research/notebook_training_api.py",
       "reason": "imported by notebooks/end_to_end_training_pipeline.ipynb (notebooks are frozen evidence, not live callers)"
+    }
+  ],
+  "retired_from_runtime": [
+    {
+      "module": "byd_v2_regime_research",
+      "path": "scripts/byd_v2_regime_research.py",
+      "reason": "user-directed pruning; no live caller; completed unsupported BYD v2 exploration; sealed results retained",
+      "retired_at": "2026-10-03",
+      "source_revision": "0e30477481a5c4422f5a1551b6053973713660fe",
+      "source_git_blob_sha256": "df28a85d6b0a2cd8f5123356a0a00d2f79eab4c39c9056360013075eea33ceb8",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "byd_v2_regime_round2",
+      "path": "scripts/byd_v2_regime_round2.py",
+      "reason": "user-directed pruning; no live caller; completed unsupported BYD v2 exploration; sealed results retained",
+      "retired_at": "2026-10-03",
+      "source_revision": "0e30477481a5c4422f5a1551b6053973713660fe",
+      "source_git_blob_sha256": "ed3cc6e5fff46d8c9f075e55869d3b4b0c3c97e15f85316c0adaa1a425b00ad9",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
     }
   ]
 }

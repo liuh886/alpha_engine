@@ -1,8 +1,7 @@
 name: Weekly US Fundamental Validation
 
 on:
-  schedule:
-    - cron: "45 23 * * 5"
+  # Frozen fundamental diagnostics run on demand, not as a second operating loop.
   workflow_dispatch:
 
 permissions:

@@ -54,12 +54,16 @@ export function useModels() {
 
   const fetchModels = useCallback(async (opts?: { selectLatest?: boolean }) => {
     try {
-      const json = await modelsApi.getDashboardDb();
-      const repositoryModels = parseQlibData(json);
-      const [formal, preview] = await Promise.all([
+      const [formal, preview, optionalBundle] = await Promise.all([
         loadFormalRuns(),
         loadPreviewRuns(),
+        modelsApi.getDashboardDb().then(
+          value => ({ value, error: null as string | null }),
+          () => ({ value: null, error: 'Optional legacy research bundle unavailable; formal evidence remains independent.' }),
+        ),
       ]);
+      const json = optionalBundle.value;
+      const repositoryModels = json === null ? [] : parseQlibData(json);
       if (formal.errors.length > 0) {
         throw new Error(`Formal Bundle v2 validation failed: ${formal.errors.join(' | ')}`);
       }
@@ -86,11 +90,11 @@ export function useModels() {
       ]);
       const generatedDates = governedRuns.map((record) => record.generatedAt).filter(Boolean).sort();
       useGlobalStore.getState().setDataGeneratedAt(
-        generatedDates.length > 0 ? generatedDates[generatedDates.length - 1] : String(json.generated_at || ''),
+        generatedDates.length > 0 ? generatedDates[generatedDates.length - 1] : String(json?.generated_at || ''),
       );
       setModels(workspaceModels);
       setRuns(governedRuns);
-      setRunLoadErrors(preview.errors);
+      setRunLoadErrors([...preview.errors, ...(optionalBundle.error ? [optionalBundle.error] : [])]);
 
       if (governedRuns.length > 0) {
         const currentKey = useGlobalStore.getState().activeRunKey;

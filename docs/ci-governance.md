@@ -20,6 +20,11 @@ Dependency, external-source and operational-health signals. They remain visible 
 
 ## Machine-readable inventory
 
+`.github/ci-policy.json` is the single source for required, release and advisory
+workflow membership. Both CI policy enforcement and tier inventory consume it;
+unassigned workflows retain the inventory's filename-based default tier. The
+workflow count budget is a ceiling and must decrease as permanent paths retire.
+
 `scripts/check_ci_governance.py` scans every workflow and writes `artifacts/ci-workflow-inventory.json`. The inventory records:
 
 - workflow name and path;

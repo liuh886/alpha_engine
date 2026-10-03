@@ -14,7 +14,7 @@ export function useAppBootstrap() {
       setLoadError(null);
       const parsed = await workspace.fetchModels();
       if (!active) return;
-      if (parsed === null) setLoadError('No compatible governed research bundle was found.');
+      if (parsed === null) setLoadError('Verified formal strategy evidence is unavailable.');
       setLoading(false);
     };
 

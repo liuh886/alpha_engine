@@ -4,7 +4,7 @@ This workflow runs the first step of the minimal daily-model path. It does not t
 
 ## What it does
 
-Once per week, after the US market has closed, it:
+When explicitly invoked after the US market has closed, it:
 
 1. downloads daily adjusted OHLCV for the frozen US pool;
 2. reconstructs quarterly revenue and gross-profit observations from SEC Company Facts using filed dates;
@@ -12,7 +12,10 @@ Once per week, after the US market has closed, it:
 4. runs the fixed fundamental-acceleration validation;
 5. uploads the decision, source coverage, manifests, and logs.
 
-The weekly cadence is intentional. The underlying information changes with public financial filings, not every trading day.
+The automatic weekly schedule was removed on 2026-10-03. This frozen diagnostic
+remains available through `workflow_dispatch` or the manual command below; it
+is not a second active-strategy operating loop. Its information changes with
+public financial filings, not every trading day.
 
 ## Required SEC identity
 

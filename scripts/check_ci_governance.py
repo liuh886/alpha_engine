@@ -11,14 +11,7 @@ import yaml
 
 WORKFLOW_ROOT = Path(".github/workflows")
 
-REQUIRED_PR = {
-    "ci.yml",
-    "frontend-static-pwa.yml",
-    "governance-contracts.yml",
-    "model-data-bundle-ci.yml",
-    "pages-governance-ci.yml",
-    "researcher-data-cli-ci.yml",
-}
+POLICY_PATH = Path(".github/ci-policy.json")
 RELEASE_MARKERS = (
     "deploy",
     "pages",
@@ -56,10 +49,17 @@ def load_yaml(path: Path) -> dict[str, Any]:
     return payload
 
 
-def classify(filename: str) -> tuple[str, str]:
+def classify(filename: str, policy: dict[str, Any] | None = None) -> tuple[str, str]:
+    if policy is None:
+        policy = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
+    workflow = f".github/workflows/{filename}"
     lowered = filename.lower()
-    if filename in REQUIRED_PR:
+    if workflow in policy.get("required_pr_workflows", []):
         return "tier_1_required_pr", "repository-local deterministic product contract"
+    if workflow in policy.get("release_workflows", []):
+        return "tier_2_main_release", "main integration, formal promotion, or deployment"
+    if workflow in policy.get("advisory_workflows", []):
+        return "tier_4_advisory", "health or diagnostic signal"
     if any(marker in lowered for marker in ADVISORY_MARKERS):
         return "tier_4_advisory", "health or diagnostic signal"
     if any(marker in lowered for marker in RELEASE_MARKERS):
@@ -128,12 +128,14 @@ def artifact_names(payload: dict[str, Any]) -> list[str]:
     return sorted(names)
 
 
-def inspect_workflow(path: Path) -> tuple[dict[str, Any], list[str]]:
+def inspect_workflow(
+    path: Path, policy: dict[str, Any] | None = None
+) -> tuple[dict[str, Any], list[str]]:
     text = path.read_text(encoding="utf-8")
     payload = load_yaml(path)
     name = str(payload.get("name", "")).strip()
     triggers = normalize_trigger(payload.get("on"))
-    tier, rationale = classify(path.name)
+    tier, rationale = classify(path.name, policy)
     trigger_data = trigger_summary(triggers)
     pr_config = trigger_data.get("pull_request", {})
     pr_paths = list(pr_config.get("paths", [])) + list(pr_config.get("paths_ignore", []))
@@ -183,6 +185,7 @@ def inspect_workflow(path: Path) -> tuple[dict[str, Any], list[str]]:
 
 
 def build_inventory() -> tuple[dict[str, Any], list[str]]:
+    policy = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
     workflow_paths = sorted((*WORKFLOW_ROOT.glob("*.yml"), *WORKFLOW_ROOT.glob("*.yaml")))
     if not workflow_paths:
         raise ValueError("no GitHub Actions workflows found")
@@ -191,7 +194,7 @@ def build_inventory() -> tuple[dict[str, Any], list[str]]:
     violations: list[str] = []
     counts: dict[str, int] = {}
     for path in workflow_paths:
-        record, record_violations = inspect_workflow(path)
+        record, record_violations = inspect_workflow(path, policy)
         records.append(record)
         counts[record["tier"]] = counts.get(record["tier"], 0) + 1
         violations.extend(f"{path}: {message}" for message in record_violations)

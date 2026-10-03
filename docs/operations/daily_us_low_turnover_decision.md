@@ -1,6 +1,6 @@
 # Daily US Low-Turnover Decision Operations
 
-Status: diagnostic-only operating workflow  
+Status: diagnostic-only, explicitly invoked workflow
 Strategy status: not independently validated  
 Automatic order routing: disabled
 
@@ -20,7 +20,7 @@ Windows PowerShell:
 
 Restart the terminal or scheduled task after changing the variable. The plaintext value is used only in the HTTP request header. Artifacts store its presence and SHA-256 identity, not the value itself.
 
-For GitHub Actions, create a repository variable named `SEC_USER_AGENT`. When it is absent, the scheduled workflow uses the public repository URL as a non-secret project identity; a monitored contact value is still preferred.
+For GitHub Actions, create a repository variable named `SEC_USER_AGENT`. When it is absent, the manually dispatched workflow uses the public repository URL as a non-secret project identity; a monitored contact value is still preferred.
 
 ## Manual live run
 
@@ -49,7 +49,10 @@ uv run python scripts/run_latest_us_low_turnover_decision.py \
   --fundamentals-csv path/to/fundamentals.csv
 ```
 
-## Local scheduling
+## Optional local scheduling
+
+The diagnostic path is not part of the default active-strategy operating loop.
+Only install a local schedule when deliberately running this frozen experiment.
 
 Run:
 
@@ -61,9 +64,9 @@ On Windows, this writes `scripts/run_daily_us_decision.bat` and prints a Task Sc
 
 07:30 local time is intentionally conservative for both China and Japan system time zones and covers US winter and summer market close.
 
-## GitHub Actions schedule
+## GitHub Actions manual execution
 
-`.github/workflows/daily-us-low-turnover-decision.yml` runs at 23:30 UTC Monday through Friday. It always uploads available diagnostic artifacts, including source blockers, before preserving a failed status when the governed pipeline cannot complete.
+`.github/workflows/daily-us-low-turnover-decision.yml` accepts `workflow_dispatch` only. Its automatic schedule was removed on 2026-10-03 to keep diagnostic research outside the default fleet loop. It still uploads diagnostic artifacts, including source blockers, before preserving a failed status when the governed pipeline cannot complete.
 
 Before each run, the workflow restores the most recent cached:
 

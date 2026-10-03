@@ -617,19 +617,22 @@ def _ranker(
     factor_freshness, factors, factor_error = _factor_snapshot(signal, latest_data_date=latest)
     family = strategy.model_family_id
     diagnostics = _mapping(signal.get("diagnostics"))
+    risk_on = diagnostics.get("risk_on_eligible") if strategy.model_version_id == "cn_x1_2" else diagnostics.get("risk_on")
     if family == US_RANKER_FAMILY:
         state_label = "US Top-15 rebalance"
-    elif diagnostics.get("risk_on") is False:
+    elif risk_on is False:
         state_label = "CN risk-off · CSI300 fallback"
-    else:
+    elif risk_on is True:
         state_label = "CN risk-on · sector 4×1"
+    else:
+        state_label = "CN risk state unavailable"
     retrospective = diagnostics.get("retrospective_correction") is True
     if retrospective:
         state_label = "Retrospective corrected target"
     cadence, next_policy = _cadence(strategy)
     return {
         **_identity(strategy, record),
-        "status": "awaiting_observation" if retrospective else _status(
+        "status": "awaiting_observation" if retrospective or state_label == "CN risk state unavailable" else _status(
             delivery_status=delivery_status,
             data_fresh=data_fresh,
             factor_freshness=factor_freshness,
@@ -654,7 +657,8 @@ def _ranker(
             else None
         ),
         "note": "Retrospective source correction; not a new executable signal. Await the next scheduled evaluation."
-        if retrospective else factor_error
+        if retrospective else "Risk-state diagnostics are unavailable; await a compatible governed observation."
+        if state_label == "CN risk state unavailable" else factor_error
         or (
             "Target is published for the next eligible open."
             if changed
@@ -692,7 +696,7 @@ def _cn27(
         "latest_completed_session": latest,
         "decision_cadence": cadence,
         "next_decision_policy": next_policy,
-        "state_label": "CN27 monthly rebalance",
+        "state_label": "CN27 30-session rebalance",
         "decision_reason": str(signal.get("reason_code") or "Frozen monthly CN27 evaluation."),
         "allocations": allocations,
         "turnover": _finite(signal.get("turnover_units")),

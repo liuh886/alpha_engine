@@ -106,6 +106,16 @@ def test_heavy_formal_refresh_does_not_publish_after_explicit_cancellation() -> 
     assert text.count("if: ${{ !cancelled() }}") == 5
 
 
+def test_publication_checks_upstream_before_downloading_missing_evidence() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8").split("  publish:\n", 1)[1]
+    gate = text.index("      - name: Verify upstream evidence is available")
+    download = text.index("      - name: Download verified US provider")
+    assert gate < download
+    for upstream in ("prepare", "providers", "plan"):
+        assert f"needs.{upstream}.result" in text[:download]
+    assert "      - name: Upsert refresh operating status" in text
+
+
 def test_formal_candidate_ci_uses_bounded_research_paths() -> None:
     text = CI_WORKFLOW.read_text(encoding="utf-8")
     assert '      - "src/research/**"' not in text

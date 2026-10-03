@@ -37,6 +37,7 @@ on:
       - "src/research/etf_rotation_experiment.py"
       - "src/research/etf_strategy_data.py"
       - "src/research/formal_model_replay.py"
+      - "src/research/formal_replay_contract.py"
       - "src/research/market_session_clock.py"
       - "src/research/multi_market_readiness.py"
       - "src/research/qlib_execution_common.py"
@@ -68,6 +69,7 @@ on:
       - "scripts/govern_formal_provider_cache.py"
       - "scripts/ranker_provisional_mtm.py"
       - "scripts/refresh_ranker_formal.py"
+      - "scripts/refresh_cn_27_v1_3_formal.py"
       - "scripts/refresh_byd_v1_3_formal.py"
       - "scripts/refresh_qqq_v4_3_formal.py"
       - "scripts/data/**"
@@ -86,6 +88,8 @@ on:
       - "tests/test_formal_refresh_metric_projection.py"
       - "tests/test_ranker_provisional_mtm.py"
       - "tests/test_formal_bundle_mtm_projection.py"
+      - "tests/test_cn27_v1_3_refresh.py"
+      - "tests/test_model_run_decision.py"
       - "tests/test_refresh_byd_v1_3_formal.py"
       - "tests/test_refresh_qqq_v4_3_formal.py"
       - "tests/test_rules_formal_replay_gate.py"
@@ -346,6 +350,8 @@ jobs:
             scripts/run_ranker_current_target.py \
             scripts/byd_formal_refresh_common.py \
             scripts/byd_v1_3_formal_builder.py \
+            scripts/refresh_cn_27_v1_3_formal.py \
+            src/artifacts/model_run_decision.py \
             scripts/refresh_byd_v1_3_formal.py \
             scripts/refresh_qqq_v4_3_formal.py \
             tests/test_active_strategy_catalog.py \
@@ -361,6 +367,8 @@ jobs:
             tests/test_formal_refresh_metric_projection.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_formal_bundle_mtm_projection.py \
+            tests/test_cn27_v1_3_refresh.py \
+            tests/test_model_run_decision.py \
             tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_rules_formal_replay_gate.py \
@@ -410,6 +418,8 @@ jobs:
             tests/test_formal_refresh_metric_projection.py \
             tests/test_ranker_provisional_mtm.py \
             tests/test_formal_bundle_mtm_projection.py \
+            tests/test_cn27_v1_3_refresh.py \
+            tests/test_model_run_decision.py \
             tests/test_refresh_byd_v1_3_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_rules_formal_replay_gate.py \

@@ -26,14 +26,14 @@ from src.data.adapters.cnn_fear_greed import fetch_cnn_fear_greed
 from src.data.data_recipe import DataRecipeError, prepare_data_recipe
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID as BYD_MODEL_ID
 from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
+from src.research.formal_replay_contract import (
+    BYD_REPLAY_ID, CN27_REPLAY_ID, QQQ_REPLAY_ID, REPLAY_IDS,
+)
 from src.research.replay_comparison import compare_package_sections
 from src.research.v4_33_ma200_ma20_vix_release import run_v4_33_comparison
 
 RUNNER_ID = "formal_model_replay_v2"
-QQQ_REPLAY_ID = "qqq_v4_3"
-BYD_REPLAY_ID = "byd_v1_3"
-CN27_REPLAY_ID = "cn_27_v1_3"
-REPLAY_IDS = (QQQ_REPLAY_ID, BYD_REPLAY_ID, CN27_REPLAY_ID)
+
 
 BYD_PREDECESSOR_PACKAGE = Path(
     "data/research/historical_model_evidence/byd_v1_2_convex_momentum_budget_v1.json"

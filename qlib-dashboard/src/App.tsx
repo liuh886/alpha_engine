@@ -149,7 +149,7 @@ function Layout(props: LayoutProps) {
           </div>
         </header>
 
-        <ResearchContextBar />
+        <ResearchContextBar run={activeRun} />
 
         <main ref={mainRef} className="research-main">
           {props.loading || (requiredTier !== 'public' && access.loading) ? (

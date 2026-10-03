@@ -20,6 +20,7 @@ SOURCE_EVIDENCE_TYPE = "selected_pool_price_refresh_v1"
 PUBLICATION_SCHEMA = "1.0.0"
 PUBLICATION_EVIDENCE_TYPE = "selected_pool_price_publication_v1"
 PUBLICATION_MANIFEST_NAME = "selected_pool_price_publication_manifest.json"
+MANIFEST_RELATIVE_PATH = Path("artifacts/selected_pool_price_refresh_manifest.json")
 
 _SOURCE_KEYS = {
     "after", "all_sources_current", "all_sources_ready", "auxiliary_symbols",

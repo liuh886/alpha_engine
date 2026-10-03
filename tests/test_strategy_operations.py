@@ -128,7 +128,7 @@ def _ranker_signal(
         "turnover_units": 0.5 if changed else 0.0,
         "estimated_transaction_cost": 0.001 if changed else 0.0,
         "reason_code": f"{family}_10_session_rebalance",
-        "diagnostics": ({"risk_on": risk_on} if risk_on is not None else {}),
+        "diagnostics": ({"risk_on_eligible": risk_on} if risk_on is not None else {}),
         "factor_evidence": factor_evidence,
         "factor_freshness_ok": True,
     }
@@ -371,7 +371,7 @@ def test_cn27_renderer_publishes_sealed_decision_with_canonical_factors() -> Non
     snapshot = _cn27(record, strategy, ledger)
 
     assert snapshot["status"] == "target_pending_execution"
-    assert snapshot["state_label"] == "CN27 monthly rebalance"
+    assert snapshot["state_label"] == "CN27 30-session rebalance"
     assert snapshot["source_label"] == "Governed monthly CN27 decision ledger"
     assert {row["asset"] for row in snapshot["allocations"]} == {
         "000001",
@@ -390,3 +390,16 @@ def test_cn27_seal_rejects_non_canonical_factor_evidence(tmp_path: Path) -> None
             commit_sha="a" * 40,
             created_at_utc="2026-09-09T00:00:00Z",
         )
+
+
+def test_current_cn_eligibility_field_controls_risk_state(tmp_path: Path) -> None:
+    for missing, expected in [(False, "CN risk-off · CSI300 fallback"), (True, "CN risk state unavailable")]:
+        signal = _ranker_signal(family="cn_ranker", group="cn_balanced_ohlcv", current={"000300": 1.0}, target={"000300": 1.0})
+        signal["diagnostics"] = {"risk_on": True} if missing else {"risk_on_eligible": False, "risk_on": True, "votes": 0}
+        ledger = tmp_path / str(missing)
+        _seal_and_deliver(ledger / CN_MODEL, CN_MODEL, signal)
+        payload = build_operations_payload(formal_catalog=FORMAL_CATALOG, ledger_root=ledger, generated_at="2026-08-08T00:00:01Z")
+        snapshot = _by_model(payload)[CN_MODEL]
+        assert snapshot["state_label"] == expected
+        if missing:
+            assert snapshot["status"] == "awaiting_observation"

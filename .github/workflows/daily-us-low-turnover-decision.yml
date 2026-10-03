@@ -1,12 +1,7 @@
 name: Daily US Low-Turnover Decision
 
 on:
-  schedule:
-    # 02:00 UTC (22:00 ET): vendor end-of-day bars for the completed US session
-    # are generally published by then. The earlier 21:30 UTC slot raced index
-    # and equity EOD publication and tripped the snapshot consistency gate.
-    # Tue-Sat UTC covers Monday-Friday ET sessions.
-    - cron: "0 2 * * 2-6"
+  # Diagnostic 23-name research is explicitly invoked, outside the active fleet loop.
   workflow_dispatch:
 
 permissions:

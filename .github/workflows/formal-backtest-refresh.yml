@@ -47,6 +47,7 @@ on:
       - "src/research/etf_rotation_experiment.py"
       - "src/research/etf_strategy_data.py"
       - "src/research/formal_model_replay.py"
+      - "src/research/formal_replay_contract.py"
       - "src/research/market_session_clock.py"
       - "src/research/multi_market_readiness.py"
       - "src/research/qlib_execution_common.py"
@@ -703,6 +704,16 @@ jobs:
       # Falls back to the workflow token when the secret is not configured.
       GH_TOKEN: ${{ secrets.FORMAL_REFRESH_TOKEN || github.token }}
     steps:
+      - name: Verify upstream evidence is available
+        env:
+          PREPARE_RESULT: ${{ needs.prepare.result }}
+          PROVIDERS_RESULT: ${{ needs.providers.result }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+        run: |
+          if [ "$PREPARE_RESULT" != success ] || [ "$PROVIDERS_RESULT" != success ] || [ "$PLAN_RESULT" != success ]; then
+            echo "::error::Formal publication blocked by upstream evidence: prepare=$PREPARE_RESULT providers=$PROVIDERS_RESULT plan=$PLAN_RESULT. See upstream diagnostics; no candidate will be published."
+            exit 1
+          fi
       - name: Check out triggering revision
         uses: actions/checkout@v6
         with:
@@ -713,6 +724,7 @@ jobs:
             .github/actions/setup-python-uv
             configs
             data/research/formal_model_runs
+            data/research/model_decisions
             data/research/model_runs
             data/research/model_data_bundle_v1
             scripts
@@ -916,6 +928,9 @@ jobs:
             data/research/market_evidence \
             data/research/model_data_bundle_v1
           cp -a "$CANDIDATE_V2_ROOT" data/research/formal_model_runs
+          python -m src.artifacts.model_run_decision \
+            --formal-catalog data/research/formal_model_runs/catalog.json \
+            --output data/research/model_decisions
           cp -a "$CANDIDATE_PREVIEW_ROOT" data/research/model_runs
           cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" data/research/market_evidence
           cp -a "$CANDIDATE_MODEL_DATA_ROOT" data/research/model_data_bundle_v1
@@ -1018,10 +1033,14 @@ jobs:
             data/research/market_evidence \
             data/research/model_data_bundle_v1
           cp -a "$CANDIDATE_V2_ROOT" data/research/formal_model_runs
+          python -m src.artifacts.model_run_decision \
+            --formal-catalog data/research/formal_model_runs/catalog.json \
+            --output data/research/model_decisions
           cp -a "$CANDIDATE_PREVIEW_ROOT" data/research/model_runs
           cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" data/research/market_evidence
           cp -a "$CANDIDATE_MODEL_DATA_ROOT" data/research/model_data_bundle_v1
           git add \
+            data/research/model_decisions \
             data/research/formal_model_runs \
             data/research/model_runs \
             data/research/market_evidence \
