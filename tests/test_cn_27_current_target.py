@@ -307,11 +307,17 @@ def test_manifest_bound_operating_target_seals_without_rebalancing_price_drift(t
     assert signal["factor_freshness_ok"] is True
     assert signal["diagnostics"]["last_rebalance_date"] == "2026-08-25"
     path = seal_signal_decision(
-        ledger_root=tmp_path / "sealed-ledger", model_version_id=MODEL_ID,
+        ledger_root=tmp_path / "ledger", model_version_id=MODEL_ID,
         signal=signal, workflow_run_id="test", commit_sha="a" * 40,
         created_at_utc="2026-09-05T10:00:00Z",
     )
     assert path.is_file()
+    repeated = score_cn_27_current_target(
+        formal_root=formal, ledger_dir=tmp_path / "ledger",
+        signal_date=PROSPECTIVE_CUTOFF, market_cutoff=PROSPECTIVE_CUTOFF,
+        repository_root=tmp_path,
+    )
+    assert repeated == signal
 
 
 @pytest.mark.parametrize("field,value", [

@@ -244,6 +244,22 @@ def score_cn_27_current_target(
         dict(sorted(operating["target_weights"].items())) if operating
         else _target_at_cutoff(positions, signal_date)
     )
+    existing = read_latest_evaluation(Path(ledger_dir), model_version_id=MODEL_ID)
+    if existing and existing.get("signal_date") == signal_date:
+        sealed = existing.get("signal")
+        identity = sealed.get("model_identity") if isinstance(sealed, Mapping) else None
+        if (
+            not isinstance(identity, Mapping)
+            or identity.get("formal_bundle_id") != manifest.get("bundle_id")
+            or identity.get("formal_manifest_sha256") != _sha256(active.manifest_path)
+            or identity.get("model_config_sha256") != _sha256(root / MODEL_CONTRACT)
+            or sealed.get("target_weights") != target
+            or (operating and sealed.get("factor_evidence") != operating["factor_evidence"])
+        ):
+            raise _invalid("CN_27 sealed evaluation differs from the exact formal input identity")
+        # Re-reading an unchanged decision must reuse its creation-time previous
+        # state rather than turn that decision into its own predecessor.
+        return dict(sealed)
 
     portfolio_file = active.manifest_path.parent / "portfolio.json"
     if not portfolio_file.is_file():
@@ -257,7 +273,7 @@ def score_cn_27_current_target(
         raise _invalid(f"CN_27 previous state is invalid: {exc}") from exc
     if (
         operating and operating["last_rebalance_date"] <= previous_date
-        and read_latest_evaluation(Path(ledger_dir), model_version_id=MODEL_ID) is None
+        and existing is None
     ):
         # Price drift in observed holdings is not a new allocation decision.
         # Bootstrap the same locked target when no scheduled rebalance occurred.
