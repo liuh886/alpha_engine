@@ -40,7 +40,8 @@ def test_lagging_record_names_its_gap() -> None:
     block = _staleness("2026-08-24", market="us", generated_at="2026-09-09T01:00:00Z")
     assert block["stale"] is True
     assert block["expected_cutoff"] == "2026-09-08"
-    assert block["sessions_behind"] == 11
+    # Labor Day (September 7) is not an exchange session.
+    assert block["sessions_behind"] == 10
 
 
 def test_unknown_data_date_is_stale_by_default() -> None:

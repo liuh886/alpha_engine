@@ -76,28 +76,35 @@ def _remote(source: GovernedSource) -> tuple[dict, dict]:
     return run, artifact
 
 
-def test_checked_in_registry_freezes_exact_current_cn_sources() -> None:
+def test_checked_in_registry_freezes_exact_current_sources() -> None:
     registry = load_governed_source_registry(REGISTRY)
 
     assert registry.repository == "liuh886/alpha_engine"
     assert set(registry.sources) == {
         "cn_alpha158",
         "cn_events",
+        "us_events",
+        "qqq_reference",
     }
     assert registry.sources["cn_alpha158"].artifact_id == 10870061820
     assert registry.sources["cn_events"].artifact_id == 10869737672
-    assert {source.evidence_cutoff for source in registry.sources.values()} == {
+    assert {registry.sources[key].evidence_cutoff for key in ("cn_alpha158", "cn_events")} == {
         "2026-09-04"
     }
     # Every pinned source carries a durable release mirror whose content digest
     # equals the original Actions artifact so fetch never depends on artifact
     # retention.
-    for source in registry.sources.values():
+    for key in ("cn_alpha158", "cn_events"):
+        source = registry.sources[key]
         assert source.durable_release is not None
         assert source.durable_release.sha256 == source.artifact_digest.removeprefix(
             "sha256:"
         )
         assert source.durable_release.size_bytes == source.artifact_size_bytes
+    assert registry.sources["us_events"].expected_symbol_count == 87
+    assert registry.sources["us_events"].evidence_cutoff == "2026-09-30"
+    assert registry.sources["qqq_reference"].expected_symbol_count == 3
+    assert registry.sources["qqq_reference"].evidence_cutoff == "2026-10-02"
 
 
 def test_formal_refresh_source_roles_and_manifest_paths_match_registry() -> None:
@@ -109,9 +116,9 @@ def test_formal_refresh_source_roles_and_manifest_paths_match_registry() -> None
     assert len(source_ids) == len(set(source_ids))
     assert set(source_ids) == set(registry.sources)
     component_paths = re.findall(
-        r"\$\{CANDIDATE_MODEL_DATA_ROOT\}/sources/([^:]+):cn", workflow
+        r"\$\{CANDIDATE_MODEL_DATA_ROOT\}/sources/([^:]+):(?:cn|us)", workflow
     )
-    assert len(component_paths) == 3
+    assert len(component_paths) == 6
     for path in component_paths:
         source_id, relative = path.split("/", 1)
         assert relative in {
@@ -334,6 +341,10 @@ def _reference_manifest(**overrides) -> dict:
         },
         "common_history_start": "2024-01-30",
         "common_history_end": "2026-09-04",
+        "files": {
+            f"canonical/{symbol}.csv": hashlib.sha256(b"fixture csv").hexdigest()
+            for symbol in ("QQQ", "QQQI", "TQQQ")
+        },
         "research_only": True,
         "trade_ready": False,
     }
@@ -354,6 +365,10 @@ def _reference_source(**overrides) -> GovernedSource:
 
 
 def _write_reference_source(tmp_path: Path, manifest: dict) -> GovernedSource:
+    for symbol in ("QQQ", "QQQI", "TQQQ"):
+        member = tmp_path / "canonical" / f"{symbol}.csv"
+        member.parent.mkdir(parents=True, exist_ok=True)
+        member.write_bytes(b"fixture csv")
     path = tmp_path / "bundle_manifest.json"
     path.write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -365,6 +380,26 @@ def _write_reference_source(tmp_path: Path, manifest: dict) -> GovernedSource:
 def test_reference_bundle_source_verifies(tmp_path: Path) -> None:
     source = _write_reference_source(tmp_path, _reference_manifest())
     verify_extracted_source(source, tmp_path)
+
+
+def test_reference_bundle_member_corruption_fails_closed(tmp_path: Path) -> None:
+    source = _write_reference_source(tmp_path, _reference_manifest())
+    (tmp_path / "canonical/QQQ.csv").write_bytes(b"changed")
+    with pytest.raises(GovernedActionsArtifactError, match="member hash mismatch"):
+        verify_extracted_source(source, tmp_path)
+
+
+@pytest.mark.parametrize("relative", ["../outside.csv", "C:/outside.csv", "/outside.csv"])
+def test_reference_bundle_unsafe_member_fails_closed(tmp_path: Path, relative: str) -> None:
+    source = _write_reference_source(tmp_path, _reference_manifest(files={relative: "a" * 64}))
+    with pytest.raises(GovernedActionsArtifactError, match="path is unsafe"):
+        verify_extracted_source(source, tmp_path)
+
+
+def test_reference_bundle_pool_substitution_fails_closed(tmp_path: Path) -> None:
+    source = _write_reference_source(tmp_path, _reference_manifest(bundle_id="other_pool"))
+    with pytest.raises(GovernedActionsArtifactError, match="identity mismatch"):
+        verify_extracted_source(source, tmp_path)
 
 
 def test_reference_bundle_quarantine_fails_closed(tmp_path: Path) -> None:

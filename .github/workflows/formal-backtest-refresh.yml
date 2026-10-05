@@ -104,6 +104,8 @@ on:
       - "tests/test_us_x1_3_current_target.py"
       - "tests/test_refresh_byd_v1_3_formal.py"
       - "tests/test_system_health.py"
+      - "tests/test_governed_actions_artifact.py"
+      - "tests/test_model_data_bundle.py"
       - "tests/test_formal_refresh_trigger_scope.py"
       - "tests/test_market_session_clock.py"
       - "pyproject.toml"
@@ -240,6 +242,7 @@ jobs:
             tests/test_resolve_formal_provider_cutoff.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
+            tests/test_governed_actions_artifact.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_us_x1_3_preview_publication.py \
@@ -281,6 +284,7 @@ jobs:
             tests/test_resolve_formal_provider_cutoff.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
+            tests/test_governed_actions_artifact.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_us_x1_3_preview_publication.py \
@@ -865,6 +869,8 @@ jobs:
           cp artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_publication_manifest.json \
             "$CANDIDATE_MODEL_DATA_ROOT/components/cn-selected-pool-prices.json"
           uv run python scripts/data/fetch_governed_model_data.py \
+            --source us_events \
+            --source qqq_reference \
             --source cn_alpha158 \
             --source cn_events \
             --output-root "$CANDIDATE_MODEL_DATA_ROOT/sources" \
@@ -873,6 +879,9 @@ jobs:
           uv run python scripts/data/build_model_data_bundle.py \
             --component "prices.us_selected_equities_v2:selected_pool_prices:${CANDIDATE_MODEL_DATA_ROOT}/components/us-selected-pool-prices.json:us" \
             --component "prices.cn_selected_equities_v3:selected_pool_prices:${CANDIDATE_MODEL_DATA_ROOT}/components/cn-selected-pool-prices.json:cn" \
+            --component "fundamentals.us_selected_equities_v2:fundamental_coverage:${CANDIDATE_MODEL_DATA_ROOT}/sources/us_events/fundamentals/component_manifest.json:us" \
+            --component "corporate_actions.us_selected_equities_v2:corporate_action_coverage:${CANDIDATE_MODEL_DATA_ROOT}/sources/us_events/corporate_actions/component_manifest.json:us" \
+            --component "references.qqqi_qqq_tqqq_reference_bundle_v1:etf_reference_bundle:${CANDIDATE_MODEL_DATA_ROOT}/sources/qqq_reference/bundle_manifest.json:us" \
             --component "factors.qlib_alpha158.panel.cn.v1:factor_panel:${CANDIDATE_MODEL_DATA_ROOT}/sources/cn_alpha158/alpha158/factor_panel_manifest.json:cn" \
             --component "fundamentals.cn_selected_equities_v3:fundamental_coverage:${CANDIDATE_MODEL_DATA_ROOT}/sources/cn_events/fundamentals/component_manifest.json:cn" \
             --component "corporate_actions.cn_selected_equities_v3:corporate_action_coverage:${CANDIDATE_MODEL_DATA_ROOT}/sources/cn_events/corporate_actions/component_manifest.json:cn" \
@@ -969,6 +978,7 @@ jobs:
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
+            tests/test_governed_actions_artifact.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_model_x1_baselines.py \

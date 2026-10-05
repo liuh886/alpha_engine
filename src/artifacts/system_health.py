@@ -11,6 +11,7 @@ from typing import Any, Mapping, Sequence
 from src.artifacts.model_run_bundle_v2 import validate_catalog
 from src.artifacts.strategy_operations import (
     StrategyOperationsError,
+    _staleness,
     _transition_predecessor_strategies,
 )
 from src.governance.active_strategy_catalog import (
@@ -237,8 +238,16 @@ def build_system_health(
     market_expected: dict[str, str | None] = {}
     for market in sorted(expected_market_candidates):
         provider_cutoff = _date(market_cutoffs.get(market))
-        expected_cutoff = _max_date(expected_market_candidates[market])
-        if provider_cutoff is None or expected_cutoff is None:
+        # A set of mutually consistent old receipts is still delayed today.
+        # Reuse the operations clock; it observes exchange holidays and never
+        # fetches data or initiates an evaluation.
+        staleness = _staleness(provider_cutoff, market=market, generated_at=generated_at)
+        calendar_cutoff = staleness["expected_cutoff"]
+        expected_cutoff = _max_date([
+            *expected_market_candidates[market],
+            str(calendar_cutoff) if calendar_cutoff is not None else None,
+        ])
+        if provider_cutoff is None or expected_cutoff is None or calendar_cutoff is None:
             state = "blocked"
         elif provider_cutoff < expected_cutoff:
             state = "delayed"
@@ -253,7 +262,7 @@ def build_system_health(
                 "market": market,
                 "state": state,
                 "market_expected_cutoff": expected_cutoff,
-                "market_expected_cutoff_source": "max_governed_active_watermark",
+                "market_expected_cutoff_source": "max_exchange_calendar_and_governed_active_watermark",
                 "provider_cutoff": provider_cutoff,
                 "provider_cutoff_source": "governed_benchmark_market_session",
                 "provider_lag_sessions": 0 if state == "current" else None,
@@ -264,15 +273,10 @@ def build_system_health(
                 "staleness": {
                     "as_of": provider_cutoff,
                     "expected_cutoff": expected_cutoff,
-                    "sessions_behind": (
-                        None
-                        if provider_cutoff is None or expected_cutoff is None
-                        else _trading_sessions_between(provider_cutoff, expected_cutoff)
-                    ),
+                    "sessions_behind": staleness["sessions_behind"]
+                    if expected_cutoff == calendar_cutoff else None,
                     "stale": bool(
-                        provider_cutoff is not None
-                        and expected_cutoff is not None
-                        and provider_cutoff < expected_cutoff
+                        staleness["stale"] or state != "current"
                     ),
                 },
             }
