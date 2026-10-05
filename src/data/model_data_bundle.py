@@ -348,7 +348,10 @@ def _etf_reference_bundle(
         pool_id=str(payload.get("bundle_id", payload.get("contract_id", spec.component_id))),
         manifest_path=str(path),
         manifest_sha256=_sha256(path),
-        evidence_cutoff=_parse_date(payload.get("evidence_cutoff") or payload.get("last_date")),
+        evidence_cutoff=_parse_date(
+            payload.get("evidence_cutoff") or payload.get("last_date")
+            or payload.get("common_history_end")
+        ),
         first_date=_parse_date(payload.get("common_history_start")),
         last_date=_parse_date(payload.get("common_history_end") or payload.get("latest_date")),
         expected_symbol_count=expected,

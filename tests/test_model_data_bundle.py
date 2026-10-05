@@ -94,6 +94,31 @@ def _etf_manifest(tmp_path: Path) -> Path:
     )
 
 
+@pytest.mark.parametrize("cutoff,expected_status", [
+    ("2026-07-31", "ready"), ("2026-07-30", "blocked"),
+])
+def test_native_etf_history_end_binds_training_cutoff(
+    tmp_path: Path, cutoff: str, expected_status: str,
+) -> None:
+    path = _etf_manifest(tmp_path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    del payload["evidence_cutoff"]  # Native ETF manifests use common_history_end.
+    _write_json(path, payload)
+    manifest = build_model_data_bundle(
+        root=Path.cwd(), contract_path=CONTRACT,
+        component_specs=[ComponentSpec(
+            "references.qqqi_qqq_tqqq_reference_bundle_v1", "etf_reference_bundle", path, "us",
+        )],
+        output_root=tmp_path / "output", evidence_cutoff=cutoff,
+    )
+    profile = next(row for row in manifest["training_profiles"]
+                   if row["profile_id"] == "qqqi_qqq_tqqq_rotation_v1")
+    assert profile["status"] == expected_status
+    assert profile["required_components"][0]["observed"]["evidence_cutoff"] == "2026-07-31"
+    if expected_status == "blocked":
+        assert "exceeds 2026-07-30" in profile["failed_gates"][0]
+
+
 def _generic_component(
     tmp_path: Path,
     *,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -103,6 +104,11 @@ def _staleness(
         expected = completed[-1] if completed else None
     except (MarketSessionClockError, ValueError):
         expected = None
+    try:
+        if as_of is not None and date.fromisoformat(as_of).isoformat() != as_of:
+            as_of = None
+    except ValueError:
+        as_of = None
     if as_of is None or expected is None:
         return {
             "as_of": as_of,

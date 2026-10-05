@@ -29,13 +29,15 @@ def _operations() -> dict[str, object]:
     )
 
 
-def _health(*, freshness: Path = FORMAL_FRESHNESS) -> dict[str, object]:
+def _health(
+    *, freshness: Path = FORMAL_FRESHNESS, model_data: Path = MODEL_DATA,
+) -> dict[str, object]:
     return build_system_health(
         repository_root=Path.cwd(),
         formal_catalog=FORMAL_CATALOG,
         formal_freshness=freshness,
         operations=_operations(),
-        model_data_readiness=MODEL_DATA,
+        model_data_readiness=model_data,
         generated_at="2026-08-13T09:30:00Z",
     )
 
@@ -93,11 +95,9 @@ def test_research_model_data_readiness_does_not_block_unbound_runtime_models() -
         assert row["model_data_binding"] == "not_declared"
         assert row["model_data_cutoff"] is None
         assert row["stages"]["model_data"] == "not_applicable"
-        if row["strategy_id"] == "cn_27":
-            assert row["state"] == "blocked"
-            assert row["stages"]["signal"] == "current"
-        else:
-            assert row["state"] != "blocked"
+        # Runtime status follows its own evidence, which advances independently
+        # of this research readiness report (including CN27 recovery).
+        assert row["state"] in {"current", "delayed", "blocked", "inconsistent"}
 
 
 def test_provider_lag_is_delayed_not_formal_corruption(tmp_path: Path) -> None:
@@ -112,6 +112,53 @@ def test_provider_lag_is_delayed_not_formal_corruption(tmp_path: Path) -> None:
     assert us["provider_formal_consistency"] == "current"
     assert us["provider_lag_sessions"] is None
     assert us["provider_lag_exact"] is False
+
+
+def test_training_blockers_do_not_change_runtime_health(tmp_path: Path) -> None:
+    readiness = json.loads(MODEL_DATA.read_text(encoding="utf-8"))
+    path = tmp_path / "readiness.json"
+    states = []
+    for blocked in (0, 1):
+        readiness["summary"]["blocked_component_count"] = blocked
+        readiness["summary"]["partial_component_count"] = 0
+        path.write_text(json.dumps(readiness), encoding="utf-8")
+        payload = _health(model_data=path)
+        assert payload["model_data"]["state"] == ("blocked" if blocked else "current")
+        states.append((payload["state"], payload["strategies"]))
+    assert states[0] == states[1]
+
+
+def test_consistent_old_evidence_is_delayed_by_exchange_clock(tmp_path: Path) -> None:
+    formal = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+    operations = _operations()
+    freshness = json.loads(FORMAL_FRESHNESS.read_text(encoding="utf-8"))
+    for row in formal["records"]:
+        row["evidence_cutoff"] = "2026-09-04"
+    for row in operations["records"]:
+        row["latest_completed_session"] = row["as_of"] = "2026-09-04"
+    freshness["markets"] = {"us": "2026-09-04", "cn": "2026-09-04"}
+    catalog_path = tmp_path / "catalog.json"
+    freshness_path = tmp_path / "freshness.json"
+    catalog_path.write_text(json.dumps(formal), encoding="utf-8")
+    freshness_path.write_text(json.dumps(freshness), encoding="utf-8")
+    payload = build_system_health(
+        repository_root=Path.cwd(),
+        formal_catalog=catalog_path,
+        formal_freshness=freshness_path,
+        operations=operations,
+        model_data_readiness=MODEL_DATA,
+        generated_at="2026-09-09T01:00:00Z",
+    )
+    validate_system_health(payload)
+    markets = {row["market"]: row for row in payload["markets"]}
+    for row in markets.values():
+        assert row["state"] == "delayed"
+        assert row["staleness"]["stale"] is True
+        assert row["market_expected_cutoff"] == "2026-09-08"
+        assert row["provider_formal_consistency"] == "current"
+    # US Labor Day must not create a spurious missing-session warning.
+    assert markets["us"]["staleness"]["sessions_behind"] == 1
+    assert markets["cn"]["staleness"]["sessions_behind"] == 2
 
 
 def test_delivery_failure_degrades_strategy_health() -> None:

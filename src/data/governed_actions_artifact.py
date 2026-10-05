@@ -409,6 +409,13 @@ def _verify_reference_bundle(source: GovernedSource, root: Path) -> None:
     )
     if not symbols:
         raise GovernedActionsArtifactError("reference bundle symbols are missing")
+    if (
+        source.market != "us"
+        or manifest.get("bundle_id") != source.pool_id
+        or len(symbols) != source.expected_symbol_count
+        or len(raw_symbols) != len(symbols)
+    ):
+        raise GovernedActionsArtifactError("reference bundle identity mismatch")
     if manifest.get("strategy_data_ready") is not True:
         raise GovernedActionsArtifactError("reference bundle strategy data is not ready")
     if manifest.get("professional_source_ready") is not True:
@@ -431,6 +438,20 @@ def _verify_reference_bundle(source: GovernedSource, root: Path) -> None:
         )
     if str(manifest.get("common_history_end", "")) != source.evidence_cutoff:
         raise GovernedActionsArtifactError("reference bundle cutoff mismatch")
+    files = manifest.get("files")
+    if not isinstance(files, dict) or not files:
+        raise GovernedActionsArtifactError("reference bundle file inventory is missing")
+    for relative, digest in files.items():
+        if not isinstance(relative, str) or not _safe_relative(relative):
+            raise GovernedActionsArtifactError("reference bundle member path is unsafe")
+        member = root / relative
+        if (
+            not isinstance(digest, str) or not _SHA256.fullmatch(digest)
+            or not member.is_file() or _sha256(member) != digest
+        ):
+            raise GovernedActionsArtifactError(f"reference bundle member hash mismatch: {relative}")
+    if not all(f"canonical/{symbol}.csv" in files for symbol in symbols):
+        raise GovernedActionsArtifactError("reference bundle canonical members are missing")
 
 
 def verify_extracted_source(source: GovernedSource, root: Path) -> None:
