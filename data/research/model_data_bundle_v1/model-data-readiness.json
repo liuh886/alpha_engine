@@ -1,35 +1,37 @@
 {
-  "built_at": "2026-10-03T10:32:20+00:00",
-  "bundle_id": "30d9d3e0b3f410e6d66539d8c9a3334f642b0ca98a190d509a39e2290adcb956",
+  "built_at": "2026-10-05T16:18:29+00:00",
+  "bundle_id": "c006542892518087da9d6d474f2ededdab20f1ea37651e719b1cd78eefc91eff",
   "evidence_cutoff": "2026-10-02",
   "research_only": true,
   "schema_version": "1.1",
   "source_receipts": [
     {
       "path": "sources/governed-source-receipt.json",
-      "sha256": "214af471eef43a8c69d37c4c063a508aae0e0674addc20a77a2ea51dd27227df",
+      "sha256": "fd0bc83e5585a8ed307b8ed66339ca36a91a81c5372f4a1f28b1362f5b48b41b",
       "source_ids": [
         "cn_alpha158",
-        "cn_events"
+        "cn_events",
+        "qqq_reference",
+        "us_events"
       ]
     }
   ],
   "summary": {
     "blocked_component_count": 0,
     "blocked_training_profiles": [
-      "qqqi_qqq_tqqq_rotation_v1",
       "us_selected_alpha158_v1",
-      "us_selected_price_plus_fundamentals_v1",
       "us_small_pool_price_plus_fundamentals_v1"
     ],
-    "component_count": 5,
-    "partial_component_count": 2,
-    "ready_component_count": 3,
+    "component_count": 8,
+    "partial_component_count": 3,
+    "ready_component_count": 5,
     "ready_training_profiles": [
       "cn_selected_alpha158_v1",
       "cn_selected_price_only_v1",
       "cn_selected_price_plus_fundamentals_v1",
-      "us_selected_price_only_v1"
+      "qqqi_qqq_tqqq_rotation_v1",
+      "us_selected_price_only_v1",
+      "us_selected_price_plus_fundamentals_v1"
     ]
   },
   "trade_ready": false
