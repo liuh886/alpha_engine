@@ -50,12 +50,15 @@ function buildEquitySeries(models: ModelData[]) {
 }
 
 function contractValue(model: ModelData, key: 'benchmark' | 'start' | 'end'): string {
-  return formatDeclaredValue(model.backtest?.meta?.[key]);
+  const formal = projectFormalEvidence(model).formal;
+  return formatDeclaredValue(formal
+    ? key === 'benchmark' ? formal.benchmark : formal.date_range[key]
+    : model.backtest?.meta?.[key]);
 }
 
 function compareIdentity(models: ModelData[]) {
   const identityRows = [
-    { label: 'Market', values: models.map((model) => formatDeclaredValue(model.market)) },
+    { label: 'Market', values: models.map((model) => formatDeclaredValue(projectFormalEvidence(model).formal?.market ?? model.market)) },
     { label: 'Benchmark', values: models.map((model) => contractValue(model, 'benchmark')) },
     { label: 'Start', values: models.map((model) => contractValue(model, 'start')) },
     { label: 'End', values: models.map((model) => contractValue(model, 'end')) },
@@ -67,7 +70,8 @@ function compareIdentity(models: ModelData[]) {
   ];
   return identityRows.map((row) => ({
     ...row,
-    aligned: new Set(row.values.map((value) => String(value).toLowerCase())).size <= 1,
+    aligned: row.values.every((value) => value.trim() && value !== formatDeclaredValue(undefined))
+      && new Set(row.values.map((value) => String(value).toLowerCase())).size <= 1,
   }));
 }
 
@@ -165,7 +169,7 @@ export function ComparePage({ models }: { models: ModelData[] }) {
               {!comparable && (
                 <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-800 dark:text-amber-200">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>{incompatibleRows.map((row) => row.label).join(', ')} differ. No winner is inferred.</span>
+                  <span>{incompatibleRows.map((row) => row.label).join(', ')} differ or are not declared. No winner is inferred.</span>
                 </div>
               )}
               <div className="overflow-x-auto">
@@ -177,6 +181,12 @@ export function ComparePage({ models }: { models: ModelData[] }) {
                         <TableCell className="font-medium">{row.label} {!row.aligned && <Badge variant="outline" className="ml-2 text-[9px] text-amber-700">Differs</Badge>}</TableCell>
                         {row.values.map((value, index) => <TableCell key={`${row.label}-${selected[index].id}`} className="font-mono text-xs">{value}</TableCell>)}
                       </TableRow>
+                    ))}
+                    {['Evidence cutoff', 'Evidence completeness'].map((label) => (
+                      <TableRow key={label}><TableCell className="font-medium">{label}</TableCell>{selected.map((model) => {
+                        const formal = projectFormalEvidence(model).formal;
+                        return <TableCell key={model.id} className="font-mono text-xs">{formatDeclaredValue(label === 'Evidence cutoff' ? formal?.evidence_cutoff : formal?.evidence_completeness.status)}</TableCell>;
+                      })}</TableRow>
                     ))}
                   </TableBody>
                 </Table>
@@ -249,6 +259,15 @@ export function ComparePage({ models }: { models: ModelData[] }) {
           </Card>
         </>
       )}
+      {selected.map((model) => {
+        const formal = projectFormalEvidence(model).formal;
+        if (!formal) return null;
+        return <Card key={model.id}><CardHeader><CardTitle className="text-sm">Interpretation limits · {model.name || model.id}</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">
+          {formal.interpretation_notes.length
+            ? <ul className="list-disc space-y-2 pl-5">{formal.interpretation_notes.map((note, index) => <li key={index}>{note}</li>)}</ul>
+            : <p>No interpretation notes are retained in this formal package.</p>}
+        </CardContent></Card>;
+      })}
     </div>
   );
 }

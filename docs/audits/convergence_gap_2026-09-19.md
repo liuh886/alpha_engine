@@ -5,7 +5,7 @@ Authority: this report owns the *remaining-work backlog and gap-to-target* view.
 It does not replace issue #1074 (prioritization), #324/#325 (data closure),
 #826 (training plane) or the frozen contracts it references.
 
-## Current operating follow-up — 2026-10-06
+## Current operating follow-up — 2026-10-07
 
 This checklist records user-requested deployment and remaining operating work.
 The dated baseline below remains historical. Current readiness comes from the
@@ -37,6 +37,19 @@ manifest-bound bundle, not the historical counts in this report.
 - [ ] Observe 20 eligible operating sessions using existing diagnostics and
   publication/delivery receipts, recording cutoff lag, duration, manual
   interventions and exact blockers. A legitimate block is not a successful refresh.
+- [x] Correct asynchronous readiness states and comparison truth controls on
+  the existing Data and Compare routes: pending/rejected/absent are distinct,
+  old-bundle results are hidden, and missing matching identities cannot rank
+  models. Retained interpretation limits remain visible for each selection.
+- [ ] Bind monitoring to existing selected-pool strategy evidence before claiming
+  model drift health. Reuse current manifests and monitoring components; the
+  generic model-operations projection has no production source adapter and
+  deliberately publishes no market records. Do not seed a parallel champion registry.
+- [ ] Preregister the next independent risk evaluation for CN x1.2 before
+  examining its results. Retain the rejected 2026H1 drawdown gate and declared
+  2026-07-01 reserved-holdout boundary; do not tune on that reserved evidence.
+  Compare the frozen baseline and declared challenger at identical pool,
+  benchmark, costs and execution boundaries, with retained failure evidence.
 
 Detailed implementation evidence: `platform_autonomy_review_2026-10-05.md`.
 
