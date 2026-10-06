@@ -315,3 +315,21 @@ test('data and comparison views keep unavailable evidence explicit on every view
   expect(pageErrors).toEqual([]);
   await page.screenshot({ path: `test-results/static-artifact/evidence-comparison-${testInfo.project.name}.png`, fullPage: true });
 });
+
+test('model monitoring reads formal and operational evidence without the legacy projection', async ({ page }, testInfo) => {
+  const legacyRequests: string[] = [];
+  const pageErrors: string[] = [];
+  page.on('request', (request) => { if (new URL(request.url()).pathname.includes('/data/model-operations/')) legacyRequests.push(request.url()); });
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
+  await page.goto('/#/model-operations');
+  await expect(page.getByRole('heading', { name: 'Model Operations & Monitoring', exact: true })).toBeVisible();
+  await expect(page.getByText('Statistical drift: unavailable', { exact: true })).toBeVisible();
+  for (const name of await loadFormalDisplayNames(page)) await expect(page.getByText(name, { exact: true }).last()).toBeVisible();
+  await expect(page.getByText(/The preregistered experiment remains rejected because the 2026H1 drawdown-worsening gate failed/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Refresh monitoring' })).toBeEnabled();
+  expect(legacyRequests).toEqual([]);
+  expect(pageErrors).toEqual([]);
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({ path: `test-results/static-artifact/model-monitoring-${testInfo.project.name}.png`, fullPage: true });
+});

@@ -200,3 +200,32 @@ ESLint 通过；新增静态浏览器验收在桌面、平板、手机各通过�
 [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q)。
 仅将该间接依赖锁至修复补丁 1.2.2（锁文件 3 行替换），不改变直接依赖范围；
 既有 moderate-or-higher 门禁保持，本地 npm audit 返回 0 vulnerabilities。
+
+## 权威运行监测与旧前端路径收敛 — 2026-10-07
+
+前轮 PR #1178 合并为 `85304c071caf6d4426eb2800a91f60d508d1fb0d`；
+[Pages 37499976999](https://github.com/liuh886/alpha_engine/actions/runs/37499976999)
+发布和两项线上全策略验收成功，额外桌面/手机比较页及线上 Data 验证通过。
+
+继续检查发现，Model Operations 路由只消费未接通生产来源的旧通用投影，
+无法展示现有五个正式模型的运行状态。漂移计算器需要基线/当前预测和成熟
+标签窗口；当前决策账本及持仓解释不能替代完整跨截面窗口。未改动冻结模型、
+漂移阈值或训练流程，未据此计算 PSI / Rank IC 衰减等缺乏来源的统计量。
+
+现有页面改为直接消费正式 v2 运行目录、既有 system-health 和经 SHA/字节数
+验证的 diagnostics。健康记录必须同时匹配 model、bundle、run、market、cutoff
+且唯一；匹配失败显示 unknown，正式历史说明仍可阅读。显示供应商、正式证据、
+因子和信号评估的实际日期及各自状态，健康投影生成时间单独展示。
+统计漂移始终明确 unavailable，与运行新鲜度分开。刷新只重新读取已有证据，
+不训练、不扩池、不发单，也不构造模拟绩效或重建 champion 注册表。
+
+各模型说明独立加载，一项失败或延迟不挡住其他有效状态；切换正式目录或刷新
+立即隐藏旧结果。当前持仓、计划和信号驱动继续在已有策略访问门禁后查看。
+调用检索确认旧 TypeScript operations reader 仅余测试引用，删除该未使用
+前端路径及对应旧测试，保留 Python 历史诊断能力、冻结合同和所有研究证据。
+
+验证：185 项测试（47 文件）、TypeScript、全站 ESLint、构建和预算检查通过；
+桌面/平板/手机新增监测页验收均通过，实际五个正式模型及 CN 失败说明可见，
+未请求旧 data/model-operations 投影，无脚本异常或页面横向溢出。
+JavaScript gzip 从前轮 472.26 KB 到 470.43 KB（上限 480 KB），不是运行耗时基准。
+两个 Alpaca Secret 名称检查仍为空；其来源阻塞待办未关闭。

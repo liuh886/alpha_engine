@@ -41,10 +41,13 @@ manifest-bound bundle, not the historical counts in this report.
   the existing Data and Compare routes: pending/rejected/absent are distinct,
   old-bundle results are hidden, and missing matching identities cannot rank
   models. Retained interpretation limits remain visible for each selection.
-- [ ] Bind monitoring to existing selected-pool strategy evidence before claiming
-  model drift health. Reuse current manifests and monitoring components; the
-  generic model-operations projection has no production source adapter and
-  deliberately publishes no market records. Do not seed a parallel champion registry.
+- [x] Bind the existing Model Operations view to the formal v2 directory and
+  exact-identity system-health records; preserve each model's actual cutoffs and
+  interpretation limits. Remove the unused legacy frontend operations reader.
+- [ ] Bind statistical drift to declared baseline/current prediction and mature
+  label windows before claiming drift health. The generic backend projection
+  still has no production source adapter and publishes no market records.
+  Current monitoring reports drift as unavailable; do not seed a parallel champion registry.
 - [ ] Preregister the next independent risk evaluation for CN x1.2 before
   examining its results. Retain the rejected 2026H1 drawdown gate and declared
   2026-07-01 reserved-holdout boundary; do not tune on that reserved evidence.
