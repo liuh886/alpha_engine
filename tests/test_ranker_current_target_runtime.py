@@ -3,6 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import subprocess
+import sys
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -15,6 +18,66 @@ from src.research.cn_x1_2_current_target import MODEL_ID as CN_MODEL_ID
 from src.research.cn_x1_2_prospective import FROZEN_TRAIN_END
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_due_command_can_start_without_either_market_inference_stack() -> None:
+    # A fresh interpreter catches imports that in-process tests could mask.
+    code = """
+import importlib.abc
+import sys
+class RejectInference(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        forbidden = ('src.research.us_x1_3_current_target',
+                     'src.research.cn_x1_2_current_target', 'qlib', 'torch', 'xgboost')
+        if any(fullname == name or fullname.startswith(name + '.') for name in forbidden):
+            raise AssertionError('unexpected inference dependency: ' + fullname)
+sys.meta_path.insert(0, RejectInference())
+from scripts import run_ranker_current_target as command
+sys.argv = ['run_ranker_current_target.py', 'due', '--help']
+command.main()
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True, timeout=30
+    )
+    assert result.returncode == 0, result.stderr
+    assert "--as-of" in result.stdout
+
+
+@pytest.mark.parametrize("market", ["us", "cn"])
+def test_build_loads_only_the_selected_governed_inference(
+    tmp_path: Path, monkeypatch, market: str
+) -> None:
+    model = "us_x1_3" if market == "us" else "cn_x1_2"
+    adapter = f"{model}_current_target_v1"
+    strategy = SimpleNamespace(model_version_id=model, signal_ledger=str(tmp_path / "ledger"))
+    manifest, portfolio = tmp_path / "manifest.json", tmp_path / "portfolio.json"
+    monkeypatch.setattr(ranker_command, "resolve_formal_bundle",
+                        lambda *args, **kwargs: (manifest, portfolio, strategy, adapter))
+    imports, calls = [], []
+    def score(**kwargs):
+        calls.append(kwargs)
+        return {"model_version_id": model, "research_only": True, "trade_ready": False}
+    def load(module):
+        imports.append(module)
+        return SimpleNamespace(**{f"score_{model}_current_target": score})
+    monkeypatch.setattr(ranker_command, "import_module", load)
+    args = SimpleNamespace(formal_root=tmp_path, market=market, provider_dir=tmp_path / "provider",
+                           signal_date="2026-09-30", market_cutoff="2026-09-30",
+                           output=tmp_path / "signal.json")
+    assert ranker_command._build(args) == 0
+    assert imports == [f"src.research.{model}_current_target"]
+    assert calls == [{"provider_dir": args.provider_dir, "formal_manifest": manifest,
+                      "formal_portfolio": portfolio, "ledger_dir": tmp_path / "ledger",
+                      "signal_date": args.signal_date, "market_cutoff": args.market_cutoff,
+                      "repository_root": ranker_command.ROOT}]
+    assert json.loads(args.output.read_text())["model_version_id"] == model
+
+
+def test_unknown_adapter_fails_before_loading_inference(monkeypatch) -> None:
+    monkeypatch.setattr(ranker_command, "import_module",
+                        lambda name: pytest.fail("unknown adapters must not load modules"))
+    with pytest.raises(ranker_command.RankerCurrentTargetCommandError, match="unknown"):
+        ranker_command._load_adapter("undeclared")
 
 
 def _benchmark_evidence(

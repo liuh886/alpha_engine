@@ -17,6 +17,12 @@ manifest-bound bundle, not the historical counts in this report.
   (37338628091) and reviewed formal evidence refresh (37338628445, PR #1175).
   Evidence Pages deployment 37340710580 passed live acceptance; 6/8 training
   profiles are ready, with actual US 2026-10-02 / CN 2026-09-30 cutoffs.
+- [x] Isolate ranker due checks from both market inference modules; load only
+  the governed market adapter for an actual build/correction. Exact due output
+  retained in before/after CLI verification.
+- [ ] Confirm the US ranker next-open execution through the existing governed
+  observation/evidence route. Preserve target-pending status until proven; do not
+  treat elapsed time as execution proof.
 - [ ] Configure `APCA_API_KEY_ID` in the existing GitHub Actions repository Secrets.
 - [ ] Configure `APCA_API_SECRET_KEY` in the existing GitHub Actions repository Secrets.
   Both credential tasks are owned by the repository operator. Store values only

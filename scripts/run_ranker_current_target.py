@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 import hashlib
+from importlib import import_module
 import importlib.metadata
 import json
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -17,7 +19,6 @@ from src.artifacts.strategy_signal_ledger import correct_latest_decision
 from src.data.listing_lifecycle import ineligible_symbols
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.governance.strategy_runtime_capabilities import load_active_strategy_runtime_capabilities
-from src.research.cn_x1_2_current_target import score_cn_x1_2_current_target
 from src.research.market_session_clock import (
     EXCHANGE_CALENDAR_IDS,
     completed_market_date,
@@ -27,17 +28,29 @@ from src.research.ranker_current_target import (
     load_previous_state,
     next_due_session,
 )
-from src.research.us_x1_3_current_target import score_us_x1_3_current_target
 
 ROOT = Path(__file__).resolve().parents[1]
 ADAPTERS = {
-    "us_x1_3_current_target_v1": score_us_x1_3_current_target,
-    "cn_x1_2_current_target_v1": score_cn_x1_2_current_target,
+    "us_x1_3_current_target_v1": (
+        "src.research.us_x1_3_current_target", "score_us_x1_3_current_target"
+    ),
+    "cn_x1_2_current_target_v1": (
+        "src.research.cn_x1_2_current_target", "score_cn_x1_2_current_target"
+    ),
 }
 
 
 class RankerCurrentTargetCommandError(ValueError):
     """Raised when an active ranker cannot be resolved exactly."""
+
+
+def _load_adapter(adapter_id: str) -> Callable[..., dict[str, Any]]:
+    """Load only the governed market inference needed by build/correction."""
+    identity = ADAPTERS.get(adapter_id)
+    if identity is None:
+        raise RankerCurrentTargetCommandError(f"unknown current-target adapter: {adapter_id}")
+    module, function = identity
+    return cast(Callable[..., dict[str, Any]], getattr(import_module(module), function))
 
 
 def _read(path: Path) -> dict[str, Any]:
@@ -313,7 +326,7 @@ def _build(args: argparse.Namespace) -> int:
         "market_cutoff": args.market_cutoff,
         "repository_root": ROOT,
     }
-    signal = ADAPTERS[adapter_id](**common)
+    signal = _load_adapter(adapter_id)(**common)
     if signal.get("model_version_id") != strategy.model_version_id:
         raise RankerCurrentTargetCommandError("current-target adapter changed model identity")
     _write(args.output, signal)
@@ -347,7 +360,7 @@ def _correct_lifecycle(args: argparse.Namespace) -> int:
         if earlier:
             previous = max(earlier, key=lambda r: r["signal_date"])
             _write(prior / "latest.json", previous)
-        signal = ADAPTERS[adapter](
+        signal = _load_adapter(adapter)(
             provider_dir=args.provider_dir, formal_manifest=manifest,
             formal_portfolio=portfolio, ledger_dir=prior, signal_date=date,
             market_cutoff=date, repository_root=ROOT,
