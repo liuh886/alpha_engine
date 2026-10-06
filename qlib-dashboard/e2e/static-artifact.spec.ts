@@ -300,28 +300,17 @@ test('installed shell reopens offline after first visit', async ({ page, context
 test('data and comparison views keep unavailable evidence explicit on every viewport', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
-  const records = JSON.parse(modelsText);
-  // HTTP legacy models are eligible only when their version exists in the
-  // independent formal catalog. The fixture intentionally omits comparison contracts.
-  const comparisonText = JSON.stringify([
-    { ...records[0], id: 'us_x1_3' },
-    { ...records[0], id: 'cn_x1_2', name: 'Second Static Evidence Fixture', market: 'cn' },
-  ]);
-  await page.route('**/bundle/data/models.json', (route) => route.fulfill({ contentType: 'application/json', body: comparisonText }));
-  await page.route('**/bundle/alpha-engine-bundle.json', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
-    ...bundleManifest, scope: { ...bundleManifest.scope, model_count: 2 },
-    artifacts: bundleManifest.artifacts.map((artifact) => artifact.kind === 'model_index'
-      ? { ...artifact, byte_size: Buffer.byteLength(comparisonText), sha256: sha256(comparisonText) } : artifact),
-  }) }));
   await installMembershipFixture(page, { loading: false, isPro: true, user: { id: 'pro-fixture' } });
   await page.goto('/#/data');
   await expect(page.getByRole('heading', { name: 'Data identity and readiness' })).toBeVisible();
   await expect(page.getByText(/does not declare model-data readiness indexes/)).toBeVisible();
   await assertNoHorizontalOverflow(page);
-  await page.goto('/#/compare');
+  // Formal comparison must work independently of the one-model legacy fixture.
+  await page.goto('/#/compare?models=cn_x1_2,us_x1_3');
   await expect(page.getByRole('heading', { name: 'Compare formal evidence' })).toBeVisible();
   await expect(page.getByText(/No winner is inferred/)).toBeVisible();
   await expect(page.getByRole('row', { name: /^Evidence cutoff/ })).toBeVisible();
+  await expect(page.getByText(/The preregistered experiment remains rejected because the 2026H1 drawdown-worsening gate failed/)).toBeVisible();
   await assertNoHorizontalOverflow(page);
   expect(pageErrors).toEqual([]);
   await page.screenshot({ path: `test-results/static-artifact/evidence-comparison-${testInfo.project.name}.png`, fullPage: true });
