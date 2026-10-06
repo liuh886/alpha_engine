@@ -13,8 +13,10 @@ manifest-bound bundle, not the historical counts in this report.
 
 - [x] Merge platform autonomy fixes and verified-source integration: PR #1173,
   merge `cdcd347f68072b907889e37f4c32b740c55ca4ac`; PR checks passed.
-- [ ] Verify Pages deployment, Strategy Operations publication and the reviewed
-  formal evidence refresh after that merge. Record their actual run receipts.
+- [x] Verify Pages deployment (37338628444), Strategy Operations publication
+  (37338628091) and reviewed formal evidence refresh (37338628445, PR #1175).
+  Evidence Pages deployment 37340710580 passed live acceptance; 6/8 training
+  profiles are ready, with actual US 2026-10-02 / CN 2026-09-30 cutoffs.
 - [ ] Configure `APCA_API_KEY_ID` in the existing GitHub Actions repository Secrets.
 - [ ] Configure `APCA_API_SECRET_KEY` in the existing GitHub Actions repository Secrets.
   Both credential tasks are owned by the repository operator. Store values only
