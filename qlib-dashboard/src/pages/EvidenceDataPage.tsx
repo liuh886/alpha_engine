@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, Database, FileCheck2, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useActiveResearchBundle } from '@/hooks/useActiveResearchBundle';
+import type { OpenedResearchBundle } from '@/lib/research-bundle';
 import {
   formatBytes,
   groupArtifacts,
@@ -30,53 +32,67 @@ export function EvidenceDataPage() {
   const manifest = bundle?.manifest;
   const groups = groupArtifacts(manifest?.artifacts ?? []);
   const totalBytes = groups.reduce((sum, group) => sum + group.bytes, 0);
-  const [readiness, setReadiness] = useState<DataReadinessEvidence | null>(null);
-  const [readinessError, setReadinessError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<{
+    bundle: OpenedResearchBundle; attempt: number;
+    value: DataReadinessEvidence | null; error: string;
+  } | null>(null);
+  const settled = result?.bundle === bundle && result?.attempt === attempt;
+  const readiness = settled ? result?.value : null;
+  const readinessError = settled ? result?.error : '';
+  const loading = Boolean(bundle) && !settled;
 
   useEffect(() => {
     let active = true;
-    setReadiness(null);
-    setReadinessError('');
     if (!bundle) return () => { active = false; };
     void loadDataReadinessEvidence(bundle)
-      .then((value) => { if (active) setReadiness(value); })
-      .catch((error: unknown) => { if (active) setReadinessError(error instanceof Error ? error.message : String(error)); });
+      .then((value) => { if (active) setResult({ bundle, attempt, value, error: '' }); })
+      .catch((error: unknown) => {
+        if (active) setResult({ bundle, attempt, value: null,
+          error: error instanceof Error ? error.message : String(error) });
+      });
     return () => { active = false; };
-  }, [bundle]);
+  }, [bundle, attempt]);
 
   if (!bundle || !manifest) {
     return <div className="research-empty-state"><Database className="h-8 w-8 text-muted-foreground" /><h1 className="mt-3 text-xl font-semibold">No evidence bundle is open</h1><p className="mt-2 text-sm text-muted-foreground">Open a bundle from Library to inspect data lineage and readiness.</p></div>;
   }
 
   const readinessSummary = readiness?.readiness.summary;
+  const unavailableSummary = loading ? 'Checking...' : readinessError ? 'Unavailable' : 'Not indexed';
 
   return (
     <div className="research-page space-y-6">
       <header className="research-page-header">
         <div><p className="research-kicker">Evidence / Data</p><h1>Data identity and readiness</h1><p>Inspect the exact data components and training gates used by Alpha Engine before interpreting any model result.</p></div>
-        <Badge variant="outline" className="h-7 gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> {bundle.integrity === 'all_verified' ? 'Fully verified' : 'Core indexes verified'}</Badge>
+        <Badge variant="outline" className="h-7 gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> {bundle.integrity === 'all_verified' ? 'Bundle hashes verified' : 'Core hashes verified'}</Badge>
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card className="research-surface"><CardContent className="pt-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Evidence cutoff</p><p className="mt-2 font-mono text-xl font-semibold">{readiness?.readiness.evidence_cutoff || manifest.evidence_cutoff || 'Not declared'}</p></CardContent></Card>
-        <Card className="research-surface"><CardContent className="pt-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ready components</p><p className="mt-2 font-mono text-xl font-semibold">{readinessSummary ? `${readinessSummary.ready_component_count}/${readinessSummary.component_count}` : 'Not indexed'}</p></CardContent></Card>
-        <Card className="research-surface"><CardContent className="pt-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ready training profiles</p><p className="mt-2 font-mono text-xl font-semibold">{readinessSummary?.ready_training_profiles.length ?? 'Not indexed'}</p></CardContent></Card>
-        <Card className="research-surface"><CardContent className="pt-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Blocked profiles</p><p className="mt-2 font-mono text-xl font-semibold">{readinessSummary?.blocked_training_profiles.length ?? 'Not indexed'}</p></CardContent></Card>
+        <Card className="research-surface"><CardContent className="pt-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ready components</p><p className="mt-2 font-mono text-xl font-semibold">{readinessSummary ? `${readinessSummary.ready_component_count}/${readinessSummary.component_count}` : unavailableSummary}</p></CardContent></Card>
+        <Card className="research-surface"><CardContent className="pt-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ready training profiles</p><p className="mt-2 font-mono text-xl font-semibold">{readinessSummary?.ready_training_profiles.length ?? unavailableSummary}</p></CardContent></Card>
+        <Card className="research-surface"><CardContent className="pt-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Blocked profiles</p><p className="mt-2 font-mono text-xl font-semibold">{readinessSummary?.blocked_training_profiles.length ?? unavailableSummary}</p></CardContent></Card>
       </section>
 
       {readinessError && (
-        <Card className="border-destructive/40 bg-destructive/5">
+        <Card role="alert" className="border-destructive/40 bg-destructive/5">
           <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><AlertTriangle className="h-4 w-4 text-destructive" /> Data readiness index rejected</CardTitle></CardHeader>
-          <CardContent><p className="text-sm">{readinessError}</p></CardContent>
+          <CardContent className="space-y-3"><p className="text-sm">{readinessError}</p><Button variant="outline" size="sm" onClick={() => setAttempt((value) => value + 1)}>Retry readiness check</Button></CardContent>
         </Card>
       )}
 
-      {!readiness && !readinessError && (
+      {loading && (
+        <Card aria-busy="true"><CardContent role="status" className="py-6 text-sm text-muted-foreground">Checking data readiness...</CardContent></Card>
+      )}
+
+      {settled && !readiness && !readinessError && (
         <Card className="border-dashed"><CardContent className="py-6 text-sm text-muted-foreground">This bundle does not declare model-data readiness indexes. Artifact identity remains visible below, but the frontend will not infer training readiness.</CardContent></Card>
       )}
 
       {readiness && (
         <section className="space-y-5">
+          <p className="text-sm text-muted-foreground">Ready profiles have passed their declared data gates. Model performance and promotion require separate evaluation evidence.</p>
           <Card className="research-surface overflow-hidden">
             <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Database className="h-4 w-4 text-primary" /> Governed data components</CardTitle></CardHeader>
             <CardContent className="p-0">

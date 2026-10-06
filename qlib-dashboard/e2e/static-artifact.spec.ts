@@ -296,3 +296,22 @@ test('installed shell reopens offline after first visit', async ({ page, context
   await page.reload();
   await expect(page.getByText('Alpha Engine', { exact: true }).first()).toBeVisible();
 });
+
+test('data and comparison views keep unavailable evidence explicit on every viewport', async ({ page }, testInfo) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await installMembershipFixture(page, { loading: false, isPro: true, user: { id: 'pro-fixture' } });
+  await page.goto('/#/data');
+  await expect(page.getByRole('heading', { name: 'Data identity and readiness' })).toBeVisible();
+  await expect(page.getByText(/does not declare model-data readiness indexes/)).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+  // Formal comparison must work independently of the one-model legacy fixture.
+  await page.goto('/#/compare?models=cn_x1_2,us_x1_3');
+  await expect(page.getByRole('heading', { name: 'Compare formal evidence' })).toBeVisible();
+  await expect(page.getByText(/No winner is inferred/)).toBeVisible();
+  await expect(page.getByRole('row', { name: /^Evidence cutoff/ })).toBeVisible();
+  await expect(page.getByText(/The preregistered experiment remains rejected because the 2026H1 drawdown-worsening gate failed/)).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+  expect(pageErrors).toEqual([]);
+  await page.screenshot({ path: `test-results/static-artifact/evidence-comparison-${testInfo.project.name}.png`, fullPage: true });
+});
