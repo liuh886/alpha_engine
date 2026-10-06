@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from src.artifacts.strategy_signal_ledger import read_latest_evaluation
 from src.factors.strategy_snapshot import build_strategy_factor_snapshot
 from src.research.byd_signal_alerts import (
     MODEL_ID,
@@ -20,6 +21,7 @@ from src.research.byd_signal_evidence import (
     bind_final_signal_identity,
     bind_manifest_observation_identity,
     close_evidence_is_current,
+    BYDSignalEvidenceError,
 )
 
 MODEL_FAMILY_ID = "byd_allocation"
@@ -44,15 +46,10 @@ def _latest_observation(store_dir: Path) -> dict[str, Any] | None:
 
 
 def _previous_alert(state_store: Path) -> dict[str, Any] | None:
-    path = state_store / "latest.json"
-    if not path.exists():
+    record = read_latest_evaluation(state_store, model_version_id=MODEL_ID)
+    if record is None:
         return None
-    value = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(value, dict):
-        raise ValueError("BYD signal latest record must be an object")
-    if value.get("model_version_id") != MODEL_ID:
-        raise ValueError("BYD signal latest record has the wrong model identity")
-    signal = value.get("signal")
+    signal = record.get("signal")
     if not isinstance(signal, dict):
         raise ValueError("BYD signal latest record has no governed signal payload")
     return signal
@@ -71,8 +68,12 @@ def _write_outputs(path: Path, alert: dict[str, Any]) -> None:
         json.dumps(alert, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    (path / "signal_alert.md").write_text(str(alert["markdown"]), encoding="utf-8")
-    (path / "signal_alert_telegram.txt").write_text(str(alert["telegram_text"]), encoding="utf-8")
+    (path / "signal_alert.md").write_text(
+        str(alert.get("markdown") or _render_markdown(alert)), encoding="utf-8"
+    )
+    (path / "signal_alert_telegram.txt").write_text(
+        str(alert.get("telegram_text") or _render_telegram(alert)), encoding="utf-8"
+    )
 
 
 def _github_outputs(path: Path, alert: dict[str, Any]) -> None:
@@ -110,9 +111,38 @@ def main() -> int:
     if observation is None:
         raise RuntimeError("missing BYD v1.3 governed source observation")
 
+    previous = _previous_alert(args.state_store)
+    provenance = {
+        "v1_3_source_manifest_sha256": _manifest_sha256(args.source_store),
+        "source_observation_sha256": hashlib.sha256(
+            json.dumps(
+                observation, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        ).hexdigest(),
+        "source_workflow": "byd-daily-signal-alert",
+    }
+    if previous is not None and previous.get("signal_date") == observation.get("signal_date"):
+        if previous.get("data_provenance") != provenance:
+            raise BYDSignalEvidenceError(
+                "same-date BYD source changed; a governed correction is required"
+            )
+        # This is a read of an already sealed observation. Keep its original
+        # factor/implementation identity rather than relabeling old evidence
+        # with today's aggregate factor catalog hash.
+        _write_outputs(args.output_dir, previous)
+        if args.github_output is not None:
+            _github_outputs(args.github_output, previous)
+            with args.github_output.open("a", encoding="utf-8") as handle:
+                handle.write("reused_sealed_decision=true\n")
+        print(json.dumps({
+            "status": "reused_sealed_decision", "signal_date": previous["signal_date"],
+            "fingerprint": previous["fingerprint"], "research_only": True, "trade_ready": False,
+        }, ensure_ascii=False, sort_keys=True))
+        return 0
+
     alert = build_byd_signal_alert(
         observation,
-        previous_alert=_previous_alert(args.state_store),
+        previous_alert=previous,
     )
     alert["data_freshness_ok"] = close_evidence_is_current(observation)
     alert["execution_gate_status"] = (
@@ -124,15 +154,7 @@ def main() -> int:
         alert["transition_type"] in {"initialize", "rebalance"} and alert["data_freshness_ok"]
     )
 
-    alert["data_provenance"] = {
-        "v1_3_source_manifest_sha256": _manifest_sha256(args.source_store),
-        "source_observation_sha256": hashlib.sha256(
-            json.dumps(
-                observation, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-            ).encode("utf-8")
-        ).hexdigest(),
-        "source_workflow": "byd-daily-signal-alert",
-    }
+    alert["data_provenance"] = provenance
     factor_evidence = build_strategy_factor_snapshot(
         model_family_id=MODEL_FAMILY_ID,
         signal=alert,

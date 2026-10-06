@@ -5,6 +5,35 @@ Authority: this report owns the *remaining-work backlog and gap-to-target* view.
 It does not replace issue #1074 (prioritization), #324/#325 (data closure),
 #826 (training plane) or the frozen contracts it references.
 
+## Current operating follow-up — 2026-10-06
+
+This checklist records user-requested deployment and remaining operating work.
+The dated baseline below remains historical. Current readiness comes from the
+manifest-bound bundle, not the historical counts in this report.
+
+- [x] Merge platform autonomy fixes and verified-source integration: PR #1173,
+  merge `cdcd347f68072b907889e37f4c32b740c55ca4ac`; PR checks passed.
+- [x] Verify Pages deployment (37338628444), Strategy Operations publication
+  (37338628091) and reviewed formal evidence refresh (37338628445, PR #1175).
+  Evidence Pages deployment 37340710580 passed live acceptance; 6/8 training
+  profiles are ready, with actual US 2026-10-02 / CN 2026-09-30 cutoffs.
+- [ ] Configure `APCA_API_KEY_ID` in the existing GitHub Actions repository Secrets.
+- [ ] Configure `APCA_API_SECRET_KEY` in the existing GitHub Actions repository Secrets.
+  Both credential tasks are owned by the repository operator. Store values only
+  in Secrets, never in this checklist, Git, logs or chat. Then run the existing
+  `alpha158-canonical-vwap-ci.yml` US workflow at an explicit completed cutoff.
+  Acceptance: source preflight, exact US87 identity, SIP/declared OTC feeds,
+  same-record adjusted OHLC/VWAP, component hashes and the declared training
+  readiness gate pass. Polygon is validation-only under the frozen contract.
+- [ ] Retain exact verified US event and QQQ reference source locators beyond
+  Actions retention (2026-12-30 / 2027-01-01) through the existing governed
+  source retention policy; preserve licensing and bytes. Do not silently use latest.
+- [ ] Observe 20 eligible operating sessions using existing diagnostics and
+  publication/delivery receipts, recording cutoff lag, duration, manual
+  interventions and exact blockers. A legitimate block is not a successful refresh.
+
+Detailed implementation evidence: `platform_autonomy_review_2026-10-05.md`.
+
 ## 1. Purpose
 
 Record, in one place, (a) what was completed in the 2026-09-19 convergence
