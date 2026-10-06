@@ -189,3 +189,8 @@ Compare 页优先读取正式包的市场、区间和基准，展示各包实际
 验证：全站 48 个测试文件、178 项测试通过，生产构建、TypeScript 和修改文件
 ESLint 通过；新增静态浏览器验收在桌面、平板、手机各通过一次，检查 Data
 缺失状态、Compare 缺失合同拒绝排名、页面横向溢出和脚本异常。
+
+远端 PR 前端审计发现 source-map-js 1.2.1 命中
+[GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q)。
+仅将该间接依赖锁至修复补丁 1.2.2（锁文件 3 行替换），不改变直接依赖范围；
+既有 moderate-or-higher 门禁保持，本地 npm audit 返回 0 vulnerabilities。
