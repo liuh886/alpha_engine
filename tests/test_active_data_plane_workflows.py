@@ -140,7 +140,7 @@ def test_domain_data_caches_use_current_runtime_and_exact_identity_keys() -> Non
         "artifacts/data/canonical_vwap/cn/cache_metadata",
     ]
     assert restore["with"]["key"] == (
-        "${{ runner.os }}-alpha158-vwap-cn-sha256-v1-"
+        "${{ runner.os }}-alpha158-vwap-cn-validated-sha256-v1-"
         "${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml') }}-"
         "${{ steps.cutoff.outputs.value }}"
     )

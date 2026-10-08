@@ -106,6 +106,7 @@ def _cached_cn_pair(
         or metadata.get("qfq_sha256") != hashlib.sha256(qfq_path.read_bytes()).hexdigest()
         or metadata.get("research_only") is not True
         or metadata.get("trade_ready") is not False
+        or metadata.get("semantic_validation") != "passed"
         or metadata.get("symbol") != symbol
         or metadata.get("start") != start
         or metadata.get("cutoff") != end
@@ -464,6 +465,7 @@ def build_cn(
                         "qfq_path": str(qfq_path),
                         "raw_sha256": hashlib.sha256(raw_path.read_bytes()).hexdigest(),
                         "qfq_sha256": hashlib.sha256(qfq_path.read_bytes()).hexdigest(),
+                        "semantic_validation": "pending",
                         "research_only": True,
                         "trade_ready": False,
                     },
@@ -476,6 +478,10 @@ def build_cn(
                 volume_unit="shares",
                 amount_unit="CNY",
             )
+            if cache_mode != "exact_cutoff_reuse":
+                metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                metadata["semantic_validation"] = "passed"
+                _write_json(metadata_path, metadata)
             evidence["cache_mode"] = cache_mode
             frame.to_csv(source_root / f"{symbol}.csv", index=False)
             diagnostics.append(evidence)
