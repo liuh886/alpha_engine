@@ -132,6 +132,22 @@ jobs:
       APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v7
+      - name: Check required Alpaca credential names before dependency setup
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          missing = [name for name in ("APCA_API_KEY_ID", "APCA_API_SECRET_KEY") if not os.environ.get(name, "").strip()]
+          payload = {"status": "blocked" if missing else "passed", "missing_credentials": missing, "research_only": True, "trade_ready": False}
+          path = Path("artifacts/data/canonical_vwap/us/credential-preflight.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(payload))
+          if missing:
+              raise SystemExit("Alpaca credentials are incomplete; configure the exact repository Secret names listed above")
+          PY
       - uses: ./.github/actions/setup-python-uv
       - name: Resolve current evidence cutoff
         id: cutoff
@@ -242,7 +258,7 @@ jobs:
             artifacts/data/canonical_vwap/cn/qfq
             artifacts/data/canonical_vwap/cn/cache_metadata
           key: >-
-            ${{ runner.os }}-alpha158-vwap-cn-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml') }}-${{ steps.cutoff.outputs.value }}
+            ${{ runner.os }}-alpha158-vwap-cn-sha256-v1-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml') }}-${{ steps.cutoff.outputs.value }}
       - name: Build exact CN130 canonical VWAP provider and Alpha158 panels
         run: >-
           uv run python scripts/data/build_canonical_vwap_provider.py

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -91,7 +92,7 @@ def _cached_cn_pair(
     qfq_path: Path,
     metadata_path: Path,
 ) -> tuple[pd.DataFrame, pd.DataFrame] | None:
-    """Return an exact-cutoff cached source pair when its dates are complete."""
+    """Reuse byte-verified sources for the exact request, including session gaps."""
 
     if not raw_path.is_file() or not qfq_path.is_file() or not metadata_path.is_file():
         return None
@@ -100,7 +101,12 @@ def _cached_cn_pair(
     except (json.JSONDecodeError, OSError):
         return None
     if (
-        metadata.get("symbol") != symbol
+        not isinstance(metadata, dict)
+        or metadata.get("raw_sha256") != hashlib.sha256(raw_path.read_bytes()).hexdigest()
+        or metadata.get("qfq_sha256") != hashlib.sha256(qfq_path.read_bytes()).hexdigest()
+        or metadata.get("research_only") is not True
+        or metadata.get("trade_ready") is not False
+        or metadata.get("symbol") != symbol
         or metadata.get("start") != start
         or metadata.get("cutoff") != end
         or metadata.get("source_provider") != "akshare_sina"
@@ -117,10 +123,8 @@ def _cached_cn_pair(
     if (
         raw_dates.isna().any()
         or qfq_dates.isna().any()
-        or raw_dates.min() > requested_start
-        or qfq_dates.min() > requested_start
-        or raw_dates.max() < requested_end
-        or qfq_dates.max() < requested_end
+        or raw_dates.duplicated().any()
+        or qfq_dates.duplicated().any()
     ):
         return None
     raw = raw.loc[raw_dates.between(requested_start, requested_end)].copy()
@@ -443,23 +447,27 @@ def build_cn(
                 raw = pd.read_csv(fixture_dir / f"{symbol}.raw.csv")
                 qfq = pd.read_csv(fixture_dir / f"{symbol}.qfq.csv")
                 cache_mode = "fixture"
-            # Preserve source evidence even when semantic validation fails.
-            raw.to_csv(raw_path, index=False)
-            qfq.to_csv(qfq_path, index=False)
-            _write_json(
-                metadata_path,
-                {
-                    "schema_version": "1.0",
-                    "symbol": symbol,
-                    "start": start,
-                    "cutoff": cutoff,
-                    "source_provider": "akshare_sina",
-                    "raw_path": str(raw_path),
-                    "qfq_path": str(qfq_path),
-                    "research_only": True,
-                    "trade_ready": False,
-                },
-            )
+            # Preserve new source evidence even when semantic validation fails;
+            # an exact cache hit retains the already verified bytes unchanged.
+            if cache_mode != "exact_cutoff_reuse":
+                raw.to_csv(raw_path, index=False)
+                qfq.to_csv(qfq_path, index=False)
+                _write_json(
+                    metadata_path,
+                    {
+                        "schema_version": "1.0",
+                        "symbol": symbol,
+                        "start": start,
+                        "cutoff": cutoff,
+                        "source_provider": "akshare_sina",
+                        "raw_path": str(raw_path),
+                        "qfq_path": str(qfq_path),
+                        "raw_sha256": hashlib.sha256(raw_path.read_bytes()).hexdigest(),
+                        "qfq_sha256": hashlib.sha256(qfq_path.read_bytes()).hexdigest(),
+                        "research_only": True,
+                        "trade_ready": False,
+                    },
+                )
             frame, evidence = derive_adjusted_vwap(
                 raw,
                 qfq,
