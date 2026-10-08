@@ -378,3 +378,25 @@ Content-Security-Policy 包含 sandbox allow-scripts 且无 allow-same-origin。
 未启动内核、执行 notebook 代码或暴露远程服务，临时测试进程已退出。
 依据为 [Jupyter 上游公告](https://github.com/jupyter-server/jupyter_server/security/advisories/GHSA-fcw5-x6j4-ccmp)。
 修复使用原生包，不加入公告中的运行时 monkey patch 或常驻包装器。
+
+### 2026-10-09：剩余 Python 依赖门禁收敛
+
+前两次主分支扫描实际关闭 79 项，剩余 72 项（37 high、31 medium、4 low），
+Critical 为零。本增量逐条核对全部 72 个 vulnerable_version_range，候选包
+版本均在受影响范围之外；实际扫描关闭结果合并后核对。
+
+解除两处已无源码调用依据的旧固定上限：protobuf 改为 >=5.29.6,<7，
+setuptools 改为 >=83,<84。同步锁定 protobuf 6.33.6 / setuptools 83.0.0，
+OpenTelemetry proto 升至 1.45.1 与已锁 SDK 对齐。其余修复版本：Starlette
+1.3.1、JupyterLab 4.6.4、Notebook 7.6.3、nbconvert 7.17.1、Mistune 3.3.0、
+Bleach 6.4.0、Pillow 12.3.0、lxml 6.1.0、Pygments 2.20.0、pytest 9.0.3。
+Notebook 原生要求 JupyterLab >=4.6.4；不以不相容的单包升级绕过解析。
+仅增加 Notebook 新版本必需的 jupyter-builder 依赖，其余原包 block 保留。
+Qlib、MLflow、NumPy、pandas、LightGBM、池与模型合同保持原值。
+
+冻结环境和 Qlib 记录/初始化/MCP/报告 12 项既有测试通过；真实 SDK 的 21
+工具注册、初始化消息及非法 Host 拒绝通过。PNG 图像、Matplotlib 渲染、
+HTML/XML、MLflow protobuf 与 OpenTelemetry 消息编解码兼容验证通过。
+新增真实 MCP/ASGI 回归测试并加入既有 backend CI，不新增工作流或服务。
+Doctor 正常；Notebook HTTP 的认证及 HTML 沙箱边界另行验收。
+完整后端与最终主分支扫描、运行发布结果在本 PR 验收中记录。
