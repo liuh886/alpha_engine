@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 import pandas as pd
@@ -131,7 +132,8 @@ def test_half_tick_rounding_is_recorded_but_larger_violation_is_rejected() -> No
         )
 
 
-def test_source_pair_cache_requires_exact_cutoff_identity(tmp_path: Path) -> None:
+@pytest.mark.parametrize("session_gaps", [False, True])
+def test_source_pair_cache_requires_exact_cutoff_identity(tmp_path: Path, session_gaps: bool) -> None:
     raw, adjusted = _pair()
     raw_path = tmp_path / "raw.csv"
     qfq_path = tmp_path / "qfq.csv"
@@ -140,6 +142,9 @@ def test_source_pair_cache_requires_exact_cutoff_identity(tmp_path: Path) -> Non
     adjusted.to_csv(qfq_path, index=False)
     start = raw["date"].min().date().isoformat()
     cutoff = raw["date"].max().date().isoformat()
+    if session_gaps:
+        start = (pd.Timestamp(start) - pd.Timedelta(days=3)).date().isoformat()
+        cutoff = (pd.Timestamp(cutoff) + pd.Timedelta(days=2)).date().isoformat()
     metadata_path.write_text(
         json.dumps(
             {
@@ -147,6 +152,10 @@ def test_source_pair_cache_requires_exact_cutoff_identity(tmp_path: Path) -> Non
                 "start": start,
                 "cutoff": cutoff,
                 "source_provider": "akshare_sina",
+                "raw_sha256": hashlib.sha256(raw_path.read_bytes()).hexdigest(),
+                "qfq_sha256": hashlib.sha256(qfq_path.read_bytes()).hexdigest(),
+                "research_only": True,
+                "trade_ready": False,
             }
         ),
         encoding="utf-8",
@@ -167,6 +176,23 @@ def test_source_pair_cache_requires_exact_cutoff_identity(tmp_path: Path) -> Non
         raw_path=raw_path,
         qfq_path=qfq_path,
         metadata_path=metadata_path,
+    ) is None
+
+    for path in (raw_path, qfq_path):
+        original = path.read_bytes()
+        path.write_bytes(original + b"\n")
+        assert _cached_cn_pair(
+            symbol="000001", start=start, end=cutoff,
+            raw_path=raw_path, qfq_path=qfq_path, metadata_path=metadata_path,
+        ) is None
+        path.write_bytes(original)
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    del metadata["raw_sha256"]
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    assert _cached_cn_pair(
+        symbol="000001", start=start, end=cutoff,
+        raw_path=raw_path, qfq_path=qfq_path, metadata_path=metadata_path,
     ) is None
 
 
