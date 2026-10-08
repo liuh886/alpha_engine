@@ -13,6 +13,7 @@ def test_qlib_recorder_round_trip_with_sqlite_backend(tmp_path: Path) -> None:
         import sys
         from pathlib import Path
 
+        import pandas as pd
         from qlib.workflow import QlibRecorder, R
         from qlib.workflow.exp import MLflowExperiment
         from qlib.workflow.expm import MLflowExpManager
@@ -39,6 +40,10 @@ def test_qlib_recorder_round_trip_with_sqlite_backend(tmp_path: Path) -> None:
             R.log_params(alpha_engine_compat="ok")
             R.log_metrics(compat_metric=1.25)
             R.save_objects(**{"payload.pkl": {"status": "ok"}})
+            R.save_objects(
+                artifact_path="portfolio_analysis",
+                **{"report.pkl": pd.DataFrame({"return": [0.01, -0.02]})},
+            )
             recorder_id = R.get_recorder().id
 
         experiments = R.list_experiments()
@@ -54,6 +59,30 @@ def test_qlib_recorder_round_trip_with_sqlite_backend(tmp_path: Path) -> None:
         assert recorder.list_params()["alpha_engine_compat"] == "ok"
         assert recorder.list_metrics()["compat_metric"] == 1.25
         assert recorder.load_object("payload.pkl") == {"status": "ok"}
+        pd.testing.assert_frame_equal(
+            recorder.load_object("portfolio_analysis/report.pkl"),
+            pd.DataFrame({"return": [0.01, -0.02]}),
+        )
+        assert (Path(recorder.get_local_dir()) / "artifacts" / "payload.pkl").exists()
+
+        # Resume keeps the run identity and evidence rather than creating a second run.
+        with R.start(experiment_name=experiment_name, recorder_id=recorder_id, resume=True):
+            assert R.get_recorder().id == recorder_id
+            R.log_metrics(resumed_metric=2.5)
+        assert len(R.list_recorders(experiment_name=experiment_name)) == 1
+        assert recorder.list_metrics()["resumed_metric"] == 2.5
+
+        # Failure is durable and must not erase evidence or appear as a finished run.
+        try:
+            with R.start(experiment_name=experiment_name, recorder_name="failed-run"):
+                failed_id = R.get_recorder().id
+                R.save_objects(**{"failure.pkl": {"blocker": "source_unavailable"}})
+                raise RuntimeError("source_unavailable")
+        except RuntimeError as exc:
+            assert str(exc) == "source_unavailable"
+        failed = R.get_recorder(recorder_id=failed_id, experiment_name=experiment_name)
+        assert failed.client.get_run(failed_id).info.status == "FAILED"
+        assert failed.load_object("failure.pkl") == {"blocker": "source_unavailable"}
 
         records = R.search_records(
             [recorder.experiment_id], max_results=MLflowExperiment.UNLIMITED
