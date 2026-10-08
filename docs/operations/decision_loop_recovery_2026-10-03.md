@@ -64,3 +64,20 @@ current-target 从经 manifest 校验的观察读取目标，日常观察不重�
 诊断位于 `artifacts/cn27-runtime-repair/`；本地验收不替代线上受审发布。
 
 代码及来源修复需经过 PR CI、正式刷新原子发布、运行平面发布和实际 Pages 验收。没有改动正式发布的全策略检查或将 retained/data_blocked 状态认作成功。CI/部署通过只证明工程链路；持续有效性由冻结合同及后续真实观察决定。
+
+## MLflow 记录库一次性升级
+
+冻结环境的 MLflow 安全升级不改变 Qlib 的既有实验管理器。已有 SQLite
+记录库需要一次结构迁移，日常观察、状态读取和无变更决定不执行此操作。
+新 CI 临时库由依赖原生初始化；持久旧库不能删除后重建来冒充兼容。
+
+对既有 build_qlib_init_cfg 默认的 artifacts/mlflow.db：停止记录写入进程，
+用 Python sqlite3.Connection.backup 留下可恢复副本（同时覆盖 WAL 内容），
+先在备份副本上运行 `uv run mlflow db upgrade "sqlite:///绝对路径"`，核验
+原运行 ID、参数、指标、artifact URI、证据字节及失败记录后，再升级原库。
+升级完成后重新启动写入进程。自定义 exp_manager URI 仍是其所属合同的
+配置，不重定向到新库。回退需要原依赖环境与升级前备份，不能用旧依赖直接
+打开升级后的结构。原文件证据不搬移、不删除、不重封存。
+
+该顺序遵循 [MLflow 数据库升级说明](https://mlflow.org/docs/latest/self-hosting/migration/)。
+使用原生命令完成迁移，没有新增启动包装器、自动迁移服务或定期任务。
