@@ -20,6 +20,7 @@ def _isolate_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     artifact_root = tmp_path / "artifacts"
     artifact_root.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("TRADING_ARTIFACTS_DIR", str(artifact_root))
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", f"sqlite:///{(artifact_root / 'mlflow.db').as_posix()}")
     # resolve_metadata_db_path() reads this dedicated override rather than
     # TRADING_ARTIFACTS_DIR; without it, tests that register models write
     # directly into the production artifacts/metadata/metadata.db.
@@ -86,6 +87,7 @@ def _is_relative(child: Path, parent: Path) -> bool:
 
 def _patch_consumer_paths(monkeypatch: pytest.MonkeyPatch, artifact_root: Path) -> None:
     consumer_patches: list[tuple[str, str, Path]] = [
+        ("src.common.qlib_init", "MLRUNS_DIR", artifact_root / "mlruns"),
         ("src.research.registry", "MODELS_DIR", artifact_root / "models"),
     ]
     for module_path, attribute_name, new_value in consumer_patches:

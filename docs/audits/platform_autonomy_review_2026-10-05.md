@@ -355,3 +355,9 @@ Qlib 读取旧运行 ID、参数、指标及 artifact URI 一致，文件 SHA-25
 本次只消除记录器依赖与旧库迁移堵点。US 下一开盘执行证据、Alpaca OTC
 权限、前瞻观察期和未通过的数据/效力门禁继续保留；protobuf/setuptools
 固定约束和 notebook 依赖仍需各自兼容验收。
+
+迁移验收另发现原测试隔离只覆盖 paths.MLRUNS_DIR，未覆盖 qlib_init 在
+collection/import 时保存的目录引用。现有 autouse fixture 同时限定
+MLFLOW_TRACKING_URI 和该模块的 MLRUNS_DIR，增加默认记录库位置回归断言。
+首轮全量测试中止后重新执行；不把中止的结果记为全量通过。
+本地库备份已保留，核验仍为零 run / 原 Default 实验；未改变正式证据。
