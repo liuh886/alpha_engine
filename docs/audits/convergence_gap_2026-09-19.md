@@ -33,6 +33,10 @@ manifest-bound bundle, not the historical counts in this report.
   Acceptance: source preflight, exact US87 identity, SIP/declared OTC feeds,
   same-record adjusted OHLC/VWAP, component hashes and the declared training
   readiness gate pass. Polygon is validation-only under the frozen contract.
+  Run 37732288574 verifies both credentials and AAPL/MSFT/NVDA SIP bars through
+  2026-10-07; ABBNY/SBGSY OTC each return HTTP 403. Full US87 remains blocked.
+  OTC requires a special subscription currently restricted to broker partners
+  per [Alpaca's FAQ](https://docs.alpaca.markets/us/docs/market-data-faq).
 - [ ] Retain exact verified US event and QQQ reference source locators beyond
   Actions retention (2026-12-30 / 2027-01-01) through the existing governed
   source retention policy; preserve licensing and bytes. Do not silently use latest.

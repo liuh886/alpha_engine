@@ -112,7 +112,7 @@ def test_researcher_cli_contract_stays_offline() -> None:
     }
 
 
-def test_domain_data_caches_use_current_runtime_without_changing_keys() -> None:
+def test_domain_data_caches_use_current_runtime_and_exact_identity_keys() -> None:
     root = Path(".github/workflows")
     for filename in (
         "alpha158-canonical-vwap-ci.yml",
@@ -140,7 +140,7 @@ def test_domain_data_caches_use_current_runtime_without_changing_keys() -> None:
         "artifacts/data/canonical_vwap/cn/cache_metadata",
     ]
     assert restore["with"]["key"] == (
-        "${{ runner.os }}-alpha158-vwap-cn-"
+        "${{ runner.os }}-alpha158-vwap-cn-sha256-v1-"
         "${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml') }}-"
         "${{ steps.cutoff.outputs.value }}"
     )

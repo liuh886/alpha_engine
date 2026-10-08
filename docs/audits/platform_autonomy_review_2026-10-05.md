@@ -262,3 +262,19 @@ CI 治理检查通过，工作流仍为 45；未新增缓存目录、状态库�
 后续必须记录真实提供商预检、CI、合并与部署结果，以及运行时长与具体阻塞。
 20 个合格运行会话、成熟预测标签与统计漂移、来源长期保留和独立 CN 风险
 评估仍有各自验收条件，本工程不能把这些未完成的时间/来源门禁标成通过。
+
+实际来源运行 [37732288574](https://github.com/liuh886/alpha_engine/actions/runs/37732288574)
+的 credential-preflight 为 passed、missing_credentials=[]。AAPL/MSFT/NVDA
+各 192 条 SIP 日线，最后日期 2026-10-07、reported_vwap；ABBNY/SBGSY
+OTC 各返回 HTTP 403、attempts=1。完整 US87 构建按原门禁未启动。
+[Alpaca 官方 FAQ](https://docs.alpaca.markets/us/docs/market-data-faq) 明确 OTC
+需要目前仅面向 broker partners 的特殊订阅；不把普通 SIP 订阅或密钥配置
+等同于 OTC 授权。失败 artifact 保留，两只股票未从固定池删除或替换。
+
+补充验收：31 项来源、适配器和工作流测试通过；新增 CN 构建集成测试验证
+真实原始/复权配对经过原语义检查、精确请求不再次抓取、源和元数据字节不变。
+既有 Actions 缓存键改用 sha256-v1 格式，避免不可覆盖的旧无哈希缓存导致
+每次运行重新抓取；目录、池身份、截止日和保存路径保持原合同。
+完整静态浏览器验收 40 passed、2 个既有设备跳过；产物 JS gzip 470.41 KB，
+480 KB 门禁通过；npm audit 为零。Doctor 环境检查通过。生产来源只读
+US 2026-10-07 / CN 2026-09-30 到期命令均 due=false，未触发推理或训练。
