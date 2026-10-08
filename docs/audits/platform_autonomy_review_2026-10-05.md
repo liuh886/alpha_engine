@@ -350,7 +350,8 @@ OAuthlib 依赖共 74 项（21 critical、38 high、13 medium、2 low）。候�
 SQLite backup 保留 bd07f7e963c5 原结构，再由 3.16.1 原生命令迁移。
 Qlib 读取旧运行 ID、参数、指标及 artifact URI 一致，文件 SHA-256 一致，
 恢复后仍只有同一运行；备份及旧文件保留。当前本地库的备份副本也已迁移
-验证。完整后端测试与合并后扫描关闭数另行记录，不提前声明通过。
+验证。隔离修复后的完整后端测试 3894 passed、8 项既有跳过、72 warnings，
+耗时 968.66 秒；本地记录库测试前后 SHA-256 一致。合并后扫描关闭数另行核对。
 
 本次只消除记录器依赖与旧库迁移堵点。US 下一开盘执行证据、Alpaca OTC
 权限、前瞻观察期和未通过的数据/效力门禁继续保留；protobuf/setuptools
@@ -361,3 +362,19 @@ collection/import 时保存的目录引用。现有 autouse fixture 同时限定
 MLFLOW_TRACKING_URI 和该模块的 MLRUNS_DIR，增加默认记录库位置回归断言。
 首轮全量测试中止后重新执行；不把中止的结果记为全量通过。
 本地库备份已保留，核验仍为零 run / 原 Default 实验；未改变正式证据。
+既有 ops build 实际 1.526 秒生成五策略视图，未加载 Qlib / MLflow / LightGBM
+或行情适配器；相同输入再次物化为 no-op。US 当前正式 trades 的研究收盘
+参考价和 prospective_unrealized 角色不能替代下一开盘执行回执，相关等待保留。
+
+### 2026-10-09：Jupyter HTML 导出沙箱修复
+
+独立小增量仅将 uv.lock 的 jupyter-server 2.17.0 升至 2.20.0，三个锁行
+替换；其余包、模型合同、工作流保持原值。此包当前关联五项 GitHub 告警，
+其中包括当前扫描仍报告的严重项；实际关闭数合并后核对。
+
+在隔离环境使用从候选锁递归导出的原版本依赖运行真实 localhost 服务。
+认证 API 200、无认证 API 拒绝、markdown notebook HTML 导出 200，
+Content-Security-Policy 包含 sandbox allow-scripts 且无 allow-same-origin。
+未启动内核、执行 notebook 代码或暴露远程服务，临时测试进程已退出。
+依据为 [Jupyter 上游公告](https://github.com/jupyter-server/jupyter_server/security/advisories/GHSA-fcw5-x6j4-ccmp)。
+修复使用原生包，不加入公告中的运行时 monkey patch 或常驻包装器。
