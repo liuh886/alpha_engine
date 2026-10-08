@@ -199,7 +199,7 @@ def test_us_alpha158_live_panel_uses_only_approved_alpaca_sip_credentials() -> N
 
     assert live["env"] == {
         "APCA_API_KEY_ID": "${{ secrets.APCA_API_KEY_ID }}",
-        "APCA_API_SECRET_KEY": "${{ secrets.APCA_API_SECRET_ID }}",
+        "APCA_API_SECRET_KEY": "${{ secrets.APCA_API_SECRET_KEY }}",
     }
     steps = live["steps"]
     assert steps[1]["name"] == "Check required Alpaca credential names before dependency setup"
