@@ -131,7 +131,9 @@ async function openConsole(page: Page) {
   await expect(page.locator('#root')).not.toBeEmpty();
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
   await expect(page.getByText('Featured formal performance', { exact: true })).toBeVisible();
-  await expect(page.locator('.research-context-bar').getByText('Static Browser Fixture', { exact: true })).toBeVisible();
+  const activeContext = page.getByRole('status', { name: 'Active research context' });
+  await expect(activeContext.getByText('QQQR v4.3', { exact: true })).toBeVisible();
+  await expect(activeContext.getByText('Static Browser Fixture', { exact: true })).toHaveCount(0);
 }
 
 test('Security Explorer explains its value before sign-in and remains available to Free accounts', async ({ page }) => {
