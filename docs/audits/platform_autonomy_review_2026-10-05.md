@@ -278,3 +278,21 @@ OTC 各返回 HTTP 403、attempts=1。完整 US87 构建按原门禁未启动。
 完整静态浏览器验收 40 passed、2 个既有设备跳过；产物 JS gzip 470.41 KB，
 480 KB 门禁通过；npm audit 为零。Doctor 环境检查通过。生产来源只读
 US 2026-10-07 / CN 2026-09-30 到期命令均 due=false，未触发推理或训练。
+
+首批优化 [PR #1185](https://github.com/liuh886/alpha_engine/pull/1185) 已合并为
+`0dc863c1b932984f01da4017711f4455f3223b4a`，全套相关 CI 通过。
+本轮全量后端基线 3888 passed、8 既有跳过，耗时 19 分 21 秒；新增及后续
+修复另以受影响测试验证，不能把基线计数称为更新依赖后的全量回归。
+
+安全增量仅更新既有锁文件七个包：GitPython 3.1.62、Mako 1.4.2、PyJWT
+2.15.0、PyMongo 4.18.2、Tornado 6.5.9、urllib3 2.8.0、Werkzeug 3.1.9。
+uv.lock 其余 package block 字节保留，Qlib/MLflow/NumPy/pandas/LightGBM
+及直接依赖约束保持原值，`uv lock --check` 通过。
+
+七包隔离环境兼容性检查通过，覆盖 JWT 编解码、变形 PEM 公钥拒绝作为
+HMAC 密钥（[GHSA-ffc3-869f-jxw9](https://github.com/advisories/GHSA-ffc3-869f-jxw9)）、
+HTTP URL、Git 读取、Mako 模板、BSON 编码、Tornado JSON 与 Werkzeug WSGI。
+冻结开发环境实际安装七个修复版本后，Doctor/Qlib C++ 扩展检查通过，103 项
+来源、工作流、ranker、模型数据、健康与运行状态合同测试通过。
+这七包关联 34 项当前开放告警，合并后需核对实际关闭与剩余记录；
+主要版本变更及无补丁问题尚未关闭，未声明全平台依赖安全清零。
