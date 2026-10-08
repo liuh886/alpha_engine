@@ -309,3 +309,29 @@ HTTP URL、Git 读取、Mako 模板、BSON 编码、Tornado JSON 与 Werkzeug WS
 加入 validated 格式身份，防止不可覆盖的旧键造成重复抓取。
 32 项来源、适配器和工作流测试通过；新增失败→重新抓取→验证后复用的
 完整边界测试，坏源文件与失败诊断在失败运行中照常保留。
+
+### 2026-10-08：数据请求与 MCP 依赖安全增量
+
+继 #1186 的七包修复后，实际主分支扫描已关闭 34 项，仍有 164 项开放。
+本次仅更新既有 uv.lock 六个 package block：mcp 1.28.1、
+python-multipart 0.0.31、requests 2.33.0、idna 3.15、python-dotenv 1.2.2、
+pydantic-settings 2.14.2。共 18 行替换，其他包、直接依赖约束、冻结模型
+合同及来源证据保持原值；uv lock --check 与 frozen dev 安装通过。
+
+当前 GitHub API 告警逐项核对覆盖 13 项（5 high、5 medium、3 low），
+修复版本均在各自 vulnerable_version_range 之外。合并后另核对实际关闭数。
+MCP 上游修复包括 WebSocket Host/Origin 校验及实验任务隔离；上游依据为
+[SDK 公告](https://github.com/modelcontextprotocol/python-sdk/security/advisories/GHSA-vj7q-gjh5-988w)
+和[任务隔离公告](https://github.com/modelcontextprotocol/python-sdk/security/advisories/GHSA-hvrp-rf83-w775)。
+本增量没有启用新的网络传输、任务模式或服务。
+
+冻结环境下 135 项现有 MCP、来源适配器、刷新、ranker 与运行发布合同测试
+通过（60.34 秒）。另用真实 SDK 注册现有 21 个工具，验证 Host/Origin 白名单
+接受及异源拒绝、URL 参数、国际域名、dotenv 插值、Settings 和表单解析。
+该检查没有执行回测工具、发送请求或订单；临时验收收据位于 ignored artifacts。
+Doctor 检查 Qlib 0.9.7 / C++ 扩展及既有模型依赖健康。
+
+实际运行 37737437715 的 canonical 身份、运行状态物化、OIDC 发布及成功
+幂等收据均通过，信号投递 37737437733 成功。安全升级仍不关闭 Alpaca OTC
+权限、前瞻观察期及逐合同数据门禁；MLflow/protobuf/setuptools 的迁移和其余
+开发依赖告警继续保留，不声明整个依赖树安全清零。

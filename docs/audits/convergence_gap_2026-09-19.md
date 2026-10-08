@@ -315,3 +315,10 @@ Recommended next unit: land the `mlflow` override in an isolated PR with a qlib
 recorder smoke test, then proceed package-by-package (`mistune`, `pillow`,
 `tornado`, `jupyter*`) with the same evidence standard, and separately revisit
 the `setuptools==69.5.1` direct pin.
+
+2026-10-08 安全跟进：#1186 实际关闭 34 项（剩余 164 项）；继续在独立增量中
+锁定 MCP 1.28.1、python-multipart 0.0.31、requests 2.33.0、idna 3.15、
+python-dotenv 1.2.2、pydantic-settings 2.14.2，覆盖另 13 项当前告警。
+135 项既有合同、真实 SDK 21 工具注册和协议输入兼容检查、Doctor 通过；
+实际关闭数待主分支扫描核对。MLflow / protobuf / setuptools 与 notebook
+依赖仍需独立迁移验收，不能将本次兼容修复算作冻结模型能力提升。
