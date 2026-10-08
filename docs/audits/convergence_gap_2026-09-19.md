@@ -5,7 +5,7 @@ Authority: this report owns the *remaining-work backlog and gap-to-target* view.
 It does not replace issue #1074 (prioritization), #324/#325 (data closure),
 #826 (training plane) or the frozen contracts it references.
 
-## Current operating follow-up — 2026-10-07
+## Current operating follow-up — 2026-10-08
 
 This checklist records user-requested deployment and remaining operating work.
 The dated baseline below remains historical. Current readiness comes from the
@@ -23,10 +23,12 @@ manifest-bound bundle, not the historical counts in this report.
 - [ ] Confirm the US ranker next-open execution through the existing governed
   observation/evidence route. Preserve target-pending status until proven; do not
   treat elapsed time as execution proof.
-- [ ] Configure `APCA_API_KEY_ID` in the existing GitHub Actions repository Secrets.
-- [ ] Configure `APCA_API_SECRET_KEY` in the existing GitHub Actions repository Secrets.
-  Both credential tasks are owned by the repository operator. Store values only
-  in Secrets, never in this checklist, Git, logs or chat. Then run the existing
+- [x] Configure `APCA_API_KEY_ID` in the existing GitHub Actions repository Secrets.
+- [x] Configure `APCA_API_SECRET_KEY` in the existing GitHub Actions repository Secrets.
+  Exact names verified through GitHub metadata on 2026-10-08 after operator
+  configuration. Values remain in Secrets, never in this checklist, Git, logs
+  or chat. The unused `APCA_API_SECRET_ID` name does not replace the contract.
+- [ ] Verify the configured credentials and source entitlement through the existing
   `alpha158-canonical-vwap-ci.yml` US workflow at an explicit completed cutoff.
   Acceptance: source preflight, exact US87 identity, SIP/declared OTC feeds,
   same-record adjusted OHLC/VWAP, component hashes and the declared training

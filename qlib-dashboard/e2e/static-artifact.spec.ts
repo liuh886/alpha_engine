@@ -324,6 +324,9 @@ test('model monitoring reads formal and operational evidence without the legacy 
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
   await page.goto('/#/model-operations');
   await expect(page.getByRole('heading', { name: 'Model Operations & Monitoring', exact: true })).toBeVisible();
+  const context = page.getByRole('status', { name: 'Active research context' });
+  await expect(context.getByText('Cutoff 2026-07-31', { exact: true })).toHaveCount(0);
+  await expect(context.getByText('Fully verified', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Statistical drift: unavailable', { exact: true })).toBeVisible();
   for (const name of await loadFormalDisplayNames(page)) await expect(page.getByText(name, { exact: true }).last()).toBeVisible();
   await expect(page.getByText(/The preregistered experiment remains rejected because the 2026H1 drawdown-worsening gate failed/)).toBeVisible();
