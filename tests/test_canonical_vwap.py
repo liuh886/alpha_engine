@@ -157,6 +157,7 @@ def test_source_pair_cache_requires_exact_cutoff_identity(tmp_path: Path, sessio
                 "qfq_sha256": hashlib.sha256(qfq_path.read_bytes()).hexdigest(),
                 "research_only": True,
                 "trade_ready": False,
+                "semantic_validation": "passed",
             }
         ),
         encoding="utf-8",
@@ -237,6 +238,7 @@ def test_cn_build_reuses_verified_request_without_fetch_or_rewriting_sources(
     metadata.write_text(json.dumps({
         "symbol": "000001", "start": "2026-01-01", "cutoff": "2026-01-10",
         "source_provider": "akshare_sina", "research_only": True, "trade_ready": False,
+        "semantic_validation": "passed",
         "raw_sha256": hashlib.sha256(originals[tmp_path / "raw" / "000001.csv"]).hexdigest(),
         "qfq_sha256": hashlib.sha256(originals[tmp_path / "qfq" / "000001.csv"]).hexdigest(),
     }), encoding="utf-8")
@@ -258,3 +260,39 @@ def test_cn_build_reuses_verified_request_without_fetch_or_rewriting_sources(
     audit = json.loads((tmp_path / "vwap_audit.json").read_text(encoding="utf-8"))
     assert audit["failed_symbol_count"] == 0
     assert audit["symbols"][0]["cache_mode"] == "exact_cutoff_reuse"
+
+
+def test_cn_failed_semantic_source_is_retained_but_not_reused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw, qfq = _pair()
+    bad = raw.copy()
+    bad.loc[0, "amount"] = 5000.0
+    fetches: list[int] = []
+    monkeypatch.setattr(builder, "_pool_symbols", lambda *args: ("fixture-cn", ["000001"]))
+
+    def fetch(*args: object, **kwargs: object) -> tuple[pd.DataFrame, pd.DataFrame]:
+        fetches.append(1)
+        return (bad if len(fetches) == 1 else raw).copy(), qfq.copy()
+
+    def stop(*args: object, **kwargs: object) -> None:
+        raise CanonicalVwapError("source acceptance completed")
+
+    monkeypatch.setattr(builder, "_fetch_cn_pair", fetch)
+    monkeypatch.setattr(builder, "build_market_provider", stop)
+    arguments = dict(pool_path=tmp_path / "unused.yaml", start="2026-01-01",
+                     cutoff="2026-01-10", output_root=tmp_path, fixture_dir=None)
+    with pytest.raises(CanonicalVwapError, match="incomplete"):
+        builder.build_cn(**arguments)
+    metadata_path = tmp_path / "cache_metadata" / "000001.json"
+    assert json.loads(metadata_path.read_text())["semantic_validation"] == "pending"
+    assert pd.read_csv(tmp_path / "raw" / "000001.csv")["amount"].iloc[0] == 5000.0
+    failure = json.loads((tmp_path / "vwap_audit.json").read_text())
+    assert failure["failed_symbol_count"] == 1
+
+    for _ in range(2):
+        with pytest.raises(CanonicalVwapError, match="source acceptance completed"):
+            builder.build_cn(**arguments)
+    assert len(fetches) == 2
+    assert json.loads(metadata_path.read_text())["semantic_validation"] == "passed"
+    assert json.loads((tmp_path / "vwap_audit.json").read_text())["symbols"][0]["cache_mode"] == "exact_cutoff_reuse"
