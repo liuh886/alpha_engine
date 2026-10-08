@@ -30,7 +30,17 @@ CN27 历史 trace 按原有合同保持在 2026-09-04；源截止推进不是历
 
 CN27 current-target 状态同时报告 source_available 和 current_target_available；后者必须核验截止日的 manifest-bound 持仓。行情已更新但持仓未覆盖时，命令保留 data_blocked 回执且不生成权重；损坏或不合法权重仍以 invalid_evidence 拒绝。该入口补充路径限定的 PR 验证，PR 不执行决策写入。
 
-新模型固定池数据计划继续按 AGENTS.md 执行。Alpaca 凭据缺失仍阻塞相关训练 profile。凭据及真实未来样本无法由代码修复生成；已有策略日常观察不以全部训练 profile 就绪为前提。
+新模型固定池数据计划继续按 AGENTS.md 执行。2026-10-09 核对：两个标准名称的
+Alpaca Secrets 已就绪，真实 SIP 请求已通过；ABBNY、SBGSY 仍因 OTC 权限返回
+403。用户确认暂时没有覆盖这些证券的授权服务，因此保留 US87 全池对应门禁，
+不替换证券、缩池或降级到其他行情来源。已有策略日常观察不以全部训练 profile
+就绪为前提，其他工程修复继续推进。
+
+US x1.3 冻结模型使用 same_adjusted_close_research_mark；current-target 的
+next_eligible_open 是目标执行意图，不是实际执行回执。正式 trades 中的
+prospective_unrealized 和研究收盘参考价不能证明下一开盘成交。原有状态仍为
+target_pending_execution，只有合同绑定的执行证据才能解除该等待；时间经过、
+送达成功或价格估值均不能替代。该边界不阻塞独立策略的有效观察。
 
 ## 验收边界
 
