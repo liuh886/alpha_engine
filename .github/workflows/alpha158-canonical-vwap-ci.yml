@@ -129,7 +129,7 @@ jobs:
     timeout-minutes: 600
     env:
       APCA_API_KEY_ID: ${{ secrets.APCA_API_KEY_ID }}
-      APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+      APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_ID }}
     steps:
       - uses: actions/checkout@v7
       - name: Check required Alpaca credential names before dependency setup
