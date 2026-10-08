@@ -132,6 +132,22 @@ jobs:
       APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v7
+      - name: Check required Alpaca credential names before dependency setup
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          missing = [name for name in ("APCA_API_KEY_ID", "APCA_API_SECRET_KEY") if not os.environ.get(name, "").strip()]
+          payload = {"status": "blocked" if missing else "passed", "missing_credentials": missing, "research_only": True, "trade_ready": False}
+          path = Path("artifacts/data/canonical_vwap/us/credential-preflight.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(payload))
+          if missing:
+              raise SystemExit("Alpaca credentials are incomplete; configure the exact repository Secret names listed above")
+          PY
       - uses: ./.github/actions/setup-python-uv
       - name: Resolve current evidence cutoff
         id: cutoff

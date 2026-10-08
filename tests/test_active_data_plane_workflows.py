@@ -1,6 +1,11 @@
 import importlib.util
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 
@@ -196,6 +201,9 @@ def test_us_alpha158_live_panel_uses_only_approved_alpaca_sip_credentials() -> N
         "APCA_API_KEY_ID": "${{ secrets.APCA_API_KEY_ID }}",
         "APCA_API_SECRET_KEY": "${{ secrets.APCA_API_SECRET_KEY }}",
     }
+    steps = live["steps"]
+    assert steps[1]["name"] == "Check required Alpaca credential names before dependency setup"
+    assert steps[2]["uses"] == "./.github/actions/setup-python-uv"
     content = Path(".github/workflows/alpha158-canonical-vwap-ci.yml").read_text(
         encoding="utf-8"
     )
@@ -223,6 +231,22 @@ def test_us_alpha158_live_panel_uses_only_approved_alpaca_sip_credentials() -> N
         "same_record_ohlcv_vwap_required": True,
         "full_pool_live_preflight_required": True,
     }
+
+
+@pytest.mark.parametrize("missing_secret", [True, False])
+def test_alpaca_credential_preflight_retains_only_names(tmp_path: Path, missing_secret: bool) -> None:
+    workflow = yaml.safe_load(Path(".github/workflows/alpha158-canonical-vwap-ci.yml").read_text(encoding="utf-8"))
+    command = workflow["jobs"]["live-us-panel"]["steps"][1]["run"]
+    code = command.split("python3 - <<'PY'\n", 1)[1].rsplit("\nPY", 1)[0]
+    env = dict(os.environ, APCA_API_KEY_ID="fixture-key-value", APCA_API_SECRET_KEY="" if missing_secret else "fixture-secret-value")
+    result = subprocess.run([sys.executable, "-c", code], cwd=tmp_path, env=env, capture_output=True, text=True, check=False)
+    payload = json.loads((tmp_path / "artifacts/data/canonical_vwap/us/credential-preflight.json").read_text(encoding="utf-8"))
+    assert result.returncode == (1 if missing_secret else 0)
+    assert payload["missing_credentials"] == (["APCA_API_SECRET_KEY"] if missing_secret else [])
+    assert payload["status"] == ("blocked" if missing_secret else "passed")
+    assert payload["research_only"] is True and payload["trade_ready"] is False
+    combined = result.stdout + result.stderr + json.dumps(payload)
+    assert "fixture-key-value" not in combined and "fixture-secret-value" not in combined
 
 
 def test_sec_population_uses_public_identity_variable_and_secret_proxy_only() -> None:
