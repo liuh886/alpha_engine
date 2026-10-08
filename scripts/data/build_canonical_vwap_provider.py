@@ -447,25 +447,27 @@ def build_cn(
                 raw = pd.read_csv(fixture_dir / f"{symbol}.raw.csv")
                 qfq = pd.read_csv(fixture_dir / f"{symbol}.qfq.csv")
                 cache_mode = "fixture"
-            # Preserve source evidence even when semantic validation fails.
-            raw.to_csv(raw_path, index=False)
-            qfq.to_csv(qfq_path, index=False)
-            _write_json(
-                metadata_path,
-                {
-                    "schema_version": "1.0",
-                    "symbol": symbol,
-                    "start": start,
-                    "cutoff": cutoff,
-                    "source_provider": "akshare_sina",
-                    "raw_path": str(raw_path),
-                    "qfq_path": str(qfq_path),
-                    "raw_sha256": hashlib.sha256(raw_path.read_bytes()).hexdigest(),
-                    "qfq_sha256": hashlib.sha256(qfq_path.read_bytes()).hexdigest(),
-                    "research_only": True,
-                    "trade_ready": False,
-                },
-            )
+            # Preserve new source evidence even when semantic validation fails;
+            # an exact cache hit retains the already verified bytes unchanged.
+            if cache_mode != "exact_cutoff_reuse":
+                raw.to_csv(raw_path, index=False)
+                qfq.to_csv(qfq_path, index=False)
+                _write_json(
+                    metadata_path,
+                    {
+                        "schema_version": "1.0",
+                        "symbol": symbol,
+                        "start": start,
+                        "cutoff": cutoff,
+                        "source_provider": "akshare_sina",
+                        "raw_path": str(raw_path),
+                        "qfq_path": str(qfq_path),
+                        "raw_sha256": hashlib.sha256(raw_path.read_bytes()).hexdigest(),
+                        "qfq_sha256": hashlib.sha256(qfq_path.read_bytes()).hexdigest(),
+                        "research_only": True,
+                        "trade_ready": False,
+                    },
+                )
             frame, evidence = derive_adjusted_vwap(
                 raw,
                 qfq,

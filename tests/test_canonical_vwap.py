@@ -13,6 +13,7 @@ from src.data.canonical_vwap import (
     write_source_role_manifest,
 )
 from scripts.data.build_canonical_vwap_provider import _cached_cn_pair, _us_feed
+from scripts.data import build_canonical_vwap_provider as builder
 
 
 def test_us_feed_policy_keeps_otc_adrs_explicit() -> None:
@@ -219,3 +220,41 @@ def test_source_role_manifest_binds_provider_identity(tmp_path: Path) -> None:
     assert payload["field_semantics"]["vwap"] == (
         "reported_turnover_divided_by_reported_volume"
     )
+
+
+def test_cn_build_reuses_verified_request_without_fetch_or_rewriting_sources(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw, qfq = _pair()
+    originals = {}
+    for folder, frame in (("raw", raw), ("qfq", qfq)):
+        path = tmp_path / folder / "000001.csv"
+        path.parent.mkdir()
+        path.write_text(frame.to_csv(index=False) + "\n", encoding="utf-8")
+        originals[path] = path.read_bytes()
+    metadata = tmp_path / "cache_metadata" / "000001.json"
+    metadata.parent.mkdir()
+    metadata.write_text(json.dumps({
+        "symbol": "000001", "start": "2026-01-01", "cutoff": "2026-01-10",
+        "source_provider": "akshare_sina", "research_only": True, "trade_ready": False,
+        "raw_sha256": hashlib.sha256(originals[tmp_path / "raw" / "000001.csv"]).hexdigest(),
+        "qfq_sha256": hashlib.sha256(originals[tmp_path / "qfq" / "000001.csv"]).hexdigest(),
+    }), encoding="utf-8")
+    originals[metadata] = metadata.read_bytes()
+    monkeypatch.setattr(builder, "_pool_symbols", lambda *args: ("fixture-cn", ["000001"]))
+
+    def unexpected_fetch(*args: object, **kwargs: object) -> None:
+        pytest.fail("Exact verified source request must not fetch again")
+
+    def stop_before_materialization(*args: object, **kwargs: object) -> None:
+        raise CanonicalVwapError("source acceptance completed")
+
+    monkeypatch.setattr(builder, "_fetch_cn_pair", unexpected_fetch)
+    monkeypatch.setattr(builder, "build_market_provider", stop_before_materialization)
+    with pytest.raises(CanonicalVwapError, match="source acceptance completed"):
+        builder.build_cn(pool_path=tmp_path / "unused.yaml", start="2026-01-01",
+                         cutoff="2026-01-10", output_root=tmp_path, fixture_dir=None)
+    assert all(path.read_bytes() == data for path, data in originals.items())
+    audit = json.loads((tmp_path / "vwap_audit.json").read_text(encoding="utf-8"))
+    assert audit["failed_symbol_count"] == 0
+    assert audit["symbols"][0]["cache_mode"] == "exact_cutoff_reuse"
