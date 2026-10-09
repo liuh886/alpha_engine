@@ -12,14 +12,28 @@
       "event_type": "cash_dividend_reference_adjustment",
       "announced_at": "2026-09-15",
       "ex_date": "2026-09-21",
-      "reference_cash_amount": 0.6351450,
+      "reference_cash_amount": 0.635145,
       "distributed_cash_amount": 0.64,
-      "total_distributed_cash": 1316790022.40,
+      "total_distributed_cash": 1316790022.4,
       "total_shares": 2073211424,
       "source_document_id": "300274:2026-068",
       "source_url": "https://file.finance.sina.com.cn/211.154.219.97:9494/MRGG/CNSESZ_STOCK/2026/2026-9/2026-09-15/12605360.PDF",
       "source_path": "data/research/source_reconciliations/cn27/sources/300274-20260915.pdf",
       "source_sha256": "142f2845a8a6586a773b3b94cab7e37a5d7e9c36dac5494c31bcd49375c15877"
+    },
+    {
+      "symbol": "688676",
+      "event_type": "cash_dividend_reference_adjustment",
+      "announced_at": "2026-09-23",
+      "ex_date": "2026-10-08",
+      "reference_cash_amount": 0.21966027776668506,
+      "distributed_cash_amount": 0.22,
+      "total_distributed_cash": 100997026.46,
+      "total_shares": 459787393,
+      "source_document_id": "688676:2026-081",
+      "source_url": "https://file.finance.sina.com.cn/211.154.219.97:9494/MRGG/CNSESH_STOCK/2026/2026-9/2026-09-23/12616248.PDF",
+      "source_path": "data/research/source_reconciliations/cn27/sources/688676-20260923.pdf",
+      "source_sha256": "b7f36e796180b9fcfa14c5cbe9b90533a601af5dfe50e92b168e6630a0bf0d80"
     }
   ]
 }
