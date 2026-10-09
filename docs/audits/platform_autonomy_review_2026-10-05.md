@@ -400,3 +400,15 @@ HTML/XML、MLflow protobuf 与 OpenTelemetry 消息编解码兼容验证通过�
 新增真实 MCP/ASGI 回归测试并加入既有 backend CI，不新增工作流或服务。
 Doctor 正常；Notebook HTTP 的认证及 HTML 沙箱边界另行验收。
 完整后端与最终主分支扫描、运行发布结果在本 PR 验收中记录。
+
+PR #1193 主分支验收：3895 passed、8 既有 skips、71 warnings，1086.34 秒；
+持久 MLflow 数据库 SHA-256 与测试前相同。运行发布 37812496839 成功绑定
+89e4eef70d833b69f397642ed54850321d429ce0。Pages 影响检测成功，因无前端
+产物变化而跳过重建。GitHub 重新扫描将原有 72 项全部关闭，同时新增
+Mistune >=3.3.0,<3.3.3 的递归拒绝服务告警 #260，因此仍有一项 high。
+
+后续增量仅将 Mistune 3.3.0 升至 3.3.3，锁文件六行替换。1000、3000、
+10000 个强调符号在原生 Markdown API 下均完成渲染，Notebook HTML 导出
+通过；不加入运行时 monkey patch 或调高 Python 递归上限。该增量使用
+针对性报告、记录库及 MCP 回归验收；不将此前全量测试冒充为最终补丁的
+全量测试。最终扫描和发布结果单独核对。
