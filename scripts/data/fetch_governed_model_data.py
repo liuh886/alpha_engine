@@ -11,6 +11,7 @@ from pathlib import Path
 from src.data.governed_actions_artifact import (
     GovernedActionsArtifactError,
     fetch_governed_sources,
+    inspect_source_retention,
 )
 
 
@@ -21,10 +22,16 @@ def main() -> int:
         type=Path,
         default=Path("configs/data/formal_model_data_sources_v1.yaml"),
     )
-    parser.add_argument("--source", action="append", required=True)
-    parser.add_argument("--output-root", type=Path, required=True)
+    parser.add_argument("--source", action="append", default=[])
+    parser.add_argument("--output-root", type=Path)
+    parser.add_argument("--inspect", action="store_true", help="Read pinned source retention; no token, network or data refresh")
     args = parser.parse_args()
+    if not args.inspect and (not args.source or args.output_root is None):
+        parser.error("fetch requires --source and --output-root")
     try:
+        if args.inspect:
+            print(json.dumps(inspect_source_retention(args.registry, source_ids=args.source), ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
         receipt = fetch_governed_sources(
             registry_path=args.registry,
             source_ids=args.source,

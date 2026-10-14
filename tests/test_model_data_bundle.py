@@ -369,6 +369,33 @@ def test_selected_pool_uses_common_candidate_observation_cutoff(
     assert profile["failed_gates"] == []
 
 
+@pytest.mark.parametrize("verified_publication", [True, False])
+def test_price_cutoff_respects_only_verified_terminal_lifecycle(
+    tmp_path: Path, verified_publication: bool,
+) -> None:
+    source = selected_pool_price_source("us")
+    path = tmp_path / "prices.json"
+    if verified_publication:
+        write_selected_pool_price_publication_manifest(path, source)
+    else:
+        _write_json(path, source)
+    manifest = build_model_data_bundle(
+        root=Path.cwd(), contract_path=CONTRACT,
+        component_specs=[ComponentSpec("prices.us_selected_equities_v2", "selected_pool_prices", path, "us")],
+        output_root=tmp_path / "output", evidence_cutoff="2026-08-21",
+    )
+    component = manifest["components"][0]
+    expected = "2026-08-21" if verified_publication else "2026-08-04"
+    assert component["evidence_cutoff"] == expected
+    assert component["last_date"] == expected
+    assert component["details"]["retained_common_history_end"] == "2026-08-04"
+    assert component["details"]["terminal_history_symbols"] == (["EA"] if verified_publication else [])
+    assert component["expected_symbol_count"] == component["ready_symbol_count"] == 2
+    assert component["coverage_ratio"] == 1.0
+    assert json.loads(path.read_text())["records"][1]["last_date"] == "2026-08-04"
+    assert verify_model_data_bundle(tmp_path / "output")
+
+
 def test_candidate_reference_overlap_fails_closed(tmp_path: Path) -> None:
     contract = yaml.safe_load(CONTRACT.read_text(encoding="utf-8"))
     contract["profiles"] = {

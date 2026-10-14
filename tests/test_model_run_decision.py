@@ -159,3 +159,23 @@ def test_missing_receipts_are_materialized_once_and_existing_receipts_preserved(
     receipt.write_text('{}', encoding="utf-8")
     with pytest.raises(ModelRunDecisionError, match="existing receipt hash mismatch"):
         materialize_pending_observation_decisions(catalog_path=catalog, output_root=root)
+
+
+@pytest.mark.parametrize("model_id", ["us_x1_3", "cn_27_v1_3"])
+def test_pending_review_preserves_specific_prospective_scope_and_failed_gates(model_id: str) -> None:
+    from src.artifacts.model_run_decision import pending_observation_decision
+    root = Path("data/research/formal_model_runs")
+    catalog = json.loads((root / "catalog.json").read_text(encoding="utf-8"))
+    record = next(row for row in catalog["records"] if row["model_version_id"] == model_id)
+    decision = pending_observation_decision(root / record["manifest_path"])
+    assert decision["verdict"] == "blocked"
+    assert decision["status"] == "pending_review"
+    status = next(row for row in decision["supporting_evidence"] if row["claim_id"] == "declared-prospective-status")
+    assert status["outcome"] == "informational"
+    assert "pending" in status["statement"]
+    if model_id == "us_x1_3":
+        assert "trade_readiness_only" in status["statement"]
+    else:
+        gate = next(row for row in decision["gates"] if row["claim_id"] == "retained-preregistered-rejection")
+        assert "timing_perturbation_sharpe" in gate["statement"]
+        assert "bootstrap_p05" in gate["statement"]

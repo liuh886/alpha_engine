@@ -14,17 +14,13 @@ import shutil
 import tempfile
 import zipfile
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping, Sequence
 from urllib.parse import quote
 
 import requests
 import yaml
-
-from src.data.selected_pool_event_population import (
-    verify_selected_pool_event_bundle,
-)
-from src.factors.reusable_panel import _verify_reusable_tree
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _REPOSITORY = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -189,6 +185,49 @@ def _safe_relative(value: str) -> bool:
         return False
     path = PurePosixPath(value)
     return bool(value) and not path.is_absolute() and ".." not in path.parts
+
+
+def inspect_source_retention(
+    registry_path: Path, *, source_ids: Sequence[str] = (), as_of: datetime | None = None,
+) -> dict[str, Any]:
+    """Describe pinned retention boundaries without downloading or validating data."""
+    registry = load_governed_source_registry(registry_path)
+    observed_at = as_of or datetime.now(timezone.utc)
+    if observed_at.utcoffset() is None:
+        raise GovernedActionsArtifactError("retention observation requires a timezone")
+    rows = []
+    for source_id in sorted(set(source_ids) if source_ids else registry.sources):
+        source = registry.sources.get(source_id)
+        if source is None:
+            raise GovernedActionsArtifactError(f"unknown governed source: {source_id}")
+        try:
+            expiry = datetime.fromisoformat(source.expires_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise GovernedActionsArtifactError(f"invalid source expiry: {source_id}") from exc
+        if expiry.utcoffset() is None:
+            raise GovernedActionsArtifactError(f"source expiry requires a timezone: {source_id}")
+        expired = expiry <= observed_at
+        release = source.durable_release
+        rows.append({
+            "source_id": source_id, "market": source.market, "pool_id": source.pool_id,
+            "evidence_cutoff": source.evidence_cutoff,
+            "workflow_run_id": source.workflow_run_id, "artifact_id": source.artifact_id,
+            "artifact_digest": source.artifact_digest, "expires_at": source.expires_at,
+            "actions_expired": expired,
+            "retention_status": "durable_mirror_declared" if release else "actions_expired" if expired else "actions_only",
+            "durable_release": None if release is None else {
+                "tag": release.tag, "asset_name": release.asset_name,
+                "sha256": release.sha256, "size_bytes": release.size_bytes,
+            },
+            "retrieval_verified": False,
+            "next_action": "verify_pinned_durable_release" if release else "restore_exact_archive" if expired else "retain_exact_archive_before_expiry",
+        })
+    return {
+        "schema_version": "1.0", "scope": "source_retention_only",
+        "repository": registry.repository, "registry_sha256": _sha256(registry_path),
+        "as_of": observed_at.isoformat(), "sources": rows,
+        "research_only": True, "trade_ready": False,
+    }
 
 
 def _validate_remote_metadata(
@@ -370,6 +409,8 @@ def _verify_alpha158(source: GovernedSource, root: Path) -> None:
     identity = str(manifest.get("input_identity_sha256", ""))
     if not _SHA256.fullmatch(identity):
         raise GovernedActionsArtifactError("Alpha158 input identity is invalid")
+    from src.factors.reusable_panel import _verify_reusable_tree
+
     _verify_reusable_tree(
         output=panel_root,
         manifest=manifest,
@@ -387,6 +428,8 @@ def _verify_alpha158(source: GovernedSource, root: Path) -> None:
 
 
 def _verify_events(source: GovernedSource, root: Path) -> None:
+    from src.data.selected_pool_event_population import verify_selected_pool_event_bundle
+
     manifest = verify_selected_pool_event_bundle(root)
     expected = {
         "market": source.market,

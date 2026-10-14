@@ -19,11 +19,50 @@ from src.data.governed_actions_artifact import (
     _validate_remote_metadata,
     _verify_bound_manifests,
     load_governed_source_registry,
+    inspect_source_retention,
     verify_extracted_source,
 )
 
 
 REGISTRY = Path("configs/data/formal_model_data_sources_v1.yaml")
+
+
+def test_retention_inspection_is_local_and_does_not_claim_verified_retrieval(monkeypatch) -> None:
+    from datetime import datetime, timezone
+    import requests
+
+    def reject_network(*args, **kwargs):
+        raise AssertionError("inspection must not fetch")
+
+    monkeypatch.setattr(requests, "get", reject_network)
+    report = inspect_source_retention(REGISTRY, as_of=datetime(2027, 1, 2, tzinfo=timezone.utc))
+    rows = {row["source_id"]: row for row in report["sources"]}
+    assert rows["us_events"]["retention_status"] == "actions_expired"
+    assert rows["us_events"]["next_action"] == "restore_exact_archive"
+    assert rows["cn_events"]["retention_status"] == "durable_mirror_declared"
+    assert rows["cn_events"]["actions_expired"] is True
+    assert all(row["retrieval_verified"] is False for row in rows.values())
+    assert report["scope"] == "source_retention_only"
+
+
+def test_retention_inspection_cli_does_not_load_provider_or_model_dependencies() -> None:
+    import subprocess
+    import sys
+
+    code = '''
+import importlib.abc, runpy, sys
+class RejectHeavyImports(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.startswith(("pandas", "numpy", "qlib", "src.data.adapters")):
+            raise AssertionError("inspection loaded heavy dependency: " + fullname)
+sys.meta_path.insert(0, RejectHeavyImports())
+sys.argv = ["fetch_governed_model_data", "--inspect", "--source", "us_events"]
+runpy.run_module("scripts.data.fetch_governed_model_data", run_name="__main__")
+'''
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    report = json.loads(result.stdout)
+    assert [row["source_id"] for row in report["sources"]] == ["us_events"]
+    assert report["sources"][0]["retrieval_verified"] is False
 
 
 def _source(**overrides) -> GovernedSource:

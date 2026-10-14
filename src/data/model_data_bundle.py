@@ -267,6 +267,17 @@ def _selected_pool_prices(
         if candidate_symbols
         else records
     )
+    # A validated terminal member retains its historical end; it must neither
+    # receive synthetic post-delisting prices nor make every active member stale.
+    terminal_symbols = (
+        set(_clean_symbols(payload.get("terminal_history_symbols", [])))
+        if payload.get("evidence_type") == PUBLICATION_EVIDENCE_TYPE
+        else set()
+    )
+    active_records = [
+        row for row in candidate_records
+        if str(row.get("symbol", "")).strip().upper() not in terminal_symbols
+    ]
     first_dates = [
         str(row.get("first_date", ""))
         for row in candidate_records
@@ -279,6 +290,8 @@ def _selected_pool_prices(
     ]
     common_first_date = max(first_dates)[:10] if first_dates else None
     common_last_date = min(last_dates)[:10] if last_dates else None
+    active_last_dates = [str(row["last_date"]) for row in active_records if row.get("last_date")]
+    applicable_last_date = min(active_last_dates)[:10] if active_last_dates else common_last_date
     requested_cutoff = _parse_date(
         payload.get("evidence_cutoff")
         or payload.get("cutoff")
@@ -292,9 +305,9 @@ def _selected_pool_prices(
         pool_id=str(payload.get("pool_id", payload.get("universe_id", ""))),
         manifest_path=str(path),
         manifest_sha256=_sha256(path),
-        evidence_cutoff=common_last_date or requested_cutoff,
+        evidence_cutoff=applicable_last_date or requested_cutoff,
         first_date=common_first_date,
-        last_date=common_last_date,
+        last_date=applicable_last_date,
         expected_symbol_count=expected,
         ready_symbol_count=ready,
         coverage_ratio=_ratio(ready, expected),
@@ -314,7 +327,11 @@ def _selected_pool_prices(
             "provider_identity_sha256": payload.get("provider_identity_sha256"),
             "requested_cutoff": requested_cutoff,
             "candidate_observation_start": common_first_date,
-            "candidate_observation_cutoff": common_last_date,
+            "candidate_observation_cutoff": applicable_last_date,
+            "retained_common_history_end": common_last_date,
+            "terminal_history_symbols": sorted(
+                terminal_symbols & {str(row.get("symbol", "")).strip().upper() for row in candidate_records}
+            ),
         },
     )
 

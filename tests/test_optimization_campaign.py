@@ -25,9 +25,13 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
+def _fixture(
+    tmp_path: Path, *, component_cutoff: str | None = "2026-07-31",
+    component_kind: str = "selected_pool_prices",
+) -> tuple[Path, Path, Path, Path]:
     root = tmp_path / "repo"
     for raw in (
+        "src/data/model_data_bundle.py",
         "src/research/cross_sectional_experiment_runner.py",
         "src/research/experiment_harness.py",
         "src/research/xgb_native_calibration.py",
@@ -120,11 +124,11 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
         json.dumps(
             {
                 "component_id": "factors.fixture",
-                "component_kind": "selected_pool_prices",
+                "component_kind": component_kind,
                 "status": "ready",
                 "market": "us",
                 "pool_id": "fixture",
-                "evidence_cutoff": "2026-07-31",
+                "evidence_cutoff": component_cutoff,
                 "expected_symbol_count": 1,
                 "ready_symbol_count": 1,
                 "coverage_ratio": 1.0,
@@ -146,7 +150,7 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
         component_specs=[
             ComponentSpec(
                 "factors.fixture",
-                "selected_pool_prices",
+                component_kind,
                 component,
                 "us",
             )
@@ -234,6 +238,22 @@ def test_campaign_compiles_all_agents_into_one_fixed_context(tmp_path: Path) -> 
         repository_root=root,
     )
     assert verified["candidate_count"] == 2
+
+
+@pytest.mark.parametrize("kind", ["selected_pool_prices", "factor_panel", "etf_reference_bundle"])
+@pytest.mark.parametrize("cutoff", ["2026-06-30", None])
+def test_ready_profile_does_not_bypass_experiment_time_coverage(
+    tmp_path: Path, kind: str, cutoff: str | None,
+) -> None:
+    root, campaign, submissions, _ = _fixture(tmp_path, component_cutoff=cutoff, component_kind=kind)
+    profiles = json.loads((root / "data/model-data/training-profiles.json").read_text())
+    assert profiles[0]["status"] == "ready"
+    output = tmp_path / "output"
+    with pytest.raises(OptimizationCampaignError, match="cutoff"):
+        compile_optimization_campaign(
+            campaign.relative_to(root), submissions.relative_to(root), output, repository_root=root,
+        )
+    assert not output.exists()
 
 
 def test_campaign_rejects_immutable_context_drift(tmp_path: Path) -> None:
