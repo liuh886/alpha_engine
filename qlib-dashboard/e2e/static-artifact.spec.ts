@@ -131,8 +131,10 @@ async function openConsole(page: Page) {
   await expect(page.locator('#root')).not.toBeEmpty();
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
   await expect(page.getByText('Featured formal performance', { exact: true })).toBeVisible();
-  const activeContext = page.getByRole('status', { name: 'Active research context' });
-  await expect(activeContext.getByText('QQQR v4.3', { exact: true })).toBeVisible();
+  const activeContext = page.getByRole('status', { name: 'Strategy fleet context' });
+  const formalNames = await loadFormalDisplayNames(page);
+  await expect(activeContext.getByText(`Formal strategy fleet · ${formalNames.length} strategies`, { exact: true })).toBeVisible();
+  await expect(activeContext.getByText('Evidence cutoffs shown per strategy', { exact: true })).toBeVisible();
   await expect(activeContext.getByText('Static Browser Fixture', { exact: true })).toHaveCount(0);
 }
 
@@ -268,6 +270,9 @@ test('strategy console exposes four primary destinations and formal strategy dri
   await fleet.getByText('QQQR v4.3', { exact: true }).click();
   await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_3$/);
   await expect(page.getByRole('heading', { name: 'QQQR v4.3', level: 1 })).toBeVisible();
+  await expect(page.getByRole('status', { name: 'Active research context' }).getByText('QQQR v4.3', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('status', { name: 'Active research context' }).getByText('QQQR v4.3', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Current decision state' })).toBeVisible();
   const formalTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
   for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {

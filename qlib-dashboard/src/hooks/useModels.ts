@@ -99,7 +99,9 @@ export function useModels() {
       if (governedRuns.length > 0) {
         const currentKey = useGlobalStore.getState().activeRunKey;
         const current = governedRuns.find((run) => run.key === currentKey);
-        const selected = opts?.selectLatest || !current ? governedRuns[0] : current;
+        const selectedVersion = useGlobalStore.getState().selectedModelId;
+        const refreshed = governedRuns.find((run) => run.modelVersionId === selectedVersion);
+        const selected = opts?.selectLatest ? governedRuns[0] : current ?? refreshed ?? governedRuns[0];
         selectRun(selected);
       } else {
         setActiveRunKey('');

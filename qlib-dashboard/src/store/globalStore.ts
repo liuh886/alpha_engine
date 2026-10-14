@@ -43,8 +43,11 @@ export const useGlobalStore = create<GlobalState>((set) => ({
   },
   dataGeneratedAt: '',
   setDataGeneratedAt: (dataGeneratedAt) => set({ dataGeneratedAt }),
-  selectedModelId: '',
-  setSelectedModelId: (selectedModelId) => set({ selectedModelId }),
+  selectedModelId: readSession<string>('selectedModelId', ''),
+  setSelectedModelId: (selectedModelId) => {
+    writeSession('selectedModelId', selectedModelId);
+    set({ selectedModelId });
+  },
   activeRunKey: readSession<string>('activeRunKey', ''),
   setActiveRunKey: (activeRunKey) => {
     writeSession('activeRunKey', activeRunKey);

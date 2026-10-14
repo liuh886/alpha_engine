@@ -13,6 +13,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -26,6 +27,7 @@ RUNNER_ID = "cross_sectional_xgb_ranker_v1"
 _CANDIDATE_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{2,63}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 RUNTIME_FILES = (
+    "src/data/model_data_bundle.py",
     "src/research/cross_sectional_experiment_runner.py",
     "src/research/experiment_harness.py",
     "src/research/xgb_native_calibration.py",
@@ -151,6 +153,7 @@ def _verify_model_data(
     *,
     root: Path,
     expected_provider_identity: str,
+    expected_cutoff: str,
 ) -> tuple[Path, dict[str, Any], list[str]]:
     contract = campaign.get("model_data_bundle")
     if not isinstance(contract, dict):
@@ -186,6 +189,31 @@ def _verify_model_data(
         for row in profiles
         if isinstance(row, dict) and str(row.get("profile_id")) in required
     ]
+    try:
+        required_date = date.fromisoformat(expected_cutoff)
+    except (TypeError, ValueError) as exc:
+        raise OptimizationCampaignError("experiment provider cutoff must be an ISO date") from exc
+    for profile in required_rows:
+        for requirement in profile.get("required_components", []):
+            observed = requirement.get("observed") or {}
+            # Availability of a time series through the experiment's declared
+            # cutoff is separate from the shared bundle's coverage-only ready.
+            # Event/PIT snapshots keep their own availability contracts.
+            if observed.get("component_kind") not in {
+                "selected_pool_prices", "factor_panel", "etf_reference_bundle",
+            }:
+                continue
+            try:
+                observed_date = date.fromisoformat(str(observed.get("evidence_cutoff", "")))
+            except ValueError as exc:
+                raise OptimizationCampaignError(
+                    f"required time-series cutoff missing or invalid: {requirement.get('component_id')}"
+                ) from exc
+            if observed_date < required_date:
+                raise OptimizationCampaignError(
+                    f"required time series does not cover experiment cutoff: {requirement.get('component_id')} "
+                    f"through {observed_date}, requires {required_date}"
+                )
     price_requirements = [
         requirement
         for row in required_rows
@@ -369,6 +397,7 @@ def compile_optimization_campaign(
         campaign,
         root=root,
         expected_provider_identity=expected_provider_identity,
+        expected_cutoff=str(snapshot.get("cutoff", "")),
     )
     context = {
         "schema_version": CAMPAIGN_SCHEMA_VERSION,
@@ -489,31 +518,9 @@ def verify_compiled_optimization_campaign(
     if runtime_files != _runtime_identity(root):
         raise OptimizationCampaignError("compiled optimizer runtime identity drift")
     bundle = context.get("model_data_bundle") or {}
-    bundle_root = _resolve_repo_path(root, bundle.get("root", ""))
-    verify_model_data_bundle(bundle_root)
-    readiness = json.loads(
-        (bundle_root / "model-data-readiness.json").read_text(encoding="utf-8")
+    _verify_model_data(
+        {"model_data_bundle": bundle}, root=root,
+        expected_provider_identity=str(context.get("provider_identity_sha256", "")),
+        expected_cutoff=str(context.get("provider_cutoff", "")),
     )
-    if readiness.get("bundle_id") != bundle.get("bundle_id"):
-        raise OptimizationCampaignError("compiled model data bundle drift")
-    profiles = json.loads(
-        (bundle_root / "training-profiles.json").read_text(encoding="utf-8")
-    )
-    required_profiles = set(bundle.get("required_ready_profiles", []))
-    price_provider_ids = {
-        str(((requirement.get("observed") or {}).get("details") or {}).get(
-            "provider_identity_sha256", ""
-        ))
-        for row in profiles
-        if isinstance(row, dict) and row.get("profile_id") in required_profiles
-        for requirement in row.get("required_components", [])
-        if isinstance(requirement, dict)
-        and (requirement.get("observed") or {}).get("component_kind")
-        == "selected_pool_prices"
-    }
-    if "" in price_provider_ids or (
-        price_provider_ids
-        and price_provider_ids != {str(context.get("provider_identity_sha256", ""))}
-    ):
-        raise OptimizationCampaignError("compiled model data provider identity drift")
     return manifest

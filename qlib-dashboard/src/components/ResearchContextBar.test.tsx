@@ -11,6 +11,18 @@ vi.mock('@/hooks/useActiveResearchBundle', () => ({
 }));
 
 describe('ResearchContextBar evidence identity', () => {
+  it('describes the fleet without borrowing one selected run or legacy cutoff', () => {
+    const run = { title: 'BYD v1.3', evidenceCutoff: '2026-10-13', market: 'cn' } as GovernedRunSummary;
+    render(<ResearchContextBar run={run} fleet={[run, { ...run, title: 'QQQR v4.3', market: 'us', evidenceCutoff: '2026-10-12' }]} />);
+    expect(screen.getByRole('status', { name: 'Strategy fleet context' })).toBeInTheDocument();
+    expect(screen.getByText('Formal strategy fleet · 2 strategies')).toBeInTheDocument();
+    expect(screen.getByText('Evidence cutoffs shown per strategy')).toBeInTheDocument();
+    expect(screen.getByText('CN · US')).toBeInTheDocument();
+    expect(screen.queryByText('BYD v1.3')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Cutoff/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Fully verified')).not.toBeInTheDocument();
+  });
+
   it('uses the selected run cutoff and market rather than the unrelated overview', () => {
     render(<ResearchContextBar run={{ title: 'US frozen baseline', evidenceCutoff: '2026-10-07', market: 'us' } as GovernedRunSummary} />);
     expect(screen.getByText('US frozen baseline')).toBeInTheDocument();

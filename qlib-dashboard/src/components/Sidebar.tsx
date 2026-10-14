@@ -33,7 +33,7 @@ export function Sidebar({ activeRun = null }: { activeRun?: GovernedRunSummary |
       {!collapsed && (
         <div className="research-bundle-card">
           <div className="flex items-center justify-between gap-2">
-            <div className="research-bundle-label">Active evidence</div>
+            <div className="research-bundle-label">Selected evidence</div>
             {activeRun && <span className="rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase">{activeRun.channel}</span>}
           </div>
           <div className="research-bundle-title">{activeRun?.title || bundle?.manifest.title || 'Loading bundle'}</div>

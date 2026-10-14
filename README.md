@@ -4,7 +4,7 @@
 
 Alpha Engine 用固定研究契约、时间有效的数据、exact replay / walk-forward / prospective 验证和 fail-closed 决策，把候选研究收敛成可审计的正式策略，并把“模型为什么存在”和“模型现在为什么这样做”连成一条证据链。
 
-> **Current status — 2026-08-13**
+> **Operating boundary**
 >
 > - Alpha Engine 仍是 `research_only=true`、`trade_ready=false` 的研究与策略观察系统，不提供 broker/order execution。
 > - `configs/strategies/registry.json` 是当前正式策略与 active model 身份的唯一产品权威；README 不复制 active model version 列表。

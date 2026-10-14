@@ -149,7 +149,10 @@ function Layout(props: LayoutProps) {
           </div>
         </header>
 
-        <ResearchContextBar run={activeRun} />
+        <ResearchContextBar
+          run={activeRun}
+          fleet={['app', 'strategies'].includes(declaredRoute?.path ?? '') ? props.runs.filter((run) => run.channel === 'formal') : undefined}
+        />
 
         <main ref={mainRef} className="research-main">
           {props.loading || (requiredTier !== 'public' && access.loading) ? (

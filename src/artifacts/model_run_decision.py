@@ -164,6 +164,8 @@ def pending_observation_decision(manifest_path: Path) -> dict[str, Any]:
         }
 
     summary = sections["summary"][1]
+    supporting = [claim("formal-baseline-identity", "informational",
+        f"Retained baseline status: {summary.get('baseline_status', manifest['publication_status'])}; evidence cutoff {manifest['evidence_cutoff']}. Acceptance and validation are distinct.", "summary")]
     gates = [claim(
         "continuing-effectiveness-review", "blocked",
         "No completed continuing-effectiveness review is bound to this bundle. Historical baseline acceptance alone does not establish continued effectiveness.",
@@ -178,9 +180,20 @@ def pending_observation_decision(manifest_path: Path) -> dict[str, Any]:
         lineage = sections["lineage"][1]
         source = lineage.get("source_evidence", {})
         if isinstance(source, Mapping) and source.get("preregistered_gates_supported") is False:
-            failed_gate = str(source.get("failed_gate") or "retained preregistered gate")
+            failed_gates = source.get("failed_gates")
+            failed_names = ", ".join(str(value) for value in failed_gates) if isinstance(failed_gates, list) else ""
+            failed_gate = str(source.get("failed_gate") or failed_names or "retained preregistered gate")
             gates.append(claim("retained-preregistered-rejection", "failed",
                 f"The original preregistered evidence was not supported: {failed_gate}. Explicit user promotion does not turn this rejection into a passed gate.", "lineage"))
+        prospective_status = lineage.get("prospective_gate_status") or (
+            source.get("prospective_gate_status") if isinstance(source, Mapping) else None
+        )
+        if prospective_status:
+            scope = lineage.get("prospective_gate_scope") or (
+                source.get("prospective_gate_scope") if isinstance(source, Mapping) else None
+            ) or "not declared"
+            supporting.append(claim("declared-prospective-status", "informational",
+                f"Retained prospective gate status: {prospective_status}; scope: {scope}. This does not complete the continuing-effectiveness review.", "lineage"))
         for value in (lineage.get("known_limitations"), source.get("known_limitations") if isinstance(source, Mapping) else None):
             if isinstance(value, list):
                 limits.extend(str(item) for item in value)
@@ -202,8 +215,7 @@ def pending_observation_decision(manifest_path: Path) -> dict[str, Any]:
     decision = {
         "schema_version": "2.0.0", "run_id": manifest["run_id"], "bundle_id": manifest["bundle_id"],
         "verdict": "blocked", "status": "pending_review", "gates": gates,
-        "supporting_evidence": [claim("formal-baseline-identity", "informational",
-            f"Retained baseline status: {summary.get('baseline_status', manifest['publication_status'])}; evidence cutoff {manifest['evidence_cutoff']}. Acceptance and validation are distinct.", "summary")],
+        "supporting_evidence": supporting,
         "contradictory_evidence": contradictory,
         "interpretation_limits": list(dict.fromkeys(limits)),
         "failure_modes": ["Short, selected or overlapping samples may overstate effectiveness; preserve failures and incomplete windows."],
@@ -220,7 +232,7 @@ def materialize_pending_observation_decisions(*, catalog_path: Path, output_root
     validate_catalog(catalog)
     _require(catalog.get("channel") == "formal", "observation receipts require a formal catalog")
     index_path = output_root / "catalog.json"
-    index = _read(index_path) if index_path.exists() else {
+    index: dict[str, Any] = _read(index_path) if index_path.exists() else {
         "schema_version": "2.0.0", "records": [], "research_only": True, "trade_ready": False,
     }
     records = {row["bundle_id"]: row for row in index["records"]}
