@@ -490,6 +490,10 @@ CN27 当前目标、运行发布与投递回执均已分别核对成功。回执
 candidate_ready_for_review 是候选阶段状态，最终发布成立另由合并及线上验收
 证明，不把候选回执单独当作已发布。
 
+CN27 的 10-14 投递记录 `38602873587.json` 中 delivery.status=sent，与已封存
+信号的 model/date/fingerprint/signal_sha256 一致；这是实际回执核对，不只看
+outbox 作业绿灯。它仍不证明目标已经执行，执行等待继续保留。
+
 | 作业阶段 | 单次墙钟耗时 |
 | --- | ---: |
 | prepare | 1 分 57 秒 |
