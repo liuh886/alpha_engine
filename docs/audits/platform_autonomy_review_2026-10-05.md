@@ -574,3 +574,43 @@ strategy_id 的记录仍会阻塞全组。后者现在只阻塞该模型，缺�
 包含使用浏览器受控时钟验证的超时恢复；不是靠增加真实等待或放宽超时来
 使检查通过。最终 gzip JS 为 471.47 KB，预算 480 KB。结果基于最新正式目录，
 代码及本文待原有 PR/CI 交付；未将本地受控响应当作线上运行服务证明。
+
+### 2026-10-15：读取恢复正式交付与第二条运行观察
+
+[PR #1209](https://github.com/liuh886/alpha_engine/pull/1209) 的静态 PWA、正式
+刷新契约、Bundle v2 同步和安全检查均通过，合并为
+`5447ba5c9cc85fb642716b1b2e3544295d6b7b83`。
+[Pages 38707544384](https://github.com/liuh886/alpha_engine/actions/runs/38707544384)
+部署、提交身份校验及线上五策略浏览器验收全部成功；运行状态发布
+38707544407 同样成功。上一节的“待交付/尚未部署”是其本地阶段记录，当前
+工程修复已上线，不再是仅有本地候选的状态。
+
+额外真实线上只读检查绑定 deployment.json 中上述提交和工作流身份，在
+1280×900 桌面、412×915 手机分别打开 QQQR 策略并点击 Refresh operations，
+均回到已读取状态。页面标题/主标题、控件、页面异常、控制台错误及横向溢出
+检查通过；两端均为零页面异常、零控制台错误、零横向溢出。截图与临时收据
+位于本机临时目录，不作为新的研究权威。此为访客读取与恢复控制验收；已登录
+受保护运行响应的失败/身份拒绝/超时仍由受控浏览器及合同测试覆盖，不将
+访客测试冒充为真实 Pro 账号的读取或交易执行证明。
+
+日常闭环另已自动完成
+[正式刷新 38666484844](https://github.com/liuh886/alpha_engine/actions/runs/38666484844)，
+经审核数据 [PR #1208](https://github.com/liuh886/alpha_engine/pull/1208) 发布为
+`ecdc24bea05a1fed66e429ff14a107868bdcda94`，原 Pages 38667714610 成功。
+本次取回诊断 artifact 11943236853，87,239 bytes，压缩包 SHA-256 为
+`0592a8d2ec93b5d5bc8aa1ef13cf97bf30ada07b6767f74981df48462a9a3e36`，与
+GitHub 返回 digest 一致；到期 2026-11-14T01:53:12Z。refresh receipt 对 fan-in
+的哈希、sync receipt 对已合并正式 catalog 的哈希，以及两份回执对已合并
+freshness 的哈希均核验一致。
+
+US/CN cutoff 均为 10-14；执行 QQQ 与 US ranker 两个正式刷新任务，三个 CN
+策略为 no-op，fan-in complete、无 retained strategy，没有重开模型选择。
+单次墙钟：prepare 121 秒、US provider 149 秒、CN provider 12 秒、plan 13 秒、
+QQQ 75 秒、US ranker 47 秒、publish 695 秒；首作业开始至发布结束 1,061 秒。
+作业并行且任务集合与上次不同，不相加或据此宣称整体提速。
+
+这是第二条核验后的运行观察，不记为已通过 2/20。人工介入缺少独立声明，
+仍为 unknown。以 canonical evidence 在 2026-10-15T08:40:19Z 重建五策略状态，
+整体 delayed，仅 QQQ current；其余策略按当前已完成会话和保留观察如实显示
+延迟，不从成功工作流推断刚更新。20 会话连续验收、各冻结模型的充分前瞻
+窗口、OTC 授权和合法长期来源留存继续开放；工程交付未解除这些条件。
