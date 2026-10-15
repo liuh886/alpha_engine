@@ -1287,7 +1287,7 @@ jobs:
               });
             }
       - name: Capture operating acceptance observation
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/github-script@v8
         env:
           EXPECTED_US: ${{ needs.prepare.outputs.us_cutoff }}

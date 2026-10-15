@@ -677,6 +677,16 @@ US events 原 ZIP 的 SHA-256
 现在在写盘前按同一 canonical_close availability 全部掩码为空值，公式及门槛
 不变；实现哈希使旧缓存不可复用。第二轮留存供复核，不冒充该修复后的最终包。
 
+最终纠正运行 [38791346213](https://github.com/liuh886/alpha_engine/actions/runs/38791346213)
+成功：87 个成员、158 个公式、13,746 个质量组合均 ready，inf 为零。EA 源历史
+止于 08-04，之后面板数值全部为空。私有归档提交
+`d15c5d0a75906e8f20f227a4e6c0a5c12d4eb9c1`，路径
+`archives/us87-recent-38791346213-1.zip`，11,078,701 bytes，SHA-256
+`4ebf2db7e9469f7250769cf7c23aac6baf6733380856142417b175f49583228f`。
+已从私有仓库实际取回，压缩包及 88 个面板/质量文件哈希全部核验；这仅完成
+近期独立面板验证，model_data_registered 和 original_training_gate_satisfied
+均为 false。原完整历史门禁及数据许可确认仍开放。
+
 20 会话工具已接入既有诊断路径：观察保存 cutoff、正式身份、执行/no-op、
 阶段时间、发布与阻塞，独立评审绑定真实决策/投递。修正复审发现的两个假阳性：
 Actions 成功不是决策/投递证据；CN27 每日估值刷新不是 30 会话到期评估。
