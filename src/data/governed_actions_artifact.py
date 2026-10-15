@@ -45,6 +45,8 @@ class DurableRelease:
     asset_name: str
     sha256: str
     size_bytes: int
+    repository: str | None = None
+    asset_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -112,11 +114,25 @@ def _durable_release(row: Mapping[str, Any], source_id: str) -> DurableRelease |
     digest = _required_text(binding, "sha256").lower()
     if not _SHA256.fullmatch(digest):
         raise GovernedActionsArtifactError(f"invalid durable release digest: {source_id}")
+    repository = binding.get("repository")
+    asset_id = binding.get("asset_id")
+    if (repository is None) != (asset_id is None):
+        raise GovernedActionsArtifactError("private release requires repository and asset_id")
+    if repository is not None and (
+        not isinstance(repository, str) or not _REPOSITORY.fullmatch(repository)
+    ):
+        raise GovernedActionsArtifactError("invalid private release repository")
+    if asset_id is not None and (type(asset_id) is not int or asset_id <= 0):
+        raise GovernedActionsArtifactError("invalid private release asset_id")
+    if f"sha256:{digest}" != row.get("artifact_digest") or binding.get("size_bytes") != row.get("artifact_size_bytes"):
+        raise GovernedActionsArtifactError("durable release must preserve exact Actions archive")
     return DurableRelease(
         tag=_required_text(binding, "tag"),
         asset_name=_required_text(binding, "asset_name"),
         sha256=digest,
         size_bytes=_positive_int(binding, "size_bytes"),
+        repository=repository,
+        asset_id=asset_id,
     )
 
 
@@ -218,6 +234,7 @@ def inspect_source_retention(
             "durable_release": None if release is None else {
                 "tag": release.tag, "asset_name": release.asset_name,
                 "sha256": release.sha256, "size_bytes": release.size_bytes,
+                **({"repository": release.repository, "asset_id": release.asset_id} if release.repository else {}),
             },
             "retrieval_verified": False,
             "next_action": "verify_pinned_durable_release" if release else "restore_exact_archive" if expired else "retain_exact_archive_before_expiry",
@@ -319,8 +336,9 @@ def _download_durable_release(
     repository: str,
     release: DurableRelease,
     destination: Path,
+    token: str = "",
 ) -> None:
-    """Download a public immutable release asset without a bearer token.
+    """Verify a public or authenticated private mirror of the exact archive.
 
     The release asset is the durable source of truth: it carries the same
     content digest as the original Actions artifact but never expires, so the
@@ -331,6 +349,41 @@ def _download_durable_release(
         f"https://github.com/{repository}/releases/download/"
         f"{quote(release.tag, safe='')}/{quote(release.asset_name, safe='')}"
     )
+    if release.repository is not None:
+        if not token.strip():
+            raise GovernedActionsArtifactError("private archive token is required")
+        api_root = f"https://api.github.com/repos/{release.repository}"
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+        metadata = requests.get(
+            f"{api_root}/releases/tags/{quote(release.tag, safe='')}",
+            headers=headers, timeout=30, allow_redirects=False,
+        )
+        metadata.raise_for_status()
+        payload = _mapping(metadata.json(), "private release")
+        assets = payload.get("assets")
+        if payload.get("tag_name") != release.tag or not isinstance(assets, list):
+            raise GovernedActionsArtifactError("private release identity mismatch")
+        matches = [item for item in assets if isinstance(item, dict) and item.get("id") == release.asset_id]
+        if len(matches) != 1 or any(
+            matches[0].get(key) != value for key, value in {
+                "name": release.asset_name, "size": release.size_bytes, "state": "uploaded",
+            }.items()
+        ):
+            raise GovernedActionsArtifactError("private release asset identity mismatch")
+        asset_response = requests.get(
+            f"{api_root}/releases/assets/{release.asset_id}",
+            headers={**headers, "Accept": "application/octet-stream"},
+            timeout=30, allow_redirects=False,
+        )
+        asset_response.raise_for_status()
+        url = str(asset_response.headers.get("Location", ""))
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        if asset_response.status_code not in {301, 302, 303, 307, 308} or parsed.scheme != "https" or parsed.hostname not in {
+            "release-assets.githubusercontent.com", "objects.githubusercontent.com",
+        }:
+            raise GovernedActionsArtifactError("private release download redirect is invalid")
     with requests.get(url, stream=True, timeout=(30, 300), allow_redirects=True) as asset:
         asset.raise_for_status()
         digest = hashlib.sha256()
@@ -517,6 +570,7 @@ def fetch_governed_sources(
     source_ids: Sequence[str],
     output_root: Path,
     token: str,
+    archive_token: str | None = None,
 ) -> dict[str, Any]:
     registry = load_governed_source_registry(registry_path)
     if not token.strip():
@@ -548,12 +602,13 @@ def fetch_governed_sources(
                         repository=registry.repository,
                         release=source.durable_release,
                         destination=archive,
+                        token=archive_token or token,
                     )
                     retrieval_method = "durable_release"
                 except (GovernedActionsArtifactError, OSError) as exc:
                     retrieval_note = (
                         "durable release unavailable; fell back to the Actions "
-                        f"artifact: {exc}"
+                        f"artifact: {type(exc).__name__}"
                     )
             if retrieval_method != "durable_release":
                 api_root = f"https://api.github.com/repos/{registry.repository}"
@@ -625,6 +680,7 @@ def fetch_governed_sources(
                         "asset_name": source.durable_release.asset_name,
                         "sha256": source.durable_release.sha256,
                         "size_bytes": source.durable_release.size_bytes,
+                        **({"repository": source.durable_release.repository, "asset_id": source.durable_release.asset_id} if source.durable_release.repository else {}),
                     }
                 ),
                 "installed_payload": "verified_component_manifests_only",

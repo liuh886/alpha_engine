@@ -37,8 +37,9 @@ def test_retention_inspection_is_local_and_does_not_claim_verified_retrieval(mon
     monkeypatch.setattr(requests, "get", reject_network)
     report = inspect_source_retention(REGISTRY, as_of=datetime(2027, 1, 2, tzinfo=timezone.utc))
     rows = {row["source_id"]: row for row in report["sources"]}
-    assert rows["us_events"]["retention_status"] == "actions_expired"
-    assert rows["us_events"]["next_action"] == "restore_exact_archive"
+    assert rows["us_events"]["retention_status"] == "durable_mirror_declared"
+    assert rows["us_events"]["next_action"] == "verify_pinned_durable_release"
+    assert rows["us_events"]["durable_release"]["asset_id"] == 644204246
     assert rows["cn_events"]["retention_status"] == "durable_mirror_declared"
     assert rows["cn_events"]["actions_expired"] is True
     assert all(row["retrieval_verified"] is False for row in rows.values())
@@ -355,6 +356,70 @@ def test_durable_release_digest_mismatch_fails_closed(
             repository="owner/repo",
             release=release,
             destination=tmp_path / "asset.zip",
+        )
+
+
+@pytest.mark.parametrize("bad_identity", [False, True])
+def test_private_release_binds_asset_and_never_forwards_token(monkeypatch, tmp_path, bad_identity):
+    payload = b"private-archive"
+    release = DurableRelease(
+        tag="frozen-source", asset_name="source.zip",
+        sha256=hashlib.sha256(payload).hexdigest(), size_bytes=len(payload),
+        repository="owner/private-data", asset_id=42,
+    )
+    calls = []
+
+    class Response:
+        status_code = 302
+        headers = {"Location": "https://release-assets.githubusercontent.com/signed-asset"}
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"tag_name": release.tag, "assets": [{
+                "id": 43 if bad_identity else 42, "name": release.asset_name,
+                "size": release.size_bytes, "state": "uploaded",
+            }]}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            pass
+
+        def iter_content(self, **kwargs):
+            yield payload
+
+    def get(url, **kwargs):
+        calls.append((url, kwargs))
+        return Response()
+
+    monkeypatch.setattr("src.data.governed_actions_artifact.requests.get", get)
+    destination = tmp_path / "archive.zip"
+    if bad_identity:
+        with pytest.raises(GovernedActionsArtifactError, match="asset identity mismatch"):
+            _download_durable_release(repository="owner/public", release=release, destination=destination, token="secret")
+        assert len(calls) == 1
+        assert not destination.exists()
+    else:
+        _download_durable_release(repository="owner/public", release=release, destination=destination, token="secret")
+        assert destination.read_bytes() == payload
+        assert len(calls) == 3
+        assert all(call[1]["headers"]["Authorization"] == "Bearer secret" for call in calls[:2])
+        assert all(call[1]["allow_redirects"] is False for call in calls[:2])
+        assert "headers" not in calls[2][1]
+
+
+def test_private_release_requires_token_before_network(monkeypatch, tmp_path):
+    def reject_network(*args, **kwargs):
+        raise AssertionError("must reject before network")
+
+    monkeypatch.setattr("src.data.governed_actions_artifact.requests.get", reject_network)
+    with pytest.raises(GovernedActionsArtifactError, match="private archive token"):
+        _download_durable_release(
+            repository="owner/public", destination=tmp_path / "archive.zip",
+            release=DurableRelease("frozen", "source.zip", "a" * 64, 10, "owner/private", 42),
         )
 
 

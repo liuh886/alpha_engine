@@ -856,6 +856,7 @@ jobs:
       - name: Build shared Model Data Bundle
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          GOVERNED_SOURCE_ARCHIVE_TOKEN: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_TOKEN || secrets.FORMAL_REFRESH_TOKEN || github.token }}
           US_CUTOFF: ${{ needs.plan.outputs.us_cutoff }}
           CN_CUTOFF: ${{ needs.plan.outputs.cn_cutoff }}
           EXPECTED_US_CUTOFF: ${{ needs.prepare.outputs.us_cutoff }}

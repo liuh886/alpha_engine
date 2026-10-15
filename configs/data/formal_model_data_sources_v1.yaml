@@ -30,6 +30,13 @@ sources:
         sha256: "45a82feafdb2e5c55eea06cc179008c7427fa532f3dbdf450010b0c8f865cb1c"
       - path: "corporate_actions/component_manifest.json"
         sha256: "97bf40cd1c05eb8342a37a31dbee8150d57457bdcac4714bc531756275fc18c3"
+    durable_release:
+      repository: "liuh886/alpha-engine-data-archive"
+      tag: "model-data-source-us-events-36869443810"
+      asset_id: 644204246
+      asset_name: "selected-pool-event-live-us-36869443810.zip"
+      sha256: "23d192b96e3bf4f38e1937c2c6896e112b7d8962f8a45bed06e56fe8fc5f686e"
+      size_bytes: 7012468
 
   qqq_reference:
     source_kind: "etf_reference_bundle"
