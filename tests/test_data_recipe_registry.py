@@ -111,9 +111,8 @@ def test_sgov_recipe_binds_six_symbols_and_roles(tmp_path: Path) -> None:
         "configs/data_recipes/registry_v1.yaml",
         "configs/data_recipes/qqq_rotation_sgov_v1.yaml",
         "configs/data_contracts/qqq_rotation_sgov_model_data_v1.yaml",
-        "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml",
+        "configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml",
     )
-    primary = CountingAdapter("tiingo")
     fallback = CountingAdapter("yfinance")
     supplemental = CountingAdapter("yfinance")
 
@@ -122,7 +121,6 @@ def test_sgov_recipe_binds_six_symbols_and_roles(tmp_path: Path) -> None:
         root=tmp_path,
         cutoff="2024-03-15",
         refresh=True,
-        primary_adapter=primary,
         fallback_adapter=fallback,
         reference_adapter=supplemental,
     )

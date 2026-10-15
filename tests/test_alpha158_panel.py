@@ -232,6 +232,25 @@ def test_short_listing_is_explicitly_not_yet_applicable(tmp_path: Path) -> None:
     assert manifest["ready_symbol_count"] == 1
     assert manifest["invalid_symbols"] == []
     assert manifest["not_yet_applicable_symbols"] == ["BBB"]
+    panel = pd.read_csv(tmp_path / "output/panels/BBB.csv.gz")
+    assert panel.iloc[:-30, 1:].isna().all().all()
+
+
+def test_terminated_source_cannot_expose_numeric_rolling_outputs(tmp_path: Path) -> None:
+    class TerminatedEvaluator(FakeEvaluator):
+        def evaluate(self, *, symbols, expressions, start, end):
+            frame = super().evaluate(symbols=symbols, expressions=expressions, start=start, end=end)
+            if expressions == ["$close"]:
+                dates = frame.index.get_level_values("datetime")
+                frame.loc[dates > sorted(set(dates))[-6], "$close"] = np.nan
+            return frame
+
+    root, contract, provider = _fixture(tmp_path, include_vwap=True)
+    manifest = build_alpha158_panel(root=root, contract_path=contract, provider_uri=provider, market="us", start="2024-01-02", cutoff="2024-05-31", output_root=tmp_path / "output", evaluator=TerminatedEvaluator())
+    assert manifest["status"] == "ready"
+    panel = pd.read_csv(tmp_path / "output/panels/AAA.csv.gz")
+    assert panel.iloc[-5:, 1:].isna().all().all()
+    assert panel.iloc[-6, 1:].notna().all()
 
 
 def test_alpha158_panel_blocks_without_true_vwap(tmp_path: Path):
