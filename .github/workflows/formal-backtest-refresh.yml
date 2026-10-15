@@ -1353,7 +1353,8 @@ jobs:
               active_strategy_ids: plan.active_strategy_ids || [],
               formal_identities: formalIdentities,
               executed_strategy_ids: fan.executed_strategy_ids || [],
-              due_evaluated_strategy_ids: (plan.tasks || []).filter(task => task.formal_refresh_required && (fan.executed_strategy_ids || []).includes(task.strategy_id)).map(task => task.strategy_id),
+              due_evaluated_strategy_ids: [],
+              due_cycle_review_status: 'requires_sealed_decision_and_previous_cadence_anchor; formal_refresh_is_not_due_cycle_proof',
               noop_strategy_ids: fan.planned_noop_strategy_ids || [],
               retained_strategy_ids: fan.retained_strategy_ids || [],
               strategy_receipts: (fan.receipts || []).map(row => ({

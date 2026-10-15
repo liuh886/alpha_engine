@@ -22,6 +22,7 @@ from src.data.canonical_vwap import (
     write_source_role_manifest,
 )
 from src.data.model_data_bundle import ComponentSpec, build_model_data_bundle
+from src.data.listing_lifecycle import REGISTRY_PATH, load_terminal_listings
 from src.factors.governance import build_factor_governance_manifest
 from src.factors.reusable_panel import build_reusable_alpha158_panel
 
@@ -180,8 +181,11 @@ def build_us(
     adapters: dict[str, Any] = {}
     diagnostics: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
+    terminal_listings = load_terminal_listings(Path.cwd(), market="us")
     for symbol in symbols:
         try:
+            terminal = terminal_listings.get(symbol)
+            symbol_cutoff = min(cutoff, terminal.terminal_date) if terminal else cutoff
             feed = _us_feed(symbol, policy)
             provider_name = dict(policy.get("provider_overrides", {})).get(symbol, "alpaca") if recent_research else "alpaca"
             if fixture_dir is None:
@@ -190,7 +194,7 @@ def build_us(
                     adapters[key] = PolygonAdapter() if provider_name == "polygon" else AlpacaAdapter(feed=feed, adjustment="split" if recent_research else "all")
                 adapter = adapters[key]
                 result = adapter.fetch_daily_bars(
-                    FetchRequest(symbol=symbol, market="us", start=start, end=cutoff)
+                    FetchRequest(symbol=symbol, market="us", start=start, end=symbol_cutoff)
                 )
                 frame = result.df.copy()
                 metadata = dict(frame.attrs.get("provider_metadata", {}))
@@ -204,6 +208,10 @@ def build_us(
             if missing:
                 raise CanonicalVwapError(f"{symbol}: Alpaca bars missing columns: {missing}")
             frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
+            if frame["date"].isna().any():
+                raise CanonicalVwapError(f"{symbol}: source contains invalid dates")
+            outside_window_rows = int((~frame["date"].between(start, symbol_cutoff)).sum())
+            frame = frame.loc[frame["date"].between(start, symbol_cutoff)].copy()
             for column in required.difference({"date"}):
                 frame[column] = pd.to_numeric(frame[column], errors="coerce")
             if frame[list(required)].isna().any().any() or frame.empty:
@@ -239,6 +247,9 @@ def build_us(
                     "feed": feed,
                     "provider": provider_name,
                     "provider_metadata": metadata,
+                    "governed_terminal_date": terminal.terminal_date if terminal else None,
+                    "effective_source_cutoff": symbol_cutoff,
+                    "outside_governed_window_rows_excluded": outside_window_rows,
                     "rounded_envelope_tolerance_sessions": int((envelope_distance > 1e-8).sum()),
                     "research_only": True,
                     "trade_ready": False,
@@ -260,6 +271,7 @@ def build_us(
         "source_provider": "alpaca_sip_and_polygon_otc" if recent_research else "alpaca_market_data",
         "source_feeds": sorted({row["feed"] for row in diagnostics}),
         "same_record_ohlcv_vwap": True,
+        "lifecycle_registry_sha256": _sha256(Path(REGISTRY_PATH)),
         "retrieved_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "research_only": True,
         "trade_ready": False,
@@ -314,6 +326,7 @@ def build_us(
             "contract_sha256": _sha256(Path("configs/data/alpha158_us87_recent_research_v1.yaml")),
             "source_audit_sha256": _sha256(output_root / "vwap_audit.json"),
             "selected_pool_registry_sha256": _sha256(Path("configs/pools/selected_pool_registry_v1.yaml")),
+            "lifecycle_registry_sha256": _sha256(Path(REGISTRY_PATH)),
             "reference_registry_sha256": _sha256(Path("configs/pools/reference_instrument_registry_v1.yaml")),
             "governed_source_registry_sha256": _sha256(Path("configs/data/formal_model_data_sources_v1.yaml")),
             "model_data_registered": False, "original_training_gate_satisfied": False,

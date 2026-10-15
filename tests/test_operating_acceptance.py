@@ -92,3 +92,24 @@ def test_typed_strategy_review_binds_formal_decision_and_delivery(tmp_path):
     review["decision_delivery_evidence"][0]["delivery"] = binding(decision_path)
     with pytest.raises(ValueError, match="delivery receipt"):
         _review_strategies(row, review, tmp_path)
+
+
+def test_periodic_due_cycle_requires_a_verified_previous_anchor():
+    from src.artifacts.operating_acceptance import _due_cycle_verified
+    record = {"model_version_id": "us_x1_3", "decision_schedule": {"cadence_sessions": 10, "signal_date": "2026-10-14"}}
+    current = {"signal_date": "2026-10-14", "latest_data_date": "2026-10-14", "signal": {}}
+    previous = {"signal_date": "2026-09-30", "latest_data_date": "2026-09-30", "signal": {}}
+    assert _due_cycle_verified(record, current, previous, market="us", cutoff="2026-10-14")
+    assert not _due_cycle_verified(record, current, None, market="us", cutoff="2026-10-14")
+    record["decision_schedule"]["cadence_sessions"] = 30
+    assert not _due_cycle_verified(record, current, previous, market="us", cutoff="2026-10-14")
+    # A daily valuation changes signal_date but retains its last rebalance anchor.
+    current["signal"]["diagnostics"] = {"last_rebalance_date": "2026-09-30"}
+    assert not _due_cycle_verified(record, current, previous, market="us", cutoff="2026-10-14")
+    record["model_version_id"] = "cn_27_v1_3"
+    record["decision_schedule"]["cadence_sessions"] = 1
+    assert not _due_cycle_verified(record, current, previous, market="cn", cutoff="2026-10-14")
+    record["decision_schedule"]["cadence_sessions"] = 30
+    current["signal"] = {}
+    previous.update(signal_date="2026-07-01", latest_data_date="2026-07-01")
+    assert not _due_cycle_verified(record, current, previous, market="cn", cutoff="2026-10-14")

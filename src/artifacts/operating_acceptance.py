@@ -11,7 +11,38 @@ from typing import Any
 from src.research.market_session_clock import completed_market_date, exchange_sessions
 
 
-def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) -> None:
+def _due_cycle_verified(record: dict[str, Any], decision: dict[str, Any], previous: dict[str, Any] | None, *, market: str, cutoff: str) -> bool:
+    """Daily observation is not evidence of a periodic rebalance evaluation."""
+    import yaml
+    from src.governance.active_strategy_catalog import load_active_strategy_catalog
+
+    repository = Path(__file__).resolve().parents[2]
+    strategy = load_active_strategy_catalog(repository / "configs/strategies/registry.json").by_model_version_id.get(str(record.get("model_version_id", "")))
+    if strategy is None or strategy.market != market:
+        return False
+    contract = yaml.safe_load((repository / strategy.model_contract).read_text(encoding="utf-8"))
+    section = {"us_ranker": "strategy", "cn_ranker": "execution", "cn_27_rotation": "portfolio"}.get(strategy.model_family_id)
+    cadence = contract.get(section, {}).get("rebalance_sessions") if section else 1
+    schedule = record.get("decision_schedule", {})
+    if type(cadence) is not int or cadence < 1 or schedule.get("cadence_sessions") != cadence:
+        return False
+    signal = decision["signal"]
+    if cadence == 1:
+        return decision.get("latest_data_date") == cutoff
+    if previous is None:
+        return False
+    if strategy.model_family_id == "cn_27_rotation":
+        anchor = signal.get("diagnostics", {}).get("last_rebalance_date")
+        old_anchor = previous["signal"].get("diagnostics", {}).get("last_rebalance_date")
+    else:
+        anchor, old_anchor = decision.get("signal_date"), previous.get("signal_date")
+    if anchor != cutoff or anchor != schedule.get("signal_date") or not isinstance(old_anchor, str) or old_anchor >= anchor or previous.get("latest_data_date", cutoff) >= cutoff:
+        return False
+    sessions = exchange_sessions(market, old_anchor, anchor)
+    return bool(sessions) and sessions[0] == old_anchor and sessions[-1] == anchor and len(sessions) - 1 >= cadence
+
+
+def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) -> list[str]:
     from src.artifacts.strategy_operations import validate_operations_payload
     from src.artifacts.strategy_signal_ledger import _validate_decision_record
 
@@ -30,6 +61,7 @@ def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) 
     evidence = {item["strategy_id"]: item for item in review["decision_delivery_evidence"]}
     if set(records) != set(expected) or set(evidence) != set(expected) or len(evidence) != len(review["decision_delivery_evidence"]):
         raise ValueError("strategy decision/delivery review must cover every active strategy")
+    verified_due = []
     for strategy_id, formal in expected.items():
         record = records[strategy_id]
         source = record.get("source_identity", {})
@@ -54,6 +86,13 @@ def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) 
             raise ValueError("strategy delivery is not verified")
         if status == "not_required" and decision["signal"].get("should_alert") is not False:
             raise ValueError("required alert cannot be declared not required")
+        previous = None
+        if evidence[strategy_id].get("previous_decision"):
+            previous_path, previous = read(evidence[strategy_id]["previous_decision"])
+            _validate_decision_record(previous, path=previous_path, model_version_id=formal["model_version_id"])
+        if _due_cycle_verified(record, decision, previous, market=market, cutoff=row["actual_cutoffs"][market]):
+            verified_due.append(strategy_id)
+    return verified_due
 
 
 def build_acceptance_report(input_root: Path, *, declarations: Path | None = None, through: str | None = None) -> dict[str, Any]:
@@ -90,7 +129,7 @@ def build_acceptance_report(input_root: Path, *, declarations: Path | None = Non
             run = metadata["run"]
             if any(run.get(key) != value for key, value in {"id": row["run_id"], "run_attempt": row["run_attempt"], "head_sha": row["head_sha"], "conclusion": "success", "status": "completed", "path": ".github/workflows/formal-backtest-refresh.yml"}.items()) or not metadata.get("jobs") or any(job.get("status") != "completed" for job in metadata["jobs"]):
                 raise ValueError(f"final Actions metadata mismatch: {identity}")
-            _review_strategies(row, review, declarations.parent)  # type: ignore[union-attr]
+            row["verified_due_cycle_strategy_ids"] = _review_strategies(row, review, declarations.parent)  # type: ignore[union-attr]
             row["final_stages"] = metadata["jobs"]
         observations.append({**row, "observation_sha256": digest, "review_verified": bool(review_valid), "manual_interventions": manual if review_valid else None})
     markets = {}
@@ -119,7 +158,7 @@ def build_acceptance_report(input_root: Path, *, declarations: Path | None = Non
         window = {row["session"] for row in records[-20:]}
         reviewed_window = [row for row in dated if row["review_verified"] and not row.get("collection_blockers") and row["expected_cutoffs"][market] in window]
         required_due = {strategy for row in reviewed_window for strategy in row.get("active_strategy_ids", [])}
-        covered_due = {strategy for row in reviewed_window for strategy in row.get("due_evaluated_strategy_ids", [])}
+        covered_due = {strategy for row in reviewed_window for strategy in row.get("verified_due_cycle_strategy_ids", [])}
         markets[market] = {"through": end, "observed_sessions": sum(bool(row["observed_attempts"]) for row in records), "qualified_sessions": sum(row["status"] == "qualified" for row in records), "consecutive_qualified_sessions": consecutive, "missing_due_cycle_strategy_ids": sorted(required_due - covered_due), "twenty_session_evidence_complete": consecutive >= 20 and bool(required_due) and required_due <= covered_due, "sessions": records}
     return {
         "schema_version": "operating_acceptance_report_v1", "scope": "existing_strategy_operating_evidence",

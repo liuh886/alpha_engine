@@ -37,6 +37,8 @@ def test_recent_us_panel_keeps_exact_pool_and_never_registers_original_model_dat
     fixtures.mkdir()
     for symbol in symbols:
         pd.DataFrame({"date": ["2026-01-02"], "open": [100], "high": [103], "low": [99], "close": [102], "vwap": [101], "volume": [1000]}).to_csv(fixtures / f"{symbol}.csv", index=False)
+    ea = pd.read_csv(fixtures / "EA.csv")
+    pd.concat([ea, ea.assign(date="2026-08-05")]).to_csv(fixtures / "EA.csv", index=False)
 
     def provider(**kwargs):
         path = kwargs["provider_dir"] / "provider_manifest.json"
@@ -57,6 +59,10 @@ def test_recent_us_panel_keeps_exact_pool_and_never_registers_original_model_dat
     assert result["original_training_gate_satisfied"] is False
     audit = json.loads((tmp_path / "recent/vwap_audit.json").read_text())
     assert {row["symbol"] for row in audit["symbols"] if row["provider"] == "polygon"} == {"ABBNY", "SBGSY"}
+    ea_audit = next(row for row in audit["symbols"] if row["symbol"] == "EA")
+    assert ea_audit["effective_source_cutoff"] == "2026-08-04"
+    assert ea_audit["outside_governed_window_rows_excluded"] == 1
+    assert pd.read_csv(tmp_path / "recent/source_csv/EA.csv")["date"].max() == "2026-01-02"
 
 
 def _pair() -> tuple[pd.DataFrame, pd.DataFrame]:
