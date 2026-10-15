@@ -575,6 +575,15 @@
   ],
   "retired_from_runtime": [
     {
+      "module": "run_weekly",
+      "path": "scripts/run_weekly.bat",
+      "reason": "machine-specific generated launcher; no repository caller or matching local installed task; weekly research remains explicitly invoked outside the US23 diagnostic schedule",
+      "retired_at": "2026-10-15",
+      "source_revision": "4f8275101c0a637eb59e452163994e3e073af722",
+      "source_git_blob_sha256": "a474a4ecfedfd6d834c52eac315cba501c8bf4933f678c0223ba00957d7528dd",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
       "module": "byd_v2_regime_research",
       "path": "scripts/byd_v2_regime_research.py",
       "reason": "user-directed pruning; no live caller; completed unsupported BYD v2 exploration; sealed results retained",

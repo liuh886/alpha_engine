@@ -84,3 +84,12 @@ triggering research execution.
    and function as described in the CLI help text (ADR-0009 transitional
    placeholder removed).  ``setup_cron.py`` passes ``--market us``, so
    cron/PM2 runs only the US market as intended.
+
+### 2026-10-15 scheduling follow-up
+
+The canonical weekly research command remains explicitly callable with
+`--market us`. The local `setup_cron.py` template now covers only the optional
+frozen US23 diagnostic; it no longer schedules weekly research, factor-decay
+updates or reports. The former machine-specific `scripts/run_weekly.bat` was
+retired with its Git source identity retained in the archive manifest. This
+narrows scheduling scope without changing canonical weekly research execution.

@@ -33,7 +33,7 @@ make backtest
 make research-bundle
 ```
 
-`scripts/setup_cron.py` 的现有模板针对旧的 US 23 名诊断与周研究任务；它不能替代活跃策略闭环，不应作为平台默认自运行安装入口。复用现有工作流，避免再部署一套重复调度器。
+`scripts/setup_cron.py` 仅为明确选择的旧 US 23 名诊断生成本地定时模板，产物位于 `artifacts/`；它不会安排周研究、因子衰减或周报，也不能替代活跃策略闭环。平台自运行复用上述现有工作流。
 
 ## 2. 日志和证据
 
