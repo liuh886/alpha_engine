@@ -91,6 +91,7 @@ def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) 
     if set(records) != set(expected) or set(evidence) != set(expected) or len(evidence) != len(review["decision_delivery_evidence"]):
         raise ValueError("strategy decision/delivery review must cover every active strategy")
     verified_due = []
+    row["verified_retained_target_strategy_ids"] = []
     for strategy_id, formal in expected.items():
         record = records[strategy_id]
         source = record.get("source_identity", {})
@@ -121,6 +122,7 @@ def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) 
             from src.artifacts.formal_refresh import market_provider_cutoff
             if any(item.get("research_only") is not True or item.get("trade_ready") is not False for item in (plan, fan, provider)) or len(tasks) != 1 or tasks[0].get("model_version_id") != formal["model_version_id"] or tasks[0].get("planned_provider_cutoff") != row["actual_cutoffs"][market] or tasks[0].get("formal_refresh_required") is not False or fan.get("status") != "complete" or fan.get("retained_strategy_ids") or provider.get("all_sources_ready") is not True or provider.get("failure_count") != 0 or provider.get("unresolved_stale_symbols") or market_provider_cutoff(provider, market=market) != row["actual_cutoffs"][market]:
                 raise ValueError("retained target operating inputs are blocked or not current")
+            row["verified_retained_target_strategy_ids"].append(strategy_id)
         if decision.get("latest_data_date") != record.get("as_of") or decision["latest_data_date"] > row["actual_cutoffs"][market] or formal["evidence_cutoff"] > row["actual_cutoffs"][market]:
             raise ValueError("strategy review decision cutoff mismatch")
         _, delivery = read(evidence[strategy_id]["delivery"])
@@ -211,7 +213,7 @@ def build_acceptance_report(input_root: Path, *, declarations: Path | None = Non
         "schema_version": "operating_acceptance_report_v1", "scope": "existing_strategy_operating_evidence",
         "observation_count": len(observations), "markets": markets,
         "qualification_scope": "whole_operating_loop_all_active_strategies; calendar_counts_are_market_specific",
-        "run_evidence": [{key: row.get(key) for key in ("run_id", "run_attempt", "observation_sha256", "collection_blockers", "stages", "final_stages", "publication")} for row in observations],
+        "run_evidence": [{key: row.get(key) for key in ("run_id", "run_attempt", "observation_sha256", "verified_retained_target_strategy_ids", "verified_due_cycle_strategy_ids", "collection_blockers", "stages", "final_stages", "publication")} for row in observations],
         "manual_interventions": {f"{row['run_id']}:{row['run_attempt']}": row["manual_interventions"] for row in observations},
         "limitations": ["Missing and cancelled sessions cannot be skipped to construct a continuous pass.", "Repeated runs are attempts of one exchange session, not additional sessions.", "Collection alone does not verify decision freshness, cadence or delivery; independent hash-bound review is required.", "Captured publish-job duration is incomplete until final Actions metadata is retained."],
         "research_only": True, "trade_ready": False,

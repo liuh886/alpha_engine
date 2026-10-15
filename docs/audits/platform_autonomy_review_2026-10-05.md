@@ -705,3 +705,17 @@ trade_ready=false 边界不变。恢复、运行与许可确认步骤已写入�
 当前 provider、plan、fan-in，允许正常 MTM，仍核验旧因子和投递；旧信号日期
 及 stale 展示不改，未到期不算新到期周期。此修复使验收可覆盖真实运行合同，
 没有改动调仓频率、模型或门槛，也没有将真实数据阻塞归为正常保留。
+
+[PR #1212](https://github.com/liuh886/alpha_engine/pull/1212) 经全部检查合并为
+`c8e58178d87b43a43a44a847de2cf9e01482ffca`。主分支
+[正式运行 38792987386](https://github.com/liuh886/alpha_engine/actions/runs/38792987386)
+实际生成 operating-observation.json：US/CN provider cutoff 分别 10-14/10-15，
+CN x 与 BYD 的候选刷新成功，但 CN27 的 600938.open 冻结历史核对失败，
+已治理 Tencent 来源重读同样失败。原子发布被阻止，CN27 保留 cutoff 10-14，
+没有把其他候选当成已发布正式证据。
+
+观察回执保留 data_blocked、retained、publication_not_verified 和失败阶段，
+publish 尚未结束的时长明确为 null；已另取最终 Actions 元数据。真实报告为
+1 条观察、US/CN 各 0 个合格会话，人工介入保持 unknown。不会把这轮失败
+追认为 1/20，也不为放行而放宽冻结历史匹配。CN27 来源重述是当前运行阻塞，
+与近期 US87 面板的独立成功和私有取回证明分别保留。

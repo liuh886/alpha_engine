@@ -154,6 +154,7 @@ def test_not_due_ranker_accepts_current_operating_inputs_without_relabelling_old
         _review_strategies(row, review, tmp_path)
     review["operating_inputs"] = {"plan": plan, "fan_in": fan, "providers": {"us": provider}}
     assert _review_strategies(row, review, tmp_path) == []  # Qualified operation, no due cycle.
+    assert row["verified_retained_target_strategy_ids"] == ["us_x"]
     assert record["as_of"] == "2026-08-07" and record["factor_freshness"] == "stale"
     task["formal_refresh_required"] = True
     changed = write("plan.json", {**boundary, "tasks": [task]})
