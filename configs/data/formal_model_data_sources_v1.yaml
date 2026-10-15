@@ -30,34 +30,40 @@ sources:
         sha256: "45a82feafdb2e5c55eea06cc179008c7427fa532f3dbdf450010b0c8f865cb1c"
       - path: "corporate_actions/component_manifest.json"
         sha256: "97bf40cd1c05eb8342a37a31dbee8150d57457bdcac4714bc531756275fc18c3"
-    durable_release:
+    durable_git:
       repository: "liuh886/alpha-engine-data-archive"
-      tag: "model-data-source-us-events-36869443810"
-      asset_id: 644204246
-      asset_name: "selected-pool-event-live-us-36869443810.zip"
+      commit: "b1fa72450b5c00d1eb82748169c747846814acde"
+      path: "archives/us-events-36869443810.zip"
       sha256: "23d192b96e3bf4f38e1937c2c6896e112b7d8962f8a45bed06e56fe8fc5f686e"
       size_bytes: 7012468
 
   qqq_reference:
     source_kind: "etf_reference_bundle"
     workflow_path: ".github/workflows/etf-reference-bundle-ci.yml"
-    workflow_run_id: 37140721387
-    head_branch: "main"
-    head_sha: "40635ef02c912579248ebb3b105916ded6831d86"
-    artifact_id: 11280546210
-    artifact_name: "qqqi-qqq-tqqq-reference-bundle-37140721387"
-    artifact_digest: "sha256:e52fb86fa3312dd0497746a290bb35d03aaa8e435f548ff6330e7ea7eab4f8c9"
-    artifact_size_bytes: 1562920
-    expires_at: "2027-01-01T17:29:56Z"
+    workflow_run_id: 38757752731
+    head_branch: "feature/operating-evidence-retention"
+    head_sha: "090f34db45f05816ec2ee4321975070ee883f82e"
+    artifact_id: 11983524280
+    artifact_name: "qqqi-qqq-tqqq-reference-bundle-38757752731"
+    artifact_digest: "sha256:6da52ca8563264ec0fdaba50819bba828f9e1cd70e026bd85111297bb9bab9ad"
+    artifact_size_bytes: 912648
+    expires_at: "2027-01-13T15:09:01Z"
     market: "us"
     pool_id: "qqqi_qqq_tqqq_reference_bundle_v1"
-    evidence_cutoff: "2026-10-02"
+    evidence_cutoff: "2026-10-14"
     expected_symbol_count: 3
     max_uncompressed_bytes: 104857600
     max_member_count: 100
+    research_reference_contract_sha256: "db086681013dfdc2f3a27a4085acd6c7cd5cdf1ad259138998015d51739b7477"
     component_manifests:
       - path: "bundle_manifest.json"
-        sha256: "29413677549352f7f9a8342034f2ae534aa8df27d3889b05155419615daeb1c7"
+        sha256: "2ba747e88306bb1fc551788d915665681af0241017af24beaae390752bb5512a"
+    durable_git:
+      repository: "liuh886/alpha-engine-data-archive"
+      commit: "0ab75fe9770f2049308168ebca47c8b2a1c76732"
+      path: "archives/qqq-reference-research-38757752731.zip"
+      sha256: "6da52ca8563264ec0fdaba50819bba828f9e1cd70e026bd85111297bb9bab9ad"
+      size_bytes: 912648
 
   cn_alpha158:
     source_kind: "alpha158_panel"

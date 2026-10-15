@@ -105,12 +105,16 @@ def _verify_model_profile(
 
 def _verify_cache(
     *,
+    root: Path,
     pointer: Mapping[str, Any],
     recipe_sha256: str,
     requested_cutoff: str,
     recipe: Mapping[str, Any],
 ) -> dict[str, Any] | None:
     if pointer.get("recipe_sha256") != recipe_sha256:
+        return None
+    etf_contract = recipe.get("source_products", {}).get("etf_contract")
+    if etf_contract and pointer.get("etf_contract_sha256") != _sha256(_resolve(root, etf_contract)):
         return None
     if pointer.get("requested_cutoff") != requested_cutoff:
         return None
@@ -347,6 +351,7 @@ def prepare_data_recipe(
         cached = _read_json(pointer_path)
         if cached:
             verified = _verify_cache(
+                root=normalized_root,
                 pointer=cached,
                 recipe_sha256=recipe_hash,
                 requested_cutoff=requested_cutoff,
@@ -415,6 +420,7 @@ def prepare_data_recipe(
         "builder": recipe["builder"],
         "recipe_path": str(recipe_path),
         "recipe_sha256": recipe_hash,
+        "etf_contract_sha256": _sha256(_resolve(normalized_root, recipe["source_products"]["etf_contract"])) if recipe.get("source_products", {}).get("etf_contract") else None,
         "requested_cutoff": requested_cutoff,
         "built_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "status": "built",
@@ -451,6 +457,7 @@ def data_recipe_status(
             "trade_ready": False,
         }
     verified = _verify_cache(
+        root=normalized_root,
         pointer=pointer,
         recipe_sha256=_sha256(recipe_path),
         requested_cutoff=requested_cutoff,

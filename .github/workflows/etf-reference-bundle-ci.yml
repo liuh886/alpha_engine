@@ -89,14 +89,14 @@ jobs:
       - name: Build current ETF bundle and retain failure evidence
         run: >-
           uv run python scripts/data/build_etf_reference_bundle.py
-          --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+          --output-root artifacts/data/qqqi_qqq_tqqq_reference_research_v2
       - name: Verify free research source and completed cutoff
         run: |
           uv run python - <<'PY'
           import hashlib
           import json
           from pathlib import Path
-          path = Path("artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json")
+          path = Path("artifacts/data/qqqi_qqq_tqqq_reference_research_v2/bundle_manifest.json")
           payload = json.loads(path.read_text())
           contract = Path("configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml")
           assert payload["contract_sha256"] == hashlib.sha256(contract.read_bytes()).hexdigest()
@@ -117,6 +117,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: qqqi-qqq-tqqq-reference-bundle-${{ github.run_id }}
-          path: artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+          path: artifacts/data/qqqi_qqq_tqqq_reference_research_v2
           if-no-files-found: error
           retention-days: 90

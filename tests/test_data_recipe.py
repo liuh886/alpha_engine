@@ -114,6 +114,9 @@ def test_prepare_recipe_builds_profile_and_reuses_hash_verified_cache(
         cutoff="2024-03-15",
     )
     assert status["status"] == "reused"
+    contract = tmp_path / "configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml"
+    contract.write_text(contract.read_text() + "\n# New frozen source identity\n")
+    assert data_recipe_status("qqq-rotation", root=tmp_path, cutoff="2024-03-15")["status"] == "stale_or_blocked"
 
 
 def test_recipe_status_fails_closed_after_strategy_data_tampering(

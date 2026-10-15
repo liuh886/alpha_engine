@@ -10,6 +10,8 @@ import pytest
 
 from src.data.governed_actions_artifact import (
     DurableRelease,
+    DurableGitArchive,
+    _download_durable_git,
     GovernedActionsArtifactError,
     GovernedSource,
     ManifestBinding,
@@ -38,8 +40,8 @@ def test_retention_inspection_is_local_and_does_not_claim_verified_retrieval(mon
     report = inspect_source_retention(REGISTRY, as_of=datetime(2027, 1, 2, tzinfo=timezone.utc))
     rows = {row["source_id"]: row for row in report["sources"]}
     assert rows["us_events"]["retention_status"] == "durable_mirror_declared"
-    assert rows["us_events"]["next_action"] == "verify_pinned_durable_release"
-    assert rows["us_events"]["durable_release"]["asset_id"] == 644204246
+    assert rows["us_events"]["next_action"] == "verify_pinned_durable_git"
+    assert rows["us_events"]["durable_git"]["commit"] == "b1fa72450b5c00d1eb82748169c747846814acde"
     assert rows["cn_events"]["retention_status"] == "durable_mirror_declared"
     assert rows["cn_events"]["actions_expired"] is True
     assert all(row["retrieval_verified"] is False for row in rows.values())
@@ -144,7 +146,7 @@ def test_checked_in_registry_freezes_exact_current_sources() -> None:
     assert registry.sources["us_events"].expected_symbol_count == 87
     assert registry.sources["us_events"].evidence_cutoff == "2026-09-30"
     assert registry.sources["qqq_reference"].expected_symbol_count == 3
-    assert registry.sources["qqq_reference"].evidence_cutoff == "2026-10-02"
+    assert registry.sources["qqq_reference"].evidence_cutoff == "2026-10-14"
 
 
 def test_formal_refresh_source_roles_and_manifest_paths_match_registry() -> None:
@@ -359,68 +361,32 @@ def test_durable_release_digest_mismatch_fails_closed(
         )
 
 
-@pytest.mark.parametrize("bad_identity", [False, True])
-def test_private_release_binds_asset_and_never_forwards_token(monkeypatch, tmp_path, bad_identity):
-    payload = b"private-archive"
-    release = DurableRelease(
-        tag="frozen-source", asset_name="source.zip",
-        sha256=hashlib.sha256(payload).hexdigest(), size_bytes=len(payload),
-        repository="owner/private-data", asset_id=42,
-    )
+@pytest.mark.parametrize("corrupt", [False, True])
+def test_private_git_archive_is_commit_and_digest_bound(monkeypatch, tmp_path, corrupt):
+    payload = b"private archive"
+    binding = DurableGitArchive("owner/private-data", "a" * 40, "archives/source.zip", hashlib.sha256(payload).hexdigest(), len(payload))
     calls = []
 
-    class Response:
-        status_code = 302
-        headers = {"Location": "https://release-assets.githubusercontent.com/signed-asset"}
+    def run(command, **kwargs):
+        calls.append(command)
+        ssh = kwargs["env"]["GIT_SSH_COMMAND"]
+        assert "StrictHostKeyChecking=yes" in ssh
+        assert "IdentitiesOnly=yes" in ssh
+        assert "PRIVATE MATERIAL" not in ssh
+        assert "PRIVATE MATERIAL" not in " ".join(command)
+        if command[1] == "show":
+            assert command[2] == f"{binding.commit}:{binding.path}"
+            kwargs["stdout"].write(b"tampered" if corrupt else payload)
 
-        def raise_for_status(self):
-            pass
-
-        def json(self):
-            return {"tag_name": release.tag, "assets": [{
-                "id": 43 if bad_identity else 42, "name": release.asset_name,
-                "size": release.size_bytes, "state": "uploaded",
-            }]}
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            pass
-
-        def iter_content(self, **kwargs):
-            yield payload
-
-    def get(url, **kwargs):
-        calls.append((url, kwargs))
-        return Response()
-
-    monkeypatch.setattr("src.data.governed_actions_artifact.requests.get", get)
+    monkeypatch.setattr("src.data.governed_actions_artifact.subprocess.run", run)
     destination = tmp_path / "archive.zip"
-    if bad_identity:
-        with pytest.raises(GovernedActionsArtifactError, match="asset identity mismatch"):
-            _download_durable_release(repository="owner/public", release=release, destination=destination, token="secret")
-        assert len(calls) == 1
-        assert not destination.exists()
+    if corrupt:
+        with pytest.raises(GovernedActionsArtifactError, match="digest mismatch"):
+            _download_durable_git(archive=binding, destination=destination, ssh_key="PRIVATE MATERIAL")
     else:
-        _download_durable_release(repository="owner/public", release=release, destination=destination, token="secret")
+        _download_durable_git(archive=binding, destination=destination, ssh_key="PRIVATE MATERIAL")
         assert destination.read_bytes() == payload
-        assert len(calls) == 3
-        assert all(call[1]["headers"]["Authorization"] == "Bearer secret" for call in calls[:2])
-        assert all(call[1]["allow_redirects"] is False for call in calls[:2])
-        assert "headers" not in calls[2][1]
-
-
-def test_private_release_requires_token_before_network(monkeypatch, tmp_path):
-    def reject_network(*args, **kwargs):
-        raise AssertionError("must reject before network")
-
-    monkeypatch.setattr("src.data.governed_actions_artifact.requests.get", reject_network)
-    with pytest.raises(GovernedActionsArtifactError, match="private archive token"):
-        _download_durable_release(
-            repository="owner/public", destination=tmp_path / "archive.zip",
-            release=DurableRelease("frozen", "source.zip", "a" * 64, 10, "owner/private", 42),
-        )
+    assert calls[1][-1] == binding.commit
 
 
 def test_receipt_contract_stays_json_serializable() -> None:

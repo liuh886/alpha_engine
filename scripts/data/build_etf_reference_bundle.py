@@ -21,9 +21,10 @@ def main() -> int:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path("artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1"),
+        default=Path("artifacts/data/qqqi_qqq_tqqq_reference_research_v2"),
     )
     parser.add_argument("--end-date", default=None)
+    parser.add_argument("--require-source-policy", choices=["yahoo_research_v2", "professional_primary_v1"])
     parser.add_argument(
         "--require-professional",
         action="store_true",
@@ -45,6 +46,8 @@ def main() -> int:
     print(json.dumps(manifest, indent=2, sort_keys=True))
     if manifest.get("strategy_data_ready") is not True:
         return 2
+    if args.require_source_policy and manifest.get("source_policy") != args.require_source_policy:
+        return 4
     if args.require_professional and manifest.get("professional_source_ready") is not True:
         return 3
     return 0

@@ -150,6 +150,12 @@ def _build_parser() -> argparse.ArgumentParser:
     record_decision.add_argument("--commit-sha", required=True)
     record_decision.add_argument("--created-at-utc", required=True)
 
+    acceptance = ops_commands.add_parser("acceptance", help="Summarize retained operating observations without refresh or training")
+    acceptance.add_argument("--input-root", type=Path, required=True)
+    acceptance.add_argument("--declarations", type=Path)
+    acceptance.add_argument("--output", type=Path)
+    acceptance.add_argument("--through", help="Completed cutoff YYYY-MM-DD; defaults to current completed market sessions")
+
     build_ops = ops_commands.add_parser(
         "build",
         help="Materialize Strategy Operations and the system-health read model.",
@@ -335,6 +341,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "research_only": True,
                 "trade_ready": False,
             }
+        elif args.group == "ops" and args.ops_command == "acceptance":
+            from src.artifacts.operating_acceptance import build_acceptance_report
+
+            payload = build_acceptance_report(_resolve(root, args.input_root), declarations=_resolve(root, args.declarations) if args.declarations else None, through=args.through)
+            if args.output:
+                target = _resolve(root, args.output)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         elif args.group == "ops" and args.ops_command == "build":
             from src.artifacts.strategy_operations import (
                 StrategyOperationsError, build_operations_payload,

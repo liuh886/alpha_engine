@@ -25,7 +25,7 @@ WORKFLOW_JOB_COUNTS = {
     "selected-pool-event-population-ci.yml": 4,
     "factor-catalog-alpha158-ci.yml": 1,
     "alpha158-panel-ci.yml": 2,
-    "us87-professional-prices-ci.yml": 2,
+    "us87-professional-prices-ci.yml": 3,
     "model-data-bundle-ci.yml": 2,
     "etf-reference-bundle-ci.yml": 2,
     "factor-knowledge-registry-ci.yml": 1,
@@ -55,7 +55,7 @@ def test_shared_python_environment_is_frozen_and_cache_safe() -> None:
 
 
 def test_active_data_plane_workflows_use_one_governed_environment_setup() -> None:
-    assert sum(WORKFLOW_JOB_COUNTS.values()) == 22
+    assert sum(WORKFLOW_JOB_COUNTS.values()) == 23
     root = Path(".github/workflows")
     for filename, job_count in WORKFLOW_JOB_COUNTS.items():
         content = (root / filename).read_text(encoding="utf-8")
@@ -90,7 +90,9 @@ def test_etf_live_bundle_keeps_provider_and_evidence_boundaries() -> None:
 
     assert live["if"] == "github.event_name != 'pull_request'"
     assert live["needs"] == "contract"
-    assert live["env"] == {"TIINGO_API_TOKEN": "${{ secrets.TIINGO_API_TOKEN }}"}
+    assert "TIINGO_API_TOKEN" not in live.get("env", {})
+    assert "yahoo_research_v2" in "\n".join(step.get("run", "") for step in steps)
+    assert upload["with"]["path"] == "artifacts/data/qqqi_qqq_tqqq_reference_research_v2"
     assert steps[0]["uses"] == "actions/checkout@v7"
     assert steps[1]["uses"] == "./.github/actions/setup-python-uv"
     assert upload["if"] == "always()"

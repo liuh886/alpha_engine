@@ -856,7 +856,7 @@ jobs:
       - name: Build shared Model Data Bundle
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          GOVERNED_SOURCE_ARCHIVE_TOKEN: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_TOKEN || secrets.FORMAL_REFRESH_TOKEN || github.token }}
+          GOVERNED_SOURCE_ARCHIVE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_SSH_KEY }}
           US_CUTOFF: ${{ needs.plan.outputs.us_cutoff }}
           CN_CUTOFF: ${{ needs.plan.outputs.cn_cutoff }}
           EXPECTED_US_CUTOFF: ${{ needs.prepare.outputs.us_cutoff }}
@@ -1286,12 +1286,102 @@ jobs:
                 assignees: [context.repo.owner],
               });
             }
+      - name: Capture operating acceptance observation
+        if: always()
+        uses: actions/github-script@v8
+        env:
+          EXPECTED_US: ${{ needs.prepare.outputs.us_cutoff }}
+          EXPECTED_CN: ${{ needs.prepare.outputs.cn_cutoff }}
+          ACTUAL_US: ${{ needs.plan.outputs.us_cutoff }}
+          ACTUAL_CN: ${{ needs.plan.outputs.cn_cutoff }}
+          MERGE_SHA: ${{ steps.release.outputs.merge_sha }}
+          PAGES_RUN_ID: ${{ steps.release.outputs.pages_run_id }}
+          DELTA_STATUS: ${{ steps.effective_delta.outputs.status }}
+          PRIOR_JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const fs = require('fs');
+            const crypto = require('crypto');
+            const directory = 'artifacts/formal-refresh';
+            fs.mkdirSync(directory, { recursive: true });
+            const hashes = {};
+            const blockers = [];
+            function receipt(relative) {
+              const path = `${directory}/${relative}`;
+              if (!fs.existsSync(path)) { blockers.push(`missing:${relative}`); return {}; }
+              const bytes = fs.readFileSync(path);
+              hashes[relative] = crypto.createHash('sha256').update(bytes).digest('hex');
+              try { return JSON.parse(bytes); }
+              catch { blockers.push(`invalid:${relative}`); return {}; }
+            }
+            const plan = receipt('plan/plan.json');
+            const fan = receipt('strategy-fan-in-receipt.json');
+            const refresh = receipt('formal-refresh-receipt.json');
+            const sync = receipt('formal-v2-sync-receipt.json');
+            const formal = receipt('formal-v2/catalog.json');
+            const formalIdentities = {};
+            for (const task of plan.tasks || []) {
+              const item = (formal.records || []).find(row => row.model_version_id === task.model_version_id);
+              if (item) formalIdentities[task.strategy_id] = { model_version_id: item.model_version_id, run_id: item.run_id, bundle_id: item.bundle_id, evidence_cutoff: item.evidence_cutoff, market: task.market };
+              else blockers.push(`missing_formal_identity:${task.strategy_id}`);
+            }
+            if (refresh.strategy_fan_in_sha256 !== hashes['strategy-fan-in-receipt.json']) blockers.push('fan_in_hash_mismatch');
+            if (refresh.model_selection_reopened !== false) blockers.push('model_selection_reopened_or_undeclared');
+            if (fan.status !== 'complete' || (fan.retained_strategy_ids || []).length) blockers.push('incomplete_or_retained_evidence');
+            for (const item of [plan, fan, refresh, sync]) {
+              if (item.research_only !== true || item.trade_ready !== false) blockers.push('research_boundary_or_receipt_missing');
+            }
+            const unchanged = process.env.DELTA_STATUS === 'semantic_no_change';
+            const published = Boolean(process.env.MERGE_SHA && process.env.PAGES_RUN_ID);
+            if (!unchanged && !published) blockers.push('publication_not_verified');
+            if (process.env.PRIOR_JOB_STATUS !== 'success') blockers.push('upstream_or_publication_failed');
+            const attempt = Number(process.env.GITHUB_RUN_ATTEMPT);
+            let jobs = [];
+            try {
+              jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
+                owner: context.repo.owner, repo: context.repo.repo,
+                run_id: context.runId, attempt_number: attempt, per_page: 100,
+              });
+            } catch { blockers.push('stage_metadata_unavailable'); }
+            const observation = {
+              schema_version: 'operating_observation_v1',
+              observed_at: new Date().toISOString(),
+              run_id: context.runId, run_attempt: attempt, head_sha: context.sha,
+              event: context.eventName, actor: context.actor,
+              expected_cutoffs: { us: process.env.EXPECTED_US || null, cn: process.env.EXPECTED_CN || null },
+              actual_cutoffs: { us: process.env.ACTUAL_US || null, cn: process.env.ACTUAL_CN || null },
+              active_strategy_ids: plan.active_strategy_ids || [],
+              formal_identities: formalIdentities,
+              executed_strategy_ids: fan.executed_strategy_ids || [],
+              due_evaluated_strategy_ids: (plan.tasks || []).filter(task => task.formal_refresh_required && (fan.executed_strategy_ids || []).includes(task.strategy_id)).map(task => task.strategy_id),
+              noop_strategy_ids: fan.planned_noop_strategy_ids || [],
+              retained_strategy_ids: fan.retained_strategy_ids || [],
+              strategy_receipts: (fan.receipts || []).map(row => ({
+                strategy_id: row.strategy_id, market: row.market,
+                execution_status: row.execution_status, reason: row.reason || null,
+              })),
+              receipt_sha256: hashes,
+              publication: { status: unchanged ? 'semantic_no_change' : published ? 'reviewed_release' : 'not_verified',
+                merge_sha: process.env.MERGE_SHA || null, pages_run_id: process.env.PAGES_RUN_ID || null },
+              stages: jobs.map(job => ({ name: job.name, status: job.status,
+                conclusion: job.conclusion, started_at: job.started_at, completed_at: job.completed_at,
+                duration_seconds: job.completed_at && job.started_at ? (Date.parse(job.completed_at) - Date.parse(job.started_at)) / 1000 : null })),
+              timing_status: 'captured_before_publish_job_completion',
+              manual_interventions: null,
+              delivery_receipts: [],
+              collection_blockers: [...new Set(blockers)],
+              acceptance_status: 'awaiting_independent_intervention_and_decision_delivery_review',
+              research_only: true, trade_ready: false,
+            };
+            fs.writeFileSync(`${directory}/operating-observation.json`, JSON.stringify(observation, null, 2) + '\n');
+            await core.summary.addRaw(`Operating observation ${context.runId}:${attempt} captured; 20-session acceptance remains pending.\n`).write();
       - name: Upload bounded refresh evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v6
         with:
-          name: formal-backtest-refresh-${{ github.run_id }}
+          name: formal-backtest-refresh-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
+            artifacts/formal-refresh/operating-observation.json
             artifacts/formal-refresh/plan/plan.json
             artifacts/formal-refresh/strategy-results/**/receipt.json
             artifacts/formal-refresh/strategy-fan-in-receipt.json
@@ -1306,6 +1396,6 @@ jobs:
             artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_publication_manifest.json
             artifacts/formal-refresh/market-evidence/us/catalog.json
             artifacts/formal-refresh/market-evidence/cn/catalog.json
-          overwrite: true
+          overwrite: false
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 90

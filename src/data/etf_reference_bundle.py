@@ -400,6 +400,8 @@ def build_etf_reference_bundle(
     yahoo_research = contract.get("source_policy") == "yahoo_research_v2"
     if yahoo_research and end is None:
         raise ETFReferenceBundleError("Yahoo research contract requires an explicit cutoff")
+    if yahoo_research and any("tiingo" in str(path.relative_to(root)).lower() for path in root.rglob("*")):
+        raise ETFReferenceBundleError("research output contains forbidden Tiingo remnants")
     if yahoo_research and primary_adapter is not None:
         raise ETFReferenceBundleError("Yahoo research contract forbids a Tiingo primary adapter")
     if not yahoo_research and primary_adapter is None and os.getenv("TIINGO_API_TOKEN", "").strip():
