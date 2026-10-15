@@ -115,7 +115,8 @@ def test_heavy_formal_refresh_does_not_publish_after_explicit_cancellation() -> 
     assert publish_job in text
     assert "if: always()" not in text
     assert "      - name: Resolve effective publication delta" in text
-    assert text.count("if: ${{ !cancelled() }}") == 5
+    assert text.count("if: ${{ !cancelled() }}") == 6
+    assert "      - name: Capture operating acceptance observation\n        if: ${{ !cancelled() }}" in text
 
 
 def test_publication_checks_upstream_before_downloading_missing_evidence() -> None:
