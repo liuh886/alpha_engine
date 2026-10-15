@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     env:
-      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+      TIINGO_API_TOKEN: "" # No paid entitlement; active research uses the versioned Yahoo source.
     steps:
       - uses: actions/checkout@v6
         with:
@@ -79,13 +79,14 @@ jobs:
       - name: Build governed QQQ reference bundle
         run: >-
           uv run python scripts/data/build_etf_reference_bundle.py
-          --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
-          --require-professional
+          --output-root artifacts/data/qqqi_qqq_tqqq_reference_research_v2
+          --contract configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml
+          --require-source-policy yahoo_research_v2
       - name: Evaluate current allocation
         run: >-
           uv run python scripts/run_qqq_v4_3_monitor.py
           --end-date "${{ inputs.end_date }}"
-          --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+          --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_research_v2
           --output-dir "$MONITOR_ROOT"
       - name: Build factor-bound decision
         id: signal
@@ -124,7 +125,7 @@ jobs:
         with:
           name: qqq-v4-3-signal-${{ github.run_id }}
           path: |
-            artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json
+            artifacts/data/qqqi_qqq_tqqq_reference_research_v2/bundle_manifest.json
             artifacts/evidence/qqq_rotation_v4_3_current_monitor/current_summary.json
             artifacts/signals/qqq_rotation_v4_3
             data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3

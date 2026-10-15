@@ -19,8 +19,8 @@ symbols:
   signal_references: ["^VIX", "^VXN"]
 
 source_products:
-  etf_contract: "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"
-  etf_bundle_root: "artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1"
+  etf_contract: "configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml"
+  etf_bundle_root: "artifacts/data/qqqi_qqq_tqqq_reference_research_v2"
   strategy_bundle_root: "artifacts/data/qqq_rotation_strategy_data_v1"
   model_data_bundle_root: "artifacts/data/qqq_rotation_model_data_v1"
   frontend_data_dir: "artifacts/site/data"

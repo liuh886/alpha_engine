@@ -168,3 +168,74 @@ US87 生命周期合格 cutoff 修复已进入正式共享包，原有两个训�
 
 该顺序遵循 [MLflow 数据库升级说明](https://mlflow.org/docs/latest/self-hosting/migration/)。
 使用原生命令完成迁移，没有新增启动包装器、自动迁移服务或定期任务。
+
+## 2026-10-16：精确私有归档、近期面板及逐会话验收
+
+来源仍由 `configs/data/formal_model_data_sources_v1.yaml` 唯一管理。US events
+原 ZIP 与新 QQQ research v2 ZIP 已存入私有 `liuh886/alpha-engine-data-archive`，
+绑定精确 commit、路径、大小及 SHA-256，不以 latest/main 替代审核身份。
+取回校验压缩包及既有成员/组件/市场/池身份；消费者仅安装已核验组件清单。
+`GOVERNED_SOURCE_ARCHIVE_SSH_KEY` 是仅对该仓库有效的只读 deploy key；
+`GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY` 是独立归档写入 key。消费者只用前者。
+SSH 443 严格核验固定 GitHub 主机身份，临时私钥退出后清理，无个人 token 留存。
+轮换时先验证新 key/secret，再撤销旧 key，不把写入 key 用于消费者。
+
+复用已有 workflow 检验实际取回，无需行情请求：
+
+```text
+gh workflow run us87-professional-prices-ci.yml -f mode=archive_probe -f cutoff=2026-10-14
+uv run python scripts/data/fetch_governed_model_data.py --source us_events --source qqq_reference --output-root artifacts/source-recovery
+```
+
+本地命令需要环境中的只读 SSH key，不把私钥写入命令或日志。
+[实际 archive_probe 38776911484](https://github.com/liuh886/alpha_engine/actions/runs/38776911484)
+已要求并验证两份回执均为 durable_git；Actions 回退不能冒充镜像验证。
+这解决到期恢复问题，不等同数据许可证明。
+
+用户没有 Tiingo 套餐。活跃 ETF/QQQ 路径使用明确冻结的
+`configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml`，不调用 Tiingo；原专业
+v1 合同保留。三个 ETF 成员/角色不变，来源合同哈希进入复用身份，
+professional_source_ready=false。正式重放仅接受该精确研究来源或原专业来源，
+不接受任意 fallback；六个策略输入仍须共同覆盖 cutoff。截止 10-14 的真实
+重放为 exact_replay；10-15 的 ^VXN 尚止于 10-14，门禁拒绝推进，没有前填。
+
+许可边界：US events 的 SEC companyfacts 适用
+[SEC 复用政策](https://www.sec.gov/about/webmaster-frequently-asked-questions)；
+同包 yfinance_actions 和 QQQ Yahoo 数据不是 SEC 数据。
+[yfinance 官方说明](https://ranaroussi.github.io/yfinance/) 明确工具许可不等于
+数据许可、Yahoo 接口限个人用途。私有保存没有产生永久、商业或再分发授权。
+当前落实个人研究恢复路径；QQQ/企业行动的无期限许可仍待确认。若要求跨账号
+终止后永久保留或对外展示，须取得明确书面条款，不根据 HTTP 200 推断权益。
+
+近期 US87 的独立合同是 `configs/data/alpha158_us87_recent_research_v1.yaml`，
+从 2026-01-01 开始，85 只走 Alpaca SIP，ABBNY/SBGSY 走 Polygon。每只股票
+OHLCV/VWAP 来自同一拆股复权聚合记录，不加入现金分红复权。生命周期复用
+既有 registry：EA 历史截至 08-04，成员保留，之后不可参与。手动执行：
+
+```text
+gh workflow run alpha158-canonical-vwap-ci.yml -f market=us -f source_scope=recent_us_research -f cutoff=2026-10-14
+```
+
+完整源行、面板、质量表和失败研究进入私有 ZIP；公共 artifact 只保留清单及
+归档绑定。只写独立命名空间，不注册原 model-data 或关闭完整历史门禁。
+[Polygon 条款](https://polygon.io/terms/market_data_terms.pdf) 对非展示计算、
+衍生作品及终止后保留另有约束；API 可取数只证明技术权限。近期结果不声称
+这些许可已确认，也不据此自动训练。应向供应商确认现有账号是否覆盖：个人
+非展示因子计算、原始和衍生数据私有云备份、账号终止后的审计留存期限及删除
+要求。供应商回复需明确账号/套餐/日期/用途，作为许可证据单独保留。
+
+20 会话观察由原 formal-backtest-refresh publish 作业采集，随既有诊断 artifact
+按 run_id/attempt 分开保留 90 天；没有新增 workflow 或状态库。publish 未结束
+时的时长明确不完整，需另取最终 run attempt/jobs 元数据。人工介入默认 unknown。
+评审 JSON 按 run_id:attempt 索引，绑定 observation SHA、最终 Actions 元数据、
+operations 快照及每个活跃策略封存 decision/delivery 文件 SHA，填写评审人及
+实际人工介入次数，路径相对于评审文件。10/30 会话策略需 previous_decision
+哈希，核验真实前后调仓锚点；周期读取既有冻结模型合同，日常估值刷新不算
+到期评估。完整字段及可执行例子见 `tests/test_operating_acceptance.py`。
+
+```text
+uv run alpha ops acceptance --input-root artifacts/operating-observations --through 2026-10-14 --declarations artifacts/operating-observations/reviews.json --output artifacts/operating-observations/report.json
+```
+
+缺会话、中止、过期数据、未评审、未证实投递或未覆盖真实到期周期均不能完成
+验收。重试不增加交易会话数，当前没有补造或追认 20 个合格会话。

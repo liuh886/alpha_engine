@@ -20,12 +20,12 @@ action_refs = POLICY_MODULE.action_refs
 
 
 WORKFLOW_JOB_COUNTS = {
-    "alpha158-canonical-vwap-ci.yml": 4,
+    "alpha158-canonical-vwap-ci.yml": 5,
     "event-store-contracts-ci.yml": 2,
     "selected-pool-event-population-ci.yml": 4,
     "factor-catalog-alpha158-ci.yml": 1,
     "alpha158-panel-ci.yml": 2,
-    "us87-professional-prices-ci.yml": 2,
+    "us87-professional-prices-ci.yml": 3,
     "model-data-bundle-ci.yml": 2,
     "etf-reference-bundle-ci.yml": 2,
     "factor-knowledge-registry-ci.yml": 1,
@@ -55,7 +55,7 @@ def test_shared_python_environment_is_frozen_and_cache_safe() -> None:
 
 
 def test_active_data_plane_workflows_use_one_governed_environment_setup() -> None:
-    assert sum(WORKFLOW_JOB_COUNTS.values()) == 22
+    assert sum(WORKFLOW_JOB_COUNTS.values()) == 24
     root = Path(".github/workflows")
     for filename, job_count in WORKFLOW_JOB_COUNTS.items():
         content = (root / filename).read_text(encoding="utf-8")
@@ -90,7 +90,9 @@ def test_etf_live_bundle_keeps_provider_and_evidence_boundaries() -> None:
 
     assert live["if"] == "github.event_name != 'pull_request'"
     assert live["needs"] == "contract"
-    assert live["env"] == {"TIINGO_API_TOKEN": "${{ secrets.TIINGO_API_TOKEN }}"}
+    assert "TIINGO_API_TOKEN" not in live.get("env", {})
+    assert "yahoo_research_v2" in "\n".join(step.get("run", "") for step in steps)
+    assert upload["with"]["path"] == "artifacts/data/qqqi_qqq_tqqq_reference_research_v2"
     assert steps[0]["uses"] == "actions/checkout@v7"
     assert steps[1]["uses"] == "./.github/actions/setup-python-uv"
     assert upload["if"] == "always()"
@@ -207,7 +209,7 @@ def test_us_alpha158_live_panel_uses_only_approved_alpaca_sip_credentials() -> N
     content = Path(".github/workflows/alpha158-canonical-vwap-ci.yml").read_text(
         encoding="utf-8"
     )
-    live_block = content[content.index("  live-us-panel:") : content.index("  live-cn-panel:")]
+    live_block = content[content.index("  live-us-panel:") : content.index("  recent-us-research:")]
     assert "AlpacaAdapter" in live_block
     assert '("ABBNY", "otc")' in live_block
     assert '("SBGSY", "otc")' in live_block

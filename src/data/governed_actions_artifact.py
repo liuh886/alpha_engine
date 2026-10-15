@@ -9,14 +9,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shlex
+import subprocess
 import re
 import shutil
 import tempfile
 import zipfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
-from typing import Any, Mapping, Sequence
+from typing import Any, Iterator, Mapping, Sequence
 from urllib.parse import quote
 
 import requests
@@ -48,6 +52,15 @@ class DurableRelease:
 
 
 @dataclass(frozen=True)
+class DurableGitArchive:
+    repository: str
+    commit: str
+    path: str
+    sha256: str
+    size_bytes: int
+
+
+@dataclass(frozen=True)
 class GovernedSource:
     source_id: str
     source_kind: str
@@ -68,6 +81,8 @@ class GovernedSource:
     max_member_count: int
     component_manifests: tuple[ManifestBinding, ...]
     durable_release: DurableRelease | None = None
+    research_reference_contract_sha256: str | None = None
+    durable_git: DurableGitArchive | None = None
 
 
 @dataclass(frozen=True)
@@ -112,6 +127,8 @@ def _durable_release(row: Mapping[str, Any], source_id: str) -> DurableRelease |
     digest = _required_text(binding, "sha256").lower()
     if not _SHA256.fullmatch(digest):
         raise GovernedActionsArtifactError(f"invalid durable release digest: {source_id}")
+    if f"sha256:{digest}" != row.get("artifact_digest") or binding.get("size_bytes") != row.get("artifact_size_bytes"):
+        raise GovernedActionsArtifactError("durable release must preserve exact Actions archive")
     return DurableRelease(
         tag=_required_text(binding, "tag"),
         asset_name=_required_text(binding, "asset_name"),
@@ -134,6 +151,26 @@ def load_governed_source_registry(path: Path) -> GovernedSourceRegistry:
         if not _SOURCE_ID.fullmatch(source_id):
             raise GovernedActionsArtifactError(f"invalid governed source ID: {source_id}")
         row = _mapping(raw, source_id)
+        research_contract = row.get("research_reference_contract_sha256")
+        if research_contract is not None and (
+            row.get("source_kind") != "etf_reference_bundle"
+            or not isinstance(research_contract, str)
+            or not _SHA256.fullmatch(research_contract)
+        ):
+            raise GovernedActionsArtifactError("invalid research reference contract binding")
+        durable_git = None
+        if row.get("durable_git") is not None:
+            git = _mapping(row["durable_git"], "durable_git")
+            repository_binding = _required_text(git, "repository")
+            commit = _required_text(git, "commit")
+            member = _required_text(git, "path")
+            if not _REPOSITORY.fullmatch(repository_binding) or not re.fullmatch(r"[0-9a-f]{40}", commit) or not _safe_relative(member):
+                raise GovernedActionsArtifactError("invalid private Git archive identity")
+            git_digest = _required_text(git, "sha256")
+            size = _positive_int(git, "size_bytes")
+            if f"sha256:{git_digest}" != row.get("artifact_digest") or size != row.get("artifact_size_bytes"):
+                raise GovernedActionsArtifactError("private Git archive must preserve exact Actions bytes")
+            durable_git = DurableGitArchive(repository_binding, commit, member, git_digest, size)
         digest = _required_text(row, "artifact_digest").lower()
         if not digest.startswith("sha256:") or not _SHA256.fullmatch(digest[7:]):
             raise GovernedActionsArtifactError(f"invalid artifact digest: {source_id}")
@@ -173,6 +210,8 @@ def load_governed_source_registry(path: Path) -> GovernedSourceRegistry:
             max_member_count=_positive_int(row, "max_member_count"),
             component_manifests=tuple(bindings),
             durable_release=_durable_release(row, source_id),
+            research_reference_contract_sha256=research_contract,
+            durable_git=durable_git,
         )
         sources[source_id] = source
     if not sources:
@@ -214,13 +253,14 @@ def inspect_source_retention(
             "workflow_run_id": source.workflow_run_id, "artifact_id": source.artifact_id,
             "artifact_digest": source.artifact_digest, "expires_at": source.expires_at,
             "actions_expired": expired,
-            "retention_status": "durable_mirror_declared" if release else "actions_expired" if expired else "actions_only",
+            "retention_status": "durable_mirror_declared" if release or source.durable_git else "actions_expired" if expired else "actions_only",
+            "durable_git": source.durable_git.__dict__ if source.durable_git else None,
             "durable_release": None if release is None else {
                 "tag": release.tag, "asset_name": release.asset_name,
                 "sha256": release.sha256, "size_bytes": release.size_bytes,
             },
             "retrieval_verified": False,
-            "next_action": "verify_pinned_durable_release" if release else "restore_exact_archive" if expired else "retain_exact_archive_before_expiry",
+            "next_action": "verify_pinned_durable_git" if source.durable_git else "verify_pinned_durable_release" if release else "restore_exact_archive" if expired else "retain_exact_archive_before_expiry",
         })
     return {
         "schema_version": "1.0", "scope": "source_retention_only",
@@ -319,8 +359,9 @@ def _download_durable_release(
     repository: str,
     release: DurableRelease,
     destination: Path,
+
 ) -> None:
-    """Download a public immutable release asset without a bearer token.
+    """Verify a public mirror of the exact archive.
 
     The release asset is the durable source of truth: it carries the same
     content digest as the original Actions artifact but never expires, so the
@@ -350,6 +391,81 @@ def _download_durable_release(
         raise GovernedActionsArtifactError("durable release asset size mismatch")
     if digest.hexdigest() != release.sha256:
         raise GovernedActionsArtifactError("durable release asset digest mismatch")
+
+
+@contextmanager
+def _private_git_environment(ssh_key: str) -> Iterator[tuple[Path, dict[str, str]]]:
+    """Keep scoped SSH credentials in temporary files with pinned host identity."""
+    if not ssh_key.strip():
+        raise GovernedActionsArtifactError("private archive SSH key is required")
+    with tempfile.TemporaryDirectory(prefix="alpha-source-ssh-") as temporary:
+        root = Path(temporary)
+        key = root / "identity"
+        key.write_text(ssh_key.strip() + "\n", encoding="utf-8", newline="\n")
+        key.chmod(0o600)
+        hosts = root / "known_hosts"
+        # GitHub's published Ed25519 host key; never trust an unverified scan.
+        hosts.write_text("[ssh.github.com]:443 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n", encoding="utf-8", newline="\n")
+        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_SSH_VARIANT": "ssh"}
+        env["GIT_SSH_COMMAND"] = (
+            f"ssh -i {shlex.quote(key.as_posix())} -o IdentitiesOnly=yes -o BatchMode=yes "
+            f"-o StrictHostKeyChecking=yes -o UserKnownHostsFile={shlex.quote(hosts.as_posix())}"
+        )
+        repository = root / "repo"
+        repository.mkdir()
+        yield repository, env
+
+
+def _download_durable_git(*, archive: DurableGitArchive, destination: Path, ssh_key: str) -> None:
+    """Read exact bytes with a repository-scoped read-only deploy key, no PAT."""
+    with _private_git_environment(ssh_key) as (repository, env):
+        commands = [
+            ["git", "init", "--quiet"],
+            ["git", "fetch", "--quiet", "--depth=1", f"ssh://git@ssh.github.com:443/{archive.repository}.git", archive.commit],
+        ]
+        try:
+            for command in commands:
+                subprocess.run(command, cwd=repository, env=env, check=True, capture_output=True, timeout=120)
+            with destination.open("wb") as handle:
+                subprocess.run(["git", "show", f"{archive.commit}:{archive.path}"], cwd=repository, env=env, check=True, stdout=handle, stderr=subprocess.PIPE, timeout=120)
+        except (subprocess.SubprocessError, OSError) as exc:
+            raise GovernedActionsArtifactError(f"private Git archive retrieval failed: {type(exc).__name__}") from None
+    if destination.stat().st_size != archive.size_bytes or _sha256(destination) != archive.sha256:
+        raise GovernedActionsArtifactError("private Git archive size or digest mismatch")
+
+
+def retain_private_archive(*, repository: str, member: str, archive_path: Path, ssh_key: str) -> dict[str, Any]:
+    """Append one source archive using a key scoped only to the private archive repo."""
+    if not _REPOSITORY.fullmatch(repository) or not _safe_relative(member) or not member.startswith("archives/"):
+        raise GovernedActionsArtifactError("invalid private archive destination")
+    if not archive_path.is_file() or archive_path.stat().st_size > 90 * 1024 * 1024:
+        raise GovernedActionsArtifactError("source archive missing or exceeds private Git size limit")
+    digest = _sha256(archive_path)
+    with _private_git_environment(ssh_key) as (worktree, env):
+        remote = f"ssh://git@ssh.github.com:443/{repository}.git"
+
+        def git(*args: str) -> str:
+            try:
+                result = subprocess.run(["git", *args], cwd=worktree, env=env, check=True, capture_output=True, timeout=180)
+                return result.stdout.decode().strip()
+            except (subprocess.SubprocessError, OSError) as exc:
+                raise GovernedActionsArtifactError(f"private archive append failed: {type(exc).__name__}") from None
+
+        git("init", "--quiet")
+        git("fetch", "--quiet", "--depth=1", remote, "main")
+        git("checkout", "--quiet", "-b", "archive-upload", "FETCH_HEAD")
+        target = worktree / member
+        if target.exists():
+            if _sha256(target) != digest:
+                raise GovernedActionsArtifactError("refusing to replace an existing private source archive")
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(archive_path, target)
+            git("add", "--", member)
+            git("-c", "user.name=Alpha Engine Research", "-c", "user.email=research@alphaengine.local", "-c", f"core.hooksPath={worktree / 'no-hooks'}", "commit", "--quiet", "-m", f"Retain source evidence {member}")
+            git("push", "--quiet", remote, "HEAD:refs/heads/main")
+        commit = git("rev-parse", "HEAD")
+    return {"repository": repository, "commit": commit, "path": member, "sha256": digest, "size_bytes": archive_path.stat().st_size}
 
 
 def _safe_extract(source: GovernedSource, archive: Path, destination: Path) -> None:
@@ -461,7 +577,17 @@ def _verify_reference_bundle(source: GovernedSource, root: Path) -> None:
         raise GovernedActionsArtifactError("reference bundle identity mismatch")
     if manifest.get("strategy_data_ready") is not True:
         raise GovernedActionsArtifactError("reference bundle strategy data is not ready")
-    if manifest.get("professional_source_ready") is not True:
+    if source.research_reference_contract_sha256 is not None:
+        if (
+            manifest.get("contract_sha256") != source.research_reference_contract_sha256
+            or manifest.get("source_policy") != "yahoo_research_v2"
+            or symbols != ["QQQ", "QQQI", "TQQQ"]
+            or manifest.get("selected_providers") != {symbol: "yfinance" for symbol in symbols}
+            or manifest.get("professional_source_ready") is not False
+            or any("tiingo" in str(path).lower() for path in manifest.get("files", {}))
+        ):
+            raise GovernedActionsArtifactError("research reference source contract mismatch")
+    elif manifest.get("professional_source_ready") is not True:
         raise GovernedActionsArtifactError(
             "reference bundle professional source is not ready"
         )
@@ -517,6 +643,7 @@ def fetch_governed_sources(
     source_ids: Sequence[str],
     output_root: Path,
     token: str,
+    archive_ssh_key: str | None = None,
 ) -> dict[str, Any]:
     registry = load_governed_source_registry(registry_path)
     if not token.strip():
@@ -542,6 +669,12 @@ def fetch_governed_sources(
             archive = temp / "artifact.zip"
             extracted = temp / "extracted"
             extracted.mkdir()
+            if source.durable_git is not None:
+                try:
+                    _download_durable_git(archive=source.durable_git, destination=archive, ssh_key=archive_ssh_key or "")
+                    retrieval_method = "durable_git"
+                except GovernedActionsArtifactError as exc:
+                    retrieval_note = f"private archive unavailable; exact Actions fallback: {type(exc).__name__}"
             if source.durable_release is not None:
                 try:
                     _download_durable_release(
@@ -553,9 +686,9 @@ def fetch_governed_sources(
                 except (GovernedActionsArtifactError, OSError) as exc:
                     retrieval_note = (
                         "durable release unavailable; fell back to the Actions "
-                        f"artifact: {exc}"
+                        f"artifact: {type(exc).__name__}"
                     )
-            if retrieval_method != "durable_release":
+            if retrieval_method not in {"durable_release", "durable_git"}:
                 api_root = f"https://api.github.com/repos/{registry.repository}"
                 headers = {
                     "Accept": "application/vnd.github+json",
@@ -617,6 +750,7 @@ def fetch_governed_sources(
                 ],
                 "retrieval_method": retrieval_method,
                 "retrieval_note": retrieval_note,
+                "durable_git": source.durable_git.__dict__ if source.durable_git else None,
                 "durable_release": (
                     None
                     if source.durable_release is None

@@ -86,6 +86,32 @@ def test_polygon_adapter_validates_identity_and_normalizes_bars():
     assert result.df.attrs["provider_metadata"]["request_count"] == 2
 
 
+def test_bounded_probe_keeps_history_and_adjustment_failures_out_of_training():
+    from scripts.data.validate_us_price_sources import probe_polygon_vwap
+
+    class Client:
+        def get_json(self, path, *, params=None):
+            symbol = path.split("/")[3]
+            if path.startswith("v3/"):
+                return {"results": {"ticker": symbol}}
+            if "/2021-" in path and symbol in {"ABBNY", "SBGSY"}:
+                return {"results": []}
+            day = "2021-01-04" if "/2021-" in path else "2026-01-02"
+            return {"results": [{
+                "t": int(pd.Timestamp(day, tz="UTC").timestamp() * 1000),
+                "o": 210, "h": 213, "l": 209, "c": 212, "v": 1000,
+                "vw": 300 if symbol == "MSFT" and params["adjusted"] == "true" else 211,
+            }]}
+
+    report = probe_polygon_vwap(end="2026-10-14", adapter=PolygonAdapter(client=Client()))
+    assert len(report["observations"]) == 10
+    assert report["eligible_for_training"] is False
+    assert report["writes_canonical_data"] is False
+    assert all("error" not in row for row in report["observations"])
+    assert all(row["raw_aggregate_check"]["ok"] for row in report["observations"] if row["symbol"] == "MSFT")
+    assert all(not row["ok"] for row in report["observations"] if row["symbol"] in {"ABBNY", "SBGSY"} and row["start"] == "2021-01-01")
+
+
 def test_polygon_adapter_rejects_identity_substitution():
     with pytest.raises(DataFetchError, match="identity mismatch"):
         PolygonAdapter(client=FakePolygonClient(returned_ticker="MSFT")).fetch_daily_bars(

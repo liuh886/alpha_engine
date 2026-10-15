@@ -79,6 +79,14 @@ def test_alpaca_adapter_paginates_and_normalizes_adjusted_sip_bars() -> None:
     assert client.calls[1]["page_token"] == "page-2"
 
 
+def test_recent_source_split_adjustment_is_explicit_and_manifest_bound():
+    client = FakeAlpacaClient()
+    result = AlpacaAdapter(client=client, adjustment="split").fetch_daily_bars(_request())
+    assert all(call["adjustment"] == "split" for call in client.calls)
+    assert result.df.attrs["provider_metadata"]["adjustment"] == "split"
+    assert result.df.attrs["price_mode"] == "sip_adjusted_split_daily_bars"
+
+
 def test_alpaca_adapter_supports_explicit_otc_feed() -> None:
     client = FakeAlpacaClient(returned_symbol="ABBNY")
     request = FetchRequest(

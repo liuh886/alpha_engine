@@ -14,7 +14,7 @@ CONFIG_PATHS = (
     Path("configs/data_recipes/registry_v1.yaml"),
     Path("configs/data_recipes/qqq_rotation_v1.yaml"),
     Path("configs/data_contracts/qqq_rotation_model_data_v1.yaml"),
-    Path("configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"),
+    Path("configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml"),
 )
 
 
@@ -87,14 +87,14 @@ def test_prepare_recipe_builds_profile_and_reuses_hash_verified_cache(
         root=tmp_path,
         cutoff="2024-03-15",
         refresh=True,
-        primary_adapter=tiingo,
+        primary_adapter=None,
         fallback_adapter=yahoo,
         reference_adapter=references,
     )
     assert built["status"] == "built"
     assert built["profile_gate"]["status"] == "ready"
     assert built["profile_gate"]["references"] == ["^VIX", "^VXN"]
-    assert set(tiingo.calls) == {"QQQ", "QQQI", "TQQQ"}
+    assert tiingo.calls == []
     assert set(references.calls) == {"^VIX", "^VXN"}
 
     reused = prepare_data_recipe(
@@ -114,6 +114,9 @@ def test_prepare_recipe_builds_profile_and_reuses_hash_verified_cache(
         cutoff="2024-03-15",
     )
     assert status["status"] == "reused"
+    contract = tmp_path / "configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml"
+    contract.write_text(contract.read_text() + "\n# New frozen source identity\n")
+    assert data_recipe_status("qqq-rotation", root=tmp_path, cutoff="2024-03-15")["status"] == "stale_or_blocked"
 
 
 def test_recipe_status_fails_closed_after_strategy_data_tampering(
@@ -126,7 +129,7 @@ def test_recipe_status_fails_closed_after_strategy_data_tampering(
         root=tmp_path,
         cutoff="2024-03-15",
         refresh=True,
-        primary_adapter=CountingAdapter("tiingo"),
+        primary_adapter=None,
         fallback_adapter=adapter,
         reference_adapter=adapter,
     )

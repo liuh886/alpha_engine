@@ -18,6 +18,7 @@ from src.data.etf_reference_bundle import (
 from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
 
 CONTRACT = Path("configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml")
+RESEARCH_CONTRACT = Path("configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml")
 
 
 def _bars(
@@ -169,6 +170,66 @@ def test_yahoo_only_bundle_is_strategy_ready_but_not_professional(
     }
     qqqi = pd.read_csv(tmp_path / "canonical" / "QQQI.csv")
     assert qqqi["date"].min().startswith("2024-01-30")
+
+
+def test_research_contract_never_uses_configured_tiingo_key(monkeypatch, tmp_path):
+    monkeypatch.setenv("TIINGO_API_TOKEN", "configured_without_paid_entitlement")
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Tiingo must not be constructed")
+
+    monkeypatch.setattr("src.data.etf_reference_bundle.TiingoAdapter", forbidden)
+    manifest = build_etf_reference_bundle(
+        contract_path=RESEARCH_CONTRACT, output_root=tmp_path, end="2024-03-15",
+        fallback_adapter=FakeAdapter("yfinance", _fallback_frames()),
+    )
+    assert manifest["strategy_data_ready"] is True
+    assert manifest["professional_source_ready"] is False
+    assert manifest["source_policy"] == "yahoo_research_v2"
+    assert not any("tiingo" in path for path in manifest["files"])
+
+
+def test_research_contract_rejects_physical_tiingo_remnants(tmp_path):
+    path = tmp_path / "sources/tiingo/QQQ.csv"
+    path.parent.mkdir(parents=True)
+    path.write_text("old restricted data")
+    import pytest
+
+    with pytest.raises(Exception, match="forbidden Tiingo remnants"):
+        build_etf_reference_bundle(contract_path=RESEARCH_CONTRACT, output_root=tmp_path, end="2026-10-14")
+
+
+def test_real_qqq_replay_reaches_frozen_evaluation_with_bound_free_source(tmp_path, monkeypatch):
+    import json
+    from scripts.run_formal_strategy_refresh import _materialize_refresh_state
+    from src.research import qqq_authoritative_replay as replay
+
+    root = Path.cwd().resolve()
+    package = tmp_path / "package.json"
+    current = _materialize_refresh_state(root=root, formal_v2_root=root / "data/research/formal_model_runs", model_id=replay.QQQ_MODEL_ID, target=package)
+    cutoff = current["evidence_cutoff"]
+    days = len(pd.bdate_range("2024-01-30", cutoff))
+    frames = {symbol: _bars(symbol, start="2024-01-30", periods=days) for symbol in ("QQQ", "QQQI", "TQQQ", "SGOV", "^VIX", "^VXN")}
+    bundle = tmp_path / "bundle"
+    build_etf_reference_bundle(contract_path=RESEARCH_CONTRACT, output_root=bundle, end=cutoff, fallback_adapter=FakeAdapter("yfinance", frames))
+    # Materialize and verify the real six-symbol product, without external calls.
+    fetch_governed_etf_strategy_bars(symbols=list(frames), start="2024-01-30", end=cutoff, bundle_dir=bundle, adapter=FakeAdapter("yfinance", frames))
+
+    class FrozenEvaluationReached(Exception):
+        pass
+
+    def reached(*args, **kwargs):
+        raise FrozenEvaluationReached
+
+    monkeypatch.setattr(replay, "fetch_cnn_fear_greed", reached)
+    with pytest.raises(FrozenEvaluationReached):
+        replay.verify_qqq_authoritative_replay(root, package_path=package, bundle_dir=bundle)
+    manifest_path = bundle / "bundle_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["contract_sha256"] = "0" * 64
+    manifest_path.write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="exact frozen Yahoo research source"):
+        replay.verify_qqq_authoritative_replay(root, package_path=package, bundle_dir=bundle)
 
 
 def test_professional_bundle_retains_distributions_splits_and_hashes(

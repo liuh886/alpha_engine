@@ -397,10 +397,19 @@ def build_etf_reference_bundle(
     start = str(contract["history"]["requested_start"])
     settings = dict(contract.get("reconciliation", {}))
 
-    if primary_adapter is None and os.getenv("TIINGO_API_TOKEN", "").strip():
+    yahoo_research = contract.get("source_policy") == "yahoo_research_v2"
+    if yahoo_research and end is None:
+        raise ETFReferenceBundleError("Yahoo research contract requires an explicit cutoff")
+    if yahoo_research and any("tiingo" in str(path.relative_to(root)).lower() for path in root.rglob("*")):
+        raise ETFReferenceBundleError("research output contains forbidden Tiingo remnants")
+    if yahoo_research and primary_adapter is not None:
+        raise ETFReferenceBundleError("Yahoo research contract forbids a Tiingo primary adapter")
+    if not yahoo_research and primary_adapter is None and os.getenv("TIINGO_API_TOKEN", "").strip():
         primary_adapter = TiingoAdapter()
     if fallback_adapter is None:
         fallback_adapter = YFinanceAdapter()
+    if yahoo_research and fallback_adapter.name != "yfinance":
+        raise ETFReferenceBundleError("Yahoo research contract requires the declared Yahoo provider")
 
     source_frames: dict[str, dict[str, pd.DataFrame | None]] = {}
     coverage_rows: list[dict[str, Any]] = []
@@ -538,6 +547,7 @@ def build_etf_reference_bundle(
         "trade_ready": False,
         "contract_path": str(contract_file),
         "contract_sha256": _sha256(contract_file),
+        "source_policy": contract.get("source_policy", "professional_primary_v1"),
         "symbols": list(ETF_REFERENCE_SYMBOLS),
         "requested_start": start,
         "requested_end": end,

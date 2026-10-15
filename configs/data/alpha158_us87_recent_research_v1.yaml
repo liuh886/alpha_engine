@@ -1,0 +1,87 @@
+schema_version: '1.0'
+contract_id: alpha158_us87_recent_research_v1
+status: independent_recent_panel_validation
+research_only: true
+trade_ready: false
+catalog:
+  namespace: qlib_alpha158
+  expected_factor_count: 158
+  exact_formula_source_required: true
+  implementation_hash_binding_required: true
+markets:
+  us:
+    pool_id: us_selected_equities_v2
+    pool_spec: configs/research_universes/us_selected_equities_v2.yaml
+    expected_symbols: 87
+    canonical_vwap_source:
+      provider: alpaca_sip_and_polygon_otc
+      feed: sip
+      timeframe: 1Day
+      adjustment: split
+      provider_overrides:
+        ABBNY: polygon
+        SBGSY: polygon
+      same_record_ohlcv_vwap_required: true
+required_provider_fields:
+- open
+- high
+- low
+- close
+- vwap
+- volume
+field_policy:
+  adjusted_prices_required: true
+  true_vwap_required: true
+  synthetic_close_as_vwap_allowed: false
+  synthetic_amount_divided_by_volume_allowed: false
+  allowed_vwap_semantics:
+  - reported_vwap
+  - reported_turnover_divided_by_reported_volume
+provider_role_policy:
+  source_role_manifest: source_role_manifest.json
+  canonical_role_required: true
+  canonical_training_eligible_required: true
+  validation_only_provider_forbidden: true
+  validation_only_sources:
+  - tiingo
+  - tushare
+  validator_data_may_not_satisfy_required_fields: true
+  canonical_symbol_policy:
+    alpaca_sip: selected_pool_except_explicit_overrides
+    polygon:
+    - ABBNY
+    - SBGSY
+panel:
+  output_layout: one_compressed_wide_csv_per_symbol
+  deterministic_factor_order: true
+  evidence_cutoff_required: true
+  candidate_reference_separation_required: true
+  no_future_data_allowed: true
+quality:
+  legal_warmup_policy: factor_minimum_lookback
+  source_availability_field: canonical_close
+  lifecycle_and_tradability_unavailable_sessions_excluded: true
+  lookback_restarts_after_unavailable_session: true
+  formula_undefined_nan_policy: preserve_and_report
+  insufficient_lifecycle_history_status: not_yet_applicable
+  not_yet_applicable_does_not_change_pool_membership: true
+  infinity_policy: block
+  constant_factor_policy: report
+  near_constant_unique_ratio_threshold: 0.001
+  minimum_post_warmup_rows: 20
+  every_factor_requires_explicit_status: true
+component:
+  catalog_component_id: factors.qlib_alpha158.catalog_v1
+  panel_component_prefix: factors.qlib_alpha158.panel
+  component_kind: factor_panel
+scope: recent_data_feasibility_only_not_original_training_readiness
+history:
+  requested_start: '2026-01-01'
+  original_full_history_contract: configs/data/alpha158_panel_v1.yaml
+  original_training_gate_satisfied: false
+limitations:
+- Same 87 selected candidates and same 158 formulas; no pool or formula tuning.
+- Split-adjusted OHLC/VWAP from one aggregate record per symbol; cash-dividend adjustment
+  is not applied.
+- No model-data registration, training, historical efficacy promotion or replacement
+  of full-history evidence.

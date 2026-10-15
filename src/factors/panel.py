@@ -467,6 +467,10 @@ def build_alpha158_panel(
         if frame.empty or source_frame.empty:
             invalid_symbols.append(symbol)
             continue
+        # Rolling expressions can remain numeric after suspension or delisting.
+        # Never expose those values as usable observations without source bars.
+        available = pd.to_numeric(source_frame["source_close"].reindex(frame.index), errors="coerce").notna()
+        frame.loc[~available, :] = np.nan
         frame.index.name = "date"
         path = output / "panels" / f"{symbol}.csv.gz"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -529,6 +533,7 @@ def build_alpha158_panel(
         "field_coverage": field_coverage,
         "quality_policy": {
             "availability_field": "canonical_close",
+            "unavailable_session_factor_values": "masked_to_nan",
             "lookback_requires_consecutive_available_sessions": True,
             "source_unavailable_sessions_excluded_from_factor_eligibility": True,
             "formula_undefined_nan_policy": "preserve_and_report",

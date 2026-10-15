@@ -587,7 +587,7 @@ def test_strategy_results_are_uploaded_after_failure_unless_cancelled() -> None:
     assert '"retained_strategy_ids"' in transaction
 
 
-def test_run_scoped_artifacts_are_overwritable_for_failed_job_reruns() -> None:
+def test_transfer_artifacts_remain_overwritable_but_observations_preserve_attempts() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
     )
@@ -596,17 +596,21 @@ def test_run_scoped_artifacts_are_overwritable_for_failed_job_reruns() -> None:
         ("Upload failed provider diagnostics", 7),
         ("Upload immutable plan", 7),
         ("Upload bounded strategy receipt and evidence", 30),
-        ("Upload bounded refresh evidence", 30),
+        ("Upload bounded refresh evidence", 90),
     )
     assert workflow.count("uses: actions/upload-artifact@v6") == len(upload_contracts)
-    assert "github.run_attempt" not in workflow
     for index, (name, retention_days) in enumerate(upload_contracts):
         start = workflow.index(f"      - name: {name}")
         next_start = workflow.find("\n      - name:", start + 1)
         block = workflow[start : next_start if next_start >= 0 else None]
         assert "uses: actions/upload-artifact@v6" in block, (index, name)
         assert "github.run_id" in block, (index, name)
-        assert "overwrite: true" in block, (index, name)
+        if name == "Upload bounded refresh evidence":
+            assert "overwrite: false" in block
+            assert "github.run_attempt" in block
+            assert "operating-observation.json" in block
+        else:
+            assert "overwrite: true" in block, (index, name)
         assert f"retention-days: {retention_days}" in block, (index, name)
 
 

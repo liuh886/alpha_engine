@@ -37,6 +37,7 @@ def main() -> int:
             source_ids=args.source,
             output_root=args.output_root,
             token=os.environ.get("GITHUB_TOKEN", ""),
+            archive_ssh_key=os.environ.get("GOVERNED_SOURCE_ARCHIVE_SSH_KEY"),
         )
     except (GovernedActionsArtifactError, OSError, ValueError) as exc:
         parser.error(str(exc))

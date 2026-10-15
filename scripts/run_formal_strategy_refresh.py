@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import base64
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -335,12 +334,6 @@ def _run_qqq(
             "execution_status": "current_no_change",
             "replay_verdict": "not_required_current_identity",
         }
-    if not os.environ.get("TIINGO_API_TOKEN"):
-        raise StrategyRefreshBlocked(
-            "data_blocked",
-            "QQQ refresh requires TIINGO_API_TOKEN for the governed professional ETF bundle",
-        )
-
     cutoff = str(task["planned_provider_cutoff"])
     bundle = result_root / "qqq-bundle"
     with tempfile.TemporaryDirectory(prefix="qqq-refresh-state-") as temporary:
@@ -353,11 +346,14 @@ def _run_qqq(
             [
                 sys.executable,
                 "scripts/data/build_etf_reference_bundle.py",
+                "--contract",
+                "configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml",
                 "--end-date",
                 cutoff,
                 "--output-root",
                 str(bundle),
-                "--require-professional",
+                "--require-source-policy",
+                "yahoo_research_v2",
             ],
             cwd=root,
         )

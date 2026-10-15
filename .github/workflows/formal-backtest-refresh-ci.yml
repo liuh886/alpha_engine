@@ -84,6 +84,8 @@ on:
       - "tests/test_ranker_current_target.py"
       - "tests/test_ranker_current_target_runtime.py"
       - "tests/test_formal_refresh.py"
+      - "tests/test_operating_acceptance.py"
+      - "src/artifacts/operating_acceptance.py"
       - "tests/test_formal_publication_delta.py"
       - "tests/test_formal_bundle_reader.py"
       - "tests/test_formal_strategy_refresh.py"
@@ -256,6 +258,7 @@ jobs:
             tests/test_ranker_current_target_runtime.py \
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
+            tests/test_operating_acceptance.py \
             tests/test_formal_publication_delta.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_cn_x1_2_prospective.py \
@@ -293,6 +296,7 @@ jobs:
             tests/test_ranker_current_target_runtime.py \
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
+            tests/test_operating_acceptance.py \
             tests/test_formal_publication_delta.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_cn_x1_2_prospective.py \
@@ -365,6 +369,7 @@ jobs:
             tests/test_ranker_current_target_runtime.py \
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
+            tests/test_operating_acceptance.py \
             tests/test_formal_publication_delta.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_cn_x1_2_prospective.py \
@@ -417,6 +422,7 @@ jobs:
             tests/test_ranker_current_target_runtime.py \
             tests/test_formal_bundle_reader.py \
             tests/test_formal_refresh.py \
+            tests/test_operating_acceptance.py \
             tests/test_formal_publication_delta.py \
             tests/test_formal_strategy_refresh.py \
             tests/test_cn_x1_2_prospective.py \

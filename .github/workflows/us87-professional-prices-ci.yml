@@ -17,13 +17,19 @@ on:
       - "tests/test_us87_professional_prices.py"
   workflow_dispatch:
     inputs:
+      mode:
+        description: "Build one existing shard or capture a bounded source feasibility probe"
+        type: choice
+        options: [shard, source_probe, archive_probe]
+        default: shard
       cutoff:
         description: "Evidence cutoff YYYY-MM-DD"
         required: true
         type: string
       shard_index:
         description: "Deterministic shard index (0-based)"
-        required: true
+        required: false
+        default: 0
         type: number
 
 concurrency:
@@ -68,12 +74,12 @@ jobs:
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
   live-shard:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'shard'
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+      TIINGO_API_TOKEN: "" # No paid entitlement; active research uses the versioned Yahoo source.
       POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
     steps:
       - uses: actions/checkout@v7
@@ -90,4 +96,42 @@ jobs:
           name: us87-governed-${{ inputs.cutoff }}-shard-${{ inputs.shard_index }}
           path: artifacts/data/us87_professional_prices_v1/shards
           if-no-files-found: error
+          retention-days: 90
+
+  source-probe:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'shard'
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+      GITHUB_TOKEN: ${{ github.token }}
+      GOVERNED_SOURCE_ARCHIVE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_SSH_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
+      - name: Capture bounded Polygon feasibility without Tiingo or canonical writes
+        if: inputs.mode == 'source_probe'
+        env:
+          CUTOFF: ${{ inputs.cutoff }}
+        run: >-
+          uv run python scripts/data/validate_us_price_sources.py
+          --probe-vwap --end "$CUTOFF"
+          --output artifacts/source-feasibility/polygon-vwap.json
+      - name: Verify private exact archive with its read-only deploy key
+        run: |
+          uv run python scripts/data/fetch_governed_model_data.py --source us_events --source qqq_reference \
+            --output-root artifacts/source-feasibility/private-retrieval
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("artifacts/source-feasibility/private-retrieval/governed-source-receipt.json")
+          receipt = json.loads(path.read_text())
+          assert all(row["retrieval_method"] == "durable_git" for row in receipt["sources"]), receipt
+          PY
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: us-source-feasibility-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/source-feasibility
           retention-days: 90

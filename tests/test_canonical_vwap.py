@@ -27,6 +27,44 @@ def test_us_feed_policy_keeps_otc_adrs_explicit() -> None:
     assert _us_feed("sbGsy", policy) == "otc"
 
 
+def test_recent_us_panel_keeps_exact_pool_and_never_registers_original_model_data(tmp_path, monkeypatch):
+    import yaml
+
+    contract = yaml.safe_load(Path("configs/data/alpha158_us87_recent_research_v1.yaml").read_text())
+    pool = Path(contract["markets"]["us"]["pool_spec"])
+    symbols = yaml.safe_load(pool.read_text())["symbols"]
+    fixtures = tmp_path / "fixtures"
+    fixtures.mkdir()
+    for symbol in symbols:
+        pd.DataFrame({"date": ["2026-01-02"], "open": [100], "high": [103], "low": [99], "close": [102], "vwap": [101], "volume": [1000]}).to_csv(fixtures / f"{symbol}.csv", index=False)
+    ea = pd.read_csv(fixtures / "EA.csv")
+    pd.concat([ea, ea.assign(date="2026-08-05")]).to_csv(fixtures / "EA.csv", index=False)
+
+    def provider(**kwargs):
+        path = kwargs["provider_dir"] / "provider_manifest.json"
+        path.parent.mkdir(parents=True)
+        payload = {"provider_identity_sha256": "a" * 64}
+        path.write_text(json.dumps(payload))
+        return payload
+
+    def no_model_registration(**kwargs):
+        raise AssertionError("recent validation cannot satisfy original model-data gates")
+
+    monkeypatch.setattr(builder, "build_market_provider", provider)
+    monkeypatch.setattr(builder, "build_reusable_alpha158_panel", lambda **kwargs: {"status": "ready", "expected_symbol_count": 87, "factor_count": 158})
+    monkeypatch.setattr(builder, "build_model_data_bundle", no_model_registration)
+    result = builder.build_us(pool_path=pool, start="2026-01-01", cutoff="2026-10-14", output_root=tmp_path / "recent", fixture_dir=fixtures, source_policy=contract["markets"]["us"]["canonical_vwap_source"], recent_research=True)
+    assert result["expected_symbol_count"] == 87
+    assert result["model_data_registered"] is False
+    assert result["original_training_gate_satisfied"] is False
+    audit = json.loads((tmp_path / "recent/vwap_audit.json").read_text())
+    assert {row["symbol"] for row in audit["symbols"] if row["provider"] == "polygon"} == {"ABBNY", "SBGSY"}
+    ea_audit = next(row for row in audit["symbols"] if row["symbol"] == "EA")
+    assert ea_audit["effective_source_cutoff"] == "2026-08-04"
+    assert ea_audit["outside_governed_window_rows_excluded"] == 1
+    assert pd.read_csv(tmp_path / "recent/source_csv/EA.csv")["date"].max() == "2026-01-02"
+
+
 def _pair() -> tuple[pd.DataFrame, pd.DataFrame]:
     dates = pd.bdate_range("2026-01-02", periods=3)
     raw = pd.DataFrame(

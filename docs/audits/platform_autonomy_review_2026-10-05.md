@@ -640,3 +640,62 @@ revision/hash 留在既有 archive manifest。周研究、因子衰减和周报�
 SEC_USER_AGENT 后启动该文件，退出码 2、未进入取数。归档清单中的 Git 源码
 SHA-256 核验一致，独立五维代码复核无必改项。此处证明生成范围与失败边界，
 不声称活跃策略总体提速或连续运行验收完成；PR/CI 交付另行核对。
+
+### 2026-10-16：来源恢复与近期 US87 的可执行落地
+
+用户确认没有 Tiingo 套餐，并选择先验证已有权益覆盖的近期 US87；完整历史
+合同继续未完成。新研究来源合同没有修改原专业 v1 或完整 Alpha158 合同。
+
+[ETF CI 38757752731](https://github.com/liuh886/alpha_engine/actions/runs/38757752731)
+实际构建免费 Yahoo 三 ETF bundle，截止 10-14、专业来源标志 false，无 Tiingo
+文件或请求。源 ZIP artifact 11983524280，SHA-256
+`6da52ca8563264ec0fdaba50819bba828f9e1cd70e026bd85111297bb9bab9ad`。
+US events 原 ZIP 的 SHA-256
+`23d192b96e3bf4f38e1937c2c6896e112b7d8962f8a45bed06e56fe8fc5f686e`
+保持不变。两份精确字节已存入私有 Git，注册表绑定独立不可变提交；
+[archive_probe 38776911484](https://github.com/liuh886/alpha_engine/actions/runs/38776911484)
+在真实 CI 用仓库限定只读 deploy key 取回并完成全部组件核验。私有 Release
+尝试因既有 API token 不含新仓库权限而失败，已替换为 scoped SSH 读取；未扩大
+个人 token 权限。源镜像声明与真实取回证明继续区分。
+
+真实本地 QQQ 六输入截止 10-14 重放为 exact_replay，冻结前缀 679 report、
+1017 positions、129 trades 完全保留，当前来源决策路径同样一致。10-15 构建
+中 ^VXN 尚止于 10-14，正式重放门禁拒绝该 cutoff，失败证据保留；没有前填或
+重算历史经济证据。换源不证明模型有效性。
+
+近期第一轮 [38776904561](https://github.com/liuh886/alpha_engine/actions/runs/38776904561)
+获得 87×158 面板、13,746 个质量组合通过，技术上证明 SIP/Polygon 组合可取。
+归档 `19786e7a31e2f20bb007dc390b829fbe6c450239`、ZIP SHA-256
+`58de9485c8d9520f19aff37b1cb7f4cc0a1c8a8386d16bb66e1bcaa57f7ec25e`
+已实际取回并核验 88 个面板/质量文件哈希。但复核原始行发现 EA 超过受治理
+08-04 终止边界，该轮不能作为生命周期合格最终证据。随后补齐原 builder 的
+生命周期约束、绑定 registry 哈希，保留原失败研究并另跑纠正版本。
+
+第二轮 38790372707 已使 EA 源历史止于 08-04，87×158 质量检查仍通过。
+检查导出值又发现 Qlib rolling 表达式可在 source_close 缺失后输出数值；质量表
+原本正确排除这些日期，但面板文件仍暴露 2,177 个不可用值。共用面板构建器
+现在在写盘前按同一 canonical_close availability 全部掩码为空值，公式及门槛
+不变；实现哈希使旧缓存不可复用。第二轮留存供复核，不冒充该修复后的最终包。
+
+最终纠正运行 [38791346213](https://github.com/liuh886/alpha_engine/actions/runs/38791346213)
+成功：87 个成员、158 个公式、13,746 个质量组合均 ready，inf 为零。EA 源历史
+止于 08-04，之后面板数值全部为空。私有归档提交
+`d15c5d0a75906e8f20f227a4e6c0a5c12d4eb9c1`，路径
+`archives/us87-recent-38791346213-1.zip`，11,078,701 bytes，SHA-256
+`4ebf2db7e9469f7250769cf7c23aac6baf6733380856142417b175f49583228f`。
+已从私有仓库实际取回，压缩包及 88 个面板/质量文件哈希全部核验；这仅完成
+近期独立面板验证，model_data_registered 和 original_training_gate_satisfied
+均为 false。原完整历史门禁及数据许可确认仍开放。
+
+20 会话工具已接入既有诊断路径：观察保存 cutoff、正式身份、执行/no-op、
+阶段时间、发布与阻塞，独立评审绑定真实决策/投递。修正复审发现的两个假阳性：
+Actions 成功不是决策/投递证据；CN27 每日估值刷新不是 30 会话到期评估。
+周期来自冻结合同，需前后封存调仓锚点。当前仍不能声明已通过 20 会话。
+
+技术长期存储已验证，但许可不自动随存储解决。SEC companyfacts 可依据
+[SEC 政策](https://www.sec.gov/about/webmaster-frequently-asked-questions)复用；
+US 企业行动及 QQQ 的 Yahoo 来源仍受个人用途和数据条款约束。
+[Polygon 条款](https://polygon.io/terms/market_data_terms.pdf)还要求核对非展示计算、
+衍生作品和终止后保留权益。近期完整数据仅私有保存，不声明永久许可已经到位。
+用户尚未提供 Polygon 套餐/非展示权益证明，独立许可确认继续开放；研究与
+trade_ready=false 边界不变。恢复、运行与许可确认步骤已写入既有恢复手册。

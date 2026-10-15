@@ -10,6 +10,8 @@ import pytest
 
 from src.data.governed_actions_artifact import (
     DurableRelease,
+    DurableGitArchive,
+    _download_durable_git,
     GovernedActionsArtifactError,
     GovernedSource,
     ManifestBinding,
@@ -37,8 +39,9 @@ def test_retention_inspection_is_local_and_does_not_claim_verified_retrieval(mon
     monkeypatch.setattr(requests, "get", reject_network)
     report = inspect_source_retention(REGISTRY, as_of=datetime(2027, 1, 2, tzinfo=timezone.utc))
     rows = {row["source_id"]: row for row in report["sources"]}
-    assert rows["us_events"]["retention_status"] == "actions_expired"
-    assert rows["us_events"]["next_action"] == "restore_exact_archive"
+    assert rows["us_events"]["retention_status"] == "durable_mirror_declared"
+    assert rows["us_events"]["next_action"] == "verify_pinned_durable_git"
+    assert rows["us_events"]["durable_git"]["commit"] == "b1fa72450b5c00d1eb82748169c747846814acde"
     assert rows["cn_events"]["retention_status"] == "durable_mirror_declared"
     assert rows["cn_events"]["actions_expired"] is True
     assert all(row["retrieval_verified"] is False for row in rows.values())
@@ -143,7 +146,7 @@ def test_checked_in_registry_freezes_exact_current_sources() -> None:
     assert registry.sources["us_events"].expected_symbol_count == 87
     assert registry.sources["us_events"].evidence_cutoff == "2026-09-30"
     assert registry.sources["qqq_reference"].expected_symbol_count == 3
-    assert registry.sources["qqq_reference"].evidence_cutoff == "2026-10-02"
+    assert registry.sources["qqq_reference"].evidence_cutoff == "2026-10-14"
 
 
 def test_formal_refresh_source_roles_and_manifest_paths_match_registry() -> None:
@@ -358,6 +361,34 @@ def test_durable_release_digest_mismatch_fails_closed(
         )
 
 
+@pytest.mark.parametrize("corrupt", [False, True])
+def test_private_git_archive_is_commit_and_digest_bound(monkeypatch, tmp_path, corrupt):
+    payload = b"private archive"
+    binding = DurableGitArchive("owner/private-data", "a" * 40, "archives/source.zip", hashlib.sha256(payload).hexdigest(), len(payload))
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+        ssh = kwargs["env"]["GIT_SSH_COMMAND"]
+        assert "StrictHostKeyChecking=yes" in ssh
+        assert "IdentitiesOnly=yes" in ssh
+        assert "PRIVATE MATERIAL" not in ssh
+        assert "PRIVATE MATERIAL" not in " ".join(command)
+        if command[1] == "show":
+            assert command[2] == f"{binding.commit}:{binding.path}"
+            kwargs["stdout"].write(b"tampered" if corrupt else payload)
+
+    monkeypatch.setattr("src.data.governed_actions_artifact.subprocess.run", run)
+    destination = tmp_path / "archive.zip"
+    if corrupt:
+        with pytest.raises(GovernedActionsArtifactError, match="digest mismatch"):
+            _download_durable_git(archive=binding, destination=destination, ssh_key="PRIVATE MATERIAL")
+    else:
+        _download_durable_git(archive=binding, destination=destination, ssh_key="PRIVATE MATERIAL")
+        assert destination.read_bytes() == payload
+    assert calls[1][-1] == binding.commit
+
+
 def test_receipt_contract_stays_json_serializable() -> None:
     source = _source()
     assert json.loads(json.dumps(source.component_manifests[0].__dict__)) == {
@@ -419,6 +450,30 @@ def _write_reference_source(tmp_path: Path, manifest: dict) -> GovernedSource:
 def test_reference_bundle_source_verifies(tmp_path: Path) -> None:
     source = _write_reference_source(tmp_path, _reference_manifest())
     verify_extracted_source(source, tmp_path)
+
+
+@pytest.mark.parametrize("tamper", [None, "contract_sha256", "selected_providers", "professional_source_ready"])
+def test_research_reference_requires_exact_explicit_source_contract(tmp_path, tamper):
+    from dataclasses import replace
+
+    digest = hashlib.sha256(Path("configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml").read_bytes()).hexdigest()
+    manifest = _reference_manifest(
+        source_policy="yahoo_research_v2", contract_sha256=digest,
+        professional_source_ready=False,
+        selected_providers={symbol: "yfinance" for symbol in ("QQQ", "QQQI", "TQQQ")},
+    )
+    if tamper == "contract_sha256":
+        manifest[tamper] = "0" * 64
+    elif tamper == "selected_providers":
+        manifest[tamper]["QQQ"] = "tiingo"
+    elif tamper == "professional_source_ready":
+        manifest[tamper] = True
+    source = replace(_write_reference_source(tmp_path, manifest), research_reference_contract_sha256=digest)
+    if tamper:
+        with pytest.raises(GovernedActionsArtifactError, match="research reference source contract"):
+            verify_extracted_source(source, tmp_path)
+    else:
+        verify_extracted_source(source, tmp_path)
 
 
 def test_reference_bundle_member_corruption_fails_closed(tmp_path: Path) -> None:

@@ -33,6 +33,7 @@ from src.research.rules_formal_replay_gate import (
 from src.research.v4_33_ma200_ma20_vix_release import run_v4_33_comparison
 
 QQQ_REFERENCE_CONTRACT = Path("configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml")
+QQQ_RESEARCH_REFERENCE_CONTRACT = Path("configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml")
 QQQ_BRIDGE_CONTRACT = Path(
     "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
 )
@@ -323,6 +324,35 @@ def _verify_cumulative_continuity(
     }
 
 
+def _verify_qqq_research_source(root: Path, bundle: Path, data_identity: Mapping[str, Any], *, cutoff: str) -> None:
+    """Admit only the explicitly frozen free source; preserve legacy professional gates."""
+    if data_identity.get("professional_source_ready") is True:
+        return
+    source_path = bundle / "bundle_manifest.json"
+    manifest = load_object(source_path)
+    contract = root / QQQ_RESEARCH_REFERENCE_CONTRACT
+    strategy_path = Path(str(data_identity.get("manifest_path", "")))
+    strategy = load_object(strategy_path) if strategy_path.is_file() else {}
+    if (
+        not contract.is_file()
+        or manifest.get("source_policy") != "yahoo_research_v2"
+        or manifest.get("contract_sha256") != sha256(contract)
+        or manifest.get("professional_source_ready") is not False
+        or manifest.get("strategy_data_ready") is not True
+        or manifest.get("common_history_end") != cutoff
+        or data_identity.get("common_history_end") != cutoff
+        or manifest.get("selected_providers") != {symbol: "yfinance" for symbol in ("QQQ", "QQQI", "TQQQ")}
+        or data_identity.get("strategy_data_ready") is not True
+        or not strategy_path.is_file()
+        or data_identity.get("manifest_sha256") != sha256(strategy_path)
+        or strategy.get("details", {}).get("source_etf_manifest_sha256") != sha256(source_path)
+    ):
+        raise RulesFormalReplayError("QQQ exact replay requires a professional bundle or the exact frozen Yahoo research source")
+    from src.data.etf_reference_bundle import load_etf_reference_bundle
+
+    load_etf_reference_bundle(bundle, require_strategy_ready=True)
+
+
 def verify_qqq_authoritative_replay(
     repository_root: str | Path,
     *,
@@ -355,10 +385,7 @@ def verify_qqq_authoritative_replay(
         end=cutoff,
         bundle_dir=bundle,
     )
-    if data_identity.get("professional_source_ready") is not True:
-        raise RulesFormalReplayError(
-            "QQQ exact replay requires a professional governed ETF bundle"
-        )
+    _verify_qqq_research_source(root, bundle, data_identity, cutoff=cutoff)
 
     fear_greed = fetch_cnn_fear_greed(end_date=cutoff)
     _, results, diagnostics = run_v4_33_comparison(
@@ -439,7 +466,7 @@ def verify_qqq_authoritative_replay(
             "bundle_manifest_sha256": sha256(manifest),
             "reconciliation_sha256": sha256(reconciliation),
             "coverage_sha256": sha256(coverage_path),
-            "professional_source_ready": True,
+            "professional_source_ready": data_identity.get("professional_source_ready") is True,
         },
         "research_only": True,
         "trade_ready": False,
