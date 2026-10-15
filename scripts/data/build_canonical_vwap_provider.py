@@ -15,6 +15,7 @@ import yaml
 from scripts.build_market_providers import build_market_provider
 from src.data.adapters.alpaca_adapter import AlpacaAdapter
 from src.data.adapters.base import FetchRequest
+from src.data.adapters.polygon_adapter import PolygonAdapter
 from src.data.canonical_vwap import (
     CanonicalVwapError,
     derive_adjusted_vwap,
@@ -30,6 +31,10 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise CanonicalVwapError(f"YAML must be a mapping: {path}")
     return payload
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _pool_symbols(path: Path, market: str) -> tuple[str, list[str]]:
@@ -149,6 +154,7 @@ def build_us(
     output_root: Path,
     fixture_dir: Path | None,
     source_policy: dict[str, Any] | None = None,
+    recent_research: bool = False,
 ) -> dict[str, Any]:
     pool_id, symbols = _pool_symbols(pool_path, "us")
     source_root = output_root / "source_csv"
@@ -158,6 +164,10 @@ def build_us(
     frontend = output_root / "frontend"
     source_root.mkdir(parents=True, exist_ok=True)
     policy = dict(source_policy or {})
+    if recent_research:
+        frozen = _load_yaml(Path("configs/data/alpha158_us87_recent_research_v1.yaml"))
+        if policy != frozen["markets"]["us"]["canonical_vwap_source"] or start != frozen["history"]["requested_start"] or pool_path.resolve() != Path(frozen["markets"]["us"]["pool_spec"]).resolve():
+            raise CanonicalVwapError("recent panel must use its exact frozen source, pool and window")
     feed_overrides = {
         str(symbol).strip().upper(): str(feed).strip().lower()
         for symbol, feed in dict(policy.get("symbol_feed_overrides", {})).items()
@@ -167,24 +177,28 @@ def build_us(
         raise CanonicalVwapError(
             f"US VWAP feed overrides are outside the selected pool: {unknown_overrides}"
         )
-    adapters: dict[str, AlpacaAdapter] = {}
+    adapters: dict[str, Any] = {}
     diagnostics: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
     for symbol in symbols:
         try:
             feed = _us_feed(symbol, policy)
+            provider_name = dict(policy.get("provider_overrides", {})).get(symbol, "alpaca") if recent_research else "alpaca"
             if fixture_dir is None:
-                adapter = adapters.setdefault(feed, AlpacaAdapter(feed=feed))
+                key = f"{provider_name}:{feed}"
+                if key not in adapters:
+                    adapters[key] = PolygonAdapter() if provider_name == "polygon" else AlpacaAdapter(feed=feed, adjustment="split" if recent_research else "all")
+                adapter = adapters[key]
                 result = adapter.fetch_daily_bars(
                     FetchRequest(symbol=symbol, market="us", start=start, end=cutoff)
                 )
                 frame = result.df.copy()
                 metadata = dict(frame.attrs.get("provider_metadata", {}))
-                source_mode = f"alpaca_{feed}_live"
+                source_mode = f"{provider_name}_{feed}_live"
             else:
                 frame = pd.read_csv(fixture_dir / f"{symbol}.csv")
                 metadata = {"fixture": True}
-                source_mode = f"fixture_alpaca_{feed}"
+                source_mode = f"fixture_{provider_name}_{feed}"
             required = {"date", "open", "high", "low", "close", "vwap", "volume"}
             missing = sorted(required.difference(frame.columns))
             if missing:
@@ -220,9 +234,10 @@ def build_us(
                     "first_date": frame["date"].min().date().isoformat(),
                     "last_date": frame["date"].max().date().isoformat(),
                     "vwap_semantics": "reported_vwap",
-                    "adjustment_method": "alpaca_sip_adjustment_all_daily_bars",
+                    "adjustment_method": "split_adjusted_same_record_daily_bars" if recent_research else "alpaca_sip_adjustment_all_daily_bars",
                     "source_mode": source_mode,
                     "feed": feed,
+                    "provider": provider_name,
                     "provider_metadata": metadata,
                     "rounded_envelope_tolerance_sessions": int((envelope_distance > 1e-8).sum()),
                     "research_only": True,
@@ -242,7 +257,7 @@ def build_us(
         "failed_symbol_count": len(failures),
         "failures": failures,
         "symbols": diagnostics,
-        "source_provider": "alpaca_market_data",
+        "source_provider": "alpaca_sip_and_polygon_otc" if recent_research else "alpaca_market_data",
         "source_feeds": sorted({row["feed"] for row in diagnostics}),
         "same_record_ohlcv_vwap": True,
         "retrieved_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
@@ -266,16 +281,16 @@ def build_us(
         provider,
         provider_manifest=provider_manifest,
         provider_manifest_path=provider_manifest_path,
-        source_providers=["alpaca_market_data"],
+        source_providers=["alpaca_market_data", "polygon"] if recent_research else ["alpaca_market_data"],
         market="us",
         vwap_ready=True,
         field_semantics={
-            "open": "alpaca_adjusted_all_daily_bar",
-            "high": "alpaca_adjusted_all_daily_bar",
-            "low": "alpaca_adjusted_all_daily_bar",
-            "close": "alpaca_adjusted_all_daily_bar",
+            "open": "split_adjusted_same_record" if recent_research else "alpaca_adjusted_all_daily_bar",
+            "high": "split_adjusted_same_record" if recent_research else "alpaca_adjusted_all_daily_bar",
+            "low": "split_adjusted_same_record" if recent_research else "alpaca_adjusted_all_daily_bar",
+            "close": "split_adjusted_same_record" if recent_research else "alpaca_adjusted_all_daily_bar",
             "vwap": "reported_vwap",
-            "volume": "alpaca_adjusted_all_daily_bar_volume",
+            "volume": "split_adjusted_reported_volume" if recent_research else "alpaca_adjusted_all_daily_bar_volume",
             "amount": "derived_reported_vwap_times_reported_volume",
             "factor": "identity_within_adjusted_aggregate_basis",
         },
@@ -283,13 +298,29 @@ def build_us(
     source_role_path = provider / "source_role_manifest.json"
     panel_manifest = build_reusable_alpha158_panel(
         root=Path.cwd(),
-        contract_path=Path("configs/data/alpha158_panel_v1.yaml"),
+        contract_path=Path("configs/data/alpha158_us87_recent_research_v1.yaml" if recent_research else "configs/data/alpha158_panel_v1.yaml"),
         provider_uri=provider,
         market="us",
         start=start,
         cutoff=cutoff,
         output_root=panel,
     )
+    if recent_research:
+        result = {
+            "scope": "independent_recent_us87_panel_validation",
+            "status": panel_manifest.get("status"), "evidence_cutoff": cutoff,
+            "requested_start": start, "pool_id": pool_id,
+            "expected_symbol_count": len(symbols), "factor_panel_manifest": panel_manifest,
+            "contract_sha256": _sha256(Path("configs/data/alpha158_us87_recent_research_v1.yaml")),
+            "source_audit_sha256": _sha256(output_root / "vwap_audit.json"),
+            "selected_pool_registry_sha256": _sha256(Path("configs/pools/selected_pool_registry_v1.yaml")),
+            "reference_registry_sha256": _sha256(Path("configs/pools/reference_instrument_registry_v1.yaml")),
+            "governed_source_registry_sha256": _sha256(Path("configs/data/formal_model_data_sources_v1.yaml")),
+            "model_data_registered": False, "original_training_gate_satisfied": False,
+            "research_only": True, "trade_ready": False,
+        }
+        _write_json(output_root / "recent_research_manifest.json", result)
+        return result
     price_manifest = _price_component(
         pool_id=pool_id,
         market="us",
@@ -608,8 +639,11 @@ def main() -> int:
     parser.add_argument("--cutoff", required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--fixture-dir", type=Path, default=None)
+    parser.add_argument("--recent-us-research", action="store_true")
     args = parser.parse_args()
-    contract = _load_yaml(Path("configs/data/alpha158_panel_v1.yaml"))
+    if args.recent_us_research and (args.market != "us" or args.start != "2026-01-01"):
+        parser.error("recent US research requires market=us and start=2026-01-01")
+    contract = _load_yaml(Path("configs/data/alpha158_us87_recent_research_v1.yaml" if args.recent_us_research else "configs/data/alpha158_panel_v1.yaml"))
     market_contract = contract["markets"][args.market]
     pool_path = Path(str(market_contract["pool_spec"]))
     if args.market == "us":
@@ -620,6 +654,7 @@ def main() -> int:
             output_root=args.output_root,
             fixture_dir=args.fixture_dir,
             source_policy=dict(market_contract["canonical_vwap_source"]),
+            recent_research=args.recent_us_research,
         )
     else:
         result = build_cn(

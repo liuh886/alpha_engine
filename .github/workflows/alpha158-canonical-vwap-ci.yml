@@ -7,6 +7,7 @@ on:
       - ".github/workflows/alpha158-canonical-vwap-ci.yml"
       - ".github/actions/setup-python-uv/action.yml"
       - "configs/data/alpha158_panel_v1.yaml"
+      - "configs/data/alpha158_us87_recent_research_v1.yaml"
       - "configs/data_contracts/model_data_bundle_v1.yaml"
       - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
       - "configs/research_paradigms/cn_alpha158_cross_window_stability_v1.yaml"
@@ -57,6 +58,11 @@ on:
         default: "both"
         type: choice
         options: [both, us, cn]
+      source_scope:
+        description: "Original full-history source or independent recent US87 feasibility"
+        type: choice
+        options: [original, recent_us_research]
+        default: original
       cutoff:
         description: "Evidence cutoff (YYYY-MM-DD; blank uses previous UTC day)"
         required: false
@@ -123,7 +129,8 @@ jobs:
   live-us-panel:
     if: >-
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
-      (inputs.market == '' || inputs.market == 'both' || inputs.market == 'us')
+      (inputs.market == '' || inputs.market == 'both' || inputs.market == 'us') &&
+      inputs.source_scope != 'recent_us_research'
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 600
@@ -226,10 +233,89 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
+  recent-us-research:
+    if: github.event_name == 'workflow_dispatch' && inputs.source_scope == 'recent_us_research'
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      APCA_API_KEY_ID: ${{ secrets.APCA_API_KEY_ID }}
+      APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+      POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+      GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python-uv
+      - name: Resolve completed US cutoff for the recent source contract
+        id: recent_cutoff
+        env:
+          REQUESTED_CUTOFF: ${{ inputs.cutoff }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from datetime import datetime, timedelta, timezone
+          from pathlib import Path
+          from src.research.market_session_clock import completed_market_date, exchange_sessions
+          today = datetime.now(timezone.utc).date()
+          completed = completed_market_date("us", today.isoformat())
+          latest = exchange_sessions("us", (today - timedelta(days=14)).isoformat(), completed)[-1]
+          requested = os.environ.get("REQUESTED_CUTOFF", "").strip() or latest
+          if requested < "2026-01-01" or requested > latest or requested not in exchange_sessions("us", requested, requested):
+              raise SystemExit("Recent cutoff must be a completed US session within the frozen history window")
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a") as handle:
+              handle.write(f"value={requested}\n")
+          PY
+      - name: Build independent recent US87 panel without model registration
+        env:
+          CUTOFF: ${{ steps.recent_cutoff.outputs.value }}
+        run: >-
+          uv run python scripts/data/build_canonical_vwap_provider.py
+          --market us --start 2026-01-01 --cutoff "$CUTOFF"
+          --recent-us-research
+          --output-root artifacts/data/us87-recent-research
+      - name: Retain source rows, panels and failed research privately
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          import shutil
+          from pathlib import Path
+          from src.data.governed_actions_artifact import retain_private_archive
+          root = Path("artifacts/data/us87-recent-research")
+          if not root.is_dir():
+              raise SystemExit("No recent source evidence was produced")
+          archive = Path(shutil.make_archive("artifacts/us87-recent-source", "zip", root))
+          member = f"archives/us87-recent-{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}.zip"
+          binding = retain_private_archive(
+              repository="liuh886/alpha-engine-data-archive", member=member,
+              archive_path=archive, ssh_key=os.environ.get("GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY", ""),
+          )
+          compact = Path("artifacts/us87-recent-summary")
+          compact.mkdir(parents=True, exist_ok=True)
+          manifest = root / "recent_research_manifest.json"
+          if manifest.is_file():
+              shutil.copyfile(manifest, compact / manifest.name)
+          audit_path = root / "vwap_audit.json"
+          audit = json.loads(audit_path.read_text()) if audit_path.is_file() else {}
+          summary = {key: audit.get(key) for key in ("pool_id", "evidence_cutoff", "expected_symbol_count", "ready_symbol_count", "failed_symbol_count")}
+          summary.update(private_archive=binding, research_only=True, trade_ready=False, original_training_gate_satisfied=False)
+          (compact / "archive-binding.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+          print(json.dumps(summary, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: us87-recent-research-summary-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/us87-recent-summary
+          if-no-files-found: warn
+          retention-days: 90
+
   live-cn-panel:
     if: >-
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
-      (inputs.market == '' || inputs.market == 'both' || inputs.market == 'cn')
+      (inputs.market == '' || inputs.market == 'both' || inputs.market == 'cn') &&
+      inputs.source_scope != 'recent_us_research'
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 600

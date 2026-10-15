@@ -20,7 +20,7 @@ action_refs = POLICY_MODULE.action_refs
 
 
 WORKFLOW_JOB_COUNTS = {
-    "alpha158-canonical-vwap-ci.yml": 4,
+    "alpha158-canonical-vwap-ci.yml": 5,
     "event-store-contracts-ci.yml": 2,
     "selected-pool-event-population-ci.yml": 4,
     "factor-catalog-alpha158-ci.yml": 1,
@@ -55,7 +55,7 @@ def test_shared_python_environment_is_frozen_and_cache_safe() -> None:
 
 
 def test_active_data_plane_workflows_use_one_governed_environment_setup() -> None:
-    assert sum(WORKFLOW_JOB_COUNTS.values()) == 23
+    assert sum(WORKFLOW_JOB_COUNTS.values()) == 24
     root = Path(".github/workflows")
     for filename, job_count in WORKFLOW_JOB_COUNTS.items():
         content = (root / filename).read_text(encoding="utf-8")
@@ -209,7 +209,7 @@ def test_us_alpha158_live_panel_uses_only_approved_alpaca_sip_credentials() -> N
     content = Path(".github/workflows/alpha158-canonical-vwap-ci.yml").read_text(
         encoding="utf-8"
     )
-    live_block = content[content.index("  live-us-panel:") : content.index("  live-cn-panel:")]
+    live_block = content[content.index("  live-us-panel:") : content.index("  recent-us-research:")]
     assert "AlpacaAdapter" in live_block
     assert '("ABBNY", "otc")' in live_block
     assert '("SBGSY", "otc")' in live_block

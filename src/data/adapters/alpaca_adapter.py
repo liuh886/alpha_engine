@@ -228,6 +228,7 @@ class AlpacaAdapter:
     client: AlpacaClient | None = None
     feed: str = "sip"
     max_pages: int = 10
+    adjustment: str = "all"
 
     def __post_init__(self) -> None:
         self.key_id = str(self.key_id or os.getenv("APCA_API_KEY_ID", "")).strip() or None
@@ -237,6 +238,8 @@ class AlpacaAdapter:
         self.feed = str(self.feed).strip().lower()
         if self.feed not in {"sip", "otc"}:
             raise DataFetchError("Alpaca historical feed must be sip or otc")
+        if self.adjustment not in {"all", "split"}:
+            raise DataFetchError("Alpaca adjustment must be all or split")
         if self.client is None and self.key_id and self.secret_key:
             self.client = AlpacaHttpClient(key_id=self.key_id, secret_key=self.secret_key)
 
@@ -275,7 +278,7 @@ class AlpacaAdapter:
             params = {
                 "timeframe": "1Day",
                 "feed": self.feed,
-                "adjustment": "all",
+                "adjustment": self.adjustment,
                 "start": start,
                 "end": end,
                 "limit": "10000",
@@ -306,11 +309,11 @@ class AlpacaAdapter:
             "symbol": symbol,
             "feed": self.feed,
             "timeframe": "1Day",
-            "adjustment": "all",
+            "adjustment": self.adjustment,
             "request_count": request_count,
             "elapsed_seconds": round(time.perf_counter() - started, 6),
         }
-        out.attrs["price_mode"] = f"{self.feed}_adjusted_all_daily_bars"
+        out.attrs["price_mode"] = f"{self.feed}_adjusted_{self.adjustment}_daily_bars"
         out.attrs["vwap_semantics"] = "reported_vwap"
         out.attrs["amount_semantics"] = "derived_reported_vwap_times_reported_volume"
         return FetchResult(
