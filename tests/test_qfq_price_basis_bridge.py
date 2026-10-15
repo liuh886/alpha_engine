@@ -68,6 +68,19 @@ def test_jinpan_distributed_cash_cannot_replace_reference_cash(tmp_path: Path) -
         )
 
 
+@pytest.mark.parametrize("cutoff,applies", [("2026-10-15", False), ("2026-10-16", True)])
+def test_cnooc_issuer_event_does_not_apply_before_the_declared_ex_date(cutoff: str, applies: bool) -> None:
+    frame = pd.DataFrame({"open": [13.572], "high": [14.0], "low": [13.0], "close": [13.8], "volume": [10]})
+    converted, receipt = reanchor_additive_qfq(frame, symbol="600938", cutoff=cutoff, bridge_path=BRIDGE, repository_root=ROOT, frozen_source_sha256=FROZEN_SHA)
+    assert receipt["reference_cash_offset"] == pytest.approx(0.81324 if applies else 0.0)
+    assert converted.open.iloc[0] == pytest.approx(13.572 + (0.81324 if applies else 0.0))
+    assert converted.volume.equals(frame.volume)
+    if applies:
+        event = receipt["events"][0]
+        assert event["source_document_id"] == "600938:2026-024"
+        assert event["total_distributed_cash"] / event["total_shares"] == pytest.approx(0.81324)
+
+
 @pytest.mark.parametrize("field,value", [("reference_cash_amount", 0.7), ("source_sha256", "0" * 64)])
 def test_unverified_adjustment_fails_closed(tmp_path: Path, field, value) -> None:
     payload = json.loads(BRIDGE.read_text())
