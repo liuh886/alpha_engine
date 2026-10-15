@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from src.data.adapters.base import FetchRequest
-from src.data.adapters.polygon_adapter import PolygonAdapter
+from src.data.adapters.polygon_adapter import PolygonAdapter, PolygonHttpClient
 from src.data.adapters.polygon_adapter import _bars, _metadata
 from src.data.adapters.tiingo_adapter import TiingoAdapter
 from src.data.adapters.yfinance_adapter import YFinanceAdapter
@@ -21,6 +21,8 @@ def probe_polygon_vwap(*, end: str, adapter: PolygonAdapter | None = None, reque
     """Bounded diagnostic only; never changes source roles or emits training bars."""
     adapter = adapter or PolygonAdapter()
     client = adapter.client
+    if isinstance(client, PolygonHttpClient):
+        client.max_attempts = 1
     if client is not None and request_interval_seconds > 0:
         class PacedClient:
             last_request = 0.0
@@ -33,14 +35,19 @@ def probe_polygon_vwap(*, end: str, adapter: PolygonAdapter | None = None, reque
 
         adapter.client = PacedClient()
     rows: list[dict[str, Any]] = []
+    rate_limited = False
     for symbol in ("AAPL", "MSFT", "NVDA", "ABBNY", "SBGSY"):
         for start, cutoff in (("2021-01-01", "2021-01-31"), ("2026-01-01", end)):
             row: dict[str, Any] = {"symbol": symbol, "start": start, "cutoff": cutoff}
+            if rate_limited:
+                rows.append({**row, "ok": False, "error_class": "not_probed_after_rate_limit"})
+                continue
             try:
                 result = adapter.fetch_daily_bars(FetchRequest(symbol=symbol, market="us", start=start, end=cutoff))
                 row.update(ok=True, rows=len(result.df), first_date=result.df["date"].min().date().isoformat(), last_date=result.df["date"].max().date().isoformat())
             except Exception as exc:
-                row.update(ok=False, error_class=getattr(exc, "error_class", type(exc).__name__), status_code=getattr(exc, "status_code", None), error=str(exc))
+                row.update(ok=False, error_class=getattr(exc, "error_class", type(exc).__name__), status_code=getattr(exc, "status_code", None))
+                rate_limited = getattr(exc, "status_code", None) == 429
                 # Distinguish an adjusted-price mismatch from a raw aggregate mismatch.
                 # No raw response or bar values are retained in this diagnostic.
                 if "OHLC envelope" in str(exc) and adapter.client is not None:
@@ -56,6 +63,7 @@ def probe_polygon_vwap(*, end: str, adapter: PolygonAdapter | None = None, reque
                         row["raw_aggregate_check"] = {"ok": True, "rows": len(frame)}
                     except Exception as raw_exc:
                         row["raw_aggregate_check"] = {"ok": False, "error_class": type(raw_exc).__name__}
+                        rate_limited = getattr(raw_exc, "status_code", None) == 429
             rows.append(row)
     return {"schema_version": "1.0", "purpose": "bounded_vwap_source_feasibility", "provider": "polygon", "observations": rows, "eligible_for_training": False, "writes_canonical_data": False, "research_only": True, "trade_ready": False}
 

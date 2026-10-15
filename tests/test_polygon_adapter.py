@@ -107,6 +107,7 @@ def test_bounded_probe_keeps_history_and_adjustment_failures_out_of_training():
     assert len(report["observations"]) == 10
     assert report["eligible_for_training"] is False
     assert report["writes_canonical_data"] is False
+    assert all("error" not in row for row in report["observations"])
     assert all(row["raw_aggregate_check"]["ok"] for row in report["observations"] if row["symbol"] == "MSFT")
     assert all(not row["ok"] for row in report["observations"] if row["symbol"] in {"ABBNY", "SBGSY"} and row["start"] == "2021-01-01")
 
