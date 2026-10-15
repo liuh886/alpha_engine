@@ -33,20 +33,24 @@ def test_posix_cron_contains_post_close_daily_job(tmp_path: Path, monkeypatch) -
     assert "artifacts/logs/daily_us_decision.log" in content
     assert "\\" not in content
     assert "SEC_USER_AGENT must be available" in content
+    jobs = [line for line in content.splitlines() if line and not line.startswith("#")]
+    assert len(jobs) == 1
 
 
 def test_windows_setup_writes_fail_closed_daily_batch(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    (tmp_path / "scripts").mkdir()
     monkeypatch.setattr(setup_cron, "_project_root", lambda: tmp_path)
 
     daily_path = Path(setup_cron.setup_windows_task())
     content = daily_path.read_text(encoding="utf-8")
+    assert daily_path.parent == tmp_path / "artifacts"
+    assert not (tmp_path / "scripts").exists()
     assert "if not defined SEC_USER_AGENT" in content
     assert "run_latest_us_low_turnover_decision.py" in content
     assert "daily_us_decision.log" in content
+    assert "exit /b %ERRORLEVEL%" in content
 
 
 def test_scheduled_workflow_restores_and_saves_state_in_order() -> None:

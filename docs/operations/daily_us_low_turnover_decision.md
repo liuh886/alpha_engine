@@ -60,7 +60,11 @@ Run:
 uv run python scripts/setup_cron.py
 ```
 
-On Windows, this writes `scripts/run_daily_us_decision.bat` and prints a Task Scheduler command for Tuesday through Saturday at 07:30 local time. On Linux or macOS, it writes an importable crontab fragment to `artifacts/alpha-engine.crontab` with the same schedule. Review it before installing with `crontab artifacts/alpha-engine.crontab`.
+On Windows, this writes `artifacts/run_daily_us_decision.bat` and prints a Task Scheduler command for Tuesday through Saturday at 07:30 local time. On Linux or macOS, it writes an importable crontab fragment to `artifacts/alpha-engine.crontab` with the same schedule. Review it before installing with `crontab artifacts/alpha-engine.crontab`.
+
+The template contains only this frozen US23 diagnostic. Weekly research, factor-decay metadata updates and report generation require their own explicit research invocation; they are not added to this schedule. Generated launchers are disposable and never overwrite tracked scripts. The former machine-specific `scripts/run_weekly.bat` has been retired; its source identity is retained in `scripts/archive/ARCHIVE_MANIFEST.json`.
+
+Existing installed schedules are not modified by this generator. If migrating an older installation, inspect its task action or crontab first and update only the deliberately retained diagnostic job to the generated `artifacts/` launcher. The platform operating loop uses the active workflows described in [the operations runbook](../release/operations_runbook.md).
 
 07:30 local time is intentionally conservative for both China and Japan system time zones and covers US winter and summer market close.
 
