@@ -1,0 +1,53 @@
+schema_version: "2.0"
+contract_id: "qqqi_qqq_tqqq_reference_research_v2"
+# Instrument roles and membership are unchanged; source contract is versioned.
+bundle_id: "qqqi_qqq_tqqq_reference_bundle_v1"
+source_policy: "yahoo_research_v2"
+supersedes_source_contract: "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"
+status: "active_research_data_contract"
+market: "us"
+research_only: true
+trade_ready: false
+instruments:
+  - symbol: "QQQ"
+    instrument_type: "equity_etf"
+    roles: ["benchmark", "attack_sleeve", "signal_reference"]
+    exact_identity_required: true
+  - symbol: "QQQI"
+    instrument_type: "income_equity_etf"
+    roles: ["defensive_sleeve", "income_sleeve"]
+    exact_identity_required: true
+  - symbol: "TQQQ"
+    instrument_type: "leveraged_equity_etf"
+    roles: ["leveraged_attack_sleeve"]
+    exact_identity_required: true
+history:
+  requested_start: "2010-01-01"
+  end_policy: "explicit_cutoff_required"
+  common_window_policy: "latest_first_observation_across_all_instruments"
+  pre_inception_fill_allowed: false
+  duplicate_sessions_allowed: false
+price_contract:
+  strategy_price_basis: "corporate_action_adjusted_open_and_close"
+  adjustment_method: "uniform_adj_close_ratio"
+  volume_basis: "provider_reported_volume"
+  next_open_execution_supported: true
+  synthetic_amount_allowed_for_diagnostics_only: true
+  professional_distribution_and_split_evidence: "not_provided"
+providers:
+  primary:
+    name: "yfinance"
+  tiingo:
+    enabled: false
+    reason: "operator_has_no_paid_plan"
+promotion:
+  strategy_data_ready_requires:
+    - "all three canonical adjusted bar files are schema valid"
+    - "exact identities, requested cutoff and inception boundaries pass"
+    - "source contract and all files are hash bound"
+  professional_source_ready: false
+  automatic_trade_ready_promotion_allowed: false
+limitations:
+  - "Research source only; no independent professional corroboration."
+  - "No claim of professionally sourced cash-distribution or split-event coverage."
+  - "This source change does not revalidate historical strategy efficacy."

@@ -486,6 +486,30 @@ def test_reference_bundle_source_verifies(tmp_path: Path) -> None:
     verify_extracted_source(source, tmp_path)
 
 
+@pytest.mark.parametrize("tamper", [None, "contract_sha256", "selected_providers", "professional_source_ready"])
+def test_research_reference_requires_exact_explicit_source_contract(tmp_path, tamper):
+    from dataclasses import replace
+
+    digest = hashlib.sha256(Path("configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml").read_bytes()).hexdigest()
+    manifest = _reference_manifest(
+        source_policy="yahoo_research_v2", contract_sha256=digest,
+        professional_source_ready=False,
+        selected_providers={symbol: "yfinance" for symbol in ("QQQ", "QQQI", "TQQQ")},
+    )
+    if tamper == "contract_sha256":
+        manifest[tamper] = "0" * 64
+    elif tamper == "selected_providers":
+        manifest[tamper]["QQQ"] = "tiingo"
+    elif tamper == "professional_source_ready":
+        manifest[tamper] = True
+    source = replace(_write_reference_source(tmp_path, manifest), research_reference_contract_sha256=digest)
+    if tamper:
+        with pytest.raises(GovernedActionsArtifactError, match="research reference source contract"):
+            verify_extracted_source(source, tmp_path)
+    else:
+        verify_extracted_source(source, tmp_path)
+
+
 def test_reference_bundle_member_corruption_fails_closed(tmp_path: Path) -> None:
     source = _write_reference_source(tmp_path, _reference_manifest())
     (tmp_path / "canonical/QQQ.csv").write_bytes(b"changed")

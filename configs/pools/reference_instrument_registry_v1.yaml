@@ -12,7 +12,7 @@ policy:
   provider_aliases_must_preserve_canonical_identity: true
   reference_membership_changes_require_new_version: true
   post_result_reference_changes_allowed: false
-  executable_etf_data_bundle: "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"
+  executable_etf_data_bundle: "configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml"
 
 markets:
   us:

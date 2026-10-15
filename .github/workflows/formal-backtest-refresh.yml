@@ -648,7 +648,7 @@ jobs:
       matrix:
         task: ${{ fromJson(needs.plan.outputs.task_matrix) }}
     env:
-      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+      TIINGO_API_TOKEN: "" # No paid entitlement; active research uses the versioned Yahoo source.
     steps:
       - name: Check out triggering revision
         uses: actions/checkout@v6

@@ -153,12 +153,14 @@ def _verify_cache(
     return {**dict(pointer), "status": "reused", "profile_gate": gate}
 
 
-def _can_reuse_etf_bundle(path: Path, cutoff: str) -> bool:
+def _can_reuse_etf_bundle(path: Path, cutoff: str, contract_sha256: str) -> bool:
     manifest_path = path / "bundle_manifest.json"
     manifest = _read_json(manifest_path)
     if not manifest or manifest.get("strategy_data_ready") is not True:
         return False
     if str(manifest.get("requested_end") or "") != cutoff:
+        return False
+    if manifest.get("contract_sha256") != contract_sha256:
         return False
     try:
         load_etf_reference_bundle(path, require_strategy_ready=True)
@@ -216,15 +218,18 @@ def _build_strategy_recipe(
         if source_etf_bundle is not None
         else _resolve(normalized_root, source_products["etf_bundle_root"])
     )
-    if source_etf_bundle is None and not _can_reuse_etf_bundle(etf_root, requested_cutoff):
+    etf_contract = _resolve(normalized_root, source_products["etf_contract"])
+    if source_etf_bundle is None and not _can_reuse_etf_bundle(etf_root, requested_cutoff, _sha256(etf_contract)):
         build_etf_reference_bundle(
-            contract_path=_resolve(normalized_root, source_products["etf_contract"]),
+            contract_path=etf_contract,
             output_root=etf_root,
             end=requested_cutoff,
             primary_adapter=primary_adapter,
             fallback_adapter=fallback_adapter,
         )
-    load_etf_reference_bundle(etf_root, require_strategy_ready=True)
+    _, _, etf_manifest = load_etf_reference_bundle(etf_root, require_strategy_ready=True)
+    if etf_manifest.get("contract_sha256") != _sha256(etf_contract):
+        raise DataRecipeError("ETF source contract does not match the active recipe")
 
     supplemental, roles = _strategy_symbol_contract(recipe)
     strategy_root = _resolve(normalized_root, source_products["strategy_bundle_root"])

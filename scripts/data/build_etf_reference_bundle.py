@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from src.data.etf_reference_bundle import build_etf_reference_bundle
@@ -15,7 +16,7 @@ def main() -> int:
     parser.add_argument(
         "--contract",
         type=Path,
-        default=Path("configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"),
+        default=Path("configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml"),
     )
     parser.add_argument(
         "--output-root",
@@ -29,6 +30,12 @@ def main() -> int:
         help="Fail unless Tiingo and independent reconciliation pass for all three ETFs.",
     )
     args = parser.parse_args()
+    if args.end_date is None:
+        from src.research.market_session_clock import completed_market_date, exchange_sessions
+
+        today = datetime.now(timezone.utc).date()
+        completed = completed_market_date("us", today.isoformat())
+        args.end_date = exchange_sessions("us", (today - timedelta(days=14)).isoformat(), completed)[-1]
 
     manifest = build_etf_reference_bundle(
         contract_path=args.contract,

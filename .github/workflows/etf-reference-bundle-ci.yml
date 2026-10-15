@@ -7,6 +7,7 @@ on:
       - ".github/workflows/etf-reference-bundle-ci.yml"
       - ".github/actions/setup-python-uv/action.yml"
       - "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"
+      - "configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml"
       - "src/data/provider_catalog.py"
       - "src/data/adapters/tiingo_adapter.py"
       - "src/data/etf_reference_bundle.py"
@@ -22,6 +23,7 @@ on:
       - ".github/workflows/etf-reference-bundle-ci.yml"
       - ".github/actions/setup-python-uv/action.yml"
       - "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"
+      - "configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml"
       - "src/data/provider_catalog.py"
       - "src/data/adapters/tiingo_adapter.py"
       - "src/data/etf_reference_bundle.py"
@@ -81,8 +83,6 @@ jobs:
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    env:
-      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-python-uv
@@ -90,64 +90,27 @@ jobs:
         run: >-
           uv run python scripts/data/build_etf_reference_bundle.py
           --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
-      - name: Classify Tiingo secret and professional-source status
+      - name: Verify free research source and completed cutoff
         run: |
           uv run python - <<'PY'
+          import hashlib
           import json
-          import os
           from pathlib import Path
-
-          root = Path("artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1")
-          path = root / "bundle_manifest.json"
-          payload = json.loads(path.read_text(encoding="utf-8"))
-          token_configured = bool(os.getenv("TIINGO_API_TOKEN", "").strip())
-          health = payload.get("provider_health", {}).get("tiingo", {})
-          error_counts = health.get("error_class_counts", {})
-
-          if not token_configured:
-              status = "not_configured"
-          elif payload.get("professional_source_ready") is True:
-              status = "usable"
-          elif error_counts.get("rate_limited"):
-              status = "rate_limited"
-          elif error_counts.get("credential_or_entitlement"):
-              status = "credential_or_entitlement"
-          elif any(
-              value in {"quarantine", "provider_missing"}
-              for value in payload.get("reconciliation_status", {}).values()
-          ):
-              status = "reconciliation_or_provider_failed"
-          else:
-              status = "professional_gate_failed"
-
-          secret_status = {
-              "schema_version": "1.1",
-              "credential_env": "TIINGO_API_TOKEN",
-              "token_configured": token_configured,
-              "status": status,
-              "professional_source_ready": payload.get("professional_source_ready"),
-              "selected_providers": payload.get("selected_providers", {}),
-              "reconciliation_status": payload.get("reconciliation_status", {}),
-              "provider_health": health,
-              "research_only": True,
-              "trade_ready": False,
-          }
-          (root / "tiingo_secret_status.json").write_text(
-              json.dumps(secret_status, indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
-          )
-          print(json.dumps(secret_status, indent=2, sort_keys=True))
-
-          assert payload["strategy_data_ready"] is True, payload
-          assert payload["symbols"] == ["QQQ", "QQQI", "TQQQ"], payload
-          assert payload["common_history_start"] is not None, payload
-          assert payload["trade_ready"] is False, payload
-          if token_configured:
-              assert status == "usable", secret_status
-              assert set(payload["selected_providers"].values()) == {"tiingo"}, payload
-              accepted = {"consensus", "explainable_corporate_action_difference"}
-              assert set(payload["reconciliation_status"].values()) <= accepted, payload
-              print("::notice title=Tiingo secret usable::QQQ, QQQI and TQQQ passed identity, provider-health and independent reconciliation gates")
+          path = Path("artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json")
+          payload = json.loads(path.read_text())
+          contract = Path("configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml")
+          assert payload["contract_sha256"] == hashlib.sha256(contract.read_bytes()).hexdigest()
+          assert payload["source_policy"] == "yahoo_research_v2"
+          assert payload["strategy_data_ready"] is True
+          assert payload["professional_source_ready"] is False
+          assert payload["symbols"] == ["QQQ", "QQQI", "TQQQ"]
+          assert set(payload["selected_providers"].values()) == {"yfinance"}
+          assert not any("tiingo" in name.lower() for name in payload["files"])
+          assert payload["trade_ready"] is False
+          print(json.dumps({key: payload[key] for key in (
+              "source_policy", "contract_sha256", "common_history_start", "common_history_end",
+              "strategy_data_ready", "professional_source_ready", "selected_providers",
+          )}, sort_keys=True))
           PY
       - name: Upload ETF reference bundle and credential evidence
         if: always()

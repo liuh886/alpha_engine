@@ -18,6 +18,7 @@ from src.data.etf_reference_bundle import (
 from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
 
 CONTRACT = Path("configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml")
+RESEARCH_CONTRACT = Path("configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml")
 
 
 def _bars(
@@ -169,6 +170,23 @@ def test_yahoo_only_bundle_is_strategy_ready_but_not_professional(
     }
     qqqi = pd.read_csv(tmp_path / "canonical" / "QQQI.csv")
     assert qqqi["date"].min().startswith("2024-01-30")
+
+
+def test_research_contract_never_uses_configured_tiingo_key(monkeypatch, tmp_path):
+    monkeypatch.setenv("TIINGO_API_TOKEN", "configured_without_paid_entitlement")
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Tiingo must not be constructed")
+
+    monkeypatch.setattr("src.data.etf_reference_bundle.TiingoAdapter", forbidden)
+    manifest = build_etf_reference_bundle(
+        contract_path=RESEARCH_CONTRACT, output_root=tmp_path, end="2024-03-15",
+        fallback_adapter=FakeAdapter("yfinance", _fallback_frames()),
+    )
+    assert manifest["strategy_data_ready"] is True
+    assert manifest["professional_source_ready"] is False
+    assert manifest["source_policy"] == "yahoo_research_v2"
+    assert not any("tiingo" in path for path in manifest["files"])
 
 
 def test_professional_bundle_retains_distributions_splits_and_hashes(

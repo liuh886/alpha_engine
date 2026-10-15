@@ -70,6 +70,7 @@ class GovernedSource:
     max_member_count: int
     component_manifests: tuple[ManifestBinding, ...]
     durable_release: DurableRelease | None = None
+    research_reference_contract_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -150,6 +151,13 @@ def load_governed_source_registry(path: Path) -> GovernedSourceRegistry:
         if not _SOURCE_ID.fullmatch(source_id):
             raise GovernedActionsArtifactError(f"invalid governed source ID: {source_id}")
         row = _mapping(raw, source_id)
+        research_contract = row.get("research_reference_contract_sha256")
+        if research_contract is not None and (
+            row.get("source_kind") != "etf_reference_bundle"
+            or not isinstance(research_contract, str)
+            or not _SHA256.fullmatch(research_contract)
+        ):
+            raise GovernedActionsArtifactError("invalid research reference contract binding")
         digest = _required_text(row, "artifact_digest").lower()
         if not digest.startswith("sha256:") or not _SHA256.fullmatch(digest[7:]):
             raise GovernedActionsArtifactError(f"invalid artifact digest: {source_id}")
@@ -189,6 +197,7 @@ def load_governed_source_registry(path: Path) -> GovernedSourceRegistry:
             max_member_count=_positive_int(row, "max_member_count"),
             component_manifests=tuple(bindings),
             durable_release=_durable_release(row, source_id),
+            research_reference_contract_sha256=research_contract,
         )
         sources[source_id] = source
     if not sources:
@@ -514,7 +523,17 @@ def _verify_reference_bundle(source: GovernedSource, root: Path) -> None:
         raise GovernedActionsArtifactError("reference bundle identity mismatch")
     if manifest.get("strategy_data_ready") is not True:
         raise GovernedActionsArtifactError("reference bundle strategy data is not ready")
-    if manifest.get("professional_source_ready") is not True:
+    if source.research_reference_contract_sha256 is not None:
+        if (
+            manifest.get("contract_sha256") != source.research_reference_contract_sha256
+            or manifest.get("source_policy") != "yahoo_research_v2"
+            or symbols != ["QQQ", "QQQI", "TQQQ"]
+            or manifest.get("selected_providers") != {symbol: "yfinance" for symbol in symbols}
+            or manifest.get("professional_source_ready") is not False
+            or any("tiingo" in str(path).lower() for path in manifest.get("files", {}))
+        ):
+            raise GovernedActionsArtifactError("research reference source contract mismatch")
+    elif manifest.get("professional_source_ready") is not True:
         raise GovernedActionsArtifactError(
             "reference bundle professional source is not ready"
         )
