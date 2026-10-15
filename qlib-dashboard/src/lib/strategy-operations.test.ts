@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { parseStrategyOperationsSnapshot } from './strategy-operations';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { assertStrategyOperationRun, loadStrategyOperations, parseStrategyOperationsSnapshot, summarizeStrategySignal } from './strategy-operations';
+import type { GovernedRunSummary } from './governed-run';
 
 const record = {
   model_version_id: 'cn_x1_2', strategy_id: 'cn_x', status: 'current_no_change',
@@ -22,5 +23,74 @@ describe('evaluation timing', () => {
     expect(() => parseStrategyOperationsSnapshot({ ...record,
       decision_schedule: { ...record.decision_schedule, sessions_until_due: -1 },
     })).toThrow('Invalid decision schedule');
+  });
+});
+
+describe('retained observation health', () => {
+  it('requires attention for stale observations even while the decision is within cadence', () => {
+    const snapshot = parseStrategyOperationsSnapshot(record);
+    expect(summarizeStrategySignal(snapshot)).toMatchObject({ badgeLabel: 'Stale', isAttention: true, isNew: false });
+    expect(snapshot.decisionSchedule).toMatchObject({ state: 'within_cadence', sessionsUntilDue: 2 });
+  });
+
+  it.each([
+    { state_detail: 'degraded_delayed' }, { staleness: { stale: true } },
+    { data_freshness: 'stale' }, { factor_freshness: 'stale' },
+    { state_detail: 'degraded_blocked' }, { data_freshness: 'blocked' },
+  ])('uses observation health independently of decision status: %j', (health) => {
+    const snapshot = parseStrategyOperationsSnapshot({ ...record, data_freshness: 'current', factor_freshness: 'unknown', ...health });
+    expect(summarizeStrategySignal(snapshot).isAttention).toBe(true);
+  });
+
+  it('keeps a current observation healthy when evaluation is simply due', () => {
+    const snapshot = parseStrategyOperationsSnapshot({ ...record, data_freshness: 'current', factor_freshness: 'unknown',
+      decision_schedule: { ...record.decision_schedule, state: 'due', sessions_until_due: 0 } });
+    expect(summarizeStrategySignal(snapshot)).toMatchObject({ badgeLabel: 'Hold', isAttention: false });
+  });
+});
+
+describe('operations publication reader', () => {
+  const run = { channel: 'formal', modelVersionId: 'cn_x1_2', modelFamilyId: 'cn_ranker', runId: 'formal-run',
+    bundleId: 'a'.repeat(64), evidenceCutoff: '2026-09-30' } as GovernedRunSummary;
+  const published = { ...record, strategy_id: 'cn_x', source_identity: {
+    formal_bundle_id: run.bundleId, formal_run_id: run.runId, formal_evidence_cutoff: run.evidenceCutoff,
+  } };
+  const otherRun = { ...run, modelVersionId: 'us_x1_3', modelFamilyId: 'us_ranker', runId: 'other-run' };
+  const other = { ...published, model_version_id: otherRun.modelVersionId, strategy_id: 'us_x',
+    source_identity: { ...published.source_identity, formal_run_id: otherRun.runId } };
+  function serve(records: unknown[], envelope = {}) {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({
+      schema_version: '2.2.0', research_only: true, trade_ready: false, records, ...envelope,
+    }) }));
+  }
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each(['missing', 'malformed', 'mismatched', 'missing strategy', 'empty strategy'])('scopes %s row failure to that strategy', async (failure) => {
+    const rows = failure === 'missing' ? [published] : [published, failure === 'malformed'
+      ? { ...other, allocations: null } : failure === 'missing strategy' ? { ...other, strategy_id: undefined }
+      : failure === 'empty strategy' ? { ...other, strategy_id: '' }
+      : { ...other, source_identity: { ...other.source_identity, formal_run_id: 'old-run' } }];
+    serve(rows);
+    const snapshots = await loadStrategyOperations([run, otherRun]);
+    expect(snapshots.get(run.modelVersionId)?.status).toBe('current_no_change');
+    expect(snapshots.get(otherRun.modelVersionId)).toMatchObject({ status: 'blocked', strategyId: failure.includes('strategy') || failure === 'missing' ? '' : 'us_x', allocations: [] });
+  });
+
+  it.each([
+    { formal_bundle_id: 'b'.repeat(64) }, { formal_run_id: 'old-run' },
+    { formal_evidence_cutoff: '2026-09-29' }, { formal_bundle_id: null },
+  ])('rejects different or absent formal identity: %j', async (identity) => {
+    const snapshot = { ...published, source_identity: { ...published.source_identity, ...identity } };
+    expect(() => assertStrategyOperationRun(parseStrategyOperationsSnapshot(snapshot), run)).toThrow();
+    serve([snapshot]);
+    expect((await loadStrategyOperations([run])).get(run.modelVersionId)?.status).toBe('blocked');
+  });
+
+  it.each(['duplicate model', 'duplicate strategy', 'boundary', 'schema'])('rejects ambiguous or invalid documents: %s', async (failure) => {
+    serve(failure === 'duplicate model' ? [published, published] : failure === 'duplicate strategy'
+      ? [published, { ...other, strategy_id: published.strategy_id }] : [published, other],
+    failure === 'boundary' ? { trade_ready: true } : failure === 'schema' ? { schema_version: 'bad' } : {});
+    const snapshots = await loadStrategyOperations([run, otherRun]);
+    expect([...snapshots.values()].every((snapshot) => snapshot.status === 'blocked')).toBe(true);
   });
 });

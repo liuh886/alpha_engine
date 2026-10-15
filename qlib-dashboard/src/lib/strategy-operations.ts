@@ -285,9 +285,11 @@ export function parseStrategyOperationsSnapshot(value: unknown): StrategyOperati
   };
 }
 
-function blocked(run: GovernedRunSummary, message: string): StrategyOperationsSnapshot {
+function blocked(run: GovernedRunSummary, message: string, strategyId = ''): StrategyOperationsSnapshot {
   return {
-    strategyId: run.modelVersionId,
+    // Missing publication identity is unknown; a model family is not a stable
+    // strategy ID and must never become a writable access-policy resource.
+    strategyId,
     modelVersionId: run.modelVersionId,
     status: 'blocked',
     stateDetail: 'blocked',
@@ -327,17 +329,32 @@ function blocked(run: GovernedRunSummary, message: string): StrategyOperationsSn
   };
 }
 
-async function fetchOperations(): Promise<Map<string, StrategyOperationsSnapshot>> {
-  const response = await fetch(assetUrl('data/strategy-operations/snapshots.json'), { cache: 'no-store' });
+async function fetchOperations(signal?: AbortSignal): Promise<Map<string, unknown>> {
+  const response = await fetch(assetUrl('data/strategy-operations/snapshots.json'), { cache: 'no-store', signal });
   if (!response.ok) throw new Error(`Strategy operations snapshot unavailable (${response.status})`);
   const value = await response.json() as OperationsDocument;
   assert(value.schema_version === '2.2.0', 'Unsupported strategy operations schema');
   assert(value.research_only === true && value.trade_ready === false, 'Invalid strategy operations boundary');
   assert(Array.isArray(value.records), 'Strategy operations records are missing');
-  const snapshots = value.records.map(parseStrategyOperationsSnapshot);
-  assert(new Set(snapshots.map((snapshot) => snapshot.modelVersionId)).size === snapshots.length, 'Duplicate strategy operations model identity');
-  assert(new Set(snapshots.map((snapshot) => snapshot.strategyId)).size === snapshots.length, 'Duplicate stable strategy identity');
-  return new Map(snapshots.map((snapshot) => [snapshot.modelVersionId, snapshot]));
+  // Ambiguous identities invalidate the document; an identified row's payload
+  // is checked independently so its failure cannot hide other valid strategies.
+  const identities = value.records.map((row) => {
+    assert(Boolean(row) && typeof row === 'object' && !Array.isArray(row), 'Strategy operations identity is missing');
+    const record = row as Record<string, unknown>;
+    assert(typeof record.model_version_id === 'string' && record.model_version_id.length > 0, 'Strategy operations model identity is missing');
+    return { model: record.model_version_id, strategy: nullableString(record.strategy_id), row };
+  });
+  assert(new Set(identities.map((item) => item.model)).size === identities.length, 'Duplicate strategy operations model identity');
+  const stableIds = identities.flatMap((item) => item.strategy ? [item.strategy] : []);
+  assert(new Set(stableIds).size === stableIds.length, 'Duplicate stable strategy identity');
+  return new Map(identities.map((item) => [item.model, item.row]));
+}
+
+export function assertStrategyOperationRun(snapshot: StrategyOperationsSnapshot, run: GovernedRunSummary): void {
+  assert(snapshot.modelVersionId === run.modelVersionId, 'Operations model identity mismatch');
+  assert(Boolean(run.bundleId) && snapshot.sourceIdentity.formalBundleId === run.bundleId, 'Operations formal bundle identity mismatch');
+  assert(Boolean(run.runId) && snapshot.sourceIdentity.formalRunId === run.runId, 'Operations formal run identity mismatch');
+  assert(Boolean(run.evidenceCutoff) && snapshot.sourceIdentity.formalEvidenceCutoff === run.evidenceCutoff, 'Operations formal cutoff mismatch');
 }
 
 export async function loadRuntimeStrategyOperation(
@@ -361,15 +378,22 @@ export async function loadRuntimeStrategyOperation(
   return snapshot;
 }
 
-export async function loadStrategyOperations(runs: GovernedRunSummary[]): Promise<Map<string, StrategyOperationsSnapshot>> {
+export async function loadStrategyOperations(runs: GovernedRunSummary[], signal?: AbortSignal): Promise<Map<string, StrategyOperationsSnapshot>> {
   const formalRuns = runs.filter((run) => run.channel === 'formal');
   try {
-    const snapshots = await fetchOperations();
-    const missingIds = formalRuns
-      .map((run) => run.modelVersionId)
-      .filter((modelVersionId) => !snapshots.has(modelVersionId));
-    assert(missingIds.length === 0, `Strategy operations are missing accepted formal models: ${missingIds.join(', ')}`);
-    return new Map(formalRuns.map((run) => [run.modelVersionId, snapshots.get(run.modelVersionId)!]));
+    const snapshots = await fetchOperations(signal);
+    return new Map(formalRuns.map((run) => {
+      try {
+        assert(snapshots.has(run.modelVersionId), `Strategy operations are missing accepted formal model: ${run.modelVersionId}`);
+        const snapshot = parseStrategyOperationsSnapshot(snapshots.get(run.modelVersionId));
+        assertStrategyOperationRun(snapshot, run);
+        return [run.modelVersionId, snapshot];
+      } catch (error) {
+        const identity = snapshots.get(run.modelVersionId) as Record<string, unknown> | undefined;
+        return [run.modelVersionId, blocked(run, error instanceof Error ? error.message : 'Strategy operations record is unavailable.',
+          typeof identity?.strategy_id === 'string' ? identity.strategy_id : '')];
+      }
+    }));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Strategy operations snapshot is unavailable.';
     return new Map(formalRuns.map((run) => [run.modelVersionId, blocked(run, message)]));
@@ -410,12 +434,18 @@ export function summarizeStrategySignal(snapshot?: StrategyOperationsSnapshot): 
     };
   }
 
-  if (snapshot.status === 'stale' || snapshot.status === 'blocked' || snapshot.status === 'delivery_failed') {
+  const blockedObservation = snapshot.status === 'blocked' || snapshot.status === 'delivery_failed'
+    || snapshot.dataFreshness === 'blocked' || snapshot.factorFreshness === 'blocked'
+    || snapshot.stateDetail === 'blocked' || snapshot.stateDetail === 'degraded_blocked';
+  const delayedObservation = snapshot.status === 'stale' || snapshot.staleness?.stale === true
+    || snapshot.dataFreshness === 'stale' || snapshot.factorFreshness === 'stale'
+    || snapshot.stateDetail === 'degraded_delayed';
+  if (blockedObservation || delayedObservation) {
     return {
       direction: 'attention',
-      badgeLabel: snapshot.status === 'stale' ? 'Stale' : 'Blocked',
+      badgeLabel: blockedObservation ? 'Blocked' : 'Stale',
       actionText: 'Previous signal only',
-      summaryNote: snapshot.decisionReason || 'Current signal unavailable',
+      summaryNote: `${blockedObservation ? 'Observation blocked' : 'Observation delayed'} · ${snapshot.decisionReason || 'Current signal unavailable'}`,
       isAttention: true,
       isNew: false,
       isHold: false,

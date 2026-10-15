@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { FormalBacktestReview } from '@/components/FormalBacktestReview';
 import { StrategyRuntimeStatusStrip } from '@/components/StrategyRuntimeStatusStrip';
+import { OperationsReadStatus } from '@/components/OperationsReadStatus';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
@@ -12,7 +13,7 @@ import { loadDecisionForRun, type DecisionLoadState } from '@/lib/model-run-deci
 import { governedRunQuery, loadRunSection } from '@/lib/governed-run';
 import { latestPerformanceObservation } from '@/lib/performancePeriods';
 import type { ReportRow } from '@/lib/types';
-import { STRATEGY_STATUS_LABEL } from '@/lib/strategy-operations';
+import { STRATEGY_STATUS_LABEL, summarizeStrategySignal } from '@/lib/strategy-operations';
 import type { StrategyFactorEvidence } from '@/lib/strategy-operations';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 import { fetchSystemHealth } from '@/lib/system-health';
@@ -89,10 +90,11 @@ export function StrategyDetailPage() {
   const { strategyId } = useParams();
   const run = workspace.runs.find((candidate) => candidate.channel === 'formal' && candidate.modelVersionId === strategyId) ?? null;
   const selectedRuns = useMemo(() => run ? [run] : [], [run]);
-  const { snapshots, loading } = useStrategyOperations(selectedRuns);
+  const { snapshots, loading, issues, reload } = useStrategyOperations(selectedRuns);
   const snapshot = run ? snapshots.get(run.modelVersionId) : undefined;
+  const signalSummary = summarizeStrategySignal(snapshot);
   const [health, setHealth] = useState<SystemHealthStrategy | null>(null);
-  const requiredTier = snapshot ? access.requiredTier('strategy', snapshot.strategyId) : 'public';
+  const requiredTier = snapshot?.strategyId ? access.requiredTier('strategy', snapshot.strategyId) : 'owner';
   const requiredTierLabel = ACCESS_TIER_LABEL[requiredTier];
   const liveLocked = Boolean(snapshot && !access.canAccess(requiredTier));
   const protectedUnavailable = Boolean(
@@ -167,7 +169,7 @@ export function StrategyDetailPage() {
           </div>
           <div className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Operating status</p>
-            <p className="mt-1 font-semibold">{liveLocked ? 'Protected current operations' : snapshot ? STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading current operations' : 'Operating status unavailable'}</p>
+            <p className="mt-1 font-semibold">{liveLocked ? 'Protected current operations' : snapshot ? signalSummary.isAttention ? `${signalSummary.badgeLabel} observation` : STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading current operations' : 'Operating status unavailable'}</p>
             <p className="mt-1 text-xs text-muted-foreground">{liveLocked ? 'Formal historical evidence remains public below.' : snapshot?.stateLabel || 'Canonical operations state is unavailable.'}</p>
           </div>
         </div>
@@ -183,6 +185,7 @@ export function StrategyDetailPage() {
         />
       </section>
 
+      <OperationsReadStatus loading={loading} issues={issues} reload={reload} />
       <section aria-label="Research tracking assessment" className="rounded-xl border bg-card p-5 text-sm">
         <h2 className="font-semibold">Research tracking assessment</h2>
         <p className="mt-2 text-muted-foreground">

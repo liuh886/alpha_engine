@@ -241,7 +241,7 @@ export function StrategyFleet({
         <div className="divide-y">
           {filteredRuns.map((run) => {
             const snapshot = snapshots.get(run.modelVersionId);
-            const requiredTier = snapshot ? access.requiredTier('strategy', snapshot.strategyId) : 'owner';
+            const requiredTier = snapshot?.strategyId ? access.requiredTier('strategy', snapshot.strategyId) : 'owner';
             const liveLocked = !access.canAccess(requiredTier);
             const summary = summarizeStrategySignal(snapshot);
             const expanded = expandedKey === run.key;
@@ -387,7 +387,7 @@ export function StrategyFleet({
                 <div className="hidden text-xs text-muted-foreground lg:block">
                   <p className="font-medium text-foreground">
                     {summary.isAttention ? (
-                      <span className="text-rose-600 dark:text-rose-400">Expired / Stale</span>
+                      <span className="text-rose-600 dark:text-rose-400">{summary.badgeLabel} · {applicableDate}</span>
                     ) : (
                       applicableDate
                     )}

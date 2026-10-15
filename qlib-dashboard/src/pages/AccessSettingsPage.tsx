@@ -80,7 +80,7 @@ export function AccessSettingsPage() {
   const modules = routes.filter((route) => route.accessResourceId).map((route) => [route.accessResourceId!, route.title] as const);
   const strategies = useMemo(() => formalRuns.flatMap((run) => {
     const snapshot = snapshots.get(run.modelVersionId);
-    if (!snapshot) return [];
+    if (!snapshot?.strategyId || !snapshot.sourceIdentity.formalBundleId) return [];
     return [{
       strategyId: snapshot.strategyId,
       modelVersionId: run.modelVersionId,
