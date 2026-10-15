@@ -732,3 +732,10 @@ publish 尚未结束的时长明确为 null；已另取最终 Actions 元数据�
 提前重述除息基准一致是依据该匹配作出的推断，不当作新的供应商权限证明。
 原规则在 cutoff 10-15 仍不应用这笔事件，原失败不追认成功；10-16 起的后续
 完整运行仍须验证真实新增会话、所有成员、完整重放与发布，不提前宣称已通过。
+
+本轮拒绝源、观察回执、最终 Actions 元数据与公告金额诊断另已私有归档，避免
+失败记忆随 Actions 到期消失：`liuh886/alpha-engine-data-archive` 提交
+`1f3e97c998900cc28fe781d437db4a33648a7be6`，路径
+`archives/cn27-rejected-source-38792987386.zip`，228,221 bytes，SHA-256
+`d3c253c03eca9b439d6684b7a81f8ec1ce2c335952def7d033f7c68d56ef2dc3`。
+这份失败归档没有进入 selected-pool/model-data 来源注册表或任何训练门禁。
