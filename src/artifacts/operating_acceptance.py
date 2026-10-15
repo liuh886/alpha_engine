@@ -11,27 +11,32 @@ from typing import Any
 from src.research.market_session_clock import completed_market_date, exchange_sessions
 
 
-def _due_cycle_verified(record: dict[str, Any], decision: dict[str, Any], previous: dict[str, Any] | None, *, market: str, cutoff: str) -> bool:
-    """Daily observation is not evidence of a periodic rebalance evaluation."""
+def _frozen_cadence(record: dict[str, Any], market: str) -> tuple[str, int | None]:
     import yaml
     from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
     repository = Path(__file__).resolve().parents[2]
     strategy = load_active_strategy_catalog(repository / "configs/strategies/registry.json").by_model_version_id.get(str(record.get("model_version_id", "")))
     if strategy is None or strategy.market != market:
-        return False
+        return "", None
     contract = yaml.safe_load((repository / strategy.model_contract).read_text(encoding="utf-8"))
     section = {"us_ranker": "strategy", "cn_ranker": "execution", "cn_27_rotation": "portfolio"}.get(strategy.model_family_id)
     cadence = contract.get(section, {}).get("rebalance_sessions") if section else 1
+    return strategy.model_family_id, cadence if type(cadence) is int and cadence >= 1 else None
+
+
+def _due_cycle_verified(record: dict[str, Any], decision: dict[str, Any], previous: dict[str, Any] | None, *, market: str, cutoff: str) -> bool:
+    """Daily observation is not evidence of a periodic rebalance evaluation."""
+    family, cadence = _frozen_cadence(record, market)
     schedule = record.get("decision_schedule", {})
-    if type(cadence) is not int or cadence < 1 or schedule.get("cadence_sessions") != cadence:
+    if cadence is None or schedule.get("cadence_sessions") != cadence:
         return False
     signal = decision["signal"]
     if cadence == 1:
         return decision.get("latest_data_date") == cutoff
     if previous is None:
         return False
-    if strategy.model_family_id == "cn_27_rotation":
+    if family == "cn_27_rotation":
         anchor = signal.get("diagnostics", {}).get("last_rebalance_date")
         old_anchor = previous["signal"].get("diagnostics", {}).get("last_rebalance_date")
     else:
@@ -40,6 +45,30 @@ def _due_cycle_verified(record: dict[str, Any], decision: dict[str, Any], previo
         return False
     sessions = exchange_sessions(market, old_anchor, anchor)
     return bool(sessions) and sessions[0] == old_anchor and sessions[-1] == anchor and len(sessions) - 1 >= cadence
+
+
+def _retained_target_within_cadence(record: dict[str, Any], decision: dict[str, Any], *, market: str, cutoff: str) -> bool:
+    family, cadence = _frozen_cadence(record, market)
+    schedule, stale = record.get("decision_schedule", {}), record.get("staleness", {})
+    anchor = decision["signal"].get("diagnostics", {}).get("last_rebalance_date") if family == "cn_27_rotation" else decision.get("signal_date")
+    if cadence is None or cadence <= 1 or schedule.get("cadence_sessions") != cadence or schedule.get("signal_date") != anchor or schedule.get("completed_through") != cutoff or schedule.get("state") != "within_cadence" or not isinstance(anchor, str) or anchor > cutoff:
+        return False
+    sessions = exchange_sessions(market, anchor, cutoff)
+    latest = decision["latest_data_date"]
+    if not sessions or sessions[0] != anchor or sessions[-1] != cutoff or not 0 < len(sessions) - 1 < cadence or not anchor <= latest < cutoff:
+        return False
+    age = len(exchange_sessions(market, latest, cutoff)) - 1
+    return (
+        record.get("latest_completed_session") == latest
+        and record.get("status") in {"current_no_change", "target_pending_execution", "execution_observed"}
+        and record.get("state_detail") == "degraded_delayed"
+        and record.get("data_freshness") == "stale" and record.get("factor_freshness") == "stale"
+        and record.get("signal_data_freshness") == "current"
+        and stale.get("as_of") == latest and stale.get("expected_cutoff") == cutoff
+        and stale.get("sessions_behind") == age and stale.get("stale") is True
+        and decision["signal"].get("data_freshness_ok") is True
+        and decision["signal"].get("factor_freshness_ok") is True
+    )
 
 
 def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) -> list[str]:
@@ -62,6 +91,7 @@ def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) 
     if set(records) != set(expected) or set(evidence) != set(expected) or len(evidence) != len(review["decision_delivery_evidence"]):
         raise ValueError("strategy decision/delivery review must cover every active strategy")
     verified_due = []
+    row["verified_retained_target_strategy_ids"] = []
     for strategy_id, formal in expected.items():
         record = records[strategy_id]
         source = record.get("source_identity", {})
@@ -70,10 +100,29 @@ def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) 
         }.items()) or record.get("model_version_id") != formal.get("model_version_id"):
             raise ValueError("strategy review formal identity mismatch")
         market = formal["market"]
-        if record.get("latest_completed_session") != row["actual_cutoffs"][market] or any(record.get(field) != "current" for field in ("data_freshness", "factor_freshness", "signal_data_freshness")) or record.get("decision_schedule", {}).get("state") != "within_cadence" or record.get("state_detail") != "current" or record.get("staleness", {}).get("stale") is not False:
-            raise ValueError("strategy review cadence or freshness is not current")
         decision_path, decision = read(evidence[strategy_id]["decision"])
         _validate_decision_record(decision, path=decision_path, model_version_id=formal["model_version_id"])
+        current = record.get("latest_completed_session") == row["actual_cutoffs"][market] and all(record.get(field) == "current" for field in ("data_freshness", "factor_freshness", "signal_data_freshness")) and record.get("decision_schedule", {}).get("state") == "within_cadence" and record.get("state_detail") == "current" and record.get("staleness", {}).get("stale") is False
+        if not current:
+            if not _retained_target_within_cadence(record, decision, market=market, cutoff=row["actual_cutoffs"][market]):
+                raise ValueError("strategy review cadence or freshness is not current")
+            inputs = review.get("operating_inputs", {})
+            bindings = {
+                "plan/plan.json": inputs.get("plan"),
+                "strategy-fan-in-receipt.json": inputs.get("fan_in"),
+                f"provider-{market}/artifacts/selected_pool_price_refresh_manifest.json": inputs.get("providers", {}).get(market),
+            }
+            verified = {}
+            for member, binding in bindings.items():
+                if not isinstance(binding, dict) or row.get("receipt_sha256", {}).get(member) != binding.get("sha256"):
+                    raise ValueError("retained target lacks observation-bound operating inputs")
+                _, verified[member] = read(binding)
+            plan, fan, provider = verified.values()
+            tasks = [task for task in plan.get("tasks", []) if task.get("strategy_id") == strategy_id]
+            from src.artifacts.formal_refresh import market_provider_cutoff
+            if any(item.get("research_only") is not True or item.get("trade_ready") is not False for item in (plan, fan, provider)) or len(tasks) != 1 or tasks[0].get("model_version_id") != formal["model_version_id"] or tasks[0].get("planned_provider_cutoff") != row["actual_cutoffs"][market] or tasks[0].get("formal_refresh_required") is not False or fan.get("status") != "complete" or fan.get("retained_strategy_ids") or provider.get("all_sources_ready") is not True or provider.get("failure_count") != 0 or provider.get("unresolved_stale_symbols") or market_provider_cutoff(provider, market=market) != row["actual_cutoffs"][market]:
+                raise ValueError("retained target operating inputs are blocked or not current")
+            row["verified_retained_target_strategy_ids"].append(strategy_id)
         if decision.get("latest_data_date") != record.get("as_of") or decision["latest_data_date"] > row["actual_cutoffs"][market] or formal["evidence_cutoff"] > row["actual_cutoffs"][market]:
             raise ValueError("strategy review decision cutoff mismatch")
         _, delivery = read(evidence[strategy_id]["delivery"])
@@ -156,7 +205,7 @@ def build_acceptance_report(input_root: Path, *, declarations: Path | None = Non
                 break
             consecutive += 1
         window = {row["session"] for row in records[-20:]}
-        reviewed_window = [row for row in dated if row["review_verified"] and not row.get("collection_blockers") and row["expected_cutoffs"][market] in window]
+        reviewed_window = [row for row in dated if row["review_verified"] and not row.get("collection_blockers") and row.get("actual_cutoffs", {}).get(market) == row["expected_cutoffs"][market] and row["expected_cutoffs"][market] in window]
         required_due = {strategy for row in reviewed_window for strategy in row.get("active_strategy_ids", [])}
         covered_due = {strategy for row in reviewed_window for strategy in row.get("verified_due_cycle_strategy_ids", [])}
         markets[market] = {"through": end, "observed_sessions": sum(bool(row["observed_attempts"]) for row in records), "qualified_sessions": sum(row["status"] == "qualified" for row in records), "consecutive_qualified_sessions": consecutive, "missing_due_cycle_strategy_ids": sorted(required_due - covered_due), "twenty_session_evidence_complete": consecutive >= 20 and bool(required_due) and required_due <= covered_due, "sessions": records}
@@ -164,7 +213,7 @@ def build_acceptance_report(input_root: Path, *, declarations: Path | None = Non
         "schema_version": "operating_acceptance_report_v1", "scope": "existing_strategy_operating_evidence",
         "observation_count": len(observations), "markets": markets,
         "qualification_scope": "whole_operating_loop_all_active_strategies; calendar_counts_are_market_specific",
-        "run_evidence": [{key: row.get(key) for key in ("run_id", "run_attempt", "observation_sha256", "collection_blockers", "stages", "final_stages", "publication")} for row in observations],
+        "run_evidence": [{key: row.get(key) for key in ("run_id", "run_attempt", "observation_sha256", "verified_retained_target_strategy_ids", "verified_due_cycle_strategy_ids", "collection_blockers", "stages", "final_stages", "publication")} for row in observations],
         "manual_interventions": {f"{row['run_id']}:{row['run_attempt']}": row["manual_interventions"] for row in observations},
         "limitations": ["Missing and cancelled sessions cannot be skipped to construct a continuous pass.", "Repeated runs are attempts of one exchange session, not additional sessions.", "Collection alone does not verify decision freshness, cadence or delivery; independent hash-bound review is required.", "Captured publish-job duration is incomplete until final Actions metadata is retained."],
         "research_only": True, "trade_ready": False,

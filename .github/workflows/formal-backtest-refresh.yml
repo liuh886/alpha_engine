@@ -1319,6 +1319,7 @@ jobs:
             const refresh = receipt('formal-refresh-receipt.json');
             const sync = receipt('formal-v2-sync-receipt.json');
             const formal = receipt('formal-v2/catalog.json');
+            for (const market of ['us', 'cn']) receipt(`provider-${market}/artifacts/selected_pool_price_refresh_manifest.json`);
             const formalIdentities = {};
             for (const task of plan.tasks || []) {
               const item = (formal.records || []).find(row => row.model_version_id === task.model_version_id);

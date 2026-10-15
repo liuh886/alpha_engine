@@ -233,6 +233,13 @@ operations 快照及每个活跃策略封存 decision/delivery 文件 SHA，填�
 哈希，核验真实前后调仓锚点；周期读取既有冻结模型合同，日常估值刷新不算
 到期评估。完整字段及可执行例子见 `tests/test_operating_acceptance.py`。
 
+10 会话 ranker 未到期不会重新生成决策。旧信号继续显示实际日期及年龄状态；
+运行会话可单独合格，但必须在 review.operating_inputs 提供 plan、fan_in 和
+providers.us/cn 的 path/SHA 绑定，并与 observation.receipt_sha256 一致。
+冻结周期和交易日历必须证明尚未到期，plan 的正式刷新需求为 false（允许 MTM），
+fan-in 完整无 retained，provider 当前且无未解决数据缺口，原封存因子及投递
+仍有效。它不计作新决策或到期周期。缺少这些原件或已经到期时不能沿用该分支。
+
 ```text
 uv run alpha ops acceptance --input-root artifacts/operating-observations --through 2026-10-14 --declarations artifacts/operating-observations/reviews.json --output artifacts/operating-observations/report.json
 ```
