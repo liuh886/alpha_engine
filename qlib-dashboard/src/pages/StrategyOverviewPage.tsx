@@ -1,10 +1,12 @@
 import { Activity, ShieldCheck, TrendingUp } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { StrategyFleet } from '@/components/StrategyFleet';
+import { OperationsReadStatus } from '@/components/OperationsReadStatus';
 import { useStrategyOperations } from '@/hooks/useStrategyOperations';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
+import { summarizeStrategySignal } from '@/lib/strategy-operations';
 
 function metric(run: GovernedRunSummary | undefined, id: string): number | null {
   if (!run || !Array.isArray(run.summary.metrics)) return null;
@@ -22,9 +24,9 @@ function decimal(value: number | null): string {
 
 export function StrategyOverviewPage() {
   const workspace = useOutletContext<RunWorkspaceContext>();
-  const { formalRuns, snapshots, loading } = useStrategyOperations(workspace.runs);
-  const operational = Array.from(snapshots.values()).filter((snapshot) => !['pipeline_unavailable', 'awaiting_observation'].includes(snapshot.status)).length;
-  const attention = Array.from(snapshots.values()).filter((snapshot) => ['stale', 'blocked', 'delivery_failed'].includes(snapshot.status)).length;
+  const { formalRuns, snapshots, loading, issues, reload } = useStrategyOperations(workspace.runs);
+  const operational = Array.from(snapshots.values()).filter((snapshot) => ['current_no_change', 'target_pending_execution', 'execution_observed'].includes(snapshot.status) && !summarizeStrategySignal(snapshot).isAttention).length;
+  const attention = Array.from(snapshots.values()).filter((snapshot) => summarizeStrategySignal(snapshot).isAttention).length;
   const featured = formalRuns.find((run) => run.modelFamilyId === 'qqq_rotation') ?? formalRuns[0];
 
   return (
@@ -60,6 +62,7 @@ export function StrategyOverviewPage() {
         </div>
       </section>
 
+      <OperationsReadStatus loading={loading} issues={issues} reload={reload} />
       <StrategyFleet runs={formalRuns} snapshots={snapshots} loading={loading} />
 
       <section className="grid gap-4 lg:grid-cols-2">

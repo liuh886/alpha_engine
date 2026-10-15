@@ -1,11 +1,12 @@
 import { useOutletContext } from 'react-router-dom';
 import { StrategyFleet } from '@/components/StrategyFleet';
+import { OperationsReadStatus } from '@/components/OperationsReadStatus';
 import { useStrategyOperations } from '@/hooks/useStrategyOperations';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 
 export function StrategiesPage() {
   const workspace = useOutletContext<RunWorkspaceContext>();
-  const { formalRuns, snapshots, loading } = useStrategyOperations(workspace.runs);
+  const { formalRuns, snapshots, loading, issues, reload } = useStrategyOperations(workspace.runs);
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6 pb-16">
@@ -16,6 +17,7 @@ export function StrategiesPage() {
           Compare accepted formal baselines by return and risk before opening a strategy. Historical performance is public; live holdings, target allocations and current signal drivers follow each strategy's account or Pro access policy.
         </p>
       </header>
+      <OperationsReadStatus loading={loading} issues={issues} reload={reload} />
       <StrategyFleet runs={formalRuns} snapshots={snapshots} loading={loading} />
     </div>
   );

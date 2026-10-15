@@ -1,7 +1,15 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 test.use({ serviceWorkers: 'block' });
+
+// Bind current-state fixtures to the exact formal catalog shipped by this build.
+// Signal dates below intentionally differ from formal historical cutoffs.
+const formal = JSON.parse(readFileSync(new URL('../dist/data/formal-model-runs/catalog.json', import.meta.url), 'utf8'))
+  .records.find((row: { model_version_id: string }) => row.model_version_id === 'qqqi_qqq_tqqq_v4_3');
+const formalIdentity = { formal_bundle_id: formal.bundle_id, formal_run_id: formal.run_id,
+  formal_evidence_cutoff: formal.evidence_cutoff };
 
 function sha256(text: string): string {
   return createHash('sha256').update(text).digest('hex');
@@ -109,9 +117,7 @@ const runtimeOperation = {
     },
   ],
   source_identity: {
-    formal_bundle_id: 'a'.repeat(64),
-    formal_run_id: 'qqq-formal-run',
-    formal_evidence_cutoff: '2026-07-31',
+    ...formalIdentity,
     ledger_fingerprint: 'fixture-fingerprint',
     signal_sha256: 'b'.repeat(64),
     factor_catalog_implementation_hash: 'f'.repeat(64),
@@ -148,9 +154,7 @@ const operations = {
       note: 'Current holdings, targets, drivers and decision-ledger provenance are never included in the public static bundle.',
       factor_evidence: [],
       source_identity: {
-        formal_bundle_id: 'a'.repeat(64),
-        formal_run_id: 'qqq-formal-run',
-        formal_evidence_cutoff: '2026-07-31',
+        ...formalIdentity,
         ledger_fingerprint: null,
         signal_sha256: null,
         factor_catalog_implementation_hash: null,
@@ -185,9 +189,10 @@ async function assertNoHorizontalOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
-async function installProMembership(page: Page): Promise<void> {
+async function installProMembership(page: Page, options: { failFirst?: boolean; hangFirst?: boolean; mismatched?: boolean; stale?: boolean } = {}): Promise<void> {
   await page.route('**/admin/shared/account-shell.js*', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
-  await page.addInitScript((fullSnapshot) => {
+  await page.addInitScript(({ fullSnapshot, options }) => {
+    let calls = 0;
     const snapshot = { loading: false, isPro: true, user: { id: 'pro-fixture' } };
     (window as any).HaoAccount = {
       getState: () => snapshot,
@@ -218,8 +223,11 @@ async function installProMembership(page: Page): Promise<void> {
             select: () => {
               const query: any = {
                 eq: () => query,
-                maybeSingle: async () => table === 'strategy_operation_snapshots'
-                  ? {
+                maybeSingle: async () => {
+                  calls += 1;
+                  if (options.hangFirst && calls === 1) return new Promise(() => {});
+                  if (options.failFirst && calls === 1) return { data: null, error: { message: 'Temporary read failure' } };
+                  return table === 'strategy_operation_snapshots' ? {
                       data: {
                         strategy_id: 'qqq_rotation',
                         model_version_id: 'qqqi_qqq_tqqq_v4_3',
@@ -227,7 +235,8 @@ async function installProMembership(page: Page): Promise<void> {
                       },
                       error: null,
                     }
-                  : { data: null, error: null },
+                  : { data: null, error: null };
+                },
               };
               return query;
             },
@@ -235,7 +244,14 @@ async function installProMembership(page: Page): Promise<void> {
         },
       }),
     };
-  }, runtimeOperation);
+  }, { fullSnapshot: {
+    ...runtimeOperation,
+    ...(options.mismatched ? { source_identity: { ...runtimeOperation.source_identity, formal_bundle_id: 'b'.repeat(64) } } : {}),
+    ...(options.stale ? { data_freshness: 'stale', factor_freshness: 'stale', state_detail: 'degraded_delayed',
+      staleness: { as_of: '2026-07-31', expected_cutoff: '2026-08-03', sessions_behind: 1, stale: true },
+      decision_schedule: { signal_date: '2026-07-31', completed_through: '2026-08-03', cadence_sessions: 10,
+        sessions_until_due: 9, state: 'within_cadence', execution_pending: true } } : {}),
+  }, options });
 }
 
 test('strategy current operations are authorized by runtime policy and hydrated from the runtime store', async ({ page }, testInfo) => {
@@ -275,4 +291,67 @@ test('strategy current operations are authorized by runtime policy and hydrated 
     path: `test-results/static-artifact/strategy-operations-${testInfo.project.name}.png`,
     fullPage: true,
   });
+});
+
+test('current operations recover from a failed read without reloading formal evidence', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await mockBundle(page);
+  await installProMembership(page, { failFirst: true });
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+  const reader = page.getByRole('region', { name: 'Current operations reader' });
+  await expect(reader.getByText('QQQR v4.3: current operations could not be verified.')).toBeVisible();
+  await expect(page.getByRole('tablist', { name: 'Formal backtest evidence views' })).toBeVisible();
+  await expect(page.getByText('QQQ repair with easing volatility', { exact: true })).toHaveCount(0);
+  await reader.getByRole('button', { name: 'Retry operations' }).click();
+  await expect(page.getByRole('region', { name: 'Current decision state' }).getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
+  await expect(reader.getByRole('button', { name: 'Refresh operations' })).toBeEnabled();
+  expect(errors).toEqual([]);
+  await assertNoHorizontalOverflow(page);
+});
+
+test('a different formal identity cannot supply current allocations', async ({ page }) => {
+  await mockBundle(page);
+  await installProMembership(page, { mismatched: true });
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+  await expect(page.getByRole('button', { name: 'Retry operations' })).toBeEnabled();
+  await expect(page.getByText('QQQ repair with easing volatility', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Protected current operations are unavailable.', { exact: false })).toBeVisible();
+});
+
+test('a stalled runtime read times out and allows an explicit retry', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.clock.install();
+  await mockBundle(page);
+  await installProMembership(page, { hangFirst: true });
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+  const reader = page.getByRole('region', { name: 'Current operations reader' });
+  await expect(reader.getByRole('button', { name: 'Reading operations' })).toBeDisabled();
+  // Ensure the public identity has arrived before advancing the runtime deadline.
+  await expect(page.getByText('Protected current operations are unavailable.', { exact: false })).toBeVisible();
+  await page.clock.fastForward(15_000);
+  await expect(reader.getByText('Operations reading timed out.', { exact: false })).toBeVisible();
+  await reader.getByRole('button', { name: 'Retry operations' }).click();
+  await expect(page.getByRole('region', { name: 'Current decision state' }).getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
+  await expect(reader.getByRole('button', { name: 'Refresh operations' })).toBeEnabled();
+  expect(errors).toEqual([]);
+});
+
+test('stale observations require attention while cadence and execution stay explicit', async ({ page }) => {
+  await mockBundle(page);
+  await installProMembership(page, { stale: true });
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+  await expect(page.getByRole('button', { name: 'Refresh operations' })).toBeEnabled();
+  await expect(page.getByText('Next evaluation in 9 exchange sessions;', { exact: false })).toBeVisible();
+  await expect(page.getByText('Execution evidence is still pending;', { exact: false })).toBeVisible();
+  await page.goto('/#/strategies');
+  // This fixture publishes only QQQ: four missing strategies must leave QQQ
+  // readable while the reader offers recovery for their independent failures.
+  await expect(page.getByRole('button', { name: 'Retry operations' })).toBeEnabled();
+  await page.getByLabel('Signal filter', { exact: true }).selectOption('attention');
+  const row = page.getByTestId('fleet-qqqi_qqq_tqqq_v4_3');
+  await expect(row).toBeVisible();
+  await expect(row.getByRole('button', { name: /^(Stale|Inspect signal for .*: Stale)$/ }).filter({ visible: true })).toHaveCount(1);
+  await assertNoHorizontalOverflow(page);
 });
