@@ -113,3 +113,51 @@ def test_periodic_due_cycle_requires_a_verified_previous_anchor():
     current["signal"] = {}
     previous.update(signal_date="2026-07-01", latest_data_date="2026-07-01")
     assert not _due_cycle_verified(record, current, previous, market="cn", cutoff="2026-10-14")
+
+
+def test_not_due_ranker_accepts_current_operating_inputs_without_relabelling_old_signal(tmp_path):
+    from src.artifacts.operating_acceptance import _review_strategies
+    from src.artifacts.strategy_signal_ledger import seal_signal_decision, record_signal_delivery
+    from tests.test_strategy_operations import _ranker_signal
+
+    signal = _ranker_signal(family="us_ranker", group="momentum_volatility_volume", current={"AAPL": 1.0}, target={"AAPL": 1.0})
+    kwargs = {"ledger_root": tmp_path / "ledger", "model_version_id": "us_x1_3", "signal": signal, "workflow_run_id": "2", "commit_sha": "b" * 40, "created_at_utc": "2026-08-07T21:00:00Z"}
+    decision_path = seal_signal_decision(**kwargs)
+    delivery_path = record_signal_delivery(**kwargs, delivery_status="not_required")
+    decision = json.loads(decision_path.read_text())
+    formal = {"model_version_id": "us_x1_3", "bundle_id": "c" * 64, "run_id": "formal-run", "evidence_cutoff": "2026-08-10", "market": "us"}
+    record = {
+        "strategy_id": "us_x", "model_version_id": "us_x1_3", "status": "current_no_change", "state_detail": "degraded_delayed",
+        "as_of": "2026-08-07", "latest_completed_session": "2026-08-07", "data_freshness": "stale", "factor_freshness": "stale", "signal_data_freshness": "current", "factor_evidence": [{}],
+        "decision_schedule": {"state": "within_cadence", "cadence_sessions": 10, "signal_date": "2026-08-07", "completed_through": "2026-08-10"},
+        "staleness": {"stale": True, "as_of": "2026-08-07", "expected_cutoff": "2026-08-10", "sessions_behind": 1}, "delivery_status": "not_required",
+        "source_identity": {"formal_bundle_id": formal["bundle_id"], "formal_run_id": formal["run_id"], "formal_evidence_cutoff": formal["evidence_cutoff"], "signal_sha256": decision["signal_sha256"], "ledger_fingerprint": decision["fingerprint"]},
+    }
+    boundary = {"research_only": True, "trade_ready": False}
+    operations = {**boundary, "schema_version": "2.2.0", "generated_at": "2026-08-10T21:00:00Z", "records": [record]}
+    task = {"strategy_id": "us_x", "model_version_id": "us_x1_3", "planned_provider_cutoff": "2026-08-10", "formal_refresh_required": False, "mtm_refresh_required": True}
+
+    def write(name, payload):
+        path = tmp_path / name
+        path.write_text(json.dumps(payload))
+        return {"path": name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+
+    def binding(path):
+        return {"path": str(path.relative_to(tmp_path)), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+
+    plan = write("plan.json", {**boundary, "tasks": [task]})
+    fan = write("fan.json", {**boundary, "status": "complete", "retained_strategy_ids": []})
+    provider = write("provider.json", {**boundary, "market": "us", "status": "selected_pool_price_refresh_ready", "promotion_eligible": True, "all_sources_ready": True, "failure_count": 0, "records": [{"symbol": "QQQ", "last_date": "2026-08-10"}]})
+    review = {"operations_snapshot": write("operations.json", operations), "decision_delivery_evidence": [{"strategy_id": "us_x", "decision": binding(decision_path), "delivery": binding(delivery_path)}]}
+    row = {"formal_identities": {"us_x": formal}, "active_strategy_ids": ["us_x"], "actual_cutoffs": {"us": "2026-08-10"}, "receipt_sha256": {"plan/plan.json": plan["sha256"], "strategy-fan-in-receipt.json": fan["sha256"], "provider-us/artifacts/selected_pool_price_refresh_manifest.json": provider["sha256"]}}
+    with pytest.raises(ValueError, match="observation-bound"):
+        _review_strategies(row, review, tmp_path)
+    review["operating_inputs"] = {"plan": plan, "fan_in": fan, "providers": {"us": provider}}
+    assert _review_strategies(row, review, tmp_path) == []  # Qualified operation, no due cycle.
+    assert record["as_of"] == "2026-08-07" and record["factor_freshness"] == "stale"
+    task["formal_refresh_required"] = True
+    changed = write("plan.json", {**boundary, "tasks": [task]})
+    review["operating_inputs"]["plan"] = changed
+    row["receipt_sha256"]["plan/plan.json"] = changed["sha256"]
+    with pytest.raises(ValueError, match="operating inputs are blocked"):
+        _review_strategies(row, review, tmp_path)
