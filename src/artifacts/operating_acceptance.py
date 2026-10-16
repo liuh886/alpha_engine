@@ -81,6 +81,40 @@ def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) 
             raise ValueError("strategy review evidence hash mismatch")
         return path, json.loads(path.read_text())
 
+    def settled_ranker(task: dict[str, Any], fan: dict[str, Any], formal: dict[str, Any], item: dict[str, Any]) -> bool:
+        """A completed formal catch-up is distinct from a new rebalance decision."""
+        from src.artifacts.model_run_bundle_v2 import validate_manifest
+
+        receipts = [value for value in fan.get("receipts", []) if value.get("strategy_id") == task["strategy_id"]]
+        if len(receipts) != 1 or not all(isinstance(item.get(key), dict) for key in ("formal_manifest", "formal_lineage")):
+            return False
+        receipt = receipts[0]
+        if formal["evidence_cutoff"] != task["planned_provider_cutoff"]:
+            return False
+        if task.get("market") != formal["market"] or any(receipt.get(key) != task.get(key) for key in ("strategy_id", "model_version_id", "market", "formal_refresh_required", "planned_provider_cutoff")) or receipt.get("schema_version") != "formal_strategy_refresh_receipt_v2" or receipt.get("execution_status") != "refreshed" or receipt.get("candidate_evidence_cutoff") != formal["evidence_cutoff"] or receipt.get("publication_input") != "native_bundle_v2" or receipt.get("research_only") is not True or receipt.get("trade_ready") is not False:
+            return False
+        _, manifest = read(item["formal_manifest"])
+        validate_manifest(manifest)
+        lineage_path, lineage = read(item["formal_lineage"])
+        if any(manifest.get(key) != formal.get(key) for key in ("bundle_id", "run_id", "model_version_id", "evidence_cutoff")) or manifest.get("publication_channel") != "formal" or manifest.get("publication_status") != "accepted_formal_baseline" or manifest.get("model_kind") != "cross_sectional_ranker" or manifest["comparability_key"]["market"] != formal["market"] or manifest["model_family_id"] != receipt.get("model_family_id"):
+            return False
+        sections = [value for value in manifest["sections"] if value["section_id"] == "lineage"]
+        if len(sections) != 1 or sections[0].get("availability_status") != "available" or sections[0].get("sha256") != item["formal_lineage"]["sha256"] or sections[0].get("byte_size") != lineage_path.stat().st_size:
+            return False
+        candidate = receipt.get("candidate_bundle_id")
+        if not isinstance(candidate, str) or len(candidate) != 64 or any(character not in "0123456789abcdef" for character in candidate) or lineage.get("source_preview_bundle_id") != candidate or lineage.get("publication_contract") != "native_formal_bundle_v2" or lineage.get("model_selection_reopened") is not False or lineage.get("research_only") is not True or lineage.get("trade_ready") is not False:
+            return False
+        verdict = receipt.get("replay_verdict")
+        if manifest["model_family_id"] == "us_ranker":
+            return bool(verdict == "deterministic_native_bundle_rebuild")
+        if manifest["model_family_id"] != "cn_ranker" or not isinstance(verdict, dict):
+            return False
+        digest, prefix = verdict.get("duplicate_score_ledger_sha256"), verdict.get("frozen_prefix_rows", {})
+        source_evidence = lineage.get("source_evidence", {})
+        if not isinstance(prefix, dict) or not isinstance(source_evidence, dict):
+            return False
+        return verdict.get("model_selection_reopened") is False and isinstance(digest, str) and len(digest) == 64 and all(character in "0123456789abcdef" for character in digest) and all(type(prefix.get(key)) is int and prefix[key] > 0 for key in ("report", "positions", "trades")) and source_evidence.get("duplicate_score_ledger_sha256") == digest and all(source_evidence.get(key) is True for key in ("exact_score_reproduction", "exact_portfolio_reproduction")) and source_evidence.get("model_selection_reopened") is False
+
     _, operations = read(review["operations_snapshot"])
     validate_operations_payload(operations)
     expected = row.get("formal_identities", {})
@@ -120,8 +154,10 @@ def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) 
             plan, fan, provider = verified.values()
             tasks = [task for task in plan.get("tasks", []) if task.get("strategy_id") == strategy_id]
             from src.artifacts.formal_refresh import market_provider_cutoff
-            if any(item.get("research_only") is not True or item.get("trade_ready") is not False for item in (plan, fan, provider)) or len(tasks) != 1 or tasks[0].get("model_version_id") != formal["model_version_id"] or tasks[0].get("planned_provider_cutoff") != row["actual_cutoffs"][market] or tasks[0].get("formal_refresh_required") is not False or fan.get("status") != "complete" or fan.get("retained_strategy_ids") or provider.get("all_sources_ready") is not True or provider.get("failure_count") != 0 or provider.get("unresolved_stale_symbols") or market_provider_cutoff(provider, market=market) != row["actual_cutoffs"][market]:
+            if any(item.get("research_only") is not True or item.get("trade_ready") is not False for item in (plan, fan, provider)) or len(tasks) != 1 or tasks[0].get("model_version_id") != formal["model_version_id"] or tasks[0].get("planned_provider_cutoff") != row["actual_cutoffs"][market] or fan.get("status") != "complete" or fan.get("retained_strategy_ids") or provider.get("all_sources_ready") is not True or provider.get("failure_count") != 0 or provider.get("unresolved_stale_symbols") or market_provider_cutoff(provider, market=market) != row["actual_cutoffs"][market]:
                 raise ValueError("retained target operating inputs are blocked or not current")
+            if tasks[0].get("formal_refresh_required") is not False and (tasks[0].get("formal_refresh_required") is not True or not settled_ranker(tasks[0], fan, formal, evidence[strategy_id])):
+                raise ValueError("retained target formal settlement lacks verified publication evidence")
             row["verified_retained_target_strategy_ids"].append(strategy_id)
         if decision.get("latest_data_date") != record.get("as_of") or decision["latest_data_date"] > row["actual_cutoffs"][market] or formal["evidence_cutoff"] > row["actual_cutoffs"][market]:
             raise ValueError("strategy review decision cutoff mismatch")

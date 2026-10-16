@@ -236,7 +236,11 @@ operations 快照及每个活跃策略封存 decision/delivery 文件 SHA，填�
 10 会话 ranker 未到期不会重新生成决策。旧信号继续显示实际日期及年龄状态；
 运行会话可单独合格，但必须在 review.operating_inputs 提供 plan、fan_in 和
 providers.us/cn 的 path/SHA 绑定，并与 observation.receipt_sha256 一致。
-冻结周期和交易日历必须证明尚未到期，plan 的正式刷新需求为 false（允许 MTM），
+冻结周期和交易日历必须证明尚未到期。plan 的正式刷新需求为 false 时允许 MTM；
+若为 true，只有已完成的 ranker 正式补齐可进入此分支，且该策略的 decision_delivery_evidence
+必须额外提供 formal_manifest、formal_lineage 的 path/SHA。验收器验证正式 bundle ID、
+lineage section 的 SHA/字节数、source_preview_bundle_id 与本次 fan-in 成功回执一致，
+并要求原冻结回放成功、model_selection_reopened=false。
 fan-in 完整无 retained，provider 当前且无未解决数据缺口，原封存因子及投递
 仍有效。它不计作新决策或到期周期。缺少这些原件或已经到期时不能沿用该分支。
 
@@ -264,3 +268,17 @@ CN27 的 Tencent qfq 重读可能在 10-16 使用新的除息表示来返回截�
 600938 的 0.81324 元公告金额在 10-16 取数时可还原 10-15 截止的历史，但
 没有把 10-16 的收益或股息提前计入 10-15。旧失败证据保留，新候选仍需原子
 审核发布；不追认旧失败，也不改变模型、因子、成本、池成员或历史匹配容差。
+
+实际正式刷新 38842951989 已成功，数据 PR #1216 合并为
+`b6147ed630548ff36c8765de1aac1be3252f9250`，Pages 38844290193 成功。
+五条策略的正式证据截止均为 2026-10-15，CN27 目标作业 38844678809
+随后封存 10-15 决策。此成功不自动构成合格运行会话：QQQ 每日信号在本次
+核对时仍止于 10-14，等待原有定时作业；20 会话验收仍未完成。
+
+本次成功恢复原始/还原 CSV、正式回执、最终 Actions 元数据、观察及未合格
+复核原件已归档到私有仓库 `liuh886/alpha-engine-data-archive`，提交
+`599a8ff925c2cac8f5c6b08cd495ffc828bb0abb`，路径
+`archives/operating-recovery-38842951989.zip`，452181 bytes，SHA-256
+`5f4fef9da40f6e3350d5cf5e0ad169acb986efbc4a3ca7889e7df623a4f44511`。
+内部索引逐一校验 64 个证据文件；只保留必要原件和紧凑证明，不复制完整回测
+到每个消费者，也不把尚未合格的整体验收标为通过。
