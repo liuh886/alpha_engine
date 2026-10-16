@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { assertStrategyOperationRun, loadStrategyOperations, parseStrategyOperationsSnapshot, summarizeStrategySignal } from './strategy-operations';
+import { assertStrategyOperationRun, describeStrategyObservation, loadStrategyOperations, parseStrategyOperationsSnapshot, summarizeStrategySignal } from './strategy-operations';
 import type { GovernedRunSummary } from './governed-run';
 
 const record = {
@@ -27,6 +27,23 @@ describe('evaluation timing', () => {
 });
 
 describe('retained observation health', () => {
+  it('uses the sealed change flag rather than a still pending target', () => {
+    const snapshot = parseStrategyOperationsSnapshot({ ...record, status: 'target_pending_execution',
+      data_freshness: 'current', factor_freshness: 'unknown', evaluation_changed: false });
+    expect(describeStrategyObservation(snapshot)).toMatchObject({ kind: 'unchanged' });
+    expect(describeStrategyObservation({ ...snapshot, evaluationChanged: null })).toMatchObject({ kind: 'pending' });
+    expect(describeStrategyObservation({ ...snapshot, evaluationChanged: true })).toMatchObject({ kind: 'changed' });
+    expect(describeStrategyObservation({ ...snapshot, dataFreshness: 'stale' })).toMatchObject({ kind: 'attention' });
+  });
+
+  it('does not expose a private decision or change flag without access', () => {
+    const snapshot = parseStrategyOperationsSnapshot({ ...record, decision_reason: 'PRIVATE reason', evaluation_changed: true });
+    expect(JSON.stringify(describeStrategyObservation(snapshot, false))).not.toContain('PRIVATE');
+    expect(describeStrategyObservation(snapshot, false).kind).toBe('access');
+    expect(() => parseStrategyOperationsSnapshot({ ...record, read_state: 'protected', evaluation_changed: true }))
+      .toThrow('Protected operations contain private evidence');
+  });
+
   it('shows verified retention without relabeling old factors as fresh', () => {
     const snapshot = parseStrategyOperationsSnapshot({ ...record, observation_state: 'retained_within_cadence',
       source_identity: { formal_evidence_cutoff: record.decision_schedule.completed_through } });

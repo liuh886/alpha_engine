@@ -2,6 +2,7 @@ import { Activity, ShieldCheck, TrendingUp } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { StrategyFleet } from '@/components/StrategyFleet';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
+import { DailyResearchBrief } from '@/components/DailyResearchBrief';
 import { useStrategyOperations } from '@/hooks/useStrategyOperations';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
 import type { GovernedRunSummary } from '@/lib/governed-run';
@@ -36,7 +37,7 @@ export function StrategyOverviewPage() {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Strategy operating console</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">What are the strategies doing now?</h1>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
-            Start with formal performance, then move into current state and retained evidence. Return and risk records are public; live holdings, target allocations and current signal drivers are gated only where the strategy requires account or Pro access.
+            Review the latest observations, their reasons and the next step. Formal performance stays public; current targets and drivers follow each strategy’s access policy.
           </p>
         </div>
 
@@ -63,6 +64,7 @@ export function StrategyOverviewPage() {
       </section>
 
       <OperationsReadStatus loading={loading} issues={issues} reload={reload} snapshots={snapshots} />
+      <DailyResearchBrief runs={formalRuns} snapshots={snapshots} loading={loading} reload={reload} />
       <StrategyFleet runs={formalRuns} snapshots={snapshots} loading={loading} />
 
       <section className="grid gap-4 lg:grid-cols-2">

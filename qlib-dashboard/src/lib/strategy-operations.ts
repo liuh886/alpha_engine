@@ -62,6 +62,7 @@ export interface StrategyOperationsSnapshot {
   status: StrategyOperationalStatus;
   readState?: 'protected' | 'unavailable';
   observationState?: 'current' | 'retained_within_cadence' | 'unavailable';
+  evaluationChanged?: boolean | null;
   stateDetail?: StateDetail;
   staleness?: StalenessInfo;
   decisionSchedule?: {
@@ -231,9 +232,11 @@ export function parseStrategyOperationsSnapshot(value: unknown): StrategyOperati
     : undefined;
 
   const source = record.source_identity as Record<string, unknown>;
+  assert(record.evaluation_changed == null || typeof record.evaluation_changed === 'boolean',
+    `Invalid evaluation change for ${modelVersionId}`);
   if (record.read_state !== undefined) {
     assert(record.read_state === 'protected', `Invalid public operations read state for ${modelVersionId}`);
-    assert(allocations.length === 0 && factorEvidence.length === 0 && record.as_of == null,
+    assert(allocations.length === 0 && factorEvidence.length === 0 && record.as_of == null && record.evaluation_changed == null,
       `Protected operations contain private evidence for ${modelVersionId}`);
   }
   if (record.observation_state !== undefined) {
@@ -256,6 +259,7 @@ export function parseStrategyOperationsSnapshot(value: unknown): StrategyOperati
     status: record.status as StrategyOperationalStatus,
     readState: record.read_state === 'protected' ? 'protected' : undefined,
     observationState: record.observation_state as StrategyOperationsSnapshot['observationState'],
+    evaluationChanged: typeof record.evaluation_changed === 'boolean' ? record.evaluation_changed : null,
     stateDetail,
     staleness,
     decisionSchedule: schedule ? {
@@ -432,6 +436,54 @@ export interface StrategySignalSummary {
   isAttention: boolean;
   isNew: boolean;
   isHold: boolean;
+}
+
+export interface StrategyObservationBrief {
+  kind: 'changed' | 'unchanged' | 'retained' | 'attention' | 'access' | 'pending';
+  label: string;
+  reason: string;
+  nextStep: string;
+  recovery: 'read' | 'delivery' | 'source' | null;
+}
+
+/** Present verified operations; never evaluate rules or infer changes from a position delta. */
+export function describeStrategyObservation(snapshot?: StrategyOperationsSnapshot, accessible = true): StrategyObservationBrief {
+  if (!accessible || snapshot?.readState === 'protected') {
+    return { kind: 'access', label: 'Access required', reason: 'Current observations require strategy access.',
+      nextStep: 'Sign in or check access. Formal evidence remains public.', recovery: null };
+  }
+  if (!snapshot || snapshot.readState === 'unavailable') {
+    return { kind: snapshot ? 'attention' : 'pending', label: 'Read unavailable', reason: 'Current observations could not be verified.',
+      nextStep: 'Retry reading published records. This does not start a data refresh.', recovery: 'read' };
+  }
+  if (snapshot.status === 'delivery_failed' || snapshot.deliveryStatus === 'failed') {
+    return { kind: 'attention', label: 'Delivery failed', reason: 'A decision is retained, but notification delivery failed.',
+      nextStep: 'Inspect the delivery attempt before retrying; the retained decision is not a new signal.', recovery: 'delivery' };
+  }
+  const summary = summarizeStrategySignal(snapshot);
+  if (summary.isAttention) {
+    return { kind: 'attention', label: summary.badgeLabel, reason: summary.summaryNote,
+      nextStep: snapshot.decisionSchedule?.state === 'due'
+        ? 'Evaluation is due. Check input availability and the source run before retrying.'
+        : 'Check the observation cutoff and source run. Independent valid results remain available.', recovery: 'source' };
+  }
+  if (summary.badgeLabel === 'Not due') {
+    return { kind: 'retained', label: 'Retained within cadence', reason: snapshot.decisionReason,
+      nextStep: `${snapshot.decisionSchedule?.sessionsUntilDue} exchange sessions until evaluation.${snapshot.decisionSchedule?.executionPending ? ' Execution evidence remains pending.' : ''}`, recovery: null };
+  }
+  if (snapshot.status === 'pipeline_unavailable' || snapshot.status === 'awaiting_observation') {
+    return { kind: 'pending', label: 'Awaiting observation', reason: snapshot.decisionReason,
+      nextStep: 'Check the source run for the next eligible observation.', recovery: 'source' };
+  }
+  const nextStep = snapshot.deliveryStatus === 'pending' ? 'Notification delivery is pending.'
+    : snapshot.decisionSchedule?.executionPending ? 'Execution evidence remains pending.' : snapshot.nextDecision;
+  if (typeof snapshot.evaluationChanged === 'boolean') {
+    return { kind: snapshot.evaluationChanged ? 'changed' : 'unchanged',
+      label: snapshot.evaluationChanged ? 'Changed at last evaluation' : 'Unchanged at last evaluation',
+      reason: snapshot.decisionReason, nextStep, recovery: null };
+  }
+  return { kind: 'pending', label: 'Change not verified', reason: snapshot.decisionReason,
+    nextStep: 'Inspect the retained decision; no change claim is inferred from its target weights.', recovery: null };
 }
 
 export function summarizeStrategySignal(snapshot?: StrategyOperationsSnapshot): StrategySignalSummary {
