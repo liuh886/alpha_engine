@@ -160,11 +160,11 @@ def test_outbox_workflow_triggers_and_fallback_schedule() -> None:
     assert "workflow_run" in triggers
     assert triggers["workflow_run"]["workflows"] == [
         "QQQ Rotation v4.3 Signal Alert",
-        "BYD v1.3 Daily Signal",
         "10D Ranker Current Target",
         "CN27 Current Target",
     ]
     assert triggers["workflow_run"]["types"] == ["completed"]
+    assert triggers["repository_dispatch"]["types"] == ["strategy_signal_delivery"]
     assert "schedule" in triggers
     assert triggers["schedule"] == [{"cron": "15 */6 * * *"}]
     assert "workflow_dispatch" in triggers

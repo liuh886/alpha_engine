@@ -96,6 +96,10 @@ formal dates remain separate. Recovery uses the existing reader, monitoring and
 workflow entrypoints; the static page does not acquire job-execution privileges.
 Unchanged automatic outbox handoffs skip republication; new failure receipts,
 scheduled fallback and manual recovery retain their publication path.
+BYD Daily, already the third `workflow_run` hop, dispatches canonical decision
+delivery to the existing outbox instead of attempting a fourth hop or publishing
+before delivery. The outbox reads trusted main ledgers, commits its receipt and
+then dispatches the existing operations publisher.
 
 The current view should make these facts visible together: usable evidence
 cutoff, current governed state, target/change, reason and supporting evidence,

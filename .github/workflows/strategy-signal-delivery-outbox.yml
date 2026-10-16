@@ -13,10 +13,12 @@ on:
   workflow_run:
     workflows:
       - "QQQ Rotation v4.3 Signal Alert"
-      - "BYD v1.3 Daily Signal"
       - "10D Ranker Current Target"
       - "CN27 Current Target"
     types: [completed]
+  # BYD Daily is already the third workflow_run hop. A fourth hop is not run.
+  repository_dispatch:
+    types: [strategy_signal_delivery]
   schedule:
     - cron: "15 */6 * * *"
   workflow_dispatch:

@@ -110,7 +110,7 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
-      - name: Request strategy operations publication
+      - name: Request canonical decision delivery
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -118,7 +118,7 @@ jobs:
             --arg producer_workflow "$GITHUB_WORKFLOW" \
             --arg producer_run_id "$GITHUB_RUN_ID" \
             '{
-              event_type: "strategy_operations_publication",
+              event_type: "strategy_signal_delivery",
               client_payload: {
                 producer_workflow: $producer_workflow,
                 producer_run_id: $producer_run_id
