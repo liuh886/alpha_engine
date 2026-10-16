@@ -17,7 +17,7 @@ export function StrategiesPage() {
           Compare accepted formal baselines by return and risk before opening a strategy. Historical performance is public; live holdings, target allocations and current signal drivers follow each strategy's account or Pro access policy.
         </p>
       </header>
-      <OperationsReadStatus loading={loading} issues={issues} reload={reload} />
+      <OperationsReadStatus loading={loading} issues={issues} reload={reload} snapshots={snapshots} />
       <StrategyFleet runs={formalRuns} snapshots={snapshots} loading={loading} />
     </div>
   );

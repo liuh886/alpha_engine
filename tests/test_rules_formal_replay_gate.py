@@ -278,6 +278,37 @@ def test_committed_cn_frozen_trace_is_exact_prefix_of_current_formal() -> None:
     assert receipt["trace_reproduction"]["exact"] is True
 
 
+@pytest.mark.parametrize("failure", [None, "source", "decision"])
+def test_daily_qqq_verifies_own_source_and_frozen_prefix(monkeypatch, tmp_path: Path, failure) -> None:
+    accepted = _qqq_package()
+    observed = copy.deepcopy(accepted)
+    if failure == "decision":
+        observed["report"][0]["decision_state"] += 1
+    manifest = tmp_path / "qqq-manifest.json"
+    source_calls = []
+
+    def source_check(*args, **kwargs):
+        source_calls.append(kwargs["cutoff"])
+        if failure == "source":
+            raise RulesFormalReplayError("invalid source")
+
+    monkeypatch.setattr(qqq_replay, "_verify_qqq_research_source", source_check)
+    monkeypatch.setattr(qqq_replay, "_accepted_qqq_reference", lambda root: (accepted, manifest, "a" * 64))
+    monkeypatch.setattr(qqq_replay, "run_v4_33_comparison", lambda *args, **kwargs: (None, {qqq_replay.JOINT_STRATEGY: None}, None))
+    monkeypatch.setattr(qqq_replay, "build_qqq_package", lambda *args, **kwargs: observed)
+    arguments = dict(bundle=tmp_path, data_identity={"manifest_sha256": "b" * 64},
+                     cutoff="2026-08-10", bars={}, contract={}, fear_greed=None)
+    if failure:
+        with pytest.raises(RulesFormalReplayError):
+            qqq_replay.verify_qqq_observation_source(tmp_path, **arguments)
+    else:
+        result = qqq_replay.verify_qqq_observation_source(tmp_path, **arguments)
+        assert result["formal_release_advanced"] is False
+        assert result["source_cutoff"] == "2026-08-10"
+        assert result["accepted_manifest_sha256"] == "a" * 64
+    assert source_calls == ["2026-08-10"]
+
+
 def test_active_rules_replay_builds_governed_inputs_before_verification(monkeypatch, tmp_path: Path) -> None:
     formal = tmp_path / "formal"
     formal.mkdir()

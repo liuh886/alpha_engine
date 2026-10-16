@@ -9,12 +9,14 @@ on:
       - "configs/strategies/registry.json"
       - "src/research/qqq_v4_3_monitor.py"
       - "src/research/qqq_v4_3_signal_alerts.py"
+      - "src/research/qqq_authoritative_replay.py"
       - "src/factors/strategy_snapshot.py"
       - "src/artifacts/strategy_signal_ledger.py"
       - "scripts/run_qqq_v4_3_monitor.py"
       - "scripts/run_qqq_v4_3_signal_alert.py"
       - "tests/test_qqq_v4_3_monitor_signal.py"
       - "tests/test_strategy_signal_ledger.py"
+      - "tests/test_rules_formal_replay_gate.py"
   schedule:
     - cron: "30 0 * * 2-6"
   workflow_run:
@@ -53,14 +55,17 @@ jobs:
           uv run ruff check \
             src/research/qqq_v4_3_monitor.py \
             src/research/qqq_v4_3_signal_alerts.py \
+            src/research/qqq_authoritative_replay.py \
             src/factors/strategy_snapshot.py \
             src/artifacts/strategy_signal_ledger.py \
             scripts/run_qqq_v4_3_monitor.py \
             scripts/run_qqq_v4_3_signal_alert.py \
             tests/test_qqq_v4_3_monitor_signal.py \
+            tests/test_rules_formal_replay_gate.py \
             tests/test_strategy_signal_ledger.py
           uv run pytest \
             tests/test_qqq_v4_3_monitor_signal.py \
+            tests/test_rules_formal_replay_gate.py \
             tests/test_strategy_signal_ledger.py \
             -q --strict-markers --tb=short
 
@@ -68,8 +73,7 @@ jobs:
     if: >-
       github.event_name != 'pull_request' &&
       (github.event_name != 'workflow_run' ||
-       (github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_branch == 'main' &&
+       (github.event.workflow_run.head_branch == 'main' &&
         github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-24.04
     timeout-minutes: 50

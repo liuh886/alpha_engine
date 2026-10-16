@@ -44,6 +44,33 @@ def test_missing_observation_never_becomes_current() -> None:
     assert result["sessions_behind"] is None
 
 
+@pytest.mark.parametrize("failure", [None, "due", "source", "identity", "delivery"])
+def test_retained_target_requires_current_own_evidence(failure, monkeypatch) -> None:
+    from types import SimpleNamespace
+    from src.artifacts.strategy_operations import _retained_observation_verified
+
+    root = Path.cwd()
+    strategy = load_active_strategy_catalog().by_model_version_id[CN_MODEL]
+    record = {"as_of": "2026-09-17", "latest_completed_session": "2026-09-17",
+        "status": "current_no_change", "signal_data_freshness": "current",
+        "data_freshness": "stale", "factor_freshness": "stale", "factor_evidence": [{"observed_at": "2026-09-17"}],
+        "staleness": {"expected_cutoff": "2026-09-30"},
+        "source_identity": {"formal_bundle_id": "a" * 64, "formal_run_id": "test-run", "formal_evidence_cutoff": "2026-09-30"}}
+    record["decision_schedule"] = _decision_schedule(strategy, record, root=root)
+    decision = {"signal": {"data_freshness_ok": True, "factor_freshness_ok": True}}
+    monkeypatch.setattr("src.artifacts.formal_bundle_reader.load_formal_run", lambda *args: SimpleNamespace(
+        evidence_cutoff="2026-09-30", identity={"bundle_id": "a" * 64}, run_id="test-run"))
+    if failure == "due":
+        record["decision_schedule"]["state"] = "due"
+    if failure == "source":
+        decision["signal"]["data_freshness_ok"] = False
+    if failure == "identity":
+        record["source_identity"]["formal_bundle_id"] = "0" * 64
+    if failure == "delivery":
+        record["status"] = "delivery_failed"
+    assert _retained_observation_verified(strategy, record, decision, root=root) is (failure is None)
+
+
 def test_ranker_cadence_and_daily_observation_are_distinct() -> None:
     strategy = load_active_strategy_catalog().by_model_version_id[CN_MODEL]
     schedule = _decision_schedule(strategy, {

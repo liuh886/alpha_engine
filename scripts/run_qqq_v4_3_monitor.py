@@ -49,6 +49,10 @@ def main() -> int:
         default=Path("artifacts/evidence/qqq_rotation_v4_3_current_monitor"),
     )
     args = parser.parse_args()
+    if args.expected_cutoff:
+        frozen_contract = Path(__file__).resolve().parents[1] / "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
+        if args.contract.resolve() != frozen_contract:
+            raise ValueError("QQQ canonical observation requires the frozen active contract")
 
     if args.check_due_output:
         from src.research.qqq_v4_3_signal_alerts import plan_current_evaluation
@@ -96,6 +100,16 @@ def main() -> int:
     summary["coverage"] = coverage.to_dict("records")
     if args.expected_cutoff and summary["latest_data_date"] != args.expected_cutoff:
         raise ValueError("QQQ monitor inputs do not reach the planned completed cutoff")
+    if args.expected_cutoff:
+        if args.etf_data_bundle is None:
+            raise ValueError("QQQ canonical observation requires a governed reference bundle")
+        from src.research.qqq_authoritative_replay import verify_qqq_observation_source
+
+        summary["data_identity"]["observation_verification"] = verify_qqq_observation_source(
+            Path(__file__).resolve().parents[1], bundle=args.etf_data_bundle.resolve(),
+            data_identity=data_identity, cutoff=args.expected_cutoff,
+            bars=bars, contract=contract, fear_greed=fear_greed,
+        )
 
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)

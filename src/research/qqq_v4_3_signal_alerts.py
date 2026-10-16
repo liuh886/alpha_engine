@@ -17,7 +17,11 @@ MACHINE_MARKER = "qqq-v4-3-signal"
 def plan_current_evaluation(
     root: Path, *, now_utc: datetime, exclusive_end: str | None = None
 ) -> dict[str, Any]:
-    """Gate daily work on accepted formal data and the existing sealed ledger."""
+    """Plan observation from the accepted QQQ identity and its sealed ledger.
+
+    A newer global formal release is not a prerequisite. The monitor must
+    separately validate its own source and frozen decision prefix before sealing.
+    """
     from src.artifacts.formal_bundle_reader import load_formal_run
     from src.artifacts.strategy_signal_ledger import read_latest_evaluation
     from src.governance.active_strategy_catalog import load_active_strategy_catalog
@@ -46,15 +50,15 @@ def plan_current_evaluation(
     latest_date = latest["latest_data_date"] if latest else None
     if latest_date and latest_date > completed:
         raise ValueError("QQQ sealed decision exceeds completed market date")
-    ready = formal.evidence_cutoff >= cutoff
-    due = ready and (latest_date is None or latest_date < cutoff)
+    due = latest_date is None or latest_date < cutoff
     return {
         "schema_version": "qqq_current_evaluation_plan_v1", "model_version_id": model,
         "cutoff": cutoff, "exclusive_end": (datetime.fromisoformat(cutoff).date() + timedelta(days=1)).isoformat(),
         "latest_sealed_data_date": latest_date, "formal_bundle_id": formal.identity["bundle_id"],
         "formal_evidence_cutoff": formal.evidence_cutoff, "due": due,
-        "status": "ready" if ready else "blocked",
-        "reason": "formal_data_not_current" if not ready else "evaluation_due" if due else "already_sealed",
+        "status": "ready",
+        "reason": "evaluation_due" if due else "already_sealed",
+        "source_verification_required": due,
         "research_only": True, "trade_ready": False,
     }
 

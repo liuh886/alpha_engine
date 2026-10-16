@@ -11,7 +11,7 @@ import pandas as pd
 from scripts.run_qqq_v4_3_monitor import _effective_end_date
 
 
-def test_daily_evaluation_requires_current_formal_data_and_skips_sealed_cutoff(monkeypatch):
+def test_daily_evaluation_is_independent_of_global_formal_cutoff_and_skips_sealed_cutoff(monkeypatch):
     from src.research.qqq_v4_3_signal_alerts import plan_current_evaluation
 
     root = Path(__file__).resolve().parents[1]
@@ -26,13 +26,17 @@ def test_daily_evaluation_requires_current_formal_data_and_skips_sealed_cutoff(m
     latest["latest_data_date"] = "2026-10-15"
     assert plan_current_evaluation(root, now_utc=now)["due"] is False
     formal.evidence_cutoff = "2026-10-14"
-    blocked = plan_current_evaluation(root, now_utc=now)
-    assert blocked["status"] == "blocked" and blocked["due"] is False
+    retained = plan_current_evaluation(root, now_utc=now)
+    assert retained["status"] == "ready" and retained["due"] is False
+    latest["latest_data_date"] = "2026-10-14"
+    independent = plan_current_evaluation(root, now_utc=now)
+    assert independent["due"] is True and independent["source_verification_required"] is True
+    assert independent["formal_evidence_cutoff"] == "2026-10-14"
     with pytest.raises(ValueError, match="exceeds the completed"):
         plan_current_evaluation(root, now_utc=now, exclusive_end="2026-10-17")
 
 
-def test_qqq_handoff_is_success_only_and_gates_network_and_sealing():
+def test_qqq_handoff_is_trusted_main_only_and_gates_network_and_sealing():
     import yaml
 
     root = Path(__file__).resolve().parents[1]
@@ -40,7 +44,7 @@ def test_qqq_handoff_is_success_only_and_gates_network_and_sealing():
     triggers = workflow.get("on", workflow.get(True))
     assert triggers["workflow_run"]["workflows"] == ["Reviewed Formal Backtest Refresh"]
     condition = workflow["jobs"]["evaluate"]["if"]
-    assert "conclusion == 'success'" in condition and "head_branch == 'main'" in condition
+    assert "conclusion == 'success'" not in condition and "head_branch == 'main'" in condition
     assert "head_repository.full_name == github.repository" in condition
     steps = {step.get("name"): step for step in workflow["jobs"]["evaluate"]["steps"]}
     for name in ("Build governed QQQ reference bundle", "Evaluate current allocation", "Build factor-bound decision", "Seal canonical QQQ decision", "Commit canonical QQQ decision"):

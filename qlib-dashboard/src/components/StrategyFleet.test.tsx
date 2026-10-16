@@ -199,6 +199,22 @@ function renderFleet() {
 }
 
 describe('StrategyFleet', () => {
+  it('presents verified periodic retention without hiding its old signal date', () => {
+    const original = mockSnapshots.get('us_x1_3')!;
+    const retained = { ...original, asOf: '2026-09-08', latestCompletedSession: '2026-09-08',
+      dataFreshness: 'stale' as const, factorFreshness: 'stale' as const,
+      observationState: 'retained_within_cadence' as const,
+      decisionSchedule: { signalDate: '2026-09-08', completedThrough: '2026-09-09', cadenceSessions: 10,
+        sessionsUntilDue: 9, state: 'within_cadence' as const, executionPending: true },
+      sourceIdentity: { ...original.sourceIdentity, formalEvidenceCutoff: '2026-09-09' } };
+    render(<MemoryRouter><StrategyFleet runs={mockRuns} snapshots={new Map(mockSnapshots).set('us_x1_3', retained)} /></MemoryRouter>);
+    const row = screen.getByTestId('fleet-us_x1_3');
+    expect(within(row).getByRole('button', { name: 'Inspect signal for US x1.3: Not due' })).toBeInTheDocument();
+    expect(within(row).getByText('2026-09-08', { exact: true })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Signal filter'), { target: { value: 'attention' } });
+    expect(screen.queryByTestId('fleet-us_x1_3')).not.toBeInTheDocument();
+  });
+
   it('renders all strategies in stable watchlist order', () => {
     renderFleet();
     expect(screen.getByText('US x1.3')).toBeInTheDocument();

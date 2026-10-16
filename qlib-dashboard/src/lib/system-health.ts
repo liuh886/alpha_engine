@@ -23,6 +23,7 @@ export interface SystemHealthStrategy {
   model_data_cutoff: string | null;
   model_data_binding: 'not_declared';
   factor_cutoff: string | null;
+  observation_state?: string;
   last_signal_evaluation: string | null;
   last_signal_change: string | null;
   delivery_state: SystemHealthState;
@@ -129,6 +130,7 @@ export function parseSystemHealth(value: unknown): SystemHealthSnapshot {
       model_data_cutoff: nullableString(item.model_data_cutoff),
       model_data_binding: 'not_declared' as const,
       factor_cutoff: nullableString(item.factor_cutoff),
+      observation_state: nullableString(item.observation_state) ?? undefined,
       last_signal_evaluation: nullableString(item.last_signal_evaluation),
       last_signal_change: nullableString(item.last_signal_change),
       delivery_state: state(item.delivery_state, `delivery ${index}`),

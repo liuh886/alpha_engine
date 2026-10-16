@@ -60,6 +60,8 @@ export interface StrategyOperationsSnapshot {
   strategyId: string;
   modelVersionId: string;
   status: StrategyOperationalStatus;
+  readState?: 'protected' | 'unavailable';
+  observationState?: 'current' | 'retained_within_cadence' | 'unavailable';
   stateDetail?: StateDetail;
   staleness?: StalenessInfo;
   decisionSchedule?: {
@@ -229,6 +231,15 @@ export function parseStrategyOperationsSnapshot(value: unknown): StrategyOperati
     : undefined;
 
   const source = record.source_identity as Record<string, unknown>;
+  if (record.read_state !== undefined) {
+    assert(record.read_state === 'protected', `Invalid public operations read state for ${modelVersionId}`);
+    assert(allocations.length === 0 && factorEvidence.length === 0 && record.as_of == null,
+      `Protected operations contain private evidence for ${modelVersionId}`);
+  }
+  if (record.observation_state !== undefined) {
+    assert(['current', 'retained_within_cadence', 'unavailable'].includes(String(record.observation_state)),
+      `Invalid observation state for ${modelVersionId}`);
+  }
   const schedule = record.decision_schedule && typeof record.decision_schedule === 'object'
     ? record.decision_schedule as Record<string, unknown> : null;
   if (record.decision_schedule !== undefined) {
@@ -243,6 +254,8 @@ export function parseStrategyOperationsSnapshot(value: unknown): StrategyOperati
     strategyId,
     modelVersionId,
     status: record.status as StrategyOperationalStatus,
+    readState: record.read_state === 'protected' ? 'protected' : undefined,
+    observationState: record.observation_state as StrategyOperationsSnapshot['observationState'],
     stateDetail,
     staleness,
     decisionSchedule: schedule ? {
@@ -434,12 +447,34 @@ export function summarizeStrategySignal(snapshot?: StrategyOperationsSnapshot): 
     };
   }
 
+  if (snapshot.readState) {
+    const protectedRead = snapshot.readState === 'protected';
+    return {
+      direction: 'pending', badgeLabel: protectedRead ? 'Access required' : 'Read unavailable',
+      actionText: protectedRead ? 'Sign in or check strategy access' : 'Retry current operations',
+      summaryNote: protectedRead ? 'Current signals require account access; formal evidence remains public.'
+        : 'Current operations could not be verified. This does not establish a strategy failure.',
+      isAttention: !protectedRead, isNew: false, isHold: false,
+    };
+  }
+
   const blockedObservation = snapshot.status === 'blocked' || snapshot.status === 'delivery_failed'
     || snapshot.dataFreshness === 'blocked' || snapshot.factorFreshness === 'blocked'
     || snapshot.stateDetail === 'blocked' || snapshot.stateDetail === 'degraded_blocked';
   const delayedObservation = snapshot.status === 'stale' || snapshot.staleness?.stale === true
     || snapshot.dataFreshness === 'stale' || snapshot.factorFreshness === 'stale'
     || snapshot.stateDetail === 'degraded_delayed';
+  const retained = !blockedObservation && snapshot.observationState === 'retained_within_cadence'
+    && snapshot.decisionSchedule?.state === 'within_cadence'
+    && (snapshot.decisionSchedule.sessionsUntilDue ?? 0) > 0
+    && snapshot.sourceIdentity.formalEvidenceCutoff === snapshot.decisionSchedule.completedThrough;
+  if (retained) {
+    return {
+      direction: 'hold', badgeLabel: 'Not due', actionText: 'Retained target',
+      summaryNote: `Target from ${snapshot.decisionSchedule?.signalDate}; observation through ${snapshot.decisionSchedule?.completedThrough}. ${snapshot.decisionSchedule?.sessionsUntilDue} sessions until evaluation.`,
+      isAttention: false, isNew: false, isHold: true,
+    };
+  }
   if (blockedObservation || delayedObservation) {
     return {
       direction: 'attention',

@@ -169,7 +169,7 @@ export function StrategyDetailPage() {
           </div>
           <div className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Operating status</p>
-            <p className="mt-1 font-semibold">{liveLocked ? 'Protected current operations' : snapshot ? signalSummary.isAttention ? `${signalSummary.badgeLabel} observation` : STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading current operations' : 'Operating status unavailable'}</p>
+            <p className="mt-1 font-semibold">{liveLocked ? 'Protected current operations' : snapshot ? snapshot.readState || snapshot.observationState === 'retained_within_cadence' ? signalSummary.badgeLabel : signalSummary.isAttention ? `${signalSummary.badgeLabel} observation` : STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading current operations' : 'Operating status unavailable'}</p>
             <p className="mt-1 text-xs text-muted-foreground">{liveLocked ? 'Formal historical evidence remains public below.' : snapshot?.stateLabel || 'Canonical operations state is unavailable.'}</p>
           </div>
         </div>
@@ -185,7 +185,7 @@ export function StrategyDetailPage() {
         />
       </section>
 
-      <OperationsReadStatus loading={loading} issues={issues} reload={reload} />
+      <OperationsReadStatus loading={loading} issues={issues} reload={reload} snapshots={snapshots} />
       <section aria-label="Research tracking assessment" className="rounded-xl border bg-card p-5 text-sm">
         <h2 className="font-semibold">Research tracking assessment</h2>
         <p className="mt-2 text-muted-foreground">
