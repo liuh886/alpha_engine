@@ -111,6 +111,8 @@ def _review_strategies(row: dict[str, Any], review: dict[str, Any], root: Path) 
             return False
         digest, prefix = verdict.get("duplicate_score_ledger_sha256"), verdict.get("frozen_prefix_rows", {})
         source_evidence = lineage.get("source_evidence", {})
+        if not isinstance(prefix, dict) or not isinstance(source_evidence, dict):
+            return False
         return verdict.get("model_selection_reopened") is False and isinstance(digest, str) and len(digest) == 64 and all(character in "0123456789abcdef" for character in digest) and all(type(prefix.get(key)) is int and prefix[key] > 0 for key in ("report", "positions", "trades")) and source_evidence.get("duplicate_score_ledger_sha256") == digest and all(source_evidence.get(key) is True for key in ("exact_score_reproduction", "exact_portfolio_reproduction")) and source_evidence.get("model_selection_reopened") is False
 
     _, operations = read(review["operations_snapshot"])
