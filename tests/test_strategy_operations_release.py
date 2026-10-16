@@ -169,3 +169,19 @@ def test_cn27_publishes_sealed_observations_through_existing_dispatch() -> None:
     assert request["env"]["GH_TOKEN"] == "${{ github.token }}"
     assert 'event_type: "strategy_operations_publication"' in request["run"]
     assert '"repos/${GITHUB_REPOSITORY}/dispatches"' in request["run"]
+
+
+def test_review_collection_is_independent_of_publish_cache_and_retains_failure_evidence() -> None:
+    content = _workflow()
+    job = content["jobs"]["collect-operating-evidence"]
+    assert job["needs"] == "publish-operations"
+    assert "!cancelled()" in job["if"] and "head_branch == 'main'" in job["if"]
+    assert "conclusion == 'success'" not in job["if"]
+    assert job["permissions"] == {"contents": "read", "actions": "read"}
+    steps = {step.get("name"): step for step in job["steps"]}
+    collect = steps["Collect current review without declaring acceptance"]
+    assert "--collect-repository" in collect["run"] and "--archive-repository" in collect["run"]
+    assert "--declarations" not in collect["run"]
+    assert "GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY" in collect["env"]
+    retain = steps["Retain operating review packet"]
+    assert retain["if"] == "always()" and retain["with"]["retention-days"] == 90

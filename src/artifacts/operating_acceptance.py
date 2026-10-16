@@ -11,6 +11,209 @@ from typing import Any
 from src.research.market_session_clock import completed_market_date, exchange_sessions
 
 
+def validate_final_actions_metadata(row: dict[str, Any], metadata: dict[str, Any]) -> None:
+    run = metadata["run"]
+    if any(run.get(key) != value for key, value in {"id": row["run_id"], "run_attempt": row["run_attempt"], "head_sha": row["head_sha"], "conclusion": "success", "status": "completed", "path": ".github/workflows/formal-backtest-refresh.yml"}.items()) or not metadata.get("jobs") or any(job.get("status") != "completed" for job in metadata["jobs"]):
+        raise ValueError(f"final Actions metadata mismatch: {row['run_id']}:{row['run_attempt']}")
+
+
+def prepare_operating_review(
+    observation_root: Path, *, metadata: dict[str, Any], repository_root: Path,
+    output_root: Path, now_utc: datetime,
+) -> dict[str, Any]:
+    """Assemble actual current evidence; leave independent review undeclared."""
+    from src.artifacts.formal_bundle_reader import load_formal_run
+    from src.artifacts.strategy_operations import build_operations_payload
+    from src.artifacts.strategy_signal_ledger import _delivery_receipts, _validate_correction, read_latest_evaluation
+    from src.governance.active_strategy_catalog import load_active_strategy_catalog
+
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    def save(name: str, value: Any) -> dict[str, str]:
+        path = output_root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return bind(path)
+
+    def bind(path: Path) -> dict[str, str]:
+        return {"path": path.resolve().relative_to(output_root.resolve()).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+
+    def copy(name: str, source: Path) -> dict[str, str]:
+        target = output_root / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes())
+        return bind(target)
+
+    row = json.loads((observation_root / "operating-observation.json").read_text())
+    if row.get("schema_version") != "operating_observation_v1" or row.get("research_only") is not True or row.get("trade_ready") is not False:
+        raise ValueError("invalid operating observation")
+    final_binding = save("final-actions-metadata.json", metadata)
+    blockers = list(row.get("collection_blockers", []))
+    try:
+        validate_final_actions_metadata(row, metadata)
+    except (ValueError, KeyError) as exc:
+        blockers.append(str(exc))
+    operations: dict[str, Any] = build_operations_payload(formal_catalog=repository_root / "data/research/formal_model_runs/catalog.json", ledger_root=repository_root / "data/research/strategy_signal_ledgers", generated_at=now_utc.isoformat(), strategy_catalog=repository_root / "configs/strategies/registry.json", repository_root=repository_root)
+    ops_binding = save("operations-snapshot.json", operations)
+    inputs: dict[str, Any] = {"providers": {}}
+    for name, relative in (("plan", "plan/plan.json"), ("fan_in", "strategy-fan-in-receipt.json"), ("us", "provider-us/artifacts/selected_pool_price_refresh_manifest.json"), ("cn", "provider-cn/artifacts/selected_pool_price_refresh_manifest.json")):
+        path = observation_root / relative
+        if path.is_file():
+            binding = bind(path)
+            if name in {"us", "cn"}:
+                inputs["providers"][name] = binding
+            else:
+                inputs[name] = binding
+    active = load_active_strategy_catalog(repository_root / "configs/strategies/registry.json")
+    checks, evidence = [], []
+    records = {record["strategy_id"]: record for record in operations["records"]}
+    expected_ids = {strategy.strategy_id for strategy in active.strategies}
+    if set(row.get("active_strategy_ids", [])) != expected_ids or set(row.get("formal_identities", {})) != expected_ids:
+        blockers.append("observation active strategies differ from current registry")
+    for strategy_id, formal in row.get("formal_identities", {}).items():
+        item: dict[str, Any] = {"strategy_id": strategy_id}
+        evidence.append(item)
+        try:
+            strategy = active.by_model_version_id[formal["model_version_id"]]
+            ledger = repository_root / strategy.signal_ledger
+            latest = read_latest_evaluation(ledger, model_version_id=strategy.model_version_id)
+            if latest is None:
+                raise ValueError("sealed decision is missing")
+            item["decision"] = copy(f"evidence/{strategy_id}/decision.json", ledger / "latest.json")
+            deliveries = _delivery_receipts(ledger, decision=latest)
+            if not deliveries:
+                raise ValueError("decision delivery receipt is missing")
+            delivery, _ = max(deliveries, key=lambda pair: (str(pair[1].get("created_at_utc", "")), str(pair[1].get("workflow", {}).get("run_id", ""))))
+            item["delivery"] = copy(f"evidence/{strategy_id}/delivery.json", delivery)
+            previous = sorted(path for path in (ledger / "records").glob("*.json") if path.stem < latest["signal_date"])
+            if previous:
+                previous_path = previous[-1]
+                correction = ledger / "corrections" / previous_path.name
+                if correction.is_file():
+                    _validate_correction(ledger, correction, model_version_id=strategy.model_version_id)
+                    item["previous_original_decision"] = copy(f"evidence/{strategy_id}/previous-original.json", previous_path)
+                    previous_path = correction
+                item["previous_decision"] = copy(f"evidence/{strategy_id}/previous-decision.json", previous_path)
+            run = load_formal_run(repository_root, strategy.model_version_id)
+            item["formal_manifest"] = copy(f"evidence/{strategy_id}/manifest.json", run.manifest_path)
+            item["formal_lineage"] = copy(f"evidence/{strategy_id}/lineage.json", run.manifest_path.parent / "lineage.json")
+            single = {**row, "active_strategy_ids": [strategy_id], "formal_identities": {strategy_id: formal}}
+            snapshot = save(f"evidence/{strategy_id}/operations.json", {**operations, "records": [records[strategy_id]]})
+            due = _review_strategies(single, {"operations_snapshot": snapshot, "decision_delivery_evidence": [item], "operating_inputs": inputs}, output_root)
+            checks.append({"strategy_id": strategy_id, "mechanically_verified": True, "due_cycle_strategy_ids": due, "retained_target_strategy_ids": single["verified_retained_target_strategy_ids"]})
+        except (ValueError, KeyError, OSError) as exc:
+            checks.append({"strategy_id": strategy_id, "mechanically_verified": False, "blocker": str(exc)})
+    identity = f"{row['run_id']}:{row['run_attempt']}"
+    draft = {"observation_sha256": bind(observation_root / "operating-observation.json")["sha256"], "manual_interventions": None, "reviewed_by": None, "cadence_and_freshness_verified": False, "final_actions_metadata": final_binding, "operations_snapshot": ops_binding, "operating_inputs": inputs, "decision_delivery_evidence": evidence}
+    save("review-draft.json", {identity: draft})
+    mechanically_ready = bool(checks) and not blockers and all(check["mechanically_verified"] for check in checks)
+    report = {"schema_version": "operating_review_readiness_v1", "run_id": row["run_id"], "run_attempt": row["run_attempt"], "captured_at_utc": now_utc.isoformat(), "mechanically_ready": mechanically_ready, "qualification_status": "awaiting_independent_review" if mechanically_ready else "blocked", "manual_interventions": None, "review_required": True, "blockers": blockers, "strategy_checks": checks, "research_only": True, "trade_ready": False}
+    save("readiness.json", report)
+    return report
+
+
+def collect_operating_review(
+    repository: str, *, input_root: Path, repository_root: Path, now_utc: datetime,
+    archive_repository: str | None = None,
+) -> dict[str, Any]:
+    """Collect the latest completed attempt, never choose an older green run."""
+    import io
+    import os
+    import re
+    import subprocess
+    import zipfile
+    from pathlib import PurePosixPath
+
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
+        raise ValueError("invalid operating evidence repository")
+    input_root.mkdir(parents=True, exist_ok=True)
+
+    def api(path: str, *, binary: bool = False) -> Any:
+        try:
+            result = subprocess.run(["gh", "api", f"repos/{repository}/{path}"], check=True, capture_output=True, timeout=90)
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise ValueError(f"operating evidence retrieval failed: {type(exc).__name__}") from None
+        return result.stdout if binary else json.loads(result.stdout)
+
+    runs = api("actions/workflows/formal-backtest-refresh.yml/runs?branch=main&status=completed&per_page=1")["workflow_runs"]
+    if not runs:
+        raise ValueError("no completed formal refresh observation available")
+    run_id, attempt = runs[0]["id"], runs[0]["run_attempt"]
+    metadata = {"run": api(f"actions/runs/{run_id}/attempts/{attempt}"), "jobs": []}
+    page = 1
+    while True:
+        jobs = api(f"actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100&page={page}")
+        metadata["jobs"].extend(jobs["jobs"])
+        if len(metadata["jobs"]) >= jobs["total_count"]:
+            break
+        if not jobs["jobs"] or page >= 10:
+            raise ValueError("incomplete final Actions job metadata")
+        page += 1
+    run = metadata["run"]
+    if run.get("head_branch") != "main" or run.get("event") not in {"push", "schedule", "workflow_dispatch"} or run.get("repository", {}).get("full_name") != repository or run.get("path") != ".github/workflows/formal-backtest-refresh.yml":
+        raise ValueError("formal operating observation workflow identity mismatch")
+    (input_root / "final-actions-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    name = f"formal-backtest-refresh-{run_id}-attempt-{attempt}"
+    artifacts = api(f"actions/runs/{run_id}/artifacts?per_page=100")
+    if artifacts["total_count"] > 100:
+        raise ValueError("formal artifact listing exceeds bounded collection scope")
+    matching = [value for value in artifacts["artifacts"] if value["name"] == name and not value.get("expired")]
+    if len(matching) != 1:
+        readiness = {"schema_version": "operating_review_readiness_v1", "run_id": run_id, "run_attempt": attempt, "mechanically_ready": False, "qualification_status": "blocked", "blockers": ["latest formal attempt observation artifact is missing or expired"], "manual_interventions": None, "review_required": True, "research_only": True, "trade_ready": False}
+    else:
+        artifact = matching[0]
+        if artifact["size_in_bytes"] > 16 * 1024 * 1024:
+            raise ValueError("operating observation archive exceeds collection size limit")
+        raw = api(f"actions/artifacts/{artifact['id']}/zip", binary=True)
+        if len(raw) != artifact["size_in_bytes"] or artifact.get("digest") != "sha256:" + hashlib.sha256(raw).hexdigest():
+            raise ValueError("operating observation archive hash or size mismatch")
+        source = input_root / "source"
+        source.mkdir(exist_ok=True)
+        wanted = {"operating-observation.json", "plan/plan.json", "strategy-fan-in-receipt.json", "provider-us/artifacts/selected_pool_price_refresh_manifest.json", "provider-cn/artifacts/selected_pool_price_refresh_manifest.json"}
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            members = archive.infolist()
+            if len(members) > 1000 or sum(member.file_size for member in members) > 32 * 1024 * 1024:
+                raise ValueError("operating observation archive exceeds extraction limits")
+            names = [member.filename for member in members]
+            if len(names) != len(set(names)) or any(PurePosixPath(name).is_absolute() or ".." in PurePosixPath(name).parts or "\\" in name for name in names):
+                raise ValueError("unsafe operating observation archive member")
+            if "operating-observation.json" not in names:
+                raise ValueError("latest formal attempt has no operating observation")
+            for name in wanted & set(names):
+                path = source / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(archive.read(name))
+        row = json.loads((source / "operating-observation.json").read_text())
+        if row.get("run_id") != run_id or row.get("run_attempt") != attempt or row.get("head_sha") != run["head_sha"]:
+            raise ValueError("operating observation does not bind the selected final attempt")
+        readiness = prepare_operating_review(source, metadata=metadata, repository_root=repository_root, output_root=input_root, now_utc=now_utc)
+        readiness["artifact_identity"] = {key: artifact[key] for key in ("id", "name", "digest", "size_in_bytes")}
+    readiness["observation_scope"] = "latest_completed_formal_attempt_only; historical packets remain separate evidence"
+    (input_root / "readiness.json").write_text(json.dumps(readiness, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if archive_repository:
+        from src.data.governed_actions_artifact import retain_private_archive
+
+        key = os.environ.get("GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY", "")
+        if not key:
+            raise ValueError("private operating evidence archive key unavailable")
+        capture = os.environ.get("GITHUB_RUN_ID", now_utc.strftime("%Y%m%d%H%M%S%f")) + "-" + os.environ.get("GITHUB_RUN_ATTEMPT", "1")
+        if not re.fullmatch(r"[0-9]+-[0-9]+", capture):
+            raise ValueError("invalid operating evidence capture identity")
+        archive_path = input_root.parent / f"operating-review-{run_id}-{attempt}-{capture}.zip"
+        packed_paths = sorted(path for path in input_root.rglob("*.json") if path.name != "archive-binding.json")
+        with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
+            index = []
+            for path in packed_paths:
+                member = path.relative_to(input_root).as_posix()
+                archive.write(path, member)
+                index.append({"path": member, "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "byte_size": path.stat().st_size})
+            archive.writestr("archive-index.json", json.dumps({"research_only": True, "trade_ready": False, "members": index}) + "\n")
+        binding = retain_private_archive(repository=archive_repository, member=f"archives/{archive_path.name}", archive_path=archive_path, ssh_key=key)
+        (input_root / "archive-binding.json").write_text(json.dumps(binding, indent=2) + "\n", encoding="utf-8")
+        readiness["durable_archive"] = binding
+    return readiness
+
+
 def _frozen_cadence(record: dict[str, Any], market: str) -> tuple[str, int | None]:
     import yaml
     from src.governance.active_strategy_catalog import load_active_strategy_catalog
@@ -211,9 +414,7 @@ def build_acceptance_report(input_root: Path, *, declarations: Path | None = Non
                 if not member.is_file() or hashlib.sha256(member.read_bytes()).hexdigest() != evidence["sha256"]:
                     raise ValueError(f"review evidence hash mismatch: {identity}")
             metadata = json.loads((declarations.parent / review["final_actions_metadata"]["path"]).read_text())  # type: ignore[union-attr]
-            run = metadata["run"]
-            if any(run.get(key) != value for key, value in {"id": row["run_id"], "run_attempt": row["run_attempt"], "head_sha": row["head_sha"], "conclusion": "success", "status": "completed", "path": ".github/workflows/formal-backtest-refresh.yml"}.items()) or not metadata.get("jobs") or any(job.get("status") != "completed" for job in metadata["jobs"]):
-                raise ValueError(f"final Actions metadata mismatch: {identity}")
+            validate_final_actions_metadata(row, metadata)
             row["verified_due_cycle_strategy_ids"] = _review_strategies(row, review, declarations.parent)  # type: ignore[union-attr]
             row["final_stages"] = metadata["jobs"]
         observations.append({**row, "observation_sha256": digest, "review_verified": bool(review_valid), "manual_interventions": manual if review_valid else None})

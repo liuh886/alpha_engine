@@ -60,13 +60,60 @@ def test_calendar_holiday_does_not_create_a_fake_gap(tmp_path):
     assert [row["session"] for row in report["markets"]["us"]["sessions"]] == ["2026-07-02", "2026-07-06"]
 
 
-def test_typed_strategy_review_binds_formal_decision_and_delivery(tmp_path):
+@pytest.mark.parametrize("scenario", ["missing_latest", "bad_hash", "unsafe_member"])
+def test_remote_collection_never_falls_back_or_accepts_unbound_archives(tmp_path, monkeypatch, scenario):
+    import io
+    import zipfile
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+    from src.artifacts.operating_acceptance import collect_operating_review
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("../escape.json" if scenario == "unsafe_member" else "operating-observation.json", "{}")
+    raw = buffer.getvalue()
+    artifact = {"id": 7, "name": "formal-backtest-refresh-2-attempt-1", "expired": False, "size_in_bytes": len(raw), "digest": "sha256:" + ("0" * 64 if scenario == "bad_hash" else hashlib.sha256(raw).hexdigest())}
+    called = []
+
+    def remote(args, **kwargs):
+        endpoint = args[-1]
+        called.append(endpoint)
+        if endpoint.endswith("/zip"):
+            return SimpleNamespace(stdout=raw)
+        if "workflows/" in endpoint:
+            payload = {"workflow_runs": [{"id": 2, "run_attempt": 1}]}
+        elif "/jobs?" in endpoint:
+            payload = {"jobs": [{"status": "completed"}], "total_count": 1}
+        elif "/artifacts?" in endpoint:
+            payload = {"artifacts": [] if scenario == "missing_latest" else [artifact], "total_count": 0 if scenario == "missing_latest" else 1}
+        else:
+            payload = {"id": 2, "run_attempt": 1, "head_branch": "main", "event": "schedule", "repository": {"full_name": "owner/repo"}, "path": ".github/workflows/formal-backtest-refresh.yml", "status": "completed", "conclusion": "failure"}
+        return SimpleNamespace(stdout=json.dumps(payload).encode())
+
+    monkeypatch.setattr("subprocess.run", remote)
+    kwargs = {"input_root": tmp_path, "repository_root": tmp_path, "now_utc": datetime(2026, 10, 16, 3, tzinfo=timezone.utc)}
+    if scenario == "missing_latest":
+        result = collect_operating_review("owner/repo", **kwargs)
+        assert result["run_id"] == 2 and result["qualification_status"] == "blocked"
+        assert result["manual_interventions"] is None
+        assert "missing or expired" in result["blockers"][0]
+    else:
+        with pytest.raises(ValueError, match="hash or size mismatch" if scenario == "bad_hash" else "unsafe"):
+            collect_operating_review("owner/repo", **kwargs)
+    assert all("runs/1/" not in endpoint for endpoint in called)
+    assert not (tmp_path.parent / "escape.json").exists()
+
+
+def test_typed_strategy_review_binds_formal_decision_and_delivery(tmp_path, monkeypatch):
     from src.artifacts.operating_acceptance import _review_strategies
-    from src.artifacts.strategy_signal_ledger import seal_signal_decision, record_signal_delivery
+    from src.artifacts.strategy_signal_ledger import seal_signal_decision, record_signal_delivery, correct_latest_decision
     from tests.test_strategy_signal_ledger import _signal, MODEL
 
     signal = _signal(signal_date="2026-10-14", target_state=0)
     kwargs = {"ledger_root": tmp_path / "ledger", "model_version_id": MODEL, "signal": signal, "workflow_run_id": "2", "commit_sha": "b" * 40, "created_at_utc": "2026-10-14T21:00:00Z"}
+    previous_kwargs = {**kwargs, "signal": _signal(signal_date="2026-10-13", target_state=0), "workflow_run_id": "1", "created_at_utc": "2026-10-13T21:00:00Z"}
+    original = seal_signal_decision(**previous_kwargs)
+    corrected = correct_latest_decision(**previous_kwargs, expected_record_sha256=hashlib.sha256(original.read_bytes()).hexdigest(), reason="preserve explicit previous correction provenance")
     decision_path = seal_signal_decision(**kwargs)
     delivery_path = record_signal_delivery(**kwargs, delivery_status="not_required")
     decision = json.loads(decision_path.read_text())
@@ -89,6 +136,46 @@ def test_typed_strategy_review_binds_formal_decision_and_delivery(tmp_path):
     review = {"operations_snapshot": binding(ops), "decision_delivery_evidence": [{"strategy_id": "qqq_rotation", "decision": binding(decision_path), "delivery": binding(delivery_path)}]}
     row = {"formal_identities": {"qqq_rotation": formal}, "active_strategy_ids": ["qqq_rotation"], "actual_cutoffs": {"us": "2026-10-14"}}
     _review_strategies(row, review, tmp_path)
+
+    from dataclasses import replace
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+    from src.artifacts.operating_acceptance import prepare_operating_review
+    from src.governance.active_strategy_catalog import load_active_strategy_catalog
+
+    strategy = replace(load_active_strategy_catalog().by_model_version_id[MODEL], signal_ledger="ledger")
+    catalog = SimpleNamespace(strategies=(strategy,), by_model_version_id={MODEL: strategy})
+    monkeypatch.setattr("src.governance.active_strategy_catalog.load_active_strategy_catalog", lambda *args: catalog)
+    monkeypatch.setattr("src.artifacts.strategy_operations.build_operations_payload", lambda **kwargs: operations)
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text("{}")
+    (tmp_path / "lineage.json").write_text("{}")
+    monkeypatch.setattr("src.artifacts.formal_bundle_reader.load_formal_run", lambda *args: SimpleNamespace(manifest_path=manifest))
+    source = tmp_path / "source"
+    source.mkdir()
+    captured = {**row, "schema_version": "operating_observation_v1", "run_id": 2, "run_attempt": 1, "head_sha": "b" * 40, "expected_cutoffs": {"us": "2026-10-14"}, "research_only": True, "trade_ready": False}
+    (source / "operating-observation.json").write_text(json.dumps(captured))
+    metadata = {"run": {"id": 2, "run_attempt": 1, "head_sha": "b" * 40, "status": "completed", "conclusion": "success", "path": ".github/workflows/formal-backtest-refresh.yml"}, "jobs": [{"status": "completed"}]}
+    now = datetime(2026, 10, 14, 22, tzinfo=timezone.utc)
+    prepared = prepare_operating_review(source, metadata=metadata, repository_root=tmp_path, output_root=tmp_path, now_utc=now)
+    assert prepared["mechanically_ready"] is True
+    assert prepared["qualification_status"] == "awaiting_independent_review"
+    draft = json.loads((tmp_path / "review-draft.json").read_text())["2:1"]
+    assert draft["manual_interventions"] is None and draft["reviewed_by"] is None
+    assert draft["cadence_and_freshness_verified"] is False
+    assert draft["decision_delivery_evidence"][0]["previous_decision"]["sha256"] == hashlib.sha256(corrected.read_bytes()).hexdigest()
+    assert draft["decision_delivery_evidence"][0]["previous_original_decision"]["sha256"] == hashlib.sha256(original.read_bytes()).hexdigest()
+    report = build_acceptance_report(source, declarations=tmp_path / "review-draft.json", through="2026-10-14")
+    assert report["markets"]["us"]["qualified_sessions"] == 0
+    metadata["run"]["conclusion"] = "failure"
+    failed = prepare_operating_review(source, metadata=metadata, repository_root=tmp_path, output_root=tmp_path, now_utc=now)
+    assert failed["mechanically_ready"] is False and failed["blockers"]
+    metadata["run"]["conclusion"] = "success"
+    delivery_path.unlink()
+    missing = prepare_operating_review(source, metadata=metadata, repository_root=tmp_path, output_root=tmp_path, now_utc=now)
+    assert missing["mechanically_ready"] is False
+    assert "delivery receipt is missing" in missing["strategy_checks"][0]["blocker"]
+
     review["decision_delivery_evidence"][0]["delivery"] = binding(decision_path)
     with pytest.raises(ValueError, match="delivery receipt"):
         _review_strategies(row, review, tmp_path)

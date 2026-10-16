@@ -282,3 +282,40 @@ CN27 的 Tencent qfq 重读可能在 10-16 使用新的除息表示来返回截�
 `5f4fef9da40f6e3350d5cf5e0ad169acb986efbc4a3ca7889e7df623a4f44511`。
 内部索引逐一校验 64 个证据文件；只保留必要原件和紧凑证明，不复制完整回测
 到每个消费者，也不把尚未合格的整体验收标为通过。
+
+## 2026-10-16：发布衔接与自动评审原件
+
+PR #1218 把正式刷新成功接入原 QQQ 日评估工作流，保留原定时兜底。
+评估前使用当前正式 Bundle 和原封存账本核验已完成交易日；已有决策则跳过
+来源获取与计算，正式数据落后则阻塞。新来源的 inclusive cutoff 与 monitor 的
+exclusive end 使用同一计划，monitor 必须确实达到该 cutoff 才能封存。
+实际补评估 38849909546 已成功，随后 outbox 38850010584 成功。
+
+CN27 完成同样进入原投递 outbox；outbox 在写入投递原件后使用已有
+repository_dispatch 路由请求运行视图发布，避免深层 workflow_run 链截断。
+失败投递仍先持久化并更新视图，再让投递作业失败；没有新增收件人或订单路径。
+
+原运行视图发布工作流增加独立的原件采集作业，不受视图发布缓存命中影响。
+它使用原命令：
+
+```text
+uv run alpha ops acceptance --collect-repository liuh886/alpha_engine --input-root artifacts/operating-review --output artifacts/operating-review/acceptance-report.json
+```
+
+采集最新 completed formal run/attempt（包括失败，不选择旧的成功代替），验证
+Actions artifact 的精确名称、digest、字节数、观察 identity 与最终 run/jobs。
+只提取观察、plan、fan-in、两地 provider manifest 等紧凑 JSON，再绑定当前真实
+operations、原封存 decision/delivery、前次 decision 及正式 manifest/lineage。
+逐策略复用原验收器列出缺口，不从历史日期重建一份假装当时存在的运行快照。
+
+`readiness.json` 是机械证据检查，`review-draft.json` 始终保留
+manual_interventions=null、reviewed_by=null、cadence_and_freshness_verified=false。
+机械检查全通过仍只是 awaiting_independent_review，不自动增加合格会话。
+最终 Actions 原件中的 publish 时长完整可查；采集失败与策略阻塞分别显露。
+
+CI 在原 artifact 存储保留 90 天，并通过已有私有归档函数/专用写入 key 把紧凑
+原件包保留到 `liuh886/alpha-engine-data-archive`，返回固定 commit/path/SHA。
+归档失败只影响验收证据作业，不撤销已经独立完成的运行视图发布。
+每份包明确只覆盖最新一次已完成 attempt。历史包分别保留；独立复核后合并
+评审时，每个 run/attempt 只选一份，日历仍按真实市场会话计数，不能把多个包
+或重试凑成 20 个会话。没有新增工作流、注册表、状态数据库或并行评估器。
