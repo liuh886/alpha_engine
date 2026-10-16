@@ -135,7 +135,7 @@ def test_not_due_ranker_accepts_current_operating_inputs_without_relabelling_old
     }
     boundary = {"research_only": True, "trade_ready": False}
     operations = {**boundary, "schema_version": "2.2.0", "generated_at": "2026-08-10T21:00:00Z", "records": [record]}
-    task = {"strategy_id": "us_x", "model_version_id": "us_x1_3", "planned_provider_cutoff": "2026-08-10", "formal_refresh_required": False, "mtm_refresh_required": True}
+    task = {"strategy_id": "us_x", "model_version_id": "us_x1_3", "market": "us", "planned_provider_cutoff": "2026-08-10", "formal_refresh_required": False, "mtm_refresh_required": True}
 
     def write(name, payload):
         path = tmp_path / name
@@ -160,5 +160,47 @@ def test_not_due_ranker_accepts_current_operating_inputs_without_relabelling_old
     changed = write("plan.json", {**boundary, "tasks": [task]})
     review["operating_inputs"]["plan"] = changed
     row["receipt_sha256"]["plan/plan.json"] = changed["sha256"]
-    with pytest.raises(ValueError, match="operating inputs are blocked"):
+    with pytest.raises(ValueError, match="formal settlement lacks verified"):
+        _review_strategies(row, review, tmp_path)
+
+    from pathlib import Path
+    from src.artifacts.model_run_bundle_v2 import compute_bundle_id
+
+    # A formal catch-up must bind the executed preview to the promoted bundle.
+    repository = Path(__file__).resolve().parents[1]
+    manifest_path = next((repository / "data/research/formal_model_runs/us_ranker/us_x1_3").glob("*/manifest.json"))
+    manifest = json.loads(manifest_path.read_text())
+    lineage = write("lineage.json", {**boundary, "publication_contract": "native_formal_bundle_v2", "model_selection_reopened": False, "source_preview_bundle_id": "d" * 64})
+    section = next(value for value in manifest["sections"] if value["section_id"] == "lineage")
+    section.update(sha256=lineage["sha256"], byte_size=(tmp_path / "lineage.json").stat().st_size)
+    manifest.update(run_id=formal["run_id"], evidence_cutoff=formal["evidence_cutoff"])
+    manifest["comparability_key"]["end"] = formal["evidence_cutoff"]
+    manifest["bundle_id"] = compute_bundle_id(manifest)
+    formal["bundle_id"] = manifest["bundle_id"]
+    record["source_identity"]["formal_bundle_id"] = formal["bundle_id"]
+    review["operations_snapshot"] = write("operations.json", operations)
+    item = review["decision_delivery_evidence"][0]
+    item.update(formal_manifest=write("manifest.json", manifest), formal_lineage=lineage)
+    receipt = {**boundary, **task, "schema_version": "formal_strategy_refresh_receipt_v2", "execution_status": "refreshed", "model_family_id": "us_ranker", "publication_input": "native_bundle_v2", "candidate_evidence_cutoff": formal["evidence_cutoff"], "candidate_bundle_id": "d" * 64, "replay_verdict": "deterministic_native_bundle_rebuild"}
+
+    def fan_receipt():
+        updated = write("fan.json", {**boundary, "status": "complete", "retained_strategy_ids": [], "receipts": [receipt]})
+        review["operating_inputs"]["fan_in"] = updated
+        row["receipt_sha256"]["strategy-fan-in-receipt.json"] = updated["sha256"]
+
+    fan_receipt()
+    assert _review_strategies(row, review, tmp_path) == []
+    receipt["candidate_bundle_id"] = "e" * 64
+    fan_receipt()
+    with pytest.raises(ValueError, match="formal settlement lacks verified"):
+        _review_strategies(row, review, tmp_path)
+    receipt["candidate_bundle_id"] = "d" * 64
+    receipt["execution_status"] = "blocked"
+    fan_receipt()
+    with pytest.raises(ValueError, match="formal settlement lacks verified"):
+        _review_strategies(row, review, tmp_path)
+    receipt["execution_status"] = "refreshed"
+    fan_receipt()
+    item["formal_lineage"] = write("lineage.json", {**boundary, "source_preview_bundle_id": "d" * 64})
+    with pytest.raises(ValueError, match="formal settlement lacks verified"):
         _review_strategies(row, review, tmp_path)
