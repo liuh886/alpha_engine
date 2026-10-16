@@ -155,6 +155,8 @@ def _build_parser() -> argparse.ArgumentParser:
     acceptance.add_argument("--declarations", type=Path)
     acceptance.add_argument("--output", type=Path)
     acceptance.add_argument("--through", help="Completed cutoff YYYY-MM-DD; defaults to current completed market sessions")
+    acceptance.add_argument("--collect-repository", help="Collect the latest completed formal attempt and prepare an unapproved review packet")
+    acceptance.add_argument("--archive-repository", help="Retain the compact collected packet using the existing private archive key")
 
     build_ops = ops_commands.add_parser(
         "build",
@@ -342,9 +344,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "trade_ready": False,
             }
         elif args.group == "ops" and args.ops_command == "acceptance":
-            from src.artifacts.operating_acceptance import build_acceptance_report
+            from datetime import datetime, timezone
+            import zipfile
+            from src.artifacts.operating_acceptance import build_acceptance_report, collect_operating_review
 
+            errors += (ValueError, zipfile.BadZipFile)
+            readiness = None
+            if args.archive_repository and not args.collect_repository:
+                raise ValueError("private retention requires --collect-repository")
+            if args.collect_repository:
+                readiness = collect_operating_review(args.collect_repository, input_root=_resolve(root, args.input_root), repository_root=root, now_utc=datetime.now(timezone.utc), archive_repository=args.archive_repository)
             payload = build_acceptance_report(_resolve(root, args.input_root), declarations=_resolve(root, args.declarations) if args.declarations else None, through=args.through)
+            if readiness is not None:
+                payload["latest_attempt_readiness"] = readiness
             if args.output:
                 target = _resolve(root, args.output)
                 target.parent.mkdir(parents=True, exist_ok=True)

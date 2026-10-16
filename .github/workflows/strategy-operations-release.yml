@@ -65,6 +65,7 @@ jobs:
         with:
           path: artifacts/strategy-operations-publication-receipt.json
           key: strategy-operations-publication-v2-${{ steps.revision.outputs.sha }}-${{ steps.revision.outputs.window }}
+
           lookup-only: true
 
       - name: Checkout canonical revision
@@ -148,3 +149,63 @@ jobs:
         with:
           path: artifacts/strategy-operations-publication-receipt.json
           key: strategy-operations-publication-v2-${{ steps.revision.outputs.sha }}-${{ steps.revision.outputs.window }}
+
+  collect-operating-evidence:
+    needs: publish-operations
+    if: >-
+      !cancelled() &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: ./.github/actions/setup-python-uv
+      - name: Collect current review without declaring acceptance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY }}
+        run: |
+          mkdir -p artifacts/operating-review
+          uv run alpha ops acceptance \
+            --collect-repository "$GITHUB_REPOSITORY" \
+            --input-root artifacts/operating-review \
+            --archive-repository liuh886/alpha-engine-data-archive \
+            --output artifacts/operating-review/acceptance-report.json \
+            > artifacts/operating-review-command.json
+      - name: Summarize current acceptance gaps
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path("artifacts/operating-review-command.json")
+          result = json.loads(path.read_text()) if path.is_file() else {}
+          review = result.get("latest_attempt_readiness", {})
+          lines = ["### Operating acceptance evidence", f"Latest formal attempt: {review.get('run_id', 'unavailable')}:{review.get('run_attempt', 'unknown')}", f"Mechanical evidence: {review.get('qualification_status', 'collection_failed')}", "Independent review required; manual interventions remain unknown."]
+          lines.extend(f"- {item['strategy_id']}: {item.get('blocker', 'mechanically verified')}" for item in review.get("strategy_checks", []))
+          lines.extend(f"- {item}" for item in review.get("blockers", []))
+          if result.get("reason"):
+              lines.append(f"- Collection failure: {result['reason']}")
+          lines.append("This packet covers the latest attempt only; it does not certify 20 continuous sessions.")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:
+              handle.write("\n\n".join(lines) + "\n")
+          PY
+      - name: Retain operating review packet
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: strategy-operating-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/operating-review
+            artifacts/operating-review-command.json
+          if-no-files-found: error
+          retention-days: 90
