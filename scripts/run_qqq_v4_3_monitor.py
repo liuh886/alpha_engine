@@ -49,6 +49,10 @@ def main() -> int:
         default=Path("artifacts/evidence/qqq_rotation_v4_3_current_monitor"),
     )
     args = parser.parse_args()
+    if args.expected_cutoff:
+        frozen_contract = Path(__file__).resolve().parents[1] / "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
+        if args.contract.resolve() != frozen_contract:
+            raise ValueError("QQQ canonical observation requires the frozen active contract")
 
     if args.check_due_output:
         from src.research.qqq_v4_3_signal_alerts import plan_current_evaluation

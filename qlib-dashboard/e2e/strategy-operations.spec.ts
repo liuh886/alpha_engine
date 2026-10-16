@@ -142,6 +142,7 @@ const operations = {
       decision_cadence: 'Every completed US market session',
       next_decision_policy: 'Evaluate at close; target applies to the next eligible open.',
       state_label: 'Runtime current operations',
+      read_state: 'protected',
       decision_reason: 'Current holdings and signals are delivered from the runtime access plane.',
       allocations: [],
       turnover: null,
@@ -301,6 +302,7 @@ test('current operations recover from a failed read without reloading formal evi
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
   const reader = page.getByRole('region', { name: 'Current operations reader' });
   await expect(reader.getByText('QQQR v4.3: current operations could not be verified.')).toBeVisible();
+  await expect(page.getByText('Read unavailable', { exact: true })).toBeVisible();
   await expect(page.getByRole('tablist', { name: 'Formal backtest evidence views' })).toBeVisible();
   await expect(page.getByText('QQQ repair with easing volatility', { exact: true })).toHaveCount(0);
   await reader.getByRole('button', { name: 'Retry operations' }).click();

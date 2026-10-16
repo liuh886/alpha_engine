@@ -20,6 +20,25 @@ Formal historical evidence continues through the existing reviewed atomic
 Bundle v2 publication transaction. Current operations must disclose its actual
 formal and decision cutoffs when those advance separately.
 
+QQQ daily observation is scoped to its accepted model identity rather than the
+aggregate formal cutoff. The existing daily workflow first checks its sealed
+ledger; an already sealed cutoff performs no data work. A due observation must
+verify the governed source at that exact cutoff and reproduce the accepted QQQ
+decision prefix before sealing. This check uses the frozen rules and current
+monitor inputs; it does not republish historical economics, reopen selection or
+authorize trading. A failed unrelated formal refresh may trigger the same check,
+but cannot supply its evidence. Source and prefix failures still fail closed.
+
+Current-view presentation distinguishes a verified target retained within its
+frozen cadence from delayed observations. Retention requires the original valid
+decision/factor evidence and the strategy's verified accepted formal bundle at
+the completed cutoff. The original factor date and stale flag stay intact; a
+not-due factor computation is not an operating delay. This display classification
+does not grant a due-cycle evaluation or a qualified operating-session credit.
+Public signal shells explicitly identify protected reads. Access restrictions,
+read failures, source blockers and unchanged targets are separate conditions;
+no protected allocations or signal provenance are added to the public shell.
+
 ### Keep the daily loop small
 
 | Activity | Operating rule |

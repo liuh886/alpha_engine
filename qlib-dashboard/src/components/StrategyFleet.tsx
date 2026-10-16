@@ -393,7 +393,7 @@ export function StrategyFleet({
                     )}
                   </p>
                   <p className="text-[11px]">
-                    {summary.isAttention ? 'Last known cutoff' : 'Model session'}
+                    {snapshot?.readState === 'protected' || liveLocked ? 'Formal evidence cutoff' : summary.isAttention ? 'Last known cutoff' : 'Signal session'}
                   </p>
                 </div>
 

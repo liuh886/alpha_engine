@@ -62,7 +62,7 @@ export function StrategyOverviewPage() {
         </div>
       </section>
 
-      <OperationsReadStatus loading={loading} issues={issues} reload={reload} />
+      <OperationsReadStatus loading={loading} issues={issues} reload={reload} snapshots={snapshots} />
       <StrategyFleet runs={formalRuns} snapshots={snapshots} loading={loading} />
 
       <section className="grid gap-4 lg:grid-cols-2">

@@ -122,6 +122,15 @@ describe('current operations recovery', () => {
     expect(result.current.issues).toEqual([]);
   });
 
+  it('labels a failed eligible protected read as unavailable, not a strategy failure', async () => {
+    vi.mocked(loadStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, { ...shell, readState: 'protected' }]]));
+    vi.mocked(loadRuntimeStrategyOperation).mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(() => useStrategyOperations(runs));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.snapshots.get(run.modelVersionId)?.readState).toBe('unavailable');
+    expect(result.current.snapshots.get(run.modelVersionId)?.allocations).toEqual([]);
+  });
+
   it('discards a late response when the formal run changes', async () => {
     let resolveOld!: (value: typeof live) => void;
     vi.mocked(loadRuntimeStrategyOperation).mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve; }));

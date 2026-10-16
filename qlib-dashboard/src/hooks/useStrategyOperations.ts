@@ -31,11 +31,14 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
+    const markUnread = (snapshot: StrategyOperationsSnapshot) => snapshot.readState === 'protected'
+      ? { ...snapshot, readState: 'unavailable' as const } : snapshot;
     const deadline = window.setTimeout(() => {
       active = false;
       controller.abort();
       setResult((current) => ({ request,
-        snapshots: current?.request === request ? current.snapshots : EMPTY_SNAPSHOTS,
+        snapshots: current?.request === request ? new Map(Array.from(current.snapshots, ([id, snapshot]) =>
+          [id, access.canAccess(access.requiredTier('strategy', snapshot.strategyId)) ? markUnread(snapshot) : snapshot])) : EMPTY_SNAPSHOTS,
         issues: [...(current?.request === request ? current.issues : []), 'Operations reading timed out. Retry to check the published records again.'],
         loading: false,
       }));
@@ -78,12 +81,14 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
               assertStrategyOperationRun(runtimeSnapshot, run);
               next.set(snapshot.modelVersionId, runtimeSnapshot);
             } catch {
+              next.set(snapshot.modelVersionId, markUnread(snapshot));
               issues.push(`${run.title}: current operations could not be verified.`);
             }
             publish(true);
           }));
         }
       } catch {
+        for (const snapshot of runtimeSnapshots) next.set(snapshot.modelVersionId, markUnread(snapshot));
         issues.push('Current operations could not be read. Retry when the account service is available.');
       } finally {
         window.clearTimeout(deadline);

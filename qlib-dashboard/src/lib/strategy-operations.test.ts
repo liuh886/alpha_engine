@@ -27,6 +27,22 @@ describe('evaluation timing', () => {
 });
 
 describe('retained observation health', () => {
+  it('shows verified retention without relabeling old factors as fresh', () => {
+    const snapshot = parseStrategyOperationsSnapshot({ ...record, observation_state: 'retained_within_cadence',
+      source_identity: { formal_evidence_cutoff: record.decision_schedule.completed_through } });
+    expect(summarizeStrategySignal(snapshot)).toMatchObject({ badgeLabel: 'Not due', isAttention: false, isNew: false });
+    expect(snapshot.factorFreshness).toBe('stale');
+    expect(summarizeStrategySignal({ ...snapshot, sourceIdentity: { ...snapshot.sourceIdentity,
+      formalEvidenceCutoff: '2026-09-29' } }).isAttention).toBe(true);
+  });
+
+  it('distinguishes restricted reads and read failures from a strategy blocker', () => {
+    const snapshot = parseStrategyOperationsSnapshot({ ...record, status: 'blocked', read_state: 'protected' });
+    expect(summarizeStrategySignal(snapshot)).toMatchObject({ badgeLabel: 'Access required', isAttention: false });
+    expect(summarizeStrategySignal({ ...snapshot, readState: 'unavailable' })).toMatchObject({ badgeLabel: 'Read unavailable', isAttention: true });
+    expect(summarizeStrategySignal({ ...snapshot, readState: undefined })).toMatchObject({ badgeLabel: 'Blocked', isAttention: true });
+  });
+
   it('requires attention for stale observations even while the decision is within cadence', () => {
     const snapshot = parseStrategyOperationsSnapshot(record);
     expect(summarizeStrategySignal(snapshot)).toMatchObject({ badgeLabel: 'Stale', isAttention: true, isNew: false });

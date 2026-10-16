@@ -190,6 +190,46 @@ def _decision_schedule(
     return result
 
 
+def _retained_observation_verified(
+    strategy: ActiveStrategy, record: Mapping[str, Any], decision: Mapping[str, Any] | None,
+    *, root: Path,
+) -> bool:
+    """A retained target is observable only with current, verified own formal inputs.
+
+    This is presentation evidence, not a rebalance or operating-acceptance credit.
+    Original signal/factor dates and freshness remain unchanged.
+    """
+    schedule = _mapping(record.get("decision_schedule"))
+    signal = _mapping(_mapping(decision).get("signal"))
+    cutoff = schedule.get("completed_through")
+    latest = record.get("latest_completed_session")
+    if (
+        strategy.model_family_id not in {*RANKER_FAMILIES, CN27_FAMILY}
+        or record.get("status") not in {"current_no_change", "target_pending_execution", "execution_observed"}
+        or schedule.get("state") != "within_cadence"
+        or not isinstance(schedule.get("cadence_sessions"), int) or schedule["cadence_sessions"] <= 1
+        or not isinstance(cutoff, str) or not isinstance(latest, str) or latest >= cutoff
+        or signal.get("data_freshness_ok") is not True or signal.get("factor_freshness_ok") is not True
+        or record.get("signal_data_freshness") != "current"
+        or record.get("data_freshness") != "stale" or record.get("factor_freshness") != "stale"
+        or not record.get("factor_evidence")
+    ):
+        return False
+    from src.artifacts.formal_bundle_reader import FormalBundleReadError, load_formal_run
+
+    try:
+        formal = load_formal_run(root, strategy.model_version_id)
+        identity = _mapping(record.get("source_identity"))
+        return (
+            formal.evidence_cutoff == cutoff
+            and identity.get("formal_bundle_id") == formal.identity["bundle_id"]
+            and identity.get("formal_run_id") == formal.run_id
+            and identity.get("formal_evidence_cutoff") == cutoff
+        )
+    except (OSError, ValueError, FormalBundleReadError):
+        return False
+
+
 def _transition_predecessor_strategies(
     payload: Mapping[str, Any],
     *,
@@ -787,7 +827,7 @@ def build_operations_payload(
         capability = capabilities[model_version_id]
         family = strategy.model_family_id
 
-        def _emit(record: dict[str, object]) -> None:
+        def _emit(record: dict[str, object], decision: Mapping[str, Any] | None = None) -> None:
             # Display-truth staleness rides every record so no consumer can
             # render highlights without an as-of context.
             staleness = _staleness(
@@ -809,6 +849,10 @@ def build_operations_payload(
                 stale=bool(staleness.get("stale")),
             )
             record["decision_schedule"] = _decision_schedule(strategy, record, root=root)
+            record["observation_state"] = (
+                "retained_within_cadence" if _retained_observation_verified(strategy, record, decision, root=root)
+                else "current" if record["state_detail"] == "current" else "unavailable"
+            )
             records.append(record)
 
         try:
@@ -842,9 +886,9 @@ def build_operations_payload(
         elif family == BYD_FAMILY:
             _emit(_byd(formal, strategy, ledger))
         elif family in RANKER_FAMILIES:
-            _emit(_ranker(formal, strategy, ledger))
+            _emit(_ranker(formal, strategy, ledger), ledger)
         elif family == CN27_FAMILY:
-            _emit(_cn27(formal, strategy, ledger))
+            _emit(_cn27(formal, strategy, ledger), ledger)
         else:
             blocked = _unavailable(formal, strategy, awaiting=False, capability=capability)
             blocked["status"] = "blocked"
@@ -913,6 +957,8 @@ def validate_operations_payload(payload: object) -> None:
         seen_strategies.add(strategy_id)
         if value.get("status") not in STATUS_VALUES:
             raise StrategyOperationsError(f"invalid operations status for {model_id}")
+        if "observation_state" in value and value["observation_state"] not in {"current", "retained_within_cadence", "unavailable"}:
+            raise StrategyOperationsError(f"invalid observation state for {model_id}")
         # Tolerant of pre-staleness payloads: the builder always emits
         # state_detail for new payloads; old snapshots simply lack it.
         if "state_detail" in value and value.get("state_detail") not in STATE_DETAIL_VALUES:

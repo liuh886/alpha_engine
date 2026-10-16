@@ -309,6 +309,11 @@ def build_system_health(
         data_state = "not_applicable"
         factor_state = _freshness_state(operation.get("factor_freshness"))
         signal_state = _operation_state(operation)
+        retained = operation.get("observation_state") == "retained_within_cadence"
+        if retained and formal_state == "current" and formal_cutoff == market_expected[strategy.market]:
+            # No factor recomputation is due. Preserve its original watermark;
+            # current own formal evidence supports observation of this target.
+            factor_state = "not_applicable"
         internal_state = _state_max(
             [
                 market_state[strategy.market],
@@ -331,6 +336,7 @@ def build_system_health(
                 "model_data_cutoff": None,
                 "model_data_binding": "not_declared",
                 "factor_cutoff": factor_cutoff,
+                "observation_state": operation.get("observation_state", "unavailable"),
                 "last_signal_evaluation": signal_evaluation,
                 "last_signal_change": last_changes[model_id],
                 "delivery_state": delivery_state,
