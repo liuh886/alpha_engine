@@ -174,3 +174,8 @@ def test_outbox_workflow_triggers_and_fallback_schedule() -> None:
     assert names.index("Commit append-only delivery receipts") < names.index("Request strategy operations publication") < names.index("Fail after persisting delivery failure evidence")
     dispatch = next(step for step in steps if step.get("name") == "Request strategy operations publication")
     assert 'event_type: "strategy_operations_publication"' in dispatch["run"]
+    assert dispatch["if"] == "steps.receipts.outputs.changed == 'true'"
+    commit = next(step for step in steps if step.get("name") == "Commit append-only delivery receipts")
+    assert commit["id"] == "receipts"
+    assert 'changed=false' in commit["run"] and 'changed=true' in commit["run"]
+    assert commit["run"].index('git push origin HEAD:main') < commit["run"].index('changed=true')

@@ -102,6 +102,7 @@ jobs:
             --generated-at "$generated_at" \
             --output artifacts/signal-delivery-outbox/strategy-operations.json
       - name: Commit append-only delivery receipts
+        id: receipts
         run: |
           set -euo pipefail
           git config user.name "AlphaEngine Delivery Outbox"
@@ -109,12 +110,17 @@ jobs:
           git add data/research/strategy_signal_ledgers
           if git diff --cached --quiet; then
             echo "No pending delivery receipt changes."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "ops: publish strategy delivery receipts"
             git pull --rebase origin main
             git push origin HEAD:main
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Request strategy operations publication
+        # An unchanged outbox check must not fan out another publication/review.
+        # New failure receipts still publish before the final failure step.
+        if: steps.receipts.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
