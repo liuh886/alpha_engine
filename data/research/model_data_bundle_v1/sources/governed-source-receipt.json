@@ -22,6 +22,13 @@
           "sha256": "97bf40cd1c05eb8342a37a31dbee8150d57457bdcac4714bc531756275fc18c3"
         }
       ],
+      "durable_git": {
+        "commit": "b1fa72450b5c00d1eb82748169c747846814acde",
+        "path": "archives/us-events-36869443810.zip",
+        "repository": "liuh886/alpha-engine-data-archive",
+        "sha256": "23d192b96e3bf4f38e1937c2c6896e112b7d8962f8a45bed06e56fe8fc5f686e",
+        "size_bytes": 7012468
+      },
       "durable_release": null,
       "evidence_cutoff": "2026-09-30",
       "expires_at": "2026-12-30T13:32:36Z",
@@ -30,7 +37,7 @@
       "market": "us",
       "pool_id": "us_selected_equities_v2",
       "research_only": true,
-      "retrieval_method": "actions_artifact",
+      "retrieval_method": "durable_git",
       "retrieval_note": null,
       "source_id": "us_events",
       "source_kind": "selected_pool_events",
@@ -39,31 +46,38 @@
       "workflow_run_id": 36869443810
     },
     {
-      "artifact_digest": "sha256:e52fb86fa3312dd0497746a290bb35d03aaa8e435f548ff6330e7ea7eab4f8c9",
-      "artifact_id": 11280546210,
-      "artifact_name": "qqqi-qqq-tqqq-reference-bundle-37140721387",
-      "artifact_size_bytes": 1562920,
+      "artifact_digest": "sha256:6da52ca8563264ec0fdaba50819bba828f9e1cd70e026bd85111297bb9bab9ad",
+      "artifact_id": 11983524280,
+      "artifact_name": "qqqi-qqq-tqqq-reference-bundle-38757752731",
+      "artifact_size_bytes": 912648,
       "component_manifests": [
         {
           "path": "bundle_manifest.json",
-          "sha256": "29413677549352f7f9a8342034f2ae534aa8df27d3889b05155419615daeb1c7"
+          "sha256": "2ba747e88306bb1fc551788d915665681af0241017af24beaae390752bb5512a"
         }
       ],
+      "durable_git": {
+        "commit": "0ab75fe9770f2049308168ebca47c8b2a1c76732",
+        "path": "archives/qqq-reference-research-38757752731.zip",
+        "repository": "liuh886/alpha-engine-data-archive",
+        "sha256": "6da52ca8563264ec0fdaba50819bba828f9e1cd70e026bd85111297bb9bab9ad",
+        "size_bytes": 912648
+      },
       "durable_release": null,
-      "evidence_cutoff": "2026-10-02",
-      "expires_at": "2027-01-01T17:29:56Z",
-      "head_sha": "40635ef02c912579248ebb3b105916ded6831d86",
+      "evidence_cutoff": "2026-10-14",
+      "expires_at": "2027-01-13T15:09:01Z",
+      "head_sha": "090f34db45f05816ec2ee4321975070ee883f82e",
       "installed_payload": "verified_component_manifests_only",
       "market": "us",
       "pool_id": "qqqi_qqq_tqqq_reference_bundle_v1",
       "research_only": true,
-      "retrieval_method": "actions_artifact",
+      "retrieval_method": "durable_git",
       "retrieval_note": null,
       "source_id": "qqq_reference",
       "source_kind": "etf_reference_bundle",
       "trade_ready": false,
       "training_payload_retrieval": "exact_artifact_locator_required",
-      "workflow_run_id": 37140721387
+      "workflow_run_id": 38757752731
     },
     {
       "artifact_digest": "sha256:a65e7d54e81dfedec54ca8b6ebb4734f58897135c06ff63809ee494fe99fcd3c",
@@ -76,6 +90,7 @@
           "sha256": "ca2f316de12eb7ceb5be857863519c7bf7eb26f77076aab7444b4c687fa81bc7"
         }
       ],
+      "durable_git": null,
       "durable_release": {
         "asset_name": "alpha158-canonical-vwap-cn-36145403372.zip",
         "sha256": "a65e7d54e81dfedec54ca8b6ebb4734f58897135c06ff63809ee494fe99fcd3c",
@@ -116,6 +131,7 @@
           "sha256": "3941c5da17211e7560bbf86037f8bfb0293b6aa61a53778060dac191562d2c8a"
         }
       ],
+      "durable_git": null,
       "durable_release": {
         "asset_name": "selected-pool-event-live-cn-36145411810.zip",
         "sha256": "546cebd6be53c4de4f514887b1ef0649d737ceb58c88395457c51dd7341dee32",

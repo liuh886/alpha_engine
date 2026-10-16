@@ -1,25 +1,22 @@
 {
   "bundle_id": "qqqi_qqq_tqqq_reference_bundle_v1",
-  "common_history_end": "2026-10-02",
+  "common_history_end": "2026-10-14",
   "common_history_start": "2024-01-30",
-  "contract_path": "/home/runner/work/alpha_engine/alpha_engine/configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml",
-  "contract_sha256": "5519a925f9cb9ae7b114eee835d2dc06385298ecba618183820e0d935733c455",
+  "contract_path": "/home/runner/work/alpha_engine/alpha_engine/configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml",
+  "contract_sha256": "db086681013dfdc2f3a27a4085acd6c7cd5cdf1ad259138998015d51739b7477",
   "files": {
-    "canonical/QQQ.csv": "60804e090cf939aa6f9cef15b8a8f820ed8ed05f62e416a240beb651837598e6",
-    "canonical/QQQI.csv": "e07e88c19fbd2d8c143ab40ab947cf724b9ca083cb517452ff4a7cdec40242a3",
-    "canonical/TQQQ.csv": "c003a59e0f0eb5beb9a0e0361efc69872bc6e4836abc07fa4120c3d73c03da00",
-    "corporate_actions.csv": "3142511e82c1f5c7fcb612f87d861f59373d9ddcd4c0bb901a294c84e838b7aa",
-    "corporate_actions/QQQ.csv": "8916c8cb59899aafb470cc63d42c676f8a7132c5b45dde7ed422c1fa86bf3648",
-    "corporate_actions/QQQI.csv": "9b97e015e7649fbd1de6f9e3a521ad78dc2b8c90b83cda13aa089b83a5907c61",
-    "corporate_actions/TQQQ.csv": "a9e6503d39c8f9651b1f720e05866ade48bbadee64f31e21b265ea4c348a2889",
-    "coverage.csv": "3fe758ef1baae8df68503daf8cc059e7aeb0f3af4d48b7f801a02a02656cd8f7",
-    "reconciliation.csv": "6fcd497f8be428dab0033c4676880a30a8393eae195b255a7dcfc371f8e7c1ad",
-    "sources/tiingo/QQQ.csv": "60804e090cf939aa6f9cef15b8a8f820ed8ed05f62e416a240beb651837598e6",
-    "sources/tiingo/QQQI.csv": "e07e88c19fbd2d8c143ab40ab947cf724b9ca083cb517452ff4a7cdec40242a3",
-    "sources/tiingo/TQQQ.csv": "c003a59e0f0eb5beb9a0e0361efc69872bc6e4836abc07fa4120c3d73c03da00",
-    "sources/yfinance/QQQ.csv": "a1fda7f679064e68d67dda4664dd76f54f7e3d498adaf08525502640da1f19d9",
-    "sources/yfinance/QQQI.csv": "66da5c11be4b22fdca10a49825a849dbc9a44916e0d194881a96cc5c00fe72d8",
-    "sources/yfinance/TQQQ.csv": "25b326c28e2c9d7db1fb5fd0c298f1fcc77349f954a914105748b956d1bdb077"
+    "canonical/QQQ.csv": "352d705a26ed2a12fd70139c6fdaca696a7d902baa228ed90692dd173afc2a8d",
+    "canonical/QQQI.csv": "23038a940dd2fa8f21241eec672afe4d902fc44146493762c2ae40f9e7064fc3",
+    "canonical/TQQQ.csv": "900c626271e5a900a6e296f78a53ed65966ed940e3a622333d105c8dd9f69e4f",
+    "corporate_actions.csv": "8f6357906a2f9985f56b18bb66f59f8610dd9316db5a146e38ffb1c2a8db158f",
+    "corporate_actions/QQQ.csv": "8f6357906a2f9985f56b18bb66f59f8610dd9316db5a146e38ffb1c2a8db158f",
+    "corporate_actions/QQQI.csv": "8f6357906a2f9985f56b18bb66f59f8610dd9316db5a146e38ffb1c2a8db158f",
+    "corporate_actions/TQQQ.csv": "8f6357906a2f9985f56b18bb66f59f8610dd9316db5a146e38ffb1c2a8db158f",
+    "coverage.csv": "697d6ca14bcaca1b3404281a5f3434679b57bd593b65b66c370cccc83eec4e04",
+    "reconciliation.csv": "33c6933c3da1ba5d3b2332aa20eeb62649d633f32283aec55ca2a5037f590928",
+    "sources/yfinance/QQQ.csv": "352d705a26ed2a12fd70139c6fdaca696a7d902baa228ed90692dd173afc2a8d",
+    "sources/yfinance/QQQI.csv": "23038a940dd2fa8f21241eec672afe4d902fc44146493762c2ae40f9e7064fc3",
+    "sources/yfinance/TQQQ.csv": "900c626271e5a900a6e296f78a53ed65966ed940e3a622333d105c8dd9f69e4f"
   },
   "limitations": [
     "Yahoo-only bundles are research-usable but not professionally corroborated.",
@@ -29,11 +26,11 @@
     "Credential, rate-limit, upstream and validation failures remain distinct provider-health states.",
     "This bundle does not change or promote any strategy rule."
   ],
-  "professional_source_ready": true,
+  "professional_source_ready": false,
   "provider_contracts": {
     "tiingo": {
       "amount_unit": "synthetic_adjusted_close_times_volume",
-      "available": true,
+      "available": false,
       "corporate_actions": true,
       "credential_env": "TIINGO_API_TOKEN",
       "credentialed": true,
@@ -73,13 +70,15 @@
   "provider_health": {
     "tiingo": {
       "attempted_symbols": 3,
-      "error_class_counts": {},
-      "failed_symbols": 0,
-      "mean_elapsed_seconds": 0.8960193333333333,
+      "error_class_counts": {
+        "provider_not_configured": 3
+      },
+      "failed_symbols": 3,
+      "mean_elapsed_seconds": null,
       "provider": "tiingo",
       "rate_limited_symbols": [],
-      "success_ratio": 1.0,
-      "successful_symbols": 3
+      "success_ratio": 0.0,
+      "successful_symbols": 0
     },
     "yfinance": {
       "attempted_symbols": 3,
@@ -93,19 +92,20 @@
     }
   },
   "reconciliation_status": {
-    "QQQ": "consensus",
-    "QQQI": "consensus",
-    "TQQQ": "consensus"
+    "QQQ": "provider_missing",
+    "QQQI": "provider_missing",
+    "TQQQ": "provider_missing"
   },
-  "requested_end": null,
+  "requested_end": "2026-10-14",
   "requested_start": "2010-01-01",
   "research_only": true,
   "schema_version": "1.1",
   "selected_providers": {
-    "QQQ": "tiingo",
-    "QQQI": "tiingo",
-    "TQQQ": "tiingo"
+    "QQQ": "yfinance",
+    "QQQI": "yfinance",
+    "TQQQ": "yfinance"
   },
+  "source_policy": "yahoo_research_v2",
   "strategy_data_ready": true,
   "symbols": [
     "QQQ",
