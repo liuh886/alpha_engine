@@ -161,21 +161,37 @@ def test_consistent_old_evidence_is_delayed_by_exchange_clock(tmp_path: Path) ->
     assert markets["cn"]["staleness"]["sessions_behind"] == 2
 
 
-def test_verified_retention_preserves_factor_date_without_a_false_delay() -> None:
+@pytest.mark.parametrize("newer_market_observation", [False, True])
+def test_verified_retention_preserves_factor_date_without_a_false_delay(newer_market_observation) -> None:
+    from datetime import date, timedelta
+    from src.research.market_session_clock import exchange_sessions
+
     operations = _operations()
     row = next(item for item in operations["records"] if item["model_version_id"] == "cn_x1_2")
     row.update(observation_state="retained_within_cadence", factor_freshness="stale",
                status="current_no_change", delivery_status="not_required")
     catalog = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
     cutoff = next(item["evidence_cutoff"] for item in catalog["records"] if item["model_version_id"] == "cn_x1_2")
+    # Isolate the declared snapshot from newer live ledger commits. A BYD daily
+    # observation can advance independently of the retained CN formal bundle.
+    for operation in operations["records"]:
+        for field in ("as_of", "latest_completed_session"):
+            if operation.get(field) and operation[field] > cutoff:
+                operation[field] = cutoff
+    observed_through = cutoff
+    if newer_market_observation:
+        end = (date.fromisoformat(cutoff) + timedelta(days=14)).isoformat()
+        observed_through = exchange_sessions("cn", cutoff, end)[1]
+        byd = next(item for item in operations["records"] if item["strategy_id"] == "byd")
+        byd["as_of"] = byd["latest_completed_session"] = observed_through
     factor_date = row["factor_evidence"][0]["observed_at"]
     payload = build_system_health(repository_root=Path.cwd(), formal_catalog=FORMAL_CATALOG,
         formal_freshness=FORMAL_FRESHNESS, operations=operations, model_data_readiness=MODEL_DATA,
-        generated_at=f"{cutoff}T23:00:00Z")
+        generated_at=f"{observed_through}T23:00:00Z")
     retained = next(item for item in payload["strategies"] if item["model_version_id"] == "cn_x1_2")
-    assert retained["stages"]["factor"] == "not_applicable"
+    assert retained["stages"]["factor"] == ("delayed" if newer_market_observation else "not_applicable")
     assert retained["factor_cutoff"] == factor_date
-    assert retained["state"] == "current"
+    assert retained["state"] == ("delayed" if newer_market_observation else "current")
 
 
 def test_delivery_failure_degrades_strategy_health() -> None:

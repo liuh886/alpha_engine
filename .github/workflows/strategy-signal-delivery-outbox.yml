@@ -13,10 +13,12 @@ on:
   workflow_run:
     workflows:
       - "QQQ Rotation v4.3 Signal Alert"
-      - "BYD v1.3 Daily Signal"
       - "10D Ranker Current Target"
       - "CN27 Current Target"
     types: [completed]
+  # BYD Daily is already the third workflow_run hop. A fourth hop is not run.
+  repository_dispatch:
+    types: [strategy_signal_delivery]
   schedule:
     - cron: "15 */6 * * *"
   workflow_dispatch:
@@ -102,6 +104,7 @@ jobs:
             --generated-at "$generated_at" \
             --output artifacts/signal-delivery-outbox/strategy-operations.json
       - name: Commit append-only delivery receipts
+        id: receipts
         run: |
           set -euo pipefail
           git config user.name "AlphaEngine Delivery Outbox"
@@ -109,12 +112,18 @@ jobs:
           git add data/research/strategy_signal_ledgers
           if git diff --cached --quiet; then
             echo "No pending delivery receipt changes."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "ops: publish strategy delivery receipts"
             git pull --rebase origin main
             git push origin HEAD:main
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Request strategy operations publication
+        # Skip duplicate strategy handoffs, retaining manual/scheduled recovery
+        # when a previous dispatch failed after committing its receipt.
+        # New failure receipts still publish before the final failure step.
+        if: steps.receipts.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

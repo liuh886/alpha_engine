@@ -302,12 +302,13 @@ def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
     assert cn["factor_freshness"] == "current"
 
 
-def test_qqq_ledger_projects_canonical_factor_snapshot(tmp_path: Path) -> None:
+@pytest.mark.parametrize("changed", [True, False])
+def test_qqq_ledger_projects_canonical_factor_snapshot(tmp_path: Path, changed) -> None:
     ledger = tmp_path / QQQ_MODEL
     _seal_and_deliver(
         ledger,
         QQQ_MODEL,
-        _qqq_signal(),
+        _qqq_signal(changed=changed),
         github_issue_number=493,
         telegram_message_id=42,
     )
@@ -317,7 +318,8 @@ def test_qqq_ledger_projects_canonical_factor_snapshot(tmp_path: Path) -> None:
         generated_at="2026-08-08T00:00:01Z",
     )
     qqq = _by_model(payload)[QQQ_MODEL]
-    assert qqq["status"] == "target_pending_execution"
+    assert qqq["status"] == ("target_pending_execution" if changed else "current_no_change")
+    assert qqq["evaluation_changed"] is changed
     assert qqq["data_freshness"] == "current"
     assert qqq["factor_freshness"] == "current"
     assert qqq["delivery_status"] == "sent"

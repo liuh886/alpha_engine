@@ -69,6 +69,7 @@ const runtimeOperation = {
   strategy_id: 'qqq_rotation',
   model_version_id: 'qqqi_qqq_tqqq_v4_3',
   status: 'target_pending_execution',
+  evaluation_changed: true,
   as_of: '2026-07-31',
   latest_completed_session: '2026-07-31',
   decision_cadence: 'Every completed US market session',
@@ -254,6 +255,41 @@ async function installProMembership(page: Page, options: { failFirst?: boolean; 
         sessions_until_due: 9, state: 'within_cadence', execution_pending: true } } : {}),
   }, options });
 }
+
+test('overview brief explains the last evaluation and retains its actual dates', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await mockBundle(page);
+  await installProMembership(page);
+  await page.goto('/#/app');
+  const brief = page.getByRole('region', { name: 'Daily research brief' });
+  const row = brief.getByRole('article', { name: 'QQQR v4.3 daily observation' });
+  await expect(row.getByText('Changed at last evaluation', { exact: true })).toBeVisible();
+  await expect(row.getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
+  await expect(row.getByText('Observed 2026-07-31 · target dated 2026-07-31', { exact: false })).toBeVisible();
+  await page.getByRole('heading', { name: 'What are the strategies doing now?', exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('daily-research-brief-first-viewport.png') });
+  await row.getByText('Decision evidence', { exact: true }).click();
+  await expect(row.getByText('VIX close: calm · veto · observed 2026-07-31')).toBeVisible();
+  expect(errors).toEqual([]);
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({ path: testInfo.outputPath('daily-research-brief.png'), fullPage: true });
+});
+
+test('overview brief separates read retry from data recovery', async ({ page }) => {
+  await mockBundle(page);
+  await installProMembership(page, { failFirst: true, stale: true });
+  await page.goto('/#/app');
+  const row = page.getByRole('region', { name: 'Daily research brief' }).getByRole('article', { name: 'QQQR v4.3 daily observation' });
+  await row.getByRole('button', { name: 'Retry reading observations' }).click();
+  await expect(row.getByText('Stale', { exact: true })).toBeVisible();
+  await expect(row.getByText('Changed at last evaluation', { exact: true })).toHaveCount(0);
+  await row.getByText('Recovery steps', { exact: true }).click();
+  await expect(row.getByRole('link', { name: 'Open data refresh workflow' })).toHaveAttribute('href', /formal-backtest-refresh.yml$/);
+  await row.getByRole('link', { name: 'Open model monitoring' }).click();
+  await expect(page).toHaveURL(/#\/model-operations$/);
+  await assertNoHorizontalOverflow(page);
+});
 
 test('strategy current operations are authorized by runtime policy and hydrated from the runtime store', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];

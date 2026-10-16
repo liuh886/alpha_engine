@@ -146,14 +146,20 @@ def test_byd_terminates_deep_workflow_chain_with_repository_dispatch() -> None:
     steps = content["jobs"]["evaluate"]["steps"]
     by_name = {step.get("name"): step for step in steps if step.get("name")}
 
-    request = by_name["Request strategy operations publication"]
+    request = by_name["Request canonical decision delivery"]
     assert request["env"]["GH_TOKEN"] == "${{ github.token }}"
-    assert 'event_type: "strategy_operations_publication"' in request["run"]
+    assert 'event_type: "strategy_signal_delivery"' in request["run"]
     assert '"repos/${GITHUB_REPOSITORY}/dispatches"' in request["run"]
     assert request["run"].index("producer_workflow") < request["run"].index("gh api")
 
-    # BYD Daily can itself be the third workflow_run hop. The release workflow
-    # therefore consumes this explicit dispatch, not another BYD workflow_run.
+    assert steps.index(by_name["Commit canonical BYD decision"]) < steps.index(request)
+    # BYD Daily can itself be the third workflow_run hop. Deliver through the
+    # existing outbox before its receipt dispatches operations publication.
+    outbox = yaml.safe_load((ROOT / ".github/workflows/strategy-signal-delivery-outbox.yml").read_text())
+    assert _triggers(outbox)["repository_dispatch"]["types"] == ["strategy_signal_delivery"]
+    assert "BYD v1.3 Daily Signal" not in _triggers(outbox)["workflow_run"]["workflows"]
+    delivery_steps = {step.get("name"): step for step in outbox["jobs"]["deliver"]["steps"]}
+    assert 'event_type: "strategy_operations_publication"' in delivery_steps["Request strategy operations publication"]["run"]
     release_triggers = _triggers(_workflow())
     assert "BYD v1.3 Daily Signal" not in release_triggers["workflow_run"]["workflows"]
     assert release_triggers["repository_dispatch"]["types"] == [

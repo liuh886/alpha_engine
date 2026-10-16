@@ -849,6 +849,8 @@ def build_operations_payload(
                 stale=bool(staleness.get("stale")),
             )
             record["decision_schedule"] = _decision_schedule(strategy, record, root=root)
+            changed = _mapping(_mapping(decision).get("signal")).get("should_alert")
+            record["evaluation_changed"] = changed if type(changed) is bool else None
             record["observation_state"] = (
                 "retained_within_cadence" if _retained_observation_verified(strategy, record, decision, root=root)
                 else "current" if record["state_detail"] == "current" else "unavailable"
@@ -882,9 +884,9 @@ def build_operations_payload(
                 )
             )
         elif family == QQQ_FAMILY:
-            _emit(_qqq(formal, strategy, ledger))
+            _emit(_qqq(formal, strategy, ledger), ledger)
         elif family == BYD_FAMILY:
-            _emit(_byd(formal, strategy, ledger))
+            _emit(_byd(formal, strategy, ledger), ledger)
         elif family in RANKER_FAMILIES:
             _emit(_ranker(formal, strategy, ledger), ledger)
         elif family == CN27_FAMILY:
@@ -957,6 +959,8 @@ def validate_operations_payload(payload: object) -> None:
         seen_strategies.add(strategy_id)
         if value.get("status") not in STATUS_VALUES:
             raise StrategyOperationsError(f"invalid operations status for {model_id}")
+        if value.get("evaluation_changed") is not None and type(value["evaluation_changed"]) is not bool:
+            raise StrategyOperationsError(f"invalid evaluation change for {model_id}")
         if "observation_state" in value and value["observation_state"] not in {"current", "retained_within_cadence", "unavailable"}:
             raise StrategyOperationsError(f"invalid observation state for {model_id}")
         # Tolerant of pre-staleness payloads: the builder always emits
