@@ -81,6 +81,34 @@ def test_cnooc_issuer_event_does_not_apply_before_the_declared_ex_date(cutoff: s
         assert event["total_distributed_cash"] / event["total_shares"] == pytest.approx(0.81324)
 
 
+@pytest.mark.parametrize("retrieved_at,offset", [("2026-10-15T15:59:00Z", 0.0), ("2026-10-15T16:00:00Z", 0.81324)])
+def test_current_source_basis_can_be_later_than_bar_cutoff_without_advancing_it(retrieved_at, offset):
+    frame = pd.DataFrame({"date": ["2026-10-15"], "open": [13.572], "high": [14.0], "low": [13.0], "close": [13.8], "volume": [10]})
+    converted, receipt = reanchor_additive_qfq(frame, symbol="600938", cutoff="2026-10-15", bridge_path=BRIDGE, repository_root=ROOT, frozen_source_sha256=FROZEN_SHA, source_retrieved_at_utc=retrieved_at)
+    assert receipt["reference_cash_offset"] == pytest.approx(offset)
+    assert receipt["observation_cutoff"] == "2026-10-15"
+    assert converted.date.equals(frame.date) and converted.volume.equals(frame.volume)
+    assert converted.open.iloc[0] == pytest.approx(13.572 + offset)
+    assert receipt["translation_role"] == "vendor_representation_to_frozen_basis_not_cash_ledger"
+
+
+@pytest.mark.parametrize("retrieved_at", ["2026-10-14T00:00:00Z", "2026-10-16T00:00:00", "2026-10-16T08:00:00+08:00"])
+def test_invalid_or_older_retrieval_time_cannot_authorize_a_new_basis(retrieved_at):
+    with pytest.raises(ValueError, match="retrieval"):
+        reanchor_additive_qfq(pd.DataFrame(), symbol="600938", cutoff="2026-10-15", bridge_path=BRIDGE, repository_root=ROOT, frozen_source_sha256=FROZEN_SHA, source_retrieved_at_utc=retrieved_at)
+
+
+def test_later_source_basis_cannot_use_an_announcement_unknown_at_observation_cutoff(tmp_path):
+    payload = json.loads(BRIDGE.read_text())
+    next(event for event in payload["events"] if event["symbol"] == "600938")["announced_at"] = "2026-10-16"
+    candidate = tmp_path / "bridge.json"
+    candidate.write_text(json.dumps(payload))
+    frame = pd.DataFrame({"open": [13.572], "high": [14.0], "low": [13.0], "close": [13.8]})
+    converted, receipt = reanchor_additive_qfq(frame, symbol="600938", cutoff="2026-10-15", bridge_path=candidate, repository_root=ROOT, frozen_source_sha256=FROZEN_SHA, source_retrieved_at_utc="2026-10-16T00:00:00Z")
+    assert receipt["reference_cash_offset"] == 0.0
+    pd.testing.assert_frame_equal(converted, frame)
+
+
 @pytest.mark.parametrize("field,value", [("reference_cash_amount", 0.7), ("source_sha256", "0" * 64)])
 def test_unverified_adjustment_fails_closed(tmp_path: Path, field, value) -> None:
     payload = json.loads(BRIDGE.read_text())

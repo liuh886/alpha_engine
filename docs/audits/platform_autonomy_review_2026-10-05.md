@@ -739,3 +739,27 @@ publish 尚未结束的时长明确为 null；已另取最终 Actions 元数据�
 `archives/cn27-rejected-source-38792987386.zip`，228,221 bytes，SHA-256
 `d3c253c03eca9b439d6684b7a81f8ec1ce2c335952def7d033f7c68d56ef2dc3`。
 这份失败归档没有进入 selected-pool/model-data 来源注册表或任何训练门禁。
+
+### 2026-10-16：解除跨日期来源表示阻塞的本地验证
+
+[正式运行 38835569644](https://github.com/liuh886/alpha_engine/actions/runs/38835569644)
+仍请求 CN cutoff 10-15，600938 的已治理重读仍失败。查明是观察截止与实际
+取回时的复权基准未分别表示：10-16 的当前 vendor qfq 已包含已公告除息
+事件，不能用 10-15 的请求日期假定返回的表示仍停留在当天。
+
+修复复用原恢复器及 issuer-backed bridge：记录真实请求/取回 UTC 时间，
+同一上海日期才可接受，并限定所用发行人信息已在观察截止前公告、除息日期
+不晚于取回日。没有来源时间的旧调用仍按原 cutoff 选择事件。任何价格行
+越过观察 cutoff、跨日取数、错误 vendor 表示或历史不匹配均阻塞；没有放宽
+匹配容差，也没有信用现金股息或纳入未来会话。
+
+使用该运行的真实 CN provider，复用原 CN27 完整刷新及 preview 封存路径，
+本地推进到 10-15 成功。incumbent exact_replay；冻结前缀 729 report、8745
+positions、326 trades 均保持一致，model_selection_reopened=false。候选 bundle
+`846fa2f81a9d2b0d06cdd7a3487293ddfa14451aee6af783280589486bd4805c`；
+经济回测仍止于原 09-04，只有运行观察截止推进。600938 恢复回执绑定 10-16
+实际来源取回时间与 10-15 观察截止，并核验全部冻结 overlap。
+
+29 项价格基准/正式刷新测试通过，涵盖上海日期边界、未公告事实不可用、
+错误表示不能借时间戳通过、未来行和跨日取数拒绝；Ruff/mypy 通过。没有
+新增工作流或调度器。本地候选不是正式发布，也未据此增加合格会话计数。

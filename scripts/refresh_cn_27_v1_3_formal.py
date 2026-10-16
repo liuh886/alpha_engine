@@ -15,8 +15,10 @@ import argparse
 import hashlib
 import json
 from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -154,15 +156,21 @@ def _recover_pinned_source(
     preferred = strategy_symbol_vendor_overrides().get("cn", {}).get(symbol)
     if preferred != "tencent_qfq_history":
         raise Cn27V13RefreshError(f"no supported pinned recovery adapter for {symbol}")
+    requested_at = datetime.now(timezone.utc)
     try:
         result = TencentQfqHistoryAdapter().fetch_daily_bars(FetchRequest(
             symbol=symbol, market="cn", start=old.index.min().date().isoformat(), end=cutoff,
         ))
     except DataFetchError as exc:
         raise Cn27V13RefreshError(f"pinned source recovery failed for {symbol}: {exc}") from exc
+    retrieved_at = datetime.now(timezone.utc)
+    if requested_at.astimezone(ZoneInfo("Asia/Shanghai")).date() != retrieved_at.astimezone(ZoneInfo("Asia/Shanghai")).date():
+        raise Cn27V13RefreshError("pinned source retrieval crossed a market-date boundary")
     recovered = result.df.copy()
     recovered["date"] = pd.to_datetime(recovered["date"])
     recovered = recovered.set_index("date").sort_index()
+    if recovered.index.max() > cutoff_ts:
+        raise Cn27V13RefreshError("pinned source recovery exceeds the observation cutoff")
     recovery_dir.mkdir(parents=True, exist_ok=True)
     vendor_prices = recovered
     basis_bridge: dict[str, object] = {}
@@ -175,6 +183,7 @@ def _recover_pinned_source(
                 recovered, symbol=symbol, cutoff=cutoff, bridge_path=bridge_path,
                 repository_root=REPOSITORY_ROOT,
                 frozen_source_sha256=_sha256(REPOSITORY_ROOT / "artifacts/evidence/cn_all_weather_alpha_rotation_v1/source_ohlcv.csv"),
+                source_retrieved_at_utc=retrieved_at.isoformat(),
             )
         except (OSError, ValueError, KeyError, TypeError) as exc:
             raise Cn27V13RefreshError(f"price-basis bridge failed for {symbol}: {exc}") from exc
@@ -203,6 +212,9 @@ def _recover_pinned_source(
                 "source_path": candidate_source.as_posix(),
                 "source_sha256": _sha256(candidate_source),
                 "provider": result.provider, "cutoff": cutoff,
+                "price_basis_bridge": basis_bridge,
+                "source_requested_at_utc": requested_at.isoformat(),
+                "source_retrieved_at_utc": retrieved_at.isoformat(),
                 "research_only": True, "trade_ready": False,
             })
             raise Cn27V13RefreshError(f"pinned source also restated frozen history for {symbol}.{field}")
@@ -221,6 +233,8 @@ def _recover_pinned_source(
         "recovered_cutoff": fresh_recovered.index.max().date().isoformat(),
         "research_only": True, "trade_ready": False,
         "price_basis_bridge": basis_bridge,
+        "source_requested_at_utc": requested_at.isoformat(),
+        "source_retrieved_at_utc": retrieved_at.isoformat(),
     }
     return recovered.loc[recovered.index <= cutoff_ts, list(SOURCE_FIELDS)], recovery
 

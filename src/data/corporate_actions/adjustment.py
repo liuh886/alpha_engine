@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -14,12 +16,16 @@ _PRICE_COLUMNS = ("open", "high", "low", "close")
 def reanchor_additive_qfq(
     bars: pd.DataFrame, *, symbol: str, cutoff: str,
     bridge_path: Path, repository_root: Path, frozen_source_sha256: str,
+    source_retrieved_at_utc: str | None = None,
 ) -> tuple[pd.DataFrame, dict[str, object]]:
     """Translate a declared additive vendor basis using issuer events, never a fitted offset.
 
     The same translation applies to every input OHLC row: the frozen anchor
     is a research price basis, not a raw execution price or a cash ledger.
     The caller must still verify every frozen overlap and preserve its bytes.
+    A current vendor representation can include an ex-date later than the bar
+    cutoff. A recorded retrieval timestamp bounds that representation; only
+    issuer facts already announced by the bar cutoff may translate it back.
     """
     encoded = bridge_path.read_bytes()
     bridge = json.loads(encoded)
@@ -35,9 +41,18 @@ def reanchor_additive_qfq(
     anchor = pd.Timestamp(bridge["anchor_date"])
     if pd.Timestamp(cutoff) < anchor:
         raise ValueError("qfq cutoff precedes the frozen anchor")
+    basis_date = pd.Timestamp(cutoff)
+    if source_retrieved_at_utc is not None:
+        retrieved = datetime.fromisoformat(source_retrieved_at_utc.replace("Z", "+00:00"))
+        utc_offset = retrieved.utcoffset()
+        if utc_offset is None or utc_offset.total_seconds() != 0:
+            raise ValueError("qfq retrieval timestamp must be timezone-aware UTC")
+        basis_date = pd.Timestamp(retrieved.astimezone(ZoneInfo("Asia/Shanghai")).date())
+        if basis_date < pd.Timestamp(cutoff):
+            raise ValueError("qfq source retrieval precedes the observation cutoff")
     events = []
     for event in bridge["events"]:
-        if event["symbol"] != symbol or not anchor < pd.Timestamp(event["ex_date"]) <= pd.Timestamp(cutoff):
+        if event["symbol"] != symbol or not anchor < pd.Timestamp(event["ex_date"]) <= basis_date or pd.Timestamp(event["announced_at"]) > pd.Timestamp(cutoff):
             continue
         source = (repository_root / event["source_path"]).resolve()
         if not source.is_relative_to(repository_root.resolve()):
@@ -59,6 +74,9 @@ def reanchor_additive_qfq(
     return result, {
         "bridge_sha256": hashlib.sha256(encoded).hexdigest(),
         "anchor_date": bridge["anchor_date"], "price_role": bridge["price_role"],
+        "observation_cutoff": cutoff, "source_basis_date_upper_bound": basis_date.date().isoformat(),
+        "source_retrieved_at_utc": source_retrieved_at_utc,
+        "translation_role": "vendor_representation_to_frozen_basis_not_cash_ledger",
         "reference_cash_offset": offset, "events": events,
         "research_only": True, "trade_ready": False,
     }

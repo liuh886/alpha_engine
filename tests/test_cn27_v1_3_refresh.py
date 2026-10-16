@@ -384,3 +384,57 @@ def test_pinned_source_recovery_preserves_frozen_history(tmp_path: Path, monkeyp
     monkeypatch.setattr(TencentQfqHistoryAdapter, "fetch_daily_bars", wrong_fetch)
     with pytest.raises(Cn27V13RefreshError, match="pinned source also restated"):
         extend_bars(frozen_bars=bars, provider_dir=provider, cutoff="2026-09-11", recovery_dir=tmp_path / "rejected")
+
+
+def test_recovery_uses_recorded_vendor_basis_but_still_rejects_wrong_or_future_source(tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+    import scripts.refresh_cn_27_v1_3_formal as module
+    from src.data.adapters.base import FetchResult
+    from src.data.adapters.tencent_fqkline_adapter import TencentQfqHistoryAdapter
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 16, 0, 0, tzinfo=timezone.utc)
+
+    monkeypatch.setattr(module, "datetime", Clock)
+    old = _frozen_bars().loc[lambda df: df.symbol.eq("600938")].set_index("date")
+    # Synthetic extension tests basis and cutoff checks, not a real session result.
+    extra = old.tail(1).copy()
+    extra.index = pd.DatetimeIndex(["2026-10-15"], name="date")
+    truthful = pd.concat([old, extra])
+    vendor = truthful.copy()
+    vendor[list(FIELDS[:4])] -= 0.81324
+
+    def fetch(self, req):
+        return FetchResult(provider=self.name, symbol=req.symbol, market="cn", start=req.start, end=req.end, df=vendor.reset_index(), provider_symbol="sh600938")
+
+    monkeypatch.setattr(TencentQfqHistoryAdapter, "fetch_daily_bars", fetch)
+
+    def recover(name):
+        return module._recover_pinned_source(symbol="600938", old=old, frame=truthful, frozen_end=old.index.max(), cutoff="2026-10-15", recovery_dir=tmp_path / name)
+
+    recovered, receipt = recover("valid")
+    assert receipt["frozen_overlap_verified"] is True
+    assert receipt["recovered_cutoff"] == "2026-10-15"
+    assert receipt["price_basis_bridge"]["source_basis_date_upper_bound"] == "2026-10-16"
+    assert receipt["price_basis_bridge"]["observation_cutoff"] == "2026-10-15"
+    pd.testing.assert_frame_equal(recovered.loc[old.index], old.loc[:, list(FIELDS)], check_exact=False, atol=1e-10, rtol=0)
+    vendor = truthful.copy()  # The same timestamp cannot excuse an unapplied vendor event.
+    with pytest.raises(Cn27V13RefreshError, match="pinned source also restated"):
+        recover("wrong")
+    vendor.index = list(vendor.index[:-1]) + [pd.Timestamp("2026-10-16")]
+    vendor.index.name = "date"
+    with pytest.raises(Cn27V13RefreshError, match="exceeds the observation cutoff"):
+        recover("future")
+
+    times = iter([datetime(2026, 10, 15, 15, 59, tzinfo=timezone.utc), datetime(2026, 10, 15, 16, 0, tzinfo=timezone.utc)])
+
+    class CrossingClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return next(times)
+
+    monkeypatch.setattr(module, "datetime", CrossingClock)
+    with pytest.raises(Cn27V13RefreshError, match="market-date boundary"):
+        recover("crossing")
