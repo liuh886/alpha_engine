@@ -5,11 +5,58 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Mapping
 
 ASSETS = ("QQQI", "QQQ", "TQQQ", "SGOV")
 COST_BPS_PER_TURNOVER_UNIT = 10.0
 MACHINE_MARKER = "qqq-v4-3-signal"
+
+
+def plan_current_evaluation(
+    root: Path, *, now_utc: datetime, exclusive_end: str | None = None
+) -> dict[str, Any]:
+    """Gate daily work on accepted formal data and the existing sealed ledger."""
+    from src.artifacts.formal_bundle_reader import load_formal_run
+    from src.artifacts.strategy_signal_ledger import read_latest_evaluation
+    from src.governance.active_strategy_catalog import load_active_strategy_catalog
+    from src.research.market_session_clock import completed_market_date, exchange_sessions
+
+    model = "qqqi_qqq_tqqq_v4_3"
+    if now_utc.tzinfo is None:
+        raise ValueError("QQQ evaluation clock must be timezone-aware")
+    now_utc = now_utc.astimezone(timezone.utc)
+    active = load_active_strategy_catalog(root / "configs/strategies/registry.json")
+    strategy = active.by_model_version_id.get(model)
+    if strategy is None or strategy.market != "us" or strategy.model_family_id != "qqq_rotation":
+        raise ValueError("QQQ daily evaluation does not match the active strategy")
+    completed = completed_market_date("us", now_utc.date().isoformat(), now_utc=now_utc)
+    requested = date.fromisoformat(exclusive_end) - timedelta(days=1) if exclusive_end else date.fromisoformat(completed)
+    if requested.isoformat() > completed:
+        raise ValueError("QQQ requested cutoff exceeds the completed market date")
+    sessions = exchange_sessions("us", (requested - timedelta(days=14)).isoformat(), requested.isoformat())
+    if not sessions:
+        raise ValueError("QQQ completed exchange session unavailable")
+    cutoff = sessions[-1]
+    formal = load_formal_run(root, model)
+    if formal.evidence_cutoff > completed:
+        raise ValueError("QQQ formal evidence exceeds completed market date")
+    latest = read_latest_evaluation(root / strategy.signal_ledger, model_version_id=model)
+    latest_date = latest["latest_data_date"] if latest else None
+    if latest_date and latest_date > completed:
+        raise ValueError("QQQ sealed decision exceeds completed market date")
+    ready = formal.evidence_cutoff >= cutoff
+    due = ready and (latest_date is None or latest_date < cutoff)
+    return {
+        "schema_version": "qqq_current_evaluation_plan_v1", "model_version_id": model,
+        "cutoff": cutoff, "exclusive_end": (datetime.fromisoformat(cutoff).date() + timedelta(days=1)).isoformat(),
+        "latest_sealed_data_date": latest_date, "formal_bundle_id": formal.identity["bundle_id"],
+        "formal_evidence_cutoff": formal.evidence_cutoff, "due": due,
+        "status": "ready" if ready else "blocked",
+        "reason": "formal_data_not_current" if not ready else "evaluation_due" if due else "already_sealed",
+        "research_only": True, "trade_ready": False,
+    }
 
 
 def _weights(value: Mapping[str, Any]) -> dict[str, float]:

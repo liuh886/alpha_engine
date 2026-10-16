@@ -162,9 +162,15 @@ def test_outbox_workflow_triggers_and_fallback_schedule() -> None:
         "QQQ Rotation v4.3 Signal Alert",
         "BYD v1.3 Daily Signal",
         "10D Ranker Current Target",
+        "CN27 Current Target",
     ]
     assert triggers["workflow_run"]["types"] == ["completed"]
     assert "schedule" in triggers
     assert triggers["schedule"] == [{"cron": "15 */6 * * *"}]
     assert "workflow_dispatch" in triggers
     assert "pull_request" in triggers
+    steps = content["jobs"]["deliver"]["steps"]
+    names = [step.get("name") for step in steps]
+    assert names.index("Commit append-only delivery receipts") < names.index("Request strategy operations publication") < names.index("Fail after persisting delivery failure evidence")
+    dispatch = next(step for step in steps if step.get("name") == "Request strategy operations publication")
+    assert 'event_type: "strategy_operations_publication"' in dispatch["run"]
