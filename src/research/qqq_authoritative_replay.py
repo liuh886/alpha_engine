@@ -353,6 +353,41 @@ def _verify_qqq_research_source(root: Path, bundle: Path, data_identity: Mapping
     load_etf_reference_bundle(bundle, require_strategy_ready=True)
 
 
+def verify_qqq_observation_source(
+    root: Path, *, bundle: Path, data_identity: Mapping[str, Any],
+    cutoff: str, bars: Mapping[str, Any], contract: Mapping[str, Any],
+    fear_greed: Any,
+) -> dict[str, Any]:
+    """Verify this observation without advancing or rewriting formal economics."""
+    _verify_qqq_research_source(root, bundle, data_identity, cutoff=cutoff)
+    accepted, manifest_path, manifest_sha = _accepted_qqq_reference(root)
+    boundary = _report_boundary(accepted)
+    if boundary > cutoff:
+        raise RulesFormalReplayError("QQQ observation precedes the accepted decision trace")
+    _, results, _ = run_v4_33_comparison(bars, contract, fear_greed, cash_symbol="SGOV")
+    observed = _json_safe(build_qqq_package(
+        results[JOINT_STRATEGY], bars, generated_at="observation-verification",
+        evidence_cutoff=cutoff, backtest_id="qqq-observation-verification",
+        evidence={}, freshness={},
+    ))
+    # Only the already accepted decision prefix is compared. New economics
+    # remain unpublished; adjusted-price restatements cannot rewrite the past.
+    for section in ("report", "positions", "trades"):
+        observed[section] = [row for row in observed[section] if row["date"] <= boundary]
+    comparison = compare_qqq_authoritative_trace(accepted, observed)
+    if not comparison["exact"]:
+        raise RulesFormalReplayError("QQQ observation frozen decision prefix mismatch: " + str(comparison))
+    return {
+        "decision": "exact_replay", "scope": "qqq_daily_observation",
+        "source_cutoff": cutoff, "accepted_trace_end": boundary,
+        "accepted_manifest_path": manifest_path.relative_to(root).as_posix(),
+        "accepted_manifest_sha256": manifest_sha,
+        "source_manifest_sha256": data_identity["manifest_sha256"],
+        "formal_release_advanced": False, "model_selection_reopened": False,
+        "research_only": True, "trade_ready": False,
+    }
+
+
 def verify_qqq_authoritative_replay(
     repository_root: str | Path,
     *,

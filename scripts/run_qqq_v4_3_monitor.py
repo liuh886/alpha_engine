@@ -96,6 +96,16 @@ def main() -> int:
     summary["coverage"] = coverage.to_dict("records")
     if args.expected_cutoff and summary["latest_data_date"] != args.expected_cutoff:
         raise ValueError("QQQ monitor inputs do not reach the planned completed cutoff")
+    if args.expected_cutoff:
+        if args.etf_data_bundle is None:
+            raise ValueError("QQQ canonical observation requires a governed reference bundle")
+        from src.research.qqq_authoritative_replay import verify_qqq_observation_source
+
+        summary["data_identity"]["observation_verification"] = verify_qqq_observation_source(
+            Path(__file__).resolve().parents[1], bundle=args.etf_data_bundle.resolve(),
+            data_identity=data_identity, cutoff=args.expected_cutoff,
+            bars=bars, contract=contract, fear_greed=fear_greed,
+        )
 
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
