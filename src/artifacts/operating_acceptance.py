@@ -24,7 +24,7 @@ def prepare_operating_review(
     """Assemble actual current evidence; leave independent review undeclared."""
     from src.artifacts.formal_bundle_reader import load_formal_run
     from src.artifacts.strategy_operations import build_operations_payload
-    from src.artifacts.strategy_signal_ledger import _delivery_receipts, read_latest_evaluation
+    from src.artifacts.strategy_signal_ledger import _delivery_receipts, _validate_correction, read_latest_evaluation
     from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
     output_root.mkdir(parents=True, exist_ok=True)
@@ -85,13 +85,15 @@ def prepare_operating_review(
                 raise ValueError("decision delivery receipt is missing")
             delivery, _ = max(deliveries, key=lambda pair: (str(pair[1].get("created_at_utc", "")), str(pair[1].get("workflow", {}).get("run_id", ""))))
             item["delivery"] = copy(f"evidence/{strategy_id}/delivery.json", delivery)
-            previous = []
-            for path in (ledger / "records").glob("*.json"):
-                value = json.loads(path.read_text())
-                if value["signal_date"] < latest["signal_date"]:
-                    previous.append((value["signal_date"], path))
+            previous = sorted(path for path in (ledger / "records").glob("*.json") if path.stem < latest["signal_date"])
             if previous:
-                item["previous_decision"] = copy(f"evidence/{strategy_id}/previous-decision.json", max(previous)[1])
+                previous_path = previous[-1]
+                correction = ledger / "corrections" / previous_path.name
+                if correction.is_file():
+                    _validate_correction(ledger, correction, model_version_id=strategy.model_version_id)
+                    item["previous_original_decision"] = copy(f"evidence/{strategy_id}/previous-original.json", previous_path)
+                    previous_path = correction
+                item["previous_decision"] = copy(f"evidence/{strategy_id}/previous-decision.json", previous_path)
             run = load_formal_run(repository_root, strategy.model_version_id)
             item["formal_manifest"] = copy(f"evidence/{strategy_id}/manifest.json", run.manifest_path)
             item["formal_lineage"] = copy(f"evidence/{strategy_id}/lineage.json", run.manifest_path.parent / "lineage.json")

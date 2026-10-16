@@ -106,11 +106,14 @@ def test_remote_collection_never_falls_back_or_accepts_unbound_archives(tmp_path
 
 def test_typed_strategy_review_binds_formal_decision_and_delivery(tmp_path, monkeypatch):
     from src.artifacts.operating_acceptance import _review_strategies
-    from src.artifacts.strategy_signal_ledger import seal_signal_decision, record_signal_delivery
+    from src.artifacts.strategy_signal_ledger import seal_signal_decision, record_signal_delivery, correct_latest_decision
     from tests.test_strategy_signal_ledger import _signal, MODEL
 
     signal = _signal(signal_date="2026-10-14", target_state=0)
     kwargs = {"ledger_root": tmp_path / "ledger", "model_version_id": MODEL, "signal": signal, "workflow_run_id": "2", "commit_sha": "b" * 40, "created_at_utc": "2026-10-14T21:00:00Z"}
+    previous_kwargs = {**kwargs, "signal": _signal(signal_date="2026-10-13", target_state=0), "workflow_run_id": "1", "created_at_utc": "2026-10-13T21:00:00Z"}
+    original = seal_signal_decision(**previous_kwargs)
+    corrected = correct_latest_decision(**previous_kwargs, expected_record_sha256=hashlib.sha256(original.read_bytes()).hexdigest(), reason="preserve explicit previous correction provenance")
     decision_path = seal_signal_decision(**kwargs)
     delivery_path = record_signal_delivery(**kwargs, delivery_status="not_required")
     decision = json.loads(decision_path.read_text())
@@ -160,6 +163,8 @@ def test_typed_strategy_review_binds_formal_decision_and_delivery(tmp_path, monk
     draft = json.loads((tmp_path / "review-draft.json").read_text())["2:1"]
     assert draft["manual_interventions"] is None and draft["reviewed_by"] is None
     assert draft["cadence_and_freshness_verified"] is False
+    assert draft["decision_delivery_evidence"][0]["previous_decision"]["sha256"] == hashlib.sha256(corrected.read_bytes()).hexdigest()
+    assert draft["decision_delivery_evidence"][0]["previous_original_decision"]["sha256"] == hashlib.sha256(original.read_bytes()).hexdigest()
     report = build_acceptance_report(source, declarations=tmp_path / "review-draft.json", through="2026-10-14")
     assert report["markets"]["us"]["qualified_sessions"] == 0
     metadata["run"]["conclusion"] = "failure"
