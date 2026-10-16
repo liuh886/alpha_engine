@@ -37,7 +37,7 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
             <span className={brief.kind === 'attention' ? 'text-xs font-medium text-amber-700 dark:text-amber-300' : 'text-xs font-medium text-muted-foreground'}>{loading && !snapshot ? 'Checking observation' : brief.label}</span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">{run.market.toUpperCase()} · {snapshot
-            ? `Observed ${snapshot.latestCompletedSession ?? 'unknown'} · target dated ${snapshot.asOf ?? 'unknown'} · formal evidence ${run.evidenceCutoff}`
+            ? `Observed ${snapshot.latestCompletedSession ?? 'unknown'} · target dated ${snapshot.decisionSchedule?.signalDate ?? snapshot.asOf ?? 'unknown'} · formal evidence ${run.evidenceCutoff}`
             : `Formal evidence ${run.evidenceCutoff}; current observation not verified`}</p>
           {snapshot?.decisionSchedule?.completedThrough && <p className="mt-1 text-[11px] text-muted-foreground">Completed market through {snapshot.decisionSchedule.completedThrough}</p>}
           <p className="mt-2 break-words text-sm">{brief.reason}</p>

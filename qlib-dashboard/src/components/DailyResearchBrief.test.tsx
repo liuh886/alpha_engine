@@ -62,6 +62,15 @@ describe('DailyResearchBrief', () => {
     expect(openAccount).toHaveBeenCalledOnce();
   });
 
+  it('dates a locked periodic target separately from its daily observation', () => {
+    const snapshot = parseStrategyOperationsSnapshot({ ...record, evaluation_changed: false,
+      decision_schedule: { signal_date: '2026-09-17', completed_through: '2026-09-30',
+        cadence_sessions: 30, sessions_until_due: 21, state: 'within_cadence', execution_pending: true } });
+    render(<MemoryRouter><DailyResearchBrief runs={[run]} snapshots={new Map([['qqq', snapshot]])} loading={false} reload={reload} /></MemoryRouter>);
+    expect(screen.getByText(/Observed 2026-09-30 · target dated 2026-09-17/)).toBeInTheDocument();
+    expect(screen.getByText('Unchanged at last evaluation')).toBeInTheDocument();
+  });
+
   it('offers read retry separately from a failed notification recovery', () => {
     const other = { ...run, key: 'delivery', title: 'Delivery example', modelVersionId: 'delivery' };
     const snapshots = new Map([

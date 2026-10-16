@@ -83,6 +83,20 @@ reference meets the evidence contract.
 
 ### Accept usefulness and reliability, not task counts
 
+User-directed functional delivery priority (2026-10-16): deliver usable daily
+observation, explanation and recovery increments while operating and prospective
+evidence accumulates. The 20-session acceptance and a blocked historical-data
+contract are not blanket prerequisites for independently valid product work.
+Each affected data/model gate and the research-only boundary still apply.
+
+The Overview daily brief is a disposable presentation of the existing validated
+Strategy Operations records. Evaluation change claims come from the sealed
+signal flag, not inferred allocation deltas. Observation, locked-target and
+formal dates remain separate. Recovery uses the existing reader, monitoring and
+workflow entrypoints; the static page does not acquire job-execution privileges.
+Unchanged automatic outbox handoffs skip republication; new failure receipts,
+scheduled fallback and manual recovery retain their publication path.
+
 The current view should make these facts visible together: usable evidence
 cutoff, current governed state, target/change, reason and supporting evidence,
 material uncertainty/blocker, and next scheduled evaluation. A user should not

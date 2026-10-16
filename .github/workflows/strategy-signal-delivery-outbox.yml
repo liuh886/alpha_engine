@@ -118,9 +118,10 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Request strategy operations publication
-        # An unchanged outbox check must not fan out another publication/review.
+        # Skip duplicate strategy handoffs, retaining manual/scheduled recovery
+        # when a previous dispatch failed after committing its receipt.
         # New failure receipts still publish before the final failure step.
-        if: steps.receipts.outputs.changed == 'true'
+        if: steps.receipts.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
