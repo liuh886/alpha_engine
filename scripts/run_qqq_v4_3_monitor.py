@@ -5,20 +5,12 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from datetime import datetime, timezone
 from typing import Any
-
-import pandas as pd
-import yaml
-
-from src.data.adapters.cnn_fear_greed import fetch_cnn_fear_greed
-from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
-from src.research.qqq_v4_3_monitor import build_v4_3_monitor_summary
-from src.research.vix_rotation_experiment import _normalise_close, config_from_contract
-from src.research.vxn_bridge_allocation_experiment import run_bridge_allocation_comparison
-from src.research.vxn_leverage_overlay_experiment import generate_vxn_leverage_veto_states
 
 
 def _json_default(value: Any) -> Any:
+    import pandas as pd
     if isinstance(value, (pd.Timestamp, Path)):
         return str(value)
     if hasattr(value, "item"):
@@ -48,12 +40,36 @@ def main() -> int:
     )
     parser.add_argument("--end-date", default=None)
     parser.add_argument("--etf-data-bundle", type=Path, default=None)
+    parser.add_argument("--check-due-output", type=Path)
+    parser.add_argument("--github-output", type=Path)
+    parser.add_argument("--expected-cutoff")
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path("artifacts/evidence/qqq_rotation_v4_3_current_monitor"),
     )
     args = parser.parse_args()
+
+    if args.check_due_output:
+        from src.research.qqq_v4_3_signal_alerts import plan_current_evaluation
+
+        plan = plan_current_evaluation(Path(__file__).resolve().parents[1], now_utc=datetime.now(timezone.utc), exclusive_end=args.end_date or None)
+        args.check_due_output.parent.mkdir(parents=True, exist_ok=True)
+        args.check_due_output.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
+        if args.github_output:
+            with args.github_output.open("a", encoding="utf-8") as handle:
+                for key in ("due", "cutoff", "exclusive_end"):
+                    handle.write(f"{key}={str(plan[key]).lower()}\n")
+        print(json.dumps(plan))
+        return 0 if plan["status"] == "ready" else 2
+
+    import yaml
+    from src.data.adapters.cnn_fear_greed import fetch_cnn_fear_greed
+    from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
+    from src.research.qqq_v4_3_monitor import build_v4_3_monitor_summary
+    from src.research.vix_rotation_experiment import _normalise_close, config_from_contract
+    from src.research.vxn_bridge_allocation_experiment import run_bridge_allocation_comparison
+    from src.research.vxn_leverage_overlay_experiment import generate_vxn_leverage_veto_states
 
     contract = yaml.safe_load(args.contract.read_text(encoding="utf-8"))
     end_date = _effective_end_date(args.end_date, contract)
@@ -78,6 +94,8 @@ def main() -> int:
         data_identity=data_identity,
     )
     summary["coverage"] = coverage.to_dict("records")
+    if args.expected_cutoff and summary["latest_data_date"] != args.expected_cutoff:
+        raise ValueError("QQQ monitor inputs do not reach the planned completed cutoff")
 
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)

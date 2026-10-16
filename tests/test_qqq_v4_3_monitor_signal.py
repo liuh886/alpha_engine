@@ -1,8 +1,52 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
 import pandas as pd
 
 from scripts.run_qqq_v4_3_monitor import _effective_end_date
+
+
+def test_daily_evaluation_requires_current_formal_data_and_skips_sealed_cutoff(monkeypatch):
+    from src.research.qqq_v4_3_signal_alerts import plan_current_evaluation
+
+    root = Path(__file__).resolve().parents[1]
+    now = datetime(2026, 10, 16, 3, tzinfo=timezone.utc)
+    formal = SimpleNamespace(evidence_cutoff="2026-10-15", identity={"bundle_id": "a" * 64})
+    latest = {"latest_data_date": "2026-10-14"}
+    monkeypatch.setattr("src.artifacts.formal_bundle_reader.load_formal_run", lambda *args: formal)
+    monkeypatch.setattr("src.artifacts.strategy_signal_ledger.read_latest_evaluation", lambda *args, **kwargs: latest)
+    plan = plan_current_evaluation(root, now_utc=now)
+    assert plan["due"] is True and plan["cutoff"] == "2026-10-15"
+    assert plan["exclusive_end"] == "2026-10-16"
+    latest["latest_data_date"] = "2026-10-15"
+    assert plan_current_evaluation(root, now_utc=now)["due"] is False
+    formal.evidence_cutoff = "2026-10-14"
+    blocked = plan_current_evaluation(root, now_utc=now)
+    assert blocked["status"] == "blocked" and blocked["due"] is False
+    with pytest.raises(ValueError, match="exceeds the completed"):
+        plan_current_evaluation(root, now_utc=now, exclusive_end="2026-10-17")
+
+
+def test_qqq_handoff_is_success_only_and_gates_network_and_sealing():
+    import yaml
+
+    root = Path(__file__).resolve().parents[1]
+    workflow = yaml.safe_load((root / ".github/workflows/qqq-v4-3-signal-alert.yml").read_text())
+    triggers = workflow.get("on", workflow.get(True))
+    assert triggers["workflow_run"]["workflows"] == ["Reviewed Formal Backtest Refresh"]
+    condition = workflow["jobs"]["evaluate"]["if"]
+    assert "conclusion == 'success'" in condition and "head_branch == 'main'" in condition
+    assert "head_repository.full_name == github.repository" in condition
+    steps = {step.get("name"): step for step in workflow["jobs"]["evaluate"]["steps"]}
+    for name in ("Build governed QQQ reference bundle", "Evaluate current allocation", "Build factor-bound decision", "Seal canonical QQQ decision", "Commit canonical QQQ decision"):
+        assert steps[name]["if"] == "steps.due.outputs.due == 'true'"
+    assert "steps.due.outputs.cutoff" in steps["Build governed QQQ reference bundle"]["run"]
+    assert "--expected-cutoff" in steps["Evaluate current allocation"]["run"]
 from src.research.qqq_v4_3_monitor import latest_next_open_target
 from src.research.qqq_v4_3_signal_alerts import build_v4_3_signal_alert
 

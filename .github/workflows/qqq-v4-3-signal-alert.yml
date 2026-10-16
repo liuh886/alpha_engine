@@ -17,6 +17,9 @@ on:
       - "tests/test_strategy_signal_ledger.py"
   schedule:
     - cron: "30 0 * * 2-6"
+  workflow_run:
+    workflows: [Reviewed Formal Backtest Refresh]
+    types: [completed]
   workflow_dispatch:
     inputs:
       end_date:
@@ -62,7 +65,12 @@ jobs:
             -q --strict-markers --tb=short
 
   evaluate:
-    if: github.event_name != 'pull_request'
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     env:
@@ -76,19 +84,33 @@ jobs:
         id: source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/setup-python-uv
+      - name: Check sealed QQQ decision before data work
+        id: due
+        env:
+          REQUESTED_END_DATE: ${{ inputs.end_date }}
+        run: >-
+          uv run python scripts/run_qqq_v4_3_monitor.py
+          --check-due-output artifacts/signals/qqq_rotation_v4_3/evaluation-plan.json
+          --end-date "$REQUESTED_END_DATE"
+          --github-output "$GITHUB_OUTPUT"
       - name: Build governed QQQ reference bundle
+        if: steps.due.outputs.due == 'true'
         run: >-
           uv run python scripts/data/build_etf_reference_bundle.py
           --output-root artifacts/data/qqqi_qqq_tqqq_reference_research_v2
           --contract configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml
           --require-source-policy yahoo_research_v2
+          --end-date "${{ steps.due.outputs.cutoff }}"
       - name: Evaluate current allocation
+        if: steps.due.outputs.due == 'true'
         run: >-
           uv run python scripts/run_qqq_v4_3_monitor.py
-          --end-date "${{ inputs.end_date }}"
+          --end-date "${{ steps.due.outputs.exclusive_end }}"
+          --expected-cutoff "${{ steps.due.outputs.cutoff }}"
           --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_research_v2
           --output-dir "$MONITOR_ROOT"
       - name: Build factor-bound decision
+        if: steps.due.outputs.due == 'true'
         id: signal
         run: >-
           uv run python scripts/run_qqq_v4_3_signal_alert.py
@@ -96,6 +118,7 @@ jobs:
           --output-dir "$SIGNAL_ROOT"
           --github-output "$GITHUB_OUTPUT"
       - name: Seal canonical QQQ decision
+        if: steps.due.outputs.due == 'true'
         env:
           EXECUTION_SHA: ${{ steps.source.outputs.sha }}
         run: |
@@ -107,6 +130,7 @@ jobs:
             --commit-sha "$EXECUTION_SHA" \
             --created-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
       - name: Commit canonical QQQ decision
+        if: steps.due.outputs.due == 'true'
         run: |
           set -euo pipefail
           git config user.name "AlphaEngine Signal Agent"
