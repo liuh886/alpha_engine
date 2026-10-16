@@ -6,6 +6,7 @@ import type { GovernedRunSummary } from '@/lib/governed-run';
 import { describeStrategyObservation, type StrategyOperationsSnapshot } from '@/lib/strategy-operations';
 
 const WORKFLOWS = 'https://github.com/liuh886/alpha_engine/actions/workflows/';
+const DISPLAY_ORDER = { changed: 0, attention: 1, retained: 2, unchanged: 3, access: 4, pending: 5 };
 
 export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
   runs: GovernedRunSummary[];
@@ -20,7 +21,7 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
       && access.canAccess(access.requiredTier('strategy', snapshot.strategyId)) : true;
     return { run, snapshot: accessible && !snapshot?.readState ? snapshot : undefined,
       brief: snapshot && !snapshot.strategyId ? describeStrategyObservation() : describeStrategyObservation(snapshot, accessible) };
-  });
+  }).sort((a, b) => DISPLAY_ORDER[a.brief.kind] - DISPLAY_ORDER[b.brief.kind]);
   const count = (kind: string) => entries.filter(entry => entry.brief.kind === kind).length;
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm" aria-label="Daily research brief" aria-busy={loading}>

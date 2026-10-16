@@ -267,6 +267,8 @@ test('overview brief explains the last evaluation and retains its actual dates',
   await expect(row.getByText('Changed at last evaluation', { exact: true })).toBeVisible();
   await expect(row.getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
   await expect(row.getByText('Observed 2026-07-31 · target dated 2026-07-31', { exact: false })).toBeVisible();
+  await page.getByRole('heading', { name: 'What are the strategies doing now?', exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('daily-research-brief-first-viewport.png') });
   await row.getByText('Decision evidence', { exact: true }).click();
   await expect(row.getByText('VIX close: calm · veto · observed 2026-07-31')).toBeVisible();
   expect(errors).toEqual([]);

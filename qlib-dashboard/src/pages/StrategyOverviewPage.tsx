@@ -32,7 +32,7 @@ export function StrategyOverviewPage() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6 pb-16">
-      <section className="grid gap-6 border-b pb-6 xl:grid-cols-[minmax(0,1fr)_440px] xl:items-end">
+      <section className="border-b pb-6">
         <div className="max-w-4xl">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Strategy operating console</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">What are the strategies doing now?</h1>
@@ -40,15 +40,17 @@ export function StrategyOverviewPage() {
             Review the latest observations, their reasons and the next step. Formal performance stays public; current targets and drivers follow each strategy’s access policy.
           </p>
         </div>
-
-        <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-          <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+      </section>
+      <OperationsReadStatus loading={loading} issues={issues} reload={reload} snapshots={snapshots} />
+      <DailyResearchBrief runs={formalRuns} snapshots={snapshots} loading={loading} reload={reload} />
+      <details className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Featured formal performance</p>
               <p className="mt-1 truncate text-sm font-semibold">{featured?.title ?? 'Formal strategy'}</p>
             </div>
             <TrendingUp className="h-5 w-5 shrink-0 text-primary" />
-          </div>
+          </summary>
           <div className="grid grid-cols-2 gap-px bg-border">
             <OverviewMetric label="Total return" value={percent(metric(featured, 'total_return'))} emphasis />
             <OverviewMetric label="CAGR" value={percent(metric(featured, 'annualized_return'))} />
@@ -60,11 +62,7 @@ export function StrategyOverviewPage() {
             <div className="px-3 py-2"><p className="text-[9px] uppercase tracking-wide text-muted-foreground">Operational</p><p className="mt-0.5 text-xs font-semibold">{operational}</p></div>
             <div className="px-3 py-2"><p className="text-[9px] uppercase tracking-wide text-muted-foreground">Attention</p><p className="mt-0.5 text-xs font-semibold">{attention}</p></div>
           </div>
-        </div>
-      </section>
-
-      <OperationsReadStatus loading={loading} issues={issues} reload={reload} snapshots={snapshots} />
-      <DailyResearchBrief runs={formalRuns} snapshots={snapshots} loading={loading} reload={reload} />
+      </details>
       <StrategyFleet runs={formalRuns} snapshots={snapshots} loading={loading} />
 
       <section className="grid gap-4 lg:grid-cols-2">
