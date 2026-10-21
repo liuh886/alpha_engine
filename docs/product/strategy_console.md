@@ -44,8 +44,18 @@ public-shell contract.
 
 ## Reading and recovery
 
-Overview and Operating Status use the same observation reader and permission
-semantics. Access required, pending reads, failures, unavailable sources,
+Overview, strategy detail and Operating Status share one in-memory observation
+reader in the existing workspace. Route navigation reuses its verified results;
+explicit refresh and returning to a visible tab recheck operations. Account,
+permission and formal-identity changes invalidate the previous read immediately,
+including late responses. Same-identity refreshes retain the last verified
+observations at their original dates, explicitly labeled as a previous read;
+failed runtime authorization or identity validation removes the affected private
+values. Previous reads never establish a fresh observation or operating-session
+credit. A read issue retains its affected model identity so a
+failure elsewhere does not become the selected strategy's blocker. Static source
+health is read on Operating Status only. No additional cache, database or
+scheduler is introduced. Access required, pending reads, failures, unavailable sources,
 unchanged decisions and cadence-retained targets remain distinct. Observation,
 target and formal evidence dates are shown separately.
 

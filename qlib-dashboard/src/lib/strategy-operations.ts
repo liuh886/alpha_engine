@@ -60,7 +60,8 @@ export interface StrategyOperationsSnapshot {
   strategyId: string;
   modelVersionId: string;
   status: StrategyOperationalStatus;
-  readState?: 'protected' | 'unavailable';
+  /** UI read state; retained never changes the source cutoff or wire contract. */
+  readState?: 'protected' | 'unavailable' | 'retained';
   observationState?: 'current' | 'retained_within_cadence' | 'unavailable';
   evaluationChanged?: boolean | null;
   stateDetail?: StateDetail;
@@ -452,6 +453,10 @@ export function describeStrategyObservation(snapshot?: StrategyOperationsSnapsho
     return { kind: 'access', label: 'Access required', reason: 'Current observations require strategy access.',
       nextStep: 'Sign in or check access. Formal evidence remains public.', recovery: null };
   }
+  if (snapshot?.readState === 'retained') {
+    return { kind: 'pending', label: 'Previous verified read', reason: snapshot.decisionReason,
+      nextStep: 'A newer read is pending or failed. The original evidence cutoff is retained; retry before treating this as current.', recovery: 'read' };
+  }
   if (!snapshot || snapshot.readState === 'unavailable') {
     return { kind: snapshot ? 'attention' : 'pending', label: 'Read unavailable', reason: 'Current observations could not be verified.',
       nextStep: 'Retry reading published records. This does not start a data refresh.', recovery: 'read' };
@@ -499,6 +504,11 @@ export function summarizeStrategySignal(snapshot?: StrategyOperationsSnapshot): 
     };
   }
 
+  if (snapshot.readState === 'retained') {
+    return { direction: 'pending', badgeLabel: 'Previous verified read', actionText: 'Refresh current observations',
+      summaryNote: `Last verified observation through ${snapshot.latestCompletedSession || snapshot.asOf || 'unknown'}; a newer read is pending or failed.`,
+      isAttention: false, isNew: false, isHold: false };
+  }
   if (snapshot.readState) {
     const protectedRead = snapshot.readState === 'protected';
     return {

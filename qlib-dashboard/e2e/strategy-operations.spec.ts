@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -10,60 +9,6 @@ const formal = JSON.parse(readFileSync(new URL('../dist/data/formal-model-runs/c
   .records.find((row: { model_version_id: string }) => row.model_version_id === 'qqqi_qqq_tqqq_v4_3');
 const formalIdentity = { formal_bundle_id: formal.bundle_id, formal_run_id: formal.run_id,
   formal_evidence_cutoff: formal.evidence_cutoff };
-
-function sha256(text: string): string {
-  return createHash('sha256').update(text).digest('hex');
-}
-
-const modelsText = JSON.stringify([
-  {
-    id: 'qqqi_qqq_tqqq_v4_3',
-    name: 'QQQ Rotation v4.3',
-    market: 'us',
-    model_type: 'rule_based_rotation',
-    stage: 'BASELINE',
-    created_at: '2026-08-02T00:00:00Z',
-    metrics: { 'Annualized Return': 0.2, 'Max Drawdown': -0.15 },
-  },
-]);
-const exportManifestText = JSON.stringify({
-  generated_at: '2026-08-02T00:00:00Z',
-  snapshot_id: 'operations-fixture',
-});
-const bundleManifest = {
-  schema_version: '1.0.0',
-  frontend_reader_range: '>=1.0.0 <2.0.0',
-  bundle_id: 'a'.repeat(64),
-  title: 'Strategy Operations Fixture',
-  generated_at: '2026-08-02T00:00:00Z',
-  evidence_cutoff: '2026-07-31',
-  research_only: true,
-  trade_ready: false,
-  scope: { markets: ['us'], snapshot_id: 'operations-fixture', model_count: 1 },
-  warnings: [],
-  blocked_gates: ['trade_ready'],
-  promotion_decision: 'formal_baseline',
-  artifacts: [
-    {
-      artifact_id: '1'.repeat(16),
-      kind: 'model_index',
-      path: 'data/models.json',
-      media_type: 'application/json',
-      byte_size: Buffer.byteLength(modelsText),
-      sha256: sha256(modelsText),
-      required: true,
-    },
-    {
-      artifact_id: '2'.repeat(16),
-      kind: 'static_export_manifest',
-      path: 'data/manifest.json',
-      media_type: 'application/json',
-      byte_size: Buffer.byteLength(exportManifestText),
-      sha256: sha256(exportManifestText),
-      required: true,
-    },
-  ],
-};
 
 const runtimeOperation = {
   strategy_id: 'qqq_rotation',
@@ -168,19 +113,7 @@ const operations = {
   ],
 };
 
-async function mockBundle(page: Page) {
-  await page.route('**/bundle/**', async (route) => {
-    const pathname = new URL(route.request().url()).pathname;
-    if (pathname.endsWith('/alpha-engine-bundle.json')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(bundleManifest) });
-    } else if (pathname.endsWith('/data/models.json')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: modelsText });
-    } else if (pathname.endsWith('/data/manifest.json')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: exportManifestText });
-    } else {
-      await route.fulfill({ status: 404, body: 'not declared' });
-    }
-  });
+async function mockOperations(page: Page) {
   await page.route('**/data/strategy-operations/snapshots.json', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(operations) });
   });
@@ -191,17 +124,28 @@ async function assertNoHorizontalOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
-async function installProMembership(page: Page, options: { failFirst?: boolean; hangFirst?: boolean; mismatched?: boolean; stale?: boolean } = {}): Promise<void> {
+async function installProMembership(page: Page, options: { failFirst?: boolean; hangFirst?: boolean; mismatched?: boolean; stale?: boolean; manualFirst?: boolean } = {}): Promise<void> {
   await page.route('**/admin/shared/account-shell.js*', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
   await page.addInitScript(({ fullSnapshot, options }) => {
     let calls = 0;
-    const snapshot = { loading: false, isPro: true, user: { id: 'pro-fixture' } };
+    let snapshot = { loading: false, isPro: true, user: { id: 'pro-fixture' } };
+    const listeners = new Set<(value: typeof snapshot) => void>();
+    let releaseFirstRead: (() => void) | undefined;
+    (window as any).__operationsFixture = {
+      calls: () => calls,
+      setPro: (isPro: boolean) => {
+        snapshot = { ...snapshot, isPro, user: { id: isPro ? 'pro-fixture' : 'free-fixture' } };
+        listeners.forEach(listener => listener(snapshot));
+      },
+      release: () => releaseFirstRead?.(),
+    };
     (window as any).HaoAccount = {
       getState: () => snapshot,
       open: () => undefined,
       subscribe: (listener: (value: typeof snapshot) => void) => {
+        listeners.add(listener);
         listener(snapshot);
-        return () => undefined;
+        return () => { listeners.delete(listener); };
       },
       getClient: async () => ({
         from: (table: string) => {
@@ -227,6 +171,12 @@ async function installProMembership(page: Page, options: { failFirst?: boolean; 
                 eq: () => query,
                 maybeSingle: async () => {
                   calls += 1;
+                  if (options.manualFirst && calls === 1) return new Promise(resolve => {
+                    releaseFirstRead = () => resolve({ data: {
+                      strategy_id: 'qqq_rotation', model_version_id: fullSnapshot.model_version_id,
+                      snapshot: fullSnapshot,
+                    }, error: null });
+                  });
                   if (options.hangFirst && calls === 1) return new Promise(() => {});
                   if (options.failFirst && calls === 1) return { data: null, error: { message: 'Temporary read failure' } };
                   return table === 'strategy_operation_snapshots' ? {
@@ -259,7 +209,7 @@ async function installProMembership(page: Page, options: { failFirst?: boolean; 
 test('overview brief explains the last evaluation and retains its actual dates', async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  await mockBundle(page);
+  await mockOperations(page);
   await installProMembership(page);
   await page.goto('/#/app');
   const brief = page.getByRole('region', { name: 'Daily research brief' });
@@ -277,7 +227,7 @@ test('overview brief explains the last evaluation and retains its actual dates',
 });
 
 test('overview brief separates read retry from data recovery', async ({ page }) => {
-  await mockBundle(page);
+  await mockOperations(page);
   await installProMembership(page, { failFirst: true, stale: true });
   await page.goto('/#/app');
   const row = page.getByRole('region', { name: 'Daily research brief' }).getByRole('article', { name: 'QQQR v4.3 daily observation' });
@@ -298,7 +248,7 @@ test('strategy current operations are authorized by runtime policy and hydrated 
   page.on('request', (request) => {
     if (request.url().startsWith('https://api.github.com/')) githubApiRequests.push(request.url());
   });
-  await mockBundle(page);
+  await mockOperations(page);
   await installProMembership(page);
 
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
@@ -333,7 +283,7 @@ test('strategy current operations are authorized by runtime policy and hydrated 
 test('current operations recover from a failed read without reloading formal evidence', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await mockBundle(page);
+  await mockOperations(page);
   await installProMembership(page, { failFirst: true });
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
   const reader = page.getByRole('region', { name: 'Current operations reader' });
@@ -349,7 +299,7 @@ test('current operations recover from a failed read without reloading formal evi
 });
 
 test('a different formal identity cannot supply current allocations', async ({ page }) => {
-  await mockBundle(page);
+  await mockOperations(page);
   await installProMembership(page, { mismatched: true });
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
   await expect(page.getByRole('button', { name: 'Retry operations' })).toBeEnabled();
@@ -361,7 +311,7 @@ test('a stalled runtime read times out and allows an explicit retry', async ({ p
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.clock.install();
-  await mockBundle(page);
+  await mockOperations(page);
   await installProMembership(page, { hangFirst: true });
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
   const reader = page.getByRole('region', { name: 'Current operations reader' });
@@ -377,7 +327,7 @@ test('a stalled runtime read times out and allows an explicit retry', async ({ p
 });
 
 test('stale observations require attention while cadence and execution stay explicit', async ({ page }) => {
-  await mockBundle(page);
+  await mockOperations(page);
   await installProMembership(page, { stale: true });
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
   await expect(page.getByRole('button', { name: 'Refresh operations' })).toBeEnabled();
@@ -395,7 +345,7 @@ test('stale observations require attention while cadence and execution stay expl
 });
 
 test('operating status reads the same verified current observation as the daily brief', async ({ page }) => {
-  await mockBundle(page);
+  await mockOperations(page);
   await installProMembership(page);
   await page.goto('/#/system');
   await expect(page.getByRole('heading', { name: 'Operating Status', exact: true })).toBeVisible();
@@ -405,4 +355,114 @@ test('operating status reads the same verified current observation as the daily 
   await expect(row.getByText('Observed 2026-07-31', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
   await expect(row.getByText('Changed at last evaluation', { exact: true })).toBeVisible();
+});
+
+
+async function openConsoleView(page: Page, path: 'app' | 'system') {
+  const mobile = (page.viewportSize()?.width ?? 1280) < 768;
+  const navigation = page.getByRole('navigation', { name: mobile ? 'Primary' : 'Strategy console navigation', exact: true });
+  await navigation.locator(`a[href="#/${path}"]`).click();
+  await expect(page.getByRole('main').getByRole('heading', {
+    name: path === 'app' ? 'What are the strategies doing now?' : 'Operating Status', level: 1, exact: true,
+  })).toBeVisible();
+}
+
+const fixtureCalls = (page: Page) => page.evaluate(() => (window as any).__operationsFixture.calls() as number);
+
+test('navigation reuses one verified read and manual refresh remains read-only', async ({ page }) => {
+  let snapshotReads = 0, catalogReads = 0, healthReads = 0;
+  page.on('request', request => {
+    if (request.url().includes('/data/strategy-operations/snapshots.json')) snapshotReads++;
+    if (request.url().includes('/data/formal-model-runs/catalog.json')) catalogReads++;
+    if (request.url().includes('/data/strategy-operations/system-health.json')) healthReads++;
+  });
+  await mockOperations(page);
+  await installProMembership(page);
+  await page.goto('/#/app');
+  await expect(page.getByRole('region', { name: 'Daily research brief' }).getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
+  await expect.poll(() => fixtureCalls(page)).toBe(1);
+  const initialCatalogReads = catalogReads;
+  await openConsoleView(page, 'system');
+  await page.getByRole('region', { name: 'Current strategy observations' }).getByRole('link', { name: 'QQQR v4.3', exact: true }).click();
+  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQR v4.3', level: 1, exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Current operations reader' }).getByText('published operations could not be verified.', { exact: false })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Current decision state' }).getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
+  await openConsoleView(page, 'app');
+  expect(await fixtureCalls(page)).toBe(1);
+  expect(snapshotReads).toBe(1);
+  expect(healthReads).toBe(1);
+  await page.getByRole('button', { name: 'Retry operations', exact: true }).click();
+  await expect.poll(() => fixtureCalls(page)).toBe(2);
+  await expect(page.getByRole('button', { name: 'Retry operations', exact: true })).toBeEnabled();
+  expect(snapshotReads).toBe(2);
+  expect(catalogReads).toBe(initialCatalogReads);
+});
+
+test('returning to the visible tab refreshes operations without reloading formal evidence', async ({ page }) => {
+  let catalogReads = 0;
+  page.on('request', request => { if (request.url().includes('/data/formal-model-runs/catalog.json')) catalogReads++; });
+  await mockOperations(page);
+  await installProMembership(page);
+  await page.goto('/#/system');
+  await expect(page.getByRole('button', { name: 'Refresh status', exact: true })).toBeEnabled();
+  expect(await fixtureCalls(page)).toBe(1);
+  const initialCatalogReads = catalogReads;
+  await page.evaluate(async () => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  });
+  expect(await fixtureCalls(page)).toBe(1);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect.poll(() => fixtureCalls(page)).toBe(2);
+  await expect(page.getByRole('button', { name: 'Refresh status', exact: true })).toBeEnabled();
+  expect(catalogReads).toBe(initialCatalogReads);
+});
+
+test('a late authorized response cannot reappear after an account downgrade across views', async ({ page }) => {
+  await mockOperations(page);
+  await installProMembership(page, { manualFirst: true });
+  await page.goto('/#/app');
+  await expect.poll(() => fixtureCalls(page)).toBe(1);
+  await page.evaluate(() => (window as any).__operationsFixture.setPro(false));
+  const brief = page.getByRole('region', { name: 'Daily research brief' });
+  await expect(brief.getByRole('article', { name: 'QQQR v4.3 daily observation' }).getByText('Access required', { exact: true })).toBeVisible();
+  await openConsoleView(page, 'system');
+  await page.evaluate(() => (window as any).__operationsFixture.release());
+  await expect(page.getByRole('region', { name: 'Current strategy observations' }).getByRole('article').filter({ hasText: 'QQQR v4.3' }).getByText('Access required', { exact: true })).toBeVisible();
+  await page.getByRole('region', { name: 'Current strategy observations' }).getByRole('link', { name: 'QQQR v4.3', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Current holdings and live signals are protected', exact: true })).toBeVisible();
+  await expect(page.getByText('QQQ repair with easing volatility', { exact: true })).toHaveCount(0);
+  await page.evaluate(() => (window as any).__operationsFixture.setPro(true));
+  await expect(page.getByRole('region', { name: 'Current decision state' }).getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
+  expect(await fixtureCalls(page)).toBe(2);
+});
+
+
+test('a failed publication refresh keeps the prior observation dated until a verified retry', async ({ page }) => {
+  await page.clock.install();
+  await installProMembership(page);
+  let publicationReads = 0;
+  await page.route('**/data/strategy-operations/snapshots.json', async route => {
+    publicationReads++;
+    if (publicationReads === 2) return new Promise(() => {});
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(operations) });
+  });
+  await page.goto('/#/app');
+  const row = page.getByRole('region', { name: 'Daily research brief' }).getByRole('article', { name: 'QQQR v4.3 daily observation' });
+  await expect(row.getByText('Changed at last evaluation', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Retry operations', exact: true }).click();
+  await expect(row.getByText('Previous verified read', { exact: true })).toBeVisible();
+  await expect(row.getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
+  await expect(row.getByText('Observed 2026-07-31 · target dated 2026-07-31', { exact: false })).toBeVisible();
+  await page.clock.fastForward(15_000);
+  await expect(page.getByText('Operations reading timed out.', { exact: false })).toBeVisible();
+  await expect(row.getByText('Previous verified read', { exact: true })).toBeVisible();
+  await expect(row.getByText('Changed at last evaluation', { exact: true })).toHaveCount(0);
+  await page.getByRole('region', { name: 'Current operations reader' }).getByRole('button', { name: 'Retry operations', exact: true }).click();
+  await expect(row.getByText('Changed at last evaluation', { exact: true })).toBeVisible();
+  expect(await fixtureCalls(page)).toBe(2);
 });

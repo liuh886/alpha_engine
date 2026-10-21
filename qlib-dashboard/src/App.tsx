@@ -10,12 +10,14 @@ import { Button } from './components/ui/button';
 import { Skeleton } from './components/ui/skeleton';
 import { AccessControlProvider } from './hooks/useAccessControl';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
+import { useStrategyOperations } from './hooks/useStrategyOperations';
 import type { RunWorkspaceContext } from './lib/run-workspace';
 import { routes } from './routes';
 import { useGlobalStore } from './store/globalStore';
 
 function Layout(props: ReturnType<typeof useAppBootstrap>) {
   const location = useLocation();
+  const operations = useStrategyOperations(props.runs);
   const mainRef = useRef<HTMLElement>(null);
   const { theme, setTheme } = useGlobalStore();
   const declared = routes.find(route => matchPath({ path: '/' + route.path, end: true }, location.pathname));
@@ -27,7 +29,7 @@ function Layout(props: ReturnType<typeof useAppBootstrap>) {
   useEffect(() => { mainRef.current?.scrollTo({ top: 0, left: 0 }); }, [location.pathname]);
   const context: RunWorkspaceContext = {
     runs: props.runs, activeRunKey: props.activeRunKey, activeRun,
-    runLoadErrors: props.runLoadErrors, selectRun: props.selectRun,
+    runLoadErrors: props.runLoadErrors, selectRun: props.selectRun, operations,
   };
   return <div className="research-app-shell">
     <Sidebar activeRun={activeRun} />
