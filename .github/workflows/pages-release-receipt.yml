@@ -163,20 +163,17 @@ jobs:
               models = ", ".join(
                   f"`{model}`" for model in receipt["formal_models"]
               )
-              required = ", ".join(
-                  f"`{path}`" for path in receipt["required_bundle_artifacts"]
-              )
               status = "**verified against the live Pages origin**"
               detail = (
                   f"- Impact reason: `{impact_reason}`\n"
                   f"- Matched publication dependencies: {matched_text}\n"
-                  f"- Research bundle: `{receipt['bundle_id']}`\n"
-                  f"- Required bundle artifacts: {required}\n"
                   f"- Formal strategies: {models}\n"
+                  f"- Formal evidence sections verified: {receipt['formal_sections_verified']}\n"
+                  f"- Protected public operations verified: `{str(receipt['public_operations_verified']).lower()}`\n"
                   "- Research boundary: `research_only=true`, `trade_ready=false`\n"
-                  "- Verification: cache-busted live deployment identity, required "
-                  "bundle size/SHA-256/source contract, formal catalog and package "
-                  "identity, Strategy Console shell, and live browser gate"
+                  "- Verification: cache-busted live deployment identity, formal "
+                  "catalog, manifest and section size/SHA-256/source identities, "
+                  "protected public operations, Strategy Console shell, and live browser gate"
               )
 
           body = f"""## Latest Pages workflow decision
@@ -193,7 +190,7 @@ jobs:
           observer after the publication-impact decision and any required deployment
           terminate.
           """
-          Path("/tmp/pages-release-comment.json").write_text(
+          Path("artifacts/pages-release-comment.json").write_text(
               json.dumps({"body": body}),
               encoding="utf-8",
           )
@@ -201,4 +198,4 @@ jobs:
           gh api \
             --method PATCH \
             "repos/${GITHUB_REPOSITORY}/issues/comments/${RECEIPT_COMMENT_ID}" \
-            --input /tmp/pages-release-comment.json
+            --input artifacts/pages-release-comment.json
