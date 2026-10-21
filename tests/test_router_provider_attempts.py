@@ -271,3 +271,31 @@ def test_selected_refresh_uses_current_fallback_in_the_first_retry_round() -> No
     assert stale.calls == current.calls == 1
     assert [row["round"] for row in attempts] == [1, 1]
     assert attempts[-1]["cutoff_complete"] is True
+
+
+@pytest.mark.parametrize("market", ("cn", "us"))
+def test_cutoff_aware_retry_attempts_reach_publication_without_identity_churn(market) -> None:
+    from scripts.data.refresh_selected_pool_prices import _fetch_with_retries
+    from src.data.selected_pool_price_publication import build_selected_pool_price_publication_manifest
+    from tests.selected_pool_price_fixtures import selected_pool_price_source
+
+    source = selected_pool_price_source(market)
+    expected = build_selected_pool_price_publication_manifest(source)
+    record = source["records"][0]
+    current = DatedAdapter(record["provider"], ("2026-08-20", "2026-08-21"))
+    adapters = [current]
+    if market == "cn":
+        adapters.insert(0, DatedAdapter("tencent_qfq_history", ("2026-08-20",)))
+    router = MarketDataRouter(adapters=adapters, policy={market: [a.name for a in adapters]})
+
+    response, attempts = _fetch_with_retries(
+        router, symbol=record["symbol"], market=market,
+        start="2026-08-20", cutoff="2026-08-21", max_rounds=1,
+    )
+
+    assert response.ok
+    assert [attempt["requested_end_present"] for attempt in attempts] == (
+        [False, True] if market == "cn" else [True]
+    )
+    record["attempts"] = attempts
+    assert build_selected_pool_price_publication_manifest(source) == expected

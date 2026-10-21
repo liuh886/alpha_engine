@@ -50,7 +50,8 @@ _PUBLICATION_RECORD_FIELDS = _RECORD_KEYS - {"action", "attempts", "provider_con
 _ATTEMPT_KEYS = {
     "circuit_breaker_open", "cutoff_complete", "error", "first_date", "independent_group",
     "last_date", "observed_last_date", "ok", "provider", "provider_contract",
-    "provider_symbol", "requested_cutoff", "round", "rows", "schema_errors", "source_family",
+    "provider_symbol", "requested_cutoff", "requested_end_present", "round", "rows",
+    "schema_errors", "source_family",
 }
 _ARCHITECTURE_KEYS = {
     "formal_auxiliary_boundary", "health", "independent_provider_order", "provider_order",
@@ -231,6 +232,10 @@ def _project_record(value: Mapping[str, Any]) -> dict[str, Any]:
         _assert_known_keys(attempt, _ATTEMPT_KEYS, "provider attempt")
         if attempt.get("ok") is not True and attempt.get("ok") is not False:
             raise SelectedPoolPricePublicationError("provider attempt outcome is invalid")
+        if "requested_end_present" in attempt and not isinstance(
+            attempt["requested_end_present"], bool
+        ):
+            raise SelectedPoolPricePublicationError("provider attempt cutoff outcome is invalid")
     projected = {
         key: copy.deepcopy(value[key])
         for key in sorted(_PUBLICATION_RECORD_FIELDS)
