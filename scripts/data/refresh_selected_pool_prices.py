@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import shutil
 import tempfile
 import time
@@ -336,6 +337,7 @@ def _fetch_with_retries(
             start=start,
             end=cutoff,
             validate=True,
+            prefer_complete_end=True,
         )
         last_response = response
         _, cutoff_at = _requested_window_bounds(start, cutoff)
@@ -352,9 +354,11 @@ def _fetch_with_retries(
             except ValueError:
                 dates = pd.Series(dtype="datetime64[ns]")
             if not dates.empty:
+                dates = dates.loc[dates <= cutoff_at]
+            if not dates.empty:
                 observed_at = pd.Timestamp(dates.max())
                 observed_last_date = observed_at.date().isoformat()
-                cutoff_complete = observed_at >= cutoff_at
+                cutoff_complete = observed_at == cutoff_at
 
         for attempt in _attempts(response):
             row = {"round": round_number, **attempt}
@@ -743,16 +747,46 @@ def refresh_selected_pool_prices(
                     provider_symbol=response.result.provider_symbol,
                 )
                 fetched = _normalize_frame(response.result.df, symbol=symbol)
+                if incremental and not fetched["date"].eq(pd.Timestamp(cutoff)).any():
+                    retained = _retain_stale_source(
+                        source_path=source_path, output_path=output_path,
+                        symbol=symbol, market=market_key, start=start,
+                        cutoff=cutoff, audit=audit, attempts=attempt_rows,
+                    )
+                    assert retained is not None  # incremental requires a ready seed
+                    retained["stale_reason"] = "provider_cutoff_incomplete"
+                    records.append(retained)
+                    continue
                 fetched = _slice_requested_window(
                     fetched,
                     symbol=symbol,
-                    start=start,
+                    start=fetch_start,
                     cutoff=cutoff,
                 )
                 if incremental:
                     governed = _normalize_frame(
                         pd.read_csv(source_path), symbol=symbol
                     )
+                    cutoff_fallback = any(
+                        attempt.requested_end_present is False
+                        and attempt.provider != response.result.provider
+                        for attempt in response.attempts
+                    )
+                    if cutoff_fallback:
+                        old = governed.loc[governed["date"] == pd.Timestamp(fetch_start)]
+                        new = fetched.loc[fetched["date"] == pd.Timestamp(fetch_start)]
+                        fields = ("open", "high", "low", "close", "factor", "volume")
+                        if len(old) != 1 or len(new) != 1 or not all(
+                            math.isclose(
+                                float(old.iloc[0][field]), float(new.iloc[0][field]),
+                                rel_tol=1e-6, abs_tol=1e-8,
+                            )
+                            for field in fields
+                        ):
+                            raise ValueError(
+                                "cutoff fallback differs from governed overlap price, "
+                                "adjustment or volume basis"
+                            )
                     frame = pd.concat([governed, fetched], ignore_index=True)
                     frame = frame.drop_duplicates(subset=["date"], keep="last")
                     frame = _normalize_frame(frame, symbol=symbol)

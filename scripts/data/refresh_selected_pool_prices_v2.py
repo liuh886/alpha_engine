@@ -18,7 +18,12 @@ from typing import Any
 
 import yaml
 
-from scripts.data.refresh_selected_pool_prices import refresh_selected_pool_prices
+from scripts.data.refresh_selected_pool_prices import (
+    BENCHMARKS,
+    REGISTRY,
+    _load_pool,
+    refresh_selected_pool_prices,
+)
 from src.data.adapters.akshare_adapter import AkShareAdapter
 from src.data.adapters.akshare_sina_adapter import AkShareSinaAdapter
 from src.data.adapters.baostock_adapter import BaoStockAdapter
@@ -175,6 +180,17 @@ def build_hardened_router(market: str) -> MarketDataRouter:
         # No sealed vendor provenance (or unreadable): market-wide order
         # stands. Unit-test trees without the evidence file hit this path.
         pass
+    if market_key == "cn":
+        # Yahoo-only selected-pool evidence is quarantined at publication.
+        # Exclude it before readiness probing too; a newer inadmissible source
+        # must not advance the market cutoff past valid domestic observations.
+        registry = yaml.safe_load((REPO_ROOT / REGISTRY).read_text(encoding="utf-8"))
+        pool_path = REPO_ROOT / registry["markets"]["cn"]["pool_spec"]
+        for symbol in [*_load_pool(pool_path, "cn"), BENCHMARKS["cn"]]:
+            if symbol in FORMAL_MARKET_AUXILIARIES["cn"]:
+                continue
+            key = f"cn:{symbol}"
+            policy[key] = [name for name in policy.get(key, providers) if name != "yfinance"]
     return MarketDataRouter(
         adapters=adapters,
         policy=policy,

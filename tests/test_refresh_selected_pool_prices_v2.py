@@ -43,6 +43,17 @@ def test_selected_pool_router_does_not_circuit_break_across_symbols(monkeypatch)
     }
 
 
+def test_cn_readiness_cannot_select_quarantined_yahoo_for_candidates_or_benchmark(monkeypatch):
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    router = build_hardened_router("cn")
+    for symbol in ("300017", "600519", "000300"):
+        assert "yfinance" not in router.providers_for_request("cn", symbol)
+    assert router.providers_for_request("cn", "300017")[0] == "tencent_qfq_history"
+    assert router.providers_for_request("cn", "000300")[0] == "akshare"
+    for symbol in FORMAL_MARKET_AUXILIARIES["cn"]:
+        assert router.providers_for_request("cn", symbol)[-1] == "yfinance"
+
+
 def test_formal_refresh_bounds_provider_process_without_threads_or_global_patches():
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"

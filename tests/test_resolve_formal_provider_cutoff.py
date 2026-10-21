@@ -21,6 +21,7 @@ class FakeRouter:
         start: str,
         end: str | None = None,
         validate: bool = False,
+        prefer_complete_end: bool = False,
     ) -> RouterResponse:
         self.last_request = {
             "symbol": symbol,
@@ -237,6 +238,19 @@ def test_resolver_blocks_regression_behind_governed_seed() -> None:
     assert payload["blocker"] == (
         "provider complete-session watermark regressed behind governed seed"
     )
+
+
+def test_future_rows_cannot_advance_a_provider_cutoff(monkeypatch) -> None:
+    import scripts.data.resolve_formal_provider_cutoff as module
+
+    monkeypatch.setattr(module, "PROBE_DELAY_SECONDS", 0.0)
+    payload = resolve_formal_provider_cutoff(
+        market="cn", requested_cutoff="2026-10-21", seed_cutoff="2026-10-20",
+        router=FakeRouter(_frame("2026-10-20", "2026-10-22")),  # type: ignore[arg-type]
+    )
+    assert payload["observed_cutoff"] == payload["effective_cutoff"] == "2026-10-20"
+    assert payload["status"] == "delayed"
+    assert set(payload["member_watermarks"].values()) == {"2026-10-20"}
 
 
 def test_holiday_probe_starts_at_last_sealed_session(monkeypatch) -> None:

@@ -24,10 +24,13 @@ class RouterAttempt:
     source_family: str | None = None
     independent_group: str | None = None
     circuit_breaker_open: bool = False
+    requested_end_present: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
         payload["schema_errors"] = list(self.schema_errors)
+        if self.requested_end_present is None:
+            payload.pop("requested_end_present")
         return payload
 
 
@@ -162,11 +165,24 @@ class MarketDataRouter:
         start: str,
         end: str | None = None,
         validate: bool = False,
+        prefer_complete_end: bool = False,
     ) -> RouterResponse:
-        """Fetch daily bars with auditable fallback attempts."""
+        """Fetch one source, optionally preferring an actual bar at ``end``.
 
+        Completed-session callers opt in after resolving their market cutoff.
+        If every source lags, retain the latest valid single-source response;
+        this is availability evidence, not proof that the cutoff was reached.
+        """
+
+        if prefer_complete_end and not end:
+            raise ValueError("prefer_complete_end requires end")
+        target = pd.Timestamp(end).normalize() if prefer_complete_end else None
+        if target is not None and pd.isna(target):
+            raise ValueError("prefer_complete_end requires a valid end")
         req = FetchRequest(symbol=symbol, market=market, start=start, end=end)
         attempts: list[RouterAttempt] = []
+        latest_result: FetchResult | None = None
+        latest_date: pd.Timestamp | None = None
         for provider in self.providers_for_request(market, symbol):
             context = self._source_context(provider)
             adapter = self._adapters.get(provider)
@@ -226,6 +242,30 @@ class MarketDataRouter:
                         pass
 
                 self._record_success(provider)
+                if target is not None:
+                    raw_dates = result.df.get("date")
+                    dates = pd.Series(dtype="datetime64[ns]")
+                    if raw_dates is not None:
+                        dates = pd.to_datetime(raw_dates, errors="coerce").dropna()
+                        dates = dates.dt.tz_localize(None).dt.normalize()
+                    if not dates.eq(target).any():
+                        observed = dates.loc[dates <= target].max()
+                        if pd.notna(observed) and (latest_date is None or observed > latest_date):
+                            latest_result, latest_date = result, observed
+                        attempts.append(
+                            RouterAttempt(
+                                provider=provider,
+                                ok=False,
+                                provider_symbol=provider_symbol,
+                                rows=rows,
+                                first_date=first_date,
+                                last_date=last_date,
+                                error=f"provider response has no bar for requested end {end}",
+                                requested_end_present=False,
+                                **context,
+                            )
+                        )
+                        continue
                 attempts.append(
                     RouterAttempt(
                         provider=provider,
@@ -234,6 +274,7 @@ class MarketDataRouter:
                         rows=rows,
                         first_date=first_date,
                         last_date=last_date,
+                        requested_end_present=True if target is not None else None,
                         **context,
                     )
                 )
@@ -260,7 +301,7 @@ class MarketDataRouter:
                         **context,
                     )
                 )
-        return RouterResponse(result=None, attempts=attempts)
+        return RouterResponse(result=latest_result, attempts=attempts)
 
     def fetch_multi_source_bars(
         self,
