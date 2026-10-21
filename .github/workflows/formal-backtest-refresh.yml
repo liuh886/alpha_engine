@@ -182,7 +182,11 @@ jobs:
             tests
           sparse-checkout-cone-mode: true
       - name: Verify execution identity
-        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          # Audit the vendor pins without hydrating the full historical bundle.
+          git restore --source="$GITHUB_SHA" --worktree --ignore-skip-worktree-bits -- \
+            artifacts/evidence/cn_all_weather_alpha_rotation_v1/coverage.csv
       - uses: ./.github/actions/setup-python-uv
       - uses: actions/setup-node@v6
         with:
