@@ -127,3 +127,17 @@ describe('operations publication reader', () => {
     expect([...snapshots.values()].every((snapshot) => snapshot.status === 'blocked')).toBe(true);
   });
 });
+
+
+describe('previous verified reads', () => {
+  it('keeps original evidence dates without treating a previous read as a fresh decision', () => {
+    const original = parseStrategyOperationsSnapshot({ ...record, as_of: '2026-09-17', evaluation_changed: true });
+    const previous = { ...original, readState: 'retained' as const };
+    expect(describeStrategyObservation(previous)).toMatchObject({ kind: 'pending', label: 'Previous verified read', recovery: 'read' });
+    expect(summarizeStrategySignal(previous)).toMatchObject({ badgeLabel: 'Previous verified read', isNew: false, isHold: false });
+    expect(previous.asOf).toBe('2026-09-17');
+    expect(previous.factorFreshness).toBe('stale');
+    expect(describeStrategyObservation(previous, false).kind).toBe('access');
+    expect(() => parseStrategyOperationsSnapshot({ ...record, read_state: 'retained' })).toThrow('Invalid public operations read state');
+  });
+});

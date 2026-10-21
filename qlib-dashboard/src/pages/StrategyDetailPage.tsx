@@ -1,13 +1,11 @@
 import { ArrowLeft, ArrowUpRight, CalendarClock, Crown, Database, LockKeyhole, ShieldCheck } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { FormalBacktestReview } from '@/components/FormalBacktestReview';
-import { StrategyRuntimeStatusStrip } from '@/components/StrategyRuntimeStatusStrip';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
-import { useStrategyOperations } from '@/hooks/useStrategyOperations';
 import type { AccessTier } from '@/lib/model-access';
 import { loadDecisionForRun, type DecisionLoadState } from '@/lib/model-run-decision';
 import { loadRunSection } from '@/lib/governed-run';
@@ -16,8 +14,6 @@ import type { ReportRow } from '@/lib/types';
 import { STRATEGY_STATUS_LABEL, summarizeStrategySignal } from '@/lib/strategy-operations';
 import type { StrategyFactorEvidence } from '@/lib/strategy-operations';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
-import { fetchSystemHealth } from '@/lib/system-health';
-import type { SystemHealthStrategy } from '@/lib/system-health';
 
 const ACCESS_TIER_LABEL: Record<AccessTier, string> = {
   public: 'Public',
@@ -89,11 +85,10 @@ export function StrategyDetailPage() {
   const access = useAccessControl();
   const { strategyId } = useParams();
   const run = workspace.runs.find((candidate) => candidate.channel === 'formal' && candidate.modelVersionId === strategyId) ?? null;
-  const selectedRuns = useMemo(() => run ? [run] : [], [run]);
-  const { snapshots, loading, issues, reload } = useStrategyOperations(selectedRuns);
+  const { snapshots, loading, reload } = workspace.operations;
+  const issues = workspace.operations.issues.filter(issue => !issue.modelVersionId || issue.modelVersionId === run?.modelVersionId);
   const snapshot = run ? snapshots.get(run.modelVersionId) : undefined;
   const signalSummary = summarizeStrategySignal(snapshot);
-  const [health, setHealth] = useState<SystemHealthStrategy | null>(null);
   const requiredTier = snapshot?.strategyId ? access.requiredTier('strategy', snapshot.strategyId) : 'owner';
   const requiredTierLabel = ACCESS_TIER_LABEL[requiredTier];
   const liveLocked = Boolean(snapshot && !access.canAccess(requiredTier));
@@ -131,16 +126,6 @@ export function StrategyDetailPage() {
     return () => { active = false; };
   }, [run]);
 
-  useEffect(() => {
-    let active = true;
-    setHealth(null);
-    if (!run) return () => { active = false; };
-    void fetchSystemHealth().then((result) => {
-      if (!active) return;
-      setHealth(result.health?.strategies.find((row) => row.model_version_id === run.modelVersionId) ?? null);
-    });
-    return () => { active = false; };
-  }, [run]);
 
   if (!run) {
     return (
@@ -173,19 +158,10 @@ export function StrategyDetailPage() {
             <p className="mt-1 text-xs text-muted-foreground">{liveLocked ? 'Formal historical evidence remains public below.' : snapshot?.stateLabel || 'Canonical operations state is unavailable.'}</p>
           </div>
         </div>
-        <StrategyRuntimeStatusStrip
-          dataThrough={health?.provider_cutoff ?? snapshot?.latestCompletedSession ?? null}
-          dataState={health?.stages.provider ?? 'unknown'}
-          performanceThrough={health?.formal_cutoff ?? run.evidenceCutoff ?? null}
-          performanceState={health?.stages.formal ?? 'unknown'}
-          signalThrough={health?.last_signal_evaluation ?? snapshot?.asOf ?? null}
-          signalState={health?.stages.signal ?? 'unknown'}
-          deliveryStatus={health?.delivery_status ?? snapshot?.deliveryStatus}
-          deliveryState={health?.delivery_state ?? 'unknown'}
-        />
+
       </section>
 
-      <OperationsReadStatus loading={loading} issues={issues} reload={reload} />
+      <OperationsReadStatus loading={loading} issues={issues} reload={reload} previousRead={snapshot?.readState === 'retained'} />
       <section aria-label="Research tracking assessment" className="rounded-xl border bg-card p-5 text-sm">
         <h2 className="font-semibold">Research tracking assessment</h2>
         <p className="mt-2 text-muted-foreground">
@@ -229,7 +205,7 @@ export function StrategyDetailPage() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Now</p>
-            <h2 id="strategy-now-heading" className="mt-1 text-2xl font-bold">{liveLocked ? `${requiredTierLabel} current operations` : 'Current decision state'}</h2>
+            <h2 id="strategy-now-heading" className="mt-1 text-2xl font-bold">{liveLocked ? `${requiredTierLabel} current operations` : snapshot?.readState === 'retained' ? 'Previous verified decision' : 'Current decision state'}</h2>
           </div>
           {!liveLocked && !protectedUnavailable && snapshot?.sourceHref && (
             <a href={snapshot.sourceHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Source record <ArrowUpRight className="h-3.5 w-3.5" /></a>

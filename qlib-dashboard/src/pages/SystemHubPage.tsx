@@ -3,7 +3,6 @@ import { Link, useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
 import { useAccessControl } from '@/hooks/useAccessControl';
-import { useStrategyOperations } from '@/hooks/useStrategyOperations';
 import { describeStrategyObservation } from '@/lib/strategy-operations';
 import { fetchSystemHealth, type LiveSystemHealth } from '@/lib/system-health';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
@@ -12,7 +11,7 @@ const WORKFLOWS = 'https://github.com/liuh886/alpha_engine/actions/workflows/';
 export function SystemHubPage() {
   const workspace = useOutletContext<RunWorkspaceContext>();
   const access = useAccessControl();
-  const operations = useStrategyOperations(workspace.runs);
+  const operations = workspace.operations;
   const [health, setHealth] = useState<LiveSystemHealth | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -35,7 +34,7 @@ export function SystemHubPage() {
         const observation = !snapshot?.strategyId ? describeStrategyObservation() : describeStrategyObservation(snapshot, allowed);
         return <article key={run.key} className="border-b p-4 last:border-0">
           <div className="flex flex-wrap justify-between gap-2"><Link className="font-semibold text-primary" to={'/strategies/' + encodeURIComponent(run.modelVersionId)}>{run.title}</Link><span className="text-sm">{observation.label}</span></div>
-          {allowed && snapshot && !snapshot.readState && <p className="mt-2 text-xs text-muted-foreground">Observed {snapshot.latestCompletedSession || 'unknown'} · target dated {snapshot.decisionSchedule?.signalDate || snapshot.asOf || 'unknown'} · formal evidence {run.evidenceCutoff}</p>}
+          {allowed && snapshot && (!snapshot.readState || snapshot.readState === 'retained') && <p className="mt-2 text-xs text-muted-foreground">Observed {snapshot.latestCompletedSession || 'unknown'} · target dated {snapshot.decisionSchedule?.signalDate || snapshot.asOf || 'unknown'} · formal evidence {run.evidenceCutoff}</p>}
           <p className="mt-2 text-sm">{observation.reason}</p>
           <p className="mt-1 text-xs text-muted-foreground">{observation.nextStep}</p>
         </article>;

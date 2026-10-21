@@ -22,11 +22,12 @@ const shell = parseStrategyOperationsSnapshot({ model_version_id: run.modelVersi
   delivery_status: 'not available', source_label: 'Runtime current operations', note: 'Protected', allocations: [], factor_evidence: [],
   source_identity: { formal_bundle_id: run.bundleId, formal_run_id: run.runId, formal_evidence_cutoff: run.evidenceCutoff } });
 const live = { ...shell, status: 'current_no_change' as const, dataFreshness: 'current' as const,
-  factorFreshness: 'unknown' as const, stateLabel: 'Verified state', allocations: [{ asset: 'PRIVATE', current: 1, target: 1, delta: 0 }] };
+  factorFreshness: 'unknown' as const, stateLabel: 'Verified state',
+  sourceIdentity: { ...shell.sourceIdentity, ledgerFingerprint: 'verified-ledger' }, allocations: [{ asset: 'PRIVATE', current: 1, target: 1, delta: 0 }] };
 
 describe('current operations recovery', () => {
   const getClient = vi.fn();
-  const requiredTier = vi.fn(() => 'pro' as const);
+  const requiredTier = vi.fn<ReturnType<typeof useAccessControl>['requiredTier']>(() => 'pro');
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useAlphaMembership).mockReturnValue({ loading: false, signedIn: true, isPro: true, isOwner: false,
@@ -72,7 +73,7 @@ describe('current operations recovery', () => {
     const { result, unmount } = renderHook(() => useStrategyOperations(runs));
     await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
     expect(result.current.loading).toBe(false);
-    expect(result.current.issues[result.current.issues.length - 1]).toContain('timed out');
+    expect(result.current.issues[result.current.issues.length - 1].message).toContain('timed out');
     expect(result.current.snapshots.get(run.modelVersionId)?.allocations ?? []).toEqual([]);
     const signal = vi.mocked(loadStrategyOperations).mock.calls[0]?.[1];
     if (signal) expect(signal.aborted).toBe(true);
@@ -86,7 +87,7 @@ describe('current operations recovery', () => {
   it('retains verified independent records on timeout and succeeds on retry', async () => {
     vi.useFakeTimers();
     const otherRun = { ...run, key: 'us-run', modelVersionId: 'us_x1_3', title: 'US x1.3' };
-    const otherShell = { ...shell, modelVersionId: otherRun.modelVersionId, strategyId: 'us_x' };
+    const otherShell = { ...shell, modelVersionId: otherRun.modelVersionId, strategyId: 'us_x', readState: 'protected' as const };
     const selected = [run, otherRun];
     vi.mocked(loadStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, shell], [otherRun.modelVersionId, otherShell]]));
     vi.mocked(loadRuntimeStrategyOperation).mockImplementation(async (_client, strategy) => strategy === 'us_x' ? new Promise(() => {}) : live);
@@ -94,11 +95,12 @@ describe('current operations recovery', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
     expect(result.current.loading).toBe(false);
     expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live);
+    expect(result.current.issues).toEqual([{ modelVersionId: otherRun.modelVersionId, message: expect.stringContaining('timed out') }]);
     vi.mocked(loadRuntimeStrategyOperation).mockImplementation(async (_client, strategy) => strategy === 'us_x' ? null : live);
     await act(async () => result.current.reload());
     expect(result.current.loading).toBe(false);
     expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live);
-    expect(result.current.issues.join(' ')).not.toContain('timed out');
+    expect(result.current.issues.map(issue => issue.message).join(' ')).not.toContain('timed out');
   });
 
   it.each(['missing', 'mismatched', 'rejected'])('keeps protected operations hidden for a %s response', async (failure) => {
@@ -109,7 +111,7 @@ describe('current operations recovery', () => {
     const { result } = renderHook(() => useStrategyOperations(runs));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.snapshots.get(run.modelVersionId)?.allocations).toEqual([]);
-    expect(result.current.issues).toEqual(['CN x1.2: current operations could not be verified.']);
+    expect(result.current.issues).toEqual([{ modelVersionId: run.modelVersionId, message: 'CN x1.2: current operations could not be verified.' }]);
   });
 
   it('does not request a protected strategy for an ineligible account', async () => {
@@ -151,7 +153,7 @@ describe('current operations recovery', () => {
 
   it('keeps an independent strategy readable when another runtime record fails', async () => {
     const otherRun = { ...run, key: 'us-run', modelVersionId: 'us_x1_3', title: 'US x1.3' };
-    const otherShell = { ...shell, modelVersionId: otherRun.modelVersionId, strategyId: 'us_x' };
+    const otherShell = { ...shell, modelVersionId: otherRun.modelVersionId, strategyId: 'us_x', readState: 'protected' as const };
     vi.mocked(loadStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, shell], [otherRun.modelVersionId, otherShell]]));
     vi.mocked(loadRuntimeStrategyOperation).mockImplementation(async (_client, strategy) => strategy === 'us_x' ? null : live);
     const selected = [run, otherRun];
@@ -159,7 +161,7 @@ describe('current operations recovery', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live);
     expect(result.current.snapshots.get(otherRun.modelVersionId)?.allocations).toEqual([]);
-    expect(result.current.issues).toEqual(['US x1.3: current operations could not be verified.']);
+    expect(result.current.issues).toEqual([{ modelVersionId: otherRun.modelVersionId, message: 'US x1.3: current operations could not be verified.' }]);
   });
 
   it('clears private snapshots when the account changes without reusing the old response', async () => {
@@ -171,4 +173,67 @@ describe('current operations recovery', () => {
     expect(result.current.snapshots.size).toBe(0);
     await waitFor(() => expect(result.current.snapshots.get(run.modelVersionId)?.allocations).toEqual([]));
   });
+
+  it('waits for a formal identity before reading operations', async () => {
+    const { result, rerender } = renderHook(({ selected }: { selected: GovernedRunSummary[] }) => useStrategyOperations(selected), {
+      initialProps: { selected: [] as GovernedRunSummary[] },
+    });
+    await act(async () => {});
+    expect(loadStrategyOperations).not.toHaveBeenCalled();
+    rerender({ selected: runs });
+    await waitFor(() => expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live));
+  });
+
+
+  it('retains dated verified observations when a same-identity publication refresh stalls', async () => {
+    const { result, unmount } = renderHook(() => useStrategyOperations(runs));
+    await waitFor(() => expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live));
+    vi.useFakeTimers();
+    let release!: () => void;
+    vi.mocked(loadStrategyOperations).mockReturnValueOnce(new Promise(resolve => {
+      release = () => resolve(new Map([[run.modelVersionId, shell]]));
+    }));
+    act(() => result.current.reload());
+    expect(result.current.snapshots.get(run.modelVersionId)).toEqual({ ...live, readState: 'retained' });
+    expect(result.current.previousRead).toBe(true);
+    await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
+    expect(result.current.loading).toBe(false);
+    expect(result.current.snapshots.get(run.modelVersionId)).toEqual({ ...live, readState: 'retained' });
+    await act(async () => release());
+    expect(result.current.snapshots.get(run.modelVersionId)?.readState).toBe('retained');
+    await act(async () => result.current.reload());
+    expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live);
+    expect(result.current.previousRead).toBe(false);
+    unmount();
+  });
+
+  it.each(['missing', 'mismatched', 'protected'])('discards prior private values for a %s runtime response', async failure => {
+    const protectedShell = { ...shell, readState: 'protected' as const };
+    vi.mocked(loadStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, protectedShell]]));
+    const { result } = renderHook(() => useStrategyOperations(runs));
+    await waitFor(() => expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live));
+    vi.mocked(loadRuntimeStrategyOperation).mockResolvedValue(failure === 'missing' ? null
+      : failure === 'protected' ? protectedShell : { ...live, sourceIdentity: { ...live.sourceIdentity, formalBundleId: 'b'.repeat(64) } });
+    await act(async () => result.current.reload());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.snapshots.get(run.modelVersionId)?.allocations).toEqual([]);
+    expect(result.current.snapshots.get(run.modelVersionId)?.readState).toBe('unavailable');
+    expect(result.current.previousRead).toBe(false);
+  });
+
+  it('does not retain private observations across a changed stable strategy identity', async () => {
+    vi.mocked(useAccessControl).mockReturnValue({ ...useAccessControl(),
+      canAccess: tier => tier === 'pro' });
+    requiredTier.mockImplementation((_resource, id) => id === 'other_strategy' ? 'owner' : 'pro');
+    const { result } = renderHook(() => useStrategyOperations(runs));
+    await waitFor(() => expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live));
+    const replacement = { ...shell, strategyId: 'other_strategy', readState: 'protected' as const };
+    vi.mocked(loadStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, replacement]]));
+    await act(async () => result.current.reload());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.snapshots.get(run.modelVersionId)).toEqual(replacement);
+    expect(result.current.previousRead).toBe(false);
+    expect(loadRuntimeStrategyOperation).toHaveBeenCalledTimes(1);
+  });
+
 });

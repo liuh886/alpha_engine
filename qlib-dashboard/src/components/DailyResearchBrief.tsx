@@ -19,7 +19,7 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
     const snapshot = snapshots.get(run.modelVersionId);
     const accessible = snapshot ? Boolean(snapshot.strategyId) && !access.policyLoading
       && access.canAccess(access.requiredTier('strategy', snapshot.strategyId)) : true;
-    return { run, snapshot: accessible && !snapshot?.readState ? snapshot : undefined,
+    return { run, snapshot: accessible && (!snapshot?.readState || snapshot.readState === 'retained') ? snapshot : undefined,
       brief: snapshot && !snapshot.strategyId ? describeStrategyObservation() : describeStrategyObservation(snapshot, accessible) };
   }).sort((a, b) => DISPLAY_ORDER[a.brief.kind] - DISPLAY_ORDER[b.brief.kind]);
   const count = (kind: string) => entries.filter(entry => entry.brief.kind === kind).length;
