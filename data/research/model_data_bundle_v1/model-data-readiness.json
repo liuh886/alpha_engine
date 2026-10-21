@@ -1,7 +1,7 @@
 {
-  "built_at": "2026-10-21T08:17:57+00:00",
-  "bundle_id": "b7e112dabeef58d89f589c29b43e0bb3f28cff175474e7e30baba8c7f3db1a42",
-  "evidence_cutoff": "2026-10-20",
+  "built_at": "2026-10-21T17:54:09+00:00",
+  "bundle_id": "5c4a3aac84ef31d37ba1f0294c2003b1234e971b9940c1975e655d2ca5de4e69",
+  "evidence_cutoff": "2026-10-21",
   "research_only": true,
   "schema_version": "1.1",
   "source_receipts": [
