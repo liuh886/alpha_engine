@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 
 import pytest
+import yaml
 
+from src.artifacts import pages_release_verification
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes, compute_bundle_id
 from src.artifacts.pages_release_verification import (
     PublishedFormalRun,
@@ -213,6 +216,70 @@ def test_verifies_manifest_identity_and_available_sections() -> None:
     validate_formal_section(record, sections[0], summary_bytes)
     with pytest.raises(ReleaseVerificationError, match="section digest mismatch"):
         validate_formal_section(record, sections[0], summary_bytes[:-1] + b" ")
+
+
+def test_release_observer_renders_the_actual_formal_verifier_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest, manifest_bytes, summary_bytes = _formal_manifest()
+    catalog = _catalog()
+    record = catalog["records"][-1]
+    record.update(
+        bundle_id=manifest["bundle_id"],
+        manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
+        evidence_cutoff=manifest["evidence_cutoff"],
+    )
+    catalog["records"] = [record]
+    operations = _public_operations()
+    operation = operations["records"][-1]
+    operation["source_identity"].update(
+        formal_bundle_id=manifest["bundle_id"],
+        formal_evidence_cutoff=manifest["evidence_cutoff"],
+    )
+    operations["records"] = [operation]
+    formal_root = "data/formal-model-runs"
+    payloads = {
+        "deployment.json": canonical_json_bytes({"commit_sha": "deployed-sha"}),
+        f"{formal_root}/catalog.json": canonical_json_bytes(catalog),
+        f"{formal_root}/{record['manifest_path']}": manifest_bytes,
+        f"{formal_root}/us_ranker/us_x1_1/us_x1_1_run/summary.json": summary_bytes,
+        "data/strategy-operations/snapshots.json": canonical_json_bytes(operations),
+        "index.html": b'<div id="root"></div><script type="module" src="/assets/app.js"></script>',
+    }
+    monkeypatch.setattr(
+        pages_release_verification, "fetch_bytes",
+        lambda _base, path, **_kwargs: payloads[path],
+    )
+    receipt = pages_release_verification.verify_once(
+        base_url="https://example.test/", expected_commit="deployed-sha", timeout_seconds=1
+    )
+    workflow_path = Path(__file__).resolve().parents[1] / ".github/workflows/pages-release-receipt.yml"
+    workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+    step = next(
+        step for step in workflow["jobs"]["publish-receipt"]["steps"]
+        if step["name"] == "Publish observable workflow decision"
+    )
+    script = step["run"].split("python - <<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "artifacts").mkdir(exist_ok=True)
+    (tmp_path / "artifacts/pages-release-receipt.json").write_text(json.dumps(receipt), encoding="utf-8")
+    for key, value in {
+        "IMPACT_AVAILABLE": "true", "IMPACT_DEPLOY": "true",
+        "IMPACT_REASON": "publication_dependency_changed", "MATCHED_PATHS_JSON": "[]",
+        "UPSTREAM_CONCLUSION": "success", "VERIFY_OUTCOME": "success",
+        "DEPLOYED_SHA": "deployed-sha", "DEPLOY_RUN_ID": "123",
+        "DEPLOY_RUN_URL": "https://example.test/run/123", "PAGE_URL": "https://example.test/",
+    }.items():
+        monkeypatch.setenv(key, value)
+    # Execute only the renderer, never the following gh API publication command.
+    exec(compile(script, str(workflow_path), "exec"), {})
+    body = json.loads((tmp_path / "artifacts/pages-release-comment.json").read_text(encoding="utf-8"))["body"]
+    assert "verified against the live Pages origin" in body
+    assert "Formal strategies: `us_x1_1`" in body
+    assert "Formal evidence sections verified: 1" in body
+    assert "Protected public operations verified: `true`" in body
+    assert "research_only=true" in body and "trade_ready=false" in body
+    assert "Research bundle:" not in body and "Required bundle artifacts:" not in body
 
 
 def test_rejects_catalog_manifest_identity_drift() -> None:
