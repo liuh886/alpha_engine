@@ -1,43 +1,4 @@
-import { createHash } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-
-function sha256(text: string): string {
-  return createHash('sha256').update(text).digest('hex');
-}
-
-const modelsText = JSON.stringify([
-  {
-    id: 'fixture-run-1',
-    name: 'Static Evidence Fixture',
-    market: 'us',
-    model_type: 'lgbm',
-    stage: 'CANDIDATE',
-    created_at: '2026-07-31T00:00:00Z',
-    metrics: { 'Sharpe Ratio': 1.2, 'Annualized Return': 0.18, 'Max Drawdown': -0.12 },
-    payload: { data: { indicators: { sharpe: 1.2, annual_return: 0.18, max_drawdown: -0.12 } } },
-  },
-]);
-const exportManifestText = JSON.stringify({ generated_at: '2026-08-02T00:00:00Z', snapshot_id: 'fixture-snapshot' });
-const bundleManifest = {
-  schema_version: '1.0.0',
-  frontend_reader_range: '>=1.0.0 <2.0.0',
-  bundle_id: 'a'.repeat(64),
-  title: 'Static Browser Fixture',
-  generated_at: '2026-08-02T00:00:00Z',
-  evidence_cutoff: '2026-07-31',
-  research_only: true,
-  trade_ready: false,
-  scope: { markets: ['us'], snapshot_id: 'fixture-snapshot', model_count: 1 },
-  warnings: [],
-  blocked_gates: ['trade_ready'],
-  promotion_decision: 'research_candidate',
-  artifacts: [
-    { artifact_id: '1'.repeat(16), kind: 'model_index', path: 'data/models.json', media_type: 'application/json', byte_size: Buffer.byteLength(modelsText), sha256: sha256(modelsText), required: true },
-    { artifact_id: '2'.repeat(16), kind: 'static_export_manifest', path: 'data/manifest.json', media_type: 'application/json', byte_size: Buffer.byteLength(exportManifestText), sha256: sha256(exportManifestText), required: true },
-  ],
-};
 
 type FormalCatalog = { records?: Array<{ manifest_path?: string }> };
 type FormalManifest = { sections?: Array<{ section_id?: string; availability_status?: string; path?: string }> };
@@ -97,91 +58,6 @@ async function installMembershipFixture(page: Page, initial: MembershipFixture):
   }, initial);
 }
 
-async function installBundleFixture(): Promise<void> {
-  const root = resolve(process.cwd(), 'dist', 'bundle');
-  await mkdir(resolve(root, 'data'), { recursive: true });
-  await Promise.all([
-    writeFile(resolve(root, 'alpha-engine-bundle.json'), JSON.stringify(bundleManifest), 'utf8'),
-    writeFile(resolve(root, 'data', 'models.json'), modelsText, 'utf8'),
-    writeFile(resolve(root, 'data', 'manifest.json'), exportManifestText, 'utf8'),
-  ]);
-}
-
-test.beforeAll(async () => { await installBundleFixture(); });
-
-async function assertNoHorizontalOverflow(page: Page) {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  expect(overflow).toBeLessThanOrEqual(2);
-}
-
-async function exposeInstallPrompt(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const event = new Event('beforeinstallprompt', { cancelable: true });
-    Object.defineProperties(event, {
-      prompt: { value: async () => undefined },
-      userChoice: { value: Promise.resolve({ outcome: 'dismissed', platform: 'web' }) },
-    });
-    window.dispatchEvent(event);
-  });
-}
-
-async function openConsole(page: Page) {
-  await installMembershipFixture(page, { loading: false, isPro: true, user: { id: 'pro-fixture' } });
-  await page.goto('/#/app');
-  await expect(page.locator('#root')).not.toBeEmpty();
-  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
-  await expect(page.getByText('Featured formal performance', { exact: true })).toBeVisible();
-  const activeContext = page.getByRole('status', { name: 'Strategy fleet context' });
-  const formalNames = await loadFormalDisplayNames(page);
-  await expect(activeContext.getByText(`Formal strategy fleet · ${formalNames.length} strategies`, { exact: true })).toBeVisible();
-  await expect(activeContext.getByText('Evidence cutoffs shown per strategy', { exact: true })).toBeVisible();
-  await expect(activeContext.getByText('Static Browser Fixture', { exact: true })).toHaveCount(0);
-}
-
-test('Security Explorer explains its value before sign-in and remains available to Free accounts', async ({ page }) => {
-  const marketEvidenceRequests: string[] = [];
-  page.on('request', (request) => {
-    if (new URL(request.url()).pathname.includes('/data/market-evidence/')) marketEvidenceRequests.push(request.url());
-  });
-  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
-
-  await page.goto('/#/securities');
-  await expect(page.getByRole('heading', { name: 'Sign in to view model trade signals on the price chart.' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign in to open Security Explorer' })).toBeVisible();
-  await expect(page.getByText('A free signed-in AlphaEngine account is sufficient. Pro is not required.')).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Illustrative Security Explorer preview' })).toBeVisible();
-  expect(marketEvidenceRequests).toEqual([]);
-
-  await page.evaluate(() => {
-    (window as any).__setAlphaMembership({ loading: false, isPro: false, user: { id: 'free-fixture' } });
-  });
-  await expect(page.getByRole('main').getByRole('heading', { name: 'Security Explorer', exact: true })).toBeVisible();
-  await expect.poll(() => marketEvidenceRequests.length).toBeGreaterThan(0);
-});
-
-test('Free users can inspect QQQR evidence while current operations remain protected', async ({ page }) => {
-  await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'free-fixture' } });
-  await page.goto('/#/strategies');
-  const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
-  await fleet.getByText('QQQR v4.3', { exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'QQQR v4.3', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Pro current operations', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Current holdings and live signals are protected', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'View AlphaEngine Pro access' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Performance, risk, holdings and attribution', exact: true })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Performance', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Current decision state' })).toHaveCount(0);
-  await expect(page.getByText('Current signal drivers', { exact: true })).toHaveCount(0);
-});
-
-test('only a verified Owner can open access settings', async ({ page }) => {
-  await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'owner-fixture', app_metadata: { alpha_engine_role: 'owner' } } });
-  await page.goto('/#/settings/access');
-  await expect(page.getByRole('main').getByRole('heading', { name: 'Access Settings' })).toBeVisible();
-  await expect(page.getByText('Public < Member < Pro < Owner.')).toBeVisible();
-  await expect(page.getByText('Strategy current operations', { exact: true })).toBeVisible();
-});
-
 async function loadFormalDisplayNames(page: Page): Promise<string[]> {
   const catalogResponse = await page.request.get('/data/formal-model-runs/catalog.json');
   expect(catalogResponse.ok()).toBeTruthy();
@@ -206,140 +82,69 @@ async function loadFormalDisplayNames(page: Page): Promise<string[]> {
   return names;
 }
 
-test('Strategy overview and list are driven by the governed formal catalog', async ({ page }) => {
-  await openConsole(page);
-  const formalNames = await loadFormalDisplayNames(page);
-  const overviewFleet = page.getByRole('region', { name: 'Formal strategy fleet' });
-  for (const name of formalNames) {
-    await expect(overviewFleet.getByText(name, { exact: true })).toBeVisible();
-  }
-  await page.goto('/#/strategies');
-  await expect(page.getByRole('heading', { name: 'Formal Strategies' })).toBeVisible();
-  const strategyFleet = page.getByRole('region', { name: 'Formal strategy fleet' });
-  for (const name of formalNames) {
-    await expect(strategyFleet.getByText(name, { exact: true })).toBeVisible();
-  }
-  await assertNoHorizontalOverflow(page);
-});
-
-test('product homepage exposes the installable PWA entry and strategy console', async ({ page }, testInfo) => {
-  const pageErrors: string[] = [];
-  page.on('pageerror', (error) => pageErrors.push(error.message));
-
-  await page.goto('/#/');
-  await expect(page.getByRole('heading', { name: 'Know what your systematic strategy is doing — and why.' })).toBeVisible();
-  await expect(page.getByText('QQQR v4.3', { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Performance before persuasion.' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Every decision is traceable.' })).toBeVisible();
-  const landingActions = page.locator('.landing-actions');
-  await exposeInstallPrompt(page);
-  await expect(landingActions.getByRole('button', { name: 'Install app' })).toBeVisible();
-  await expect(page.getByLabel('Install Alpha Engine')).toBeVisible();
-  await assertNoHorizontalOverflow(page);
-  expect(pageErrors).toEqual([]);
-  await page.screenshot({ path: `test-results/static-artifact/landing-${testInfo.project.name}.png`, fullPage: true });
-
-  await page.goto('/#/app');
+test('the homepage opens daily research and reads only the formal operating surface', async ({ page }, testInfo) => {
+  const errors: string[] = [], retiredRequests: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => {
+    if (/\/bundle\/|\/data\/model-runs\/|\/data\/market-evidence\//.test(request.url())) retiredRequests.push(request.url());
+  });
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
+  await page.goto('/');
   await expect(page).toHaveURL(/#\/app$/);
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
+  const brief = page.getByRole('region', { name: 'Daily research brief' });
+  const names = await loadFormalDisplayNames(page);
+  await expect(brief.getByRole('article')).toHaveCount(names.length);
+  for (const name of names) await expect(brief.getByRole('link', { name, exact: true })).toBeVisible();
+  if (testInfo.project.name === 'mobile') await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('tab')).toHaveCount(2);
+  else await expect(page.getByRole('navigation', { name: 'Strategy console navigation' }).getByRole('link')).toHaveCount(2);
+  expect(retiredRequests).toEqual([]);
+  expect(errors).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+  await page.screenshot({ path: testInfo.outputPath('focused-daily-overview.png'), fullPage: false });
 });
 
-test('strategy console exposes four primary destinations and formal strategy drill-down', async ({ page }, testInfo) => {
-  const apiRequests: string[] = [];
-  const pageErrors: string[] = [];
-  page.on('request', (request) => {
-    const pathname = new URL(request.url()).pathname;
-    if (pathname.startsWith('/api/')) apiRequests.push(request.url());
-  });
-  page.on('pageerror', (error) => pageErrors.push(error.message));
+test('formal QQQ evidence stays public while current operations follow account policy', async ({ page }) => {
+  await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'free-fixture' } });
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQR v4.3', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Current holdings and live signals are protected', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Performance, risk, holdings and attribution', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Performance', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Current decision state' })).toHaveCount(0);
+});
 
-  await openConsole(page);
-  const navName = testInfo.project.name === 'mobile' ? 'Mobile strategy console navigation' : 'Strategy console navigation';
-  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: 'Open strategy navigation' }).click();
-  const navigation = page.getByRole('navigation', { name: navName });
-  for (const label of ['Overview', 'Strategies', 'Research', 'System']) {
-    await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
-  }
-  await expect(navigation.getByRole('link', { name: 'Runs', exact: true })).toHaveCount(0);
-  await expect(navigation.getByRole('link', { name: 'Backtests', exact: true })).toHaveCount(0);
-  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: 'Close strategy navigation' }).click();
-
-  const formalNames = await loadFormalDisplayNames(page);
-  const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
-  for (const name of formalNames) await expect(fleet.getByText(name, { exact: true })).toBeVisible();
-  await fleet.getByText('QQQR v4.3', { exact: true }).click();
-  await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_3$/);
-  await expect(page.getByRole('heading', { name: 'QQQR v4.3', level: 1 })).toBeVisible();
-  await expect(page.getByRole('status', { name: 'Active research context' }).getByText('QQQR v4.3', { exact: true })).toBeVisible();
-  await page.reload();
-  await expect(page.getByRole('status', { name: 'Active research context' }).getByText('QQQR v4.3', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Current decision state' })).toBeVisible();
-  const formalTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
-  for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {
-    await expect(formalTabs.getByRole('tab', { name: label, exact: true })).toBeVisible();
-  }
-  await assertNoHorizontalOverflow(page);
-
+test('retired product views have no alternate execution path', async ({ page }) => {
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
   await page.goto('/#/research');
-  await expect(page.getByRole('heading', { name: 'Research', exact: true })).toBeVisible();
-  await page.goto('/#/system');
-  await expect(page.getByRole('heading', { name: 'System', exact: true })).toBeVisible();
-  await page.goto('/#/dashboard');
-  await expect(page.getByRole('heading', { name: 'Strategy view not found' })).toBeVisible();
-
-  expect(apiRequests).toEqual([]);
-  expect(pageErrors).toEqual([]);
-  await assertNoHorizontalOverflow(page);
-  await page.screenshot({ path: `test-results/static-artifact/strategy-console-${testInfo.project.name}.png`, fullPage: true });
+  await expect(page.getByRole('heading', { name: 'View unavailable', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Open overview', exact: true }).click();
+  await expect(page).toHaveURL(/#\/app$/);
 });
 
-test('installed shell reopens offline after first visit', async ({ page, context }, testInfo) => {
-  test.skip(testInfo.project.name !== 'desktop', 'Offline lifecycle is checked once on desktop Chromium.');
-  await openConsole(page);
-  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+test('retiring offline support clears only Alpha Engine caches and registrations', async ({ page }) => {
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
+  await page.goto('/#/app');
+  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
+  await page.evaluate(async () => {
+    const activate = async (scope: string) => {
+      const registration = await navigator.serviceWorker.register('/legacy-worker.js?scope=' + encodeURIComponent(scope), { scope });
+      const worker = registration.installing || registration.waiting || registration.active;
+      if (!worker) throw new Error('Fixture worker was not created');
+      await new Promise<void>(resolve => {
+        const check = () => { if (worker.state === 'activated') resolve(); };
+        worker.addEventListener('statechange', check);
+        check();
+      });
+    };
+    await activate('/');
+    await activate('/other-project/');
+    await (await caches.open('alpha-engine-shell-v5')).put('/sentinel', new Response('old shell'));
+    await (await caches.open('other-project-shell')).put('/sentinel', new Response('retain'));
+  });
   await page.reload();
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
-  await context.setOffline(true);
-  await page.reload();
-  await expect(page.getByText('Alpha Engine', { exact: true }).first()).toBeVisible();
-});
-
-test('data and comparison views keep unavailable evidence explicit on every viewport', async ({ page }, testInfo) => {
-  const pageErrors: string[] = [];
-  page.on('pageerror', (error) => pageErrors.push(error.message));
-  await installMembershipFixture(page, { loading: false, isPro: true, user: { id: 'pro-fixture' } });
-  await page.goto('/#/data');
-  await expect(page.getByRole('heading', { name: 'Data identity and readiness' })).toBeVisible();
-  await expect(page.getByText(/does not declare model-data readiness indexes/)).toBeVisible();
-  await assertNoHorizontalOverflow(page);
-  // Formal comparison must work independently of the one-model legacy fixture.
-  await page.goto('/#/compare?models=cn_x1_2,us_x1_3');
-  await expect(page.getByRole('heading', { name: 'Compare formal evidence' })).toBeVisible();
-  await expect(page.getByText(/No winner is inferred/)).toBeVisible();
-  await expect(page.getByRole('row', { name: /^Evidence cutoff/ })).toBeVisible();
-  await expect(page.getByText(/The preregistered experiment remains rejected because the 2026H1 drawdown-worsening gate failed/)).toBeVisible();
-  await assertNoHorizontalOverflow(page);
-  expect(pageErrors).toEqual([]);
-  await page.screenshot({ path: `test-results/static-artifact/evidence-comparison-${testInfo.project.name}.png`, fullPage: true });
-});
-
-test('model monitoring reads formal and operational evidence without the legacy projection', async ({ page }, testInfo) => {
-  const legacyRequests: string[] = [];
-  const pageErrors: string[] = [];
-  page.on('request', (request) => { if (new URL(request.url()).pathname.includes('/data/model-operations/')) legacyRequests.push(request.url()); });
-  page.on('pageerror', (error) => pageErrors.push(error.message));
-  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
-  await page.goto('/#/model-operations');
-  await expect(page.getByRole('heading', { name: 'Model Operations & Monitoring', exact: true })).toBeVisible();
-  const context = page.getByRole('status', { name: 'Active research context' });
-  await expect(context.getByText('Cutoff 2026-07-31', { exact: true })).toHaveCount(0);
-  await expect(context.getByText('Fully verified', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('Statistical drift: unavailable', { exact: true })).toBeVisible();
-  for (const name of await loadFormalDisplayNames(page)) await expect(page.getByText(name, { exact: true }).last()).toBeVisible();
-  await expect(page.getByText(/The preregistered experiment remains rejected because the 2026H1 drawdown-worsening gate failed/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Refresh monitoring' })).toBeEnabled();
-  expect(legacyRequests).toEqual([]);
-  expect(pageErrors).toEqual([]);
-  await assertNoHorizontalOverflow(page);
-  await page.screenshot({ path: `test-results/static-artifact/model-monitoring-${testInfo.project.name}.png`, fullPage: true });
+  await expect.poll(() => page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).map(row => new URL(row.scope).pathname))).toEqual(['/other-project/']);
+  await expect.poll(() => page.evaluate(async () => (await caches.keys()).includes('alpha-engine-shell-v5'))).toBe(false);
+  expect(await page.evaluate(async () => (await caches.keys()).includes('other-project-shell'))).toBe(true);
 });

@@ -286,8 +286,8 @@ test('overview brief separates read retry from data recovery', async ({ page }) 
   await expect(row.getByText('Changed at last evaluation', { exact: true })).toHaveCount(0);
   await row.getByText('Recovery steps', { exact: true }).click();
   await expect(row.getByRole('link', { name: 'Open data refresh workflow' })).toHaveAttribute('href', /formal-backtest-refresh.yml$/);
-  await row.getByRole('link', { name: 'Open model monitoring' }).click();
-  await expect(page).toHaveURL(/#\/model-operations$/);
+  await row.getByRole('link', { name: 'Open operating status' }).click();
+  await expect(page).toHaveURL(/#\/system$/);
   await assertNoHorizontalOverflow(page);
 });
 
@@ -383,7 +383,7 @@ test('stale observations require attention while cadence and execution stay expl
   await expect(page.getByRole('button', { name: 'Refresh operations' })).toBeEnabled();
   await expect(page.getByText('Next evaluation in 9 exchange sessions;', { exact: false })).toBeVisible();
   await expect(page.getByText('Execution evidence is still pending;', { exact: false })).toBeVisible();
-  await page.goto('/#/strategies');
+  await page.goto('/#/app');
   // This fixture publishes only QQQ: four missing strategies must leave QQQ
   // readable while the reader offers recovery for their independent failures.
   await expect(page.getByRole('button', { name: 'Retry operations' })).toBeEnabled();
@@ -392,4 +392,17 @@ test('stale observations require attention while cadence and execution stay expl
   await expect(row).toBeVisible();
   await expect(row.getByRole('button', { name: /^(Stale|Inspect signal for .*: Stale)$/ }).filter({ visible: true })).toHaveCount(1);
   await assertNoHorizontalOverflow(page);
+});
+
+test('operating status reads the same verified current observation as the daily brief', async ({ page }) => {
+  await mockBundle(page);
+  await installProMembership(page);
+  await page.goto('/#/system');
+  await expect(page.getByRole('heading', { name: 'Operating Status', exact: true })).toBeVisible();
+  const row = page.getByRole('region', { name: 'Current strategy observations' }).getByRole('article').filter({ hasText: 'QQQR v4.3' });
+  await expect(row.getByText('Changed at last evaluation', { exact: true })).toBeVisible();
+  await expect(row.getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
+  await expect(row.getByText('Observed 2026-07-31', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
+  await expect(row.getByText('Changed at last evaluation', { exact: true })).toBeVisible();
 });

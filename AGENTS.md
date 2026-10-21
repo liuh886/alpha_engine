@@ -6,6 +6,15 @@ User-directed priority (2026-10-03): keep Alpha Engine simple, responsive and
 useful for research decisions. Optimize for a reliable existing operating loop
 before expanding models, factors, dashboards or infrastructure.
 
+User-directed scope reduction (2026-10-21): make the existing five-strategy
+research and monitoring loop the product. The maintained console has only
+Overview, strategy detail and Operating Status; Overview and Status are its two
+navigation destinations. New features must directly serve that loop and replace
+an existing path when possible. Marketing, referrals, PWA/offline, local
+ZIP/preview browsing, standalone research exploration and browser policy editing
+are retired. Historical evidence and server-enforced current-operations access
+remain. Do not reactivate retired paths as fallback readers.
+
 - Core value: refresh required data, evaluate due strategies, explain the
   evidence-bound result and expose freshness/blockers in one current view.
 - The active strategy registry, selected-pool/reference registries, frozen
@@ -89,6 +98,13 @@ Complexity and truth controls:
 Older OHLCV rankers, state machines, factor scanners and dashboard workflows are
 retained as historical or diagnostic capabilities. They are not automatically
 reactivated by the data-plane program.
+
+The former low-turnover Decision Desk, focus-watchlist and hierarchical/small-pool
+rotation runtimes and their dedicated workflows are retired. Their historical
+contracts, results and failed evidence remain; removed source revisions are
+recorded in `scripts/archive/ARCHIVE_MANIFEST.json`. Shared data adapters,
+selected-pool gates and active decision/publication paths remain maintained.
+Historical documentation does not authorize restoring retired code.
 
 ### Parallel work policy
 

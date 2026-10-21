@@ -6,6 +6,21 @@ Effective 2026-10-03 by user direction. This section governs simplification;
 it does not assert that daily reliability is already achieved. The existing
 selected-pool data program and research-only boundary remain in force.
 
+Scope tightened by user direction on 2026-10-21: the maintained product is the
+existing five-strategy observation and evidence loop. The console has two
+navigation destinations, Overview and Status, plus strategy detail. It reads
+formal Bundle v2 evidence and the existing authorized operations reader; it has
+no independent preview/local-bundle source, research explorer, policy writer,
+marketing/referral flow or offline cache. Status refresh reads evidence only.
+Recovery links lead to existing workflows from Operating Status.
+
+The former Decision Desk, low-turnover/watchlist/rotation experiments and their
+six dedicated workflows are retired from the maintained runtime. Shared
+providers, selected-pool gates, sealed research results and source contracts
+remain. Source revision/hash anchors use the existing archive manifest. The
+workflow ceiling is now 39. Earlier implementation counts below are historical;
+retired manual workflows must not be reactivated to work around a current blocker.
+
 The core operating route is:
 
 ```text
@@ -151,6 +166,9 @@ unchanged. Permanent workflow count remains 45; scheduled workflows fell from
 14 to 12. Local CLI module import changed from 4.734s / 2,468 loaded modules
 to 0.169s / 124 modules in a single before/after measurement. This establishes
 startup isolation, not production data throughput or reliability acceptance.
+
+Historical status: the two manual diagnostic workflows described above were
+subsequently removed by the 2026-10-21 focused-core scope reduction.
 
 Validation: 137 affected tests, Ruff, scoped mypy and both CI governance checks
 passed. A real local `alpha ops build` generated all five strategy projections

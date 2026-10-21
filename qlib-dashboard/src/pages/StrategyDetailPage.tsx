@@ -10,7 +10,7 @@ import { useAccessControl } from '@/hooks/useAccessControl';
 import { useStrategyOperations } from '@/hooks/useStrategyOperations';
 import type { AccessTier } from '@/lib/model-access';
 import { loadDecisionForRun, type DecisionLoadState } from '@/lib/model-run-decision';
-import { governedRunQuery, loadRunSection } from '@/lib/governed-run';
+import { loadRunSection } from '@/lib/governed-run';
 import { latestPerformanceObservation } from '@/lib/performancePeriods';
 import type { ReportRow } from '@/lib/types';
 import { STRATEGY_STATUS_LABEL, summarizeStrategySignal } from '@/lib/strategy-operations';
@@ -147,7 +147,7 @@ export function StrategyDetailPage() {
       <div className="research-empty-state">
         <h1 className="text-lg font-semibold">Formal strategy not found</h1>
         <p className="mt-2 text-sm text-muted-foreground">The verified formal catalog does not declare this strategy.</p>
-        <Button asChild variant="outline" className="mt-5"><Link to="/strategies">Back to strategies</Link></Button>
+        <Button asChild variant="outline" className="mt-5"><Link to="/app">Back to overview</Link></Button>
       </div>
     );
   }
@@ -155,7 +155,7 @@ export function StrategyDetailPage() {
   return (
     <div className="mx-auto max-w-[1500px] space-y-7 pb-16">
       <section className="space-y-5 border-b pb-6">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 gap-2"><Link to="/strategies"><ArrowLeft className="h-4 w-4" />Strategies</Link></Button>
+        <Button asChild variant="ghost" size="sm" className="-ml-2 gap-2"><Link to="/app"><ArrowLeft className="h-4 w-4" />Overview</Link></Button>
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-4xl">
             <div className="flex flex-wrap items-center gap-2">
@@ -185,7 +185,7 @@ export function StrategyDetailPage() {
         />
       </section>
 
-      <OperationsReadStatus loading={loading} issues={issues} reload={reload} snapshots={snapshots} />
+      <OperationsReadStatus loading={loading} issues={issues} reload={reload} />
       <section aria-label="Research tracking assessment" className="rounded-xl border bg-card p-5 text-sm">
         <h2 className="font-semibold">Research tracking assessment</h2>
         <p className="mt-2 text-muted-foreground">
@@ -210,7 +210,6 @@ export function StrategyDetailPage() {
             <p className="mt-3 text-muted-foreground">{decisionState.decision.next_permitted_validation_step}</p>
           </details>
         )}
-        <Link className="mt-3 inline-block text-primary underline" to={`/decisions?${governedRunQuery(run)}`}>Open manifest-bound assessment</Link>
       </section>
 
       <section aria-label="Latest retained change and risk" className="rounded-xl border bg-card p-5 text-sm">

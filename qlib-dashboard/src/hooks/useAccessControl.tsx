@@ -24,7 +24,6 @@ interface AccessControlValue {
   getClient: () => Promise<SupabaseAccessClient | undefined>;
   canAccess: (required: AccessTier) => boolean;
   requiredTier: (type: AccessResourceType, id: string) => AccessTier;
-  savePolicy: (type: AccessResourceType, id: string, tier: AccessTier) => Promise<void>;
   reloadPolicies: () => Promise<void>;
 }
 
@@ -94,22 +93,6 @@ export function AccessControlProvider({ children }: { children: ReactNode }) {
     [policies],
   );
 
-  const savePolicy = useCallback(async (type: AccessResourceType, id: string, required: AccessTier) => {
-    if (!membership.isOwner || !membership.userId) throw new Error('Owner access is required.');
-    const client = await membership.getClient();
-    if (!client) throw new Error('Shared account client is unavailable.');
-    const { error } = await client.from('product_access_policies').upsert({
-      product_code: 'alpha_engine',
-      resource_type: type,
-      resource_id: id,
-      required_tier: required,
-      updated_by: membership.userId,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'product_code,resource_type,resource_id' });
-    if (error) throw error;
-    await reloadPolicies();
-  }, [membership.getClient, membership.isOwner, membership.userId, reloadPolicies]);
-
   const value = useMemo<AccessControlValue>(() => ({
     loading: membership.loading || policyLoading,
     policyLoading,
@@ -123,9 +106,8 @@ export function AccessControlProvider({ children }: { children: ReactNode }) {
     getClient: membership.getClient,
     canAccess: (required) => canAccessTier(tier, required),
     requiredTier,
-    savePolicy,
     reloadPolicies,
-  }), [membership.getClient, membership.loading, membership.openAccount, membership.isOwner, membership.isPro, membership.signedIn, policies, policyError, policyLoading, reloadPolicies, requiredTier, savePolicy, tier]);
+  }), [membership.getClient, membership.loading, membership.openAccount, membership.isOwner, membership.isPro, membership.signedIn, policies, policyError, policyLoading, reloadPolicies, requiredTier, tier]);
 
   return <AccessControlContext.Provider value={value}>{children}</AccessControlContext.Provider>;
 }

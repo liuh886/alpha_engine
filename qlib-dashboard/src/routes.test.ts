@@ -1,82 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import {
-  VIEW_TITLES,
-  groupRoutes,
-  isRuntimeVisible,
-  routes,
-  visibleRoutes,
-  type NavGroupTitle,
-  type ReleaseLevel,
-} from './routes';
-
-const ALL_RELEASE_LEVELS: ReleaseLevel[] = ['release', 'experimental', 'internal'];
-const ALL_NAV_GROUPS: NavGroupTitle[] = ['Monitor', 'Research', 'System'];
-
-describe('strategy-console route registry', () => {
-  it('has unique paths and complete labels', () => {
-    expect(routes.length).toBeGreaterThan(0);
-    expect(new Set(routes.map((route) => route.path)).size).toBe(routes.length);
-    for (const route of routes) {
-      expect(route.title.trim()).not.toBe('');
-      expect(route.label.trim()).not.toBe('');
-      expect(route.icon).toBeTruthy();
-      expect(ALL_RELEASE_LEVELS).toContain(route.releaseLevel);
-      expect(ALL_NAV_GROUPS).toContain(route.navGroup);
-      expect(VIEW_TITLES[route.path]).toBe(route.title);
-      expect(route.path.startsWith('/')).toBe(false);
-    }
+import { groupRoutes, isRuntimeVisible, routes } from './routes';
+describe('focused daily console routes', () => {
+  it('keeps the daily view, strategy drill-down and operating status', () => {
+    expect(routes.map(route => route.path)).toEqual(['app', 'strategies/:strategyId', 'system']);
+    expect(new Set(routes.map(route => route.path)).size).toBe(routes.length);
+    for (const route of routes) expect(route.title && route.label && route.icon && route.component).toBeTruthy();
   });
-
-  it('exposes the five product-level navigation destinations', () => {
-    const visible = visibleRoutes(false);
-    expect(visible.map((route) => route.path)).toEqual(['app', 'strategies', 'securities', 'research', 'system']);
-    expect(visible.map((route) => route.label)).toEqual(['Overview', 'Strategies', 'Securities', 'Research', 'System']);
-    const groups = new Set(visible.map((route) => route.navGroup));
-    ALL_NAV_GROUPS.forEach((group) => expect(groups).toContain(group));
-  });
-
-  it('delegates Security Explorer access to the configurable policy layer', () => {
-    const securityExplorer = routes.find((route) => route.path === 'securities');
-    expect(securityExplorer?.accessResourceId).toBe('securities');
-    expect(securityExplorer?.ownerOnly).not.toBe(true);
-  });
-
-  it('keeps evidence tools as drill-down routes rather than primary navigation', () => {
-    for (const path of ['runs', 'backtests', 'review', 'compare', 'decisions', 'factors', 'reports', 'data', 'library', 'methodology', 'settings/access', 'strategies/:strategyId', 'model-operations']) {
-      expect(routes.find((route) => route.path === path)?.navVisible).toBe(false);
-    }
-    for (const removed of ['operations', 'dashboard', 'models', 'agent', 'backtest']) {
-      expect(routes.some((route) => route.path === removed)).toBe(false);
-    }
-  });
-
-  it('groups every navigation-visible route and excludes drill-down views', () => {
-    const groups = groupRoutes();
-    for (const [group, rows] of groups) {
-      expect(ALL_NAV_GROUPS).toContain(group);
-      rows.forEach((route) => {
-        expect(route.navGroup).toBe(group);
-        expect(isRuntimeVisible(route)).toBe(true);
-      });
-    }
-    expect(Array.from(groups.values()).flat()).toEqual(routes.filter(isRuntimeVisible));
-  });
-
-  it('preserves route declaration order within groups', () => {
-    const grouped = groupRoutes();
-    for (const [, rows] of grouped) {
-      const positions = rows.map((route) => routes.indexOf(route));
-      expect(positions).toEqual([...positions].sort((a, b) => a - b));
-    }
-  });
-
-  it('supports filtered grouping', () => {
-    const releaseOnly = groupRoutes((route) => route.releaseLevel === 'release');
-    for (const [, rows] of releaseOnly) rows.forEach((route) => expect(route.releaseLevel).toBe('release'));
-  });
-
-  it('returns the same product navigation regardless of operator mode', () => {
-    expect(visibleRoutes(false)).toEqual(routes.filter(isRuntimeVisible));
-    expect(visibleRoutes(true)).toEqual(routes.filter(isRuntimeVisible));
+  it('exposes only the two primary destinations', () => {
+    expect(routes.filter(isRuntimeVisible).map(route => route.path)).toEqual(['app', 'system']);
+    expect([...groupRoutes().values()].flat()).toEqual(routes.filter(isRuntimeVisible));
   });
 });

@@ -17,7 +17,11 @@ from src.artifacts.model_run_bundle_v2 import (
     validate_manifest as validate_model_run_manifest,
 )
 
-EXPECTED_REQUIRED_BUNDLE_KINDS = {"model_index", "static_export_manifest"}
+from src.artifacts.strategy_operations import (
+    StrategyOperationsError,
+    validate_operations_payload,
+)
+
 SHELL_BOOTSTRAP_MARKERS = ('<div id="root"></div>', '<script type="module"')
 
 
@@ -39,14 +43,6 @@ class PublishedFormalRun:
 @dataclass(frozen=True)
 class PublishedSection:
     section_id: str
-    path: str
-    byte_size: int
-    sha256: str
-
-
-@dataclass(frozen=True)
-class PublishedBundleArtifact:
-    kind: str
     path: str
     byte_size: int
     sha256: str
@@ -262,74 +258,70 @@ def validate_formal_section(
         )
 
 
-def validate_bundle_manifest(payload: object) -> tuple[str, tuple[PublishedBundleArtifact, ...]]:
-    bundle = _mapping(payload, label="research bundle manifest")
-    schema_version = _string(bundle.get("schema_version"), label="bundle.schema_version")
-    if schema_version.split(".", 1)[0] != "1":
-        raise ReleaseVerificationError(f"unsupported research bundle schema: {schema_version}")
-    if bundle.get("research_only") is not True or bundle.get("trade_ready") is not False:
-        raise ReleaseVerificationError("research bundle boundary is invalid")
-    bundle_id = _digest(bundle.get("bundle_id"), label="bundle.bundle_id")
-    required: list[PublishedBundleArtifact] = []
-    for index, value in enumerate(
-        _sequence(bundle.get("artifacts"), label="research bundle artifacts")
-    ):
-        artifact = _mapping(value, label=f"bundle artifact {index}")
-        if artifact.get("required") is not True:
-            continue
-        byte_size = artifact.get("byte_size")
-        if isinstance(byte_size, bool) or not isinstance(byte_size, int) or byte_size < 0:
-            raise ReleaseVerificationError(f"bundle artifact {index}.byte_size is invalid")
-        required.append(
-            PublishedBundleArtifact(
-                kind=_string(artifact.get("kind"), label=f"bundle artifact {index}.kind"),
-                path=_safe_path(artifact.get("path"), label=f"bundle artifact {index}.path"),
-                byte_size=byte_size,
-                sha256=_digest(artifact.get("sha256"), label=f"bundle artifact {index}.sha256"),
-            )
-        )
-    observed_kinds = {artifact.kind for artifact in required}
-    if not EXPECTED_REQUIRED_BUNDLE_KINDS.issubset(observed_kinds):
-        missing = sorted(EXPECTED_REQUIRED_BUNDLE_KINDS - observed_kinds)
-        raise ReleaseVerificationError(
-            f"research bundle is missing required artifact kinds: {missing}"
-        )
-    return bundle_id, tuple(required)
-
-
-def validate_bundle_artifact_bytes(
-    artifact: PublishedBundleArtifact,
-    payload: bytes,
+def validate_public_operations(
+    payload: object, records: Sequence[PublishedFormalRun]
 ) -> None:
-    if len(payload) != artifact.byte_size:
-        raise ReleaseVerificationError(f"bundle artifact size mismatch for {artifact.path}")
-    if hashlib.sha256(payload).hexdigest() != artifact.sha256:
-        raise ReleaseVerificationError(f"bundle artifact digest mismatch for {artifact.path}")
-    decoded = _json(payload, label=artifact.path)
-    if artifact.kind == "model_index":
-        models = _sequence(decoded, label="bundle model index")
-        model_ids = [
-            _string(
-                _mapping(value, label=f"bundle model {index}").get("id"),
-                label=f"bundle model {index}.id",
-            )
-            for index, value in enumerate(models)
-        ]
-        if len(model_ids) != len(set(model_ids)):
-            raise ReleaseVerificationError("bundle model index contains duplicate IDs")
-    elif artifact.kind == "static_export_manifest":
-        manifest = _mapping(decoded, label="static export manifest")
-        if manifest.get("source") != "repository_research_store":
-            raise ReleaseVerificationError("static export must use repository_research_store")
-        if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
-            raise ReleaseVerificationError("static export research boundary is invalid")
-        blocked = manifest.get("blocked_gates", [])
-        if (
-            isinstance(blocked, Sequence)
-            and not isinstance(blocked, (str, bytes))
-            and "metadata_db_missing" in blocked
+    """Enforce the public shell before upload and against the live release."""
+    operations = _mapping(payload, label="strategy operations")
+    if set(operations) != {
+        "schema_version", "generated_at", "research_only", "trade_ready", "records"
+    }:
+        raise ReleaseVerificationError("public strategy operations have unexpected fields")
+    try:
+        validate_operations_payload(operations)
+    except StrategyOperationsError as exc:
+        raise ReleaseVerificationError(f"invalid public strategy operations: {exc}") from exc
+    fixed_fields: dict[str, object] = {
+        "status": "blocked",
+        "read_state": "protected",
+        "as_of": None,
+        "latest_completed_session": None,
+        "state_label": "Runtime current operations",
+        "decision_reason": "Current holdings and signals are delivered from the runtime access plane.",
+        "allocations": [],
+        "turnover": None,
+        "estimated_cost": None,
+        "data_freshness": "unknown",
+        "factor_freshness": "blocked",
+        "delivery_status": "not available",
+        "source_label": "Runtime current operations",
+        "source_href": None,
+        "note": "Current holdings, targets, drivers and decision-ledger provenance are never included in the public static bundle.",
+        "factor_evidence": [],
+    }
+    allowed_fields = set(fixed_fields) | {
+        "strategy_id", "model_version_id", "decision_cadence",
+        "next_decision_policy", "source_identity",
+    }
+    by_version = {record.model_version_id: record for record in records}
+    rows = [
+        _mapping(row, label="strategy operation")
+        for row in _sequence(operations.get("records"), label="strategy operations records")
+    ]
+    if len(rows) != len(by_version) or {
+        row.get("model_version_id") for row in rows
+    } != set(by_version):
+        raise ReleaseVerificationError("strategy operations differ from the formal catalog")
+    for row in rows:
+        if set(row) != allowed_fields or any(
+            row.get(key) != value for key, value in fixed_fields.items()
         ):
-            raise ReleaseVerificationError("static export fell back to missing metadata DB")
+            raise ReleaseVerificationError("public strategy operations expose protected evidence")
+        version = _string(row.get("model_version_id"), label="operations model version")
+        record = by_version[version]
+        expected_identity = {
+            "formal_bundle_id": record.bundle_id,
+            "formal_run_id": record.run_id,
+            "formal_evidence_cutoff": record.evidence_cutoff,
+            "ledger_fingerprint": None,
+            "signal_sha256": None,
+            "factor_catalog_implementation_hash": None,
+            "workflow_run_id": None,
+            "commit_sha": None,
+            "github_issue_number": None,
+        }
+        if row.get("source_identity") != expected_identity:
+            raise ReleaseVerificationError("public strategy operations source identity mismatch")
 
 
 def validate_shell(payload: bytes) -> None:
@@ -381,22 +373,6 @@ def verify_once(
         expected_commit=expected_commit,
     )
 
-    bundle_bytes = fetch_bytes(
-        base_url,
-        "bundle/alpha-engine-bundle.json",
-        timeout_seconds=timeout_seconds,
-    )
-    bundle_id, required_artifacts = validate_bundle_manifest(
-        _json(bundle_bytes, label="bundle/alpha-engine-bundle.json")
-    )
-    for artifact in required_artifacts:
-        payload = fetch_bytes(
-            base_url,
-            f"bundle/{artifact.path}",
-            timeout_seconds=timeout_seconds,
-        )
-        validate_bundle_artifact_bytes(artifact, payload)
-
     formal_root = "data/formal-model-runs"
     catalog_path = f"{formal_root}/catalog.json"
     catalog_bytes = fetch_bytes(base_url, catalog_path, timeout_seconds=timeout_seconds)
@@ -421,14 +397,18 @@ def verify_once(
             validate_formal_section(record, section, payload)
             section_count += 1
 
+    operations_bytes = fetch_bytes(
+        base_url, "data/strategy-operations/snapshots.json", timeout_seconds=timeout_seconds
+    )
+    validate_public_operations(_json(operations_bytes, label="strategy operations"), records)
+
     shell_bytes = fetch_bytes(base_url, "index.html", timeout_seconds=timeout_seconds)
     validate_shell(shell_bytes)
     return {
         "status": "verified",
         "base_url": base_url,
         "commit_sha": expected_commit,
-        "bundle_id": bundle_id,
-        "required_bundle_artifacts": [artifact.path for artifact in required_artifacts],
+        "public_operations_verified": True,
         "formal_models": sorted(record.model_version_id for record in records),
         "formal_sections_verified": section_count,
         "research_only": True,

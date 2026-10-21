@@ -1,6 +1,6 @@
 """Enforce the artifact-only browser boundary.
 
-The Research Artifact Studio is a static/local PWA. Production frontend source
+The Research Artifact Studio is a read-only published-evidence console. Production frontend source
 must not import retired HTTP clients or contain browser API endpoint calls.
 """
 
@@ -81,8 +81,12 @@ def test_production_frontend_contains_no_github_api_endpoints() -> None:
 
 def test_browser_runtime_is_artifact_only() -> None:
     runtime = (FRONTEND_SRC / "lib" / "runtime-capabilities.ts").read_text(encoding="utf-8")
-    assert "export type RuntimeMode = 'static_artifact' | 'local_artifact';" in runtime
-    assert "backendApi: false" in runtime
-    assert "mutations: false" in runtime
-    assert "jobs: false" in runtime
-    assert "requiresAuthentication: false" in runtime
+    assert "export function assetUrl" in runtime
+    assert "local_artifact" not in runtime
+    assert "localStorage" not in runtime
+    app = (FRONTEND_SRC / "App.tsx").read_text(encoding="utf-8")
+    assert "AccessControlProvider" in app
+    bootstrap = (FRONTEND_SRC / "hooks" / "useModels.ts").read_text(encoding="utf-8")
+    assert "loadFormalRuns" in bootstrap
+    assert "loadPreviewRuns" not in bootstrap
+    assert "modelsApi" not in bootstrap

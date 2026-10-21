@@ -15,9 +15,6 @@ from src.data.us_pool_price_snapshot import (
     build_us_pool_price_snapshot,
     resolve_safe_request_through,
 )
-from src.decision_support.latest_us_low_turnover_run import (
-    run_latest_us_low_turnover_decision,
-)
 
 POOL = Path("configs/pools/us_small_pool_v1.yaml")
 AS_OF = "2026-07-31"
@@ -114,42 +111,6 @@ class FakeUsBarsAdapter:
         )
 
 
-def _write_fundamentals(path: Path) -> None:
-    basket_by_symbol, _ = _pool_maps()
-    period_ends = pd.date_range("2024-03-31", periods=8, freq="QE")
-    rows = []
-    symbol_count = len(basket_by_symbol)
-    for symbol_index, symbol in enumerate(basket_by_symbol):
-        base = 90.0 + symbol_index * 4.0
-        acceleration = 0.00035 + 0.000035 * symbol_index
-        margin_slope_rank = (symbol_index * 7) % symbol_count
-        margin_slope = 0.0007 + 0.000055 * margin_slope_rank
-        for quarter_index, period_end in enumerate(period_ends):
-            revenue = base * (
-                1.0
-                + 0.035 * quarter_index
-                + acceleration * quarter_index * quarter_index
-            )
-            margin = (
-                0.31
-                + 0.0015 * (symbol_index % 4)
-                + margin_slope * quarter_index
-            )
-            rows.append(
-                {
-                    "symbol": symbol,
-                    "fiscal_period_end": period_end.date().isoformat(),
-                    "filed_date": (period_end + pd.Timedelta(days=35)).date().isoformat(),
-                    "revenue": revenue,
-                    "gross_profit": revenue * margin,
-                    "currency": "USD",
-                    "form_type": "10-Q" if quarter_index % 4 != 3 else "10-K",
-                    "accession_id": f"{symbol}-{quarter_index}",
-                }
-            )
-    pd.DataFrame(rows).to_csv(path, index=False)
-
-
 def test_safe_cutoff_excludes_open_us_session() -> None:
     before_close = datetime(2026, 7, 31, 17, 0, tzinfo=timezone.utc)
     after_close = datetime(2026, 7, 31, 23, 0, tzinfo=timezone.utc)
@@ -212,28 +173,3 @@ def test_lagging_reference_still_fails_closed(tmp_path: Path) -> None:
             requested_through=AS_OF,
             adapter=FakeUsBarsAdapter(stale_provider_symbol="^SOX"),
         )
-
-
-def test_latest_runner_generates_immutable_decision_ticket(tmp_path: Path) -> None:
-    fundamentals = tmp_path / "fundamentals.csv"
-    _write_fundamentals(fundamentals)
-    manifest = run_latest_us_low_turnover_decision(
-        registry_db=tmp_path / "factor.db",
-        ledger_dir=tmp_path / "ledger",
-        workspace_dir=tmp_path / "workspace",
-        snapshot_root=tmp_path / "snapshots",
-        requested_through=AS_OF,
-        fundamentals_csv=fundamentals,
-        price_adapter=FakeUsBarsAdapter(),
-    )
-
-    assert manifest["run_id"] == "latest_us_low_turnover_decision_v1"
-    assert manifest["as_of_date"] == AS_OF
-    assert manifest["trade_ready"] is False
-    ticket = json.loads(
-        (tmp_path / "ledger" / "us" / f"{AS_OF}.json").read_text(encoding="utf-8")
-    )
-    assert ticket["ticket_identity_sha256"] == manifest["outputs"][
-        "ticket_identity_sha256"
-    ]
-    assert ticket["mode"] == "diagnostic_only"

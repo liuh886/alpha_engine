@@ -7,15 +7,13 @@ import pytest
 
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes, compute_bundle_id
 from src.artifacts.pages_release_verification import (
-    PublishedBundleArtifact,
     PublishedFormalRun,
     ReleaseVerificationError,
-    validate_bundle_artifact_bytes,
-    validate_bundle_manifest,
     validate_deployment,
     validate_formal_catalog,
     validate_formal_manifest,
     validate_formal_section,
+    validate_public_operations,
     validate_shell,
 )
 
@@ -134,48 +132,6 @@ def _formal_manifest() -> tuple[dict[str, object], bytes, bytes]:
     return manifest, manifest_bytes, summary_bytes
 
 
-def _bundle_fixture() -> tuple[dict[str, object], dict[str, bytes]]:
-    models = json.dumps(
-        [{"id": "us_x1_0"}, {"id": "us_x1_1"}, {"id": "cn_x1_0"}],
-        separators=(",", ":"),
-    ).encode()
-    export = json.dumps(
-        {
-            "source": "repository_research_store",
-            "research_only": True,
-            "trade_ready": False,
-            "blocked_gates": ["primary_run_curve_unavailable"],
-        },
-        separators=(",", ":"),
-    ).encode()
-    payloads = {"data/models.json": models, "data/manifest.json": export}
-    return (
-        {
-            "schema_version": "1.0.0",
-            "bundle_id": "d" * 64,
-            "research_only": True,
-            "trade_ready": False,
-            "artifacts": [
-                {
-                    "kind": "model_index",
-                    "path": "data/models.json",
-                    "byte_size": len(models),
-                    "sha256": hashlib.sha256(models).hexdigest(),
-                    "required": True,
-                },
-                {
-                    "kind": "static_export_manifest",
-                    "path": "data/manifest.json",
-                    "byte_size": len(export),
-                    "sha256": hashlib.sha256(export).hexdigest(),
-                    "required": True,
-                },
-            ],
-        },
-        payloads,
-    )
-
-
 def test_accepts_expected_deployment_and_catalog_governed_formal_runs() -> None:
     validate_deployment({"commit_sha": "abc123"}, expected_commit="abc123")
     records = validate_formal_catalog(_catalog())
@@ -274,37 +230,94 @@ def test_rejects_catalog_manifest_identity_drift() -> None:
         validate_formal_manifest(record, manifest_bytes)
 
 
-def test_verifies_required_research_bundle_artifacts() -> None:
-    bundle, payloads = _bundle_fixture()
-    bundle_id, artifacts = validate_bundle_manifest(bundle)
-    assert bundle_id == "d" * 64
-    assert {artifact.kind for artifact in artifacts} == {
-        "model_index",
-        "static_export_manifest",
-    }
-    for artifact in artifacts:
-        validate_bundle_artifact_bytes(artifact, payloads[artifact.path])
-
-
-def test_rejects_corrupted_bundle_artifact() -> None:
-    bundle, payloads = _bundle_fixture()
-    _, artifacts = validate_bundle_manifest(bundle)
-    model_index = next(
-        artifact for artifact in artifacts if artifact.kind == "model_index"
-    )
-    with pytest.raises(ReleaseVerificationError, match="digest mismatch"):
-        validate_bundle_artifact_bytes(
-            PublishedBundleArtifact(
-                kind=model_index.kind,
-                path=model_index.path,
-                byte_size=model_index.byte_size,
-                sha256="0" * 64,
-            ),
-            payloads[model_index.path],
-        )
-
-
 def test_verifies_stable_shell_bootstrap_without_product_copy_dependency() -> None:
     validate_shell(b'<html><body><div id="root"></div><script type="module" src="/assets/app.js"></script></body></html>')
     with pytest.raises(ReleaseVerificationError, match="bootstrap markers"):
         validate_shell(b"<html>Governed Model Runs</html>")
+
+
+def _public_operations() -> dict:
+    return {
+        "schema_version": "2.2.0",
+        "generated_at": "2026-08-06T09:52:48Z",
+        "research_only": True,
+        "trade_ready": False,
+        "records": [
+            {
+                "strategy_id": record.model_family_id,
+                "model_version_id": record.model_version_id,
+                "status": "blocked",
+                "read_state": "protected",
+                "as_of": None,
+                "latest_completed_session": None,
+                "decision_cadence": "Every completed market session",
+                "next_decision_policy": "Evaluate after the close.",
+                "state_label": "Runtime current operations",
+                "decision_reason": "Current holdings and signals are delivered from the runtime access plane.",
+                "allocations": [],
+                "turnover": None,
+                "estimated_cost": None,
+                "data_freshness": "unknown",
+                "factor_freshness": "blocked",
+                "delivery_status": "not available",
+                "source_label": "Runtime current operations",
+                "source_href": None,
+                "note": "Current holdings, targets, drivers and decision-ledger provenance are never included in the public static bundle.",
+                "factor_evidence": [],
+                "source_identity": {
+                    "formal_bundle_id": record.bundle_id,
+                    "formal_run_id": record.run_id,
+                    "formal_evidence_cutoff": record.evidence_cutoff,
+                    "ledger_fingerprint": None,
+                    "signal_sha256": None,
+                    "factor_catalog_implementation_hash": None,
+                    "workflow_run_id": None,
+                    "commit_sha": None,
+                    "github_issue_number": None,
+                },
+            }
+            for record in validate_formal_catalog(_catalog())
+        ],
+    }
+
+
+def test_public_operations_bind_all_formal_runs_and_reject_missing_rows() -> None:
+    operations = _public_operations()
+    records = validate_formal_catalog(_catalog())
+    validate_public_operations(operations, records)
+    operations["records"].pop()
+    with pytest.raises(ReleaseVerificationError, match="differ from the formal catalog"):
+        validate_public_operations(operations, records)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("as_of", "2026-08-06"),
+        ("latest_completed_session", "2026-08-06"),
+        ("evaluation_changed", True),
+        ("decision_schedule", {"state": "due"}),
+        ("turnover", 0.3),
+        ("read_state", None),
+        ("source_href", "https://example.com/private-ledger"),
+        ("decision_reason", "Protected signal explanation"),
+        ("unexpected_runtime_field", "protected"),
+    ],
+)
+def test_public_operations_reject_current_fields(field: str, value: object) -> None:
+    operations = _public_operations()
+    operations["records"][0][field] = value
+    with pytest.raises(ReleaseVerificationError, match="protected evidence"):
+        validate_public_operations(operations, validate_formal_catalog(_catalog()))
+
+
+@pytest.mark.parametrize("field", [
+    "ledger_fingerprint", "signal_sha256", "factor_catalog_implementation_hash",
+    "workflow_run_id", "commit_sha", "github_issue_number", "formal_run_id",
+    "formal_bundle_id", "formal_evidence_cutoff", "unexpected_identity",
+])
+def test_public_operations_reject_private_or_mismatched_identity(field: str) -> None:
+    operations = _public_operations()
+    operations["records"][0]["source_identity"][field] = "unexpected"
+    with pytest.raises(ReleaseVerificationError, match="source identity mismatch"):
+        validate_public_operations(operations, validate_formal_catalog(_catalog()))

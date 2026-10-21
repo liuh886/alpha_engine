@@ -115,40 +115,18 @@ jobs:
           cache-dependency-path: qlib-dashboard/package-lock.json
       - name: Build static strategy console
         working-directory: qlib-dashboard
-        env:
-          VITE_RUNTIME_MODE: static_artifact
-          VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN || '' }}
         run: |
           set -euo pipefail
           npm ci --no-audit --no-fund
           npm run build
           test -f dist/index.html
-          test -f dist/manifest.webmanifest
           test -f dist/sw.js
           test -f dist/icons/alpha-engine.svg
           test -f dist/data/formal-model-runs/catalog.json
-          test -f dist/data/model-runs/catalog.json
           test -f dist/data/strategy-operations/snapshots.json
           test ! -e dist/data/strategy-operations/capabilities.json
           test ! -e dist/data/formal-backtests
           grep -q "Systematic Strategy Console" dist/index.html
-          grep -q "What are the strategies doing now?" dist/index.html
-          grep -q '"display": "fullscreen"' dist/manifest.webmanifest
-      - name: Validate primary model and run bindings
-        run: uv run python scripts/check_repository_model_runs.py
-      - name: Export repository research evidence
-        run: |
-          set -euo pipefail
-          PYTHONPATH=. uv run python scripts/export_static_site_data.py --source repository --repository-catalog data/research/catalog.json --output artifacts/site/data
-          mkdir -p artifacts/site/docs
-          cp docs/methodology.md artifacts/site/docs/methodology.md
-          PYTHONPATH=. uv run python scripts/export_research_bundle.py --source artifacts/site --output artifacts/research-bundle
-          if test -d data/research/model_data_bundle_v1; then
-            for name in model-data-readiness.json data-components.json training-profiles.json; do
-              test -f "artifacts/site/data/${name}"
-              test -f "artifacts/research-bundle/data/${name}"
-            done
-          fi
       - name: Assemble and validate publication
         env:
           IMPACT_REASON: ${{ needs.detect-impact.outputs.reason }}
@@ -157,11 +135,6 @@ jobs:
           set -euo pipefail
           mkdir -p _site/docs _site/data
           cp -r qlib-dashboard/dist/. _site/
-          cp -r artifacts/site/data/. _site/data/
-          cp -r artifacts/site/reports _site/reports
-          cp docs/methodology.md _site/docs/methodology.md
-          cp -r artifacts/research-bundle _site/bundle
-          cp docs/contracts/alpha-engine-bundle.schema.json _site/docs/alpha-engine-bundle.schema.json
           python - <<'PY'
           import json
           import os
@@ -179,34 +152,21 @@ jobs:
           touch _site/.nojekyll
           test -f _site/index.html
           test -f _site/deployment.json
-          test -f _site/data/manifest.json
-          test -f _site/data/models.json
           test -f _site/data/formal-model-runs/catalog.json
-          test -f _site/data/model-runs/catalog.json
+          test -f _site/data/model-decisions/catalog.json
           test -f _site/data/strategy-operations/snapshots.json
           test ! -e _site/data/strategy-operations/capabilities.json
-          test -f _site/docs/methodology.md
-          test -f _site/bundle/alpha-engine-bundle.json
-          if test -d data/research/model_data_bundle_v1; then
-            for name in model-data-readiness.json data-components.json training-profiles.json; do
-              test -f "_site/data/${name}"
-              test -f "_site/bundle/data/${name}"
-            done
-          fi
-          grep -q '"source": "repository_research_store"' _site/data/manifest.json
-          ! grep -q 'metadata_db_missing' _site/bundle/alpha-engine-bundle.json
           PYTHONPATH=. uv run python - <<'PY'
           import hashlib
           import json
           from pathlib import Path
           from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
-          from src.artifacts.strategy_operations import validate_operations_payload
+          from src.artifacts.pages_release_verification import validate_formal_catalog, validate_public_operations
 
           root = Path('_site/data/formal-model-runs')
           catalog = json.loads((root / 'catalog.json').read_text(encoding='utf-8'))
           validate_catalog(catalog)
           assert catalog['channel'] == 'formal'
-          formal_ids = {row['model_version_id'] for row in catalog['records']}
           for row in catalog['records']:
               manifest_path = root / row['manifest_path']
               manifest_bytes = manifest_path.read_bytes()
@@ -215,10 +175,7 @@ jobs:
               validate_manifest(manifest)
               assert manifest['bundle_id'] == row['bundle_id']
           operations = json.loads(Path('_site/data/strategy-operations/snapshots.json').read_text(encoding='utf-8'))
-          validate_operations_payload(operations)
-          assert {row['model_version_id'] for row in operations['records']} == formal_ids
-          assert all(not row['allocations'] for row in operations['records'])
-          assert all(not row['factor_evidence'] for row in operations['records'])
+          validate_public_operations(operations, validate_formal_catalog(catalog))
           PY
       - name: Setup Pages
         uses: actions/configure-pages@v6

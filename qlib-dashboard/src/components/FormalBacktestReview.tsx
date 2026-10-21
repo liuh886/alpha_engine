@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   BarChart3,
@@ -17,7 +16,6 @@ import { HoldingsSummary } from '@/components/HoldingsSummary';
 import { PerformanceCharts } from '@/components/PerformanceCharts';
 import { PositionsTable } from '@/components/PositionsTable';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCanonicalMetric, formatDeclaredValue } from '@/lib/evidence-availability';
@@ -28,7 +26,7 @@ import {
   metricById,
   type FormalRunEvidence,
 } from '@/lib/formal-run-evidence';
-import { governedRunQuery, type GovernedRunSummary } from '@/lib/governed-run';
+import { type GovernedRunSummary } from '@/lib/governed-run';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
 
 const SUMMARY_METRICS = [
@@ -429,9 +427,6 @@ export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
           <div className="rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
             Bundle identity verified · {run.bundleId?.slice(0, 12)}…
           </div>
-          <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link to={`/decisions?${governedRunQuery(run)}`}><ShieldAlert className="h-3.5 w-3.5" />Open decision receipt</Link>
-          </Button>
         </div>
       </section>
 

@@ -59,7 +59,7 @@ export function MobileNavigation() {
             }}
           >
             <div className="flex min-h-16 items-center justify-between border-b px-4">
-              <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)} aria-label="Back to Alpha Engine homepage">
+              <Link to="/app" className="flex items-center gap-3" onClick={() => setOpen(false)} aria-label="Open daily research">
                 <span className="research-brand-mark"><Orbit className="h-4 w-4" /></span>
                 <span>
                   <span className="block text-sm font-bold">Alpha Engine</span>

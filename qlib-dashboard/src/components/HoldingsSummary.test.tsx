@@ -1,25 +1,14 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { HoldingsSummary } from './HoldingsSummary';
 
-vi.mock('@/lib/useNameMap', () => ({
-  useNameMap: () => ({
-    getName: (instrument: string) =>
-      instrument === '300408'
-        ? '\u4e09\u73af\u96c6\u56e2'
-        : instrument === '000063'
-          ? '\u4e2d\u5174\u901a\u8baf'
-          : instrument,
-  }),
-}));
-
 describe('HoldingsSummary', () => {
-  it('shows the resolved Chinese holding name alongside its instrument code', () => {
+  it('shows the retained holding label alongside its instrument code', () => {
     render(
       <HoldingsSummary
         positions={[
-          { date: '2026-08-10', instrument: '300408', weight: 0.6 },
-          { date: '2026-08-10', instrument: '000063', weight: 0.4 },
+          { date: '2026-08-10', instrument: '300408', instrument_label: '\u4e09\u73af\u96c6\u56e2', weight: 0.6 },
+          { date: '2026-08-10', instrument: '000063', instrument_label: '\u4e2d\u5174\u901a\u8baf', weight: 0.4 },
         ]}
       />,
     );
@@ -45,8 +34,8 @@ describe('HoldingsSummary', () => {
       <HoldingsSummary
         positions={[
           { date: '2026-07-30', instrument: 'A', weight: 1 },
-          { date: '2026-08-10', instrument: '300408', weight: 0.6 },
-          { date: '2026-08-10', instrument: '000063', weight: 0.4 },
+          { date: '2026-08-10', instrument: '300408', instrument_label: '\u4e09\u73af\u96c6\u56e2', weight: 0.6 },
+          { date: '2026-08-10', instrument: '000063', instrument_label: '\u4e2d\u5174\u901a\u8baf', weight: 0.4 },
         ]}
       />,
     );
