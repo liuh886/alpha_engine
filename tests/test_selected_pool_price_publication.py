@@ -125,6 +125,15 @@ def test_operational_diagnostics_do_not_change_publication_identity(
     )
 
 
+@pytest.mark.parametrize("value", ("true", 1, None, {}))
+def test_cutoff_attempt_diagnostic_requires_a_boolean(value: object) -> None:
+    source = _source()
+    source["records"][0]["attempts"][0]["requested_end_present"] = value
+
+    with pytest.raises(SelectedPoolPricePublicationError, match="cutoff outcome is invalid"):
+        build_selected_pool_price_publication_manifest(source)
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     (("output_sha256", "0" * 64), ("provider_symbol", "different-provider-symbol")),
