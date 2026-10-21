@@ -8,7 +8,7 @@ import yaml
 
 import scripts.data.refresh_selected_pool_prices as module
 from src.data.adapters.base import FetchResult
-from src.data.router import RouterAttempt, RouterResponse
+from src.data.router import MarketDataRouter, RouterAttempt, RouterResponse
 
 
 def _frame(
@@ -49,8 +49,9 @@ class FakeRouter:
         start: str,
         end: str | None = None,
         validate: bool = False,
+        prefer_complete_end: bool = False,
     ) -> RouterResponse:
-        del validate
+        del validate, prefer_complete_end
         self.calls.append((symbol, start, end))
         frame = self.frames.get(symbol)
         if frame is None:
@@ -101,8 +102,9 @@ class SequenceRouter:
         start: str,
         end: str | None = None,
         validate: bool = False,
+        prefer_complete_end: bool = False,
     ) -> RouterResponse:
-        del validate
+        del validate, prefer_complete_end
         frame = self.frames[min(self.calls, len(self.frames) - 1)].copy()
         self.calls += 1
         return RouterResponse(
@@ -236,6 +238,16 @@ def test_successful_but_incomplete_response_retries_until_cutoff(
     assert attempts[1]["ok"] is True
     assert attempts[1]["cutoff_complete"] is True
     assert attempts[1]["observed_last_date"] == "2026-08-21"
+
+
+def test_future_rows_cannot_satisfy_a_missing_cutoff() -> None:
+    response, attempts = module._fetch_with_retries(
+        SequenceRouter([_frame(dates=("2026-10-20", "2026-10-22"))]),  # type: ignore[arg-type]
+        symbol="FN", market="us", start="2026-10-20", cutoff="2026-10-21", max_rounds=1,
+    )
+    assert response.result is not None
+    assert attempts[0]["cutoff_complete"] is False
+    assert attempts[0]["observed_last_date"] == "2026-10-20"
 
 
 def test_incomplete_response_remains_fail_closed_after_bounded_retries(
@@ -442,6 +454,85 @@ def test_incremental_refresh_extends_governed_history_to_cutoff(
     assert float(merged.loc[merged["date"] == "2021-01-05", "factor"].iloc[0]) == 2.0
     assert payload["stale_symbols"] == []
     assert payload["all_sources_current"] is True
+
+
+@pytest.mark.parametrize("mismatch", [None, "price", "factor", "volume", "missing_overlap", "early_history", "same_source_retry", "all_lag", "all_before_seed"])
+def test_cutoff_fallback_cannot_restate_incremental_overlap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mismatch: str | None,
+) -> None:
+    _prepare_contract(tmp_path, monkeypatch)
+    source, output = tmp_path / "source", tmp_path / "output"
+    governed = _frame()
+    for symbol in ("000001", "000002", "000300"):
+        _write_csv(source / f"{symbol}.csv", governed)
+    original = (source / "000001.csv").read_bytes()
+    current = pd.concat([governed.tail(1), _frame(dates=("2021-01-06",))], ignore_index=True)
+    changed = current.copy()
+    if mismatch == "price":
+        changed[["open", "high", "low", "close"]] *= 0.5
+    if mismatch in {"factor", "volume"}:
+        changed[mismatch] *= 2
+    if mismatch == "missing_overlap":
+        changed = changed.tail(1)
+    if mismatch == "early_history":
+        earlier = governed.head(1).copy()
+        earlier[["open", "high", "low", "close"]] *= 0.5
+        changed = pd.concat([earlier, current], ignore_index=True)
+    if mismatch in {"same_source_retry", "all_lag", "all_before_seed"}:
+        changed["factor"] *= 2
+    calls: dict[str, int] = {}
+    monkeypatch.setattr(module.time, "sleep", lambda _: None)
+
+    def fetch(provider, frame):
+        def run(req):
+            selected = changed if provider == "akshare_sina" and req.symbol == "000001" else frame
+            if mismatch == "same_source_retry":
+                if provider == "tencent_qfq_history":
+                    calls[req.symbol] = calls.get(req.symbol, 0) + 1
+                    selected = changed if calls[req.symbol] > 1 else frame
+                else:
+                    selected = governed.tail(1)
+            if mismatch == "all_lag":
+                selected = governed.head(1) if provider == "tencent_qfq_history" else changed.head(1)
+            if mismatch == "all_before_seed":
+                selected = governed.head(1)
+            bars = selected.copy()
+            bars["date"] = pd.to_datetime(bars["date"])
+            return FetchResult(provider, req.symbol, req.market, req.start, req.end, bars, req.symbol)
+        return SimpleNamespace(name=provider, fetch_daily_bars=run)
+
+    router = MarketDataRouter(
+        adapters=[fetch("tencent_qfq_history", governed.tail(1)), fetch("akshare_sina", current)],
+        policy={"cn": ["tencent_qfq_history", "akshare_sina"]},
+    )
+
+    def refresh():
+        return module.refresh_selected_pool_prices(
+            root=tmp_path, market="cn", source_csv_dir=source, output_root=output,
+            start="2021-01-01", cutoff="2021-01-06", router=router,
+            max_rounds=2 if mismatch == "same_source_retry" else 1,
+        )
+
+    if mismatch in {None, "early_history", "same_source_retry"}:
+        payload = refresh()
+        assert payload["status"] == "selected_pool_price_refresh_ready"
+        assert payload["all_sources_current"] is True
+        expected = "tencent_qfq_history" if mismatch == "same_source_retry" else "akshare_sina"
+        assert {row["provider"] for row in payload["records"]} == {expected}
+        merged = pd.read_csv(output / "data/csv_source/000001.csv")
+        assert merged.iloc[0]["open"] == governed.iloc[0]["open"]
+    elif mismatch in {"all_lag", "all_before_seed"}:
+        payload = refresh()
+        assert payload["all_sources_current"] is False
+        assert {row["stale_reason"] for row in payload["records"]} == {"provider_cutoff_incomplete"}
+        assert (output / "data/csv_source/000001.csv").read_bytes() == original
+    else:
+        with pytest.raises(RuntimeError, match="refresh failed for symbols"):
+            refresh()
+        manifest = json.loads((output / "artifacts/selected_pool_price_refresh_manifest.json").read_text())
+        assert manifest["status"] == "selected_pool_price_refresh_blocked"
+        assert "cutoff fallback differs from governed overlap" in manifest["failures"][0]["error"]
+    assert (source / "000001.csv").read_bytes() == original
 
 
 def test_incremental_refresh_clips_repository_bootstrap_to_declared_window(

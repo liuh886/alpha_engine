@@ -2,7 +2,9 @@ name: Reviewed Formal Backtest Refresh
 
 on:
   schedule:
-    - cron: "30 23 * * 1-5"
+    # CN 16:30 Shanghai and US after vendor EOD; each market reuses its exact
+    # published cutoff. A lagging source stays delayed until a complete read.
+    - cron: "30 8,23 * * 1-5"
   workflow_dispatch:
   push:
     branches: [main]
@@ -108,6 +110,10 @@ on:
       - "tests/test_model_data_bundle.py"
       - "tests/test_formal_refresh_trigger_scope.py"
       - "tests/test_market_session_clock.py"
+      - "tests/test_router_provider_attempts.py"
+      - "tests/test_pool_auxiliary_consistency.py"
+      - "tests/test_resolve_formal_provider_cutoff.py"
+      - "tests/test_market_data_router_circuit_breaker.py"
       - "pyproject.toml"
       - "uv.lock"
 
@@ -240,6 +246,9 @@ jobs:
             tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
             tests/test_resolve_formal_provider_cutoff.py \
+            tests/test_router_provider_attempts.py \
+            tests/test_pool_auxiliary_consistency.py \
+            tests/test_market_data_router_circuit_breaker.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
             tests/test_governed_actions_artifact.py \
@@ -282,6 +291,9 @@ jobs:
             tests/test_selected_pool_price_publication.py \
             tests/test_selected_pool_governance.py \
             tests/test_resolve_formal_provider_cutoff.py \
+            tests/test_router_provider_attempts.py \
+            tests/test_pool_auxiliary_consistency.py \
+            tests/test_market_data_router_circuit_breaker.py \
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
             tests/test_governed_actions_artifact.py \

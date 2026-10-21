@@ -123,12 +123,15 @@ def test_hardened_router_pins_blessed_vendor_first():
     assert router.providers_for_request("cn", "301291")[0] == "akshare_sina"
     assert router.providers_for_request("cn", "000300")[0] == "akshare"
     assert router.providers_for_request("cn", "002156")[0] == "tencent_qfq_history"
-    # Pins reorder, never restrict: the full market chain follows.
+    # Pins keep their order; the selected-pool Yahoo quarantine also applies.
     market_chain = router.providers_for_market("cn")
-    for symbol in ("301291", "000300", "002156"):
-        assert sorted(router.providers_for_request("cn", symbol)) == sorted(market_chain)
-    # Unpinned symbols keep the market chain verbatim.
-    assert router.providers_for_request("cn", "600000") == market_chain
+    for symbol in ("301291", "000300"):
+        assert sorted(router.providers_for_request("cn", symbol)) == sorted(
+            name for name in market_chain if name != "yfinance"
+        )
+    assert sorted(router.providers_for_request("cn", "002156")) == sorted(market_chain)
+    # Unregistered requests keep the market chain; this is not a pool substitute.
+    assert router.providers_for_request("cn", "999999") == market_chain
     # US has no strategy provenance: untouched.
     us_router = build_hardened_router("us")
     assert us_router.providers_for_request("us", "AAPL") == ["yfinance"]

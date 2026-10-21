@@ -71,6 +71,23 @@ to the stage where its inputs exist, reuse a valid receipt only under its exact
 contract, and measure the remaining cost. Data revision, lifecycle, adjustment,
 PIT availability and execution boundaries remain mandatory.
 
+The existing provider router distinguishes schema-valid data from a source that
+actually contains the requested completed session. Readiness probes and
+selected-pool refreshes opt into cutoff-aware fallback in the frozen provider
+order; they select one source rather than concatenate sources. If every source
+lags, the latest valid lag remains delayed evidence at its real date. A future
+row cannot stand in for the requested session. CN candidates and the benchmark
+exclude Yahoo before probing, matching the existing publication quarantine;
+declared formal auxiliaries retain their governed last-resort fallback. Source
+pins, adjustment/restatement checks, lifecycle gates and the atomic formal
+release boundary still apply.
+An incremental cross-source cutoff fallback must match the governed overlap's
+OHLC, factor and volume basis before splicing; disagreement or a missing overlap
+blocks that candidate rather than restating the retained history.
+The existing formal refresh checks at 08:30 UTC after the CN close and 23:30 UTC
+after US vendor EOD. The unchanged market reuses its exact verified cutoff;
+the planner only evaluates declared work, and incomplete sources remain delayed.
+
 ### One authority and a shrinking maintenance surface
 
 Use the existing strategy, data and evidence authorities listed below. Workflow

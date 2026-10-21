@@ -103,7 +103,8 @@ def _fetch_with_retries(
     response: RouterResponse | None = None
     for attempt in range(PROBE_ATTEMPTS):
         response = data_router.fetch_daily_bars(
-            symbol=symbol, market=market_key, start=start, end=end, validate=True
+            symbol=symbol, market=market_key, start=start, end=end, validate=True,
+            prefer_complete_end=True,
         )
         if response.ok and response.result is not None:
             return response
@@ -126,6 +127,7 @@ def _probe_watermark(
     if not response.ok or response.result is None:
         return None
     dates = pd.to_datetime(response.result.df.get("date"), errors="coerce").dropna()
+    dates = dates.loc[dates <= pd.Timestamp(end)]
     if dates.empty:
         return None
     return pd.Timestamp(dates.max()).tz_localize(None).date().isoformat()
@@ -201,6 +203,7 @@ def resolve_formal_provider_cutoff(
         }
 
     dates = pd.to_datetime(response.result.df.get("date"), errors="coerce").dropna()
+    dates = dates.loc[dates <= pd.Timestamp(requested)]
     if dates.empty:
         return {
             **base,
