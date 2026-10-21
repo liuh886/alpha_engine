@@ -993,14 +993,8 @@ jobs:
           npm test -- --run
           npm run build
           test -f dist/data/formal-model-runs/catalog.json
-          test -f dist/data/model-runs/catalog.json
-          test -f dist/data/market-evidence/us/catalog.json
-          test -f dist/data/market-evidence/cn/catalog.json
           test -f dist/data/strategy-operations/snapshots.json
           test -f dist/data/strategy-operations/system-health.json
-          test -f dist/data/model-data-readiness.json
-          test -f dist/data/data-components.json
-          test -f dist/data/training-profiles.json
           test ! -e dist/data/formal-backtests
       - name: Open or update reviewed refresh PR
         id: pull_request

@@ -29,6 +29,11 @@ async function serveFile(response, path) {
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url || '/', `http://${request.headers.host}`);
+    if (url.pathname === '/legacy-worker.js') {
+      response.writeHead(200, { 'Content-Type': 'application/javascript', 'Cache-Control': 'no-store' });
+      response.end("self.addEventListener('install', () => self.skipWaiting()); self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));");
+      return;
+    }
     if (url.pathname.startsWith('/api/')) {
       response.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
       response.end(JSON.stringify({ detail: 'Static artifact runtime has no API.' }));

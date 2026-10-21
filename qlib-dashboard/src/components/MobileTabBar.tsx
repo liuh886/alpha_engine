@@ -2,10 +2,10 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { routes } from '@/routes';
 import { cn } from '@/lib/utils';
 
-const TAB_PATHS = ['app', 'strategies', 'research', 'data', 'system'] as const;
+const TAB_PATHS = ['app', 'system'] as const;
 
 /**
- * Commercial bottom tab bar for handset viewports. Renders the five primary
+ * Bottom navigation for handset viewports. Renders the two core
  * destinations with 56px touch targets, active pill indicator and safe-area
  * padding; hidden on md+ where the sidebar owns navigation.
  */
@@ -21,7 +21,7 @@ export function MobileTabBar() {
       className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="grid grid-cols-5" role="tablist" aria-orientation="horizontal">
+      <div className="grid grid-cols-2" role="tablist" aria-orientation="horizontal">
         {tabs.map((tab) => {
           const target = `/${tab.path}`;
           const active =

@@ -45,9 +45,6 @@ if (leaks.length) {
 const index = await readFile(resolve(root, 'index.html'), 'utf8');
 if (!index.includes('<html lang="en">')) throw new Error('index.html must declare the English UI language.');
 
-const manifest = JSON.parse(await readFile(resolve(root, 'public/manifest.webmanifest'), 'utf8'));
-if (manifest.lang !== 'en') throw new Error('PWA manifest must declare lang=en for the current application shell.');
-
 const languageModule = await readFile(resolve(sourceRoot, 'lib/ui-language.ts'), 'utf8');
 for (const contract of ['ALPHA_ENGINE_UI_LANGUAGE', "document.documentElement.lang = ALPHA_ENGINE_UI_LANGUAGE", 'Research artifacts may retain their source language']) {
   if (!languageModule.includes(contract)) throw new Error(`UI language module is missing contract: ${contract}`);

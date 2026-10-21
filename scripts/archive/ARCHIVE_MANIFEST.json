@@ -600,6 +600,294 @@
       "source_revision": "0e30477481a5c4422f5a1551b6053973713660fe",
       "source_git_blob_sha256": "ed3cc6e5fff46d8c9f075e55869d3b4b0c3c97e15f85316c0adaa1a425b00ad9",
       "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "shadow_decision_desk",
+      "path": "src/decision_support/shadow_decision_desk.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "4ac55d0fede84ac2ce414a4e2810d1577ede7f3344774a2be71514e8088004e6",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "prospective_shadow_cycle",
+      "path": "src/decision_support/prospective_shadow_cycle.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "9416ef69eabaa9249a1aa4339304f505983bea878e4fcd70f5d2fa48eac4225d",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "us_low_turnover_decision_pipeline",
+      "path": "src/decision_support/us_low_turnover_decision_pipeline.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "ef71e20144324e40ff6ef04ccf9dab43dc3ebfc19c167ded47f4c4208da26e23",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "latest_us_low_turnover_run",
+      "path": "src/decision_support/latest_us_low_turnover_run.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "65ad2935f0cc2f8ad845f0c22d320fdceabbd5a6d8834742eb12e13a12e654f6",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "low_turnover_multifactor",
+      "path": "src/research/low_turnover_multifactor.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "97c78eb5a784ac099ca7bc7ea390f97ba9261f337921ce979329982fa30bc3d2",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "low_turnover_multifactor_pipeline",
+      "path": "src/research/low_turnover_multifactor_pipeline.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "0171cc847917eeb0e2b5c34829ce704327a791d5108719a97dbe5ff38d6e4a24",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "focus_watchlist_signal",
+      "path": "src/research/focus_watchlist_signal.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "4356872a2029912be1dcb236d14594d0fb2517fb94f292c969303d6e85e80ed8",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "focus_watchlist_validation",
+      "path": "src/research/focus_watchlist_validation.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "dc042b8445d8bb822264a1775286d78751afc8b41ee2fbc8a4de4f2767be6a12",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "small_pool_rotation",
+      "path": "src/research/small_pool_rotation.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "e7a5bf0925401283dd192d4724122b192e490d5b9ae589f4f4a91eb961096f23",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "hierarchical_pool_rotation",
+      "path": "src/research/hierarchical_pool_rotation.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "ec66b4c7d11c059d75fb9ce6fe32027aa6138006c105d3a4ec03cfc6a47c7eef",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "hierarchical_rotation_validation",
+      "path": "src/research/hierarchical_rotation_validation.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "c0d06f9ceaef4525dc5bce7bfbefa8d13630139e2ae57c6a00f5fbce861e5358",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "run_shadow_decision_desk",
+      "path": "scripts/run_shadow_decision_desk.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "fa9a16d6e13599af2e5785d4d5d136b3c30d174c6fd0508a1cb079a20913b6cd",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "run_prospective_shadow_cycle",
+      "path": "scripts/run_prospective_shadow_cycle.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "dfbb15a293393ef725b992e3c420909c34f65657084652721ff1df5b401f67d8",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "run_us_low_turnover_decision_pipeline",
+      "path": "scripts/run_us_low_turnover_decision_pipeline.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "ac8170af709ce157cc228083225cf7e5cb0e1e5adae7aa2c943f76d1b121a88f",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "run_latest_us_low_turnover_decision",
+      "path": "scripts/run_latest_us_low_turnover_decision.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "ffaf8bb45e91379fe7b0a7f84e679d3028e8c21d83cc02459aa47aa516dfff0c",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "build_low_turnover_multifactor",
+      "path": "scripts/build_low_turnover_multifactor.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "2bf1f7b32f8767fed1fbc2c35f14c09dda26358ebc1bb8928177feca897837c9",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "run_focus_watchlist_cycle_signal",
+      "path": "scripts/run_focus_watchlist_cycle_signal.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "b7da89594c91886dc6bc4d05d93374094d85dd84dcd47287a3c24b7a74e9ac32",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "run_focus_watchlist_validation",
+      "path": "scripts/run_focus_watchlist_validation.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "3cfb4ef12940667766c9a31e5ee2a1b2833fefc90c2e412a73a993dcc78ec9c5",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "run_small_pool_rotation",
+      "path": "scripts/run_small_pool_rotation.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "d405319e27ac054a2f344f196833c4c451f9126c90714dca7a5709474177c333",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "run_hierarchical_pool_rotation",
+      "path": "scripts/run_hierarchical_pool_rotation.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "ca84e952a2bf3853734bad9a29a9e8382c71ad02f765abe84c78dec5fbb81154",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "run_us_hierarchical_rotation_validation",
+      "path": "scripts/run_us_hierarchical_rotation_validation.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "8c6045c0a301eeb4c5a396b0c81db65524529d447a777a0b3abfa2819c1137ea",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "build_us_hierarchical_validation_snapshot",
+      "path": "scripts/build_us_hierarchical_validation_snapshot.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "60c760a1b41dad216e1b492fa0de06aea3928aff9f2719f21a889f984a396605",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "setup_cron",
+      "path": "scripts/setup_cron.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "e4044342437e49868d98b799db65319e8be1626ef4607cd9ea02616fa2c0e93b",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "summarize_daily_us_decision_run",
+      "path": "scripts/summarize_daily_us_decision_run.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "faeea076543521ac84ba73d1db2fa63b89cc0d15715d5f7178b6fc738f6e78f0",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "daily-us-low-turnover-decision",
+      "path": ".github/workflows/daily-us-low-turnover-decision.yml",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "fbdf4ff08f0c914d1e175a91362e3109c62dd2fd154226c8dd251a10909ba613",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "us-low-turnover-decision-pipeline-ci",
+      "path": ".github/workflows/us-low-turnover-decision-pipeline-ci.yml",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "45a1d0a05c55d91fdc61efbd3613e785c0ce779457496dd7dd34c6f547eac5bb",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "shadow-decision-desk-ci",
+      "path": ".github/workflows/shadow-decision-desk-ci.yml",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "d308f146959d9f9828697cdc744a8ee13073d6df1214404a420bada6c758d722",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "focus-signal-ci",
+      "path": ".github/workflows/focus-signal-ci.yml",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "b4a0362066f609ab1da52e3cd8bfbd7f8be1f843b8c94cf6db9b0eaded002538",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "small-pool-rotation-ci",
+      "path": ".github/workflows/small-pool-rotation-ci.yml",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "667b8242b6aa62330ed1d8104d5764d5ac118125a59940d7bace5d52ceed64b1",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "weekly-us-fundamental-validation",
+      "path": ".github/workflows/weekly-us-fundamental-validation.yml",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "de51d738ebbcd72e52d799fa5ca91d3330b9a22b91706f6aad3558adc6b5b400",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "research_mandate",
+      "path": "src/governance/research_mandate.py",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "3e894efa8f07b7db7c4a92c164d79f8fb320124439455a2c844e2e8579586c1a",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "cn_research_mandate_v1",
+      "path": "configs/mandates/cn_research_mandate_v1.yaml",
+      "reason": "user-directed focused-core retirement; no caller in the active five-strategy loop; historical contracts and results retained",
+      "retired_at": "2026-10-21",
+      "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
+      "source_git_blob_sha256": "4831ab2ab5c9d85cdab65fd8b8b77801c957347a8aa1340793108ab8c1c6f06d",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
     }
   ]
 }

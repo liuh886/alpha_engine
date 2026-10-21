@@ -35,7 +35,6 @@ jobs:
   build-static-pwa:
     runs-on: ubuntu-24.04
     env:
-      VITE_RUNTIME_MODE: static_artifact
       FORMAL_BACKTEST_VALIDATION_MODE: candidate
     steps:
       - name: Checkout
@@ -76,19 +75,16 @@ jobs:
       - name: Build and validate static strategy console
         working-directory: qlib-dashboard
         run: npm run build
-      - name: Validate PWA output
+      - name: Validate focused console output
         working-directory: qlib-dashboard
         run: |
           test -f dist/index.html
-          test -f dist/manifest.webmanifest
           test -f dist/sw.js
           test -f dist/icons/alpha-engine.svg
           test -f dist/data/formal-model-runs/catalog.json
-          test -f dist/data/model-runs/catalog.json
           test -f dist/data/strategy-operations/snapshots.json
           test ! -e dist/data/strategy-operations/capabilities.json
           grep -q "Systematic Strategy Console" dist/index.html
-          grep -q '"display": "fullscreen"' dist/manifest.webmanifest
       - name: Bundle budget
         working-directory: qlib-dashboard
         run: npm run check:bundle-budget

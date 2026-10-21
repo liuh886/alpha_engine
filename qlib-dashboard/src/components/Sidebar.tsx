@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight, Orbit } from 'lucide-react';
-import { useActiveResearchBundle } from '@/hooks/useActiveResearchBundle';
 import { formatEvidenceLabel } from '@/lib/format-evidence-label';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import { cn } from '@/lib/utils';
@@ -12,7 +11,6 @@ export function Sidebar({ activeRun = null }: { activeRun?: GovernedRunSummary |
   const collapsed = useGlobalStore((state) => state.sidebarCollapsed);
   const setCollapsed = useGlobalStore((state) => state.setSidebarCollapsed);
   const location = useLocation();
-  const bundle = useActiveResearchBundle();
   const groups = useMemo(
     () => Array.from(groupRoutes()).map(([title, items]) => ({ title, items })),
     [],
@@ -20,7 +18,7 @@ export function Sidebar({ activeRun = null }: { activeRun?: GovernedRunSummary |
 
   return (
     <aside className={cn('research-sidebar', collapsed ? 'research-sidebar-collapsed' : 'research-sidebar-expanded')}>
-      <Link to="/" className="research-brand" aria-label="Back to Alpha Engine homepage">
+      <Link to="/app" className="research-brand" aria-label="Open daily research">
         <div className="research-brand-mark"><Orbit className="h-4 w-4" /></div>
         {!collapsed && (
           <div className="min-w-0">
@@ -36,8 +34,8 @@ export function Sidebar({ activeRun = null }: { activeRun?: GovernedRunSummary |
             <div className="research-bundle-label">Selected evidence</div>
             {activeRun && <span className="rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase">{activeRun.channel}</span>}
           </div>
-          <div className="research-bundle-title">{activeRun?.title || bundle?.manifest.title || 'Loading bundle'}</div>
-          <div className="research-bundle-meta">Cutoff {activeRun?.evidenceCutoff || bundle?.manifest.evidence_cutoff || 'not declared'}</div>
+          <div className="research-bundle-title">{activeRun?.title || 'Loading evidence'}</div>
+          <div className="research-bundle-meta">Cutoff {activeRun?.evidenceCutoff || 'not declared'}</div>
           {activeRun && <div className="mt-1 truncate text-[10px] text-muted-foreground">{formatEvidenceLabel(activeRun.publicationStatus)}</div>}
         </div>
       )}

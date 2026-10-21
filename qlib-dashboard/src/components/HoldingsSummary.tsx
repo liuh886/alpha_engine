@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useNameMap } from "@/lib/useNameMap";
 import type { Position } from "@/lib/types";
 
 export function HoldingsSummary({
@@ -11,7 +10,6 @@ export function HoldingsSummary({
   positions: Position[];
   title?: string;
 }) {
-  const { getName } = useNameMap();
   if (!positions.length) return null;
 
   const byDate: Record<string, Position[]> = {};
@@ -84,7 +82,7 @@ export function HoldingsSummary({
                 <TableRow key={`${p.instrument}-${idx}`} data-testid="positions-table-row">
                   <TableCell>
                     <div className="min-w-0">
-                      <span className="block truncate text-xs font-semibold">{p.instrument_label || p.name || getName(p.instrument)}</span>
+                      <span className="block truncate text-xs font-semibold">{p.instrument_label || p.name || p.instrument}</span>
                       <span className="block truncate font-mono text-[9px] text-muted-foreground">{p.instrument}</span>
                     </div>
                   </TableCell>

@@ -78,18 +78,3 @@ def test_v3_cik_mapping_covers_exactly_the_v3_pool() -> None:
     assert set(mapping["symbols"]) == _pool_symbols(pool)
     for cik in mapping["symbols"].values():
         assert len(str(cik)) == 10 and str(cik).isdigit()
-
-
-def test_daily_decision_defaults_point_at_the_v3_lineage() -> None:
-    script = Path("scripts/run_latest_us_low_turnover_decision.py").read_text(
-        encoding="utf-8"
-    )
-    for expected in (
-        "us_small_pool_v3.yaml",
-        "sec_companyfacts_fundamentals_v3.yaml",
-        "us_fundamental_acceleration_v3.yaml",
-        "us_structured_pool_hierarchical_rotation_v4.yaml",
-        "us_low_turnover_multifactor_v2.yaml",
-        "prospective_shadow_cutover_v2.yaml",
-    ):
-        assert expected in script

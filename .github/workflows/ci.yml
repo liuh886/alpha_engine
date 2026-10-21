@@ -164,7 +164,6 @@ jobs:
           src/research/ranker_current_target.py
           src/research/drift_monitor.py
           src/research/stage_journal.py
-          src/governance/research_mandate.py
           src/artifacts/strategy_operations.py
 
       - name: Core release-contract tests

@@ -130,7 +130,6 @@ module = [
     "src.research.ranker_current_target",
     "src.research.drift_monitor",
     "src.research.stage_journal",
-    "src.governance.research_mandate",
     "src.artifacts.strategy_operations",
 ]
 ignore_errors = false

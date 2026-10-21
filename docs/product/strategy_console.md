@@ -1,104 +1,70 @@
 # Alpha Engine Strategy Console
 
-Status: active frontend product direction.
+Status: active focused-core product contract, effective 2026-10-21 by user direction.
 
-## Product position
+## Purpose
 
-Alpha Engine is a governed medium-frequency systematic strategy research and monitoring system. Python pipelines remain authoritative for data, factor materialization, model research, formal backtests, reviewed refresh and signal production. The public PWA remains read-only and does not train models, mutate registries, connect to brokers or execute orders.
+Provide one daily research view of existing formal strategies: current
+observation, target/change, reason, next evaluation, cutoff and blockers. Python
+pipelines retain data, evaluation and publication authority. The console reads
+evidence; it does not execute research or orders.
 
-The frontend is organized around the **formal strategy** rather than repository subsystems.
+## Maintained surfaces
 
-## Primary user questions
+| Route | Purpose |
+| --- | --- |
+| `/app` (also the root destination) | Daily brief and formal strategy fleet |
+| `/strategies/:strategyId` | Current observation and formal historical evidence |
+| `/system` | Operating Status, dated source publication and recovery links |
 
-The first scan should answer:
+Only Overview and Status appear in primary navigation. Strategy details open
+from the brief/fleet. Retired routes show an unavailable view with a return to
+Overview; they do not select a fallback data source.
 
-1. Is the strategy's operating evidence current and usable?
-2. What is the current governed state or allocation?
-3. What is the next target and what changed?
-4. When will the strategy evaluate again?
-5. Why did the current decision occur?
-6. How has the formal strategy performed relative to its benchmark and risk contract?
-7. Which holdings, trades, drivers and evidence support that conclusion?
+The product no longer includes standalone research, run comparison, security
+exploration, factors/reports/library pages, local ZIP/preview loading, marketing,
+referrals, PWA/offline installation, analytics or browser access-policy editing.
+Historical contracts and sealed evidence remain. The worker URL is retained only
+as an unregister/cache-retirement response for existing installs.
 
-## Information architecture
+## One evidence path
 
-Only four product-level destinations are navigation-visible:
+The active strategy registry binds stable strategies to accepted model versions.
+Formal Model Run Bundle v2 is the historical source. Current observations use
+the existing authorized Strategy Operations reader and append-only Decision
+Ledger. Public files and browser state are disposable projections. No browser
+view reconstructs current holdings from formal historical portfolios.
 
-- **Overview** — Strategy Fleet: current state, target, change, next decision, risk and operating status.
-- **Strategies** — accepted formal baselines and strategy-level drill-down.
-- **Research** — runs, comparisons, decisions, factors, reports and notebooks used to evolve formal strategies.
-- **System** — data lineage, freshness, local bundles and methodology.
+Formal history stays readable when current observations are unavailable. Static
+operations contain only a protected shell with public formal identity and
+cadence. Current dates, holdings, targets, explanations, drivers and ledger
+provenance use the existing runtime access plane. Server policies and account
+entitlement govern access. Pre-upload and live-release checks enforce the same
+public-shell contract.
 
-Backtests, review, compare, data, factors, reports and library remain valid analytical routes but are drill-down surfaces rather than top-level products.
+## Reading and recovery
 
-## Strategy workspace
+Overview and Operating Status use the same observation reader and permission
+semantics. Access required, pending reads, failures, unavailable sources,
+unchanged decisions and cadence-retained targets remain distinct. Observation,
+target and formal evidence dates are shown separately.
 
-A strategy workspace follows one reading order:
+Operating Status separates current observations from the static source snapshot,
+showing generation time and actual provider/formal cutoffs. A static health
+summary does not claim successful current runtime delivery. Refresh status
+retries reads only; recovery opens existing workflows.
 
-`Now -> Performance / Risk / Holdings / Trades / Attribution -> Drivers -> Evidence`
+Details preserve the reading order: current state, performance/risk,
+holdings/trades/attribution, drivers and evidence. Mobile keeps the daily brief
+before filters and historical depth. Missing/stale evidence stays explicit.
 
-Current operating evidence must never be reconstructed from a historical backtest. If a formal model lacks a governed signal publication pipeline, the frontend explicitly reports `pipeline_unavailable` while keeping formal historical evidence readable.
+## Acceptance
 
-## Operations contract
+- Accepted strategies come from the existing formal catalog, with verified manifests and sections.
+- Status and detail preserve account restrictions while formal history remains public.
+- Desktop, tablet and mobile retain readable navigation and core evidence access.
+- Existing installs retire only this application's worker and cache namespace.
+- No retired catalog, preview or local-bundle reader is requested by the core flow.
+- Reliability is judged by eligible sessions, cutoff lag, failures and manual interventions; browser tests alone do not establish it.
 
-The frontend consumes one `StrategyOperationsSnapshot` shape across model kinds. The minimum semantic fields are:
-
-- strategy/model identity;
-- operational status;
-- signal/as-of date and latest completed session;
-- decision cadence and next decision;
-- current and target holdings with deltas;
-- turnover and estimated cost when retained;
-- data freshness, factor freshness and delivery status;
-- decision state/reason;
-- current signal drivers;
-- source record identity/link.
-
-Current statuses are intentionally small and explicit:
-
-- `pipeline_unavailable`
-- `awaiting_observation`
-- `current_no_change`
-- `target_pending_execution`
-- `execution_observed`
-- `stale`
-- `blocked`
-- `delivery_failed`
-
-QQQ Rotation v4.2 and BYD v1.2 currently adapt their governed public ledgers into this contract. US x1.1 and CN x1.1 remain `pipeline_unavailable` until Issue #600 publishes their governed 10-session signals. The UI does not invent live holdings from their formal backtests.
-
-## Evidence architecture
-
-Three durable evidence families form the frontend boundary:
-
-1. **Formal Model Run Bundle v2** — historical performance, risk, portfolio, trades, attribution, robustness and lineage.
-2. **Strategy operations evidence** — current state, targets, changes and operational status.
-3. **Research receipts** — hypothesis, immutable identities, evaluated windows, gates, verdict and learning.
-
-Issue #626 adds canonical factor evidence across those boundaries. Factor definitions remain versioned research code; factor observations refresh at the exact model cutoff. Stale/missing required factor observations must block a fresh signal explanation rather than silently reusing old values.
-
-## Visualization rules
-
-The console is an operational analytical workspace, not a KPI card gallery.
-
-- Current state is the dominant viewport.
-- Strategy Fleet uses aligned rows for peer scanning rather than equal-weight cards.
-- Holdings use tables because leveraged and negative-cash weights make clipped progress bars misleading.
-- Performance uses strategy/benchmark/excess traces with drawdown and robustness available nearby.
-- Status, freshness and last-updated context stay adjacent to the evidence they qualify.
-- Mobile keeps the current decision before filters and analytical depth.
-- Essential values are visible without hover.
-
-## Runtime boundary
-
-The public product remains:
-
-- static GitHub Pages/PWA;
-- read-only;
-- no broker integration;
-- no browser-side training;
-- no hidden model promotion;
-- fail-closed on invalid formal Bundle v2 evidence;
-- explicit when current operating evidence is absent, stale or blocked.
-
-`research_only=true` and `trade_ready=false` remain mandatory formal evidence boundaries.
+The system remains `research_only=true` and `trade_ready=false`.

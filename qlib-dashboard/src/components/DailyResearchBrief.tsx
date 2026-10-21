@@ -58,7 +58,7 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
               ? 'Review the delivery history. The existing outbox skips completed deliveries and retains ambiguous failures for review.'
               : 'Check model monitoring and the latest source run. When inputs are available, the existing refresh rechecks the frozen contract. Valid independent observations remain readable.'}</p>
             <div className="mt-3 flex flex-wrap gap-4">
-              <Link className="text-primary underline" to="/model-operations">Open model monitoring</Link>
+              <Link className="text-primary underline" to="/system">Open operating status</Link>
               <a className="inline-flex items-center gap-1 text-primary underline" href={`${WORKFLOWS}${brief.recovery === 'delivery' ? 'strategy-signal-delivery-outbox.yml' : 'formal-backtest-refresh.yml'}`} target="_blank" rel="noreferrer">{brief.recovery === 'delivery' ? 'Open delivery workflow' : 'Open data refresh workflow'}<ArrowUpRight className="h-3 w-3" /></a>
             </div>
             <p className="mt-2 text-muted-foreground">An authorized operator can use Run workflow on main. This page reads records; it does not start jobs or send orders.</p>

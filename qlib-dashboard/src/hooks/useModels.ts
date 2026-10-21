@@ -1,140 +1,36 @@
-import { useCallback, useEffect, useState } from 'react';
-import { modelsApi } from '@/api/modelsApi';
-import { parseQlibData, type ModelData } from '@/lib/data-parser';
-import {
-  adaptLocalRuns,
-  loadFormalRuns,
-  loadPreviewRuns,
-  type GovernedRunSummary,
-} from '@/lib/governed-run';
-import {
-  getActiveResearchBundle,
-  HttpBundleSource,
-  subscribeResearchBundle,
-} from '@/lib/research-bundle';
+import { useCallback, useState } from 'react';
+import { loadFormalRuns, type GovernedRunSummary } from '@/lib/governed-run';
 import { useGlobalStore } from '@/store/globalStore';
 
-const CHANNEL_ORDER: Record<GovernedRunSummary['channel'], number> = {
-  formal: 0,
-  preview: 1,
-  local: 2,
-};
-
-function sortRuns(runs: GovernedRunSummary[]): GovernedRunSummary[] {
-  return [...runs].sort((left, right) => (
-    Number(right.summary.baseline_status === 'active_research_baseline')
-    - Number(left.summary.baseline_status === 'active_research_baseline')
-    ||
-    CHANNEL_ORDER[left.channel] - CHANNEL_ORDER[right.channel]
-    || right.evidenceCutoff.localeCompare(left.evidenceCutoff)
-    || left.title.localeCompare(right.title)
-  ));
-}
-
-function explicitLocalModels(models: ModelData[], formalVersions: Set<string>): ModelData[] {
-  const bundle = getActiveResearchBundle();
-  if (!bundle || bundle.source instanceof HttpBundleSource) return [];
-  return models.filter((model) => !formalVersions.has(model.id));
-}
-
+/** The daily console reads only the accepted formal catalog. */
 export function useModels() {
-  const [models, setModels] = useState<ModelData[]>([]);
   const [runs, setRuns] = useState<GovernedRunSummary[]>([]);
   const [runLoadErrors, setRunLoadErrors] = useState<string[]>([]);
-  const selectedModelId = useGlobalStore((state) => state.selectedModelId);
-  const setSelectedModelId = useGlobalStore((state) => state.setSelectedModelId);
-  const activeRunKey = useGlobalStore((state) => state.activeRunKey);
-  const setActiveRunKey = useGlobalStore((state) => state.setActiveRunKey);
-
+  const activeRunKey = useGlobalStore(state => state.activeRunKey);
+  const setActiveRunKey = useGlobalStore(state => state.setActiveRunKey);
   const selectRun = useCallback((run: GovernedRunSummary) => {
     setActiveRunKey(run.key);
-    const modelId = run.modelData?.id || run.modelVersionId;
-    if (modelId) setSelectedModelId(modelId);
-  }, [setActiveRunKey, setSelectedModelId]);
-
-  const fetchModels = useCallback(async (opts?: { selectLatest?: boolean }) => {
+    useGlobalStore.getState().setSelectedModelId(run.modelVersionId);
+  }, [setActiveRunKey]);
+  const fetchModels = useCallback(async () => {
     try {
-      const [formal, preview, optionalBundle] = await Promise.all([
-        loadFormalRuns(),
-        loadPreviewRuns(),
-        modelsApi.getDashboardDb().then(
-          value => ({ value, error: null as string | null }),
-          () => ({ value: null, error: 'Optional legacy research bundle unavailable; formal evidence remains independent.' }),
-        ),
-      ]);
-      const json = optionalBundle.value;
-      const repositoryModels = json === null ? [] : parseQlibData(json);
-      if (formal.errors.length > 0) {
-        throw new Error(`Formal Bundle v2 validation failed: ${formal.errors.join(' | ')}`);
+      const formal = await loadFormalRuns();
+      if (formal.errors.length || !formal.runs.length) {
+        throw new Error(formal.errors.join(' | ') || 'Formal catalog contains no accepted strategy evidence.');
       }
-      if (formal.runs.length === 0) {
-        throw new Error('Formal Bundle v2 catalog contains no accepted model runs.');
-      }
-
-      const formalVersions = new Set(formal.runs.map((run) => run.modelVersionId));
-      const byId = new Map(repositoryModels.map((model) => [model.id, model]));
-      const formalRuns = formal.runs.map((run) => ({
-        ...run,
-        modelData: byId.get(run.modelVersionId) ?? null,
-      }));
-      const previewRuns = preview.runs.filter((run) => !formalVersions.has(run.modelVersionId));
-      const localModels = explicitLocalModels(repositoryModels, formalVersions);
-      const workspaceModels = [
-        ...repositoryModels.filter((model) => formalVersions.has(model.id)),
-        ...localModels,
-      ];
-      const governedRuns = sortRuns([
-        ...formalRuns,
-        ...previewRuns,
-        ...adaptLocalRuns(localModels),
-      ]);
-      const generatedDates = governedRuns.map((record) => record.generatedAt).filter(Boolean).sort();
-      useGlobalStore.getState().setDataGeneratedAt(
-        generatedDates.length > 0 ? generatedDates[generatedDates.length - 1] : String(json?.generated_at || ''),
-      );
-      setModels(workspaceModels);
-      setRuns(governedRuns);
-      setRunLoadErrors([...preview.errors, ...(optionalBundle.error ? [optionalBundle.error] : [])]);
-
-      if (governedRuns.length > 0) {
-        const currentKey = useGlobalStore.getState().activeRunKey;
-        const current = governedRuns.find((run) => run.key === currentKey);
-        const selectedVersion = useGlobalStore.getState().selectedModelId;
-        const refreshed = governedRuns.find((run) => run.modelVersionId === selectedVersion);
-        const selected = opts?.selectLatest ? governedRuns[0] : current ?? refreshed ?? governedRuns[0];
-        selectRun(selected);
-      } else {
-        setActiveRunKey('');
-        setSelectedModelId('');
-      }
-      return workspaceModels;
+      setRuns(formal.runs);
+      setRunLoadErrors([]);
+      const selected = formal.runs.find(run => run.key === useGlobalStore.getState().activeRunKey)
+        ?? formal.runs.find(run => run.modelVersionId === useGlobalStore.getState().selectedModelId) ?? formal.runs[0];
+      selectRun(selected);
+      return formal.runs;
     } catch (error) {
-      console.error('Failed to load governed model runs', error);
-      setModels([]);
+      const message = error instanceof Error ? error.message : String(error);
       setRuns([]);
-      setRunLoadErrors([error instanceof Error ? error.message : String(error)]);
+      setRunLoadErrors([message]);
       setActiveRunKey('');
-      setSelectedModelId('');
       return null;
     }
-  }, [selectRun, setActiveRunKey, setSelectedModelId]);
-
-  useEffect(
-    () => subscribeResearchBundle(() => {
-      void fetchModels({ selectLatest: true });
-    }),
-    [fetchModels],
-  );
-
-  return {
-    models,
-    runs,
-    runLoadErrors,
-    selectedModelId,
-    setSelectedModelId,
-    activeRunKey,
-    setActiveRunKey,
-    selectRun,
-    fetchModels,
-  };
+  }, [selectRun, setActiveRunKey]);
+  return { runs, runLoadErrors, activeRunKey, selectRun, fetchModels };
 }

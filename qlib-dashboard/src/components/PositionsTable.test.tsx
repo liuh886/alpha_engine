@@ -3,7 +3,6 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PositionsTable } from './PositionsTable';
 
-vi.mock('@/lib/useNameMap', () => ({ useNameMap: () => ({ getName: (instrument: string) => instrument }) }));
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: ({ count }: { count: number }) => ({
     getTotalSize: () => count * 52,

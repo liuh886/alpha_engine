@@ -164,7 +164,7 @@ async function assertPrimaryNavigation(page: Page, projectName: string): Promise
   const navigation = page.getByRole('navigation', {
     name: mobile ? 'Mobile strategy console navigation' : 'Strategy console navigation',
   });
-  for (const label of ['Overview', 'Strategies', 'Research', 'System']) {
+  for (const label of ['Overview', 'Status']) {
     await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
   }
   await expect(navigation.getByRole('link', { name: 'Runs', exact: true })).toHaveCount(0);

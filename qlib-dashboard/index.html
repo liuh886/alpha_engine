@@ -17,25 +17,16 @@
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="Alpha Engine — Systematic Strategy Console" />
   <meta name="twitter:description" content="Monitor strategy state and targets, then inspect formal backtests, holdings, risk and evidence." />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Alpha Engine" />
-  <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icons/alpha-engine.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="./icons/alpha-engine-180.png" />
   <link rel="preconnect" href="https://liuh886.github.io" crossorigin />
   <link rel="preload" href="https://liuh886.github.io/admin/shared/account-shell.css?v=6" as="style" onload="this.onload=null;this.rel='stylesheet'" />
-  <link rel="preload" href="https://liuh886.github.io/admin/shared/product-referral.css?v=3" as="style" onload="this.onload=null;this.rel='stylesheet'" />
   <noscript>
     <link rel="stylesheet" href="https://liuh886.github.io/admin/shared/account-shell.css?v=6" />
-    <link rel="stylesheet" href="https://liuh886.github.io/admin/shared/product-referral.css?v=3" />
   </noscript>
   <link rel="stylesheet" href="./account-integration.css" />
   <style>
     @supports (padding: env(safe-area-inset-top)) {
-      .research-app-shell,
-      .alpha-landing {
+      .research-app-shell {
         box-sizing: border-box;
         padding-top: env(safe-area-inset-top);
         padding-right: env(safe-area-inset-right);
@@ -51,7 +42,6 @@
   <div id="root"></div>
   <script src="./membership-config.js"></script>
   <script async src="https://liuh886.github.io/admin/shared/account-shell.js?v=7"></script>
-  <script defer src="https://liuh886.github.io/admin/shared/product-referral.js?v=5"></script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 
