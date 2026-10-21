@@ -107,7 +107,7 @@ test('the homepage opens daily research and reads only the formal operating surf
 test('formal QQQ evidence stays public while current operations follow account policy', async ({ page }) => {
   await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'free-fixture' } });
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
-  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQR v4.3', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQR v4.3', level: 1, exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Current holdings and live signals are protected', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Performance, risk, holdings and attribution', exact: true })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Performance', exact: true })).toBeVisible();
