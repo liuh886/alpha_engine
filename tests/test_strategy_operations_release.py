@@ -221,7 +221,7 @@ def test_declared_checkout_reproduces_full_operations_and_health(
     assert not (root / "data/research/market_evidence").exists()
     assert not (root / "data/csv_clean").exists()
     assert (root / ".github/actions/setup-python-uv/action.yml").is_file()
-    freshness = json.loads((ROOT / "data/research/formal_model_runs/freshness.json").read_text())
+    freshness = json.loads((ROOT / "data/research/formal_model_runs/freshness.json").read_text(encoding="utf-8"))
     generated_at = freshness["declared_at"]
     expected_health, expected_operations = diagnose(ROOT, generated_at=generated_at)
     result = subprocess.run(
@@ -231,5 +231,5 @@ def test_declared_checkout_reproduces_full_operations_and_health(
         capture_output=True, text=True, check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert json.loads((root / "artifacts/snapshots.json").read_text()) == expected_operations
-    assert json.loads((root / "artifacts/system-health.json").read_text()) == expected_health
+    assert json.loads((root / "artifacts/snapshots.json").read_text(encoding="utf-8")) == expected_operations
+    assert json.loads((root / "artifacts/system-health.json").read_text(encoding="utf-8")) == expected_health
