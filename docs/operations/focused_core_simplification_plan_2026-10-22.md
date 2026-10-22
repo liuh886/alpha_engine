@@ -326,9 +326,9 @@ CN 的 106 项 overlap 价格/复权/量纲不一致及 BYD 截止日不足仍�
 
 运行 `39800319676` 与 `39814345974` 的验收采集曾报告没有已完成正式运行。
 实际查询复现 GitHub 的 `status=completed` 过滤短暂返回空列表，同一工作流的
-近期列表仍包含已完成记录。现有采集器改为一次读取 main 最近 10 条运行，
-按原列表顺序选首个明确 completed 的运行，不筛 success、不回退到更早的 green。
-窗口中没有 completed 时明确失败，不增加循环重试、分页搜旧成功、调度或状态库。
+近期列表仍包含已完成记录。现有采集器读取该工作流最近 10 条原始运行，
+在本地按原顺序选首个明确属于 main 且 completed 的运行，不筛 success、不回退到更早的 green。
+窗口中没有主分支已完成项时明确失败，不增加循环重试、分页搜旧成功、调度或状态库。
 最新完成项的产物缺失、过期、损坏仍失败或 blocked；原身份、哈希和长期归档边界保留。
 
 148 项验收、状态、正式刷新、触发范围与归档相关检查通过，ruff、diff 及
@@ -340,6 +340,18 @@ CN 的 106 项 overlap 价格/复权/量纲不一致及 BYD 截止日不足仍�
 `manual_interventions=null`、`review_required=true` 保留，不自动填写独立审阅，
 也不将本次采集计为合格会话。回执保留于
 `artifacts/optimization-20261023/collector-recovery`，未覆盖先前失败记录。
+
+[PR #1260](https://github.com/liuh886/alpha_engine/pull/1260) 合并后的真实运行
+`39819973023` 再次未找到已完成项，失败回执保留于
+`artifacts/optimization-20261023/collector-merged-review-failure`，不把本机成功当成自动采集闭环。
+后续将远端 branch 筛选也移到本地，显式跳过其他分支或缺失分支身份的记录；
+仍只查询一次、上限 10 条，后续 main/repository/event/path 与证据校验不变。
+找不到合格运行时在原失败消息补充 listed/main 计数，帮助区分空列表和范围不足，
+不新增存储。故障后的两种列表均已恢复可见，远端筛选可见性延迟仍只是推断，
+实际自动采集与归档恢复须以新运行回执为准。
+本轮 46 项相关检查通过，最后的失败诊断增补又通过 16 项受影响检查；独立复核通过。
+原始列表路径的实际 CLI 已采集后续正式运行 `39819972998:1`，五策略机械检查通过，
+仍保留 awaiting_independent_review；回执位于 `artifacts/optimization-20261023/collector-raw-recovery`。
 
 ### 2026-10-23：定位具体的增量来源冲突
 
