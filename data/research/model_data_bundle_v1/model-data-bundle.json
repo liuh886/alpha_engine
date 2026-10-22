@@ -1,6 +1,6 @@
 {
-  "built_at": "2026-10-21T17:54:09+00:00",
-  "bundle_id": "5c4a3aac84ef31d37ba1f0294c2003b1234e971b9940c1975e655d2ca5de4e69",
+  "built_at": "2026-10-22T01:49:52+00:00",
+  "bundle_id": "66c521f2c6da5898c176e8113e9a52b072822a99a0bbd41db6a3ff1d9458573f",
   "components": [
     {
       "component_id": "corporate_actions.cn_selected_equities_v3",
@@ -249,25 +249,25 @@
       "coverage_ratio": 1.0,
       "details": {
         "benchmark": "QQQ",
-        "candidate_observation_cutoff": "2026-10-20",
+        "candidate_observation_cutoff": "2026-10-21",
         "candidate_observation_start": "2025-06-05",
         "promotion_blocker": null,
         "promotion_eligible": true,
-        "provider_identity_sha256": "5e8391312394e174e21dcdaef1212625d8c3677db641c0db5f716c9e3a24eb2c",
-        "requested_cutoff": "2026-10-20",
+        "provider_identity_sha256": "cb6d6c2f1382b700b9656191212ab50bad291431a298a4498bb723da343658ba",
+        "requested_cutoff": "2026-10-21",
         "retained_common_history_end": "2026-08-04",
         "source_status": "selected_pool_price_refresh_ready",
         "terminal_history_symbols": [
           "EA"
         ]
       },
-      "evidence_cutoff": "2026-10-20",
+      "evidence_cutoff": "2026-10-21",
       "expected_symbol_count": 87,
       "first_date": "2025-06-05",
       "invalid_symbols": [],
-      "last_date": "2026-10-20",
+      "last_date": "2026-10-21",
       "manifest_path": "components/us-selected-pool-prices.json",
-      "manifest_sha256": "a50da87e97976160d21afb59bfa3be86b63fc08623b4438900ed37269dfd9758",
+      "manifest_sha256": "a0de400f3beffaeb7ca4440370dba882e69c559764a4601c0112217fcad418b6",
       "market": "us",
       "missing_symbols": [],
       "not_yet_applicable_symbols": [],
@@ -328,15 +328,15 @@
   "frontend_indexes": {
     "data_components": {
       "path": "data-components.json",
-      "sha256": "8016d6f73781b630c4cbd8ab9238f7ba636d1748b92400cef2a6a4144fa43d4c"
+      "sha256": "e23df181c574d30ef10c4e08395adb080abf272d8af3c20afc3edabf8440aca8"
     },
     "model_data_readiness": {
       "path": "model-data-readiness.json",
-      "sha256": "7aeaea5d64de77e2e1e29c3dba45b46dac45f4c9ff03af7c0b7009548d301bd7"
+      "sha256": "4ab31540d1e1a58c398a11e9850972112183bfeb942b9d95b98394af736fdc50"
     },
     "training_profiles": {
       "path": "training-profiles.json",
-      "sha256": "2e65d63787462ce4d0fdd3ae30ad60e7e9f6fb111239e551aaaaefffd4ea78a0"
+      "sha256": "b175e89938d60abd9e12c858a99b173075ec5aca5de6d1c9972589c2221a26db"
     }
   },
   "research_only": true,
@@ -821,25 +821,25 @@
             "coverage_ratio": 1.0,
             "details": {
               "benchmark": "QQQ",
-              "candidate_observation_cutoff": "2026-10-20",
+              "candidate_observation_cutoff": "2026-10-21",
               "candidate_observation_start": "2025-06-05",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "5e8391312394e174e21dcdaef1212625d8c3677db641c0db5f716c9e3a24eb2c",
-              "requested_cutoff": "2026-10-20",
+              "provider_identity_sha256": "cb6d6c2f1382b700b9656191212ab50bad291431a298a4498bb723da343658ba",
+              "requested_cutoff": "2026-10-21",
               "retained_common_history_end": "2026-08-04",
               "source_status": "selected_pool_price_refresh_ready",
               "terminal_history_symbols": [
                 "EA"
               ]
             },
-            "evidence_cutoff": "2026-10-20",
+            "evidence_cutoff": "2026-10-21",
             "expected_symbol_count": 87,
             "first_date": "2025-06-05",
             "invalid_symbols": [],
-            "last_date": "2026-10-20",
+            "last_date": "2026-10-21",
             "manifest_path": "components/us-selected-pool-prices.json",
-            "manifest_sha256": "a50da87e97976160d21afb59bfa3be86b63fc08623b4438900ed37269dfd9758",
+            "manifest_sha256": "a0de400f3beffaeb7ca4440370dba882e69c559764a4601c0112217fcad418b6",
             "market": "us",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -902,25 +902,25 @@
             "coverage_ratio": 1.0,
             "details": {
               "benchmark": "QQQ",
-              "candidate_observation_cutoff": "2026-10-20",
+              "candidate_observation_cutoff": "2026-10-21",
               "candidate_observation_start": "2025-06-05",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "5e8391312394e174e21dcdaef1212625d8c3677db641c0db5f716c9e3a24eb2c",
-              "requested_cutoff": "2026-10-20",
+              "provider_identity_sha256": "cb6d6c2f1382b700b9656191212ab50bad291431a298a4498bb723da343658ba",
+              "requested_cutoff": "2026-10-21",
               "retained_common_history_end": "2026-08-04",
               "source_status": "selected_pool_price_refresh_ready",
               "terminal_history_symbols": [
                 "EA"
               ]
             },
-            "evidence_cutoff": "2026-10-20",
+            "evidence_cutoff": "2026-10-21",
             "expected_symbol_count": 87,
             "first_date": "2025-06-05",
             "invalid_symbols": [],
-            "last_date": "2026-10-20",
+            "last_date": "2026-10-21",
             "manifest_path": "components/us-selected-pool-prices.json",
-            "manifest_sha256": "a50da87e97976160d21afb59bfa3be86b63fc08623b4438900ed37269dfd9758",
+            "manifest_sha256": "a0de400f3beffaeb7ca4440370dba882e69c559764a4601c0112217fcad418b6",
             "market": "us",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -968,25 +968,25 @@
             "coverage_ratio": 1.0,
             "details": {
               "benchmark": "QQQ",
-              "candidate_observation_cutoff": "2026-10-20",
+              "candidate_observation_cutoff": "2026-10-21",
               "candidate_observation_start": "2025-06-05",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "5e8391312394e174e21dcdaef1212625d8c3677db641c0db5f716c9e3a24eb2c",
-              "requested_cutoff": "2026-10-20",
+              "provider_identity_sha256": "cb6d6c2f1382b700b9656191212ab50bad291431a298a4498bb723da343658ba",
+              "requested_cutoff": "2026-10-21",
               "retained_common_history_end": "2026-08-04",
               "source_status": "selected_pool_price_refresh_ready",
               "terminal_history_symbols": [
                 "EA"
               ]
             },
-            "evidence_cutoff": "2026-10-20",
+            "evidence_cutoff": "2026-10-21",
             "expected_symbol_count": 87,
             "first_date": "2025-06-05",
             "invalid_symbols": [],
-            "last_date": "2026-10-20",
+            "last_date": "2026-10-21",
             "manifest_path": "components/us-selected-pool-prices.json",
-            "manifest_sha256": "a50da87e97976160d21afb59bfa3be86b63fc08623b4438900ed37269dfd9758",
+            "manifest_sha256": "a0de400f3beffaeb7ca4440370dba882e69c559764a4601c0112217fcad418b6",
             "market": "us",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
