@@ -104,12 +104,14 @@ test('the homepage opens daily research and reads only the formal operating surf
   await page.screenshot({ path: testInfo.outputPath('focused-daily-overview.png'), fullPage: false });
 });
 
-test('strategy navigation reuses verified formal sections without loading them on overview', async ({ page }) => {
+test('strategy navigation reuses verified formal sections without loading them on overview', async ({ page }, testInfo) => {
   const sections: string[] = [];
+  const retiredRequests: string[] = [];
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => {
     const path = new URL(request.url()).pathname;
+    if (path.includes('/data/market-evidence/')) retiredRequests.push(path);
     if (path.includes('/data/formal-model-runs/') && /\/(performance|risk|robustness|portfolio|trades|attribution|diagnostics|lineage)\.json$/.test(path)) sections.push(path);
   });
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
@@ -125,7 +127,13 @@ test('strategy navigation reuses verified formal sections without loading them o
   await strategy.click();
   await expect(page.getByRole('tablist', { name: 'Formal backtest evidence views' })).toBeVisible();
   expect(sections).toHaveLength(8);
+  await page.getByRole('button', { name: 'Benchmark comparisons', exact: true }).click();
+  await expect(page.getByText('Benchmarks & comparisons', { exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Search benchmarks', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Compare QQQ', exact: true, pressed: true })).toBeVisible();
+  expect(retiredRequests).toEqual([]);
   expect(errors).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath('retained-benchmark-comparisons.png'), fullPage: false });
 });
 
 test('formal QQQ evidence stays public while current operations follow account policy', async ({ page }) => {
