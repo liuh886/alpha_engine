@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import {
-  loadRuntimeStrategyOperation,
+  loadRuntimeStrategyOperations,
   loadStrategyOperations,
   assertStrategyOperationRun,
   type StrategyOperationsClient,
@@ -28,7 +28,10 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
   const membership = useAlphaMembership();
   const formalRuns = useMemo(() => runs.filter((run) => run.channel === 'formal'), [runs]);
   const [attempt, setAttempt] = useState(0);
-  const reload = useCallback(() => setAttempt((current) => current + 1), []);
+  const reload = useCallback(() => {
+    if (access.policyError) void access.reloadPolicies();
+    setAttempt((current) => current + 1);
+  }, [access.policyError, access.reloadPolicies]);
   // Returning to this tab rechecks mutable operations; route changes reuse the verified read.
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === 'visible') reload(); };
@@ -83,6 +86,8 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
       if (!active) return;
       const issues: StrategyOperationsReadIssue[] = formalRuns.filter((run) => !next.get(run.modelVersionId)?.sourceIdentity.formalBundleId)
         .map(run => ({ modelVersionId: run.modelVersionId, message: `${run.title}: published operations could not be verified.` }));
+      if (access.policyError) issues.push({ modelVersionId: null,
+        message: 'Strategy access policies could not be verified. Retry to recheck access.' });
       const publish = (loading: boolean) => {
         if (!active) return;
         setResult(previous => {
@@ -110,15 +115,14 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
           const client = await membership.getClient();
           if (!active) return;
           if (!client) throw new Error('Account client unavailable');
-          await Promise.all(runtimeSnapshots.map(async (snapshot) => {
+          const runtime = await loadRuntimeStrategyOperations(
+            client as StrategyOperationsClient, runtimeSnapshots, controller.signal,
+          ).catch(() => new Map<string, StrategyOperationsSnapshot | null>());
+          if (!active) return;
+          for (const snapshot of runtimeSnapshots) {
             const run = formalRuns.find((candidate) => candidate.modelVersionId === snapshot.modelVersionId)!;
             try {
-              const runtimeSnapshot = await loadRuntimeStrategyOperation(
-                client as StrategyOperationsClient,
-                snapshot.strategyId,
-                snapshot.modelVersionId,
-              );
-              if (!active) return;
+              const runtimeSnapshot = runtime.get(snapshot.modelVersionId);
               if (!runtimeSnapshot || runtimeSnapshot.readState) throw new Error('Current operations unavailable');
               assertStrategyOperationRun(runtimeSnapshot, run);
               next.set(snapshot.modelVersionId, runtimeSnapshot);
@@ -127,8 +131,7 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
               issues.push({ modelVersionId: run.modelVersionId, message: `${run.title}: current operations could not be verified.` });
             }
             pendingModels?.delete(snapshot.modelVersionId);
-            publish(true);
-          }));
+          }
         }
       } catch {
         for (const snapshot of runtimeSnapshots) next.set(snapshot.modelVersionId, markUnread(snapshot));

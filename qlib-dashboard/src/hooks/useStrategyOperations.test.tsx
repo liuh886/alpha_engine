@@ -3,14 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useStrategyOperations } from './useStrategyOperations';
 import { useAccessControl } from './useAccessControl';
 import { useAlphaMembership } from './useAlphaMembership';
-import { loadRuntimeStrategyOperation, loadStrategyOperations, parseStrategyOperationsSnapshot } from '@/lib/strategy-operations';
+import { loadRuntimeStrategyOperations, loadStrategyOperations, parseStrategyOperationsSnapshot } from '@/lib/strategy-operations';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 
 vi.mock('./useAccessControl', () => ({ useAccessControl: vi.fn() }));
 vi.mock('./useAlphaMembership', () => ({ useAlphaMembership: vi.fn() }));
 vi.mock('@/lib/strategy-operations', async (importOriginal) => ({
   ...await importOriginal<typeof import('@/lib/strategy-operations')>(),
-  loadStrategyOperations: vi.fn(), loadRuntimeStrategyOperation: vi.fn(),
+  loadStrategyOperations: vi.fn(), loadRuntimeStrategyOperations: vi.fn(),
 }));
 
 const run = { key: 'cn-run', channel: 'formal', modelVersionId: 'cn_x1_2', title: 'CN x1.2', modelFamilyId: 'cn_ranker',
@@ -35,7 +35,7 @@ describe('current operations recovery', () => {
     vi.mocked(useAccessControl).mockReturnValue({ policyLoading: false, tier: 'pro', requiredTier,
       canAccess: () => true } as unknown as ReturnType<typeof useAccessControl>);
     vi.mocked(loadStrategyOperations).mockImplementation(async (selected) => new Map(selected.map((item) => [item.modelVersionId, shell])));
-    vi.mocked(loadRuntimeStrategyOperation).mockResolvedValue(live);
+    vi.mocked(loadRuntimeStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, live]]));
     getClient.mockResolvedValue({});
   });
   afterEach(() => vi.useRealTimers());
@@ -54,7 +54,7 @@ describe('current operations recovery', () => {
   });
 
   it('shows the public identity before the runtime request completes', async () => {
-    vi.mocked(loadRuntimeStrategyOperation).mockReturnValue(new Promise(() => {}));
+    vi.mocked(loadRuntimeStrategyOperations).mockReturnValue(new Promise(() => {}));
     const { result } = renderHook(() => useStrategyOperations(runs));
     await waitFor(() => expect(result.current.snapshots.get(run.modelVersionId)).toEqual(shell));
     expect(result.current.loading).toBe(true);
@@ -67,7 +67,7 @@ describe('current operations recovery', () => {
       release = () => resolve(new Map([[run.modelVersionId, shell]]));
     }));
     if (stage === 'client') getClient.mockReturnValueOnce(new Promise((resolve) => { release = () => resolve({}); }));
-    if (stage === 'runtime') vi.mocked(loadRuntimeStrategyOperation).mockReturnValueOnce(new Promise((resolve) => { release = () => resolve(live); }));
+    if (stage === 'runtime') vi.mocked(loadRuntimeStrategyOperations).mockReturnValueOnce(new Promise((resolve) => { release = () => resolve(new Map([[run.modelVersionId, live]])); }));
     if (stage === 'account') vi.mocked(useAlphaMembership).mockReturnValue({ ...useAlphaMembership(), loading: true });
     if (stage === 'policy') vi.mocked(useAccessControl).mockReturnValue({ ...useAccessControl(), policyLoading: true });
     const { result, unmount } = renderHook(() => useStrategyOperations(runs));
@@ -79,24 +79,31 @@ describe('current operations recovery', () => {
     if (signal) expect(signal.aborted).toBe(true);
     await act(async () => release());
     expect(result.current.snapshots.get(run.modelVersionId)?.allocations ?? []).toEqual([]);
-    if (stage === 'client' || stage === 'publication') expect(loadRuntimeStrategyOperation).not.toHaveBeenCalled();
+    if (stage === 'client' || stage === 'publication') expect(loadRuntimeStrategyOperations).not.toHaveBeenCalled();
     unmount();
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('retains verified independent records on timeout and succeeds on retry', async () => {
-    vi.useFakeTimers();
+  it('retains dated independent records when a batch stalls and succeeds on retry', async () => {
     const otherRun = { ...run, key: 'us-run', modelVersionId: 'us_x1_3', title: 'US x1.3' };
     const otherShell = { ...shell, modelVersionId: otherRun.modelVersionId, strategyId: 'us_x', readState: 'protected' as const };
     const selected = [run, otherRun];
-    vi.mocked(loadStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, shell], [otherRun.modelVersionId, otherShell]]));
-    vi.mocked(loadRuntimeStrategyOperation).mockImplementation(async (_client, strategy) => strategy === 'us_x' ? new Promise(() => {}) : live);
+    vi.mocked(loadStrategyOperations).mockResolvedValue(new Map([
+      [run.modelVersionId, { ...shell, readState: 'protected' }], [otherRun.modelVersionId, otherShell],
+    ]));
+    vi.mocked(loadRuntimeStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, live]]));
     const { result } = renderHook(() => useStrategyOperations(selected));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    vi.useFakeTimers();
+    vi.mocked(loadRuntimeStrategyOperations).mockReturnValueOnce(new Promise(() => {}));
+    act(() => result.current.reload());
     await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
     expect(result.current.loading).toBe(false);
-    expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live);
-    expect(result.current.issues).toEqual([{ modelVersionId: otherRun.modelVersionId, message: expect.stringContaining('timed out') }]);
-    vi.mocked(loadRuntimeStrategyOperation).mockImplementation(async (_client, strategy) => strategy === 'us_x' ? null : live);
+    expect(result.current.snapshots.get(run.modelVersionId)).toEqual({ ...live, readState: 'retained' });
+    expect(result.current.snapshots.get(otherRun.modelVersionId)?.allocations).toEqual([]);
+    expect(result.current.issues.map(issue => issue.modelVersionId)).toEqual(selected.map(item => item.modelVersionId));
+    const batchCalls = vi.mocked(loadRuntimeStrategyOperations).mock.calls;
+    expect(batchCalls[batchCalls.length - 1][2].aborted).toBe(true);
     await act(async () => result.current.reload());
     expect(result.current.loading).toBe(false);
     expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live);
@@ -104,10 +111,10 @@ describe('current operations recovery', () => {
   });
 
   it.each(['missing', 'mismatched', 'rejected'])('keeps protected operations hidden for a %s response', async (failure) => {
-    if (failure === 'missing') vi.mocked(loadRuntimeStrategyOperation).mockResolvedValue(null);
-    if (failure === 'mismatched') vi.mocked(loadRuntimeStrategyOperation).mockResolvedValue({ ...live,
-      sourceIdentity: { ...live.sourceIdentity, formalBundleId: 'b'.repeat(64) } });
-    if (failure === 'rejected') vi.mocked(loadRuntimeStrategyOperation).mockRejectedValue(new Error('offline'));
+    if (failure === 'missing') vi.mocked(loadRuntimeStrategyOperations).mockResolvedValue(new Map());
+    if (failure === 'mismatched') vi.mocked(loadRuntimeStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId,
+      { ...live, sourceIdentity: { ...live.sourceIdentity, formalBundleId: 'b'.repeat(64) } }]]));
+    if (failure === 'rejected') vi.mocked(loadRuntimeStrategyOperations).mockRejectedValue(new Error('offline'));
     const { result } = renderHook(() => useStrategyOperations(runs));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.snapshots.get(run.modelVersionId)?.allocations).toEqual([]);
@@ -120,13 +127,30 @@ describe('current operations recovery', () => {
     const { result } = renderHook(() => useStrategyOperations(runs));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(getClient).not.toHaveBeenCalled();
-    expect(loadRuntimeStrategyOperation).not.toHaveBeenCalled();
+    expect(loadRuntimeStrategyOperations).not.toHaveBeenCalled();
+    expect(result.current.issues).toEqual([]);
+  });
+
+  it('rechecks failed access policies through the existing operations retry', async () => {
+    const reloadPolicies = vi.fn(async () => {
+      vi.mocked(useAccessControl).mockReturnValue({ ...useAccessControl(), policyError: null, canAccess: () => true });
+    });
+    vi.mocked(useAccessControl).mockReturnValue({ ...useAccessControl(), policyError: 'offline',
+      canAccess: () => false, reloadPolicies });
+    const { result } = renderHook(() => useStrategyOperations(runs));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.issues).toEqual([{ modelVersionId: null,
+      message: 'Strategy access policies could not be verified. Retry to recheck access.' }]);
+    expect(getClient).not.toHaveBeenCalled();
+    act(() => result.current.reload());
+    await waitFor(() => expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live));
+    expect(reloadPolicies).toHaveBeenCalledTimes(1);
     expect(result.current.issues).toEqual([]);
   });
 
   it('labels a failed eligible protected read as unavailable, not a strategy failure', async () => {
     vi.mocked(loadStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, { ...shell, readState: 'protected' }]]));
-    vi.mocked(loadRuntimeStrategyOperation).mockRejectedValue(new Error('offline'));
+    vi.mocked(loadRuntimeStrategyOperations).mockRejectedValue(new Error('offline'));
     const { result } = renderHook(() => useStrategyOperations(runs));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.snapshots.get(run.modelVersionId)?.readState).toBe('unavailable');
@@ -134,20 +158,20 @@ describe('current operations recovery', () => {
   });
 
   it('discards a late response when the formal run changes', async () => {
-    let resolveOld!: (value: typeof live) => void;
-    vi.mocked(loadRuntimeStrategyOperation).mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve; }));
+    let resolveOld!: (value: Map<string, typeof live>) => void;
+    vi.mocked(loadRuntimeStrategyOperations).mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve; }));
     const { result, rerender } = renderHook(({ selected }) => useStrategyOperations(selected), { initialProps: { selected: runs } });
-    await waitFor(() => expect(loadRuntimeStrategyOperation).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(loadRuntimeStrategyOperations).toHaveBeenCalledTimes(1));
     const nextRun = { ...run, key: 'cn-new-run', runId: 'formal-new-run', bundleId: 'b'.repeat(64), evidenceCutoff: '2026-10-15' };
     const nextShell = { ...shell, sourceIdentity: { ...shell.sourceIdentity, formalBundleId: nextRun.bundleId,
       formalRunId: nextRun.runId, formalEvidenceCutoff: nextRun.evidenceCutoff } };
     const nextLive = { ...live, stateLabel: 'New verified state', sourceIdentity: nextShell.sourceIdentity };
     vi.mocked(loadStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, nextShell]]));
-    vi.mocked(loadRuntimeStrategyOperation).mockResolvedValue(nextLive);
+    vi.mocked(loadRuntimeStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, nextLive]]));
     rerender({ selected: [nextRun] });
     expect(result.current.snapshots.size).toBe(0);
     await waitFor(() => expect(result.current.loading).toBe(false));
-    await act(async () => resolveOld(live));
+    await act(async () => resolveOld(new Map([[run.modelVersionId, live]])));
     expect(result.current.snapshots.get(run.modelVersionId)).toEqual(nextLive);
   });
 
@@ -155,7 +179,7 @@ describe('current operations recovery', () => {
     const otherRun = { ...run, key: 'us-run', modelVersionId: 'us_x1_3', title: 'US x1.3' };
     const otherShell = { ...shell, modelVersionId: otherRun.modelVersionId, strategyId: 'us_x', readState: 'protected' as const };
     vi.mocked(loadStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, shell], [otherRun.modelVersionId, otherShell]]));
-    vi.mocked(loadRuntimeStrategyOperation).mockImplementation(async (_client, strategy) => strategy === 'us_x' ? null : live);
+    vi.mocked(loadRuntimeStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, live]]));
     const selected = [run, otherRun];
     const { result } = renderHook(() => useStrategyOperations(selected));
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -168,7 +192,7 @@ describe('current operations recovery', () => {
     const { result, rerender } = renderHook(() => useStrategyOperations(runs));
     await waitFor(() => expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live));
     vi.mocked(useAlphaMembership).mockReturnValue({ ...useAlphaMembership(), userId: 'user-b' });
-    vi.mocked(loadRuntimeStrategyOperation).mockReturnValue(new Promise(() => {}));
+    vi.mocked(loadRuntimeStrategyOperations).mockReturnValue(new Promise(() => {}));
     rerender();
     expect(result.current.snapshots.size).toBe(0);
     await waitFor(() => expect(result.current.snapshots.get(run.modelVersionId)?.allocations).toEqual([]));
@@ -212,8 +236,9 @@ describe('current operations recovery', () => {
     vi.mocked(loadStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId, protectedShell]]));
     const { result } = renderHook(() => useStrategyOperations(runs));
     await waitFor(() => expect(result.current.snapshots.get(run.modelVersionId)).toEqual(live));
-    vi.mocked(loadRuntimeStrategyOperation).mockResolvedValue(failure === 'missing' ? null
-      : failure === 'protected' ? protectedShell : { ...live, sourceIdentity: { ...live.sourceIdentity, formalBundleId: 'b'.repeat(64) } });
+    vi.mocked(loadRuntimeStrategyOperations).mockResolvedValue(new Map([[run.modelVersionId,
+      failure === 'missing' ? null : failure === 'protected' ? protectedShell
+        : { ...live, sourceIdentity: { ...live.sourceIdentity, formalBundleId: 'b'.repeat(64) } }]]));
     await act(async () => result.current.reload());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.snapshots.get(run.modelVersionId)?.allocations).toEqual([]);
@@ -233,7 +258,25 @@ describe('current operations recovery', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.snapshots.get(run.modelVersionId)).toEqual(replacement);
     expect(result.current.previousRead).toBe(false);
-    expect(loadRuntimeStrategyOperation).toHaveBeenCalledTimes(1);
+    expect(loadRuntimeStrategyOperations).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads five eligible strategies in one cancellable request', async () => {
+    const selected = Array.from({ length: 5 }, (_, index) => ({ ...run,
+      key: `run-${index}`, modelVersionId: `model-${index}` }));
+    const publicRows = new Map(selected.map(item => [item.modelVersionId,
+      { ...shell, modelVersionId: item.modelVersionId, strategyId: item.key }]));
+    const liveRows = new Map(selected.map(item => [item.modelVersionId,
+      { ...live, modelVersionId: item.modelVersionId, strategyId: item.key }]));
+    vi.mocked(loadStrategyOperations).mockResolvedValue(publicRows);
+    vi.mocked(loadRuntimeStrategyOperations).mockResolvedValue(liveRows);
+    const { result } = renderHook(() => useStrategyOperations(selected));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(loadRuntimeStrategyOperations).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(loadRuntimeStrategyOperations).mock.calls[0][1]).toEqual([...publicRows.values()]);
+    expect(vi.mocked(loadRuntimeStrategyOperations).mock.calls[0][2]).toBeInstanceOf(AbortSignal);
+    expect(result.current.snapshots).toEqual(liveRows);
+    expect(result.current.issues).toEqual([]);
   });
 
 });

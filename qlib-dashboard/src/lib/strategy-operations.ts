@@ -107,13 +107,13 @@ interface RuntimeOperationRow {
 }
 
 interface RuntimeOperationResult {
-  data: RuntimeOperationRow | null;
+  data: unknown;
   error: { message?: string } | null;
 }
 
-interface RuntimeOperationFilter {
-  eq: (column: string, value: string) => RuntimeOperationFilter;
-  maybeSingle: () => Promise<RuntimeOperationResult>;
+interface RuntimeOperationFilter extends PromiseLike<RuntimeOperationResult> {
+  in: (column: string, values: string[]) => RuntimeOperationFilter;
+  abortSignal: (signal: AbortSignal) => RuntimeOperationFilter;
 }
 
 interface RuntimeOperationQuery {
@@ -375,25 +375,33 @@ export function assertStrategyOperationRun(snapshot: StrategyOperationsSnapshot,
   assert(Boolean(run.evidenceCutoff) && snapshot.sourceIdentity.formalEvidenceCutoff === run.evidenceCutoff, 'Operations formal cutoff mismatch');
 }
 
-export async function loadRuntimeStrategyOperation(
+export async function loadRuntimeStrategyOperations(
   client: StrategyOperationsClient,
-  strategyId: string,
-  modelVersionId: string,
-): Promise<StrategyOperationsSnapshot | null> {
+  selections: Pick<StrategyOperationsSnapshot, 'strategyId' | 'modelVersionId'>[],
+  signal: AbortSignal,
+): Promise<Map<string, StrategyOperationsSnapshot | null>> {
+  if (!selections.length) return new Map();
   const { data, error } = await client
     .from('strategy_operation_snapshots')
     .select('strategy_id,model_version_id,snapshot')
-    .eq('strategy_id', strategyId)
-    .eq('model_version_id', modelVersionId)
-    .maybeSingle();
+    .in('strategy_id', selections.map(selection => selection.strategyId))
+    .abortSignal(signal);
   if (error) throw new Error(error.message || 'Runtime strategy operations request failed.');
-  if (!data) return null;
-  assert(data.strategy_id === strategyId, 'Runtime strategy identity mismatch');
-  assert(data.model_version_id === modelVersionId, 'Runtime model identity mismatch');
-  const snapshot = parseStrategyOperationsSnapshot(data.snapshot);
-  assert(snapshot.strategyId === strategyId, 'Runtime snapshot strategy identity mismatch');
-  assert(snapshot.modelVersionId === modelVersionId, 'Runtime snapshot model identity mismatch');
-  return snapshot;
+  assert(Array.isArray(data), 'Runtime strategy operations response is invalid.');
+  return new Map(selections.map(({ strategyId, modelVersionId }) => {
+    try {
+      const rows = data.filter((row): row is RuntimeOperationRow => row !== null
+        && typeof row === 'object' && !Array.isArray(row) && row.strategy_id === strategyId);
+      assert(rows.length === 1, 'Runtime strategy record is missing or duplicated');
+      assert(rows[0].model_version_id === modelVersionId, 'Runtime model identity mismatch');
+      const snapshot = parseStrategyOperationsSnapshot(rows[0].snapshot);
+      assert(snapshot.strategyId === strategyId, 'Runtime snapshot strategy identity mismatch');
+      assert(snapshot.modelVersionId === modelVersionId, 'Runtime snapshot model identity mismatch');
+      return [modelVersionId, snapshot] as const;
+    } catch {
+      return [modelVersionId, null] as const;
+    }
+  }));
 }
 
 export async function loadStrategyOperations(runs: GovernedRunSummary[], signal?: AbortSignal): Promise<Map<string, StrategyOperationsSnapshot>> {

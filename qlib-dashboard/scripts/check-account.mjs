@@ -21,7 +21,7 @@ requireText('app', ['AccessControlProvider', 'data-account-slot']);
 requireText('membership', ['app_metadata', "alpha_engine_role === 'owner'", 'snapshot.isPro === true', 'getClient']);
 requireText('access', ["from('product_access_policies')", 'mergeAccessPolicies', 'canAccessTier', 'resolveRequiredTier']);
 requireText('rules', ["resourceType === 'strategy' ? 'owner' : 'public'"]);
-requireText('reader', ['access.canAccess', "access.requiredTier('strategy', snapshot.strategyId)", 'assertStrategyOperationRun', 'loadRuntimeStrategyOperation']);
+requireText('reader', ['access.canAccess', "access.requiredTier('strategy', snapshot.strategyId)", 'assertStrategyOperationRun', 'loadRuntimeStrategyOperations', 'controller.signal']);
 requireText('brief', ['access.canAccess', "access.requiredTier('strategy', snapshot.strategyId)"]);
 requireText('detail', ['access.canAccess', "access.requiredTier('strategy', snapshot.strategyId)", 'liveLocked', 'FormalBacktestReview']);
 for (const [key, source] of Object.entries(content)) {
