@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 from scripts.check_ci_governance import (
     archive_reference_violations,
@@ -12,6 +17,66 @@ from scripts.check_ci_governance import (
     inspect_dead_modules,
     inspect_research_assets,
 )
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture
+def policy_checkout(tmp_path: Path) -> Path:
+    workflow = yaml.safe_load((ROOT / ".github/workflows/ci-governance.yml").read_text(encoding="utf-8"))
+    checkout = next(step for step in workflow["jobs"]["policy"]["steps"]
+                    if step.get("uses") == "actions/checkout@v6")["with"]
+    assert checkout["fetch-depth"] == 1 and checkout["lfs"] is False
+    assert checkout["sparse-checkout-cone-mode"] is True
+    root = tmp_path / "policy-checkout"
+    for relative in checkout["sparse-checkout"].splitlines():
+        if relative.strip():
+            shutil.copytree(ROOT / relative.strip(), root / relative.strip(),
+                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    # Cone mode retains all tracked root files, including future root lockfiles.
+    tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode("utf-8")
+    for relative in tracked.split("\0"):
+        if relative and "/" not in relative:
+            shutil.copyfile(ROOT / relative, root / relative)
+    assert not (root / "data").exists()
+    return root
+
+
+def _policy_report(root: Path, output: Path) -> tuple[int, bytes]:
+    result = subprocess.run(
+        [sys.executable, "scripts/check_ci_policy.py", "--policy", ".github/ci-policy.json",
+         "--output", str(output), "--enforce"],
+        cwd=root, capture_output=True, text=True, check=False,
+    )
+    assert output.is_file(), result.stdout + result.stderr
+    return result.returncode, output.read_bytes()
+
+
+def test_policy_checkout_preserves_complete_report(policy_checkout: Path, tmp_path: Path) -> None:
+    full = _policy_report(ROOT, tmp_path / "full.json")
+    sparse = _policy_report(policy_checkout, tmp_path / "sparse.json")
+    assert full[0] == sparse[0] == 0
+    assert full[1] == sparse[1]
+
+
+@pytest.mark.parametrize("violation", ["root_package", "nested_legacy_action"])
+def test_policy_checkout_keeps_failure_detection(
+    policy_checkout: Path, tmp_path: Path, violation: str,
+) -> None:
+    if violation == "root_package":
+        (policy_checkout / "package.json").write_text('{"name":"unexpected-owner"}', encoding="utf-8")
+        expected = "package_manager is none but JavaScript package files exist"
+    else:
+        local = policy_checkout / ".github/actions/policy-fixture/action.yml"
+        local.parent.mkdir(parents=True)
+        local.write_text("runs:\n  using: composite\n  steps:\n    - uses: actions/checkout@v4\n", encoding="utf-8")
+        workflow = policy_checkout / ".github/workflows/ci.yml"
+        workflow.write_text(workflow.read_text(encoding="utf-8").replace(
+            "uses: ./.github/actions/setup-python-uv", "uses: ./.github/actions/policy-fixture", 1), encoding="utf-8")
+        expected = "critical workflow uses legacy action runtime: actions/checkout@v4"
+    code, payload = _policy_report(policy_checkout, tmp_path / "failed.json")
+    assert code == 1
+    assert any(expected in item for item in json.loads(payload)["violations"])
 
 
 @pytest.mark.parametrize(

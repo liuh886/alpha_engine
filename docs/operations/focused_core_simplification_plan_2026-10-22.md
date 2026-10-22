@@ -228,7 +228,7 @@ PR 事件检出 GitHub test-merge commit，dispatch 检出并核对精确 candid
   独立复核支持按第 4 节的退出条件保留现状。本轮没有候选 CI 去重改动，也不声称该项验收通过；
   39 个永久工作流、检查身份、精确候选成功证明和发布边界不变。
 
-运行限制仍如实保留：最近一次真实正式刷新
+首轮收尾时的运行限制保留：真实正式刷新
 [39758256517](https://github.com/liuh886/alpha_engine/actions/runs/39758256517)
 因 CN 2026-10-22 来源覆盖与 BYD prospective observations 未到目标截止日而阻断，未发布新正式证据。
 工程质量检查通过不等于该数据缺口已解决，也不替代 20 个合格交易时段的真实验收。
@@ -281,3 +281,22 @@ Hatch 的默认源码打包使用共享忽略规则，因而误带入 28,469 份
 本地 level-1 ZIP 估计从 19,189,656 字节减到 62,460 字节，但真实运行 `39707157983`
 下载两份完整 provider 合计仅约 3 秒。新增 manifest 上传及协调步骤的净耗时收益尚不成立，
 因此本轮保持原运输路径，不为缩小字节数增加永久步骤。H、I 仍未实施。
+
+### Policy 门禁只检出治理输入
+
+上轮 [PR #1253](https://github.com/liuh886/alpha_engine/pull/1253) 合并后的
+[运行 39795464420](https://github.com/liuh886/alpha_engine/actions/runs/39795464420)
+最终成功，发布和验收采集均已核验；先前的 GitHub 汇总延迟已结束。
+
+纯 Policy 门禁执行 `scripts/check_ci_policy.py`，只读取工作流、local composite action、
+既有 CI policy 和根目录包管理文件。其旧运行 `39793459921` 的完整 checkout 用时 60 秒。
+现有 checkout 改用 `.github`、`scripts` 的锥形范围，隐含保留全部根目录文件，
+包括将来新增的根 package/lockfile；工作流发现、检查身份、权限与触发规则不变。
+
+以 `feeb83b729dd93f5d7b1c3adf6ef16230ace0a5d` 为基线实际检出，
+文件量从 12,886 个 / 700,167,906 字节降为 325 个 / 4,301,827 字节。
+这是逻辑文件量，不是压缩网络量；远端耗时在对应 PR 中记录。
+完整与稀疏目录执行同一 Policy CLI，39 个工作流的完整报告逐字节一致。
+根目录违规包管理文件与嵌套 composite action 的旧运行时注入均保持失败；
+27 项相关检查通过，输入范围及失败回归纳入现有 backend PR 门禁，未新增工作流。
+比较回执：`artifacts/optimization-20261022/policy-checkout-comparison.json`。
