@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Area, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Line, ComposedChart, ReferenceLine, Brush } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartBenchmarkControl } from '@/components/ChartBenchmarkControl';
@@ -11,12 +11,7 @@ import {
   type BenchmarkKey,
   type NormalizedSeries,
 } from '@/lib/performanceBenchmarks';
-import {
-  alignMarketBarsToPerformanceDates,
-  buildPerformanceComparisonOptions,
-} from '@/lib/performanceComparisons';
-import type { MarketEvidenceMarket } from '@/lib/market-evidence';
-import { useMarketComparisons } from '@/hooks/useMarketComparisons';
+import { buildPerformanceComparisonOptions } from '@/lib/performanceComparisons';
 import type { ReportRow } from '@/lib/types';
 
 import { initialAccount, periodStartIndex, type PerformancePeriod } from '@/lib/performancePeriods';
@@ -44,29 +39,14 @@ function periodReturn(startValue: unknown, endValue: unknown) {
 export function PerformanceCharts({
   report,
   benchmarkId,
-  market,
 }: {
   report: ReportRow[];
   benchmarkId?: string;
-  market?: MarketEvidenceMarket;
 }) {
   const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({});
   const [selectedBenchmarkKey, setSelectedBenchmarkKey] = useState<BenchmarkKey | null>(null);
   const [selectedComparisonKeys, setSelectedComparisonKeys] = useState<string[] | null>(null);
   const [rangeKey, setRangeKey] = useState<RangeKey>('all');
-  const {
-    catalogs: marketCatalogs,
-    marketBars,
-    loadingKeys: loadingComparisonKeys,
-    failedKeys: failedComparisonKeys,
-    catalogsLoading,
-    ensureCatalogs,
-    requestComparison,
-  } = useMarketComparisons(market);
-
-  useEffect(() => {
-    setSelectedComparisonKeys(null);
-  }, [market]);
 
   const toggleVisibility = (entry: { dataKey?: unknown }) => {
     const rawKey = entry?.dataKey;
@@ -86,8 +66,8 @@ export function PerformanceCharts({
     [declaredBenchmarkId, report],
   );
   const comparisonOptions = useMemo(
-    () => buildPerformanceComparisonOptions(benchmarkOptions, marketCatalogs),
-    [benchmarkOptions, marketCatalogs],
+    () => buildPerformanceComparisonOptions(benchmarkOptions),
+    [benchmarkOptions],
   );
 
   const defaultBenchmarkKey = useMemo((): BenchmarkKey | null => {
@@ -104,27 +84,10 @@ export function PerformanceCharts({
     : defaultBenchmarkKey;
   const activeBenchmark = comparisonOptions.find(option => option.key === activeBenchmarkKey) ?? null;
   const activeComparisonKeys = selectedComparisonKeys ?? (activeBenchmarkKey ? [activeBenchmarkKey] : []);
-  const performanceDates = useMemo(() => report.map(effectivePerformanceDate), [report]);
-  const marketSeries = useMemo(() => Object.fromEntries(
-    Object.entries(marketBars).flatMap(([key, bars]) => {
-      const series = alignMarketBarsToPerformanceDates(bars, performanceDates);
-      return series ? [[key, series]] : [];
-    }),
-  ) as Record<string, NormalizedSeries>, [marketBars, performanceDates]);
-  const seriesByKey = useMemo(() => ({
-    ...Object.fromEntries(benchmarkOptions.map(option => [option.key, option.series])),
-    ...marketSeries,
-  }) as Record<string, NormalizedSeries>, [benchmarkOptions, marketSeries]);
+  const seriesByKey = useMemo(() => Object.fromEntries(
+    benchmarkOptions.map(option => [option.key, option.series]),
+  ) as Record<string, NormalizedSeries>, [benchmarkOptions]);
   const excessBaseline = activeBenchmark?.label ?? null;
-
-  const requestMarketComparison = (key: string) => {
-    const option = comparisonOptions.find(candidate => candidate.key === key);
-    void requestComparison({
-      key,
-      market: option?.market,
-      symbol: option?.marketSymbol?.symbol,
-    });
-  };
 
   const handlePrimaryBenchmarkChange = (key: string) => {
     setSelectedBenchmarkKey(key);
@@ -132,7 +95,6 @@ export function PerformanceCharts({
       const selected = current ?? (activeBenchmarkKey ? [activeBenchmarkKey] : []);
       return selected.includes(key) ? selected : [...selected, key];
     });
-    requestMarketComparison(key);
   };
 
   const handleComparisonToggle = (key: string) => {
@@ -142,7 +104,6 @@ export function PerformanceCharts({
         ? selected.filter(candidate => candidate !== key)
         : [...selected, key];
     });
-    requestMarketComparison(key);
   };
 
   const chartData = useMemo(() => {
@@ -343,14 +304,9 @@ export function PerformanceCharts({
                 options={comparisonOptions}
                 primaryKey={activeBenchmarkKey}
                 selectedKeys={activeComparisonKeys}
-                loadingKeys={loadingComparisonKeys}
-                failedKeys={failedComparisonKeys}
-                catalogsLoading={catalogsLoading}
                 unavailableLabel={declaredBenchmark ? `${declaredBenchmark.label} unavailable` : undefined}
-                onOpenChange={(open) => { if (open) void ensureCatalogs(); }}
                 onPrimaryChange={handlePrimaryBenchmarkChange}
                 onToggle={handleComparisonToggle}
-                onRetry={requestMarketComparison}
               />
               <div aria-label="Performance range" className="inline-flex rounded-md border bg-muted/20 p-0.5">
                 {RANGE_OPTIONS.map(option => (
