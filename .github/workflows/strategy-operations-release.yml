@@ -73,6 +73,18 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ steps.revision.outputs.sha }}
+          fetch-depth: 1
+          lfs: false
+          sparse-checkout: |
+            .github
+            configs
+            data/research/formal_model_runs
+            data/research/model_data_bundle_v1
+            data/research/strategy_signal_ledgers
+            scripts
+            src
+            tests
+          sparse-checkout-cone-mode: true
 
       - name: Verify canonical revision identity
         if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
@@ -166,6 +178,18 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: main
+          fetch-depth: 1
+          lfs: false
+          sparse-checkout: |
+            .github
+            configs
+            data/research/formal_model_runs
+            data/research/model_data_bundle_v1
+            data/research/strategy_signal_ledgers
+            scripts
+            src
+            tests
+          sparse-checkout-cone-mode: true
       - uses: ./.github/actions/setup-python-uv
       - name: Collect current review without declaring acceptance
         env:

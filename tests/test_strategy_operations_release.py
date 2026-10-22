@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import json
+import os
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
+import pytest
 import yaml
+
+from scripts.doctor import diagnose
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -191,3 +199,37 @@ def test_review_collection_is_independent_of_publish_cache_and_retains_failure_e
     assert "GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY" in collect["env"]
     retain = steps["Retain operating review packet"]
     assert retain["if"] == "always()" and retain["with"]["retention-days"] == 90
+
+
+@pytest.mark.parametrize("job_name", ["publish-operations", "collect-operating-evidence"])
+def test_declared_checkout_reproduces_full_operations_and_health(
+    tmp_path: Path, job_name: str,
+) -> None:
+    steps = _workflow()["jobs"][job_name]["steps"]
+    checkout = next(step for step in steps if step.get("uses") == "actions/checkout@v6")["with"]
+    assert checkout["fetch-depth"] == 1 and checkout["lfs"] is False
+    assert checkout["sparse-checkout-cone-mode"] is True
+    root = tmp_path / "checkout"
+    for relative in checkout["sparse-checkout"].splitlines():
+        relative = relative.strip()
+        if relative:
+            shutil.copytree(ROOT / relative, root / relative,
+                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    # Cone checkout includes root files; these are the locked environment inputs.
+    for name in ("pyproject.toml", "uv.lock"):
+        shutil.copyfile(ROOT / name, root / name)
+    assert not (root / "data/research/market_evidence").exists()
+    assert not (root / "data/csv_clean").exists()
+    assert (root / ".github/actions/setup-python-uv/action.yml").is_file()
+    freshness = json.loads((ROOT / "data/research/formal_model_runs/freshness.json").read_text())
+    generated_at = freshness["declared_at"]
+    expected_health, expected_operations = diagnose(ROOT, generated_at=generated_at)
+    result = subprocess.run(
+        [sys.executable, "-m", "src.cli.main", "ops", "build",
+         "--generated-at", generated_at, "--output", "artifacts/snapshots.json"],
+        cwd=root, env={**os.environ, "PYTHONPATH": str(root)},
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads((root / "artifacts/snapshots.json").read_text()) == expected_operations
+    assert json.loads((root / "artifacts/system-health.json").read_text()) == expected_health
