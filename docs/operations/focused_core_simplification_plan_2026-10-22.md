@@ -253,3 +253,31 @@ Hatch 的默认源码打包使用共享忽略规则，因而误带入 28,469 份
 原包和比较回执保留在 `dist` 与
 `artifacts/release_gates/local-worktree-package-2026-10-22/package-comparison.json`。
 该收益针对存在本地工作树的开发环境；干净 CI checkout 不会因此减少相同数量的文件。
+
+[PR #1252](https://github.com/liuh886/alpha_engine/pull/1252) 已合并，独立复核通过。
+
+### 运行状态发布只检出实际输入
+
+运行状态发布和验收采集原先分别完整检出仓库。最近一次成功运行 `39765367710` 中，
+两个任务的 checkout 合计约 2 分钟；其中约 290 MB 的 Market Evidence 不被这两个消费者读取。
+在现有两个 checkout 步骤使用锥形稀疏检出，保留源码、脚本、测试、配置、composite action，
+以及正式 Bundle v2、决策账本和模型 readiness。根目录锁文件按锥形规则保留。
+精确 canonical SHA 校验、原发布缓存身份、六小时窗口、OIDC 权限、失败采集与验收边界不变。
+
+基于 `7b325afe3d2a05266c2327c6f46090577caeea6f` 的真实本地锥形 checkout，
+检出文件从 12,886 个 / 700,162,945 字节降到 1,919 个 / 28,071,692 字节。
+这是逻辑 Git 文件量，不冒充压缩网络字节或远端固定耗时；远端运行结果在该 PR 中记录。
+
+从两个步骤各自声明的目录构建隔离输入，启动实际 CLI，完整比对五策略 operations 与 SystemHealth；
+两份输出与完整仓库一致。另以已有真实观察包离线准备验收，39 份 JSON 的 SHA256 全部一致，
+仍为 blocked，不产生验收声明。37 项运行、权限、日历、医生与验收相关测试通过；
+两个输入范围回归纳入既有 backend PR 检查，未新增工作流。
+量测回执位于 `artifacts/optimization-20261022/operations-checkout-comparison.json`
+和 `operations-review-checkout-comparison.json`。
+
+### G 的运输优化暂不实施
+
+同一真实 provider 输入下，完整目录与仅含原 manifest 的排期结果、GitHub output 逐字节一致。
+本地 level-1 ZIP 估计从 19,189,656 字节减到 62,460 字节，但真实运行 `39707157983`
+下载两份完整 provider 合计仅约 3 秒。新增 manifest 上传及协调步骤的净耗时收益尚不成立，
+因此本轮保持原运输路径，不为缩小字节数增加永久步骤。H、I 仍未实施。

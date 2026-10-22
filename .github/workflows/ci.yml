@@ -130,6 +130,7 @@ jobs:
           tests/test_doctor.py
           tests/test_model_x1_baselines.py
           tests/test_strategy_operations.py
+          tests/test_strategy_operations_release.py
           tests/test_model_run_decision.py
           tests/test_t47_drift_monitor.py
           tests/test_active_research_spec_validation.py
@@ -196,6 +197,7 @@ jobs:
           tests/test_doctor.py
           tests/test_model_x1_baselines.py
           tests/test_strategy_operations.py
+          tests/test_strategy_operations_release.py
           tests/test_model_run_decision.py
           tests/test_t47_drift_monitor.py
           tests/test_active_research_spec_validation.py
