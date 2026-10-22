@@ -300,3 +300,24 @@ Hatch 的默认源码打包使用共享忽略规则，因而误带入 28,469 份
 根目录违规包管理文件与嵌套 composite action 的旧运行时注入均保持失败；
 27 项相关检查通过，输入范围及失败回归纳入现有 backend PR 门禁，未新增工作流。
 比较回执：`artifacts/optimization-20261022/policy-checkout-comparison.json`。
+
+[PR #1254](https://github.com/liuh886/alpha_engine/pull/1254) 已合并，独立复核通过；
+该 PR 的 Policy 运行 `39799039848` 成功，实际 checkout 为 1 秒，旧观测为 60 秒。
+两次远端单次观测不构成固定提速保证。
+
+### 复权来源失败时不再额外请求不可用日线
+
+真实正式刷新 `39791850107` 的 CN manifest 中，108 次 Tushare 尝试全部在
+`adj_factor` 报明确的频率超限；旧路径每次已先完成一个 `daily` 请求。
+在同一个适配器中将必需的复权因子请求前置，异常仍原样传播给现有 fallback。
+若该请求失败，不再额外获取无法形成合格复权价格的日线；成功时继续执行原归一化，
+指数独立的 `index_daily` 路径不变。不新增跨股票熔断、缓存、退避状态或调度器。
+
+这是请求顺序优化，不解决来源权限或限流本身。按该批已记录失败重放可减少 108 次日线请求，
+不把离线重放当成新一轮联网刷新或固定耗时承诺。适配器实现身份按既有规则改变，
+旧 provider cache 不冒充新实现命中，后续刷新继续使用既有受治理 seed。
+CN 的 106 项 overlap 价格/复权/量纲不一致及 BYD 截止日不足仍阻断正式发布，
+不通过放宽 overlap、替换池成员或拼接不一致来源取得表面成功。
+70 项适配器、fallback、来源治理与 provider cache 相关检查通过，ruff 与 39 工作流治理通过。
+真实错误离线重放及成功股票/指数夹具字节对照回执：
+`artifacts/optimization-20261022/tushare-request-order-comparison.json`。
