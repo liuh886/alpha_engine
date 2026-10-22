@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, ArrowDownRight, ArrowUpRight, FileCheck2 } from "lucide-react";
-import type { FormalBacktestPackage } from '@/lib/formal-backtest';
-import type { FormalModelKind } from '@/lib/formal-evidence';
+import type { FormalRunEvidence } from '@/lib/formal-run-evidence';
+import type { ModelRunKind } from '@/lib/model-run-bundle-v2';
 
 interface AttributionInterpretationProps {
-  rows: FormalBacktestPackage['attribution'];
-  modelKind: FormalModelKind;
+  rows: FormalRunEvidence['attribution'];
+  modelKind: ModelRunKind;
   availabilityReason: string;
 }
 
