@@ -60,8 +60,6 @@ const mockRuns: GovernedRunSummary[] = [
       ],
     },
     manifest: null,
-    modelData: null,
-    formalPackage: null,
     loadWarnings: [],
   },
   {
@@ -107,8 +105,6 @@ const mockRuns: GovernedRunSummary[] = [
       ],
     },
     manifest: null,
-    modelData: null,
-    formalPackage: null,
     loadWarnings: [],
   },
 ];

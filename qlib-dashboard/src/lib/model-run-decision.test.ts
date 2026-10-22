@@ -14,8 +14,8 @@ function run(): GovernedRunSummary {
     run_id: 'fixture-run',
     bundle_id: BUNDLE,
     model_kind: 'cross_sectional_ranker',
-    publication_channel: 'preview',
-    publication_status: 'ci_validated_preview',
+    publication_channel: 'formal',
+    publication_status: 'accepted_formal_baseline',
     generated_at: '2026-08-03T00:00:00Z',
     evidence_cutoff: '2026-07-31',
     research_only: true,
@@ -39,15 +39,15 @@ function run(): GovernedRunSummary {
     }],
   } as unknown as ModelRunBundleV2Manifest;
   return {
-    key: 'preview:fixture-family:fixture-v1:fixture-run',
+    key: 'formal:fixture-family:fixture-v1:fixture-run',
     modelFamilyId: 'fixture-family',
     modelVersionId: 'fixture-v1',
     runId: 'fixture-run',
     bundleId: BUNDLE,
     title: 'Fixture',
     modelKind: 'cross_sectional_ranker',
-    channel: 'preview',
-    publicationStatus: 'ci_validated_preview',
+    channel: 'formal',
+    publicationStatus: 'accepted_formal_baseline',
     market: 'us',
     benchmark: 'QQQ',
     generatedAt: '2026-08-03T00:00:00Z',
@@ -58,8 +58,6 @@ function run(): GovernedRunSummary {
     manifestSha256: DIGEST,
     summary: {},
     manifest,
-    modelData: null,
-    formalPackage: null,
     loadWarnings: [],
   };
 }

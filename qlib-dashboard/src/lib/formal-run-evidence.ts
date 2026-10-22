@@ -206,8 +206,8 @@ export function metricById(metrics: CanonicalMetricV2[], metricId: string): Cano
 }
 
 export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<FormalRunEvidence> {
-  if (!['formal', 'preview'].includes(run.channel) || !run.manifest) {
-    throw new Error('Governed backtest review requires a manifest-bound formal or preview run.');
+  if (run.channel !== 'formal' || !run.manifest) {
+    throw new Error('Governed backtest review requires a manifest-bound formal run.');
   }
 
   const sectionReasons: Record<string, string> = {};

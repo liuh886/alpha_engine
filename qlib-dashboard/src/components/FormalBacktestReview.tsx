@@ -411,7 +411,7 @@ export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
       <section className="flex flex-col gap-4 border-b pb-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className={run.channel === 'formal' ? 'bg-emerald-600 text-white hover:bg-emerald-600' : 'bg-blue-600 text-white hover:bg-blue-600'}>{run.channel === 'formal' ? 'Accepted formal baseline' : 'Active research preview'}</Badge>
+            <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Accepted formal baseline</Badge>
             <Badge variant="outline" className={complete ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>{complete ? 'Complete retained evidence' : 'Partial retained evidence'}</Badge>
             <Badge variant="outline" className="text-amber-700 dark:text-amber-300">Research only · read only</Badge>
           </div>
