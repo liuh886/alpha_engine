@@ -81,6 +81,20 @@ removing avoidable work from its critical path:
    and build/type configuration trigger both the PR contract gate and the
    reviewed main refresh.
 
+The 2026-10-22 simplification review retained both PR and explicit dispatch
+validation. The PR checks a test-merge commit; dispatch checks the exact
+candidate commit. Repository APIs reported `main` as unprotected, with no
+applicable branch rules or rulesets. A matching candidate head does not bind
+the merge base, and the repository has no governed merge queue to reuse.
+Removing the PR execution would therefore remove validation of a distinct
+input. This is not evidence that the existing pair eliminates every base
+race. Reconsider deduplication only when an existing governed mechanism can
+prove coverage of the actual merge input and a measured operating benefit;
+do not substitute cancellation or a successful skip for that proof. The
+[approved plan and execution record](operations/focused_core_simplification_plan_2026-10-22.md)
+retain this decision and its scope. No workflow or repository protection
+setting changed in this review.
+
 Every cache or incremental path remains `research_only=true` and
 `trade_ready=false`. A missing, incomplete or tampered identity fails closed; it
 never falls back to an ungoverned cache hit.
