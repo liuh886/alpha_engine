@@ -88,6 +88,7 @@ def test_research_model_data_readiness_does_not_block_unbound_runtime_models() -
         "current"
         if readiness["summary"]["blocked_component_count"] == 0
         and readiness["summary"]["partial_component_count"] == 0
+        and not readiness["summary"]["blocked_training_profiles"]
         else "blocked"
     )
     assert payload["model_data"]["state"] == expected_global_state
@@ -121,6 +122,7 @@ def test_training_blockers_do_not_change_runtime_health(tmp_path: Path) -> None:
     for blocked in (0, 1):
         readiness["summary"]["blocked_component_count"] = blocked
         readiness["summary"]["partial_component_count"] = 0
+        readiness["summary"]["blocked_training_profiles"] = ["unentitled-history"] if blocked else []
         path.write_text(json.dumps(readiness), encoding="utf-8")
         payload = _health(model_data=path)
         assert payload["model_data"]["state"] == ("blocked" if blocked else "current")
@@ -239,3 +241,24 @@ def test_system_health_validation_rejects_runtime_model_data_scope_drift() -> No
     payload["strategies"][0]["model_data_binding"] = "implicit"
     with pytest.raises(SystemHealthError, match="model-data binding"):
         validate_system_health(payload)
+
+
+@pytest.mark.parametrize("damage", ["truncated", "identity", "summary", "negative", "boolean", "profiles"])
+def test_system_health_rejects_incomplete_readiness(tmp_path: Path, damage: str) -> None:
+    readiness = json.loads(MODEL_DATA.read_text(encoding="utf-8"))
+    if damage == "truncated":
+        readiness = {"summary": {}}
+    elif damage == "identity":
+        readiness.pop("bundle_id")
+    elif damage == "summary":
+        readiness["summary"].pop("blocked_component_count")
+    elif damage == "negative":
+        readiness["summary"]["blocked_component_count"] = -1
+    elif damage == "boolean":
+        readiness["summary"]["partial_component_count"] = False
+    else:
+        readiness["summary"]["blocked_training_profiles"] = "missing-source"
+    path = tmp_path / "readiness.json"
+    path.write_text(json.dumps(readiness), encoding="utf-8")
+    with pytest.raises(SystemHealthError, match="model-data readiness"):
+        _health(model_data=path)

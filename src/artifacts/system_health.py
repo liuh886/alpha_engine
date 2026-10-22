@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -155,6 +156,38 @@ def _freshness_state(value: object) -> str:
     raise SystemHealthError(f"unsupported freshness status: {text}")
 
 
+def _model_data_summary(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Reject missing readiness facts instead of treating them as zero blockers."""
+    if (
+        payload.get("schema_version") not in ("1.0", "1.1")
+        or payload.get("research_only") is not True
+        or payload.get("trade_ready") is not False
+        or not re.fullmatch(r"[0-9a-f]{64}", str(payload.get("bundle_id") or ""))
+        or not payload.get("evidence_cutoff")
+        or _date(payload.get("evidence_cutoff")) != payload["evidence_cutoff"]
+    ):
+        raise SystemHealthError("model-data readiness identity or research boundary is invalid")
+    try:
+        built_at = datetime.fromisoformat(str(payload["built_at"]).replace("Z", "+00:00"))
+    except (KeyError, ValueError) as exc:
+        raise SystemHealthError("model-data readiness build time is invalid") from exc
+    if built_at.tzinfo is None:
+        raise SystemHealthError("model-data readiness build time must include a timezone")
+    summary = payload.get("summary")
+    if not isinstance(summary, Mapping):
+        raise SystemHealthError("model-data readiness summary is missing")
+    for name in ("component_count", "ready_component_count", "partial_component_count", "blocked_component_count"):
+        if type(summary.get(name)) is not int or summary[name] < 0:
+            raise SystemHealthError(f"model-data readiness count is invalid: {name}")
+    if summary["component_count"] == 0:
+        raise SystemHealthError("model-data readiness has no components")
+    for name in ("ready_training_profiles", "blocked_training_profiles"):
+        profiles = summary.get(name)
+        if not isinstance(profiles, list) or any(not isinstance(value, str) or not value for value in profiles):
+            raise SystemHealthError(f"model-data readiness profiles are invalid: {name}")
+    return summary
+
+
 def build_system_health(
     *,
     repository_root: Path,
@@ -208,13 +241,12 @@ def build_system_health(
     if not isinstance(market_cutoffs, Mapping):
         raise SystemHealthError("formal provider-resolved market cutoffs are missing")
     model_data_cutoff = _date(model_data.get("evidence_cutoff"))
-    model_data_summary = model_data.get("summary")
-    if not isinstance(model_data_summary, Mapping):
-        raise SystemHealthError("model-data readiness summary is missing")
+    model_data_summary = _model_data_summary(model_data)
     model_data_state = (
         "current"
-        if int(model_data_summary.get("blocked_component_count", 0)) == 0
-        and int(model_data_summary.get("partial_component_count", 0)) == 0
+        if model_data_summary["blocked_component_count"] == 0
+        and model_data_summary["partial_component_count"] == 0
+        and not model_data_summary["blocked_training_profiles"]
         else "blocked"
     )
 
@@ -375,21 +407,15 @@ def build_system_health(
             "evidence_cutoff": model_data_cutoff,
             "bundle_id": model_data.get("bundle_id"),
             "summary": {
-                "component_count": int(model_data_summary.get("component_count", 0)),
-                "ready_component_count": int(
-                    model_data_summary.get("ready_component_count", 0)
-                ),
-                "partial_component_count": int(
-                    model_data_summary.get("partial_component_count", 0)
-                ),
-                "blocked_component_count": int(
-                    model_data_summary.get("blocked_component_count", 0)
-                ),
+                "component_count": model_data_summary["component_count"],
+                "ready_component_count": model_data_summary["ready_component_count"],
+                "partial_component_count": model_data_summary["partial_component_count"],
+                "blocked_component_count": model_data_summary["blocked_component_count"],
                 "ready_training_profile_count": len(
-                    model_data_summary.get("ready_training_profiles", [])
+                    model_data_summary["ready_training_profiles"]
                 ),
                 "blocked_training_profile_count": len(
-                    model_data_summary.get("blocked_training_profiles", [])
+                    model_data_summary["blocked_training_profiles"]
                 ),
             },
         },

@@ -187,3 +187,9 @@ G—I 仅列为后续候选，取得收益和兼容性数据后再决定是否�
   直接保留风险门禁和账本篡改验证。110 项受影响测试、3,878 项全仓收集、CLI 帮助、ruff、
   Web 边界、39 工作流治理和源码/轮子打包通过。
   独立复核发现现行 runbook 仍引用被删命令，已改用现有 CLI；三份旧 PWA 文档明确标记历史并指向现行说明。
+  [PR #1248](https://github.com/liuh886/alpha_engine/pull/1248) 已通过全部远端门禁并合并。
+- D：医生改为只读校验现行正式 catalog、manifest 和全部可用分节，并复用 Strategy Operations / SystemHealth。
+  不再要求旧 SQLite、MLflow 或 dashboard export；依赖缺失仍明确失败。67 项相关检查通过（含真实 MCP transport 初始化），
+  包含损坏/缺失分节、缺失 readiness、训练阻塞范围、真实延迟及禁止联网、研究引擎导入和证据写入。
+  2026-10-22 09:32 UTC 实跑保留 US current / CN delayed，训练面两项权限阻塞单列，退出码 1。
+  独立复核发现并修复 SystemHealth 对残缺 readiness 的默认零值：现有输入边界验证身份、截止日、研究边界和完整计数/配置列表；缺失、负数、布尔计数和截断输入均拒绝，受阻训练配置继续单独标 blocked。

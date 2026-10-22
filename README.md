@@ -52,6 +52,9 @@ alpha ops build ...            重建只读状态与健康快照
 
 ## 验证与运行
 
+只读诊断：`uv run python scripts/doctor.py`。它校验正式分节并复用现有运行健康事实，
+按策略报告真实截止日和延迟；未绑定当前运行的训练权限阻塞单独展示。运行延迟或证据校验失败返回非零退出码。
+
 ```powershell
 uv run pytest tests -q
 uv run python scripts/check_ci_governance.py --output artifacts/ci-workflow-inventory.json --enforce
