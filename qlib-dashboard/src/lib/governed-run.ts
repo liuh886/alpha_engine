@@ -221,6 +221,10 @@ export async function loadFormalRuns(): Promise<GovernedRunLoadResult> {
   }
 }
 
+// Keep verified public bytes only for the lifetime of the current workspace run.
+// Parse a separate value for each consumer so its mutations cannot alter evidence.
+const sectionReads = new WeakMap<GovernedRunSummary, Map<string, { identity: string; text: Promise<string> }>>();
+
 export async function loadRunSection(run: GovernedRunSummary, sectionId: string): Promise<unknown> {
   if (!run.manifest || !run.manifestPath || run.channel !== 'formal') {
     throw new Error(`Run section is not Bundle v2-backed: ${run.key}`);
@@ -232,9 +236,34 @@ export async function loadRunSection(run: GovernedRunSummary, sectionId: string)
   }
   const base = run.manifestPath.includes('/') ? run.manifestPath.slice(0, run.manifestPath.lastIndexOf('/') + 1) : '';
   const path = safeRelativeJsonPath(`${base}${section.path}`, `${sectionId} path`);
-  const text = await fetchText(path);
-  if ((await sha256Text(text)) !== section.sha256 || new TextEncoder().encode(text).byteLength !== section.byte_size) {
-    throw new Error(`Section integrity mismatch: ${run.key}/${sectionId}`);
+  const identity = JSON.stringify([
+    run.key, run.bundleId, run.manifestSha256, run.manifestPath, run.evidenceCutoff,
+    path, section.sha256, section.byte_size,
+  ]);
+  let reads = sectionReads.get(run);
+  if (!reads) {
+    reads = new Map();
+    sectionReads.set(run, reads);
   }
-  return JSON.parse(text) as unknown;
+  let read = reads.get(sectionId);
+  if (read?.identity !== identity) {
+    const { sha256, byte_size } = section;
+    read = {
+      identity,
+      text: (async () => {
+        const text = await fetchText(path);
+        if ((await sha256Text(text)) !== sha256 || new TextEncoder().encode(text).byteLength !== byte_size) {
+          throw new Error(`Section integrity mismatch: ${run.key}/${sectionId}`);
+        }
+        return text;
+      })(),
+    };
+    reads.set(sectionId, read);
+  }
+  try {
+    return JSON.parse(await read.text) as unknown;
+  } catch (error) {
+    if (reads.get(sectionId) === read) reads.delete(sectionId);
+    throw error;
+  }
 }

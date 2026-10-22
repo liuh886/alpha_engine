@@ -104,6 +104,30 @@ test('the homepage opens daily research and reads only the formal operating surf
   await page.screenshot({ path: testInfo.outputPath('focused-daily-overview.png'), fullPage: false });
 });
 
+test('strategy navigation reuses verified formal sections without loading them on overview', async ({ page }) => {
+  const sections: string[] = [];
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => {
+    const path = new URL(request.url()).pathname;
+    if (path.includes('/data/formal-model-runs/') && /\/(performance|risk|robustness|portfolio|trades|attribution|diagnostics|lineage)\.json$/.test(path)) sections.push(path);
+  });
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
+  await page.goto('/#/app');
+  const strategy = page.getByRole('region', { name: 'Daily research brief' }).getByRole('link', { name: 'QQQR v4.3', exact: true });
+  await expect(strategy).toBeVisible();
+  expect(sections).toHaveLength(0);
+  await strategy.click();
+  await expect(page.getByRole('tablist', { name: 'Formal backtest evidence views' })).toBeVisible();
+  expect(sections).toHaveLength(8);
+  expect(sections.filter(path => path.endsWith('/performance.json'))).toHaveLength(1);
+  await page.getByRole('main').getByRole('link', { name: 'Overview', exact: true }).click();
+  await strategy.click();
+  await expect(page.getByRole('tablist', { name: 'Formal backtest evidence views' })).toBeVisible();
+  expect(sections).toHaveLength(8);
+  expect(errors).toEqual([]);
+});
+
 test('formal QQQ evidence stays public while current operations follow account policy', async ({ page }) => {
   await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'free-fixture' } });
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
