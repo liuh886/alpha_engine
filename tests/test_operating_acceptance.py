@@ -60,7 +60,7 @@ def test_calendar_holiday_does_not_create_a_fake_gap(tmp_path):
     assert [row["session"] for row in report["markets"]["us"]["sessions"]] == ["2026-07-02", "2026-07-06"]
 
 
-@pytest.mark.parametrize("scenario", ["missing_latest", "bad_hash", "unsafe_member"])
+@pytest.mark.parametrize("scenario", ["missing_latest", "expired_latest", "bad_hash", "unsafe_member"])
 def test_remote_collection_never_falls_back_or_accepts_unbound_archives(tmp_path, monkeypatch, scenario):
     import io
     import zipfile
@@ -72,7 +72,7 @@ def test_remote_collection_never_falls_back_or_accepts_unbound_archives(tmp_path
     with zipfile.ZipFile(buffer, "w") as archive:
         archive.writestr("../escape.json" if scenario == "unsafe_member" else "operating-observation.json", "{}")
     raw = buffer.getvalue()
-    artifact = {"id": 7, "name": "formal-backtest-refresh-2-attempt-1", "expired": False, "size_in_bytes": len(raw), "digest": "sha256:" + ("0" * 64 if scenario == "bad_hash" else hashlib.sha256(raw).hexdigest())}
+    artifact = {"id": 7, "name": "formal-backtest-refresh-2-attempt-1", "expired": scenario == "expired_latest", "size_in_bytes": len(raw), "digest": "sha256:" + ("0" * 64 if scenario == "bad_hash" else hashlib.sha256(raw).hexdigest())}
     called = []
 
     def remote(args, **kwargs):
@@ -81,7 +81,12 @@ def test_remote_collection_never_falls_back_or_accepts_unbound_archives(tmp_path
         if endpoint.endswith("/zip"):
             return SimpleNamespace(stdout=raw)
         if "workflows/" in endpoint:
-            payload = {"workflow_runs": [{"id": 2, "run_attempt": 1}]}
+            payload = {"workflow_runs": [
+                {"id": 4, "run_attempt": 1, "status": "queued"},
+                {"id": 3, "run_attempt": 1, "status": "in_progress"},
+                {"id": 2, "run_attempt": 1, "status": "completed", "conclusion": "failure"},
+                {"id": 1, "run_attempt": 1, "status": "completed", "conclusion": "success"},
+            ]}
         elif "/jobs?" in endpoint:
             payload = {"jobs": [{"status": "completed"}], "total_count": 1}
         elif "/artifacts?" in endpoint:
@@ -92,7 +97,7 @@ def test_remote_collection_never_falls_back_or_accepts_unbound_archives(tmp_path
 
     monkeypatch.setattr("subprocess.run", remote)
     kwargs = {"input_root": tmp_path, "repository_root": tmp_path, "now_utc": datetime(2026, 10, 16, 3, tzinfo=timezone.utc)}
-    if scenario == "missing_latest":
+    if scenario in {"missing_latest", "expired_latest"}:
         result = collect_operating_review("owner/repo", **kwargs)
         assert result["run_id"] == 2 and result["qualification_status"] == "blocked"
         assert result["manual_interventions"] is None
@@ -100,8 +105,34 @@ def test_remote_collection_never_falls_back_or_accepts_unbound_archives(tmp_path
     else:
         with pytest.raises(ValueError, match="hash or size mismatch" if scenario == "bad_hash" else "unsafe"):
             collect_operating_review("owner/repo", **kwargs)
-    assert all("runs/1/" not in endpoint for endpoint in called)
+    assert called[0] == "repos/owner/repo/actions/workflows/formal-backtest-refresh.yml/runs?branch=main&per_page=10"
+    assert all(f"runs/{run_id}/" not in endpoint for endpoint in called for run_id in (1, 3, 4))
     assert not (tmp_path.parent / "escape.json").exists()
+
+
+@pytest.mark.parametrize("runs", [
+    [],
+    [{"id": number, "run_attempt": 1, "status": "in_progress"} for number in range(10, 0, -1)],
+    [{"id": 2, "run_attempt": 1, "status": "queued"}],
+    [{"id": 2, "run_attempt": 1, "conclusion": "success"}],
+])
+def test_remote_collection_stops_when_recent_window_has_no_completed_run(tmp_path, monkeypatch, runs):
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+    from src.artifacts.operating_acceptance import collect_operating_review
+
+    called = []
+
+    def remote(args, **kwargs):
+        called.append(args[-1])
+        return SimpleNamespace(stdout=json.dumps({"workflow_runs": runs}).encode())
+
+    monkeypatch.setattr("subprocess.run", remote)
+    with pytest.raises(ValueError, match="no completed formal refresh observation available in latest 10 runs"):
+        collect_operating_review("owner/repo", input_root=tmp_path, repository_root=tmp_path,
+                                 now_utc=datetime(2026, 10, 16, 3, tzinfo=timezone.utc))
+    assert called == ["repos/owner/repo/actions/workflows/formal-backtest-refresh.yml/runs?branch=main&per_page=10"]
+    assert not (tmp_path / "readiness.json").exists()
 
 
 def test_typed_strategy_review_binds_formal_decision_and_delivery(tmp_path, monkeypatch):
