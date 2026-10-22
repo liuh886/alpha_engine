@@ -128,6 +128,7 @@ jobs:
           tests/test_signal_delivery_outbox.py
           tests/test_system_health.py
           tests/test_doctor.py
+          tests/test_check_ci_governance.py
           tests/test_model_x1_baselines.py
           tests/test_strategy_operations.py
           tests/test_strategy_operations_release.py
@@ -195,6 +196,7 @@ jobs:
           tests/test_signal_delivery_outbox.py
           tests/test_system_health.py
           tests/test_doctor.py
+          tests/test_check_ci_governance.py
           tests/test_model_x1_baselines.py
           tests/test_strategy_operations.py
           tests/test_strategy_operations_release.py

@@ -47,6 +47,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          lfs: false
+          sparse-checkout: |
+            .github
+            scripts
+          sparse-checkout-cone-mode: true
 
       - name: Enforce repository CI policy
         run: python scripts/check_ci_policy.py --policy .github/ci-policy.json --output artifacts/ci-policy-report.json --enforce
