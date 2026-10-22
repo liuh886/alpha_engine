@@ -54,7 +54,7 @@ alpha ops build ...            重建只读状态与健康快照
 
 ```powershell
 uv run pytest tests -q
-uv run python scripts/check_ci_governance.py --enforce
+uv run python scripts/check_ci_governance.py --output artifacts/ci-workflow-inventory.json --enforce
 cd qlib-dashboard
 npm exec -- tsc --noEmit
 npm run lint

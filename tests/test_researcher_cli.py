@@ -19,7 +19,7 @@ import sys
 class RejectHeavyImports(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
         if fullname.startswith(("numpy", "pandas", "qlib", "src.data.adapters",
-                                "src.research.formal_model_replay", "src.artifacts.model_operations")):
+                                "src.research.formal_model_replay")):
             raise AssertionError("read-only command loaded heavy engine: " + fullname)
 sys.meta_path.insert(0, RejectHeavyImports())
 from src.cli.main import main
@@ -148,3 +148,12 @@ def test_research_run_forwards_governed_bundle_options(monkeypatch, capsys) -> N
     assert captured["source_etf_bundle"] == Path("artifacts/shared-etf")
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "completed"
+
+
+def test_retired_model_ops_command_is_rejected_without_creating_projection(tmp_path: Path, capsys) -> None:
+    existing_paths = set(tmp_path.rglob("*"))
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["--root", str(tmp_path), "ops", "model-ops"])
+    assert exc.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err
+    assert set(tmp_path.rglob("*")) == existing_paths

@@ -888,6 +888,15 @@
       "source_revision": "793490dd3aee5d5d0e3e07c9b04ae947350d8f1f",
       "source_git_blob_sha256": "4831ab2ab5c9d85cdab65fd8b8b77801c957347a8aa1340793108ab8c1c6f06d",
       "disposition": "deleted from runtime; source recoverable from Git revision"
+    },
+    {
+      "module": "model_operations",
+      "path": "src/artifacts/model_operations.py",
+      "reason": "user-approved focused-core retirement; CLI-only projection always returned empty markets; shared research gates and paper ledger retained",
+      "retired_at": "2026-10-22",
+      "source_revision": "398774b5a0fab3cd0f4be06a7c5f6a79fcd3adc8",
+      "source_git_blob_sha256": "771ad722facde027f939571184af49c09ebe554b146bf0ed2fc9581c23cfe71a",
+      "disposition": "deleted from runtime; source recoverable from Git revision"
     }
   ]
 }
