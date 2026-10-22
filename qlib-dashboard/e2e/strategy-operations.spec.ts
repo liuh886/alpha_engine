@@ -9,6 +9,7 @@ const formal = JSON.parse(readFileSync(new URL('../dist/data/formal-model-runs/c
   .records.find((row: { model_version_id: string }) => row.model_version_id === 'qqqi_qqq_tqqq_v4_3');
 const formalIdentity = { formal_bundle_id: formal.bundle_id, formal_run_id: formal.run_id,
   formal_evidence_cutoff: formal.evidence_cutoff };
+const publishedFleet = JSON.parse(readFileSync(new URL('../dist/data/strategy-operations/snapshots.json', import.meta.url), 'utf8'));
 
 const runtimeOperation = {
   strategy_id: 'qqq_rotation',
@@ -113,9 +114,9 @@ const operations = {
   ],
 };
 
-async function mockOperations(page: Page) {
+async function mockOperations(page: Page, fullFleet = false) {
   await page.route('**/data/strategy-operations/snapshots.json', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(operations) });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fullFleet ? publishedFleet : operations) });
   });
 }
 
@@ -124,15 +125,24 @@ async function assertNoHorizontalOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
-async function installProMembership(page: Page, options: { failFirst?: boolean; hangFirst?: boolean; mismatched?: boolean; stale?: boolean; manualFirst?: boolean } = {}): Promise<void> {
+async function installProMembership(page: Page, options: {
+  failFirst?: boolean; hangFirst?: boolean; mismatched?: boolean; stale?: boolean; manualFirst?: boolean;
+  fullFleet?: boolean; partialPolicies?: boolean; failPolicyFirst?: boolean; badStrategy?: string;
+} = {}): Promise<void> {
   await page.route('**/admin/shared/account-shell.js*', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
-  await page.addInitScript(({ fullSnapshot, options }) => {
+  await page.addInitScript(({ fullSnapshot, fleetSnapshots, options }) => {
     let calls = 0;
+    let aborts = 0;
+    let policyReads = 0;
+    let selectedIds: string[] = [];
     let snapshot = { loading: false, isPro: true, user: { id: 'pro-fixture' } };
     const listeners = new Set<(value: typeof snapshot) => void>();
     let releaseFirstRead: (() => void) | undefined;
     (window as any).__operationsFixture = {
       calls: () => calls,
+      aborts: () => aborts,
+      policyReads: () => policyReads,
+      selectedIds: () => selectedIds,
       setPro: (isPro: boolean) => {
         snapshot = { ...snapshot, isPro, user: { id: isPro ? 'pro-fixture' : 'free-fixture' } };
         listeners.forEach(listener => listener(snapshot));
@@ -152,43 +162,49 @@ async function installProMembership(page: Page, options: { failFirst?: boolean; 
           if (table === 'product_access_policies') {
             return {
               select: () => ({
-                eq: async () => ({
-                  data: [{
+                eq: async () => {
+                  policyReads++;
+                  if (options.failPolicyFirst && policyReads === 1) return { data: null, error: { message: 'Temporary policy failure' } };
+                  const ids = options.fullFleet && !options.partialPolicies
+                    ? fleetSnapshots.map(row => row.strategy_id) : ['qqq_rotation'];
+                  return { data: ids.map(id => ({
                     product_code: 'alpha_engine',
                     resource_type: 'strategy',
-                    resource_id: 'qqq_rotation',
-                    required_tier: 'pro',
+                    resource_id: id,
+                    required_tier: id === 'qqq_rotation' ? 'pro' : 'public',
                     updated_at: '2026-08-12T00:00:00Z',
-                  }],
-                  error: null,
-                }),
+                  })), error: null };
+                },
               }),
             };
           }
           return {
             select: () => {
+              let selected: string[] = [];
+              let signal: AbortSignal;
+              const read = async () => {
+                calls += 1;
+                const records = (options.fullFleet ? fleetSnapshots : [fullSnapshot])
+                  .filter(record => selected.includes(record.strategy_id))
+                  .map(record => ({ strategy_id: record.strategy_id, model_version_id: record.model_version_id,
+                    snapshot: options.badStrategy === record.strategy_id
+                      ? { ...record, source_identity: { ...record.source_identity, formal_bundle_id: 'b'.repeat(64) } } : record }));
+                if (options.manualFirst && calls === 1) return new Promise(resolve => {
+                  releaseFirstRead = () => resolve({ data: records, error: null });
+                });
+                if (options.hangFirst && calls === 1) return new Promise(resolve => {
+                  signal.addEventListener('abort', () => {
+                    aborts++;
+                    resolve({ data: null, error: { message: 'aborted' } });
+                  }, { once: true });
+                });
+                if (options.failFirst && calls === 1) return { data: null, error: { message: 'Temporary read failure' } };
+                return { data: table === 'strategy_operation_snapshots' ? records : [], error: null };
+              };
               const query: any = {
-                eq: () => query,
-                maybeSingle: async () => {
-                  calls += 1;
-                  if (options.manualFirst && calls === 1) return new Promise(resolve => {
-                    releaseFirstRead = () => resolve({ data: {
-                      strategy_id: 'qqq_rotation', model_version_id: fullSnapshot.model_version_id,
-                      snapshot: fullSnapshot,
-                    }, error: null });
-                  });
-                  if (options.hangFirst && calls === 1) return new Promise(() => {});
-                  if (options.failFirst && calls === 1) return { data: null, error: { message: 'Temporary read failure' } };
-                  return table === 'strategy_operation_snapshots' ? {
-                      data: {
-                        strategy_id: 'qqq_rotation',
-                        model_version_id: 'qqqi_qqq_tqqq_v4_3',
-                        snapshot: fullSnapshot,
-                      },
-                      error: null,
-                    }
-                  : { data: null, error: null };
-                },
+                in: (_column: string, ids: string[]) => { selected = ids; selectedIds = ids; return query; },
+                abortSignal: (value: AbortSignal) => { signal = value; return query; },
+                then: (fulfilled: any, rejected: any) => read().then(fulfilled, rejected),
               };
               return query;
             },
@@ -196,7 +212,11 @@ async function installProMembership(page: Page, options: { failFirst?: boolean; 
         },
       }),
     };
-  }, { fullSnapshot: {
+  }, { fleetSnapshots: publishedFleet.records.map((row: any) => ({
+    ...runtimeOperation, strategy_id: row.strategy_id, model_version_id: row.model_version_id,
+    decision_reason: `Batch fixture: ${row.strategy_id} verified`, factor_evidence: [], factor_freshness: 'unknown',
+    source_identity: { ...runtimeOperation.source_identity, ...row.source_identity, ledger_fingerprint: `fixture-${row.strategy_id}` },
+  })), fullSnapshot: {
     ...runtimeOperation,
     ...(options.mismatched ? { source_identity: { ...runtimeOperation.source_identity, formal_bundle_id: 'b'.repeat(64) } } : {}),
     ...(options.stale ? { data_freshness: 'stale', factor_freshness: 'stale', state_detail: 'degraded_delayed',
@@ -205,6 +225,73 @@ async function installProMembership(page: Page, options: { failFirst?: boolean; 
         sessions_until_due: 9, state: 'within_cadence', execution_pending: true } } : {}),
   }, options });
 }
+
+test('five authorized observations share one read across overview and status', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  await mockOperations(page, true);
+  await installProMembership(page, { fullFleet: true });
+  await page.goto('/#/app');
+  const brief = page.getByRole('region', { name: 'Daily research brief' });
+  await expect(brief.getByRole('article')).toHaveCount(5);
+  await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(5);
+  expect(await fixtureCalls(page)).toBe(1);
+  await openConsoleView(page, 'system');
+  const current = page.getByRole('region', { name: 'Current strategy observations' });
+  await expect(current.getByText('Changed at last evaluation', { exact: true })).toHaveCount(5);
+  expect(await fixtureCalls(page)).toBe(1);
+  await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
+  await expect.poll(() => fixtureCalls(page)).toBe(2);
+  await expect(current.getByText('Changed at last evaluation', { exact: true })).toHaveCount(5);
+  await openConsoleView(page, 'app');
+  expect(await fixtureCalls(page)).toBe(2);
+  await assertNoHorizontalOverflow(page);
+  expect(errors).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath('batch-overview.png') });
+});
+
+test('one invalid runtime row leaves the other four observations readable', async ({ page }, testInfo) => {
+  await mockOperations(page, true);
+  await installProMembership(page, { fullFleet: true, badStrategy: 'cn_x' });
+  await page.goto('/#/system');
+  const current = page.getByRole('region', { name: 'Current strategy observations' });
+  await expect(current.getByText('Changed at last evaluation', { exact: true })).toHaveCount(4);
+  await expect(current.getByRole('article').filter({ hasText: 'CN x1.2' }).getByText('Read unavailable', { exact: true })).toBeVisible();
+  await expect(current.getByText('Batch fixture: cn_x verified', { exact: true })).toHaveCount(0);
+  expect(await fixtureCalls(page)).toBe(1);
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({ path: testInfo.outputPath('batch-one-rejected.png') });
+});
+
+test('a pro account does not request strategies with undeclared access policies', async ({ page }) => {
+  await mockOperations(page, true);
+  await installProMembership(page, { fullFleet: true, partialPolicies: true });
+  await page.goto('/#/app');
+  const brief = page.getByRole('region', { name: 'Daily research brief' });
+  await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(1);
+  await expect(brief.getByText('Access required', { exact: true })).toHaveCount(4);
+  expect(await fixtureCalls(page)).toBe(1);
+  expect(await page.evaluate(() => (window as any).__operationsFixture.selectedIds())).toEqual(['qqq_rotation']);
+  await expect(brief.getByText('Batch fixture: cn_x verified', { exact: true })).toHaveCount(0);
+});
+
+test('failed access policies recover through operations retry without repeating healthy policy reads', async ({ page }) => {
+  await mockOperations(page, true);
+  await installProMembership(page, { fullFleet: true, failPolicyFirst: true });
+  await page.goto('/#/app');
+  const reader = page.getByRole('region', { name: 'Current operations reader' });
+  await expect(reader.getByText('Strategy access policies could not be verified.', { exact: false })).toBeVisible();
+  expect(await fixtureCalls(page)).toBe(0);
+  await reader.getByRole('button', { name: 'Retry operations', exact: true }).click();
+  const brief = page.getByRole('region', { name: 'Daily research brief' });
+  await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(5);
+  expect(await fixtureCalls(page)).toBe(1);
+  expect(await page.evaluate(() => (window as any).__operationsFixture.policyReads())).toBe(2);
+  await reader.getByRole('button', { name: 'Refresh operations', exact: true }).click();
+  await expect.poll(() => fixtureCalls(page)).toBe(2);
+  expect(await page.evaluate(() => (window as any).__operationsFixture.policyReads())).toBe(2);
+});
 
 test('overview brief explains the last evaluation and retains its actual dates', async ({ page }, testInfo) => {
   const errors: string[] = [];
@@ -275,7 +362,7 @@ test('strategy current operations are authorized by runtime policy and hydrated 
   expect(pageErrors).toEqual([]);
   await assertNoHorizontalOverflow(page);
   await page.screenshot({
-    path: `test-results/static-artifact/strategy-operations-${testInfo.project.name}.png`,
+    path: testInfo.outputPath('strategy-operations.png'),
     fullPage: true,
   });
 });
@@ -320,6 +407,7 @@ test('a stalled runtime read times out and allows an explicit retry', async ({ p
   await expect(page.getByText('Protected current operations are unavailable.', { exact: false })).toBeVisible();
   await page.clock.fastForward(15_000);
   await expect(reader.getByText('Operations reading timed out.', { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__operationsFixture.aborts())).toBe(1);
   await reader.getByRole('button', { name: 'Retry operations' }).click();
   await expect(page.getByRole('region', { name: 'Current decision state' }).getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
   await expect(reader.getByRole('button', { name: 'Refresh operations' })).toBeEnabled();

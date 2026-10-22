@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { assertStrategyOperationRun, describeStrategyObservation, loadStrategyOperations, parseStrategyOperationsSnapshot, summarizeStrategySignal } from './strategy-operations';
+import { assertStrategyOperationRun, describeStrategyObservation, loadRuntimeStrategyOperations, loadStrategyOperations, parseStrategyOperationsSnapshot, summarizeStrategySignal } from './strategy-operations';
 import type { GovernedRunSummary } from './governed-run';
 
 const record = {
@@ -128,6 +128,60 @@ describe('operations publication reader', () => {
   });
 });
 
+
+describe('authorized runtime batch', () => {
+  const selections = Array.from({ length: 5 }, (_, index) => ({
+    strategyId: `strategy-${index}`, modelVersionId: `model-${index}`,
+  }));
+  const rows = selections.map(item => ({ strategy_id: item.strategyId, model_version_id: item.modelVersionId,
+    snapshot: { ...record, strategy_id: item.strategyId, model_version_id: item.modelVersionId } }));
+
+  function serve(data: unknown, error: { message?: string } | null = null) {
+    const query = Object.assign(Promise.resolve({ data, error }), {
+      in: vi.fn(() => query), abortSignal: vi.fn(() => query),
+    });
+    const client = { from: vi.fn(() => ({ select: vi.fn(() => query) })) };
+    return { client, query };
+  }
+
+  it('reads only the selected strategy ids in one cancellable query', async () => {
+    const { client, query } = serve([...rows, null, { strategy_id: 'unrequested', snapshot: 'PRIVATE' }]);
+    const controller = new AbortController();
+    const snapshots = await loadRuntimeStrategyOperations(client, selections, controller.signal);
+    expect(client.from).toHaveBeenCalledExactlyOnceWith('strategy_operation_snapshots');
+    expect(query.in).toHaveBeenCalledExactlyOnceWith('strategy_id', selections.map(item => item.strategyId));
+    expect(query.abortSignal).toHaveBeenCalledExactlyOnceWith(controller.signal);
+    expect(snapshots.size).toBe(5);
+    for (const selection of selections) expect(snapshots.get(selection.modelVersionId)).toMatchObject(selection);
+    expect(JSON.stringify([...snapshots])).not.toContain('PRIVATE');
+  });
+
+  it.each(['missing', 'duplicate', 'row model', 'snapshot strategy', 'snapshot model', 'malformed'])(
+    'isolates a %s row while retaining another valid strategy', async failure => {
+    const faulty = failure === 'row model' ? { ...rows[1], model_version_id: 'different-model' }
+      : { ...rows[1], snapshot: { ...rows[1].snapshot,
+        ...(failure === 'snapshot strategy' ? { strategy_id: 'different-strategy' }
+          : failure === 'snapshot model' ? { model_version_id: 'different-model' } : { allocations: null }) } };
+    const response = failure === 'missing' ? [rows[0]]
+      : failure === 'duplicate' ? [rows[0], rows[1], rows[1]] : [rows[0], faulty];
+    const { client } = serve(response);
+    const snapshots = await loadRuntimeStrategyOperations(client, selections.slice(0, 2), new AbortController().signal);
+    expect(snapshots.get(selections[0].modelVersionId)).toMatchObject(selections[0]);
+    expect(snapshots.get(selections[1].modelVersionId)).toBeNull();
+    });
+
+  it('does no network work without an eligible selection', async () => {
+    const { client } = serve([]);
+    expect(await loadRuntimeStrategyOperations(client, [], new AbortController().signal)).toEqual(new Map());
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it('rejects a failed or malformed response without treating it as missing authorized rows', async () => {
+    for (const { client } of [serve(null), serve([], { message: 'read failed' })]) {
+      await expect(loadRuntimeStrategyOperations(client, selections, new AbortController().signal)).rejects.toThrow();
+    }
+  });
+});
 
 describe('previous verified reads', () => {
   it('keeps original evidence dates without treating a previous read as a fresh decision', () => {
