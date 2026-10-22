@@ -82,10 +82,12 @@ def test_remote_collection_never_falls_back_or_accepts_unbound_archives(tmp_path
             return SimpleNamespace(stdout=raw)
         if "workflows/" in endpoint:
             payload = {"workflow_runs": [
-                {"id": 4, "run_attempt": 1, "status": "queued"},
-                {"id": 3, "run_attempt": 1, "status": "in_progress"},
-                {"id": 2, "run_attempt": 1, "status": "completed", "conclusion": "failure"},
-                {"id": 1, "run_attempt": 1, "status": "completed", "conclusion": "success"},
+                {"id": 6, "run_attempt": 1, "status": "completed", "conclusion": "success"},
+                {"id": 5, "run_attempt": 1, "head_branch": "feature", "status": "completed", "conclusion": "success"},
+                {"id": 4, "run_attempt": 1, "head_branch": "main", "status": "queued"},
+                {"id": 3, "run_attempt": 1, "head_branch": "main", "status": "in_progress"},
+                {"id": 2, "run_attempt": 1, "head_branch": "main", "status": "completed", "conclusion": "failure"},
+                {"id": 1, "run_attempt": 1, "head_branch": "main", "status": "completed", "conclusion": "success"},
             ]}
         elif "/jobs?" in endpoint:
             payload = {"jobs": [{"status": "completed"}], "total_count": 1}
@@ -105,16 +107,18 @@ def test_remote_collection_never_falls_back_or_accepts_unbound_archives(tmp_path
     else:
         with pytest.raises(ValueError, match="hash or size mismatch" if scenario == "bad_hash" else "unsafe"):
             collect_operating_review("owner/repo", **kwargs)
-    assert called[0] == "repos/owner/repo/actions/workflows/formal-backtest-refresh.yml/runs?branch=main&per_page=10"
-    assert all(f"runs/{run_id}/" not in endpoint for endpoint in called for run_id in (1, 3, 4))
+    assert called[0] == "repos/owner/repo/actions/workflows/formal-backtest-refresh.yml/runs?per_page=10"
+    assert all(f"runs/{run_id}/" not in endpoint for endpoint in called for run_id in (1, 3, 4, 5, 6))
     assert not (tmp_path.parent / "escape.json").exists()
 
 
 @pytest.mark.parametrize("runs", [
     [],
-    [{"id": number, "run_attempt": 1, "status": "in_progress"} for number in range(10, 0, -1)],
-    [{"id": 2, "run_attempt": 1, "status": "queued"}],
-    [{"id": 2, "run_attempt": 1, "conclusion": "success"}],
+    [{"id": number, "run_attempt": 1, "head_branch": "main", "status": "in_progress"} for number in range(10, 0, -1)],
+    [{"id": 2, "run_attempt": 1, "head_branch": "main", "status": "queued"}],
+    [{"id": 2, "run_attempt": 1, "head_branch": "main", "conclusion": "success"}],
+    [{"id": 2, "run_attempt": 1, "head_branch": "feature", "status": "completed"}],
+    [{"id": 2, "run_attempt": 1, "status": "completed"}],
 ])
 def test_remote_collection_stops_when_recent_window_has_no_completed_run(tmp_path, monkeypatch, runs):
     from datetime import datetime, timezone
@@ -128,10 +132,11 @@ def test_remote_collection_stops_when_recent_window_has_no_completed_run(tmp_pat
         return SimpleNamespace(stdout=json.dumps({"workflow_runs": runs}).encode())
 
     monkeypatch.setattr("subprocess.run", remote)
-    with pytest.raises(ValueError, match="no completed formal refresh observation available in latest 10 runs"):
+    with pytest.raises(ValueError, match="no completed formal refresh observation available in latest 10 runs") as error:
         collect_operating_review("owner/repo", input_root=tmp_path, repository_root=tmp_path,
                                  now_utc=datetime(2026, 10, 16, 3, tzinfo=timezone.utc))
-    assert called == ["repos/owner/repo/actions/workflows/formal-backtest-refresh.yml/runs?branch=main&per_page=10"]
+    assert f"listed={len(runs)}, main={sum(run.get('head_branch') == 'main' for run in runs)}" in str(error.value)
+    assert called == ["repos/owner/repo/actions/workflows/formal-backtest-refresh.yml/runs?per_page=10"]
     assert not (tmp_path / "readiness.json").exists()
 
 
