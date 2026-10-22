@@ -117,6 +117,7 @@ jobs:
           scripts/check_legacy_web_boundary.py
           scripts/doctor.py
           scripts/check_ci_governance.py
+          scripts/data/refresh_selected_pool_prices.py
           tests/test_formal_baseline_onboarding.py
           tests/test_formal_bundle_reader.py
           tests/test_rules_based_allocation_experiment_runner.py
@@ -142,6 +143,7 @@ jobs:
           tests/test_notebook_lab_contracts.py
           tests/test_yfinance_ohlc_adjustment.py
           tests/test_tushare_adapter.py
+          tests/test_refresh_selected_pool_prices.py
 
       - name: Mypy type check
         run: >-
@@ -210,6 +212,7 @@ jobs:
           tests/test_notebook_lab_contracts.py
           tests/test_yfinance_ohlc_adjustment.py
           tests/test_tushare_adapter.py
+          tests/test_refresh_selected_pool_prices.py
           tests/test_qlib_mlflow_recorder_smoke.py
           tests/test_mcp_transport_compatibility.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1

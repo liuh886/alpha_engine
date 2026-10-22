@@ -531,7 +531,15 @@ def test_cutoff_fallback_cannot_restate_incremental_overlap(
             refresh()
         manifest = json.loads((output / "artifacts/selected_pool_price_refresh_manifest.json").read_text())
         assert manifest["status"] == "selected_pool_price_refresh_blocked"
-        assert "cutoff fallback differs from governed overlap" in manifest["failures"][0]["error"]
+        error = manifest["failures"][0]["error"]
+        assert "cutoff fallback differs from governed overlap" in error
+        assert "provider=akshare_sina; overlap=2021-01-05;" in error
+        if mismatch == "missing_overlap":
+            assert "governed_rows=1, fetched_rows=0" in error
+        else:
+            expected_fields = "open,high,low,close" if mismatch == "price" else mismatch
+            assert f"mismatched_fields={expected_fields}" in error
+        assert not (output / "data/csv_source/000001.csv").exists()
     assert (source / "000001.csv").read_bytes() == original
 
 

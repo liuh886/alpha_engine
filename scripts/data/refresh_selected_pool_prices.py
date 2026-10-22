@@ -776,16 +776,19 @@ def refresh_selected_pool_prices(
                         old = governed.loc[governed["date"] == pd.Timestamp(fetch_start)]
                         new = fetched.loc[fetched["date"] == pd.Timestamp(fetch_start)]
                         fields = ("open", "high", "low", "close", "factor", "volume")
-                        if len(old) != 1 or len(new) != 1 or not all(
-                            math.isclose(
+                        if len(old) != 1 or len(new) != 1:
+                            detail = f"governed_rows={len(old)}, fetched_rows={len(new)}"
+                        else:
+                            mismatched = [field for field in fields if not math.isclose(
                                 float(old.iloc[0][field]), float(new.iloc[0][field]),
                                 rel_tol=1e-6, abs_tol=1e-8,
-                            )
-                            for field in fields
-                        ):
+                            )]
+                            detail = f"mismatched_fields={','.join(mismatched)}" if mismatched else ""
+                        if detail:
                             raise ValueError(
                                 "cutoff fallback differs from governed overlap price, "
-                                "adjustment or volume basis"
+                                "adjustment or volume basis: "
+                                f"provider={response.result.provider}; overlap={fetch_start}; {detail}"
                             )
                     frame = pd.concat([governed, fetched], ignore_index=True)
                     frame = frame.drop_duplicates(subset=["date"], keep="last")
