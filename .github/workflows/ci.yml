@@ -173,6 +173,8 @@ jobs:
           uv run pytest
           tests/test_release_candidate_generation.py
           tests/test_release_candidate_gate.py
+          tests/test_release_quality.py
+          tests/test_partial_refresh_degradation.py
           tests/test_walk_forward.py
           tests/test_vectorized_backtest.py
           tests/test_architecture_contract.py

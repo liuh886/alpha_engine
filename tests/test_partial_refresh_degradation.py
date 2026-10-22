@@ -63,7 +63,9 @@ class FakeRouter:
         start: str,
         end: str | None = None,
         validate: bool = False,
+        prefer_complete_end: bool = False,
     ) -> RouterResponse:
+        assert prefer_complete_end is True
         frame = self.frames.get(symbol)
         if frame is None:
             return RouterResponse(
