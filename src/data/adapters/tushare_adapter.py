@@ -231,15 +231,17 @@ class TushareAdapter:
             )
             out = _normalize_index(daily, symbol=symbol)
         else:
-            daily = self.client.query(
-                "daily",
-                params=params,
-                fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount",
-            )
+            # Adjusted bars require factors. Check that constrained endpoint
+            # before spending a daily request that cannot be used on failure.
             factors = self.client.query(
                 "adj_factor",
                 params=params,
                 fields="ts_code,trade_date,adj_factor",
+            )
+            daily = self.client.query(
+                "daily",
+                params=params,
+                fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount",
             )
             out = _normalize_equity(daily, factors, symbol=symbol)
 

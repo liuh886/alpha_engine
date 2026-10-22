@@ -97,6 +97,7 @@ jobs:
           src/artifacts/system_health.py
           src/artifacts/formal_bundle_reader.py
           src/artifacts/performance_semantics.py
+          src/data/adapters/tushare_adapter.py
           scripts/run_research_experiment.py
           scripts/run_active_research_experiments.py
           scripts/run_formal_refresh_transaction.py
@@ -140,6 +141,7 @@ jobs:
           tests/test_cn_x1_2_prospective.py
           tests/test_notebook_lab_contracts.py
           tests/test_yfinance_ohlc_adjustment.py
+          tests/test_tushare_adapter.py
 
       - name: Mypy type check
         run: >-
@@ -207,6 +209,7 @@ jobs:
           tests/test_refresh_ranker_formal.py
           tests/test_notebook_lab_contracts.py
           tests/test_yfinance_ohlc_adjustment.py
+          tests/test_tushare_adapter.py
           tests/test_qlib_mlflow_recorder_smoke.py
           tests/test_mcp_transport_compatibility.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1

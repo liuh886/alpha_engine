@@ -63,7 +63,7 @@ def test_tushare_equity_freezes_qfq_anchor_and_normalizes_units():
     )
 
     assert result.provider_symbol == "000001.SZ"
-    assert [call[0] for call in client.calls] == ["daily", "adj_factor"]
+    assert [call[0] for call in client.calls] == ["adj_factor", "daily"]
     assert result.df["date"].dt.strftime("%Y-%m-%d").tolist() == [
         "2021-01-04",
         "2021-01-05",
@@ -73,6 +73,28 @@ def test_tushare_equity_freezes_qfq_anchor_and_normalizes_units():
     assert result.df["close"].tolist() == pytest.approx([5.25, 21.0])
     assert result.df["volume"].tolist() == pytest.approx([1000.0, 1200.0])
     assert result.df["amount"].tolist() == pytest.approx([10000.0, 24000.0])
+
+
+@pytest.mark.parametrize("quota", ["1次/分钟", "1次/小时"])
+def test_factor_quota_failure_does_not_spend_an_unusable_daily_request(quota):
+    failure = DataFetchError(f"tushare adj_factor failed: code=40203 msg=频率超限({quota})")
+
+    class QuotaClient(FakeTushareClient):
+        def query(self, api_name: str, *, params: dict, fields: str) -> pd.DataFrame:
+            if api_name == "adj_factor":
+                self.calls.append((api_name, params, fields))
+                raise failure
+            return super().query(api_name, params=params, fields=fields)
+
+    client = QuotaClient()
+    adapter = TushareAdapter(client=client)
+    with pytest.raises(DataFetchError) as caught:
+        adapter.fetch_daily_bars(
+            FetchRequest(symbol="000001", market="cn", start="2021-01-01", end="2021-01-05")
+        )
+
+    assert caught.value is failure
+    assert [call[0] for call in client.calls] == ["adj_factor"]
 
 
 def test_tushare_index_uses_index_endpoint():
