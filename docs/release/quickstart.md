@@ -1,5 +1,9 @@
 # Alpha Engine Quickstart
 
+> 历史记录：本页保留已退役 Artifact Studio / 本地成果包阶段的说明，不作为现行运行指引。
+> 其中旧 Makefile 研究、导出入口已移除；当前安装、数据/研究命令、控制台和鉴权边界以
+> [README](../../README.md)、[操作手册](operations_runbook.md) 和 [AGENTS.md](../../AGENTS.md) 为准。
+
 Alpha Engine 是 Python 量化研究引擎，Web 产品是静态 GitHub Pages/PWA Research Artifact Studio。
 
 ## 1. 直接查看研究成果

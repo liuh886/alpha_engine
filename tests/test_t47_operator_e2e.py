@@ -1,36 +1,15 @@
-"""T47.8 Operator End-to-End Proof and Fail-Closed Verification.
+"""Fail-closed shared research gates and paper-ledger integrity checks.
 
-Demonstrates T47 hard exit criteria across enabled markets (US and CN):
-1. Happy path: evidence-backed Champion -> constrained ExecutionPlan -> replayable PaperLedger -> drift monitoring -> operational gate 'continue' with plan_eligible=True.
-2. Data freshness failure: stale data fails closed, plan_eligible=False, execution plan blocked.
-3. Statistical drift circuit breaker: critical drift triggers demote/retrain gate, blocks plan generation.
-4. Risk stop gate: severe drawdown triggers stop decision with hard blocks.
-5. Paper ledger tampering: hash chain detects tampering and raises PaperLedgerError.
+These test reusable research components, not the active five-strategy daily loop.
 """
 
 from __future__ import annotations
 
-import json
-import math
-import tempfile
 from pathlib import Path
 import pytest
 
-from src.artifacts.model_operations import (
-    build_market_operations_snapshot,
-    build_model_operations_payload,
-    validate_model_operations_payload,
-    write_model_operations_payload,
-)
-from src.portfolio.attribution import AttributionObservation, PaperPerformanceAttributor
-from src.portfolio.construction import (
-    ConstructionConstraints,
-    PortfolioConstructor,
-    QualifiedSignal,
-)
 from src.portfolio.operations_gates import (
     GateFacts,
-    OperationalGatePolicy,
     OperationsGateEngine,
 )
 from src.portfolio.paper_ledger import (
@@ -39,39 +18,6 @@ from src.portfolio.paper_ledger import (
     PaperOrderRequest,
     PaperTradingLedger,
 )
-
-
-def test_t47_happy_path_us_and_cn() -> None:
-    """Demonstrates full operational loop passing with mathematical reconciliation."""
-    payload = build_model_operations_payload(asof_date="2026-09-18")
-    assert payload.research_only is True
-    assert payload.trade_ready is False
-
-    for m in payload.markets:
-        # 1. Champion is evidence-backed
-        assert m.champion is not None
-        assert m.champion["model_version_id"] in ("qqqi_qqq_tqqq_v4_3", "cn_x1_2")
-        assert m.champion["metrics"]["excess_return_with_cost"] > 0
-
-        # 2. Drift is OK
-        assert m.drift["overall_severity"] == "ok"
-
-        # 3. Gate decision is continue
-        assert m.gate_decision["decision"] == "continue"
-        assert m.gate_decision["plan_eligible"] is True
-
-        # 4. Constrained execution plan produced
-        assert m.execution_plan is not None
-        assert m.execution_plan["advisory_only"] is True
-        assert m.execution_plan["cash_weight"] >= 0.05
-        assert m.execution_plan["gross_exposure"] <= 0.95
-
-        # 5. Paper ledger hash chain verified
-        assert m.paper_ledger["hash_chain_verified"] is True
-        assert m.paper_ledger["current_nav"] > 0
-
-        # 6. Performance attribution reconciles within tolerance
-        assert m.attribution["reconciliation"]["within_tolerance"] is True
 
 
 def test_t47_stale_data_gate_blocks_plan() -> None:
@@ -88,12 +34,13 @@ def test_t47_stale_data_gate_blocks_plan() -> None:
         drift_severity="ok",
         paper_excess_return=0.03,
     )
-    snap = build_market_operations_snapshot("us", gate_facts=stale_facts)
+    decision = OperationsGateEngine().evaluate(
+        market="us", model_version_id="fixture-model", facts=stale_facts
+    )
 
-    assert snap.gate_decision["decision"] in ("demote", "retrain", "stop")
-    assert snap.gate_decision["plan_eligible"] is False
-    # Crucial operator proof: when gate blocks, execution_plan is explicitly None
-    assert snap.execution_plan is None
+    assert decision.decision in ("demote", "retrain", "stop")
+    assert decision.plan_eligible is False
+    assert decision.hard_blocks
 
 
 def test_t47_drift_circuit_breaker_triggers() -> None:
@@ -110,11 +57,13 @@ def test_t47_drift_circuit_breaker_triggers() -> None:
         drift_severity="critical",
         paper_excess_return=-0.04,
     )
-    snap = build_market_operations_snapshot("cn", gate_facts=drift_facts)
+    decision = OperationsGateEngine().evaluate(
+        market="cn", model_version_id="fixture-model", facts=drift_facts
+    )
 
-    assert snap.gate_decision["decision"] in ("demote", "retrain", "stop")
-    assert snap.gate_decision["plan_eligible"] is False
-    assert snap.execution_plan is None
+    assert decision.decision in ("demote", "retrain", "stop")
+    assert decision.plan_eligible is False
+    assert decision.hard_blocks
 
 
 def test_t47_severe_drawdown_hard_stop() -> None:
@@ -131,11 +80,13 @@ def test_t47_severe_drawdown_hard_stop() -> None:
         drift_severity="ok",
         paper_excess_return=-0.12,
     )
-    snap = build_market_operations_snapshot("us", gate_facts=stop_facts)
+    decision = OperationsGateEngine().evaluate(
+        market="us", model_version_id="fixture-model", facts=stop_facts
+    )
 
-    assert snap.gate_decision["decision"] == "stop"
-    assert snap.gate_decision["plan_eligible"] is False
-    assert snap.execution_plan is None
+    assert decision.decision == "stop"
+    assert decision.plan_eligible is False
+    assert decision.hard_blocks
 
 
 def test_t47_paper_ledger_tamper_detection(tmp_path: Path) -> None:
