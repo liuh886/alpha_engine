@@ -114,6 +114,7 @@ jobs:
           scripts/evaluate_byd_recovery_event_lifecycle.py
           scripts/evaluate_byd_recovery_event_low_vol_confirmation.py
           scripts/check_legacy_web_boundary.py
+          scripts/doctor.py
           scripts/check_ci_governance.py
           tests/test_formal_baseline_onboarding.py
           tests/test_formal_bundle_reader.py
@@ -126,6 +127,7 @@ jobs:
           tests/test_strategy_runtime_capabilities.py
           tests/test_signal_delivery_outbox.py
           tests/test_system_health.py
+          tests/test_doctor.py
           tests/test_model_x1_baselines.py
           tests/test_strategy_operations.py
           tests/test_model_run_decision.py
@@ -189,6 +191,7 @@ jobs:
           tests/test_strategy_runtime_capabilities.py
           tests/test_signal_delivery_outbox.py
           tests/test_system_health.py
+          tests/test_doctor.py
           tests/test_model_x1_baselines.py
           tests/test_strategy_operations.py
           tests/test_model_run_decision.py

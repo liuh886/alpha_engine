@@ -1,114 +1,96 @@
 #!/usr/bin/env python3
-"""Check the local Alpha Engine research environment."""
+"""Diagnose current governed evidence and five-strategy operating health."""
 
 from __future__ import annotations
 
 import argparse
-import importlib
-import json
-import sqlite3
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Sequence
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-from src.common.paths import ARTIFACTS_DIR, DASHBOARD_DB_PATH, MLRUNS_DIR
 
-REQUIRED_DEPENDENCIES = ("qlib", "pandas", "numpy", "lightgbm", "fire", "pydantic")
+def diagnose(repository_root: Path, *, generated_at: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Read and verify existing evidence; keep health rules in SystemHealth."""
+    from src.artifacts.formal_bundle_reader import FormalBundleReader
+    from src.artifacts.strategy_operations import build_operations_payload, validate_operations_payload
+    from src.artifacts.system_health import build_system_health, validate_system_health
 
+    root = repository_root.resolve()
+    formal_root = root / "data/research/formal_model_runs"
+    reader = FormalBundleReader.open(root)
+    for model_version_id in reader.records:
+        reader.load(model_version_id)
 
-def check_python() -> None:
-    print(f"Python version: {sys.version}")
-    print(f"Platform: {sys.platform}")
-
-
-def check_dependencies() -> bool:
-    missing: list[str] = []
-    print("\nChecking dependencies...")
-    for dependency in REQUIRED_DEPENDENCIES:
-        try:
-            module = importlib.import_module(dependency)
-            version = getattr(module, "__version__", "unknown")
-            print(f"  [OK] {dependency} ({version})")
-        except ImportError:
-            missing.append(dependency)
-
-    try:
-        from qlib.workflow import R  # noqa: F401
-
-        print("  [OK] Qlib C++ extensions (workflow/record_temp)")
-    except ImportError as exc:
-        print(f"  [!] Qlib binary extension is unavailable or incompatible: {exc}")
-        print("      -> Run `uv sync --frozen --extra dev` and retry.")
-        missing.append("qlib-bin")
-
-    if missing:
-        print(f"  [!] Missing dependencies: {', '.join(missing)}")
-    return not missing
+    operations = build_operations_payload(
+        formal_catalog=formal_root / "catalog.json",
+        strategy_catalog=root / "configs/strategies/registry.json",
+        ledger_root=root / "data/research/strategy_signal_ledgers",
+        repository_root=root,
+        generated_at=generated_at,
+    )
+    validate_operations_payload(operations)
+    health = build_system_health(
+        repository_root=root,
+        formal_catalog=formal_root / "catalog.json",
+        formal_freshness=formal_root / "freshness.json",
+        operations=operations,
+        model_data_readiness=root / "data/research/model_data_bundle_v1/model-data-readiness.json",
+        generated_at=generated_at,
+    )
+    validate_system_health(health)
+    return health, operations
 
 
-def check_metadata_integrity() -> bool:
-    print("\nChecking metadata integrity (SQLite, MLflow, exported JSON)...")
-    db_path = ARTIFACTS_DIR / "metadata" / "metadata.db"
-
-    if not db_path.exists():
-        print(f"  [!] Metadata DB missing at {db_path}")
-        print("      -> Run the governed data or research entrypoint that owns this artifact.")
-        return False
-
-    errors = 0
-    try:
-        with sqlite3.connect(db_path, timeout=5) as connection:
-            connection.row_factory = sqlite3.Row
-            try:
-                runs = connection.execute("SELECT run_id, tag FROM model_versions").fetchall()
-                print(f"  [INFO] Found {len(runs)} models in the SQLite registry.")
-                for run in runs:
-                    run_id = run["run_id"]
-                    found_mlflow = MLRUNS_DIR.exists() and any(
-                        (experiment_dir / run_id).exists()
-                        for experiment_dir in MLRUNS_DIR.iterdir()
-                    )
-                    if found_mlflow:
-                        continue
-                    print(f"  [!] SQLite record {run['tag']} ({run_id}) has no MLflow artifact.")
-                    errors += 1
-            except sqlite3.OperationalError as exc:
-                print(f"  [INFO] model_versions is not initialized: {exc}")
-
-            if DASHBOARD_DB_PATH.exists():
-                payload = json.loads(DASHBOARD_DB_PATH.read_text(encoding="utf-8"))
-                print(f"  [INFO] Found {len(payload.get('models', []))} exported model records.")
-            else:
-                print(f"  [!] Exported dashboard evidence missing at {DASHBOARD_DB_PATH}")
-                errors += 1
-    except Exception as exc:
-        print(f"  [!] Integrity check failed: {exc}")
-        return False
-
-    if errors == 0:
-        print("  [OK] Metadata consistency verified.")
-    return errors == 0
-
-
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.parse_args()
+    parser.add_argument("--root", type=Path, default=PROJECT_ROOT)
+    args = parser.parse_args(argv)
+    generated_at = datetime.now(timezone.utc).isoformat()
+    print("=== Alpha Engine Operating Health ===")
+    print(f"Python: {sys.version.split()[0]} ({sys.platform})")
+    print(f"Observed at: {generated_at}")
+    try:
+        health, operations = diagnose(args.root, generated_at=generated_at)
+    except (OSError, ValueError, ImportError) as exc:
+        print(f"[FAILURE] Governed health could not be verified: {exc}")
+        if isinstance(exc, ImportError):
+            print("Restore locked dependencies with: uv sync --frozen --extra dev")
+        return 1
 
-    print("=== Alpha Engine Research Environment Doctor ===\n")
-    dependencies_ok = check_dependencies()
-    check_python()
-    metadata_ok = check_metadata_integrity()
+    print("[OK] Formal catalog, manifests and available section bytes verified.")
+    print(f"Core operating state: {health['state']}")
+    by_model = {row["model_version_id"]: row for row in operations["records"]}
+    for row in health["strategies"]:
+        print(
+            f"  {row['model_version_id']}: {row['state']} | "
+            f"provider={row['provider_cutoff']} formal={row['formal_cutoff']} "
+            f"factor={row['factor_cutoff']} decision={row['last_signal_evaluation']}"
+        )
+        issues = [f"{stage}={state}" for stage, state in row["stages"].items()
+                  if state not in {"current", "not_applicable"}]
+        if issues:
+            print(f"    Affected stages: {', '.join(issues)}")
+            reason = by_model[row["model_version_id"]].get("decision_reason")
+            if reason:
+                print(f"    Decision evidence: {reason}")
 
-    if dependencies_ok and metadata_ok:
-        print("\n[SUCCESS] Environment looks healthy.")
+    training = health["model_data"]
+    print(
+        f"Research training profiles: {training['state']} | "
+        f"cutoff={training['evidence_cutoff']} | "
+        f"blocked_profiles={training['summary']['blocked_training_profile_count']}"
+    )
+    print("  Scope: research_training_profiles; details: data/research/model_data_bundle_v1/model-data-readiness.json")
+    print("Research only: true | Trade ready: false")
+    if health["state"] == "current":
+        print("[SUCCESS] Current operating evidence verified.")
         return 0
-
-    print("\n[FAILURE] Environment issues detected.")
-    print("          -> Reconcile missing artifacts through their governed source workflow.")
-    print("          -> Run `uv sync --frozen --extra dev` to restore locked dependencies.")
+    print("[FAILURE] Resolve the affected evidence stages through their existing governed workflows.")
     return 1
 
 
