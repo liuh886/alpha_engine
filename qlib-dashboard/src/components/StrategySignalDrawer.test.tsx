@@ -25,8 +25,6 @@ const mockRun: GovernedRunSummary = {
   manifestSha256: null,
   summary: { metrics: [] },
   manifest: null,
-  modelData: null,
-  formalPackage: null,
   loadWarnings: [],
 };
 
