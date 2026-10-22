@@ -10,8 +10,6 @@ import shutil
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -47,8 +45,14 @@ def build_quality_commands(project_root: Path, evidence_dir: Path) -> list[Comma
     """Return the complete, ordered local/CI quality command set."""
     root = project_root.resolve()
     frontend = root / "qlib-dashboard"
-    evidence_dir.resolve() / "pytest_skips.json"
     return [
+        CommandSpec("retired_web_boundary", ("uv", "run", "python", "scripts/check_legacy_web_boundary.py"), root),
+        CommandSpec(
+            "ci_governance",
+            ("uv", "run", "python", "scripts/check_ci_governance.py",
+             "--output", str(evidence_dir.resolve() / "ci-workflow-inventory.json"), "--enforce"),
+            root,
+        ),
         CommandSpec("ruff", ("uv", "run", "ruff", "check", "."), root),
         CommandSpec(
             "mypy_ratchet",
@@ -88,6 +92,7 @@ def build_quality_commands(project_root: Path, evidence_dir: Path) -> list[Comma
                 "pytest",
                 "tests",
                 "-q",
+                "--strict-markers",
                 "-p",
                 "src.release.pytest_skip_report",
                 f"--junitxml={evidence_dir.resolve() / 'pytest.xml'}",
@@ -97,8 +102,9 @@ def build_quality_commands(project_root: Path, evidence_dir: Path) -> list[Comma
         CommandSpec("frontend_install", ("npm", "ci"), frontend),
         CommandSpec("frontend_typecheck", ("npx", "tsc", "--noEmit"), frontend),
         CommandSpec("frontend_lint", ("npm", "run", "lint"), frontend),
-        CommandSpec("frontend_vitest", ("npm", "run", "test"), frontend),
         CommandSpec("frontend_build", ("npm", "run", "build"), frontend),
+        CommandSpec("frontend_bundle_budget", ("npm", "run", "check:bundle-budget"), frontend),
+        CommandSpec("playwright_install", ("npx", "playwright", "install", "chromium"), frontend),
         CommandSpec("playwright", ("npx", "playwright", "test"), frontend),
         CommandSpec("package_build", ("uv", "build"), root),
     ]
@@ -137,26 +143,28 @@ def run_quality_gates(
     commands = build_quality_commands(root, output_dir)
     results: list[CommandResult] = []
     build_ok = False
+    browser_install_ok = False
     for command in commands:
         environment = os.environ.copy()
         if command.name == "backend_tests":
             environment["ALPHA_SKIP_REPORT"] = str(skip_path)
-        if command.name == "playwright":
-            result = (
-                _run_playwright(command, output_dir, environment)
-                if build_ok
-                else _blocked_result(command, output_dir, "frontend_build did not pass")
-            )
+        if command.name == "playwright_install" and not build_ok:
+            result = _blocked_result(command, output_dir, "frontend_build did not pass")
+        elif command.name == "playwright" and not browser_install_ok:
+            result = _blocked_result(command, output_dir, "playwright_install did not pass")
         else:
             result = _run_command(command, output_dir, environment)
         results.append(result)
         if command.name == "frontend_build":
             build_ok = result.ok
+        if command.name == "playwright_install":
+            browser_install_ok = result.ok
 
     skips = _read_skips(skip_path)
-    skip_accounting = classify_skips(skips, approved=approved_skips)
+    skip_accounting = classify_skips(skips or [], approved=approved_skips)
     skip_accounting["report_present"] = skip_path.is_file()
-    if not skip_path.is_file():
+    skip_accounting["report_valid"] = skips is not None
+    if skips is None:
         skip_accounting["ok"] = False
     report = {
         "schema_version": "1",
@@ -194,14 +202,18 @@ def _run_command(spec: CommandSpec, output_dir: Path, environment: dict[str, str
         )
         output = process.stdout + process.stderr
         exit_code = process.returncode
-        if spec.name == "frontend_install" and platform.system() == "Windows" and exit_code == 0:
-            # The lockfile already pins this binding as a platform-gated optional
-            # dependency; some npm versions still skip it. Install it without
-            # --save so the quality gate can never rewrite package.json or the
-            # lockfile while verifying a release.
+        if (
+            spec.name == "frontend_install" and platform.system() == "Windows" and exit_code == 0
+            and not (spec.cwd / "node_modules/@rolldown/binding-win32-x64-msvc/package.json").is_file()
+        ):
+            # Repair only a skipped optional binary, using the locked version
+            # without changing the inputs whose release quality is being checked.
+            lock = json.loads((spec.cwd / "package-lock.json").read_text(encoding="utf-8"))
+            binding_version = lock["packages"]["node_modules/@rolldown/binding-win32-x64-msvc"]["version"]
             binding_proc = subprocess.run(
                 _executable_argv(
-                    ("npm", "install", "--no-save", "@rolldown/binding-win32-x64-msvc")
+                    ("npm", "install", "--no-save", "--package-lock=false",
+                     f"@rolldown/binding-win32-x64-msvc@{binding_version}")
                 ),
                 cwd=spec.cwd,
                 env=environment,
@@ -214,100 +226,10 @@ def _run_command(spec: CommandSpec, output_dir: Path, environment: dict[str, str
             output += "\n" + binding_proc.stdout + binding_proc.stderr
             if binding_proc.returncode != 0:
                 exit_code = binding_proc.returncode
-    except (OSError, subprocess.SubprocessError) as exc:
+    except (OSError, subprocess.SubprocessError, KeyError, json.JSONDecodeError) as exc:
         output = f"{type(exc).__name__}: {exc}\n"
         exit_code = -1
     return _capture_result(spec, output_dir, started, exit_code, output)
-
-
-def _run_playwright(
-    spec: CommandSpec, output_dir: Path, environment: dict[str, str]
-) -> CommandResult:
-    started = time.perf_counter()
-
-    # Install Playwright browsers if not already present
-    install_result = subprocess.run(
-        _executable_argv(("npx", "playwright", "install", "chromium")),
-        cwd=spec.cwd,
-        env=environment,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
-    if install_result.returncode != 0:
-        return _capture_result(
-            spec,
-            output_dir,
-            started,
-            install_result.returncode,
-            "Playwright browser install failed.\n" + install_result.stdout + install_result.stderr,
-        )
-
-    preview_argv = _executable_argv(
-        ("npm", "run", "preview", "--", "--host", "127.0.0.1", "--port", "8000", "--strictPort")
-    )
-    preview: subprocess.Popen[str] | None = None
-    output = ""
-    try:
-        preview = subprocess.Popen(
-            preview_argv,
-            cwd=spec.cwd,
-            env=environment,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        if not _wait_for_http("http://127.0.0.1:8000", preview):
-            preview_output = preview.communicate(timeout=5)[0] if preview.poll() is not None else ""
-            return _capture_result(
-                spec,
-                output_dir,
-                started,
-                -1,
-                "Vite preview did not become ready.\n" + preview_output,
-            )
-        process = subprocess.run(
-            _executable_argv(spec.argv),
-            cwd=spec.cwd,
-            env=environment,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            check=False,
-        )
-        output = process.stdout + process.stderr
-        exit_code = process.returncode
-    except (OSError, subprocess.SubprocessError) as exc:
-        output = f"{type(exc).__name__}: {exc}\n"
-        exit_code = -1
-    finally:
-        if preview is not None and preview.poll() is None:
-            preview.terminate()
-            try:
-                preview.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                preview.kill()
-                preview.wait(timeout=5)
-    return _capture_result(spec, output_dir, started, exit_code, output)
-
-
-def _wait_for_http(url: str, process: subprocess.Popen[str], timeout: float = 20) -> bool:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if process.poll() is not None:
-            return False
-        try:
-            with urllib.request.urlopen(url, timeout=1) as response:
-                if response.status < 500:
-                    return True
-        except (urllib.error.URLError, TimeoutError):
-            time.sleep(0.25)
-    return False
 
 
 def _blocked_result(spec: CommandSpec, output_dir: Path, reason: str) -> CommandResult:
@@ -322,8 +244,9 @@ def _capture_result(
     output: str,
 ) -> CommandResult:
     output_path = output_dir / f"{spec.name}.log"
-    output_path.write_text(output, encoding="utf-8")
-    digest = hashlib.sha256(output.encode("utf-8")).hexdigest()
+    encoded = output.encode("utf-8")
+    output_path.write_bytes(encoded)
+    digest = hashlib.sha256(encoded).hexdigest()
     return CommandResult(
         name=spec.name,
         command=list(spec.argv),
@@ -340,17 +263,18 @@ def _executable_argv(argv: tuple[str, ...]) -> list[str]:
     return [executable or argv[0], *argv[1:]]
 
 
-def _read_skips(path: Path) -> list[dict[str, str]]:
+def _read_skips(path: Path) -> list[dict[str, str]] | None:
     if not path.is_file():
-        return []
+        return None
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError):
-        return []
-    if not isinstance(value, list):
-        return []
-    return [
-        {"nodeid": str(row.get("nodeid", "")), "reason": str(row.get("reason", ""))}
+        return None
+    if not isinstance(value, list) or any(
+        not isinstance(row, dict)
+        or not isinstance(row.get("nodeid"), str) or not row["nodeid"]
+        or not isinstance(row.get("reason"), str)
         for row in value
-        if isinstance(row, dict)
-    ]
+    ):
+        return None
+    return value

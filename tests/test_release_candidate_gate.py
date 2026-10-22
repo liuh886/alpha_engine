@@ -311,25 +311,35 @@ def test_does_not_fall_back_to_best_historical_evidence(tmp_path: Path) -> None:
 def test_quality_command_set_covers_the_release_pipeline(tmp_path: Path) -> None:
     commands = build_quality_commands(tmp_path, tmp_path / "evidence")
 
-    assert [command.name for command in commands] == [
-        "ruff",
-        "mypy_ratchet",
-        "backend_tests",
-        "frontend_install",
-        "frontend_typecheck",
-        "frontend_lint",
-        "frontend_vitest",
-        "frontend_build",
-        "playwright",
-        "package_build",
+    by_name = {command.name: command for command in commands}
+    assert len(by_name) == len(commands)
+    assert set(by_name) == {
+        "retired_web_boundary", "ci_governance", "ruff", "mypy_ratchet", "backend_tests",
+        "frontend_install", "frontend_typecheck", "frontend_lint", "frontend_build",
+        "frontend_bundle_budget", "playwright_install", "playwright", "package_build",
+    }
+    assert by_name["ruff"].argv[-2:] == ("check", ".")
+    assert "src/release" in by_name["mypy_ratchet"].argv
+    assert "scripts/release_gate.py" in by_name["mypy_ratchet"].argv
+    assert "--strict-markers" in by_name["backend_tests"].argv
+    assert "src.release.pytest_skip_report" in by_name["backend_tests"].argv
+    assert by_name["frontend_build"].argv == ("npm", "run", "build")
+    assert by_name["playwright"].argv == ("npx", "playwright", "test")
+    assert "--enforce" in by_name["ci_governance"].argv
+
+    # The build owns the same complete unit/contract chain as npm test.
+    root = Path(__file__).resolve().parents[1]
+    scripts = json.loads((root / "qlib-dashboard/package.json").read_text(encoding="utf-8"))["scripts"]
+    assert "vitest run" in scripts["test"]
+    assert scripts["build"].startswith(scripts["test"] + " && ")
+    assert sum(command.argv == ("npm", "run", "build") for command in commands) == 1
+    assert all(command.argv not in {("npm", "test"), ("npm", "run", "test")} for command in commands)
+
+    # The former local checklist delegates once; focused commands stay independent.
+    ci_recipe = (root / "Makefile").read_text(encoding="utf-8").split("\nci:\n", 1)[1]
+    assert [line.strip() for line in ci_recipe.splitlines() if line.strip()] == [
+        "uv run python scripts/release_gate.py --run-quality-gates --evidence-dir artifacts/release_gates"
     ]
-    rendered = [" ".join(command.argv) for command in commands]
-    assert "ruff check ." in rendered[0]
-    assert "src/release" in rendered[1]
-    assert "pytest tests" in rendered[2]
-    assert "npm run lint" in rendered[5]
-    assert "npm run test" in rendered[6]
-    assert "playwright test" in rendered[8]
 
 
 def test_unapproved_backend_skip_fails_accounting() -> None:

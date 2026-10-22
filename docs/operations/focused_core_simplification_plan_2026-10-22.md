@@ -193,3 +193,8 @@ G—I 仅列为后续候选，取得收益和兼容性数据后再决定是否�
   包含损坏/缺失分节、缺失 readiness、训练阻塞范围、真实延迟及禁止联网、研究引擎导入和证据写入。
   2026-10-22 09:32 UTC 实跑保留 US current / CN delayed，训练面两项权限阻塞单列，退出码 1。
   独立复核发现并修复 SystemHealth 对残缺 readiness 的默认零值：现有输入边界验证身份、截止日、研究边界和完整计数/配置列表；缺失、负数、布尔计数和截断输入均拒绝，受阻训练配置继续单独标 blocked。
+  [PR #1249](https://github.com/liuh886/alpha_engine/pull/1249) 已通过远端门禁并合并，Pages 验证通过。
+- E：Makefile 完整检查委托现有 release quality 清单，删除独立重复 Vitest 和无消费的 preview 服务；
+  保留检查并集、strict markers、skip 审计并纳入既有包体预算。Playwright 安装和测试分别保留真实日志。
+  Windows 缺失可选二进制仅按原 lock 修复；日志哈希改为实际 UTF-8 字节；损坏 skip 报告失败。
+  28 项质量/候选测试和独立复核通过，mypy/ruff 通过；完整清单将在代码提交后按该提交运行，最终回执见本 PR。

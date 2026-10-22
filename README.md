@@ -55,16 +55,16 @@ alpha ops build ...            重建只读状态与健康快照
 只读诊断：`uv run python scripts/doctor.py`。它校验正式分节并复用现有运行健康事实，
 按策略报告真实截止日和延迟；未绑定当前运行的训练权限阻塞单独展示。运行延迟或证据校验失败返回非零退出码。
 
+完整本地验证只执行现有 release quality 清单（安装 GNU make 的环境也可用 `make ci`）：
+
 ```powershell
-uv run pytest tests -q
-uv run python scripts/check_ci_governance.py --output artifacts/ci-workflow-inventory.json --enforce
-cd qlib-dashboard
-npm exec -- tsc --noEmit
-npm run lint
-npm run build
-npm run check:bundle-budget
-npm exec -- playwright test --config=playwright.static.config.ts
+uv run python scripts/release_gate.py --run-quality-gates --evidence-dir artifacts/release_gates
 ```
+
+清单涵盖架构/CI 治理、Python/TypeScript 类型与 lint、Python 测试与 skip 审计、
+含单元测试的前端构建、包体预算、浏览器和 Python 打包。每项实际退出码、耗时、输出哈希
+以及 Git revision 写入 `artifacts/release_gates/quality_gate_report.json`；单项开发检查继续使用对应工具。
+
 
 现有 Actions 负责数据、到期评估、决策投递和 Pages 发布。正式回测刷新保留审核与原子发布；日常读取不触发重型研究。工作流数量上限为 39，不为状态读取新增调度器或数据库。
 
