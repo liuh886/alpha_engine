@@ -95,6 +95,7 @@ jobs:
           src/factors/ranker_snapshot.py
           src/artifacts/strategy_operations.py
           src/artifacts/system_health.py
+          src/artifacts/operating_acceptance.py
           src/artifacts/formal_bundle_reader.py
           src/artifacts/performance_semantics.py
           src/data/adapters/tushare_adapter.py
@@ -129,6 +130,7 @@ jobs:
           tests/test_strategy_runtime_capabilities.py
           tests/test_signal_delivery_outbox.py
           tests/test_system_health.py
+          tests/test_operating_acceptance.py
           tests/test_doctor.py
           tests/test_check_ci_governance.py
           tests/test_model_x1_baselines.py
@@ -199,6 +201,7 @@ jobs:
           tests/test_strategy_runtime_capabilities.py
           tests/test_signal_delivery_outbox.py
           tests/test_system_health.py
+          tests/test_operating_acceptance.py
           tests/test_doctor.py
           tests/test_check_ci_governance.py
           tests/test_model_x1_baselines.py

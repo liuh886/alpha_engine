@@ -322,6 +322,25 @@ CN 的 106 项 overlap 价格/复权/量纲不一致及 BYD 截止日不足仍�
 真实错误离线重放及成功股票/指数夹具字节对照回执：
 `artifacts/optimization-20261022/tushare-request-order-comparison.json`。
 
+### 验收采集不再依赖短暂缺失的远端状态过滤
+
+运行 `39800319676` 与 `39814345974` 的验收采集曾报告没有已完成正式运行。
+实际查询复现 GitHub 的 `status=completed` 过滤短暂返回空列表，同一工作流的
+近期列表仍包含已完成记录。现有采集器改为一次读取 main 最近 10 条运行，
+按原列表顺序选首个明确 completed 的运行，不筛 success、不回退到更早的 green。
+窗口中没有 completed 时明确失败，不增加循环重试、分页搜旧成功、调度或状态库。
+最新完成项的产物缺失、过期、损坏仍失败或 blocked；原身份、哈希和长期归档边界保留。
+
+148 项验收、状态、正式刷新、触发范围与归档相关检查通过，ruff、diff 及
+39 工作流治理通过。独立复核的 21 项检查和权限失败注入通过，无 Critical/Important。
+验收回归纳入既有 backend PR 门禁；永久工作流数不变。
+
+实际 CLI 已成功采集正式运行 `39814345734:1`，验证其 90,095 字节归档的 SHA256、
+五策略证据与截止日，五项机械检查通过，状态为 awaiting_independent_review。
+`manual_interventions=null`、`review_required=true` 保留，不自动填写独立审阅，
+也不将本次采集计为合格会话。回执保留于
+`artifacts/optimization-20261023/collector-recovery`，未覆盖先前失败记录。
+
 ### 2026-10-23：定位具体的增量来源冲突
 
 上轮合并后的正式刷新 `39802448678` 完成 provider、排期和失败采集，仍因 CN 来源和
