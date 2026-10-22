@@ -195,14 +195,10 @@ jobs:
           npm run lint
           npx tsc --noEmit
 
-      - name: Validate projected frontend unit tests
+      - name: Validate projected frontend tests and build
         if: steps.mode.outputs.defer != 'true'
         working-directory: qlib-dashboard
-        run: npm test -- --run
-
-      - name: Validate projected frontend build
-        if: steps.mode.outputs.defer != 'true'
-        working-directory: qlib-dashboard
+        # build already runs the UI/account/evidence checks and the full Vitest suite.
         run: npm run build
 
       - name: Report generated delta without mutating the PR
