@@ -405,3 +405,16 @@ active、无 bypass，main 返回两条历史保护规则，本轮工作分支�
 Policy、治理检查均为 39 个工作流 / 0 违规；15 项本机治理检查通过，独立复核另跑
 21 项相关检查通过，无 Critical/Important。回执保留于
 `artifacts/assessment-20261023/main-history-protection-receipt.json`。
+
+### 2026-10-23：盘清连续验收的实际覆盖
+
+私有归档的 `archives` tree `80d8ff175396d4acd90f70341bfad0245a0986f7` 中，
+166 次采集对应 22 个不同的正式运行尝试。对每个尝试只取最新 capture，未回退挑选
+旧的成功包；22 个归档 blob 及索引内 665 个 JSON 成员的哈希、大小均核验通过。
+US/CN 均仅覆盖 2026-10-15 至 2026-10-22 的 6 个交易时段，不能计作 166 个时段。
+复用 `alpha ops acceptance` 汇总后，两市场连续合格时段均为 0，20 时段验收未完成：
+这些包尚无独立复核声明和可确认的人工干预计数，失败及阻塞记录继续保留。
+最新正式尝试 `39885711914:1` 的机械检查通过，仍待独立复核；机械通过不等于会话验收。
+盘点回执及原验收器输出分别保留于 `artifacts/assessment-20261023/` 下的
+`operating-review-historical-audit.json`、`historical-operating-acceptance.json`。
+真实账号验收按用户本轮选择暂缓，未标记通过；临时登录浏览器已关闭。
