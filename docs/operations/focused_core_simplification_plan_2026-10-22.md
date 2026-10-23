@@ -389,3 +389,19 @@ Browser plugin not available；使用仓库既有 Playwright，截图与日志�
 其后的正式刷新 [39814345734](https://github.com/liuh886/alpha_engine/actions/runs/39814345734)
 已成功，[PR #1258](https://github.com/liuh886/alpha_engine/pull/1258) 自动合并，
 正式发布推进至 US 2026-10-21 / CN 2026-10-22；该次运行成功不替代连续会话独立验收。
+
+### 2026-10-23：为主分支保留历史完整性
+
+当前五策略、实际站点与自动验收采集均已运行，US/CN 正式证据推进至 2026-10-22。
+继续收尾时先核对决策与投递工作流：它们在 rebase 后直接快进写入 main。
+本轮采用仅作用于 main 的防删除、防非快进规则，无 bypass actors；期望 payload
+复用现有 CI policy，不新增工作流、总调度器或权限例外。
+全局 required checks 仍为空，既有按路径 PR 检查和精确候选正式发布门禁保留。
+这项历史保护不替代 PR 审查，也不被描述为已经强制了所有 CI。
+启用后以 GitHub API 读回与正常受审合并验证，不向真实 main 尝试删除或强推。
+
+[规则集 25698831](https://github.com/liuh886/alpha_engine/rules/25698831) 已启用并读回：
+active、无 bypass，main 返回两条历史保护规则，本轮工作分支不受该规则集约束。
+Policy、治理检查均为 39 个工作流 / 0 违规；15 项本机治理检查通过，独立复核另跑
+21 项相关检查通过，无 Critical/Important。回执保留于
+`artifacts/assessment-20261023/main-history-protection-receipt.json`。
