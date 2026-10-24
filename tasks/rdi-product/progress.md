@@ -9,8 +9,9 @@
 - Backend RDI tests: 29 pass, Ruff pass. Initial frontend check caught ES2020
   replaceAll incompatibility and jsdom URL fixture resolution; replaced with
   compatible regex and filesystem path, respectively.
-- Final fixture imports generated projection as raw JSON; TypeScript can run
-  before asset generation in CI without requiring Node filesystem declarations.
+- Final review replaced generated-data UI fixtures with explicitly synthetic
+  contract values. Unit tests now run independently of optional RDI asset
+  generation; Python and browser tests verify the real source projection.
 - Complete frontend build: 208 tests pass; TypeScript, ESLint and bundle budget
   pass (316.18 KB gzipped JS against 480 KB ceiling).
 - Browser acceptance: 9 tests pass across desktop/tablet/mobile for RDI retry,
