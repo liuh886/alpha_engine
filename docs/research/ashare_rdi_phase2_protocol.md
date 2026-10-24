@@ -52,6 +52,33 @@ nor can a 2026 download retroactively prove a historical data feed.
 backtests or verified risk-index results can yet be claimed. Do not invent
 historical news/events to force a complete matrix.
 
+## First real-market price-only control (NOT an RDI backtest)
+
+To avoid waiting for non-existent historical news coverage, Phase 2 records a
+fully reproducible **descriptive-only** CSI300 index control. Run:
+
+```bash
+uv run python -m src.research.ashare_rdi.price_baseline \\
+    --prices data/csv_source/000300.csv
+```
+
+Using a **predefined** prior-60-session drawdown threshold of -10%, the
+historical frequency of close(t)->close(t+h) losses at least -5% is:
+
+| h trading sessions | In >=10% trailing drawdown | Other states |
+|---|---:|---:|
+| 7 | 13.91% (1,258 overlapping samples) | 6.74% (3,828) |
+| 14 | 17.25% (1,258) | 11.99% (3,821) |
+| 28 | 23.21% (1,258) | 20.62% (3,807) |
+
+This is a correlation on reused overlapping time windows. It **does not**
+establish predictive significance or robust event-risk density, nor
+does it address the October 2026 collapse; prices end June 25.
+It suggests severe downside and direction deserve separate labels, not
+that a fixed drawdown rule should control position sizing. Raw output with
+source Git blob anchor is retained at
+`docs/evidence/ashare_rdi_phase2/csi300_price_only_descriptive_2026-10-24.json`.
+
 ## 7 / 14 / 28 session research design
 
 Observation time is the **completed CN exchange close** `t`. Known announced
