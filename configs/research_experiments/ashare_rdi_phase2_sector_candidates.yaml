@@ -1,0 +1,17 @@
+# ETF identities: NOT in the approved reference registry; not automatically tradable.
+contract_id: ashare_rdi_sector_etf_candidates_v0_1
+status: research_candidates_unapproved
+research_only: true
+trade_ready: false
+candidates:
+  - {symbol: 512480.SH, sector: semiconductors, inception: '2019-05-08', listing: '2019-06-12', eligible: false, source: 'https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-04-09/512480_20250409_VFF0.pdf'}
+  - {symbol: 512800.SH, sector: banks, inception: '2017-07-18', listing: '2017-08-03', eligible: false, source: 'https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-20/512800_20250320_GZLN.pdf'}
+  - {symbol: 512200.SH, sector: real_estate, inception: '2017-08-25', listing: null, eligible: false, source: 'https://www.nffund.com/new/personal-financing/detail.html?fundCode=512200'}
+  - {symbol: 512690.SH, sector: liquor, inception: '2019-04-04', listing: null, eligible: false, source: 'https://fundf10.eastmoney.com/jbgk_512690.html'}
+required_prior_to_admission:
+  - verified historical daily bars from accepted provider and source hashes
+  - actual listing date and no pre-listing NAV history
+  - correct split/distribution-adjusted OHLCV and total-return semantics
+  - point-in-time industry exposure and taxonomy
+  - daily tradability and liquidity, tracking error and costs
+  - sufficient independent adverse market episodes for OOS evaluation

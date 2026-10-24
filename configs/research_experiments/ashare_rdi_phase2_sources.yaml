@@ -1,0 +1,67 @@
+# Independent evidence coverage inventory, NOT certification of historic availability.
+contract_id: ashare_rdi_phase2_sources_v0_1
+status: incomplete_historical_pit_coverage
+research_only: true
+trade_ready: false
+event_families:
+  holiday_positioning:
+    source: exchange_calendars XSHG and exchange announcements
+    existing: src/research/market_session_clock.py
+    readiness: calendar_known_only
+    pit_verified: false
+    caveat: Holiday calendar is observable; pre-holiday selling propensity is a hypothesis.
+  earnings_calendar:
+    source: CNINFO filing calendar and issuer disclosures
+    existing: src/data/company_events/ashare_earnings_events.py
+    readiness: partial
+    pit_verified: false
+    caveat: Actual earnings announcement and advance known release schedule differ.
+  holding_change:
+    source: CNINFO shareholder planned and executed decreases
+    existing: src/data/company_events/ashare_holding_change_events.py
+    readiness: partial
+    pit_verified: false
+  restricted_unlock:
+    source: CNINFO scheduled unlocks and issuer disclosure
+    existing: src/data/company_events/ashare_primary_announcements.py
+    readiness: partial
+    pit_verified: false
+    caveat: Unlock is potential supply, not executed share sales.
+  ipo_refinancing:
+    source: SSE SZSE offering calendars and CSRC registration
+    existing: null
+    readiness: not_integrated
+    pit_verified: false
+  macro_external:
+    source: NBS PBOC SAFE official releases, verified external macro
+    existing: null
+    readiness: not_integrated
+    pit_verified: false
+  sector_leader_distress:
+    source: CNINFO audited reports, debt notices, verified peer breadth
+    existing: src/data/fundamentals/ashare_public_financials.py
+    readiness: partial
+    pit_verified: false
+  sector_clearing:
+    source: restructuring completion, firm exits, actual capacity retirement
+    existing: null
+    readiness: not_integrated
+    pit_verified: false
+    caveat: Announced != approved != executed != verified.
+  policy_support:
+    source: Official releases and verified actual implementation
+    existing: null
+    readiness: not_integrated
+    pit_verified: false
+    caveat: Rumors have no automatic risk reduction.
+  good_news_response:
+    source: PIT expectations and verified post-earnings market response
+    existing: src/data/company_events/ashare_earnings_events.py
+    readiness: partial
+    pit_verified: false
+    caveat: Future returns must never enter pre-announcement features.
+rules:
+  historical_retrieval_timestamp_is_not_historical_first_availability: true
+  unknown_events_are_not_zero: true
+  index_sector_etf_distinction: enforced
+  phase2_full_rdi_backtest: blocked
