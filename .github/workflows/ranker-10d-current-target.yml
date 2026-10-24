@@ -77,7 +77,8 @@ jobs:
           as_of="$(date -u +%F)"
           failures=()
 
-          for market in us cn; do
+          markets="$(uv run python -c "from src.governance.active_strategy_catalog import load_active_strategy_catalog; print(' '.join(sorted({s.market for s in load_active_strategy_catalog().strategies if s.model_kind == 'cross_sectional_ranker'})))")"
+          for market in $markets; do
             echo "::group::${market} current target"
             due_file="artifacts/ranker-current-target/${market}_due.json"
 

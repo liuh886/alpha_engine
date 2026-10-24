@@ -43,7 +43,7 @@ command.main()
     assert "--as-of" in result.stdout
 
 
-@pytest.mark.parametrize("market", ["us", "cn"])
+@pytest.mark.parametrize("market", ["us"])
 def test_build_loads_only_the_selected_governed_inference(
     tmp_path: Path, monkeypatch, market: str
 ) -> None:
@@ -136,14 +136,16 @@ def _benchmark_evidence(
     return evidence
 
 
-def test_both_active_rankers_have_exact_current_target_adapters() -> None:
+def test_active_ranker_has_exact_current_target_adapter() -> None:
     active = load_active_strategy_catalog(ROOT / "configs/strategies/registry.json")
     capabilities = load_active_strategy_runtime_capabilities(
         repository_root=ROOT,
         active=active,
     )
     assert capabilities["us_x"].current_target.adapter_id == "us_x1_3_current_target_v1"
-    assert capabilities["cn_x"].current_target.adapter_id == "cn_x1_2_current_target_v1"
+    assert "cn_x" not in capabilities
+    with pytest.raises(ranker_command.RankerCurrentTargetCommandError, match="found 0"):
+        ranker_command._strategy("cn")
 
 
 def test_cn_x1_2_current_target_keeps_frozen_training_boundary() -> None:
