@@ -42,7 +42,7 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(data[0].benchmark_qqq).toBe(0);
     expect(data[1].benchmark_qqq).toBeCloseTo(0.005, 10);
     expect(data[2].benchmark_qqq).toBeCloseTo(0.01, 10);
-    expect(data[2].excess).toBeCloseTo(0.01, 10);
+    expect(data[2].excess).toBeCloseTo(1.02 / 1.01 - 1, 10);
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "QQQ");
     expect(screen.getAllByTestId("benchmark-line").some((line) => line.textContent === "QQQ")).toBe(true);
   });
@@ -58,7 +58,7 @@ describe("PerformanceCharts benchmark infrastructure", () => {
 
     const data = equityChartData();
     expect(data[1].benchmark_csi300).toBeCloseTo(0.01, 10);
-    expect(data[1].excess).toBeCloseTo(0.03, 10);
+    expect(data[1].excess).toBeCloseTo(1.04 / 1.01 - 1, 10);
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "CSI 300");
     expect(screen.getAllByTestId("benchmark-line").some((line) => line.textContent === "CSI 300")).toBe(true);
   });
@@ -73,7 +73,7 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     );
 
     const data = equityChartData();
-    expect(data[1].excess).toBeCloseTo(0.03, 10);
+    expect(data[1].excess).toBeCloseTo(1.04 / 1.01 - 1, 10);
     expect(data[1].primary_benchmark_key).toBe("benchmark_csi300");
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "CSI 300");
   });
@@ -95,7 +95,7 @@ describe("PerformanceCharts benchmark infrastructure", () => {
 
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "BYD v1.1");
     expect(screen.getAllByTestId("benchmark-line").some(line => line.textContent === "BYD v1.1")).toBe(true);
-    expect(equityChartData()[1].excess).toBeCloseTo(0.04, 10);
+    expect(equityChartData()[1].excess).toBeCloseTo(1.05 / 1.01 - 1, 10);
   });
 
   it("can overlay several comparisons without changing Excess until the primary changes", () => {
@@ -107,13 +107,13 @@ describe("PerformanceCharts benchmark infrastructure", () => {
       ]} />,
     );
 
-    expect(equityChartData()[1].excess).toBeCloseTo(0.06, 10);
+    expect(equityChartData()[1].excess).toBeCloseTo(1.08 / 1.02 - 1, 10);
     fireEvent.click(screen.getByLabelText("Benchmark comparisons"));
     fireEvent.click(screen.getByLabelText("Compare CSI 300"));
 
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-comparison-count", "2");
     expect(screen.getAllByTestId("benchmark-line").map(line => line.textContent)).toEqual(expect.arrayContaining(["QQQ", "CSI 300"]));
-    expect(equityChartData()[1].excess).toBeCloseTo(0.06, 10);
+    expect(equityChartData()[1].excess).toBeCloseTo(1.08 / 1.02 - 1, 10);
   });
 
   it("plots 10-session returns on their realized holding-end date", () => {
@@ -142,7 +142,7 @@ describe("PerformanceCharts benchmark infrastructure", () => {
 
     const data = equityChartData();
     expect(data[2].benchmark_qqq).toBeCloseTo(0.01, 10);
-    expect(data[2].excess).toBeCloseTo(0.01, 10);
+    expect(data[2].excess).toBeCloseTo(1.02 / 1.01 - 1, 10);
     expect(screen.getAllByTestId("benchmark-line").some((line) => line.textContent === "Benchmark")).toBe(false);
   });
 
@@ -194,6 +194,8 @@ describe("PerformanceCharts benchmark infrastructure", () => {
 
     const data = equityChartData();
     expect(data.map(row => row.date)).toEqual(["2026-01-01", "2026-08-01"]);
+    expect(data[0].strategy).toBeCloseTo(0);
+    expect(data[1].strategy).toBeCloseTo(0.25);
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-range", "1y");
     expect(screen.getByTestId("visible-strategy-return")).toHaveTextContent("25.00%");
   });
@@ -227,6 +229,63 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     const provenance = screen.getByTestId("drawdown-provenance");
     expect(provenance).toHaveTextContent(/equity\/peak/);
     expect(provenance).toHaveTextContent(/sealed Bundle v2/i);
+  });
+
+  it("uses one custom interval for curves, summary, drawdown and capital use", () => {
+    render(<PerformanceCharts report={[
+      { date: '2026-01-01', account: 100, bench_qqq: 100, value: 50 },
+      { date: '2026-01-08', account: 120, bench_qqq: 110, value: 60 },
+      { date: '2026-01-15', account: 90, bench_qqq: 99, value: 45 },
+      { date: '2026-01-22', account: 108, bench_qqq: 121, value: 54 },
+    ]} />);
+    fireEvent.change(screen.getByLabelText('Performance start date'), { target: { value: '2026-01-07' } });
+    fireEvent.change(screen.getByLabelText('Performance end date'), { target: { value: '2026-01-20' } });
+    expect(screen.getByTestId('equity-curve-container')).toHaveAttribute('data-range', 'custom');
+    expect(screen.getByTestId('visible-period-dates')).toHaveTextContent('2026-01-08 – 2026-01-15');
+    const curves = equityChartData();
+    expect(curves.map(row => row.date)).toEqual(['2026-01-08', '2026-01-15']);
+    expect(curves[0].strategy).toBeCloseTo(0);
+    expect(curves[1].strategy).toBeCloseTo(-0.25);
+    expect(curves[1].benchmark_qqq).toBeCloseTo(-0.1);
+    expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('-25.00%');
+    expect(screen.getByTestId('max-drawdown-stat')).toHaveTextContent('-25.00%');
+    const charts = screen.getAllByTestId('chart-data').map(node => JSON.parse(node.getAttribute('data-chart') ?? '[]'));
+    expect(charts.every(rows => rows.length === 2)).toBe(true);
+    expect(charts[1][1].drawdown).toBeCloseTo(-0.25);
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    expect(equityChartData()).toHaveLength(4);
+    expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('8.00%');
+  });
+
+  it("does not substitute a later benchmark boundary when the selected start is missing", () => {
+    render(<PerformanceCharts report={[
+      { date: '2025-01-01', account: 100, bench_qqq: 100 },
+      { date: '2026-01-01', account: 120 },
+      { date: '2026-02-01', account: 132, bench_qqq: 110 },
+      { date: '2026-03-01', account: 144, bench_qqq: 121 },
+    ]} />);
+    fireEvent.change(screen.getByLabelText('Performance start date'), { target: { value: '2026-01-01' } });
+    expect(equityChartData().every(row => row.benchmark_qqq === null)).toBe(true);
+    expect(screen.getByTestId('visible-benchmark-return')).toHaveTextContent('—');
+    expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('20.00%');
+  });
+
+  it("resets custom evidence indices when a refreshed report arrives", () => {
+    const { rerender } = render(<PerformanceCharts report={[
+      { date: '2026-01-01', account: 100 },
+      { date: '2026-01-02', account: 90 },
+    ]} />);
+    fireEvent.change(screen.getByLabelText('Performance start date'), { target: { value: '2026-01-02' } });
+    expect(equityChartData()).toHaveLength(1);
+    expect(screen.getByTestId('max-drawdown-stat')).toHaveTextContent('0.00%');
+    rerender(<PerformanceCharts report={[
+      { date: '2026-02-01', account: 100 },
+      { date: '2026-02-02', account: 120 },
+      { date: '2026-02-03', account: 130 },
+    ]} />);
+    expect(equityChartData()).toHaveLength(3);
+    expect(screen.getByTestId('visible-period-dates')).toHaveTextContent('2026-02-01 – 2026-02-03');
+    expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('30.00%');
   });
 
   it("handles empty report gracefully", () => {
@@ -269,6 +328,11 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(equityChartData()[0].strategy).toBeCloseTo(-0.05);
     expect(Object.keys(equityChartData()[0]).some(key => key.endsWith('_before'))).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: '1M' }));
+    expect(equityChartData()[0].strategy).toBeCloseTo(0);
+    expect(equityChartData()[0].benchmark_csi300).toBeCloseTo(0);
+    expect(equityChartData()[equityChartData().length - 1].strategy).toBeCloseTo(0.1);
+    expect(equityChartData()[equityChartData().length - 1].benchmark_csi300).toBeCloseTo(1.2 / 1.1 - 1);
+    expect(equityChartData()[equityChartData().length - 1].excess).toBeCloseTo(1.1 / (1.2 / 1.1) - 1);
     expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('10.00%');
     fireEvent.click(screen.getByRole('button', { name: '3M' }));
     expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('19.17%');

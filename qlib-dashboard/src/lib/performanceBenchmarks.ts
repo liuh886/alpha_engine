@@ -80,30 +80,29 @@ export function effectivePerformanceDate(row: ReportRow): string {
 }
 
 export function normalizeBenchmarkSeries(values: Array<number | undefined>): NormalizedSeries | null {
-  const numeric = values.map(value => Number.isFinite(Number(value)) ? Number(value) : null);
+  const numeric = values.map(value => value != null && Number.isFinite(Number(value)) ? Number(value) : null);
   const firstIndex = numeric.findIndex(value => value !== null);
   if (firstIndex < 0) return null;
   const first = numeric[firstIndex] as number;
 
   if (Math.abs(first) > 0.5) {
-    let previous = first;
-    return numeric.map((value, index) => {
-      if (index < firstIndex) return null;
-      if (value !== null) previous = value;
-      return previous / first - 1;
-    });
+    return numeric.map(value => value === null ? null : value / first - 1);
   }
 
   let cumulative = 1;
+  let complete = true;
   return numeric.map((value, index) => {
     if (index < firstIndex) return null;
-    cumulative *= 1 + (value ?? 0);
+    // A missing daily return breaks the cumulative chain; zero is not evidence.
+    if (value === null) complete = false;
+    if (!complete || value === null) return null;
+    cumulative *= 1 + value;
     return cumulative - 1;
   });
 }
 
 function benchmarkLooksCorrupt(report: ReportRow[], values: Array<number | undefined>): boolean {
-  const normalized = values.map(value => Number.isFinite(Number(value)) ? Number(value) : null);
+  const normalized = values.map(value => value != null && Number.isFinite(Number(value)) ? Number(value) : null);
   const first = normalized.find((value): value is number => value !== null);
   if (first === undefined || Math.abs(first) <= 0.5) return false;
 
@@ -153,7 +152,7 @@ export function discoverBenchmarkOptions(
     const descriptor = descriptorForField(field, declaredBenchmarkId);
     const values = report.map(row => {
       const value = row[field];
-      return Number.isFinite(Number(value)) ? Number(value) : undefined;
+      return value != null && value !== '' && Number.isFinite(Number(value)) ? Number(value) : undefined;
     });
     if (benchmarkLooksCorrupt(report, values)) return [];
     const rawBefore = report[0][`${field}_before`];
