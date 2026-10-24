@@ -10,6 +10,7 @@ from src.research.ashare_rdi.coverage import FamilyCoverage, audit_coverage, cov
 from src.research.ashare_rdi.outcomes import PriceBar
 from src.research.ashare_rdi.phase2 import build_pit_panel, evaluate_blocked_oos, read_price_csv
 from src.research.ashare_rdi.phase2_audit import source_readiness
+from src.research.ashare_rdi.price_baseline import descriptive_drawdown_comparison
 from src.research.ashare_rdi.sector_etfs import SectorETFCandidate, audit_sector_etf
 
 
@@ -143,3 +144,29 @@ def test_sector_etf_eligibility_needs_more_than_ticker_and_inception() -> None:
     assert report["status"] == "blocked"
     assert "liquidity_not_verified" in report["blockers"]
     assert "insufficient_verified_history" in report["blockers"]
+
+
+def test_severe_outcomes_are_separately_defined_from_down_direction() -> None:
+    bars = _bars()
+    panel, _ = build_pit_panel(
+        bars, [], [_cov(p.session) for p in bars], required_families=["holding_change"],
+        horizon=7, validated_sessions=[p.session for p in bars],
+    )
+    assert panel
+    assert all(row["severe_loss_5pct"] in (0, 1) for row in panel)
+    assert all(row["path_loss_5pct"] in (0, 1) for row in panel)
+    with pytest.raises(ValueError, match="target"):
+        evaluate_blocked_oos(panel, horizon=7, target="invalid")
+
+
+def test_price_only_baseline_is_descriptive_not_rdi() -> None:
+    bars = _bars(100)
+    result = descriptive_drawdown_comparison(bars, horizons=(7,))
+    assert result["event_rdi_evaluated"] is False
+    assert result["predictive_skill_established"] is False
+    assert result["results"][0]["horizon_sessions"] == 7
+    assert (
+        result["results"][0]["other"]["observations"]
+        + result["results"][0]["drawdown_at_least_threshold"]["observations"]
+        == 34
+    )
