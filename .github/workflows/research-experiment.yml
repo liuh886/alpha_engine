@@ -34,6 +34,7 @@ on:
       - 'scripts/run_us_ranker_exact_portfolio_replay.py'
       - 'scripts/run_cn_ranker_exact_portfolio_replay.py'
       - 'tests/test_ashare_rdi_contracts.py'
+      - 'tests/test_ashare_rdi_phase2.py'
       - 'tests/test_cross_sectional_experiment_runner.py'
       - 'tests/test_experiment_harness.py'
       - 'tests/test_formal_baseline_onboarding.py'
@@ -102,6 +103,7 @@ jobs:
             scripts/run_us_ranker_exact_portfolio_replay.py \
             scripts/run_cn_ranker_exact_portfolio_replay.py \
             tests/test_ashare_rdi_contracts.py \
+            tests/test_ashare_rdi_phase2.py \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             tests/test_cn_x1_2_breadth_veto_development.py \
@@ -113,6 +115,7 @@ jobs:
             tests/test_optimization_campaign.py
           uv run pytest \
             tests/test_ashare_rdi_contracts.py \
+            tests/test_ashare_rdi_phase2.py \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             tests/test_cn_x1_2_breadth_veto_development.py \
