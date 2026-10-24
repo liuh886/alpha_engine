@@ -21,6 +21,11 @@ instrument drill-down from formal holdings/trades/attribution, using governed
 price evidence and exact formal model identities. This exception does not
 restore a standalone research explorer, retired models, or public current signals.
 
+User-directed RDI product work (2026-10-24): expose the dated RDI research
+readiness and source-bound descriptive evidence within Operating Status.
+Keep its data blockers separate from active strategy health; no new navigation,
+uncalibrated score, live signal or strategy registration is authorized by this view.
+
 - Core value: refresh required data, evaluate due strategies, explain the
   evidence-bound result and expose freshness/blockers in one current view.
 - The active strategy registry, selected-pool/reference registries, frozen

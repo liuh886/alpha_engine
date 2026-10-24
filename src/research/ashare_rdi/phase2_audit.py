@@ -10,12 +10,12 @@ import hashlib
 import json
 from pathlib import Path
 
-from src.research.ashare_rdi.phase2 import CSI300_INCEPTION, read_price_csv
-
 STUDY_HORIZONS = (7, 14, 28)
 
 
 def source_readiness(price_path: Path) -> dict[str, object]:
+    from src.research.ashare_rdi.phase2 import CSI300_INCEPTION, read_price_csv
+
     bars = read_price_csv(price_path, min_session=CSI300_INCEPTION)
     digest = hashlib.sha256(price_path.read_bytes()).hexdigest()
     return {
@@ -43,8 +43,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="RDI phase2 governed input readiness audit")
     parser.add_argument("--benchmark-csv", default="data/csv_source/000300.csv")
     parser.add_argument("--output", default="", help="optional JSON output path")
+    parser.add_argument("--product-briefing", action="store_true", help="project reviewed evidence only")
     args = parser.parse_args()
-    result = source_readiness(Path(args.benchmark_csv))
+    if args.product_briefing:
+        from .briefing import build_research_briefing
+
+        result = build_research_briefing(Path(__file__).resolve().parents[3])
+    else:
+        result = source_readiness(Path(args.benchmark_csv))
     formatted = json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True)
     if args.output:
         destination = Path(args.output)

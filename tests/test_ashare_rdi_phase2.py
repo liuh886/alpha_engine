@@ -2,10 +2,16 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+import hashlib
+import json
+from pathlib import Path
+import shutil
+import subprocess
 
 import pytest
 
 from src.research.ashare_rdi.contracts import RiskEvent
+from src.research.ashare_rdi.briefing import BASELINE, PRICE, READINESS, SECTORS, SOURCES, build_research_briefing
 from src.research.ashare_rdi.coverage import FamilyCoverage, audit_coverage, coverage_cells_ready
 from src.research.ashare_rdi.outcomes import PriceBar
 from src.research.ashare_rdi.phase2 import build_pit_panel, evaluate_blocked_oos, read_price_csv
@@ -170,3 +176,84 @@ def test_price_only_baseline_is_descriptive_not_rdi() -> None:
         + result["results"][0]["drawdown_at_least_threshold"]["observations"]
         == 34
     )
+
+
+@pytest.fixture
+def briefing_repo(tmp_path: Path) -> Path:
+    root = Path(__file__).resolve().parents[1]
+    for name in (READINESS, BASELINE, SOURCES, SECTORS):
+        dest = tmp_path / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(root / name, dest)
+    price = tmp_path / PRICE
+    price.parent.mkdir(parents=True, exist_ok=True)
+    price.write_bytes(b"date,open,low,close\n2020-01-02,10,9,10\n")
+    raw = price.read_bytes()
+    blob = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+    for name in (READINESS, BASELINE):
+        report = json.loads((tmp_path / name).read_text())
+        report["source_git_blob_sha1"] = blob
+        (tmp_path / name).write_text(json.dumps(report), encoding="utf-8")
+    subprocess.run(["git", "init", "--quiet", str(tmp_path)], check=True)
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run(["git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                    "commit", "--quiet", "--no-gpg-sign", "-m", "fixture"], cwd=tmp_path, check=True)
+    return tmp_path
+
+
+def test_product_briefing_is_dated_and_never_promotes(briefing_repo: Path) -> None:
+    result = build_research_briefing(briefing_repo)
+    assert result["status"] == "not_validated"
+    assert result["reviewed_price_cutoff"] == "2026-06-25"
+    assert [r["horizon_sessions"] for r in result["historical_comparison"]] == [7, 14, 28]
+    assert all(not r["historical_pit_verified"] for r in result["event_families"])
+    assert all(not r["admitted"] for r in result["sector_candidates"])
+    assert result["trade_ready"] is False
+    assert len(result["repository_commit"]) == 40
+    assert all(len(row["sha256"]) == 64 for row in result["evidence"])
+
+
+def test_sparse_checkout_uses_source_tree_without_copying_prices(briefing_repo: Path) -> None:
+    (briefing_repo / PRICE).unlink()
+    result = build_research_briefing(briefing_repo)
+    assert result["status"] == "not_validated"
+    assert not (briefing_repo / PRICE).exists()
+
+
+def test_source_change_suppresses_all_descriptive_statistics(briefing_repo: Path) -> None:
+    with (briefing_repo / PRICE).open("ab") as handle:
+        handle.write(b"2020-01-03,11,10,11\n")
+    result = build_research_briefing(briefing_repo)
+    assert result["status"] == "evidence_mismatch"
+    assert result["historical_comparison"] == []
+
+
+@pytest.mark.parametrize("change", [
+    {"last_price_session": "2026-10-23"},
+    {"predictive_skill_established": True},
+    {"drawdown_threshold": -0.2},
+    {"results": []},
+])
+def test_incompatible_archived_claims_are_hidden(briefing_repo: Path, change: dict) -> None:
+    path = briefing_repo / BASELINE
+    report = json.loads(path.read_text())
+    report.update(change)
+    path.write_text(json.dumps(report), encoding="utf-8")
+    result = build_research_briefing(briefing_repo)
+    assert result["status"] == "evidence_mismatch"
+    assert result["historical_comparison"] == []
+
+
+def test_missing_artifact_is_not_a_successful_empty_briefing(briefing_repo: Path) -> None:
+    (briefing_repo / SOURCES).unlink()
+    with pytest.raises(FileNotFoundError):
+        build_research_briefing(briefing_repo)
+
+
+def test_corrupt_research_boundary_is_rejected(briefing_repo: Path) -> None:
+    path = briefing_repo / READINESS
+    report = json.loads(path.read_text())
+    report["trade_ready"] = True
+    path.write_text(json.dumps(report), encoding="utf-8")
+    with pytest.raises(ValueError, match="boundary"):
+        build_research_briefing(briefing_repo)

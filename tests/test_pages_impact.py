@@ -69,6 +69,22 @@ def test_referenced_model_run_and_report_deploy(tmp_path: Path) -> None:
         assert decision.deploy is True, path
 
 
+def test_rdi_briefing_source_and_projection_changes_deploy(tmp_path: Path) -> None:
+    root = _repository(tmp_path)
+    for path in (
+        "src/research/ashare_rdi/briefing.py",
+        "configs/research_experiments/ashare_rdi_phase2_sources.yaml",
+        "configs/research_experiments/ashare_rdi_phase2_sector_candidates.yaml",
+        "docs/evidence/ashare_rdi_phase2/csi300_input_readiness_2026-10-24.json",
+        "docs/evidence/ashare_rdi_phase2/csi300_price_only_descriptive_2026-10-24.json",
+        "docs/research/ashare_rdi_phase2_protocol.md",
+        "data/csv_source/000300.csv",
+    ):
+        decision = decide_impact([path], repository_root=root)
+        assert decision.deploy is True, path
+        assert path in decision.matched_paths
+
+
 def test_unreferenced_research_and_docs_skip(tmp_path: Path) -> None:
     root = _repository(tmp_path)
     decision = decide_impact(
