@@ -112,6 +112,8 @@ def build_pit_panel(
                 "forward_return": labels["forward_return"],
                 "forward_worst_excursion": labels["worst_intrahorizon_return"],
                 "down": int(float(labels["forward_return"]) < 0),
+                "severe_loss_5pct": int(float(labels["forward_return"]) <= -0.05),
+                "path_loss_5pct": int(float(labels["worst_intrahorizon_return"]) <= -0.05),
             }
         )
     coverage_gate = {
@@ -130,12 +132,15 @@ def evaluate_blocked_oos(
     min_train: int = 100,
     min_test: int = 40,
     train_fraction: float = 0.7,
+    target: str = "down",
 ) -> dict[str, object]:
     """Fixed chronological train/test split; purge any overlapping forward label.
 
     Compare historical-mean probability, past-price drawdown and drawdown+RDI
     event density. This is a *diagnostic ablation*, not a calibrated RDI index.
     """
+    if target not in {"down", "severe_loss_5pct", "path_loss_5pct"}:
+        raise ValueError("target must be down, severe_loss_5pct or path_loss_5pct")
     ordered = sorted(
         (x for x in panel if int(x["horizon_sessions"]) == horizon),
         key=lambda row: str(row["session"]),
@@ -155,8 +160,8 @@ def evaluate_blocked_oos(
     if len(train) < min_train or len(test) < min_test:
         return {"status": "insufficient_after_purge", "horizon": horizon,
                 "train": len(train), "test": len(test)}
-    y_train = np.asarray([int(x["down"]) for x in train], dtype=int)
-    y_test = np.asarray([int(x["down"]) for x in test], dtype=int)
+    y_train = np.asarray([int(x[target]) for x in train], dtype=int)
+    y_test = np.asarray([int(x[target]) for x in test], dtype=int)
     if len(set(y_train)) != 2:
         return {"status": "one_class_train", "horizon": horizon}
     baseline_p = float(y_train.mean())
@@ -190,6 +195,7 @@ def evaluate_blocked_oos(
     return {
         "status": "diagnostic_only" if incremental is not None else "event_signal_nonidentifiable",
         "horizon": horizon,
+        "target": target,
         "train": len(train),
         "test": len(test),
         "train_last_label_end": str(max(str(x["end_session"]) for x in train)),
