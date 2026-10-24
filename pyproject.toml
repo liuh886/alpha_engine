@@ -24,7 +24,7 @@ dependencies = [
     "efinance",
     "python-dotenv",
     "protobuf>=5.29.6,<7",
-    "setuptools>=83,<84",
+    "setuptools>=83,<85",
     "pandera",
     "mcp",
     "structlog>=24.1.0",
