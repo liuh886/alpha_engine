@@ -1,0 +1,47 @@
+# Design-only research hypothesis. Not registered as a live strategy.
+contract_id: ashare_rdi_research_v0_1
+status: design_prototype
+market: cn
+research_only: true
+trade_ready: false
+promotion_allowed: false
+calibration_status: not_calibrated
+data:
+  reference_registry: configs/pools/reference_instrument_registry_v1.yaml
+  benchmark_id: CSI300
+  canonical_benchmark_symbol: 000300.SH
+  benchmark_instrument_type: equity_index
+  sector_instruments: []  # qualify each sector ETF separately; no guessed substitutes
+  session_calendar: XSHG
+  pit_requirement: available_at <= as_of; no subsequent revisions
+  missing_event_coverage: unknown_not_zero
+observations:
+  signal_timing: after_completed_cn_session
+  horizons_trading_sessions: [7, 14, 28]
+  horizon_units_pending_review: true
+  exposures: [event_density, bear_regime, leader_distress, clearing, policy_confirmation, good_news_failure]
+  candidate_components_only: true
+  composite_formula: pending_empirical_calibration
+outcomes:
+  index: close_t_to_close_t_plus_h
+  etf: open_t_plus_1_to_close_t_plus_h
+  etf_distribution_and_split_adjustment_required: true
+  etf_transaction_costs_and_spread: required_for_trade_simulation
+validation:
+  chronological_walk_forward: true
+  overlapping_horizon_purge_sessions: 28
+  embargo_after_test_window_sessions: 28
+  purged_boundary_must_cover_label_end: true
+  compare_baselines: [buy_and_hold, realized_volatility, drawdown, market_breadth, regime_only]
+  metrics: [rank_ic, brier_score, calibration_curve, auc, downside_hit_rate, forward_max_drawdown, conditional_forward_return]
+  clustered_inference: market_episode_and_calendar_block
+  historical_event_coverage_audit: required
+  sector_etf_inception_and_liquidity_audit: required
+artifacts:
+  namespace: artifacts/evidence/ashare_rdi_research/
+  frozen_spec_and_source_hashes: required
+  negative_and_failed_results_retained: true
+operations:
+  new_scheduled_workflow: false
+  console_navigation_change: false
+  live_strategy_registration: false
