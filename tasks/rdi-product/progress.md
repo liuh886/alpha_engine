@@ -52,3 +52,38 @@
   match values within 0.2 percentage points, no horizontal overflow, and zero
   page/console errors across desktop plus 360px light/dark. Three RDI browser
   checks rerun after the final fix passed. Full checks were not redundantly repeated.
+
+## Follow-up acceptance review
+
+- User requested another examination of the delivered work. New review focuses
+  on refresh continuity, keyboard recovery and fail-closed browser behavior.
+- Built-UI reproduction selected 28 sessions and Needs integration, opened
+  provenance, then refreshed unchanged evidence. The comparison remounted at 14
+  and source disclosure closed. An initial inspection locator timed out because
+  roles inside the closed disclosure are excluded; corrected the QA observer to
+  inspect hidden DOM state rather than waiting for the reset control to appear.
+- Corrected reproduction completed: 28 -> 14, filter true -> false, source
+  disclosure open -> closed; old meters correctly absent during the read.
+- Keyboard retry reproduction confirmed BODY focus both during pending and after
+  success. Delegated these two fixes to the existing frontend agent; parent owns
+  independent evidence/error-path and rendered acceptance.
+- Independent fault injection passed in desktop 1280px and dark mobile 360px:
+  evidence mismatch, invalid research boundary and HTML/invalid JSON receipt all
+  remove prior meters/table/exact values during reading and after rejection;
+  retry recovers. Six browser cases completed with no uncaught page errors.
+- Fresh read-only projection audit still reports June 25 price cutoff, 5,152
+  post-inception rows, 7/14/28 horizons, ten uncertified families and four
+  unapproved sector candidates. No research or provider job was run.
+- Both defects fixed by the frontend agent. UI selection/disclosure flags live
+  above the disposable data branch; native summary activation updates controlled
+  open state synchronously to avoid queued-toggle races. The header read button
+  remains mounted, uses aria-disabled plus a pending guard and does not move focus.
+- Final full validation: 216 unit tests, TypeScript, full ESLint, build and
+  318.25 KB gzip JS budget passed. Twelve focused desktop/tablet/mobile browser
+  checks passed, including the six-read error/retry/refresh/mismatch/recovery chain.
+- Independent reproductions now pass: 28 remains selected, source filter/open
+  disclosures remain, and focus is BUTTON during/after keyboard retry. Duplicate
+  pending activation adds no read. Source summary Enter/Space toggles still work.
+- Reran all six fault cases on the final build successfully. Desktop and 360px
+  light/dark geometry/screenshot checks passed with no overflow, page errors or
+  console errors. Immutable CSV/report links resolve to the reviewed Git objects.

@@ -16,3 +16,10 @@ PIT-certified event collection, then change explanations and a dated event calen
 2. [x] Frontend agent: replace the initial status card with the scoped evidence workspace.
 3. [x] PM: review implementation, data meaning, accessibility and rendered desktop/mobile states.
 4. [x] Verify and synchronize the completed change to the existing PR #1275.
+
+## Follow-up acceptance review
+
+1. [x] Reproduce refresh-context and keyboard-retry behavior in the built UI.
+2. [x] Fix confirmed defects without retaining superseded statistics.
+3. [x] Validate recovery, source mismatch, narrow layouts and existing contract checks.
+4. [x] Record findings and synchronize reviewed fixes to PR #1275.

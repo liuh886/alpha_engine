@@ -6,6 +6,11 @@ import { RdiEvidenceSources } from './RdiEvidenceSources';
 
 export function RdiResearchStatus({ attempt }: { attempt: number }) {
   const [retryAttempt, setRetryAttempt] = useState(0);
+  const [horizon, setHorizon] = useState(14);
+  const [needsIntegration, setNeedsIntegration] = useState(false);
+  const [exactValuesOpen, setExactValuesOpen] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [provenanceOpen, setProvenanceOpen] = useState(false);
   const [result, setResult] = useState<{
     attempt: number; retryAttempt: number; briefing: RdiResearchBriefing | null;
   } | null>(null);
@@ -26,20 +31,23 @@ export function RdiResearchStatus({ attempt }: { attempt: number }) {
   }, [attempt, retryAttempt]);
   const current = result?.attempt === attempt && result.retryAttempt === retryAttempt ? result : null;
   const briefing = current?.briefing;
-  const retry = () => setRetryAttempt(value => value + 1);
+  const retry = () => { if (current) setRetryAttempt(value => value + 1); };
+  const readLabel = !current ? 'Reading RDI…' : !briefing || briefing.status === 'evidence_mismatch' ? 'Retry RDI' : 'Refresh RDI';
 
   return <section className="min-w-0 overflow-hidden rounded-xl border bg-card" aria-labelledby="rdi-title" aria-busy={!current}>
     <header className="border-b p-4 sm:px-6 sm:py-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">A-share risk research</p><h2 id="rdi-title" tabIndex={-1} className="mt-1 scroll-mt-4 text-xl font-semibold tracking-tight">Risk density · RDI</h2></div>
-        <span className="rounded-full border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">Not validated</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">Not validated</span>
+          <Button variant="outline" aria-disabled={!current} onClick={retry} className="aria-disabled:cursor-wait aria-disabled:opacity-60">{readLabel}</Button>
+        </div>
       </div>
       <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Understand what known events could explain about risk over 7, 14 and 28 trading sessions.</p>
     </header>
     {!current ? <div role="status" className="min-h-48 p-6 text-sm text-muted-foreground">Reading reviewed evidence…</div>
       : !briefing ? <div className="space-y-4 p-4 sm:p-6">
         <div role="alert"><h3 className="font-semibold">Reviewed evidence unavailable</h3><p className="mt-2 text-sm text-muted-foreground">RDI reviewed evidence could not be verified. No earlier statistics are shown. Other strategy observations remain independent.</p></div>
-        <Button variant="outline" onClick={retry}>Retry RDI</Button>
       </div> : <>
         <div className="grid gap-6 p-4 sm:p-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)]">
           <div className="min-w-0 space-y-5">
@@ -62,10 +70,13 @@ export function RdiResearchStatus({ attempt }: { attempt: number }) {
           {briefing.status === 'evidence_mismatch' ? <div className="min-w-0 rounded-lg border bg-muted/20 p-5">
             <h3 className="font-semibold">Historical comparison withheld</h3>
             <p role="alert" className="mt-2 text-sm text-muted-foreground">Source evidence has changed or is inconsistent. Historical statistics are hidden until the review is renewed.</p>
-            <Button variant="outline" className="mt-4" onClick={retry}>Retry RDI</Button>
-          </div> : <RdiHistoricalComparison rows={briefing.historical_comparison} priceCutoff={briefing.reviewed_price_cutoff} />}
+          </div> : <RdiHistoricalComparison rows={briefing.historical_comparison} priceCutoff={briefing.reviewed_price_cutoff}
+            horizon={horizon} onHorizonChange={setHorizon} exactValuesOpen={exactValuesOpen} onExactValuesOpenChange={setExactValuesOpen} />}
         </div>
-        <div className="border-t px-4 sm:px-6"><RdiEvidenceSources briefing={briefing} /></div>
+        <div className="border-t px-4 sm:px-6"><RdiEvidenceSources briefing={briefing}
+          needsIntegration={needsIntegration} onNeedsIntegrationChange={setNeedsIntegration}
+          sourcesOpen={sourcesOpen} onSourcesOpenChange={setSourcesOpen}
+          provenanceOpen={provenanceOpen} onProvenanceOpenChange={setProvenanceOpen} /></div>
       </>}
   </section>;
 }

@@ -300,3 +300,24 @@ frequencies, sample counts, aligned values, keyboard selection, source filtering
 immutable links and no extra RDI reads. Screenshot review caught a window-scroll
 regression and wrapped-label misalignment; both were corrected and browser/DOM
 geometry checks rerun successfully. Historical-data/predictive gates remain open.
+
+### Follow-up review: refresh continuity and keyboard recovery
+
+A subsequent user-requested acceptance pass reproduced two interaction defects:
+refresh remounted the 28-session inspection at the default 14 and closed/cleared
+source disclosures/filter; keyboard retry unmounted its focused action and left
+focus on BODY. Retain only horizon/filter/disclosure UI state in the parent across
+reads. The underlying superseded statistics must still be absent while loading,
+unavailable or source-inconsistent. Recovery uses newly verified data with the
+previous inspection state. Keep a stable local read action through loading and
+recovery, guard repeated pending activations and never restore focus over a user
+who has moved elsewhere. This adds no persistence store or backend action.
+
+Verified fixes: 216 frontend unit tests, TypeScript/ESLint/build/budget and twelve
+desktop/tablet/mobile browser checks passed. Independent reproduction retained
+28 sessions, filter and open disclosures; retry focus remained on the same
+button and repeated pending activation made no extra request. Six desktop/mobile
+fault cases (mismatch, invalid research boundary, invalid JSON) continued to hide
+old statistics and recovered correctly. Narrow light/dark geometry and screenshot
+checks passed. No unresolved frontend blocker was found in this acceptance pass;
+the historical-data and predictive-validation gates above remain open.

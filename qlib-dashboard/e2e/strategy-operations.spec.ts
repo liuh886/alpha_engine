@@ -79,6 +79,108 @@ test('RDI workspace compares horizons, filters sources and retries independently
   expect(errors).toEqual([]);
 });
 
+test('RDI workspace retains context and keyboard focus through refresh recovery', async ({ page }) => {
+  const reviewedRdi = JSON.parse(readFileSync(new URL('../dist/data/strategy-operations/rdi-research.json', import.meta.url), 'utf8'));
+  let reads = 0, snapshotReads = 0, healthReads = 0;
+  let releasePendingRead: (() => void) | null = null;
+  const releaseRead = async () => {
+    await expect.poll(() => Boolean(releasePendingRead)).toBe(true);
+    const release = releasePendingRead!;
+    releasePendingRead = null;
+    release();
+  };
+  page.on('request', request => {
+    if (request.url().includes('/data/strategy-operations/snapshots.json')) snapshotReads++;
+    if (request.url().includes('/data/strategy-operations/system-health.json')) healthReads++;
+  });
+  await page.route('**/data/strategy-operations/rdi-research.json', async route => {
+    const read = ++reads;
+    if ([2, 3, 6].includes(read)) await new Promise<void>(resolve => { releasePendingRead = resolve; });
+    if (read === 1 || read === 5) await route.fulfill({ status: 503, body: 'unavailable' });
+    else if (read === 4) await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      ...reviewedRdi, status: 'evidence_mismatch', historical_comparison: [],
+    }) });
+    else await route.continue();
+  });
+  await mockOperations(page);
+  await installProMembership(page);
+  await page.goto('/#/system');
+  const section = page.getByRole('region', { name: 'Risk density · RDI' });
+  const localRead = section.locator('header').getByRole('button');
+  const globalRefresh = page.getByRole('button', { name: 'Refresh status', exact: true });
+  await expect(section.getByRole('alert')).toContainText('could not be verified');
+  await expect(globalRefresh).toBeEnabled();
+  await expect.poll(() => fixtureCalls(page)).toBe(1);
+  const otherReads = { snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) };
+  const originalButton = await localRead.elementHandle();
+  await localRead.focus();
+  await page.keyboard.press('Enter');
+  await expect(localRead).toHaveText('Reading RDI…');
+  await expect(localRead).toHaveAttribute('aria-disabled', 'true');
+  await expect(localRead).toBeFocused();
+  await page.keyboard.press('Enter');
+  await releaseRead();
+  await expect(localRead).toHaveText('Refresh RDI');
+  await expect(localRead).toBeFocused();
+  expect(await originalButton!.evaluate(element => element.isConnected && element === document.activeElement)).toBe(true);
+  expect(reads).toBe(2);
+  expect({ snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) }).toEqual(otherReads);
+
+  await section.getByRole('button', { name: '28 trading sessions', exact: true }).click();
+  const exactSummary = section.getByText('View exact historical values', { exact: true });
+  await exactSummary.focus();
+  await page.keyboard.press('Enter');
+  await expect(section.getByRole('table')).toBeVisible();
+  await section.locator('summary').filter({ hasText: 'Data coverage and sources' }).click();
+  await section.getByRole('button', { name: 'Needs integration', exact: true }).click();
+  await section.getByText('Evidence provenance', { exact: true }).click();
+  await expect(section.getByText('Showing 4 of 10 source families', { exact: true })).toBeVisible();
+  const expectContext = async () => {
+    await expect(section.getByRole('button', { name: '28 trading sessions', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(section.getByRole('group', { name: '28-session details' })).toBeVisible();
+    await expect(section.getByRole('button', { name: 'Needs integration', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(section.getByText('Showing 4 of 10 source families', { exact: true })).toBeVisible();
+    await expect(section.locator('details')).toHaveCount(3);
+    for (const details of await section.locator('details').all()) await expect(details).toHaveJSProperty('open', true);
+    await expect(section.getByRole('table')).toBeVisible();
+    await expect(section.getByRole('link', { name: 'Research protocol and limitations' })).toBeVisible();
+  };
+  await expectContext();
+  await globalRefresh.click();
+  await expect(localRead).toHaveText('Reading RDI…');
+  await expect(section.getByRole('meter')).toHaveCount(0);
+  await expect(section.getByRole('table')).toHaveCount(0);
+  await releaseRead();
+  await expect(localRead).toHaveText('Refresh RDI');
+  await expect(globalRefresh).toBeEnabled();
+  await expectContext();
+  const afterParentRefresh = { snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) };
+
+  await localRead.click();
+  await expect(section.getByRole('alert')).toContainText('Source evidence has changed');
+  await expect(localRead).toHaveText('Retry RDI');
+  await expect(section.getByRole('meter')).toHaveCount(0);
+  await expect(section.getByRole('table')).toHaveCount(0);
+  await expect(section.getByText('23.21%', { exact: true })).toHaveCount(0);
+  await expect(localRead).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(section.getByRole('alert')).toContainText('could not be verified');
+  await expect(section.getByRole('meter')).toHaveCount(0);
+  await expect(localRead).toHaveText('Retry RDI');
+  await expect(localRead).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(localRead).toHaveText('Reading RDI…');
+  const title = section.getByRole('heading', { name: 'Risk density · RDI', exact: true });
+  await title.focus();
+  await releaseRead();
+  await expect(localRead).toHaveText('Refresh RDI');
+  await expect(title).toBeFocused();
+  expect(await originalButton!.evaluate(element => element.isConnected)).toBe(true);
+  await expectContext();
+  expect(reads).toBe(6);
+  expect({ snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) }).toEqual(afterParentRefresh);
+});
+
 // Bind current-state fixtures to the exact formal catalog shipped by this build.
 // Signal dates below intentionally differ from formal historical cutoffs.
 const formal = JSON.parse(readFileSync(new URL('../dist/data/formal-model-runs/catalog.json', import.meta.url), 'utf8'))

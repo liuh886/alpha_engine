@@ -131,6 +131,100 @@ describe('RDI research workspace', () => {
     expect(fetchRdiResearch).toHaveBeenCalledTimes(2);
   });
 
+  it('preserves horizon, source filter and all disclosures across a parent refresh', async () => {
+    let resolve!: (value: ReturnType<typeof parseRdiResearch>) => void;
+    vi.mocked(fetchRdiResearch).mockResolvedValueOnce(parseRdiResearch(sample))
+      .mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    const view = render(<RdiResearchStatus attempt={0} />);
+    await screen.findByText('Risk assessment unavailable');
+    fireEvent.click(screen.getByRole('button', { name: '28 trading sessions' }));
+    fireEvent.click(screen.getByText('View exact historical values'));
+    fireEvent.click(screen.getByText('Data coverage and sources'));
+    fireEvent.click(screen.getByRole('button', { name: 'Needs integration' }));
+    fireEvent.click(screen.getByText('Evidence provenance'));
+    const previousDisclosures = Array.from(view.container.querySelectorAll('details'));
+    expect(view.container.querySelectorAll('details[open]')).toHaveLength(3);
+    view.rerender(<RdiResearchStatus attempt={1} />);
+    expect(screen.queryByRole('meter')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reading RDI…' })).toHaveAttribute('aria-disabled', 'true');
+    await act(async () => resolve(parseRdiResearch(sample)));
+    expect(screen.getByRole('button', { name: '28 trading sessions' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('group', { name: '28-session details' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Needs integration' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Showing 1 of 3 source families')).toBeVisible();
+    expect(view.container.querySelectorAll('details[open]')).toHaveLength(3);
+    expect(screen.getByRole('table')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Research protocol and limitations' })).toBeVisible();
+    // Native events queued by the previous elements or remount must not rewrite browsing intent.
+    previousDisclosures.forEach(element => fireEvent(element, new Event('toggle')));
+    view.container.querySelectorAll('details').forEach(element => fireEvent(element, new Event('toggle')));
+    expect(view.container.querySelectorAll('details[open]')).toHaveLength(3);
+    expect(fetchRdiResearch).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['unavailable', 'mismatch'] as const)('retains browsing context through %s and recovery without old statistics', async failure => {
+    vi.mocked(fetchRdiResearch).mockResolvedValueOnce(parseRdiResearch(sample));
+    if (failure === 'unavailable') vi.mocked(fetchRdiResearch).mockRejectedValueOnce(new Error('offline'));
+    else vi.mocked(fetchRdiResearch).mockResolvedValueOnce(parseRdiResearch({ ...sample, status: 'evidence_mismatch', historical_comparison: [] }));
+    vi.mocked(fetchRdiResearch).mockResolvedValueOnce(parseRdiResearch(sample));
+    const view = render(<RdiResearchStatus attempt={0} />);
+    await screen.findByText('Risk assessment unavailable');
+    fireEvent.click(screen.getByRole('button', { name: '28 trading sessions' }));
+    fireEvent.click(screen.getByText('View exact historical values'));
+    fireEvent.click(screen.getByText('Data coverage and sources'));
+    fireEvent.click(screen.getByRole('button', { name: 'Needs integration' }));
+    fireEvent.click(screen.getByText('Evidence provenance'));
+    view.rerender(<RdiResearchStatus attempt={1} />);
+    await screen.findByRole('alert');
+    expect(screen.queryByRole('meter')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByText('23.00%')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry RDI' }));
+    await screen.findByRole('group', { name: '28-session details' });
+    expect(screen.getByRole('button', { name: 'Needs integration' })).toHaveAttribute('aria-pressed', 'true');
+    expect(view.container.querySelectorAll('details[open]')).toHaveLength(3);
+    expect(screen.getByRole('table')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Research protocol and limitations' })).toBeVisible();
+  });
+
+  it('keeps the same local read button and focus while blocking repeated pending activation', async () => {
+    let resolve!: (value: ReturnType<typeof parseRdiResearch>) => void;
+    vi.mocked(fetchRdiResearch).mockRejectedValueOnce(new Error('offline'))
+      .mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    render(<RdiResearchStatus attempt={0} />);
+    await screen.findByRole('alert');
+    const button = screen.getByRole('button', { name: 'Retry RDI' });
+    button.focus();
+    fireEvent.click(button);
+    expect(screen.getByRole('button', { name: 'Reading RDI…' })).toBe(button);
+    expect(button).toHaveFocus();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(fetchRdiResearch).toHaveBeenCalledTimes(2);
+    await act(async () => resolve(parseRdiResearch(sample)));
+    expect(screen.getByRole('button', { name: 'Refresh RDI' })).toBe(button);
+    expect(button).toHaveFocus();
+    expect(button).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  it('does not take focus back after the user leaves the read button while pending', async () => {
+    let resolve!: (value: ReturnType<typeof parseRdiResearch>) => void;
+    vi.mocked(fetchRdiResearch).mockRejectedValueOnce(new Error('offline'))
+      .mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    render(<RdiResearchStatus attempt={0} />);
+    await screen.findByRole('alert');
+    const button = screen.getByRole('button', { name: 'Retry RDI' });
+    button.focus();
+    fireEvent.click(button);
+    const heading = screen.getByRole('heading', { name: 'Risk density · RDI' });
+    heading.focus();
+    await act(async () => resolve(parseRdiResearch(sample)));
+    expect(heading).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Refresh RDI' })).toBe(button);
+  });
+
   it('aborts superseded reads and cannot overwrite a new success with an old response', async () => {
     let resolveOld!: (value: ReturnType<typeof parseRdiResearch>) => void;
     const newer = parseRdiResearch({ ...sample, historical_comparison: sample.historical_comparison.map(row => ({ ...row, drawdown_loss_frequency: 0.5 })) });

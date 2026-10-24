@@ -1,12 +1,13 @@
-import { useState } from 'react';
 import type { RdiResearchBriefing } from '@/lib/rdi-research';
 
 type Comparison = RdiResearchBriefing['historical_comparison'][number];
 const percent = (value: number, digits = 1) => (value * 100).toFixed(digits) + '%';
 const count = (value: number) => value.toLocaleString('en-US');
 
-export function RdiHistoricalComparison({ rows, priceCutoff }: { rows: Comparison[]; priceCutoff: string }) {
-  const [horizon, setHorizon] = useState(14);
+export function RdiHistoricalComparison({ rows, priceCutoff, horizon, onHorizonChange, exactValuesOpen, onExactValuesOpenChange }: {
+  rows: Comparison[]; priceCutoff: string; horizon: number; onHorizonChange: (value: number) => void;
+  exactValuesOpen: boolean; onExactValuesOpenChange: (value: boolean) => void;
+}) {
   const selected = rows.find(row => row.horizon_sessions === horizon)!;
   const difference = (selected.drawdown_loss_frequency - selected.other_loss_frequency) * 100;
   return <div className="min-w-0 rounded-lg border bg-muted/15 p-4 sm:p-5">
@@ -17,7 +18,7 @@ export function RdiHistoricalComparison({ rows, priceCutoff }: { rows: Compariso
       <span className="text-xs text-muted-foreground">Inspect a trading-session horizon</span>
       <div role="group" aria-label="Historical comparison horizon" className="inline-flex rounded-lg border bg-card p-1">
         {rows.map(row => <button key={row.horizon_sessions} type="button" aria-pressed={horizon === row.horizon_sessions}
-          onClick={() => setHorizon(row.horizon_sessions)} className={'min-h-10 min-w-11 rounded-md px-3 text-sm font-medium ' + (horizon === row.horizon_sessions ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}>
+          onClick={() => onHorizonChange(row.horizon_sessions)} className={'min-h-10 min-w-11 rounded-md px-3 text-sm font-medium ' + (horizon === row.horizon_sessions ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}>
           {row.horizon_sessions}<span className="sr-only"> trading sessions</span>
         </button>)}
       </div>
@@ -48,8 +49,9 @@ export function RdiHistoricalComparison({ rows, priceCutoff }: { rows: Compariso
       <p className="mt-3 border-t pt-2 text-xs text-muted-foreground">Frequency difference <span className="font-semibold tabular-nums text-foreground">{difference > 0 ? '+' : ''}{difference.toFixed(2)} pp</span> <span className="whitespace-nowrap">(percentage points)</span></p>
     </div>
     <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Prices end {priceCutoff}. Overlapping observations are not independent samples. This is not a current loss probability, calibrated RDI forecast or tradable return.</p>
-    <details className="mt-3 border-t pt-2">
-      <summary className="min-h-10 cursor-pointer py-2 text-xs font-medium">View exact historical values</summary>
+    <details open={exactValuesOpen} className="mt-3 border-t pt-2">
+      {/* Own activation synchronously: queued native toggle events must not overwrite a restored view. */}
+      <summary onClick={event => { event.preventDefault(); onExactValuesOpenChange(!exactValuesOpen); }} className="min-h-10 cursor-pointer py-2 text-xs font-medium">View exact historical values</summary>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <caption className="sr-only">Descriptive price-only severe-loss frequencies and overlapping sample counts</caption>

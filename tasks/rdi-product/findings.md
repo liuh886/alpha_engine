@@ -24,3 +24,14 @@ All three comparisons are price-only historical associations with overlapping
 observations, not three live forecasts. Same 0–100% chart baseline/domain.
 Four inventory families need adapter integration; none of the ten families has
 certified historical coverage in this review. Source filter cannot change this.
+
+## Follow-up review findings
+
+- Important / resolved: refreshing unchanged evidence reset a selected
+  28-session horizon to 14, clears Needs integration and closes evidence
+  disclosures. Preserve view state in the parent while hiding superseded data.
+- Important / resolved: keyboard Retry RDI unmounted its focused button;
+  activeElement was BODY during and after success. Keep the local read action
+  mounted, guarded while pending, and never steal focus back from another control.
+- No new model or prediction claim is warranted by this review; current data
+  cutoff and unvalidated research semantics remain the same.
