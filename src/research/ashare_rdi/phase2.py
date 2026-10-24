@@ -73,6 +73,13 @@ def build_pit_panel(
     if any(e.available_at.tzinfo is None for e in events):
         raise ValueError("PIT timestamps must be timezone aware")
     audit = audit_coverage(coverage, dates, required_families)
+    if audit["status"] != "ready":
+        return [], {
+            "history": audit,
+            "eligible_label_rows": 0,
+            "candidate_status": "blocked_incomplete_event_history",
+            "feature_coverage_is_a_separate_gate": True,
+        }
     cov = {(r.session, r.family): r for r in coverage}
     panel: list[dict[str, object]] = []
     for i in range(60, len(bars) - horizon):
