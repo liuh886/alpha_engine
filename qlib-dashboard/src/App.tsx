@@ -46,7 +46,7 @@ function Layout(props: ReturnType<typeof useAppBootstrap>) {
           </Button>
         </div>
       </header>
-      <ResearchContextBar run={activeRun} fleet={location.pathname === '/app' ? props.runs : undefined} />
+      {!location.pathname.startsWith('/securities/') && <ResearchContextBar run={activeRun} fleet={location.pathname === '/app' ? props.runs : undefined} />}
       <main ref={mainRef} className="research-main">
         {props.loading ? <div className="space-y-6"><Skeleton className="h-28 rounded-xl" /><Skeleton className="h-96 rounded-xl" /></div>
           : props.loadError ? <div className="research-empty-state">

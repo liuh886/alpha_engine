@@ -1,0 +1,35 @@
+import { expect, test } from '@playwright/test';
+
+test('formal instrument link opens price history with model markers and a retained ledger', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+  await page.getByRole('tab', { name: 'Trades', exact: true }).click();
+  const link = page.getByRole('link', { name: 'View QQQ price and model events', exact: true }).first();
+  await expect(link).toBeVisible();
+  await link.click();
+  await expect(page).toHaveURL(/#\/securities\/us\/QQQ/);
+  await expect(page).toHaveTitle('Instrument Evidence — Alpha Engine');
+  await expect(page.getByRole('heading', { name: 'QQQ · QQQ' })).toBeVisible();
+  const chart = page.getByTestId('security-history-chart');
+  await expect(chart).toBeVisible();
+  await expect(page.getByTestId('security-candle').first()).toBeAttached();
+  await expect(page.getByTestId('security-trade-marker').first()).toBeAttached();
+  const toggle = page.getByRole('checkbox', { name: /QQQR v4.3/ });
+  await toggle.uncheck();
+  await expect(chart).toHaveAttribute('data-marker-count', '0');
+  await toggle.check();
+  await page.getByTestId('security-trade-marker').first().focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('security-selected-event')).toContainText('QQQR v4.3');
+  await page.getByRole('button', { name: '1M', exact: true }).click();
+  await expect(page).toHaveURL(/[?&]range=1m/);
+  await expect(page.getByRole('button', { name: '1M', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.getByTestId('security-candle').count()).toBeLessThan(40);
+  await expect(page.getByTestId('security-visible-dates')).toContainText('observed sessions');
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  await page.getByRole('checkbox', { name: 'Show complete ledger' }).check();
+  await expect(page.getByText('Full retained ledger, including events outside price coverage.', { exact: false })).toBeVisible();
+  expect(errors).toEqual([]);
+});
