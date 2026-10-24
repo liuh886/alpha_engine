@@ -217,3 +217,86 @@ Verified for this increment: 29 RDI Python tests, 14 Pages dependency tests,
 browser checks across desktop, tablet and mobile passed. Governance retained
 39 workflows with zero violations. No real-data event backtest or calibrated
 forecast was added; the remaining data/evaluation gates above remain open.
+
+## Frontend product specification · 2026-10-24
+
+Owner explicitly requested a product-manager design and frontend-agent implementation.
+This increment replaces the initial RDI status card inside Operating Status; it
+does not add a research navigation destination. The product question is: **can I
+interpret A-share event risk at this cutoff, what can the available evidence
+actually establish, and which missing evidence prevents a stronger conclusion?**
+
+### Reading order and layout
+
+1. **Assessment first.** Header identifies RDI / A-share risk research and its
+   unvalidated research state. A compact assessment explains unavailable current
+   inference; missing observations never become a low-risk score. Keep reviewed
+   price cutoff and review date distinct, readable and close to the assessment.
+2. **Available historical evidence.** Show the 7/14/28-session price-only control
+   as a directly labelled paired horizontal-bar comparison, visible by default.
+   The title and surrounding copy must say historical, descriptive, not an RDI
+   forecast. Compare frequency of close-to-close loss >=5% when preceding
+   60-session drawdown >=10%, against other price states. No net-P&L implication.
+3. **Inspect a horizon.** Default selection is 14 trading sessions. Three compact
+   keyboard/touch controls select 7, 14 or 28; keep all three horizon comparisons
+   visible with a common zero-based 0–100% scale. Selection highlights one group
+   and updates the exact two frequencies, sample counts and percentage-point
+   difference below it. No thresholds, source dates or data change on selection.
+   Essential numbers are directly labelled, never hover-only. A native text/table
+   alternative exposes the same underlying values and overlapping sample counts.
+4. **What blocks a stronger assessment.** Concise next-evidence text prioritizes
+   a narrow certified event history, study-period prices/calendar and independent
+   validation. The source inventory can be expanded and filtered by all / needs
+   integration; this filter is about adapter readiness, not historical certification.
+   Show a count and a meaningful empty state. All source rows keep their actual
+   certification state. Sector candidates remain explicitly unapproved.
+5. **Trace evidence on demand.** Source links, protocol and hashes sit in a
+   separate technical disclosure, keeping the default view readable. Preserve
+   immutable commit links and exact source identity, without large raw datasets.
+
+Large screens may place assessment/coverage facts and the historical comparator
+side by side inside the existing Status section. Mobile stacks assessment,
+cutoffs, comparator, selected-horizon detail, then optional source/provenance
+disclosures. No horizontal document scroll at 360px; controls have >=40px hit
+targets; labels wrap; light/dark modes retain readable contrast.
+Exact frequencies and sample counts share aligned rows on narrow screens even
+when one group label wraps onto two lines.
+
+The Status header offers a **RDI research** in-page jump that scrolls and focuses
+the section heading without changing the route, fetching evidence or adding a
+navigation destination. This keeps the research surface discoverable below the
+independent daily-operations content, including for keyboard users.
+
+### State and engineering contract
+
+- One tiny React-owned DOM/SVG chart (six bars); no new dependency or generic
+  chart framework. Neutral context, blue comparison accents and separate focus
+  treatment; amber is reserved for evidence availability. Color is redundant
+  with explicit group labels. No animation needed; respect reduced motion.
+- Reuse `RdiResearchBriefing` and its validated asset. Do not modify the research
+  schema, registry, score, event history, evaluator or backend in this increment.
+- Horizon/source filter are ephemeral local UI state, not persisted or URL-backed
+  (there is no shareable current-risk claim). Refresh rereads evidence only.
+- Initial load is explicit. Missing/timeout state has a local **Retry RDI** action
+  which rereads only RDI; the existing Status refresh also works. Abort superseded
+  requests and ignore late responses. Never redisplay old statistics as new.
+- Evidence mismatch hides the entire chart and exact historical statistics,
+  retaining clearly dated review metadata and its mismatch explanation.
+- No fabricated risk meter, event timeline, sector heatmap, probabilities, trade
+  recommendations, disabled pretend controls or notification CTA.
+
+Acceptance: inspect all three horizons with keyboard/touch and matching values;
+filter source inventory without implying complete coverage; open immutable
+evidence links; recover locally from a failed read without strategy refresh;
+preserve chart suppression on mismatch and ignore timed-out late responses.
+Verify desktop, tablet and mobile plus narrow-width/dark-mode rendering, unit
+state tests, TypeScript/lint, production build/budget and focused browser checks.
+
+Implemented by the delegated Frontend Developer agent and reviewed by the PM.
+Acceptance passed: 211 frontend tests; TypeScript and ESLint; production build
+and budget; nine focused desktop/tablet/mobile browser checks. PM independent
+1440px desktop and 360px light/dark checks verified actual bar geometry,
+frequencies, sample counts, aligned values, keyboard selection, source filtering,
+immutable links and no extra RDI reads. Screenshot review caught a window-scroll
+regression and wrapped-label misalignment; both were corrected and browser/DOM
+geometry checks rerun successfully. Historical-data/predictive gates remain open.

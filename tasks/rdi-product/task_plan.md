@@ -8,3 +8,11 @@
 Scope: make readiness and historical evidence understandable before adding predictions.
 No new navigation, scheduler, model, score or data source. Next useful increment is
 PIT-certified event collection, then change explanations and a dated event calendar.
+
+## Frontend design and delegation increment
+
+1. [x] PM: freeze reading order, chart semantics, interactions and state acceptance
+   in the existing RDI architecture document.
+2. [x] Frontend agent: replace the initial status card with the scoped evidence workspace.
+3. [x] PM: review implementation, data meaning, accessibility and rendered desktop/mobile states.
+4. [x] Verify and synchronize the completed change to the existing PR #1275.

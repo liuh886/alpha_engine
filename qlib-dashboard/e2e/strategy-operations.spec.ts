@@ -5,8 +5,12 @@ import { expect, test, type Page } from '@playwright/test';
 
 test.use({ serviceWorkers: 'block' });
 
-test('RDI review shows dated evidence, expandable history and read-only recovery', async ({ page }, testInfo) => {
-  let reads = 0;
+test('RDI workspace compares horizons, filters sources and retries independently', async ({ page }, testInfo) => {
+  let reads = 0, snapshotReads = 0, healthReads = 0;
+  page.on('request', request => {
+    if (request.url().includes('/data/strategy-operations/snapshots.json')) snapshotReads++;
+    if (request.url().includes('/data/strategy-operations/system-health.json')) healthReads++;
+  });
   await page.route('**/data/strategy-operations/rdi-research.json', async route => {
     reads++;
     if (reads === 1) await route.fulfill({ status: 503, body: 'unavailable' });
@@ -14,20 +18,63 @@ test('RDI review shows dated evidence, expandable history and read-only recovery
   });
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
+  await mockOperations(page);
+  await installProMembership(page);
   await page.goto('/#/system');
-  const section = page.getByRole('region', { name: 'A-share risk density · RDI' });
+  const section = page.getByRole('region', { name: 'Risk density · RDI' });
   await expect(section.getByRole('alert')).toContainText('could not be verified');
-  await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
+  const refresh = page.getByRole('button', { name: 'Refresh status', exact: true });
+  await expect(refresh).toBeEnabled();
+  await expect.poll(() => fixtureCalls(page)).toBe(1);
+  const beforeRetry = { snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) };
+  const windowYBeforeJump = await page.evaluate(() => window.scrollY);
+  await page.getByRole('button', { name: 'RDI research', exact: true }).click();
+  await expect(page).toHaveURL(/#\/system$/);
+  await expect(section.getByRole('heading', { name: 'Risk density · RDI', exact: true })).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(windowYBeforeJump);
+  const topbar = page.locator('.research-topbar');
+  await expect(topbar).toBeInViewport();
+  expect(await topbar.evaluate(element => element.getBoundingClientRect().top)).toBeGreaterThanOrEqual(0);
+  await section.getByRole('button', { name: 'Retry RDI', exact: true }).click();
   await expect(section.getByRole('heading', { name: 'Risk assessment unavailable' })).toBeVisible();
   await expect(section.getByText('2026-06-25', { exact: true })).toBeVisible();
+  expect({ snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) }).toEqual(beforeRetry);
   await section.getByRole('heading', { name: 'Risk assessment unavailable' }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: join(tmpdir(), `alpha-engine-rdi-${testInfo.project.name}.png`) });
-  await section.getByText('Historical price comparison · not an RDI forecast').click();
-  await expect(section.getByRole('rowheader', { name: '28 sessions' })).toBeVisible();
+  const selected = section.getByRole('group', { name: '14-session details' });
+  await expect(selected.getByText('17.25%', { exact: true })).toBeVisible();
+  await expect(selected.getByText('11.99%', { exact: true })).toBeVisible();
+  await expect(selected.getByText('+5.26 pp', { exact: true })).toBeVisible();
+  await expect(selected.getByText('n=1,258', { exact: true })).toBeVisible();
+  await expect(selected.getByText('n=3,821', { exact: true })).toBeVisible();
+  await expect(section.getByRole('meter')).toHaveCount(6);
+  for (const bar of await section.getByRole('meter').all()) {
+    await expect(bar).toHaveAttribute('aria-valuemin', '0');
+    await expect(bar).toHaveAttribute('aria-valuemax', '100');
+  }
+  await section.getByRole('button', { name: '14 trading sessions', exact: true }).focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Enter');
+  await expect(section.getByRole('group', { name: '28-session details' })).toBeVisible();
+  await section.getByRole('button', { name: '7 trading sessions', exact: true }).click();
+  await expect(section.getByRole('group', { name: '7-session details' }).getByText('13.91%', { exact: true })).toBeVisible();
+  await section.getByText('View exact historical values', { exact: true }).click();
+  await expect(section.getByRole('table').getByRole('rowheader', { name: '28 sessions' })).toBeVisible();
   await expect(section.getByText(/not a current loss probability/)).toBeVisible();
-  await section.getByText('Data coverage and sources', { exact: true }).click();
+  await section.locator('summary').filter({ hasText: 'Data coverage and sources' }).click();
+  await section.getByRole('button', { name: 'Needs integration', exact: true }).click();
+  await expect(section.getByText('Showing 4 of 10 source families', { exact: true })).toBeVisible();
+  await expect(section.getByText('Historical coverage unverified', { exact: true })).toHaveCount(4);
+  await section.getByRole('button', { name: 'All sources', exact: true }).click();
+  await expect(section.getByText('Showing 10 of 10 source families', { exact: true })).toBeVisible();
+  await section.getByText('Evidence provenance', { exact: true }).click();
   await expect(section.getByRole('link', { name: 'Research protocol and limitations' })).toHaveAttribute('href', /\/blob\/[a-f0-9]{40}\//);
   await expect(section.getByText('None admitted', { exact: true })).toBeVisible();
+  expect(reads).toBe(2);
+  expect({ snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) }).toEqual(beforeRetry);
+  await refresh.click();
+  await expect.poll(() => reads).toBe(3);
+  await expect(section.getByRole('heading', { name: 'Historical price comparison', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });

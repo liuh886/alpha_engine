@@ -22,3 +22,33 @@
 - Desktop and mobile screenshots inspected: readable card and table, no horizontal
   overflow or framework overlay. No uncaught browser errors. Expected first-read
   503 is injected solely to exercise recovery.
+
+## Frontend design and delegation
+
+- User explicitly requested PM design plus frontend-agent implementation.
+- PM froze the inline workspace design in the existing architecture charter;
+  delegated scoped components and related tests to `/root/rdi_frontend` using
+  the agency Frontend Developer role. Backend/schema/workflow scope is unchanged.
+- PM independently checked archived comparison values and two-decimal detail
+  precision; one-decimal rounding would make the 14-session difference look
+  inconsistent (17.2 - 12.0 vs raw +5.3pp).
+- Frontend agent delivered three scoped components, 18 focused unit tests and
+  adapted RDI browser acceptance. Full frontend build: 211 tests passed,
+  TypeScript/full ESLint passed, JS 317.88 KB gzip against 480 KB ceiling.
+- Nine desktop/tablet/mobile browser checks passed: entry focus, independent RDI
+  retry, unchanged strategy reads, keyboard horizons, source filter, immutable
+  links and parent refresh. PM independent 1440px/360px light/dark pass checked
+  actual bar geometry against percentages, all horizon values, no overflow,
+  one RDI read for all local interactions, no page/console errors.
+- Screenshot review found desktop in-page jump also scrolled window by 100px,
+  hiding the topbar despite correct focus. Reopened frontend agent task to
+  constrain scrolling to the existing desktop/mobile content container and
+  add an explicit header/window-position acceptance assertion.
+- Frontend agent fixed container-owned jump scrolling; root reverified
+  windowY=0/topbar.top=0 on desktop and mobile, plus all three device browser cases.
+- Narrow-screen screenshot review also found wrapped group labels offset the two
+  frequencies by 16px. Agent aligned label heights on narrow screens. Final DOM
+  checks confirm frequency and sample-count baselines differ by <1px, bar lengths
+  match values within 0.2 percentage points, no horizontal overflow, and zero
+  page/console errors across desktop plus 360px light/dark. Three RDI browser
+  checks rerun after the final fix passed. Full checks were not redundantly repeated.

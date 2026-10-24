@@ -15,6 +15,21 @@ export function SystemHubPage() {
   const operations = workspace.operations;
   const [health, setHealth] = useState<LiveSystemHealth | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const openRdi = () => {
+    const heading = document.getElementById('rdi-title');
+    if (!heading) return;
+    heading.focus({ preventScroll: true });
+    const main = heading.closest<HTMLElement>('.research-main');
+    const shell = heading.closest<HTMLElement>('.research-app-shell');
+    const scroller = main && /^(auto|scroll)$/.test(getComputedStyle(main).overflowY) ? main : shell;
+    if (!scroller) return;
+    // Scroll only the shell's owning container. scrollIntoView also moves the
+    // window, which can hide the desktop topbar and expose space below the app.
+    const topbar = scroller.querySelector<HTMLElement>('.research-topbar');
+    const stickyOffset = topbar && getComputedStyle(topbar).position === 'sticky'
+      ? topbar.getBoundingClientRect().height : 0;
+    scroller.scrollTop += heading.getBoundingClientRect().top - scroller.getBoundingClientRect().top - stickyOffset - 16;
+  };
   useEffect(() => {
     let active = true;
     setHealth(null);
@@ -24,7 +39,10 @@ export function SystemHubPage() {
   return <div className="mx-auto max-w-[1200px] space-y-6 pb-16">
     <header className="flex flex-wrap items-start justify-between gap-4 border-b pb-6">
       <div><h1 className="text-3xl font-black tracking-tight">Operating Status</h1><p className="mt-3 text-sm text-muted-foreground">Current decisions and dated source publication. Reading this page does not run research jobs.</p></div>
-      <Button variant="outline" disabled={operations.loading} onClick={() => { operations.reload(); setAttempt(value => value + 1); }}>Refresh status</Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={openRdi}>RDI research</Button>
+        <Button variant="outline" disabled={operations.loading} onClick={() => { operations.reload(); setAttempt(value => value + 1); }}>Refresh status</Button>
+      </div>
     </header>
     <OperationsReadStatus {...operations} />
     <section className="overflow-hidden rounded-xl border bg-card" aria-label="Current strategy observations">
