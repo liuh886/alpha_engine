@@ -31,7 +31,6 @@ describe('published formal catalog', () => {
     expect(result.runs.map((run) => run.modelVersionId).sort()).toEqual([
       BYD_V13,
       'cn_27_v1_3',
-      'cn_x1_2',
       'qqqi_qqq_tqqq_v4_3',
       'us_x1_3',
     ]);
@@ -43,18 +42,6 @@ describe('published formal catalog', () => {
       expect(evidence.portfolio.positions.length).toBeGreaterThan(0);
       evidenceByModel.set(run.modelVersionId, evidence);
     }
-
-    const cn = evidenceByModel.get('cn_x1_2');
-    expect(cn).toBeDefined();
-    // CN x1.2 is a maintained append-only formal refresh: newly realized
-    // 10-session periods are appended to the frozen 2026-06-30 baseline, so the
-    // exact row counts advance over time. Keep lower-bound assertions against the
-    // frozen baseline rather than pinning a count that every refresh would break.
-    expect(cn?.performance.report.length).toBeGreaterThanOrEqual(57);
-    expect(cn?.portfolio.positions.length).toBeGreaterThanOrEqual(170);
-    expect(cn?.trades.length).toBeGreaterThan(0);
-    expect(cn?.attribution.length).toBeGreaterThan(0);
-    expect(cn?.robustness.windowSummary.length).toBeGreaterThanOrEqual(5);
 
     const cn27 = evidenceByModel.get('cn_27_v1_3');
     expect(cn27).toBeDefined();

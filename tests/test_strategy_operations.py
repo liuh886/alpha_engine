@@ -50,7 +50,7 @@ def test_retained_target_requires_current_own_evidence(failure, monkeypatch) -> 
     from src.artifacts.strategy_operations import _retained_observation_verified
 
     root = Path.cwd()
-    strategy = load_active_strategy_catalog().by_model_version_id[CN_MODEL]
+    strategy = load_active_strategy_catalog().by_model_version_id[US_MODEL]
     record = {"as_of": "2026-09-17", "latest_completed_session": "2026-09-17",
         "status": "current_no_change", "signal_data_freshness": "current",
         "data_freshness": "stale", "factor_freshness": "stale", "factor_evidence": [{"observed_at": "2026-09-17"}],
@@ -72,14 +72,14 @@ def test_retained_target_requires_current_own_evidence(failure, monkeypatch) -> 
 
 
 def test_ranker_cadence_and_daily_observation_are_distinct() -> None:
-    strategy = load_active_strategy_catalog().by_model_version_id[CN_MODEL]
+    strategy = load_active_strategy_catalog().by_model_version_id[US_MODEL]
     schedule = _decision_schedule(strategy, {
         "as_of": "2026-09-17", "status": "current_no_change",
         "staleness": {"expected_cutoff": "2026-09-30"},
     }, root=Path(".").resolve())
     assert schedule["cadence_sessions"] == 10
     assert schedule["state"] == "within_cadence"
-    assert schedule["sessions_until_due"] == 2
+    assert schedule["sessions_until_due"] == 1
     assert _staleness("2026-09-17", market="cn", generated_at="2026-10-03T05:00:00Z")["stale"] is True
 
 
@@ -245,7 +245,6 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
     assert {str(row["strategy_id"]) for row in observed.values()} == {
         "qqq_rotation",
         "us_x",
-        "cn_x",
         "cn_27",
         "byd",
     }
@@ -258,8 +257,7 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
         if model_id != "cn_27_v1_3"
     )
     assert observed[US_MODEL]["decision_cadence"] == "Every 10 provider sessions"
-    assert observed[CN_MODEL]["decision_cadence"] == "Every 10 provider sessions"
-    assert observed[CN_MODEL]["model_version_id"] == "cn_x1_2"
+    assert CN_MODEL not in observed
     assert "cn_x1_1" not in observed
 
 
@@ -274,17 +272,6 @@ def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
             target={"A": 0.5, "B": 0.5},
         ),
     )
-    _seal_and_deliver(
-        tmp_path / CN_MODEL,
-        CN_MODEL,
-        _ranker_signal(
-            family="cn_ranker",
-            group="cn_balanced_ohlcv",
-            current={"000300": 1.0},
-            target={"000001": 0.25, "000002": 0.25, "000003": 0.25, "000004": 0.25},
-            risk_on=True,
-        ),
-    )
     payload = build_operations_payload(
         formal_catalog=FORMAL_CATALOG,
         ledger_root=tmp_path,
@@ -292,14 +279,11 @@ def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
     )
     records = _by_model(payload)
     us = records[US_MODEL]
-    cn = records[CN_MODEL]
     assert us["status"] == "target_pending_execution"
     assert us["state_label"] == "US Top-15 rebalance"
     assert us["factor_freshness"] == "current"
     assert us["delivery_status"] == "sent"
-    assert cn["status"] == "target_pending_execution"
-    assert cn["state_label"] == "CN risk-on · sector 4×1"
-    assert cn["factor_freshness"] == "current"
+    assert CN_MODEL not in records
 
 
 @pytest.mark.parametrize("changed", [True, False])
@@ -470,16 +454,3 @@ def test_cn27_retained_target_keeps_locked_execution_retry_visible() -> None:
     snapshot = _cn27({"model_version_id": "cn_27_v1_3"}, active.by_strategy_id["cn_27"], {"signal": signal})
     assert snapshot["status"] == "target_pending_execution"
     assert snapshot["last_rebalance_date"] == "2026-08-25"
-
-
-def test_current_cn_eligibility_field_controls_risk_state(tmp_path: Path) -> None:
-    for missing, expected in [(False, "CN risk-off · CSI300 fallback"), (True, "CN risk state unavailable")]:
-        signal = _ranker_signal(family="cn_ranker", group="cn_balanced_ohlcv", current={"000300": 1.0}, target={"000300": 1.0})
-        signal["diagnostics"] = {"risk_on": True} if missing else {"risk_on_eligible": False, "risk_on": True, "votes": 0}
-        ledger = tmp_path / str(missing)
-        _seal_and_deliver(ledger / CN_MODEL, CN_MODEL, signal)
-        payload = build_operations_payload(formal_catalog=FORMAL_CATALOG, ledger_root=ledger, generated_at="2026-08-08T00:00:01Z")
-        snapshot = _by_model(payload)[CN_MODEL]
-        assert snapshot["state_label"] == expected
-        if missing:
-            assert snapshot["status"] == "awaiting_observation"

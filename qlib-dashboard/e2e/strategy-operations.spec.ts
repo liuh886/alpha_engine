@@ -10,6 +10,7 @@ const formal = JSON.parse(readFileSync(new URL('../dist/data/formal-model-runs/c
 const formalIdentity = { formal_bundle_id: formal.bundle_id, formal_run_id: formal.run_id,
   formal_evidence_cutoff: formal.evidence_cutoff };
 const publishedFleet = JSON.parse(readFileSync(new URL('../dist/data/strategy-operations/snapshots.json', import.meta.url), 'utf8'));
+const fleetCount = publishedFleet.records.length;
 
 const runtimeOperation = {
   strategy_id: 'qqq_rotation',
@@ -226,7 +227,7 @@ async function installProMembership(page: Page, options: {
   }, options });
 }
 
-test('five authorized observations share one read across overview and status', async ({ page }, testInfo) => {
+test('the authorized fleet shares one read across overview and status', async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
@@ -234,16 +235,16 @@ test('five authorized observations share one read across overview and status', a
   await installProMembership(page, { fullFleet: true });
   await page.goto('/#/app');
   const brief = page.getByRole('region', { name: 'Daily research brief' });
-  await expect(brief.getByRole('article')).toHaveCount(5);
-  await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(5);
+  await expect(brief.getByRole('article')).toHaveCount(fleetCount);
+  await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(fleetCount);
   expect(await fixtureCalls(page)).toBe(1);
   await openConsoleView(page, 'system');
   const current = page.getByRole('region', { name: 'Current strategy observations' });
-  await expect(current.getByText('Changed at last evaluation', { exact: true })).toHaveCount(5);
+  await expect(current.getByText('Changed at last evaluation', { exact: true })).toHaveCount(fleetCount);
   expect(await fixtureCalls(page)).toBe(1);
   await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
   await expect.poll(() => fixtureCalls(page)).toBe(2);
-  await expect(current.getByText('Changed at last evaluation', { exact: true })).toHaveCount(5);
+  await expect(current.getByText('Changed at last evaluation', { exact: true })).toHaveCount(fleetCount);
   await openConsoleView(page, 'app');
   expect(await fixtureCalls(page)).toBe(2);
   await assertNoHorizontalOverflow(page);
@@ -251,14 +252,14 @@ test('five authorized observations share one read across overview and status', a
   await page.screenshot({ path: testInfo.outputPath('batch-overview.png') });
 });
 
-test('one invalid runtime row leaves the other four observations readable', async ({ page }, testInfo) => {
+test('one invalid runtime row leaves independent observations readable', async ({ page }, testInfo) => {
   await mockOperations(page, true);
-  await installProMembership(page, { fullFleet: true, badStrategy: 'cn_x' });
+  await installProMembership(page, { fullFleet: true, badStrategy: 'us_x' });
   await page.goto('/#/system');
   const current = page.getByRole('region', { name: 'Current strategy observations' });
-  await expect(current.getByText('Changed at last evaluation', { exact: true })).toHaveCount(4);
-  await expect(current.getByRole('article').filter({ hasText: 'CN x1.2' }).getByText('Read unavailable', { exact: true })).toBeVisible();
-  await expect(current.getByText('Batch fixture: cn_x verified', { exact: true })).toHaveCount(0);
+  await expect(current.getByText('Changed at last evaluation', { exact: true })).toHaveCount(fleetCount - 1);
+  await expect(current.getByRole('article').filter({ hasText: 'US x1.3' }).getByText('Read unavailable', { exact: true })).toBeVisible();
+  await expect(current.getByText('Batch fixture: us_x verified', { exact: true })).toHaveCount(0);
   expect(await fixtureCalls(page)).toBe(1);
   await assertNoHorizontalOverflow(page);
   await page.screenshot({ path: testInfo.outputPath('batch-one-rejected.png') });
@@ -270,10 +271,10 @@ test('a pro account does not request strategies with undeclared access policies'
   await page.goto('/#/app');
   const brief = page.getByRole('region', { name: 'Daily research brief' });
   await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(1);
-  await expect(brief.getByText('Access required', { exact: true })).toHaveCount(4);
+  await expect(brief.getByText('Access required', { exact: true })).toHaveCount(fleetCount - 1);
   expect(await fixtureCalls(page)).toBe(1);
   expect(await page.evaluate(() => (window as any).__operationsFixture.selectedIds())).toEqual(['qqq_rotation']);
-  await expect(brief.getByText('Batch fixture: cn_x verified', { exact: true })).toHaveCount(0);
+  await expect(brief.getByText('Batch fixture: us_x verified', { exact: true })).toHaveCount(0);
 });
 
 test('failed access policies recover through operations retry without repeating healthy policy reads', async ({ page }) => {
@@ -285,7 +286,7 @@ test('failed access policies recover through operations retry without repeating 
   expect(await fixtureCalls(page)).toBe(0);
   await reader.getByRole('button', { name: 'Retry operations', exact: true }).click();
   const brief = page.getByRole('region', { name: 'Daily research brief' });
-  await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(5);
+  await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(fleetCount);
   expect(await fixtureCalls(page)).toBe(1);
   expect(await page.evaluate(() => (window as any).__operationsFixture.policyReads())).toBe(2);
   await reader.getByRole('button', { name: 'Refresh operations', exact: true }).click();

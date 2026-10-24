@@ -376,28 +376,5 @@ def test_task_rejects_runtime_adapter_identity_drift(tmp_path: Path) -> None:
         runner._task(plan, "us_x")
 
 
-def test_required_cn_x1_2_refresh_dispatches_exact_maintained_adapter(
-    tmp_path: Path, monkeypatch
-) -> None:
-    task = next(row for row in _tasks() if row["strategy_id"] == "cn_x")
-    task["formal_refresh_required"] = True
-    observed = {}
-
-    def run_cn_x1_2(**kwargs):
-        observed.update(kwargs)
-        return {"execution_status": "refreshed", "model_id": "cn_x1_2"}
-
-    monkeypatch.setattr(runner, "_run_cn_x1_2", run_cn_x1_2)
-    receipt = runner.execute_strategy(
-        root=tmp_path,
-        task=task,
-        provider_root=tmp_path,
-        formal_v2_root=tmp_path,
-        current_preview_root=tmp_path,
-        result_root=tmp_path,
-        generated_at="2026-08-15T00:00:00Z",
-    )
-
-    assert receipt == {"execution_status": "refreshed", "model_id": "cn_x1_2"}
-    assert observed["task"] is task
-    assert observed["generated_at"] == "2026-08-15T00:00:00Z"
+def test_retired_cn_x1_2_is_not_planned() -> None:
+    assert all(task["strategy_id"] != "cn_x" for task in _tasks())
