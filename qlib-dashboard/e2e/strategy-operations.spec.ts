@@ -1,7 +1,36 @@
 import { readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 test.use({ serviceWorkers: 'block' });
+
+test('RDI review shows dated evidence, expandable history and read-only recovery', async ({ page }, testInfo) => {
+  let reads = 0;
+  await page.route('**/data/strategy-operations/rdi-research.json', async route => {
+    reads++;
+    if (reads === 1) await route.fulfill({ status: 503, body: 'unavailable' });
+    else await route.continue();
+  });
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/system');
+  const section = page.getByRole('region', { name: 'A-share risk density · RDI' });
+  await expect(section.getByRole('alert')).toContainText('could not be verified');
+  await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
+  await expect(section.getByRole('heading', { name: 'Risk assessment unavailable' })).toBeVisible();
+  await expect(section.getByText('2026-06-25', { exact: true })).toBeVisible();
+  await section.getByRole('heading', { name: 'Risk assessment unavailable' }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: join(tmpdir(), `alpha-engine-rdi-${testInfo.project.name}.png`) });
+  await section.getByText('Historical price comparison · not an RDI forecast').click();
+  await expect(section.getByRole('rowheader', { name: '28 sessions' })).toBeVisible();
+  await expect(section.getByText(/not a current loss probability/)).toBeVisible();
+  await section.getByText('Data coverage and sources', { exact: true }).click();
+  await expect(section.getByRole('link', { name: 'Research protocol and limitations' })).toHaveAttribute('href', /\/blob\/[a-f0-9]{40}\//);
+  await expect(section.getByText('None admitted', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
+});
 
 // Bind current-state fixtures to the exact formal catalog shipped by this build.
 // Signal dates below intentionally differ from formal historical cutoffs.

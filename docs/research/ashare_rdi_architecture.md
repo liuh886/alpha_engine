@@ -166,3 +166,54 @@ Next phase: reuse existing company event facts and market reference adapters,
 assemble documented historical coverage, freeze a walk-forward plan, run
 CSI300 first, then eligible sector ETFs. Produce manifest-bound evidence
 including *negative* experiments before considering any production integration.
+
+## Product increment · 2026-10-24
+
+Owner requested product development after synchronizing Phase 2 (#1274).
+Product purpose: help a researcher understand which known risks deserve attention,
+over which horizon, and what evidence supports that interpretation. Success is
+an explainable change in the research decision, not a larger catalogue of scores.
+
+The first increment supersedes the foundation PR's no-consumer restriction only
+for a read-only **Operating Status** research briefing. It shows the dated review,
+source cutoff, uncertified event families, unapproved sector candidates and the
+next blocking evidence. It neither changes strategy health nor creates navigation.
+
+Price-only 7/14/28-session severe-loss frequencies appear in an optional table,
+with exact group definitions, overlapping sample counts and limitations. They
+are historical associations, separate from RDI and current probabilities. Never
+show event counts as zero when archival coverage is absent. The underlying source
+blob and matching reviewed reports must agree before any statistics are exposed.
+Changed source/contradictory report suppresses statistics; missing or invalid
+evidence shows unavailable. Refresh rereads assets and never runs research.
+
+Projection: `briefing.build_research_briefing`, exposed through the existing
+`phase2_audit --product-briefing` entrypoint and existing operations asset sync.
+Read-only generation hashes evidence and reads inventories; it imports no model
+or provider, trains nothing, adds no store or workflow. The projection is disposable.
+
+Next increments in order:
+
+1. Certify a narrow reusable event-family history through existing company-event
+   adapters and record explicit coverage/availability. Verified empty and unknown
+   must remain different. Renew price/calendar evidence through the study period.
+2. Explain changes since a previous exact cutoff: new story, revision, expiry,
+   source outage; each links to underlying source evidence. Distinguish risk,
+   clearing and policy stages; never cancel across unrelated sectors.
+3. Display a forward-known event window on genuine 7/14/28 XSHG sessions,
+   with source drill-down and explicit gaps. Display descriptive counts only
+   where coverage supports them, before considering a composite risk level.
+4. Run frozen purged multi-episode evaluation and show incremental utility over
+   price-only baselines, including failures. Forecast probabilities require
+   calibration; strategy effects require existing promotion and owner approval.
+
+Acceptance: a first-time reader can identify the dated scope, why no current
+assessment exists, the next evidence needed and the difference between a price
+comparison and an event forecast. Source mismatch, missing asset, timeout and
+retry must be readable on desktop and mobile without affecting valid strategies.
+
+Verified for this increment: 29 RDI Python tests, 14 Pages dependency tests,
+208 frontend tests, TypeScript/ESLint/Ruff/build/bundle budget and nine focused
+browser checks across desktop, tablet and mobile passed. Governance retained
+39 workflows with zero violations. No real-data event backtest or calibrated
+forecast was added; the remaining data/evaluation gates above remain open.

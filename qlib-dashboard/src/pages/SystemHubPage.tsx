@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
+import { RdiResearchStatus } from '@/components/RdiResearchStatus';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import { describeStrategyObservation } from '@/lib/strategy-operations';
 import { fetchSystemHealth, type LiveSystemHealth } from '@/lib/system-health';
@@ -47,6 +48,7 @@ export function SystemHubPage() {
       {health && !health.health && <p role="alert" className="mt-3 text-sm">{health.message}</p>}
       {health?.health?.model_data && <details className="mt-4 border-t pt-3"><summary className="cursor-pointer text-sm">Separate research input coverage</summary><p className="mt-2 text-xs text-muted-foreground">{health.health.model_data.summary.ready_component_count}/{health.health.model_data.summary.component_count} components ready · {health.health.model_data.summary.partial_component_count} partial · {health.health.model_data.summary.blocked_training_profile_count} blocked profiles. Component cutoffs and experiment gates remain separate from daily observations.</p></details>}
     </section>
+    <RdiResearchStatus attempt={attempt} />
     <section className="rounded-xl border bg-card p-4 text-sm">
       <h2 className="font-semibold">Recovery</h2><p className="mt-2 text-muted-foreground">Review the affected source or delivery run. Authorized operators use the existing workflows; valid independent observations remain readable.</p>
       <div className="mt-3 flex flex-wrap gap-4"><a className="text-primary underline" href={WORKFLOWS + 'formal-backtest-refresh.yml'} target="_blank" rel="noreferrer">Data refresh</a><a className="text-primary underline" href={WORKFLOWS + 'strategy-signal-delivery-outbox.yml'} target="_blank" rel="noreferrer">Decision delivery</a></div>
