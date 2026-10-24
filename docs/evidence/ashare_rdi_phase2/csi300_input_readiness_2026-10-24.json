@@ -1,0 +1,22 @@
+{
+  "reviewed_at": "2026-10-24",
+  "benchmark": "CSI300",
+  "canonical_symbol": "000300.SH",
+  "instrument_type": "nontraded_index",
+  "file": "data/csv_source/000300.csv",
+  "source_git_blob_sha1": "4f6f2dec557b8a55af748f73c49465d5d4686beb",
+  "raw_rows": 5934,
+  "eligible_rows_from_2005_04_08": 5152,
+  "inception_date": "2005-04-08",
+  "last_price_date": "2026-06-25",
+  "july_october_2026_available": false,
+  "source_session_and_provider_quality_fully_verified": false,
+  "historical_pit_event_coverage_complete": false,
+  "sector_etf_data_admitted": false,
+  "predictive_power_established": false,
+  "rdi_scores_produced": false,
+  "status": "blocked_event_pit_coverage",
+  "research_only": true,
+  "trade_ready": false,
+  "note": "2002-2005 pre-inception history is not used. This is price inventory, not event-factor backtest. 515180.SH is a dividend ETF, not a sector ETF."
+}
