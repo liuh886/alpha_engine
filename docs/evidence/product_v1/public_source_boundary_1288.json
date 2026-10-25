@@ -1,0 +1,113 @@
+{
+  "captured_at_utc": "2026-10-25T07:57:30.811040+00:00",
+  "scope": "anonymous public GitHub source bypass; field names/counts and hashes only",
+  "allocation_values_omitted": true,
+  "resources": [
+    {
+      "repository_path": "data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3/latest.json",
+      "commit_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+      "anonymous_http_status": 200,
+      "response_sha256": "9cf5352f33ce901718f55fafb4a0e774ec0978c35e388908d6862102917d0291",
+      "operating_field_locations": [
+        {
+          "path": "signal.current_weights",
+          "item_count": 4
+        },
+        {
+          "path": "signal.factor_evidence",
+          "item_count": 14
+        },
+        {
+          "path": "signal.target_weights",
+          "item_count": 4
+        }
+      ]
+    },
+    {
+      "repository_path": "data/research/strategy_signal_ledgers/us_x1_3/latest.json",
+      "commit_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+      "anonymous_http_status": 200,
+      "response_sha256": "c95285126d8be364788b8abc243a20257ef72c366a1e53c3bbb0374690a563ff",
+      "operating_field_locations": [
+        {
+          "path": "signal.current_weights",
+          "item_count": 15
+        },
+        {
+          "path": "signal.factor_evidence",
+          "item_count": 14
+        },
+        {
+          "path": "signal.target_weights",
+          "item_count": 15
+        }
+      ]
+    },
+    {
+      "repository_path": "data/research/strategy_signal_ledgers/cn_27_v1_3/latest.json",
+      "commit_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+      "anonymous_http_status": 200,
+      "response_sha256": "b1127cf51333e1d24270f82a0ac405d976118a45bbfa18aa6930d6eb04920e6b",
+      "operating_field_locations": [
+        {
+          "path": "signal.current_weights",
+          "item_count": 13
+        },
+        {
+          "path": "signal.factor_evidence",
+          "item_count": 14
+        },
+        {
+          "path": "signal.target_weights",
+          "item_count": 13
+        }
+      ]
+    },
+    {
+      "repository_path": "data/research/strategy_signal_ledgers/byd_v1_3_recovery_event_low_vol_confirmation_v1/latest.json",
+      "commit_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+      "anonymous_http_status": 200,
+      "response_sha256": "ea46a561ca3d08a049ca2785391225410efe9e25c066fdc142358658d2b646ff",
+      "operating_field_locations": [
+        {
+          "path": "signal.current_weights",
+          "item_count": 3
+        },
+        {
+          "path": "signal.factor_evidence",
+          "item_count": 14
+        },
+        {
+          "path": "signal.target_weights",
+          "item_count": 3
+        }
+      ]
+    },
+    {
+      "repository_path": "data/research/formal_model_runs/cn_27_rotation/cn_27_v1_3/cn_27_v1_3-through-2026_10_23/lineage.json",
+      "commit_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+      "anonymous_http_status": 200,
+      "response_sha256": "d9914ba9d8388bcbec8f253ed50f33c8a1da5f8c4153b0415641da39232a7415",
+      "operating_field_locations": [
+        {
+          "path": "source_evidence.operating_state",
+          "item_count": 12
+        },
+        {
+          "path": "source_evidence.operating_state.current_weights",
+          "item_count": 13
+        },
+        {
+          "path": "source_evidence.operating_state.factor_evidence",
+          "item_count": 14
+        },
+        {
+          "path": "source_evidence.operating_state.target_weights",
+          "item_count": 13
+        }
+      ]
+    }
+  ],
+  "research_only": true,
+  "trade_ready": false
+}
