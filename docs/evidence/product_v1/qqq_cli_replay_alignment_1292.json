@@ -1,0 +1,288 @@
+{
+  "issue": 1292,
+  "baseline_main_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+  "status": "PASS_FOR_DECLARED_REPLAY_CONTRACT",
+  "owner_A5_acceptance": "PENDING",
+  "research_only": true,
+  "trade_ready": false,
+  "implementation_sha256": "ed97a2df24c872b77e10a758321f5ec0a7ee296cb19f854f39febdb9645c3272",
+  "entrypoint": "alpha --root <governed repository> research replay qqq_v4_3",
+  "actual_result": {
+    "decision": "exact_replay",
+    "promotion_authorized": false,
+    "requested_replay": "qqq_v4_3",
+    "research_only": true,
+    "results": [
+      {
+        "baseline": {
+          "bundle_id": "c7c4312fe69a95abc55e5c7ce5d2fac427dab7a48f27bfb34cbba0367824a813",
+          "evidence_cutoff": "2026-10-23",
+          "manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_10_23/manifest.json",
+          "manifest_sha256": "77544180d8be17f73147908d77c037ce351bd5b0e18fe3180d925a428c5930be",
+          "model_family_id": "qqq_rotation",
+          "model_kind": "rules_based_allocation",
+          "model_version_id": "qqqi_qqq_tqqq_v4_3",
+          "run_id": "qqqi_qqq_tqqq_v4_3-through-2026_10_23"
+        },
+        "data_identity": {
+          "bundle_id": "qqqi_qqq_tqqq_sgov_vix_vxn_strategy_data_v1",
+          "common_history_end": "2026-10-23",
+          "common_history_start": "2024-01-30",
+          "component_id": "strategy.qqqi_qqq_tqqq_sgov_vix_vxn_v1",
+          "frozen_economic_identity": {
+            "accepted_manifest_path": "data\\research\\formal_model_runs\\qqq_rotation\\qqqi_qqq_tqqq_v4_3\\qqqi_qqq_tqqq_v4_3-through-2026_10_23\\manifest.json",
+            "accepted_manifest_sha256": "77544180d8be17f73147908d77c037ce351bd5b0e18fe3180d925a428c5930be",
+            "historical_economics_recomputed_from_current_provider": false,
+            "mode": "accepted_formal_bundle_v2_prefix_retained_exact"
+          },
+          "historical_challenger_policy": "prospective_window_or_immutable_original_source_snapshot_required",
+          "manifest_path": "D:\\Documents\\GitHub\\alpha_engine\\artifacts\\data\\qqqi_qqq_tqqq_reference_research_v2\\strategy_data\\strategy_data_manifest.json",
+          "manifest_sha256": "a274eff117a039ac33327cc98e260434fa54b9ad67fe55a8898706799eb5be89",
+          "mode": "governed_strategy_data_bundle",
+          "professional_source_ready": false,
+          "recipe_id": "qqq-rotation-sgov",
+          "research_only": true,
+          "roles": {
+            "QQQ": "tradable",
+            "QQQI": "tradable",
+            "SGOV": "tradable",
+            "TQQQ": "tradable",
+            "^VIX": "signal_reference",
+            "^VXN": "signal_reference"
+          },
+          "selected_providers": {
+            "QQQ": "yfinance",
+            "QQQI": "yfinance",
+            "SGOV": "yfinance",
+            "TQQQ": "yfinance",
+            "^VIX": "yfinance",
+            "^VXN": "yfinance"
+          },
+          "source_evidence": {
+            "bundle_manifest_sha256": "a836f6ba7e6c3bead4facbc8941ebf2b2077b9bd13f859164c0fa6e058da9fcf",
+            "coverage_sha256": "1dbc6d7268a78df8198d9ea5590ff124bcf45f01b35fefb5cd456823fa89ce2b",
+            "professional_source_ready": false,
+            "reconciliation_sha256": "b91c7040d8a5543b1fbfd64817412ac1d8afceaa48ef56338ce410d96afef935"
+          },
+          "strategy_data_ready": true,
+          "strategy_manifest_sha256": "3d82689fdb8bf2c25e6553660ae0be4274867458b31e3744ed7fd448e59ad107",
+          "symbols": [
+            "QQQ",
+            "QQQI",
+            "TQQQ",
+            "SGOV",
+            "^VIX",
+            "^VXN"
+          ],
+          "trade_ready": false
+        },
+        "decision": "exact_replay",
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "promotion_authorized": false,
+        "replay_id": "qqq_v4_3",
+        "research_only": true,
+        "runner": "formal_model_replay_v2",
+        "schema_version": "2.0",
+        "status": "completed",
+        "trace_reproduction": {
+          "appended_economics": {
+            "boundary": "2026-10-22",
+            "exact": true,
+            "rows": 0,
+            "status": "not_applicable_no_appended_rows"
+          },
+          "cumulative_continuity": {
+            "boundary": "2026-10-22",
+            "exact": true,
+            "rows": 0,
+            "status": "not_applicable_no_appended_rows"
+          },
+          "current_source_decision_path": {
+            "authority": {
+              "current_source_authority": "decision_path_and_newly_appended_economics",
+              "historical_economic_authority": "accepted_formal_prefix",
+              "non_authoritative_current_observation_fields": [
+                "report.account",
+                "report.bench_qqq",
+                "report.bench_tqqq",
+                "report.bench",
+                "report.period_return",
+                "report.gross_return",
+                "report.drawdown",
+                "positions.price",
+                "trades.vix_close",
+                "trades.vxn_close"
+              ],
+              "position_fields": [
+                "date",
+                "instrument",
+                "weight",
+                "position_state",
+                "position_label",
+                "executed_reason",
+                "panic_repair_active",
+                "slow_bear_defense_active"
+              ],
+              "report_fields": [
+                "date",
+                "turnover",
+                "transaction_cost",
+                "position_state",
+                "position_label",
+                "decision_state",
+                "decision_reason",
+                "executed_reason",
+                "trace_frequency",
+                "panic_repair_active",
+                "slow_bear_defense_active",
+                "weight_QQQI",
+                "weight_QQQ",
+                "weight_TQQQ",
+                "weight_SGOV"
+              ],
+              "source_identity_bound_separately": true,
+              "trade_fields": [
+                "date",
+                "instrument",
+                "action",
+                "previous_weight",
+                "target_weight",
+                "weight_delta",
+                "transaction_cost",
+                "reason",
+                "position_state",
+                "position_label",
+                "vix_regime",
+                "vxn_regime"
+              ]
+            },
+            "exact": true,
+            "portfolio_contract_exact": true,
+            "sections": {
+              "positions": {
+                "exact": true,
+                "expected_rows": 1027,
+                "first_mismatch": null,
+                "max_absolute_difference": {
+                  "position_state": 0.0,
+                  "weight": 0.0
+                },
+                "observed_rows": 1027
+              },
+              "report": {
+                "exact": true,
+                "expected_rows": 686,
+                "first_mismatch": null,
+                "max_absolute_difference": {
+                  "decision_state": 0.0,
+                  "position_state": 0.0,
+                  "transaction_cost": 0.0,
+                  "turnover": 0.0,
+                  "weight_QQQ": 0.0,
+                  "weight_QQQI": 0.0,
+                  "weight_SGOV": 0.0,
+                  "weight_TQQQ": 0.0
+                },
+                "observed_rows": 686
+              },
+              "trades": {
+                "exact": true,
+                "expected_rows": 134,
+                "first_mismatch": null,
+                "max_absolute_difference": {
+                  "position_state": 0.0,
+                  "previous_weight": 0.0,
+                  "target_weight": 0.0,
+                  "transaction_cost": 0.0,
+                  "weight_delta": 0.0
+                },
+                "observed_rows": 134
+              }
+            }
+          },
+          "exact": true,
+          "frozen_economic_prefix": {
+            "exact": true,
+            "portfolio_contract_exact": true,
+            "sections": {
+              "positions": {
+                "exact": true,
+                "expected_rows": 1027,
+                "first_mismatch": null,
+                "max_absolute_difference": {
+                  "position_state": 0.0,
+                  "price": 0.0,
+                  "weight": 0.0
+                },
+                "observed_rows": 1027
+              },
+              "report": {
+                "exact": true,
+                "expected_rows": 686,
+                "first_mismatch": null,
+                "max_absolute_difference": {
+                  "account": 0.0,
+                  "bench": 0.0,
+                  "bench_qqq": 0.0,
+                  "decision_state": 0.0,
+                  "drawdown": 0.0,
+                  "gross_return": 0.0,
+                  "period_return": 0.0,
+                  "position_state": 0.0,
+                  "transaction_cost": 0.0,
+                  "turnover": 0.0,
+                  "weight_QQQ": 0.0,
+                  "weight_QQQI": 0.0,
+                  "weight_SGOV": 0.0,
+                  "weight_TQQQ": 0.0
+                },
+                "observed_rows": 686
+              },
+              "trades": {
+                "exact": true,
+                "expected_rows": 134,
+                "first_mismatch": null,
+                "max_absolute_difference": {
+                  "position_state": 0.0,
+                  "previous_weight": 0.0,
+                  "target_weight": 0.0,
+                  "transaction_cost": 0.0,
+                  "vix_close": 0.0,
+                  "vxn_close": 0.0,
+                  "weight_delta": 0.0
+                },
+                "observed_rows": 134
+              }
+            }
+          }
+        },
+        "trade_ready": false
+      }
+    ],
+    "runner": "formal_model_replay_v2",
+    "schema_version": "2.0",
+    "status": "completed",
+    "trade_ready": false
+  },
+  "identical_successful_repetitions": 3,
+  "additional_failed_attempt": {
+    "status": "BLOCKED_BY_LOCAL_RESOURCE",
+    "error": "NumPy ArrayMemoryError allocating 536 KiB under concurrent full-suite load; failure retained in local execution log; final isolated replay succeeded"
+  },
+  "validation": {
+    "replay_data_recipe_rules_suites": "34 passed",
+    "ruff": "PASS",
+    "source_drift_rejected": true,
+    "missing_binding_rejected": true,
+    "authority_identity_or_economic_rejection_retained": true
+  },
+  "scope": "Existing authoritative frozen-economic-prefix integrity plus recomputed decision path, appended economics and cumulative continuity; historical economics are not recomputed from restated current-provider prices.",
+  "unchanged": [
+    "accepted model/pool/benchmark/costs",
+    "active Yahoo research source contract",
+    "professional_source_ready=false",
+    "research_only/trade_ready boundary",
+    "sealed source/formal evidence"
+  ],
+  "prior_assessment_correction": "Earlier generic CLI data_blocked was real but overstated US capability as a whole: the existing authoritative verifier supports the accepted research source. No Tiingo purchase/configuration is required for this declared research replay."
+}
