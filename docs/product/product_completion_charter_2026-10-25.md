@@ -187,6 +187,7 @@ requires retiring/replacing an existing path and demonstrating benefit.
   observed evidence, then open narrowly scoped UX fixes.
 - **#1281 / P1 RC/rollback:** single-owner runbook and real release/recovery
   acceptance without a new deployment stack.
+- **#1282 / P1 Local reproducibility:** verify one accepted US and CN reference run with pinned evidence; defer to existing #324/#325/#826 for underlying data/training problems.
 - **Existing issues, do not duplicate:** #324/#325 data eligibility, #826
   reproducible training, #1272 PIT-safe RDI research (not v1 release gate),
   #1074 overall convergence priority.
