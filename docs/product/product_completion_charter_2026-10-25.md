@@ -143,6 +143,31 @@ requires retiring/replacing an existing path and demonstrating benefit.
 - Which concrete UAT task flows and service-level thresholds should the owner
   ratify after seeing 20-session data?
 
+## Current scoped implementation backlog (owner review pending)
+
+- **#1277 / P0 Operating acceptance:** verify 20 eligible market sessions,
+  sealed strategy decisions and genuine delivery/repair evidence; no phantom
+  freshness or new monitoring workflow.
+- **#1278 / P0 Documentation authority:** resolve obsolete product/connected
+  runtime descriptions while preserving history and checking affected callers.
+- **#1279 / P1 User task UAT:** 4 active strategies across desktop/mobile,
+  changed/unchanged/delayed/denied and linked instrument flows; first collect
+  observed evidence, then open narrowly scoped UX fixes.
+- **Existing issues, do not duplicate:** #324/#325 data eligibility, #826
+  reproducible training, #1272 PIT-safe RDI research (not v1 release gate),
+  #1074 overall convergence priority.
+
+### Ongoing owner–architect–local Agent review loop
+
+Each milestone review records **(a)** release/main SHA and source cutoff,
+**(b)** which user journey succeeded or failed with evidence, **(c)**
+accepted/rejected architecture decision and why, **(d)** changes to milestone
+scorecard, **(e)** ready-for-agent Issues with immutable acceptance. Product
+direction is set by the owner; architecture proposes/scrutinizes; the local
+Agent writes and tests code under a single scoped Issue and returns a PR.
+A review may intentionally decide to delete or defer a feature. Avoid
+replanning the whole product after each research experiment.
+
 ## Authority and change control
 
 GitHub Issues own *active tasks*; accepted ADRs/AGENTS/strategy_console own
