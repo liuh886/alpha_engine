@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - 'qlib-dashboard/**'
+      - 'src/research/ashare_rdi/**'
+      - 'configs/research_experiments/ashare_rdi_phase2_*.yaml'
+      - 'docs/evidence/ashare_rdi_phase2/**'
+      - 'docs/research/ashare_rdi_phase2_protocol.md'
+      - 'data/csv_source/000300.csv'
       - 'configs/strategies/registry.json'
       - 'data/research/formal_backtests/**'
       - 'data/research/formal_model_runs/**'

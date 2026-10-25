@@ -1,7 +1,231 @@
 import { readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { parseRdiResearch } from '../src/lib/rdi-research';
+import { rdiInteractionFixture } from './rdi-fixture';
 
 test.use({ serviceWorkers: 'block' });
+
+const rdiSourceCount = rdiInteractionFixture.event_families.length;
+const rdiIntegrationCount = rdiInteractionFixture.event_families.filter(row => row.readiness === 'not_integrated').length;
+const rdiFourteen = rdiInteractionFixture.historical_comparison.find(row => row.horizon_sessions === 14)!;
+const rdiSeven = rdiInteractionFixture.historical_comparison.find(row => row.horizon_sessions === 7)!;
+const rdiTwentyEight = rdiInteractionFixture.historical_comparison.find(row => row.horizon_sessions === 28)!;
+const frequency = (value: number) => (value * 100).toFixed(2) + '%';
+const fixtureCount = (value: number) => 'n=' + value.toLocaleString('en-US');
+
+test('RDI workspace compares horizons, filters sources and retries independently', async ({ page }, testInfo) => {
+  let reads = 0, snapshotReads = 0, healthReads = 0;
+  page.on('request', request => {
+    if (request.url().includes('/data/strategy-operations/snapshots.json')) snapshotReads++;
+    if (request.url().includes('/data/strategy-operations/system-health.json')) healthReads++;
+  });
+  await page.route('**/data/strategy-operations/rdi-research.json', async route => {
+    reads++;
+    if (reads === 1) await route.fulfill({ status: 503, body: 'unavailable' });
+    else await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rdiInteractionFixture) });
+  });
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await mockOperations(page);
+  await installProMembership(page);
+  await page.goto('/#/system');
+  const section = page.getByRole('region', { name: 'Risk density · RDI' });
+  await expect(section.getByRole('alert')).toContainText('could not be verified');
+  const refresh = page.getByRole('button', { name: 'Refresh status', exact: true });
+  await expect(refresh).toBeEnabled();
+  await expect.poll(() => fixtureCalls(page)).toBe(1);
+  const beforeRetry = { snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) };
+  const windowYBeforeJump = await page.evaluate(() => window.scrollY);
+  await page.getByRole('button', { name: 'RDI research', exact: true }).click();
+  await expect(page).toHaveURL(/#\/system$/);
+  await expect(section.getByRole('heading', { name: 'Risk density · RDI', exact: true })).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(windowYBeforeJump);
+  const topbar = page.locator('.research-topbar');
+  await expect(topbar).toBeInViewport();
+  expect(await topbar.evaluate(element => element.getBoundingClientRect().top)).toBeGreaterThanOrEqual(0);
+  await section.getByRole('button', { name: 'Retry RDI', exact: true }).click();
+  await expect(section.getByRole('heading', { name: 'Risk assessment unavailable' })).toBeVisible();
+  await expect(section.getByText(rdiInteractionFixture.reviewed_price_cutoff, { exact: true })).toBeVisible();
+  expect({ snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) }).toEqual(beforeRetry);
+  await section.getByRole('heading', { name: 'Risk assessment unavailable' }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: join(tmpdir(), `alpha-engine-rdi-${testInfo.project.name}.png`) });
+  const selected = section.getByRole('group', { name: '14-session details' });
+  await expect(selected.getByText(frequency(rdiFourteen.drawdown_loss_frequency), { exact: true })).toBeVisible();
+  await expect(selected.getByText(frequency(rdiFourteen.other_loss_frequency), { exact: true })).toBeVisible();
+  const difference = (rdiFourteen.drawdown_loss_frequency - rdiFourteen.other_loss_frequency) * 100;
+  await expect(selected.getByText(`${difference > 0 ? '+' : ''}${difference.toFixed(2)} pp`, { exact: true })).toBeVisible();
+  await expect(selected.getByText(fixtureCount(rdiFourteen.drawdown_observations), { exact: true })).toBeVisible();
+  await expect(selected.getByText(fixtureCount(rdiFourteen.other_observations), { exact: true })).toBeVisible();
+  await expect(section.getByRole('meter')).toHaveCount(rdiInteractionFixture.historical_comparison.length * 2);
+  for (const bar of await section.getByRole('meter').all()) {
+    await expect(bar).toHaveAttribute('aria-valuemin', '0');
+    await expect(bar).toHaveAttribute('aria-valuemax', '100');
+  }
+  await section.getByRole('button', { name: '14 trading sessions', exact: true }).focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Enter');
+  await expect(section.getByRole('group', { name: '28-session details' })).toBeVisible();
+  await section.getByRole('button', { name: '7 trading sessions', exact: true }).click();
+  await expect(section.getByRole('group', { name: '7-session details' }).getByText(frequency(rdiSeven.drawdown_loss_frequency), { exact: true })).toBeVisible();
+  await section.getByText('View exact historical values', { exact: true }).click();
+  await expect(section.getByRole('table').getByRole('rowheader', { name: '28 sessions' })).toBeVisible();
+  await expect(section.getByText(/not a current loss probability/)).toBeVisible();
+  await section.locator('summary').filter({ hasText: 'Data coverage and sources' }).click();
+  await section.getByRole('button', { name: 'Needs integration', exact: true }).click();
+  await expect(section.getByText(`Showing ${rdiIntegrationCount} of ${rdiSourceCount} source families`, { exact: true })).toBeVisible();
+  await expect(section.getByText('Historical coverage unverified', { exact: true })).toHaveCount(rdiIntegrationCount);
+  await section.getByRole('button', { name: 'All sources', exact: true }).click();
+  await expect(section.getByText(`Showing ${rdiSourceCount} of ${rdiSourceCount} source families`, { exact: true })).toBeVisible();
+  await section.getByText('Evidence provenance', { exact: true }).click();
+  await expect(section.getByRole('link', { name: 'Research protocol and limitations' })).toHaveAttribute('href', /\/blob\/[a-f0-9]{40}\//);
+  await expect(section.getByText('None admitted', { exact: true })).toBeVisible();
+  expect(reads).toBe(2);
+  expect({ snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) }).toEqual(beforeRetry);
+  await refresh.click();
+  await expect.poll(() => reads).toBe(3);
+  await expect(section.getByRole('heading', { name: 'Historical price comparison', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('RDI workspace retains context and keyboard focus through refresh recovery', async ({ page }) => {
+  let reads = 0, snapshotReads = 0, healthReads = 0;
+  let releasePendingRead: (() => void) | null = null;
+  const releaseRead = async () => {
+    await expect.poll(() => Boolean(releasePendingRead)).toBe(true);
+    const release = releasePendingRead!;
+    releasePendingRead = null;
+    release();
+  };
+  page.on('request', request => {
+    if (request.url().includes('/data/strategy-operations/snapshots.json')) snapshotReads++;
+    if (request.url().includes('/data/strategy-operations/system-health.json')) healthReads++;
+  });
+  await page.route('**/data/strategy-operations/rdi-research.json', async route => {
+    const read = ++reads;
+    if ([2, 3, 6].includes(read)) await new Promise<void>(resolve => { releasePendingRead = resolve; });
+    if (read === 1 || read === 5) await route.fulfill({ status: 503, body: 'unavailable' });
+    else if (read === 4) await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      ...rdiInteractionFixture, status: 'evidence_mismatch', historical_comparison: [],
+    }) });
+    else await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rdiInteractionFixture) });
+  });
+  await mockOperations(page);
+  await installProMembership(page);
+  await page.goto('/#/system');
+  const section = page.getByRole('region', { name: 'Risk density · RDI' });
+  const localRead = section.locator('header').getByRole('button');
+  const globalRefresh = page.getByRole('button', { name: 'Refresh status', exact: true });
+  await expect(section.getByRole('alert')).toContainText('could not be verified');
+  await expect(globalRefresh).toBeEnabled();
+  await expect.poll(() => fixtureCalls(page)).toBe(1);
+  const otherReads = { snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) };
+  const originalButton = await localRead.elementHandle();
+  await localRead.focus();
+  await page.keyboard.press('Enter');
+  await expect(localRead).toHaveText('Reading RDI…');
+  await expect(localRead).toHaveAttribute('aria-disabled', 'true');
+  await expect(localRead).toBeFocused();
+  await page.keyboard.press('Enter');
+  await releaseRead();
+  await expect(localRead).toHaveText('Refresh RDI');
+  await expect(localRead).toBeFocused();
+  expect(await originalButton!.evaluate(element => element.isConnected && element === document.activeElement)).toBe(true);
+  expect(reads).toBe(2);
+  expect({ snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) }).toEqual(otherReads);
+
+  await section.getByRole('button', { name: '28 trading sessions', exact: true }).click();
+  const exactSummary = section.getByText('View exact historical values', { exact: true });
+  await exactSummary.focus();
+  await page.keyboard.press('Enter');
+  await expect(section.getByRole('table')).toBeVisible();
+  await section.locator('summary').filter({ hasText: 'Data coverage and sources' }).click();
+  await section.getByRole('button', { name: 'Needs integration', exact: true }).click();
+  await section.getByText('Evidence provenance', { exact: true }).click();
+  await expect(section.getByText(`Showing ${rdiIntegrationCount} of ${rdiSourceCount} source families`, { exact: true })).toBeVisible();
+  const expectContext = async () => {
+    await expect(section.getByRole('button', { name: '28 trading sessions', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(section.getByRole('group', { name: '28-session details' })).toBeVisible();
+    await expect(section.getByRole('button', { name: 'Needs integration', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(section.getByText(`Showing ${rdiIntegrationCount} of ${rdiSourceCount} source families`, { exact: true })).toBeVisible();
+    await expect(section.locator('details')).toHaveCount(3);
+    for (const details of await section.locator('details').all()) await expect(details).toHaveJSProperty('open', true);
+    await expect(section.getByRole('table')).toBeVisible();
+    await expect(section.getByRole('link', { name: 'Research protocol and limitations' })).toBeVisible();
+  };
+  await expectContext();
+  await globalRefresh.click();
+  await expect(localRead).toHaveText('Reading RDI…');
+  await expect(section.getByRole('meter')).toHaveCount(0);
+  await expect(section.getByRole('table')).toHaveCount(0);
+  await releaseRead();
+  await expect(localRead).toHaveText('Refresh RDI');
+  await expect(globalRefresh).toBeEnabled();
+  await expectContext();
+  const afterParentRefresh = { snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) };
+
+  await localRead.click();
+  await expect(section.getByRole('alert')).toContainText('Source evidence has changed');
+  await expect(localRead).toHaveText('Retry RDI');
+  await expect(section.getByRole('meter')).toHaveCount(0);
+  await expect(section.getByRole('table')).toHaveCount(0);
+  await expect(section.getByText(frequency(rdiTwentyEight.drawdown_loss_frequency), { exact: true })).toHaveCount(0);
+  await expect(localRead).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(section.getByRole('alert')).toContainText('could not be verified');
+  await expect(section.getByRole('meter')).toHaveCount(0);
+  await expect(localRead).toHaveText('Retry RDI');
+  await expect(localRead).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(localRead).toHaveText('Reading RDI…');
+  const title = section.getByRole('heading', { name: 'Risk density · RDI', exact: true });
+  await title.focus();
+  await releaseRead();
+  await expect(localRead).toHaveText('Refresh RDI');
+  await expect(title).toBeFocused();
+  expect(await originalButton!.evaluate(element => element.isConnected)).toBe(true);
+  await expectContext();
+  expect(reads).toBe(6);
+  expect({ snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) }).toEqual(afterParentRefresh);
+});
+
+test('RDI published state keeps optional evidence scoped while Overview remains readable', async ({ page }) => {
+  // No RDI route mock: accept the shipped optional asset's actual contract state.
+  const published = await (async () => {
+    try {
+      const response = await page.request.get('/data/strategy-operations/rdi-research.json', { timeout: 5_000 });
+      return response.ok() ? parseRdiResearch(await response.json()) : null;
+    } catch {
+      return null;
+    }
+  })();
+  await mockOperations(page);
+  await installProMembership(page);
+  await page.goto('/#/system');
+  const section = page.getByRole('region', { name: 'Risk density · RDI' });
+  if (published?.status === 'not_validated') {
+    await expect(section.getByRole('heading', { name: 'Historical price comparison', exact: true })).toBeVisible();
+    await expect(section.getByRole('meter')).toHaveCount(published.historical_comparison.length * 2);
+    await expect(section.getByText('Descriptive control · not an RDI forecast', { exact: true })).toBeVisible();
+    await expect(section.getByText(/No RDI score or forecast is published/)).toBeVisible();
+  } else {
+    if (published?.status === 'evidence_mismatch') {
+      await expect(section.getByRole('heading', { name: 'Historical comparison withheld', exact: true })).toBeVisible();
+      await expect(section.getByRole('alert')).toContainText('Source evidence has changed');
+    } else {
+      await expect(section.getByRole('heading', { name: 'Reviewed evidence unavailable', exact: true })).toBeVisible();
+      await expect(section.getByRole('alert')).toContainText('could not be verified');
+    }
+    await expect(section.getByRole('meter')).toHaveCount(0);
+    await expect(section.getByRole('table')).toHaveCount(0);
+    await expect(section.getByRole('group', { name: 'Historical comparison horizon' })).toHaveCount(0);
+    await expect(section.getByRole('heading', { name: 'Historical price comparison', exact: true })).toHaveCount(0);
+  }
+  await openConsoleView(page, 'app');
+  await expect(page.getByRole('region', { name: 'Daily research brief' })).toBeVisible();
+});
 
 // Bind current-state fixtures to the exact formal catalog shipped by this build.
 // Signal dates below intentionally differ from formal historical cutoffs.
