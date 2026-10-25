@@ -109,7 +109,8 @@ training profile unrelated to an active strategy does not invalidate that
 strategy's valid retained formal history, but required local research
 reproduction cannot claim PASS without its necessary source data.
 
-**Execution ownership:** #1278 product truth / #1277 operating evidence /
-#1279 privacy and UAT /  #1282 local accepted-run replay (upstream #324/#325/#826)/
-#1281 release and rollback. Detailed waves:
+**Execution ownership:** #1278 product truth; #1277 operating evidence;
+#1279 privacy and UAT; #1282 accepted US/CN local replay (using
+#324/#325/#826 only if evidence gaps require them); #1281 release/rollback.
+Detailed waves: `docs/product/v1_direction_a_agent_roadmap_2026-10-25.md`.
 [`v1_direction_a_agent_roadmap_2026-10-25.md`](v1_direction_a_agent_roadmap_2026-10-25.md).
