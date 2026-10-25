@@ -112,5 +112,4 @@ reproduction cannot claim PASS without its necessary source data.
 **Execution ownership:** #1278 product truth; #1277 operating evidence;
 #1279 privacy and UAT; #1282 accepted US/CN local replay (using
 #324/#325/#826 only if evidence gaps require them); #1281 release/rollback.
-Detailed waves: `docs/product/v1_direction_a_agent_roadmap_2026-10-25.md`.
-[`v1_direction_a_agent_roadmap_2026-10-25.md`](v1_direction_a_agent_roadmap_2026-10-25.md).
+Detailed waves: [Direction A local Agent roadmap](v1_direction_a_agent_roadmap_2026-10-25.md).
