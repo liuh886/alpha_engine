@@ -15,6 +15,7 @@ import { AttributionInterpretation } from '@/components/AttributionInterpretatio
 import { HoldingsSummary } from '@/components/HoldingsSummary';
 import { PerformanceCharts } from '@/components/PerformanceCharts';
 import { PositionsTable } from '@/components/PositionsTable';
+import { SecurityLink } from '@/components/SecurityLink';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -110,10 +111,12 @@ function EvidenceTable({
   rows,
   columns,
   maxRows = 200,
+  run,
 }: {
   rows: Array<Record<string, unknown>>;
   columns: string[];
   maxRows?: number;
+  run?: GovernedRunSummary;
 }) {
   const visible = rows.slice(0, maxRows);
   if (!visible.length) return null;
@@ -130,7 +133,9 @@ function EvidenceTable({
             <tr key={`${String(row.date ?? row.instrument ?? row.window ?? index)}-${index}`} className="border-b last:border-0">
               {columns.map((column) => (
                 <td key={column} className="max-w-72 whitespace-nowrap px-3 py-2 font-mono">
-                  {formatEvidenceCell(column, row[column])}
+                  {column === 'instrument' && typeof row[column] === 'string' && run
+                    ? <SecurityLink market={run.market} model={run.modelVersionId} instrument={String(row[column])}>{formatEvidenceCell(column, row[column])}</SecurityLink>
+                    : formatEvidenceCell(column, row[column])}
                 </td>
               ))}
             </tr>
@@ -246,9 +251,9 @@ function PortfolioPanel({ evidence }: { evidence: FormalRunEvidence }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <PositionsTable positions={evidence.portfolio.positions} report={evidence.performance.report} />
+        <PositionsTable positions={evidence.portfolio.positions} report={evidence.performance.report} market={evidence.run.market} model={evidence.run.modelVersionId} />
         <div className="space-y-4">
-          <HoldingsSummary positions={evidence.portfolio.positions} />
+          <HoldingsSummary positions={evidence.portfolio.positions} market={evidence.run.market} model={evidence.run.modelVersionId} />
           <Card>
             <CardHeader className="border-b pb-3"><CardTitle className="text-sm">Frozen portfolio contract</CardTitle></CardHeader>
             <CardContent className="divide-y pt-2">
@@ -269,7 +274,7 @@ function PortfolioPanel({ evidence }: { evidence: FormalRunEvidence }) {
             <p className="mt-1 text-xs text-muted-foreground">Signal {String(latestSignal.signal_date ?? '—')} · {latestSignal.holding_end_date ? `holding realized through ${String(latestSignal.holding_end_date)}` : String(latestSignal.signal_state ?? 'outcome pending')} · hash {String(latestSignal.signal_sha256 ?? '').slice(0, 12)}…</p>
           </CardHeader>
           <CardContent className="pt-4">
-            <EvidenceTable rows={rankedTargets} columns={['rank', 'instrument', 'sector', 'score', 'target_weight', 'reference_price']} maxRows={20} />
+            <EvidenceTable run={evidence.run} rows={rankedTargets} columns={['rank', 'instrument', 'sector', 'score', 'target_weight', 'reference_price']} maxRows={20} />
           </CardContent>
         </Card>
       )}
@@ -305,7 +310,7 @@ function TradesPanel({ evidence }: { evidence: FormalRunEvidence }) {
           <p className="mt-1"><strong className="text-foreground">Amount:</strong> {evidence.tradeSemantics.amount}</p>
         </div>
       )}
-      <EvidenceTable rows={rows} columns={['date', 'instrument', 'action', 'execution_price', 'entry_price', 'exit_price', 'previous_weight', 'target_weight', 'normalized_notional', 'amount', 'quantity', 'realized_return', 'profitable', 'transaction_cost', 'holding_end_date', 'window']} />
+      <EvidenceTable run={evidence.run} rows={rows} columns={['date', 'instrument', 'action', 'execution_price', 'entry_price', 'exit_price', 'previous_weight', 'target_weight', 'normalized_notional', 'amount', 'quantity', 'realized_return', 'profitable', 'transaction_cost', 'holding_end_date', 'window']} />
     </div>
   );
 }
@@ -319,7 +324,7 @@ function AttributionPanel({ evidence }: { evidence: FormalRunEvidence }) {
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
       {rows.length
-        ? <EvidenceTable rows={rows} columns={['instrument', 'name', 'value', 'gross_contribution', 'transaction_cost', 'periods_held', 'win_rate', 'average_rank', 'windows_held']} />
+        ? <EvidenceTable run={evidence.run} rows={rows} columns={['instrument', 'name', 'value', 'gross_contribution', 'transaction_cost', 'periods_held', 'win_rate', 'average_rank', 'windows_held']} />
         : <EmptyEvidence title="Attribution" reason={reason} />}
       <AttributionInterpretation
         rows={rows}

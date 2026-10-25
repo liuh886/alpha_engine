@@ -212,4 +212,18 @@ await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(projection.publicProjection)}\n`, 'utf8');
 await writeFile(healthOutputPath, `${JSON.stringify(projection.publicHealth)}\n`, 'utf8');
+// RDI is a dated research review, separate from current strategy observations.
+// Its projection reads archived evidence only; no provider or model job runs.
+try {
+  execFileSync('uv', ['run', 'python', '-m', 'src.research.ashare_rdi.phase2_audit',
+    '--product-briefing', '--output', resolve(outputDir, 'rdi-research.json')], {
+    cwd: repoRoot, stdio: 'pipe', timeout: 15_000,
+  });
+} catch {
+  // The directory was cleared above: failure cannot republish a retained success.
+  await writeFile(resolve(outputDir, 'rdi-research.json'), JSON.stringify({
+    schema_version: '1.0.0', research_only: true, trade_ready: false, status: 'unavailable',
+  }) + '\n', 'utf8');
+  process.stderr.write('RDI reviewed evidence unavailable; independent strategy publication remains valid.\n');
+}
 console.log(`Published public strategy identity and system-health shells for ${projection.operationIds.length} formal models; protected current operations stay on the runtime access plane.`);

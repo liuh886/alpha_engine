@@ -720,14 +720,6 @@ def execute_strategy(
             result_root=result_root,
             generated_at=generated_at,
         ),
-        "cn_x1_2_formal_refresh_v1": lambda: _run_cn_x1_2(
-            root=root,
-            task=task,
-            provider_root=provider_root,
-            formal_v2_root=formal_v2_root,
-            result_root=result_root,
-            generated_at=generated_at,
-        ),
         "qqq_v4_3_formal_refresh_v1": lambda: _run_qqq(
             root=root,
             task=task,

@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { Position, ReportRow } from '@/lib/types';
+import { SecurityLink } from '@/components/SecurityLink';
 
 const EPSILON = 0.0005;
 
@@ -58,7 +59,7 @@ function finiteNumber(value: unknown): number | null {
   return Number.isFinite(number) ? number : null;
 }
 
-export function PositionsTable({ positions, report }: { positions: Position[]; report?: ReportRow[] }) {
+export function PositionsTable({ positions, report, market, model }: { positions: Position[]; report?: ReportRow[]; market?: string; model?: string }) {
   const dates = useMemo(() => Array.from(new Set(positions.map((position) => position.date))).sort(), [positions]);
   const [selectedDateIdx, setSelectedDateIdx] = useState(dates.length - 1);
 
@@ -293,7 +294,7 @@ export function PositionsTable({ positions, report }: { positions: Position[]; r
                       <td className="flex flex-[1.5] items-center px-4 py-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="truncate font-medium">{position.instrument_label || position.name || position.instrument}</span>
+                            <SecurityLink market={market} model={model} instrument={position.instrument}>{position.instrument_label || position.name || position.instrument}</SecurityLink>
                             {position.changeKind === 'new' && <Badge variant="outline" className="h-4 px-1 text-[8px] text-emerald-700 dark:text-emerald-300">New</Badge>}
                           </div>
                           <span className="block truncate font-mono text-[9px] text-muted-foreground">{position.instrument}</span>

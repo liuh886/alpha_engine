@@ -15,6 +15,12 @@ DIRECT_EXACT_PATHS = {
     ".github/workflows/deploy-pages.yml",
     ".github/workflows/pages-release-receipt.yml",
     "configs/strategies/registry.json",
+    "configs/research_experiments/ashare_rdi_phase2_sources.yaml",
+    "configs/research_experiments/ashare_rdi_phase2_sector_candidates.yaml",
+    "data/csv_source/000300.csv",
+    "docs/evidence/ashare_rdi_phase2/csi300_input_readiness_2026-10-24.json",
+    "docs/evidence/ashare_rdi_phase2/csi300_price_only_descriptive_2026-10-24.json",
+    "docs/research/ashare_rdi_phase2_protocol.md",
     "data/research/catalog.json",
     "docs/architecture/legacy_web_inventory.json",
     "docs/contracts/alpha-engine-bundle.schema.json",
@@ -37,6 +43,7 @@ DIRECT_EXACT_PATHS = {
     "src/governance/active_strategy_catalog.py",
 }
 DIRECT_PREFIXES = (
+    "src/research/ashare_rdi/",
     "data/research/formal_model_runs/",
     "data/research/market_evidence/",
     "data/research/model_data_bundle_v1/",

@@ -212,7 +212,7 @@ def test_ranker_mtm_rejects_formal_state_ahead_of_ledger(
         )
 
 
-def test_mtm_contract_targets_active_us_and_cn_rankers() -> None:
+def test_mtm_contract_targets_only_active_rankers() -> None:
     capabilities = load_active_strategy_runtime_capabilities()
     maintained = {
         row.model_version_id
@@ -220,9 +220,7 @@ def test_mtm_contract_targets_active_us_and_cn_rankers() -> None:
         if row.formal_refresh.adapter_id in RANKER_FORMAL_REFRESH_ADAPTERS
     }
     assert maintained == {"us_x1_3"}
-    assert capabilities["cn_x"].formal_refresh.status == "available"
-    assert capabilities["cn_x"].current_target.status == "available"
-    assert capabilities["cn_x"].current_target.adapter_id == "cn_x1_2_current_target_v1"
+    assert "cn_x" not in capabilities
     performance = {
         "report": [
             {"date": "2026-07-29", "holding_end_date": "2026-07-29"}

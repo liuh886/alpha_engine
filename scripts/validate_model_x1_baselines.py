@@ -14,7 +14,7 @@ import yaml
 from src.artifacts.formal_bundle_reader import load_formal_run
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 
-EXPECTED_ACTIVE_BASELINES = {"us": "us_x1_3", "cn": "cn_x1_2"}
+EXPECTED_ACTIVE_BASELINES = {"us": "us_x1_3"}
 ACTIVE_MODEL_ARTIFACTS: dict[str, dict[str, Any]] = {
     "cn_x1_2": {
         "display_name": "CN x1.2",
@@ -280,15 +280,14 @@ def _validate_cn_x1_2(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
 def validate_registry(root: Path) -> dict[str, Any]:
     catalog_path = root / "configs/strategies/registry.json"
     active_catalog = load_active_strategy_catalog(catalog_path)
-    active_by_strategy = active_catalog.by_strategy_id
     observed_active = {
-        "us": active_by_strategy["us_x"].model_version_id,
-        "cn": active_by_strategy["cn_x"].model_version_id,
+        strategy.market: strategy.model_version_id
+        for strategy in active_catalog.strategies
+        if strategy.model_kind == "cross_sectional_ranker"
     }
     if observed_active != EXPECTED_ACTIVE_BASELINES:
         raise ValueError(f"Active Strategy Catalog x1 identities drifted: {observed_active}")
     models = [
-        _validate_cn_x1_2(root, ACTIVE_MODEL_ARTIFACTS["cn_x1_2"]),
         _validate_us_x1_3(root, ACTIVE_MODEL_ARTIFACTS["us_x1_3"]),
     ]
     return {

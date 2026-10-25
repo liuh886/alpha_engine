@@ -2,12 +2,18 @@
 
 ## Lightweight operating contract
 
+2026-10-24 user correction: linked instrument detail with historical model
+buy/sell markers is part of strategy explanation. It reads compact projections
+of existing governed price/event evidence and exact formal identities. This
+exception preserves the two-destination navigation, private current-operations
+boundary and retirement of CN x1.2; it does not restore standalone exploration.
+
 Effective 2026-10-03 by user direction. This section governs simplification;
 it does not assert that daily reliability is already achieved. The existing
 selected-pool data program and research-only boundary remain in force.
 
 Scope tightened by user direction on 2026-10-21: the maintained product is the
-existing five-strategy observation and evidence loop. The console has two
+existing four-strategy observation and evidence loop. The console has two
 navigation destinations, Overview and Status, plus strategy detail. It reads
 formal Bundle v2 evidence and the existing authorized operations reader; it has
 no independent preview/local-bundle source, research explorer, policy writer,
