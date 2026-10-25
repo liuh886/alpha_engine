@@ -1,6 +1,10 @@
-# Alpha Engine: Product Completion Charter (PROPOSAL)
+# Alpha Engine v1.0 — Direction A Product Completion Charter
 
-Status: **PROPOSAL FOR OWNER REVIEW**, 2026-10-25. This document does **not**
+**Product positioning RATIFIED by owner 2026-10-25:** Direction A — a
+**personal, single-operator professional quantitative research workstation**.
+Detailed acceptance and implementation remain **DRAFT PR #1276** until review.
+This confirms accepted [ADR-0003](../adr/0003-single-user-local-quant-research-platform.md),
+not a new multi-user or trading architecture. This document does **not**
 override `AGENTS.md`, `docs/product/strategy_console.md`, existing frozen
 research/evidence contracts, the strategy registry or CI governance. Related
 prioritization: Issue #1074. No new operating surface is authorized here.
@@ -16,14 +20,22 @@ Alpha Engine v1 should let one researcher/investor answer reliably:
    compare with the exact declared benchmark, with source and cost semantics?
 4. When an input, release, permission or delivery is blocked, is the cause,
    affected strategy, last valid evidence, and the existing recovery action clear?
-5. Which independent research hypotheses have genuinely earned promotion, and
+5. Can the single operator locally reproduce an accepted US and CN reference
+   research result with pinned data, model/evaluator identity, PIT and cost
+   contracts, or see exactly why a required input is blocked?
+6. Which independent research hypotheses have genuinely earned promotion, and
    which are only diagnostic / insufficiently evidenced?
 
 This is a **governed research-and-strategy-observation product**,
 `research_only=true`, `trade_ready=false`. Not an auto-trading platform,
 general-purpose trading terminal, new factor playground, or a portfolio SaaS
-expansion. Pro/current-operation entitlement remains as currently governed;
-whether to commercialize for external users requires a separate product decision.
+expansion. The two complementary v1 modes are **local CLI-based reproducible
+research** and a **read-only web Strategy Console** for accepted strategy
+monitoring/explanation. The retired in-browser research IDE is NOT a v1 gap.
+External onboarding, payments/subscriptions, multi-tenant RBAC, collaborative
+hosting and external support/SLA are **out of scope**. Preserve existing public
+formal evidence and the Supabase RLS/Pro boundary for protected current signals:
+single-user scope does not authorize weakening existing security.
 
 ### Maintained scope (read from authorities, never duplicate as runtime source)
 
@@ -58,19 +70,30 @@ missing evidence, fills, prices or next-session targets.
 
 ## Product quality pillars / measurable acceptance
 
-**Reliability (P0)** — Collect a reviewed **20 eligible trading-session**
+**Reliability (P0)** — Collect a reviewed **20 eligible trading-session per
+market**
 operating acceptance for the existing four strategies, as already required by
 `docs/architecture/repository_data_convergence.md`. Verify strategy-specific
 cadence (CN_27 30-session cadence is not a daily rebalance), market cutoff,
 provider freshness, formal publication, decision receipt, notification/delivery,
 and whether manual remediation was needed. Count healthy no-change and not-due
-honestly; never credit a stale or blocked refresh. Acceptance is based on
+honestly; never credit a stale or blocked refresh. A 20-session CN sample may
+not include a CN_27 due rebalance (30-session cadence), so capture a separately
+evidenced actual due event or deterministic due-path acceptance without
+misrepresenting it as 20-session production evidence. Acceptance is based on
 recorded session evidence, not green CI alone. Keep each blocked subsystem scoped.
 
 **Trust (P0)** — Public formal histories and protected current operations must
 remain distinct. Verify unauthenticated, member, Pro, owner, expired-session and
 permission-change behavior against the deployed policy. No private targets or
 current holdings in GitHub Pages assets, logs or frontend fallbacks.
+
+**Reproducible local research (P1/v1)** — Reuse existing `alpha data`,
+`alpha research` and evidence pipelines. Demonstrate a pinned and repeatable
+accepted US and CN reference research/evaluation path with truthful blockers.
+A research hypothesis returning poor alpha is a valid research outcome;
+profitability, all candidate factor readiness and RDI promotion are not
+software release gates.
 
 **Data/Research (P0/P1)** — Preserve provider/timezone/PIT semantics,
 adjustments, corporate-action lifecycle, identity, benchmark consistency,
@@ -130,18 +153,27 @@ agent execution layer or automatic order integration. The 39-workflow ceiling
 is already fully utilized in the reviewed tree; any new permanent workflow
 requires retiring/replacing an existing path and demonstrating benefit.
 
-## Explicit owner decisions pending
+## Ratified product decision vs deferred expansion
 
-- Does v1 target **personal/owner-only research operations** (recommended) or
-  externally supported Pro subscribers? Existing auth boundary already exists,
-  but sales/billing/onboarding scope is **not** assumed.
-- Is a successful product measured first by **reliable and interpretable
-  research/monitoring** (recommended), or by demonstrated risk-adjusted alpha?
-  Alpha is a research outcome, not an engineering release gate.
-- Should research candidates such as RDI remain in Operating Status readiness
-  only until promotion? Default **yes**; no new primary navigation.
-- Which concrete UAT task flows and service-level thresholds should the owner
-  ratify after seeing 20-session data?
+- **Ratified:** Direction A, personal single-operator quantitative research
+  workstation. One owner can conduct local governed research, follow four
+  accepted strategies, understand evidence and recover from failures.
+- **Existing authority preserved:** ADR-0003; `AGENTS.md`;
+  `docs/product/strategy_console.md`; active model registry; immutable formal
+  evidence and decision ledger; current Supabase/RLS access enforcement.
+- **Engineering success is not investment alpha:** test reproducibility,
+  correct timestamps, current-state truth, source integrity, UAT and reliable
+  releases. Strategy profitability is an independent research outcome.
+- **Deferred:** external subscribers, billing, organization accounts,
+  hosted multi-user collaboration, new primary navigation, autonomous orders,
+  and RDI live score/strategy allocation overlays.
+- **Under evidence review:** quantitative source-lag and runtime SLO targets.
+  Establish these from observed eligible-session data, not by retrospectively
+  choosing a pass threshold.
+- **Acceptance authority:** [Direction A v1 scorecard](product_completion_scorecard_2026-10-25.md)
+  and [local Agent execution roadmap](v1_direction_a_agent_roadmap_2026-10-25.md)
+  define specific release gates; the owner has not approved deployment
+  merely by approving this product direction.
 
 ## Current scoped implementation backlog (owner review pending)
 
@@ -153,6 +185,8 @@ requires retiring/replacing an existing path and demonstrating benefit.
 - **#1279 / P1 User task UAT:** 4 active strategies across desktop/mobile,
   changed/unchanged/delayed/denied and linked instrument flows; first collect
   observed evidence, then open narrowly scoped UX fixes.
+- **#1281 / P1 RC/rollback:** single-owner runbook and real release/recovery
+  acceptance without a new deployment stack.
 - **Existing issues, do not duplicate:** #324/#325 data eligibility, #826
   reproducible training, #1272 PIT-safe RDI research (not v1 release gate),
   #1074 overall convergence priority.

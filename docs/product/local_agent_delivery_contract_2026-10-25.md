@@ -1,4 +1,8 @@
-# Local Agent delivery contract — proposal for owner approval
+# Local Agent delivery contract — Direction A, v1.0
+
+**Owner-selected positioning (2026-10-25):** a single-operator
+professional quantitative research workstation, consistent with accepted
+ADR-0003. Development acceptance remains reviewable in draft PR #1276.
 
 **Scope:** Alpha Engine product completion. This is a task-handoff template,
 not an automation authorization or executable runbook by itself.
@@ -8,7 +12,8 @@ frozen research/evidence contracts and GitHub Issues. Maintain
 
 ## Roles and decisions
 
-- **Product owner (human):** sets v1 purpose, priorities, public/Pro posture,
+- **Product owner (human):** has selected Direction A, sets priorities, and
+  reviews existing public/Pro trust boundaries,
   reviews evidence and explicitly approves changes to active strategy identities,
   entitlements, trading behavior or product scope.
 - **Product designer / architect (ChatGPT):** inspects source/evidence, states
@@ -40,6 +45,22 @@ frozen research/evidence contracts and GitHub Issues. Maintain
 8. **Definition of Done**: implementation, tests, observed evidence, docs,
    failed cases and a reviewable PR. Mark undecidable claims as blocked,
    not as passed.
+
+## Direction A constraints for local implementation
+
+- Two modes, one operator: **local governed CLI research** and the **read-only
+  Strategy Console**. No browser research IDE, subscription payment,
+  multi-tenant users or autonomous trade path in v1.
+- Existing public historical formal evidence and current protected
+  Supabase/RLS/Pro operations remain secure; one-owner scope does not mean
+  relaxing current privacy or rewriting entitlements.
+- Four accepted strategies only; no silent new strategy, weights, model
+  registry or extra permanent GitHub Actions workflow.
+- RDI is unvalidated independent research; do not add scores/positions to
+  live formal models to imply its prediction accuracy.
+- One task = one scoped Issue = one PR and an exact evidence packet. In
+  particular, a simulation or green CI alone cannot close an operating
+  acceptance issue.
 
 ## Agent workflow
 
@@ -88,6 +109,15 @@ evidence; or asserts release readiness based only on a CI pass.
 
 ## Task prioritization (do not supersede Issue #1074)
 
+**Work sequence:** W0 #1278 docs authority; W1 #1277 real multi-session
+operating acceptance, with #1279 security-negative audit; W2 #1279
+four-strategy desktop/mobile task UAT; W3 existing #324/#325/#826 for
+minimal reproducible accepted US/CN research; W4 #1281 owner runbook,
+release receipt and rollback. See
+[`v1_direction_a_agent_roadmap_2026-10-25.md`](v1_direction_a_agent_roadmap_2026-10-25.md).
+Evidence gathering for W1/W2 may overlap; material code fixes each get
+their own narrow Issue, not indiscriminate refactors.
+
 - P0: operating session acceptance; source/decision/delivery truth;
   authorization and static boundary; documentation authority reconciliation.
 - P1: focused task-based Overview -> Detail -> Instrument -> Status UAT and
@@ -99,3 +129,13 @@ Use one responsible Issue owner and one existing evidence authority per
 deliverable. Update the Issue with explicit `ready / blocked / done` and
 manifest/run links. A docs/architecture proposal PR does not authorize local
 agent deployment by itself.
+
+## Required evidence in every local Agent PR
+
+Include an operator-facing before/after result, changed authoritative paths,
+exact source cutoff and SHA, test **PASS/FAIL/BLOCKED/NOT_TESTED** matrix,
+one negative path, new permanent complexity introduced and what was removed,
+release/rollback method, and observed operating/browser receipts when claimed.
+Never turn unknown data into a fake zero, a fixture into real prospective
+evidence, or the owner's product-selection approval into production release
+authorization.
