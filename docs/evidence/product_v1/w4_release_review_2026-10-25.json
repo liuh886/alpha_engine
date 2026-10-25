@@ -1,0 +1,243 @@
+{
+  "schema_version": "direction_a_release_review_v1",
+  "captured_at_utc": "2026-10-25T07:46:15.117699+00:00",
+  "observed_main_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+  "observed_deployment": {
+    "commit_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+    "workflow_run_id": "40170378446",
+    "publication_impact": {
+      "reason": "manual_dispatch",
+      "matched_paths": []
+    }
+  },
+  "recommendation": "NO-GO",
+  "owner_decision": null,
+  "approved_release_candidate": null,
+  "research_only": true,
+  "trade_ready": false,
+  "gates": [
+    {
+      "gate": "A0",
+      "status": "PASS",
+      "evidence": "Exact four active identities equal accepted formal catalog; doctor verifies manifests/sections.",
+      "reviewer": "local Codex evidence audit; owner acceptance pending"
+    },
+    {
+      "gate": "A1",
+      "status": "BLOCKED",
+      "evidence": "0 independently qualified of 20 required CN sessions and 20 US sessions; only 7 observed each.",
+      "reviewer": "local Codex evidence audit; owner acceptance pending"
+    },
+    {
+      "gate": "A2",
+      "status": "BLOCKED",
+      "evidence": "Current provider/formal/factor/decision cutoffs verify; complete independent required-source/PIT acceptance not certified. Unrelated 2 blocked training profiles remain scoped.",
+      "reviewer": "local Codex evidence audit; owner acceptance pending"
+    },
+    {
+      "gate": "A3",
+      "status": "BLOCKED",
+      "evidence": "8 actual ordinary journeys and 60 fixture tests pass; actual per-strategy changed/not-due/blocked/expired matrix incomplete.",
+      "reviewer": "local Codex evidence audit; owner acceptance pending"
+    },
+    {
+      "gate": "A4",
+      "status": "FAIL",
+      "evidence": "Confirmed CN_27 public lineage operating weights/targets/drivers (#1288); actual Pro/member/owner expiry/revocation not tested.",
+      "reviewer": "local Codex evidence audit; owner acceptance pending"
+    },
+    {
+      "gate": "A5",
+      "status": "BLOCKED",
+      "evidence": "Accepted CN historical reference repeats; accepted US professional source gate blocks.",
+      "reviewer": "local Codex evidence audit; owner acceptance pending"
+    },
+    {
+      "gate": "A6",
+      "status": "BLOCKED",
+      "evidence": "Actual deployment verified and local previous-artifact restore passed structurally; no approved candidate, private-current-state restore or privacy-clean rollback target.",
+      "reviewer": "local Codex evidence audit; owner acceptance pending"
+    },
+    {
+      "gate": "A7",
+      "status": "NOT_TESTED",
+      "evidence": "Owner has not signed GO/NO-GO; agent recommendation NO-GO is not owner signoff.",
+      "reviewer": "local Codex evidence audit; owner acceptance pending"
+    }
+  ],
+  "work_packages": {
+    "W0": {
+      "issue": 1278,
+      "pr": 1283,
+      "status": "READY_FOR_REVIEW"
+    },
+    "W1": {
+      "issue": 1277,
+      "pr": 1284,
+      "status": "BLOCKED"
+    },
+    "W1b_W2": {
+      "issue": 1279,
+      "pr": 1287,
+      "status": "FAIL_A4_PARTIAL_UAT"
+    },
+    "W3": {
+      "issue": 1282,
+      "pr": 1289,
+      "status": "BLOCKED_US"
+    },
+    "observed_ops_defect": {
+      "issue": 1285,
+      "pr": 1286,
+      "status": "READY_FOR_REVIEW_CI_PASS"
+    },
+    "observed_static_defect": {
+      "issue": 1288,
+      "status": "OWNER_DESIGN_REVIEW_REQUIRED"
+    }
+  },
+  "exercised_commands": [
+    {
+      "command": "uv sync --frozen --extra dev",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run --frozen alpha --help; alpha data --help; alpha ops --help",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run --frozen python scripts/doctor.py",
+      "exit_code": 0,
+      "core_state": "current",
+      "cutoffs": "2026-10-23",
+      "blocked_training_profiles": 2
+    },
+    {
+      "command": "uv run --frozen python scripts/data/fetch_governed_model_data.py --inspect",
+      "exit_code": 0,
+      "scope": "registry/declaration inspection only; no mirror retrieval proof"
+    },
+    {
+      "command": "uv run --frozen alpha ops build --generated-at <actual UTC> --output artifacts/product-v1-1281/operations.json",
+      "exit_code": 0,
+      "scope": "local disposable projection; no publication"
+    },
+    {
+      "command": "uv run --frozen python scripts/release_gate.py --output artifacts/product-v1-1281/no-candidate-verdict.json",
+      "exit_code": 2,
+      "expected_negative": "explicit candidate required; no release silently selected"
+    }
+  ],
+  "bindings": [
+    {
+      "path": "uv.lock",
+      "sha256": "b408f4bb419d86d8df7126455c8f8664af2130368a2987c7acfde32b4ae96148"
+    },
+    {
+      "path": "qlib-dashboard\\package-lock.json",
+      "sha256": "eb09d178a6e134904e2dad1c09df4d70677b099de5145a33e8495052a72e2858"
+    },
+    {
+      "path": "configs\\strategies\\registry.json",
+      "sha256": "636b76803029fff5358c40ecb7f1572d9c4868399a606a0440f1d36f402a654c"
+    },
+    {
+      "path": "data\\research\\formal_model_runs\\catalog.json",
+      "sha256": "8efd3bacd85347be56f88458a360738ce9280bf9add96d0dedb2b610e34506f1"
+    },
+    {
+      "path": "artifacts\\product-v1-1281\\no-candidate-verdict.json",
+      "sha256": "6e113c510628efa6b34495df0d77a15bd42a7c9611eaa7d98d4e8020462f8156"
+    },
+    {
+      "path": "artifacts\\product-v1-1281\\source-inspection.json",
+      "sha256": "ed06d496ecf9fb3955ee98d87aa0fc41ef4427b452016b4a2ed89606861da663"
+    }
+  ],
+  "source_inspection_summary": {
+    "registry_sha256": "66beae02a12bc4b14d0bdde5958712991bba908703a4c556f8baff32fd9ab442",
+    "source_count": 4,
+    "retrieval_verified_claimed": false
+  },
+  "actual_published_verification": {
+    "status": "verified",
+    "base_url": "https://liuh886.github.io/alpha_engine/",
+    "commit_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+    "public_operations_verified": true,
+    "formal_models": [
+      "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+      "cn_27_v1_3",
+      "qqqi_qqq_tqqq_v4_3",
+      "us_x1_3"
+    ],
+    "formal_sections_verified": 36,
+    "research_only": true,
+    "trade_ready": false
+  },
+  "local_rollback_rehearsal": {
+    "status": "PASS",
+    "scope": "local restore and structural verification of an actual previous published static artifact only",
+    "source_workflow_run_id": 40157888669,
+    "source_artifact_id": 12585252801,
+    "archive_sha256": "c5e19556dac48b43e97e1dc0f7300cd916e03aa8641bf3345ea62d27e8f72111",
+    "archive_byte_size": 11487794,
+    "deployment": {
+      "commit_sha": "4a6c7a50e4a20a40c025a0a708f6c50549f0a356",
+      "workflow_run_id": "40157888669",
+      "publication_impact": {
+        "reason": "publication_dependency_changed",
+        "matched_paths": [
+          "qlib-dashboard/e2e/rdi-fixture.ts",
+          "qlib-dashboard/e2e/strategy-operations.spec.ts",
+          "qlib-dashboard/scripts/sync-strategy-operations.mjs",
+          "qlib-dashboard/src/components/RdiEvidenceSources.tsx",
+          "qlib-dashboard/src/components/RdiHistoricalComparison.tsx",
+          "qlib-dashboard/src/components/RdiResearchStatus.test.tsx",
+          "qlib-dashboard/src/components/RdiResearchStatus.tsx",
+          "qlib-dashboard/src/lib/rdi-research.test.ts",
+          "qlib-dashboard/src/lib/rdi-research.ts",
+          "qlib-dashboard/src/pages/SystemHubPage.tsx",
+          "qlib-dashboard/src/test/rdi-fixture.ts",
+          "scripts/detect_pages_impact.py",
+          "src/research/ashare_rdi/briefing.py",
+          "src/research/ashare_rdi/phase2_audit.py"
+        ]
+      }
+    },
+    "verification": {
+      "status": "verified",
+      "base_url": "http://127.0.0.1:10202/",
+      "commit_sha": "4a6c7a50e4a20a40c025a0a708f6c50549f0a356",
+      "public_operations_verified": true,
+      "formal_models": [
+        "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "cn_27_v1_3",
+        "qqqi_qqq_tqqq_v4_3",
+        "us_x1_3"
+      ],
+      "formal_sections_verified": 36,
+      "research_only": true,
+      "trade_ready": false
+    },
+    "production_dispatch": false,
+    "protected_runtime_restore": "NOT_TESTED",
+    "privacy_approval": "FAIL: previous artifact has not resolved #1288, do not deploy as an approved rollback target",
+    "sealed_data_diff": "",
+    "research_only": true,
+    "trade_ready": false
+  },
+  "production_actions": {
+    "dispatch": false,
+    "deploy": false,
+    "rollback": false,
+    "rls_or_entitlements_mutated": false,
+    "sealed_evidence_mutated": false
+  },
+  "full_local_release_quality_command": "NOT_TESTED this audit; targeted and current PR CI evidence is not a full new candidate quality report",
+  "limitations": [
+    "A0 identity check does not certify A1-A6.",
+    "No owner A7 decision invented.",
+    "Current training blockers do not invalidate independent valid active-strategy history.",
+    "Previous successful artifact is a structural restore exercise, not a privacy-approved release."
+  ]
+}
