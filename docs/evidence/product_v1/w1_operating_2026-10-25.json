@@ -1,0 +1,1775 @@
+{
+  "schema_version": "direction_a_w1_audit_v1",
+  "main_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+  "captured_at_utc": "2026-10-25T07:21:15.704560+00:00",
+  "through": "2026-10-23",
+  "status": "BLOCKED",
+  "research_only": true,
+  "trade_ready": false,
+  "archive_repository": "liuh886/alpha-engine-data-archive",
+  "archives_tree": "4b3dc50c1c9cddab51fb182c811d19ffd510b9e5",
+  "inventory_capture_count": 211,
+  "selection": "latest capture per exact formal run/attempt, no green fallback",
+  "packets": [
+    {
+      "run_id": 38845776829,
+      "run_attempt": 1,
+      "archive_git_blob": "7ef68a037ee65c837e69c9cd8c621613f69e1cad",
+      "archive_sha256": "1e6e7aa6d1f28165cd980b25bc49bf3218855aa8b2c652c5a176f86d09da7ee3",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-15",
+        "cn": "2026-10-15"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-15",
+        "cn": "2026-10-15"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "df0f69bbbcf955d2b38375d324900013f6d14e5b2bb9f51c3d59fef43a90d9ea"
+    },
+    {
+      "run_id": 38851424464,
+      "run_attempt": 1,
+      "archive_git_blob": "b828b24ab75cf1fb63767acc9c9b970678a98367",
+      "archive_sha256": "9519e01401055f16d636d90a35f4002faaf997030dae64d07d790840261ebb68",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-15",
+        "cn": "2026-10-15"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-15",
+        "cn": "2026-10-15"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "f0f66aad157c1e4459d66625b327405513102014b09a8d982858e898121cd77e"
+    },
+    {
+      "run_id": 38852192355,
+      "run_attempt": 1,
+      "archive_git_blob": "3d918c9a6b528d2516164982c42ab24a6cda8d4c",
+      "archive_sha256": "3386baae4934ea291731c5eb13aff187bf0edfdccbf83e34dd249bbf234b62ca",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-15",
+        "cn": "2026-10-15"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-15",
+        "cn": "2026-10-15"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "d203518966a4994e0a2d8b918da6793bb2f4e016982ee4ef3c8896f70545bf0a"
+    },
+    {
+      "run_id": 38872155879,
+      "run_attempt": 1,
+      "archive_git_blob": "98e372b0d7133bf59bdf6e619ee3db07ecfec682",
+      "archive_sha256": "d53e1b6759169e12448446b4c184ef24746deb1f8b1a8733b6ae88379872c9f9",
+      "indexed_members_verified": 34,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-15",
+        "cn": "2026-10-16"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-15",
+        "cn": "2026-10-15"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "8b61f71f7a14c6a23b2f2d95ece3b811115ea028fbf2be5c50753cf3d717ca02"
+    },
+    {
+      "run_id": 38882149937,
+      "run_attempt": 1,
+      "archive_git_blob": "23debc294bc8ce6951365d7a103ae1e4737e9612",
+      "archive_sha256": "772b8c821eacacd45e76fd986cc8c4fdb7d16c903c266a3d819b9a1ec11828d0",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-15",
+        "cn": "2026-10-16"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-15",
+        "cn": "2026-10-15"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "586459eb07e828970b57afa9631fe0f90a0cffdcd3ff1e5c495633527efa7dad"
+    },
+    {
+      "run_id": 38990571632,
+      "run_attempt": 1,
+      "archive_git_blob": "90dbc75bf9d679c03e87d37c5777125c8c23c36a",
+      "archive_sha256": "a23af3cc58217e0be728a797268c6a09e1068d372b581ecbb24b0de192f85894",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-16",
+        "cn": "2026-10-16"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-15",
+        "cn": "2026-10-16"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "28280d1242979ca67428e79f67528abd5627c6d53b56dfd89069934714ace7b4"
+    },
+    {
+      "run_id": 39356182714,
+      "run_attempt": 1,
+      "archive_git_blob": "b0b981cebb463313d23e9b1737b93a0bccf4dace",
+      "archive_sha256": "a9608d352e2ec357c2e3b1fb454a50be15cc4d5894de80a5b49be22583e35f55",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-19",
+        "cn": "2026-10-19"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-19",
+        "cn": "2026-10-19"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "796dc1d29f28330587237abee803fbadf7b4156a82fb2301857bdb98201dbf6b"
+    },
+    {
+      "run_id": 39529055859,
+      "run_attempt": 1,
+      "archive_git_blob": "c1c0b0da6d5a1f772cab0b2b4f69ab78fef1accf",
+      "archive_sha256": "6c8f9cbea879c23ed3c8906ef08a7f41e4206c57c8356ea1d8ee3f1d3bae1155",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-20",
+        "cn": "2026-10-20"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-20",
+        "cn": "2026-10-20"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "e15f0cd6bc92d3cf149baf162286c529e8ae1eabb10f2c79da1e9973dfb42012"
+    },
+    {
+      "run_id": 39567189022,
+      "run_attempt": 1,
+      "archive_git_blob": "a6fdb24003a2b7e8e4212ebd31c039eabc275b57",
+      "archive_sha256": "143bfea92f8a690334388a1356e2d715fccea9b4dc60eaf594bfc0c32cc70e92",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-20",
+        "cn": "2026-10-21"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-20",
+        "cn": "2026-10-20"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "4bdd8f7f4c055b45f4dcfc83bea1ae935596582a40d9c65c6b70afc05bdbb867"
+    },
+    {
+      "run_id": 39605535423,
+      "run_attempt": 1,
+      "archive_git_blob": "cf0cc64d55c779fc32a52c7e1d23f52c215e1185",
+      "archive_sha256": "4cfdcc92bee71564b48013370a8825f2551f3eb771f85d5fb508aa569966585a",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-20",
+        "cn": "2026-10-21"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-20",
+        "cn": "2026-10-20"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "29f22356a98d921dc9dd76bec35e1b033b0935fefbe7b3b84c39e3f9b6f7da2b"
+    },
+    {
+      "run_id": 39642893468,
+      "run_attempt": 1,
+      "archive_git_blob": "b92b1d98ea190b4103ca877eccffa1a120e70be6",
+      "archive_sha256": "93c5a213cd733798304568956c7b456f576d5a62ff8783c1b68ffac2364e1165",
+      "indexed_members_verified": 5,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": null,
+        "cn": null
+      },
+      "actual_cutoffs": {
+        "us": null,
+        "cn": null
+      },
+      "active_strategy_ids": [],
+      "collection_blockers": [
+        "missing:plan/plan.json",
+        "missing:strategy-fan-in-receipt.json",
+        "missing:formal-refresh-receipt.json",
+        "missing:formal-v2-sync-receipt.json",
+        "missing:formal-v2/catalog.json",
+        "missing:provider-us/artifacts/selected_pool_price_refresh_manifest.json",
+        "missing:provider-cn/artifacts/selected_pool_price_refresh_manifest.json",
+        "model_selection_reopened_or_undeclared",
+        "incomplete_or_retained_evidence",
+        "research_boundary_or_receipt_missing",
+        "publication_not_verified",
+        "upstream_or_publication_failed"
+      ],
+      "observation_sha256": "c5614b70739c2a321d360c3626c9688534bf941ee94e7b3d5da6f0d690bacbcd"
+    },
+    {
+      "run_id": 39644694043,
+      "run_attempt": 1,
+      "archive_git_blob": "30d2ebe053280dac433ac602cc296a57f4f0431b",
+      "archive_sha256": "dc6c74ed3186b737ad0022983240e07ce17ec6d6811e1949334f0909fcf426e6",
+      "indexed_members_verified": 5,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-20",
+        "cn": "2026-10-21"
+      },
+      "actual_cutoffs": {
+        "us": null,
+        "cn": null
+      },
+      "active_strategy_ids": [],
+      "collection_blockers": [
+        "missing:plan/plan.json",
+        "missing:strategy-fan-in-receipt.json",
+        "missing:formal-refresh-receipt.json",
+        "missing:formal-v2-sync-receipt.json",
+        "missing:formal-v2/catalog.json",
+        "missing:provider-us/artifacts/selected_pool_price_refresh_manifest.json",
+        "missing:provider-cn/artifacts/selected_pool_price_refresh_manifest.json",
+        "model_selection_reopened_or_undeclared",
+        "incomplete_or_retained_evidence",
+        "research_boundary_or_receipt_missing",
+        "publication_not_verified",
+        "upstream_or_publication_failed"
+      ],
+      "observation_sha256": "8042bbe5e9c24c8c5e5bee985b443348b1adb46c2fcab6373a76410dca8424fe"
+    },
+    {
+      "run_id": 39646515125,
+      "run_attempt": 1,
+      "archive_git_blob": "e3c90e04ecaac2bfe07dc50cebf2342b3fb5f832",
+      "archive_sha256": "48b589904ce466d65a6bab6bfd238bc57dd16250f804e49dd099e3aa5ad7497d",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-20",
+        "cn": "2026-10-21"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-20",
+        "cn": "2026-10-21"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "f906455c8a13de500ee01c13bb22c750ea9b8eb59f0cecd1000d364dfdc0d828"
+    },
+    {
+      "run_id": 39707157983,
+      "run_attempt": 1,
+      "archive_git_blob": "90d33e5fcc86ae508aaaa22a69224b4b7206daf1",
+      "archive_sha256": "a2c2b7a8faee152f83f0074e7883763cb3a21cb09e02fbfebaf9cd2322d04c00",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-21"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-21"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "bec4ad846eb82030ddf987a7678cc9be61646b8491deecee4a74c6a35e24059f"
+    },
+    {
+      "run_id": 39755885071,
+      "run_attempt": 1,
+      "archive_git_blob": "b5f3cc1fbd050d76479fed267ac5fc445a01def3",
+      "archive_sha256": "36e157f9bb84b10a4b6dafc2725428e1e1097572ac352e0820763ffe27ffd6d7",
+      "indexed_members_verified": 9,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [
+        "missing:formal-refresh-receipt.json",
+        "missing:formal-v2-sync-receipt.json",
+        "missing:formal-v2/catalog.json",
+        "missing_formal_identity:qqq_rotation",
+        "missing_formal_identity:us_x",
+        "missing_formal_identity:cn_x",
+        "missing_formal_identity:cn_27",
+        "missing_formal_identity:byd",
+        "fan_in_hash_mismatch",
+        "model_selection_reopened_or_undeclared",
+        "incomplete_or_retained_evidence",
+        "research_boundary_or_receipt_missing",
+        "publication_not_verified",
+        "upstream_or_publication_failed"
+      ],
+      "observation_sha256": "e4c1cb75e233c1fe0b87945b1badf5a13e0abdf0c249e12ee89069e782c93d9c"
+    },
+    {
+      "run_id": 39758256517,
+      "run_attempt": 1,
+      "archive_git_blob": "a5c9095b8e3e603f403e1deeb2e3b937b63f0729",
+      "archive_sha256": "e9dc26ff18ecb16ae90f983e478cbacb9bc9844f500c8556268d48d090bb2332",
+      "indexed_members_verified": 9,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [
+        "missing:formal-refresh-receipt.json",
+        "missing:formal-v2-sync-receipt.json",
+        "missing:formal-v2/catalog.json",
+        "missing_formal_identity:qqq_rotation",
+        "missing_formal_identity:us_x",
+        "missing_formal_identity:cn_x",
+        "missing_formal_identity:cn_27",
+        "missing_formal_identity:byd",
+        "fan_in_hash_mismatch",
+        "model_selection_reopened_or_undeclared",
+        "incomplete_or_retained_evidence",
+        "research_boundary_or_receipt_missing",
+        "publication_not_verified",
+        "upstream_or_publication_failed"
+      ],
+      "observation_sha256": "bbdd572868a672a04423d1f4e697e72d9b9ce26f282b84222915ec65d204136a"
+    },
+    {
+      "run_id": 39791850107,
+      "run_attempt": 1,
+      "archive_git_blob": "61c4933019edbcb1be3c25a4e6f6fb5e8d8da4e3",
+      "archive_sha256": "714ec62b4ad7fe64210dd911a90ab7e18c0ef5bcf75f4fa90188eb49c03f9bb2",
+      "indexed_members_verified": 9,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [
+        "missing:formal-refresh-receipt.json",
+        "missing:formal-v2-sync-receipt.json",
+        "missing:formal-v2/catalog.json",
+        "missing_formal_identity:qqq_rotation",
+        "missing_formal_identity:us_x",
+        "missing_formal_identity:cn_x",
+        "missing_formal_identity:cn_27",
+        "missing_formal_identity:byd",
+        "fan_in_hash_mismatch",
+        "model_selection_reopened_or_undeclared",
+        "incomplete_or_retained_evidence",
+        "research_boundary_or_receipt_missing",
+        "publication_not_verified",
+        "upstream_or_publication_failed"
+      ],
+      "observation_sha256": "7a973fc7210e4dda29fdc7abe6fc29e8ae032be50842b789d5c44ee3640abfe3"
+    },
+    {
+      "run_id": 39802448678,
+      "run_attempt": 1,
+      "archive_git_blob": "6b7ed08290dfe4dcc0157fc977ac85bc962e407e",
+      "archive_sha256": "4d39cbf7c5b08242ed8ad034620cace5d2a2e2fe908632171263ca1aff3f7cf5",
+      "indexed_members_verified": 9,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [
+        "missing:formal-refresh-receipt.json",
+        "missing:formal-v2-sync-receipt.json",
+        "missing:formal-v2/catalog.json",
+        "missing_formal_identity:qqq_rotation",
+        "missing_formal_identity:us_x",
+        "missing_formal_identity:cn_x",
+        "missing_formal_identity:cn_27",
+        "missing_formal_identity:byd",
+        "fan_in_hash_mismatch",
+        "model_selection_reopened_or_undeclared",
+        "incomplete_or_retained_evidence",
+        "research_boundary_or_receipt_missing",
+        "publication_not_verified",
+        "upstream_or_publication_failed"
+      ],
+      "observation_sha256": "aa7df11e108aa4171f5b89e23f74e99d20a8cc72bd933a3d992f71780221b148"
+    },
+    {
+      "run_id": 39814345734,
+      "run_attempt": 1,
+      "archive_git_blob": "489fdd6e8cdddc317647ba83ffde3d5bb716bec8",
+      "archive_sha256": "c31e084b6ec76a50059d542b14fb2a86d11ef570caaf37aac6ea5c4aa9c835ee",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "41af451940899f45adc9b410b4d41a476b0aed7bc31912161df13a39aa0cb9ed"
+    },
+    {
+      "run_id": 39819972998,
+      "run_attempt": 1,
+      "archive_git_blob": "24b0b59644b022c4df2a2071358289b892ee0c15",
+      "archive_sha256": "522108d2d4f12cc5f964408b0dfb95a8de191d196498cfc26c0557543c4d459f",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "6c167cde46439dd78c326ec2989eceff13b03e9b5d09aa37909e6c791ae1b8d0"
+    },
+    {
+      "run_id": 39822036478,
+      "run_attempt": 1,
+      "archive_git_blob": "116d014fb54578d2f3a00e3e6528eb34b33ff704",
+      "archive_sha256": "31ded246bcccbde3e7c8efde14c82d381d749e786cbd5f049236c9bba644c0f6",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-21",
+        "cn": "2026-10-22"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "e63bc2cb0e2ed717e3577528879f43ead52146b9db24981428a0d5befcc420d7"
+    },
+    {
+      "run_id": 39885711914,
+      "run_attempt": 1,
+      "archive_git_blob": "828828887ccbd2dc6ae0d05f2b41eb85caf2d2f3",
+      "archive_sha256": "460af86c5e4de89e993a308b8823c6579dfac3396f17604dcd0dfc7f36e10f41",
+      "indexed_members_verified": 39,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-22",
+        "cn": "2026-10-22"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-22",
+        "cn": "2026-10-22"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "4ca21ac5f91d63a59898d4f4cb985cb076ef15a3d806ed925b5f19a6caffa091"
+    },
+    {
+      "run_id": 39963438754,
+      "run_attempt": 1,
+      "archive_git_blob": "836b905e7c511cfbeb6abfd4640fa555ec9fb9a2",
+      "archive_sha256": "0836eab0f48c48c567c71f219486f5bf9f1d9c1d1434fea8a898f68e3ecdd2c2",
+      "indexed_members_verified": 9,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-22",
+        "cn": "2026-10-23"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-22",
+        "cn": "2026-10-23"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [
+        "missing:formal-refresh-receipt.json",
+        "missing:formal-v2-sync-receipt.json",
+        "missing:formal-v2/catalog.json",
+        "missing_formal_identity:qqq_rotation",
+        "missing_formal_identity:us_x",
+        "missing_formal_identity:cn_x",
+        "missing_formal_identity:cn_27",
+        "missing_formal_identity:byd",
+        "fan_in_hash_mismatch",
+        "model_selection_reopened_or_undeclared",
+        "incomplete_or_retained_evidence",
+        "research_boundary_or_receipt_missing",
+        "publication_not_verified",
+        "upstream_or_publication_failed"
+      ],
+      "observation_sha256": "dbba895ff79c91716021e977f46f759344acedeb487a7d58244a02d5821a6f0c"
+    },
+    {
+      "run_id": 40051447643,
+      "run_attempt": 1,
+      "archive_git_blob": "6566da6f34a728db61761e498a8677998ae38e84",
+      "archive_sha256": "aa0bc38d82cf3f5caae22a3ae28910b516942a7b89d6058dcec7b57ca2e3ab69",
+      "indexed_members_verified": 33,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-23",
+        "cn": "2026-10-23"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-23",
+        "cn": "2026-10-23"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "5eed81035e4bdeaba2307dc16f5411cd6eed6c7cb6b1adc67c05c0759c41400d"
+    },
+    {
+      "run_id": 40079647125,
+      "run_attempt": 1,
+      "archive_git_blob": "4934d24e655be71d64f260ebcc91c601955c7c83",
+      "archive_sha256": "0e2caa1a3861bdcb3b66ce5d543b548996840b6b2400ad4c39b5a79382e5c454",
+      "indexed_members_verified": 33,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-23",
+        "cn": "2026-10-23"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-23",
+        "cn": "2026-10-23"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [],
+      "observation_sha256": "b6d6280b65769d9a9a74888199ba9698553fac087418eb6d1ec2e507ce5f224c"
+    },
+    {
+      "run_id": 40169474676,
+      "run_attempt": 1,
+      "archive_git_blob": "9e83d8e7b9443f9df1719ef1f3c9f3ca4961f5b7",
+      "archive_sha256": "de19ab0638bcfd8a44e188296e277e958658bdcb324820fe5938fc29e1f95f30",
+      "indexed_members_verified": 2,
+      "observation_present": false
+    },
+    {
+      "run_id": 40169478271,
+      "run_attempt": 1,
+      "archive_git_blob": "934c02fe467a569b2c3fea2eaef476934c3ef9c7",
+      "archive_sha256": "71ac9469df3027c10fe3fa92001c9fdbcf727a3212ce02a12609b11d67ac8be0",
+      "indexed_members_verified": 33,
+      "observation_present": true,
+      "expected_cutoffs": {
+        "us": "2026-10-23",
+        "cn": "2026-10-23"
+      },
+      "actual_cutoffs": {
+        "us": "2026-10-23",
+        "cn": "2026-10-23"
+      },
+      "active_strategy_ids": [
+        "qqq_rotation",
+        "us_x",
+        "cn_27",
+        "byd"
+      ],
+      "collection_blockers": [
+        "publication_not_verified",
+        "upstream_or_publication_failed"
+      ],
+      "observation_sha256": "941a80d7ec88d962c0f60c5ca13e12ad02823b8b0c6b2dde7ca59eb93bc88069"
+    }
+  ],
+  "markets": {
+    "us": {
+      "status": "BLOCKED",
+      "expected_sessions": 20,
+      "observed_sessions": 7,
+      "qualified_sessions": 0,
+      "sessions": [
+        {
+          "session": "2026-09-28",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-09-29",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-09-30",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-01",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-02",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-05",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-06",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-07",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-08",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-09",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-12",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-13",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-14",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-15",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "38845776829:1",
+            "38851424464:1",
+            "38852192355:1",
+            "38872155879:1",
+            "38882149937:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-16",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "38990571632:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-19",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "39356182714:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-20",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "39529055859:1",
+            "39567189022:1",
+            "39605535423:1",
+            "39644694043:1",
+            "39646515125:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-21",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "39707157983:1",
+            "39755885071:1",
+            "39758256517:1",
+            "39791850107:1",
+            "39802448678:1",
+            "39814345734:1",
+            "39819972998:1",
+            "39822036478:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-22",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "39885711914:1",
+            "39963438754:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-23",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "40051447643:1",
+            "40079647125:1",
+            "40169478271:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "qqq_rotation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "cadence": "Every completed US market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "us_x",
+              "model_version_id": "us_x1_3",
+              "cadence": "Every 10 provider sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        }
+      ]
+    },
+    "cn": {
+      "status": "BLOCKED",
+      "expected_sessions": 20,
+      "observed_sessions": 7,
+      "qualified_sessions": 0,
+      "sessions": [
+        {
+          "session": "2026-09-18",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-09-21",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-09-22",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-09-23",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-09-24",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-09-28",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-09-29",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-09-30",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-08",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-09",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-12",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-13",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-14",
+          "status": "missing",
+          "attempts": [],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "NOT_TESTED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-15",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "38845776829:1",
+            "38851424464:1",
+            "38852192355:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-16",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "38872155879:1",
+            "38882149937:1",
+            "38990571632:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-19",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "39356182714:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-20",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "39529055859:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-21",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "39567189022:1",
+            "39605535423:1",
+            "39644694043:1",
+            "39646515125:1",
+            "39707157983:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-22",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "39755885071:1",
+            "39758256517:1",
+            "39791850107:1",
+            "39802448678:1",
+            "39814345734:1",
+            "39819972998:1",
+            "39822036478:1",
+            "39885711914:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        },
+        {
+          "session": "2026-10-23",
+          "status": "awaiting_review_or_blocked",
+          "attempts": [
+            "39963438754:1",
+            "40051447643:1",
+            "40079647125:1",
+            "40169478271:1"
+          ],
+          "strategies": [
+            {
+              "strategy_id": "cn_27",
+              "model_version_id": "cn_27_v1_3",
+              "cadence": "Every 30 completed CN market sessions",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            },
+            {
+              "strategy_id": "byd",
+              "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "cadence": "Every completed CN market session",
+              "review_status": "BLOCKED",
+              "manual_interventions": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "blockers": [
+    "No independent hash-bound review declarations or verified manual intervention counts supplied.",
+    "Historical five-strategy packets cannot establish current four-strategy acceptance without explicit identity review.",
+    "Actual CN_27 due-cycle evidence not certified; deterministic tests are separate.",
+    "Latest failed publication retained separately; no old green fallback."
+  ],
+  "raw_packet_policy": "Private payloads remain private; only identities, dates, hashes and classifications are published.",
+  "audit_script_sha256": "4b77d06f92be0cfd27cf5411960e9b00957274795c4474bee2cfc7ec19f4007a",
+  "latest_attempt_readiness": {
+    "schema_version": "operating_review_readiness_v1",
+    "run_id": 40169478271,
+    "run_attempt": 1,
+    "captured_at_utc": "2026-10-25T07:19:20.635972+00:00",
+    "mechanically_ready": false,
+    "qualification_status": "blocked",
+    "manual_interventions": null,
+    "review_required": true,
+    "blockers": [
+      "publication_not_verified",
+      "upstream_or_publication_failed",
+      "final Actions metadata mismatch: 40169478271:1"
+    ],
+    "strategy_checks": [
+      {
+        "strategy_id": "qqq_rotation",
+        "mechanically_verified": true,
+        "due_cycle_strategy_ids": [
+          "qqq_rotation"
+        ],
+        "retained_target_strategy_ids": []
+      },
+      {
+        "strategy_id": "us_x",
+        "mechanically_verified": true,
+        "due_cycle_strategy_ids": [
+          "us_x"
+        ],
+        "retained_target_strategy_ids": []
+      },
+      {
+        "strategy_id": "cn_27",
+        "mechanically_verified": true,
+        "due_cycle_strategy_ids": [],
+        "retained_target_strategy_ids": []
+      },
+      {
+        "strategy_id": "byd",
+        "mechanically_verified": true,
+        "due_cycle_strategy_ids": [
+          "byd"
+        ],
+        "retained_target_strategy_ids": []
+      }
+    ],
+    "research_only": true,
+    "trade_ready": false,
+    "artifact_identity": {
+      "id": 12589549272,
+      "name": "formal-backtest-refresh-40169478271-attempt-1",
+      "digest": "sha256:b575a456936fd4d11efcf5038a9fb39de27cf458a463157187db46b02c1191b1",
+      "size_in_bytes": 87616
+    },
+    "observation_scope": "latest_completed_formal_attempt_only; historical packets remain separate evidence"
+  },
+  "latest_attempt_sources": [
+    {
+      "path": "readiness.json",
+      "sha256": "f1a5f2ceae610f7ec3f6adb2f46babea590b997992b322461a04b7734cc3bd9b"
+    },
+    {
+      "path": "final-actions-metadata.json",
+      "sha256": "773c56a4aa369a4f6c6747b98ba8b76b7bceae7448392c4d292ceab98d09d5a1"
+    },
+    {
+      "path": "acceptance-report.json",
+      "sha256": "aa87c5abee4d7ef976e4869d52b1f428292aa1514dc47b24aa6d9d3ac13370ae"
+    },
+    {
+      "path": "source/operating-observation.json",
+      "sha256": "941a80d7ec88d962c0f60c5ca13e12ad02823b8b0c6b2dde7ca59eb93bc88069"
+    }
+  ],
+  "validation": {
+    "existing_operating_acceptance_tests": {
+      "status": "PASS",
+      "passed": 16
+    },
+    "real_twenty_session_qualification": "BLOCKED",
+    "actual_recovery": "NOT_TESTED"
+  }
+}
