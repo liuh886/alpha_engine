@@ -11,7 +11,6 @@ import pytest
 
 from src.artifacts.model_run_bundle_v2 import (
     canonical_json_bytes,
-    validate_manifest,
 )
 
 
@@ -44,27 +43,7 @@ def _load() -> ModuleType:
     return module
 
 
-def _assert_tree_self_consistent(tree_root: Path) -> None:
-    """Generated publication trees must validate against their own manifest.
-
-    The committed preview/formal generations rotate as governed refreshes
-    publish new cutoffs, so the reproducibility gate pins internal
-    consistency (manifest validation + per-section sha256 + research
-    boundary), not any frozen directory snapshot.
-    """
-
-    manifest = json.loads((tree_root / "manifest.json").read_text(encoding="utf-8"))
-    validate_manifest(manifest)
-    assert manifest["research_only"] is True
-    assert manifest["trade_ready"] is False
-    for section in manifest["sections"]:
-        if section.get("availability_status") != "available":
-            continue
-        blob = (tree_root / str(section["path"])).read_bytes()
-        assert hashlib.sha256(blob).hexdigest() == str(section["sha256"]), section["path"]
-
-
-def test_cn_x1_2_complete_bundle_is_exactly_reproducible(tmp_path: Path) -> None:
+def test_retired_cn_x1_2_historical_package_remains_exact() -> None:
     promotion = json.loads((ROOT / PROMOTION).read_text(encoding="utf-8"))
     recorded = str(promotion["portfolio_evidence"]["sha256"])
     actual = hashlib.sha256((ROOT / PORTFOLIO).read_bytes()).hexdigest()
@@ -86,27 +65,26 @@ def test_cn_x1_2_complete_bundle_is_exactly_reproducible(tmp_path: Path) -> None
     assert package["trades"]
     assert package["attribution"]
 
-    result = module.materialize(
-        PORTFOLIO,
-        EXPERIMENT,
-        PROMOTION,
-        tmp_path / "source.json",
-        tmp_path / "preview",
-        tmp_path / "formal",
-        Path("configs/strategies/registry.json"),
-        update_catalogs=False,
-    )
-    assert result["preregistered_gates_supported"] is False
-    generated_preview = (
-        tmp_path
-        / "preview/cn_ranker/cn_x1_2/cn_x1_2-through-2026_06_30"
-    )
-    generated_formal = (
-        tmp_path
-        / "formal/cn_ranker/cn_x1_2/cn_x1_2-through-2026_06_30"
-    )
-    _assert_tree_self_consistent(generated_preview)
-    _assert_tree_self_consistent(generated_formal)
+
+@pytest.mark.parametrize("update_catalogs", [False, True])
+def test_retired_cn_x1_2_cannot_publish_active_bundles(tmp_path: Path, update_catalogs: bool) -> None:
+    module = _load()
+    canonical_paths = [ROOT / "configs/strategies/registry.json", SOURCE,
+                       ROOT / "data/research/model_runs/catalog.json",
+                       ROOT / "data/research/formal_model_runs/catalog.json"]
+    before = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in canonical_paths}
+    with pytest.raises(module.CnX12EvidenceError, match="not the active CN strategy"):
+        module.materialize(
+            PORTFOLIO, EXPERIMENT, PROMOTION, tmp_path / "source.json",
+            tmp_path / "preview", tmp_path / "formal",
+            Path("configs/strategies/registry.json"), update_catalogs=update_catalogs,
+        )
+    # The exact derived source can remain as failed-attempt evidence; no active
+    # preview/formal publication or canonical mutation is permitted.
+    assert (tmp_path / "source.json").read_bytes() == SOURCE.read_bytes()
+    assert not (tmp_path / "preview").exists()
+    assert not (tmp_path / "formal").exists()
+    assert {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in canonical_paths} == before
 
 
 def test_cn_x1_2_row_evidence_tampering_fails_closed(tmp_path: Path) -> None:
@@ -119,12 +97,17 @@ def test_cn_x1_2_row_evidence_tampering_fails_closed(tmp_path: Path) -> None:
         module.build_package(tampered, EXPERIMENT, PROMOTION)
 
 
-def test_active_bundle_catalogs_publish_cn_x1_2_not_cn_x1_1() -> None:
+def test_active_bundle_catalogs_match_registry_and_exclude_retired_cn_models() -> None:
+    registry = json.loads((ROOT / "configs/strategies/registry.json").read_text(encoding="utf-8"))
+    expected = {row["model_version_id"] for row in registry["strategies"]}
+    assert len(expected) == 4
     for path in (
         ROOT / "data/research/model_runs/catalog.json",
         ROOT / "data/research/formal_model_runs/catalog.json",
     ):
         catalog = json.loads(path.read_text(encoding="utf-8"))
         ids = [row["model_version_id"] for row in catalog["records"]]
-        assert "cn_x1_2" in ids
+        assert len(ids) == len(set(ids))
+        assert set(ids) == expected
+        assert "cn_x1_2" not in ids
         assert "cn_x1_1" not in ids

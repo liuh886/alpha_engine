@@ -1,0 +1,203 @@
+{
+  "issue": 1294,
+  "parent_health_issue": 1227,
+  "baseline_main_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+  "runtime_src_tree": "2bbbdeb043ed4f19c0c3c202c3cfde275e583fa0",
+  "status": "PASS_FOR_CORRECTED_BACKEND_COVERAGE",
+  "research_only": true,
+  "trade_ready": false,
+  "original_quality_status": "fail",
+  "original_quality_recorded_revision": "266a8c192e7363524cbd62c07abdff5a1d0126e9",
+  "original_quality_commands": [
+    {
+      "name": "retired_web_boundary",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 5.056,
+      "output_sha256": "41730eb7f72d368709a64dca89bcefdaf00feb1f7262e361e8c2437b59a33989"
+    },
+    {
+      "name": "ci_governance",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 8.172,
+      "output_sha256": "b27f10ac019d62ab5eb430098ab96472cd5ef1e82c13e6a1b75b6579dedb86e3"
+    },
+    {
+      "name": "ruff",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 0.431,
+      "output_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "name": "mypy_ratchet",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 10.892,
+      "output_sha256": "500c9fed5662f8fcaa289af010d254d615fb857d1011a3875e14e00d319d6130"
+    },
+    {
+      "name": "backend_tests",
+      "status": "fail",
+      "exit_code": 2,
+      "duration_seconds": 70.113,
+      "output_sha256": "e5617a69c3d92f0465c0eb65b277b51d3e7459c5048a44ea877170b2c7389e27"
+    },
+    {
+      "name": "frontend_install",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 17.594,
+      "output_sha256": "c86f10d37c6871c8803f70db9bd17726bcf4e4538fc9698daed678c167c552ea"
+    },
+    {
+      "name": "frontend_typecheck",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 10.203,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "frontend_lint",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 7.912,
+      "output_sha256": "b932806f95d75ad5a55aba7db1826d6350bd396bbe5ff510d1012f110380bea1"
+    },
+    {
+      "name": "frontend_build",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 145.962,
+      "output_sha256": "35933b20f34c6560ce60bb54b0476996161563702b99f3e195707b599d303017"
+    },
+    {
+      "name": "frontend_bundle_budget",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 0.694,
+      "output_sha256": "43c3f3331793cd225cbad938ee6299e04be030607b096b0d94740fa122b57579"
+    },
+    {
+      "name": "playwright_install",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 2.667,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "playwright",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 132.576,
+      "output_sha256": "68d9c00523d7ed8a171be991acb5f2189f458bf5c1a368b031988efc24610633"
+    },
+    {
+      "name": "package_build",
+      "status": "pass",
+      "exit_code": 0,
+      "duration_seconds": 96.417,
+      "output_sha256": "90ae960d5ce4987943b1affd9160073a1c11b34b434ee911507694b41ac52764"
+    }
+  ],
+  "initial_single_process_failure": "Collection MemoryError then partially initialized MLflow; isolated affected suites passed 10 tests. Not proven dependency regression.",
+  "initial_four_shard_counts": {
+    "passed": 3934,
+    "failed": 2,
+    "skipped": 8,
+    "test_files": 500
+  },
+  "initial_failures": [
+    "tests/test_materialize_cn_x1_2_evidence_bundle.py::test_cn_x1_2_complete_bundle_is_exactly_reproducible",
+    "tests/test_materialize_cn_x1_2_evidence_bundle.py::test_active_bundle_catalogs_publish_cn_x1_2_not_cn_x1_1"
+  ],
+  "correction": "Retain historical source/package/failure gate proof; verify retired publication denial in both catalog-update modes and exact current-registry/catalog parity.",
+  "validation": {
+    "targeted_suite": "5 passed",
+    "affected_frozen_shard": {
+      "tests": 937,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6
+    },
+    "affected_shard_file_count": 125,
+    "all_files_covered_once": true,
+    "combined_passed": 3938,
+    "combined_skipped": 8,
+    "combined_failed": 0,
+    "skip_accounting": {
+      "ok": true,
+      "approved_count": 8,
+      "unapproved_count": 0,
+      "approved": [
+        {
+          "nodeid": "tests/test_formal_bundle_v2_builder.py::test_builder_uses_retained_metric_labels_only",
+          "reason": "workflow-materialized fixture data absent from this checkout: data\\research\\formal_backtests\\catalog.json"
+        },
+        {
+          "nodeid": "tests/test_formal_bundle_v2_builder.py::test_byd_retained_benchmark_and_excess_metrics_are_available",
+          "reason": "workflow-materialized fixture data absent from this checkout: data\\research\\formal_backtests\\byd_v1_3_recovery_event_low_vol_confirmation_v1.json"
+        },
+        {
+          "nodeid": "tests/test_formal_bundle_v2_builder.py::test_source_backed_active_formals_export_without_recomputation",
+          "reason": "workflow-materialized fixture data absent from this checkout: data\\research\\formal_backtests\\catalog.json"
+        },
+        {
+          "nodeid": "tests/test_orchestrator_all_subprocess.py::test_orchestrator_market_all_runs_via_subprocess",
+          "reason": "Test requires mocking env.run_in_isolation which is an internal implementation detail. The orchestrator's market='all' behavior is tested implicitly through integration tests."
+        },
+        {
+          "nodeid": "tests/test_orchestrator_logs_data_snapshot.py::test_rebacktest_logs_data_snapshot_id_and_end_date",
+          "reason": "Test requires mocking env.run_in_isolation which is an internal implementation detail. The rebacktest behavior is tested implicitly through integration tests."
+        },
+        {
+          "nodeid": "tests/test_promote_cn_x1_1_formal.py::test_catalog_replaces_cn_x1_0_with_cn_x1_1",
+          "reason": "workflow-materialized fixture data absent from this checkout: D:\\Documents\\GitHub\\alpha_engine\\data\\research\\formal_backtests\\catalog.json, D:\\Documents\\GitHub\\alpha_engine\\data\\research\\formal_backtests\\freshness.json"
+        },
+        {
+          "nodeid": "tests/test_promote_cn_x1_1_formal.py::test_frozen_cn_x1_1_promotion_is_complete_and_reproducible",
+          "reason": "workflow-materialized fixture data absent from this checkout: D:\\Documents\\GitHub\\alpha_engine\\data\\research\\formal_backtests\\catalog.json, D:\\Documents\\GitHub\\alpha_engine\\data\\research\\formal_backtests\\freshness.json"
+        },
+        {
+          "nodeid": "tests/test_t49_timeline_migration.py::test_legacy_entries_in_existing_file_are_preserved",
+          "reason": "No existing thought stream file to test against"
+        }
+      ],
+      "unapproved": [],
+      "unused_approvals": [
+        "tests/test_new_endpoints_smoke.py::TestDecayEndpoints::test_check_decay",
+        "tests/test_new_endpoints_smoke.py::TestDecayEndpoints::test_get_config",
+        "tests/test_new_endpoints_smoke.py::TestPortfolioEndpoints::test_check_portfolio_rejects_unbound_positions",
+        "tests/test_new_endpoints_smoke.py::TestResearchEndpoints::test_list_runs",
+        "tests/test_new_endpoints_smoke.py::TestResearchEndpoints::test_start_run",
+        "tests/test_signal_pipeline.py::TestAPIEndpoints::test_data_status_endpoint",
+        "tests/test_signal_pipeline.py::TestAPIEndpoints::test_signal_daily_endpoint",
+        "tests/test_signal_pipeline.py::TestAPIEndpoints::test_signal_grade_endpoint",
+        "tests/test_signal_pipeline.py::TestAPIEndpoints::test_signal_performance_endpoint",
+        "tests/test_signal_pipeline.py::TestAPIEndpoints::test_watchlist_summary_endpoint",
+        "tests/test_signal_pipeline.py::TestEndToEndPipeline::test_pipeline_produces_signals",
+        "tests/test_signal_pipeline.py::TestModelPredictions::test_predictions_cover_date_range",
+        "tests/test_signal_pipeline.py::TestModelPredictions::test_predictions_have_valid_range",
+        "tests/test_signal_pipeline.py::TestModelPredictions::test_predictions_loadable",
+        "tests/test_signal_pipeline.py::TestWalkForward::test_walk_forward_positive_ic",
+        "tests/test_signal_pipeline.py::TestWalkForward::test_walk_forward_runs"
+      ]
+    },
+    "ruff": "PASS",
+    "no_runtime_or_evidence_changes": true
+  },
+  "artifact_hashes": {
+    "original_quality_report": "c22780baa74920b643362970c67ff1217f2e1149a76bd2b119398768a78836c1",
+    "original_shard_report": "6fae67bc5c8b4641e01d8082e62c97125b26bf5ea35c29433ca56d503653d73f",
+    "fixed_shard_xml": "7a877f5cfae16d840d94d916ba7a6d50a4ebf21764632b6451bf35b9ead01780",
+    "fixed_shard_log": "50b1a500aa000f4928a3823eb1d40bb3257a2c6b6b86adadcc80706a2af5b5fb",
+    "frozen_partition_sha256": "68d46f178519e6ae1c288c9e51f454c9807c7dfad7db5e7ddcc4cf7d00ffc05a"
+  },
+  "limitations": [
+    "Combined backend result reuses unchanged original shards 0-2 and fully reruns the affected frozen shard 3 after this test-only correction; it is not a new single-process quality PASS.",
+    "Documentation-only branch switches occurred during the original quality-only command; that run is not a pinned release-candidate certificate.",
+    "QQQ implementation PR #1293 is separately validated, not silently included in this main-runtime baseline.",
+    "A4 privacy failure, 20-session operating proof and owner A7 approval remain unresolved."
+  ]
+}
