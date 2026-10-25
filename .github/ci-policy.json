@@ -35,11 +35,22 @@
   },
   "branch_protection": {
     "settings_managed_outside_repository": true,
-    "recommended_required_checks": [
-      "Alpha Engine CI / backend",
-      "Alpha Engine CI / frontend",
-      "Frontend Static PWA / build-static-pwa",
-      "CI Governance / Policy"
-    ]
+    "required_status_checks": [],
+    "history_ruleset": {
+      "name": "main-history-integrity",
+      "target": "branch",
+      "enforcement": "active",
+      "bypass_actors": [],
+      "conditions": {
+        "ref_name": {
+          "include": ["refs/heads/main"],
+          "exclude": []
+        }
+      },
+      "rules": [
+        {"type": "deletion"},
+        {"type": "non_fast_forward"}
+      ]
+    }
   }
 }

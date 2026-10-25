@@ -326,9 +326,9 @@ CN 的 106 项 overlap 价格/复权/量纲不一致及 BYD 截止日不足仍�
 
 运行 `39800319676` 与 `39814345974` 的验收采集曾报告没有已完成正式运行。
 实际查询复现 GitHub 的 `status=completed` 过滤短暂返回空列表，同一工作流的
-近期列表仍包含已完成记录。现有采集器改为一次读取 main 最近 10 条运行，
-按原列表顺序选首个明确 completed 的运行，不筛 success、不回退到更早的 green。
-窗口中没有 completed 时明确失败，不增加循环重试、分页搜旧成功、调度或状态库。
+近期列表仍包含已完成记录。现有采集器读取该工作流最近 10 条原始运行，
+在本地按原顺序选首个明确属于 main 且 completed 的运行，不筛 success、不回退到更早的 green。
+窗口中没有主分支已完成项时明确失败，不增加循环重试、分页搜旧成功、调度或状态库。
 最新完成项的产物缺失、过期、损坏仍失败或 blocked；原身份、哈希和长期归档边界保留。
 
 148 项验收、状态、正式刷新、触发范围与归档相关检查通过，ruff、diff 及
@@ -340,6 +340,18 @@ CN 的 106 项 overlap 价格/复权/量纲不一致及 BYD 截止日不足仍�
 `manual_interventions=null`、`review_required=true` 保留，不自动填写独立审阅，
 也不将本次采集计为合格会话。回执保留于
 `artifacts/optimization-20261023/collector-recovery`，未覆盖先前失败记录。
+
+[PR #1260](https://github.com/liuh886/alpha_engine/pull/1260) 合并后的真实运行
+`39819973023` 再次未找到已完成项，失败回执保留于
+`artifacts/optimization-20261023/collector-merged-review-failure`，不把本机成功当成自动采集闭环。
+后续将远端 branch 筛选也移到本地，显式跳过其他分支或缺失分支身份的记录；
+仍只查询一次、上限 10 条，后续 main/repository/event/path 与证据校验不变。
+找不到合格运行时在原失败消息补充 listed/main 计数，帮助区分空列表和范围不足，
+不新增存储。故障后的两种列表均已恢复可见，远端筛选可见性延迟仍只是推断，
+实际自动采集与归档恢复须以新运行回执为准。
+本轮 46 项相关检查通过，最后的失败诊断增补又通过 16 项受影响检查；独立复核通过。
+原始列表路径的实际 CLI 已采集后续正式运行 `39819972998:1`，五策略机械检查通过，
+仍保留 awaiting_independent_review；回执位于 `artifacts/optimization-20261023/collector-raw-recovery`。
 
 ### 2026-10-23：定位具体的增量来源冲突
 
@@ -377,3 +389,32 @@ Browser plugin not available；使用仓库既有 Playwright，截图与日志�
 其后的正式刷新 [39814345734](https://github.com/liuh886/alpha_engine/actions/runs/39814345734)
 已成功，[PR #1258](https://github.com/liuh886/alpha_engine/pull/1258) 自动合并，
 正式发布推进至 US 2026-10-21 / CN 2026-10-22；该次运行成功不替代连续会话独立验收。
+
+### 2026-10-23：为主分支保留历史完整性
+
+当前五策略、实际站点与自动验收采集均已运行，US/CN 正式证据推进至 2026-10-22。
+继续收尾时先核对决策与投递工作流：它们在 rebase 后直接快进写入 main。
+本轮采用仅作用于 main 的防删除、防非快进规则，无 bypass actors；期望 payload
+复用现有 CI policy，不新增工作流、总调度器或权限例外。
+全局 required checks 仍为空，既有按路径 PR 检查和精确候选正式发布门禁保留。
+这项历史保护不替代 PR 审查，也不被描述为已经强制了所有 CI。
+启用后以 GitHub API 读回与正常受审合并验证，不向真实 main 尝试删除或强推。
+
+[规则集 25698831](https://github.com/liuh886/alpha_engine/rules/25698831) 已启用并读回：
+active、无 bypass，main 返回两条历史保护规则，本轮工作分支不受该规则集约束。
+Policy、治理检查均为 39 个工作流 / 0 违规；15 项本机治理检查通过，独立复核另跑
+21 项相关检查通过，无 Critical/Important。回执保留于
+`artifacts/assessment-20261023/main-history-protection-receipt.json`。
+
+### 2026-10-23：盘清连续验收的实际覆盖
+
+私有归档的 `archives` tree `80d8ff175396d4acd90f70341bfad0245a0986f7` 中，
+166 次采集对应 22 个不同的正式运行尝试。对每个尝试只取最新 capture，未回退挑选
+旧的成功包；22 个归档 blob 及索引内 665 个 JSON 成员的哈希、大小均核验通过。
+US/CN 均仅覆盖 2026-10-15 至 2026-10-22 的 6 个交易时段，不能计作 166 个时段。
+复用 `alpha ops acceptance` 汇总后，两市场连续合格时段均为 0，20 时段验收未完成：
+这些包尚无独立复核声明和可确认的人工干预计数，失败及阻塞记录继续保留。
+最新正式尝试 `39885711914:1` 的机械检查通过，仍待独立复核；机械通过不等于会话验收。
+盘点回执及原验收器输出分别保留于 `artifacts/assessment-20261023/` 下的
+`operating-review-historical-audit.json`、`historical-operating-acceptance.json`。
+真实账号验收按用户本轮选择暂缓，未标记通过；临时登录浏览器已关闭。

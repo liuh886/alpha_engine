@@ -16,7 +16,7 @@ from src.governance.model_contract import load_performance_semantics
 
 FRESHNESS = Path("data/research/formal_model_runs")
 NATIVE = Path("data/research/model_runs")
-MODEL_ID = "cn_x1_2"
+MODEL_ID = "us_x1_3"
 US_MODEL_ID = "us_x1_3"
 
 
@@ -53,7 +53,7 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
             "date": latest_date,
             "holding_end_date": cutoff,
             "account": latest["account"],
-            "bench_hs300": latest["bench_hs300"],
+            "bench_qqq": latest["bench_qqq"],
             "provisional_mtm": True,
             "settlement_status": "provisional_mtm",
             "mtm_as_of": cutoff,
@@ -63,19 +63,21 @@ def test_bundle_v2_appends_provisional_mtm_without_mutating_settled_report(
         "research_only": True,
         "trade_ready": False,
     }
-    package_path = tmp_path / "cn-refresh-state.json"
+    package_path = tmp_path / "us-refresh-state.json"
     _write(package_path, package)
 
     preview = tmp_path / "active-preview"
     shutil.copytree(NATIVE, preview)
-    shutil.rmtree(preview / "cn_ranker" / MODEL_ID)
+    shutil.rmtree(preview / "us_ranker" / MODEL_ID)
     retained_predecessor = preview / "cn_ranker" / "cn_x1_1"
     if retained_predecessor.exists():
         shutil.rmtree(retained_predecessor)
     strategy = load_active_strategy_catalog().by_model_version_id[MODEL_ID]
-    build_preview_bundle(package_path, strategy, output_root=preview)
+    new_manifest = build_preview_bundle(package_path, strategy, output_root=preview)
+    manifests = [preview / row["manifest_path"] for row in _read(NATIVE / "catalog.json")["records"]
+                 if row["model_version_id"] != MODEL_ID]
     update_catalog(
-        sorted(preview.rglob("manifest.json")),
+        sorted([*manifests, new_manifest]),
         catalog_path=preview / "catalog.json",
         channel="preview",
     )

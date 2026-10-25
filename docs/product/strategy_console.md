@@ -2,6 +2,18 @@
 
 Status: active focused-core product contract, effective 2026-10-21 by user direction.
 
+2026-10-24 user direction: retire CN x1.2 from the active registry, publication
+catalogs and scheduled evaluation adapters. The maintained fleet now has four
+strategies. Frozen contracts, historical bundles and failure evidence remain
+available for audit and do not authorize reactivation.
+
+Chart presentation follows [Strategy chart quality](chart_quality.md).
+
+2026-10-24 user correction: instrument price detail and model buy/sell markers
+are useful maintained strategy-explanation features. Formal holdings, trade and
+attribution instruments link to the detail page. Overview and Status remain the
+two primary navigation destinations.
+
 ## Purpose
 
 Provide one daily research view of existing formal strategies: current
@@ -15,17 +27,28 @@ evidence; it does not execute research or orders.
 | --- | --- |
 | `/app` (also the root destination) | Daily brief and formal strategy fleet |
 | `/strategies/:strategyId` | Current observation and formal historical evidence |
+| `/securities/:market/:symbol` | Instrument OHLCV, volume and historical model events |
 | `/system` | Operating Status, dated source publication and recovery links |
 
 Only Overview and Status appear in primary navigation. Strategy details open
 from the brief/fleet. Retired routes show an unavailable view with a return to
 Overview; they do not select a fallback data source.
 
-The product no longer includes standalone research, run comparison, security
-exploration, factors/reports/library pages, local ZIP/preview loading, marketing,
+The product no longer includes standalone research, run comparison, standalone
+security exploration, factors/reports/library pages, local ZIP/preview loading, marketing,
 referrals, PWA/offline installation, analytics or browser access-policy editing.
 Historical contracts and sealed evidence remain. The worker URL is retained only
 as an unregister/cache-retirement response for existing installs.
+
+Instrument detail is a linked historical drill-down, not an alternate current
+operations reader. The existing formal sync publishes compact disposable views
+of the governed market catalog: OHLCV and exact active formal model/run events,
+without copying factor panels. Original source hashes are retained, projected
+files are hash-verified, and formal bundle identities are checked against the
+loaded catalog. Price evidence can remain readable when a model's event binding
+is unavailable. Event dates and target changes are not relabeled as live fills;
+an event with no matching price bar stays in the ledger and is never moved to
+another date. CN x1.2 remains retired and has no current model toggle or markers.
 
 ## One evidence path
 

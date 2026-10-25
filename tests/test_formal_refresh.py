@@ -188,10 +188,7 @@ def test_plan_is_formal_v2_catalog_driven() -> None:
     assert plan["active_model_version_ids"] == list(active.active_model_version_ids)
     assert {task["publication_input"] for task in plan["tasks"]} == {"native_bundle_v2"}
     assert "governed_evidence_model_ids" not in plan
-    cn = next(task for task in plan["tasks"] if task["strategy_id"] == "cn_x")
-    assert cn["formal_refresh_capability_status"] == "available"
-    assert cn["formal_refresh_adapter_id"] == "cn_x1_2_formal_refresh_v1"
-    assert cn["formal_refresh_block_reason"] is None
+    assert all(task["strategy_id"] != "cn_x" for task in plan["tasks"])
     assert plan["blocked_model_ids"] == []
     expected_execution = [
         task

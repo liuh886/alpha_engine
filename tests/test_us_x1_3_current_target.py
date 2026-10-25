@@ -60,7 +60,7 @@ def test_current_target_uses_exact_formal_x1_3_stage_b_contract() -> None:
     assert set(factor_columns.values()) == set(columns)
 
 
-def test_production_ranker_workflow_is_registry_driven_for_both_active_rankers() -> None:
+def test_production_ranker_workflow_is_registry_driven_for_active_rankers() -> None:
     workflow = (ROOT / ".github/workflows/ranker-10d-current-target.yml").read_text(
         encoding="utf-8"
     )
@@ -68,11 +68,12 @@ def test_production_ranker_workflow_is_registry_driven_for_both_active_rankers()
 
     assert "scripts/run_ranker_current_target.py due" in workflow
     assert "scripts/run_ranker_current_target.py build" in workflow
-    assert "for market in us cn" in workflow
+    assert "for market in $markets" in workflow
+    assert "load_active_strategy_catalog" in workflow
     assert "load_active_strategy_catalog" in runner
     assert "load_active_strategy_runtime_capabilities" in runner
     assert "us_x1_3_current_target_v1" in runner
-    assert "cn_x1_2_current_target_v1" in runner
+    assert "cn_x1_2_current_target_v1" not in runner
     assert "cn_x1_1" not in workflow
     assert "scripts/run_us_x1_3_current_target.py" not in workflow
     assert not (ROOT / "scripts/run_us_x1_3_current_target.py").exists()

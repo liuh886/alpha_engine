@@ -53,6 +53,29 @@ The core CI enforces the following drift rules:
 
 Action-major and Node.js modernization are recorded as warnings so old specialized workflows can be upgraded when edited without converting repository-wide runtime migration into unrelated PR noise.
 
+## Main history protection
+
+The `main-history-integrity` repository ruleset targets only `refs/heads/main`
+and blocks deletion and non-fast-forward updates. It has no bypass actors.
+The expected payload is recorded under `branch_protection.history_ruleset` in
+`.github/ci-policy.json`; live GitHub settings remain the enforcement authority.
+Read active rules with `gh api repos/liuh886/alpha_engine/rules/branches/main`.
+
+This protects retained evidence history while allowing the existing signal and
+delivery workflows to append fast-forward commits. Those producers currently
+push directly to main after rebasing; a blanket pull-request or global required
+check rule would interrupt them. Required PR checks remain path-scoped and
+formal promotion retains its exact-candidate validation and reviewed merge.
+The empty `required_status_checks` list describes the absence of a global
+server-enforced check rule; it does not claim that CI or review can be skipped.
+The former advisory check-name list included a retired frontend job and has
+been removed rather than turned into a required check that may never run.
+
+Verify protection by reading back the ruleset, target, rules and bypass list,
+and by observing a normal reviewed merge. Do not attempt destructive main
+updates as a protection test. A later change to required PR/status rules must
+first migrate or explicitly govern the direct-writing producers.
+
 ## Reviewed formal-refresh performance contract
 
 The reviewed formal-refresh workflow keeps one promotion transaction while

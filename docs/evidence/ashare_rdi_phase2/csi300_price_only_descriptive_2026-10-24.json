@@ -1,0 +1,76 @@
+{
+  "status": "price_only_descriptive_not_out_of_sample",
+  "reference": "CSI300 / 000300.SH",
+  "first_price_session": "2005-04-08",
+  "last_price_session": "2026-06-25",
+  "rows": 5152,
+  "lookback_sessions": 60,
+  "drawdown_threshold": -0.1,
+  "severe_loss_threshold": -0.05,
+  "results": [
+    {
+      "horizon_sessions": 7,
+      "drawdown_at_least_threshold": {
+        "observations": 1258,
+        "mean_return": 0.0013285215787953812,
+        "p_down": 0.4562798092209857,
+        "p_severe_loss": 0.13910969793322733,
+        "mean_worst_excursion": -0.03959753907486416
+      },
+      "other": {
+        "observations": 3828,
+        "mean_return": 0.004053679912542469,
+        "p_down": 0.45820271682340646,
+        "p_severe_loss": 0.06739811912225706,
+        "mean_worst_excursion": -0.024956992505621414
+      }
+    },
+    {
+      "horizon_sessions": 14,
+      "drawdown_at_least_threshold": {
+        "observations": 1258,
+        "mean_return": 0.0040730678716728655,
+        "p_down": 0.4467408585055644,
+        "p_severe_loss": 0.1724960254372019,
+        "mean_worst_excursion": -0.0544503429144282
+      },
+      "other": {
+        "observations": 3821,
+        "mean_return": 0.007695935612634051,
+        "p_down": 0.4632295210677833,
+        "p_severe_loss": 0.11986390997121173,
+        "mean_worst_excursion": -0.03606687002625966
+      }
+    },
+    {
+      "horizon_sessions": 28,
+      "drawdown_at_least_threshold": {
+        "observations": 1258,
+        "mean_return": 0.0047416400678288425,
+        "p_down": 0.4236883942766296,
+        "p_severe_loss": 0.23211446740858505,
+        "mean_worst_excursion": -0.0748640394637134
+      },
+      "other": {
+        "observations": 3807,
+        "mean_return": 0.01702044127266084,
+        "p_down": 0.4701864985552929,
+        "p_severe_loss": 0.20619910690832677,
+        "mean_worst_excursion": -0.05122377209184853
+      }
+    }
+  ],
+  "event_rdi_evaluated": false,
+  "predictive_skill_established": false,
+  "research_only": true,
+  "trade_ready": false,
+  "source_repo_path": "data/csv_source/000300.csv",
+  "source_git_blob_sha1": "4f6f2dec557b8a55af748f73c49465d5d4686beb",
+  "generated_by": "src/research/ashare_rdi/price_baseline.py reference-equivalent arithmetic",
+  "limitations": [
+    "overlapping forward labels, not independent observations",
+    "no official calendar gap or independent provider quality certification in this diagnostic",
+    "single descriptive sample, no purged out-of-sample test or confidence intervals",
+    "no PIT archival event coverage; price-only association is not RDI validation"
+  ]
+}

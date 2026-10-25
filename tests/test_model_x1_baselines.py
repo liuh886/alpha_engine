@@ -26,9 +26,8 @@ def _load_validator() -> ModuleType:
 def test_active_strategy_catalog_owns_current_x1_identities() -> None:
     catalog = load_active_strategy_catalog(ACTIVE_CATALOG)
     assert catalog.by_strategy_id["us_x"].model_version_id == "us_x1_3"
-    assert catalog.by_strategy_id["cn_x"].model_version_id == "cn_x1_2"
+    assert "cn_x" not in catalog.by_strategy_id
     assert catalog.by_strategy_id["us_x"].historical_evidence_access == "public"
-    assert catalog.by_strategy_id["cn_x"].historical_evidence_access == "public"
 
 
 def test_active_model_configs_and_formal_evidence_tie_to_catalog() -> None:
@@ -38,19 +37,11 @@ def test_active_model_configs_and_formal_evidence_tie_to_catalog() -> None:
     assert result["active_strategy_catalog"] == "configs/strategies/registry.json"
     assert result["active_baselines"] == {
         "us": "us_x1_3",
-        "cn": "cn_x1_2",
     }
     assert [item["model_id"] for item in result["models"]] == [
-        "cn_x1_2",
         "us_x1_3",
     ]
-    cn = result["models"][0]
-    assert cn["promotion_authority"] == "explicit_user_direction_2026_08_14"
-    assert cn["formal_acceptance_supported"] is False
-    assert cn["failed_gate"] == "2026h1_drawdown_worsening_within_3pp"
-    assert cn["formal_bundle_transition"] == "maintained_append_only_formal_refresh"
-    assert cn["evidence_completeness"] == "complete"
-    us = result["models"][1]
+    us = result["models"][0]
     assert us["selected_candidate"] == "mvv_plus_pressure"
     assert us["factor_count"] == 13
     assert us["prospective_acceptance_pending"] is True

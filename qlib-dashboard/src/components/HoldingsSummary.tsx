@@ -2,13 +2,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { Position } from "@/lib/types";
+import { SecurityLink } from '@/components/SecurityLink';
 
 export function HoldingsSummary({
   positions,
   title,
+  market,
+  model,
 }: {
   positions: Position[];
   title?: string;
+  market?: string;
+  model?: string;
 }) {
   if (!positions.length) return null;
 
@@ -82,7 +87,7 @@ export function HoldingsSummary({
                 <TableRow key={`${p.instrument}-${idx}`} data-testid="positions-table-row">
                   <TableCell>
                     <div className="min-w-0">
-                      <span className="block truncate text-xs font-semibold">{p.instrument_label || p.name || p.instrument}</span>
+                      <SecurityLink market={market} model={model} instrument={p.instrument}>{p.instrument_label || p.name || p.instrument}</SecurityLink>
                       <span className="block truncate font-mono text-[9px] text-muted-foreground">{p.instrument}</span>
                     </div>
                   </TableCell>
