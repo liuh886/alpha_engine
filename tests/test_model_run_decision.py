@@ -131,8 +131,12 @@ def test_pending_observation_receipt_verifies_actual_section_bytes(tmp_path: Pat
     from src.artifacts.model_run_decision import pending_observation_decision
     formal_root = Path("data/research/formal_model_runs")
     catalog = json.loads((formal_root / "catalog.json").read_text(encoding="utf-8"))
-    record = next(row for row in catalog["records"] if row["model_version_id"] == "cn_x1_2")
-    source = (formal_root / record["manifest_path"]).parent
+    from src.artifacts.formal_bundle_reader import load_retained_formal_run
+    assert all(row["model_version_id"] != "cn_x1_2" for row in catalog["records"])
+    receipt = json.loads((formal_root / "formal-bundle-v2-sync-receipt.json").read_text(encoding="utf-8"))
+    relative = next(path for path in receipt["retained_formal_manifests"] if path.startswith("cn_ranker/cn_x1_2/"))
+    retained = load_retained_formal_run(Path.cwd(), (formal_root / relative).as_posix())
+    source = retained.manifest_path.parent
     bundle = tmp_path / "bundle"
     shutil.copytree(source, bundle)
     decision = pending_observation_decision(bundle / "manifest.json")
@@ -150,7 +154,7 @@ def test_missing_receipts_are_materialized_once_and_existing_receipts_preserved(
     root = tmp_path / "decisions"
     catalog = Path("data/research/formal_model_runs/catalog.json")
     first = materialize_pending_observation_decisions(catalog_path=catalog, output_root=root)
-    assert len(first["records"]) == 5
+    assert len(first["records"]) == len(json.loads(catalog.read_text(encoding="utf-8"))["records"])
     assert all(row["verdict"] == "blocked" for row in first["records"])
     before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*.json")}
     materialize_pending_observation_decisions(catalog_path=catalog, output_root=root)

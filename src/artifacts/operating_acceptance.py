@@ -135,12 +135,13 @@ def collect_operating_review(
             raise ValueError(f"operating evidence retrieval failed: {type(exc).__name__}") from None
         return result.stdout if binary else json.loads(result.stdout)
 
-    # The remote status filter can transiently omit completed runs. Keep the
-    # lookup bounded and select the latest completed run regardless of outcome.
-    runs = api("actions/workflows/formal-backtest-refresh.yml/runs?branch=main&per_page=10")["workflow_runs"]
-    completed = next((run for run in runs if run.get("status") == "completed"), None)
+    # Filter the bounded workflow history locally, including failed completions.
+    runs = api("actions/workflows/formal-backtest-refresh.yml/runs?per_page=10")["workflow_runs"]
+    main_runs = [run for run in runs if run.get("head_branch") == "main"]
+    completed = next((run for run in main_runs if run.get("status") == "completed"), None)
     if completed is None:
-        raise ValueError("no completed formal refresh observation available in latest 10 runs")
+        raise ValueError("no completed formal refresh observation available in latest 10 runs "
+                         f"(listed={len(runs)}, main={len(main_runs)})")
     run_id, attempt = completed["id"], completed["run_attempt"]
     metadata = {"run": api(f"actions/runs/{run_id}/attempts/{attempt}"), "jobs": []}
     page = 1

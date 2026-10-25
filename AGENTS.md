@@ -6,7 +6,7 @@ User-directed priority (2026-10-03): keep Alpha Engine simple, responsive and
 useful for research decisions. Optimize for a reliable existing operating loop
 before expanding models, factors, dashboards or infrastructure.
 
-User-directed scope reduction (2026-10-21): make the existing five-strategy
+User-directed scope reduction (2026-10-21): make the existing four-strategy
 research and monitoring loop the product. The maintained console has only
 Overview, strategy detail and Operating Status; Overview and Status are its two
 navigation destinations. New features must directly serve that loop and replace
@@ -14,6 +14,17 @@ an existing path when possible. Marketing, referrals, PWA/offline, local
 ZIP/preview browsing, standalone research exploration and browser policy editing
 are retired. Historical evidence and server-enforced current-operations access
 remain. Do not reactivate retired paths as fallback readers.
+
+User-directed correction (2026-10-24): instrument detail and historical model
+buy/sell markers are maintained strategy-explanation features. Restore linked
+instrument drill-down from formal holdings/trades/attribution, using governed
+price evidence and exact formal model identities. This exception does not
+restore a standalone research explorer, retired models, or public current signals.
+
+User-directed RDI product work (2026-10-24): expose the dated RDI research
+readiness and source-bound descriptive evidence within Operating Status.
+Keep its data blockers separate from active strategy health; no new navigation,
+uncalibrated score, live signal or strategy registration is authorized by this view.
 
 - Core value: refresh required data, evaluate due strategies, explain the
   evidence-bound result and expose freshness/blockers in one current view.

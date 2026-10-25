@@ -169,11 +169,11 @@ def test_verified_retention_preserves_factor_date_without_a_false_delay(newer_ma
     from src.research.market_session_clock import exchange_sessions
 
     operations = _operations()
-    row = next(item for item in operations["records"] if item["model_version_id"] == "cn_x1_2")
+    row = next(item for item in operations["records"] if item["model_version_id"] == "cn_27_v1_3")
     row.update(observation_state="retained_within_cadence", factor_freshness="stale",
                status="current_no_change", delivery_status="not_required")
     catalog = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
-    cutoff = next(item["evidence_cutoff"] for item in catalog["records"] if item["model_version_id"] == "cn_x1_2")
+    cutoff = next(item["evidence_cutoff"] for item in catalog["records"] if item["model_version_id"] == "cn_27_v1_3")
     # Isolate the declared snapshot from newer live ledger commits. A BYD daily
     # observation can advance independently of the retained CN formal bundle.
     for operation in operations["records"]:
@@ -190,7 +190,7 @@ def test_verified_retention_preserves_factor_date_without_a_false_delay(newer_ma
     payload = build_system_health(repository_root=Path.cwd(), formal_catalog=FORMAL_CATALOG,
         formal_freshness=FORMAL_FRESHNESS, operations=operations, model_data_readiness=MODEL_DATA,
         generated_at=f"{observed_through}T23:00:00Z")
-    retained = next(item for item in payload["strategies"] if item["model_version_id"] == "cn_x1_2")
+    retained = next(item for item in payload["strategies"] if item["model_version_id"] == "cn_27_v1_3")
     assert retained["stages"]["factor"] == ("delayed" if newer_market_observation else "not_applicable")
     assert retained["factor_cutoff"] == factor_date
     assert retained["state"] == ("delayed" if newer_market_observation else "current")
