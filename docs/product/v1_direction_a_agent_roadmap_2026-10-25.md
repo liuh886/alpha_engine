@@ -65,10 +65,12 @@ identity, privacy, missing-state, fill or performance misrepresentation.
 Open *separate* small defect Issue after observing a real failure, not
 a speculative redesign. No new main nav or research browser.
 
-## W3: finish a reproducible local research vertical slice — #324/#325/#826 (P1)
+## W3: finish a reproducible local research vertical slice — #1282 (P1)
 
 Reuse existing canonical company event/PIT, VWAP/Alpha158 and training
-issues. Demonstrate **one accepted US and one CN** reproducible local
+issues (#324/#325/#826) only when verified source blockers require them. Start
+with an eligible accepted US and CN reference (rules-based is valid); do not
+substitute retired formal model identities to make this gate pass. Demonstrate **one accepted US and one CN** reproducible local
 data -> research/evaluator -> immutable evidence run with pinned sources,
 reference benchmarks, exchange calendars, adjustments, corporate events,
 costs, source hashes and comparisons; preserve failed experiments.
@@ -96,7 +98,7 @@ no mutation of sealed research/decision evidence during rollback.
 | 1 | #1277 | Existing operating acceptance receipts; real eligible sessions |
 | 1 (parallel) | #1279 privacy checks | Live protection evidence or BLOCKED |
 | 2 | #1279 UAT | Representative changed/not-due/blocked/denied cases |
-| 3 | #324/#325/#826 as required | Accepted local US/CN research reproducibility |
+| 3 | #1282 (upstream #324/#325/#826 if required) | Accepted local US/CN research reproducibility |
 | 4 | #1281 | Gated release and owner rollback drill |
 
 **Separate research:** RDI #1272 remains research-only/unvalidated and
