@@ -36,7 +36,12 @@ Weights and grades are explicitly subjective and require owner review.
 | Delivery/governance | 11 / 15 | Versioned contracts/CI, but documentation drift, issue hygiene and workflow complexity |
 | **Total** | **70 / 100** | **Provisional Beta**; not a prediction of engineering effort |
 
-## Acceptance scorecard: evidence, not checkboxes alone
+## Baseline diagnostic dimensions (historical; NOT the Direction A v1 release gates)
+
+The following G0–G6 table documents the **original October 25 assessment**
+only. Direction A has since selected **A0–A7** (below) as the authoritative
+owner-acceptance contract. The legacy diagnostic labels are not a second
+set of release gates.
 
 | Gate | Verifier / retained evidence | Entry criterion | Current classification |
 | --- | --- | --- | --- |
