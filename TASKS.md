@@ -6,6 +6,13 @@
 
 # Task Board
 
+> **Historical task record — authority reconciled 2026-10-25 (#1278).**
+> Completed items below record what existed at their dates, including retired
+> pages, model management and research runtimes. They are not a current feature
+> checklist or authorization to restore code. Start with [AGENTS.md](AGENTS.md)
+> and the [current product / local Agent handoff](docs/product/strategy_console.md#local-agent-start-here).
+> Current work is issue-scoped; preserve this history and sealed evidence.
+
 ## P0 — Data Credibility
 
 - [x] **T1: Fix Valid/Test split** — Changed test period to 2026-01-01/2026-04-03 in both configs. ✅ 2026-05-28

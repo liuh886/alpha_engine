@@ -1,5 +1,7 @@
 # AlphaEngine 产品愿景
 
+> **历史产品愿景，2026-10-25 标记（#1278）。** 下文的页面清单、模型管理、比较、竞技场及浏览器研究工作流已被当前产品范围替代，不能作为恢复入口或运行能力的要求。数据可验证、风险优先和简洁等原则继续适用；超额收益是待验证研究目标，不是发布验收标准。当前实现以 [AGENTS.md](../AGENTS.md)、[Strategy Console 与本地 Agent 交接入口](product/strategy_console.md#local-agent-start-here)及[单人本地研究 ADR](adr/0003-single-user-local-quant-research-platform.md)为准。保留下文作为历史记录。
+
 ## 核心目标
 
 **发掘有效的交易策略，获取 Alpha 超额收益，目标超过 QQQ（美股）/ 沪深300（A股）。**

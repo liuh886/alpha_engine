@@ -1,5 +1,16 @@
 # Research Studio Runtime Capability Matrix
 
+> **HISTORICAL / SUPERSEDED — 2026-10-25 (#1278).** The matrix, hard rules,
+> release gates and rollback steps below describe the retired Research Studio.
+> In particular `/system` is now maintained Operating Status; current account
+> authorization remains enforced, while local ZIP readers, connected browser
+> research and offline installation are retired. Do not implement or restore
+> them from this document. Use [AGENTS.md](../../AGENTS.md), the
+> [current product / local Agent handoff](strategy_console.md#local-agent-start-here),
+> [access contract](../architecture/frontend_access_control.md) and
+> [operating recovery runbook](../operations/decision_loop_recovery_2026-10-03.md).
+> Historical instructions below are retained for audit only.
+
 | Capability | Published Pages/PWA | Local artifact | Connected research |
 |---|---:|---:|---:|
 | Authentication | No | No | Required |
