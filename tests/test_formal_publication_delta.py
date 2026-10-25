@@ -477,3 +477,25 @@ def test_publication_delta_cli_writes_receipt_and_github_outputs(
         "publication_required=false",
         "status=semantic_no_change",
     ]
+
+
+@pytest.mark.parametrize("value, expected", [(False, "false"), (True, "true"), (None, None), ("false", None), (0, None)])
+def test_latest_main_workflow_boolean_read_accepts_no_change_and_rejects_invalid(value, expected):
+    """jq -e must not abort bash before its legitimate no-change branch."""
+    import re
+    import shutil
+    import subprocess
+
+    import yaml
+
+    workflow = yaml.safe_load((Path(__file__).resolve().parents[1] / ".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8"))
+    step = next(step for step in workflow["jobs"]["publish"]["steps"] if step.get("id") == "pull_request")
+    expression = re.search(r"latest_publication_required=\"\$\(jq -er '([^']+)'", step["run"]).group(1)
+    jq = shutil.which("jq")
+    assert jq, "workflow regression requires the runner's jq executable"
+    result = subprocess.run([jq, "-er", expression], input=json.dumps({"publication_required": value}), text=True, capture_output=True, check=False)
+    if expected is None:
+        assert result.returncode != 0
+    else:
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == expected
