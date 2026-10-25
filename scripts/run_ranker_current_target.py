@@ -34,9 +34,6 @@ ADAPTERS = {
     "us_x1_3_current_target_v1": (
         "src.research.us_x1_3_current_target", "score_us_x1_3_current_target"
     ),
-    "cn_x1_2_current_target_v1": (
-        "src.research.cn_x1_2_current_target", "score_cn_x1_2_current_target"
-    ),
 }
 
 

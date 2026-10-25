@@ -3,10 +3,32 @@ import { describe, expect, it } from 'vitest';
 import {
   declaredBenchmarkDescriptor,
   discoverBenchmarkOptions,
+  normalizeBenchmarkSeries,
 } from './performanceBenchmarks';
 
 
 describe('shared performance benchmark discovery', () => {
+  it('keeps missing equity levels unavailable and resumes only at observed levels', () => {
+    const series = normalizeBenchmarkSeries([100, undefined, 110]);
+    expect(series?.[0]).toBe(0);
+    expect(series?.[1]).toBeNull();
+    expect(series?.[2]).toBeCloseTo(0.1);
+  });
+
+  it('does not compound past an unobserved daily return', () => {
+    expect(normalizeBenchmarkSeries([0, 0.01, undefined, 0.02])).toEqual([0, 0.010000000000000009, null, null]);
+  });
+
+  it('does not turn explicit null levels into zero observations', () => {
+    const series = discoverBenchmarkOptions([
+      { date: '2026-01-01', account: 1, bench_spy: 100 },
+      { date: '2026-01-02', account: 1.02, bench_spy: null },
+      { date: '2026-01-03', account: 1.04, bench_spy: 110 },
+    ])[0].series;
+    expect(series[1]).toBeNull();
+    expect(series[2]).toBeCloseTo(0.1);
+  });
+
   it('discovers a new bench_* series without model-specific chart code', () => {
     const report = [
       { date: '2026-01-01', account: 1, bench_spy: 100 },

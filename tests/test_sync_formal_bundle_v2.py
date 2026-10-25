@@ -93,7 +93,6 @@ def test_active_preview_catalog_is_exact_active_strategy_set(tmp_path: Path) -> 
     assert preview_ids == {
         "qqqi_qqq_tqqq_v4_3",
         US_X1_3,
-        "cn_x1_2",
         "cn_27_v1_3",
         BYD_V13,
     }
@@ -151,13 +150,17 @@ def test_sync_promotes_persisted_active_preview_set_deterministically(tmp_path: 
     from src.artifacts.formal_publication_delta import _SYNC_RECEIPT_KEYS
 
     assert set(receipt_a) == _SYNC_RECEIPT_KEYS
-    assert receipt_a["retained_inactive_model_version_ids"] == ["cn_x1_1"]
+    assert receipt_a["retained_inactive_model_version_ids"] == ["cn_x1_1", "cn_x1_2"]
     retained_path = (
         "cn_ranker/cn_x1_1/cn_x1_1-through-2026_08_12/manifest.json"
     )
-    assert receipt_a["retained_formal_manifests"] == {
-        retained_path: _sha256(first / retained_path)
-    }
+    assert receipt_a["retained_formal_manifests"][retained_path] == _sha256(first / retained_path)
+    retired = sorted((FRESHNESS / "cn_ranker/cn_x1_2").glob("*/manifest.json"))
+    assert retired
+    for manifest in retired:
+        relative = manifest.relative_to(FRESHNESS).as_posix()
+        assert receipt_a["retained_formal_manifests"][relative] == _sha256(first / relative)
+        assert (first / relative).read_bytes() == manifest.read_bytes()
     assert (first / retained_path).read_bytes() == (FRESHNESS / retained_path).read_bytes()
     assert not (first / "cn_ranker/cn_x1_2/cn_x1_2-through-2026_06_30").exists()
     assert "source_built_model_ids" not in receipt_a
@@ -181,8 +184,8 @@ def test_sync_promotes_persisted_active_preview_set_deterministically(tmp_path: 
     assert freshness["required_models"] == list(
         load_active_strategy_catalog(STRATEGIES).active_model_version_ids
     )
-    assert freshness["date_range_end_required_models"] == [US_X1_3, "cn_x1_2"]
-    assert freshness["freshness_receipt_required_models"] == [US_X1_3, "cn_x1_2"]
+    assert freshness["date_range_end_required_models"] == [US_X1_3]
+    assert freshness["freshness_receipt_required_models"] == [US_X1_3]
 
 
 def test_sync_retains_pinned_benchmark_run_outside_active_catalog(tmp_path: Path) -> None:

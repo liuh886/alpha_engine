@@ -13,10 +13,12 @@ export interface RouteDefinition {
 const Overview = lazy(() => import('./pages/StrategyOverviewPage').then(m => ({ default: m.StrategyOverviewPage })));
 const Strategy = lazy(() => import('./pages/StrategyDetailPage').then(m => ({ default: m.StrategyDetailPage })));
 const System = lazy(() => import('./pages/SystemHubPage').then(m => ({ default: m.SystemHubPage })));
+const Security = lazy(() => import('./pages/SecurityDetailPage').then(m => ({ default: m.SecurityDetailPage })));
 
 export const routes: RouteDefinition[] = [
   { path: 'app', title: 'Daily Research', label: 'Overview', icon: LayoutDashboard, component: Overview },
   { path: 'strategies/:strategyId', title: 'Strategy Evidence', label: 'Strategy', icon: Activity, component: Strategy, navVisible: false },
+  { path: 'securities/:market/:symbol', title: 'Instrument Evidence', label: 'Instrument', icon: Activity, component: Security, navVisible: false },
   { path: 'system', title: 'Operating Status', label: 'Status', icon: Activity, component: System },
 ];
 export const isRuntimeVisible = (route: RouteDefinition) => route.navVisible !== false;

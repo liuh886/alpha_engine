@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Area, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Line, ComposedChart, ReferenceLine, Brush } from 'recharts';
+import { Area, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Line, ComposedChart, ReferenceLine } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartBenchmarkControl } from '@/components/ChartBenchmarkControl';
 import { format, parseISO } from 'date-fns';
@@ -17,14 +17,19 @@ import type { ReportRow } from '@/lib/types';
 import { initialAccount, periodStartIndex, type PerformancePeriod } from '@/lib/performancePeriods';
 
 type RangeKey = PerformancePeriod;
+type ChartRow = {
+  date: string; strategy: number; excess: number; pos_ratio: number; turnover: number;
+  provisional_mtm: boolean; primary_benchmark_key: string | null;
+  [key: string]: string | number | boolean | null;
+};
 
-const RANGE_OPTIONS: Array<{ key: RangeKey; label: string; months: number | null }> = [
-  { key: '1m', label: '1M', months: 1 },
-  { key: '3m', label: '3M', months: 3 },
-  { key: '6m', label: '6M', months: 6 },
-  { key: '1y', label: '1Y', months: 12 },
-  { key: '3y', label: '3Y', months: 36 },
-  { key: 'all', label: 'All', months: null },
+const RANGE_OPTIONS: Array<{ key: RangeKey; label: string }> = [
+  { key: '1m', label: '1M' },
+  { key: '3m', label: '3M' },
+  { key: '6m', label: '6M' },
+  { key: '1y', label: '1Y' },
+  { key: '3y', label: '3Y' },
+  { key: 'all', label: 'All' },
 ];
 
 const COMPARISON_STROKES = ['hsl(var(--chart-2))', 'hsl(var(--chart-4))', 'hsl(var(--chart-3))', 'hsl(var(--chart-5))', 'hsl(var(--chart-1))'];
@@ -32,7 +37,8 @@ const COMPARISON_STROKES = ['hsl(var(--chart-2))', 'hsl(var(--chart-4))', 'hsl(v
 function periodReturn(startValue: unknown, endValue: unknown) {
   const start = Number(startValue);
   const end = Number(endValue);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start <= -1) return null;
+  if (startValue === null || startValue === undefined || endValue === null || endValue === undefined
+    || !Number.isFinite(start) || !Number.isFinite(end) || start <= -1) return null;
   return ((1 + end) / (1 + start)) - 1;
 }
 
@@ -47,6 +53,11 @@ export function PerformanceCharts({
   const [selectedBenchmarkKey, setSelectedBenchmarkKey] = useState<BenchmarkKey | null>(null);
   const [selectedComparisonKeys, setSelectedComparisonKeys] = useState<string[] | null>(null);
   const [rangeKey, setRangeKey] = useState<RangeKey>('all');
+  const [customRange, setCustomRange] = useState<{
+    report: ReportRow[]; start: number; end: number;
+  } | null>(null);
+  // A refreshed report invalidates selections made against the previous evidence.
+  const selectedRange = customRange?.report === report ? customRange : null;
 
   const toggleVisibility = (entry: { dataKey?: unknown }) => {
     const rawKey = entry?.dataKey;
@@ -111,12 +122,11 @@ export function PerformanceCharts({
     const initial = initialAccount(report);
     if (initial === null) return [];
 
-    return report.map((row, index) => {
+    return report.map((row, index): ChartRow => {
       const account = Number(row.account);
       const strategy = Number.isFinite(account)
         ? (account / initial) - 1
         : null as unknown as number;
-      const activeValue = activeBenchmarkKey ? seriesByKey[activeBenchmarkKey]?.[index] ?? null : null;
       const value = Number(row.value);
       const posRatio = Number.isFinite(account) && account > 0 && Number.isFinite(value)
         ? value / account
@@ -134,9 +144,7 @@ export function PerformanceCharts({
         strategy,
         ...benchmarkValues,
         primary_benchmark_key: activeBenchmarkKey,
-        excess: Number.isFinite(strategy) && Number.isFinite(activeValue)
-          ? strategy - Number(activeValue)
-          : null as unknown as number,
+        excess: NaN,
         pos_ratio: posRatio,
         turnover: Number.isFinite(turnover) ? turnover : null as unknown as number,
         provisional_mtm: row.provisional_mtm === true || row.settlement_status === 'provisional_mtm',
@@ -144,11 +152,45 @@ export function PerformanceCharts({
     });
   }, [activeBenchmarkKey, declaredBenchmark, report, seriesByKey]);
 
-  const startIndex = useMemo(() => periodStartIndex(report, rangeKey), [report, rangeKey]);
-  const visibleChartData = useMemo(
-    () => startIndex < 0 ? [] : chartData.slice(startIndex),
-    [chartData, startIndex],
-  );
+  const presetStartIndex = useMemo(() => periodStartIndex(report, rangeKey), [report, rangeKey]);
+  const startIndex = selectedRange?.start ?? presetStartIndex;
+  const endIndex = selectedRange?.end ?? chartData.length - 1;
+  const selectDate = (side: 'start' | 'end', date: string) => {
+    if (!date) return;
+    const afterEnd = chartData.findIndex(row => row.date > date);
+    const index = side === 'start'
+      ? chartData.findIndex(row => row.date >= date)
+      : afterEnd < 0 ? chartData.length - 1 : afterEnd - 1;
+    if (index < 0 || index >= chartData.length || side === 'start' && index > endIndex || side === 'end' && index < startIndex) return;
+    setCustomRange({ report, start: side === 'start' ? index : startIndex, end: side === 'end' ? index : endIndex });
+  };
+  const visibleChartData = useMemo(() => {
+    if (startIndex < 0) return [];
+    const visible = chartData.slice(startIndex, endIndex + 1);
+    const first = visible[0];
+    if (!first) return [];
+    const strategyBase = startIndex === 0 ? 0 : first.strategy;
+    const benchmarkBases = Object.fromEntries(benchmarkOptions.map(option => [
+      option.key,
+      startIndex === 0 && report[0]?.[`${option.field}_before`] !== undefined
+        ? 0 : first[option.key],
+    ]));
+    return visible.map((row): ChartRow => {
+      const strategy = periodReturn(strategyBase, row.strategy);
+      const values = row;
+      const benchmarks = Object.fromEntries(Object.entries(benchmarkBases).map(([key, base]) => [
+        key, periodReturn(base, values[key]),
+      ]));
+      const benchmark = activeBenchmarkKey ? benchmarks[activeBenchmarkKey] : null;
+      return {
+        ...row,
+        ...benchmarks,
+        strategy: strategy ?? NaN,
+        excess: strategy !== null && benchmark !== null && benchmark !== undefined && benchmark > -1
+          ? (1 + strategy) / (1 + benchmark) - 1 : NaN,
+      };
+    });
+  }, [activeBenchmarkKey, benchmarkOptions, chartData, endIndex, report, startIndex]);
 
   const visibleDrawdownData = useMemo(() => {
     let peak = startIndex === 0 ? 0 : Number(visibleChartData[0]?.strategy);
@@ -184,24 +226,30 @@ export function PerformanceCharts({
     if (!visibleChartData.length) {
       return { strategy: null, benchmark: null, excess: null };
     }
-    const first = visibleChartData[0];
     const last = visibleChartData[visibleChartData.length - 1];
-    const strategy = periodReturn(startIndex === 0 ? 0 : first.strategy, last.strategy);
-    const firstRecord = first as unknown as Record<string, unknown>;
-    const lastRecord = last as unknown as Record<string, unknown>;
-    const benchmark = activeBenchmarkKey
-      ? periodReturn(
-        startIndex === 0 && benchmarkOptions.some(option => option.key === activeBenchmarkKey && report[0]?.[`${option.field}_before`] !== undefined)
-          ? 0 : firstRecord[activeBenchmarkKey],
-        lastRecord[activeBenchmarkKey],
-      )
-      : null;
+    const strategy = Number.isFinite(last.strategy) ? last.strategy : null;
+    const value = activeBenchmarkKey ? last[activeBenchmarkKey] : null;
+    const benchmark = typeof value === 'number' && Number.isFinite(value) ? value : null;
     return {
       strategy,
       benchmark,
-      excess: strategy !== null && benchmark !== null ? (1 + strategy) / (1 + benchmark) - 1 : null,
+      excess: strategy !== null && benchmark !== null && benchmark > -1 ? (1 + strategy) / (1 + benchmark) - 1 : null,
     };
-  }, [activeBenchmarkKey, visibleChartData, startIndex, benchmarkOptions, report]);
+  }, [activeBenchmarkKey, visibleChartData]);
+
+  const dateTicks = useMemo(() => {
+    if (!visibleChartData.length) return [];
+    const count = Math.min(5, visibleChartData.length);
+    return Array.from({ length: count }, (_, index) =>
+      visibleChartData[Math.round(index * (visibleChartData.length - 1) / Math.max(1, count - 1))].date);
+  }, [visibleChartData]);
+  const firstDate = visibleChartData[0]?.date ?? '';
+  const lastDate = visibleChartData[visibleChartData.length - 1]?.date ?? '';
+  const shortRange = firstDate && lastDate && Date.parse(lastDate) - Date.parse(firstDate) <= 100 * 86400000;
+  const monthLabels = dateTicks.map(date => date ? format(parseISO(date), 'MMM yy') : '');
+  const tickFormat = shortRange ? 'MMM d' : new Set(monthLabels).size < monthLabels.length ? 'MMM d, yy' : 'MMM yy';
+  const dateTick = (date: string) => date ? format(parseISO(date), tickFormat) : '';
+  const hasDrawdown = visibleDrawdownData.some(row => Number.isFinite(row.drawdown));
 
   const monthlyReturns = useMemo(() => {
     if (!report.length) return [];
@@ -247,7 +295,7 @@ export function PerformanceCharts({
               {item.name}
             </span>
             <span className="font-mono tabular-nums" style={{ color: item.color }}>
-              {typeof item.value === 'number' ? `${(item.value * 100).toFixed(2)}%` : item.value}
+              {typeof item.value === 'number' ? Number.isFinite(item.value) ? `${(item.value * 100).toFixed(2)}%` : '—' : item.value}
             </span>
           </div>
         ))}
@@ -287,7 +335,7 @@ export function PerformanceCharts({
         data-comparison-count={String(activeComparisonOptions.length)}
         data-realized-through={performanceThrough ?? 'unavailable'}
         data-equity-status={isProvisionalMtm ? 'provisional_mtm' : 'settled'}
-        data-range={rangeKey}
+        data-range={selectedRange ? 'custom' : rangeKey}
       >
         <CardHeader className="border-b pb-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -308,16 +356,16 @@ export function PerformanceCharts({
                 onPrimaryChange={handlePrimaryBenchmarkChange}
                 onToggle={handleComparisonToggle}
               />
-              <div aria-label="Performance range" className="inline-flex rounded-md border bg-muted/20 p-0.5">
+              <div aria-label="Performance range" className="inline-flex max-w-full flex-wrap rounded-md border bg-muted/20 p-0.5">
                 {RANGE_OPTIONS.map(option => (
                   <button
                     key={option.key}
                     type="button"
-                    aria-pressed={rangeKey === option.key}
-                    onClick={() => setRangeKey(option.key)}
+                    aria-pressed={!selectedRange && rangeKey === option.key}
+                    onClick={() => { setRangeKey(option.key); setCustomRange(null); }}
                     className={cn(
-                      "rounded px-2 py-1 text-[10px] font-medium transition-colors",
-                      rangeKey === option.key
+                      "min-h-9 rounded px-2 py-1 text-xs font-medium transition-colors",
+                      !selectedRange && rangeKey === option.key
                         ? "bg-background text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground",
                     )}
@@ -330,8 +378,27 @@ export function PerformanceCharts({
           </div>
           <p data-testid="visible-period-dates" className="mt-2 text-[10px] text-muted-foreground">
             {visibleChartData.length ? `${visibleChartData[0].date} – ${visibleChartData[visibleChartData.length - 1].date}` : 'No observations in this range'}
-            {' · Returns use observed settlement boundaries; sparse traces do not imply daily coverage.'}
+            {` · ${visibleChartData.length} observations · Period returns`}
           </p>
+          {visibleChartData.length === 1 && startIndex > 0 && <p className="mt-1 text-xs text-muted-foreground">Only one observation in this interval.</p>}
+          {chartData.length > 0 && <details className="mt-2 text-xs text-muted-foreground">
+            <summary className="min-h-9 cursor-pointer py-2">Custom dates</summary>
+            <div className="grid grid-cols-1 gap-3 py-2 sm:grid-cols-2">
+              <label className="min-w-0">From
+                <input type="date" aria-label="Performance start date" value={firstDate}
+                  min={chartData[0].date} max={lastDate}
+                  onChange={event => selectDate('start', event.target.value)}
+                  className="mt-1 block min-h-10 w-full min-w-0 rounded-md border bg-background px-2 text-foreground" />
+              </label>
+              <label className="min-w-0">Through
+                <input type="date" aria-label="Performance end date" value={lastDate}
+                  min={firstDate} max={chartData[chartData.length - 1].date}
+                  onChange={event => selectDate('end', event.target.value)}
+                  className="mt-1 block min-h-10 w-full min-w-0 rounded-md border bg-background px-2 text-foreground" />
+              </label>
+            </div>
+            <p className="pb-2">Dates snap to observed settlements. Choose a preset to reset the range.</p>
+          </details>}
           <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3 sm:grid-cols-4">
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Strategy</p>
@@ -351,12 +418,16 @@ export function PerformanceCharts({
                 data-testid="max-drawdown-stat"
                 title="Computed from the displayed equity series over the selected range: equity/peak − 1. The sealed Bundle v2 max-drawdown metric may differ."
                 className="mt-1 font-mono text-sm font-semibold tabular-nums text-rose-600 dark:text-rose-400"
-              >{visibleMaxDrawdown ? formatPercent(visibleMaxDrawdown.value) : '—'}</p>
+              >{hasDrawdown ? formatPercent(visibleMaxDrawdown?.value ?? 0) : '—'}</p>
             </div>
           </div>
-          <p data-testid="drawdown-provenance" className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
-            Chart max drawdown is derived from the displayed equity series over the selected range (equity/peak − 1, equivalently (strategy − peak) / (1 + peak)). It is an approximation of the sealed Bundle v2 metric and can differ after rounding or range selection.
-          </p>
+          <details className="mt-2 text-xs text-muted-foreground">
+            <summary className="min-h-9 cursor-pointer py-2">How to read this chart</summary>
+            <p className="mb-2 leading-relaxed">Curves share the selected observation boundaries and are rebased to that period. Full-history returns retain opening capital and initial gains or losses. Missing data stays unavailable.</p>
+            <p data-testid="drawdown-provenance" className="mb-2 leading-relaxed">
+              Chart drawdown uses equity/peak − 1 within the selected range. The sealed Bundle v2 metric may differ. Sparse settlements do not imply daily coverage; provisional MTM is not settled performance.
+            </p>
+          </details>
         </CardHeader>
         <CardContent className="h-[330px] pt-4 sm:h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -368,29 +439,29 @@ export function PerformanceCharts({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-              <XAxis dataKey="date" tickFormatter={date => format(parseISO(date), 'MMM yy')} minTickGap={40} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="date" ticks={dateTicks} tickFormatter={dateTick} minTickGap={24} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={value => `${(value * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={45} />
               <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }} />
               <Legend verticalAlign="top" align="right" height={30} iconType="circle" onClick={toggleVisibility} wrapperStyle={{ fontSize: '11px', cursor: 'pointer' }} />
               <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeOpacity={0.3} />
-              <Area hide={hiddenSeries.strategy} type="monotone" dataKey="strategy" stroke="hsl(var(--primary))" strokeWidth={2} fillOpacity={1} fill="url(#gradStrategy)" name="Alpha Engine" />
+              <Area isAnimationActive={false} hide={hiddenSeries.strategy} type="linear" dataKey="strategy" dot={visibleChartData.length === 1} stroke="hsl(var(--primary))" strokeWidth={2} fillOpacity={1} fill="url(#gradStrategy)" name="Alpha Engine" />
               {activeComparisonOptions.map((option, index) => {
                 const isPrimary = option.key === activeBenchmarkKey;
                 return (
                   <Line
+                    isAnimationActive={false}
                     key={option.key}
                     hide={hiddenSeries[option.key]}
-                    type="monotone"
+                    type="linear"
                     dataKey={option.key}
                     stroke={isPrimary ? 'hsl(var(--chart-3))' : COMPARISON_STROKES[index % COMPARISON_STROKES.length]}
-                    dot={false}
+                    dot={visibleChartData.length === 1}
                     strokeWidth={isPrimary ? 1.7 : 1.25}
                     strokeDasharray={isPrimary ? '5 5' : undefined}
                     name={option.label}
                   />
                 );
               })}
-              <Brush dataKey="date" height={26} stroke="hsl(var(--primary))" fill="hsl(var(--background))" tickFormatter={date => format(parseISO(date), 'MMM yy')} />
             </ComposedChart>
           </ResponsiveContainer>
         </CardContent>
@@ -401,6 +472,7 @@ export function PerformanceCharts({
           <CardHeader className="border-b pb-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-sm font-semibold">Drawdown</CardTitle>
+              <span className="text-xs text-muted-foreground">Selected period · {firstDate} – {lastDate}</span>
               <div className="flex items-center gap-3 font-mono text-[11px] tabular-nums">
                 {currentDrawdown !== null && <span className="text-muted-foreground">Current {formatPercent(currentDrawdown)}</span>}
                 {visibleMaxDrawdown && (
@@ -423,11 +495,11 @@ export function PerformanceCharts({
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                <XAxis dataKey="date" tickFormatter={date => format(parseISO(date), 'MMM yy')} minTickGap={40} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="date" ticks={dateTicks} tickFormatter={dateTick} minTickGap={24} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={value => `${(value * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={45} domain={['dataMin', 0]} />
                 <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ef4444', strokeWidth: 1, strokeDasharray: '4 4' }} />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeOpacity={0.3} />
-                <Area type="monotone" dataKey="drawdown" stroke="#ef4444" strokeWidth={1.5} fill="url(#gradDD)" name="Drawdown" />
+                <Area isAnimationActive={false} type="linear" dataKey="drawdown" stroke="#ef4444" strokeWidth={1.5} fill="url(#gradDD)" name="Drawdown" />
               </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
@@ -483,20 +555,20 @@ export function PerformanceCharts({
           <CardHeader className="border-b pb-3">
             <CardTitle className="text-sm font-semibold">{excessBaseline ? 'Relative Performance & Capital Use' : 'Capital Use'}</CardTitle>
             <p className="mt-1 text-[10px] text-muted-foreground">
-              {excessBaseline ? `Return difference vs ${excessBaseline}` : 'Portfolio usage'}{hasExposure ? ' · invested ratio' : ''}{hasTurnover ? ' · turnover' : ''}
+              {excessBaseline ? `Relative excess vs ${excessBaseline}` : 'Portfolio usage'}{hasExposure ? ' · invested ratio' : ''}{hasTurnover ? ' · turnover' : ''}
             </p>
           </CardHeader>
           <CardContent className="h-[220px] pt-4 sm:h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={visibleChartData} syncId="performance-analysis">
                 <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                <XAxis dataKey="date" tickFormatter={date => format(parseISO(date), 'MM/yy')} minTickGap={30} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="date" ticks={dateTicks} tickFormatter={dateTick} minTickGap={24} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                 {excessBaseline && <YAxis yAxisId="left" tickFormatter={value => `${(value * 100).toFixed(1)}%`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={45} />}
                 {(hasExposure || hasTurnover) && <YAxis yAxisId="right" orientation="right" tickFormatter={value => `${(value * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={40} />}
                 <Tooltip content={<CustomTooltip />} />
                 <Legend verticalAlign="top" align="right" height={24} iconType="circle" onClick={toggleVisibility} wrapperStyle={{ fontSize: '11px', cursor: 'pointer' }} />
-                {excessBaseline && <Area yAxisId="left" hide={hiddenSeries.excess} type="monotone" dataKey="excess" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.08} name={`Return difference vs ${excessBaseline}`} />}
-                {hasExposure && <Area yAxisId="right" hide={hiddenSeries.pos_ratio} type="monotone" dataKey="pos_ratio" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.05} name="Invested Ratio" />}
+                {excessBaseline && <Area isAnimationActive={false} yAxisId="left" hide={hiddenSeries.excess} type="linear" dataKey="excess" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.08} name={`Relative excess vs ${excessBaseline}`} />}
+                {hasExposure && <Area isAnimationActive={false} yAxisId="right" hide={hiddenSeries.pos_ratio} type="stepAfter" dataKey="pos_ratio" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.05} name="Invested Ratio" />}
                 {hasTurnover && <Bar yAxisId="right" hide={hiddenSeries.turnover} dataKey="turnover" fill="hsl(var(--muted-foreground))" fillOpacity={0.2} maxBarSize={8} name="Turnover" />}
                 {excessBaseline && <ReferenceLine yAxisId="left" y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeOpacity={0.3} />}
               </ComposedChart>
