@@ -110,6 +110,6 @@ strategy's valid retained formal history, but required local research
 reproduction cannot claim PASS without its necessary source data.
 
 **Execution ownership:** #1278 product truth / #1277 operating evidence /
-#1279 privacy and UAT / existing #324 #325 #826 canonical research/
+#1279 privacy and UAT /  #1282 local accepted-run replay (upstream #324/#325/#826)/
 #1281 release and rollback. Detailed waves:
 [`v1_direction_a_agent_roadmap_2026-10-25.md`](v1_direction_a_agent_roadmap_2026-10-25.md).
