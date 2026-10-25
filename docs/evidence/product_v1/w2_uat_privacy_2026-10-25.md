@@ -1,6 +1,6 @@
 # W1b–W2 / #1279 — four-strategy UAT and privacy audit
 
-**Partial PASS; A3/A4 remain BLOCKED.** Published build
+**A3 partial / BLOCKED; A4 FAIL (observed static boundary defect #1288).** Published build
 `58a56c14c18197f700ab00b526513a571aff35be`, deployment run
 [40170378446](https://github.com/liuh886/alpha_engine/actions/runs/40170378446),
 formal cutoff 2026-10-23. No runtime, RLS or policy changes.
@@ -26,7 +26,18 @@ Production build and 216 frontend unit tests passed.
 ## Actual privacy boundary observed
 
 The existing release verifier passed all **36** formal sections and the live
-static public-operation shell. Direct read of the real Supabase resource
+static public-operation shell, but that is insufficient privacy coverage.
+An additional anonymous section scan confirmed the published CN_27 lineage
+contains `source_evidence.operating_state` dated 2026-10-23 with 13 current-weight
+entries, target weights and factor evidence. The exact path and response hash,
+without weight values, are recorded in the receipt and
+[#1288](https://github.com/liuh886/alpha_engine/issues/1288). This contradicts
+the promised public-history/current-operations separation. **A4 FAIL.**
+The copy pipeline publishes complete immutable bundles, whereas its public-shell
+checker only protects the operations snapshot. Fix requires owner-reviewed
+publication/integrity design; do not patch sealed lineages or remove RLS.
+
+Direct read of the real Supabase resource
 `strategy_operation_snapshots` returned HTTP 200 to the publishable-key anonymous
 client. Its five rows correspond to policies currently declaring **public**
 access, including a retained `cn_x` row; the browser fleet remains exactly four.
@@ -39,7 +50,8 @@ are recorded; allocations, targets, bearer tokens and private payloads are omitt
 Owner must confirm intended current-operation access before A4 can pass. Real
 member/Pro/owner sessions, JWT expiry, entitlement revocation and their negative
 reads remain **NOT_TESTED**. No policy write or test-account mutation was made.
-No speculative UI redesign or security fix was opened from this audit.
+No speculative UI redesign or policy write was made. The confirmed static
+defect is tracked separately; implementation awaits the required owner review.
 
 ## Reproduction and limits
 
