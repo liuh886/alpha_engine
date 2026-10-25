@@ -12,3 +12,12 @@
   weekly full-suite failures, not disproved by scoped CI. No issue closed on inference.
 - Search error: docs/runbooks does not exist; existing recovery authority is
   docs/operations/decision_loop_recovery_2026-10-03.md.
+- Access authority also still promised the retired /settings/access editor;
+  corrected to existing server-side owner controls without changing policy.
+- Actual current RLS policies are public. Anonymous reads are policy-authorized,
+  not proof of unauthorized Pro access; real entitled sessions remain untested.
+- Separate confirmed static defect #1288: public CN_27 lineage contains current
+  operating weights/targets/factor evidence. Snapshot-only release privacy check
+  misses this path. No weight values copied to audit receipts.
+- The existing accepted CN reference replays a historical trace to 2026-09-04;
+  an observation cutoff of 2026-10-23 must not extend that reproduction claim.

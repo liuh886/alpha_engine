@@ -18,7 +18,12 @@ This is the canonical product positioning: **public evidence earns trust; Pro un
 - `strategy` — keyed by stable `strategy_id` for current operation snapshots;
 - `module` — keyed by a declared frontend module resource ID.
 
-Owner changes policy rows from `/settings/access`. Browser defaults are fail-safe only while Supabase policy state is loading or unavailable; they do not create a second writable policy authority.
+The browser policy editor (`/settings/access`) was retired by the 2026-10-21
+scope reduction. Policy administration remains subject to the existing
+server-side owner controls; this contract does not authorize restoring an
+editor or changing live tiers. Browser defaults are fail-safe only while
+Supabase policy state is loading or unavailable; they do not create a second
+writable policy authority. See the [maintained product](../product/strategy_console.md).
 
 ## Supabase boundary
 
