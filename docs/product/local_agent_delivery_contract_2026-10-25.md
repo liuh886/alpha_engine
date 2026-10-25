@@ -111,8 +111,8 @@ evidence; or asserts release readiness based only on a CI pass.
 
 **Work sequence:** W0 #1278 docs authority; W1 #1277 real multi-session
 operating acceptance, with #1279 security-negative audit; W2 #1279
-four-strategy desktop/mobile task UAT; W3 existing #324/#325/#826 for
-minimal reproducible accepted US/CN research; W4 #1281 owner runbook,
+four-strategy desktop/mobile task UAT; W3 #1282 for
+minimal reproducible accepted US/CN research (upstream #324/#325/#826 only if needed); W4 #1281 owner runbook,
 release receipt and rollback. See
 [`v1_direction_a_agent_roadmap_2026-10-25.md`](v1_direction_a_agent_roadmap_2026-10-25.md).
 Evidence gathering for W1/W2 may overlap; material code fixes each get
