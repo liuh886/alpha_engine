@@ -22,4 +22,4 @@ PIT-certified event collection, then change explanations and a dated event calen
 1. [x] Reproduce refresh-context and keyboard-retry behavior in the built UI.
 2. [x] Fix confirmed defects without retaining superseded statistics.
 3. [x] Validate recovery, source mismatch, narrow layouts and existing contract checks.
-4. [x] Record findings and synchronize reviewed fixes to PR #1275.
+4. [x] Verify optional RDI publication states and synchronize the reviewed fixes to PR #1275.

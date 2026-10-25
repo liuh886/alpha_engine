@@ -87,3 +87,12 @@
 - Reran all six fault cases on the final build successfully. Desktop and 360px
   light/dark geometry/screenshot checks passed with no overflow, page errors or
   console errors. Immutable CSV/report links resolve to the reviewed Git objects.
+- Review of publication acceptance found ready-only RDI browser expectations
+  coupled to the optional generated asset. Completed a test-only refinement:
+  stable interaction fixtures plus a separate actual-published-state check.
+  All 27 RDI browser checks passed across desktop, tablet and mobile with the
+  original, evidence-mismatch and unavailable assets; exact original dist bytes
+  were restored in a finally block. The 216 frontend unit tests, 35 related
+  Python tests, TypeScript, ESLint, production build and bundle budget passed.
+  Local Vitest uses the canonical alpha_engine path because the alphaengine
+  directory junction prevents setup-file resolution.

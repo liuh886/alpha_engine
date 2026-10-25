@@ -35,3 +35,8 @@ certified historical coverage in this review. Source filter cannot change this.
   mounted, guarded while pending, and never steal focus back from another control.
 - No new model or prediction claim is warranted by this review; current data
   cutoff and unvalidated research semantics remain the same.
+- Important / acceptance coupling: browser interaction fixtures were read from
+  the generated optional RDI asset and required the ready descriptive sample.
+  An intentionally supported source mismatch/unavailable projection would then
+  fail publication checks despite a correctly withheld RDI UI. Isolate those
+  behavioral fixtures and verify actual publication state separately.
