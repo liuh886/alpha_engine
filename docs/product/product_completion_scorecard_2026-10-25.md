@@ -113,3 +113,35 @@ reproduction cannot claim PASS without its necessary source data.
 #1279 privacy and UAT; #1282 accepted US/CN local replay (using
 #324/#325/#826 only if evidence gaps require them); #1281 release/rollback.
 Detailed waves: [Direction A local Agent roadmap](v1_direction_a_agent_roadmap_2026-10-25.md).
+
+## Local implementation evidence addendum — 2026-10-25
+
+Reviewed baseline: main/deployed `58a56c14c18197f700ab00b526513a571aff35be`,
+formal/operating cutoff 2026-10-23. The original 70/100 heuristic and historical
+review above remain unchanged. These are local Agent findings and reviewable
+PRs, **not owner acceptance, automatic merge or a v1 release declaration**.
+
+| Gate | Latest evidence classification | Review packet / exact remaining work |
+| --- | --- | --- |
+| A0 | PASS for current identity parity | Four registry/catalog identities and sealed sections agree; W0 authority reconciliation [#1283](https://github.com/liuh886/alpha_engine/pull/1283) awaits review |
+| A1 | BLOCKED | [#1284](https://github.com/liuh886/alpha_engine/pull/1284): 211 captures / 27 formal attempts, only 7 observed / 0 independently qualified sessions per market; manual counts and actual due/recovery remain unqualified |
+| A2 | BLOCKED | Doctor verifies all four current provider/formal/factor/decision cutoffs; independent complete required-source/PIT acceptance remains unproved; 2 unrelated blocked training profiles stay scoped |
+| A3 | BLOCKED, ordinary journey subcheck PASS | [#1287](https://github.com/liuh886/alpha_engine/pull/1287): 8 real desktop/mobile four-strategy journeys, 2 existing live tests and 60 fixture tests pass; actual per-strategy changed/not-due/blocked/expired-account coverage remains incomplete |
+| A4 | **FAIL** | Anonymous public CN_27 lineage contains `operating_state` current weights/targets/factor evidence: observed defect [#1288](https://github.com/liuh886/alpha_engine/issues/1288). Snapshot-only public-shell verifier misses this path. Owner must review integrity-preserving publication design and intended live tiers; real account expiry/revocation untested |
+| A5 | BLOCKED, CN reference PASS | [#1289](https://github.com/liuh886/alpha_engine/pull/1289): accepted CN frozen history through 2026-09-04 repeats at existing 1e-6 tolerance; missing-source copy fails closed. Accepted QQQ US reference blocks on professional ETF source readiness; no retired substitute |
+| A6 | BLOCKED | [#1290](https://github.com/liuh886/alpha_engine/pull/1290): exercised runbook/doctor/setup, actual deployment verification and local prior Pages artifact restore with 36 sections verified. No privacy-approved rollback target, new approved candidate, complete candidate quality report or private-current-state recovery |
+| A7 | NOT_TESTED | Owner has not signed GO/NO-GO. **Agent recommendation: NO-GO** |
+
+An independently observed operating defect was fixed narrowly in
+[#1286](https://github.com/liuh886/alpha_engine/pull/1286): `jq -e` previously
+aborted on a legitimate latest-main `publication_required=false` before its
+semantic-no-change branch. 71 local tests and affected CI passed; actual
+post-merge recovery is not claimed. Original failed run 40169478271:1 remains
+failure evidence. This fix does not satisfy A1 or authorize publication.
+
+Current live Supabase strategy policies declare public access; anonymous rows
+are policy-authorized, not proof of unauthorized Pro access. That observation
+is separate from the unconditional static lineage defect. No RLS/entitlement,
+model, source, sealed evidence, workflow budget or production deployment was
+changed. W1–W4 remain open where their real acceptance evidence is incomplete;
+RDI remains independent. Review the linked PRs before deciding next actions.
