@@ -43,13 +43,13 @@
     {
       "gate": "A4",
       "status": "FAIL",
-      "evidence": "Confirmed CN_27 public lineage operating weights/targets/drivers (#1288); actual Pro/member/owner expiry/revocation not tested.",
+      "evidence": "Confirmed CN_27 public lineage operating weights/targets/drivers (#1288); actual Pro/member/owner expiry/revocation not tested. Public Git source bypass confirmed in PR #1291; full boundary design pending required owner review.",
       "reviewer": "local Codex evidence audit; owner acceptance pending"
     },
     {
       "gate": "A5",
       "status": "BLOCKED",
-      "evidence": "Accepted CN historical reference repeats; accepted US professional source gate blocks.",
+      "evidence": "CN frozen reference passes; QQQ declared authoritative research replay passes three identical repetitions in PR #1293, with frozen economic prefix distinct from recomputed decisions. Review/merge and owner A5 acceptance pending; paid provider is not required for this contract.",
       "reviewer": "local Codex evidence audit; owner acceptance pending"
     },
     {
@@ -84,7 +84,7 @@
     "W3": {
       "issue": 1282,
       "pr": 1289,
-      "status": "BLOCKED_US"
+      "status": "PENDING_OWNER_ACCEPTANCE_AND_1293_MERGE"
     },
     "observed_ops_defect": {
       "issue": 1285,
@@ -93,7 +93,18 @@
     },
     "observed_static_defect": {
       "issue": 1288,
-      "status": "OWNER_DESIGN_REVIEW_REQUIRED"
+      "status": "OWNER_DESIGN_REVIEW_REQUIRED",
+      "pr": 1291
+    },
+    "replay_cli_alignment": {
+      "issue": 1292,
+      "pr": 1293,
+      "status": "DECLARED_CONTRACT_PASS_PENDING_REVIEW"
+    },
+    "retirement_test_correction": {
+      "issue": 1294,
+      "pr": 1295,
+      "status": "BACKEND_COMPOSED_COVERAGE_PASS_PENDING_REVIEW"
     }
   },
   "exercised_commands": [
@@ -233,7 +244,23 @@
     "rls_or_entitlements_mutated": false,
     "sealed_evidence_mutated": false
   },
-  "full_local_release_quality_command": "NOT_TESTED this audit; targeted and current PR CI evidence is not a full new candidate quality report",
+  "full_local_release_quality_command": {
+    "status": "FAIL",
+    "passed_commands": 12,
+    "total_commands": 13,
+    "failure": "backend collection MemoryError; other 12 checks pass",
+    "raw_evidence": "artifacts/product-v1-final-quality",
+    "follow_up_pr": 1295,
+    "composed_backend": {
+      "files": 500,
+      "passed": 3938,
+      "approved_skips": 8,
+      "unapproved_skips": 0,
+      "failures": 0
+    },
+    "candidate_certificate": false,
+    "limitations": "Existing CI file shards, unchanged shards 0-2 plus fully rerun corrected shard 3. Documentation branch switches during original quality command; QQQ implementation separate. Requires pinned integrated-candidate acceptance."
+  },
   "limitations": [
     "A0 identity check does not certify A1-A6.",
     "No owner A7 decision invented.",
