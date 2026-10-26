@@ -76,10 +76,15 @@ def test_cn_27_historical_projection_identity_contract(synced_public_assets: Pat
     cn27_record = next(
         r for r in catalog["records"] if r["model_version_id"] == "cn_27_v1_3"
     )
+    canonical_catalog_path = REPO_ROOT / "data" / "research" / "formal_model_runs" / "catalog.json"
+    canonical_catalog = json.loads(canonical_catalog_path.read_text(encoding="utf-8"))
+    canonical_cn27 = next(
+        r for r in canonical_catalog["records"] if r["model_version_id"] == "cn_27_v1_3"
+    )
     # Must declare projection_contract
     assert cn27_record.get("projection_contract") == "public_historical_projection_v1"
-    assert cn27_record.get("canonical_bundle_id") == "fc5c939c85cb5152a55d0e849ae123d64af86a8dcd1f57e3d0ba6c04e1c768bc"
-    assert cn27_record.get("canonical_manifest_sha256") == "9275429c7bccabbc96007ec63af0bae70e77d302222320d49a2d70e4a0f3731e"
+    assert cn27_record.get("canonical_bundle_id") == canonical_cn27["bundle_id"]
+    assert cn27_record.get("canonical_manifest_sha256") == canonical_cn27["manifest_sha256"]
 
     # Bundle ID must be the recomputed projection bundle ID, distinct from canonical
     assert cn27_record["bundle_id"] != cn27_record["canonical_bundle_id"]
