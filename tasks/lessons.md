@@ -84,3 +84,15 @@ GitHub Actions Run 40321512230 on 2026-10-26 failed during daily formal backtest
    - `scripts/refresh_byd_v1_3_formal.py` 在已有 `BYDProspectiveDataMissingError` 类型化异常的情况下，仍在通用 `BYDFormalRefreshError` 中保留了 `if "do not reach target cutoff" in str(exc): return 10`。
    - **隐患**：若底层其他致命完整性、数据库损坏或契约不一致错误的异常消息偶然包含该文字，会导致致命故障被误当作正常前瞻延迟降级处理。
    - **铁律**：一旦建立了专门的领域异常类型，彻底删除防御性字符串模式匹配；只有类型匹配才能进入特定降级处理，其余所有异常一律作为未受控致命错误 fail-closed。
+
+---
+
+## 2026-10-27: Projection Contract Dynamic Binding & Backtest State Decoupling (契约动态绑定与回测解耦)
+
+### Context & Implementation
+1. **投研回测与实时执行状态解耦 (Stop The Bleed)**:
+   - 彻底移除了 `scripts/refresh_cn_27_v1_3_formal.py` 中向 `candidate["evidence"]` 注入包含持仓明文的 `operating_state`，全面对齐 BYD v1.3 的 `operational_monitoring` 独立指示。
+   - 删除了 `scripts/run_formal_refresh_transaction.py` 中过时的强制检查代码，阻止未来增量刷新向公开 Git 提交包含敏感权重的 `lineage.json`。
+2. **测试中断言哈希随流水线推进脆弱硬编码 (Dynamic Binding vs. Hardcoded Bundle IDs)**:
+   - `tests/test_public_source_boundary.py` 中写死了 CN_27 在 `2026-10-23` 的 `canonical_bundle_id`。随着正式刷新成功推进到 `2026-10-26`，该硬编码断言立刻抛错。
+   - **铁律**：验证派生资产（如公开投影）与源资产（如权威回测包）的密码学绑定时，必须动态读取权威目录（`data/research/formal_model_runs/catalog.json`）并断言绑定相等性，严禁写死易随交易日推进发生变迁的散列值。
