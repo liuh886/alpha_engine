@@ -96,9 +96,21 @@
 - [x] **5.1 启动 RI-01 与 RI-02 并行推进 (无需等待 v1 发布)**：
   - [x] **RI-01 数据资产与消费者全量血缘审计矩阵** (`docs/architecture/investment_research_data_product_inventory_2026-10-26.md`)：梳理 US87/CN130、参考资产、价格、基本面、公司行为、Alpha158、RDI 事件、数据权利与消费链路。
   - [x] **RI-02 跨领域 PIT 历史信息状态语义 ADR 草案** (`docs/architecture/adr-0005-point-in-time-information-state-semantics.md`)：确立五时间戳模型、不可追溯修订原则、缺失/零值语义及负面测试矩阵 (PIT-NEG-01 ~ PIT-NEG-05)。
-- [ ] **5.2 后续推进 (待 Owner 审阅 D1–D5 架构裁定)**：
-  - [ ] 组织 PR #1296 评审，批准 D1–D5 核心决策。
-  - [ ] 开启 RI-03/04/05 候选研究工单。
+- [ ] **5.2 推进 PR #1296 落地与 Track B 规划转正**:
+  - [ ] **5.2.1 同步 PR #1296 至 main 最新基线**：核对 PR #1296 分支与 main 差异，勾选已由主线解决的 A-P0-01/02 及 RI-01/02 实证项。
+  - [ ] **5.2.2 澄清并推荐 D1–D5 产品决策**：向 Owner 明确 D1–D5 的决策建议（全 Agree），将 PR #1296 转为 Ready for Review。
+  - [ ] **5.2.3 启动 RI-03A 最小垂直切片设计**：冻结首个 CN 小样本（行情 + 公司事件 + as-of 截止 + 证据收据）规范，不引入新 DB 与调度器。
+
+### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
+- [ ] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
+  - [ ] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式。
+  - [ ] 调整 `scripts/run_formal_refresh_transaction.py`，解绑对 `evidence.get("operating_state")` 的陈旧维修断言。
+  - [ ] 检查工作流中的 git 提交流程，停止向公开仓库提交实时信号账本。
+  - [ ] 完善 `tests/test_public_source_boundary.py`，增加 Git-tracked 文件内容负面断言。
+  - [ ] 门禁 A4 保持严格 FAIL，不虚标通过。
+- [ ] **4.8.2 [Track B / P1] PR #1296 审阅与落地推进**:
+  - [ ] 检视 PR #1296 三份核心文档：章程、基线与 Roadmap。
+  - [ ] 提交 PR #1296 的转正与合并建议包，并提供 RI-03A 的垂直切片设计草案。
 
 ### Phase 4.6: 深度代码审查整改与实证矩阵深化 (2026-10-27)
 - [x] **4.6.1 [P0] 修正 BYD 异常分类 (`scripts/refresh_byd_v1_3_formal.py`)**:
