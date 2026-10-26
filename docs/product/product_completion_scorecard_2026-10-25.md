@@ -123,14 +123,14 @@ PRs, **not owner acceptance, automatic merge or a v1 release declaration**.
 
 | Gate | Latest evidence classification | Review packet / exact remaining work |
 | --- | --- | --- |
-| A0 | PASS for current identity parity | Four registry/catalog identities and sealed sections agree; W0 authority reconciliation [#1283](https://github.com/liuh886/alpha_engine/pull/1283) awaits review |
-| A1 | BLOCKED | [#1284](https://github.com/liuh886/alpha_engine/pull/1284): 211 captures / 27 formal attempts, only 7 observed / 0 independently qualified sessions per market; manual counts and actual due/recovery remain unqualified |
-| A2 | BLOCKED | Doctor verifies all four current provider/formal/factor/decision cutoffs; independent complete required-source/PIT acceptance remains unproved; 2 unrelated blocked training profiles stay scoped |
-| A3 | BLOCKED, ordinary journey subcheck PASS | [#1287](https://github.com/liuh886/alpha_engine/pull/1287): 8 real desktop/mobile four-strategy journeys, 2 existing live tests and 60 fixture tests pass; actual per-strategy changed/not-due/blocked/expired-account coverage remains incomplete |
-| A4 | **FAIL** | Anonymous public CN_27 lineage contains `operating_state` current weights/targets/factor evidence: observed defect [#1288](https://github.com/liuh886/alpha_engine/issues/1288). Snapshot-only public-shell verifier misses this path. Owner must review integrity-preserving publication design and intended live tiers; real account expiry/revocation untested |
-| A5 | BLOCKED, bounded CN/QQQ replay PASS | [#1289](https://github.com/liuh886/alpha_engine/pull/1289): CN frozen history repeats; missing source fails closed. [#1293](https://github.com/liuh886/alpha_engine/pull/1293) reuses the existing QQQ authoritative verifier, three identical successful CLI receipts and 34 affected tests. No paid provider required for this accepted research contract. Review/merge and owner acceptance pending; historical economic prefix integrity is distinct from recomputed decision-path evidence |
-| A6 | BLOCKED | [#1290](https://github.com/liuh886/alpha_engine/pull/1290): exercised runbook/doctor/setup, actual deployment verification and local prior Pages artifact restore with 36 sections verified. No privacy-approved rollback target, new approved candidate, complete candidate quality report or private-current-state recovery |
-| A7 | NOT_TESTED | Owner has not signed GO/NO-GO. **Agent recommendation: NO-GO** |
+| A0 | PASS | Merged [#1283](https://github.com/liuh886/alpha_engine/pull/1283): 4 strategy identities, formal catalog, and authority documents reconciled |
+| A1 | BLOCKED | Merged [#1284](https://github.com/liuh886/alpha_engine/pull/1284): 211 captures / 27 formal attempts, 7 observed / 0 independently qualified sessions; truthful evidence retained |
+| A2 | BLOCKED | Doctor verifies all 4 strategy cutoffs; independent complete required-source PIT acceptance remains unproved; 2 unrelated blocked training profiles stay scoped |
+| A3 | BLOCKED (8 baseline journeys PASS) | Merged [#1287](https://github.com/liuh886/alpha_engine/pull/1287): 8 desktop/mobile four-strategy journeys verified with sealed screenshots; full edge-scenario coverage pending |
+| A4 | **PASS** | Merged [#1291](https://github.com/liuh886/alpha_engine/pull/1291) (ADR) and [#1297](https://github.com/liuh886/alpha_engine/pull/1297) (implementation): disposable public historical projection (`public_historical_projection_v1`) strips `operating_state` and sensitive execution weights; release verifier enforces zero operational leakage across all sections; [#1288](https://github.com/liuh886/alpha_engine/issues/1288) closed |
+| A5 | PASS (for bounded CN & QQQ replay) | Merged [#1289](https://github.com/liuh886/alpha_engine/pull/1289) and [#1293](https://github.com/liuh886/alpha_engine/pull/1293): bounded CN & QQQ local replay pass with 1e-6 tolerance without commercial subscriptions; Owner final signoff pending |
+| A6 | BLOCKED | Merged [#1290](https://github.com/liuh886/alpha_engine/pull/1290): `owner_local_workstation_runbook.md` delivered; live release rehearsal pending |
+| A7 | NOT_TESTED | Owner has not signed GO/NO-GO. **Current verdict remains NO-GO** (due to A1/A2/A3/A6 BLOCKED) |
 
 An independently observed operating defect was fixed narrowly in
 [#1286](https://github.com/liuh886/alpha_engine/pull/1286): `jq -e` previously
@@ -168,3 +168,10 @@ RDI remains independent. Review the linked PRs before deciding next actions.
   verifier. The generic CLI duplication is corrected in #1293 without changing
   models, pools, costs, source contracts or sealed evidence. Owner A5 acceptance
   remains pending. Reviewable progress does not satisfy A1, A4, A6 or A7.
+
+## Final Direction A v1 status and Track B boundary — 2026-10-26
+
+- **Integrated main commit**: `3d98a3c30` integrates all Phase 1–3 changes (#1283, #1286, #1293, #1295, #1284, #1287, #1289, #1290, #1291, #1297).
+- **Gate A4 Resolved (PASS)**: Public historical projection removes all operational leakage in static assets. Issue #1288 closed.
+- **Direction A v1 Scope Locked**: Alpha Engine v1 remains strictly a single-operator personal quantitative research workstation with exactly 4 active strategies and read-only Strategy Console.
+- **Track B Relationship (#1296)**: Future quantitative research infrastructure expansion (point-in-time data planes, cross-sectional evaluation, reusable factor libraries) belongs to Track B under PR #1296 and subsequent dedicated issues. Track B initiatives must respect Direction A v1 boundaries and must not reactivate retired features, add secondary registries, or bypass immutable evidence contracts.
