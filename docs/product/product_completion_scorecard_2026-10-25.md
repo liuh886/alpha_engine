@@ -128,7 +128,7 @@ PRs, **not owner acceptance, automatic merge or a v1 release declaration**.
 | A2 | BLOCKED | Doctor verifies all four current provider/formal/factor/decision cutoffs; independent complete required-source/PIT acceptance remains unproved; 2 unrelated blocked training profiles stay scoped |
 | A3 | BLOCKED, ordinary journey subcheck PASS | [#1287](https://github.com/liuh886/alpha_engine/pull/1287): 8 real desktop/mobile four-strategy journeys, 2 existing live tests and 60 fixture tests pass; actual per-strategy changed/not-due/blocked/expired-account coverage remains incomplete |
 | A4 | **FAIL** | Anonymous public CN_27 lineage contains `operating_state` current weights/targets/factor evidence: observed defect [#1288](https://github.com/liuh886/alpha_engine/issues/1288). Snapshot-only public-shell verifier misses this path. Owner must review integrity-preserving publication design and intended live tiers; real account expiry/revocation untested |
-| A5 | BLOCKED, CN reference PASS | [#1289](https://github.com/liuh886/alpha_engine/pull/1289): accepted CN frozen history through 2026-09-04 repeats at existing 1e-6 tolerance; missing-source copy fails closed. Accepted QQQ US reference blocks on professional ETF source readiness; no retired substitute |
+| A5 | BLOCKED, bounded CN/QQQ replay PASS | [#1289](https://github.com/liuh886/alpha_engine/pull/1289): CN frozen history repeats; missing source fails closed. [#1293](https://github.com/liuh886/alpha_engine/pull/1293) reuses the existing QQQ authoritative verifier, three identical successful CLI receipts and 34 affected tests. No paid provider required for this accepted research contract. Review/merge and owner acceptance pending; historical economic prefix integrity is distinct from recomputed decision-path evidence |
 | A6 | BLOCKED | [#1290](https://github.com/liuh886/alpha_engine/pull/1290): exercised runbook/doctor/setup, actual deployment verification and local prior Pages artifact restore with 36 sections verified. No privacy-approved rollback target, new approved candidate, complete candidate quality report or private-current-state recovery |
 | A7 | NOT_TESTED | Owner has not signed GO/NO-GO. **Agent recommendation: NO-GO** |
 
@@ -145,3 +145,26 @@ is separate from the unconditional static lineage defect. No RLS/entitlement,
 model, source, sealed evidence, workflow budget or production deployment was
 changed. W1–W4 remain open where their real acceptance evidence is incomplete;
 RDI remains independent. Review the linked PRs before deciding next actions.
+
+## Delivery hardening follow-up — 2026-10-26
+
+- Public Git is also a current-data bypass: five anonymous pinned-source reads
+  succeeded. [Draft #1291](https://github.com/liuh886/alpha_engine/pull/1291)
+  binds the whole publication boundary to existing private archives and explicit
+  public historical projections. #1279 requires owner review before privacy
+  implementation; A4 remains FAIL. Publicly disclosed Git history cannot be
+  made confidential by a Pages-only repair.
+- The full quality-only command ran: 12 of 13 commands passed; backend collection
+  failed under local memory pressure. Subsequent existing-CI-style file shards
+  exposed two stale active-CN-x1.2 assertions.
+  [#1295](https://github.com/liuh886/alpha_engine/pull/1295) preserves historical
+  package evidence and requires retired materialization to fail closed. Across
+  all 500 files, unchanged passing shards plus the completely rerun fixed shard
+  total **3938 passed, 8 approved skips, 0 failures**. The original FAIL stays
+  retained. This composed backend result excludes the separate QQQ code change
+  and is not a pinned integrated-candidate certificate.
+- The original US professional-source blocker assessment was too broad: the
+  accepted Yahoo research contract is already supported by the authoritative
+  verifier. The generic CLI duplication is corrected in #1293 without changing
+  models, pools, costs, source contracts or sealed evidence. Owner A5 acceptance
+  remains pending. Reviewable progress does not satisfy A1, A4, A6 or A7.
