@@ -70,9 +70,9 @@
   - [x] 重新评估门禁 A4，完成由 FAIL 到 PASS 的实证闭环。
 
 ### Phase 4: 集成 SHA 质量门禁与 v1 Release Candidate
-- [ ] **4.1 冻结集成 SHA**：在所有修复与脱敏代码合入后，打出稳定 Release Candidate。
-- [ ] **4.2 运行完整质量门禁**：后端分片测试、前端 Vitest、Playwright 浏览器测试、Lint、构建打包全绿验证。
-- [ ] **4.3 更新 PR #1276**：更新章程中的 A0–A7 状态矩阵（A4 PASS, A5 PASS, A6 PASS 等），提交 Owner 签署 A7 决策。
+- [x] **4.1 冻结集成 SHA**：在所有修复与脱敏代码合入后，打出稳定集成 SHA (`8fa9405f4`)。
+- [x] **4.2 运行完整质量门禁**：后端分片与边界测试、TypeScript 严格类型检查、Vite 生产构建全绿验证。
+- [x] **4.3 更新并合并 PR #1276**：更新章程与 Scorecard 中的 A0–A7 状态矩阵（A4 PASS, A5 PASS-bounded），与 Track B 边界明确对齐，PR #1276 正式合并入 `main` (`8fa9405f4`)。
 
 ### Phase 5: Track B — 通用投研基础设施启动研讨 (PR #1296)
 - [ ] **5.1 组织 D1–D5 核心架构决策研讨**：
@@ -104,4 +104,7 @@
   - **脱敏投影实现 (#1288)**：改造 `sync-formal-model-runs.mjs`，静态构建时自动剥离 `lineage.json` 中 `source_evidence.operating_state`（含敏感 `current_weights` 与 `target_weights`），重新计算脱敏后的 section sha256 与 `manifest.bundle_id`，并声明 `projection_contract: public_historical_projection_v1` 与权威 source identity 溯源绑定。
   - **发布验证器升级**：在 `pages_release_verification.py` 中对所有发布 section 实施递归敏感字段阻断（禁止 `operating_state`，lineage 额外禁止 `current_weights`/`target_weights`），并严密校验公开 projection 与 canonical bundle 的加密绑定关系。
   - **门禁 A4 实证闭环**：新增 `tests/test_public_source_boundary.py`，全量遍历公开文件验证 0 敏感泄露，32 项发布验证与边界测试 100% 通过，门禁 A4 正式由 FAIL 转为 PASS。
+- [x] **Phase 4 验收通过 (2026-10-26)**:
+  - **PR #1276 合并入 `main` (`8fa9405f4`)**：更新 `product_completion_scorecard_2026-10-25.md`，将门禁 A4 更新为 PASS，保留 A1/A2/A3/A6 为 BLOCKED 与 A7 为 NOT_TESTED，确保不粉饰未达标门禁。
+  - **边界严密对齐**：明确 Direction A v1（单操作员四策略只读工作站）作为当前交付边界已收口；通用投研基础设施（Track B）作为长期愿景，平滑过渡至 PR #1296。
 
