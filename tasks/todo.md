@@ -58,9 +58,10 @@
   - [x] 合并 PR #1290 (merge commit: `6ec70004eeb2973223688db49feb90e81089c630`)。
 
 ### Phase 3: P0 隐私泄露攻坚与门禁 A4 闭环 (Track A 核心阻碍)
-- [ ] **3.1 审查 PR #1291 架构方案**：
-  - [ ] 明确公开历史投影（Public Historical Projection）与私有状态归档（Private Canonical Store）的隔离边界。
-  - [ ] 确保公开 projection 拥有独立哈希与清单，不伪造原 canonical bundle 哈希。
+- [x] **3.1 审查并合入 PR #1291 架构方案**：
+  - [x] 明确公开历史投影（Public Historical Projection）与私有状态归档（Private Canonical Store）的隔离边界。
+  - [x] 确保公开 projection 拥有独立哈希与清单，不伪造原 canonical bundle 哈希。
+  - [x] PR #1291 已合并入 `main` (`2940d4104`)。
 - [ ] **3.2 实施脱敏投影代码切片**：
   - [ ] 改造 `sync-formal-model-runs.mjs`，在构建公开静态资源时剔除 `operating_state`、最新目标仓位与敏感执行信息。
   - [ ] 保持私有归档/Supabase RLS 中当前运行状态的授权读取能力。
@@ -98,4 +99,5 @@
   - **PR #1287** (W2 / #1279) 合并入 `main` (`1e1584050`)：完成四策略 8 条全端链路走查并封存真实截图，记录公开 Git/Pages 对当前运营状态的泄露指纹，保持门禁 A4 为 FAIL。
   - **PR #1289** (W3 / #1282) 合并入 `main` (`eea14be38`)：封存 CN_27 与 QQQ 本地回放可复现证据，保持 A5 待 Owner 独立验收。
   - **PR #1290** (W4 / #1281) 合并入 `main` (`6ec70004e`)：交付个人工作站单操作员运行手册 `docs/operations/owner_local_workstation_runbook.md`，汇总 A0–A7 阶段性判定书（当前裁决为 NO-GO）。
+  - **PR #1291** (Security ADR / #1288) 合并入 `main` (`2940d4104`)：批准并固化当前运行数据与公开历史投影边界方案，锁定未来脱敏投影实现契约。
 
