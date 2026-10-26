@@ -66,6 +66,59 @@ def _build_parser() -> argparse.ArgumentParser:
     status.add_argument("recipe")
     status.add_argument("--cutoff", default=None)
 
+    slice_cmd = data_commands.add_parser(
+        "slice",
+        help="Extract a parameterized research data slice and immutable receipt.",
+    )
+    slice_cmd.add_argument(
+        "--market",
+        required=True,
+        choices=["cn", "us"],
+        help="Market identifier (cn or us).",
+    )
+    slice_cmd.add_argument(
+        "--pool",
+        required=True,
+        help="Governed candidate pool id (e.g. cn_selected_equities_v3).",
+    )
+    slice_cmd.add_argument(
+        "--symbols",
+        required=True,
+        help="Comma-separated symbols list (e.g. 000001,000338).",
+    )
+    slice_cmd.add_argument(
+        "--start",
+        required=True,
+        help="Start date YYYY-MM-DD.",
+    )
+    slice_cmd.add_argument(
+        "--end",
+        required=True,
+        help="End date YYYY-MM-DD.",
+    )
+    slice_cmd.add_argument(
+        "--cutoff",
+        required=True,
+        help="Point-in-time as-of cutoff date YYYY-MM-DD.",
+    )
+    slice_cmd.add_argument(
+        "--price-mode",
+        default="anchored_adjusted",
+        choices=["raw", "anchored_adjusted"],
+        help="Price adjustment mode.",
+    )
+    slice_cmd.add_argument(
+        "--fields",
+        default="open,high,low,close,volume",
+        help="Comma-separated required field list.",
+    )
+    slice_cmd.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for receipt JSON.",
+    )
+
     research = groups.add_parser("research", help="Run governed research workflows.")
     research_commands = research.add_subparsers(dest="research_command", required=True)
     run = research_commands.add_parser(
@@ -236,6 +289,35 @@ def main(argv: Sequence[str] | None = None) -> int:
                 root=root,
                 cutoff=args.cutoff,
             )
+        elif args.group == "data" and args.data_command == "slice":
+            from src.data.research_slice import (
+                DataSliceRequest,
+                ResearchDataSliceError,
+                get_research_data_slice,
+            )
+
+            errors += (ResearchDataSliceError,)
+            req = DataSliceRequest.from_dict({
+                "market": args.market,
+                "pool_id": args.pool,
+                "symbols": args.symbols,
+                "start_date": args.start,
+                "end_date": args.end,
+                "as_of_cutoff": args.cutoff,
+                "price_mode": args.price_mode,
+                "required_fields": args.fields,
+            })
+            res = get_research_data_slice(req, root=root)
+            payload = res.receipt
+            if args.output is not None:
+                out_path = _resolve(root, args.output)
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                out_path.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+                    encoding="utf-8",
+                )
+            if payload.get("status") == "blocked":
+                exit_code = 10
         elif args.group == "research" and args.research_command == "run":
             from src.data.data_recipe import DataRecipeError, run_research_recipe
 

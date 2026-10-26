@@ -102,6 +102,9 @@ In launching Track B Phase B2 (RI-03A), we addressed the historical pain point w
 3. **Reference Proofs Before Implementation (编码前先冻结事实样本)**:
    - Always freeze concrete, verifiable test cases with historical issuer facts (such as Jinpan Technology `688676` dividend announced 2026-09-23 vs cutoff 2026-09-04) before implementing the reader, ensuring tests assert real data behaviors rather than mocked illusions.
 
+---
+
+## 2026-10-27: Projection Contract Dynamic Binding & Backtest State Decoupling (契约动态绑定与回测解耦)
 
 ### Context & Implementation
 1. **投研回测与实时执行状态解耦 (Stop The Bleed)**:

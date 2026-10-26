@@ -101,7 +101,11 @@
   - [x] **5.2.2 澄清并推荐 D1–D5 产品决策**：向 Owner 明确 D1–D5 的决策建议（全 Agree），将 PR #1296 转为 Ready for Review。
   - [x] **5.2.3 合并 PR #1296 确立官方规划**：PR #1296 已正式合并入 `main` (`8e681b8f9`)，确立 Track B 基础设施章程、基线与 Roadmap。
   - [x] **5.2.4 交付 RI-03A 最小垂直切片设计规范**：撰写并冻结 `docs/architecture/ri-03a-reusable-research-data-slice-spec.md`，确立微切片请求与收据协议，冻结 CN 4 标的正常样本与 688676/301666 真实阻断样本，明确不增加重复数据库或调度器。
-  - [ ] **5.2.5 启动 RI-03B 第一条可复用 research data slice 实现**：在 `src/data/research_slice.py` 与 `alpha data slice` 实现纯函数式切片提取器，配套 7 项契约与负面测试。
+  - [x] **5.2.5 落地 RI-03B 第一条可复用 research data slice 实现与 CLI 入口**:
+    - [x] **5.2.5.1 [Core] 实现微切片核心读取器与校验器 (`src/data/research_slice.py`)**：实现 `DataSliceRequest`、`DataSliceReceipt`、`get_research_data_slice()`，支持内存切片、PIT 拦截（`announced_at <= cutoff`）、生命周期与股票池核验，返回确定性 `data_hash` 与证据收据。
+    - [x] **5.2.5.2 [CLI] 扩展 `alpha data slice` 命令行接口 (`src/cli/main.py`)**：添加 `--market`、`--pool`、`--symbols`、`--start`、`--end`、`--cutoff`、`--price-mode`、`--output` 参数支持，标准输出或文件输出格式化收据，blocked 退出码 10，ready 退出码 0。
+    - [x] **5.2.5.3 [Test] 编写完整契约与负面测试套件 (`tests/test_research_data_slice.py`)**：覆盖 Happy Path 样本（CN 4 标的）、PIT 违规阻断（金盘科技 688676）、未上市阻断（301666）、时序越界、源文件字节不变性、命令行调用与脱敏安全（零 operating_state），8 项测试全部通过。
+    - [x] **5.2.5.4 [Verify] 全量代码审查与测试通过**：运行 `uv run pytest tests/test_research_data_slice.py`、`uv run ruff check`、`git diff --check`，确保零警告零破坏。
 
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
@@ -159,6 +163,19 @@
 ---
 
 ## 阶段验收与复盘 (Review Section)
+- [x] **RI-03B 可复用投研数据切片读取器与 CLI 落地闭环 (2026-10-27)**:
+  - **核心模块交付**：在 [`src/data/research_slice.py`](src/data/research_slice.py) 实现纯函数式 `get_research_data_slice()`，支持内存切片、PIT 拦截（`announced_at <= cutoff` 与 `end_date <= cutoff`）、生命周期上市日前拦截（`SYMBOL_NOT_YET_LISTED`）与股票池治理核验。
+  - **命令行集成**：在 [`src/cli/main.py`](src/cli/main.py) 扩展 `alpha data slice` 命令，支持 `--market`、`--pool`、`--symbols`、`--start`、`--end`、`--cutoff`、`--price-mode`、`--output`，返回格式化收据 JSON；`status == "ready"` 时退出码 0，`status == "blocked"` 时退出码 10 (`data_blocked`)。
+  - **测试全绿验证**：交付 [`tests/test_research_data_slice.py`](tests/test_research_data_slice.py)（8 项测试全通过，耗时 1.51s）：
+    1. Sample 1 确定性验证：CN 4 标的 (`000001`, `000338`, `600519`, `688008`) 2,596 行数据，两次执行 `data_hash` 确定性完全一致；
+    2. Sample 2 跨期分红 PIT 拦截：金盘科技 (`688676`) 面对未来公告 (`2026-09-23`) 与越界日期严密返回 `blocked` 与结构化原因；
+    3. Sample 3 上市前越界拦截：标的 `301666` 在 `2026-04-16` 上市前查询严格返回 `SYMBOL_NOT_YET_LISTED`；
+    4. 市场与选股池隔离：跨市场或未入池标的 fail-closed 拦截；
+    5. 源文件不可变性：证明执行前后市场证据原始 JSON 字节 100% 保持不变；
+    6. 治理不变式：断言收据严格包含 `research_only=true`、`trade_ready=false`、`academic_and_internal_research_only`；
+    7. 隐私合规负面证明：验证切片与收据绝无 `operating_state`、`current_weights` 等实盘敏感词；
+    8. CLI 执行与退出码：验证 CLI 命令就绪退出 0、阻断退出 10 以及收据文件落盘。
+  - **静态检查**：`uv run ruff check` 0 errors，`git diff --check` 0 警告。
 - [x] **RI-03A 可复用投研数据切片协议与参考样本规范交付 (2026-10-27)**:
   - **规范落地**：完成并封存 [`docs/architecture/ri-03a-reusable-research-data-slice-spec.md`](docs/architecture/ri-03a-reusable-research-data-slice-spec.md)，明确了投研微切片请求 (`DataSliceRequest`) 与不可变收据 (`DataSliceReceipt`) 的 JSON Schema。
   - **现状与缺口审计**：梳理现有 `alpha data`、Profile Gate、Market Evidence 与复权引擎，确立“缺乏参数化微切片读取与收据生成协议”为唯一真实缺口，杜绝重复引入新数据库与调度器。
