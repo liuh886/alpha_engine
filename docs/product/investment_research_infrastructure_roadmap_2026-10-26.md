@@ -6,6 +6,12 @@
 
 > **PR #1296 仍为规划 PR：本文列的是后续独立任务的 Definition of Done，不等同于实现完成、Owner 批准上线或 v1 Release PASS。** 不修改正式模型、仓位、策略注册表、密封历史、用户权限或生产数据；`research_only=true` / `trade_ready=false`。
 
+## 最新代码进度同步（2026-10-27）
+
+- **已提交到 `main@2544a564348c192dce8c2939a4007510a0a557a0`：A-P0-01 的 Ruff F841 局部修复**。原 `tests/test_refresh_selected_pool_prices.py:562` 变量 `original_bytes` 已进入真实源文件字节不变断言。**下一个验收**：Ruff/相关测试及该 SHA 后的真实 `formal-backtest-refresh` prepare/provider/strategy/fan-in 回执；未有生产回执前 **A1/A6 仍 BLOCKED**。
+- **同提交完成 A-P0-02 的代码与负面测试**：`scripts/refresh_byd_v1_3_formal.py` 删除按 `"do not reach target cutoff"` 字符串降级，`BYDProspectiveDataMissingError` 仍 exit 10，其他 `BYDFormalRefreshError` 仍 exit 1；`tests/test_refresh_byd_v1_3_formal.py` 增加通用异常携带相同字样仍致命的用例。**下一步不重复改代码**；仅根据 CI/真实运行失败证据修正。
+- **未关闭事项：** #1288 公开 Git/Actions/写入边界仍为 P0，A4 **FAIL**；RI-01R/RI-02R 待核实，RI-03A/B 仍未实现。上面两个小修复的 main 提交 **不等于 v1 RC GO**。
+
 ## 1. 已证实的起点（不可把“文档存在”写成“平台完成”）
 
 | 领域 | 截至基准提交的事实 | 后续要求 |
