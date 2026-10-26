@@ -11,6 +11,7 @@ from src.artifacts import pages_release_verification
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes, compute_bundle_id
 from src.artifacts.pages_release_verification import (
     PublishedFormalRun,
+    PublishedSection,
     ReleaseVerificationError,
     validate_deployment,
     validate_formal_catalog,
@@ -388,3 +389,127 @@ def test_public_operations_reject_private_or_mismatched_identity(field: str) -> 
     operations["records"][0]["source_identity"][field] = "unexpected"
     with pytest.raises(ReleaseVerificationError, match="source identity mismatch"):
         validate_public_operations(operations, validate_formal_catalog(_catalog()))
+
+
+def test_validate_formal_section_rejects_operational_leakage() -> None:
+    manifest, manifest_bytes, summary_bytes = _formal_manifest()
+    record = PublishedFormalRun(
+        model_family_id="us_ranker",
+        model_version_id="us_x1_1",
+        run_id="us_x1_1_run",
+        bundle_id=str(manifest["bundle_id"]),
+        manifest_path="us_ranker/us_x1_1/us_x1_1_run/manifest.json",
+        manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
+        evidence_cutoff="2026-07-31",
+    )
+    # Reject operating_state in summary
+    leaked_summary = json.loads(summary_bytes.decode("utf-8"))
+    leaked_summary["operating_state"] = {"current_weights": {"AAPL": 0.5}}
+    leaked_bytes = canonical_json_bytes(leaked_summary)
+    section = PublishedSection(
+        section_id="summary",
+        path="summary.json",
+        byte_size=len(leaked_bytes),
+        sha256=hashlib.sha256(leaked_bytes).hexdigest(),
+    )
+    with pytest.raises(ReleaseVerificationError, match="operational leakage"):
+        validate_formal_section(record, section, leaked_bytes)
+
+    # Reject lineage with operating_state, current_weights, or target_weights
+    for forbidden_key in ("operating_state", "current_weights", "target_weights"):
+        lineage_payload = {
+            "schema_version": "2.0.0",
+            "model_version_id": "us_x1_1",
+            "research_only": True,
+            "trade_ready": False,
+            "source_evidence": {forbidden_key: {"XYZ": 0.1}},
+        }
+        lineage_bytes = canonical_json_bytes(lineage_payload)
+        lineage_section = PublishedSection(
+            section_id="lineage",
+            path="lineage.json",
+            byte_size=len(lineage_bytes),
+            sha256=hashlib.sha256(lineage_bytes).hexdigest(),
+        )
+        with pytest.raises(ReleaseVerificationError, match="operational leakage.*lineage"):
+            validate_formal_section(record, lineage_section, lineage_bytes)
+
+    # Accept clean lineage
+    clean_lineage_payload = {
+        "schema_version": "2.0.0",
+        "model_version_id": "us_x1_1",
+        "research_only": True,
+        "trade_ready": False,
+        "source_evidence": {"pool": "us87", "pool_sha256": "a" * 64},
+    }
+    clean_bytes = canonical_json_bytes(clean_lineage_payload)
+    clean_section = PublishedSection(
+        section_id="lineage",
+        path="lineage.json",
+        byte_size=len(clean_bytes),
+        sha256=hashlib.sha256(clean_bytes).hexdigest(),
+    )
+    validate_formal_section(record, clean_section, clean_bytes)
+
+
+def test_public_projection_manifest_and_catalog_validation() -> None:
+    manifest, manifest_bytes, summary_bytes = _formal_manifest()
+    canonical_bundle = str(manifest["bundle_id"])
+    canonical_manifest_sha = hashlib.sha256(manifest_bytes).hexdigest()
+
+    # Create projection manifest
+    projected = dict(manifest)
+    projected["projection_contract"] = "public_historical_projection_v1"
+    projected["source_identity"] = {
+        "canonical_bundle_id": canonical_bundle,
+        "canonical_manifest_sha256": canonical_manifest_sha,
+    }
+    projected["bundle_id"] = compute_bundle_id(projected)
+    projected_bytes = canonical_json_bytes(projected)
+    projected_manifest_sha = hashlib.sha256(projected_bytes).hexdigest()
+
+    # Catalog record declaring projection
+    catalog = _catalog()
+    catalog["records"][3].update(
+        bundle_id=projected["bundle_id"],
+        manifest_sha256=projected_manifest_sha,
+        canonical_bundle_id=canonical_bundle,
+        canonical_manifest_sha256=canonical_manifest_sha,
+        projection_contract="public_historical_projection_v1",
+    )
+    records = validate_formal_catalog(catalog)
+    record = records[3]
+    assert record.bundle_id == projected["bundle_id"]
+    assert record.canonical_bundle_id == canonical_bundle
+    assert record.projection_contract == "public_historical_projection_v1"
+
+    # Manifest passes with projection binding
+    validate_formal_manifest(record, projected_bytes)
+
+    # Operations bound to canonical bundle ID pass
+    operations = _public_operations()
+    operations["records"][3]["source_identity"]["formal_bundle_id"] = canonical_bundle
+    validate_public_operations(operations, records)
+
+    # Mismatched canonical_bundle_id fails
+    bad_source_manifest = dict(projected)
+    bad_source_manifest["source_identity"] = {
+        "canonical_bundle_id": "0" * 64,
+        "canonical_manifest_sha256": canonical_manifest_sha,
+    }
+    bad_source_manifest["bundle_id"] = compute_bundle_id(bad_source_manifest)
+    bad_bytes = canonical_json_bytes(bad_source_manifest)
+    bad_record = PublishedFormalRun(
+        model_family_id=record.model_family_id,
+        model_version_id=record.model_version_id,
+        run_id=record.run_id,
+        bundle_id=bad_source_manifest["bundle_id"],
+        manifest_path=record.manifest_path,
+        manifest_sha256=hashlib.sha256(bad_bytes).hexdigest(),
+        evidence_cutoff=record.evidence_cutoff,
+        canonical_bundle_id=canonical_bundle,
+        canonical_manifest_sha256=canonical_manifest_sha,
+        projection_contract="public_historical_projection_v1",
+    )
+    with pytest.raises(ReleaseVerificationError, match="canonical bundle identity mismatch"):
+        validate_formal_manifest(bad_record, bad_bytes)
