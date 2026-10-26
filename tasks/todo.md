@@ -96,10 +96,11 @@
 - [x] **5.1 启动 RI-01 与 RI-02 并行推进 (无需等待 v1 发布)**：
   - [x] **RI-01 数据资产与消费者全量血缘审计矩阵** (`docs/architecture/investment_research_data_product_inventory_2026-10-26.md`)：梳理 US87/CN130、参考资产、价格、基本面、公司行为、Alpha158、RDI 事件、数据权利与消费链路。
   - [x] **RI-02 跨领域 PIT 历史信息状态语义 ADR 草案** (`docs/architecture/adr-0005-point-in-time-information-state-semantics.md`)：确立五时间戳模型、不可追溯修订原则、缺失/零值语义及负面测试矩阵 (PIT-NEG-01 ~ PIT-NEG-05)。
-- [ ] **5.2 推进 PR #1296 落地与 Track B 规划转正**:
-  - [ ] **5.2.1 同步 PR #1296 至 main 最新基线**：核对 PR #1296 分支与 main 差异，勾选已由主线解决的 A-P0-01/02 及 RI-01/02 实证项。
-  - [ ] **5.2.2 澄清并推荐 D1–D5 产品决策**：向 Owner 明确 D1–D5 的决策建议（全 Agree），将 PR #1296 转为 Ready for Review。
-  - [ ] **5.2.3 启动 RI-03A 最小垂直切片设计**：冻结首个 CN 小样本（行情 + 公司事件 + as-of 截止 + 证据收据）规范，不引入新 DB 与调度器。
+- [x] **5.2 推进 PR #1296 落地与 Track B 规划转正**:
+  - [x] **5.2.1 同步 PR #1296 至 main 最新基线**：核对 PR #1296 分支与 main 差异，确认 A-P0-01/02 及 RI-01/02 实证项在 main 闭环。
+  - [x] **5.2.2 澄清并推荐 D1–D5 产品决策**：向 Owner 明确 D1–D5 的决策建议（全 Agree），将 PR #1296 转为 Ready for Review。
+  - [x] **5.2.3 合并 PR #1296 确立官方规划**：PR #1296 已正式合并入 `main` (`8e681b8f9`)，确立 Track B 基础设施章程、基线与 Roadmap。
+  - [ ] **5.2.4 启动 RI-03A 最小垂直切片设计**：冻结首个 CN 小样本（行情 + 公司事件 + as-of 截止 + 证据收据）规范，不引入新 DB 与调度器。
 
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
@@ -107,11 +108,16 @@
   - [x] 调整 `scripts/run_formal_refresh_transaction.py`，解绑对 `evidence.get("operating_state")` 的陈旧维修断言。
   - [x] 完善 `tests/test_public_source_boundary.py`，增加 `test_cn_27_formal_refresh_decouples_operating_state` 负面断言。
   - [x] 验证 `tests/test_cn27_v1_3_refresh.py` 解耦后测试全绿。
-  - [x] 门禁 A4 保持严格 FAIL，不虚标通过。
-- [ ] **4.8.2 [Track B / P1] PR #1296 审阅与落地推进**:
+  - [x] 提交并推送到主线 (`b2c414875`)；门禁 A4 保持严格 FAIL，不虚标通过。
+- [x] **4.8.2 [Track B / P1] PR #1296 审阅与落地推进**:
   - [x] 检视 PR #1296 三份核心文档：章程、基线与 Roadmap。
   - [x] 将 PR #1296 从 Draft 状态转为 Ready for Review (`gh pr ready 1296`)。
-  - [ ] 推动 PR #1296 合并入 main 并提供 RI-03A 的垂直切片设计草案。
+  - [x] 成功合并 PR #1296 入 `main` (`8e681b8f9`)，正式确立 Track B 投研基础设施章程与路线图。
+
+### Phase 4.9: 正式刷新恢复与 PR #1298 审查 (Run 40369078130 专项)
+- [ ] **4.9.1 [P0] 审查自动生成的 PR #1298 (`automation/formal-backtest-refresh`)**:
+  - [ ] 确认正式回测与市场数据刷新已成功跑通至 CN 截止日 `2026-10-26`（证明 Ruff 与 BYD 修复完全生效）。
+  - [ ] **拦截 Gate A4 风险**：PR #1298 产生自解耦提交 `b2c414875` 之前，其包含的 `cn_27_v1_3-through-2026_10_26/lineage.json` 仍存在明文 `operating_state.current_weights`；严禁盲目合并 PR #1298，必须脱敏或由主线新 Run 覆盖。
 
 ### Phase 4.6: 深度代码审查整改与实证矩阵深化 (2026-10-27)
 - [x] **4.6.1 [P0] 修正 BYD 异常分类 (`scripts/refresh_byd_v1_3_formal.py`)**:
@@ -152,6 +158,11 @@
 ---
 
 ## 阶段验收与复盘 (Review Section)
+- [x] **Phase 4.8 双轨协同落地复盘 (2026-10-27)**:
+  - **Track A (#1288 止血与解耦)**：修改 `scripts/refresh_cn_27_v1_3_formal.py`，彻底移除了回测包中包含敏感权重明文的 `operating_state`，与 BYD v1.3 的 `operational_monitoring` 解耦模式对齐；修改 `scripts/run_formal_refresh_transaction.py` 删除了旧有维修断言；在 `tests/test_public_source_boundary.py` 新增负面测试并全绿；提交至 `main` (`b2c414875`)。Gate A4 严格维持 FAIL。
+  - **Track B (PR #1296 基础设施规划转正与合并)**：检视投研基础设施章程、审计基线与实施路线图三份文件，将 PR #1296 从 Draft 转为 Ready for Review，并成功合并入 `main` (`8e681b8f9`)，正式确立 Track B 基础设施章程与 D1–D5 决策。
+  - **真实生产运行突破**：每日自动化正式回测与市场数据刷新 (`formal-backtest-refresh.yml`) 在 Run 40369078130 中突破了数日来的故障阻塞，顺利跑通至 CN 截止日 2026-10-26，并自动提交了 PR #1298。
+  - **Gate A4 铁律拦截**：由于 PR #1298 在 `b2c414875` 解耦之前构建，其 CN_27 lineage 仍携带旧式 `operating_state`，因此严禁盲目直接合并 PR #1298，需由主线最新 clean run 重新生成覆盖或进行脱敏。
 - [x] **Phase 4.7 运行收尾与代码精简完成复盘 (2026-10-27)**:
   - **Ruff F841 彻底修复**：在 `tests/test_refresh_selected_pool_prices.py` 中引入对 `original_bytes` 的正向断言，证明拉取 fallback 数据时不仅内存中的重叠量价一致，磁盘上的历史基准源文件字节也 100% 保持不变，消除 CI `prepare` 阶段中断风险；`uv run ruff check` 0 errors。
   - **BYD 异常严格类型化**：彻底删除了 `scripts/refresh_byd_v1_3_formal.py` 中的子串匹配分支，仅放行明确的 `BYDProspectiveDataMissingError` 为退出码 10，任何通用或其他类型的异常一律退出码 1 (FATAL)；新增负面测试 `test_byd_refresh_main_fails_fatal_on_generic_error_even_with_cutoff_message` 验证通过。
