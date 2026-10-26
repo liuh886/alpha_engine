@@ -2,7 +2,7 @@
   "schema_version": "direction_a_local_replay_v1",
   "captured_at_utc": "2026-10-25T07:39:13.549917+00:00",
   "main_sha": "58a56c14c18197f700ab00b526513a571aff35be",
-  "status": "BLOCKED",
+  "status": "PENDING_OWNER_ACCEPTANCE",
   "research_only": true,
   "trade_ready": false,
   "promotion_authorized": false,
@@ -197,7 +197,26 @@
     "status": "PASS",
     "passed": 25
   },
-  "blockers": [
+  "limitations": [
+    "CN deterministic replication does not establish predictive skill, prospective qualification, selected-pool readiness or all source/training profiles.",
+    "No retired model or alternate provider substituted for blocked US accepted reference.",
+    "No sealed source, formal identity, parameter, benchmark, pool or cost changed."
+  ],
+  "initial_capture_preserved": true,
+  "follow_up": {
+    "issue": 1292,
+    "pr": 1293,
+    "implementation_branch": "fix/qqq-replay-contract-1292",
+    "declared_qqq_replay_contract": "PASS",
+    "identical_successful_repetitions": 3,
+    "affected_tests_passed": 34,
+    "professional_source_ready": false,
+    "paid_provider_required": false,
+    "scope": "Frozen economic prefix integrity; recomputed decision path, appended economics and cumulative continuity. Historical economics not independently recomputed from current-provider prices.",
+    "owner_A5_acceptance": "PENDING",
+    "integration": "PENDING_REVIEW_AND_MERGE"
+  },
+  "initial_blockers": [
     {
       "market": "us",
       "model_version_id": "qqqi_qqq_tqqq_v4_3",
@@ -206,9 +225,10 @@
       "owner": "existing QQQ reference/data recipe contract; not a selected-pool PIT/VWAP or training implementation request"
     }
   ],
-  "limitations": [
-    "CN deterministic replication does not establish predictive skill, prospective qualification, selected-pool readiness or all source/training profiles.",
-    "No retired model or alternate provider substituted for blocked US accepted reference.",
-    "No sealed source, formal identity, parameter, benchmark, pool or cost changed."
+  "blockers": [
+    {
+      "status": "PENDING",
+      "reason": "Owner acceptance of bounded CN and QQQ replay scope, and review/merge of PR #1293."
+    }
   ]
 }
