@@ -142,3 +142,16 @@ def test_gate_a4_security_audit_and_reopened_status() -> None:
     scorecard = (REPO_ROOT / "docs" / "product" / "product_completion_scorecard_2026-10-25.md").read_text(encoding="utf-8")
     assert "| A4 | FAIL |" in scorecard, "Gate A4 must remain FAIL in scorecard"
     assert "A4 PASS" not in scorecard, "A4 must not be prematurely marked PASS"
+
+
+def test_four_surface_negative_proof_contract() -> None:
+    """Security audit must mandate independent negative proofs across Public Git, Pages, Artifacts, and Write Pipelines."""
+    audit_file = REPO_ROOT / "docs" / "architecture" / "current_operations_security_audit_1288.md"
+    text = audit_file.read_text(encoding="utf-8")
+    for proof in (
+        "Public Git Negative Proof",
+        "Pages Negative Proof",
+        "Actions Artifacts Negative Proof",
+        "Write Pipelines Negative Proof",
+    ):
+        assert proof in text, f"Missing required negative proof declaration: {proof}"

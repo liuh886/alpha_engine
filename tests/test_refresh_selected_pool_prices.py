@@ -513,7 +513,7 @@ def test_cutoff_fallback_cannot_restate_incremental_overlap(
             max_rounds=2 if mismatch == "same_source_retry" else 1,
         )
 
-    if mismatch in {None, "early_history", "same_source_retry", "volume"}:
+    if mismatch in {None, "early_history", "same_source_retry"}:
         payload = refresh()
         assert payload["status"] == "selected_pool_price_refresh_ready"
         assert payload["all_sources_current"] is True
@@ -541,6 +541,78 @@ def test_cutoff_fallback_cannot_restate_incremental_overlap(
             assert f"mismatched_fields={expected_fields}" in error
         assert not (output / "data/csv_source/000001.csv").exists()
     assert (source / "000001.csv").read_bytes() == original
+
+
+def test_cutoff_fallback_preserves_historical_overlap_volume_and_bytes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Historical overlap records must NEVER be overwritten by fallback vendor; unit differences standardize forward."""
+    import math
+    from types import SimpleNamespace
+    from src.data.adapters.base import FetchResult
+    from src.data.router import MarketDataRouter
+
+    _prepare_contract(tmp_path, monkeypatch)
+    source = tmp_path / "source"
+    governed = _frame(dates=("2021-01-04", "2021-01-05"))
+    for symbol in ("000001", "000002", "000300"):
+        _write_csv(source / f"{symbol}.csv", governed)
+
+    original_bytes = (source / "000001.csv").read_bytes()
+    original_overlap_vol = float(governed.loc[governed["date"] == "2021-01-05", "volume"].iloc[0])
+
+    # Fallback provider reports volume in shares (100x lots) for both overlap and extension
+    current = pd.concat([governed.tail(1), _frame(dates=("2021-01-06",))], ignore_index=True)
+    fallback_bars = current.copy()
+    fallback_bars["volume"] *= 100.0  # e.g. 100x scale difference (shares vs lots)
+
+    monkeypatch.setattr(module.time, "sleep", lambda _: None)
+
+    def fetch(provider, frame):
+        def run(req):
+            bars = frame.copy()
+            bars["date"] = pd.to_datetime(bars["date"])
+            return FetchResult(provider, req.symbol, req.market, req.start, req.end, bars, req.symbol)
+        return SimpleNamespace(name=provider, fetch_daily_bars=run)
+
+    router = MarketDataRouter(
+        adapters=[fetch("tencent_qfq_history", governed.tail(1)), fetch("akshare_sina", fallback_bars)],
+        policy={"cn": ["tencent_qfq_history", "akshare_sina"]},
+    )
+
+    output = tmp_path / "output"
+    payload = module.refresh_selected_pool_prices(
+        root=tmp_path, market="cn", source_csv_dir=source, output_root=output,
+        start="2021-01-01", cutoff="2021-01-06", router=router,
+        max_rounds=1,
+    )
+
+    assert payload["status"] == "selected_pool_price_refresh_ready"
+    assert payload["all_sources_current"] is True
+
+    # Check merged output file
+    merged = pd.read_csv(output / "data/csv_source/000001.csv")
+
+    # 1. Historical overlap volume on 2021-01-05 MUST remain exactly equal to governed (NOT overwritten by 100x)
+    merged_overlap_vol = float(merged.loc[merged["date"] == "2021-01-05", "volume"].iloc[0])
+    assert merged_overlap_vol == original_overlap_vol, (
+        f"Historical overlap volume was modified! Expected {original_overlap_vol}, got {merged_overlap_vol}"
+    )
+
+    # 2. All historical rows up to governed max must match governed values exactly
+    for col in ("open", "high", "low", "close", "factor", "volume"):
+        gov_series = governed[col].reset_index(drop=True)
+        merged_hist_series = merged.loc[merged["date"].isin(governed["date"]), col].reset_index(drop=True)
+        pd.testing.assert_series_equal(gov_series, merged_hist_series, check_exact=True)
+
+    # 3. Extension session on 2021-01-06 must be standardized into governed units (divided by 100)
+    expected_extension_vol = float(current.loc[current["date"] == "2021-01-06", "volume"].iloc[0])
+    merged_extension_vol = float(merged.loc[merged["date"] == "2021-01-06", "volume"].iloc[0])
+    assert math.isclose(merged_extension_vol, expected_extension_vol, rel_tol=1e-5), (
+        f"Extension volume not standardized! Expected {expected_extension_vol}, got {merged_extension_vol}"
+    )
+
 
 
 def test_incremental_refresh_clips_repository_bootstrap_to_declared_window(

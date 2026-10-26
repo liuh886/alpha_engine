@@ -100,6 +100,27 @@
   - [ ] 组织 PR #1296 评审，批准 D1–D5 核心决策。
   - [ ] 开启 RI-03/04/05 候选研究工单。
 
+### Phase 4.6: 深度代码审查整改与实证矩阵深化 (2026-10-27)
+- [x] **4.6.1 [P0] 修正 BYD 异常分类 (`scripts/refresh_byd_v1_3_formal.py`)**:
+  - [x] 区分“前瞻数据尚未到达”与其他历史完整性错误（篡改、重复日期、前缀不匹配、契约哈希变更等）。
+  - [x] 明确定义 `BYDProspectiveDataMissingError`，仅当该异常触发或明确属于前瞻观测不足时转为退出码 10 (`data_blocked`)；历史篡改/损坏/不一致维持致命退出 (code 1)。
+  - [x] 增加负面测试 `test_byd_refresh_main_fails_fatal_on_tampered_history`：历史数据被篡改时绝不返回 10，断言 exit code 1 与 `execution_failed`。
+- [x] **4.6.2 [P0] 修正跨源 volume 合并逻辑 (`scripts/data/refresh_selected_pool_prices.py`)**:
+  - [x] 历史重叠区间 ($t \le T_{cutoff}$) 严格保持原经过核验的值（包括 prices 和 volume），绝不执行 `keep="last"` 静默覆盖。
+  - [x] 仅将新供应商的数据单向追加在历史截止日之后 ($t > T_{cutoff}$)，支持已知 100x/0.01x 单位标准化，未验证的任意比例差异 fail-closed 拦截。
+  - [x] 增加测试断言 `test_cutoff_fallback_preserves_historical_overlap_volume_and_bytes`：证明历史重叠区间的 volume 数值与字节保持 100% 不变。
+- [x] **4.6.3 [P0] 真正重新打开 GitHub Issue #1288 并治理公开信号写入**:
+  - [x] 执行 `gh issue reopen 1288`，线上 Issue #1288 状态已同步置为 OPEN。
+  - [x] 更新安全审计架构文档 `current_operations_security_audit_1288.md`，明确复用现有 Strategy Operations、Decision Ledger、私有归档与 RLS 权威，不建立重复 Supabase 状态系统。
+  - [x] 确立四大独立负面证明（Public Git, Pages, Actions Artifacts, Write Pipelines），更新 `test_public_source_boundary.py` 断言契约。
+- [x] **4.6.4 [P1] 完善 RI-01 数据实证矩阵 (`docs/architecture/investment_research_data_product_inventory_2026-10-26.md`)**:
+  - [x] 绑定 `data/research/model_data_bundle_v1/data-components.json` 真实实证数据：补充逐数据集真实记录数、字节大小、时间跨度、缺失比例与缺口详情（明确标注 CN 基本面 127/130 缺失 `301309`/`301666`/`600276`，US 基本面 86/87 缺失 `SBGSY`，Alpha158 不适用 `301666`，杜绝混淆目标池与覆盖度）。
+  - [x] 明确 Source Manifest 路径与哈希、首个可得时间 ($t_{available}$) 与数据授权许可。
+- [x] **4.6.5 [P1] 修订 RI-02 PIT 信息状态语义 ADR-0005 (`docs/architecture/adr-0005-point-in-time-information-state-semantics.md`)**:
+  - [x] 纠正 ADR 层级：明确从属于 ADR-0003，仅扩展数据面语义，不替代产品架构边界，不建立双重权威。
+  - [x] 建立三级时间戳证据等级（Grade 1 官方机读、Grade 2 归档快照、Grade 3 事后抓取），对不可证明入库时间的 Grade 3 数据强制执行保守交易日跨期与 fail-closed 阻断。
+  - [x] 确立 PIT-NEG-01 ~ PIT-NEG-06 负面测试契约规范。
+
 ---
 
 ## 阶段验收与复盘 (Review Section)

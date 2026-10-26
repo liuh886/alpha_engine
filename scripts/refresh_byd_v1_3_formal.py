@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
 
 from scripts.byd_formal_refresh_common import (
     BYDFormalRefreshError,
+    BYDProspectiveDataMissingError,
     extend_byd_input,
     extend_etf_input,
     preserve_verified_prefix,
@@ -173,11 +175,17 @@ def main() -> int:
             generated_at=args.generated_at,
             output=args.output,
         )
-    except BYDFormalRefreshError as exc:
-        # Exit 10 = governed data block (retain, degraded). Maps to data_blocked
-        # in run_formal_strategy_refresh.py instead of execution_failed.
+    except BYDProspectiveDataMissingError as exc:
+        # Exit 10 = governed data block (retain, degraded) strictly for forward observation lag.
         print(json.dumps({"data_blocked": str(exc)}, ensure_ascii=False))
         return 10
+    except BYDFormalRefreshError as exc:
+        if "do not reach target cutoff" in str(exc):
+            print(json.dumps({"data_blocked": str(exc)}, ensure_ascii=False))
+            return 10
+        # Historical integrity violation, corruption, tampering, or contract error: must NOT be downgraded to data_blocked.
+        print(json.dumps({"execution_failed": str(exc)}, ensure_ascii=False), file=sys.stderr)
+        return 1
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

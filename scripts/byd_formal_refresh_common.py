@@ -19,6 +19,10 @@ class BYDFormalRefreshError(FormalRefreshError):
     """Raised when governed BYD formal inputs or prefixes cannot be extended."""
 
 
+class BYDProspectiveDataMissingError(BYDFormalRefreshError):
+    """Raised when forward shadow or paired observations have not yet reached the target cutoff."""
+
+
 def _manifest_digest(payload: Mapping[str, Any]) -> str:
     body = dict(payload)
     body.pop("manifest_sha256", None)
@@ -138,7 +142,7 @@ def extend_byd_input(
         )
         observation_hashes[signal_date] = sha256(path)
     if not rows or max(row["date"] for row in rows) != cutoff:
-        raise BYDFormalRefreshError("BYD prospective observations do not reach target cutoff")
+        raise BYDProspectiveDataMissingError("BYD prospective observations do not reach target cutoff")
     adjusted = _append_rows_preserving_csv_prefix(adjusted_path, adjusted, rows)
     sessions = _append_rows_preserving_csv_prefix(session_path, sessions, session_rows)
     manifest.update(
@@ -237,7 +241,7 @@ def extend_etf_input(
                 action_rows.append(action)
         observation_hashes[signal_date] = sha256(path)
     if not raw_rows or max(row["date"] for row in raw_rows) != cutoff:
-        raise BYDFormalRefreshError("ETF paired observations do not reach target cutoff")
+        raise BYDProspectiveDataMissingError("ETF paired observations do not reach target cutoff")
     raw = _append_rows_preserving_csv_prefix(raw_path, raw, raw_rows)
     adjusted = _append_rows_preserving_csv_prefix(adjusted_path, adjusted, adjusted_rows)
     sessions = _append_rows_preserving_csv_prefix(session_path, sessions, session_rows)

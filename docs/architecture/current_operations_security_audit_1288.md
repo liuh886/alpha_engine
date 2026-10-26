@@ -36,19 +36,23 @@
 
 ---
 
-## 3. Migration to Protected Authoritative Storage
+## 3. Reuse Existing Protected Authorities (No Duplicate State System)
 
-1. **Protected Operational Target Store**:
-   - Live strategy targets, weights, and decision justifications migrate to **Supabase RLS tables** (`strategy_operations`, `current_positions`, `decision_receipts`), accessible only with authenticated Owner JWT credentials.
+Per ADR-0004 and Owner directive:
+1. **Reuse Existing Authority Planes**:
+   - Do **NOT** create new Supabase tables, parallel registries, or secondary state systems.
+   - Reuse existing **Strategy Operations**, **Strategy Decision Ledgers** (`data/research/strategy_signal_ledgers`), **private archive**, and **authenticated RLS policies**.
+   - Retain existing Strategy Decision Ledger append-only formats and authority; change only their storage/delivery boundary (isolated in private archive / authenticated runtime access), not their definitions, schemas, or model identities.
 2. **Public Historical Projection Remains Read-Only**:
    - Public Pages consumers read only sanitized, sealed backtests (`public_historical_projection_v1`).
-   - Entitled workstation sessions fetch authorized live targets directly from Supabase via authenticated API.
+   - Entitled workstation sessions fetch authorized live targets directly through existing authenticated RLS APIs.
 
 ---
 
-## 4. Rigorous Gate A4 Verification Standard
+## 4. Rigorous Gate A4 Verification Standard (Four Independent Negative Proofs)
 
-Gate A4 shall remain **FAIL** until:
-- [ ] No git-tracked file in the repository contains plain-text `current_weights` or `target_weights` for active strategies.
-- [ ] Actions workflows no longer upload raw operating state in public artifacts.
-- [ ] Automated tests include direct anonymous git tree inspection, verifying zero operational leakage across all public surfaces.
+Gate A4 shall remain **FAIL** until all four surfaces have independent negative proof:
+- [ ] **1. Public Git Negative Proof**: No git-tracked file in the repository contains plain-text `current_weights` or `target_weights` for active strategies.
+- [ ] **2. Pages Negative Proof**: Anonymous traversal of public static bundles finds zero `operating_state` or runtime weights (enforced by `test_public_formal_runs_have_zero_operational_leakage`).
+- [ ] **3. Actions Artifacts Negative Proof**: Daily CI workflows sanitize intermediate strategy output artifacts, preventing public zip artifact inspection.
+- [ ] **4. Write Pipelines Negative Proof**: Daily automation workflows no longer commit live strategy decisions to public `origin/main`.

@@ -230,9 +230,10 @@ def test_byd_refresh_main_exits_10_on_data_blocked(
 ) -> None:
     import sys
     import scripts.refresh_byd_v1_3_formal as byd_refresh_mod
+    from scripts.byd_formal_refresh_common import BYDProspectiveDataMissingError
 
     def fake_refresh(**_kwargs):
-        raise BYDFormalRefreshError("BYD prospective observations do not reach target cutoff")
+        raise BYDProspectiveDataMissingError("BYD prospective observations do not reach target cutoff")
 
     monkeypatch.setattr(byd_refresh_mod, "refresh_byd_v1_3", fake_refresh)
     test_args = [
@@ -255,3 +256,37 @@ def test_byd_refresh_main_exits_10_on_data_blocked(
     payload = json.loads(captured.out)
     assert "data_blocked" in payload
     assert "BYD prospective observations do not reach target cutoff" in payload["data_blocked"]
+
+
+def test_byd_refresh_main_fails_fatal_on_tampered_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Historical integrity errors, tampering, or contract changes must exit 1 (FATAL), never 10."""
+    import sys
+    import scripts.refresh_byd_v1_3_formal as byd_refresh_mod
+
+    def fake_refresh_tampered(**_kwargs):
+        raise BYDFormalRefreshError("BYD historical report changed at 2024-01-02: return")
+
+    monkeypatch.setattr(byd_refresh_mod, "refresh_byd_v1_3", fake_refresh_tampered)
+    test_args = [
+        "refresh_byd_v1_3_formal.py",
+        "--current-package", str(tmp_path / "cur.json"),
+        "--predecessor-package", str(tmp_path / "pred.json"),
+        "--base-byd-dir", str(tmp_path / "byd"),
+        "--base-etf-dir", str(tmp_path / "etf"),
+        "--shadow-store", str(tmp_path / "shadow"),
+        "--paired-store", str(tmp_path / "paired"),
+        "--signal-ledger", str(tmp_path / "ledger"),
+        "--cutoff", "2026-10-26",
+        "--generated-at", "2026-10-26T16:00:00Z",
+        "--output", str(tmp_path / "out.json"),
+    ]
+    monkeypatch.setattr(sys, "argv", test_args)
+    exit_code = byd_refresh_mod.main()
+    assert exit_code == 1, f"Expected fatal exit code 1 on tampered history, got {exit_code}"
+    captured = capsys.readouterr()
+    assert "data_blocked" not in captured.out
+    err_payload = json.loads(captured.err)
+    assert "execution_failed" in err_payload
+    assert "BYD historical report changed at 2024-01-02: return" in err_payload["execution_failed"]

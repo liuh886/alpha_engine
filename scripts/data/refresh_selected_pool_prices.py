@@ -777,10 +777,8 @@ def refresh_selected_pool_prices(
                         new = fetched.loc[fetched["date"] == pd.Timestamp(fetch_start)]
                         # Exact price and adjustment factor matching is strictly required to prevent
                         # price basis drift or unannounced adjustment flips.
-                        # Volume is excluded from strict float comparison because distinct vendors
-                        # disagree on unit scale (lots vs shares) by orders of magnitude;
-                        # gating on exact volume locks out legitimate price refreshes.
                         fields = ("open", "high", "low", "close", "factor")
+                        vol_scale = 1.0
                         if len(old) != 1 or len(new) != 1:
                             detail = f"governed_rows={len(old)}, fetched_rows={len(new)}"
                         else:
@@ -788,6 +786,22 @@ def refresh_selected_pool_prices(
                                 float(old.iloc[0][field]), float(new.iloc[0][field]),
                                 rel_tol=1e-6, abs_tol=1e-8,
                             )]
+                            # Volume governance: check if volume matches or represents a known unit scale
+                            # (e.g. shares vs lots: ratio 100 or 0.01). If volume ratio cannot be confirmed,
+                            # block volume-dependent research rather than silently accepting/overwriting.
+                            if "volume" in old.columns and "volume" in new.columns:
+                                old_vol = float(old.iloc[0]["volume"])
+                                new_vol = float(new.iloc[0]["volume"])
+                                if old_vol > 0 and new_vol > 0:
+                                    vol_ratio = new_vol / old_vol
+                                    if math.isclose(vol_ratio, 1.0, rel_tol=1e-3):
+                                        vol_scale = 1.0
+                                    elif math.isclose(vol_ratio, 100.0, rel_tol=1e-3):
+                                        vol_scale = 0.01  # fallback in shares, governed in lots
+                                    elif math.isclose(vol_ratio, 0.01, rel_tol=1e-3):
+                                        vol_scale = 100.0  # fallback in lots, governed in shares
+                                    else:
+                                        mismatched.append("volume")
                             detail = f"mismatched_fields={','.join(mismatched)}" if mismatched else ""
                         if detail:
                             raise ValueError(
@@ -795,8 +809,17 @@ def refresh_selected_pool_prices(
                                 "adjustment or volume basis: "
                                 f"provider={response.result.provider}; overlap={fetch_start}; {detail}"
                             )
-                    frame = pd.concat([governed, fetched], ignore_index=True)
-                    frame = frame.drop_duplicates(subset=["date"], keep="last")
+                        if vol_scale != 1.0 and "volume" in fetched.columns:
+                            fetched["volume"] = fetched["volume"] * vol_scale
+                        # Immutability barrier: fallback vendor across different providers must NEVER
+                        # overwrite governed historical records or alter units in the overlap window.
+                        # Only append forward extension dates strictly beyond the governed cutoff.
+                        governed_cutoff_ts = governed["date"].max()
+                        extension = fetched.loc[fetched["date"] > governed_cutoff_ts].copy()
+                        frame = pd.concat([governed, extension], ignore_index=True)
+                    else:
+                        frame = pd.concat([governed, fetched], ignore_index=True)
+                        frame = frame.drop_duplicates(subset=["date"], keep="last")
                     frame = _normalize_frame(frame, symbol=symbol)
                 else:
                     frame = fetched

@@ -52,3 +52,21 @@ GitHub Actions Run 40321512230 on 2026-10-26 failed during daily formal backtest
 - **Fail-Closed vs. Operational Block**: A missing future session in prospective observation is a **governed data block (`data_blocked`)**, not an unhandled strategy crash (`execution_failed`). Always map missing external inputs to exit code 10.
 - **Volume Unit Tolerance**: In daily price refresh overlap verification, volume unit differences across vendors (lots vs shares) must not invalidate exact price/factor matches. Price and adjustment factors are mandatory; volume should be verified for presence and sign, but not locked to identical vendor scaling across distinct providers.
 - **Workflow Order of Operations**: Scheduled dependent tasks (like prospective shadow observations) must execute before downstream aggregators (like formal backtest refresh).
+
+
+---
+
+## 2026-10-27: Critical Flaws in Error Categorization & Data Merging (异常分类与跨源合并深刻教训)
+
+### Context & User Correction
+1. **BYD 异常捕获过宽 (Fatal vs Recoverable)**:
+   - `scripts/refresh_byd_v1_3_formal.py` 粗暴捕获了所有 `BYDFormalRefreshError` 并转为退出码 10 (`data_blocked`)。
+   - 严重漏洞：`BYDFormalRefreshError` 也用于历史数据篡改、重复日期、历史回放前缀不匹配等严重问题。将其统一转为 10 会导致原本致命的历史损坏被系统降级容忍，破坏 fail-closed 原则。
+   - **铁律**：只有明确的“前瞻观测日尚未到达”可转为 `data_blocked`；所有历史完整性、回放偏差、契约哈希不符必须维持致命退出 (code 1)。
+2. **跨源成交量差异静默污染历史 (Historical Overlap Pollution)**:
+   - `scripts/data/refresh_selected_pool_prices.py` 将 `volume` 移出 overlap 比对后，后续仍执行 `keep="last"`，导致重叠区间的成交量被新供应商（以“股”为单位）静默覆盖原先经过核验的历史数据（以“手”为单位）。
+   - 严重漏洞：导致 Alpha158、量价因子历史特征被直接污染。
+   - **铁律**：历史重叠区间的数据（包括价格和成交量）必须严格保留原经过治理的基准值，跨源拉取的数据只能向前单向追加 ($t > T_{cutoff}$)。
+3. **系统事实与 Issue 状态脱节 (GitHub Issue Sync)**:
+   - 本地文档声明 Issue #1288 "REOPENED"，但 GitHub 线上实际为 Closed。
+   - **铁律**：文档声明必须配合实际 CLI / API 动作同步到系统真实状态。
