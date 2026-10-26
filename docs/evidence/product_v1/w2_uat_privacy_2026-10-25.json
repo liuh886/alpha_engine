@@ -1,0 +1,948 @@
+{
+  "schema_version": "direction_a_uat_v1",
+  "main_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+  "status": "FAIL",
+  "browser_path": "Browser plugin not available; existing Playwright and temporary scoped journey script used",
+  "environment": {
+    "base_url": "https://liuh886.github.io/alpha_engine/",
+    "viewports": {
+      "desktop": "1440x1000",
+      "mobile": "390x844"
+    },
+    "browser": "Chromium",
+    "raw_artifact_root": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\alpha-v1-uat-1279"
+  },
+  "real_journeys": {
+    "url": "https://liuh886.github.io/alpha_engine/",
+    "captured_at_utc": "2026-10-25T07:32:02.151Z",
+    "scope": "real anonymous published journeys only; entitled states not claimed",
+    "rows": [
+      {
+        "device": "desktop",
+        "strategy_id": "qqq_rotation",
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "identity": "anonymous live session",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app"
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/qqqi_qqq_tqqq_v4_3",
+            "protected_current": false
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3",
+            "historical_chart_visible": true,
+            "observed_headings": [
+              "QQQI \u00b7 QQQI",
+              "Price and model events",
+              "Historical model event ledger"
+            ]
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system"
+          }
+        ],
+        "screenshots": [
+          "desktop-qqq_rotation-overview.png",
+          "desktop-qqq_rotation-risk.png",
+          "desktop-qqq_rotation-instrument.png",
+          "desktop-qqq_rotation-status.png"
+        ],
+        "instrument_href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3",
+        "model_markers": 17,
+        "range_responds": true,
+        "page_title": "Operating Status \u2014 Alpha Engine",
+        "horizontal_overflow": false,
+        "framework_overlay": 0,
+        "status": "PASS",
+        "page_errors": []
+      },
+      {
+        "device": "desktop",
+        "strategy_id": "us_x",
+        "model_version_id": "us_x1_3",
+        "identity": "anonymous live session",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app"
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/us_x1_3",
+            "protected_current": false
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/us/AAOI?model=us_x1_3",
+            "historical_chart_visible": true,
+            "observed_headings": [
+              "AAOI \u00b7 AAOI",
+              "Price and model events",
+              "Historical model event ledger"
+            ]
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system"
+          }
+        ],
+        "screenshots": [
+          "desktop-us_x-overview.png",
+          "desktop-us_x-risk.png",
+          "desktop-us_x-instrument.png",
+          "desktop-us_x-status.png"
+        ],
+        "instrument_href": "#/securities/us/AAOI?model=us_x1_3",
+        "model_markers": 10,
+        "range_responds": true,
+        "page_title": "Operating Status \u2014 Alpha Engine",
+        "horizontal_overflow": false,
+        "framework_overlay": 0,
+        "status": "PASS",
+        "page_errors": []
+      },
+      {
+        "device": "desktop",
+        "strategy_id": "cn_27",
+        "model_version_id": "cn_27_v1_3",
+        "identity": "anonymous live session",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app"
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/cn_27_v1_3",
+            "protected_current": false
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/cn/002156?model=cn_27_v1_3",
+            "historical_chart_visible": true,
+            "observed_headings": [
+              "\u901a\u5bcc\u5fae\u7535 \u00b7 002156",
+              "Price and model events",
+              "Historical model event ledger"
+            ]
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system"
+          }
+        ],
+        "screenshots": [
+          "desktop-cn_27-overview.png",
+          "desktop-cn_27-risk.png",
+          "desktop-cn_27-instrument.png",
+          "desktop-cn_27-status.png"
+        ],
+        "instrument_href": "#/securities/cn/002156?model=cn_27_v1_3",
+        "model_markers": 7,
+        "range_responds": true,
+        "page_title": "Operating Status \u2014 Alpha Engine",
+        "horizontal_overflow": false,
+        "framework_overlay": 0,
+        "status": "PASS",
+        "page_errors": []
+      },
+      {
+        "device": "desktop",
+        "strategy_id": "byd",
+        "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "identity": "anonymous live session",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app"
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "protected_current": false
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "historical_chart_visible": true,
+            "observed_headings": [
+              "BYD \u00b7 002594",
+              "Price and model events",
+              "Historical model event ledger"
+            ]
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system"
+          }
+        ],
+        "screenshots": [
+          "desktop-byd-overview.png",
+          "desktop-byd-risk.png",
+          "desktop-byd-instrument.png",
+          "desktop-byd-status.png"
+        ],
+        "instrument_href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "model_markers": 4,
+        "range_responds": true,
+        "page_title": "Operating Status \u2014 Alpha Engine",
+        "horizontal_overflow": false,
+        "framework_overlay": 0,
+        "status": "PASS",
+        "page_errors": []
+      },
+      {
+        "device": "mobile",
+        "strategy_id": "qqq_rotation",
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "identity": "anonymous live session",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app"
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/qqqi_qqq_tqqq_v4_3",
+            "protected_current": false
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3",
+            "historical_chart_visible": true,
+            "observed_headings": [
+              "QQQI \u00b7 QQQI",
+              "Price and model events",
+              "Historical model event ledger"
+            ]
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system"
+          }
+        ],
+        "screenshots": [
+          "mobile-qqq_rotation-overview.png",
+          "mobile-qqq_rotation-risk.png",
+          "mobile-qqq_rotation-instrument.png",
+          "mobile-qqq_rotation-status.png"
+        ],
+        "instrument_href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3",
+        "model_markers": 17,
+        "range_responds": true,
+        "page_title": "Operating Status \u2014 Alpha Engine",
+        "horizontal_overflow": false,
+        "framework_overlay": 0,
+        "status": "PASS",
+        "page_errors": []
+      },
+      {
+        "device": "mobile",
+        "strategy_id": "us_x",
+        "model_version_id": "us_x1_3",
+        "identity": "anonymous live session",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app"
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/us_x1_3",
+            "protected_current": false
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/us/AAOI?model=us_x1_3",
+            "historical_chart_visible": true,
+            "observed_headings": [
+              "AAOI \u00b7 AAOI",
+              "Price and model events",
+              "Historical model event ledger"
+            ]
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system"
+          }
+        ],
+        "screenshots": [
+          "mobile-us_x-overview.png",
+          "mobile-us_x-risk.png",
+          "mobile-us_x-instrument.png",
+          "mobile-us_x-status.png"
+        ],
+        "instrument_href": "#/securities/us/AAOI?model=us_x1_3",
+        "model_markers": 10,
+        "range_responds": true,
+        "page_title": "Operating Status \u2014 Alpha Engine",
+        "horizontal_overflow": false,
+        "framework_overlay": 0,
+        "status": "PASS",
+        "page_errors": []
+      },
+      {
+        "device": "mobile",
+        "strategy_id": "cn_27",
+        "model_version_id": "cn_27_v1_3",
+        "identity": "anonymous live session",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app"
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/cn_27_v1_3",
+            "protected_current": false
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/cn/002156?model=cn_27_v1_3",
+            "historical_chart_visible": true,
+            "observed_headings": [
+              "\u901a\u5bcc\u5fae\u7535 \u00b7 002156",
+              "Price and model events",
+              "Historical model event ledger"
+            ]
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system"
+          }
+        ],
+        "screenshots": [
+          "mobile-cn_27-overview.png",
+          "mobile-cn_27-risk.png",
+          "mobile-cn_27-instrument.png",
+          "mobile-cn_27-status.png"
+        ],
+        "instrument_href": "#/securities/cn/002156?model=cn_27_v1_3",
+        "model_markers": 7,
+        "range_responds": true,
+        "page_title": "Operating Status \u2014 Alpha Engine",
+        "horizontal_overflow": false,
+        "framework_overlay": 0,
+        "status": "PASS",
+        "page_errors": []
+      },
+      {
+        "device": "mobile",
+        "strategy_id": "byd",
+        "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "identity": "anonymous live session",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app"
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "protected_current": false
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "historical_chart_visible": true,
+            "observed_headings": [
+              "BYD \u00b7 002594",
+              "Price and model events",
+              "Historical model event ledger"
+            ]
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system"
+          }
+        ],
+        "screenshots": [
+          "mobile-byd-overview.png",
+          "mobile-byd-risk.png",
+          "mobile-byd-instrument.png",
+          "mobile-byd-status.png"
+        ],
+        "instrument_href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "model_markers": 4,
+        "range_responds": true,
+        "page_title": "Operating Status \u2014 Alpha Engine",
+        "horizontal_overflow": false,
+        "framework_overlay": 0,
+        "status": "PASS",
+        "page_errors": []
+      }
+    ]
+  },
+  "privacy": {
+    "captured_at_utc": "2026-10-25T07:32:20.515946+00:00",
+    "deployment": {
+      "commit_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+      "workflow_run_id": "40170378446",
+      "publication_impact": {
+        "reason": "manual_dispatch",
+        "matched_paths": []
+      }
+    },
+    "published_release_verification": {
+      "status": "verified",
+      "base_url": "https://liuh886.github.io/alpha_engine/",
+      "commit_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+      "public_operations_verified": true,
+      "formal_models": [
+        "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "cn_27_v1_3",
+        "qqqi_qqq_tqqq_v4_3",
+        "us_x1_3"
+      ],
+      "formal_sections_verified": 36,
+      "research_only": true,
+      "trade_ready": false
+    },
+    "policies": [
+      {
+        "resource_id": "securities",
+        "resource_type": "module",
+        "required_tier": "authenticated"
+      },
+      {
+        "resource_id": "us_x",
+        "resource_type": "strategy",
+        "required_tier": "public"
+      },
+      {
+        "resource_id": "cn_x",
+        "resource_type": "strategy",
+        "required_tier": "public"
+      },
+      {
+        "resource_id": "byd",
+        "resource_type": "strategy",
+        "required_tier": "public"
+      },
+      {
+        "resource_id": "qqq_rotation",
+        "resource_type": "strategy",
+        "required_tier": "public"
+      },
+      {
+        "resource_id": "cn_27",
+        "resource_type": "strategy",
+        "required_tier": "public"
+      }
+    ],
+    "negative_reads": [
+      {
+        "identity": "anonymous",
+        "resource": "strategy_operation_snapshots",
+        "http_status": 200,
+        "returned_rows": 5,
+        "rows": [
+          {
+            "strategy_id": "byd",
+            "required_tier": "public",
+            "columns": [
+              "model_version_id",
+              "snapshot",
+              "source_fingerprint",
+              "strategy_id",
+              "updated_at"
+            ],
+            "response_row_sha256": "fb5ab25c44086efc59737b0f42efcdb7e6e09c3d4b9f720a0ce898b94214fd99"
+          },
+          {
+            "strategy_id": "qqq_rotation",
+            "required_tier": "public",
+            "columns": [
+              "model_version_id",
+              "snapshot",
+              "source_fingerprint",
+              "strategy_id",
+              "updated_at"
+            ],
+            "response_row_sha256": "7005e1674f72bb9cf5ce1bf86b26138ab5be01d0080eee09ef2bda846a57e644"
+          },
+          {
+            "strategy_id": "cn_x",
+            "required_tier": "public",
+            "columns": [
+              "model_version_id",
+              "snapshot",
+              "source_fingerprint",
+              "strategy_id",
+              "updated_at"
+            ],
+            "response_row_sha256": "b3c9261ee249109c67520eac6fc59e2d733cb4e3c07ee05413a01e315d754dab"
+          },
+          {
+            "strategy_id": "cn_27",
+            "required_tier": "public",
+            "columns": [
+              "model_version_id",
+              "snapshot",
+              "source_fingerprint",
+              "strategy_id",
+              "updated_at"
+            ],
+            "response_row_sha256": "74176228d27d11e3cd2f29cd7fe5027acd2bea59444ee71af8931b47b5b87860"
+          },
+          {
+            "strategy_id": "us_x",
+            "required_tier": "public",
+            "columns": [
+              "model_version_id",
+              "snapshot",
+              "source_fingerprint",
+              "strategy_id",
+              "updated_at"
+            ],
+            "response_row_sha256": "cf9b1332d29ce7de1e4a87c8851d772b1215eeb7b63c9b0afa91fe2ae6eccbef"
+          }
+        ],
+        "confirmed_unauthorized_protected_rows": 0,
+        "status": "BLOCKED",
+        "response_sha256": "ef191caf5a6a2b15107eac1ee384ebf072c687f35246963b2e5ad791e7d524e2"
+      },
+      {
+        "identity": "invalid_token",
+        "resource": "strategy_operation_snapshots",
+        "http_status": 401,
+        "returned_rows": 0,
+        "rows": [],
+        "confirmed_unauthorized_protected_rows": 0,
+        "status": "PASS",
+        "response_sha256": "83fe7dc3d38ead18165e1c276fe1257553e710239efaab7bb7f5fd7113850b6e"
+      }
+    ],
+    "real_member_pro_owner_expiry_revocation": "NOT_TESTED: no authorized account sessions supplied",
+    "limitation": "All current strategy policies declare public access. Anonymous rows are policy-authorized; no Pro-protected resource is exercised. Owner must reconcile intended protection before A4 can pass. No policy mutation performed.",
+    "research_only": true,
+    "trade_ready": false,
+    "static_lineage_scan": [
+      {
+        "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "path": "byd_allocation/byd_v1_3_recovery_event_low_vol_confirmation_v1/byd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_10_23/lineage.json",
+        "http_status": 200,
+        "sha256": "8f9306bd0587ad31f593d4b1d496047e99415631c2377babbfd597f0d6c81064",
+        "operating_state_present": false,
+        "as_of": null,
+        "current_weight_count": 0,
+        "locked_target_present": false,
+        "operating_state_keys": []
+      },
+      {
+        "model_version_id": "cn_27_v1_3",
+        "path": "cn_27_rotation/cn_27_v1_3/cn_27_v1_3-through-2026_10_23/lineage.json",
+        "http_status": 200,
+        "sha256": "d9914ba9d8388bcbec8f253ed50f33c8a1da5f8c4153b0415641da39232a7415",
+        "operating_state_present": true,
+        "as_of": "2026-10-23",
+        "current_weight_count": 13,
+        "locked_target_present": false,
+        "operating_state_keys": [
+          "as_of",
+          "contract_sha256",
+          "current_weights",
+          "factor_evidence",
+          "implementation_sha256",
+          "last_rebalance_date",
+          "pending_execution",
+          "recipe_id",
+          "research_only",
+          "source_bar_sha256",
+          "target_weights",
+          "trade_ready"
+        ]
+      },
+      {
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "path": "qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_10_23/lineage.json",
+        "http_status": 200,
+        "sha256": "b78dd4e25583a258b9b1f6cd3eeb91613e312ea8e290e5013c6b4ed53d0cadf6",
+        "operating_state_present": false,
+        "as_of": null,
+        "current_weight_count": 0,
+        "locked_target_present": false,
+        "operating_state_keys": []
+      },
+      {
+        "model_version_id": "us_x1_3",
+        "path": "us_ranker/us_x1_3/us_x1_3-through-2026_10_23/lineage.json",
+        "http_status": 200,
+        "sha256": "ea7fa70a151b963e05d2e954d631fe76ad44e03b1eba9538dd44716478deda94",
+        "operating_state_present": false,
+        "as_of": null,
+        "current_weight_count": 0,
+        "locked_target_present": false,
+        "operating_state_keys": []
+      }
+    ],
+    "static_current_operating_fields": {
+      "status": "FAIL",
+      "issue": 1288,
+      "model_version_id": "cn_27_v1_3",
+      "weights_omitted": true
+    }
+  },
+  "checks": {
+    "page_identity": "PASS",
+    "not_blank": "PASS",
+    "framework_overlay": "PASS",
+    "page_errors": "PASS: zero across eight journeys",
+    "screenshots": "PASS: captured all stages; two representative historical-only screenshots committed",
+    "interaction": "PASS: actual overview links, tabs, instrument links, range selection, Status navigation",
+    "existing_live_acceptance": "PASS: 2 device tests over every published formal model",
+    "existing_fixture_browser_acceptance": "PASS: 60 desktop/tablet/mobile tests; synthetic mechanisms only",
+    "frontend_unit_tests": "PASS: 216",
+    "production_build": "PASS",
+    "existing_static_shell_verifier_scope": "PASS for snapshots only; insufficient for lineage current-state privacy"
+  },
+  "scenario_matrix": [
+    {
+      "strategy_id": "qqq_rotation",
+      "device": "desktop",
+      "ordinary_live_journey": "PASS",
+      "real_changed": "NOT_TESTED",
+      "real_not_due_or_unchanged": "NOT_TESTED",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "fixture_mechanisms": "PASS in existing shared-operation suite; not real account/session proof"
+    },
+    {
+      "strategy_id": "us_x",
+      "device": "desktop",
+      "ordinary_live_journey": "PASS",
+      "real_changed": "NOT_TESTED",
+      "real_not_due_or_unchanged": "NOT_TESTED",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "fixture_mechanisms": "PASS in existing shared-operation suite; not real account/session proof"
+    },
+    {
+      "strategy_id": "cn_27",
+      "device": "desktop",
+      "ordinary_live_journey": "PASS",
+      "real_changed": "NOT_TESTED",
+      "real_not_due_or_unchanged": "NOT_TESTED",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "fixture_mechanisms": "PASS in existing shared-operation suite; not real account/session proof"
+    },
+    {
+      "strategy_id": "byd",
+      "device": "desktop",
+      "ordinary_live_journey": "PASS",
+      "real_changed": "NOT_TESTED",
+      "real_not_due_or_unchanged": "NOT_TESTED",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "fixture_mechanisms": "PASS in existing shared-operation suite; not real account/session proof"
+    },
+    {
+      "strategy_id": "qqq_rotation",
+      "device": "mobile",
+      "ordinary_live_journey": "PASS",
+      "real_changed": "NOT_TESTED",
+      "real_not_due_or_unchanged": "NOT_TESTED",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "fixture_mechanisms": "PASS in existing shared-operation suite; not real account/session proof"
+    },
+    {
+      "strategy_id": "us_x",
+      "device": "mobile",
+      "ordinary_live_journey": "PASS",
+      "real_changed": "NOT_TESTED",
+      "real_not_due_or_unchanged": "NOT_TESTED",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "fixture_mechanisms": "PASS in existing shared-operation suite; not real account/session proof"
+    },
+    {
+      "strategy_id": "cn_27",
+      "device": "mobile",
+      "ordinary_live_journey": "PASS",
+      "real_changed": "NOT_TESTED",
+      "real_not_due_or_unchanged": "NOT_TESTED",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "fixture_mechanisms": "PASS in existing shared-operation suite; not real account/session proof"
+    },
+    {
+      "strategy_id": "byd",
+      "device": "mobile",
+      "ordinary_live_journey": "PASS",
+      "real_changed": "NOT_TESTED",
+      "real_not_due_or_unchanged": "NOT_TESTED",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "fixture_mechanisms": "PASS in existing shared-operation suite; not real account/session proof"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "desktop-byd-failure.png",
+      "sha256": "d7f5b86640fa97f2b459b48d404e60320458141083f869a1d42aba98d85dd58f",
+      "byte_size": 135486
+    },
+    {
+      "path": "desktop-byd-instrument.png",
+      "sha256": "3e5151fc5f40e943b62482841c2d2bd2c4c20cee8e42a5f3a457bd070778f8cb",
+      "byte_size": 78714
+    },
+    {
+      "path": "desktop-byd-overview.png",
+      "sha256": "f20247b5de1f5d373af8ac238c43ded3dd018b31e84e5a67fc3fd850c00a40a8",
+      "byte_size": 144491
+    },
+    {
+      "path": "desktop-byd-risk.png",
+      "sha256": "0ffb10c3ab30a51769a1f29224834c98aaeb2934c797cb69c442d440f6d906b4",
+      "byte_size": 152530
+    },
+    {
+      "path": "desktop-byd-status.png",
+      "sha256": "a73cc3db561df7689068025449af14e4dc61079e600661479a89a670f06b6fc7",
+      "byte_size": 135494
+    },
+    {
+      "path": "desktop-cn_27-failure.png",
+      "sha256": "1c88dd54d06356d45764ed4ff04f418327fab17ca8c9f6a9ddbe132229e4ae1b",
+      "byte_size": 135959
+    },
+    {
+      "path": "desktop-cn_27-instrument.png",
+      "sha256": "c633d66cccaca32c3d3ea3cadd2d20dad62ca35a6acff711ee973f7ea875e31e",
+      "byte_size": 80259
+    },
+    {
+      "path": "desktop-cn_27-overview.png",
+      "sha256": "099185bae4994cbef00a06b5285f719cd285ff696266b2c3698a038537db4bb2",
+      "byte_size": 144217
+    },
+    {
+      "path": "desktop-cn_27-risk.png",
+      "sha256": "f9e8e0925939dc7c0808a5ff11566fb58a02599c4fba3af677dd65a73400ff26",
+      "byte_size": 159359
+    },
+    {
+      "path": "desktop-cn_27-status.png",
+      "sha256": "96ad13b000efaa4a85efa61ada1b59ffdffbb5ea335106bf9846980aaae38a75",
+      "byte_size": 135891
+    },
+    {
+      "path": "desktop-journeys-trace.zip",
+      "sha256": "8cbe17f1433462f274ed1e186b588bfc1115301a878395ba3e89a66263b76802",
+      "byte_size": 15521192
+    },
+    {
+      "path": "desktop-qqq_rotation-failure.png",
+      "sha256": "3ab6c0bc84a4ade80f57f81dcd4c4e147cd3bf11cfbd10fd50a7d6f0f427effd",
+      "byte_size": 136326
+    },
+    {
+      "path": "desktop-qqq_rotation-instrument.png",
+      "sha256": "1fe545722bd9d0e3ea386100a8038122db9d1bf146c5d86d9fb7a9343318de4a",
+      "byte_size": 80047
+    },
+    {
+      "path": "desktop-qqq_rotation-overview.png",
+      "sha256": "3e66ea9cd3749d3bb7f287b2f89456bb96ea97bb16408b083f1f7dac64e010d9",
+      "byte_size": 143953
+    },
+    {
+      "path": "desktop-qqq_rotation-risk.png",
+      "sha256": "dc43400639e00bf0e932772eb5f724de521b34308d8f135776be8e4503cd4900",
+      "byte_size": 153361
+    },
+    {
+      "path": "desktop-qqq_rotation-status.png",
+      "sha256": "3904f76f20641951eb6cc0954f71ada614aba493367d8c50420cfb5135e1b626",
+      "byte_size": 136260
+    },
+    {
+      "path": "desktop-us_x-failure.png",
+      "sha256": "67f9a56ca49a1827b79695f93eae82eaa454825dd7aff0bf567286cf2f5b002a",
+      "byte_size": 135208
+    },
+    {
+      "path": "desktop-us_x-instrument.png",
+      "sha256": "c60e686d2b336e2b81171e6318f93b385fa845e0dee473ac529be88d9d8b5b26",
+      "byte_size": 103320
+    },
+    {
+      "path": "desktop-us_x-overview.png",
+      "sha256": "2b012bb987614998598f263cbc01593dc85c0c112246126ad35ff1e3f871cb03",
+      "byte_size": 144648
+    },
+    {
+      "path": "desktop-us_x-risk.png",
+      "sha256": "4a90fe05838c35670cac519998538d166d4a52caa68e03ca9280c56b8f6409ec",
+      "byte_size": 161674
+    },
+    {
+      "path": "desktop-us_x-status.png",
+      "sha256": "52a9dbdf798e25be874075bdefc5bff9e2f9d33d022e4996aa09d91bfec8f386",
+      "byte_size": 135293
+    },
+    {
+      "path": "journeys.json",
+      "sha256": "0ae24a7e85ad731f15e7c10a70470f4a82824c2b8f99c968c79596c4eb40a4c8",
+      "byte_size": 12716
+    },
+    {
+      "path": "mobile-byd-failure.png",
+      "sha256": "0e30476e2361f392fdadc908ae3c028e544e7ff4fde8ceeadb7253d499f5afd2",
+      "byte_size": 77493
+    },
+    {
+      "path": "mobile-byd-instrument.png",
+      "sha256": "1dce90bb31187c2906b9b8786fc6ddc8cd25043c3f930e6f2625abdaf9ca7b32",
+      "byte_size": 56444
+    },
+    {
+      "path": "mobile-byd-overview.png",
+      "sha256": "d881009bd5c8c69e38e42b46b89dbcb76de782c39e988b2d77119ee4c6e7c29d",
+      "byte_size": 81138
+    },
+    {
+      "path": "mobile-byd-risk.png",
+      "sha256": "e47086e1a69c24f1fe1c2973d27856256e446387cf8033314a72dc8896772b9a",
+      "byte_size": 48293
+    },
+    {
+      "path": "mobile-byd-status.png",
+      "sha256": "7716f9329e56be732a238247ea9cd1e28aa6e23f92db394765ec4a823d1d5589",
+      "byte_size": 77494
+    },
+    {
+      "path": "mobile-cn_27-failure.png",
+      "sha256": "5849195e402fa9ec6819e1aacab0a775eaa1913e2bffa4735f8040c352ec41a0",
+      "byte_size": 77575
+    },
+    {
+      "path": "mobile-cn_27-instrument.png",
+      "sha256": "704af74e162b6d65f37640b931c063e58c6d926d9d92cfde511df21eb5e8b2ec",
+      "byte_size": 58867
+    },
+    {
+      "path": "mobile-cn_27-overview.png",
+      "sha256": "469bb8a36ca04fb981d1bcd51545ef562e52f57383703d6898e62c2a323db139",
+      "byte_size": 81195
+    },
+    {
+      "path": "mobile-cn_27-risk.png",
+      "sha256": "673fb5ab20777d763cd0fb5dba8b37ac59f828aef00d7a82eb25a0f410cd2e81",
+      "byte_size": 45564
+    },
+    {
+      "path": "mobile-cn_27-status.png",
+      "sha256": "a97b2b3ef2f0693180785b326b09fc0716f0d3652e0e3feefa8d12bbeb30ad01",
+      "byte_size": 77507
+    },
+    {
+      "path": "mobile-journeys-trace.zip",
+      "sha256": "ab01698f94b869ab5837f2729b4b3623808ade4bc90551c400ccc795555765fa",
+      "byte_size": 12544123
+    },
+    {
+      "path": "mobile-qqq_rotation-failure.png",
+      "sha256": "67737db785c2098f9b535d84b178624b4d2f59d553f97681e247b31c26294a35",
+      "byte_size": 77477
+    },
+    {
+      "path": "mobile-qqq_rotation-instrument.png",
+      "sha256": "aa8018fb824f841e87a2df839e6a4703b4f944da95ac2845973eaaf5db54563d",
+      "byte_size": 55383
+    },
+    {
+      "path": "mobile-qqq_rotation-overview.png",
+      "sha256": "db4aa7a170349b6fa98671b118f3a8bb9f69331a1ec64b1c90f53ce97ae2999d",
+      "byte_size": 81018
+    },
+    {
+      "path": "mobile-qqq_rotation-risk.png",
+      "sha256": "836a4fef7065c560b564323d945131df82e357db54140f957c5e93de5bf34831",
+      "byte_size": 45742
+    },
+    {
+      "path": "mobile-qqq_rotation-status.png",
+      "sha256": "85e3703af9fcd81cbd825ff653e01676d8fcf7ef0b18b7c8a20cf5a46e95388c",
+      "byte_size": 77932
+    },
+    {
+      "path": "mobile-us_x-failure.png",
+      "sha256": "05233e1fcf308a04d7b72360ff67f148f2c79593906df84a57e325227844ddd4",
+      "byte_size": 77378
+    },
+    {
+      "path": "mobile-us_x-instrument.png",
+      "sha256": "e412e67fae7ca5c2ce3ad958b8dbcd83da8bfbbe3a2bb36d935c8e5191be637f",
+      "byte_size": 56225
+    },
+    {
+      "path": "mobile-us_x-overview.png",
+      "sha256": "d93800621b8e2211886a9ae4e24762173fd4559df95889e6418f42c977983f8f",
+      "byte_size": 81284
+    },
+    {
+      "path": "mobile-us_x-risk.png",
+      "sha256": "1443f9c977dc02412f30f10c7eaee684cf578fe4141712d4825a52e2e282732f",
+      "byte_size": 56120
+    },
+    {
+      "path": "mobile-us_x-status.png",
+      "sha256": "df64be764e7975a3ba23fb7d921dd6a27635be060a2087372de84b188d99003b",
+      "byte_size": 77379
+    }
+  ],
+  "initial_attempts": [
+    "Initial custom journey did not await price chart settlement and used an ambiguous Status heading; corrected waits and scoped heading, then reran all 8 successfully. No product defect inferred.",
+    "Initial negative read filtered nonexistent product_code column and returned HTTP 400; corrected to actual table schema. No security conclusion drawn from that response."
+  ],
+  "limitations": [
+    "Real signed-in member/Pro/owner, expiration and revocation not tested.",
+    "Current live policies all public; public RLS-authorized rows are not proven unauthorized; Pro denial cannot be certified.",
+    "Raw screenshots/traces retained locally with hashes; not a durable shared CI artifact for every scenario.",
+    "No new UI/runtime/policy changes or release authorization."
+  ],
+  "research_only": true,
+  "trade_ready": false
+}
