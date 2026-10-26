@@ -4,17 +4,17 @@
     "20": {
       "candidate_incremental_return": -0.003199628535469734,
       "strategy_returns": {
-        "byd_v1_cash": -0.06566600863511463,
-        "fixed_75_25": -0.06865553033554506,
-        "v1_dividend_75_25": -0.06865553033554506
+        "byd_v1_cash": -0.08901297975822742,
+        "fixed_75_25": -0.09192779982363553,
+        "v1_dividend_75_25": -0.09192779982363553
       }
     },
     "40": {
-      "candidate_incremental_return": -0.004180026784434521,
+      "candidate_incremental_return": -0.00418002678443441,
       "strategy_returns": {
-        "byd_v1_cash": -0.06844461407624503,
-        "fixed_75_25": -0.07233854054059052,
-        "v1_dividend_75_25": -0.07233854054059052
+        "byd_v1_cash": -0.09172215390220273,
+        "fixed_75_25": -0.09551877962659994,
+        "v1_dividend_75_25": -0.09551877962659994
       }
     }
   },
@@ -22,7 +22,7 @@
   "market_states": [
     "bear"
   ],
-  "observation_count": 53,
+  "observation_count": 54,
   "prospective_days": 73,
   "prospective_eligible_observation_count": 10,
   "re_evaluation_gate": {
