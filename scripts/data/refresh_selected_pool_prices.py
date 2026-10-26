@@ -775,7 +775,12 @@ def refresh_selected_pool_prices(
                     if cutoff_fallback:
                         old = governed.loc[governed["date"] == pd.Timestamp(fetch_start)]
                         new = fetched.loc[fetched["date"] == pd.Timestamp(fetch_start)]
-                        fields = ("open", "high", "low", "close", "factor", "volume")
+                        # Exact price and adjustment factor matching is strictly required to prevent
+                        # price basis drift or unannounced adjustment flips.
+                        # Volume is excluded from strict float comparison because distinct vendors
+                        # disagree on unit scale (lots vs shares) by orders of magnitude;
+                        # gating on exact volume locks out legitimate price refreshes.
+                        fields = ("open", "high", "low", "close", "factor")
                         if len(old) != 1 or len(new) != 1:
                             detail = f"governed_rows={len(old)}, fetched_rows={len(new)}"
                         else:

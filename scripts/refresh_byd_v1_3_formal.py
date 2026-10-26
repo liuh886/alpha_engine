@@ -147,7 +147,7 @@ def refresh_byd_v1_3(
     }
 
 
-def main() -> None:
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--current-package", type=Path, required=True)
     parser.add_argument("--predecessor-package", type=Path, required=True)
@@ -160,20 +160,27 @@ def main() -> None:
     parser.add_argument("--generated-at", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    result = refresh_byd_v1_3(
-        current_package=args.current_package,
-        predecessor_package=args.predecessor_package,
-        base_byd_dir=args.base_byd_dir,
-        base_etf_dir=args.base_etf_dir,
-        shadow_store=args.shadow_store,
-        paired_store=args.paired_store,
-        signal_ledger=args.signal_ledger,
-        cutoff=args.cutoff,
-        generated_at=args.generated_at,
-        output=args.output,
-    )
+    try:
+        result = refresh_byd_v1_3(
+            current_package=args.current_package,
+            predecessor_package=args.predecessor_package,
+            base_byd_dir=args.base_byd_dir,
+            base_etf_dir=args.base_etf_dir,
+            shadow_store=args.shadow_store,
+            paired_store=args.paired_store,
+            signal_ledger=args.signal_ledger,
+            cutoff=args.cutoff,
+            generated_at=args.generated_at,
+            output=args.output,
+        )
+    except BYDFormalRefreshError as exc:
+        # Exit 10 = governed data block (retain, degraded). Maps to data_blocked
+        # in run_formal_strategy_refresh.py instead of execution_failed.
+        print(json.dumps({"data_blocked": str(exc)}, ensure_ascii=False))
+        return 10
     print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

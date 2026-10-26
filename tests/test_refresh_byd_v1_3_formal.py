@@ -223,3 +223,35 @@ def test_v1_3_formal_refresh_replays_bundle_v2_prefix_and_appends(tmp_path: Path
     assert package["report"][: len(current["report"])] == current["report"]
     assert package["positions"][: len(current["positions"])] == current["positions"]
     assert package["trades"][: len(current["trades"])] == current["trades"]
+
+
+def test_byd_refresh_main_exits_10_on_data_blocked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import sys
+    import scripts.refresh_byd_v1_3_formal as byd_refresh_mod
+
+    def fake_refresh(**_kwargs):
+        raise BYDFormalRefreshError("BYD prospective observations do not reach target cutoff")
+
+    monkeypatch.setattr(byd_refresh_mod, "refresh_byd_v1_3", fake_refresh)
+    test_args = [
+        "refresh_byd_v1_3_formal.py",
+        "--current-package", str(tmp_path / "cur.json"),
+        "--predecessor-package", str(tmp_path / "pred.json"),
+        "--base-byd-dir", str(tmp_path / "byd"),
+        "--base-etf-dir", str(tmp_path / "etf"),
+        "--shadow-store", str(tmp_path / "shadow"),
+        "--paired-store", str(tmp_path / "paired"),
+        "--signal-ledger", str(tmp_path / "ledger"),
+        "--cutoff", "2026-10-26",
+        "--generated-at", "2026-10-26T16:00:00Z",
+        "--output", str(tmp_path / "out.json"),
+    ]
+    monkeypatch.setattr(sys, "argv", test_args)
+    exit_code = byd_refresh_mod.main()
+    assert exit_code == 10
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert "data_blocked" in payload
+    assert "BYD prospective observations do not reach target cutoff" in payload["data_blocked"]

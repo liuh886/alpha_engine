@@ -1,0 +1,47 @@
+{
+  "schema_version": "direction_a_incident_report_v1",
+  "captured_at_utc": "2026-10-26T14:27:00Z",
+  "workflow_run_id": "40321512230",
+  "trigger_commit_sha": "3d98a3c30790fd8cd17f84b814b46e2154f26eaf",
+  "requested_cutoffs": {
+    "us": "2026-10-26",
+    "cn": "2026-10-26"
+  },
+  "overall_outcome": "publication_aborted",
+  "fail_closed_verified": true,
+  "gate_a1_status": "BLOCKED",
+  "decoupled_incidents": [
+    {
+      "incident_id": "INC-20261026-BYD",
+      "strategy_id": "byd",
+      "model_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+      "target_cutoff": "2026-10-26",
+      "available_source_cutoff": "2026-10-23",
+      "execution_status": "execution_failed",
+      "classification_defect": "uncaught_exception_exit_code_1_treated_as_fatal_instead_of_retained",
+      "root_cause": "timing_inversion_between_shadow_updater_cron_and_refresh_workflow",
+      "error_message": "BYDFormalRefreshError: BYD prospective observations do not reach target cutoff",
+      "blocking_evidence_path": "data/research/byd_prospective_shadow/observations/2026-10-23.json"
+    },
+    {
+      "incident_id": "INC-20261026-CN27",
+      "strategy_id": "cn_27",
+      "model_id": "cn_27_v1_3",
+      "target_cutoff": "2026-10-26",
+      "available_source_cutoff": "2026-10-23",
+      "execution_status": "data_blocked",
+      "classification_defect": null,
+      "root_cause": "tushare_rate_limit_and_akshare_sina_volume_mismatch",
+      "error_message": "provider health flags touch required CN_27 symbols: 22 symbols flagged",
+      "flagged_symbol_count": 22,
+      "flagged_symbols": [
+        "000002", "000100", "000425", "000568", "000858", "002156", "002281", "002837",
+        "300017", "300133", "300274", "300408", "300548", "300782", "515180", "600026",
+        "600426", "600522", "600900", "601012", "601899", "603629"
+      ],
+      "blocking_evidence_path": "artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json"
+    }
+  ],
+  "research_only": true,
+  "trade_ready": false
+}

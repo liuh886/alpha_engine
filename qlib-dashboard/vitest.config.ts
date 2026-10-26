@@ -12,7 +12,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: [fileURLToPath(new URL('./src/test/setup.ts', import.meta.url)).replace(/\\/g, '/')],
     css: true,
     exclude: ['e2e/**', 'node_modules/**'],
     // Recharts renders under jsdom are CPU-heavy; 5s is too tight on loaded

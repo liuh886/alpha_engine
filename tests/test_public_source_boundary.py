@@ -122,3 +122,23 @@ def test_all_public_formal_assets_pass_release_verifier(synced_public_assets: Pa
     ops_path = synced_public_assets / "strategy-operations" / "snapshots.json"
     ops = json.loads(ops_path.read_text(encoding="utf-8"))
     validate_public_operations(ops, records)
+
+
+def test_gate_a4_security_audit_and_reopened_status() -> None:
+    """Gate A4 security audit must cover the 5 surfaces and enforce FAIL status until full isolation."""
+    audit_file = REPO_ROOT / "docs" / "architecture" / "current_operations_security_audit_1288.md"
+    assert audit_file.is_file(), "Security audit document #1288 missing"
+    text = audit_file.read_text(encoding="utf-8")
+    for surface in (
+        "公开 Git",
+        "历史 Git",
+        "Pages",
+        "Actions Artifacts",
+        "当前数据写入路径",
+    ):
+        assert surface in text, f"Surface '{surface}' not covered in security audit #1288"
+
+    # Scorecard must declare Gate A4 as FAIL, rejecting premature green
+    scorecard = (REPO_ROOT / "docs" / "product" / "product_completion_scorecard_2026-10-25.md").read_text(encoding="utf-8")
+    assert "| A4 | FAIL |" in scorecard, "Gate A4 must remain FAIL in scorecard"
+    assert "A4 PASS" not in scorecard, "A4 must not be prematurely marked PASS"

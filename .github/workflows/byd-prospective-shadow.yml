@@ -29,7 +29,9 @@ on:
       - "docs/research/byd_prospective_shadow_ledger.md"
       - ".github/workflows/byd-prospective-shadow.yml"
   schedule:
-    - cron: "30 11 * * 1-5"
+    # CN market closes at 15:00 CST; run prospective shadow update at 15:45 CST (07:45 UTC),
+    # comfortably ahead of the 16:30 CST (08:30 UTC) formal backtest refresh cycle.
+    - cron: "45 7 * * 1-5"
   workflow_dispatch:
 
 permissions:

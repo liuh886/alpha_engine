@@ -14,8 +14,8 @@
 | :--- | :--- | :--- | :--- |
 | **Phase 1** | **规范与核心缺陷修复**<br>(PR #1283, #1286, #1293, #1295) | 确立文档唯一权威；修复 no-change 发布；修复 QQQ 本地回放；纠正退市策略断言；单体分片测试 3,938 项全绿。 | **已完成** (4个PR已合入 main，测试全绿) |
 | **Phase 2** | **阶段性审计与事实证据归档**<br>(PR #1284, #1287, #1289, #1290) | 真实记录 20-session 缺口 (A1 BLOCKED)；走查四策略旅程；归档本地回放证据；交付单操作员运维手册与 A0–A7 NO-GO 判定书。 | **已完成** (4个证据/手册PR已合入 main) |
-| **Phase 3** | **P0 隐私安全缺陷技术攻坚**<br>(PR #1291 方案转化与 #1288 修复代码) | 实现 `sync-formal-model-runs.mjs` 公开脱敏投影与私有归档隔离；通过直接匿名 HTTP 负面拦截测试；将门禁 A4 由 FAIL 变更为 PASS。 | **待攻坚** (核心焦点：修复 A4 FAIL) |
-| **Phase 4** | **集成 SHA 全量回归与 v1 Release Candidate**<br>(PR #1276 章程转正与冻结集成) | 固定单一集成 Commit；复跑完整门禁；验证隐私合规的回滚目标；形成 Owner 最终 A7 决策包。 | **待执行** |
+| **Phase 3** | **P0 隐私安全缺陷技术攻坚**<br>(PR #1291 方案转化与 #1288 修复代码) | 实现 `sync-formal-model-runs.mjs` 公开脱敏投影；但公共仓库中仍然存在原始决策账本与未脱敏 lineage Blob，完整安全边界未闭环。 | **公开投影修复已合并、完整隔离待验证** (A4 维持 FAIL) |
+| **Phase 4** | **集成 SHA 全量回归与 v1 Release Candidate**<br>(PR #1276 章程转正与冻结集成) | 产品章程与 Scorecard 合并完成；但缺少统一集成 SHA 下的真实发布验证、生产韧性闭环与隐私合规恢复验证，RC 尚未验收。 | **章程已合并、RC 待执行** (A7 维持 NOT_TESTED / NO-GO) |
 | **Phase 5** | **Track B: 通用投研基础设施启动研讨**<br>(PR #1296 启动、D1–D5 裁定与 RI-01/02 拆票) | 完成 D1–D5 架构裁定；拆解 RI-01 (数据资产与消费者审计) 与 RI-02 (PIT 历史信息状态) 独立工单；启动下一阶段演进。 | **待研讨** |
 
 ---
@@ -57,33 +57,48 @@
   - [x] 确认 A0–A7 客观判定为 NO-GO（A1/A2/A3/A5/A6 BLOCKED, A4 FAIL, A7 NOT_TESTED）。
   - [x] 合并 PR #1290 (merge commit: `6ec70004eeb2973223688db49feb90e81089c630`)。
 
-### Phase 3: P0 隐私泄露攻坚与门禁 A4 闭环 (Track A 核心阻碍)
+### Phase 3: P0 隐私泄露攻坚与门禁 A4 闭环 (重新打开 #1288 安全验收)
 - [x] **3.1 审查并合入 PR #1291 架构方案**：
   - [x] 明确公开历史投影（Public Historical Projection）与私有状态归档（Private Canonical Store）的隔离边界。
   - [x] 确保公开 projection 拥有独立哈希与清单，不伪造原 canonical bundle 哈希。
   - [x] PR #1291 已合并入 `main` (`2940d4104`)。
 - [x] **3.2 实施脱敏投影代码切片**：
   - [x] 改造 `sync-formal-model-runs.mjs`，在构建公开静态资源时剔除 `operating_state`、最新目标仓位与敏感执行信息。
-  - [x] 保持私有归档/Supabase RLS 中当前运行状态的授权读取能力。
-- [x] **3.3 编写匿名穿透负面测试与验证**：
-  - [x] 编写测试针对 Git 树、Pages 输出文件、网络请求进行直接匿名扫描，断言 100% 不含敏感仓位字段。
-  - [x] 重新评估门禁 A4，完成由 FAIL 到 PASS 的实证闭环。
+  - [x] 编写 `tests/test_public_source_boundary.py`（32 项 Pages 本地输出脱敏测试全绿）。
+- [ ] **3.3 重新打开 #1288 安全验收与五大暴露面治理** (`docs/architecture/current_operations_security_audit_1288.md`)：
+  - [x] **五大表面全景审计**：审计公开 Git、历史 Git、Pages、Actions Artifacts 和当前写入路径。
+  - [ ] **止血动作 (Stop The Bleed)**：
+    - [ ] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state` 嵌入公共回测包的 `lineage.json`（对齐 BYD v1.3 解耦模式）。
+    - [ ] 调整 daily workflows (`cn27-current-target.yml` 等)，停止向公开 Git 提交 `strategy_signal_ledgers`。
+  - [ ] **迁移至受保护权威存储**：依据 ADR-0004，将实时运行状态完全迁移至 Supabase RLS / 私有凭据存储。
+  - [ ] **门禁 A4 严格验收**：编写全仓库直接 Git 扫描与制品扫描测试，在公共仓库 Git 追踪完全脱敏前，**门禁 A4 绝不标记为 PASS，维持 FAIL**。
 
-### Phase 4: 集成 SHA 质量门禁与 v1 Release Candidate
-- [x] **4.1 冻结集成 SHA**：在所有修复与脱敏代码合入后，打出稳定集成 SHA (`8fa9405f4`)。
-- [x] **4.2 运行完整质量门禁**：后端分片与边界测试、TypeScript 严格类型检查、Vite 生产构建全绿验证。
-- [x] **4.3 更新并合并 PR #1276**：更新章程与 Scorecard 中的 A0–A7 状态矩阵（A4 PASS, A5 PASS-bounded），与 Track B 边界明确对齐，PR #1276 正式合并入 `main` (`8fa9405f4`)。
+### Phase 4: 集成 SHA 质量门禁与 v1 Release Candidate (章程已合并、RC 待执行)
+- [x] **4.1 合并产品章程与权威基准线**：合并 PR #1276，与 Track B 边界明确对齐 (`8fa9405f4`)。
+- [ ] **4.2 消除口径矛盾与基准核验**：
+  - [x] 纠正产品记分卡 `product_completion_scorecard_2026-10-25.md`：A4 维持 FAIL，A7 维持 NOT_TESTED / NO-GO，消除与 `w4_release_review_2026-10-25.json` 之间的矛盾。
+- [ ] **4.3 统一集成 SHA 质量验证**：在固定集成 SHA 下复跑全量门禁与前后端测试。
+- [ ] **4.4 真实生产运行与 Release Candidate 验收**：要求至少完成一次真实成功且隐私合格的每日正式发布，验证灾难恢复/回滚目标，形成 Owner 最终 A7 决策包 (A7 当前维持 NOT_TESTED / NO-GO)。
+
+### Phase 4.5: Gate A1 真实运维韧性与根因修复 (Run 40321512230 专项攻坚)
+- [x] **4.5.0 调查并保留 Run 40321512230 独立证据** (`docs/evidence/product_v1/incident_run_40321512230_2026-10-26.md` / `.json`)：
+  - [x] 解耦为两个独立问题：INC-20261026-BYD (前瞻时序倒置/退出码缺陷) 与 INC-20261026-CN27 (Tushare限频/Sina成交量误杀)。
+  - [x] 完整保留真实截止日 (`2026-10-23` vs `2026-10-26`)、来源记录与 22 个受影响标的阻塞证据。
+- [x] **4.5.1 BYD 前瞻观察链路时序倒置与异常分类治理**：
+  - [x] 在 `scripts/refresh_byd_v1_3_formal.py` 中将未覆盖目标截止日的前瞻数据错误映射为 `DataBlockedError` (退出码 10)，使未完成前瞻生成时保持 `retained / degraded` 降级发布，不触发致命熔断。
+  - [x] 调整 `.github/workflows/byd-prospective-shadow.yml` 定时计划 (前移至 15:45 CST / 07:45 UTC)，跑在 16:30 CST 正式刷新之前。
+- [x] **4.5.2 CN 行情 Provider 容错与成交量口径解耦**：
+  - [x] 修复 `scripts/data/refresh_selected_pool_prices.py` overlap 校验过严缺陷：将价格/因子硬断言与 volume 解耦，避免因新浪成交量单位差异（股 vs 手）误将有效价格切片报废。
+  - [x] 验证 30 项价格刷新与 23 项 v2 回归测试全部通过。
+- [x] **4.5.3 端到端回归与测试验证**：验证 BYD 数据缺失下的优雅降级 (exit code 10)，以及解绑成交量后 CN 选股池价格刷新全绿。
 
 ### Phase 5: Track B — 通用投研基础设施启动研讨 (PR #1296)
-- [ ] **5.1 组织 D1–D5 核心架构决策研讨**：
-  - [ ] D1: 明确“投研基础设施”为长期定位，Direction A v1 保持为当前交付边界。
-  - [ ] D2: 优先本地数据发现与 PIT 时点访问，暂不恢复浏览器端研究 IDE。
-  - [ ] D3: 严守数据权限与可得性前置审计，不盲目引入未授权外部源。
-  - [ ] D4: 以多空截面与 RDI 阻塞案例作为典型基础设施消费者。
-  - [ ] D5: 拆解首批委派任务 RI-01 与 RI-02。
-- [ ] **5.2 拆解与开启 RI-01 与 RI-02 独立工作单**：
-  - [ ] RI-01: 数据资产与消费者全量血缘审计矩阵。
-  - [ ] RI-02: 跨领域 PIT 历史信息状态语义 ADR 与负面测试集。
+- [x] **5.1 启动 RI-01 与 RI-02 并行推进 (无需等待 v1 发布)**：
+  - [x] **RI-01 数据资产与消费者全量血缘审计矩阵** (`docs/architecture/investment_research_data_product_inventory_2026-10-26.md`)：梳理 US87/CN130、参考资产、价格、基本面、公司行为、Alpha158、RDI 事件、数据权利与消费链路。
+  - [x] **RI-02 跨领域 PIT 历史信息状态语义 ADR 草案** (`docs/architecture/adr-0005-point-in-time-information-state-semantics.md`)：确立五时间戳模型、不可追溯修订原则、缺失/零值语义及负面测试矩阵 (PIT-NEG-01 ~ PIT-NEG-05)。
+- [ ] **5.2 后续推进 (待 Owner 审阅 D1–D5 架构裁定)**：
+  - [ ] 组织 PR #1296 评审，批准 D1–D5 核心决策。
+  - [ ] 开启 RI-03/04/05 候选研究工单。
 
 ---
 
@@ -100,11 +115,16 @@
   - **PR #1289** (W3 / #1282) 合并入 `main` (`eea14be38`)：封存 CN_27 与 QQQ 本地回放可复现证据，保持 A5 待 Owner 独立验收。
   - **PR #1290** (W4 / #1281) 合并入 `main` (`6ec70004e`)：交付个人工作站单操作员运行手册 `docs/operations/owner_local_workstation_runbook.md`，汇总 A0–A7 阶段性判定书（当前裁决为 NO-GO）。
   - **PR #1291** (Security ADR / #1288) 合并入 `main` (`2940d4104`)：批准并固化当前运行数据与公开历史投影边界方案，锁定未来脱敏投影实现契约。
-- [x] **Phase 3 验收通过 (2026-10-26)**:
+- [ ] **Phase 3: 公开投影修复已合并、完整隔离待验证 (2026-10-26)**:
   - **脱敏投影实现 (#1288)**：改造 `sync-formal-model-runs.mjs`，静态构建时自动剥离 `lineage.json` 中 `source_evidence.operating_state`（含敏感 `current_weights` 与 `target_weights`），重新计算脱敏后的 section sha256 与 `manifest.bundle_id`，并声明 `projection_contract: public_historical_projection_v1` 与权威 source identity 溯源绑定。
   - **发布验证器升级**：在 `pages_release_verification.py` 中对所有发布 section 实施递归敏感字段阻断（禁止 `operating_state`，lineage 额外禁止 `current_weights`/`target_weights`），并严密校验公开 projection 与 canonical bundle 的加密绑定关系。
-  - **门禁 A4 实证闭环**：新增 `tests/test_public_source_boundary.py`，全量遍历公开文件验证 0 敏感泄露，32 项发布验证与边界测试 100% 通过，门禁 A4 正式由 FAIL 转为 PASS。
-- [x] **Phase 4 验收通过 (2026-10-26)**:
-  - **PR #1276 合并入 `main` (`8fa9405f4`)**：更新 `product_completion_scorecard_2026-10-25.md`，将门禁 A4 更新为 PASS，保留 A1/A2/A3/A6 为 BLOCKED 与 A7 为 NOT_TESTED，确保不粉饰未达标门禁。
-  - **边界严密对齐**：明确 Direction A v1（单操作员四策略只读工作站）作为当前交付边界已收口；通用投研基础设施（Track B）作为长期愿景，平滑过渡至 PR #1296。
+  - **审查缺陷与未解决范围**：经核实，`tests/test_public_source_boundary.py` 仅覆盖了本地生成的 Pages 公开静态目录；而公共 GitHub 仓库仍然追踪包含敏感 `operating_state` 的原始决策账本与历史 `lineage.json` (Blob `13489a0d...`)。在公共 Git 仓库中的敏感信息剥离或私有化闭环前，**门禁 A4 绝不提前放行，维持 FAIL**。
+- [ ] **Phase 4: 章程已合并、RC 待执行 (2026-10-26)**:
+  - **PR #1276 合并入 `main` (`8fa9405f4`)**：完成产品章程与 Scorecard 基准线合并，锁定 Direction A v1 与 Track B 边界。
+  - **RC 验收缺口**：Release Candidate 尚未验收。当前缺少统一集成 SHA 下的真实生产发布成功证明（Run 40321512230 出现新的失败），且缺少隐私合格的灾难恢复验证。门禁 A7 维持 NOT_TESTED / NO-GO。
+- [x] **2026-10-26 专项攻坚完成复盘 (4 项专项任务完全交付)**:
+  - **P0 #1288 安全验收重新打开与五面全景审计**：交付 `docs/architecture/current_operations_security_audit_1288.md`，覆盖公开 Git、历史 Git、Pages、Actions 制品和当前写入路径 5 大表面；Gate A4 严格维持 FAIL；更新 `tests/test_public_source_boundary.py`（4 项测试全绿）。
+  - **P0 Run 40321512230 调查与双缺陷解耦**：交付 `docs/evidence/product_v1/incident_run_40321512230_2026-10-26.md` 与 `.json`，分离 INC-20261026-BYD (前瞻时序倒置/未捕获异常) 与 INC-20261026-CN27 (Tushare限频/Sina成交量误杀)；完成 BYD exit code 10 降级处理、前瞻 Cron 前移至 15:45 CST、selected pool 价格 overlap 排除成交量硬比较；75 项回归测试与前端构建全部通过。
+  - **P1 纠正 Release Gate 状态**：修正 `docs/product/product_completion_scorecard_2026-10-25.md` 与 `tasks/todo.md`，将 Phase 3 定位为“公开投影修复已合并、完整隔离待验证”（A4 FAIL），Phase 4 定位为“章程已合并、RC 待执行”（A7 NOT_TESTED / NO-GO），消除了口径矛盾与不实验收。
+  - **P1 启动 #1296 Track B 投研基础设施**：交付 RI-01 全量数据产品与血缘审计矩阵 `docs/architecture/investment_research_data_product_inventory_2026-10-26.md` 以及 RI-02 PIT 跨领域历史信息状态语义 ADR `docs/architecture/adr-0005-point-in-time-information-state-semantics.md`，建立五时间戳模型与 PIT-NEG-01 ~ PIT-NEG-05 负面测试。
 

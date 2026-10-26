@@ -513,7 +513,7 @@ def test_cutoff_fallback_cannot_restate_incremental_overlap(
             max_rounds=2 if mismatch == "same_source_retry" else 1,
         )
 
-    if mismatch in {None, "early_history", "same_source_retry"}:
+    if mismatch in {None, "early_history", "same_source_retry", "volume"}:
         payload = refresh()
         assert payload["status"] == "selected_pool_price_refresh_ready"
         assert payload["all_sources_current"] is True
