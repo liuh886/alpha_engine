@@ -1038,7 +1038,7 @@ jobs:
             --fan-in-receipt "$FAN_IN_RECEIPT" \
             --refresh-receipt "$REFRESH_RECEIPT" \
             --receipt artifacts/formal-refresh/publication-delta-latest-main-receipt.json
-          latest_publication_required="$(jq -er '.publication_required' artifacts/formal-refresh/publication-delta-latest-main-receipt.json)"
+          latest_publication_required="$(jq -er '.publication_required | if type == "boolean" then tostring else error("publication_required must be boolean") end' artifacts/formal-refresh/publication-delta-latest-main-receipt.json)"
           latest_delta_status="$(jq -er '.status' artifacts/formal-refresh/publication-delta-latest-main-receipt.json)"
           echo "publication_required=$latest_publication_required" >> "$GITHUB_OUTPUT"
           echo "delta_status=$latest_delta_status" >> "$GITHUB_OUTPUT"

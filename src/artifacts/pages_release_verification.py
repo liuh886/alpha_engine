@@ -38,6 +38,9 @@ class PublishedFormalRun:
     manifest_path: str
     manifest_sha256: str
     evidence_cutoff: str
+    canonical_bundle_id: str | None = None
+    canonical_manifest_sha256: str | None = None
+    projection_contract: str | None = None
 
 
 @dataclass(frozen=True)
@@ -125,6 +128,27 @@ def validate_formal_catalog(payload: object) -> tuple[PublishedFormalRun, ...]:
         observed_versions.add(version)
         if record.get("publication_status") != "accepted_formal_baseline":
             raise ReleaseVerificationError(f"{version} is not an accepted formal baseline")
+        canonical_bundle_id = (
+            _digest(record["canonical_bundle_id"], label=f"record {index}.canonical_bundle_id")
+            if "canonical_bundle_id" in record
+            else None
+        )
+        canonical_manifest_sha256 = (
+            _digest(
+                record["canonical_manifest_sha256"],
+                label=f"record {index}.canonical_manifest_sha256",
+            )
+            if "canonical_manifest_sha256" in record
+            else None
+        )
+        projection_contract = (
+            _string(
+                record["projection_contract"],
+                label=f"record {index}.projection_contract",
+            )
+            if "projection_contract" in record
+            else None
+        )
         records.append(
             PublishedFormalRun(
                 model_family_id=_string(
@@ -146,6 +170,9 @@ def validate_formal_catalog(payload: object) -> tuple[PublishedFormalRun, ...]:
                     record.get("evidence_cutoff"),
                     label=f"record {index}.evidence_cutoff",
                 ),
+                canonical_bundle_id=canonical_bundle_id,
+                canonical_manifest_sha256=canonical_manifest_sha256,
+                projection_contract=projection_contract,
             )
         )
     if not records:
@@ -197,6 +224,24 @@ def validate_formal_manifest(
         )
     if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
         raise ReleaseVerificationError(f"research boundary mismatch for {record.model_version_id}")
+    if record.projection_contract is not None:
+        if manifest.get("projection_contract") != record.projection_contract:
+            raise ReleaseVerificationError(
+                f"projection contract mismatch for {record.model_version_id}"
+            )
+        source_id = manifest.get("source_identity")
+        if not isinstance(source_id, Mapping):
+            raise ReleaseVerificationError(
+                f"source_identity missing in projection manifest for {record.model_version_id}"
+            )
+        if source_id.get("canonical_bundle_id") != record.canonical_bundle_id:
+            raise ReleaseVerificationError(
+                f"canonical bundle identity mismatch for {record.model_version_id}"
+            )
+        if source_id.get("canonical_manifest_sha256") != record.canonical_manifest_sha256:
+            raise ReleaseVerificationError(
+                f"canonical manifest digest mismatch for {record.model_version_id}"
+            )
 
     sections: list[PublishedSection] = []
     for index, value in enumerate(_sequence(manifest.get("sections"), label="manifest sections")):
@@ -226,6 +271,26 @@ def validate_formal_manifest(
     return manifest, tuple(sections)
 
 
+FORBIDDEN_OPERATIONAL_KEYS = ("operating_state",)
+FORBIDDEN_LINEAGE_KEYS = ("operating_state", "current_weights", "target_weights")
+
+
+def _find_forbidden_key(value: object, forbidden_keys: tuple[str, ...]) -> str | None:
+    if isinstance(value, Mapping):
+        for k, v in value.items():
+            if k in forbidden_keys:
+                return str(k)
+            found = _find_forbidden_key(v, forbidden_keys)
+            if found is not None:
+                return found
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        for item in value:
+            found = _find_forbidden_key(item, forbidden_keys)
+            if found is not None:
+                return found
+    return None
+
+
 def validate_formal_section(
     record: PublishedFormalRun,
     section: PublishedSection,
@@ -238,8 +303,23 @@ def validate_formal_section(
         )
     digest = hashlib.sha256(payload).hexdigest()
     if digest != section.sha256:
-        raise ReleaseVerificationError(f"section digest mismatch for {record.model_version_id}/{section.section_id}: expected {section.sha256}, found {digest}")
+        raise ReleaseVerificationError(
+            f"section digest mismatch for {record.model_version_id}/{section.section_id}: expected {section.sha256}, found {digest}"
+        )
     decoded = _json(payload, label=f"{record.model_version_id}/{section.path}")
+    forbidden = _find_forbidden_key(decoded, FORBIDDEN_OPERATIONAL_KEYS)
+    if forbidden:
+        raise ReleaseVerificationError(
+            f"operational leakage in {record.model_version_id}/{section.section_id}: "
+            f"contains forbidden key {forbidden!r}"
+        )
+    if section.section_id == "lineage":
+        lineage_forbidden = _find_forbidden_key(decoded, FORBIDDEN_LINEAGE_KEYS)
+        if lineage_forbidden:
+            raise ReleaseVerificationError(
+                f"operational leakage in {record.model_version_id}/lineage: "
+                f"contains forbidden key {lineage_forbidden!r}"
+            )
     if section.section_id != "summary":
         return
     summary = _mapping(decoded, label=f"{record.model_version_id} summary")
@@ -310,7 +390,7 @@ def validate_public_operations(
         version = _string(row.get("model_version_id"), label="operations model version")
         record = by_version[version]
         expected_identity = {
-            "formal_bundle_id": record.bundle_id,
+            "formal_bundle_id": record.canonical_bundle_id or record.bundle_id,
             "formal_run_id": record.run_id,
             "formal_evidence_cutoff": record.evidence_cutoff,
             "ledger_fingerprint": None,

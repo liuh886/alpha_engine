@@ -11,26 +11,20 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import pandas as pd
-import yaml
 
 from scripts.byd_formal_refresh_common import extend_byd_input, extend_etf_input
 from scripts.byd_v1_3_formal_builder import build_package as build_byd_package
 from src.artifacts.formal_bundle_reader import FormalBundleReadError, load_formal_run
 from src.artifacts.formal_refresh import load_object
 from src.artifacts.qqq_v4_3_formal import (
-    JOINT_STRATEGY,
     MODEL_ID as QQQ_MODEL_ID,
-    build_formal_package as build_qqq_package,
 )
-from src.data.adapters.cnn_fear_greed import fetch_cnn_fear_greed
 from src.data.data_recipe import DataRecipeError, prepare_data_recipe
 from src.research.byd_v1_3_low_vol_recovery import MODEL_ID as BYD_MODEL_ID
-from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
 from src.research.formal_replay_contract import (
     BYD_REPLAY_ID, CN27_REPLAY_ID, QQQ_REPLAY_ID, REPLAY_IDS,
 )
 from src.research.replay_comparison import compare_package_sections
-from src.research.v4_33_ma200_ma20_vix_release import run_v4_33_comparison
 
 RUNNER_ID = "formal_model_replay_v2"
 
@@ -45,9 +39,6 @@ ETF_PAIRED_STORE = Path("data/research/byd_515180_prospective")
 BYD_SIGNAL_LEDGER = (
     Path("data/research/strategy_signal_ledgers")
     / "byd_v1_3_recovery_event_low_vol_confirmation_v1"
-)
-QQQ_BRIDGE_CONTRACT = Path(
-    "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
 )
 QQQ_RECIPE_ID = "qqq-rotation-sgov"
 
@@ -127,130 +118,65 @@ def replay_qqq_v4_3(
     root: str | Path,
     refresh_data: bool = False,
 ) -> dict[str, Any]:
+    from src.research.qqq_authoritative_replay import verify_qqq_authoritative_replay
+
     normalized_root = Path(root).resolve()
     try:
         accepted = load_formal_run(normalized_root, QQQ_MODEL_ID)
         baseline = accepted.identity
-        expected = accepted.replay_trace()
+        candidate = accepted.refresh_state()
         cutoff = accepted.evidence_cutoff
     except (FileNotFoundError, FormalBundleReadError, json.JSONDecodeError) as exc:
         return _receipt(
-            replay_id=QQQ_REPLAY_ID,
-            model_id=QQQ_MODEL_ID,
-            baseline=None,
-            decision="invalid_evidence",
-            reason=str(exc),
+            replay_id=QQQ_REPLAY_ID, model_id=QQQ_MODEL_ID, baseline=None,
+            decision="invalid_evidence", reason=str(exc),
         )
 
     try:
         prepared = prepare_data_recipe(
-            QQQ_RECIPE_ID,
-            root=normalized_root,
-            cutoff=cutoff,
-            refresh=refresh_data,
+            QQQ_RECIPE_ID, root=normalized_root, cutoff=cutoff, refresh=refresh_data,
         )
         manifest_path = Path(str(prepared["product_manifest_path"])).resolve()
-        strategy_root = Path(str(prepared["strategy_bundle_root"])).resolve()
         manifest = _load_json(manifest_path)
-        if manifest.get("professional_source_ready") is not True:
-            return _receipt(
-                replay_id=QQQ_REPLAY_ID,
-                model_id=QQQ_MODEL_ID,
-                baseline=baseline,
-                decision="data_blocked",
-                reason=(
-                    "QQQ v4.3 exact replay requires the professional governed ETF source; "
-                    "configure TIINGO_API_TOKEN and rebuild the exact-cutoff recipe"
-                ),
-                data_identity={
-                    "recipe_id": QQQ_RECIPE_ID,
-                    "strategy_manifest_sha256": _sha256(manifest_path),
-                    "professional_source_ready": False,
-                },
-            )
-
-        bridge_path = _resolve(normalized_root, QQQ_BRIDGE_CONTRACT)
-        contract = yaml.safe_load(bridge_path.read_text(encoding="utf-8"))
-        if not isinstance(contract, dict):
-            raise FormalModelReplayError("QQQ v4.3 bridge contract must be a mapping")
-        bars, coverage, strategy_identity = fetch_governed_etf_strategy_bars(
-            symbols=["QQQI", "QQQ", "TQQQ", "SGOV", "^VIX", "^VXN"],
-            start=str(contract["data"]["start_date"]),
-            end=cutoff,
-            bundle_dir=strategy_root,
+        details = manifest["details"]
+        if not isinstance(details, Mapping) or not isinstance(details.get("source_etf_manifest_path"), str) or not details["source_etf_manifest_path"]:
+            raise FormalModelReplayError("QQQ source ETF manifest binding is missing")
+        source_manifest = _resolve(
+            normalized_root, Path(details["source_etf_manifest_path"]),
         )
-        fear_greed = fetch_cnn_fear_greed(end_date=cutoff)
-        _, results, diagnostics = run_v4_33_comparison(
-            bars,
-            contract,
-            fear_greed,
-            cash_symbol="SGOV",
-        )
-        result = results[JOINT_STRATEGY]
-        observed = build_qqq_package(
-            result,
-            bars,
-            generated_at=accepted.generated_at,
-            evidence_cutoff=cutoff,
-            backtest_id=accepted.run_id,
-            evidence={
-                "replay_runner": RUNNER_ID,
-                "model_selection_reopened": False,
-            },
-            freshness={
-                "status": "replay",
-                "required_cutoff": cutoff,
-                "model_selection_reopened": False,
-                "research_only": True,
-                "trade_ready": False,
-            },
-        )
-        comparison = compare_package_sections(expected, observed)
-        fear_csv = fear_greed.sort_index().to_csv(date_format="%Y-%m-%d").encode("utf-8")
-        data_identity = {
-            "recipe_id": QQQ_RECIPE_ID,
-            "strategy_manifest_path": str(manifest_path.relative_to(normalized_root)),
-            "strategy_manifest_sha256": _sha256(manifest_path),
-            "strategy_bundle_id": manifest.get("bundle_id"),
-            "professional_source_ready": True,
-            "strategy_identity": strategy_identity,
-            "fear_greed_sha256": _sha256_bytes(fear_csv),
-            "coverage_rows": int(len(coverage)),
-            "retrospective_diagnostics_present": bool(diagnostics),
-        }
-        if not comparison["exact"]:
-            return _receipt(
-                replay_id=QQQ_REPLAY_ID,
-                model_id=QQQ_MODEL_ID,
-                baseline=baseline,
-                decision="invalid_evidence",
-                reason="maintained QQQ v4.3 execution does not reproduce the accepted Bundle v2 trace",
-                comparison=comparison,
-                data_identity=data_identity,
+        if _sha256(source_manifest) != details["source_etf_manifest_sha256"]:
+            raise DataRecipeError("QQQ replay source ETF manifest hash mismatch")
+        # Use the same source/decision/economic gate as formal publication.
+        # It admits only the exact governed research contract or professional
+        # source, and retains sealed historical economics without restatement.
+        with tempfile.TemporaryDirectory(prefix="alpha-qqq-v4-3-replay-") as tmp:
+            package_path = Path(tmp) / "accepted-package.json"
+            package_path.write_text(json.dumps(candidate), encoding="utf-8")
+            verified = verify_qqq_authoritative_replay(
+                normalized_root, package_path=package_path,
+                bundle_dir=source_manifest.parent,
             )
         return _receipt(
-            replay_id=QQQ_REPLAY_ID,
-            model_id=QQQ_MODEL_ID,
-            baseline=baseline,
-            decision="exact_replay",
-            comparison=comparison,
-            data_identity=data_identity,
+            replay_id=QQQ_REPLAY_ID, model_id=QQQ_MODEL_ID, baseline=baseline,
+            decision="exact_replay", comparison=verified["trace_reproduction"],
+            data_identity={
+                **verified["data_identity"],
+                "recipe_id": QQQ_RECIPE_ID,
+                "strategy_manifest_sha256": _sha256(manifest_path),
+                "frozen_economic_identity": verified["frozen_economic_identity"],
+                "source_evidence": verified["source_evidence"],
+                "historical_challenger_policy": verified["historical_challenger_policy"],
+            },
         )
     except (DataRecipeError, FileNotFoundError, OSError) as exc:
         return _receipt(
-            replay_id=QQQ_REPLAY_ID,
-            model_id=QQQ_MODEL_ID,
-            baseline=baseline,
-            decision="data_blocked",
-            reason=str(exc),
+            replay_id=QQQ_REPLAY_ID, model_id=QQQ_MODEL_ID, baseline=baseline,
+            decision="data_blocked", reason=str(exc),
         )
     except (FormalModelReplayError, ValueError, KeyError, json.JSONDecodeError) as exc:
         return _receipt(
-            replay_id=QQQ_REPLAY_ID,
-            model_id=QQQ_MODEL_ID,
-            baseline=baseline,
-            decision="invalid_evidence",
-            reason=str(exc),
+            replay_id=QQQ_REPLAY_ID, model_id=QQQ_MODEL_ID, baseline=baseline,
+            decision="invalid_evidence", reason=str(exc),
         )
 
 

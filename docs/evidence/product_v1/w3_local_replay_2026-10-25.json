@@ -1,0 +1,234 @@
+{
+  "schema_version": "direction_a_local_replay_v1",
+  "captured_at_utc": "2026-10-25T07:39:13.549917+00:00",
+  "main_sha": "58a56c14c18197f700ab00b526513a571aff35be",
+  "status": "PENDING_OWNER_ACCEPTANCE",
+  "research_only": true,
+  "trade_ready": false,
+  "promotion_authorized": false,
+  "commands": [
+    {
+      "command": "uv run --frozen alpha research replay qqq_v4_3",
+      "exit_code": 2,
+      "result": {
+        "decision": "replay_failed",
+        "promotion_authorized": false,
+        "requested_replay": "qqq_v4_3",
+        "research_only": true,
+        "results": [
+          {
+            "baseline": {
+              "bundle_id": "c7c4312fe69a95abc55e5c7ce5d2fac427dab7a48f27bfb34cbba0367824a813",
+              "evidence_cutoff": "2026-10-23",
+              "manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_10_23/manifest.json",
+              "manifest_sha256": "77544180d8be17f73147908d77c037ce351bd5b0e18fe3180d925a428c5930be",
+              "model_family_id": "qqq_rotation",
+              "model_kind": "rules_based_allocation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "run_id": "qqqi_qqq_tqqq_v4_3-through-2026_10_23"
+            },
+            "data_identity": {
+              "professional_source_ready": false,
+              "recipe_id": "qqq-rotation-sgov",
+              "strategy_manifest_sha256": "3d82689fdb8bf2c25e6553660ae0be4274867458b31e3744ed7fd448e59ad107"
+            },
+            "decision": "data_blocked",
+            "model_version_id": "qqqi_qqq_tqqq_v4_3",
+            "promotion_authorized": false,
+            "reason": "QQQ v4.3 exact replay requires the professional governed ETF source; configure TIINGO_API_TOKEN and rebuild the exact-cutoff recipe",
+            "replay_id": "qqq_v4_3",
+            "research_only": true,
+            "runner": "formal_model_replay_v2",
+            "schema_version": "2.0",
+            "status": "blocked",
+            "trade_ready": false
+          }
+        ],
+        "runner": "formal_model_replay_v2",
+        "schema_version": "2.0",
+        "status": "blocked",
+        "trade_ready": false
+      }
+    },
+    {
+      "command": "uv run --frozen alpha research replay cn_27_v1_3",
+      "exit_code": 0,
+      "result": {
+        "decision": "exact_replay",
+        "promotion_authorized": false,
+        "requested_replay": "cn_27_v1_3",
+        "research_only": true,
+        "results": [
+          {
+            "baseline": {
+              "bundle_id": "fc5c939c85cb5152a55d0e849ae123d64af86a8dcd1f57e3d0ba6c04e1c768bc",
+              "evidence_cutoff": "2026-10-23",
+              "manifest_path": "data/research/formal_model_runs/cn_27_rotation/cn_27_v1_3/cn_27_v1_3-through-2026_10_23/manifest.json",
+              "manifest_sha256": "9275429c7bccabbc96007ec63af0bae70e77d302222320d49a2d70e4a0f3731e",
+              "model_family_id": "cn_27_rotation",
+              "model_kind": "rules_based_allocation",
+              "model_version_id": "cn_27_v1_3",
+              "run_id": "cn_27_v1_3-through-2026_10_23"
+            },
+            "decision": "exact_replay",
+            "model_id": "cn_27_v1_3",
+            "reason": "ok",
+            "replay_id": "cn_27_v1_3_formal_replay_v1",
+            "research_only": true,
+            "trade_ready": false
+          }
+        ],
+        "runner": "formal_model_replay_v2",
+        "schema_version": "2.0",
+        "status": "completed",
+        "trade_ready": false
+      },
+      "repeat_identical": true
+    }
+  ],
+  "environment": {
+    "python": "3.12.12",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "uv": "uv 0.9.10 (44f5a14f4 2025-11-17)",
+    "packages": {
+      "numpy": "1.26.4",
+      "pandas": "3.0.1",
+      "exchange-calendars": "4.13.2",
+      "pyqlib": "0.9.7",
+      "mlflow": "3.17.2"
+    }
+  },
+  "source_bindings": [
+    {
+      "path": "uv.lock",
+      "sha256": "b408f4bb419d86d8df7126455c8f8664af2130368a2987c7acfde32b4ae96148"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "906d34caf623ddb586309872cd846660f7d5d129795b51e7a31bb5f81434d565"
+    },
+    {
+      "path": "configs/strategies/registry.json",
+      "sha256": "636b76803029fff5358c40ecb7f1572d9c4868399a606a0440f1d36f402a654c"
+    },
+    {
+      "path": "configs/models/cn_27_v1_3.yaml",
+      "sha256": "3c36d6ccb7b62fd3455c07705f237d8021d11c428b06e1ca8ed81208f78c450b"
+    },
+    {
+      "path": "configs/research_experiments/cn_27_v1_3_projected_concentration_discovery_v1.yaml",
+      "sha256": "4381ac0562b05a1209aac7fa7bba782607fa26742802ff9d19ded6a94ada98a6"
+    },
+    {
+      "path": "src/research/cn27_v1_3_replay.py",
+      "sha256": "f3eea916ca8ddc877aac866f4fd7faeb4f5d3d629dbf1a9c4d7bc383cbf76c1c"
+    },
+    {
+      "path": "configs/pools/reference_instrument_registry_v1.yaml",
+      "sha256": "d5a7ddb9e54212f7c7f208149f2d24e71e3d7cb7e920bbf2356fa472065db2da"
+    },
+    {
+      "path": "artifacts/evidence/cn_all_weather_alpha_rotation_v1/source_ohlcv.csv",
+      "sha256": "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35"
+    },
+    {
+      "path": "configs/pools/cn_all_weather_alpha_rotation_v1.yaml",
+      "sha256": "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458"
+    }
+  ],
+  "cn_reference": {
+    "status": "PASS",
+    "accepted_identity": {
+      "model_version_id": "cn_27_v1_3",
+      "model_family_id": "cn_27_rotation",
+      "model_kind": "rules_based_allocation",
+      "run_id": "cn_27_v1_3-through-2026_10_23",
+      "bundle_id": "fc5c939c85cb5152a55d0e849ae123d64af86a8dcd1f57e3d0ba6c04e1c768bc",
+      "evidence_cutoff": "2026-10-23",
+      "manifest_path": "data/research/formal_model_runs/cn_27_rotation/cn_27_v1_3/cn_27_v1_3-through-2026_10_23/manifest.json",
+      "manifest_sha256": "9275429c7bccabbc96007ec63af0bae70e77d302222320d49a2d70e4a0f3731e"
+    },
+    "frozen_trace_end": "2026-09-04",
+    "comparison_tolerance_declared_before_run": 1e-06,
+    "comparison_sections": [
+      "report",
+      "positions",
+      "trades",
+      "attribution"
+    ],
+    "pool": "configs/pools/cn_all_weather_alpha_rotation_v1.yaml",
+    "source_prices": "artifacts/evidence/cn_all_weather_alpha_rotation_v1/source_ohlcv.csv",
+    "source_hash_checks": "PASS",
+    "benchmark": {
+      "instrument": "000300",
+      "role": "non_executable_benchmark",
+      "candidate_eligible": false
+    },
+    "defensive_instrument": {
+      "instrument": "515180",
+      "role": "executable_defensive_sleeve",
+      "candidate_eligible": false
+    },
+    "execution": {
+      "signal_time": "scheduled_session_close",
+      "execution_time": "next_eligible_session_open_with_locked_target_daily_retry",
+      "return_measurement": "adjusted_open_to_adjusted_open",
+      "missing_or_one_price_trade_policy": "retain_target_and_retry_each_session"
+    },
+    "costs": {
+      "stock_buy_rate": 0.0005,
+      "stock_sell_rate": 0.001,
+      "etf_buy_rate": 0.0002,
+      "etf_sell_rate": 0.0002,
+      "stress_multiplier": 2.0
+    },
+    "calendar": "lineage-pinned observed source sessions; locked exchange-calendars XSHG; no weekday fabrication",
+    "adjustment": "governed front-adjusted open; frozen source and existing evaluator unchanged",
+    "scope": "Frozen historical trace only, not current operating-state replay or new OOS validation."
+  },
+  "negative_missing_source": {
+    "status": "PASS",
+    "controlled_test_only": true,
+    "decision": "data_blocked",
+    "reason": "frozen CN_27 source prices are missing or revised",
+    "sealed_sources_modified": false
+  },
+  "existing_tests": {
+    "status": "PASS",
+    "passed": 25
+  },
+  "limitations": [
+    "CN deterministic replication does not establish predictive skill, prospective qualification, selected-pool readiness or all source/training profiles.",
+    "No retired model or alternate provider substituted for blocked US accepted reference.",
+    "No sealed source, formal identity, parameter, benchmark, pool or cost changed."
+  ],
+  "initial_capture_preserved": true,
+  "follow_up": {
+    "issue": 1292,
+    "pr": 1293,
+    "implementation_branch": "fix/qqq-replay-contract-1292",
+    "declared_qqq_replay_contract": "PASS",
+    "identical_successful_repetitions": 3,
+    "affected_tests_passed": 34,
+    "professional_source_ready": false,
+    "paid_provider_required": false,
+    "scope": "Frozen economic prefix integrity; recomputed decision path, appended economics and cumulative continuity. Historical economics not independently recomputed from current-provider prices.",
+    "owner_A5_acceptance": "PENDING",
+    "integration": "PENDING_REVIEW_AND_MERGE"
+  },
+  "initial_blockers": [
+    {
+      "market": "us",
+      "model_version_id": "qqqi_qqq_tqqq_v4_3",
+      "status": "BLOCKED",
+      "reason": "professional_source_ready=false; existing governed ETF recipe requires TIINGO_API_TOKEN and an exact-cutoff professional source product",
+      "owner": "existing QQQ reference/data recipe contract; not a selected-pool PIT/VWAP or training implementation request"
+    }
+  ],
+  "blockers": [
+    {
+      "status": "PENDING",
+      "reason": "Owner acceptance of bounded CN and QQQ replay scope, and review/merge of PR #1293."
+    }
+  ]
+}

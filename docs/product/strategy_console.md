@@ -9,6 +9,43 @@ available for audit and do not authorize reactivation.
 
 Chart presentation follows [Strategy chart quality](chart_quality.md).
 
+## Local Agent start here
+
+The product serves one operator in two complementary modes: governed local CLI
+research and this read-only four-strategy Console. The accepted
+[single-user ADR](../adr/0003-single-user-local-quant-research-platform.md)
+does not relax existing account entitlements or server-enforced current-data
+access. Local research is supported; the retired browser research IDE is not.
+
+Read these authorities before changing code:
+
+1. [AGENTS.md](../../AGENTS.md): current scope, selected-pool gates and research-only boundary.
+2. This contract and [actual routes](../../qlib-dashboard/src/routes.ts): maintained browser journeys.
+3. [Strategy registry](../../configs/strategies/registry.json) and
+   [formal catalog](../../data/research/formal_model_runs/catalog.json): exact active identities;
+   selected-pool/reference registries and frozen contracts remain their own authorities.
+4. [Lightweight operating contract](../architecture/repository_data_convergence.md#lightweight-operating-contract),
+   [recovery runbook](../operations/decision_loop_recovery_2026-10-03.md) and
+   [access boundary](../architecture/frontend_access_control.md): freshness, failures and protected reads.
+5. [Local setup and verification](../../README.md#本地运行) and
+   [CI governance](../ci-governance.md): existing CLI and release checks; no extra scheduler or state store.
+
+Direction A implementation follows W0 [#1278](https://github.com/liuh886/alpha_engine/issues/1278),
+W1 [#1277](https://github.com/liuh886/alpha_engine/issues/1277), W1b/W2
+[#1279](https://github.com/liuh886/alpha_engine/issues/1279), W3
+[#1282](https://github.com/liuh886/alpha_engine/issues/1282), then W4
+[#1281](https://github.com/liuh886/alpha_engine/issues/1281). Work one scoped Issue
+per branch/PR from current main. Attach positive and negative evidence, exact
+SHA/cutoffs and PASS/FAIL/BLOCKED/NOT_TESTED results. Actual operating sessions,
+live permission tests, independent research replay and owner release approval
+cannot be replaced by fixtures or green CI. The detailed A0–A7 proposal remains
+reviewable in draft [PR #1276](https://github.com/liuh886/alpha_engine/pull/1276).
+
+[TASKS.md](../../TASKS.md), [old product vision](../product_vision.md) and
+[Research Studio capability matrix](RUNTIME_CAPABILITY_MATRIX.md) retain
+historical decisions. Their retired routes, models, connected browser APIs,
+local ZIP readers and offline support are not implementation requirements.
+
 2026-10-24 user correction: instrument price detail and model buy/sell markers
 are useful maintained strategy-explanation features. Formal holdings, trade and
 attribution instruments link to the detail page. Overview and Status remain the

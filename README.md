@@ -4,6 +4,8 @@
 
 入口：[Strategy Console](https://liuh886.github.io/alpha_engine/)。系统保持 `research_only=true`、`trade_ready=false`。
 
+本地 Agent 从 [AGENTS.md](AGENTS.md) 开始，按[当前产品与交接入口](docs/product/strategy_console.md#local-agent-start-here)定位权威、运行恢复与验收任务。旧任务板和 Research Studio 页面清单只保留历史，不代表当前支持范围。
+
 ## 日常使用
 
 - **Overview**：查看正式策略的当前观察、目标变化、下次评估与异常；打开网站直接进入这里。
