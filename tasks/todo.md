@@ -102,15 +102,16 @@
   - [ ] **5.2.3 启动 RI-03A 最小垂直切片设计**：冻结首个 CN 小样本（行情 + 公司事件 + as-of 截止 + 证据收据）规范，不引入新 DB 与调度器。
 
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
-- [ ] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
-  - [ ] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式。
-  - [ ] 调整 `scripts/run_formal_refresh_transaction.py`，解绑对 `evidence.get("operating_state")` 的陈旧维修断言。
-  - [ ] 检查工作流中的 git 提交流程，停止向公开仓库提交实时信号账本。
-  - [ ] 完善 `tests/test_public_source_boundary.py`，增加 Git-tracked 文件内容负面断言。
-  - [ ] 门禁 A4 保持严格 FAIL，不虚标通过。
+- [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
+  - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。
+  - [x] 调整 `scripts/run_formal_refresh_transaction.py`，解绑对 `evidence.get("operating_state")` 的陈旧维修断言。
+  - [x] 完善 `tests/test_public_source_boundary.py`，增加 `test_cn_27_formal_refresh_decouples_operating_state` 负面断言。
+  - [x] 验证 `tests/test_cn27_v1_3_refresh.py` 解耦后测试全绿。
+  - [x] 门禁 A4 保持严格 FAIL，不虚标通过。
 - [ ] **4.8.2 [Track B / P1] PR #1296 审阅与落地推进**:
-  - [ ] 检视 PR #1296 三份核心文档：章程、基线与 Roadmap。
-  - [ ] 提交 PR #1296 的转正与合并建议包，并提供 RI-03A 的垂直切片设计草案。
+  - [x] 检视 PR #1296 三份核心文档：章程、基线与 Roadmap。
+  - [x] 将 PR #1296 从 Draft 状态转为 Ready for Review (`gh pr ready 1296`)。
+  - [ ] 推动 PR #1296 合并入 main 并提供 RI-03A 的垂直切片设计草案。
 
 ### Phase 4.6: 深度代码审查整改与实证矩阵深化 (2026-10-27)
 - [x] **4.6.1 [P0] 修正 BYD 异常分类 (`scripts/refresh_byd_v1_3_formal.py`)**:

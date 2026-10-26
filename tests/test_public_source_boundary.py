@@ -155,3 +155,18 @@ def test_four_surface_negative_proof_contract() -> None:
         "Write Pipelines Negative Proof",
     ):
         assert proof in text, f"Missing required negative proof declaration: {proof}"
+
+
+def test_cn_27_formal_refresh_decouples_operating_state() -> None:
+    """Formal refresh candidate for CN_27 must not embed operating_state in evidence (Stop the Bleed)."""
+    import inspect
+    from scripts.refresh_cn_27_v1_3_formal import refresh_cn_27_v1_3
+
+    source = inspect.getsource(refresh_cn_27_v1_3)
+    # Evidence dictionary in refresh_cn_27_v1_3 must NOT contain '"operating_state": operating_state'
+    assert '"operating_state": operating_state' not in source, (
+        "Forbidden 'operating_state' still embedded in refresh_cn_27_v1_3 evidence!"
+    )
+    # Must declare operational_monitoring as separate_runtime_signal_ledger
+    assert '"status": "separate_runtime_signal_ledger"' in source
+    assert '"runtime_state_embedded": False' in source

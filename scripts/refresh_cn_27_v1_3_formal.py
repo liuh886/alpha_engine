@@ -369,11 +369,7 @@ def refresh_cn_27_v1_3(
     if current.get("model_id") != MODEL_ID:
         raise Cn27V13RefreshError("CN_27 refresh requires the accepted CN_27 V1.3 package")
     prior_cutoff = str(current.get("evidence_cutoff") or "")
-    repair_operating_state = (
-        cutoff == prior_cutoff
-        and not (current.get("evidence") or {}).get("operating_state")
-    )
-    if not prior_cutoff or (not cutoff > prior_cutoff and not repair_operating_state):
+    if not prior_cutoff or not cutoff > prior_cutoff:
         raise Cn27V13RefreshError("refresh cutoff must extend beyond the current cutoff")
     # The bundle builder requires the source completeness declaration; carry
     # it from the incumbent package (fail closed when absent) instead of
@@ -495,7 +491,7 @@ def refresh_cn_27_v1_3(
         raise Cn27V13RefreshError("current package evidence block is missing")
     prior_freshness = current.get("freshness")
     evidence = {
-        **{str(key): value for key, value in prior_evidence.items()},
+        **{str(key): value for key, value in prior_evidence.items() if key != "operating_state"},
         "refresh_of_evidence_cutoff": prior_cutoff,
         "refresh_provider_manifest": provider_manifest.resolve().as_posix(),
         "refresh_provider_manifest_sha256": _sha256(provider_manifest),
@@ -508,7 +504,6 @@ def refresh_cn_27_v1_3(
         "historical_evidence_recomputed": True,
         "exact_historical_reproduction": True,
         "model_selection_reopened": False,
-        "operating_state": operating_state,
     }
     freshness = {
         **(
@@ -561,6 +556,10 @@ def refresh_cn_27_v1_3(
         "window_summary": list(retained_windows),
         "evidence": evidence,
         "evidence_completeness": dict(prior_completeness),
+        "operational_monitoring": {
+            "status": "separate_runtime_signal_ledger",
+            "runtime_state_embedded": False,
+        },
         "freshness": freshness,
         "interpretation_notes": list(current.get("interpretation_notes") or []),
     }
