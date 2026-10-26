@@ -87,7 +87,21 @@ GitHub Actions Run 40321512230 on 2026-10-26 failed during daily formal backtest
 
 ---
 
-## 2026-10-27: Projection Contract Dynamic Binding & Backtest State Decoupling (契约动态绑定与回测解耦)
+## 2026-10-27: Reusable Research Data Slices & PIT Provenance (可复用投研数据微切片与 PIT 血缘铁律)
+
+### Context & Design
+In launching Track B Phase B2 (RI-03A), we addressed the historical pain point where researchers wrote ad-hoc scripts to parse disparate JSON/CSV files, often violating point-in-time boundaries or creating redundant database shadows.
+
+### Rules Established
+1. **No-Duplication Architecture (零冗余存储铁律)**:
+   - Data slice readers must return memory views, generators, or lightweight extracts directly from verified canonical files in `data/research/`.
+   - Never introduce DuckDB, ClickHouse, or a secondary SQLite database to "cache" or "index" already-verified research files.
+2. **Fail-Closed PIT Validation (PIT 越界坚决阻断)**:
+   - If an algorithm or query requests an adjustment or event whose announcement date postdates the decision cutoff ($t_{announced} > T_{cutoff}$), the reader must return an explicit `status: blocked` with a structured blocker reason (`PIT_VIOLATION_FUTURE_EVENT_ANNOUNCEMENT`).
+   - Never forward-fill, never backdate, and never silently substitute unverified values.
+3. **Reference Proofs Before Implementation (编码前先冻结事实样本)**:
+   - Always freeze concrete, verifiable test cases with historical issuer facts (such as Jinpan Technology `688676` dividend announced 2026-09-23 vs cutoff 2026-09-04) before implementing the reader, ensuring tests assert real data behaviors rather than mocked illusions.
+
 
 ### Context & Implementation
 1. **投研回测与实时执行状态解耦 (Stop The Bleed)**:

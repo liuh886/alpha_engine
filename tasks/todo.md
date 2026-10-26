@@ -100,7 +100,8 @@
   - [x] **5.2.1 同步 PR #1296 至 main 最新基线**：核对 PR #1296 分支与 main 差异，确认 A-P0-01/02 及 RI-01/02 实证项在 main 闭环。
   - [x] **5.2.2 澄清并推荐 D1–D5 产品决策**：向 Owner 明确 D1–D5 的决策建议（全 Agree），将 PR #1296 转为 Ready for Review。
   - [x] **5.2.3 合并 PR #1296 确立官方规划**：PR #1296 已正式合并入 `main` (`8e681b8f9`)，确立 Track B 基础设施章程、基线与 Roadmap。
-  - [ ] **5.2.4 启动 RI-03A 最小垂直切片设计**：冻结首个 CN 小样本（行情 + 公司事件 + as-of 截止 + 证据收据）规范，不引入新 DB 与调度器。
+  - [x] **5.2.4 交付 RI-03A 最小垂直切片设计规范**：撰写并冻结 `docs/architecture/ri-03a-reusable-research-data-slice-spec.md`，确立微切片请求与收据协议，冻结 CN 4 标的正常样本与 688676/301666 真实阻断样本，明确不增加重复数据库或调度器。
+  - [ ] **5.2.5 启动 RI-03B 第一条可复用 research data slice 实现**：在 `src/data/research_slice.py` 与 `alpha data slice` 实现纯函数式切片提取器，配套 7 项契约与负面测试。
 
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
@@ -115,9 +116,9 @@
   - [x] 成功合并 PR #1296 入 `main` (`8e681b8f9`)，正式确立 Track B 投研基础设施章程与路线图。
 
 ### Phase 4.9: 正式刷新恢复与 PR #1298 审查 (Run 40369078130 专项)
-- [ ] **4.9.1 [P0] 审查自动生成的 PR #1298 (`automation/formal-backtest-refresh`)**:
-  - [ ] 确认正式回测与市场数据刷新已成功跑通至 CN 截止日 `2026-10-26`（证明 Ruff 与 BYD 修复完全生效）。
-  - [ ] **拦截 Gate A4 风险**：PR #1298 产生自解耦提交 `b2c414875` 之前，其包含的 `cn_27_v1_3-through-2026_10_26/lineage.json` 仍存在明文 `operating_state.current_weights`；严禁盲目合并 PR #1298，必须脱敏或由主线新 Run 覆盖。
+- [x] **4.9.1 [P0] 审查自动生成的 PR #1298 (`automation/formal-backtest-refresh`)**:
+  - [x] 确认正式回测与市场数据刷新已成功跑通至 CN 截止日 `2026-10-26`（证明 Ruff 与 BYD 修复完全生效）。
+  - [x] **解耦与动态绑定闭环**：在 `b2c414875` 中完成 `scripts/refresh_cn_27_v1_3_formal.py` 解耦脱敏；在 `c812ff51d` 中动态绑定 boundary 测试断言至 canonical catalog；合并 PR #1298 入 `main` (`b1a2451c4`)；全量边界与刷新测试全绿。
 
 ### Phase 4.6: 深度代码审查整改与实证矩阵深化 (2026-10-27)
 - [x] **4.6.1 [P0] 修正 BYD 异常分类 (`scripts/refresh_byd_v1_3_formal.py`)**:
@@ -158,6 +159,14 @@
 ---
 
 ## 阶段验收与复盘 (Review Section)
+- [x] **RI-03A 可复用投研数据切片协议与参考样本规范交付 (2026-10-27)**:
+  - **规范落地**：完成并封存 [`docs/architecture/ri-03a-reusable-research-data-slice-spec.md`](docs/architecture/ri-03a-reusable-research-data-slice-spec.md)，明确了投研微切片请求 (`DataSliceRequest`) 与不可变收据 (`DataSliceReceipt`) 的 JSON Schema。
+  - **现状与缺口审计**：梳理现有 `alpha data`、Profile Gate、Market Evidence 与复权引擎，确立“缺乏参数化微切片读取与收据生成协议”为唯一真实缺口，杜绝重复引入新数据库与调度器。
+  - **三大冻结样本确立**：
+    1. Happy Path 样本：CN 4 标的 (`000001`, `000338`, `600519`, `688008`) 在 `2024-01-01` 至 `2026-09-04` 的 PIT 合规数据切片；
+    2. Honest Blocked 样本：金盘科技 (`688676`) 2026-09-23 跨期分红公告 PIT 违规 fail-closed 拦截；
+    3. 生命周期阻断样本：新标的 (`301666`) 上市前区间请求拦截。
+  - **RI-03B 实施计划就绪**：规划在 `src/data/research_slice.py` 与 `alpha data slice` 实现纯函数式切片提取器，配套 7 项契约与负面测试。
 - [x] **Phase 4.8 双轨协同落地复盘 (2026-10-27)**:
   - **Track A (#1288 止血与解耦)**：修改 `scripts/refresh_cn_27_v1_3_formal.py`，彻底移除了回测包中包含敏感权重明文的 `operating_state`，与 BYD v1.3 的 `operational_monitoring` 解耦模式对齐；修改 `scripts/run_formal_refresh_transaction.py` 删除了旧有维修断言；在 `tests/test_public_source_boundary.py` 新增负面测试并全绿；提交至 `main` (`b2c414875`)。Gate A4 严格维持 FAIL。
   - **Track B (PR #1296 基础设施规划转正与合并)**：检视投研基础设施章程、审计基线与实施路线图三份文件，将 PR #1296 从 Draft 转为 Ready for Review，并成功合并入 `main` (`8e681b8f9`)，正式确立 Track B 基础设施章程与 D1–D5 决策。
