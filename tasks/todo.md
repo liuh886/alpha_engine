@@ -1,76 +1,101 @@
-# Alpha Engine 工作实施计划 (Work Plan)
+# Alpha Engine 开放 PR 推进与基础设施演进实施计划 (Task Master Plan)
 
-> 目标：将 Alpha Engine 从 86% 完成度推进至 100% 全面就绪。
-> 原则：遵循 `research_only=true` / `trade_ready=false`，严格执行数据不可变性、证据闭环与 fail-closed 门禁。
+> **基准主线**：`main` @ `58a56c14c` (数据截止 2026-10-23)
+> **双轨战略 (Dual-Track)**：
+> - **Track A (当前冲刺交付)**: Direction A v1 个人量化工作站收口、四策略控制台、核心缺陷修复与 A0–A7 门禁硬核闭环。
+> - **Track B (下一阶段演进)**: PR #1296 驱动的单一操作员“可复用金融数据产品 + 证据治理投研基础设施”研讨与分阶段演进 (RI-01 ~ RI-05)。
+> **核心铁律**：`research_only=true` / `trade_ready=false`，不可变数据与证据，Fail-closed，保留失败记录，绝不伪造通过。
 
 ---
 
 ## 阶段规划概览
 
-| 阶段 | 周期/优先级 | 核心目标 | 产出物与交付标准 |
-|---|---|---|---|
-| **Phase 1** | P0 (当前冲刺) | **前端多策略观察台转正交付** | 将 `docs/prototypes/strategy-observer` 原型功能转正为生产组件，完成与 `strategy_operations` 2.2.0 数据读取合同的对接与 E2E 验证。 |
-| **Phase 2** | P0 (关键攻坚) | **选定池数据面闭环 (Issue #324, #325)** | 完成 US 87 Alpaca VWAP 验证与 `us_selected_alpha158_v1` 解锁；完成 US 87 SEC PIT 基本面扩展与 CN 130 事件数据全量审计。 |
-| **Phase 3** | P1 (运营集成) | **模型运营闭环与纸面账本联调 (T47.8)** | 将 T47.1~T47.7 后端能力（Champion/Challenger、漂移监控、模拟账本、再训练决策）暴露在前端/CLI，形成完整监控面板。 |
-| **Phase 4** | P1 (科研推进) | **新一代信息集模型训练与前瞻证据跟踪** | 在解封的宽池因子/基本面数据面上开启新一代模型实验；持续封存 5 条基线策略的实盘阴影追踪证据。 |
+| 阶段 | 核心任务与对应 PR | 关键成果标准 (DoD) | 状态 |
+| :--- | :--- | :--- | :--- |
+| **Phase 1** | **规范与核心缺陷修复**<br>(PR #1283, #1286, #1293, #1295) | 确立文档唯一权威；修复 no-change 发布；修复 QQQ 本地回放；纠正退市策略断言；单体分片测试 3,938 项全绿。 | **已完成** (4个PR已合入 main，测试全绿) |
+| **Phase 2** | **阶段性审计与事实证据归档**<br>(PR #1284, #1287, #1289, #1290) | 真实记录 20-session 缺口 (A1 BLOCKED)；走查四策略旅程；归档本地回放证据；交付单操作员运维手册与 A0–A7 NO-GO 判定书。 | **已完成** (4个证据/手册PR已合入 main) |
+| **Phase 3** | **P0 隐私安全缺陷技术攻坚**<br>(PR #1291 方案转化与 #1288 修复代码) | 实现 `sync-formal-model-runs.mjs` 公开脱敏投影与私有归档隔离；通过直接匿名 HTTP 负面拦截测试；将门禁 A4 由 FAIL 变更为 PASS。 | **待攻坚** (核心焦点：修复 A4 FAIL) |
+| **Phase 4** | **集成 SHA 全量回归与 v1 Release Candidate**<br>(PR #1276 章程转正与冻结集成) | 固定单一集成 Commit；复跑完整门禁；验证隐私合规的回滚目标；形成 Owner 最终 A7 决策包。 | **待执行** |
+| **Phase 5** | **Track B: 通用投研基础设施启动研讨**<br>(PR #1296 启动、D1–D5 裁定与 RI-01/02 拆票) | 完成 D1–D5 架构裁定；拆解 RI-01 (数据资产与消费者审计) 与 RI-02 (PIT 历史信息状态) 独立工单；启动下一阶段演进。 | **待研讨** |
 
 ---
 
-## 详细任务拆解 (Checkable Steps)
+## 详细可核查步骤 (Checkable Steps)
 
-### Phase 1: 前端多策略观察台转正交付 (Frontend Observer Consolidation)
-- [x] **1.1 合同与字段审计**：核查 `src/artifacts/strategy_operations.py` (v2.2.0) 产出的 `allocations`、`signal`、`execution` 字段语义，确认增配/减配/保持方向与时效判定逻辑。
-- [x] **1.2 生产组件迁移与重构**：
-  - [x] 重构 `qlib-dashboard/src/components/StrategyFleet.tsx`，将独立 HTML 原型的市场筛选、信号筛选、周期切换整合为生产组件。
-  - [x] 新增 `StrategySignalDrawer.tsx`，支持目标配置对比、时效判定、证据展开与移动端 Bottom Sheet 抽屉展示。
-  - [x] 确保无有效目标时如实显示“First target / no prior comparison record”，严禁假定零仓位或前端补零。
-- [x] **1.3 数据同源性与回退机制**：严格遵循 `docs/frontend-refresh-spec.md`，区分文档级失效与记录级失效，缺失指标展示真实 `Unavailable`，走势图统一坐标与口径。
-- [x] **1.4 自动化测试与浏览器验收**：
-  - [x] 编写 `StrategySignalDrawer.test.tsx` (4 tests) 与 `StrategyFleet.test.tsx` (4 tests)，全套 Vitest 41 个测试文件 152 项测试全绿。
-  - [x] 运行 Playwright 桌面、平板、移动端 12 项 E2E 走查测试，全部通过；生产构建 `npm run build` 打包成功无告警。
+### Phase 1: 规范确立与核心缺陷修复 (Track A)
+- [x] **1.0 隔离测试分支端到端验证**：模拟 PR #1283, #1286, #1293, #1295, #1284, #1287, #1289, #1290 连续合并，无任何文件冲突，43 项直接相关测试全绿通过。
+- [x] **1.1 PR #1283 (W0 文档权威对齐 - #1278)**：
+  - [x] 核查 README, AGENTS, ADR-0003, `strategy_console.md`, legacy Vision/Capability Matrix 权威层级。
+  - [x] 确保提供清晰的 Agent "start here" 路径（4策略 CLI/Console -> 冻结研究契约 -> 长期 #1296）。
+  - [x] 确保 `TASKS.md` 与旧矩阵彻底屏蔽 ZIP 导入、独立 IDE、旧五策略等退役路径。
+  - [x] 合并 PR #1283 (merge commit: `bfcb811e358014343b4c4410232a0ab8c992bac3`)。
+- [x] **1.2 PR #1286 (缺陷修复：无决策变更发布中断 - #1285)**：
+  - [x] 审查 `formal-backtest-refresh.yml` 中的 `jq -e` 布尔转换逻辑，保证合法 `publication_required=false` 顺利放行，非法输入严密 fail-closed。
+  - [x] 复跑 71 项发布增量与工作流治理测试，确保 39 workflows 零违规。
+  - [x] 合并 PR #1286 (merge commit: `e74e1affe680f1caa3507558ea574c95bf665cab`)。
+- [x] **1.3 PR #1293 (核心修复：QQQ 本地回放解封 - #1292)**：
+  - [x] 审查 `formal_model_replay.py` 最小改动范围，复用现有权威验证器与 Yahoo 研究契约，移除不必要的商业数据源阻断。
+  - [x] 运行 34 项 replay/rules-gate 测试，验证 BYD 回归用例与缺源负面测试全绿。
+  - [x] 合并 PR #1293 (merge commit: `874492a748e5bdd1614d8470107b08c0c1c5f916`)。
+- [x] **1.4 PR #1295 (测试纠偏：CN x1.2 退市断言修正 - #1294)**：
+  - [x] 审查 `test_materialize_cn_x1_2_evidence_bundle.py`，确保活跃 catalog 仅与四策略一致，历史哈希完整可溯。
+  - [x] 验证后端测试分片覆盖（3,938 passed, 8 approved skips, 0 failures），确认消除了过时断言导致的报错。
+  - [x] 合并 PR #1295 (merge commit: `f51e352afc4cea85a36a2aa89796ab33005b93f6`)。
 
-### Phase 2: 选定池数据面就绪攻坚 (Data Plane Readiness: #324 & #325)
-- [x] **2.1 US 87 规范化 VWAP 与 Alpha158 解封 (Issue #325)**：
-  - [x] 审查 `scripts/data/build_canonical_vwap_provider.py` 的 US 市场 Alpaca 请求通道与 SIP/OTC 映射契约（默认 SIP，ABBNY/SBGSY 走 OTC）。
-  - [x] 严格遵循治理合同：无 live APCA 凭证时 fail-closed 保持 `us_selected_alpha158_v1` blocked 状态，绝不引入伪造/合成 VWAP；CN 选定池 `cn_selected_alpha158_v1` 已全量实例化并就绪。
-- [x] **2.2 US 87 PIT 基本面扩展 (Issue #324)**：
-  - [x] 修复 SEC EDGAR 403 爬虫拦截，并扩展 `companyfacts_to_events` 支持 `us-gaap` 与 `ifrs-full` 双准则及多币种（EUR/TWD 等），打通外资 ADR 抽取。
-  - [x] 运行 `populate_selected_pool_events.py --market us` 抽取 71,351 条 PIT 基本面事件与 3,244 条企业行为，全量覆盖 86 家在册实体（`SBGSY` 受治理豁免）。
-  - [x] 运行 `scripts/data/audit_fundamental_coverage.py --market us` 通过 100% PIT 时效门禁（`available_at >= reported_at`），解锁 `us_selected_price_plus_fundamentals_v1` 训练配置（`ready`）。
-- [x] **2.3 CN 130 事件数据全量审计 (Issue #324)**：
-  - [x] 统一 CN 130 财报公告、分红送转与复权因子的事件源（Sina/CNINFO/EastMoney）。
-  - [x] 确认排除退市与终止标的 (`600837`, `601989`)，企业行为覆盖率 100%（130/130），基本面覆盖率 99.2%（129/130，仅新股 301666 尚未披露）。
-- [x] **2.4 数据就绪门禁验证**：
-  - [x] 运行 `scripts/dump_bin.py` 与 `create_universes.py` 编译本地 Qlib 二进制特征库。
-  - [x] 运行 `python scripts/check_multi_market_data_readiness.py --alignment-mode auto`，两地市场全部通过验证（US 保留 74 标的，CN 保留 55 标的，`ready_markets: ['us', 'cn']`，`skipped: []`）。
+### Phase 2: 事实证据归档与运维手册收口 (Track A)
+- [x] **2.1 PR #1284 (W1 审计：20 交易日运行证据 - #1277)**：
+  - [x] 核对 20 交易日枚举缺口（7 个已观察，0 个独立合规），保持门禁 A1 为 BLOCKED，不粉饰事实。
+  - [x] 合并 PR #1284 (merge commit: `96271f2f923d72e7cdb13f85e6ab44d0d87d54ad`)。
+- [x] **2.2 PR #1287 (W2 审计：四策略交互走查与泄露实证 - #1279)**：
+  - [x] 核实桌面/移动端四策略 8 条交互链路走查截图与日志，保留对 #1288 泄露缺陷的客观指纹记录。
+  - [x] 合并 PR #1287 (merge commit: `1e1584050f4373ef120ae5ef8948719a0d10ff54`)。
+- [x] **2.3 PR #1289 (W3 审计：本地回放证据封存 - #1282)**：
+  - [x] 核查 CN_27 与 QQQ accepted reference 的本地复现证据（容差 1e-6），保持 A5 待 Owner 独立验收。
+  - [x] 合并 PR #1289 (merge commit: `eea14be380cf8d91cdbc75c7749dc6ec400efcca`)。
+- [x] **2.4 PR #1290 (W4 交付：单操作员运行手册与 NO-GO 判定包 - #1281)**：
+  - [x] 审查 `owner_local_workstation_runbook.md` 操作手册的真实可操作性（从环境安装、只读诊断到异常恢复）。
+  - [x] 确认 A0–A7 客观判定为 NO-GO（A1/A2/A3/A5/A6 BLOCKED, A4 FAIL, A7 NOT_TESTED）。
+  - [x] 合并 PR #1290 (merge commit: `6ec70004eeb2973223688db49feb90e81089c630`)。
 
-### Phase 3: 持续模型运营闭环 (Continuous Model Operations - T47.8)
-- [x] **3.1 运营数据物化与读取契约 (Model Operations Materialization & Contract)**:
-  - [x] 实现 `src/artifacts/model_operations.py`：统合 T47.1 Champion、T47.2 漂移监控、T47.3 执行计划、T47.4 纸面账本、T47.5 归因、T47.6 运营门禁与 T47.7 再训练策略，物化为不可变 `operations_summary.json` (schema: `model_operations_v1`)。
-  - [x] 在 `src/cli/main.py` 的 `alpha ops` 中新增 `model-ops` 命令，支持 CLI 生成与检查运营状态。
-  - [x] 编写并运行 `tests/test_model_operations_artifact.py`，保证数据物化与哈希链完整性（4/4 测试通过）。
-- [x] **3.2 前端/控制台看板集成 (Model Operations Frontend Console)**:
-  - [x] 在 `qlib-dashboard/src/lib/model-operations.ts` 中实现不可变数据解析器与 fail-closed 容错校验。
-  - [x] 在 `qlib-dashboard/src/pages/ModelOperationsPage.tsx` 实现模型运营控制台视图（Champion/Challenger、漂移监控、运营门禁决策、纸面账本回放与执行归因）。
-  - [x] 在 `qlib-dashboard/src/routes.ts` 注册 `/model-operations` 路由并在 `SystemHubPage.tsx` 挂接导航入口，通过 `npm test`（157/157 全绿）、`check-ui-language.mjs` 与 `npm run build`。
-- [x] **3.3 操作演练与防线熔断验证 (Fail-Closed Gate Proof)**:
-  - [x] 编写并执行端到端演练测试 `tests/test_t47_operator_e2e.py`（5/5 测试通过），模拟严重漂移与风控触发，实证门禁自动拒绝生成高风险执行计划（`plan_eligible=False`），正式关闭 T47.8。
+### Phase 3: P0 隐私泄露攻坚与门禁 A4 闭环 (Track A 核心阻碍)
+- [ ] **3.1 审查 PR #1291 架构方案**：
+  - [ ] 明确公开历史投影（Public Historical Projection）与私有状态归档（Private Canonical Store）的隔离边界。
+  - [ ] 确保公开 projection 拥有独立哈希与清单，不伪造原 canonical bundle 哈希。
+- [ ] **3.2 实施脱敏投影代码切片**：
+  - [ ] 改造 `sync-formal-model-runs.mjs`，在构建公开静态资源时剔除 `operating_state`、最新目标仓位与敏感执行信息。
+  - [ ] 保持私有归档/Supabase RLS 中当前运行状态的授权读取能力。
+- [ ] **3.3 编写匿名穿透负面测试与验证**：
+  - [ ] 编写测试针对 Git 树、Pages 输出文件、网络请求进行直接匿名扫描，断言 100% 不含敏感仓位字段。
+  - [ ] 重新评估门禁 A4，完成由 FAIL 到 PASS 的实证闭环。
 
-### Phase 4: 科研模型演进与前瞻证据跟踪 (Model Research & Shadow Evidence)
-- [x] **4.1 开启基于扩展数据面的模型训练**：
-  - [x] 冻结新的研究范式配置，引入 Alpha158 宽表与 PIT 基本面因子组合（`cn_selected_alpha158_fundamentals_v1`）。
-  - [x] 运行 Walk-forward 交叉验证并产出不可变 `ModelArtifact` (`cd205728823540caa9ea93dc248d5685`)、重构检验通过（100% 相关度），不可变实验收据归档。
-- [x] **4.2 日常前瞻证据自动维护**：
-  - [x] 保持 5 条正式基线策略（QQQ v4.3, US x1.3, CN x1.2, CN_27 v1.3, BYD v1.3）的交易日决策封存与 Delivery Receipts 交付（`alpha ops build` 5/5 全量通过）。
-  - [x] 监控 CI 工作流状态，确保存储与计算预算始终控制在 45 个工作流配额之内（CI 治理审计 0 违规）。
-  - [x] 生成 Release Candidate (`rc_20260918`)，28 项密码学/结构校验全部通过。
-  - [x] 运行发布门禁 `release_gate.py`，全套 10 项本地/CI 质量门禁全绿通过（Ruff, Mypy, 3,774 项后端测试 0 失败, npm ci, tsc, eslint, 157 项 Vitest, 前端生产构建, Playwright 浏览器测试, uv 轮子打包），产出权威裁定 `release_gate_verdict.json`。
+### Phase 4: 集成 SHA 质量门禁与 v1 Release Candidate
+- [ ] **4.1 冻结集成 SHA**：在所有修复与脱敏代码合入后，打出稳定 Release Candidate。
+- [ ] **4.2 运行完整质量门禁**：后端分片测试、前端 Vitest、Playwright 浏览器测试、Lint、构建打包全绿验证。
+- [ ] **4.3 更新 PR #1276**：更新章程中的 A0–A7 状态矩阵（A4 PASS, A5 PASS, A6 PASS 等），提交 Owner 签署 A7 决策。
+
+### Phase 5: Track B — 通用投研基础设施启动研讨 (PR #1296)
+- [ ] **5.1 组织 D1–D5 核心架构决策研讨**：
+  - [ ] D1: 明确“投研基础设施”为长期定位，Direction A v1 保持为当前交付边界。
+  - [ ] D2: 优先本地数据发现与 PIT 时点访问，暂不恢复浏览器端研究 IDE。
+  - [ ] D3: 严守数据权限与可得性前置审计，不盲目引入未授权外部源。
+  - [ ] D4: 以多空截面与 RDI 阻塞案例作为典型基础设施消费者。
+  - [ ] D5: 拆解首批委派任务 RI-01 与 RI-02。
+- [ ] **5.2 拆解与开启 RI-01 与 RI-02 独立工作单**：
+  - [ ] RI-01: 数据资产与消费者全量血缘审计矩阵。
+  - [ ] RI-02: 跨领域 PIT 历史信息状态语义 ADR 与负面测试集。
 
 ---
 
 ## 阶段验收与复盘 (Review Section)
-- [x] **Phase 1 验收标准**：前端生产构建无报错，Vitest 41 个文件 152 项测试全绿，Playwright 12 项多设备测试通过，Observer 视图完整展示真实策略状态与信号抽屉。 ✅ 2026-09-17
-- [x] **Phase 2 验收标准**：US 87 与 CN 130 两大选定池全部通过 `check_multi_market_data_readiness` 门禁（`ready_markets: ['us', 'cn']`），PIT 基本面（71,351 条记录）与企业行为（3,244 条记录）全量审计通过，`us_selected_price_plus_fundamentals_v1` 训练画像解封为 `ready`。 ✅ 2026-09-18
-- [x] **Phase 3 验收标准**：T47.8 任务正式关闭，不可变模型运营读模型物化与控制台上线，纸面账本 SHA-256 哈希链严密验证，归因分解在容差内严密闭环，全套 162 项 T47 后端测试与 157 项前端测试全绿。 ✅ 2026-09-18
-- [x] **Phase 4 验收标准**：产出带哈希签名的权威候选报告（ReleaseCandidate `rc_20260918`），通过 `release_gate.py` 完整验证，全系统 10 项发布质量门禁全部通过（包含 3,774 项后端测试与浏览器 E2E 测试），闭环交付 `release_gate_verdict.json`。 ✅ 2026-09-18
+- [x] **Phase 1 验收通过 (2026-10-26)**:
+  - **PR #1283** (W0 / #1278) 合并入 `main` (`bfcb811e3`)：完成 README、AGENTS、ADR-0003 与战略控制台契约对齐，锁定 4 策略权威，建立 Agent start-here 导航。
+  - **PR #1286** (Fix / #1285) 合并入 `main` (`e74e1affe`)：解决合法 `publication_required=false` 下 `jq -e` 中断问题，71 项发布与工作流治理测试全绿，工作流预算 39/45 零违规。
+  - **PR #1293** (Fix / #1292) 合并入 `main` (`874492a74`)：解封 QQQ 本地研究回放，复用 Yahoo 研究契约与权威验证器，34 项回放与规则门禁测试全绿。
+  - **PR #1295** (Test / #1294) 合并入 `main` (`f51e352af`)：修正 CN x1.2 退市断言，消除全量后端 500 个测试文件在活跃发布检查上的报错，保留历史研究数据。
+  - **回归验证**：更新后 `main` 分支执行受影响的 43 项核心测试 100% 通过 (9.83s)，`test_check_ci_governance.py` 15 项治理测试全绿 (4.71s)，`git diff --check` 零告警。
+- [x] **Phase 2 验收通过 (2026-10-26)**:
+  - **PR #1284** (W1 / #1277) 合并入 `main` (`96271f2f9`)：如实记录 20 交易日运行审计缺口（7 个已观察，0 个独立合规），保持门禁 A1 为 BLOCKED，不伪造数据。
+  - **PR #1287** (W2 / #1279) 合并入 `main` (`1e1584050`)：完成四策略 8 条全端链路走查并封存真实截图，记录公开 Git/Pages 对当前运营状态的泄露指纹，保持门禁 A4 为 FAIL。
+  - **PR #1289** (W3 / #1282) 合并入 `main` (`eea14be38`)：封存 CN_27 与 QQQ 本地回放可复现证据，保持 A5 待 Owner 独立验收。
+  - **PR #1290** (W4 / #1281) 合并入 `main` (`6ec70004e`)：交付个人工作站单操作员运行手册 `docs/operations/owner_local_workstation_runbook.md`，汇总 A0–A7 阶段性判定书（当前裁决为 NO-GO）。
 
