@@ -180,9 +180,6 @@ def main() -> int:
         print(json.dumps({"data_blocked": str(exc)}, ensure_ascii=False))
         return 10
     except BYDFormalRefreshError as exc:
-        if "do not reach target cutoff" in str(exc):
-            print(json.dumps({"data_blocked": str(exc)}, ensure_ascii=False))
-            return 10
         # Historical integrity violation, corruption, tampering, or contract error: must NOT be downgraded to data_blocked.
         print(json.dumps({"execution_failed": str(exc)}, ensure_ascii=False), file=sys.stderr)
         return 1

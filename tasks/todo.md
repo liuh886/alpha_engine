@@ -121,9 +121,28 @@
   - [x] 建立三级时间戳证据等级（Grade 1 官方机读、Grade 2 归档快照、Grade 3 事后抓取），对不可证明入库时间的 Grade 3 数据强制执行保守交易日跨期与 fail-closed 阻断。
   - [x] 确立 PIT-NEG-01 ~ PIT-NEG-06 负面测试契约规范。
 
+### Phase 4.7: 运行收尾与代码精简 (Run 40359577256 根因修复)
+- [x] **4.7.1 [P0] 修复 Ruff F841 未使用变量 (`tests/test_refresh_selected_pool_prices.py`)**:
+  - [x] 在 `test_cutoff_fallback_preserves_historical_overlap_volume_and_bytes` 中增加 `assert (source / "000001.csv").read_bytes() == original_bytes`，同时消除 lint 警告并证明被治理历史源文件字节完全未被就地修改。
+  - [x] 本地执行 `uv run ruff check` 确保 0 errors。
+- [x] **4.7.2 [P0] 移除 BYD 字符串模式匹配降级分支 (`scripts/refresh_byd_v1_3_formal.py`)**:
+  - [x] 删除 `except BYDFormalRefreshError` 中的 `if "do not reach target cutoff" in str(exc):` 字符串分支。
+  - [x] 严格保证只有类型化的 `BYDProspectiveDataMissingError` 降级为退出码 10 (`data_blocked`)；所有其他 `BYDFormalRefreshError` 严密保持退出码 1 (FATAL)。
+  - [x] 在 `tests/test_refresh_byd_v1_3_formal.py` 增加负面测试：未显式类型化的通用异常即使包含相关文本，也绝不降级为 10。
+- [x] **4.7.3 [P1] 本地回归与验证**:
+  - [x] 运行受影响的测试用例并全绿 (45 项测试全通过)。
+  - [x] 检查 `git diff --check` (0 警告)。
+- [x] **4.7.4 [P1] 提交与推送**:
+  - [x] 记录 lessons 到 `tasks/lessons.md`。
+  - [x] 保持 git 分支整洁，顺利推送到 `origin main`。
+
 ---
 
 ## 阶段验收与复盘 (Review Section)
+- [x] **Phase 4.7 运行收尾与代码精简完成复盘 (2026-10-27)**:
+  - **Ruff F841 彻底修复**：在 `tests/test_refresh_selected_pool_prices.py` 中引入对 `original_bytes` 的正向断言，证明拉取 fallback 数据时不仅内存中的重叠量价一致，磁盘上的历史基准源文件字节也 100% 保持不变，消除 CI `prepare` 阶段中断风险；`uv run ruff check` 0 errors。
+  - **BYD 异常严格类型化**：彻底删除了 `scripts/refresh_byd_v1_3_formal.py` 中的子串匹配分支，仅放行明确的 `BYDProspectiveDataMissingError` 为退出码 10，任何通用或其他类型的异常一律退出码 1 (FATAL)；新增负面测试 `test_byd_refresh_main_fails_fatal_on_generic_error_even_with_cutoff_message` 验证通过。
+  - **测试全绿**：40 项 BYD/行情刷新测试 + 5 项安全边界测试 100% 通过，`git diff --check` 无违规。
 - [x] **Phase 1 验收通过 (2026-10-26)**:
   - **PR #1283** (W0 / #1278) 合并入 `main` (`bfcb811e3`)：完成 README、AGENTS、ADR-0003 与战略控制台契约对齐，锁定 4 策略权威，建立 Agent start-here 导航。
   - **PR #1286** (Fix / #1285) 合并入 `main` (`e74e1affe`)：解决合法 `publication_required=false` 下 `jq -e` 中断问题，71 项发布与工作流治理测试全绿，工作流预算 39/45 零违规。

@@ -70,3 +70,17 @@ GitHub Actions Run 40321512230 on 2026-10-26 failed during daily formal backtest
 3. **系统事实与 Issue 状态脱节 (GitHub Issue Sync)**:
    - 本地文档声明 Issue #1288 "REOPENED"，但 GitHub 线上实际为 Closed。
    - **铁律**：文档声明必须配合实际 CLI / API 动作同步到系统真实状态。
+
+---
+
+## 2026-10-27: CI Prepare Stage Hygiene & Typed Exception Scope (CI 门禁与异常作用域精简)
+
+### Context & User Correction (Run 40359577256)
+1. **测试代码中的未引用局部变量引发 CI 熔断 (Ruff F841)**:
+   - `tests/test_refresh_selected_pool_prices.py` 中引入了 `original_bytes = (source / "000001.csv").read_bytes()` 但未在断言中使用。
+   - CI 的 `prepare` 阶段先跑 `ruff check`，任何微小未引用变量直接退出，导致后续实际拉数和策略阶段根本未执行。
+   - **铁律**：每次提交与推送前必须强制执行 `uv run ruff check`，所有声明的测试快照变量必须具备明确断言（如证明历史源文件未被就地修改）。
+2. **防守型字符串模式匹配的降级隐患 (String Matching Fallback in Exceptions)**:
+   - `scripts/refresh_byd_v1_3_formal.py` 在已有 `BYDProspectiveDataMissingError` 类型化异常的情况下，仍在通用 `BYDFormalRefreshError` 中保留了 `if "do not reach target cutoff" in str(exc): return 10`。
+   - **隐患**：若底层其他致命完整性、数据库损坏或契约不一致错误的异常消息偶然包含该文字，会导致致命故障被误当作正常前瞻延迟降级处理。
+   - **铁律**：一旦建立了专门的领域异常类型，彻底删除防御性字符串模式匹配；只有类型匹配才能进入特定降级处理，其余所有异常一律作为未受控致命错误 fail-closed。

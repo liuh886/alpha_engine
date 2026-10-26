@@ -290,3 +290,38 @@ def test_byd_refresh_main_fails_fatal_on_tampered_history(
     err_payload = json.loads(captured.err)
     assert "execution_failed" in err_payload
     assert "BYD historical report changed at 2024-01-02: return" in err_payload["execution_failed"]
+
+
+def test_byd_refresh_main_fails_fatal_on_generic_error_even_with_cutoff_message(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Generic BYDFormalRefreshError must NOT be downgraded to exit 10 via message substring match."""
+    import sys
+    import scripts.refresh_byd_v1_3_formal as byd_refresh_mod
+
+    def fake_generic_cutoff_msg(**_kwargs):
+        # A generic error that happens to contain "do not reach target cutoff"
+        raise BYDFormalRefreshError("corrupted database: rows do not reach target cutoff")
+
+    monkeypatch.setattr(byd_refresh_mod, "refresh_byd_v1_3", fake_generic_cutoff_msg)
+    test_args = [
+        "refresh_byd_v1_3_formal.py",
+        "--current-package", str(tmp_path / "cur.json"),
+        "--predecessor-package", str(tmp_path / "pred.json"),
+        "--base-byd-dir", str(tmp_path / "byd"),
+        "--base-etf-dir", str(tmp_path / "etf"),
+        "--shadow-store", str(tmp_path / "shadow"),
+        "--paired-store", str(tmp_path / "paired"),
+        "--signal-ledger", str(tmp_path / "ledger"),
+        "--cutoff", "2026-10-26",
+        "--generated-at", "2026-10-26T16:00:00Z",
+        "--output", str(tmp_path / "out.json"),
+    ]
+    monkeypatch.setattr(sys, "argv", test_args)
+    exit_code = byd_refresh_mod.main()
+    assert exit_code == 1, f"Expected fatal exit code 1 when not typed as BYDProspectiveDataMissingError, got {exit_code}"
+    captured = capsys.readouterr()
+    assert "data_blocked" not in captured.out
+    err_payload = json.loads(captured.err)
+    assert "execution_failed" in err_payload
+    assert "corrupted database: rows do not reach target cutoff" in err_payload["execution_failed"]

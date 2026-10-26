@@ -613,6 +613,9 @@ def test_cutoff_fallback_preserves_historical_overlap_volume_and_bytes(
         f"Extension volume not standardized! Expected {expected_extension_vol}, got {merged_extension_vol}"
     )
 
+    # 4. Governed source file must remain completely untouched in place
+    assert (source / "000001.csv").read_bytes() == original_bytes
+
 
 
 def test_incremental_refresh_clips_repository_bootstrap_to_declared_window(
