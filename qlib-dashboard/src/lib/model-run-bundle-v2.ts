@@ -41,6 +41,11 @@ export interface ModelRunBundleV2Manifest {
   trade_ready: false;
   comparability_key: ModelRunComparabilityKey;
   sections: ModelRunSectionDeclaration[];
+  projection_contract?: string;
+  source_identity?: {
+    canonical_bundle_id: string;
+    canonical_manifest_sha256: string;
+  };
 }
 
 export interface CanonicalMetricV2 {
@@ -139,22 +144,33 @@ export function parseModelRunBundleV2Manifest(value: unknown): ModelRunBundleV2M
   const sections = value.sections.map(parseSection);
   requireValue(new Set(sections.map((section) => section.section_id)).size === sections.length, 'Duplicate section declaration');
   requireValue(sections.some((section) => section.section_id === 'summary' && section.availability_status === 'available'), 'Available summary section is required');
-  return {
+  const manifest: ModelRunBundleV2Manifest = {
     schema_version: '2.0.0',
     model_family_id: requireSlug(value.model_family_id, 'model family identity'),
     model_version_id: requireSlug(value.model_version_id, 'model version identity'),
     run_id: requireSlug(value.run_id, 'run identity'),
-    bundle_id: value.bundle_id,
+    bundle_id: String(value.bundle_id),
     model_kind: kind,
     publication_channel: channel,
     publication_status: status,
     generated_at: String(value.generated_at ?? ''),
-    evidence_cutoff: value.evidence_cutoff,
+    evidence_cutoff: String(value.evidence_cutoff),
     research_only: true,
     trade_ready: false,
     comparability_key: comparabilityKey,
     sections,
   };
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.projection_contract === 'string') {
+    manifest.projection_contract = raw.projection_contract;
+  }
+  if (isRecord(raw.source_identity)) {
+    manifest.source_identity = {
+      canonical_bundle_id: String(raw.source_identity.canonical_bundle_id ?? ''),
+      canonical_manifest_sha256: String(raw.source_identity.canonical_manifest_sha256 ?? ''),
+    };
+  }
+  return manifest;
 }
 
 export function parseCanonicalMetricV2(value: unknown): CanonicalMetricV2 {

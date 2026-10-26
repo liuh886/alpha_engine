@@ -43,6 +43,9 @@ interface ModelRunCatalogRecord {
   manifest_path: string;
   manifest_sha256: string;
   evidence_cutoff: string;
+  canonical_bundle_id?: string;
+  canonical_manifest_sha256?: string;
+  projection_contract?: string;
 }
 
 interface ModelRunCatalog {
@@ -104,7 +107,7 @@ function parseCatalog(value: unknown): ModelRunCatalog {
     if (publicationStatus !== 'accepted_formal_baseline') {
       throw new Error(`Non-formal record entered formal catalog: ${identity}`);
     }
-    return {
+    const catalogRecord: ModelRunCatalogRecord = {
       model_family_id: String(raw.model_family_id ?? ''),
       model_version_id: String(raw.model_version_id ?? ''),
       run_id: String(raw.run_id ?? ''),
@@ -115,6 +118,16 @@ function parseCatalog(value: unknown): ModelRunCatalog {
       manifest_sha256: manifestSha,
       evidence_cutoff: String(raw.evidence_cutoff ?? ''),
     };
+    if (typeof raw.canonical_bundle_id === 'string' && SHA256.test(raw.canonical_bundle_id)) {
+      catalogRecord.canonical_bundle_id = raw.canonical_bundle_id;
+    }
+    if (typeof raw.canonical_manifest_sha256 === 'string' && SHA256.test(raw.canonical_manifest_sha256)) {
+      catalogRecord.canonical_manifest_sha256 = raw.canonical_manifest_sha256;
+    }
+    if (typeof raw.projection_contract === 'string' && raw.projection_contract.length > 0) {
+      catalogRecord.projection_contract = raw.projection_contract;
+    }
+    return catalogRecord;
   });
   return {
     schema_version: '2.0.0',

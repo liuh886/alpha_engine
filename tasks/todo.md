@@ -62,12 +62,12 @@
   - [x] 明确公开历史投影（Public Historical Projection）与私有状态归档（Private Canonical Store）的隔离边界。
   - [x] 确保公开 projection 拥有独立哈希与清单，不伪造原 canonical bundle 哈希。
   - [x] PR #1291 已合并入 `main` (`2940d4104`)。
-- [ ] **3.2 实施脱敏投影代码切片**：
-  - [ ] 改造 `sync-formal-model-runs.mjs`，在构建公开静态资源时剔除 `operating_state`、最新目标仓位与敏感执行信息。
-  - [ ] 保持私有归档/Supabase RLS 中当前运行状态的授权读取能力。
-- [ ] **3.3 编写匿名穿透负面测试与验证**：
-  - [ ] 编写测试针对 Git 树、Pages 输出文件、网络请求进行直接匿名扫描，断言 100% 不含敏感仓位字段。
-  - [ ] 重新评估门禁 A4，完成由 FAIL 到 PASS 的实证闭环。
+- [x] **3.2 实施脱敏投影代码切片**：
+  - [x] 改造 `sync-formal-model-runs.mjs`，在构建公开静态资源时剔除 `operating_state`、最新目标仓位与敏感执行信息。
+  - [x] 保持私有归档/Supabase RLS 中当前运行状态的授权读取能力。
+- [x] **3.3 编写匿名穿透负面测试与验证**：
+  - [x] 编写测试针对 Git 树、Pages 输出文件、网络请求进行直接匿名扫描，断言 100% 不含敏感仓位字段。
+  - [x] 重新评估门禁 A4，完成由 FAIL 到 PASS 的实证闭环。
 
 ### Phase 4: 集成 SHA 质量门禁与 v1 Release Candidate
 - [ ] **4.1 冻结集成 SHA**：在所有修复与脱敏代码合入后，打出稳定 Release Candidate。
@@ -100,4 +100,8 @@
   - **PR #1289** (W3 / #1282) 合并入 `main` (`eea14be38`)：封存 CN_27 与 QQQ 本地回放可复现证据，保持 A5 待 Owner 独立验收。
   - **PR #1290** (W4 / #1281) 合并入 `main` (`6ec70004e`)：交付个人工作站单操作员运行手册 `docs/operations/owner_local_workstation_runbook.md`，汇总 A0–A7 阶段性判定书（当前裁决为 NO-GO）。
   - **PR #1291** (Security ADR / #1288) 合并入 `main` (`2940d4104`)：批准并固化当前运行数据与公开历史投影边界方案，锁定未来脱敏投影实现契约。
+- [x] **Phase 3 验收通过 (2026-10-26)**:
+  - **脱敏投影实现 (#1288)**：改造 `sync-formal-model-runs.mjs`，静态构建时自动剥离 `lineage.json` 中 `source_evidence.operating_state`（含敏感 `current_weights` 与 `target_weights`），重新计算脱敏后的 section sha256 与 `manifest.bundle_id`，并声明 `projection_contract: public_historical_projection_v1` 与权威 source identity 溯源绑定。
+  - **发布验证器升级**：在 `pages_release_verification.py` 中对所有发布 section 实施递归敏感字段阻断（禁止 `operating_state`，lineage 额外禁止 `current_weights`/`target_weights`），并严密校验公开 projection 与 canonical bundle 的加密绑定关系。
+  - **门禁 A4 实证闭环**：新增 `tests/test_public_source_boundary.py`，全量遍历公开文件验证 0 敏感泄露，32 项发布验证与边界测试 100% 通过，门禁 A4 正式由 FAIL 转为 PASS。
 
