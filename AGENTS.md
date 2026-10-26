@@ -1,5 +1,13 @@
 # Alpha Engine: Agent Architecture
 
+Start here: [current product and local Agent handoff](docs/product/strategy_console.md#local-agent-start-here).
+The maintained product combines governed local CLI research with the read-only
+four-strategy Console for one operator (accepted ADR-0003). Older task boards,
+Research Studio route lists and capability matrices are historical records;
+they do not authorize restoring retired runtime paths. Direction A release
+acceptance work is tracked in #1278, #1277, #1279, #1282 and #1281; draft
+architecture PR #1276 does not establish a completed release.
+
 ## Lightweight operating governance
 
 User-directed priority (2026-10-03): keep Alpha Engine simple, responsive and
