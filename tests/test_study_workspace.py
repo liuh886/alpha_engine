@@ -69,10 +69,10 @@ def test_historical_experiments_are_discoverable_not_executable(tmp_path: Path) 
     catalog_dir = tmp_path / "configs" / "research_experiments"
     catalog_dir.mkdir(parents=True)
     (catalog_dir / "unsupported.yaml").write_text(
-        "experiment_id: old_bad_hypothesis\\n"
-        "runner: cross_sectional_xgb_ranker_v1\\n"
-        "status: completed_not_supported\\n"
-        "purpose: Baseline falsified\\n",
+        "experiment_id: old_bad_hypothesis\n"
+        "runner: cross_sectional_xgb_ranker_v1\n"
+        "status: completed_not_supported\n"
+        "purpose: Baseline falsified\n",
         encoding="utf-8",
     )
     rows = study_catalog(tmp_path)["historical_experiments"]
