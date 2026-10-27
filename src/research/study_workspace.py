@@ -6,7 +6,6 @@ are research artifacts, never source-of-truth market data or trading signals.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import tempfile
@@ -111,13 +110,27 @@ def load_study_spec(path: Path) -> WalkForwardConfig:
     )
 
 
+def _same_evidence(existing: bytes, proposed: dict[str, Any]) -> bool:
+    """Repeat executions are idempotent when only their wall-clock time differs."""
+    try:
+        stored = json.loads(existing)
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(stored, dict):
+        return False
+    first, second = dict(stored), dict(proposed)
+    first.pop("generated_at_utc", None)
+    second.pop("generated_at_utc", None)
+    return first == second
+
+
 def save_receipt_exclusive(path: Path, payload: dict[str, Any]) -> None:
-    """Atomically create a receipt without overwriting a previous experiment."""
+    """Atomically retain the first receipt; never replace different evidence."""
     content = (json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=False,
                           allow_nan=False) + "\n").encode("utf-8")
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
-        if path.read_bytes() != content:
+        if not _same_evidence(path.read_bytes(), payload):
             raise ResearchStudyError(f"refusing to overwrite different retained evidence: {path}")
         return
     fd, temp_name = tempfile.mkstemp(prefix=".study-", suffix=".tmp", dir=path.parent)
@@ -129,7 +142,7 @@ def save_receipt_exclusive(path: Path, payload: dict[str, Any]) -> None:
         try:
             os.link(temp_name, path)
         except FileExistsError:
-            if path.read_bytes() != content:
+            if not _same_evidence(path.read_bytes(), payload):
                 raise ResearchStudyError(f"receipt already exists with different bytes: {path}")
     finally:
         Path(temp_name).unlink(missing_ok=True)
