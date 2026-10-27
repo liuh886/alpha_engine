@@ -158,6 +158,24 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    study = research_commands.add_parser(
+        "study", help="Discover, run and compare local research hypotheses."
+    )
+    study_actions = study.add_subparsers(dest="study_action", required=True)
+    study_actions.add_parser("list", help="List the supported research-study template.")
+    study_init = study_actions.add_parser("init", help="Write an editable research-study specification.")
+    study_init.add_argument("--output", required=True, type=Path)
+    study_run = study_actions.add_parser("run", help="Run a frozen study and retain its receipt.")
+    study_run.add_argument("--spec", type=Path, help="Optional JSON study spec; defaults to built-in.")
+    study_run.add_argument("--output", type=Path, help="Optional immutable receipt output path.")
+    study_show = study_actions.add_parser("show", help="Inspect a retained research receipt.")
+    study_show.add_argument("receipt", type=Path)
+    study_compare = study_actions.add_parser(
+        "compare", help="Compare two completed receipts on identical frozen data."
+    )
+    study_compare.add_argument("left", type=Path)
+    study_compare.add_argument("right", type=Path)
+
     import_run = research_commands.add_parser(
         "import-run",
         help="Validate a local training/backtest run and copy it into data/research/runs.",
@@ -389,6 +407,38 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             if payload.get("decision") != "exact_replay":
                 exit_code = 2
+        elif args.group == "research" and args.research_command == "study":
+            from src.research.study_workspace import (
+                ResearchStudyError,
+                compare_studies,
+                initialize_study,
+                inspect_study,
+                run_study,
+                study_catalog,
+            )
+
+            errors += (ResearchStudyError,)
+            if args.study_action == "list":
+                payload = study_catalog(root)
+            elif args.study_action == "init":
+                payload = initialize_study(_resolve(root, args.output))
+            elif args.study_action == "run":
+                payload = run_study(
+                    _resolve(root, args.spec) if args.spec is not None else None,
+                    root,
+                    output=_resolve(root, args.output) if args.output is not None else None,
+                )
+                if payload["status"] == "blocked":
+                    exit_code = 10
+            elif args.study_action == "show":
+                payload = inspect_study(_resolve(root, args.receipt))
+            elif args.study_action == "compare":
+                payload = compare_studies(
+                    _resolve(root, args.left), _resolve(root, args.right)
+                )
+            else:
+                parser.error("unsupported study action")
+                return 2
         elif args.group == "research" and args.research_command == "import-run":
             from src.artifacts.repository_run_store import RepositoryRunStoreError, import_local_run
 
