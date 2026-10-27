@@ -12,7 +12,10 @@ from src.governance.active_strategy_catalog import (
 from src.research.formal_replay_contract import REPLAY_IDS
 
 
-def _render(payload: dict[str, Any]) -> None:
+def _render(payload: dict[str, Any] | str) -> None:
+    if isinstance(payload, str):
+        print(payload)
+        return
     print(
         json.dumps(
             payload,
@@ -253,6 +256,34 @@ def _build_parser() -> argparse.ArgumentParser:
         default=Path("data/research/strategy_operations/snapshots.json"),
     )
 
+    personal = groups.add_parser(
+        "personal",
+        help="Audit and interface with personal investment holdings (read-only, zero privacy leak).",
+    )
+    personal_commands = personal.add_subparsers(dest="personal_command", required=True)
+    audit = personal_commands.add_parser(
+        "audit",
+        help="Scan personal investment notes, check data readiness, without reading private finances.",
+    )
+    audit.add_argument(
+        "--dir",
+        type=Path,
+        default=Path("D:/Documents/zhihaol/200_Area/Investment/Pool"),
+        help="Path to personal investment pool directory.",
+    )
+    audit.add_argument(
+        "--format",
+        choices=["table", "json"],
+        default="table",
+        help="Output format (table for human-readable markdown, json for structured data).",
+    )
+    audit.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional file path to write the output report.",
+    )
+
     return parser
 
 
@@ -489,6 +520,32 @@ def main(argv: Sequence[str] | None = None) -> int:
 
             errors += (StrategyOperationsRuntimeError,)
             payload = publish_strategy_operations(_resolve(root, args.input))
+        elif args.group == "personal" and args.personal_command == "audit":
+            from src.research.personal_lens import PersonalLensError, scan_personal_investment_pool
+
+            errors += (PersonalLensError,)
+            report = scan_personal_investment_pool(pool_dir=args.dir, root=root)
+
+            if args.format == "table":
+                payload = (
+                    f"{report.table_markdown}\n\n---\n"
+                    f"**汇总统计**：已扫描 {report.total_scanned} 个标的 | 🟢 数据已就绪: {report.ready_count} | "
+                    f"⚠️ 缺失切片: {report.missing_evidence_count} | 💵 现金储备: {report.cash_count} | "
+                    f"🌐 跨市场: {report.other_market_count}\n"
+                    f"*(治理铁律：research_only=true，零个人资金与账户隐私读取)*"
+                )
+            else:
+                payload = report.to_dict()
+
+            if args.output is not None:
+                out_path = _resolve(root, args.output)
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                out_content = (
+                    payload
+                    if isinstance(payload, str)
+                    else json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+                )
+                out_path.write_text(out_content, encoding="utf-8")
         else:
             parser.error("unsupported command")
             return 2

@@ -249,3 +249,24 @@ In launching the real investment hypothesis Walk-Forward pipeline (`us_tech_vol_
 4. **Python 切片负零陷阱 (Python Negative-Zero Slicing Trap)**:
    - 当 `purged_margin_days=0` 时，`lst[:-0]` 等价于 `lst[:0]`，会产生空列表并误杀有效数据。
    - **铁律**：切片截断必须先校验 `purged_margin > 0`，对合法 0 值直接取全列表，坚决杜绝切片负零陷阱。
+
+---
+
+## 2026-10-27: Personal Investment Decoupled Lens & Zero Privacy Leakage (个人投资解耦透镜与隐私铁律)
+
+### Context & User Direction
+The user established a personal US equity holdings repository in Obsidian (`D:\Documents\zhihaol\200_Area\Investment\Pool`) and required:
+1. Clarify how these holdings can help and interface with Alpha Engine;
+2. Strict decoupling: The personal ledger is the user's private financial record, decoupled from Alpha Engine;
+3. Speak like a human (说人话): Keep the interface, explanations, and outputs simple, direct, and practical.
+
+### Rules Established
+1. **Unidirectional Decoupling (单向解耦与零反向写入)**:
+   - Personal records remain purely in Obsidian Markdown. Alpha Engine never writes, edits, or deletes any personal file.
+   - The interface is read-only. Alpha Engine extracts ticker metadata to provide quantitative capability, without acting as a personal ledger or portfolio accountant.
+2. **Gate A4 / Zero Privacy Leakage (零财务敏感数据读取与暴露)**:
+   - The user's notes contain private transaction and portfolio data (`shares`, `total_cost`, `cost_basis`, `realized_pnl`, `accounts`, cash amounts, transaction tables).
+   - **铁律**：投研透镜（Personal Lens）在 YAML 解析阶段与数据类（`PersonalHoldingAudit`）两级设置防御性白名单过滤，绝不读取、存储、返回或打印任何个人财务数值与账户敏感词。
+3. **Accurate Market Data Readiness Mapping (治理底座与行情切片精准比对)**:
+   - 区分候选选股池（US 87）、参考基准资产（Ref ETF）、现金储备（Cash）、跨市场标的（EU）以及缺失行情切片的标的。
+   - 对未覆盖标的（如杠杆 ETF、未上市股权或跨市场标的）诚实标记 `missing_market_evidence` 或 `unregistered_market_*`，绝不猜测或混淆。

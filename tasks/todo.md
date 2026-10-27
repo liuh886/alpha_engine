@@ -236,6 +236,23 @@
   - 生成最终研究收据并更新 `us_tech_vol_reversal_walkforward_2026.md`；
   - 更新 `tasks/todo.md` 与 `tasks/lessons.md`。
 
+### Phase 6.4: 个人投资记录与 Alpha Engine 解耦接口 (Personal Investment Lens Interface)
+- [x] **6.4.1 [Spec & Contract] 实现 `src/research/personal_lens.py` 纯只读持仓透视核心契约与隐私隔离**:
+  - 严格只读解析 Obsidian Frontmatter 元数据（`ticker`, `name`, `market`, `asset_type`, `strategy`, `conviction`, `status`）；
+  - 绝对隔离个人财务数据：严禁读取、存储、返回或打印 `shares`、`total_cost`、`realized_pnl`、`accounts` 或交易历史记录；
+  - 绝对保护用户文件：严禁以写入模式打开或修改用户 Markdown 笔记；
+  - 跨层比对 Alpha Engine 治理底座：核验是否在 `us_selected_equities_v2`、`reference_instrument_registry_v1` 及是否存在 `market_evidence` 行情切片。
+- [x] **6.4.2 [CLI] 在 `src/cli/main.py` 集成 `alpha personal audit` 命令行入口**:
+  - 添加 `alpha personal audit [--dir <path>] [--format table|json]`；
+  - 提供人类友好的终端格式化 Markdown 汇总表格以及标准结构化 JSON 输出。
+- [x] **6.4.3 [Test] 编写完整契约与安全隔离测试 (`tests/test_personal_lens.py`)**:
+  - 隐私隔离断言：给入包含真实成本与股数的 mock 笔记，断言输出对象完全不包含这些字段；
+  - 只读安全断言：验证读取前后测试文件修改时间与哈希完全不变；
+  - 状态识别断言：覆盖就绪标的、参考资产、现金等价物、跨市场标的及缺失行情标的。
+- [x] **6.4.4 [Verify & Report] 真实扫描个人持仓笔记并向用户汇报**:
+  - 真实扫描 `D:\Documents\zhihaol\200_Area\Investment\Pool` 中 23 个标的；
+  - 生成数据就绪矩阵，输出清晰直观的量化赋能建议。
+
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
   - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。
@@ -292,6 +309,18 @@
 ---
 
 ## 阶段验收与复盘 (Review Section)
+- [x] **Phase 6.4 个人投资记录与 Alpha Engine 解耦接口落地闭环 (2026-10-27)**:
+  - **单向只读与零隐私泄露 (Gate A4)**：在 [`src/research/personal_lens.py`](src/research/personal_lens.py) 实施纯函数式元数据提取器，严格过滤 YAML 前置元数据（`ticker`, `name`, `market`, `asset_type`, `strategy`, `conviction`, `status`），在解析器与数据类两级硬核丢弃所有个人财务敏感字段（`shares`, `total_cost`, `realized_pnl`, `accounts` 等），坚决不将用户真实资金与交易记录导入量化系统；
+  - **用户文件只读保护**：绝不以写模式触碰用户 Obsidian 笔记，测试验证扫描前后笔记字节与修改时间 100% 保持不变；
+  - **治理底座与行情切片比对**：全量比对 `us_selected_equities_v2`（候选池）、`reference_instrument_registry_v1`（参考资产）与 `data/research/market_evidence/us/catalog.json`（行情切片证据）；
+  - **实测审计表现**：真实扫描用户 `D:\Documents\zhihaol\200_Area\Investment\Pool` 中 23 个标的，精准识别 17 个已就绪标的（14 个核心科技股 + 3 个参考 ETF）、4 个缺失切片标的（`IQQ`, `PL`, `SOXL`, `SPCX`）、1 个现金储备（`USD.CASH.IBKR`）与 1 个跨市场标的（`2DG`）；
+  - **CLI 终端交互交付**：在 [`src/cli/main.py`](src/cli/main.py) 新增 `alpha personal audit [--dir <path>] [--format table|json]` 命令，输出人类友好的优雅 Markdown 汇总表格与结构化 JSON；
+  - **全量测试与回归**：交付 [`tests/test_personal_lens.py`](tests/test_personal_lens.py)（6 项契约与负面测试全绿），41 项全套 Track B 与 Personal Lens 测试 60.14 秒全绿，`ruff check` 零告警，`git diff --check` 零违规。
+- [x] **Phase 6.3 Walk-Forward Engine v0.3.1 交易所日历核验与独立 Fold 清仓闭环 (2026-10-27)**:
+  - **源码指纹计算**：实现源码 SHA-256 计算覆盖 `pipeline.py`, `contracts.py`, `research_slice.py`，并在 Git 无法解析时抛出 `RuntimeError` 拒绝回退；
+  - **交易所官方日历校验**：接入 `exchange_calendars` (`XNYS`/`XSHG`)，严格校验每个 Fold 测试日与交易日集合的一致性；
+  - **独立 Fold 现金到现金闭环**：首日现金建仓 (Turnover = 1.0)，每日漂移调仓，末日平仓回现金 (Turnover = 1.0)，消除未平仓免费午餐；
+  - **切片负零修复**：修复 `purged_margin_days=0` 下 `lst[:-0]` 为空列表缺陷；报告与收据完成封存更新。
 - [x] **Phase 6.1 Walk-Forward Engine v0.2 方法学深化与计算引擎重构闭环 (2026-10-27)**:
   - **P0 统计与数学口径修复**：重构 `_compute_spearman_ic`，复用 `scipy.stats.spearmanr`，消除 `np.cov` 与 `np.std` 分母自由度不一致导致 IC > 1.0 的缺陷；编写单测验证完全正相关 (+1.0)、完全负相关 (-1.0)、并列排名及常数退化序列 (0.0) 严格通过。
   - **P0 Fail-Closed 折叠完整性门禁**：若预声明的任意一个 Fold `status != "ready"`，整体研究强制输出 `status: "blocked"` 并清零综合绩效指标，在 `blocked_reasons` 显式列出阻断折叠与原因，坚决杜绝静默剔除失败折叠而发布残缺收益。
