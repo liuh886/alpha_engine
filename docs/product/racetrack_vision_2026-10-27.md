@@ -265,4 +265,3 @@ This specification formalises the §2, §3, §5 domain concepts and §11.1, §11
 4. **Scoreboard Read-Only Projection Contract (`racetrack_scoreboard_v1.json`)**:
    - **Central NAV Curve Projection**: Exports normalized NAV timeseries ($1.0$ at start) with QQQ and US 87 EW benchmarks.
    - **Unified Projection Payload**: Publishes season rankings, monthly rank histories, 1M/3M/6M/1Y return matrices, dual excess matrices, risk metrics (MDD, Sharpe, turnover), and weather profile associations for zero-compute frontend rendering.
-

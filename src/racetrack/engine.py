@@ -246,12 +246,16 @@ def simulate_portfolio(
 
     # Sharpe ratio with risk-free rate
     if len(net_returns) > 1:
-        rf_daily = ((1.0 + config.risk_free_rate_annual) ** (1.0 / config.annual_trading_days)) - 1.0
+        rf_daily = (
+            (1.0 + config.risk_free_rate_annual) ** (1.0 / config.annual_trading_days)
+        ) - 1.0
         excess_returns = np.array(net_returns) - rf_daily
         excess_mean = float(np.mean(excess_returns))
         excess_std = float(np.std(excess_returns, ddof=1))
         if excess_std > 1e-12:
-            annualized_sharpe = float(np.sqrt(config.annual_trading_days) * (excess_mean / excess_std))
+            annualized_sharpe = float(
+                np.sqrt(config.annual_trading_days) * (excess_mean / excess_std)
+            )
         else:
             annualized_sharpe = 0.0
     else:

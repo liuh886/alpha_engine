@@ -416,15 +416,15 @@
   - [x] 形式化 `RunnerContract`（强制要求 Written Thesis、选股逻辑、调仓逻辑、标的池要求，无 Thesis 严禁参赛）；
   - [x] 形式化 `SeasonScoring` 算法（自然月赛季结算、1M/3M/6M/1Y 滚动窗口、月度截面排名、赛季积分累计）；
   - [x] 编写规范至 `docs/architecture/racetrack_runner_scoring_spec.md` 并写入 PR #1306 文档。
-- [ ] **8.2.2 [Implementation: Runner & Scoring] 选手注册表与赛道记分器实现 (Developer Subagent)**:
-  - [ ] 实现 `src/racetrack/runner.py`：`RunnerContract`, `RunnerRegistry`，挂载已有模型选手；
-  - [ ] 实现 `src/racetrack/scoring.py`：多窗口收益率统计、月度排名矩阵、赛季积分累加与记分板生成；
-- [ ] **8.2.3 [Tests & Invariant Proofs] 赛马场排位测试套件**:
-  - [ ] 编写 `tests/test_racetrack_runner_scoring.py`；
-  - [ ] 覆盖无 Thesis 拒赛、月度赛季自动结算、多窗口排名与积分单调累加。
-- [ ] **8.2.4 [Review & PR Update] 回归验证与更新 PR #1306 文档与提交**:
-  - [ ] 运行全量测试套件、静态代码分析与 diff 检查；
-  - [ ] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
+- [x] **8.2.2 [Implementation: Runner & Scoring] 选手注册表与赛道记分器实现 (Developer Subagent)**:
+  - [x] 实现 `src/racetrack/runner.py`：`RunnerContract`, `RunnerRegistry`，挂载已有模型选手；
+  - [x] 实现 `src/racetrack/scoring.py`：多窗口收益率统计、月度排名矩阵、赛季积分累加与记分板生成；
+- [x] **8.2.3 [Tests & Invariant Proofs] 赛马场排位测试套件**:
+  - [x] 编写 `tests/test_racetrack_runner_scoring.py`；
+  - [x] 覆盖无 Thesis 拒赛、月度赛季自动结算、多窗口排名与积分单调累加。
+- [x] **8.2.4 [Review & PR Update] 回归验证与更新 PR #1306 文档与提交**:
+  - [x] 运行全量测试套件、静态代码分析与 diff 检查；
+  - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
 
 ---
 
@@ -682,4 +682,55 @@
   - `docs/architecture/racetrack_runner_scoring_spec.md`: 涵盖 9 大章节，系统化定义了选手契约、注册表审核、单月赛季划分、滚动多周期评估、`PointsRuleV1` 赛马记分算法、前台记分板 JSON Schema 与 10 项负面/边界测试用例。
   - `docs/product/racetrack_vision_2026-10-27.md`: 追加第 13 节，建立对 Phase 2 实施规范的正式引用与核心系统摘要。
 
+---
+
+## Phase 2 代码落地：Runner 注册表与 Race Scoring 赛马记分系统实现
+
+- [x] **R1. 扩充核心契约 (`src/racetrack/contracts.py`)**:
+  - [x] 增加异常类 `ThesisMissingError(ValueError)`；
+  - [x] 增加数据类 `MonthlyRankPoint` (包含 month, rank, total_runners, monthly_net_return, monthly_excess_vs_qqq, monthly_excess_vs_pool, points_earned)；
+  - [x] 增加数据类 `ScoreboardEntry` (包含 runner_id, runner_version, thesis_summary, season_points, current_rank, return_1m, return_3m, return_6m, return_1y, excess_vs_qqq, excess_vs_pool, max_drawdown, sharpe_ratio, persistence_ratio, monthly_ranks)；
+  - [x] 增加数据类 `Scoreboard` (包含 schema_version, as_of_session, season_id, pool_id, benchmark_symbol, entries)，提供 `to_dict()`, `to_json()`, `from_dict()`, `from_json()` 方法；
+  - [x] 在 `src/racetrack/__init__.py` 中导出新增契约与异常。
+- [x] **R2. 选手契约与注册表实现 (`src/racetrack/runner.py`)**:
+  - [x] `RunnerContract` 基类：
+    - [x] 字段：runner_id, runner_version, pool_id, benchmark_symbol, thesis, selection_logic, rebalance_logic, track_condition_associations, target_symbols；
+    - [x] `__post_init__` 强制门禁：thesis 为 None、空白或长度 < 30 字符立即抛出 `ThesisMissingError`；
+    - [x] `run(matrix, ledger_path, config)`：纯函数式回放与账本落盘，校验候选池与基准角色隔离；
+  - [x] `RunnerRegistry` 注册表：
+    - [x] `register(runner)`：杜绝重复 ID，审核 pool_id 与 matrix.pool_id / candidate_symbols 一致性；
+    - [x] `get(runner_id)` 与 `list_runners()`；
+    - [x] `evaluate_all(matrix, ledgers_dir, config)`：遍历运行所有注册选手并返回回测结果字典。
+- [x] **R3. 赛马记分与月度排名引擎 (`src/racetrack/scoring.py`)**:
+  - [x] `PointsRuleV1`：标准积分映射表 {1: 10, 2: 6, 3: 4, 4: 2, 5: 1, >5: 0}；
+  - [x] `calculate_monthly_returns(simulation)`：真实自然月复合净收益率；
+  - [x] `calculate_rolling_window_return(simulation, months)`：1M, 3M, 6M, 1Y 复合滚动收益；
+  - [x] `evaluate_race_season(...)`：多选手月度截面排名、积分累加、双基准超额矩阵、持续度比率与记分板生成；
+  - [x] 在 `src/racetrack/__init__.py` 中导出新增模块函数。
+- [x] **R4. 编写完整单元测试套件 (`tests/test_racetrack_runner_scoring.py`)**:
+  - [x] TEST-RT-P2-01：空/过短 Thesis 触发 `ThesisMissingError` 门禁；
+  - [x] TEST-RT-P2-02：`RunnerRegistry` 注册、发现与重复注册拦截；
+  - [x] TEST-RT-P2-03：真实自然月切分与月度复合收益率数学等价性；
+  - [x] TEST-RT-P2-04：月度截面降序排名；
+  - [x] TEST-RT-P2-05：`PointsRuleV1` 积分分配与累加；
+  - [x] TEST-RT-P2-06：防单日暴涨后视偏差实测断言；
+  - [x] TEST-RT-P2-07：多周期滚动收益率计算；
+  - [x] TEST-RT-P2-08：双基准超额矩阵核算；
+  - [x] TEST-RT-P2-09：Scoreboard 前台 JSON 结构完整性与只读反序列化；
+  - [x] TEST-RT-P2-10：真实美股 87 数据全量选手赛跑与记分板生成端到端演练。
+- [x] **R5. 执行验证与代码质量门禁**:
+  - [x] `uv run pytest tests/test_racetrack_runner_scoring.py -v` 全部通过；
+  - [x] `uv run ruff check` 确保零告警；
+  - [x] 更新 `tasks/todo.md` 记录 Review 总结，使用 `send_message` 向主 Agent 回复交付报告。
+
+### Review & Completion Summary (Phase 2 Runner Registry & Race Scoring - 2026-10-28)
+- **交付代码包**:
+  - `src/racetrack/contracts.py`: 新增 `ThesisMissingError(ValueError)`，定义 `MonthlyRankPoint`、`ScoreboardEntry` 与 `Scoreboard` 核心不可变数据类，提供强类型字典转换与 JSON 往返序列化能力。
+  - `src/racetrack/runner.py`: 建立 `RunnerContract` 基类与 `RunnerRegistry` 注册表。通过 `validate_runner_thesis` 实行前置投资假设强验证（< 30 字符严苛拦截）；纯函数式 `run()` 联动稀疏 JSONL 账本落盘，执行选股池白名单与基准参考标的严格物理隔离。
+  - `src/racetrack/scoring.py`: 建立赛马竞技计分核心逻辑。实现版本化积分矩阵 `PointsRuleV1`（1st: 10, 2nd: 6, 3rd: 4, 4th: 2, 5th: 1）；计算自然月复合收益率 $R_m = \frac{\text{NAV}_{end}}{\text{NAV}_{start}} - 1.0$；实现 1M/3M/6M/1Y 滚动窗口收益率计算；通过 `evaluate_race_season` 输出全量前台只读记分板，包含截面排位、累加总分、持久度比率（Top 50% 占比）与双基准超额收益矩阵。
+  - `src/racetrack/__init__.py`: 导出全部新增公共契约、异常与核心算法函数。
+- **单元与集成测试**:
+  - `tests/test_racetrack_runner_scoring.py`: 10 项严密测试全覆盖 TEST-RT-P2-01 ~ TEST-RT-P2-10，包含单日极端暴涨惩戒数学实测断言与真实美股 87 数据端到端竞技记分板演练。
+  - 测试结果：`10 passed in 3.49s`；与 Phase 1 Minimal Stack 联合回归：`25 passed in 22.65s`。
+  - 静态检查：`uv run ruff check` 全面通过，零错误零警告。
 

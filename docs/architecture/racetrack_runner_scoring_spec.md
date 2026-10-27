@@ -48,7 +48,7 @@ flowchart TD
         LedgerQ --> NAVEngine["统一资产净值折算引擎<br/>simulate_portfolio()"]
         PriceMatrix --> NAVEngine
         NAVEngine --> SimResults["选手仿真结果集<br/>Dict[runner_id, SimulationResult]"]
-        
+
         PoolIndexGen["自建美股87等权指数<br/>generate_equal_weight_pool_index()"] --> US87Res["US87_EW 基准仿真结果"]
         QQQData["QQQ 市场基准时序"] --> QQQRes["QQQ 大盘基准仿真结果"]
     end
@@ -57,14 +57,14 @@ flowchart TD
         SimResults --> SeasonDivider["自然月赛季划分<br/>(Monthly Season Partition)"]
         US87Res --> SeasonDivider
         QQQRes --> SeasonDivider
-        
+
         SeasonDivider --> MonthlyRank["月度截面排位<br/>(Monthly Cross-Sectional Rank)"]
         MonthlyRank --> PointsRule["版本化积分规则<br/>(PointsRuleV1: 10, 6, 4, 2, 1)"]
         PointsRule --> SeasonPoints["赛季积分累加<br/>Total Season Points"]
-        
+
         SimResults --> RollingWindows["滚动多周期评估<br/>(1M, 3M, 6M, 1Y)"]
         RollingWindows --> ExcessCalc["双基准超额矩阵<br/>(vs QQQ, vs US87_EW)"]
-        
+
         MonthlyRank --> PersistenceCalc["稳定性与胜率度量<br/>(Top-50% Consistency Ratio)"]
     end
 
@@ -73,7 +73,7 @@ flowchart TD
         ExcessCalc --> ScoreboardBuilder
         PersistenceCalc --> ScoreboardBuilder
         ActiveRegistry --> ScoreboardBuilder
-        
+
         ScoreboardBuilder --> ScoreboardJSON["赛道记分板投影 JSON<br/>racetrack_scoreboard_v1.json"]
         ScoreboardBuilder --> ScoreboardParquet["逐日净值曲线宽表 Parquet<br/>racetrack_nav_curves_v1.parquet"]
     end
@@ -90,7 +90,7 @@ flowchart TD
 @dataclass(frozen=True)
 class RunnerContract:
     """不可变选手契约实体，严格定义策略的参赛资格、假设与逻辑。"""
-    
+
     runner_id: str                      # 选手唯一标识符 (例如 "momentum_cross_section_v1")
     runner_version: str                 # 语义化版本号 (例如 "1.0.0")
     pool_id: str                        # 绑定的股票候选池 (例如 "us_selected_equities_v2")
@@ -165,7 +165,7 @@ from src.racetrack.contracts import PriceMatrix, SimulationResult
 
 class BaseRunner(ABC):
     """Abstract base class for all competitive racetrack runners."""
-    
+
     def __init__(self, contract: RunnerContract) -> None:
         self.contract = contract
         # 强制在实例化时验证投资假设
@@ -173,11 +173,11 @@ class BaseRunner(ABC):
 
     @abstractmethod
     def generate_rebalance_events(
-        self, 
+        self,
         matrix: PriceMatrix
     ) -> list[RebalanceEvent]:
         """纯函数式：输入价格矩阵，输出符合 Phase 1 规范的稀疏调仓事件列表。
-        
+
         要求：
         1. 严格使用 exchange_calendars 判定交易日；
         2. 目标标的必须严格属于 matrix.candidate_symbols；
@@ -187,21 +187,21 @@ class BaseRunner(ABC):
         pass
 
     def run(
-        self, 
-        matrix: PriceMatrix, 
+        self,
+        matrix: PriceMatrix,
         ledger_path: Path | None = None,
         config: EngineConfig = EngineConfig(),
     ) -> SimulationResult:
         """执行全流程回放与净值仿真，落盘事件账本并返回标准 SimulationResult。"""
         events = self.generate_rebalance_events(matrix)
-        
+
         # 1. 若指定账本路径，序列化为不可变 JSONL 账本
         if ledger_path is not None:
             ledger = EventLedger(ledger_path)
             for ev in events:
                 ledger.append_event(ev)
             ledger.save()
-            
+
         # 2. 调用 Phase 1 统一净值折算引擎完成逐日漂移、换手摩擦与指标计算
         result = simulate_portfolio(matrix=matrix, ledger_events=events, config=config)
         return result
@@ -311,13 +311,13 @@ $$R_{excess\_pool}^{(W)} = R_{runner}^{(W)} - R_{US87\_EW}^{(W)}$$
 #### 1. PointsRuleV1 积分规则矩阵
 依据 F1 赛车与国际赛马积分理念，Phase 2 默认确立 **`PointsRuleV1`**：
 - **前排定额积分制**：
-  $$\text{Points}(Rank) = \begin{cases} 
+  $$\text{Points}(Rank) = \begin{cases}
   10 & \text{if } Rank = 1 \\
   6 & \text{if } Rank = 2 \\
   4 & \text{if } Rank = 3 \\
   2 & \text{if } Rank = 4 \\
   1 & \text{if } Rank = 5 \\
-  0 & \text{if } Rank > 5 
+  0 & \text{if } Rank > 5
   \end{cases}$$
 - **前 20% 相对积分制（备选/大规模选手池拓展）**：
   当活跃选手总数 $K \ge 20$ 时，可平滑切换为百分比分位点得分，但在当前 4~10 个重点模型阶段，严格锁定前排定额 `PointsRuleV1`。
@@ -522,7 +522,7 @@ def partition_into_monthly_seasons(
     sessions: Sequence[str]
 ) -> list[tuple[str, str, str]]:
     """依据 exchange_calendars 将交易日序列划分为自然月赛季元组列表。
-    
+
     Returns:
         [(month_str, start_session, end_session), ...]
     """

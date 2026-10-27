@@ -62,9 +62,7 @@ def generate_equal_weight_pool_index(
             continue
 
         # Audit active constituent eligibility: only allocate if price is valid on session
-        active_symbols = [
-            sym for sym in candidates if not np.isnan(matrix.get_price(sess, sym))
-        ]
+        active_symbols = [sym for sym in candidates if not np.isnan(matrix.get_price(sess, sym))]
         unlisted_count = num_declared - len(active_symbols)
 
         # Fixed 1 / N per constituent, unlisted/missing constituent weight remains in cash

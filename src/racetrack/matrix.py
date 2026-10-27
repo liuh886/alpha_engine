@@ -65,7 +65,9 @@ def load_price_matrix(
     """
     market_lower = market.lower()
     if market_lower not in MARKET_CALENDAR_MAP:
-        raise ValueError(f"Unsupported market '{market}'. Must be one of {list(MARKET_CALENDAR_MAP.keys())}")
+        raise ValueError(
+            f"Unsupported market '{market}'. Must be one of {list(MARKET_CALENDAR_MAP.keys())}"
+        )
 
     calendar_name = MARKET_CALENDAR_MAP[market_lower]
     cal = xcals.get_calendar(calendar_name)
@@ -77,9 +79,7 @@ def load_price_matrix(
             f"Silent truncation is strictly prohibited."
         )
     if start_date > end_date:
-        raise CalendarSessionError(
-            f"start_date '{start_date}' exceeds end_date '{end_date}'"
-        )
+        raise CalendarSessionError(f"start_date '{start_date}' exceeds end_date '{end_date}'")
 
     cal_sessions = cal.sessions_in_range(start_date, end_date)
     sessions = tuple(s.strftime("%Y-%m-%d") for s in cal_sessions)
@@ -113,7 +113,9 @@ def load_price_matrix(
     all_symbols = candidate_symbols + (ref_symbol,)
 
     # 4. Verify data qualification & catalog.json registration
-    catalog_path = root_path / "data" / "research" / "market_evidence" / market_lower / "catalog.json"
+    catalog_path = (
+        root_path / "data" / "research" / "market_evidence" / market_lower / "catalog.json"
+    )
     catalog_sha256 = ""
     if catalog_path.exists():
         cat_bytes = catalog_path.read_bytes()
@@ -121,7 +123,9 @@ def load_price_matrix(
         cat_data = json.loads(cat_bytes.decode("utf-8"))
         raw_symbols = cat_data.get("symbols", [])
         if isinstance(raw_symbols, list):
-            registered_symbols = {item.get("symbol") for item in raw_symbols if isinstance(item, dict)}
+            registered_symbols = {
+                item.get("symbol") for item in raw_symbols if isinstance(item, dict)
+            }
         elif isinstance(raw_symbols, dict):
             registered_symbols = set(raw_symbols.keys())
         else:
@@ -141,7 +145,9 @@ def load_price_matrix(
     for symbol in all_symbols:
         symbol_file = evidence_dir / f"{symbol}.json"
         if not symbol_file.exists():
-            raise FileNotFoundError(f"Market evidence JSON for symbol '{symbol}' not found at {symbol_file}")
+            raise FileNotFoundError(
+                f"Market evidence JSON for symbol '{symbol}' not found at {symbol_file}"
+            )
 
         file_bytes = symbol_file.read_bytes()
         source_evidence_hashes[symbol] = hashlib.sha256(file_bytes).hexdigest()

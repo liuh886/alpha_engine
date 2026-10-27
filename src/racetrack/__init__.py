@@ -16,12 +16,16 @@ from src.racetrack.contracts import (
     LedgerTamperedError,
     LifecycleIntegrityError,
     MissingPriceDataError,
+    MonthlyRankPoint,
     NAVPoint,
     PITViolationError,
     PriceMatrix,
     PrivacyViolationError,
     RebalanceEvent,
+    Scoreboard,
+    ScoreboardEntry,
     SimulationResult,
+    ThesisMissingError,
     UnauthorizedAssetError,
     WeightConstraintError,
     assert_privacy_clean,
@@ -32,6 +36,18 @@ from src.racetrack.engine import simulate_portfolio
 from src.racetrack.ledger import EventLedger
 from src.racetrack.matrix import load_price_matrix
 from src.racetrack.pool_index import generate_equal_weight_pool_index
+from src.racetrack.runner import (
+    RunnerContract,
+    RunnerRegistry,
+    validate_runner_thesis,
+)
+from src.racetrack.scoring import (
+    PointsRuleV1,
+    calculate_monthly_returns,
+    calculate_rolling_window_return,
+    evaluate_race_season,
+    generate_benchmark_simulation,
+)
 
 __all__ = [
     "CalendarSessionError",
@@ -44,18 +60,30 @@ __all__ = [
     "LedgerTamperedError",
     "LifecycleIntegrityError",
     "MissingPriceDataError",
+    "MonthlyRankPoint",
     "NAVPoint",
     "PITViolationError",
+    "PointsRuleV1",
     "PriceMatrix",
     "PrivacyViolationError",
     "RebalanceEvent",
+    "RunnerContract",
+    "RunnerRegistry",
+    "Scoreboard",
+    "ScoreboardEntry",
     "SimulationResult",
+    "ThesisMissingError",
     "UnauthorizedAssetError",
     "WeightConstraintError",
     "assert_privacy_clean",
+    "calculate_monthly_returns",
+    "calculate_rolling_window_return",
     "canonical_json_dumps",
     "compute_canonical_sha256",
+    "evaluate_race_season",
+    "generate_benchmark_simulation",
     "generate_equal_weight_pool_index",
     "load_price_matrix",
     "simulate_portfolio",
+    "validate_runner_thesis",
 ]

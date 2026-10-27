@@ -94,13 +94,17 @@ class EventLedger:
                 try:
                     data = json.loads(line)
                 except json.JSONDecodeError as exc:
-                    raise LedgerTamperedError(f"Corrupt JSON at line {line_no} in {p}: {exc}") from exc
+                    raise LedgerTamperedError(
+                        f"Corrupt JSON at line {line_no} in {p}: {exc}"
+                    ) from exc
 
                 assert_privacy_clean(data)
                 try:
                     ev = RebalanceEvent.from_dict(data)
                 except (WeightConstraintError, PrivacyViolationError) as exc:
-                    raise LedgerTamperedError(f"Tampered event payload at line {line_no} in {p}: {exc}") from exc
+                    raise LedgerTamperedError(
+                        f"Tampered event payload at line {line_no} in {p}: {exc}"
+                    ) from exc
                 events.append(ev)
 
         if not events:
@@ -207,13 +211,17 @@ class EventLedger:
                 try:
                     data = json.loads(line)
                 except json.JSONDecodeError as exc:
-                    raise LedgerTamperedError(f"Corrupt JSON at line {line_no} in {self.path}: {exc}") from exc
+                    raise LedgerTamperedError(
+                        f"Corrupt JSON at line {line_no} in {self.path}: {exc}"
+                    ) from exc
 
                 assert_privacy_clean(data)
                 try:
                     ev = RebalanceEvent.from_dict(data)
                 except (WeightConstraintError, PrivacyViolationError) as exc:
-                    raise LedgerTamperedError(f"Tampered event payload at line {line_no} in {self.path}: {exc}") from exc
+                    raise LedgerTamperedError(
+                        f"Tampered event payload at line {line_no} in {self.path}: {exc}"
+                    ) from exc
                 file_events.append(ev)
 
         if not file_events:
@@ -264,7 +272,10 @@ class EventLedger:
 
         for sess in sessions:
             # Advance events that became effective on or before this session
-            while event_idx < len(sorted_events) and sorted_events[event_idx].effective_session <= sess:
+            while (
+                event_idx < len(sorted_events)
+                and sorted_events[event_idx].effective_session <= sess
+            ):
                 ev = sorted_events[event_idx]
                 current_weights = {s: 0.0 for s in all_symbols}
                 for s, w in ev.target_weights.items():

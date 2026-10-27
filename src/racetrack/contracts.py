@@ -16,24 +16,26 @@ import uuid
 import pandas as pd
 
 # Sensitive keywords strictly forbidden from research ledgers
-SENSITIVE_FIELD_NAMES = frozenset({
-    "shares",
-    "qty",
-    "lots",
-    "total_cost",
-    "cost_basis",
-    "cash_balance",
-    "capital",
-    "broker",
-    "brokerage_account",
-    "account_id",
-    "executed_price",
-    "execution_fee",
-    "commission_paid",
-    "realized_pnl",
-    "unrealized_pnl",
-    "pnl",
-})
+SENSITIVE_FIELD_NAMES = frozenset(
+    {
+        "shares",
+        "qty",
+        "lots",
+        "total_cost",
+        "cost_basis",
+        "cash_balance",
+        "capital",
+        "broker",
+        "brokerage_account",
+        "account_id",
+        "executed_price",
+        "execution_fee",
+        "commission_paid",
+        "realized_pnl",
+        "unrealized_pnl",
+        "pnl",
+    }
+)
 
 
 class PrivacyViolationError(ValueError):
@@ -82,6 +84,10 @@ class PITViolationError(ValueError):
 
 class DataQualificationError(ValueError):
     """Raised when data qualification, catalog registration, or provenance checks fail."""
+
+
+class ThesisMissingError(ValueError):
+    """Raised when a runner contract lacks a valid, substantive investment thesis."""
 
 
 def assert_privacy_clean(data: Any) -> None:
@@ -136,18 +142,20 @@ class RebalanceEvent:
 
     def __post_init__(self) -> None:
         # Strict privacy audit
-        assert_privacy_clean({
-            "event_id": self.event_id,
-            "parent_hash": self.parent_hash,
-            "timestamp_utc": self.timestamp_utc,
-            "effective_session": self.effective_session,
-            "runner_id": self.runner_id,
-            "runner_version": self.runner_version,
-            "target_weights": self.target_weights,
-            "cash_weight": self.cash_weight,
-            "reason": self.reason,
-            "event_hash": self.event_hash,
-        })
+        assert_privacy_clean(
+            {
+                "event_id": self.event_id,
+                "parent_hash": self.parent_hash,
+                "timestamp_utc": self.timestamp_utc,
+                "effective_session": self.effective_session,
+                "runner_id": self.runner_id,
+                "runner_version": self.runner_version,
+                "target_weights": self.target_weights,
+                "cash_weight": self.cash_weight,
+                "reason": self.reason,
+                "event_hash": self.event_hash,
+            }
+        )
 
         # Validate weights
         sum_w = sum(self.target_weights.values())
@@ -330,16 +338,18 @@ class SimulationResult:
         """Convert NAV timeseries into a pandas DataFrame."""
         records = []
         for pt in self.nav_history:
-            records.append({
-                "session": pt.session,
-                "nav": pt.nav,
-                "gross_return": pt.gross_return,
-                "net_return": pt.net_return,
-                "turnover": pt.turnover,
-                "friction": pt.friction,
-                "drawdown": pt.drawdown,
-                "cash_weight": pt.cash_weight,
-            })
+            records.append(
+                {
+                    "session": pt.session,
+                    "nav": pt.nav,
+                    "gross_return": pt.gross_return,
+                    "net_return": pt.net_return,
+                    "turnover": pt.turnover,
+                    "friction": pt.friction,
+                    "drawdown": pt.drawdown,
+                    "cash_weight": pt.cash_weight,
+                }
+            )
         df = pd.DataFrame(records)
         if not df.empty:
             df.set_index("session", inplace=True)
@@ -389,3 +399,158 @@ class PriceMatrix:
         if symbol not in self.prices.columns:
             raise UnauthorizedAssetError(f"Symbol '{symbol}' is not in price matrix universe")
         return float(self.prices.loc[session, symbol])
+
+
+@dataclass(frozen=True)
+class MonthlyRankPoint:
+    """Monthly cross-sectional ranking snapshot and points earned by a runner."""
+
+    month: str  # "YYYY-MM"
+    rank: int
+    total_runners: int
+    monthly_net_return: float
+    monthly_excess_vs_qqq: float
+    monthly_excess_vs_pool: float
+    points_earned: int
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to JSON-serializable dictionary."""
+        return {
+            "month": self.month,
+            "rank": self.rank,
+            "total_runners": self.total_runners,
+            "monthly_net_return": self.monthly_net_return,
+            "monthly_excess_vs_qqq": self.monthly_excess_vs_qqq,
+            "monthly_excess_vs_pool": self.monthly_excess_vs_pool,
+            "points_earned": self.points_earned,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "MonthlyRankPoint":
+        """Instantiate from dictionary."""
+        return cls(
+            month=str(data["month"]),
+            rank=int(data["rank"]),
+            total_runners=int(data["total_runners"]),
+            monthly_net_return=float(data["monthly_net_return"]),
+            monthly_excess_vs_qqq=float(data["monthly_excess_vs_qqq"]),
+            monthly_excess_vs_pool=float(data["monthly_excess_vs_pool"]),
+            points_earned=int(data["points_earned"]),
+        )
+
+
+@dataclass(frozen=True)
+class ScoreboardEntry:
+    """Single runner performance and ranking record on the Scoreboard."""
+
+    runner_id: str
+    runner_version: str
+    thesis_summary: str
+    season_points: int
+    current_rank: int
+    return_1m: float | None
+    return_3m: float | None
+    return_6m: float | None
+    return_1y: float | None
+    excess_vs_qqq: float | None
+    excess_vs_pool: float | None
+    max_drawdown: float
+    sharpe_ratio: float
+    persistence_ratio: float
+    monthly_ranks: list[MonthlyRankPoint]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to JSON-serializable dictionary."""
+        return {
+            "runner_id": self.runner_id,
+            "runner_version": self.runner_version,
+            "thesis_summary": self.thesis_summary,
+            "season_points": self.season_points,
+            "current_rank": self.current_rank,
+            "return_1m": self.return_1m,
+            "return_3m": self.return_3m,
+            "return_6m": self.return_6m,
+            "return_1y": self.return_1y,
+            "excess_vs_qqq": self.excess_vs_qqq,
+            "excess_vs_pool": self.excess_vs_pool,
+            "max_drawdown": self.max_drawdown,
+            "sharpe_ratio": self.sharpe_ratio,
+            "persistence_ratio": self.persistence_ratio,
+            "monthly_ranks": [pt.to_dict() for pt in self.monthly_ranks],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ScoreboardEntry":
+        """Instantiate from dictionary."""
+        return cls(
+            runner_id=str(data["runner_id"]),
+            runner_version=str(data["runner_version"]),
+            thesis_summary=str(data["thesis_summary"]),
+            season_points=int(data["season_points"]),
+            current_rank=int(data["current_rank"]),
+            return_1m=float(data["return_1m"]) if data.get("return_1m") is not None else None,
+            return_3m=float(data["return_3m"]) if data.get("return_3m") is not None else None,
+            return_6m=float(data["return_6m"]) if data.get("return_6m") is not None else None,
+            return_1y=float(data["return_1y"]) if data.get("return_1y") is not None else None,
+            excess_vs_qqq=float(data["excess_vs_qqq"])
+            if data.get("excess_vs_qqq") is not None
+            else None,
+            excess_vs_pool=float(data["excess_vs_pool"])
+            if data.get("excess_vs_pool") is not None
+            else None,
+            max_drawdown=float(data["max_drawdown"]),
+            sharpe_ratio=float(data["sharpe_ratio"]),
+            persistence_ratio=float(data["persistence_ratio"]),
+            monthly_ranks=[
+                MonthlyRankPoint.from_dict(item) if isinstance(item, dict) else item
+                for item in data.get("monthly_ranks", [])
+            ],
+        )
+
+
+@dataclass(frozen=True)
+class Scoreboard:
+    """Authoritative racetrack scoreboard projection contract for zero-compute frontend rendering."""
+
+    schema_version: str
+    as_of_session: str
+    season_id: str
+    pool_id: str
+    benchmark_symbol: str
+    entries: list[ScoreboardEntry]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to JSON-serializable dictionary."""
+        return {
+            "schema_version": self.schema_version,
+            "as_of_session": self.as_of_session,
+            "season_id": self.season_id,
+            "pool_id": self.pool_id,
+            "benchmark_symbol": self.benchmark_symbol,
+            "entries": [entry.to_dict() for entry in self.entries],
+        }
+
+    def to_json(self, indent: int | None = 2) -> str:
+        """Produce formatted JSON string representation."""
+        return json.dumps(self.to_dict(), indent=indent, ensure_ascii=False)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Scoreboard":
+        """Instantiate from dictionary."""
+        return cls(
+            schema_version=str(data.get("schema_version", "1.0")),
+            as_of_session=str(data["as_of_session"]),
+            season_id=str(data["season_id"]),
+            pool_id=str(data["pool_id"]),
+            benchmark_symbol=str(data["benchmark_symbol"]),
+            entries=[
+                ScoreboardEntry.from_dict(item) if isinstance(item, dict) else item
+                for item in data.get("entries", [])
+            ],
+        )
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "Scoreboard":
+        """Load from JSON string."""
+        data = json.loads(json_str)
+        return cls.from_dict(data)
