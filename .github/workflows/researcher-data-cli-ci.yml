@@ -17,11 +17,13 @@ on:
       - "src/data/model_data_profile.py"
       - "src/data/strategy_data_bundle.py"
       - "src/research/etf_strategy_data.py"
+      - "src/research/study_workspace.py"
       - "scripts/data/check_model_data_profile.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "tests/test_data_recipe.py"
       - "tests/test_data_recipe_registry.py"
       - "tests/test_researcher_cli.py"
+      - "tests/test_study_workspace.py"
       - "tests/test_strategy_data_bundle.py"
   push:
     branches: [main]
@@ -39,11 +41,13 @@ on:
       - "src/data/model_data_profile.py"
       - "src/data/strategy_data_bundle.py"
       - "src/research/etf_strategy_data.py"
+      - "src/research/study_workspace.py"
       - "scripts/data/check_model_data_profile.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "tests/test_data_recipe.py"
       - "tests/test_data_recipe_registry.py"
       - "tests/test_researcher_cli.py"
+      - "tests/test_study_workspace.py"
       - "tests/test_strategy_data_bundle.py"
 
 concurrency:
@@ -69,6 +73,8 @@ jobs:
           uv run alpha data list
           uv run alpha data prepare --help
           uv run alpha research run --help
+          uv run alpha research study list
+          uv run alpha research study run --help
       - name: Ruff researcher data paths
         run: >-
           uv run ruff check
@@ -78,10 +84,12 @@ jobs:
           src/data/model_data_profile.py
           src/data/strategy_data_bundle.py
           src/research/etf_strategy_data.py
+          src/research/study_workspace.py
           scripts/data/check_model_data_profile.py
           tests/test_data_recipe.py
           tests/test_data_recipe_registry.py
           tests/test_researcher_cli.py
+          tests/test_study_workspace.py
           tests/test_strategy_data_bundle.py
       - name: Mypy researcher data paths
         run: >-
@@ -99,6 +107,7 @@ jobs:
           tests/test_data_recipe.py
           tests/test_data_recipe_registry.py
           tests/test_researcher_cli.py
+          tests/test_study_workspace.py
           tests/test_strategy_data_bundle.py
           tests/test_model_data_profile_gate.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
