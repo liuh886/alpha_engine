@@ -64,6 +64,23 @@ def test_study_catalog_and_editable_spec_are_one_entry(tmp_path: Path) -> None:
         initialize_study(target)
 
 
+def test_historical_experiments_are_discoverable_not_executable(tmp_path: Path) -> None:
+    catalog_dir = tmp_path / "configs" / "research_experiments"
+    catalog_dir.mkdir(parents=True)
+    (catalog_dir / "unsupported.yaml").write_text(
+        "experiment_id: old_bad_hypothesis\\n"
+        "runner: cross_sectional_xgb_ranker_v1\\n"
+        "status: completed_not_supported\\n"
+        "purpose: Baseline falsified\\n",
+        encoding="utf-8",
+    )
+    rows = study_catalog(tmp_path)["historical_experiments"]
+    assert len(rows) == 1
+    assert rows[0]["id"] == "old_bad_hypothesis"
+    assert rows[0]["status"] == "completed_not_supported"
+    assert rows[0]["runnable_here"] is False
+
+
 def test_study_spec_refuses_other_engines_duplicate_symbols_and_overlapping_folds(tmp_path: Path) -> None:
     target = tmp_path / "study.json"
     initialize_study(target)
