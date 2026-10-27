@@ -24,6 +24,14 @@ artifacts/research_studies/<study_id>/<study_hash>.json
 
 重放相同经济与证据输入时保留第一次结果，不覆盖；报告日期变化本身不制造一份新研究。不同结论却碰巧指定同一输出地址，直接阻断覆盖。被阻断的实验仍保留 `blocked_reasons`、输入和哈希，命令退出码为 10。
 
+研究结果可以直接复查，不需要查找日志：
+
+```bash
+uv run alpha research study show artifacts/research_studies/<id>/<hash>.json
+```
+
+这会展示 Fold、数据哈希、样本外收益、回撤和阻断原因；只读，不向前端复制原始数据。
+
 两次运行生成收据之后，可以比较：
 
 ```bash
