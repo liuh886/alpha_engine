@@ -189,13 +189,44 @@ def get_research_data_slice(
             pool_spec = yaml.safe_load(f)
 
         governed_symbols = set(pool_spec.get("symbols", []))
+
+        # Include authorized benchmark and reference instruments for this market
+        ref_reg_rel = pool_reg.get("reference_instrument_registry", "")
+        if ref_reg_rel:
+            ref_reg_path = repo_root / ref_reg_rel
+            if ref_reg_path.is_file():
+                with ref_reg_path.open("r", encoding="utf-8") as rf:
+                    ref_reg = yaml.safe_load(rf)
+                mkt_refs = ref_reg.get("markets", {}).get(request.market, {}).get("instruments", {})
+                for _, ref_info in mkt_refs.items():
+                    if isinstance(ref_info, dict):
+                        canon = str(ref_info.get("canonical_symbol", "")).split(".")[0].strip()
+                        if canon:
+                            governed_symbols.add(canon)
+                        for alias in ref_info.get("provider_aliases", []):
+                            clean_alias = str(alias).split(".")[0].replace("sh", "").replace("sz", "").replace("SH", "").replace("SZ", "").strip()
+                            if clean_alias:
+                                governed_symbols.add(clean_alias)
+
+        catalog_path = repo_root / "data/research/market_evidence" / request.market / "catalog.json"
+        if catalog_path.is_file():
+            try:
+                cat_data = json.loads(catalog_path.read_text(encoding="utf-8"))
+                cat_bench = cat_data.get("benchmark")
+                if cat_bench:
+                    governed_symbols.add(str(cat_bench).strip())
+                for aux in cat_data.get("auxiliary_symbols", []):
+                    governed_symbols.add(str(aux).strip())
+            except Exception:
+                pass
+
         for symbol in request.symbols:
             if symbol not in governed_symbols:
                 blockers.append(
                     BlockerReason(
                         code="SYMBOL_NOT_IN_GOVERNED_POOL",
                         symbol=symbol,
-                        message=f"Symbol '{symbol}' is not a member of governed pool '{request.pool_id}'.",
+                        message=f"Symbol '{symbol}' is not a member of governed pool or reference registry for '{request.pool_id}'.",
                     )
                 )
 

@@ -113,3 +113,19 @@ In launching Track B Phase B2 (RI-03A), we addressed the historical pain point w
 2. **测试中断言哈希随流水线推进脆弱硬编码 (Dynamic Binding vs. Hardcoded Bundle IDs)**:
    - `tests/test_public_source_boundary.py` 中写死了 CN_27 在 `2026-10-23` 的 `canonical_bundle_id`。随着正式刷新成功推进到 `2026-10-26`，该硬编码断言立刻抛错。
    - **铁律**：验证派生资产（如公开投影）与源资产（如权威回测包）的密码学绑定时，必须动态读取权威目录（`data/research/formal_model_runs/catalog.json`）并断言绑定相等性，严禁写死易随交易日推进发生变迁的散列值。
+
+---
+
+## 2026-10-27: Dual-Consumer Slice Reuse & Anti-Lookahead Tail Enforcement (双消费者数据切片复用与尾部防未来函数)
+
+### Context & Design (RI-04)
+In RI-04, we integrated two completely distinct research problems (`CN Cross-Sectional Ranking` vs. `RDI Event Horizon Readiness`) into the unified `get_research_data_slice()` data plane.
+
+### Rules Established
+1. **Separation of Candidates and Reference Instruments in Slice Governance**:
+   - `AGENTS.md` strictly dictates that candidate equities and reference/benchmark instruments (e.g. `000300.SH`) are distinct roles.
+   - The reusable slice resolver must support both pool members and authorized market reference instruments/benchmarks (via `reference_instrument_registry_v1.yaml` and `catalog.json["benchmark"]`), maintaining market isolation while preventing researchers from having to bypass governance or hack pool YAMLs to inspect benchmarks.
+2. **Strict Tail Horizon Fail-Closed Rigor (防未来函数尾部截断铁律)**:
+   - When evaluating multi-horizon forward readiness (e.g. 7, 14, 28 trading sessions), events occurring near the evaluation cutoff date may have sufficient data for shorter horizons (e.g. 7 days) but lack future bars for longer horizons (e.g. 14 or 28 days).
+   - Under NO circumstances may these future missing bars be forward-filled, estimated, or synthetically padded.
+   - The consumer MUST fail-closed with `status: blocked` and report `insufficient_future_bars` for any horizon exceeding the historical cutoff, strictly preserving empirical truth.

@@ -106,6 +106,29 @@
     - [x] **5.2.5.2 [CLI] 扩展 `alpha data slice` 命令行接口 (`src/cli/main.py`)**：添加 `--market`、`--pool`、`--symbols`、`--start`、`--end`、`--cutoff`、`--price-mode`、`--output` 参数支持，标准输出或文件输出格式化收据，blocked 退出码 10，ready 退出码 0。
     - [x] **5.2.5.3 [Test] 编写完整契约与负面测试套件 (`tests/test_research_data_slice.py`)**：覆盖 Happy Path 样本（CN 4 标的）、PIT 违规阻断（金盘科技 688676）、未上市阻断（301666）、时序越界、源文件字节不变性、命令行调用与脱敏安全（零 operating_state），8 项测试全部通过。
     - [x] **5.2.5.4 [Verify] 全量代码审查与测试通过**：运行 `uv run pytest tests/test_research_data_slice.py`、`uv run ruff check`、`git diff --check`，确保零警告零破坏。
+- [x] **5.3 [Track B / RI-04] 双消费者数据复用效果实验与报告 (Dual-Consumer Reuse Experiment)**:
+  - [x] **5.3.1 [Core] 实施双消费者实验执行器 (`src/research/dual_consumer_reuse_experiment.py`)**：
+    - 消费者一：接入既有 CN 横截面研究（选股池 4 标的动量与波动率特征计算、截面排序）；
+    - 消费者二：接入 A 股 RDI 前瞻风险事件 readiness（沪深 300 指数 7/14/28 交易日窗口验证）；
+    - 两个独立研究领域 100% 共享 `get_research_data_slice()`，零重复数据清洗。
+  - [x] **5.3.2 [Doc] 编写实验报告与证据封存 (`docs/architecture/ri-04-dual-consumer-reuse-experiment.md`)**：详述两个消费者共享切片的架构、Happy/Blocked 场景表现、密码学收据指纹与研究者减负对比。
+  - [x] **5.3.3 [Test] 编写跨领域复用测试套件 (`tests/test_ri04_dual_consumer_reuse.py`)**：覆盖消费者一正常/阻断、消费者二正常/尾部阻断（拒绝编造缺失交易日）、收据加密绑定及严禁生成实盘交易信号边界。
+  - [x] **5.3.4 [Verify] 全量回归与代码静态检查**：确保 pytest、ruff 与 git diff 全绿通过（14 项投研切片测试在 2.90s 全绿）。
+- [ ] **5.4 [Track B / RI-05] 开发者与研究员效率度量与摩擦消除 (Researcher Efficiency Metrics & Friction Reduction)**:
+  - [ ] **5.4.1 [Spec & Baseline] 测量基准与问题定义 (`docs/architecture/ri-05-researcher-efficiency-metrics.md`)**：
+    - 固定端到端研究场景（如对比传统逐个拉取/清洗 CSV 脚本与标准 `get_research_data_slice()`）；
+    - 量化指标：代码胶水行数（Lines of Boilerplate）、手工操作与排查步骤数、数据重复读取/副本开销、从提出假设到可解释结果时间（Time-to-Insight）、PIT 历史越界自动拦截率；
+    - 明确最痛点：既有研究脚本中大量重复的文件路径硬编码、缺乏统一 CLI/API 导致研究员不得不自己写清洗脚本与时间戳检查。
+  - [ ] **5.4.2 [Optimize & Eliminate] 消除冗余路径与最痛接口精简**：
+    - 依据 RI-04 实验实践，增强 `alpha research slice` 或精简 `src/data/research_slice.py`；
+    - 消除未使用的历史死路径或冗余适配，遵循“删除被新闭环取代的冗余路径，不保留兼容旧逻辑”；
+    - 确保零多余数据库引入，零后台守护进程。
+  - [ ] **5.4.3 [Test & Evidence] 编写度量验证测试与负面证明**：
+    - 编写度量验证脚本或单元测试，确保在相同基准/样本下，切片重用带来 80%+ 胶水代码减免和 100% PIT 越界阻断；
+    - 保证测试执行速度与幂等性。
+  - [ ] **5.4.4 [Verify & Gate] 全量回归验证与提交推送**：
+    - 运行全量单元测试与 lint 检查；
+    - 形成完整的 Track B RI-05 闭环证据。
 
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
