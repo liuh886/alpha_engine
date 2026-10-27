@@ -270,3 +270,23 @@ The user established a personal US equity holdings repository in Obsidian (`D:\D
 3. **Accurate Market Data Readiness Mapping (治理底座与行情切片精准比对)**:
    - 区分候选选股池（US 87）、参考基准资产（Ref ETF）、现金储备（Cash）、跨市场标的（EU）以及缺失行情切片的标的。
    - 对未覆盖标的（如杠杆 ETF、未上市股权或跨市场标的）诚实标记 `missing_market_evidence` 或 `unregistered_market_*`，绝不猜测或混淆。
+
+---
+
+## 2026-10-27: Supplementing Holdings Evidence via Reference Roles (参考资产治理扩充铁律)
+
+### Context & Implementation
+The user requested supplementing market data for the 4 missing tickers (`PL`, `SOXL`, `SPCX`, `IQQ`).
+- Candidate pool `us_selected_equities_v2.yaml` is frozen at 87 names under ADR-0003 governance.
+- Expanding candidates requires formal versioning (`us_selected_equities_v3`), but non-candidate securities can be legally ingested into the evidence plane by registering as **reference instruments (`comparison_reference`)** in `reference_instrument_registry_v1.yaml`.
+- This strictly preserves the candidate universe boundaries while granting clean `get_research_data_slice()` and `PersonalLens` coverage.
+
+### Rules Established
+1. **Never Silently Inject Securities without Governance Identity (绝不注入无角色标的)**:
+   - Any new market evidence file in `symbols/{ticker}.json` must declare governed `roles` (e.g. `["comparison_reference"]`).
+   - Every supplemented symbol must be registered in `configs/pools/reference_instrument_registry_v1.yaml` with `candidate_eligible: false` and `portfolio_eligible_by_default: false`.
+2. **Deterministic Full Technical Indicator Generation (指标全量规范物化)**:
+   - Materializing market evidence files must include standard technical studies (`boll20`, `macd_12_26_9`, `rsi14`) computed on exact OHLCV series.
+   - All generated evidence files and catalog entries must bind SHA-256 hashes to guarantee data immutability.
+3. **Cross-Market Geographic Boundary Integrity (跨市场地理边界清晰划分)**:
+   - For foreign securities (e.g. `2DG` in Frankfurt XETRA / `2DG.DE`, primary `SIVE.ST` in Stockholm), do not conflate them with the US dollar equity plane. Clearly mark them as foreign/cross-market assets.

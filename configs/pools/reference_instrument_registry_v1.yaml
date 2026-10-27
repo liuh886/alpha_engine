@@ -120,6 +120,50 @@ markets:
         portfolio_eligible_by_default: false
         fundamental_data_applicable: false
         corporate_actions_applicable: false
+      SOXL:
+        canonical_symbol: "SOXL"
+        instrument_type: "leveraged_semiconductor_etf"
+        provider_aliases: ["SOXL"]
+        roles: ["comparison_reference", "leveraged_sleeve"]
+        executable: true
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: true
+        adjusted_open_close_required: true
+      PL:
+        canonical_symbol: "PL"
+        instrument_type: "space_data_equity"
+        provider_aliases: ["PL"]
+        roles: ["comparison_reference"]
+        executable: true
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: true
+        corporate_actions_applicable: true
+        adjusted_open_close_required: true
+      SPCX:
+        canonical_symbol: "SPCX"
+        instrument_type: "space_equity"
+        provider_aliases: ["SPCX"]
+        roles: ["comparison_reference"]
+        executable: true
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: true
+        adjusted_open_close_required: true
+      IQQ:
+        canonical_symbol: "IQQ"
+        instrument_type: "equity_etf"
+        provider_aliases: ["IQQ"]
+        roles: ["comparison_reference"]
+        executable: true
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: true
+        adjusted_open_close_required: true
 
   cn:
     instruments:

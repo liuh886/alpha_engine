@@ -253,6 +253,22 @@
   - 真实扫描 `D:\Documents\zhihaol\200_Area\Investment\Pool` 中 23 个标的；
   - 生成数据就绪矩阵，输出清晰直观的量化赋能建议。
 
+### Phase 6.5: 补充个人持仓缺失标的行情切片与参考治理 (Supplement Missing Holdings Evidence)
+- [x] **6.5.1 [Governance] 在 `configs/pools/reference_instrument_registry_v1.yaml` 注册缺失标的治理身份**:
+  - 注册 `PL` (Planet Labs PBC, space_data_equity, comparison_reference)；
+  - 注册 `SOXL` (Direxion 3X Semiconductor Bull, leveraged_semiconductor_etf, comparison_reference)；
+  - 注册 `SPCX` (Space Exploration Technologies Corp., space_equity, comparison_reference)；
+  - 注册 `IQQ` (iShares Nasdaq 100 ETF, equity_etf, comparison_reference)。
+- [x] **6.5.2 [Data Materialization] 抓取并物化行情切片与更新清单**:
+  - 编写并执行脚本，复用 `YFinanceAdapter` 获取截至 2026-10-26 的高质量日线；
+  - 计算标准 bars 与完整 chart_studies (boll20, macd_12_26_9, rsi14)；
+  - 物化产出 `data/research/market_evidence/us/symbols/{PL, SOXL, SPCX, IQQ}.json`；
+  - 更新 `data/research/market_evidence/us/catalog.json` 清单并绑定 SHA-256。
+- [x] **6.5.3 [Test & Verify] 编写回归测试与端到端验证**:
+  - 编写 `tests/test_supplemented_holdings_evidence.py`，验证数据切片契约与 `get_research_data_slice` 可切片性；
+  - 运行 `alpha personal audit` 验证缺失标的就绪状态（4 标的全绿就绪，0 缺失切片）；
+  - 全量回归测试通过，更新 `tasks/todo.md` 与 `tasks/lessons.md`。
+
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
   - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。
@@ -309,6 +325,13 @@
 ---
 
 ## 阶段验收与复盘 (Review Section)
+- [x] **Phase 6.5 补充个人持仓缺失标的行情切片与参考治理落地 (2026-10-27)**:
+  - **参考资产治理注册**：在 [`configs/pools/reference_instrument_registry_v1.yaml`](configs/pools/reference_instrument_registry_v1.yaml) 正式注册 `PL`、`SOXL`、`SPCX`、`IQQ` 4 个标的，声明其 `comparison_reference` 角色与独立资产类型，杜绝未治理漫游；
+  - **标准行情物化与指标计算**：通过 `YFinanceAdapter` 获取权威历史数据，计算生成标准日线、布林带 boll20、MACD (12,26,9) 与 RSI14 技术指标，物化封存为 [`data/research/market_evidence/us/symbols/{PL, SOXL, SPCX, IQQ}.json`](data/research/market_evidence/us/symbols/)；
+  - **市场证据清单同步**：更新 [`data/research/market_evidence/us/catalog.json`](data/research/market_evidence/us/catalog.json)，美股覆盖标的由 92 扩充至 96 个，所有数据严格绑定 SHA-256；
+  - **切片可提取性验证**：通过 `get_research_data_slice()` 验证 4 标的可无缝作为 `comparison_reference` 提取 PIT 切片；
+  - **个人透视体检 0 缺失达成**：运行 `alpha personal audit` 验证，23 个个人标的中 21 个已就绪 (14 核心股 + 7 参考资产)，1 个现金储备，1 个跨市场 (EU)，**缺失切片数量成功降为 0**；
+  - **契约测试全绿**：交付 [`tests/test_supplemented_holdings_evidence.py`](tests/test_supplemented_holdings_evidence.py)（5 项测试 100% 通过），全套 33 项 Track B 测试全绿通过。
 - [x] **Phase 6.4 个人投资记录与 Alpha Engine 解耦接口落地闭环 (2026-10-27)**:
   - **单向只读与零隐私泄露 (Gate A4)**：在 [`src/research/personal_lens.py`](src/research/personal_lens.py) 实施纯函数式元数据提取器，严格过滤 YAML 前置元数据（`ticker`, `name`, `market`, `asset_type`, `strategy`, `conviction`, `status`），在解析器与数据类两级硬核丢弃所有个人财务敏感字段（`shares`, `total_cost`, `realized_pnl`, `accounts` 等），坚决不将用户真实资金与交易记录导入量化系统；
   - **用户文件只读保护**：绝不以写模式触碰用户 Obsidian 笔记，测试验证扫描前后笔记字节与修改时间 100% 保持不变；
