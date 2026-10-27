@@ -151,6 +151,10 @@ def _compute_raw_features(
     return z_rev, z_vol, pivoted
 
 
+class WalkForwardDataError(ValueError):
+    """A declared market session cannot be evaluated without inventing evidence."""
+
+
 def _simulate_portfolio(
     scores: pd.DataFrame,
     prices: pd.DataFrame,
@@ -158,297 +162,257 @@ def _simulate_portfolio(
     sessions: list[str],
     top_k: int,
     friction_per_turnover: float,
+    *,
+    liquidate_at_end: bool = True,
 ) -> tuple[list[float], list[float], list[float], list[float]]:
-    """Simulate daily execution strictly from session t-1 signal to session t realization (vectorized)."""
-    valid_sessions = [s for s in sessions if s in scores.index and s in prices.index]
-    if len(valid_sessions) < 2:
-        return [], [], [], []
+    """Daily close-to-close returns, with signals known before the execution close.
 
-    # Pre-slice to numpy arrays for millisecond execution
-    col_names = list(scores.columns)
-    score_arr = scores.loc[valid_sessions].to_numpy()
-    price_arr = prices.loc[valid_sessions, col_names].to_numpy()
-    bench_reindexed = bench_series.reindex(valid_sessions).to_numpy()
+    Two preceding closes anchor the first evaluated day: score at t-2 selects
+    the basket traded at t-1 close and held until t close. Starting/ending cash
+    trades are charged explicitly. Costs are bps per one-way traded NAV.
+    """
+    if top_k <= 0 or top_k > len(scores.columns) or friction_per_turnover < 0:
+        raise WalkForwardDataError("invalid_portfolio_parameters")
+    if len(sessions) < 3 or sessions != sorted(set(sessions)):
+        raise WalkForwardDataError("invalid_or_insufficient_simulation_sessions")
+    if any(s not in scores.index or s not in prices.index or s not in bench_series.index for s in sessions):
+        raise WalkForwardDataError("missing_declared_session")
+    columns = list(scores.columns)
+    score_arr = scores.loc[sessions, columns].to_numpy(dtype=float)
+    price_arr = prices.loc[sessions, columns].to_numpy(dtype=float)
+    bench_arr = bench_series.reindex(sessions).to_numpy(dtype=float)
+    if (not np.isfinite(price_arr).all() or (price_arr <= 0).any()
+            or not np.isfinite(bench_arr).all() or (bench_arr <= 0).any()):
+        raise WalkForwardDataError("missing_or_invalid_candidate_or_benchmark_price")
 
-    daily_gross_returns: list[float] = []
-    daily_net_returns: list[float] = []
-    daily_turnovers: list[float] = []
-    daily_bench_returns: list[float] = []
+    gross_returns: list[float] = []
+    net_returns: list[float] = []
+    turnovers: list[float] = []
+    benchmark_returns: list[float] = []
+    pretrade_weights: dict[int, float] = {}
 
-    prev_top_set: set[int] = set()
+    for i in range(2, len(sessions)):
+        prior_scores = score_arr[i - 2]
+        available = np.isfinite(prior_scores)
+        if int(available.sum()) < top_k:
+            raise WalkForwardDataError(f"insufficient_ranked_candidates_at_{sessions[i - 2]}")
+        selected = np.argsort(np.where(available, prior_scores, -np.inf))[-top_k:]
+        target = {int(j): 1.0 / top_k for j in selected}
+        assets = set(pretrade_weights) | set(target)
+        bought = sum(max(target.get(j, 0.0) - pretrade_weights.get(j, 0.0), 0.0) for j in assets)
+        sold = sum(max(pretrade_weights.get(j, 0.0) - target.get(j, 0.0), 0.0) for j in assets)
+        turnover = max(bought, sold)  # one-way traded NAV, incl. first purchase from cash
+        asset_returns = price_arr[i, selected] / price_arr[i - 1, selected] - 1.0
+        gross = float(np.mean(asset_returns))
+        benchmark = float(bench_arr[i] / bench_arr[i - 1] - 1.0)
+        if not np.isfinite(gross) or gross <= -1.0 or not np.isfinite(benchmark):
+            raise WalkForwardDataError(f"invalid_realized_return_at_{sessions[i]}")
+        net = gross - turnover * friction_per_turnover
+        if net <= -1.0:
+            raise WalkForwardDataError(f"invalid_net_return_at_{sessions[i]}")
+        pretrade_weights = {
+            int(j): float(target[int(j)] * (1.0 + ret) / (1.0 + gross))
+            for j, ret in zip(selected, asset_returns, strict=True)
+        }
+        gross_returns.append(gross)
+        net_returns.append(net)
+        turnovers.append(turnover)
+        benchmark_returns.append(benchmark)
 
-    for i in range(1, len(valid_sessions)):
-        prev_scores = score_arr[i - 1]
-        valid_mask = ~np.isnan(prev_scores)
-        valid_cnt = int(np.sum(valid_mask))
-        if valid_cnt < top_k:
-            continue
+    if liquidate_at_end:
+        # Fold boundary convention: liquidate to cash at final close; next
+        # independent fold buys from cash. Never omit the closing trade cost.
+        exit_turnover = sum(pretrade_weights.values())
+        turnovers[-1] += exit_turnover
+        net_returns[-1] -= exit_turnover * friction_per_turnover
+        if net_returns[-1] <= -1.0:
+            raise WalkForwardDataError("invalid_liquidation_return")
 
-        # Top k assets selected based on session t-1 signal
-        if valid_cnt == len(prev_scores):
-            top_indices = np.argsort(prev_scores)[-top_k:]
-        else:
-            masked_scores = np.where(valid_mask, prev_scores, -1e9)
-            top_indices = np.argsort(masked_scores)[-top_k:]
-
-        top_set = set(top_indices)
-
-        # Turnover calculation
-        if prev_top_set:
-            turnover = len(top_set - prev_top_set) / float(top_k)
-        else:
-            turnover = 1.0
-        daily_turnovers.append(turnover)
-        prev_top_set = top_set
-
-        # Realized portfolio return from session t-1 to t
-        prev_p = price_arr[i - 1, top_indices]
-        curr_p = price_arr[i, top_indices]
-        gross_ret = float(np.mean((curr_p / prev_p) - 1.0))
-        cost_drag = turnover * friction_per_turnover
-        net_ret = gross_ret - cost_drag
-
-        daily_gross_returns.append(gross_ret)
-        daily_net_returns.append(net_ret)
-
-        # Benchmark return
-        prev_b = bench_reindexed[i - 1]
-        curr_b = bench_reindexed[i]
-        if not np.isnan(prev_b) and not np.isnan(curr_b) and prev_b != 0:
-            bench_ret = float((curr_b / prev_b) - 1.0)
-        else:
-            bench_ret = 0.0
-        daily_bench_returns.append(bench_ret)
-
-    return daily_gross_returns, daily_net_returns, daily_turnovers, daily_bench_returns
-
+    if len(net_returns) != len(sessions) - 2:
+        raise WalkForwardDataError("simulation_session_count_mismatch")
+    return gross_returns, net_returns, turnovers, benchmark_returns
 
 def evaluate_walkforward_fold(
     fold: WalkForwardFold,
     config: WalkForwardConfig,
     root: Path | None = None,
 ) -> FoldResult:
-    """Evaluate one Walk-Forward fold: In-Sample selection, Purge execution, and OOS simulation."""
+    """Select on purged IS data; execute every declared OOS session without filling gaps."""
     repo_root = (root or DEFAULT_REPO_ROOT).resolve()
-    all_symbols = list(set(list(config.symbols) + [config.benchmark]))
     candidates = list(config.symbols)
+    all_symbols = tuple(sorted(set((*config.symbols, config.benchmark))))
+    if not (fold.train_start <= fold.train_end <= fold.train_cutoff
+            and fold.train_end < fold.test_start <= fold.test_end <= fold.test_cutoff):
+        return FoldResult(fold_id=fold.fold_id, status="blocked", blocked_reasons=("invalid_fold_dates",))
 
-    # 1. Fetch In-Sample Train Slice
+    def blocked(reason: str, **values: Any) -> FoldResult:
+        return FoldResult(fold_id=fold.fold_id, status="blocked", blocked_reasons=(reason,), **values)
+
     train_req = DataSliceRequest(
-        market=config.market,
-        pool_id=config.pool_id,
-        symbols=tuple(all_symbols),
-        start_date=fold.train_start,
-        end_date=fold.train_end,
-        as_of_cutoff=fold.train_cutoff,
-        price_mode=config.price_mode,
+        market=config.market, pool_id=config.pool_id, symbols=all_symbols,
+        start_date=fold.train_start, end_date=fold.train_end,
+        as_of_cutoff=fold.train_cutoff, price_mode=config.price_mode,
     )
     train_res = get_research_data_slice(train_req, root=repo_root)
     if not train_res.is_ready or train_res.data is None:
-        return FoldResult(
-            fold_id=fold.fold_id,
-            status="blocked",
-            blocked_reasons=_format_blocked_reasons(train_res.receipt.get("blocked_reasons", ["train_slice_unavailable"])),
-        )
+        reasons = _format_blocked_reasons(train_res.receipt.get("blocked_reasons"))
+        return blocked(",".join(reasons) or "train_slice_unavailable")
 
-    # 2. In-sample Purged Margin Execution
     train_df = train_res.data
     z_rev_train, z_vol_train, train_prices = _compute_raw_features(train_df, candidates)
-    train_bench = train_df[train_df["symbol"] == config.benchmark].pivot(index="time", columns="symbol", values="close")[config.benchmark]
+    train_bench = train_prices[config.benchmark]
+    train_sessions = sorted(s for s in train_prices.index if fold.train_start <= s <= fold.train_end)
+    purge = fold.purged_margin_days
+    if purge < 0 or len(train_sessions) <= purge + 43:
+        return blocked("insufficient_training_sessions_for_purge_and_feature_warmup")
+    training_sessions = train_sessions[:-purge] if purge else train_sessions
+    purged_sessions = train_sessions[-purge:] if purge else []
+    purged_rows = int(train_df["time"].isin(purged_sessions).sum())
+    # 20 returns require 21 bars; score t-2 must precede the t-1 execution close.
+    selection_sessions = training_sessions[20:]
+    friction = (config.cost_bps + config.slippage_bps) / 10000.0
+    if not np.isfinite(friction) or friction < 0:
+        return blocked("invalid_transaction_friction")
+    param_rev = config.param_grid.get("w_rev", ())
+    param_vol = config.param_grid.get("w_vol", ())
+    param_k = config.param_grid.get("top_k", ())
+    if not param_rev or not param_vol or not param_k:
+        return blocked("empty_parameter_grid")
 
-    all_train_sessions = sorted([t for t in train_prices.index if fold.train_start <= t <= fold.train_end])
-    purged_margin = max(0, fold.purged_margin_days)
-    if purged_margin > 0 and len(all_train_sessions) > purged_margin:
-        effective_train_sessions = all_train_sessions[:-purged_margin]
-        purged_sessions = all_train_sessions[-purged_margin:]
-        purged_rows_count = len(train_df[train_df["time"].isin(purged_sessions)])
-    else:
-        effective_train_sessions = all_train_sessions
-        purged_rows_count = 0
+    best_sharpe = -float("inf")
+    best_params: dict[str, Any] = {}
+    try:
+        for w_r in param_rev:
+            for w_v in param_vol:
+                trial_scores = float(w_r) * z_rev_train - float(w_v) * z_vol_train
+                for raw_k in param_k:
+                    if not float(raw_k).is_integer():
+                        raise WalkForwardDataError("noninteger_top_k")
+                    top_k = int(raw_k)
+                    _, net, _, _ = _simulate_portfolio(
+                        trial_scores, train_prices, train_bench, selection_sessions, top_k, friction
+                    )
+                    if len(net) < 20:
+                        raise WalkForwardDataError("insufficient_in_sample_return_sessions")
+                    net_arr = np.asarray(net, dtype=float)
+                    vol = float(np.std(net_arr) * np.sqrt(252))
+                    if vol <= 0:
+                        continue
+                    sharpe = float(np.mean(net_arr) * 252 / vol)
+                    if sharpe > best_sharpe:
+                        best_sharpe = sharpe
+                        best_params = {"w_rev": float(w_r), "w_vol": float(w_v), "top_k": top_k}
+    except (WalkForwardDataError, ValueError, TypeError) as exc:
+        return blocked(f"in_sample_data_blocked:{exc}")
 
-    # 3. In-Sample Parameter Selection (Grid Search over IS Purged Window)
-    standard_friction = (config.cost_bps + config.slippage_bps) / 10000.0
-    best_sharpe = -999.0
-    best_params: dict[str, Any] = {"w_rev": 1.0, "w_vol": 1.0, "top_k": 2}
-
-    w_rev_candidates = config.param_grid.get("w_rev", (1.0,))
-    w_vol_candidates = config.param_grid.get("w_vol", (1.0,))
-    top_k_candidates = [int(k) for k in config.param_grid.get("top_k", (2.0,))]
-
-    for w_r in w_rev_candidates:
-        for w_v in w_vol_candidates:
-            trial_score = (w_r * z_rev_train) - (w_v * z_vol_train)
-            for k in top_k_candidates:
-                _, net_rets, _, _ = _simulate_portfolio(
-                    scores=trial_score,
-                    prices=train_prices,
-                    bench_series=train_bench,
-                    sessions=effective_train_sessions,
-                    top_k=k,
-                    friction_per_turnover=standard_friction,
-                )
-                if len(net_rets) > 20:
-                    arr = np.array(net_rets)
-                    vol = float(np.std(arr) * np.sqrt(252))
-                    mean_ret = float(np.mean(arr)) * 252.0
-                    trial_sharpe = float(mean_ret / (vol + 1e-8)) if vol > 0 else -999.0
-                    if trial_sharpe > best_sharpe:
-                        best_sharpe = trial_sharpe
-                        best_params = {"w_rev": float(w_r), "w_vol": float(w_v), "top_k": int(k)}
-
-    # 4. In-Sample Spearman IC (on optimal factor scores across effective IS window)
-    optimal_train_scores = (best_params["w_rev"] * z_rev_train) - (best_params["w_vol"] * z_vol_train)
-    fwd_5d_ret = (train_prices[candidates].shift(-5) / train_prices[candidates]) - 1.0
-
+    if not best_params:
+        return blocked("no_valid_in_sample_parameter_selection")
+    optimal_scores = best_params["w_rev"] * z_rev_train - best_params["w_vol"] * z_vol_train
+    fwd_5d = train_prices[candidates].shift(-5) / train_prices[candidates] - 1.0
     daily_ics: list[float] = []
-    for t in effective_train_sessions:
-        if t in optimal_train_scores.index and t in fwd_5d_ret.index:
-            sc = optimal_train_scores.loc[t].dropna()
-            fwd = fwd_5d_ret.loc[t].dropna()
-            common = sc.index.intersection(fwd.index)
-            if len(common) >= 4:
-                ic = _compute_spearman_ic(sc[common].to_numpy(), fwd[common].to_numpy())
-                daily_ics.append(ic)
+    for t in training_sessions:
+        if t not in optimal_scores.index or t not in fwd_5d.index:
+            continue
+        sc = optimal_scores.loc[t].dropna()
+        fw = fwd_5d.loc[t].dropna()
+        common = sc.index.intersection(fw.index)
+        if len(common) >= 4:
+            daily_ics.append(_compute_spearman_ic(sc[common].to_numpy(), fw[common].to_numpy()))
+    in_sample_ic = float(np.mean(daily_ics)) if daily_ics else 0.0
 
-    in_sample_ic_mean = float(np.mean(daily_ics)) if daily_ics else 0.0
-
-    # 5. Fetch Out-of-Sample Test Slice
     test_req = DataSliceRequest(
-        market=config.market,
-        pool_id=config.pool_id,
-        symbols=tuple(all_symbols),
-        start_date=fold.test_start,
-        end_date=fold.test_end,
-        as_of_cutoff=fold.test_cutoff,
-        price_mode=config.price_mode,
+        market=config.market, pool_id=config.pool_id, symbols=all_symbols,
+        start_date=fold.test_start, end_date=fold.test_end,
+        as_of_cutoff=fold.test_cutoff, price_mode=config.price_mode,
     )
     test_res = get_research_data_slice(test_req, root=repo_root)
     if not test_res.is_ready or test_res.data is None:
-        return FoldResult(
-            fold_id=fold.fold_id,
-            status="blocked",
-            blocked_reasons=_format_blocked_reasons(test_res.receipt.get("blocked_reasons", ["test_slice_unavailable"])),
-            train_data_hash=train_res.receipt.get("data_hash", ""),
-            train_row_count=train_res.receipt.get("total_rows", 0),
-            purged_rows_count=purged_rows_count,
-            selected_parameters=best_params,
-            in_sample_best_sharpe=round(best_sharpe, 4),
-            in_sample_ic_mean=round(in_sample_ic_mean, 4),
-        )
+        reasons = _format_blocked_reasons(test_res.receipt.get("blocked_reasons"))
+        return blocked(",".join(reasons) or "test_slice_unavailable",
+                       train_data_hash=train_res.receipt["data_hash"],
+                       purged_rows_count=purged_rows, selected_parameters=best_params)
 
-    # 6. Splicing Warmup Lookback from IS Tail without Future Data Leakage
     test_df = test_res.data
-    full_df = pd.concat([train_df, test_df], ignore_index=True).drop_duplicates(subset=["symbol", "time"])
-
-    z_rev_full, z_vol_full, full_prices = _compute_raw_features(full_df, candidates)
-    bench_series = full_df[full_df["symbol"] == config.benchmark].pivot(index="time", columns="symbol", values="close")[config.benchmark]
-
-    oos_scores = (best_params["w_rev"] * z_rev_full) - (best_params["w_vol"] * z_vol_full)
-    test_sessions = sorted([t for t in full_prices.index if fold.test_start <= t <= fold.test_end])
-    if len(test_sessions) < 5:
-        return FoldResult(
-            fold_id=fold.fold_id,
-            status="blocked",
-            blocked_reasons=("insufficient_test_sessions",),
-            train_data_hash=train_res.receipt.get("data_hash", ""),
-            test_data_hash=test_res.receipt.get("data_hash", ""),
-            train_row_count=train_res.receipt.get("total_rows", 0),
-            test_row_count=test_res.receipt.get("total_rows", 0),
-            purged_rows_count=purged_rows_count,
-            selected_parameters=best_params,
-            in_sample_best_sharpe=round(best_sharpe, 4),
-            in_sample_ic_mean=round(in_sample_ic_mean, 4),
+    full_df = pd.concat([train_df, test_df], ignore_index=True)
+    if full_df.duplicated(subset=["symbol", "time"]).any():
+        return blocked("overlapping_train_test_rows")
+    z_rev, z_vol, prices = _compute_raw_features(full_df, candidates)
+    scores = best_params["w_rev"] * z_rev - best_params["w_vol"] * z_vol
+    test_sessions = sorted(s for s in prices.index if fold.test_start <= s <= fold.test_end)
+    if len(test_sessions) < 5 or len(train_sessions) < 2 or train_sessions[-1] >= test_sessions[0]:
+        return blocked("insufficient_or_nonchronological_oos_sessions")
+    # Two preceding training closes provide a causally executable first OOS trade.
+    simulated_sessions = [*train_sessions[-2:], *test_sessions]
+    try:
+        gross, net, turnovers, bench = _simulate_portfolio(
+            scores, prices, prices[config.benchmark], simulated_sessions,
+            best_params["top_k"], friction,
         )
+        _, gross_sensitivity, _, _ = _simulate_portfolio(
+            scores, prices, prices[config.benchmark], simulated_sessions,
+            best_params["top_k"], 0.0,
+        )
+        _, stress_sensitivity, _, _ = _simulate_portfolio(
+            scores, prices, prices[config.benchmark], simulated_sessions,
+            best_params["top_k"], 0.0015,
+        )
+    except WalkForwardDataError as exc:
+        return blocked(f"oos_data_blocked:{exc}",
+                       train_data_hash=train_res.receipt["data_hash"],
+                       test_data_hash=test_res.receipt["data_hash"],
+                       purged_rows_count=purged_rows, selected_parameters=best_params)
 
-    # 7. Out-of-Sample Simulation with Selected Frozen Parameters
-    daily_gross, daily_net, daily_turnovers, daily_bench = _simulate_portfolio(
-        scores=oos_scores,
-        prices=full_prices,
-        bench_series=bench_series,
-        sessions=test_sessions,
-        top_k=best_params["top_k"],
-        friction_per_turnover=standard_friction,
-    )
-
-    # Cost sensitivity runs: 0 bps (gross), 8 bps (standard), 15 bps (stress)
-    _, net_0bps, _, _ = _simulate_portfolio(
-        scores=oos_scores,
-        prices=full_prices,
-        bench_series=bench_series,
-        sessions=test_sessions,
-        top_k=best_params["top_k"],
-        friction_per_turnover=0.0,
-    )
-    _, net_15bps, _, _ = _simulate_portfolio(
-        scores=oos_scores,
-        prices=full_prices,
-        bench_series=bench_series,
-        sessions=test_sessions,
-        top_k=best_params["top_k"],
-        friction_per_turnover=0.0015,
-    )
-
-    gross_arr = np.array(daily_gross)
-    net_arr = np.array(daily_net)
-    bench_arr = np.array(daily_bench)
-
-    cum_gross = float(np.prod(1.0 + gross_arr) - 1.0) if len(gross_arr) > 0 else 0.0
-    cum_net = float(np.prod(1.0 + net_arr) - 1.0) if len(net_arr) > 0 else 0.0
-    cum_bench = float(np.prod(1.0 + bench_arr) - 1.0) if len(bench_arr) > 0 else 0.0
-    net_excess = cum_net - cum_bench
-
-    ann_vol = float(np.std(net_arr) * np.sqrt(252)) if len(net_arr) > 1 else 0.0
-    mean_daily_net = float(np.mean(net_arr)) if len(net_arr) > 0 else 0.0
-    sharpe_net = float((mean_daily_net * 252.0) / (ann_vol + 1e-8)) if ann_vol > 0 else 0.0
-
-    mean_daily_gross = float(np.mean(gross_arr)) if len(gross_arr) > 0 else 0.0
-    gross_vol = float(np.std(gross_arr) * np.sqrt(252)) if len(gross_arr) > 1 else 0.0
-    sharpe_gross = float((mean_daily_gross * 252.0) / (gross_vol + 1e-8)) if gross_vol > 0 else 0.0
-
-    # Max Drawdown
-    cum_trajectory = np.cumprod(1.0 + net_arr)
-    peaks = np.maximum.accumulate(cum_trajectory)
-    drawdowns = (cum_trajectory - peaks) / peaks
-    max_dd = float(np.min(drawdowns)) if len(drawdowns) > 0 else 0.0
-
-    win_rate = float(np.mean(net_arr > 0)) if len(net_arr) > 0 else 0.0
-    mean_turnover = float(np.mean(daily_turnovers)) if daily_turnovers else 0.0
-
-    cum_net_0bps = float(np.prod(1.0 + np.array(net_0bps)) - 1.0) if len(net_0bps) > 0 else 0.0
-    cum_net_15bps = float(np.prod(1.0 + np.array(net_15bps)) - 1.0) if len(net_15bps) > 0 else 0.0
+    if not (len(net) == len(gross) == len(bench) == len(test_sessions)):
+        return blocked("incomplete_oos_return_coverage")
+    net_arr, gross_arr, bench_arr = (np.asarray(v, dtype=float) for v in (net, gross, bench))
+    cum_net = float(np.prod(1.0 + net_arr) - 1.0)
+    cum_gross = float(np.prod(1.0 + gross_arr) - 1.0)
+    cum_bench = float(np.prod(1.0 + bench_arr) - 1.0)
+    ann_vol = float(np.std(net_arr) * np.sqrt(252))
+    gross_vol = float(np.std(gross_arr) * np.sqrt(252))
+    nav = np.concatenate(([1.0], np.cumprod(1.0 + net_arr)))
+    max_dd = float(np.min(nav / np.maximum.accumulate(nav) - 1.0))
 
     return FoldResult(
-        fold_id=fold.fold_id,
-        status="ready",
-        blocked_reasons=(),
-        train_data_hash=train_res.receipt["data_hash"],
-        test_data_hash=test_res.receipt["data_hash"],
-        train_row_count=train_res.receipt["total_rows"],
-        test_row_count=test_res.receipt["total_rows"],
-        purged_rows_count=purged_rows_count,
-        selected_parameters=best_params,
-        in_sample_best_sharpe=round(best_sharpe, 4),
-        in_sample_ic_mean=round(in_sample_ic_mean, 4),
+        fold_id=fold.fold_id, status="ready",
+        train_data_hash=train_res.receipt["data_hash"], test_data_hash=test_res.receipt["data_hash"],
+        train_source_manifest_hashes=train_res.receipt["source_manifest_hashes"],
+        test_source_manifest_hashes=test_res.receipt["source_manifest_hashes"],
+        train_row_count=train_res.receipt["total_rows"], test_row_count=test_res.receipt["total_rows"],
+        purged_rows_count=purged_rows, selected_parameters=best_params,
+        in_sample_best_sharpe=round(best_sharpe, 4), in_sample_ic_mean=round(in_sample_ic, 4),
         out_of_sample_gross_return=round(cum_gross, 4),
         out_of_sample_net_return=round(cum_net, 4),
         benchmark_cumulative_return=round(cum_bench, 4),
-        out_of_sample_net_excess_return=round(net_excess, 4),
+        out_of_sample_net_excess_return=round(cum_net - cum_bench, 4),
         annualized_volatility=round(ann_vol, 4),
-        sharpe_ratio=round(sharpe_net, 4),
-        gross_sharpe_ratio=round(sharpe_gross, 4),
+        sharpe_ratio=round(float(np.mean(net_arr) * 252 / (ann_vol + 1e-8)), 4),
+        gross_sharpe_ratio=round(float(np.mean(gross_arr) * 252 / (gross_vol + 1e-8)), 4),
         max_drawdown=round(max_dd, 4),
-        win_rate=round(win_rate, 4),
-        turnover_ratio=round(mean_turnover, 4),
+        win_rate=round(float(np.mean(net_arr > 0)), 4),
+        turnover_ratio=round(float(np.mean(turnovers)), 4),
         total_cost_drag=round(cum_gross - cum_net, 4),
         cost_sensitivity={
-            "0_bps_gross": round(cum_net_0bps, 4),
-            "8_bps_standard": round(cum_net, 4),
-            "15_bps_stress": round(cum_net_15bps, 4),
+            "0_bps_gross": round(float(np.prod(1.0 + gross_sensitivity) - 1.0), 4),
+            "standard_config": round(cum_net, 4),
+            "15_bps_stress": round(float(np.prod(1.0 + stress_sensitivity) - 1.0), 4),
         },
-        daily_net_returns=tuple(daily_net),
+        daily_sessions=tuple(test_sessions), daily_net_returns=tuple(net),
+        daily_benchmark_returns=tuple(bench),
         pit_limitations=DEFAULT_PIT_LIMITATIONS,
     )
 
+def _study_provenance(config: WalkForwardConfig) -> tuple[str, dict[str, str]]:
+    """Bind the exact declared experiment and source bytes to the study receipt."""
+    serialized = json.dumps(config.to_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+    src_root = Path(__file__).resolve().parents[2]
+    sources = {
+        "walkforward_pipeline": Path(__file__),
+        "walkforward_contracts": Path(__file__).with_name("contracts.py"),
+        "research_data_slice": src_root / "data" / "research_slice.py",
+    }
+    hashes = {name: hashlib.sha256(source.read_bytes()).hexdigest() for name, source in sources.items()}
+    return hashlib.sha256(serialized).hexdigest(), hashes
 
 def run_walkforward_study(
     config: WalkForwardConfig | None = None,
@@ -464,6 +428,7 @@ def run_walkforward_study(
         fold_results.append(f_res)
 
     # Fail-closed check: ALL declared folds must be ready
+    config_hash, code_source_sha256 = _study_provenance(cfg)
     blocked_folds = [f for f in fold_results if f.status != "ready"]
     if blocked_folds:
         study_status = "blocked"
@@ -473,6 +438,8 @@ def run_walkforward_study(
         )
         study_payload = {
             "study_id": cfg.study_id,
+            "config_hash": config_hash,
+            "code_source_sha256": code_source_sha256,
             "status": study_status,
             "blocked_reasons": list(blocked_reasons),
             "hypothesis_name": cfg.hypothesis_name,
@@ -496,6 +463,8 @@ def run_walkforward_study(
 
         return WalkForwardStudyResult(
             study_id=cfg.study_id,
+            config_hash=config_hash,
+            code_source_sha256=code_source_sha256,
             status=study_status,
             blocked_reasons=blocked_reasons,
             hypothesis_name=cfg.hypothesis_name,
@@ -519,6 +488,7 @@ def run_walkforward_study(
             trade_signal=False,
         )
 
+    # Each fold restarts/ends in cash; the opening purchase and closing sale are costed.
     # Multiplicative compound returns across contiguous OOS folds
     overall_gross_ret = float(np.prod([1.0 + f.out_of_sample_gross_return for f in fold_results]) - 1.0)
     overall_net_ret = float(np.prod([1.0 + f.out_of_sample_net_return for f in fold_results]) - 1.0)
@@ -536,7 +506,7 @@ def run_walkforward_study(
         stitched_mean = float(np.mean(stitched_arr)) * 252.0
         overall_sharpe = float(stitched_mean / (stitched_vol + 1e-8))
 
-        stitched_trajectory = np.cumprod(1.0 + stitched_arr)
+        stitched_trajectory = np.concatenate(([1.0], np.cumprod(1.0 + stitched_arr)))
         stitched_peaks = np.maximum.accumulate(stitched_trajectory)
         stitched_drawdowns = (stitched_trajectory - stitched_peaks) / stitched_peaks
         overall_max_dd = float(np.min(stitched_drawdowns))
@@ -546,19 +516,21 @@ def run_walkforward_study(
 
     # Cost Sensitivity Aggregation
     overall_0bps = float(np.prod([1.0 + f.cost_sensitivity.get("0_bps_gross", 0.0) for f in fold_results]) - 1.0)
-    overall_8bps = float(np.prod([1.0 + f.cost_sensitivity.get("8_bps_standard", 0.0) for f in fold_results]) - 1.0)
+    overall_standard = float(np.prod([1.0 + f.cost_sensitivity["standard_config"] for f in fold_results]) - 1.0)
     overall_15bps = float(np.prod([1.0 + f.cost_sensitivity.get("15_bps_stress", 0.0) for f in fold_results]) - 1.0)
 
     cost_summary = {
         "0_bps_gross": round(overall_0bps, 4),
-        "8_bps_standard": round(overall_8bps, 4),
+        "standard_config": round(overall_standard, 4),
         "15_bps_stress": round(overall_15bps, 4),
-        "total_cost_drag_bps_8": round(overall_0bps - overall_8bps, 4),
+        "total_cost_drag_standard": round(overall_0bps - overall_standard, 4),
     }
 
     # Build canonical payload and cryptographic study hash
     study_payload = {
         "study_id": cfg.study_id,
+        "config_hash": config_hash,
+        "code_source_sha256": code_source_sha256,
         "status": "ready",
         "blocked_reasons": [],
         "hypothesis_name": cfg.hypothesis_name,
@@ -583,6 +555,8 @@ def run_walkforward_study(
 
     return WalkForwardStudyResult(
         study_id=cfg.study_id,
+        config_hash=config_hash,
+        code_source_sha256=code_source_sha256,
         status="ready",
         blocked_reasons=(),
         hypothesis_name=cfg.hypothesis_name,
