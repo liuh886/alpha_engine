@@ -416,7 +416,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
             errors += (ResearchStudyError,)
             if args.study_action == "list":
-                payload = study_catalog()
+                payload = study_catalog(root)
             elif args.study_action == "init":
                 payload = initialize_study(_resolve(root, args.output))
             elif args.study_action == "run":
