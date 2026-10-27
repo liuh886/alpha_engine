@@ -231,3 +231,21 @@ In launching the real investment hypothesis Walk-Forward pipeline (`us_tech_vol_
 4. **完整实验配置与代码版本绑定至研究指纹 (Experiment Receipt Lineage Binding)**:
    - 单纯绑定 Fold 结果与数据哈希不足以防范参数或代码变动碰撞。
    - **铁律**：将完整的 `config.to_dict()`（含 param_grid、各档摩擦费率、价格模式与折叠定义）以及当前 Git Commit SHA 完整嵌入 canonical payload 与研究收据中，确保任何实验定义或代码版本变动必然改变 `study_hash`。
+
+---
+
+## 2026-10-27: Walk-Forward Engine v0.3.1 Exchange Calendar & Code Source Hashing (交易所日历与代码指纹铁律)
+
+### Context & User Correction
+1. **研究哈希与 Git 提交时序耦合 (Git Commit Fixed-Point Trap)**:
+   - 之前将 `git rev-parse HEAD` 直接嵌入 `study_payload`，导致在代码提交前生成的报告哈希与提交后重跑的哈希必然不一致。
+   - **铁律**：严禁仅依赖动态的 `git rev-parse HEAD` 作为唯一代码指纹。必须直接计算执行源码文件（`pipeline.py`, `contracts.py`, `research_slice.py`）的 SHA-256 (`code_source_sha256`) 嵌入研究指纹，确保源码不变时指纹 100% 稳定，同时在无法获取有效 Git SHA 时直接阻断，严禁静默回退到 `"unknown"`。
+2. **交易日历必须与交易所官方日历严格比对 (Exchange Calendar Verification)**:
+   - 仅仅检查仿真收益天数与行情切片天数相等不够防范整日缺失（若行情源丢失某一天，两者同时少一天仍能相等）。
+   - **铁律**：必须接入官方交易所日历（美股 `XNYS`、A股 `XSHG`），对声明的 In-Sample 与 Out-of-Sample 区间严格校验每一个交易日，多一天或缺一天均立即阻断 (`missing_or_extra_oos_exchange_sessions`)。
+3. **独立 Fold 必须实现闭环期末清仓 (Terminal Liquidation Closure)**:
+   - 若模拟的是独立 Fold，首日从现金建仓收取摩擦，期末必须平仓回现金收取末日平仓摩擦，杜绝不平仓的免费午餐；若连续持仓，则折叠间只计漂移调仓。
+   - 明确选定独立 Fold 闭环口径：首日建仓（Turnover = 1.0），每日漂移再平衡，末日按漂移权重平仓回现金（Turnover = 1.0），实现完整的现金到现金闭环。
+4. **Python 切片负零陷阱 (Python Negative-Zero Slicing Trap)**:
+   - 当 `purged_margin_days=0` 时，`lst[:-0]` 等价于 `lst[:0]`，会产生空列表并误杀有效数据。
+   - **铁律**：切片截断必须先校验 `purged_margin > 0`，对合法 0 值直接取全列表，坚决杜绝切片负零陷阱。

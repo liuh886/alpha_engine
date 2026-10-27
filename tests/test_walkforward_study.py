@@ -112,6 +112,13 @@ def test_walkforward_study_happy_path() -> None:
     assert isinstance(result.overall_oos_max_drawdown, float)
     assert len(result.study_hash) == 64
     assert result.git_commit != ""
+    assert len(result.config_hash) == 64
+    assert set(result.code_source_sha256.keys()) == {
+        "walkforward_pipeline",
+        "walkforward_contracts",
+        "research_data_slice",
+    }
+    assert all(len(h) == 64 for h in result.code_source_sha256.values())
     assert isinstance(result.experiment_receipt, dict)
     assert result.experiment_receipt["study_id"] == "us_tech_vol_reversal_v1"
 
@@ -261,6 +268,7 @@ def test_walkforward_portfolio_drift_accounting() -> None:
     bench_series = pd.Series([100.0, 101.0, 102.0], index=sessions)
     friction = 0.0010  # 10 bps
 
+    # 1. With terminal liquidation (default: cash -> equity -> cash)
     gross, net, turnovers, _ = _simulate_portfolio(
         scores=scores_df,
         prices=prices_df,
@@ -268,9 +276,9 @@ def test_walkforward_portfolio_drift_accounting() -> None:
         sessions=sessions,
         top_k=1,
         friction_per_turnover=friction,
+        liquidate_at_end=True,
     )
 
-    # Must produce returns for sessions 1 and 2
     assert len(gross) == 2
     assert len(net) == 2
     assert len(turnovers) == 2
@@ -283,18 +291,28 @@ def test_walkforward_portfolio_drift_accounting() -> None:
     assert pytest.approx(net[0], abs=1e-6) == 0.0990
     assert pytest.approx(turnovers[0], abs=1e-6) == 1.0
 
-    # At end of day 1:
-    # A drifted to weight 1.0 (since only A was held).
-    # New target at s1 is B=1.0, A=0.0.
-    # Turnover at s1 = 0.5 * (|0 - 1.0| + |1.0 - 0|) = 1.0.
-    assert pytest.approx(turnovers[1], abs=1e-6) == 1.0
-
     # Day 2:
     # Held B=1.0 over (s1, s2]. Gross ret = 99/90 - 1 = +0.10.
-    # Cost drag from day 1 turnover = 1.0 * 0.0010 = 0.0010.
-    # Net ret = 0.10 - 0.0010 = 0.0990.
+    # Rebalance friction from day 1 turnover = 1.0 * 0.0010 = 0.0010.
+    # Terminal liquidation friction from selling B=1.0 to cash = 1.0 * 0.0010 = 0.0010.
+    # Total Day 2 net ret = 0.10 - 0.0010 - 0.0010 = 0.0980.
+    # Total Day 2 turnover = 1.0 (rebalance) + 1.0 (terminal liquidation) = 2.0.
     assert pytest.approx(gross[1], abs=1e-6) == 0.10
-    assert pytest.approx(net[1], abs=1e-6) == 0.0990
+    assert pytest.approx(net[1], abs=1e-6) == 0.0980
+    assert pytest.approx(turnovers[1], abs=1e-6) == 2.0
+
+    # 2. Without terminal liquidation
+    _, net_no_liq, turnovers_no_liq, _ = _simulate_portfolio(
+        scores=scores_df,
+        prices=prices_df,
+        bench_series=bench_series,
+        sessions=sessions,
+        top_k=1,
+        friction_per_turnover=friction,
+        liquidate_at_end=False,
+    )
+    assert pytest.approx(net_no_liq[1], abs=1e-6) == 0.0990
+    assert pytest.approx(turnovers_no_liq[1], abs=1e-6) == 1.0
 
 
 def test_walkforward_fail_closed_train_window_shorter_than_purge() -> None:
@@ -362,3 +380,43 @@ def test_walkforward_study_hash_binds_experiment_receipt() -> None:
     assert res1.study_hash != res2.study_hash
     assert res1.experiment_receipt["cost_bps"] == 3.0
     assert res2.experiment_receipt["cost_bps"] == 12.0
+
+
+def test_walkforward_purged_margin_days_zero() -> None:
+    """Verifies that purged_margin_days=0 evaluates properly without negative-zero slicing error."""
+    fold0 = WalkForwardFold(
+        fold_id="fold_zero_purge",
+        train_start="2024-01-02",
+        train_end="2024-12-31",
+        train_cutoff="2024-12-31",
+        test_start="2025-01-02",
+        test_end="2025-06-30",
+        test_cutoff="2025-06-30",
+        purged_margin_days=0,
+    )
+    res = evaluate_walkforward_fold(fold0, DEFAULT_WALK_FORWARD_CONFIG, root=ROOT)
+    assert res.status == "ready"
+    assert res.purged_rows_count == 0
+    assert len(res.daily_net_returns) == 122
+
+
+def test_walkforward_fail_closed_missing_exchange_calendar_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies that if market data drops an official exchange trading session, fold fails closed."""
+    import src.research.walkforward.pipeline as pipe
+    from src.data.research_slice import DataSliceResult
+
+    orig_get_slice = pipe.get_research_data_slice
+
+    def mock_get_slice(req, root=None):
+        res = orig_get_slice(req, root=root)
+        if res.is_ready and res.data is not None and req.start_date == "2025-01-02":
+            # Silently drop session 2025-01-03 from OOS data
+            filtered = res.data[res.data["time"] != "2025-01-03"].reset_index(drop=True)
+            return DataSliceResult(receipt=res.receipt, data=filtered)
+        return res
+
+    monkeypatch.setattr(pipe, "get_research_data_slice", mock_get_slice)
+    fold1 = DEFAULT_WALK_FORWARD_CONFIG.folds[0]
+    res = evaluate_walkforward_fold(fold1, DEFAULT_WALK_FORWARD_CONFIG, root=ROOT)
+    assert res.status == "blocked"
+    assert any("missing_or_extra_oos_exchange_sessions" in b for b in res.blocked_reasons)

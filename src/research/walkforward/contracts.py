@@ -154,6 +154,8 @@ class WalkForwardStudyResult:
     study_hash: str
     generated_at_utc: str
     git_commit: str = ""
+    config_hash: str = ""
+    code_source_sha256: dict[str, str] = field(default_factory=dict)
     experiment_receipt: dict[str, Any] = field(default_factory=dict)
     pit_limitations: tuple[str, ...] = DEFAULT_PIT_LIMITATIONS
     research_only: bool = True
@@ -181,6 +183,8 @@ class WalkForwardStudyResult:
             "symbols": self.symbols,
             "benchmark": self.benchmark,
             "git_commit": self.git_commit,
+            "config_hash": self.config_hash,
+            "code_source_sha256": self.code_source_sha256,
             "experiment_receipt": self.experiment_receipt,
             "folds": [f.to_dict() for f in self.folds],
             "overall_oos_gross_return": self.overall_oos_gross_return,

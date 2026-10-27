@@ -23,6 +23,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from exchange_calendars import get_calendar
 from scipy.stats import spearmanr
 
 from src.data.research_slice import (
@@ -99,20 +100,44 @@ DEFAULT_WALK_FORWARD_CONFIG = WalkForwardConfig(
 
 
 def _get_git_commit(root: Path) -> str:
-    """Read current git commit SHA for immutable experiment lineage."""
-    try:
-        res = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if res.returncode == 0 and res.stdout:
-            return res.stdout.strip()
-    except Exception:
-        pass
-    return "unknown"
+    """Read current git commit SHA for immutable experiment lineage. Fails closed if unavailable."""
+    res = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if res.returncode != 0 or not res.stdout.strip():
+        raise RuntimeError(f"git_commit_unavailable: git rev-parse HEAD failed with code {res.returncode}")
+    return res.stdout.strip()
+
+
+def _get_code_source_sha256(root: Path) -> dict[str, str]:
+    """Compute SHA-256 digests of all execution source files for cryptographic provenance."""
+    sources = {
+        "walkforward_pipeline": (root / "src" / "research" / "walkforward" / "pipeline.py").resolve(),
+        "walkforward_contracts": (root / "src" / "research" / "walkforward" / "contracts.py").resolve(),
+        "research_data_slice": (root / "src" / "data" / "research_slice.py").resolve(),
+    }
+    return {
+        k: hashlib.sha256(p.read_bytes()).hexdigest()
+        for k, p in sorted(sources.items())
+    }
+
+
+def _get_config_hash(cfg: WalkForwardConfig) -> str:
+    """Compute deterministic SHA-256 digest of WalkForwardConfig."""
+    serialized = json.dumps(cfg.to_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(serialized).hexdigest()
+
+
+def _get_exchange_calendar(market: str):
+    """Retrieve governed exchange calendar for the given market."""
+    calendar_name = {"us": "XNYS", "cn": "XSHG"}.get(market)
+    if calendar_name is None:
+        raise ValueError(f"unsupported_market_for_exchange_calendar: {market}")
+    return get_calendar(calendar_name)
 
 
 def _format_blocked_reasons(raw_reasons: Any) -> tuple[str, ...]:
@@ -181,6 +206,8 @@ def _simulate_portfolio(
     sessions: list[str],
     top_k: int,
     friction_per_turnover: float,
+    *,
+    liquidate_at_end: bool = True,
 ) -> tuple[list[float], list[float], list[float], list[float]]:
     """Simulate daily execution strictly from session t-1 signal to session t realization.
 
@@ -270,9 +297,14 @@ def _simulate_portfolio(
         # Account for asset weight drift at close of session i
         drifted_weights = (curr_target_weights * (1.0 + asset_rets)) / (1.0 + gross_ret)
 
-        # If at final session of interval, record turnover and finish
+        # If at final session of interval, record turnover, execute terminal liquidation if requested, and finish
         if i == len(sessions) - 1:
             daily_turnovers.append(prev_turnover)
+            if liquidate_at_end:
+                closing_turnover = float(np.sum(drifted_weights))
+                terminal_cost_drag = closing_turnover * friction_per_turnover
+                daily_net_returns[-1] -= terminal_cost_drag
+                daily_turnovers[-1] += closing_turnover
             break
 
         # Compute next target weights from signals at close of session i
@@ -331,19 +363,47 @@ def evaluate_walkforward_fold(
     z_rev_train, z_vol_train, train_prices = _compute_raw_features(train_df, candidates)
     train_bench = train_df[train_df["symbol"] == config.benchmark].pivot(index="time", columns="symbol", values="close")[config.benchmark]
 
-    all_train_sessions = sorted([t for t in train_prices.index if fold.train_start <= t <= fold.train_end])
-    purged_margin = max(0, fold.purged_margin_days)
-    if len(all_train_sessions) <= purged_margin:
+    try:
+        calendar = _get_exchange_calendar(config.market)
+    except Exception as exc:
         return FoldResult(
             fold_id=fold.fold_id,
             status="blocked",
-            blocked_reasons=("insufficient_train_sessions_for_purged_margin",),
-            train_data_hash=train_res.receipt["data_hash"],
-            train_row_count=train_res.receipt["total_rows"],
+            blocked_reasons=(f"unsupported_exchange_calendar: {exc}",),
+            train_data_hash=train_res.receipt.get("data_hash", ""),
+            train_row_count=train_res.receipt.get("total_rows", 0),
         )
 
-    effective_train_sessions = all_train_sessions[:-purged_margin]
-    purged_sessions = all_train_sessions[-purged_margin:]
+    all_train_sessions = sorted([t for t in train_prices.index if fold.train_start <= t <= fold.train_end])
+    expected_train_sessions = [
+        d.strftime("%Y-%m-%d") for d in calendar.sessions_in_range(fold.train_start, fold.train_end)
+    ]
+    if all_train_sessions != expected_train_sessions:
+        return FoldResult(
+            fold_id=fold.fold_id,
+            status="blocked",
+            blocked_reasons=(
+                f"missing_or_extra_train_exchange_sessions: expected {len(expected_train_sessions)}, got {len(all_train_sessions)}",
+            ),
+            train_data_hash=train_res.receipt.get("data_hash", ""),
+            train_row_count=train_res.receipt.get("total_rows", 0),
+        )
+
+    purged_margin = max(0, fold.purged_margin_days)
+    if purged_margin > 0:
+        if len(all_train_sessions) <= purged_margin:
+            return FoldResult(
+                fold_id=fold.fold_id,
+                status="blocked",
+                blocked_reasons=("insufficient_train_sessions_for_purged_margin",),
+                train_data_hash=train_res.receipt["data_hash"],
+                train_row_count=train_res.receipt["total_rows"],
+            )
+        effective_train_sessions = all_train_sessions[:-purged_margin]
+        purged_sessions = all_train_sessions[-purged_margin:]
+    else:
+        effective_train_sessions = list(all_train_sessions)
+        purged_sessions = []
     purged_rows_count = len(train_df[train_df["time"].isin(purged_sessions)])
 
     # Exclude technical indicator warmup sessions (20-day volatility / 5-day reversal)
@@ -441,8 +501,28 @@ def evaluate_walkforward_fold(
 
     oos_scores = (best_params["w_rev"] * z_rev_full) - (best_params["w_vol"] * z_vol_full)
 
-    # Session Integrity: identify the anchor session prior to test_start for day 1 position initialization
+    # Session Integrity: verify exchange calendar coverage and identify the anchor session prior to test_start
+    expected_test_sessions = [
+        d.strftime("%Y-%m-%d") for d in calendar.sessions_in_range(fold.test_start, fold.test_end)
+    ]
     test_sessions = sorted([t for t in full_prices.index if fold.test_start <= t <= fold.test_end])
+    if test_sessions != expected_test_sessions:
+        return FoldResult(
+            fold_id=fold.fold_id,
+            status="blocked",
+            blocked_reasons=(
+                f"missing_or_extra_oos_exchange_sessions: expected {len(expected_test_sessions)}, got {len(test_sessions)}",
+            ),
+            train_data_hash=train_res.receipt.get("data_hash", ""),
+            test_data_hash=test_res.receipt.get("data_hash", ""),
+            train_row_count=train_res.receipt.get("total_rows", 0),
+            test_row_count=test_res.receipt.get("total_rows", 0),
+            purged_rows_count=purged_rows_count,
+            selected_parameters=best_params,
+            in_sample_best_sharpe=round(best_sharpe, 4),
+            in_sample_ic_mean=round(in_sample_ic_mean, 4),
+        )
+
     prior_sessions = sorted([t for t in full_prices.index if t < fold.test_start and t <= fold.train_cutoff])
     if not prior_sessions:
         return FoldResult(
@@ -590,6 +670,8 @@ def run_walkforward_study(
     cfg = config or DEFAULT_WALK_FORWARD_CONFIG
     repo_root = (root or DEFAULT_REPO_ROOT).resolve()
     git_commit = _get_git_commit(repo_root)
+    code_source_sha256 = _get_code_source_sha256(repo_root)
+    config_hash = _get_config_hash(cfg)
 
     fold_results: list[FoldResult] = []
     for fold in cfg.folds:
@@ -613,7 +695,8 @@ def run_walkforward_study(
             "pool_id": cfg.pool_id,
             "symbols": list(cfg.symbols),
             "benchmark": cfg.benchmark,
-            "git_commit": git_commit,
+            "config_hash": config_hash,
+            "code_source_sha256": code_source_sha256,
             "config": cfg.to_dict(),
             "folds": [f.to_dict() for f in fold_results],
             "overall_oos_gross_return": 0.0,
@@ -649,6 +732,8 @@ def run_walkforward_study(
             study_hash=study_hash,
             generated_at_utc=datetime.now(timezone.utc).isoformat(),
             git_commit=git_commit,
+            config_hash=config_hash,
+            code_source_sha256=code_source_sha256,
             experiment_receipt=cfg.to_dict(),
             pit_limitations=DEFAULT_PIT_LIMITATIONS,
             research_only=True,
@@ -703,7 +788,8 @@ def run_walkforward_study(
         "pool_id": cfg.pool_id,
         "symbols": list(cfg.symbols),
         "benchmark": cfg.benchmark,
-        "git_commit": git_commit,
+        "config_hash": config_hash,
+        "code_source_sha256": code_source_sha256,
         "config": cfg.to_dict(),
         "folds": [f.to_dict() for f in fold_results],
         "overall_oos_gross_return": round(overall_gross_ret, 4),
@@ -740,6 +826,8 @@ def run_walkforward_study(
         study_hash=study_hash,
         generated_at_utc=datetime.now(timezone.utc).isoformat(),
         git_commit=git_commit,
+        config_hash=config_hash,
+        code_source_sha256=code_source_sha256,
         experiment_receipt=cfg.to_dict(),
         pit_limitations=DEFAULT_PIT_LIMITATIONS,
         research_only=True,

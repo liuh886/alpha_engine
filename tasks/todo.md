@@ -214,6 +214,28 @@
   - 更新 `docs/research/us_tech_vol_reversal_walkforward_2026.md`；
   - 运行全量测试验证（11 项 Walk-Forward 测试 + 22 项 Track B 测试全绿），更新 `tasks/todo.md` 与 `tasks/lessons.md`。
 
+### Phase 6.3: Walk-Forward Engine v0.3.1 交易所日历核验、源码哈希绑定与独立 Fold 清仓闭环
+- [x] **6.3.1 [P0 / Lineage & Git Hygiene] 绑定执行源码 SHA-256 并严格要求 Git SHA (严禁未知回退)**:
+  - 实现源码 SHA-256 计算：覆盖 `pipeline.py`、`contracts.py`、`research_slice.py`；
+  - 严格化 `_get_git_commit()`：如果不在有效 git 仓库或执行失败，禁止返回 `"unknown"`，直接抛出 `RuntimeError` 拒绝发布；
+  - 在 `WalkForwardStudyResult` 和 `study_payload` 中嵌入 `code_source_sha256`。
+- [x] **6.3.2 [P1 / Calendar Integrity] 接入 `exchange_calendars` 严格校验交易日集合**:
+  - 针对 `market == "us"` 接入 `XNYS`，`market == "cn"` 接入 `XSHG`；
+  - 对每个 Fold 的训练区间与测试区间分别比对 `calendar.sessions_in_range()`；
+  - 若数据切片缺失或多出交易所交易日，严格阻断 (`missing_or_extra_oos_exchange_sessions`)。
+- [x] **6.3.3 [P1 / Accounting Closure] 独立 Fold 初始建仓与期末清仓完整摩擦闭环**:
+  - 明确选定口径：独立 Fold (Independent Fold) 完整周期核算，首日从现金建仓 (Turnover = 1.0)，末日按收盘漂移权重平仓回现金 (Turnover = 1.0)；
+  - `_simulate_portfolio` 增加 `liquidate_at_end: bool = True` 支持；
+  - 确保成本完全对称，无未闭合仓位。
+- [x] **6.3.4 [P1 / Edge Case] 修复 `purged_margin_days=0` 切片为空列表缺陷**:
+  - 正确判断 `purged_margin > 0`，避免 `lst[:-0] == []` 陷阱；
+  - 增加专门单测覆盖。
+- [x] **6.3.5 [PR #1303 & Receipt Seal] 整理 PR #1303，以新基线封存报告与回归验证**:
+  - 优雅关闭不可合并的 PR #1303，统一以 `38bd960dd` 为基础演进；
+  - 运行全量测试（13 项 Walk-Forward 测试 + 22 项 Track B 测试全绿），通过 `ruff check` 与 `git diff --check`；
+  - 生成最终研究收据并更新 `us_tech_vol_reversal_walkforward_2026.md`；
+  - 更新 `tasks/todo.md` 与 `tasks/lessons.md`。
+
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
   - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。
