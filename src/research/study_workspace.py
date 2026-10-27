@@ -206,6 +206,50 @@ def run_study(spec: Path | None, root: Path, output: Path | None = None) -> dict
     }
 
 
+def inspect_study(path: Path) -> dict[str, Any]:
+    """Open one saved receipt without touching its raw source or current strategy state."""
+    receipt = _as_json(path)
+    if receipt.get("research_only") is not True or receipt.get("trade_ready") is not False:
+        raise ResearchStudyError("only research-only study receipts can be inspected")
+    if receipt.get("status") not in {"ready", "blocked"}:
+        raise ResearchStudyError("unknown study status")
+    folds = receipt.get("folds")
+    if not isinstance(folds, list):
+        raise ResearchStudyError("study receipt has no fold evidence")
+    return {
+        "study_id": receipt.get("study_id"),
+        "status": receipt["status"],
+        "hypothesis": receipt.get("hypothesis_name"),
+        "study_hash": receipt.get("study_hash"),
+        "source_commit": receipt.get("git_commit"),
+        "pit_certified": False,
+        "oos_net_return": receipt.get("overall_oos_net_return") if receipt["status"] == "ready" else None,
+        "qqq_or_benchmark_return": receipt.get("overall_benchmark_cumulative_return")
+        if receipt["status"] == "ready" else None,
+        "oos_net_excess_return": receipt.get("overall_oos_net_excess_return")
+        if receipt["status"] == "ready" else None,
+        "oos_sharpe": receipt.get("overall_oos_sharpe_ratio")
+        if receipt["status"] == "ready" else None,
+        "oos_max_drawdown": receipt.get("overall_oos_max_drawdown")
+        if receipt["status"] == "ready" else None,
+        "folds": [{
+            "fold_id": fold.get("fold_id"),
+            "status": fold.get("status"),
+            "blocked_reasons": fold.get("blocked_reasons"),
+            "selected_parameters": fold.get("selected_parameters"),
+            "train_data_hash": fold.get("train_data_hash"),
+            "test_data_hash": fold.get("test_data_hash"),
+            "oos_net_return": fold.get("out_of_sample_net_return")
+            if fold.get("status") == "ready" else None,
+            "oos_sessions_count": fold.get("oos_sessions_count"),
+        } for fold in folds if isinstance(fold, dict)],
+        "blocked_reasons": receipt.get("blocked_reasons", []),
+        "pit_limitations": receipt.get("pit_limitations", []),
+        "research_only": True,
+        "trade_ready": False,
+    }
+
+
 def compare_studies(left: Path, right: Path) -> dict[str, Any]:
     """Compare observations only under exactly matching data and evaluation frames."""
     first, second = _as_json(left), _as_json(right)
