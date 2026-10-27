@@ -376,19 +376,19 @@
   - [x] 形式化 $Q(t, s)$ 持仓事件账本契约（稀疏 JSONL 事件流、SHA-256 哈希链防篡改、仅含目标百分比权重）；
   - [x] 形式化统一净值折算与调仓摩擦公式（逐日权重漂移、单边 8 bps 真实摩擦、NAV 归一化）；
   - [x] 撰写设计规范至 `docs/architecture/racetrack_minimal_stack_spec.md` 并写入 PR #1306。
-- [ ] **8.0.2 [Implementation: P/Q Engine] 核心引擎与数据切片解析实现 (Developer Subagent)**:
-  - [ ] 建立 `src/racetrack/` 核心模块包；
-  - [ ] 实现 `contracts.py`：P 矩阵契约、Q 事件账本数据类；
-  - [ ] 实现 `matrix.py`：构建 $P(t, s)$ 矩阵（严格基于治理候选池与真实交易所交易日历）；
-  - [ ] 实现 `ledger.py`：追加和验证 $Q$ 事件账本（哈希链防篡改、无账户隐私敏感信息）；
-  - [ ] 实现 `engine.py`：纯函数式净值折算（连续净值、最大回撤、单边 8 bps 摩擦、Sharpe 比率）；
-  - [ ] 实现 `pool_index.py`：美股 87 池等权月度再平衡指数（Pool Index）生成器。
-- [ ] **8.0.3 [Tests & Invariant Proofs] 严密契约测试与无未来函数断言**:
-  - [ ] 编写 `tests/test_racetrack_minimal_stack.py`；
-  - [ ] 覆盖哈希一致性、篡改拦截、漂移与摩擦数学闭环、池指数基准对比及零账户隐私泄露。
-- [ ] **8.0.4 [Review & PR Update] 回归验证与更新 PR #1306 文档与提交**:
-  - [ ] 运行全量测试套件、静态代码分析与 diff 检查；
-  - [ ] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
+- [x] **8.0.2 [Implementation: P/Q Engine] 核心引擎与数据切片解析实现 (Developer Subagent)**:
+  - [x] 建立 `src/racetrack/` 核心模块包；
+  - [x] 实现 `contracts.py`：P 矩阵契约、Q 事件账本数据类；
+  - [x] 实现 `matrix.py`：构建 $P(t, s)$ 矩阵（严格基于治理候选池与真实交易所交易日历）；
+  - [x] 实现 `ledger.py`：追加和验证 $Q$ 事件账本（哈希链防篡改、无账户隐私敏感信息）；
+  - [x] 实现 `engine.py`：纯函数式净值折算（连续净值、最大回撤、单边 8 bps 摩擦、Sharpe 比率）；
+  - [x] 实现 `pool_index.py`：美股 87 池等权月度再平衡指数（Pool Index）生成器。
+- [x] **8.0.3 [Tests & Invariant Proofs] 严密契约测试与无未来函数断言**:
+  - [x] 编写 `tests/test_racetrack_minimal_stack.py`；
+  - [x] 覆盖哈希一致性、篡改拦截、漂移与摩擦数学闭环、池指数基准对比及零账户隐私泄露（10 项测试 100% 通过）。
+- [x] **8.0.4 [Review & PR Update] 回归验证与更新 PR #1306 文档与提交**:
+  - [x] 运行全量测试套件、静态代码分析与 diff 检查；
+  - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
 
 ---
 
@@ -552,4 +552,63 @@
 - 交付规范文档：`docs/architecture/racetrack_minimal_stack_spec.md` (完整包含 P 矩阵、Q 账本、V/NAV 引擎、自建等权指数四大模块，配套 8 项负面测试矩阵与 Mermaid 架构图)；
 - 更新视觉文档：`docs/product/racetrack_vision_2026-10-27.md`（末尾追加 §12 实施规范链接与要点摘要）；
 - 质量检查：`git diff --check` 0 警告，文档完全对齐 ADR-0003, ADR-0005 与 PR #1306。
+
+---
+
+## Phase 1 Minimal Stack 代码落地与测试 (Phase 1 Minimal Stack Implementation)
+
+- [x] **M1. 契约与序列化模块 (`src/racetrack/contracts.py`, `src/racetrack/__init__.py`)**:
+  - [x] 定义 `PriceMatrix`, `RebalanceEvent`, `EngineConfig`, `SimulationResult`, `NAVPoint` 等不可变契约；
+  - [x] 实现 Canonical JSON 序列化与哈希计算；
+  - [x] 严密隐私隔离守卫白名单/黑名单校验（`shares`, `total_cost`, `broker`, `account_id`, `pnl` 等出现立即抛出 `PrivacyViolationError` / `ValueError`）。
+- [x] **M2. 市场价格矩阵构建器 (`src/racetrack/matrix.py`)**:
+  - [x] 基于 `exchange_calendars` (US -> `XNYS`) 解析官方交易日历与区间会话；
+  - [x] 读取候选池配置 `us_selected_equities_v2.yaml` (87 标的) 与基准参考 `QQQ`；
+  - [x] 从 `data/research/market_evidence/us/symbols/{symbol}.json` 提取复权日线；
+  - [x] 严禁 forward-fill，缺失会话置为 `np.nan`；
+  - [x] 输出包含确定性 `matrix_sha256` 的 `PriceMatrix` 结构。
+- [x] **M3. 稀疏持仓事件账本 (`src/racetrack/ledger.py`)**:
+  - [x] 实现 `EventLedger` 类：创建、追加、链式哈希校验 (`verify()`)；
+  - [x] 创世事件绑定 64 个 `0`，后续事件严格 SHA-256 递归绑定；
+  - [x] 篡改检测抛出 `LedgerTamperedError`；
+  - [x] `to_dense_panel(sessions)` 将稀疏事件流展开为每日密集目标权重面板。
+- [x] **M4. 统一资产净值折算引擎 (`src/racetrack/engine.py`)**:
+  - [x] 实现 `simulate_portfolio(matrix, ledger_events, config)`；
+  - [x] 起始点归一化 $V(t_0) = 1.0$；
+  - [x] 逐日自然权重漂移公式：$w_{i, t}^{drift} = \frac{w_{i, t-1}(1 + r_{i, t})}{1 + r_{gross, t}}$；
+  - [x] 单边换手率：$\text{Turnover}_t = \frac{1}{2} \sum |w_{i, t}^{target} - w_{i, t}^{drift}|$；
+  - [x] 线性交易摩擦：$\text{Friction}_t = \text{Turnover}_t \times \text{friction\_rate}$ (默认 8 bps)；
+  - [x] 净收益率与连续净值累乘更新：$\text{NAV}(t) = \text{NAV}(t-1) \cdot (1 + r_{net, t})$；
+  - [x] 计算累积收益率、CAGR、年化波动率、年化夏普 (无风险 2%)、最大回撤 (MDD)、年化超额 (vs QQQ)、累积换手率。
+- [x] **M5. 自建选股池等权指数 (`src/racetrack/pool_index.py`)**:
+  - [x] 识别每个自然月首个交易日，生成等权再平衡事件 ($1/87$)；
+  - [x] 自然月内其余交易日自然漂移，单边换手率为 0；
+  - [x] 调用统一净值引擎产生内部第一参考基准线 (Pool Index NAV)。
+- [x] **M6. 完整测试套件 (`tests/test_racetrack_minimal_stack.py`)**:
+  - [x] TEST-RT-01：交易日历对齐与缺失数据 NaN 填充；
+  - [x] TEST-RT-02：价格矩阵 SHA-256 确定性与源文件不变性；
+  - [x] TEST-RT-03：Q 账本哈希链完整性校验与中途篡改拦截；
+  - [x] TEST-RT-04：隐私阻断负面测试；
+  - [x] TEST-RT-05：权重漂移与单边换手守恒数学断言；
+  - [x] TEST-RT-06：摩擦敏感性检验 (0 bps > 8 bps > 15 bps)；
+  - [x] TEST-RT-07：美股 87 池月度等权指数生成与基准 QQQ 超额计算；
+  - [x] TEST-RT-08：端到端真实数据全生命周期演练。
+- [x] **M7. 运行验证与代码质量门禁**:
+  - [x] `uv run pytest tests/test_racetrack_minimal_stack.py -v` 验证全部 10 项测试全绿通过；
+  - [x] `uv run ruff check` 确保零告警。
+- [x] **M8. 汇报与交付**:
+  - [x] 记录结果 Review 并向主 Agent 回复交付报告。
+
+### Review & Completion Summary (Phase 1 Minimal Stack - 2026-10-28)
+- **交付包 `src/racetrack/`**:
+  - `contracts.py`: 不可变契约数据类（`PriceMatrix`, `RebalanceEvent`, `EngineConfig`, `SimulationResult`, `NAVPoint`），规范化 Canonical JSON 序列化与哈希计算，严格的个人敏感账户隐私守卫（违规立即阻断抛出 `PrivacyViolationError`）。
+  - `matrix.py`: 官方交易日历对齐（US -> `XNYS`）、US 87 + QQQ 标的加载、严禁 forward-fill 的 NaN 保护机制、确定性 `matrix_sha256` 生成。
+  - `ledger.py`: `EventLedger` 稀疏 JSONL 账本，首事件绑定 64 个 `0`，逐级 SHA-256 递归绑定，篡改拦截抛出 `LedgerTamperedError`，支持密集目标权重面板展开。
+  - `engine.py`: 统一资产净值折算引擎，精确实现起始点 1.0 归一化、自然权重漂移、单边换手率守恒计算、线性摩擦扣除、连续净值更新及完备指标统计（CAGR、夏普、MDD、超额等）。
+  - `pool_index.py`: 美股 87 等权基准指数生成器，实现自然月首个交易日再平衡与月内自然漂移零换手。
+  - `__init__.py`: 统一导出核心 API 与异常类型。
+- **测试套件 `tests/test_racetrack_minimal_stack.py`**:
+  - 10 项测试用例 100% 覆盖 TEST-RT-01 ~ TEST-RT-08 以及非法标的/权重超限负面用例。
+  - 测试结果：`10 passed in 21.39s`。
+  - 静态检查：`uv run ruff check` 0 errors / 0 warnings。
 
