@@ -265,3 +265,40 @@ This specification formalises the §2, §3, §5 domain concepts and §11.1, §11
 4. **Scoreboard Read-Only Projection Contract (`racetrack_scoreboard_v1.json`)**:
    - **Central NAV Curve Projection**: Exports normalized NAV timeseries ($1.0$ at start) with QQQ and US 87 EW benchmarks.
    - **Unified Projection Payload**: Publishes season rankings, monthly rank histories, 1M/3M/6M/1Y return matrices, dual excess matrices, risk metrics (MDD, Sharpe, turnover), and weather profile associations for zero-compute frontend rendering.
+
+## 15. Dual-Market Benchmarks & Self-Maintaining Publish Pipeline implementation specification (Phase 3 Spec)
+
+The concrete technical specification for Phase 3 landing is published in:
+[`docs/architecture/racetrack_pipeline_spec.md`](../architecture/racetrack_pipeline_spec.md).
+
+This specification formalises §11.2 step 3 (Pool indices versus benchmarks) and step 4 (Daily self-maintenance) into four production-grade operational systems:
+
+1. **Dual-Market Benchmark Architecture (US 87 & CN 130)**:
+   - **US Market (`market="us"`)**: Aligned to official `exchange_calendars` `XNYS`, combining the internal primary benchmark **US 87 EW Pool Index** (`us_selected_equities_v2`, 87 candidate equities, target weight $1/87 \approx 0.01149425$) with external macro benchmark **QQQ** (Invesco QQQ Trust ETF).
+   - **CN Market (`market="cn"`)**: Aligned to official `exchange_calendars` `XSHG`, combining the internal primary benchmark **CN 130 EW Pool Index** (`cn_selected_equities_v3`, 130 candidate equities, target weight $1/130 \approx 0.00769231$) with external macro benchmark **CSI 300** (`000300` / `000300.SH`).
+   - **Constituent Eligibility & Cash Slot Protection Invariant**: Declared universe size $N_{declared}$ is strictly conserved. If any constituent is unlisted (pre-IPO) or halted (NaN price) on a rebalance session, its exact $1/N$ slot is held in cash ($w_{cash} = N_{unlisted} / N_{declared}$). Silent redistribution across active assets is strictly prohibited.
+   - **Monthly Rebalance & Natural Intra-Month Drift**: Rebalances occur on the first official trading session of each calendar month, deducting 8 bps one-sided transaction friction ($\text{Friction}_t = \text{Turnover}_t \times 0.0008$). Intra-month trading sessions undergo natural price drift with strictly zero rebalance turnover ($\text{Turnover}_t \equiv 0.0$).
+   - **Orthogonal Dual Excess Return Matrices**: Separately decomposes strategy excess returns into Macro Market Beta Excess ($R_{excess\_macro} = R_{runner} - R_{macro}$) and Universe Selection Alpha Excess ($R_{excess\_pool} = R_{runner} - R_{pool\_index}$), isolating cross-sectional picking prowess from market tide.
+
+2. **Daily Self-Maintaining Publish Pipeline (`src/racetrack/pipeline.py`)**:
+   - **Single Unified Entrypoint**: `publish_racetrack_projection(market, as_of_cutoff, output_dir, ...)` orchestrates end-to-end evaluation and projection emission.
+   - **7-Stage Deterministic Pipeline**:
+     1. Loads and verifies $P(t, s)$ price matrix with exchange calendar alignment and strict PIT cutoff bounds (`end_date <= as_of_cutoff`);
+     2. Generates the market's internal equal-weight pool index simulation (`generate_equal_weight_pool_index`);
+     3. Generates the market's external macro benchmark simulation (`generate_benchmark_simulation`);
+     4. Batch executes all admitted runners from `RunnerRegistry` with thesis verification and universe boundary checks;
+     5. Settles monthly season rankings and multi-period rolling windows (1M, 3M, 6M, 1Y) via `evaluate_race_season` and `PointsRuleV1`;
+     6. Conducts isolated staging in `.staging_{uuid}/`, computing SHA-256 hashes and enforcing recursive personal-lens privacy scanning (`assert_privacy_clean`);
+     7. Enforces atomic promotion: on any verification error, staging is purged and live projections remain untouched (strict fail-closed); upon full success, performs atomic file replace.
+   - **Production Projection Artifacts**:
+     - `data/racetrack/projections/{market}/archive/scoreboard_{as_of_session}.json`: Immutable dated snapshot;
+     - `data/racetrack/projections/{market}/scoreboard_latest.json`: Canonical latest projection for zero-compute UI rendering;
+     - `data/racetrack/projections/{market}/manifest.json`: Tamper-evident cryptographic manifest recording all file SHA-256 hashes, matrix SHA-256, catalog SHA-256, code commit, session date, `research_only: true`, and `trade_ready: false`.
+   - **Bit-Level Idempotency**: Re-running the pipeline on identical input data and code yields identical SHA-256 digests.
+
+3. **CLI Terminal Interaction Contract (`src/cli/main.py`)**:
+   - `alpha racetrack publish [--market us|cn] [--as-of YYYY-MM-DD] [--output-dir <path>]`: Single command to execute the pipeline and publish the updated projection.
+   - `alpha racetrack show [--market us|cn] [--format markdown|table|json] [--input-dir <path>]`: Terminal inspection rendering rich Markdown leaderboards, compact ASCII tables, or pretty JSON.
+
+4. **Rigorous Test & Invariant Matrix (TEST-RT-P3-01 to TEST-RT-P3-10)**:
+   - Covers CN 130 weight conservation and cash protection, intra-month drift with zero turnover, CSI 300 alias mapping and XSHG calendar alignment, dual excess matrix orthogonality, atomic publish and manifest hash integrity, fail-closed anti-dirty-write rollback, bit-level idempotency, zero privacy leakage, CLI multi-format formatting, and cross-market isolation with friction monotonicity.

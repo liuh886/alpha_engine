@@ -426,6 +426,27 @@
   - [x] 运行全量测试套件、静态代码分析与 diff 检查；
   - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
 
+### Phase 8.3: Racetrack 双市场基准覆盖与自维护发布流水线 (PR #1306 Phase 3: Dual Benchmark & Self-Maintenance Pipeline)
+- [x] **8.3.1 [Architecture & Spec] 双市场基准与发布协议规范设计 (Architect Subagent)**:
+  - [x] 形式化 A 股选股池（CN 130 Equities `cn_selected_equities_v3`）等权基准指数生成模型；
+  - [x] 形式化 CSI 300（`000300` / `000300.SH`）宏观基准线与双超额矩阵；
+  - [x] 形式化原子化发布流水线协议（`manifest.json`, `scoreboard_{session}.json`, `scoreboard_latest.json`，密码学指纹一致性与 Fail-Closed 幂等保护）；
+  - [x] 撰写规范文档至 `docs/architecture/racetrack_pipeline_spec.md` 并对接 PR #1306。
+- [ ] **8.3.2 [Implementation: Pipeline & CLI] 发布流水线与命令行入口实现 (Developer Subagent)**:
+  - [ ] 修正 `src/racetrack/matrix.py` 对 CN CSI 300 符号的映射解析与日历对齐；
+  - [ ] 实现 `src/racetrack/pipeline.py`：`publish_racetrack_projection()`，整合 P/Q 引擎、池指数、宏观基准、已注册选手执行、赛季结算与原子化落盘；
+  - [ ] 在 `src/cli/main.py` 集成 `alpha racetrack publish [--market us|cn] [--as-of YYYY-MM-DD]` 与 `alpha racetrack show [--market us|cn]`；
+  - [ ] 确保零个人账户敏感字段（`shares`, `broker`, `account_id`, `pnl` 等）泄露，零外部后台守护进程依赖。
+- [ ] **8.3.3 [Tests & Invariant Proofs] 双市场与发布幂等测试套件**:
+  - [ ] 编写 `tests/test_racetrack_pipeline.py`；
+  - [ ] 验证 CN 130 选股池等权基准指数生成（1/130 权重、无漂移、现金承接未上市）；
+  - [ ] 验证 CSI 300 基准比对与双超额矩阵；
+  - [ ] 验证流水线原子发布、`manifest.json` SHA-256 校验与 Fail-Closed 脏写防御；
+  - [ ] 验证隐私守卫负面拦截。
+- [ ] **8.3.4 [Review & PR Update] 全量回归验证与提交推送**:
+  - [ ] 运行全量测试套件、静态扫描与 diff 检查；
+  - [ ] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
+
 ---
 
 ## 阶段验收与复盘 (Review Section)
