@@ -16,9 +16,14 @@ import pytest
 
 from src.racetrack.contracts import (
     CalendarSessionError,
+    ChronologyOrderError,
+    DataQualificationError,
+    DuplicateSessionError,
     EngineConfig,
+    LedgerOverwriteError,
     LedgerTamperedError,
     MissingPriceDataError,
+    PITViolationError,
     PriceMatrix,
     PrivacyViolationError,
     RebalanceEvent,
@@ -69,18 +74,16 @@ def test_rt_01_calendar_alignment_and_nan_filling() -> None:
         price = matrix_arm_pre_ipo.get_price(sess, "ARM")
         assert np.isnan(price), f"Expected NaN for pre-IPO ARM on {sess}, got {price}"
 
-    # 3. Cutoff enforcement
-    matrix_cutoff = load_price_matrix(
-        market="us",
-        pool_id="us_selected_equities_v2",
-        start_date="2024-01-02",
-        end_date="2024-01-20",
-        as_of_cutoff="2024-01-05",
-        root_path=REPO_ROOT,
-    )
-    assert matrix_cutoff.end_session <= "2024-01-05"
-    for s in matrix_cutoff.sessions:
-        assert s <= "2024-01-05"
+    # 3. Fail-closed Cutoff enforcement: end_date > as_of_cutoff must raise PITViolationError
+    with pytest.raises(PITViolationError):
+        load_price_matrix(
+            market="us",
+            pool_id="us_selected_equities_v2",
+            start_date="2024-01-02",
+            end_date="2024-01-20",
+            as_of_cutoff="2024-01-05",
+            root_path=REPO_ROOT,
+        )
 
     # 4. Out-of-bounds holiday/weekend range raises CalendarSessionError
     with pytest.raises(CalendarSessionError):
@@ -315,9 +318,14 @@ def test_rt_05_weight_drift_and_one_sided_turnover_conservation() -> None:
     )
 
     nav_points = result.nav_history
-    # Day 0: Inception
+    # Day 0: Inception from 100% cash into 50% A, 50% B
+    # Turnover = 1.0 (cash to equities), Friction = 1.0 * 0.0008 = 0.0008
+    # NAV(Day 0) = 1.0 - 0.0008 = 0.9992
     assert nav_points[0].session == "2024-01-02"
-    assert nav_points[0].nav == 1.0
+    assert pytest.approx(nav_points[0].turnover, abs=1e-8) == 1.0
+    assert pytest.approx(nav_points[0].friction, abs=1e-8) == 0.0008
+    assert pytest.approx(nav_points[0].net_return, abs=1e-8) == -0.0008
+    assert pytest.approx(nav_points[0].nav, abs=1e-8) == 0.9992
     assert nav_points[0].weights == {"STOCK_A": 0.5, "STOCK_B": 0.5}
 
     # Day 1:
@@ -329,14 +337,14 @@ def test_rt_05_weight_drift_and_one_sided_turnover_conservation() -> None:
     # One-sided turnover = 0.5 * (|0.40 - 0.60| + |0.60 - 0.40| + |0 - 0|) = 0.5 * 0.40 = 0.20
     # Friction = 0.20 * 0.0008 = 0.00016
     # r_net = 0.0 - 0.00016 = -0.00016
-    # NAV(Day 1) = 1.0 * (1 - 0.00016) = 0.99984
+    # NAV(Day 1) = 0.9992 * (1 - 0.00016) = 0.999040128
     pt1 = nav_points[1]
     assert pt1.session == "2024-01-03"
     assert pytest.approx(pt1.gross_return, abs=1e-8) == 0.0
     assert pytest.approx(pt1.turnover, abs=1e-8) == 0.20
     assert pytest.approx(pt1.friction, abs=1e-8) == 0.00016
     assert pytest.approx(pt1.net_return, abs=1e-8) == -0.00016
-    assert pytest.approx(pt1.nav, abs=1e-8) == 0.99984
+    assert pytest.approx(pt1.nav, abs=1e-8) == 0.999040128
     # Post-rebalance weights on Day 1 are the target weights
     assert pytest.approx(pt1.weights["STOCK_A"], abs=1e-8) == 0.40
     assert pytest.approx(pt1.weights["STOCK_B"], abs=1e-8) == 0.60
@@ -392,9 +400,18 @@ def test_rt_07_us87_pool_index_generation_and_excess_vs_qqq() -> None:
 
     result = generate_equal_weight_pool_index(matrix, "us_selected_equities_v2")
 
-    # Rebalances must occur only on the first trading session of Feb and Mar
+    # Rebalances occur at inception (Jan 2 from cash) and on the first trading session of Feb and Mar
     rebalance_sessions = [pt.session for pt in result.nav_history if pt.turnover > 0]
-    assert rebalance_sessions == ["2024-02-01", "2024-03-01"]
+    assert rebalance_sessions == ["2024-01-02", "2024-02-01", "2024-03-01"]
+
+    # Verify fixed 1 / 87 allocation per candidate on Day 0
+    day0_point = result.nav_history[0]
+    num_candidates = len(matrix.candidate_symbols)
+    expected_w = 1.0 / num_candidates
+    for sym, w in day0_point.weights.items():
+        assert pytest.approx(w, abs=1e-8) == expected_w
+    # Cash holds unlisted slots:
+    assert pytest.approx(day0_point.cash_weight + sum(day0_point.weights.values()), abs=1e-8) == 1.0
 
     # All non-rebalance days must have exactly 0 turnover
     for pt in result.nav_history:
@@ -521,3 +538,194 @@ def test_weight_constraint_violations() -> None:
             target_weights={"AAPL": -0.1, "MSFT": 0.5},  # Negative
             reason="Negative short position",
         )
+
+
+# ---------------------------------------------------------------------------
+# GAP CLOSURE TESTS (Methodological Invariant Proofs)
+# ---------------------------------------------------------------------------
+def test_gap_initial_friction_zero_free_lunch() -> None:
+    """Gap P0.1: Verify initial equity allocation incurs turnover and friction,
+    and 100% cash allocation has zero friction at inception.
+    """
+    sessions = ("2024-01-02", "2024-01-03")
+    prices_df = pd.DataFrame(
+        data={"AAPL": [100.0, 100.0], "QQQ": [100.0, 100.0]},
+        index=list(sessions),
+    )
+    prices_df.index.name = "session"
+    matrix = PriceMatrix(
+        market="us",
+        pool_id="pool",
+        reference_symbol="QQQ",
+        calendar="XNYS",
+        start_session=sessions[0],
+        end_session=sessions[-1],
+        sessions=sessions,
+        candidate_symbols=("AAPL",),
+        symbols=("AAPL", "QQQ"),
+        prices=prices_df,
+        matrix_sha256="0" * 64,
+        source_evidence_hashes={},
+    )
+
+    # 1. Full equity allocation on day 0 (turnover=1.0, friction=0.0008, nav=0.9992)
+    ev_full = RebalanceEvent.create(
+        parent_hash="0" * 64,
+        effective_session="2024-01-02",
+        runner_id="runner",
+        runner_version="1.0",
+        target_weights={"AAPL": 1.0},
+        reason="100% equity",
+    )
+    res_full = simulate_portfolio(matrix, [ev_full], EngineConfig(friction_rate=0.0008))
+    pt0 = res_full.nav_history[0]
+    assert pt0.turnover == 1.0
+    assert pt0.friction == 0.0008
+    assert pt0.net_return == -0.0008
+    assert pt0.nav == 0.9992
+
+    # 2. 100% Cash allocation on day 0 (turnover=0.0, friction=0.0, nav=1.0)
+    ev_cash = RebalanceEvent.create(
+        parent_hash="0" * 64,
+        effective_session="2024-01-02",
+        runner_id="runner",
+        runner_version="1.0",
+        target_weights={},
+        reason="100% cash",
+    )
+    res_cash = simulate_portfolio(matrix, [ev_cash], EngineConfig(friction_rate=0.0008))
+    pt0_cash = res_cash.nav_history[0]
+    assert pt0_cash.turnover == 0.0
+    assert pt0_cash.friction == 0.0
+    assert pt0_cash.nav == 1.0
+
+
+def test_gap_ledger_duplicate_and_out_of_order_rejection() -> None:
+    """Gap P0.2: Verify ledger rejects duplicate sessions, out-of-order sessions,
+    and prevents unintended file overwriting.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        lp = Path(tmp_dir) / "ledger.jsonl"
+        ledger = EventLedger.create(lp, "runner", "1.0", overwrite=False)
+
+        ledger.append("2024-01-02", {"AAPL": 0.5}, "Session 1")
+
+        # Duplicate session rejection
+        with pytest.raises(DuplicateSessionError):
+            ledger.append("2024-01-02", {"AAPL": 0.6}, "Duplicate session")
+
+        # Out-of-order session rejection
+        with pytest.raises(ChronologyOrderError):
+            ledger.append("2024-01-01", {"AAPL": 0.4}, "Back in time")
+
+        # Overwrite protection on existing file
+        with pytest.raises(LedgerOverwriteError):
+            EventLedger.create(lp, "runner", "1.0", overwrite=False)
+
+
+def test_gap_engine_duplicate_and_chronology_rejection() -> None:
+    """Gap P0.2: Verify engine rejects duplicate sessions and out-of-order events."""
+    sessions = ("2024-01-02", "2024-01-03", "2024-01-04")
+    prices_df = pd.DataFrame(
+        data={"AAPL": [100.0, 100.0, 100.0], "QQQ": [100.0, 100.0, 100.0]},
+        index=list(sessions),
+    )
+    prices_df.index.name = "session"
+    matrix = PriceMatrix(
+        market="us",
+        pool_id="pool",
+        reference_symbol="QQQ",
+        calendar="XNYS",
+        start_session=sessions[0],
+        end_session=sessions[-1],
+        sessions=sessions,
+        candidate_symbols=("AAPL",),
+        symbols=("AAPL", "QQQ"),
+        prices=prices_df,
+        matrix_sha256="0" * 64,
+        source_evidence_hashes={},
+    )
+
+    ev1 = RebalanceEvent.create("0" * 64, "2024-01-03", "r", "1.0", {"AAPL": 0.5}, "Ev 1")
+    ev2_dup = RebalanceEvent.create(ev1.event_hash, "2024-01-03", "r", "1.0", {"AAPL": 0.6}, "Ev 2 Dup")
+    with pytest.raises(DuplicateSessionError):
+        simulate_portfolio(matrix, [ev1, ev2_dup])
+
+    ev_out_of_order = RebalanceEvent.create(ev1.event_hash, "2024-01-02", "r", "1.0", {"AAPL": 0.4}, "Ev Out of Order")
+    with pytest.raises(ChronologyOrderError):
+        simulate_portfolio(matrix, [ev1, ev_out_of_order])
+
+
+def test_gap_pool_index_no_constituent_drift() -> None:
+    """Gap P0.3: Verify pool index benchmark preserves fixed 1/N constituent weighting
+    and holds unlisted/missing slots in cash without inflating other constituents.
+    """
+    sessions = ("2024-01-02", "2024-01-03")
+    # Synthetic pool of 4 candidates: A, B, C listed, D unlisted (NaN)
+    prices_df = pd.DataFrame(
+        data={
+            "A": [100.0, 100.0],
+            "B": [100.0, 100.0],
+            "C": [100.0, 100.0],
+            "D": [np.nan, np.nan],  # Unlisted pre-IPO
+            "QQQ": [100.0, 100.0],
+        },
+        index=list(sessions),
+    )
+    prices_df.index.name = "session"
+    matrix = PriceMatrix(
+        market="us",
+        pool_id="synthetic_4",
+        reference_symbol="QQQ",
+        calendar="XNYS",
+        start_session=sessions[0],
+        end_session=sessions[-1],
+        sessions=sessions,
+        candidate_symbols=("A", "B", "C", "D"),
+        symbols=("A", "B", "C", "D", "QQQ"),
+        prices=prices_df,
+        matrix_sha256="0" * 64,
+        source_evidence_hashes={},
+    )
+
+    result = generate_equal_weight_pool_index(matrix, "synthetic_4")
+    pt0 = result.nav_history[0]
+
+    # Every declared member target is 1 / 4 = 0.25
+    # A, B, C are active and get exactly 0.25 (NOT 1/3 ~ 0.333333!)
+    assert pt0.weights["A"] == 0.25
+    assert pt0.weights["B"] == 0.25
+    assert pt0.weights["C"] == 0.25
+    assert "D" not in pt0.weights
+
+    # D's unlisted 0.25 slot is strictly held in cash
+    assert pt0.cash_weight == 0.25
+    assert sum(pt0.weights.values()) + pt0.cash_weight == 1.0
+
+
+def test_gap_matrix_pit_violation_and_catalog_qualification() -> None:
+    """Gap P1: Verify matrix loader fail-closed raises PITViolationError on cutoff
+    breach and DataQualificationError on unregistered symbol.
+    """
+    # 1. Cutoff breach
+    with pytest.raises(PITViolationError):
+        load_price_matrix(
+            market="us",
+            pool_id="us_selected_equities_v2",
+            start_date="2024-01-02",
+            end_date="2026-11-01",
+            as_of_cutoff="2026-10-26",
+            root_path=REPO_ROOT,
+        )
+
+    # 2. Matrix metadata carries catalog_sha256 and qualification
+    matrix = load_price_matrix(
+        market="us",
+        pool_id="us_selected_equities_v2",
+        start_date="2024-01-02",
+        end_date="2024-01-05",
+        as_of_cutoff="2026-10-26",
+        root_path=REPO_ROOT,
+    )
+    assert len(matrix.catalog_sha256) == 64
+    assert matrix.data_qualification == "observation_cutoff_verified_not_revision_certified"

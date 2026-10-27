@@ -13,6 +13,8 @@ import numpy as np
 
 from src.racetrack.contracts import (
     CalendarSessionError,
+    ChronologyOrderError,
+    DuplicateSessionError,
     EngineConfig,
     LifecycleIntegrityError,
     MissingPriceDataError,
@@ -52,6 +54,8 @@ def simulate_portfolio(
 
     # 1. Index and validate rebalance events
     events_by_session: dict[str, RebalanceEvent] = {}
+    seen_sessions: set[str] = set()
+    prev_event_session: str | None = None
     runner_id = "generic_runner"
     runner_version = "1.0.0"
 
@@ -60,6 +64,18 @@ def simulate_portfolio(
             raise CalendarSessionError(
                 f"RebalanceEvent session '{ev.effective_session}' is not a valid trading session in PriceMatrix"
             )
+        if ev.effective_session in seen_sessions:
+            raise DuplicateSessionError(
+                f"Duplicate rebalance event detected for session '{ev.effective_session}'"
+            )
+        if prev_event_session is not None and ev.effective_session < prev_event_session:
+            raise ChronologyOrderError(
+                f"Rebalance events are out of order: '{ev.effective_session}' < '{prev_event_session}'"
+            )
+
+        seen_sessions.add(ev.effective_session)
+        prev_event_session = ev.effective_session
+
         # Validate that targeted assets belong to matrix symbols
         for sym, weight in ev.target_weights.items():
             if weight > 0 and sym not in matrix.symbols:
@@ -70,15 +86,27 @@ def simulate_portfolio(
         runner_id = ev.runner_id
         runner_version = ev.runner_version
 
-    # 2. Inception state at t_0
+    # 2. Inception state at t_0: initial cash capital allocation
+    # Portfolio starts at t_0- with 100% cash (V(t_0-) = 1.0, w_cash = 1.0, w_i = 0.0)
     t_0 = sessions[0]
     if t_0 in events_by_session:
         init_ev = events_by_session[t_0]
         current_weights = {k: float(v) for k, v in init_ev.target_weights.items() if v > 0}
         current_cash = float(init_ev.cash_weight)
+        # One-sided turnover from 100% cash: sum(target equity weights)
+        init_turnover = float(sum(current_weights.values()))
+        init_friction = init_turnover * config.friction_rate
+        init_net_ret = -init_friction
+        init_nav = 1.0 - init_friction
+        init_drawdown = init_net_ret
     else:
         current_weights = {}
         current_cash = 1.0
+        init_turnover = 0.0
+        init_friction = 0.0
+        init_net_ret = 0.0
+        init_nav = 1.0
+        init_drawdown = 0.0
 
     # Ensure held assets at t_0 have valid non-NaN prices
     for sym, weight in current_weights.items():
@@ -93,19 +121,19 @@ def simulate_portfolio(
     nav_history.append(
         NAVPoint(
             session=t_0,
-            nav=1.0,
+            nav=init_nav,
             gross_return=0.0,
-            net_return=0.0,
-            turnover=0.0,
-            friction=0.0,
-            drawdown=0.0,
+            net_return=init_net_ret,
+            turnover=init_turnover,
+            friction=init_friction,
+            drawdown=init_drawdown,
             weights=dict(current_weights),
             cash_weight=current_cash,
         )
     )
 
-    peak_nav = 1.0
-    current_nav = 1.0
+    peak_nav = max(1.0, init_nav)
+    current_nav = init_nav
 
     # 3. Daily iteration over sessions t_1 to t_N
     for i in range(1, len(sessions)):

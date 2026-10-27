@@ -390,6 +390,27 @@
   - [x] 运行全量测试套件、静态代码分析与 diff 检查；
   - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
 
+### Phase 8.1: Racetrack Phase 1 缺口收敛与方法学闭环 (Methodological Closure & Gap Remediation)
+- [x] **8.1.1 [P0 / Initial Friction] 明确初始现金投入与建仓摩擦模型**:
+  - [x] 设定 $t_0^-$ 组合为 100% 现金 ($w_{cash}^{drift}=1.0, w_i^{drift}=0.0$)；
+  - [x] 首日建仓换手严格计为 $\text{Turnover}_{t_0} = \sum w_i^{target}$，扣除初始摩擦 $\text{Friction}_{t_0}$，首日净值 $\text{NAV}(t_0) = 1.0 - \text{Friction}_{t_0}$；
+  - [x] 彻底消除首日满仓免换手与免摩擦漏洞。
+- [x] **8.1.2 [P0 / Ledger Constraints] 健全持仓账本约束与防意外覆盖**:
+  - [x] `engine.py` 严格校验 `ledger_events` 会话单调递增，杜绝乱序与同日重复事件（拒绝静默覆盖）；
+  - [x] `ledger.py` 中 `EventLedger.create()` 默认 `overwrite=False`，已存在文件抛出 `LedgerOverwriteError`；
+  - [x] `EventLedger.append()` 校验 `effective_session > last_session`，严禁追加历史或重复交易日。
+- [x] **8.1.3 [P0 / Pool Index Qualification] 规范股票池指数成分资格**:
+  - [x] `pool_index.py` 坚决杜绝静默剔除缺价/未上市股票重算权重（严格遵守 `silent_exclusion_allowed: false`）；
+  - [x] 所有声明成员固定 $1/N_{declared}$（US 87 为 $1/87$），未上市或缺失价格标的所占份额由现金持有 ($w_{cash} = N_{unlisted} / N_{declared}$)；
+  - [x] 记录逐月成分资格审计信息。
+- [x] **8.1.4 [P1 / PIT & Catalog Certification] 严格数据资格认证与 PIT 截止日阻断**:
+  - [x] `matrix.py` 严厉拦截 `end_date > as_of_cutoff` 请求，抛出 `PITViolationError`，坚决杜绝静默截短；
+  - [x] 校验 `catalog.json` 权威清单，核验所有候选标的与参考标的收录资质与角色，并在矩阵清单中记录 `catalog_sha256` 与资格声明。
+- [x] **8.1.5 [Test Suite & Regression] 编写针对性测试与全量回归**:
+  - [x] 扩充 `tests/test_racetrack_minimal_stack.py` 覆盖以上 4 类缺口的负面防御与数学闭环（15 项测试 100% 全绿）；
+  - [x] 验证全量单测通过与 `ruff check` 零告警；
+  - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`，向用户客观汇报。
+
 ---
 
 ## 阶段验收与复盘 (Review Section)

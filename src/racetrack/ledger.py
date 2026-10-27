@@ -13,6 +13,9 @@ from typing import Sequence
 import pandas as pd
 
 from src.racetrack.contracts import (
+    ChronologyOrderError,
+    DuplicateSessionError,
+    LedgerOverwriteError,
     LedgerTamperedError,
     PrivacyViolationError,
     RebalanceEvent,
@@ -56,7 +59,7 @@ class EventLedger:
         path: Path,
         runner_id: str,
         runner_version: str,
-        overwrite: bool = True,
+        overwrite: bool = False,
     ) -> "EventLedger":
         """Create a new EventLedger tied to a JSONL file path.
 
@@ -64,14 +67,16 @@ class EventLedger:
             path: Target JSONL file path.
             runner_id: Unique runner / strategy identifier.
             runner_version: Strategy version string.
-            overwrite: If True, overwrite existing file; if False and exists, load.
+            overwrite: If True, overwrite existing file; if False, raise LedgerOverwriteError if file exists.
         """
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
-        if overwrite or not p.exists():
-            p.write_text("", encoding="utf-8")
-            return cls(p, runner_id, runner_version, events=[])
-        return cls.load(p)
+        if p.exists() and not overwrite:
+            raise LedgerOverwriteError(
+                f"Ledger file already exists at '{p}'. Set overwrite=True to overwrite, or use EventLedger.load()."
+            )
+        p.write_text("", encoding="utf-8")
+        return cls(p, runner_id, runner_version, events=[])
 
     @classmethod
     def load(cls, path: Path) -> "EventLedger":
@@ -102,6 +107,20 @@ class EventLedger:
             # Empty file
             return cls(p, runner_id="", runner_version="", events=[])
 
+        # Verify strict monotonic session order
+        prev_sess: str | None = None
+        for ev in events:
+            if prev_sess is not None:
+                if ev.effective_session == prev_sess:
+                    raise LedgerTamperedError(
+                        f"Duplicate effective_session '{ev.effective_session}' in ledger {p}"
+                    )
+                if ev.effective_session < prev_sess:
+                    raise LedgerTamperedError(
+                        f"Out-of-order session '{ev.effective_session}' < '{prev_sess}' in ledger {p}"
+                    )
+            prev_sess = ev.effective_session
+
         runner_id = events[0].runner_id
         runner_version = events[0].runner_version
 
@@ -128,7 +147,22 @@ class EventLedger:
 
         Returns:
             The created, validated RebalanceEvent.
+
+        Raises:
+            DuplicateSessionError: If effective_session matches the latest event.
+            ChronologyOrderError: If effective_session is earlier than the latest event.
         """
+        if self._events:
+            last_sess = self._events[-1].effective_session
+            if effective_session == last_sess:
+                raise DuplicateSessionError(
+                    f"Cannot append event with duplicate effective_session '{effective_session}'"
+                )
+            if effective_session < last_sess:
+                raise ChronologyOrderError(
+                    f"Cannot append event with out-of-order session '{effective_session}' (previous was '{last_sess}')"
+                )
+
         parent_hash = self.tip_hash
         event = RebalanceEvent.create(
             parent_hash=parent_hash,

@@ -22,6 +22,8 @@ import yaml
 
 from src.racetrack.contracts import (
     CalendarSessionError,
+    DataQualificationError,
+    PITViolationError,
     PriceMatrix,
 )
 
@@ -68,18 +70,22 @@ def load_price_matrix(
     calendar_name = MARKET_CALENDAR_MAP[market_lower]
     cal = xcals.get_calendar(calendar_name)
 
-    # 1. Resolve trading calendar sessions
-    effective_end = min(end_date, as_of_cutoff)
-    if start_date > effective_end:
+    # 1. Resolve trading calendar sessions & PIT cutoff validation
+    if end_date > as_of_cutoff:
+        raise PITViolationError(
+            f"Requested end_date '{end_date}' extends beyond as_of_cutoff '{as_of_cutoff}'. "
+            f"Silent truncation is strictly prohibited."
+        )
+    if start_date > end_date:
         raise CalendarSessionError(
-            f"start_date '{start_date}' exceeds effective_end '{effective_end}' (cutoff: {as_of_cutoff})"
+            f"start_date '{start_date}' exceeds end_date '{end_date}'"
         )
 
-    cal_sessions = cal.sessions_in_range(start_date, effective_end)
+    cal_sessions = cal.sessions_in_range(start_date, end_date)
     sessions = tuple(s.strftime("%Y-%m-%d") for s in cal_sessions)
     if not sessions:
         raise CalendarSessionError(
-            f"No valid trading sessions found in range [{start_date}, {effective_end}] on {calendar_name}"
+            f"No valid trading sessions found in range [{start_date}, {end_date}] on {calendar_name}"
         )
 
     # 2. Read candidate pool configuration
@@ -106,7 +112,28 @@ def load_price_matrix(
 
     all_symbols = candidate_symbols + (ref_symbol,)
 
-    # 4. Load evidence JSON files
+    # 4. Verify data qualification & catalog.json registration
+    catalog_path = root_path / "data" / "research" / "market_evidence" / market_lower / "catalog.json"
+    catalog_sha256 = ""
+    if catalog_path.exists():
+        cat_bytes = catalog_path.read_bytes()
+        catalog_sha256 = hashlib.sha256(cat_bytes).hexdigest()
+        cat_data = json.loads(cat_bytes.decode("utf-8"))
+        raw_symbols = cat_data.get("symbols", [])
+        if isinstance(raw_symbols, list):
+            registered_symbols = {item.get("symbol") for item in raw_symbols if isinstance(item, dict)}
+        elif isinstance(raw_symbols, dict):
+            registered_symbols = set(raw_symbols.keys())
+        else:
+            registered_symbols = set()
+
+        for sym in all_symbols:
+            if sym not in registered_symbols:
+                raise DataQualificationError(
+                    f"Symbol '{sym}' is not registered in market evidence catalog '{catalog_path}'"
+                )
+
+    # 5. Load evidence JSON files
     evidence_dir = root_path / "data" / "research" / "market_evidence" / market_lower / "symbols"
     source_evidence_hashes: dict[str, str] = {}
     symbol_close_series: dict[str, dict[str, float]] = {}
@@ -173,4 +200,6 @@ def load_price_matrix(
         prices=prices_df,
         matrix_sha256=matrix_sha256,
         source_evidence_hashes=source_evidence_hashes,
+        catalog_sha256=catalog_sha256,
+        data_qualification="observation_cutoff_verified_not_revision_certified",
     )

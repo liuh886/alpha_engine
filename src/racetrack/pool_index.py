@@ -22,23 +22,22 @@ def generate_equal_weight_pool_index(
     matrix: PriceMatrix,
     pool_id: str,
     config: EngineConfig = EngineConfig(),
-    strict_full_pool: bool = False,
 ) -> SimulationResult:
-    """Generate equal-weight benchmark index for the candidate universe pool.
+    """Generate equal-weight benchmark index for the declared candidate universe pool.
 
-    Rules:
-        - Automatically identifies the first trading session of each calendar month.
-        - Emits an equal-weight rebalance event (1 / N for each active pool constituent).
-        - Intra-month sessions undergo natural drift with zero turnover.
+    Constituent Eligibility & Drift Protection Rules:
+        - The pool membership is fixed to the declared candidate universe (N = len(matrix.candidate_symbols)).
+        - Each declared constituent receives an exact fixed target allocation of 1 / N (e.g. 1/87).
+        - If a constituent is unlisted (pre-IPO) or halted (NaN price) on rebalance date,
+          its 1 / N slot is held in cash, NOT silently redistributed to inflate other stocks.
+        - Rebalances occur on the first trading session of each calendar month.
+        - Intra-month sessions undergo natural price drift with zero rebalance turnover.
         - Evaluated via simulate_portfolio with friction applied on rebalance days.
 
     Args:
         matrix: Aligned PriceMatrix containing candidates and reference.
         pool_id: Pool identifier (e.g. 'us_selected_equities_v2').
         config: EngineConfig for friction and KPI statistics.
-        strict_full_pool: If True, assigns 1 / total_candidates to every candidate
-            regardless of whether its price on that session is NaN. If False, assigns
-            equal weight among all candidate members with valid (non-NaN) prices on that session.
 
     Returns:
         SimulationResult representing the internal benchmark line.
@@ -48,9 +47,11 @@ def generate_equal_weight_pool_index(
         raise CalendarSessionError("Matrix contains zero sessions")
 
     candidates = matrix.candidate_symbols
-    if not candidates:
+    num_declared = len(candidates)
+    if num_declared == 0:
         raise ValueError(f"Matrix contains zero candidate symbols for pool '{pool_id}'")
 
+    weight_per_constituent = 1.0 / float(num_declared)
     events: list[RebalanceEvent] = []
     prev_hash = "0" * 64
 
@@ -60,20 +61,15 @@ def generate_equal_weight_pool_index(
         if not is_first_session_of_month:
             continue
 
-        if strict_full_pool:
-            target_symbols = list(candidates)
-        else:
-            # Active candidate symbols with non-NaN price on this session
-            target_symbols = [
-                sym for sym in candidates if not np.isnan(matrix.get_price(sess, sym))
-            ]
+        # Audit active constituent eligibility: only allocate if price is valid on session
+        active_symbols = [
+            sym for sym in candidates if not np.isnan(matrix.get_price(sess, sym))
+        ]
+        unlisted_count = num_declared - len(active_symbols)
 
-        if not target_symbols:
-            # All candidates unlisted or NaN
-            target_weights: dict[str, float] = {}
-        else:
-            w = 1.0 / len(target_symbols)
-            target_weights = {sym: w for sym in target_symbols}
+        # Fixed 1 / N per constituent, unlisted/missing constituent weight remains in cash
+        target_weights = {sym: weight_per_constituent for sym in active_symbols}
+        unallocated_cash = unlisted_count * weight_per_constituent
 
         ev = RebalanceEvent.create(
             parent_hash=prev_hash,
@@ -81,7 +77,11 @@ def generate_equal_weight_pool_index(
             runner_id=f"benchmark_{pool_id}_ew",
             runner_version="1.0.0",
             target_weights=target_weights,
-            reason=f"Monthly equal-weight rebalance for {sess[:7]}",
+            reason=(
+                f"Monthly equal-weight rebalance for {sess[:7]}: "
+                f"{len(active_symbols)}/{num_declared} active constituents (weight={weight_per_constituent:.6f}), "
+                f"{unlisted_count} unlisted/halted slots held in cash ({unallocated_cash:.6f})"
+            ),
         )
         events.append(ev)
         prev_hash = ev.event_hash

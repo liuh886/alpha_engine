@@ -64,6 +64,26 @@ class LifecycleIntegrityError(MissingPriceDataError):
     """Raised when an asset is traded before its listing date."""
 
 
+class LedgerOverwriteError(FileExistsError):
+    """Raised when attempting to overwrite an existing ledger file without overwrite=True."""
+
+
+class DuplicateSessionError(ValueError):
+    """Raised when duplicate rebalance events occur on the same trading session."""
+
+
+class ChronologyOrderError(ValueError):
+    """Raised when rebalance events violate strictly monotonic chronological order."""
+
+
+class PITViolationError(ValueError):
+    """Raised when a date range extends beyond the declared as_of_cutoff point-in-time."""
+
+
+class DataQualificationError(ValueError):
+    """Raised when data qualification, catalog registration, or provenance checks fail."""
+
+
 def assert_privacy_clean(data: Any) -> None:
     """Recursively inspect data to ensure zero sensitive personal account fields are present.
 
@@ -359,6 +379,8 @@ class PriceMatrix:
     prices: pd.DataFrame
     matrix_sha256: str
     source_evidence_hashes: dict[str, str]
+    catalog_sha256: str = ""
+    data_qualification: str = "observation_cutoff_verified_not_revision_certified"
 
     def get_price(self, session: str, symbol: str) -> float:
         """Get adjusted close price for symbol on session. Returns np.nan if missing."""
