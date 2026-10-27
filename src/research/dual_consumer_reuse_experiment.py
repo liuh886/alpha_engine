@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from src.data.research_slice import DataSliceRequest, get_research_data_slice
+from src.research.ashare_rdi.contracts import RiskEvent
 from src.research.ashare_rdi.outcomes import PriceBar, forward_outcomes
 
 
@@ -116,7 +117,8 @@ def run_cn_cross_sectional_research_experiment(
 def run_rdi_event_horizon_readiness_experiment(
     request: DataSliceRequest,
     *,
-    decision_session: str,
+    event: RiskEvent | None = None,
+    decision_session: str | None = None,
     horizons: tuple[int, ...] = (7, 14, 28),
     root: Path | None = None,
 ) -> dict[str, Any]:
@@ -124,12 +126,22 @@ def run_rdi_event_horizon_readiness_experiment(
 
     Evaluates realized 7/14/28-session forward outcomes for CSI300 (000300)
     or reference ETFs following a macro risk decision session.
-    If tail sessions are insufficient before cutoff, honestly reports blocked
-    without fabricating or forward-filling missing sessions (#1272).
+
+    #1272 Contract Enforcement:
+    1. Must bind to an authoritative RiskEvent with verified source provenance
+       (source_id, source_hash, announced_at, available_at).
+    2. Missing event source or incomplete event archive strictly fails closed
+       with 'blocked_event_pit_coverage'; missing events cannot be treated as zero
+       or substituted with arbitrary unanchored dates.
+    3. If event availability postdates the request cutoff (available_at > cutoff),
+       evaluation is strictly blocked against lookahead.
+    4. If tail price sessions before cutoff are insufficient, honestly reports
+       blocked without fabricating or forward-filling missing sessions.
     """
     slice_res = get_research_data_slice(request, root=root)
     receipt = slice_res.receipt
 
+    # 1. Base data slice check
     if receipt.get("status") != "ready" or slice_res.data is None:
         return {
             "consumer": "ashare_rdi_readiness",
@@ -137,6 +149,7 @@ def run_rdi_event_horizon_readiness_experiment(
             "reason": "Underlying research data slice is blocked fail-closed",
             "data_slice_receipt": receipt,
             "decision_session": decision_session,
+            "event_provenance": None,
             "horizons": list(horizons),
             "outcomes": None,
             "experiment_hash": None,
@@ -145,6 +158,61 @@ def run_rdi_event_horizon_readiness_experiment(
             "trade_signal": False,
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         }
+
+    # 2. #1272 Event provenance check: missing event archive fails closed
+    if event is None:
+        return {
+            "consumer": "ashare_rdi_readiness",
+            "status": "blocked",
+            "reason": (
+                "blocked_event_pit_coverage: No verified PIT risk event bound (#1272). "
+                "Archived event coverage for required event families is incomplete; "
+                "missing events cannot be scored as zero or substituted with arbitrary dates."
+            ),
+            "data_slice_receipt": receipt,
+            "decision_session": decision_session,
+            "event_provenance": None,
+            "horizons": list(horizons),
+            "outcomes": None,
+            "experiment_hash": None,
+            "research_only": True,
+            "trade_ready": False,
+            "trade_signal": False,
+            "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        }
+
+    # 3. Validate event PIT availability against request cutoff
+    event_avail_date = event.available_at.date().isoformat()
+    if event_avail_date > request.as_of_cutoff:
+        return {
+            "consumer": "ashare_rdi_readiness",
+            "status": "blocked",
+            "reason": (
+                f"Event available_at '{event.available_at.isoformat()}' is after as_of_cutoff "
+                f"'{request.as_of_cutoff}'; lookahead event evaluation is strictly forbidden."
+            ),
+            "data_slice_receipt": receipt,
+            "decision_session": event.active_from.isoformat(),
+            "event_provenance": {
+                "event_id": event.event_id,
+                "story_id": event.story_id,
+                "family": event.family,
+                "stage": event.stage,
+                "announced_at": event.announced_at.isoformat(),
+                "available_at": event.available_at.isoformat(),
+                "source_id": event.source_id,
+                "source_hash": event.source_hash,
+            },
+            "horizons": list(horizons),
+            "outcomes": None,
+            "experiment_hash": None,
+            "research_only": True,
+            "trade_ready": False,
+            "trade_signal": False,
+            "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        }
+
+    effective_session = decision_session or event.active_from.isoformat()
 
     df = slice_res.data
     price_bars = [
@@ -160,7 +228,7 @@ def run_rdi_event_horizon_readiness_experiment(
     try:
         outcomes = forward_outcomes(
             price_bars,
-            decision_session=date.fromisoformat(decision_session),
+            decision_session=date.fromisoformat(effective_session),
             horizons=horizons,
             instrument_kind="index",
         )
@@ -170,7 +238,13 @@ def run_rdi_event_horizon_readiness_experiment(
             "status": "blocked",
             "reason": f"Forward outcomes evaluation failed: {exc}",
             "data_slice_receipt": receipt,
-            "decision_session": decision_session,
+            "decision_session": effective_session,
+            "event_provenance": {
+                "event_id": event.event_id,
+                "story_id": event.story_id,
+                "source_id": event.source_id,
+                "source_hash": event.source_hash,
+            },
             "horizons": list(horizons),
             "outcomes": None,
             "experiment_hash": None,
@@ -192,7 +266,17 @@ def run_rdi_event_horizon_readiness_experiment(
                 "tail observations strictly cannot be fabricated or forward-filled."
             ),
             "data_slice_receipt": receipt,
-            "decision_session": decision_session,
+            "decision_session": effective_session,
+            "event_provenance": {
+                "event_id": event.event_id,
+                "story_id": event.story_id,
+                "family": event.family,
+                "stage": event.stage,
+                "announced_at": event.announced_at.isoformat(),
+                "available_at": event.available_at.isoformat(),
+                "source_id": event.source_id,
+                "source_hash": event.source_hash,
+            },
             "horizons": list(horizons),
             "outcomes": outcomes,
             "experiment_hash": None,
@@ -202,13 +286,26 @@ def run_rdi_event_horizon_readiness_experiment(
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         }
 
+    event_prov = {
+        "event_id": event.event_id,
+        "story_id": event.story_id,
+        "family": event.family,
+        "direction": event.direction,
+        "stage": event.stage,
+        "announced_at": event.announced_at.isoformat(),
+        "available_at": event.available_at.isoformat(),
+        "source_id": event.source_id,
+        "source_hash": event.source_hash,
+    }
+
     experiment_payload = {
         "consumer": "ashare_rdi_readiness",
-        "decision_session": decision_session,
+        "decision_session": effective_session,
         "as_of_cutoff": request.as_of_cutoff,
         "horizons": list(horizons),
         "outcomes": outcomes,
         "data_hash": receipt["data_hash"],
+        "event_provenance": event_prov,
     }
     raw_bytes = json.dumps(experiment_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     experiment_hash = hashlib.sha256(raw_bytes).hexdigest()
@@ -216,8 +313,9 @@ def run_rdi_event_horizon_readiness_experiment(
     return {
         "consumer": "ashare_rdi_readiness",
         "status": "ready",
-        "decision_session": decision_session,
+        "decision_session": effective_session,
         "data_slice_receipt": receipt,
+        "event_provenance": event_prov,
         "horizons": list(horizons),
         "outcomes": outcomes,
         "experiment_hash": experiment_hash,

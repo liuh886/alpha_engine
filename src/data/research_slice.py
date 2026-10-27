@@ -20,6 +20,16 @@ import yaml
 
 DEFAULT_REPO_ROOT = Path(__file__).resolve().parents[2]
 
+PIT_QUALIFICATION_OBSERVATION_ONLY = "observation_cutoff_verified_not_revision_certified"
+PIT_QUALIFICATION_BLOCKED = "blocked_unverified"
+
+PIT_LIMITATIONS = [
+    "observation_cutoff_bound_enforced: end_date <= as_of_cutoff",
+    "corporate_action_announcement_enforced_where_bridge_exists: announced_at <= as_of_cutoff",
+    "vendor_available_time_unverified: t_available timestamps are not certified across all upstream provider raw feeds",
+    "historical_restatements_untracked: multi-vintage revision history and restatement lineage are not yet reconstructed under ADR-0005",
+]
+
 
 class ResearchDataSliceError(Exception):
     """Raised when data slice resolution fails system integrity checks."""
@@ -120,12 +130,13 @@ def get_research_data_slice(
 ) -> DataSliceResult:
     """Extract a research data slice and generate an immutable evidence receipt.
 
-    Pure functional execution:
-    1. Validates market, pool membership and ISO date boundaries.
-    2. Enforces fail-closed PIT rules (end_date <= as_of_cutoff; announced_at <= as_of_cutoff).
-    3. Streams bar data from verified market evidence without whole-dataset duplication.
-    4. Computes deterministic SHA256 of resulting dataset.
-    5. Returns DataSliceResult with receipt and DataFrame (or None if blocked).
+    Contract & PIT Semantics:
+    - Pure functional execution directly from verified market evidence.
+    - status='ready' certifies that the extracted slice complies with candidate pool
+      governance and observation cutoff boundaries (end_date <= as_of_cutoff).
+    - It does NOT assert full multi-vintage PIT certification under ADR-0005 (e.g.
+      vendor availability timestamps t_available across unbridged series or historical
+      financial statement restatements).
     """
     repo_root = (root or DEFAULT_REPO_ROOT).resolve()
     blockers: list[BlockerReason] = []
@@ -406,6 +417,10 @@ def get_research_data_slice(
             "slice_id": slice_id,
             "request_hash": request_hash,
             "status": "blocked",
+            "pit_qualification": PIT_QUALIFICATION_BLOCKED,
+            "pit_certified": False,
+            "pit_limitations": list(PIT_LIMITATIONS),
+            "readiness_scope": "governed_pool_and_cutoff_compliance_only",
             "blocked_reasons": [b.to_dict() for b in blockers],
             "data_hash": None,
             "total_rows": 0,
@@ -433,6 +448,10 @@ def get_research_data_slice(
         "slice_id": slice_id,
         "request_hash": request_hash,
         "status": "ready",
+        "pit_qualification": PIT_QUALIFICATION_OBSERVATION_ONLY,
+        "pit_certified": False,
+        "pit_limitations": list(PIT_LIMITATIONS),
+        "readiness_scope": "governed_pool_and_cutoff_compliance_only",
         "blocked_reasons": [],
         "data_hash": data_hash,
         "total_rows": len(all_rows),

@@ -322,13 +322,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                     json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
                     encoding="utf-8",
                 )
-            if args.data_output is not None:
+            if args.data_output is not None and res.is_ready and res.data is not None:
                 data_out_path = _resolve(root, args.data_output)
-                if res.is_ready and res.data is not None:
-                    data_out_path.parent.mkdir(parents=True, exist_ok=True)
-                    res.data.to_csv(data_out_path, index=False)
-                elif data_out_path.is_file():
-                    data_out_path.unlink()
+                data_out_path.parent.mkdir(parents=True, exist_ok=True)
+                tmp_out_path = data_out_path.with_name(f".{data_out_path.name}.tmp")
+                try:
+                    res.data.to_csv(tmp_out_path, index=False)
+                    tmp_out_path.replace(data_out_path)
+                except Exception:
+                    if tmp_out_path.is_file():
+                        tmp_out_path.unlink()
+                    raise
             if payload.get("status") == "blocked":
                 exit_code = 10
         elif args.group == "research" and args.research_command == "run":

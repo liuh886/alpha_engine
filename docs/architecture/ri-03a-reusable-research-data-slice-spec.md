@@ -182,6 +182,25 @@
       "description": "所依赖的基础数据组件 Manifest 哈希",
       "additionalProperties": { "type": "string" }
     },
+    "pit_qualification": {
+      "type": "string",
+      "enum": ["observation_cutoff_verified_not_revision_certified", "blocked_unverified"],
+      "description": "PIT 资质评级：明确仅证明历史观测截止日边界，未证明全量多版本修订"
+    },
+    "pit_certified": {
+      "type": "boolean",
+      "const": false,
+      "description": "严格 PIT 全量认证标识；当前仅完成截止日约束，未完成 ADR-0005 全量认证，固定为 false"
+    },
+    "pit_limitations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "切片所具有的 PIT 局限性说明清单"
+    },
+    "readiness_scope": {
+      "type": "string",
+      "const": "governed_pool_and_cutoff_compliance_only"
+    },
     "market": { "type": "string" },
     "pool_id": { "type": "string" },
     "as_of_cutoff": { "type": "string", "format": "date" },
@@ -196,6 +215,16 @@
   "additionalProperties": false
 }
 ```
+
+### 2.3 状态与严格 PIT 契约边界声明 (PIT Qualification & Limitations Disclaimer)
+
+> **核心契约澄清 (贯穿 RI-03/04/05 铁律)**：
+> 当前数据切片实现的是**有限的历史观测截止日检查 (`end_date <= as_of_cutoff`)**，还不是完整的严格多版本 PIT 查询。它尚未对所有数据家族证明当时的首次可得时间 (`available_at`) 与历史修订版本，因此**绝不能把 `status: ready` 直接解释为“严格 PIT 已认证”**。
+>
+> 1. `status: "ready"` 的真实含义：证明请求标的属于已治理股票池、时间区间合法且未发生跨越 `as_of_cutoff` 的前瞻观测泄漏；
+> 2. `pit_qualification`: 显式固定为 `observation_cutoff_verified_not_revision_certified`；
+> 3. `pit_certified`: 显式固定为 `false`；
+> 4. `pit_limitations`: 必须逐项披露局限性，严禁隐瞒未核验的供应商发布时点或财务报表追溯修订风险。
 
 ---
 

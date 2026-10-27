@@ -129,6 +129,28 @@
   - [x] **5.4.4 [Verify & Gate] 全量回归验证与提交推送**：
     - 运行全量投研数据切片与复用套件（19 项测试 3.40s 全绿）、ruff 静态检查全绿、git diff 零错误。
 
+### Phase 5.5: Track B 深度校准与严谨契约整改 (RI-04/RI-05/PIT 语义深化)
+- [x] **5.5.1 [Core / P1] 修复 `alpha data slice --data-output` 破坏性删除缺陷**:
+  - 改用安全原子化写入：成功时通过临时文件原子重命名生成；
+  - 遇到阻断时严禁调用 `unlink()` 删除用户在指定路径上已存在的任何文件，保持现有文件安全；
+  - 编写 `test_ri05_cli_data_output_blocked_does_not_delete_existing_file` 负面断言，保持退出码 10 并明确阻断信息。
+- [x] **5.5.2 [PIT Contract / Core] 修正 `src/data/research_slice.py` 契约语义与真实资质分级**:
+  - 澄清 `status: ready` 仅代表“满足股票池治理与观测截止日约束 (`end_date <= as_of_cutoff`)”，绝非“全量严格 PIT 认证”；
+  - 在 `receipt` 中增加明确资质与局限性声明：`pit_qualification: "observation_cutoff_verified_not_revision_certified"`、`pit_certified: false`，并在 `pit_limitations` 中显式列出供应商首次可得时间未核验与未跟踪多版本修订等局限；
+  - 更新切片契约测试，断言资质与局限性声明的存在与合规性。
+- [x] **5.5.3 [RI-04 / P1] RDI 真实风险事件绑定与缺失阻断**:
+  - 在 `src/research/dual_consumer_reuse_experiment.py` 中，接入 #1272 权威事实源（`docs/evidence/ashare_rdi_phase2/csi300_input_readiness_2026-10-24.json` 与 `contracts.py`）；
+  - 强制要求提供具备首次发布时间 (`announced_at`)、可得时间 (`available_at`) 及来源哈希的真实风险事件；
+  - 当缺少经核验的事件历史（如 2026 年 7–10 月历史事件未完成归档覆盖）时，严格保持 `status: blocked` 与 `reason: blocked_event_pit_coverage`，坚决不虚假放行。
+- [x] **5.5.4 [RI-05 / P1] 区分实测与估算，采用真实执行轨迹度量**:
+  - 在 `src/research/efficiency_benchmark.py` 中彻底移除固定假设赋值；
+  - 明确区分为：定性工作流步骤估算（`heuristic_manual_steps`: 7 步降至 2 步）与真实运行时度量（AST 语句复杂度降低 47.83%、tracemalloc 真实内存开销、perf_counter 执行耗时、实际执行越界查询验证的 PIT 拦截结果）；
+  - 报告中绝不再将定性估算的固定百分比宣称为已实证。
+- [x] **5.5.5 [Doc & Test / P1] 文档修正、经验沉淀与全量回归**:
+  - 更新 `ri-03a-reusable-research-data-slice-spec.md`、`ri-04-dual-consumer-reuse-experiment.md` 与 `ri-05-researcher-efficiency-metrics.md`；
+  - 更新测试套件 `test_research_data_slice.py`、`test_ri04_dual_consumer_reuse.py`、`test_ri05_efficiency_metrics.py`（全量 22 项测试全绿）；
+  - 记录教训至 `tasks/lessons.md`。
+
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
   - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。

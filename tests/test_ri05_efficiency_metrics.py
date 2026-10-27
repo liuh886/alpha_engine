@@ -32,16 +32,25 @@ def test_ri05_mathematical_equivalence() -> None:
 
 
 def test_ri05_efficiency_gain_thresholds() -> None:
-    """Verify that empirical reduction thresholds meet Track B DoD requirements."""
+    """Verify workflow step estimates and empirically measured AST statements / PIT verification."""
     metrics = measure_efficiency_metrics(REPO_ROOT)
-    # Boilerplate reduction > 80%
-    assert metrics.glue_lines_reduction_pct >= 80.0
-    # Manual workflow steps reduction > 60%
-    assert metrics.manual_steps_reduction_pct >= 60.0
-    # Automated PIT protection
-    assert metrics.baseline_pit_interception is False
-    assert metrics.optimized_pit_interception is True
-    # Auditability & cryptographic binding
+
+    # 1. Qualitative workflow steps (Heuristic estimation)
+    assert metrics.estimated_baseline_workflow_steps == 7
+    assert metrics.estimated_optimized_workflow_steps == 2
+    assert metrics.estimated_steps_reduction_pct >= 60.0
+    assert len(metrics.workflow_steps_breakdown["baseline_workflow_steps"]) == 7
+    assert len(metrics.workflow_steps_breakdown["optimized_workflow_steps"]) == 2
+
+    # 2. Empirically measured AST statement complexity
+    assert metrics.measured_baseline_ast_statements > metrics.measured_optimized_ast_statements
+    assert metrics.measured_ast_statement_reduction_pct >= 40.0
+
+    # 3. Empirically verified PIT lookahead protection (via actual challenge execution)
+    assert metrics.verified_baseline_intercepts_lookahead is False
+    assert metrics.verified_optimized_intercepts_lookahead is True
+
+    # 4. Auditability & cryptographic binding
     assert metrics.baseline_has_cryptographic_receipt is False
     assert metrics.optimized_has_cryptographic_receipt is True
 
@@ -131,6 +140,39 @@ def test_ri05_cli_data_output_blocked_fail_closed(tmp_path: Path) -> None:
     receipt = json.loads(out_receipt.read_text(encoding="utf-8"))
     assert receipt["status"] == "blocked"
     assert receipt["data_hash"] is None
+
+
+def test_ri05_cli_data_output_blocked_does_not_delete_existing_file(tmp_path: Path) -> None:
+    """Ensure a blocked slice does NOT delete an existing file at --data-output path."""
+    existing_file = tmp_path / "user_important_data.csv"
+    existing_file.write_text("pre_existing_data", encoding="utf-8")
+
+    argv = [
+        "--root",
+        str(REPO_ROOT),
+        "data",
+        "slice",
+        "--market",
+        "us",
+        "--pool",
+        "us_selected_equities_v2",
+        "--symbols",
+        "AAPL",
+        "--start",
+        "2026-08-01",
+        "--end",
+        "2026-09-10",  # Blocked: after cutoff
+        "--cutoff",
+        "2026-09-04",
+        "--data-output",
+        str(existing_file),
+    ]
+
+    exit_code = main(argv)
+    assert exit_code == 10
+    # Must preserve existing user file completely intact
+    assert existing_file.is_file()
+    assert existing_file.read_text(encoding="utf-8") == "pre_existing_data"
 
 
 def test_ri05_governance_invariants() -> None:

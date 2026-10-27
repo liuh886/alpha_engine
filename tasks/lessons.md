@@ -144,3 +144,28 @@ In RI-05, we quantitatively benchmarked the governed data slice plane against th
 2. **CLI Data Export Fail-Closed Integrity**:
    - When providing tabular data exports via CLI (`--data-output <path>`), the file must ONLY be written if `result.is_ready` is true.
    - If the slice is blocked by governance or PIT lookahead, the exporter MUST strictly suppress file creation (or remove any partial file), returning exit code 10 (`data_blocked`) so downstream tools or scripts can never consume unverified or forward-looking data.
+
+---
+
+## 2026-10-27: Empirical Rigor, Safe Atomic CLI Writes & True PIT Qualification (实证严谨性、安全写入与 PIT 资质分级)
+
+### Context & User Correction
+The user identified four critical areas requiring calibration across RI-03/04/05:
+1. **RDI Consumer unanchored to real events**: RI-04 used arbitrary dates without binding verified `#1272` `RiskEvent` provenance (`source_id`, `source_hash`, `available_at`).
+2. **Heuristic assumptions disguised as empirical metrics**: RI-05 hardcoded 48->5 lines, 7->2 steps, and boolean PIT flags, labeling them as "实测".
+3. **Destructive CLI file deletion**: `alpha data slice --data-output` unlinked pre-existing user files when blocked.
+4. **Overclaiming PIT readiness**: `status: ready` was susceptible to being misread as "strict PIT certified", whereas it currently only verifies observation cutoff boundaries.
+
+### Rules Established
+1. **Never Conflate Heuristic Estimates with Empirical Evidence**:
+   - Workflow task steps (e.g. 7 steps -> 2 steps) are human cognitive models and must be explicitly labeled `estimated_*`.
+   - Empirical metrics must be dynamically calculated from execution (AST statement counts via `inspect`/`ast`, peak memory via `tracemalloc`, timer via `perf_counter`, and PIT lookahead interception verified via actual challenge execution with `end_date > cutoff`).
+2. **Safe Atomic Writing (Zero Destructive Side Effects)**:
+   - File exports must write to a temporary file in the target directory and rename atomically.
+   - If execution fails or is blocked, NEVER touch or delete any existing file at the target path. Leave user files intact and return exit code 10.
+3. **Observation Cutoff Bounds vs. Full Multi-Vintage PIT Certification**:
+   - Meeting `end_date <= as_of_cutoff` is an **observation cutoff verification**, NOT full PIT certification under ADR-0005.
+   - Data slice receipts must explicitly declare `pit_qualification: "observation_cutoff_verified_not_revision_certified"`, `pit_certified: false`, and disclose `pit_limitations` until vendor availability timestamps (`t_available`) and multi-vintage restatement histories are proven.
+4. **Mandatory Event Provenance in Macro Risk Studies (#1272)**:
+   - Forward horizon studies must bind to an authoritative `RiskEvent` with verified source timestamps.
+   - Missing event history cannot be treated as zero or substituted with unanchored dates; it must strictly fail closed with `blocked_event_pit_coverage`.

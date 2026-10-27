@@ -1,17 +1,22 @@
 """Track B RI-05: Researcher Efficiency Benchmark and Metric Measurement.
 
-Empirically measures researcher friction, boilerplate code, and reproducibility
+Empirically measures researcher friction, code complexity, and reproducibility
 comparing traditional ad-hoc research workflows vs. the governed research data slice plane.
 
-Boundaries:
+Contract Boundaries:
 - research_only=true, trade_ready=false.
-- No live trading signals, no secondary storage engines, no background schedulers.
+- Rigorously distinguishes qualitative workflow estimates (heuristic manual steps)
+  from empirically measured runtime metrics (AST statement count, tracemalloc peak memory,
+  perf_counter execution time, and dynamically verified PIT lookahead interception).
 """
 
 from __future__ import annotations
 
+import ast
+import inspect
 import json
 import time
+import tracemalloc
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -38,26 +43,33 @@ class ResearchEfficiencyMetrics:
     date_range: tuple[str, str]
     as_of_cutoff: str
 
-    # Metrics
-    baseline_glue_lines: int
-    optimized_glue_lines: int
-    glue_lines_reduction_pct: float
+    # 1. Qualitative workflow estimation (Heuristic steps clearly demarcated)
+    estimated_baseline_workflow_steps: int
+    estimated_optimized_workflow_steps: int
+    estimated_steps_reduction_pct: float
+    workflow_estimation_note: str
+    workflow_steps_breakdown: dict[str, list[str]]
 
-    baseline_manual_steps: int
-    optimized_manual_steps: int
-    manual_steps_reduction_pct: float
+    # 2. Empirically measured caller source code AST statements (dynamically inspected)
+    measured_baseline_ast_statements: int
+    measured_optimized_ast_statements: int
+    measured_ast_statement_reduction_pct: float
 
-    baseline_pit_interception: bool
-    optimized_pit_interception: bool
+    # 3. Empirically verified PIT lookahead interception (via actual execution with end_date > cutoff)
+    verified_baseline_intercepts_lookahead: bool
+    verified_optimized_intercepts_lookahead: bool
 
-    baseline_has_cryptographic_receipt: bool
-    optimized_has_cryptographic_receipt: bool
+    # 4. Empirically measured runtime performance & memory (perf_counter & tracemalloc)
+    measured_baseline_execution_ms: float
+    measured_optimized_execution_ms: float
+    measured_baseline_peak_bytes: int
+    measured_optimized_peak_bytes: int
 
+    # 5. Mathematical equivalence & auditability verification
     data_equivalence_verified: bool
     max_absolute_difference: float
-
-    baseline_execution_ms: float
-    optimized_execution_ms: float
+    baseline_has_cryptographic_receipt: bool
+    optimized_has_cryptographic_receipt: bool
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -144,6 +156,10 @@ def run_ad_hoc_baseline(
                 })
 
     df = pd.DataFrame(records)
+    if df.empty:
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        return {}, elapsed_ms
+
     factors = _compute_factors_from_dataframe(df, benchmark_symbol)
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
     return factors, elapsed_ms
@@ -161,7 +177,7 @@ def run_slice_optimized(
 ) -> tuple[dict[str, dict[str, float]], dict[str, Any], float]:
     """Execute modern research workflow: governed data slice extraction.
 
-    Researcher writes ~5 lines of setup and gets verified, PIT-governed data.
+    Researcher writes declarative DataSliceRequest and consumes verified DataFrame.
     """
     t0 = time.perf_counter()
 
@@ -187,6 +203,13 @@ def run_slice_optimized(
     return factors, result.receipt, elapsed_ms
 
 
+def _count_ast_statements(func: Any) -> int:
+    """Dynamically count AST statement nodes within a function body."""
+    src = inspect.getsource(func)
+    tree = ast.parse(src)
+    return sum(1 for node in ast.walk(tree) if isinstance(node, ast.stmt))
+
+
 def measure_efficiency_metrics(
     repo_root: Path | None = None,
 ) -> ResearchEfficiencyMetrics:
@@ -201,17 +224,23 @@ def measure_efficiency_metrics(
     end_date = "2026-08-31"
     as_of_cutoff = "2026-09-04"
 
-    # Run baseline
+    # 1. Measure baseline execution and peak memory
+    tracemalloc.start()
     baseline_factors, baseline_ms = run_ad_hoc_baseline(
         root, market, sample_symbols, benchmark_symbol, start_date, end_date, as_of_cutoff
     )
+    _, baseline_peak_bytes = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
 
-    # Run optimized
+    # 2. Measure optimized execution and peak memory
+    tracemalloc.start()
     optimized_factors, receipt, optimized_ms = run_slice_optimized(
         root, market, pool_id, sample_symbols, benchmark_symbol, start_date, end_date, as_of_cutoff
     )
+    _, optimized_peak_bytes = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
 
-    # Calculate max difference to verify mathematical equivalence
+    # 3. Verify mathematical equivalence
     max_diff = 0.0
     for sym in sample_symbols:
         for metric in ["realized_vol10", "cum_return", "excess_return_vs_bench"]:
@@ -219,20 +248,57 @@ def measure_efficiency_metrics(
             if diff > max_diff:
                 max_diff = diff
 
-    # Lines of glue code comparison:
-    # Baseline requires: path resolution, JSON deserialization, loop extraction, range filter,
-    # field validation, DataFrame assembly (~48 lines in Python).
-    # Optimized requires: DataSliceRequest declaration and call (~5 lines).
-    baseline_glue_lines = 48
-    optimized_glue_lines = 5
-    glue_lines_reduction = ((baseline_glue_lines - optimized_glue_lines) / baseline_glue_lines) * 100.0
+    # 4. Dynamically count AST statements
+    baseline_ast_stmts = _count_ast_statements(run_ad_hoc_baseline)
+    optimized_ast_stmts = _count_ast_statements(run_slice_optimized)
+    ast_reduction_pct = (
+        ((baseline_ast_stmts - optimized_ast_stmts) / baseline_ast_stmts) * 100.0
+        if baseline_ast_stmts > 0
+        else 0.0
+    )
 
-    # Manual steps comparison:
-    # Baseline: 7 steps (find files, parse schema, align timeframes, check corporate actions, check cutoff, handle missing, format DF).
-    # Optimized: 2 steps (declare DataSliceRequest, use returned DataFrame).
-    baseline_manual_steps = 7
-    optimized_manual_steps = 2
-    steps_reduction = ((baseline_manual_steps - optimized_manual_steps) / baseline_manual_steps) * 100.0
+    # 5. Dynamically verify PIT lookahead interception via actual challenge execution
+    lookahead_end = "2026-09-10"  # After cutoff 2026-09-04
+    lookahead_base_factors, _ = run_ad_hoc_baseline(
+        root, market, sample_symbols, benchmark_symbol, start_date, lookahead_end, as_of_cutoff
+    )
+    # Baseline silently extracts data past cutoff -> interception is False
+    verified_baseline_intercepts_lookahead = bool(len(lookahead_base_factors) == 0)
+
+    # Optimized detects end_date > cutoff -> returns blocked with structured blocker code
+    _, lookahead_receipt, _ = run_slice_optimized(
+        root, market, pool_id, sample_symbols, benchmark_symbol, start_date, lookahead_end, as_of_cutoff
+    )
+    verified_optimized_intercepts_lookahead = bool(
+        lookahead_receipt.get("status") == "blocked"
+        and any(
+            b.get("code") == "PIT_VIOLATION_LOOKAHEAD_CUTOFF"
+            for b in lookahead_receipt.get("blocked_reasons", [])
+        )
+    )
+
+    # 6. Qualitative workflow estimation (Transparently reported as heuristic human steps)
+    estimated_baseline_steps = 7
+    estimated_optimized_steps = 2
+    steps_reduction = (
+        ((estimated_baseline_steps - estimated_optimized_steps) / estimated_baseline_steps) * 100.0
+    )
+
+    steps_breakdown = {
+        "baseline_workflow_steps": [
+            "1. Manually identify data source location and directory layout",
+            "2. Read and parse individual JSON/CSV files per symbol into memory",
+            "3. Manually filter date range and align observation calendar",
+            "4. Manually check if any corporate action or announcement date violates cutoff",
+            "5. Manually verify required fields exist across all symbols",
+            "6. Convert raw dictionary records to pandas DataFrame",
+            "7. Compute factor vectors and relative benchmark returns",
+        ],
+        "optimized_workflow_steps": [
+            "1. Declare DataSliceRequest specification with market, pool, dates and cutoff",
+            "2. Consume clean DataFrame directly and compute factor vectors",
+        ],
+    }
 
     return ResearchEfficiencyMetrics(
         problem_name="US Tech Cross-Section Low-Volatility Excess Return",
@@ -242,18 +308,26 @@ def measure_efficiency_metrics(
         benchmark_symbol=benchmark_symbol,
         date_range=(start_date, end_date),
         as_of_cutoff=as_of_cutoff,
-        baseline_glue_lines=baseline_glue_lines,
-        optimized_glue_lines=optimized_glue_lines,
-        glue_lines_reduction_pct=round(glue_lines_reduction, 2),
-        baseline_manual_steps=baseline_manual_steps,
-        optimized_manual_steps=optimized_manual_steps,
-        manual_steps_reduction_pct=round(steps_reduction, 2),
-        baseline_pit_interception=False,  # Baseline fails to intercept future lookahead
-        optimized_pit_interception=True,  # get_research_data_slice strictly intercepts lookahead
-        baseline_has_cryptographic_receipt=False,
-        optimized_has_cryptographic_receipt=bool(receipt.get("data_hash")),
+        estimated_baseline_workflow_steps=estimated_baseline_steps,
+        estimated_optimized_workflow_steps=estimated_optimized_steps,
+        estimated_steps_reduction_pct=round(steps_reduction, 2),
+        workflow_estimation_note=(
+            "Heuristic workflow steps represent human-level task steps required from "
+            "formulating the hypothesis to computing factors; clearly separated from "
+            "empirical runtime measurements."
+        ),
+        workflow_steps_breakdown=steps_breakdown,
+        measured_baseline_ast_statements=baseline_ast_stmts,
+        measured_optimized_ast_statements=optimized_ast_stmts,
+        measured_ast_statement_reduction_pct=round(ast_reduction_pct, 2),
+        verified_baseline_intercepts_lookahead=verified_baseline_intercepts_lookahead,
+        verified_optimized_intercepts_lookahead=verified_optimized_intercepts_lookahead,
+        measured_baseline_execution_ms=round(baseline_ms, 2),
+        measured_optimized_execution_ms=round(optimized_ms, 2),
+        measured_baseline_peak_bytes=baseline_peak_bytes,
+        measured_optimized_peak_bytes=optimized_peak_bytes,
         data_equivalence_verified=bool(max_diff < 1e-5),
         max_absolute_difference=round(max_diff, 8),
-        baseline_execution_ms=round(baseline_ms, 2),
-        optimized_execution_ms=round(optimized_ms, 2),
+        baseline_has_cryptographic_receipt=False,
+        optimized_has_cryptographic_receipt=bool(receipt.get("data_hash")),
     )

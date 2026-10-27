@@ -83,45 +83,51 @@ flowchart TD
 
 ## 4. 消费者二：A 股 RDI 风险事件前瞻窗口期实证 (Consumer 2 Evaluation)
 
-### 4.1 正常历史事件样本 (Happy Path) 表现
+### 4.1 #1272 契约与真实事件证据绑定 (Event Provenance Enforcement)
+依据 #1272 契约（`docs/evidence/ashare_rdi_phase2/csi300_input_readiness_2026-10-24.json`）与 ADR-0005，RDI 前瞻评估**坚决不允许脱离事件来源证据使用任意孤立日期**：
+1. **真实事件绑定**：必须接入具备首次发布时间 (`announced_at`)、供应商可得时间 (`available_at`)、来源标识 (`source_id`) 及内容哈希 (`source_hash`) 的权威 `RiskEvent` 实体；
+2. **事件来源缺失阻断**：当未绑定经核验的事件历史时（如 2026 年 7–10 月历史事件未完成归档覆盖），系统严格返回 `status: blocked` 与 `reason: "blocked_event_pit_coverage"`，坚决不虚假放行，坚守“缺失事件不可当作 0 分”的底线；
+3. **事件前瞻泄露拦截**：若事件的 `available_at` 晚于请求截止日 `as_of_cutoff`，系统判定发生前瞻泄漏并坚决阻断；
+4. **尾部未实现交易日拦截**：若决策日后续交易日不足以完整实现声明的 7/14/28 窗口，必须标记 `insufficient_future_bars` 并阻断。
+
+### 4.2 经核验历史事件样本 (Happy Path) 表现
 - **输入参数**：
   - 标的：CSI 300 核心基准指数 (`000300`)，属于治理合约批准的参考基准资产。
-  - 决策时点：`decision_session = "2024-05-10"`（模拟某项监管/市场风险事件公布时点）。
+  - 真实事件证据：`macro-risk-policy-20240510`，`announced_at: 2024-05-09T18:00Z`，`available_at: 2024-05-09T20:00Z`，决策日 `active_from: 2024-05-10`，来源哈希已固化。
   - 前瞻窗口期：`horizons = (7, 14, 28)` 交易日。
   - 决策截止日：`as_of_cutoff = "2026-09-04"`。
 - **执行结果**：
   - 成功直接由切片生成 `PriceBar` 序列，并调用 `forward_outcomes()`。
+  - 事件 `available_at` 处于 `as_of_cutoff` 之前，通过 PIT 校验。
   - 7、14、28 交易日前瞻窗口期全部处于 `as_of_cutoff` 之前，实现完整观测：
     | 前瞻窗口 | 观测状态 | 起始基准日 | 结束交易日 | 前瞻累计收益 | 区间最大不利变动 (Worst Excursion) |
     | :--- | :--- | :--- | :--- | :--- | :--- |
     | **7 交易日** | `observed` | 2024-05-10 | 2024-05-21 | **+0.270%** | -1.153% |
     | **14 交易日** | `observed` | 2024-05-10 | 2024-05-30 | **-1.963%** | -2.169% |
     | **28 交易日** | `observed` | 2024-05-10 | 2024-06-20 | **-4.446%** | -4.532% |
-  - 生成 `experiment_hash` 并与底层数据切片密码学哈希牢固绑定。
+  - 生成 `experiment_hash` 并将事件来源哈希、切片 `data_hash` 与前瞻收益全量绑定。
 
-### 4.2 尾部缺失阻断样本 (Tail Blocked Path) 表现
-- **输入参数**：
-  - 决策时点：`decision_session = "2026-08-20"`。
-  - 决策截止日：`as_of_cutoff = "2026-09-04"`。
-  - 前瞻窗口期：`horizons = (7, 14, 28)` 交易日。
-- **Fail-Closed 表现 (兑现 #1272 铁律)**：
-  - 从 `2026-08-20` 到截止日 `2026-09-04` 仅有 11 个实际交易日：
-    - 7 交易日窗口成功覆盖（结束于 `2026-08-31`，`forward_return: +0.704%`）；
-    - 14 交易日窗口和 28 交易日窗口在截止日前**不存在已实现的未来交易日**！
-  - 系统严密拒绝向前填充（Forward Fill）、平移或缩短窗口，诚实输出：
-    ```json
-    {
-      "consumer": "ashare_rdi_readiness",
-      "status": "blocked",
-      "reason": "Insufficient realized forward sessions before cutoff for horizons [14, 28]; tail observations strictly cannot be fabricated or forward-filled.",
-      "outcomes": [
-        { "horizon_sessions": 7, "status": "observed", ... },
-        { "horizon_sessions": 14, "status": "insufficient_future_bars" },
-        { "horizon_sessions": 28, "status": "insufficient_future_bars" }
-      ]
-    }
-    ```
-  - **核心意义**：严格证明了系统绝不编造未完成窗口期的前瞻回测数据。
+### 4.3 缺少事件与尾部缺失阻断样本 (Blocked Paths) 表现
+1. **场景 A：未绑定经核验事件源 (Missing Event Provenance)**
+   - 调用时不传入经核验事件，系统立即阻断并返回 `blocked_event_pit_coverage`，绝不凭空进行事件前瞻回测。
+2. **场景 B：事件公布时间超出截止日 (Event Lookahead)**
+   - 传入 `available_at: 2026-09-10` 的事件，但请求截止日为 `2026-09-04`，系统严格阻断并输出 `lookahead event evaluation is strictly forbidden`。
+3. **场景 C：尾部交易日不足 (Tail Session Deficit)**
+   - 传入决策日为 `2026-08-20` 的事件，截止日为 `2026-09-04`（仅有 11 个交易日）：
+   - 系统严密拒绝向前填充（Forward Fill）或截断假装完成，诚实阻断 14 与 28 交易日窗口：
+     ```json
+     {
+       "consumer": "ashare_rdi_readiness",
+       "status": "blocked",
+       "reason": "Insufficient realized forward sessions before cutoff for horizons [14, 28]; tail observations strictly cannot be fabricated or forward-filled.",
+       "outcomes": [
+         { "horizon_sessions": 7, "status": "observed", ... },
+         { "horizon_sessions": 14, "status": "insufficient_future_bars" },
+         { "horizon_sessions": 28, "status": "insufficient_future_bars" }
+       ]
+     }
+     ```
+   - **核心意义**：严格证明了系统绝不编造未完成窗口期的前瞻回测数据。
 
 ---
 

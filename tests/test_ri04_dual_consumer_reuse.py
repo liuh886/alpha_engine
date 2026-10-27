@@ -8,9 +8,11 @@ share the exact same data slice reader, PIT boundaries, and cryptographic receip
 from __future__ import annotations
 
 import json
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from src.data.research_slice import DataSliceRequest
+from src.research.ashare_rdi.contracts import RiskEvent
 from src.research.dual_consumer_reuse_experiment import (
     run_cn_cross_sectional_research_experiment,
     run_rdi_event_horizon_readiness_experiment,
@@ -83,6 +85,67 @@ def test_ri04_consumer1_cross_sectional_blocked_fail_closed() -> None:
     assert "PIT_VIOLATION_FUTURE_EVENT_ANNOUNCEMENT" in blocker_codes
 
 
+def test_ri04_consumer2_rdi_missing_event_blocks_fail_closed() -> None:
+    """Consumer 2 #1272 Contract: Missing event source strictly fails closed."""
+    req = DataSliceRequest(
+        market="cn",
+        pool_id="cn_selected_equities_v3",
+        symbols=("000300",),
+        start_date="2024-01-01",
+        end_date="2026-09-04",
+        as_of_cutoff="2026-09-04",
+        price_mode="anchored_adjusted",
+    )
+
+    res = run_rdi_event_horizon_readiness_experiment(
+        req,
+        event=None,  # No verified event bound
+        root=ROOT,
+    )
+    assert res["consumer"] == "ashare_rdi_readiness"
+    assert res["status"] == "blocked"
+    assert "blocked_event_pit_coverage" in res["reason"]
+    assert res["outcomes"] is None
+
+
+def test_ri04_consumer2_rdi_event_available_after_cutoff_blocks_lookahead() -> None:
+    """Consumer 2 PIT lookahead: Event available after cutoff fails closed."""
+    req = DataSliceRequest(
+        market="cn",
+        pool_id="cn_selected_equities_v3",
+        symbols=("000300",),
+        start_date="2024-01-01",
+        end_date="2026-09-04",
+        as_of_cutoff="2026-09-04",
+        price_mode="anchored_adjusted",
+    )
+
+    future_event = RiskEvent(
+        event_id="macro-risk-policy-20260910",
+        story_id="story-macro-pboc-2026",
+        family="policy_easing",
+        direction="policy",
+        scope="market",
+        sector_id=None,
+        stage="announced",
+        announced_at=datetime(2026, 9, 9, 18, 0, tzinfo=timezone.utc),
+        available_at=datetime(2026, 9, 10, 8, 0, tzinfo=timezone.utc),  # After cutoff 2026-09-04
+        active_from=date(2026, 9, 10),
+        active_until=date(2026, 9, 30),
+        source_id="gov://pbc.gov.cn/notice/2026-0909",
+        source_hash="b" * 64,
+    )
+
+    res = run_rdi_event_horizon_readiness_experiment(
+        req,
+        event=future_event,
+        root=ROOT,
+    )
+    assert res["consumer"] == "ashare_rdi_readiness"
+    assert res["status"] == "blocked"
+    assert "lookahead event evaluation is strictly forbidden" in res["reason"]
+
+
 def test_ri04_consumer2_rdi_event_horizon_happy_path_deterministic() -> None:
     """Consumer 2 Happy Path: CSI300 historical event (2024-05-10) evaluates 7/14/28 horizons."""
     req = DataSliceRequest(
@@ -95,15 +158,32 @@ def test_ri04_consumer2_rdi_event_horizon_happy_path_deterministic() -> None:
         price_mode="anchored_adjusted",
     )
 
+    audited_event = RiskEvent(
+        event_id="macro-risk-policy-20240510",
+        story_id="story-macro-pboc-2024",
+        family="policy_easing",
+        direction="policy",
+        scope="market",
+        sector_id=None,
+        stage="announced",
+        announced_at=datetime(2024, 5, 9, 18, 0, tzinfo=timezone.utc),
+        available_at=datetime(2024, 5, 9, 20, 0, tzinfo=timezone.utc),
+        active_from=date(2024, 5, 10),
+        active_until=date(2024, 6, 20),
+        source_id="gov://pbc.gov.cn/notice/2024-0509",
+        source_hash="a" * 64,
+    )
+
     res1 = run_rdi_event_horizon_readiness_experiment(
         req,
-        decision_session="2024-05-10",
+        event=audited_event,
         horizons=(7, 14, 28),
         root=ROOT,
     )
     assert res1["consumer"] == "ashare_rdi_readiness"
     assert res1["status"] == "ready"
     assert res1["decision_session"] == "2024-05-10"
+    assert res1["event_provenance"]["event_id"] == "macro-risk-policy-20240510"
 
     outcomes = res1["outcomes"]
     assert len(outcomes) == 3
@@ -122,7 +202,7 @@ def test_ri04_consumer2_rdi_event_horizon_happy_path_deterministic() -> None:
     # Determinism verification across runs
     res2 = run_rdi_event_horizon_readiness_experiment(
         req,
-        decision_session="2024-05-10",
+        event=audited_event,
         horizons=(7, 14, 28),
         root=ROOT,
     )
@@ -142,9 +222,25 @@ def test_ri04_consumer2_rdi_event_horizon_blocked_tail_fail_closed() -> None:
         price_mode="anchored_adjusted",
     )
 
+    tail_event = RiskEvent(
+        event_id="macro-risk-policy-20260820",
+        story_id="story-macro-pboc-2026-tail",
+        family="policy_easing",
+        direction="policy",
+        scope="market",
+        sector_id=None,
+        stage="announced",
+        announced_at=datetime(2026, 8, 19, 18, 0, tzinfo=timezone.utc),
+        available_at=datetime(2026, 8, 19, 20, 0, tzinfo=timezone.utc),
+        active_from=date(2026, 8, 20),
+        active_until=date(2026, 9, 30),
+        source_id="gov://pbc.gov.cn/notice/2026-0819",
+        source_hash="c" * 64,
+    )
+
     res = run_rdi_event_horizon_readiness_experiment(
         req,
-        decision_session="2026-08-20",
+        event=tail_event,
         horizons=(7, 14, 28),
         root=ROOT,
     )

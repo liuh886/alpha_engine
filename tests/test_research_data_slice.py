@@ -172,6 +172,10 @@ def test_research_data_slice_receipt_governance_invariants() -> None:
     assert receipt["trade_ready"] is False
     assert receipt["schema_version"] == "research_data_slice_v1"
     assert receipt["slice_id"].startswith("slice_cn_")
+    assert receipt["pit_qualification"] == "observation_cutoff_verified_not_revision_certified"
+    assert receipt["pit_certified"] is False
+    assert receipt["readiness_scope"] == "governed_pool_and_cutoff_compliance_only"
+    assert len(receipt["pit_limitations"]) >= 2
 
 
 def test_research_data_slice_strictly_decouples_operational_monitoring() -> None:
