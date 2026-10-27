@@ -105,3 +105,35 @@ This section records the follow-up research on which data stack fits this vision
 **Evidence status.** The second research round was index-sourced with no live-browser verification in that run. Still unverified: whether DuckLake 1.1 shipped as tentatively calendared, Lance's local ergonomics, and some pandas and DuckDB secondary details; no performance measurement was made on Alpha Engine's actual data. Those items are open checks, not claims, and none of them changes the stack decision above.
 
 **Consistency with §7.** This section introduces no new database, scheduler, registry, or evaluator merely to serve the racetrack view. The minimal stack is plain files plus Polars; DuckLake is a deferred upgrade, not a new fact base, and the single-derivation-authority and private-field-isolation guards in §7 continue to apply.
+
+## 11. Landing path and decisions fixed 2026-10-27 (docs only)
+
+This section records the landing path agreed after the §10 data-stack discussion, plus four decisions fixed on 2026-10-27. It is a documentation addition only: no runtime, data, registry, workflow, or frontend code is changed by it. Decisions recorded here are current defaults, versioned like any other rule: changing one later means a new version, not a silent edit to history.
+
+### 11.1 Decisions fixed 2026-10-27
+
+- **Season length, current default: one month.** A season runs for one month and is settled at the close of the last trading day of that month. This supersedes the earlier "no fixed length" formulation as the working default; it is not a permanent lock, and any future change is a new version. The season-points mapping itself remains a versioned rule to be fixed at the start of the first season under this default, not invented retroactively.
+- **Track conditions ("weather indicators") are descriptive explanatory indicators only.** A track condition is an indicator built to explain market behaviour; it is not a runner, it does not race, it does not score points, and it does not gate a runner (no "rest when conditions are adverse" rule). The term carries no special meaning beyond that: an indicator may be too weak to stand alone as a runner and still be exactly the right thing to show underneath a NAV curve to explain why runners won or lost in a period. Associations may be positive or negative (for example, a risk factor as a headwind).
+- **Effectiveness: benchmark-relative, no separate absolute standard for now.** A runner is judged against its benchmark — QQQ for the US pool, CSI 300 for the CN pool. No absolute "effective" threshold is pursued at this stage, and the question is not to be over-engineered. Monthly rank charts and season points remain the tools for judging persistence (consistently near the front versus a single flash), not a second, competing effectiveness standard.
+- **Corporate actions: dividend-reinvestment, total-return, as simple as possible without harming return accuracy.** Dividends are treated as reinvested, in the manner of a fund dividend-reinvestment strategy, so returns are total returns. Operationally this means the adjustment that carries reinvested dividends is part of the derived adjusted price; there is no separate per-dividend cash流水 to maintain for the research calculation, provided the reinvestment assumption is stated in the runner version. Splits and bonus shares are handled by the same adjustment-or-quantity rule as in §10, never both. Price-return figures may be published alongside as a labelled对照, but the default research return is total return.
+
+### 11.2 Landing order
+
+Work proceeds in this order, and each phase keeps the guards in §7 (single derivation authority per artefact, private-field isolation, research_only, no new database/scheduler/registry merely to serve a view):
+
+1. **Minimal stack first.** Raw prices plus corporate-action events, content-hash manifests, Polars derivation, and the Q event ledger. One derivation script per artefact; deleting all derived artefacts and re-running from canonical data plus manifests reproduces them.
+2. **Runner registry and race scoring.** Thesis-gated runners, monthly cross-sectional ranks, and season points settled under the §11.1 monthly default. Existing study templates migrate as thesis-bearing runners; historical one-off experiments stay as history, out of the active race path.
+3. **Pool indices versus benchmarks.** Frozen US and CN pools built as broad indices, raced against QQQ and CSI 300 respectively, with the selection/removal history that produced each pool version. The pool weight rule and cost model are versioned rules fixed before the first pool index is published, not defaults chosen by accident.
+4. **Daily self-maintenance.** One scheduled local script: ingest new partitions, verify manifest/schema/calendar, recompute projections, publish a new projection version. On any failure, nothing is published and the previous projection stays live; re-running the same ingest is idempotent. Pool membership changes are not part of daily maintenance — they require a new pool version.
+5. **Racetrack frontend by replacement, not addition.** The NAV-centred scoreboard (§5) replaces the old observation view once stable; the two navigations do not run in parallel. DuckDB is added when SQL aggregation or a catalog becomes convenient; DuckLake only when manifest discipline slips or multi-table snapshots are genuinely needed.
+
+### 11.3 Still open, explicitly not blocking phase 1
+
+- Corporate-action data source: whether the current governed-slice source supplies corporate-action events or only adjusted prices, and therefore whether history can be rebuilt as raw plus events or must be accepted as versioned adjusted-price snapshots.
+- Backfill scope for corporate actions across the US and CN pools: full history in one pass, or record from now onward with earlier seasons labelled accordingly.
+- Edge-case defaults for corporate actions: rights issues (participate or not), spin-offs (cash distribution or new-asset treatment), mergers and delistings (termination rule).
+- Tax assumption for research returns (pre-tax is the working assumption to be confirmed, not yet recorded as decided).
+- Pool weight rule, per-runner cost model, and cash treatment details, to be fixed before phase 3.
+- Season-points mapping detail, to be fixed at the start of the first season under the monthly default.
+
+None of these blocks phase 1. Each is recorded here so that when its phase arrives, the decision is made once, written down as a versioned rule, and never mixed with a different rule in the same comparison.
