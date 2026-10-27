@@ -315,3 +315,34 @@ In Phase 7.0, we completed Phase 2 of the Research Study Workspace (`alpha resea
 4. **Strict Cross-Family Comparison Isolation (严禁跨领域胡乱比对)**:
    - `compare_studies` must enforce matching `study_id` and identical data hashes.
    - Comparing apples to oranges (e.g. comparing an XGBoost equity ranking with an RDI macro event) MUST raise `ResearchStudyError` fail-closed.
+
+---
+
+## 2026-10-27: XGBoost OOS Temporal Causality, RDI Provenance Hardening & Workspace Modularity (时序因果性、事件来源验证与工作区模块化铁律)
+
+### Context & User Correction
+The user conducted a thorough review of Phase 2 and identified critical defects:
+1. **XGBoost Lookahead Bias (P0)**:
+   - Signals were computed using day $t$ close features, then multiplied by day $t$ close-to-close returns, retroactively earning same-day return.
+   - QQQ first-session return was arbitrarily filled with 0.0 instead of using an anchor session.
+   - Maximum drawdown curve omitted initial capital baseline 1.0, and gross returns were not derived from true turnover frictions.
+2. **RDI Unverified Event Masking (P0)**:
+   - The default RDI template used synthetic identifiers (`macro-risk-policy-20240510`) that were not validated against an authoritative archived repository event store.
+   - The repository explicitly notes `historical_pit_event_coverage_complete: false`. Unverified events must strictly fail closed with `blocked_event_pit_coverage` rather than reporting false `ready`.
+3. **Workspace Monolith Bloat (P1)**:
+   - `src/research/study_workspace.py` ballooned with embedded XGBoost training, portfolio simulation, and factor loops, instead of delegating to domain execution modules.
+4. **Research Review Presentation (P1)**:
+   - Results were only readable as raw JSON, hindering quick research decision making.
+
+### Rules Established
+1. **Strict Temporal Causality & Anchor Session (时序因果与锚定日铁律)**:
+   - Signals for trading session $t$ MUST be computed strictly at session $t-1$ close (or $T_{anchor}$ for day 1 of test).
+   - Realized returns are evaluated across $(t-1, t]$. Never compute signals at date $t$ close to capture date $t$ returns.
+   - Benchmark returns on test day 1 must be calculated from $T_{anchor}$ close to $T_{test\_start}$ close, with zero fill-0.0 compromises.
+   - Drawdown curves must initialize with $1.0$.
+2. **Authoritative Event Archive Authentication (事件档案核验铁律)**:
+   - An RDI risk event is only admissible if verified against the authoritative repository event archive (`historical_pit_event_coverage_complete`).
+   - If event coverage is incomplete or the event is unauthenticated, the study MUST fail closed with `blocked_event_pit_coverage` and exit code 10.
+3. **Lean Workspace Orchestrator (精简门面与领域解耦)**:
+   - `study_workspace.py` MUST serve as a clean orchestrator (discovery, configuration, validation, dispatching, and presentation).
+   - Domain-specific execution logic (XGBoost ranker, factor statistics, RDI forward windows) MUST reside in dedicated study execution modules under `src/research/studies/`.

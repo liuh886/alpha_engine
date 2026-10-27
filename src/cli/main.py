@@ -175,6 +175,12 @@ def _build_parser() -> argparse.ArgumentParser:
     study_run.add_argument("--output", type=Path, help="Optional immutable receipt output path.")
     study_show = study_actions.add_parser("show", help="Inspect a retained research receipt.")
     study_show.add_argument("receipt", type=Path)
+    study_show.add_argument(
+        "--format",
+        choices=["json", "markdown", "table"],
+        default="json",
+        help="Output display format (json for machine pipeline, markdown or table for human review).",
+    )
     study_compare = study_actions.add_parser(
         "compare", help="Compare two completed receipts on identical frozen data."
     )
@@ -436,7 +442,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if payload["status"] == "blocked":
                     exit_code = 10
             elif args.study_action == "show":
-                payload = inspect_study(_resolve(root, args.receipt))
+                inspected = inspect_study(_resolve(root, args.receipt))
+                if getattr(args, "format", "json") in {"markdown", "table"}:
+                    from src.research.studies.review_formatter import format_study_review
+
+                    print(format_study_review(inspected))
+                    return 0
+                payload = inspected
             elif args.study_action == "compare":
                 payload = compare_studies(
                     _resolve(root, args.left), _resolve(root, args.right)

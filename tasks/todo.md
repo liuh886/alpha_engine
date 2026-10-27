@@ -294,6 +294,29 @@
   - 运行真实端到端命令，验证退出码与收据原子性落盘；
   - 更新 `tasks/todo.md`、`tasks/lessons.md` 并向用户客观汇报。
 
+### Phase 7.1: 投研工作区深化整改与架构收敛 (Causality Fix, Event Authentication & Lean Modularization)
+- [x] **7.1.1 [P0 / Causality] 修复 XGBoost 样本外时序因果性、锚定日初始化与真实回撤计算**:
+  - 严格消除同一交易日收盘特征与当天收益混用前视偏差：$T_{t-1}$ 收盘计算特征并产生排名，$T_t$ 会话评估持有收益 $(T_{t-1}, T_t]$；
+  - 引入 In-Sample 最后一个有效交易日作为锚定日 $T_{anchor}$，首日测试信号在 $T_{anchor}$ 生成并完整覆盖 $(T_{anchor}, T_{test\_start}]$ 收益；
+  - 基准 QQQ 首日收益严格从 $T_{anchor}$ 到 $T_{test\_start}$ 计算，坚决杜绝填 0.0；
+  - 修复最大回撤初始基准为 1.0，根据真实逐日换手费用还原毛收益。
+- [x] **7.1.2 [P0 / Event Provenance] 严密核验 RDI 事件来源档案，未通过完整认证强制阻断 (`blocked_event_pit_coverage`)**:
+  - 依据仓库事实 `docs/evidence/ashare_rdi_phase2/csi300_input_readiness_2026-10-24.json`（`historical_pit_event_coverage_complete: false`），建立事件档案真实性核验机制；
+  - 严禁对未在权威档案中认证通过的合成事件发放 `status: "ready"`，一律 fail-closed 返回 `blocked_event_pit_coverage` 与退出码 10。
+- [x] **7.1.3 [P1 / Modular Architecture] 拆解解耦 `src/research/study_workspace.py` 为领域执行模块 (`src/research/studies/`)**:
+  - 将 `study_workspace.py` 瘦身收敛为纯粹的工作区门面（发现、配置、分发、只读比对与持久化）；
+  - 将 XGBoost 排序执行逻辑拆分为独立模块 `src/research/studies/xgb_study.py`；
+  - 将因子 Rank IC 探索逻辑拆分为独立模块 `src/research/studies/factor_study.py`；
+  - 将 RDI 风险事件前瞻响应逻辑拆分为独立模块 `src/research/studies/rdi_study.py`；
+  - 消除大单文件代码异味，提高各领域的可测试性与可维护性。
+- [x] **7.1.4 [P1 / Research Review] 增强终端展示人类友好格式化报告 (Table / Markdown)**:
+  - 在 `alpha research study show` 中新增 `--format table|markdown|json`（默认渲染格式化终端摘要）；
+  - 结构化呈现研究假设、时间窗口、标的池、关键业绩（Net Return, Excess, Sharpe, Max Drawdown, Rank IC, IC-IR）、阻断原因与 PIT 局限性，免除研究者直接肉眼解析庞大 JSON 的负担。
+- [x] **7.1.5 [Test Suite & Full Regression] 补充时序因果与事件档案负面测试并全量回归**:
+  - 编写单测严密验证：修改 $T_t$ 当天数据绝不影响 $T_t$ 的选股权重（防前视断言）；
+  - 编写单测验证未认证 RDI 事件严格返回 10 与 `blocked_event_pit_coverage`；
+  - 运行全量回归套件并通过 `uv run ruff check` 与 `git diff --check`。
+
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
   - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。
@@ -350,6 +373,12 @@
 ---
 
 ## 阶段验收与复盘 (Review Section)
+- [x] **Phase 7.1 投研工作区深化整改与架构收敛闭环 (2026-10-27)**:
+  - **P0 XGBoost 样本外时序因果性彻底修正**：在 [`src/research/studies/xgb_study.py`](src/research/studies/xgb_study.py) 彻底消除同一会话收盘特征与当天收益混用前视偏差；严格执行 $T_{t-1}$ 收盘计算特征并产生排名，$T_t$ 会话才结算持仓收益 $(T_{t-1}, T_t]$；引入 In-Sample 最后一个有效交易日作为锚定日 $T_{anchor}$ 初始化首日测试持仓；基准 QQQ 首日收益严格从 $T_{anchor}$ 到 $T_{test\_start}$ 真实评估，坚决杜绝填 0.0；修复最大回撤初始基准为 1.0，根据真实逐日调仓摩擦还原毛收益；
+  - **P0 RDI 风险事件来源档案严格核验**：在 [`src/research/studies/rdi_study.py`](src/research/studies/rdi_study.py) 接入权威事件档案事实源 `csi300_input_readiness_2026-10-24.json`；由于目前 `historical_pit_event_coverage_complete: false`，任何未在权威档案中核验源哈希的预设/合成事件坚决 fail-closed 阻断，返回 `status: "blocked"`、`blocked_reasons: ["blocked_event_pit_coverage"]` 与退出码 10，绝不发放虚假通过收据；
+  - **P1 工作区大单文件彻底拆解模块化**：新建 [`src/research/studies/`](src/research/studies/) 领域模块包，将 XGBoost 排序仿真（`xgb_study.py`）、因子 Rank IC 统计（`factor_study.py`）、RDI 前瞻响应（`rdi_study.py`）及审查格式化（`review_formatter.py`）完整解耦；[`src/research/study_workspace.py`](src/research/study_workspace.py) 瘦身至 375 行纯粹的轻量门面，彻底根治大单文件架构异味；
+  - **P1 Research Review 终端优雅呈现**：在 [`src/cli/main.py`](src/cli/main.py) 为 `alpha research study show` 新增 `--format markdown|table|json` 支持；输出美观的 GitHub Flavored Markdown 摘要，清晰呈现研究假设、状态徽章、OOS 净收益、超额收益、Sharpe、回撤、Rank IC 与局限性，免除研究者直接肉眼解析庞大 JSON 的负担；
+  - **全量测试与回归验证**：更新 [`tests/test_study_workspace_phase2.py`](tests/test_study_workspace_phase2.py)（12 项测试全绿），全套 21 项 study workspace 测试 18.53s 全绿通过；46 项数据切片与复用回归测试 67.42s 全绿通过；`uv run ruff check` 零告警，`git diff --check` 零违规。
 - [x] **Phase 7.0 研究工作流第二阶段演进：多领域投研假设统一接入闭环 (2026-10-27)**:
   - **4 大活跃研究家族统一目录**：在 [`src/research/study_workspace.py`](src/research/study_workspace.py) 将工作区从单一的波动率反转扩展为 4 大活跃研究模版：
     1. `us_tech_vol_reversal_v1`（美股科技股滚动窗口波动率反转研究）

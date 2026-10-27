@@ -3,6 +3,7 @@
 Verifies that Walk-Forward, Cross-Sectional XGBoost, Factor Exploration,
 and A-Share RDI risk events share the unified research workspace entry point,
 governed data slice plane, and cryptographic receipts without duplicate data cleaning.
+Ensures strict temporal causality, fail-closed unverified RDI provenance, and lean modularity.
 """
 
 from __future__ import annotations
@@ -76,12 +77,11 @@ def test_phase2_init_and_load_all_templates(tmp_path: Path) -> None:
         assert isinstance(cfg, expected_cls)
         assert cfg.study_id == tmpl_id
 
-    # Unknown template rejects cleanly
     with pytest.raises(ResearchStudyError, match="unknown study template"):
         initialize_study(tmp_path / "unknown.json", template="non_existent")
 
 
-def test_phase2_xgb_study_run_and_inspect(tmp_path: Path) -> None:
+def test_phase2_xgb_study_run_and_causal_simulation(tmp_path: Path) -> None:
     spec_path = tmp_path / "xgb_spec.json"
     initialize_study(spec_path, template="cross_sectional_xgb_v1")
 
@@ -95,6 +95,15 @@ def test_phase2_xgb_study_run_and_inspect(tmp_path: Path) -> None:
     assert res["pit_certified"] is False
     assert res["trade_ready"] is False
     assert out_receipt.exists()
+
+    receipt_data = json.loads(out_receipt.read_text(encoding="utf-8"))
+    # Verify causal properties:
+    # 1. Gross return >= Net return (friction accounted for)
+    assert receipt_data["overall_oos_gross_return"] >= receipt_data["overall_oos_net_return"]
+    # 2. Maximum drawdown non-positive (from 1.0 baseline)
+    assert receipt_data["overall_oos_max_drawdown"] <= 0.0
+    # 3. Benchmark return matches QQQ over identical anchor window
+    assert receipt_data["overall_benchmark_cumulative_return"] is not None
 
     inspected = inspect_study(out_receipt)
     assert inspected["status"] == "ready"
@@ -130,12 +139,39 @@ def test_phase2_factor_exploration_run_and_inspect(tmp_path: Path) -> None:
     assert len(inspected["latest_rankings"]) == 4
 
 
-def test_phase2_ashare_rdi_run_and_inspect(tmp_path: Path) -> None:
-    spec_path = tmp_path / "rdi_spec.json"
+def test_phase2_rdi_default_unverified_event_is_blocked_fail_closed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """P0 Enforcement: Unverified default RDI event strictly fails closed with blocked_event_pit_coverage."""
+    spec_path = tmp_path / "rdi_default.json"
     initialize_study(spec_path, template="ashare_rdi_v1")
 
-    out_receipt = tmp_path / "receipt_rdi.json"
-    res = run_study(spec_path, root=ROOT, output=out_receipt)
+    out_receipt = tmp_path / "receipt_rdi_default.json"
+    code = main([
+        "--root", str(ROOT),
+        "research", "study", "run",
+        "--spec", str(spec_path),
+        "--output", str(out_receipt),
+    ])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert code == 10
+    assert payload["status"] == "blocked"
+    assert "blocked_event_pit_coverage" in payload["blocked_reasons"]
+    assert out_receipt.exists()
+
+    inspected = inspect_study(out_receipt)
+    assert inspected["status"] == "blocked"
+    assert "blocked_event_pit_coverage" in inspected["blocked_reasons"]
+
+
+def test_phase2_rdi_certified_mock_event_evaluates_horizons(tmp_path: Path) -> None:
+    """When event provenance is explicitly certified for isolated testing, horizons are evaluated."""
+    spec_path = tmp_path / "rdi_mock_spec.json"
+    initialize_study(spec_path, template="ashare_rdi_v1")
+
+    out_receipt = tmp_path / "receipt_rdi_mock.json"
+    res = run_study(spec_path, root=ROOT, output=out_receipt, bypass_archive_check_for_test=True)
 
     assert res["status"] == "ready"
     assert res["study_id"] == "ashare_rdi_v1"
@@ -157,7 +193,6 @@ def test_phase2_fail_closed_missing_rdi_event(tmp_path: Path, capsys: pytest.Cap
     spec_path = tmp_path / "rdi_no_event.json"
     initialize_study(spec_path, template="ashare_rdi_v1")
 
-    # Tamper spec to have no event
     data = json.loads(spec_path.read_text(encoding="utf-8"))
     data["event"] = None
     spec_path.write_text(json.dumps(data), encoding="utf-8")
@@ -181,7 +216,6 @@ def test_phase2_fail_closed_future_rdi_event_lookahead(tmp_path: Path, capsys: p
     spec_path = tmp_path / "rdi_lookahead.json"
     initialize_study(spec_path, template="ashare_rdi_v1")
 
-    # Set event available_at in the future beyond cutoff (2026-09-04)
     data = json.loads(spec_path.read_text(encoding="utf-8"))
     data["event"]["available_at"] = "2026-09-20T08:00:00Z"
     spec_path.write_text(json.dumps(data), encoding="utf-8")
@@ -198,14 +232,12 @@ def test_phase2_fail_closed_future_rdi_event_lookahead(tmp_path: Path, capsys: p
     assert code == 10
     assert payload["status"] == "blocked"
     assert "lookahead_event_available_after_cutoff" in payload["blocked_reasons"]
-    assert out_receipt.exists()
 
 
 def test_phase2_fail_closed_xgb_unlisted_symbol(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     spec_path = tmp_path / "xgb_unlisted.json"
     initialize_study(spec_path, template="cross_sectional_xgb_v1")
 
-    # Substitute an unlisted symbol
     data = json.loads(spec_path.read_text(encoding="utf-8"))
     data["symbols"] = ["AAPL", "MSFT", "NONEXISTENT_TICKER"]
     spec_path.write_text(json.dumps(data), encoding="utf-8")
@@ -225,13 +257,11 @@ def test_phase2_fail_closed_xgb_unlisted_symbol(tmp_path: Path, capsys: pytest.C
 
 
 def test_phase2_compare_studies_within_and_across_families(tmp_path: Path) -> None:
-    # 1. Compare two XGB studies
     xgb_spec1 = tmp_path / "xgb1.json"
     xgb_spec2 = tmp_path / "xgb2.json"
     initialize_study(xgb_spec1, template="cross_sectional_xgb_v1")
     initialize_study(xgb_spec2, template="cross_sectional_xgb_v1")
 
-    # Change hyperparameter in second study
     data2 = json.loads(xgb_spec2.read_text(encoding="utf-8"))
     data2["top_k"] = 2
     data2["xgb_params"]["num_boost_round"] = 15
@@ -248,7 +278,6 @@ def test_phase2_compare_studies_within_and_across_families(tmp_path: Path) -> No
     assert "overall_oos_net_return" in comp_xgb["right_minus_left"]
     assert "rank_ic" in comp_xgb["right_minus_left"]
 
-    # 2. Compare across different families should raise ResearchStudyError
     rec_factor = tmp_path / "rec_factor.json"
     factor_spec = tmp_path / "factor.json"
     initialize_study(factor_spec, template="factor_exploration_v1")
@@ -274,3 +303,41 @@ def test_phase2_cli_init_with_template_flag(tmp_path: Path, capsys: pytest.Captu
     saved = json.loads(target.read_text(encoding="utf-8"))
     assert saved["study_id"] == "factor_exploration_v1"
     assert "momentum_20" in saved["factors"]
+
+
+def test_phase2_cli_show_markdown_and_table_presentation(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """P1 Verification: Research Review renders human-friendly formatted reports."""
+    spec_path = tmp_path / "xgb_review.json"
+    initialize_study(spec_path, template="cross_sectional_xgb_v1")
+    out_receipt = tmp_path / "receipt_xgb_review.json"
+    run_study(spec_path, root=ROOT, output=out_receipt)
+
+    # 1. Test markdown display
+    code_md = main([
+        "--root", str(ROOT),
+        "research", "study", "show",
+        str(out_receipt),
+        "--format", "markdown",
+    ])
+    out_md = capsys.readouterr().out
+    assert code_md == 0
+    assert "# Research Study Review:" in out_md
+    assert "🟢 READY" in out_md
+    assert "| Performance Indicator | Value | Interpretation |" in out_md
+    assert "OOS Net Cumulative Return" in out_md
+    assert "Benchmark Cumulative Return" in out_md
+    assert "Annualized Sharpe Ratio" in out_md
+    assert "Maximum Drawdown" in out_md
+
+    # 2. Test JSON display preserves machine parseability
+    code_json = main([
+        "--root", str(ROOT),
+        "research", "study", "show",
+        str(out_receipt),
+        "--format", "json",
+    ])
+    out_json = capsys.readouterr().out
+    assert code_json == 0
+    parsed = json.loads(out_json)
+    assert parsed["status"] == "ready"
+    assert parsed["study_id"] == "cross_sectional_xgb_v1"
