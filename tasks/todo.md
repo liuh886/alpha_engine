@@ -370,6 +370,26 @@
   - [x] 记录 lessons 到 `tasks/lessons.md`。
   - [x] 保持 git 分支整洁，顺利推送到 `origin main`。
 
+### Phase 8.0: Racetrack 最小技术栈与资产净值引擎 (PR #1306 Phase 1 Minimal Stack)
+- [x] **8.0.1 [Architecture & Spec] 最小数据底座与 P/Q 引擎技术规范设计 (Architect Subagent)**:
+  - [x] 形式化 $P(t, s)$ 价格矩阵契约（时间轴 $T \in$ 交易所日历，资产轴 $S \in$ 治理股票池，总收益复权价）；
+  - [x] 形式化 $Q(t, s)$ 持仓事件账本契约（稀疏 JSONL 事件流、SHA-256 哈希链防篡改、仅含目标百分比权重）；
+  - [x] 形式化统一净值折算与调仓摩擦公式（逐日权重漂移、单边 8 bps 真实摩擦、NAV 归一化）；
+  - [x] 撰写设计规范至 `docs/architecture/racetrack_minimal_stack_spec.md` 并写入 PR #1306。
+- [ ] **8.0.2 [Implementation: P/Q Engine] 核心引擎与数据切片解析实现 (Developer Subagent)**:
+  - [ ] 建立 `src/racetrack/` 核心模块包；
+  - [ ] 实现 `contracts.py`：P 矩阵契约、Q 事件账本数据类；
+  - [ ] 实现 `matrix.py`：构建 $P(t, s)$ 矩阵（严格基于治理候选池与真实交易所交易日历）；
+  - [ ] 实现 `ledger.py`：追加和验证 $Q$ 事件账本（哈希链防篡改、无账户隐私敏感信息）；
+  - [ ] 实现 `engine.py`：纯函数式净值折算（连续净值、最大回撤、单边 8 bps 摩擦、Sharpe 比率）；
+  - [ ] 实现 `pool_index.py`：美股 87 池等权月度再平衡指数（Pool Index）生成器。
+- [ ] **8.0.3 [Tests & Invariant Proofs] 严密契约测试与无未来函数断言**:
+  - [ ] 编写 `tests/test_racetrack_minimal_stack.py`；
+  - [ ] 覆盖哈希一致性、篡改拦截、漂移与摩擦数学闭环、池指数基准对比及零账户隐私泄露。
+- [ ] **8.0.4 [Review & PR Update] 回归验证与更新 PR #1306 文档与提交**:
+  - [ ] 运行全量测试套件、静态代码分析与 diff 检查；
+  - [ ] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
+
 ---
 
 ## 阶段验收与复盘 (Review Section)
@@ -495,4 +515,41 @@
   - **P0 Run 40321512230 调查与双缺陷解耦**：交付 `docs/evidence/product_v1/incident_run_40321512230_2026-10-26.md` 与 `.json`，分离 INC-20261026-BYD (前瞻时序倒置/未捕获异常) 与 INC-20261026-CN27 (Tushare限频/Sina成交量误杀)；完成 BYD exit code 10 降级处理、前瞻 Cron 前移至 15:45 CST、selected pool 价格 overlap 排除成交量硬比较；75 项回归测试与前端构建全部通过。
   - **P1 纠正 Release Gate 状态**：修正 `docs/product/product_completion_scorecard_2026-10-25.md` 与 `tasks/todo.md`，将 Phase 3 定位为“公开投影修复已合并、完整隔离待验证”（A4 FAIL），Phase 4 定位为“章程已合并、RC 待执行”（A7 NOT_TESTED / NO-GO），消除了口径矛盾与不实验收。
   - **P1 启动 #1296 Track B 投研基础设施**：交付 RI-01 全量数据产品与血缘审计矩阵 `docs/architecture/investment_research_data_product_inventory_2026-10-26.md` 以及 RI-02 PIT 跨领域历史信息状态语义 ADR `docs/architecture/adr-0005-point-in-time-information-state-semantics.md`，建立五时间戳模型与 PIT-NEG-01 ~ PIT-NEG-05 负面测试。
+
+---
+
+## Racetrack Minimal Stack Spec 任务 (Phase 1 Spec)
+
+- [x] **R1. 撰写核心系统规范文档 (`docs/architecture/racetrack_minimal_stack_spec.md`)**:
+  - [x] **P(t, s) 市场价格矩阵规范**：
+    - [x] 时间轴 $T$：基于 `exchange_calendars` (XNYS / XSHG) 的真实交易日历与对齐规则；
+    - [x] 资产轴 $S$：严格绑定治理候选池 `us_selected_equities_v2.yaml` (87 标的) 与基准参考池 `QQQ` (总 88 标的)；
+    - [x] 价格源：读取 `data/research/market_evidence/us/symbols/{symbol}.json`，明确为复权总收益价 (Adjusted Total Return)；
+    - [x] 清单与哈希：输出包含 `matrix_sha256` 密码学指纹的行情清单 (Manifest)。
+  - [x] **Q(t, s) 持仓事件账本规范**：
+    - [x] 格式：稀疏 JSONL 事件流 (Sparse Event Stream)；
+    - [x] Schema 契约：定义 `event_id`, `parent_hash`, `timestamp_utc`, `effective_session`, `runner_id`, `runner_version`, `target_weights`, `cash_weight`, `reason`, `event_hash`；
+    - [x] 哈希链防篡改：逐级链接前序事件哈希，首事件 `parent_hash = "0" * 64`，清单记录 tip anchor；
+    - [x] 绝对隐私隔离：严禁出现实盘个人账户敏感信息 (shares, total_cost, broker 等)。
+  - [x] **资产价值与统一净值折算引擎数学规范 (V & NAV Engine)**：
+    - [x] 起始基准：$V(t_0) = 1.0$；
+    - [x] 逐日权重漂移公式：$w_{i, t}^{drift} = \frac{w_{i, t-1}(1 + r_{i, t})}{1 + r_{gross, t}}$；
+    - [x] 单边换手率定义：$\text{Turnover}_t = \frac{1}{2} \sum |w_{i, t}^{target} - w_{i, t}^{drift}|$；
+    - [x] 交易摩擦模型：$\text{Friction}_t = \text{Turnover}_t \times \text{friction\_rate}$ (默认单边 8 bps，支持 0 bps / 15 bps 敏感性)；
+    - [x] 净收益率与连续净值：$r_{net, t} = r_{gross, t} - \text{Friction}_t$，$NAV(t) = NAV(t-1) \cdot (1 + r_{net, t})$；
+    - [x] 关键评价指标：连续最大回撤 (MDD)、年化超额收益 (Excess Return vs QQQ)、年化夏普比率 (Sharpe)。
+  - [x] **自建股票池指数 (Pool Index) 规范**：
+    - [x] 美股 87 选股池等权基准：每个自然月首个交易日执行等权再平衡 ($w_i = 1 / 87$)，全月自然漂移；
+    - [x] 同样通过上述统一引擎折算净值，作为赛道内部第一参考基准线。
+- [x] **R2. 更新 PR #1306 说明文档 (`docs/product/racetrack_vision_2026-10-27.md`)**:
+  - [x] 在末尾追加第 12 节，简明链接并概述该 Minimal Stack 实施规范。
+- [x] **R3. 验证与审查**:
+  - [x] 检查所有公式、Schema、字段与约束；
+  - [x] 确认合规性 (`research_only=true`, `trade_ready=false`, 隐私隔离)；
+  - [x] 记录 Review 并向主 Agent 发送完整架构设计总结。
+
+### Review & Completion Summary (2026-10-28)
+- 交付规范文档：`docs/architecture/racetrack_minimal_stack_spec.md` (完整包含 P 矩阵、Q 账本、V/NAV 引擎、自建等权指数四大模块，配套 8 项负面测试矩阵与 Mermaid 架构图)；
+- 更新视觉文档：`docs/product/racetrack_vision_2026-10-27.md`（末尾追加 §12 实施规范链接与要点摘要）；
+- 质量检查：`git diff --check` 0 警告，文档完全对齐 ADR-0003, ADR-0005 与 PR #1306。
 

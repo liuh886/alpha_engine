@@ -137,3 +137,35 @@ Work proceeds in this order, and each phase keeps the guards in §7 (single deri
 - Season-points mapping detail, to be fixed at the start of the first season under the monthly default.
 
 None of these blocks phase 1. Each is recorded here so that when its phase arrives, the decision is made once, written down as a versioned rule, and never mixed with a different rule in the same comparison.
+
+## 12. Minimal Stack implementation specification (Phase 1 Spec)
+
+The concrete technical specification for Phase 1 landing is published in:
+[`docs/architecture/racetrack_minimal_stack_spec.md`](../architecture/racetrack_minimal_stack_spec.md).
+
+This specification formalises the §4 data model and §11.2 landing order into four machine-checkable contracts:
+
+1. **Market Price Matrix $P(t, s)$ Contract**:
+   - **Time Axis $T$**: Linked to official `exchange_calendars` (`XNYS` for US, `XSHG` for CN), enforcing continuous session integrity and fail-closed handling for holidays/weekends.
+   - **Asset Axis $S$**: Strictly bound to candidate pool `configs/research_universes/us_selected_equities_v2.yaml` (87 symbols) plus benchmark reference `QQQ` from `configs/pools/reference_instrument_registry_v1.yaml` (total 88 assets).
+   - **Price Source & Return Model**: Extracted from `data/research/market_evidence/us/symbols/{symbol}.json`, specified as dividend-reinvested adjusted total-return price (reproducing §11.1 corporate action decision). Missing/unlisted bars are represented as `NaN` without silent forward-fill.
+   - **Manifest & Cryptographic Identity**: Packaged as immutable partitioned Parquet with an accompanying `manifest.json` carrying `matrix_sha256` and individual security evidence source hashes.
+
+2. **Holdings Event Ledger $Q(t, s)$ Contract**:
+   - **Sparse JSONL Event Stream**: Stored at `data/racetrack/ledgers/{runner_id}_v{version}.jsonl`, recording only deliberate rebalances.
+   - **Schema Contract**: Every event specifies `event_id`, `parent_hash`, `timestamp_utc`, `effective_session`, `runner_id`, `runner_version`, `target_weights` ($\sum w_i \le 1.0$), `cash_weight` ($1.0 - \sum w_i$), `reason`, and `event_hash`.
+   - **Tamper-Evident Hash Chain**: Genesis event begins with `parent_hash = "0" * 64`; subsequent events bind the SHA-256 hash of the canonical JSON of their predecessor, with the ledger tip hash anchored in the runner's manifest.
+   - **Strict Personal Lens Privacy Isolation**: Enforces fail-closed blocking if any live account field (`shares`, `total_cost`, `broker`, `account_id`, `cash_balance`, `executed_price`, `realized_pnl`) appears in the research ledger.
+
+3. **Asset Value & Unified NAV Conversion Engine (V & NAV Engine)**:
+   - **Normalised Origin**: $V(t_0) = 1.0, \mathrm{NAV}(t_0) = 1.0$.
+   - **Daily Weight Drift**: $w_{i, t}^{drift} = \frac{w_{i, t-1}(1 + r_{i, t})}{1 + r_{gross, t}}$, tracking natural market drift between rebalances.
+   - **One-Sided Turnover**: $\mathrm{Turnover}_t = \frac{1}{2} \sum_{i \in S \cup \{\mathrm{cash}\}} |w_{i, t}^{target} - w_{i, t}^{drift}|$, conserving turnover across rebalances.
+   - **Transaction Friction**: $\mathrm{Friction}_t = \mathrm{Turnover}_t \times \mathrm{friction\_rate}$ (baseline 8 bps, with 0 bps and 15 bps sensitivity analyses).
+   - **Continuous Compounded NAV**: $r_{net, t} = r_{gross, t} - \mathrm{Friction}_t$, $\mathrm{NAV}(t) = \mathrm{NAV}(t-1) \cdot (1 + r_{net, t})$.
+   - **Key Metrics**: Evaluated over rolling windows for continuous Maximum Drawdown ($\mathrm{MDD}$), Annualized Excess Return over QQQ ($\mathrm{CAGR}_{runner} - \mathrm{CAGR}_{QQQ}$), and Annualized Sharpe Ratio.
+
+4. **Internal Primary Benchmark: US 87 Equal-Weighted Pool Index**:
+   - **Role**: Serves as the racetrack's internal primary benchmark line to isolate selection alpha from pool beta.
+   - **Rule**: Rebalanced to equal weights ($w_i = 1/87 \approx 0.01149425, w_{cash} = 0.0$) on the first trading session of each calendar month, with natural drift throughout the rest of the month ($\mathrm{Turnover} = 0$).
+   - **Uniform Evaluation**: Converted into continuous NAV through the exact same V & NAV Engine with identical 8 bps friction on rebalance days.
