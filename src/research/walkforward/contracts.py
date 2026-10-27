@@ -52,8 +52,8 @@ class WalkForwardConfig:
     benchmark: str
     price_mode: str
     folds: tuple[WalkForwardFold, ...]
-    cost_bps: float = 3.0  # 3 bps transaction commission per turnover
-    slippage_bps: float = 5.0  # 5 bps slippage per turnover (total friction 8 bps)
+    cost_bps: float = 3.0  # bps per one-way traded portfolio notional
+    slippage_bps: float = 5.0  # bps per one-way traded portfolio notional
     param_grid: dict[str, tuple[float, ...]] = field(
         default_factory=lambda: {
             "w_rev": (0.5, 1.0, 1.5),
@@ -106,7 +106,11 @@ class FoldResult:
     turnover_ratio: float = 0.0
     total_cost_drag: float = 0.0
     cost_sensitivity: dict[str, float] = field(default_factory=dict)
+    daily_sessions: tuple[str, ...] = ()
     daily_net_returns: tuple[float, ...] = ()
+    daily_benchmark_returns: tuple[float, ...] = ()
+    train_source_manifest_hashes: dict[str, str] = field(default_factory=dict)
+    test_source_manifest_hashes: dict[str, str] = field(default_factory=dict)
     pit_limitations: tuple[str, ...] = DEFAULT_PIT_LIMITATIONS
     trade_ready: bool = False
     research_only: bool = True
@@ -135,6 +139,8 @@ class WalkForwardStudyResult:
     """Immutable sealed study result containing all folds and overall OOS trajectory."""
 
     study_id: str
+    config_hash: str
+    code_source_sha256: dict[str, str]
     status: str  # "ready" or "blocked"
     blocked_reasons: tuple[str, ...]
     hypothesis_name: str
@@ -170,6 +176,8 @@ class WalkForwardStudyResult:
     def to_dict(self) -> dict[str, Any]:
         return {
             "study_id": self.study_id,
+            "config_hash": self.config_hash,
+            "code_source_sha256": self.code_source_sha256,
             "status": self.status,
             "blocked_reasons": list(self.blocked_reasons),
             "hypothesis_name": self.hypothesis_name,
