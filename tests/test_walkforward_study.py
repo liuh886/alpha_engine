@@ -14,6 +14,9 @@ Verifies:
 from __future__ import annotations
 
 from pathlib import Path
+from dataclasses import replace
+
+import pandas as pd
 
 import numpy as np
 import pytest
@@ -25,6 +28,9 @@ from src.research.walkforward.contracts import (
 from src.research.walkforward.pipeline import (
     DEFAULT_WALK_FORWARD_CONFIG,
     _compute_spearman_ic,
+    _simulate_portfolio,
+    _study_provenance,
+    WalkForwardDataError,
     evaluate_walkforward_fold,
     run_walkforward_study,
 )
@@ -83,6 +89,10 @@ def test_walkforward_study_happy_path() -> None:
         assert fold.status == "ready"
         assert fold.train_row_count > 0
         assert fold.test_row_count > 0
+        assert len(fold.daily_sessions) == len(fold.daily_net_returns) == len(fold.daily_benchmark_returns)
+        assert len(fold.daily_sessions) == fold.test_row_count // 9
+        assert len(set(fold.daily_sessions)) == len(fold.daily_sessions)
+        assert fold.train_source_manifest_hashes and fold.test_source_manifest_hashes
         assert fold.purged_rows_count > 0
         assert "w_rev" in fold.selected_parameters
         assert "w_vol" in fold.selected_parameters
@@ -158,17 +168,17 @@ def test_walkforward_cost_sensitivity_and_net_return() -> None:
 
     summary = study.cost_sensitivity_summary
     assert "0_bps_gross" in summary
-    assert "8_bps_standard" in summary
+    assert "standard_config" in summary
     assert "15_bps_stress" in summary
-    assert "total_cost_drag_bps_8" in summary
+    assert "total_cost_drag_standard" in summary
 
     # Monotonic degradation assertion
-    assert summary["0_bps_gross"] > summary["8_bps_standard"]
-    assert summary["8_bps_standard"] > summary["15_bps_stress"]
-    assert summary["total_cost_drag_bps_8"] > 0.0
+    assert summary["0_bps_gross"] > summary["standard_config"]
+    assert summary["standard_config"] > summary["15_bps_stress"]
+    assert summary["total_cost_drag_standard"] > 0.0
 
     # Ensure net return matches standard 8 bps sensitivity
-    assert study.overall_oos_net_return == summary["8_bps_standard"]
+    assert study.overall_oos_net_return == summary["standard_config"]
     assert study.overall_oos_gross_return == summary["0_bps_gross"]
 
 
@@ -216,3 +226,82 @@ def test_walkforward_pit_limitations_and_governance() -> None:
         + list(ROOT.glob("*.sqlite"))
     )
     assert len(db_candidates) == 0, f"Unexpected secondary database generated: {db_candidates}"
+
+
+def test_simulation_covers_first_oos_session_using_prior_train_anchor() -> None:
+    """Both pre-OOS closes are anchors; every OOS session must generate a return."""
+    sessions = ["2024-12-30", "2024-12-31", "2025-01-02", "2025-01-03"]
+    scores = pd.DataFrame({"A": [4.0, 4.0, 1.0, 1.0], "B": [1.0, 1.0, 4.0, 4.0]}, index=sessions)
+    prices = pd.DataFrame({"A": [100.0, 100.0, 110.0, 121.0], "B": [100.0] * 4}, index=sessions)
+    benchmark = pd.Series([100.0, 100.0, 105.0, 110.25], index=sessions)
+    gross, net, turns, bench = _simulate_portfolio(
+        scores, prices, benchmark, sessions, top_k=1,
+        friction_per_turnover=0.001, liquidate_at_end=False,
+    )
+    assert len(net) == 2 == len(bench)
+    assert gross[0] == pytest.approx(0.1)
+    assert net[0] == pytest.approx(0.099)
+    assert bench[0] == pytest.approx(0.05)
+    assert turns[0] == pytest.approx(1.0)
+    assert gross[1] == pytest.approx(0.1)
+    # Score at 2024-12-31, not 2025-01-02, selects day-2 holdings.
+    assert turns[1] == pytest.approx(0.0)
+
+
+def test_simulation_rejects_missing_benchmark_candidate_and_signals() -> None:
+    sessions = ["2024-12-30", "2024-12-31", "2025-01-02"]
+    scores = pd.DataFrame({"A": [1.0] * 3, "B": [2.0] * 3}, index=sessions)
+    prices = pd.DataFrame({"A": [100.0] * 3, "B": [100.0] * 3}, index=sessions)
+    benchmark = pd.Series([100.0] * 3, index=sessions)
+    bad_benchmark = benchmark.copy()
+    bad_benchmark.iloc[-1] = np.nan
+    with pytest.raises(WalkForwardDataError, match="missing_or_invalid_candidate_or_benchmark_price"):
+        _simulate_portfolio(scores, prices, bad_benchmark, sessions, 1, 0.0008)
+    bad_prices = prices.copy()
+    bad_prices.iloc[-1, 0] = np.nan
+    with pytest.raises(WalkForwardDataError, match="missing_or_invalid_candidate_or_benchmark_price"):
+        _simulate_portfolio(scores, bad_prices, benchmark, sessions, 1, 0.0008)
+    bad_scores = scores.copy()
+    bad_scores.iloc[0] = np.nan
+    with pytest.raises(WalkForwardDataError, match="insufficient_ranked_candidates"):
+        _simulate_portfolio(bad_scores, prices, benchmark, sessions, 1, 0.0008)
+
+
+def test_turnover_accounts_for_weight_drift_and_end_liquidation() -> None:
+    sessions = ["2024-12-30", "2024-12-31", "2025-01-02", "2025-01-03"]
+    scores = pd.DataFrame({"A": [2.0] * 4, "B": [1.0] * 4}, index=sessions)
+    prices = pd.DataFrame({"A": [100, 100, 110, 121], "B": [100] * 4}, index=sessions)
+    benchmark = pd.Series([100] * 4, index=sessions)
+    _, net_no_liquidation, turnover_no_liquidation, _ = _simulate_portfolio(
+        scores, prices, benchmark, sessions, 2, 0.001, liquidate_at_end=False
+    )
+    assert turnover_no_liquidation[0] == pytest.approx(1.0)
+    assert turnover_no_liquidation[1] == pytest.approx(0.5 * 1.1 / 1.05 - 0.5)
+    _, net_with_liquidation, turnover_with_liquidation, _ = _simulate_portfolio(
+        scores, prices, benchmark, sessions, 2, 0.001
+    )
+    assert turnover_with_liquidation[-1] - turnover_no_liquidation[-1] == pytest.approx(1.0)
+    assert net_no_liquidation[-1] - net_with_liquidation[-1] == pytest.approx(0.001)
+
+
+def test_declared_purge_is_required_or_fold_blocks() -> None:
+    fold = replace(DEFAULT_WALK_FORWARD_CONFIG.folds[0], purged_margin_days=100000)
+    result = evaluate_walkforward_fold(fold, DEFAULT_WALK_FORWARD_CONFIG, root=ROOT)
+    assert result.status == "blocked"
+    assert "insufficient_training_sessions_for_purge" in result.blocked_reasons[0]
+
+
+def test_study_config_and_executed_source_are_hash_bound() -> None:
+    original = DEFAULT_WALK_FORWARD_CONFIG
+    cfg_hash, code = _study_provenance(original)
+    assert len(cfg_hash) == 64
+    assert set(code) == {"walkforward_pipeline", "walkforward_contracts", "research_data_slice"}
+    assert all(len(h) == 64 for h in code.values())
+    altered = replace(original, cost_bps=original.cost_bps + 1)
+    other_hash, other_code = _study_provenance(altered)
+    assert other_hash != cfg_hash
+    assert other_code == code
+    study = run_walkforward_study(original, root=ROOT)
+    assert study.config_hash == cfg_hash
+    assert study.code_source_sha256 == code
+    assert study.to_dict()["config_hash"] == cfg_hash
