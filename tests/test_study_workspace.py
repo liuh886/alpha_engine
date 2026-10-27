@@ -14,6 +14,7 @@ from src.research.study_workspace import (
     ResearchStudyError,
     compare_studies,
     initialize_study,
+    inspect_study,
     load_study_spec,
     run_study,
     save_receipt_exclusive,
@@ -179,3 +180,17 @@ def test_cli_study_journey_list_init_compare(tmp_path: Path, capsys: pytest.Capt
     assert main(["--root", str(tmp_path), "research", "study", "compare",
                  str(left), str(right)]) == 0
     assert json.loads(capsys.readouterr().out)["right_minus_left"]["overall_oos_net_return"] == pytest.approx(0.1)
+
+
+def test_show_research_receipt_reports_meaningful_evidence(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    path = tmp_path / "evidence.json"
+    path.write_text(json.dumps(_receipt()), encoding="utf-8")
+    assert main(["--root", str(tmp_path), "research", "study", "show", str(path)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ready"
+    assert payload["study_hash"] == "a" * 64
+    assert payload["oos_net_return"] == pytest.approx(0.1)
+    assert payload["pit_certified"] is False
+    assert payload["trade_ready"] is False
+    assert "experiment_receipt" not in payload
+    assert inspect_study(path)["study_hash"] == "a" * 64
