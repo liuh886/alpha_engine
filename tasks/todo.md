@@ -172,6 +172,19 @@
   - 封存完整研究成果报告 `docs/research/us_tech_vol_reversal_walkforward_2026.md`，密码学研究哈希为 `4b94fc2a7181f77464827eb9083b976f1a86b402296f65d82153f02462b23ba8`；
   - 2025–2026 样本外累积超额收益 +36.37% (总收益 +79.51% vs QQQ +43.14%)，样本外平均夏普比率 1.3907。
 
+### Phase 6.2: Walk-Forward v0.2.1 — OOS 会计、fail-closed 与实验指纹（PR #1303）
+
+**基准：** `main@d232f7540`；本 PR 是研究代码验收候选，旧 v0.2 封存数值与 hash 不改写。**尚未获得独立 CI 或新研究回放证明，不得标记整体 DONE。**
+
+- [x] **6.2.1 / Code / OOS 覆盖与成交因果性**：使用训练末尾两个收盘时点锚定首个测试交易日；`t-2` 产生信号、`t-1` 收盘成交、`t` 兑现收益；每个 OOS 交易日都须包含完整策略与基准收益。
+- [x] **6.2.2 / Code / 缺失 fail-closed**：无有效候选评分、缺失或非法候选/基准价格、声明 Purge 无法执行时阻断，不再跳日或将基准收益填零；任一 Fold 阻断 => 整体不发布业绩。
+- [x] **6.2.3 / Code / 成本真实口径**：按持仓漂移后的单向交易名义本金计算 bps；每个 Fold 作为独立现金起始/结束组合，明确计入首笔建仓和终期清仓费用；标准档使用 config 的佣金+滑点，敏感性档独立显示。
+- [x] **6.2.4 / Code / 研究身份完整性**：`WalkForwardConfig.to_dict()` 的 SHA-256、实际执行的 pipeline/contracts/research-slice 源字节 SHA-256、每折源 Manifest/日期/基准收益进入回执及 Study Hash；报告仍注明 `pit_certified=false`、固定历史池的幸存者偏差。
+- [x] **6.2.5 / Tests authored**：新增首日 OOS、迟滞成交、基准/候选缺失、权重漂移及清仓、Purge 必须生效、参数配置变更指纹的负面回归；调整现有净成本断言口径。
+- [ ] **6.2.6 / CI acceptance**：在 PR #1303 Head SHA 上独立执行 `uv run --frozen ruff check src/research/walkforward tests/test_walkforward_study.py` 以及 `uv run --frozen pytest -q tests/test_walkforward_study.py tests/test_research_data_slice.py tests/test_ri04_dual_consumer_reuse.py tests/test_ri05_efficiency_metrics.py`，记录真实 URL/结果；失败如实修复。
+- [ ] **6.2.7 / Methodology replay acceptance**：在固定真实数据上重新执行 v0.2.1，核对三个 Fold 的全部 OOS 日期、首日基准回报、训练 Purge、每笔现金流与 0/配置/15 bps 收益；生成**新的**研究散列与报告，不复用 v0.2 的 `+53.69%` 或旧 study hash。
+- [ ] **6.2.8 / Owner review**：PIT 限制、交易成本假设、独立现金起止 Fold 模型得到审阅，完成后才决定合并。Track A #1288/A4 FAIL 不随本 PR 自动改变。
+
 ### Phase 6.1: Walk-Forward Engine v0.2 方法学深化与计算引擎重构
 - [x] **6.1.1 [P0 / Math] Spearman IC 计算公式修复与退化测试**:
   - 重构 `_compute_spearman_ic`，复用 `scipy.stats.spearmanr` 消除样本协方差与总体标准差分母不一致缺陷；
