@@ -54,7 +54,13 @@ def _receipt(*, key: str = "a" * 64, net: float = 0.1, status: str = "ready") ->
 
 def test_study_catalog_and_editable_spec_are_one_entry(tmp_path: Path) -> None:
     entries = study_catalog()
-    assert len(entries["studies"]) == 1
+    assert len(entries["studies"]) == 4
+    assert {s["engine"] for s in entries["studies"]} == {
+        "walkforward_volatility_reversal",
+        "cross_sectional_xgb",
+        "factor_exploration",
+        "ashare_rdi",
+    }
     assert entries["studies"][0]["engine"] == "walkforward_volatility_reversal"
     target = tmp_path / "hypothesis.json"
     assert initialize_study(target)["status"] == "ready"

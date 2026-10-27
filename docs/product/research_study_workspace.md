@@ -8,15 +8,21 @@
 
 ```bash
 uv run alpha research study list
-uv run alpha research study init --output artifacts/my-study.json
+uv run alpha research study init [--template <template_id>] --output artifacts/my-study.json
 uv run alpha research study run --spec artifacts/my-study.json
 ```
 
-第一条返回**一个真实可执行**的研究家族 `us_tech_vol_reversal_v1`，同时从现有 `configs/research_experiments/*.yaml` 列出历史研究及其真实 `status`、目的和原始 spec 路径。历史已结项、未支持或过时的研究**不会**被错误地标注为可直接运行。
+第一条返回 **4 个真实可执行** 的活跃研究模版：
+- `us_tech_vol_reversal_v1`：美股核心科技股滚动窗口波动率反转研究
+- `cross_sectional_xgb_v1`：美股核心科技股多因子非线性 XGBoost 截面排序研究
+- `factor_exploration_v1`：A 股候选池多因子 Rank IC、IC-IR 与截面单调性探索
+- `ashare_rdi_v1`：A 股 CSI 300 宏观与系统性政策风险事件 (#1272) 前瞻 7/14/28 交易日响应研究
 
-第二条创建可编辑的 `WalkForwardConfig` JSON。用户可以改变研究假设的文字、候选股票、基准、时间折叠、参数选择和摩擦成本。但**因子定义**仍是现有的「20 日波动率与 5 日反转」，不会因为调整一个 JSON 字段而自动产生新算法。
+同时从现有 `configs/research_experiments/*.yaml` 列出历史研究及其真实 `status`、目的和原始 spec 路径。历史已结项、未支持或过时的研究**不会**被错误地标注为可直接运行。
 
-第三条使用已实现的 `run_walkforward_study()` 与受治理数据切片执行，并在本地保留结果：
+第二条创建可编辑的研究规范 JSON（可通过 `--template` 指定 4 大模版之一，默认 `us_tech_vol_reversal_v1`）。用户可以改变研究假设的文字、候选股票、基准、训练/测试窗口、参数选择和摩擦成本。
+
+第三条复用统一数据切片接口 `get_research_data_slice()` 执行，并在本地保留结果：
 
 ```text
 artifacts/research_studies/<study_id>/<study_hash>.json
@@ -52,10 +58,10 @@ uv run alpha research study compare artifacts/research_studies/<id>/<left_hash>.
 
 | 阶段 | 用户问题 | 最小交付 | 完成度 |
 | --- | --- | --- | --- |
-| 1. Discover | 我可以研究什么？哪些想法曾被否定？ | 活跃研究入口 + 既有历史研究发现 | 已提交到功能 PR，待 CI |
-| 2. Experiment | 如何不用自己写脚本就可改条件、运行、获得证据？ | `init / run / 不可变收据`，已有 WFO 执行器 | 已提交到功能 PR，待 CI |
-| 3. Compare | 这个假设的修订真的改善了吗？是否在同一历史证据上？ | 严格对比相同数据下的实验结果，失败可解释 | 已提交到功能 PR，待 CI |
-| 4. Expand | 我怎样研究*新的因子*、宏观风险事件、不同市场？ | 接入**现有** spec-driven cross-sectional runner 和 #1272 RDI，统一实验契约；禁止把已结项实验误作新机会 | 尚未实施 |
+| 1. Discover | 我可以研究什么？哪些想法曾被否定？ | 活跃研究入口 + 既有历史研究发现 | 已合入主线 |
+| 2. Experiment | 如何不用自己写脚本就可改条件、运行、获得证据？ | `init / run / 不可变收据`，已有 WFO 执行器 | 已合入主线 |
+| 3. Compare | 这个假设的修订真的改善了吗？是否在同一历史证据上？ | 严格对比相同数据下的实验结果，失败可解释 | 已合入主线 |
+| 4. Expand | 我怎样研究*新的因子*、宏观风险事件、不同市场？ | 接入 spec-driven cross-sectional XGBoost、多因子 Rank IC 与 #1272 RDI，统一实验入口与单一数据面；已结项实验维持不可直接运行 | 已实现并测试通过 (Phase 2) |
 | 5. Review | 如何在浏览器中审阅结果？ | 只有经过数据授权与隐私审查的研究摘要只读投影；不重新制作浏览器 IDE | 尚未实施 |
 
 首期验证应当由真实研究者从 `list` 到 `compare` 完成一个小的条件性假设比较，并核对两份收据的哈希、阻断、成本与日期资格。**收益率不是平台开发的 DoD**；可信地否决错误假设也属于成功。

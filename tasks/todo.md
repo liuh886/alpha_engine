@@ -269,6 +269,31 @@
   - 运行 `alpha personal audit` 验证缺失标的就绪状态（4 标的全绿就绪，0 缺失切片）；
   - 全量回归测试通过，更新 `tasks/todo.md` 与 `tasks/lessons.md`。
 
+### Phase 7.0: 研究工作流第二阶段演进 (Research Study Workspace Phase 2: Multi-Domain Integration)
+- [x] **7.0.1 [Contract & Catalog] 扩充 `study_catalog` 与规范模版契约 (`src/research/study_workspace.py`)**:
+  - 在 `study_catalog` 中将单一的波动率反转扩展为 4 大活跃研究模版：
+    1. `us_tech_vol_reversal_v1` (美股科技股滚动窗口波动率反转研究 - 已有)
+    2. `cross_sectional_xgb_v1` (多因子非线性截面排序与行业上限约束研究)
+    3. `factor_exploration_v1` (横截面因子 Rank IC / IC-IR 与单调性探索)
+    4. `ashare_rdi_v1` (A股 RDI 宏观与系统性风险事件前瞻时间窗响应研究)
+  - 扩展 `initialize_study(path, template="us_tech_vol_reversal_v1")` 支持多模版生成；
+  - 保持历史 31 项已结项实验 `runnable_here: false` 治理不变式。
+- [x] **7.0.2 [Execution Dispatcher] 统一多领域执行引擎与严格 Fail-Closed 闭环**:
+  - 核心铁律：所有模版必须 100% 复用 `get_research_data_slice()`，零重复数据清洗，零影子数据库；
+  - 分发调度：
+    - `walkforward_volatility_reversal` -> 接入 `run_walkforward_study()`
+    - `cross_sectional_xgb` -> 接入横截面树模型排序仿真与分位数评价
+    - `factor_exploration` -> 接入 `run_cn_cross_sectional_research_experiment()` / IC 统计
+    - `ashare_rdi` -> 接入 `run_rdi_forward_event_readiness_experiment()` / #1272 风险事件
+  - 统一结果收据：均生成 `study_hash`、`pit_certified: false`、`research_only: true`、`trade_ready: false`，遇到缺失数据均 fail-closed 退出码 10 并记录 `blocked_reasons`。
+- [x] **7.0.3 [Show & Compare] 统一只读审查与跨折叠/多指标严格比对**:
+  - 扩展 `inspect_study`，无缝自适应展示不同研究家族的特征指标（收益率/回撤、Rank IC/IR、RDI 事件前瞻窗口）；
+  - 扩展 `compare_studies`，严格核验同一研究家族、同一数据指纹与代码指纹，输出右减左的纯描述性差异。
+- [x] **7.0.4 [Test Suite & Governance Verification] 全面测试覆盖与端到端实证**:
+  - 编写 `tests/test_study_workspace_phase2.py` 覆盖 4 大研究家族从 `list` -> `init` -> `run` -> `show` -> `compare` 的完整流程；
+  - 运行真实端到端命令，验证退出码与收据原子性落盘；
+  - 更新 `tasks/todo.md`、`tasks/lessons.md` 并向用户客观汇报。
+
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
   - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。
@@ -325,6 +350,17 @@
 ---
 
 ## 阶段验收与复盘 (Review Section)
+- [x] **Phase 7.0 研究工作流第二阶段演进：多领域投研假设统一接入闭环 (2026-10-27)**:
+  - **4 大活跃研究家族统一目录**：在 [`src/research/study_workspace.py`](src/research/study_workspace.py) 将工作区从单一的波动率反转扩展为 4 大活跃研究模版：
+    1. `us_tech_vol_reversal_v1`（美股科技股滚动窗口波动率反转研究）
+    2. `cross_sectional_xgb_v1`（美股科技股多因子非线性 XGBoost 截面排序研究）
+    3. `factor_exploration_v1`（A 股候选池多因子 Rank IC、IC-IR 与单调性探索）
+    4. `ashare_rdi_v1`（A 股 CSI 300 宏观与系统性政策风险事件前瞻响应研究）
+    保持历史 31 项已结项实验 `runnable_here: false`，杜绝未支持实验混淆为新机会；
+  - **单一数据底座与执行分发**：所有模版 100% 共享并复用 [`src/data/research_slice.py`](src/data/research_slice.py)（`get_research_data_slice`），零重复数据清洗、零影子数据库引入；统一调度 `run_walkforward_study`、`run_cross_sectional_xgb_study`、`run_factor_exploration_study` 与 `run_ashare_rdi_study`；
+  - **密码学收据与绝对 Fail-Closed 闭环**：所有研究统一生成 SHA-256 `study_hash`、代码源码哈希 `code_source_sha256`、Git Commit SHA，原子落盘至 `artifacts/research_studies/<study_id>/<study_hash>.json`；缺失 RDI 事件、未来事件越界、未上市标的或日历不匹配均强制 `status: "blocked"`，CLI 退出码统一返回 10 并如实封存 `blocked_reasons`；
+  - **多模版命令行交互与严格比对**：在 [`src/cli/main.py`](src/cli/main.py) 为 `alpha research study init` 引入 `--template` 参数；`inspect_study` 多态解析 4 大家族指标；`compare_studies` 严格比对同家族、同数据哈希与代码哈希下的纯描述性增量，严厉拦截跨家族胡乱比对；
+  - **全量测试与回归验证**：交付全新测试套件 [`tests/test_study_workspace_phase2.py`](tests/test_study_workspace_phase2.py)（10 项测试全绿），全套 19 项 study workspace 测试 14.50s 全绿通过；46 项数据切片与复用回归测试 71.97s 全绿通过；`uv run ruff check` 零告警，`git diff --check` 零违规。
 - [x] **Phase 6.5 补充个人持仓缺失标的行情切片与参考治理落地 (2026-10-27)**:
   - **参考资产治理注册**：在 [`configs/pools/reference_instrument_registry_v1.yaml`](configs/pools/reference_instrument_registry_v1.yaml) 正式注册 `PL`、`SOXL`、`SPCX`、`IQQ` 4 个标的，声明其 `comparison_reference` 角色与独立资产类型，杜绝未治理漫游；
   - **标准行情物化与指标计算**：通过 `YFinanceAdapter` 获取权威历史数据，计算生成标准日线、布林带 boll20、MACD (12,26,9) 与 RSI14 技术指标，物化封存为 [`data/research/market_evidence/us/symbols/{PL, SOXL, SPCX, IQQ}.json`](data/research/market_evidence/us/symbols/)；

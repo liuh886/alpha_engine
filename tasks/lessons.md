@@ -290,3 +290,28 @@ The user requested supplementing market data for the 4 missing tickers (`PL`, `S
    - All generated evidence files and catalog entries must bind SHA-256 hashes to guarantee data immutability.
 3. **Cross-Market Geographic Boundary Integrity (跨市场地理边界清晰划分)**:
    - For foreign securities (e.g. `2DG` in Frankfurt XETRA / `2DG.DE`, primary `SIVE.ST` in Stockholm), do not conflate them with the US dollar equity plane. Clearly mark them as foreign/cross-market assets.
+
+---
+
+## 2026-10-27: Multi-Domain Research Study Workspace Integration (投研工作区第二阶段多领域接入铁律)
+
+### Context & Implementation
+In Phase 7.0, we completed Phase 2 of the Research Study Workspace (`alpha research study`), expanding beyond the initial single-hypothesis volatility reversal to a unified 4-family quantitative study workspace:
+1. `us_tech_vol_reversal_v1`: Expanding Walk-Forward Volatility Reversal with drift turnover and friction closure;
+2. `cross_sectional_xgb_v1`: Multi-factor non-linear XGBoost ranking with query groups and OOS evaluation;
+3. `factor_exploration_v1`: Multi-factor Rank IC, IC-IR, positive rate, and cross-sectional monotonicity exploration;
+4. `ashare_rdi_v1`: A-share CSI 300 macro/policy risk event (#1272) 7/14/28-session forward outcome response.
+
+### Rules Established
+1. **Single Data Plane Across All Research Domains (单一数据底座铁律)**:
+   - All study families MUST consume market bars and events exclusively via `src/data/research_slice.py` (`get_research_data_slice`).
+   - Zero duplicate caching, zero shadow databases (DuckDB/SQLite), and zero ad-hoc CSV/JSON parsing scripts.
+2. **Strict Cryptographic & Lineage Binding (收据密码学绑定铁律)**:
+   - Every study produces a canonical payload with SHA-256 `study_hash` bound to the input data hash, code source file hashes (`code_source_sha256`), and Git commit SHA.
+   - Receipts are retained atomically in `artifacts/research_studies/<study_id>/<study_hash>.json` using exclusive writes (`save_receipt_exclusive`).
+3. **Fail-Closed Gate on Missing Events or Unverified Boundaries**:
+   - In A-Share RDI studies, missing risk events or events postdating the cutoff (`available_at > as_of_cutoff`) MUST fail closed with `status: blocked` and exit code 10.
+   - In XGBoost studies, unlisted symbols or sessions failing exchange calendar match MUST fail closed with exit code 10, preventing silent data substitution.
+4. **Strict Cross-Family Comparison Isolation (严禁跨领域胡乱比对)**:
+   - `compare_studies` must enforce matching `study_id` and identical data hashes.
+   - Comparing apples to oranges (e.g. comparing an XGBoost equity ranking with an RDI macro event) MUST raise `ResearchStudyError` fail-closed.

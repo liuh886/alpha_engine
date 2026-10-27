@@ -165,6 +165,11 @@ def _build_parser() -> argparse.ArgumentParser:
     study_actions.add_parser("list", help="List the supported research-study template.")
     study_init = study_actions.add_parser("init", help="Write an editable research-study specification.")
     study_init.add_argument("--output", required=True, type=Path)
+    study_init.add_argument(
+        "--template",
+        default="us_tech_vol_reversal_v1",
+        help="Study template ID to initialize (e.g. us_tech_vol_reversal_v1, cross_sectional_xgb_v1, factor_exploration_v1, ashare_rdi_v1).",
+    )
     study_run = study_actions.add_parser("run", help="Run a frozen study and retain its receipt.")
     study_run.add_argument("--spec", type=Path, help="Optional JSON study spec; defaults to built-in.")
     study_run.add_argument("--output", type=Path, help="Optional immutable receipt output path.")
@@ -421,7 +426,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.study_action == "list":
                 payload = study_catalog(root)
             elif args.study_action == "init":
-                payload = initialize_study(_resolve(root, args.output))
+                payload = initialize_study(_resolve(root, args.output), template=args.template)
             elif args.study_action == "run":
                 payload = run_study(
                     _resolve(root, args.spec) if args.spec is not None else None,
