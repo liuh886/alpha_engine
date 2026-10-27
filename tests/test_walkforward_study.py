@@ -13,12 +13,11 @@ Verifies:
 
 from __future__ import annotations
 
-from pathlib import Path
 from dataclasses import replace
-
-import pandas as pd
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from src.research.walkforward.contracts import (
