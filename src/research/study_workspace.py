@@ -26,7 +26,27 @@ def study_template() -> dict[str, Any]:
     return DEFAULT_WALK_FORWARD_CONFIG.to_dict()
 
 
-def study_catalog() -> dict[str, Any]:
+def study_catalog(root: Path | None = None) -> dict[str, Any]:
+    """Discover the runnable study and existing archived hypothesis evidence."""
+    import yaml
+
+    historical = []
+    if root is not None:
+        for path in sorted((root / "configs" / "research_experiments").glob("*.yaml")):
+            try:
+                raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+            except (OSError, yaml.YAMLError) as exc:
+                raise ResearchStudyError(f"cannot inspect research experiment {path}: {exc}") from exc
+            if not isinstance(raw, dict) or not raw.get("experiment_id"):
+                continue
+            historical.append({
+                "id": str(raw["experiment_id"]),
+                "runner": str(raw.get("runner", "unknown")),
+                "status": str(raw.get("status", "unknown")),
+                "purpose": str(raw.get("purpose", "")).strip(),
+                "spec_path": path.relative_to(root).as_posix(),
+                "runnable_here": False,
+            })
     return {
         "studies": [{
             "id": DEFAULT_WALK_FORWARD_CONFIG.study_id,
@@ -40,6 +60,7 @@ def study_catalog() -> dict[str, Any]:
             "limitation": "Only the existing volatility/reversal evaluator is implemented; "
                           "editing a study does not create a new factor or certify PIT.",
         }],
+        "historical_experiments": historical,
         "research_only": True,
         "trade_ready": False,
     }
