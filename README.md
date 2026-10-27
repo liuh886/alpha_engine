@@ -20,7 +20,10 @@ uv run alpha research study init --output artifacts/my-volatility-study.json
 # 3. 冻结规格后运行：使用已有受治理数据切片，生成研究收据
 uv run alpha research study run --spec artifacts/my-volatility-study.json
 
-# 4. 调整另一个研究规格，重跑并对比两份收据
+# 4. 查看任一次研究的结果、Fold 和阻断原因
+uv run alpha research study show artifacts/research_studies/<study_id>/<hash_A>.json
+
+# 5. 调整另一个研究规格，重跑并对比两份收据
 uv run alpha research study compare artifacts/research_studies/<study_id>/<hash_A>.json artifacts/research_studies/<study_id>/<hash_B>.json
 ```
 
