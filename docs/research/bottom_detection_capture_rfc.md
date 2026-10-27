@@ -66,7 +66,7 @@ G5 Human release review: operator reviews evidence and rollback; feature flag re
 - Keep current four-strategy fleet, registry, current operations, scheduler and public Pages unchanged.
 
 ## Delivery slices / Agent TODO
-- [ ] BD-00 Survey actual data coverage, benchmark roles, PIT availability and current study template APIs; publish dependency map and blockers.
+- [x] BD-00 Survey actual data coverage, benchmark roles, PIT availability and current study template APIs; publish dependency map and blockers. (Completed 2026-10-28, see Section 8).
 - [ ] BD-01 Create immutable versioned spec + feature contracts + synthetic fixtures; do not bake discretionary prices from 2026 examples.
 - [ ] BD-02 Implement causal daily-bar indicators + state transitions; unit/property tests for leakage and invalidation.
 - [ ] BD-03 Extend existing study CLI with BDCR hypothesis family, reuse governed WFO, baseline parity and blocked receipts.
@@ -75,6 +75,51 @@ G5 Human release review: operator reviews evidence and rollback; feature flag re
 - [ ] BD-06 Prospective daily shadow evidence, no live trading; measure alerts, false positives, missed rebound and drift.
 - [ ] BD-07 Only after passing gates, propose read-only presentation integrated into existing Decision Feed, no new navigation.
 - [ ] BD-08 Explicit human GO/NO-GO review, rollback instructions, version bump and reproducible research package.
+
+## 8. BD-00 Data Survey & Feasibility Audit (Completed 2026-10-28)
+An independent codebase & data plane audit confirmed:
+1. **Universe & Case Studies**:
+   - `BE` (Bloom Energy) and `CRDO` (Credo Tech) are officially in `configs/research_universes/us_selected_equities_v2.yaml` (US 87 candidate pool).
+   - `QQQ` is registered as the benchmark in `configs/pools/reference_instrument_registry_v1.yaml`.
+2. **Market Evidence Bars**:
+   - `BE`: `data/research/market_evidence/us/symbols/BE.json` (1,398 bars from 2021-04-05 to 2026-10-26).
+   - `CRDO`: `data/research/market_evidence/us/symbols/CRDO.json` (1,191 bars from 2022-01-27 IPO to 2026-10-26).
+   - Slice access: `get_research_data_slice()` succeeds with deterministic SHA-256 data hash and `status: "ready"`.
+3. **Price Basis & Corporate Actions**:
+   - Current US evidence bars are stored as Yahoo Finance adjusted prices (`adj_close / close` scaling `open/high/low/close`), representing total-return series with reinvested dividends.
+   - There are no standalone unadjusted split/dividend raw event streams for US stocks in the repository today. Indicators and returns must be computed on this total-return adjusted basis.
+4. **Study Workspace Mount Points**:
+   - Clean modular integration via `BottomDetectionConfig` in `src/research/study_workspace.py` and executor `src/research/studies/bottom_detection_study.py`.
+
+## 9. Proposed BD-01 Specification & State Transition Rules
+### 9.1 Mathematical Feature Definitions
+- **Rolling Drawdown**: $DD_{20}(t) = \frac{\max_{0 \le k < 20}(C_{t-k}) - C_t}{\max_{0 \le k < 20}(C_{t-k})}$.
+- **RSI**: Standard 14-period Wilder RSI.
+- **Close Location Value (CLV)**: $CLV_t = \frac{(C_t - L_t) - (H_t - C_t)}{H_t - L_t} \in [-1, +1]$. Positive CLV indicates closing in the upper half of the bar.
+- **Relative Strength Divergence**: $RS_{3}(t) = r_{stock, t-2 \to t} - r_{QQQ, t-2 \to t}$. Divergence occurs when benchmark falls but stock resists decline ($RS_3 > 0$).
+- **Volume Contraction after Expansion**: Relative volume $Vol_t / SMA_{20}(Vol)$ drops after a high-volume decline bar.
+
+### 9.2 Causal State Machine
+1. `WATCH`: Triggered when $DD_{20}(t) \ge \text{drawdown\_min}$ (default 0.15) AND $RSI_{14}(t) \le 35$. Symbol enters watchlist.
+2. `PROBE_ELIGIBLE`: In `WATCH` AND ($CLV_t \ge 0.2$ OR lower wick $\ge 0.4 \times (H_t - L_t)$) AND $RS_3(t) \ge 0.0$ AND no active hard veto. Permits a candidate small trial probe (default 30% risk budget).
+3. `CONFIRMED`: In `PROBE_ELIGIBLE` AND $C_t > \max(C_{t-1}, C_{t-2})$ AND $C_t > SMA_5(C_t)$. Confirms short-term momentum resumption.
+4. `INVALIDATED`: If $C_t < \min(L_{probe}, L_{watch})$ (hard low breach), or dwell time in `PROBE_ELIGIBLE` exceeds $K$ days (default 5 days) without confirmation.
+5. `BLOCKED`: Data missing, PIT cutoff violated, or trading halted.
+
+## 10. Decisions Requiring User Sign-off (Decision Points)
+Before subagents proceed to full code implementation, the following architectural choices require operator alignment:
+- **Decision A (Execution & Holding Horizons)**:
+  - *Option 1 (Recommended)*: Evaluate signals strictly at $T$ close, simulate trade execution at $T+1$ with standard 8 bps institutional friction, and evaluate fixed forward horizons of 5, 10, and 20 trading sessions.
+  - *Option 2*: Dynamic exit on moving average break (e.g. 20DMA trailing stop) rather than fixed multi-window horizons.
+- **Decision B (Risk Sizing / Probe vs Confirmed)**:
+  - *Option 1 (Recommended)*: Staged allocation — 30% probe allocation upon `PROBE_ELIGIBLE`, 70% follow-on upon `CONFIRMED`; stop loss set at the probe bar's lowest price.
+  - *Option 2*: Single-stage entry — wait until `CONFIRMED` before taking any position.
+- **Decision C (Hard Veto Scope)**:
+  - *Option 1 (Recommended)*: Hard veto on: (a) earnings announcement within $\pm 3$ trading days (if earnings date calendar available); (b) missing price bars or data gaps $> 2$ days; (c) benchmark data unavailable.
+  - *Option 2*: Pure technical price-volume only, no earnings exclusion.
+- **Decision D (Evaluation Universe)**:
+  - *Option 1 (Recommended)*: Complete US 87 candidate pool (`us_selected_equities_v2.yaml`), with `BE` and `CRDO` evaluated as explicit diagnostic case studies within the broad pool.
+  - *Option 2*: Test only on a mini-pool of 5 high-beta names (`BE`, `CRDO`, `IREN`, `PL`, `NVDA`).
 
 ## Acceptance deliverables
 One machine-readable experiment config, tested feature implementation, frozen manifests, research-only receipts, baseline+ablation comparison, complete failure ledger, shadow log and read-only usability test. Each task closes only with commit + reproducible commands + evidence link; no unearned 'done' markers.

@@ -370,6 +370,21 @@
   - [x] 记录 lessons 到 `tasks/lessons.md`。
   - [x] 保持 git 分支整洁，顺利推送到 `origin main`。
 
+### Phase 8.0: 投研落地设施路线图与抄底研究推进 (PR #1307 BD-00 ~ BD-02)
+- [x] **8.0.1 [BD-00 / Audit] 价格底座、个股覆盖度与工作区扩展接口审计**:
+  - [x] 验证美股行情存储为 Yahoo 统一复权价格（adj_close等比缩放），无独立拆股分红事件流；
+  - [x] 验证 BE 与 CRDO 均在 US 87 候选池，日线数据 100% 具备（BE 1,398 bars, CRDO 1,191 bars），`get_research_data_slice` 就绪退出；
+  - [x] 梳理 Study Workspace 契约、分发执行器、收据比对与格式化 4 大挂载点；
+  - [x] 在 `docs/research/bottom_detection_capture_rfc.md` 勾选 BD-00 并记录审计实证。
+- [ ] **8.0.2 [BD-01 / Architecture] 架构规范、指标公式与状态机契约设计 (Architect Subagent)**:
+  - [ ] 提出待裁定决策点（执行与持有窗口、分批建仓权重、硬性否决范围、评估标的池范围）；
+  - [ ] 形式化状态机转移规则（`WATCH` -> `PROBE_ELIGIBLE` -> `CONFIRMED` -> `INVALIDATED`）；
+  - [ ] 编写合成数据基准用例（Synthetic Fixtures），断言时序因果性与绝对零前瞻。
+- [ ] **8.0.3 [BD-02 / Implementation] 因果量价指标、状态机流转与契约测试落地 (Developer Subagent)**:
+  - [ ] 在 `src/research/study_workspace.py` 注册 `bottom_detection_v1` 契约配置；
+  - [ ] 在 `src/research/studies/bottom_detection_study.py` 实现因果指标计算与状态流转；
+  - [ ] 交付契约测试 `tests/test_bottom_detection_study.py`（单测全绿，零未来函数泄漏）。
+
 ---
 
 ## 阶段验收与复盘 (Review Section)
