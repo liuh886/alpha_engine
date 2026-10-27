@@ -411,6 +411,21 @@
   - [x] 验证全量单测通过与 `ruff check` 零告警；
   - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`，向用户客观汇报。
 
+### Phase 8.2: Racetrack 赛道机制与记分体系 (PR #1306 Phase 2: Runner Registry & Season Scoring)
+- [x] **8.2.1 [Architecture & Spec] 选手契约与赛道记分技术规范设计 (Architect Subagent)**:
+  - [x] 形式化 `RunnerContract`（强制要求 Written Thesis、选股逻辑、调仓逻辑、标的池要求，无 Thesis 严禁参赛）；
+  - [x] 形式化 `SeasonScoring` 算法（自然月赛季结算、1M/3M/6M/1Y 滚动窗口、月度截面排名、赛季积分累计）；
+  - [x] 编写规范至 `docs/architecture/racetrack_runner_scoring_spec.md` 并写入 PR #1306 文档。
+- [ ] **8.2.2 [Implementation: Runner & Scoring] 选手注册表与赛道记分器实现 (Developer Subagent)**:
+  - [ ] 实现 `src/racetrack/runner.py`：`RunnerContract`, `RunnerRegistry`，挂载已有模型选手；
+  - [ ] 实现 `src/racetrack/scoring.py`：多窗口收益率统计、月度排名矩阵、赛季积分累加与记分板生成；
+- [ ] **8.2.3 [Tests & Invariant Proofs] 赛马场排位测试套件**:
+  - [ ] 编写 `tests/test_racetrack_runner_scoring.py`；
+  - [ ] 覆盖无 Thesis 拒赛、月度赛季自动结算、多窗口排名与积分单调累加。
+- [ ] **8.2.4 [Review & PR Update] 回归验证与更新 PR #1306 文档与提交**:
+  - [ ] 运行全量测试套件、静态代码分析与 diff 检查；
+  - [ ] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
+
 ---
 
 ## 阶段验收与复盘 (Review Section)
@@ -632,4 +647,39 @@
   - 10 项测试用例 100% 覆盖 TEST-RT-01 ~ TEST-RT-08 以及非法标的/权重超限负面用例。
   - 测试结果：`10 passed in 21.39s`。
   - 静态检查：`uv run ruff check` 0 errors / 0 warnings。
+
+---
+
+## Phase 2 赛道机制：选手准入与赛马记分系统架构设计 (Phase 2 Spec)
+
+- [x] **P2.1 选手准入契约与注册表规范设计 (`RunnerContract` & `RunnerRegistry`)**:
+  - [x] 确立 `RunnerContract` 实体强类型契约（`runner_id`, `runner_version`, `pool_id`, `benchmark_symbol`, `thesis`, `selection_logic`, `rebalance_logic`, `track_condition_associations`）；
+  - [x] 强制前置投资假设门禁（`ThesisMissingError`，少于 30 字符或空白严格拦截）；
+  - [x] 规范纯函数式 `run(matrix: PriceMatrix, ledger_path: Path) -> SimulationResult` 回放与账本落盘接口；
+  - [x] 规范 `RunnerRegistry` 发现、资产池白名单审核（拦截未注册与基准标的）与多进程并发回放。
+- [x] **P2.2 单月赛季与多周期时间窗口规范 (`Monthly Season & Rolling Windows`)**:
+  - [x] 依据 §11.1 裁定单月赛季（Monthly Season）默认规则，以交易所日历（`XNYS`）月初首日开跑，月末最后交易日收盘统一结算；
+  - [x] 滚动多周期评估窗：1M（月度）、3M（季度）、6M（半年）、1Y（年度）复合净收益率；
+  - [x] 双基准超额收益数学模型：相对纳斯达克 100 大盘（QQQ）与美股 87 等权池指数（US87_EW）超额收益。
+- [x] **P2.3 赛马记分与月度排名算法 (`Race Scoring & PointsRuleV1`)**:
+  - [x] 月度截面降序排序模型（Monthly Cross-Sectional Rank）；
+  - [x] 版本化赛季积分规则矩阵 `PointsRuleV1`（1st: 10, 2nd: 6, 3rd: 4, 4th: 2, 5th: 1, >5th: 0）；
+  - [x] 稳定性度量（Persistence Indicator）：前 50% 胜率月份占比、最长连续得分月数、月度排名波动率；
+  - [x] 机制杜绝单日暴涨后视偏差的数学论证。
+- [x] **P2.4 Scoreboard 前台记分板数据投影契约 (`Scoreboard Projection Contract`)**:
+  - [x] 统一归一化 NAV 曲线中心视图与双基准对齐；
+  - [x] 严密结构化 JSON Schema 规范（`racetrack_scoreboard_v1.json`）；
+  - [x] 天气归因指标映射与零计算纯消费前台契约。
+- [x] **P2.5 配套测试矩阵与 Mermaid 架构图**:
+  - [x] 绘制选手准入生命周期状态机与记分引擎流水线 Mermaid 流程图；
+  - [x] 制定 10 项严密测试用例（TEST-RT-P2-01 ~ TEST-RT-P2-10）。
+- [x] **P2.6 核心技术文档归档与 PR #1306 链接**:
+  - [x] 输出完整规范文档 `docs/architecture/racetrack_runner_scoring_spec.md`；
+  - [x] 在 `docs/product/racetrack_vision_2026-10-27.md` 末尾追加第 13 节。
+
+### Review & Completion Summary (Phase 2 Spec - 2026-10-28)
+- **核心交付文档**:
+  - `docs/architecture/racetrack_runner_scoring_spec.md`: 涵盖 9 大章节，系统化定义了选手契约、注册表审核、单月赛季划分、滚动多周期评估、`PointsRuleV1` 赛马记分算法、前台记分板 JSON Schema 与 10 项负面/边界测试用例。
+  - `docs/product/racetrack_vision_2026-10-27.md`: 追加第 13 节，建立对 Phase 2 实施规范的正式引用与核心系统摘要。
+
 

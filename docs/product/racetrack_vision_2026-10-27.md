@@ -169,7 +169,6 @@ This specification formalises the §4 data model and §11.2 landing order into f
    - **Role**: Serves as the racetrack's internal primary benchmark line to isolate selection alpha from pool beta.
    - **Rule**: Rebalanced to equal weights ($w_i = 1/87 \approx 0.01149425, w_{cash} = 0.0$) on the first trading session of each calendar month, with natural drift throughout the rest of the month ($\mathrm{Turnover} = 0$).
    - **Uniform Evaluation**: Converted into continuous NAV through the exact same V & NAV Engine with identical 8 bps friction on rebalance days.
-
 ## 13. Frontend work design (2026-10-28, docs only)
 
 This section turns the trading-frontend research into engineering requirements for Alpha Engine's own dashboard. It is a documentation addition only: no runtime, data, registry, workflow, or frontend code is changed by it. It refines the §5 frontend contract and the §11.2 landing order, and it is written against the §12 Phase 1 contracts — where this section and §12 appear to differ, §12 governs the data and calculation, and this section governs only how the resulting projection is displayed.
@@ -238,3 +237,32 @@ This section turns the trading-frontend research into engineering requirements f
 
 - **Non-goals:** trading execution; live ticking, WebSockets, or polling; a second charting stack; client-side recomputation of any judged number; arbitrary date pickers, custom ranges, or intraday granularity before the four fixed windows and the monthly season are solid; dual axes on the NAV pane; truncated axes; interpolated gaps; silent forward-fills; copying GPL-3.0 or AGPL-3.0 dashboard code (FreqUI, Ghostfolio) without a licence check.
 - **Open before implementation:** (a) the existing dashboard's framework and current charting library are unknown from the research — confirm them before step 1 for integration planning; the §13.3 charting choice itself is locked to Lightweight Charts v5 as of 2026-10-28 and is not reopened by this check; (b) no CN internal benchmark rule is defined in §12, so the CN scoreboard shows CSI 300 only until one is defined; (c) the season-points mapping detail is still to be fixed at the start of the first season under the §11.1 monthly default; (d) vendor performance and bundle claims in the research (frame rates, bundle sizes) were not reproduced and are not needed at 12-series scale; (e) Highcharts pricing and commercial-use boundary remain unverified, which is moot unless Highcharts is reconsidered.
+
+## 14. Runner Registry & Race Scoring implementation specification (Phase 2 Spec)
+
+The concrete technical specification for Phase 2 landing is published in:
+[`docs/architecture/racetrack_runner_scoring_spec.md`](../architecture/racetrack_runner_scoring_spec.md).
+
+This specification formalises the §2, §3, §5 domain concepts and §11.1, §11.2 (step 2) landing order into four machine-checkable systems:
+
+1. **Runner Contract & Registry (`RunnerContract` & `RunnerRegistry`)**:
+   - **Thesis Gate**: Every runner must supply a substantive written investment thesis answering why it was built, what market anomaly it bets on, and under what conditions it fails. Empty or terse (< 30 characters) theses trigger `ThesisMissingError`, prohibiting participation.
+   - **Closed Pool & Role Isolation**: Target symbols are strictly checked against `configs/research_universes/us_selected_equities_v2.yaml` (87 symbols). Referencing outside assets or reference benchmarks (QQQ) triggers fail-closed `UnauthorizedAssetError`.
+   - **Pure Functional Execution**: Runners implement `run(matrix: PriceMatrix, ledger_path: Path) -> SimulationResult`, emitting hash-chained, privacy-clean JSONL ledgers and driving Phase 1's unified V & NAV Engine.
+
+2. **Monthly Season Cadence & Rolling Multi-Period Windows**:
+   - **Monthly Seasons**: Defaults to natural calendar months aligned to official exchange calendars (`exchange_calendars` XNYS), opening on the first valid trading session and settling at the close of the last session.
+   - **Rolling Multi-Period Windows**: Simultaneously evaluates rolling 1M, 3M, 6M, and 1Y cumulative compound returns, alongside dual excess returns:
+     - Excess return over Nasdaq 100 ETF ($R_{excess\_qqq} = R_{runner} - R_{QQQ}$);
+     - Excess return over US 87 Equal-Weighted Index ($R_{excess\_pool} = R_{runner} - R_{US87\_EW}$), isolating pure selection alpha from pool beta.
+
+3. **Race Scoring & Monthly Ranking Algorithm**:
+   - **Monthly Cross-Sectional Ranking**: Sorts active runners descending by monthly net return at each calendar month close.
+   - **Versioned Points Mapping (`PointsRuleV1`)**: Implements deterministic, versioned season points (1st: 10 pts, 2nd: 6 pts, 3rd: 4 pts, 4th: 2 pts, 5th: 1 pt, >5th: 0 pts) accumulated across months ($\text{TotalPoints} = \sum \text{Points}_m$).
+   - **Anti-Lookahead / Anti-Spike Mechanism**: Prevents single-day/single-trade anomalous spikes from dominating the leaderboard, systematically rewarding consistent, monthly top-ranked marathon runners over volatile flashes in the pan.
+   - **Persistence Metrics**: Measures top-50% consistency ratio ($\text{Count}(\text{Rank} \le \lceil K/2 \rceil) / M$), longest consecutive scoring streak, and monthly rank volatility.
+
+4. **Scoreboard Read-Only Projection Contract (`racetrack_scoreboard_v1.json`)**:
+   - **Central NAV Curve Projection**: Exports normalized NAV timeseries ($1.0$ at start) with QQQ and US 87 EW benchmarks.
+   - **Unified Projection Payload**: Publishes season rankings, monthly rank histories, 1M/3M/6M/1Y return matrices, dual excess matrices, risk metrics (MDD, Sharpe, turnover), and weather profile associations for zero-compute frontend rendering.
+
