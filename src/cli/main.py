@@ -118,6 +118,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional output path for receipt JSON.",
     )
+    slice_cmd.add_argument(
+        "--data-output",
+        type=Path,
+        default=None,
+        help="Optional output path to export the sliced dataset as CSV.",
+    )
 
     research = groups.add_parser("research", help="Run governed research workflows.")
     research_commands = research.add_subparsers(dest="research_command", required=True)
@@ -316,6 +322,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                     json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
                     encoding="utf-8",
                 )
+            if args.data_output is not None:
+                data_out_path = _resolve(root, args.data_output)
+                if res.is_ready and res.data is not None:
+                    data_out_path.parent.mkdir(parents=True, exist_ok=True)
+                    res.data.to_csv(data_out_path, index=False)
+                elif data_out_path.is_file():
+                    data_out_path.unlink()
             if payload.get("status") == "blocked":
                 exit_code = 10
         elif args.group == "research" and args.research_command == "run":

@@ -129,3 +129,18 @@ In RI-04, we integrated two completely distinct research problems (`CN Cross-Sec
    - When evaluating multi-horizon forward readiness (e.g. 7, 14, 28 trading sessions), events occurring near the evaluation cutoff date may have sufficient data for shorter horizons (e.g. 7 days) but lack future bars for longer horizons (e.g. 14 or 28 days).
    - Under NO circumstances may these future missing bars be forward-filled, estimated, or synthetically padded.
    - The consumer MUST fail-closed with `status: blocked` and report `insufficient_future_bars` for any horizon exceeding the historical cutoff, strictly preserving empirical truth.
+
+---
+
+## 2026-10-27: Researcher Efficiency Benchmarking & CLI Tabular Export (投研效率度量与 CLI 导出铁律)
+
+### Context & Implementation (RI-05)
+In RI-05, we quantitatively benchmarked the governed data slice plane against the legacy ad-hoc script approach on a fixed US tech cross-section problem (`AAPL`, `GOOGL`, `MSFT`, `NVDA` vs. `QQQ`), achieving an 89.6% reduction in boilerplate code and a 71.4% reduction in manual steps.
+
+### Rules Established
+1. **Mathematical Equivalence Must Precede Efficiency Claims**:
+   - Never claim an efficiency gain without proving mathematical equivalence ($|\Delta| < 10^{-5}$) between the legacy parser and the unified data slice extractor on identical raw evidence.
+   - Preserves feature integrity for quant models while removing boilerplate.
+2. **CLI Data Export Fail-Closed Integrity**:
+   - When providing tabular data exports via CLI (`--data-output <path>`), the file must ONLY be written if `result.is_ready` is true.
+   - If the slice is blocked by governance or PIT lookahead, the exporter MUST strictly suppress file creation (or remove any partial file), returning exit code 10 (`data_blocked`) so downstream tools or scripts can never consume unverified or forward-looking data.

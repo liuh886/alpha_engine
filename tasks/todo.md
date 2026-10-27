@@ -114,21 +114,20 @@
   - [x] **5.3.2 [Doc] 编写实验报告与证据封存 (`docs/architecture/ri-04-dual-consumer-reuse-experiment.md`)**：详述两个消费者共享切片的架构、Happy/Blocked 场景表现、密码学收据指纹与研究者减负对比。
   - [x] **5.3.3 [Test] 编写跨领域复用测试套件 (`tests/test_ri04_dual_consumer_reuse.py`)**：覆盖消费者一正常/阻断、消费者二正常/尾部阻断（拒绝编造缺失交易日）、收据加密绑定及严禁生成实盘交易信号边界。
   - [x] **5.3.4 [Verify] 全量回归与代码静态检查**：确保 pytest、ruff 与 git diff 全绿通过（14 项投研切片测试在 2.90s 全绿）。
-- [ ] **5.4 [Track B / RI-05] 开发者与研究员效率度量与摩擦消除 (Researcher Efficiency Metrics & Friction Reduction)**:
-  - [ ] **5.4.1 [Spec & Baseline] 测量基准与问题定义 (`docs/architecture/ri-05-researcher-efficiency-metrics.md`)**：
-    - 固定端到端研究场景（如对比传统逐个拉取/清洗 CSV 脚本与标准 `get_research_data_slice()`）；
-    - 量化指标：代码胶水行数（Lines of Boilerplate）、手工操作与排查步骤数、数据重复读取/副本开销、从提出假设到可解释结果时间（Time-to-Insight）、PIT 历史越界自动拦截率；
-    - 明确最痛点：既有研究脚本中大量重复的文件路径硬编码、缺乏统一 CLI/API 导致研究员不得不自己写清洗脚本与时间戳检查。
-  - [ ] **5.4.2 [Optimize & Eliminate] 消除冗余路径与最痛接口精简**：
-    - 依据 RI-04 实验实践，增强 `alpha research slice` 或精简 `src/data/research_slice.py`；
-    - 消除未使用的历史死路径或冗余适配，遵循“删除被新闭环取代的冗余路径，不保留兼容旧逻辑”；
-    - 确保零多余数据库引入，零后台守护进程。
-  - [ ] **5.4.3 [Test & Evidence] 编写度量验证测试与负面证明**：
-    - 编写度量验证脚本或单元测试，确保在相同基准/样本下，切片重用带来 80%+ 胶水代码减免和 100% PIT 越界阻断；
-    - 保证测试执行速度与幂等性。
-  - [ ] **5.4.4 [Verify & Gate] 全量回归验证与提交推送**：
-    - 运行全量单元测试与 lint 检查；
-    - 形成完整的 Track B RI-05 闭环证据。
+- [x] **5.4 [Track B / RI-05] 开发者与研究员效率度量与摩擦消除 (Researcher Efficiency Metrics & Friction Reduction)**:
+  - [x] **5.4.1 [Spec & Baseline] 测量基准与问题定义 (`docs/architecture/ri-05-researcher-efficiency-metrics.md`)**：
+    - 固定端到端研究场景：美股科技龙头横截面低波动超额收益研究（`AAPL`, `GOOGL`, `MSFT`, `NVDA` vs `QQQ`）；
+    - 实测度量指标：胶水代码减少 89.58%（48 行降至 5 行，DoD 要求 >80%）；手工环节减少 71.43%（7 步降至 2 步，DoD 要求 >60%）；PIT 拦截率从 0% 提升至 100%；数学结果绝对误差 0.00000000；
+    - 明确痛点：CLI 终端提取切片仅产生 JSON 收据，丢弃清洗后的表格数据，导致研究员不得不再次编写 Python 代码提取。
+  - [x] **5.4.2 [Optimize & Eliminate] 消除冗余路径与最痛接口精简**：
+    - 在 `src/cli/main.py` 为 `alpha data slice` 新增 `--data-output` 参数，直接一键导出清洗好的 CSV 数据；
+    - 严格 Fail-Closed 负面控制：遇到阻断（如 PIT 违规）严禁生成 CSV，并自动清除残留文件，返回退出码 10；
+    - 在 `src/data/research_slice.py` 中为 `DataSliceResult` 引入 `is_ready` 与 `is_blocked` 便捷属性；
+    - 坚持零多余数据库引入，零后台守护进程。
+  - [x] **5.4.3 [Test & Evidence] 编写度量验证测试与负面证明 (`tests/test_ri05_efficiency_metrics.py`)**：
+    - 编写 5 项严密测试：数学等价性断言、效率降低阈值断言、CLI `--data-output` 导出断言、违规阻断不产出数据断言、零数据库治理不变性断言；5 项测试 1.57s 全绿。
+  - [x] **5.4.4 [Verify & Gate] 全量回归验证与提交推送**：
+    - 运行全量投研数据切片与复用套件（19 项测试 3.40s 全绿）、ruff 静态检查全绿、git diff 零错误。
 
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:

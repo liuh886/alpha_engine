@@ -98,6 +98,14 @@ class DataSliceResult:
     receipt: dict[str, Any]
     data: pd.DataFrame | None
 
+    @property
+    def is_ready(self) -> bool:
+        return self.receipt.get("status") == "ready"
+
+    @property
+    def is_blocked(self) -> bool:
+        return self.receipt.get("status") == "blocked"
+
 
 def _validate_iso_date(val: str, field_name: str) -> None:
     try:
