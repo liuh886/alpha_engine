@@ -1,5 +1,7 @@
 # Walk-Forward Quantitative Study: US Tech Volatility Spread & Short-Term Reversal (2025–2026)
 
+> **Historical evidence notice — v0.2 (2026-10-27):** This sealed report and its numerical performance table belong to the exact v0.2 source and input hashes recorded below. The v0.2.1 review branch changes day-one OOS accounting, execution lag, drift-based transaction costs and terminal liquidation; its results **must be independently recalculated and newly sealed**. The numbers below **must not** be reused as v0.2.1 performance, and neither version claims full PIT certification or a trade-ready strategy.
+
 > **Authority & Governance**: Track B Quantitative Infrastructure (#1296), ADR-0003, and ADR-0005.  
 > **Operational Boundary**: `research_only=true`, `trade_ready=false`, `trade_signal=false`.  
 > **Study Identifier**: `us_tech_vol_reversal_v1`  
@@ -34,7 +36,7 @@ In modern equity markets, mega-capitalization technology equities exhibit substa
 ## 2. Research Data Architecture & Lookahead Enforcement
 
 ### 2.1 Reusable Data Slice Integration
-The study relies strictly on the Track B data plane entry point [`get_research_data_slice()`](file:///D:/Documents/GitHub/alphaengine/src/data/research_slice.py). No local flat CSVs, ad-hoc pandas readers, DuckDB files, or secondary SQLite tables were spawned.
+The study relies strictly on the Track B data plane entry point [`get_research_data_slice()`](../../src/data/research_slice.py). No local flat CSVs, ad-hoc pandas readers, DuckDB files, or secondary SQLite tables were spawned.
 
 Each temporal window is explicitly declared via `DataSliceRequest`:
 - Enforces temporal cutoff compliance: `end_date <= as_of_cutoff`.
@@ -150,6 +152,6 @@ Given average daily turnover of ~16.8%, transaction friction imposes a non-trivi
    - No DuckDB files, SQLite databases, or external microservices were introduced.
    - Vectorized memory computation provides full determinism and rapid execution.
 4. **Code References**:
-   - Pipeline Engine: [`src/research/walkforward/pipeline.py`](file:///D:/Documents/GitHub/alphaengine/src/research/walkforward/pipeline.py)
-   - Data Contracts: [`src/research/walkforward/contracts.py`](file:///D:/Documents/GitHub/alphaengine/src/research/walkforward/contracts.py)
-   - Test Suite: [`tests/test_walkforward_study.py`](file:///D:/Documents/GitHub/alphaengine/tests/test_walkforward_study.py)
+   - Pipeline Engine: [`src/research/walkforward/pipeline.py`](../../src/research/walkforward/pipeline.py)
+   - Data Contracts: [`src/research/walkforward/contracts.py`](../../src/research/walkforward/contracts.py)
+   - Test Suite: [`tests/test_walkforward_study.py`](../../tests/test_walkforward_study.py)
