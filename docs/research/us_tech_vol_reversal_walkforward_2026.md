@@ -3,7 +3,8 @@
 > **Authority & Governance**: Track B Quantitative Infrastructure (#1296), ADR-0003, and ADR-0005.  
 > **Operational Boundary**: `research_only=true`, `trade_ready=false`, `trade_signal=false`.  
 > **Study Identifier**: `us_tech_vol_reversal_v1`  
-> **Cryptographic Study Hash**: `4b94fc2a7181f77464827eb9083b976f1a86b402296f65d82153f02462b23ba8`
+> **Methodology Version**: `v0.2` (Walk-Forward Optimization with Active Purging, In-Sample Selection & Net Friction)
+> **Cryptographic Study Hash**: `fe7824758bc1f5b9e98851bcaecabbffa79eae494e92a6d8e766fc15592bb6c7`
 
 ---
 
@@ -15,12 +16,18 @@ In modern equity markets, mega-capitalization technology equities exhibit substa
 ### 1.2 Core Investment Hypothesis
 > **Hypothesis**: In high-liquidity US megacap tech equities, a cross-sectional portfolio that systematically tilts towards names with **lower trailing 20-day realized volatility** and **recent 5-day price pullbacks (short-term reversal)** will generate superior risk-adjusted returns and out-of-sample excess performance over the cap-weighted benchmark (`QQQ`), avoiding peak volatility shocks while capturing structural recovery upside.
 
-### 1.3 Governed Asset Cross-Section
+### 1.3 Governed Asset Cross-Section & Qualification Disclosures
 - **Market**: US Equities (`market: "us"`)
-- **Governed Pool**: `configs/research_universes/us_selected_equities_v2.yaml` (87 names)
+- **Governed Universe**: `configs/research_universes/us_selected_equities_v2.yaml` (87 names)
 - **Candidate Sub-Pool**: `AAPL`, `MSFT`, `GOOGL`, `NVDA`, `AMZN`, `META`, `AVGO`, `TSLA` (8 liquid tech leaders)
-- **Reference Benchmark**: `QQQ` (Invesco QQQ Trust ETF, role: `benchmark_context`, isolated from candidate ranking)
+- **Reference Benchmark**: `QQQ` (Invesco QQQ Trust ETF, role: `benchmark_context`, strictly isolated from candidate ranking)
 - **Price Adjustment Mode**: `anchored_adjusted`
+
+> [!IMPORTANT]
+> **Data Qualification & Bias Disclosures (ADR-0005)**:
+> 1. **Observation Cutoff Verified, Not Revision Certified**: Price and adjustment series meet `end_date <= as_of_cutoff`. The underlying data slice receipt explicitly carries `pit_certified: false`. Multi-vintage restatement histories and historical vendor ingestion timestamps ($t_{available}$) are unverified.
+> 2. **Fixed Universe Selection Bias**: The 8 megacap candidate pool is fixed ex-post from `us_selected_equities_v2`. Historical point-in-time constituent reconstitution is not modeled; survivorship and selection biases are acknowledged.
+> 3. **Research Exclusivity**: All metrics represent simulated historical research. No live trading recommendations or execution orders are authorized.
 
 ---
 
@@ -29,62 +36,76 @@ In modern equity markets, mega-capitalization technology equities exhibit substa
 ### 2.1 Reusable Data Slice Integration
 The study relies strictly on the Track B data plane entry point [`get_research_data_slice()`](file:///D:/Documents/GitHub/alphaengine/src/data/research_slice.py). No local flat CSVs, ad-hoc pandas readers, DuckDB files, or secondary SQLite tables were spawned.
 
-Each temporal window is explicitly declared via `DataSliceRequest` and validated by the data engine:
-- Verifies membership in `us_selected_equities_v2` and role separation against `reference_instrument_registry_v1.yaml`.
+Each temporal window is explicitly declared via `DataSliceRequest`:
 - Enforces temporal cutoff compliance: `end_date <= as_of_cutoff`.
+- Fails closed upon unlisted or unregistered securities.
 - Generates an immutable, order-invariant `data_hash` (SHA-256) per slice.
 
-### 2.2 Point-in-Time (PIT) Boundary & Warmup Splicing
-To prevent lookahead bias:
-1. Signal evaluation at session $t-1$ close uses solely history certified $\le t-1$.
-2. Portfolio weights are fixed at close $t-1$ and applied to returns realized over session $(t-1, t]$.
-3. Technical indicators (20-day realized volatility and 5-day reversal) require continuous trailing lookback. To prevent lookahead leakage into the first 20 days of an Out-of-Sample window, the pipeline splices the certified tail of the training slice (already certified $\le T_{train\_cutoff} < T_{test\_start}$).
+### 2.2 Purged Margin Execution & Warmup Lookback
+To ensure complete isolation between In-Sample training and Out-of-Sample evaluation:
+1. **Active Purge Margin**: Every fold enforces `purged_margin_days = 20`. The trailing 20 business days of the training slice (180 observation samples across 9 assets) are actively pruned from the training set, eliminating overlap between multi-day forward targets and test-period inputs.
+2. **Next-Day Execution Boundary**: Signal evaluation at session $t-1$ close uses solely history certified $\le t-1$. Portfolio weights are applied to returns realized over session $(t-1, t]$.
+3. **Warmup Splicing**: Trailing 20-day realized volatility and 5-day reversal for the first day of an OOS window are initialized strictly from the certified tail of the In-Sample training slice ($T \le T_{train\_cutoff} < T_{test\_start}$).
 
 ---
 
-## 3. Walk-Forward Temporal Design & Fold Schedule
+## 3. Walk-Forward Optimization (WFO) Design
 
-The study implements an **expanding-window Walk-Forward optimization and Out-of-Sample simulation** across 3 consecutive non-overlapping test folds spanning 2025-01-02 to 2026-09-04:
+The study implements a true **Train $\to$ Select $\to$ Freeze $\to$ Out-of-Sample Evaluate** expanding-window workflow across 3 non-overlapping test folds:
 
 ```
 Timeline:
-[ 2022-01-03 ------------------- 2024-12-31 ] -> Test Fold 1 [ 2025-01-02 - 2025-06-30 ]
-[ 2022-01-03 --------------------------------- 2025-06-30 ] -> Test Fold 2 [ 2025-07-01 - 2025-12-31 ]
-[ 2022-01-03 ----------------------------------------------- 2025-12-31 ] -> Test Fold 3 [ 2026-01-02 - 2026-09-04 ]
+[ 2022-01-03 ------------------- (Purged: 20d) - 2024-12-31 ] -> Test Fold 1 [ 2025-01-02 - 2025-06-30 ]
+[ 2022-01-03 --------------------------------- (Purged: 20d) - 2025-06-30 ] -> Test Fold 2 [ 2025-07-01 - 2025-12-31 ]
+[ 2022-01-03 ----------------------------------------------- (Purged: 20d) - 2025-12-31 ] -> Test Fold 3 [ 2026-01-02 - 2026-09-04 ]
 ```
 
-| Fold ID | Phase | Start Date | End Date | As-Of Cutoff | Purged Margin | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`fold_1_2025h1`** | Train (IS)<br>Test (OOS) | 2022-01-03<br>2025-01-02 | 2024-12-31<br>2025-06-30 | 2024-12-31<br>2025-06-30 | 20 days | `ready`<br>`ready` |
-| **`fold_2_2025h2`** | Train (IS)<br>Test (OOS) | 2022-01-03<br>2025-07-01 | 2025-06-30<br>2025-12-31 | 2025-06-30<br>2025-12-31 | 20 days | `ready`<br>`ready` |
-| **`fold_3_2026_tail`** | Train (IS)<br>Test (OOS) | 2022-01-03<br>2026-01-02 | 2025-12-31<br>2026-09-04 | 2025-12-31<br>2026-09-04 | 20 days | `ready`<br>`ready` |
+### 3.1 In-Sample Parameter Optimization & Freezing
+In each fold's In-Sample period, a grid search is performed over the purged training window across:
+- Short-term reversal weight $w_{rev} \in \{0.5, 1.0, 1.5\}$
+- Realized volatility weight $w_{vol} \in \{0.5, 1.0, 1.5\}$
+- Portfolio breadth $top\_k \in \{2, 3\}$
+
+The parameter set $\theta^* = (w_{rev}, w_{vol}, top\_k)$ maximizing In-Sample net Sharpe ratio is **frozen** into `selected_parameters` and applied out-of-sample.
+
+| Fold ID | Phase | Calendar Window | As-Of Cutoff | Purged Days (Rows) | Frozen Parameters $\theta^*$ | IS Net Sharpe |
+| :--- | :--- | :--- | :--- | :---: | :---: | :---: |
+| **`fold_1_2025h1`** | Train (IS)<br>Test (OOS) | 2022-01-03 ~ 2024-12-31<br>2025-01-02 ~ 2025-06-30 | 2024-12-31<br>2025-06-30 | 20 days (180 rows)<br>— | $w_{rev}=1.0, w_{vol}=1.5, k=3$<br>— | 0.8221<br>— |
+| **`fold_2_2025h2`** | Train (IS)<br>Test (OOS) | 2022-01-03 ~ 2025-06-30<br>2025-07-01 ~ 2025-12-31 | 2025-06-30<br>2025-12-31 | 20 days (180 rows)<br>— | $w_{rev}=1.0, w_{vol}=1.5, k=3$<br>— | 0.7241<br>— |
+| **`fold_3_2026_tail`** | Train (IS)<br>Test (OOS) | 2022-01-03 ~ 2025-12-31<br>2026-01-02 ~ 2026-09-04 | 2025-12-31<br>2026-09-04 | 20 days (180 rows)<br>— | $w_{rev}=0.5, w_{vol}=1.5, k=3$<br>— | 0.9332<br>— |
 
 ---
 
-## 4. Empirical Realization & Out-of-Sample Results
+## 4. Empirical Realization & Net Performance Matrix
 
-### 4.1 Fold-by-Fold Performance Matrix
+### 4.1 Fold-by-Fold Performance Matrix (Net of 8 bps Friction)
 
-| Metric | Fold 1 (`2025H1`) | Fold 2 (`2025H2`) | Fold 3 (`2026 Tail`) | Overall Stitched OOS |
+| Metric | Fold 1 (`2025H1`) | Fold 2 (`2025H2`) | Fold 3 (`2026 Tail`) | Stitched OOS Total |
 | :--- | :---: | :---: | :---: | :---: |
-| **Train Row Count** | 6,777 | 7,875 | 9,027 | — |
 | **Test Row Count** | 1,098 | 1,152 | 1,530 | 3,780 |
-| **In-Sample Mean IC (5d)** | -0.0220 | -0.0128 | -0.0030 | — |
-| **OOS Cumulative Return** | **+6.33%** | **+20.21%** | **+40.44%** | **+79.51%** |
+| **In-Sample Spearman IC** | -0.0104 | -0.0125 | -0.0112 | — |
+| **OOS Gross Return (0 bps)** | **+7.99%** | **+20.92%** | **+24.41%** | **+62.46%** |
+| **OOS Net Return (8 bps)** | **+6.02%** | **+18.95%** | **+21.87%** | **+53.69%** |
 | **Benchmark QQQ Return** | **+8.40%** | **+12.58%** | **+17.29%** | **+43.14%** |
-| **OOS Excess Return** | **-2.07%** | **+7.63%** | **+23.15%** | **+36.37%** |
-| **Annualized Volatility** | 34.78% | 22.58% | 28.81% | 28.72% (avg) |
-| **Sharpe Ratio** | 0.5380 | 1.7322 | 1.9020 | **1.3907** (mean) |
-| **Maximum Drawdown** | -24.38% | -7.58% | -14.05% | **-24.38%** (worst) |
-| **Daily Win Rate** | 48.76% | 59.06% | 53.85% | 53.89% |
-| **Daily Turnover Ratio** | 27.69% | 28.74% | 30.47% | 28.97% |
+| **OOS Net Excess Return** | **-2.37%** | **+6.37%** | **+4.58%** | **+10.55%** |
+| **Annualized Net Volatility** | 32.51% | 19.33% | 24.49% | 25.44% |
+| **Net Sharpe Ratio** | **0.5346** | **1.8796** | **1.3267** | **1.1363** (continuous) |
+| **Gross Sharpe Ratio** | 0.6525 | 2.0492 | 1.4512 | 1.2504 (continuous) |
+| **Maximum Drawdown** | -21.02% | -7.46% | -20.67% | **-21.02%** (continuous) |
+| **Daily Win Rate** | 49.59% | 61.42% | 51.48% | 54.16% |
+| **Daily Turnover Ratio** | 18.87% | 16.14% | 15.29% | 16.77% |
+| **Fold Transaction Cost Drag** | 1.96% | 1.97% | 2.54% | **8.77%** (cumulative) |
 
-### 4.2 Performance Analysis & Hypothesis Validation
-1. **Fold 1 (2025H1)**: Experienced mild underperformance (-2.07% vs QQQ) during the initial Q1-Q2 2025 market rotation where high-beta momentum names drove narrow index gains. Max drawdown reached -24.38%.
-2. **Fold 2 (2025H2)**: Substantial outperformance (+20.21% vs QQQ +12.58%, excess +7.63%) with Sharpe ratio rising to 1.7322. Lower volatility names protected capital during August 2025 volatility spikes.
-3. **Fold 3 (2026 Tail)**: Exceptional out-of-sample alpha generation (+40.44% vs QQQ +17.29%, excess +23.15%) with Sharpe ratio of 1.9020 and controlled drawdown (-14.05%).
-4. **Cumulative Walk-Forward Trajectory**: Compounding through all three out-of-sample folds delivered **+79.51% total return vs QQQ +43.14%**, generating **+36.37% net excess return** across 20 trading months with an average out-of-sample Sharpe ratio of **1.3907**.
-5. **Conclusion**: The investment hypothesis is **empirically supported** over the 2025–2026 out-of-sample period.
+### 4.2 Transaction Cost & Slippage Sensitivity Analysis
+Given average daily turnover of ~16.8%, transaction friction imposes a non-trivial drag on returns:
+
+| Friction Tier | Model Description | Cumulative OOS Return | Net Excess over QQQ | Cost Drag vs Gross |
+| :--- | :--- | :---: | :---: | :---: |
+| **Tier 0: Gross (0 bps)** | Theoretical frictionless execution | **+62.46%** | +19.32% | 0.00% |
+| **Tier 1: Standard (8 bps)** | 3 bps commission + 5 bps slippage | **+53.69%** | **+10.55%** | **-8.77%** |
+| **Tier 2: Stress (15 bps)** | 5 bps commission + 10 bps slippage | **+46.44%** | **+3.30%** | **-16.02%** |
+
+> **Key Finding**: Transaction costs reduce cumulative out-of-sample alpha by nearly half (from +19.32% gross excess down to +10.55% net excess at standard institutional friction). Under high stress friction (15 bps), net excess is compressed to +3.30%, demonstrating that low-turnover execution discipline is vital.
 
 ---
 
@@ -111,23 +132,23 @@ Timeline:
 
 ### 5.2 Sealed Study Hash
 - **Algorithm**: Canonical UTF-8 JSON serialization $\to$ SHA-256
-- **Hash**: `4b94fc2a7181f77464827eb9083b976f1a86b402296f65d82153f02462b23ba8`
+- **Hash**: `fe7824758bc1f5b9e98851bcaecabbffa79eae494e92a6d8e766fc15592bb6c7`
 - **Determinism Assertion**: Verified via automated test `test_walkforward_study_determinism` (identical digest across repeated executions).
 
 ---
 
-## 6. Governance Invariants & Operational Boundaries
+## 6. Governance Invariants & Fail-Closed Integrity
 
-1. **Research Exclusivity**:
+1. **Fail-Closed Fold Integrity**:
+   - Every declared fold must achieve `status: "ready"`.
+   - If any fold blocks or fails, `run_walkforward_study()` strictly sets `status = "blocked"` and suppresses overall return and Sharpe publication.
+2. **Research Exclusivity**:
    - `research_only: true`
    - `trade_ready: false`
    - `trade_signal: false`
-2. **Fail-Closed Execution**:
-   - Any query exceeding `as_of_cutoff` is intercepted by `get_research_data_slice` returning `status: blocked` and zero rows.
-   - Any unlisted security request fails closed without fallback interpolation.
 3. **Zero Shadow Infrastructure**:
    - No DuckDB files, SQLite databases, or external microservices were introduced.
-   - Memory-only computation ensures complete isolation and thread safety.
+   - Vectorized memory computation provides full determinism and rapid execution.
 4. **Code References**:
    - Pipeline Engine: [`src/research/walkforward/pipeline.py`](file:///D:/Documents/GitHub/alphaengine/src/research/walkforward/pipeline.py)
    - Data Contracts: [`src/research/walkforward/contracts.py`](file:///D:/Documents/GitHub/alphaengine/src/research/walkforward/contracts.py)

@@ -192,3 +192,23 @@ In launching the real investment hypothesis Walk-Forward pipeline (`us_tech_vol_
 4. **Targeted Invariant Assertions Without Unbounded File Traversals**:
    - In test assertions verifying "zero secondary databases", do NOT use recursive `ROOT.glob("**/*.duckdb")` as it traverses `.venv` / `node_modules` on Windows, causing 40s+ slowdowns.
    - Use targeted directory checks (`ROOT.glob("*.db")` and `(ROOT / "data").glob("*.db")`).
+
+---
+
+## 2026-10-27: Walk-Forward Engine v0.2 Methodological Calibration (统计计算口径与 WFO 严密性教训)
+
+### Context & User Correction
+1. **Spearman IC 样本协方差与总体标准差分母不一致 (Mathematical Flaw)**:
+   - `_compute_spearman_ic` 原实现使用 `np.cov` (除以 $n-1$) 与 `np.std` (除以 $n$)，导致分母偏小，完美正相关时算出 1.3333 (n=4) 或 1.1429 (n=8)。
+   - **铁律**：严禁混用无偏样本协方差与总体标准差。必须复用 `scipy.stats.spearmanr`，并对常数序列（方差为 0）和退化样本做严格的 0.0 保守防守。
+2. **Fail-Closed 整体研究完整性 (Fold Integrity Gate)**:
+   - 原代码过滤 `ready_folds` 后，如果任一 Fold 被阻断，仍对剩余通过的 Fold 计算累计收益。
+   - 严重漏洞：这会导致缺失未知区间的缺陷被掩盖，发布看似完整的残缺业绩。
+   - **铁律**：预先声明的研究折叠必须全部就绪；若任意一个 Fold `status != "ready"`，整体研究必须立即置为 `status: "blocked"`，绝对禁止静默删除失败区间并输出片面收益。
+3. **真实 Purge Margin 与在样本参数优化冻结 (Train-Select-Freeze-OOS)**:
+   - `purged_margin_days=20` 绝不能仅停留在数据结构声明，必须在训练期末尾真实剔除对应交易日（180 个样本），阻断未来信息泄漏。
+   - 真正的 Walk-Forward 必须在样本内执行网格参数选择并**冻结 (`selected_parameters`)**，再将冻结参数外推至测试期，严禁全区间硬编码同一组参数。
+4. **交易摩擦与敏感性分析 (Net Drag & Turnover)**:
+   - 日均 16%~29% 的换手具有显著交易成本。必须引入单边费用与滑点模型，报告净收益及 0 bps、8 bps、15 bps 多档敏感性分析。
+5. **向量化仿真加速 (Vectorized Numpy Execution)**:
+   - 在高频或参数网格迭代中，严禁在 Python 循环中频繁调用 DataFrame `.loc`，应在函数入口处预切片为连续 Numpy 数组，将仿真耗时从 320 秒降至 31 秒（提速 10 倍）。

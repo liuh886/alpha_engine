@@ -172,6 +172,26 @@
   - 封存完整研究成果报告 `docs/research/us_tech_vol_reversal_walkforward_2026.md`，密码学研究哈希为 `4b94fc2a7181f77464827eb9083b976f1a86b402296f65d82153f02462b23ba8`；
   - 2025–2026 样本外累积超额收益 +36.37% (总收益 +79.51% vs QQQ +43.14%)，样本外平均夏普比率 1.3907。
 
+### Phase 6.1: Walk-Forward Engine v0.2 方法学深化与计算引擎重构
+- [x] **6.1.1 [P0 / Math] Spearman IC 计算公式修复与退化测试**:
+  - 重构 `_compute_spearman_ic`，复用 `scipy.stats.spearmanr` 消除样本协方差与总体标准差分母不一致缺陷；
+  - 编写独立单测覆盖完全正相关 (+1.0)、完全负相关 (-1.0)、并列排名与常数退化序列 (0.0)。
+- [x] **6.1.2 [P0 / Gate] Fail-Closed Fold 完整性与总收益防静默放行**:
+  - 重构 `run_walkforward_study()`：若预声明的任意一个 Fold `status != "ready"`，则整体状态必须标记为 `"blocked"`，严禁静默删除缺失折叠并输出残缺总收益；
+  - 增加测试断言验证该 Fail-Closed 机制。
+- [x] **6.1.3 [P0 / Methodology] 真实 Purge 边际执行与训练期超参数选择 (Train-Select-Freeze-OOS)**:
+  - 实际执行 `purged_margin_days`：训练期最后 20 个交易日（180 个样本）严密从训练集中剥离，杜绝前瞻标签或滞后特征污染；
+  - 实施 In-Sample 阶段超参数网格选择（`w_rev`, `w_vol`, `top_k`），根据训练期绩效自动优选并**冻结参数**；
+  - OOS 测试折叠严格应用对应训练期冻结的参数进行外推模拟，实现真正的 Train $\to$ Select $\to$ Freeze $\to$ OOS。
+- [x] **6.1.4 [P1 / Reality] 交易成本、滑点与逐日连续净值敏感性分析**:
+  - 引入单边摩擦模型（3 bps 佣金 + 5 bps 滑点，单边 8 bps / 0.0008）；
+  - 提供多档成本敏感性检验（0 bps 毛收益、8 bps 标准机构摩擦、15 bps 高摩擦压力测试）；
+  - 将各 Fold 逐日净收益按时间序列无缝拼接为全周期连续净值曲线，计算真实的全局连续最大回撤与年化复合 Sharpe 比率。
+- [x] **6.1.5 [P1 / Governance] 研究证据收据更新与 PIT 资质声明修正**:
+  - 收据与代码中彻底移除将预热数据描述为 "certified" 的措辞，澄清其仅通过观测截止日核验；
+  - 明确标注固定 8 标的池存在的幸存者偏差与固定成员假设；
+  - 更新并封存报告 `docs/research/us_tech_vol_reversal_walkforward_2026.md`。
+
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
   - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。
@@ -228,6 +248,22 @@
 ---
 
 ## 阶段验收与复盘 (Review Section)
+- [x] **Phase 6.1 Walk-Forward Engine v0.2 方法学深化与计算引擎重构闭环 (2026-10-27)**:
+  - **P0 统计与数学口径修复**：重构 `_compute_spearman_ic`，复用 `scipy.stats.spearmanr`，消除 `np.cov` 与 `np.std` 分母自由度不一致导致 IC > 1.0 的缺陷；编写单测验证完全正相关 (+1.0)、完全负相关 (-1.0)、并列排名及常数退化序列 (0.0) 严格通过。
+  - **P0 Fail-Closed 折叠完整性门禁**：若预声明的任意一个 Fold `status != "ready"`，整体研究强制输出 `status: "blocked"` 并清零综合绩效指标，在 `blocked_reasons` 显式列出阻断折叠与原因，坚决杜绝静默剔除失败折叠而发布残缺收益。
+  - **P0 真实 Purge 边际执行与在样本参数选择冻结 (Train-Select-Freeze-OOS)**:
+    - 实际执行 `purged_margin_days=20`：训练集末尾 20 个交易日（180 个样本）严密从训练集中剥离；
+    - 在样本内针对 `w_rev`, `w_vol`, `top_k` 执行网格搜索，根据在样本净夏普比率自动优选并**冻结参数**；
+    - 样本外测试期严格采用对应折叠冻结的参数外推，实现从“分段固定回测”到“真正的滚动参数优化与检验 (WFO)”的跨越。
+  - **P1 真实交易成本、滑点与连续净值敏感性**：
+    - 引入单边 8 bps（3 bps 佣金 + 5 bps 滑点）交易摩擦，Fold 1/2/3 净收益分别为 +6.02%、+18.95%、+21.87%，全周期累积产生 8.77% 的交易摩擦损耗；
+    - 提供三档摩擦敏感性检验：0 bps 毛收益 (+62.46%)、8 bps 标准机构摩擦 (+53.69%，超越 QQQ 10.55 个百分点)、15 bps 高摩擦压力测试 (+46.44%)；
+    - 逐日无缝拼接全周期净值曲线，计算真实的连续整体最大回撤 (-21.02%) 与连续整体年化 Sharpe (1.1363)。
+  - **P1 向量化性能优化与 PIT 资质声明规范**：
+    - 仿真器底层重构为 Numpy 连续数组与整数索引集合运算，将测试执行耗时从 320 秒压降至 31 秒（提速 10 倍）；
+    - 收据与文档彻底移除将切片描述为 "certified" 的措辞，澄清其仅满足观测截止日核验，并明确固定 8 标的池的幸存者偏差；
+    - 更新并封存报告 [`docs/research/us_tech_vol_reversal_walkforward_2026.md`](docs/research/us_tech_vol_reversal_walkforward_2026.md)，最新研究散列为 `fe7824758bc1f5b9e98851bcaecabbffa79eae494e92a6d8e766fc15592bb6c7`；
+    - 全量 29 项投研切片与 Walk-Forward 测试在 38.43 秒内 100% 通过。
 - [x] **Phase 6.0 真实投资假设驱动的端到端 Walk-Forward 研究流水线闭环 (2026-10-27)**:
   - **量化假设与标的池验证**：基于 `us_selected_equities_v2`（87 标的）中 8 大核心科技龙头（`AAPL`, `MSFT`, `GOOGL`, `NVDA`, `AMZN`, `META`, `AVGO`, `TSLA`）与基准 `QQQ`，验证“低实现波动率叠加短期 5 日价格反转”截面选股假设。
   - **Track B 投研数据面闭环**：全流程 100% 通过 [`get_research_data_slice()`](src/data/research_slice.py) 提取内存切片，无任何本地 flat CSV 或新增 DuckDB/SQLite 影子存储；所有切片严格遵循观测截止日约束 (`as_of_cutoff`)，生成确定性 SHA-256 数据收据。
