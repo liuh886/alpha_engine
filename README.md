@@ -1,10 +1,32 @@
 # Alpha Engine
 
-面向个人使用的策略研究与运行监测工具。核心任务只有一条：更新必需数据，按既定节奏评估现有策略，保留决策证据，并在同一个页面说明状态、原因、日期与阻塞。
+Alpha Engine 的长期定位是个人使用的 **Investment Research Infrastructure（投资研究基础设施）**：复用可信数据、明确历史信息边界，快速验证或否定投资假设，并保留可比较的研究证据。现行 Strategy Console 是其中的正式策略观察应用，不承担研究实验执行或交易委托。
 
 入口：[Strategy Console](https://liuh886.github.io/alpha_engine/)。系统保持 `research_only=true`、`trade_ready=false`。
 
 本地 Agent 从 [AGENTS.md](AGENTS.md) 开始，按[当前产品与交接入口](docs/product/strategy_console.md#local-agent-start-here)定位权威、运行恢复与验收任务。旧任务板和 Research Studio 页面清单只保留历史，不代表当前支持范围。
+
+## 投资研究工作流（本地）
+
+研究者无需为每次假设重新编写数据获取、回测或证据保存脚本。首个可用流程围绕既有的 US Tech Volatility/Reversal Walk-Forward 引擎，支持：
+
+```powershell
+# 1. 发现可执行研究模型及其边界
+uv run alpha research study list
+
+# 2. 生成研究规格（可修改股票、参数网格、折叠时间与交易摩擦）
+uv run alpha research study init --output artifacts/my-volatility-study.json
+
+# 3. 冻结规格后运行：使用已有受治理数据切片，生成研究收据
+uv run alpha research study run --spec artifacts/my-volatility-study.json
+
+# 4. 调整另一个研究规格，重跑并对比两份收据
+uv run alpha research study compare artifacts/research_studies/<study_id>/<hash_A>.json artifacts/research_studies/<study_id>/<hash_B>.json
+```
+
+也可直接执行默认研究：`uv run alpha research study run`。收据保存在 `artifacts/research_studies/<study_id>/<study_hash>.json`，同一证据重复运行不会覆盖旧收据；被阻断的研究仍保留原因，命令退出码为 10。比较必须使用相同研究标的、交易窗口、底层数据哈希和执行代码，否则拒绝比较，避免误导。
+
+**范围限制：** 当前只提供一个经过代码实现的波动率/短期反转研究家族；修改规格不会自动创造新因子。源数据的历史可得性尚不构成完整 PIT 认证；所有结果严格为 `research_only=true`、`trade_ready=false`。详见[研究工作流](docs/product/research_study_workspace.md)。
 
 ## 日常使用
 
