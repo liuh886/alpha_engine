@@ -168,6 +168,8 @@ def _build_parser() -> argparse.ArgumentParser:
     study_run = study_actions.add_parser("run", help="Run a frozen study and retain its receipt.")
     study_run.add_argument("--spec", type=Path, help="Optional JSON study spec; defaults to built-in.")
     study_run.add_argument("--output", type=Path, help="Optional immutable receipt output path.")
+    study_show = study_actions.add_parser("show", help="Inspect a retained research receipt.")
+    study_show.add_argument("receipt", type=Path)
     study_compare = study_actions.add_parser(
         "compare", help="Compare two completed receipts on identical frozen data."
     )
@@ -410,6 +412,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ResearchStudyError,
                 compare_studies,
                 initialize_study,
+                inspect_study,
                 run_study,
                 study_catalog,
             )
@@ -427,6 +430,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
                 if payload["status"] == "blocked":
                     exit_code = 10
+            elif args.study_action == "show":
+                payload = inspect_study(_resolve(root, args.receipt))
             elif args.study_action == "compare":
                 payload = compare_studies(
                     _resolve(root, args.left), _resolve(root, args.right)
