@@ -169,3 +169,26 @@ The user identified four critical areas requiring calibration across RI-03/04/05
 4. **Mandatory Event Provenance in Macro Risk Studies (#1272)**:
    - Forward horizon studies must bind to an authoritative `RiskEvent` with verified source timestamps.
    - Missing event history cannot be treated as zero or substituted with unanchored dates; it must strictly fail closed with `blocked_event_pit_coverage`.
+
+---
+
+## 2026-10-27: Walk-Forward Out-of-Sample Splicing & Zero-Lookahead Simulation (滚动步进样本外评估与防未来函数)
+
+### Context & Implementation (Phase 6.0)
+In launching the real investment hypothesis Walk-Forward pipeline (`us_tech_vol_reversal_v1`), we evaluated cross-sectional volatility spread and short-term reversal across 8 US tech leaders (`AAPL`, `MSFT`, `GOOGL`, `NVDA`, `AMZN`, `META`, `AVGO`, `TSLA` vs `QQQ`) over 3 expanding folds (2025H1, 2025H2, 2026 Tail).
+
+### Rules Established
+1. **Certified Warmup Lookback Splicing (预热数据严密取自 In-Sample 尾部)**:
+   - Technical indicators (e.g. 20-day realized volatility, 5-day reversal) require trailing history to compute signals for day 1 of the Out-of-Sample test window.
+   - Splicing MUST only pull bars from the certified tail of the training slice (which was already certified $\le T_{train\_cutoff} < T_{test\_start}$).
+   - Never pull trailing bars from uncertified test data or outside declared boundaries.
+2. **Next-Day Execution Boundary (信号生成与持仓执行严格跨日)**:
+   - Cross-sectional ranking and portfolio weights are determined strictly at close of session $t-1$.
+   - Realized returns are evaluated over session $(t-1, t]$. Same-day bar returns ($close_t / open_t$ or $close_t / close_t$) cannot be used to weight session $t$ portfolios.
+3. **End-to-End Cryptographic Sealing & Immutable Hashes**:
+   - Every training slice and testing slice produces an immutable `data_hash`.
+   - The overall study bundles all fold metrics and hashes into a canonical JSON payload, hashed via SHA-256 (`study_hash`).
+   - Asserts 100% determinism across runs, ensuring zero hidden state drift.
+4. **Targeted Invariant Assertions Without Unbounded File Traversals**:
+   - In test assertions verifying "zero secondary databases", do NOT use recursive `ROOT.glob("**/*.duckdb")` as it traverses `.venv` / `node_modules` on Windows, causing 40s+ slowdowns.
+   - Use targeted directory checks (`ROOT.glob("*.db")` and `(ROOT / "data").glob("*.db")`).

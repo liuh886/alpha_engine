@@ -151,6 +151,27 @@
   - 更新测试套件 `test_research_data_slice.py`、`test_ri04_dual_consumer_reuse.py`、`test_ri05_efficiency_metrics.py`（全量 22 项测试全绿）；
   - 记录教训至 `tasks/lessons.md`。
 
+### Phase 5.6: RI-03/04/05 集成验收审查与历史可得性证据再验证
+- [x] **5.6.1 [Audit] 三项纠偏缺口闭环客观审查**：核验 RDI 事件来源绑定、执行轨迹度量实测、CLI 非破坏性安全写入的代码与测试实现。
+- [x] **5.6.2 [Provenance] 明确历史可得性证据链再验证**：
+  - 价格可得性证据：`data/research/market_evidence/{market}/catalog.json` 与逐标的 JSON 哈希；
+  - 公司行为可得性证据：`data/research/source_reconciliations/cn27/price-basis-v1.json` 原生公告 PDF、源 URL 与 SHA256；
+  - 宏观/参考可得性证据：`configs/pools/reference_instrument_registry_v1.yaml` 与 `#1272` `RiskEvent` 时间戳约束；
+  - 资质明确边界：限定为 `observation_cutoff_verified_not_revision_certified`。
+- [x] **5.6.3 [Acceptance Artifact] 交付集成验收报告与签发意见**。
+
+### Phase 6.0: 真实投资假设驱动的端到端研究流水线 (OOS & Walk-Forward 落地)
+- [x] **6.0.1 [Hypothesis] 真实量化投资假设定义**：明确截面因子超额收益假设（美股核心科技龙头低波动与短期反转复合超额收益），选定治理标的池（`us_selected_equities_v2` 中 8 大龙头：`AAPL`, `MSFT`, `GOOGL`, `NVDA`, `AMZN`, `META`, `AVGO`, `TSLA`）与基准（`QQQ`）。
+- [x] **6.0.2 [Data Slice] 基础设施切片提取与可得性收据封存**：声明 `DataSliceRequest`，通过 Track B 统一数据切片接口 `get_research_data_slice()` 提取，生成具备 SHA-256 密码学哈希的数据切片，严密遵守观测截止日约束。
+- [x] **6.0.3 [OOS & Walk-Forward] 样本外评估与滚动步进设计**：
+  - 实现 `src/research/walkforward/contracts.py` 与 `src/research/walkforward/pipeline.py`；
+  - 划分 3 轮 Expanding-window Walk-Forward 折叠：Fold 1 (2025H1), Fold 2 (2025H2), Fold 3 (2026 Tail)；
+  - 严密防未来函数设计：前序会话 $t-1$ 收盘决定仓位并在第 $t$ 会话执行；技术指标预热严密取自 In-Sample 尾部；越界截止日 fail-closed 阻断。
+- [x] **6.0.4 [Sealed Result & Tests] 结果封存、血缘收据与契约测试**：
+  - 编写 `tests/test_walkforward_study.py`（5 项契约测试：Happy Path、确定性哈希一致性、未来函数阻断、未上市标的阻断、零多余数据库不变性）；
+  - 封存完整研究成果报告 `docs/research/us_tech_vol_reversal_walkforward_2026.md`，密码学研究哈希为 `4b94fc2a7181f77464827eb9083b976f1a86b402296f65d82153f02462b23ba8`；
+  - 2025–2026 样本外累积超额收益 +36.37% (总收益 +79.51% vs QQQ +43.14%)，样本外平均夏普比率 1.3907。
+
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
   - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。
@@ -207,6 +228,22 @@
 ---
 
 ## 阶段验收与复盘 (Review Section)
+- [x] **Phase 6.0 真实投资假设驱动的端到端 Walk-Forward 研究流水线闭环 (2026-10-27)**:
+  - **量化假设与标的池验证**：基于 `us_selected_equities_v2`（87 标的）中 8 大核心科技龙头（`AAPL`, `MSFT`, `GOOGL`, `NVDA`, `AMZN`, `META`, `AVGO`, `TSLA`）与基准 `QQQ`，验证“低实现波动率叠加短期 5 日价格反转”截面选股假设。
+  - **Track B 投研数据面闭环**：全流程 100% 通过 [`get_research_data_slice()`](src/data/research_slice.py) 提取内存切片，无任何本地 flat CSV 或新增 DuckDB/SQLite 影子存储；所有切片严格遵循观测截止日约束 (`as_of_cutoff`)，生成确定性 SHA-256 数据收据。
+  - **无未来函数滚动步进设计**：
+    - 严格 Expanding-window 3 折叠：Fold 1 (2025H1), Fold 2 (2025H2), Fold 3 (2026 Tail)；
+    - 交易日前序决策执行边界：$t-1$ 收盘特征决定仓位，在 $t$ 日评估收益；
+    - 样本外指标预热严密取自 In-Sample 尾部，严禁前向污染。
+  - **实证超额收益与回撤表现**：
+    - Fold 1: 收益 +6.33% vs QQQ +8.40%（超额 -2.07%，夏普 0.5380，最大回撤 -24.38%）；
+    - Fold 2: 收益 +20.21% vs QQQ +12.58%（超额 +7.63%，夏普 1.7322，最大回撤 -7.58%）；
+    - Fold 3: 收益 +40.44% vs QQQ +17.29%（超额 +23.15%，夏普 1.9020，最大回撤 -14.05%）；
+    - 累计样本外复合收益：**+79.51% vs QQQ +43.14%**，**累积净超额收益 +36.37%**，样本外平均夏普 **1.3907**。投资假设在 2025–2026 样本外获得强实证支撑。
+  - **契约测试与密码学成果封存**：
+    - 交付 [`tests/test_walkforward_study.py`](tests/test_walkforward_study.py)（5 项测试 100% 通过），包含 Happy Path、确定性哈希一致性、未来函数阻断、未上市标的阻断及零辅助数据库治理断言；
+    - 封存完整研究报告 [`docs/research/us_tech_vol_reversal_walkforward_2026.md`](docs/research/us_tech_vol_reversal_walkforward_2026.md)，密码学研究散列为 `4b94fc2a7181f77464827eb9083b976f1a86b402296f65d82153f02462b23ba8`；
+    - 严格遵守 `research_only=true`, `trade_ready=false`, `trade_signal=false`。
 - [x] **RI-03B 可复用投研数据切片读取器与 CLI 落地闭环 (2026-10-27)**:
   - **核心模块交付**：在 [`src/data/research_slice.py`](src/data/research_slice.py) 实现纯函数式 `get_research_data_slice()`，支持内存切片、PIT 拦截（`announced_at <= cutoff` 与 `end_date <= cutoff`）、生命周期上市日前拦截（`SYMBOL_NOT_YET_LISTED`）与股票池治理核验。
   - **命令行集成**：在 [`src/cli/main.py`](src/cli/main.py) 扩展 `alpha data slice` 命令，支持 `--market`、`--pool`、`--symbols`、`--start`、`--end`、`--cutoff`、`--price-mode`、`--output`，返回格式化收据 JSON；`status == "ready"` 时退出码 0，`status == "blocked"` 时退出码 10 (`data_blocked`)。
