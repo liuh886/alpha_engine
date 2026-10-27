@@ -22,6 +22,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from exchange_calendars import get_calendar
 from scipy.stats import spearmanr
 
 from src.data.research_slice import (
@@ -262,6 +263,13 @@ def evaluate_walkforward_fold(
     z_rev_train, z_vol_train, train_prices = _compute_raw_features(train_df, candidates)
     train_bench = train_prices[config.benchmark]
     train_sessions = sorted(s for s in train_prices.index if fold.train_start <= s <= fold.train_end)
+    calendar_name = {"us": "XNYS", "cn": "XSHG"}.get(config.market)
+    if calendar_name is None:
+        return blocked("unsupported_exchange_calendar")
+    calendar = get_calendar(calendar_name)
+    expected_train = calendar.sessions_in_range(fold.train_start, fold.train_end).strftime("%Y-%m-%d").tolist()
+    if train_sessions != expected_train:
+        return blocked("missing_or_extra_training_exchange_sessions")
     purge = fold.purged_margin_days
     if purge < 0 or len(train_sessions) <= purge + 43:
         return blocked("insufficient_training_sessions_for_purge_and_feature_warmup")
@@ -339,6 +347,9 @@ def evaluate_walkforward_fold(
     z_rev, z_vol, prices = _compute_raw_features(full_df, candidates)
     scores = best_params["w_rev"] * z_rev - best_params["w_vol"] * z_vol
     test_sessions = sorted(s for s in prices.index if fold.test_start <= s <= fold.test_end)
+    expected_test = calendar.sessions_in_range(fold.test_start, fold.test_end).strftime("%Y-%m-%d").tolist()
+    if test_sessions != expected_test:
+        return blocked("missing_or_extra_oos_exchange_sessions")
     if len(test_sessions) < 5 or len(train_sessions) < 2 or train_sessions[-1] >= test_sessions[0]:
         return blocked("insufficient_or_nonchronological_oos_sessions")
     # Two preceding training closes provide a causally executable first OOS trade.
