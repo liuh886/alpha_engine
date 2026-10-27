@@ -212,3 +212,22 @@ In launching the real investment hypothesis Walk-Forward pipeline (`us_tech_vol_
    - 日均 16%~29% 的换手具有显著交易成本。必须引入单边费用与滑点模型，报告净收益及 0 bps、8 bps、15 bps 多档敏感性分析。
 5. **向量化仿真加速 (Vectorized Numpy Execution)**:
    - 在高频或参数网格迭代中，严禁在 Python 循环中频繁调用 DataFrame `.loc`，应在函数入口处预切片为连续 Numpy 数组，将仿真耗时从 320 秒降至 31 秒（提速 10 倍）。
+
+---
+
+## 2026-10-27: Walk-Forward Engine v0.3 Session Integrity & Asset Weight Drift (会话完整性与资产负债级摩擦会计教训)
+
+### Context & User Correction
+1. **OOS 折叠首日被静默遗漏 (Session 1 Omission)**:
+   - `_simulate_portfolio` 之前在测试区间上从 `i = 1` 开始计算，传入的 sessions 仅包含测试区间自身，导致第一个测试日（如 Fold 1 的 `2025-01-02`）无法覆盖自上一锚定日收盘至该日收盘的变动，折叠边界每次少算一个交易日收益。
+   - **铁律**：必须引入锚定日机制 ($T_{anchor} \le T_{train\_cutoff}$)，在 $T_{anchor}$ 收盘计算信号并在 $T_{test\_start}$ 首日开盘/收盘间执行第一笔收益；断言 `len(daily_net_returns) == len(test_sessions)` 严格相等（Fold 1 为 122 日、Fold 2 为 128 日、Fold 3 为 170 日，420 个交易日连续无缝）。
+2. **严格 Fail-Closed 杜绝静默跳过与填零 (Absolute Fail-Closed Boundary)**:
+   - 之前在候选股票不足 `top_k` 时使用 `continue` 跳过交易日，基准缺失时直接填 0.0，训练样本不足时退回未剪裁分支。这会改变收益序列却保持 `ready` 状态。
+   - **铁律**：投研流水线必须绝对 fail-closed。任何缺失候选价格、基准价格为 NaN、有效候选不足 `top_k` 或训练长度短于 Purge 的情况，必须立即抛出 `SimulationBlockError` 或将 Fold 状态置为 `blocked`，杜绝任何以跳过交易日或填零维持 `ready` 状态的妥协。
+3. **资产负债级权重漂移与单边换手会计 (Weight Drift & Rebalance Friction)**:
+   - 组合换手不能简单用前后持仓集合差异估算。盘中价格相对变动会引起资产权重自然漂移：
+     $$w_{i, t}^{drift} = \frac{w_{i, t-1}^{target}(1 + r_{i, t})}{1 + r_{gross, t}}$$
+   - 真实换手为单边换手率 $\text{Turnover}_t = \frac{1}{2} \sum |w_{i, t}^{target} - w_{i, t}^{drift}|$。首日由现金建仓扣除完整换手费用（Turnover = 1.0），后续每日再平衡计入价格漂移引起的调仓摩擦。
+4. **完整实验配置与代码版本绑定至研究指纹 (Experiment Receipt Lineage Binding)**:
+   - 单纯绑定 Fold 结果与数据哈希不足以防范参数或代码变动碰撞。
+   - **铁律**：将完整的 `config.to_dict()`（含 param_grid、各档摩擦费率、价格模式与折叠定义）以及当前 Git Commit SHA 完整嵌入 canonical payload 与研究收据中，确保任何实验定义或代码版本变动必然改变 `study_hash`。

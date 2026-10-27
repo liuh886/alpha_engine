@@ -16,6 +16,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from src.research.walkforward.contracts import (
@@ -24,7 +25,9 @@ from src.research.walkforward.contracts import (
 )
 from src.research.walkforward.pipeline import (
     DEFAULT_WALK_FORWARD_CONFIG,
+    SimulationBlockError,
     _compute_spearman_ic,
+    _simulate_portfolio,
     evaluate_walkforward_fold,
     run_walkforward_study,
 )
@@ -84,6 +87,8 @@ def test_walkforward_study_happy_path() -> None:
         assert fold.train_row_count > 0
         assert fold.test_row_count > 0
         assert fold.purged_rows_count > 0
+        assert fold.oos_sessions_count > 0
+        assert len(fold.daily_net_returns) == fold.oos_sessions_count
         assert "w_rev" in fold.selected_parameters
         assert "w_vol" in fold.selected_parameters
         assert "top_k" in fold.selected_parameters
@@ -94,6 +99,11 @@ def test_walkforward_study_happy_path() -> None:
         assert fold.research_only is True
         assert fold.trade_ready is False
 
+    # Check exact OOS session counts per fold (zero session dropped across boundaries)
+    assert result.folds[0].oos_sessions_count == 122
+    assert result.folds[1].oos_sessions_count == 128
+    assert result.folds[2].oos_sessions_count == 170
+
     # 3. Overall performance validation
     assert isinstance(result.overall_oos_cumulative_return, float)
     assert isinstance(result.overall_benchmark_cumulative_return, float)
@@ -101,6 +111,9 @@ def test_walkforward_study_happy_path() -> None:
     assert isinstance(result.overall_oos_sharpe_ratio, float)
     assert isinstance(result.overall_oos_max_drawdown, float)
     assert len(result.study_hash) == 64
+    assert result.git_commit != ""
+    assert isinstance(result.experiment_receipt, dict)
+    assert result.experiment_receipt["study_id"] == "us_tech_vol_reversal_v1"
 
 
 def test_walkforward_fail_closed_if_any_fold_blocked() -> None:
@@ -216,3 +229,136 @@ def test_walkforward_pit_limitations_and_governance() -> None:
         + list(ROOT.glob("*.sqlite"))
     )
     assert len(db_candidates) == 0, f"Unexpected secondary database generated: {db_candidates}"
+
+
+def test_walkforward_portfolio_drift_accounting() -> None:
+    """Verifies textbook institutional accounting: initial cash turnover, weight drift, and rebalance friction."""
+    sessions = ["2025-01-02", "2025-01-03", "2025-01-06"]
+
+    # Price paths:
+    # SYM_A: 100 -> 110 (+10%) -> 121 (+10%)
+    # SYM_B: 100 -> 90 (-10%) -> 99 (+10%)
+    prices_df = pd.DataFrame(
+        {
+            "SYM_A": [100.0, 110.0, 121.0],
+            "SYM_B": [100.0, 90.0, 99.0],
+        },
+        index=sessions,
+    )
+
+    # Scores:
+    # Session 0: A=2.0, B=1.0 -> target: A=1.0, B=0.0 (top_k=1)
+    # Session 1: A=1.0, B=2.0 -> target: A=0.0, B=1.0 (top_k=1)
+    # Session 2: A=2.0, B=1.0
+    scores_df = pd.DataFrame(
+        {
+            "SYM_A": [2.0, 1.0, 2.0],
+            "SYM_B": [1.0, 2.0, 1.0],
+        },
+        index=sessions,
+    )
+
+    bench_series = pd.Series([100.0, 101.0, 102.0], index=sessions)
+    friction = 0.0010  # 10 bps
+
+    gross, net, turnovers, _ = _simulate_portfolio(
+        scores=scores_df,
+        prices=prices_df,
+        bench_series=bench_series,
+        sessions=sessions,
+        top_k=1,
+        friction_per_turnover=friction,
+    )
+
+    # Must produce returns for sessions 1 and 2
+    assert len(gross) == 2
+    assert len(net) == 2
+    assert len(turnovers) == 2
+
+    # Day 1:
+    # Held A=1.0 over (s0, s1]. Gross ret = 110/100 - 1 = +0.10.
+    # Initial turnover from cash = 1.0. Cost drag = 1.0 * 0.0010 = 0.0010.
+    # Net ret = 0.10 - 0.0010 = 0.0990.
+    assert pytest.approx(gross[0], abs=1e-6) == 0.10
+    assert pytest.approx(net[0], abs=1e-6) == 0.0990
+    assert pytest.approx(turnovers[0], abs=1e-6) == 1.0
+
+    # At end of day 1:
+    # A drifted to weight 1.0 (since only A was held).
+    # New target at s1 is B=1.0, A=0.0.
+    # Turnover at s1 = 0.5 * (|0 - 1.0| + |1.0 - 0|) = 1.0.
+    assert pytest.approx(turnovers[1], abs=1e-6) == 1.0
+
+    # Day 2:
+    # Held B=1.0 over (s1, s2]. Gross ret = 99/90 - 1 = +0.10.
+    # Cost drag from day 1 turnover = 1.0 * 0.0010 = 0.0010.
+    # Net ret = 0.10 - 0.0010 = 0.0990.
+    assert pytest.approx(gross[1], abs=1e-6) == 0.10
+    assert pytest.approx(net[1], abs=1e-6) == 0.0990
+
+
+def test_walkforward_fail_closed_train_window_shorter_than_purge() -> None:
+    """Verifies fail-closed block if train window is shorter than purged_margin_days."""
+    short_fold = WalkForwardFold(
+        fold_id="fold_short_train",
+        train_start="2024-01-02",
+        train_end="2024-01-10",  # Only 6 trading sessions
+        train_cutoff="2024-01-10",
+        test_start="2024-01-11",
+        test_end="2024-01-31",
+        test_cutoff="2024-01-31",
+        purged_margin_days=20,  # 20 > 6!
+    )
+    res = evaluate_walkforward_fold(short_fold, DEFAULT_WALK_FORWARD_CONFIG, root=ROOT)
+    assert res.status == "blocked"
+    assert any("insufficient_train_sessions_for_purged_margin" in b for b in res.blocked_reasons)
+
+
+def test_walkforward_fail_closed_missing_candidate_or_benchmark_prices() -> None:
+    """Verifies that _simulate_portfolio raises SimulationBlockError upon invalid prices or benchmark."""
+    sessions = ["2025-01-02", "2025-01-03"]
+    scores_df = pd.DataFrame({"A": [1.0, 1.0], "B": [2.0, 2.0]}, index=sessions)
+    bench_ok = pd.Series([100.0, 101.0], index=sessions)
+
+    # 1. Candidate price contains NaN
+    bad_prices_nan = pd.DataFrame({"A": [100.0, np.nan], "B": [100.0, 100.0]}, index=sessions)
+    with pytest.raises(SimulationBlockError, match="invalid_price_data"):
+        _simulate_portfolio(scores_df, bad_prices_nan, bench_ok, sessions, top_k=1, friction_per_turnover=0.0)
+
+    # 2. Benchmark price contains NaN
+    good_prices = pd.DataFrame({"A": [100.0, 101.0], "B": [100.0, 102.0]}, index=sessions)
+    bad_bench_nan = pd.Series([100.0, np.nan], index=sessions)
+    with pytest.raises(SimulationBlockError, match="missing_benchmark_data"):
+        _simulate_portfolio(scores_df, good_prices, bad_bench_nan, sessions, top_k=1, friction_per_turnover=0.0)
+
+    # 3. Insufficient candidates for top_k
+    bad_scores_nan = pd.DataFrame({"A": [np.nan, np.nan], "B": [np.nan, np.nan]}, index=sessions)
+    with pytest.raises(SimulationBlockError, match="insufficient_candidates_for_top_k"):
+        _simulate_portfolio(bad_scores_nan, good_prices, bench_ok, sessions, top_k=1, friction_per_turnover=0.0)
+
+
+def test_walkforward_study_hash_binds_experiment_receipt() -> None:
+    """Verifies that changing experiment parameters (e.g. cost_bps) alters the cryptographic study_hash."""
+    cfg1 = DEFAULT_WALK_FORWARD_CONFIG
+    cfg2 = WalkForwardConfig(
+        study_id=cfg1.study_id,
+        hypothesis_name=cfg1.hypothesis_name,
+        hypothesis_description=cfg1.hypothesis_description,
+        market=cfg1.market,
+        pool_id=cfg1.pool_id,
+        symbols=cfg1.symbols,
+        benchmark=cfg1.benchmark,
+        price_mode=cfg1.price_mode,
+        param_grid=cfg1.param_grid,
+        cost_bps=12.0,  # Changed from 3.0
+        slippage_bps=cfg1.slippage_bps,
+        folds=cfg1.folds,
+    )
+
+    # Fold 1 evaluation under both configs
+    res1 = run_walkforward_study(cfg1, root=ROOT)
+    res2 = run_walkforward_study(cfg2, root=ROOT)
+
+    assert res1.study_hash != res2.study_hash
+    assert res1.experiment_receipt["cost_bps"] == 3.0
+    assert res2.experiment_receipt["cost_bps"] == 12.0

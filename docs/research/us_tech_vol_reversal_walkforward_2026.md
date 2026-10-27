@@ -2,9 +2,10 @@
 
 > **Authority & Governance**: Track B Quantitative Infrastructure (#1296), ADR-0003, and ADR-0005.  
 > **Operational Boundary**: `research_only=true`, `trade_ready=false`, `trade_signal=false`.  
-> **Study Identifier**: `us_tech_vol_reversal_v1`  
-> **Methodology Version**: `v0.2` (Walk-Forward Optimization with Active Purging, In-Sample Selection & Net Friction)
-> **Cryptographic Study Hash**: `fe7824758bc1f5b9e98851bcaecabbffa79eae494e92a6d8e766fc15592bb6c7`
+> **Study Identifier**: `us_tech_vol_reversal_v1`<br>
+> **Methodology Version**: `v0.3` (Complete Session Integrity, Asset Weight Drift Accounting, Full Experiment Lineage & Strict Fail-Closed)<br>
+> **Cryptographic Study Hash**: `2823354863fa28dfbe9d9abf79089695d67ac8c8fa1d17773c8497253d4f9ded`<br>
+> **Git Commit Lineage**: `d232f75406cb3d62130aca8db2cf85c9fb0e0695`
 
 ---
 
@@ -47,6 +48,19 @@ To ensure complete isolation between In-Sample training and Out-of-Sample evalua
 2. **Next-Day Execution Boundary**: Signal evaluation at session $t-1$ close uses solely history certified $\le t-1$. Portfolio weights are applied to returns realized over session $(t-1, t]$.
 3. **Warmup Splicing**: Trailing 20-day realized volatility and 5-day reversal for the first day of an OOS window are initialized strictly from the certified tail of the In-Sample training slice ($T \le T_{train\_cutoff} < T_{test\_start}$).
 
+### 2.3 Complete OOS Session Integrity & Institutional Accounting
+1. **Anchor Session Initialization**:
+   - Each OOS fold initial target weights are computed at the close of $T_{anchor}$ (the last available session in the certified In-Sample window $\le T_{train\_cutoff}$).
+   - The first OOS return is earned on Day 1 ($T_{test\_start}$) across $(T_{anchor}, T_{test\_start}]$, ensuring zero missing days.
+   - Exact session counts: Fold 1 has 122 days, Fold 2 has 128 days, Fold 3 has 170 days, totalling 420 continuous OOS trading days with zero boundary omission.
+2. **Asset Weight Drift & Turnover Friction Accounting**:
+   - Intra-day price movement induces natural weight drift from previous targets:
+     $$w_{i, t}^{drift} = \frac{w_{i, t-1}^{target} (1 + r_{i, t})}{1 + r_{gross, t}}$$
+   - Single-sided portfolio turnover required to rebalance from drifted weights to new targets is:
+     $$\text{Turnover}_t = \frac{1}{2} \sum_{i} |w_{i, t}^{target} - w_{i, t}^{drift}|$$
+   - Day 1 initial deployment from 100% cash is fully charged (Turnover = 1.0). Subsequent daily turnover captures both constituent changes and drift rebalancing.
+   - Cost drag is $\text{Turnover}_{t-1} \times \text{friction\_per\_turnover}$, subtracted directly from gross returns.
+
 ---
 
 ## 3. Walk-Forward Optimization (WFO) Design
@@ -70,9 +84,9 @@ The parameter set $\theta^* = (w_{rev}, w_{vol}, top\_k)$ maximizing In-Sample n
 
 | Fold ID | Phase | Calendar Window | As-Of Cutoff | Purged Days (Rows) | Frozen Parameters $\theta^*$ | IS Net Sharpe |
 | :--- | :--- | :--- | :--- | :---: | :---: | :---: |
-| **`fold_1_2025h1`** | Train (IS)<br>Test (OOS) | 2022-01-03 ~ 2024-12-31<br>2025-01-02 ~ 2025-06-30 | 2024-12-31<br>2025-06-30 | 20 days (180 rows)<br>— | $w_{rev}=1.0, w_{vol}=1.5, k=3$<br>— | 0.8221<br>— |
-| **`fold_2_2025h2`** | Train (IS)<br>Test (OOS) | 2022-01-03 ~ 2025-06-30<br>2025-07-01 ~ 2025-12-31 | 2025-06-30<br>2025-12-31 | 20 days (180 rows)<br>— | $w_{rev}=1.0, w_{vol}=1.5, k=3$<br>— | 0.7241<br>— |
-| **`fold_3_2026_tail`** | Train (IS)<br>Test (OOS) | 2022-01-03 ~ 2025-12-31<br>2026-01-02 ~ 2026-09-04 | 2025-12-31<br>2026-09-04 | 20 days (180 rows)<br>— | $w_{rev}=0.5, w_{vol}=1.5, k=3$<br>— | 0.9332<br>— |
+| **`fold_1_2025h1`** | Train (IS)<br>Test (OOS) | 2022-01-03 ~ 2024-12-31<br>2025-01-02 ~ 2025-06-30 | 2024-12-31<br>2025-06-30 | 20 days (180 rows)<br>— | $w_{rev}=1.0, w_{vol}=1.5, k=3$<br>— | 0.8191<br>— |
+| **`fold_2_2025h2`** | Train (IS)<br>Test (OOS) | 2022-01-03 ~ 2025-06-30<br>2025-07-01 ~ 2025-12-31 | 2025-06-30<br>2025-12-31 | 20 days (180 rows)<br>— | $w_{rev}=1.0, w_{vol}=1.5, k=3$<br>— | 0.7213<br>— |
+| **`fold_3_2026_tail`** | Train (IS)<br>Test (OOS) | 2022-01-03 ~ 2025-12-31<br>2026-01-02 ~ 2026-09-04 | 2025-12-31<br>2026-09-04 | 20 days (180 rows)<br>— | $w_{rev}=0.5, w_{vol}=1.5, k=3$<br>— | 0.9303<br>— |
 
 ---
 
@@ -82,30 +96,31 @@ The parameter set $\theta^* = (w_{rev}, w_{vol}, top\_k)$ maximizing In-Sample n
 
 | Metric | Fold 1 (`2025H1`) | Fold 2 (`2025H2`) | Fold 3 (`2026 Tail`) | Stitched OOS Total |
 | :--- | :---: | :---: | :---: | :---: |
+| **Test Sessions (Trading Days)** | **122** | **128** | **170** | **420** |
 | **Test Row Count** | 1,098 | 1,152 | 1,530 | 3,780 |
 | **In-Sample Spearman IC** | -0.0104 | -0.0125 | -0.0112 | — |
-| **OOS Gross Return (0 bps)** | **+7.99%** | **+20.92%** | **+24.41%** | **+62.46%** |
-| **OOS Net Return (8 bps)** | **+6.02%** | **+18.95%** | **+21.87%** | **+53.69%** |
-| **Benchmark QQQ Return** | **+8.40%** | **+12.58%** | **+17.29%** | **+43.14%** |
-| **OOS Net Excess Return** | **-2.37%** | **+6.37%** | **+4.58%** | **+10.55%** |
-| **Annualized Net Volatility** | 32.51% | 19.33% | 24.49% | 25.44% |
-| **Net Sharpe Ratio** | **0.5346** | **1.8796** | **1.3267** | **1.1363** (continuous) |
-| **Gross Sharpe Ratio** | 0.6525 | 2.0492 | 1.4512 | 1.2504 (continuous) |
-| **Maximum Drawdown** | -21.02% | -7.46% | -20.67% | **-21.02%** (continuous) |
-| **Daily Win Rate** | 49.59% | 61.42% | 51.48% | 54.16% |
-| **Daily Turnover Ratio** | 18.87% | 16.14% | 15.29% | 16.77% |
-| **Fold Transaction Cost Drag** | 1.96% | 1.97% | 2.54% | **8.77%** (cumulative) |
+| **OOS Gross Return (0 bps)** | **+7.87%** | **+21.20%** | **+22.46%** | **+60.10%** |
+| **OOS Net Return (8 bps)** | **+5.79%** | **+19.10%** | **+19.83%** | **+50.98%** |
+| **Benchmark QQQ Return** | **+8.19%** | **+11.63%** | **+17.06%** | **+41.38%** |
+| **OOS Net Excess Return** | **-2.39%** | **+7.47%** | **+2.76%** | **+9.60%** |
+| **Annualized Net Volatility** | 32.38% | 19.25% | 24.52% | 25.71% |
+| **Net Sharpe Ratio** | **0.5185** | **1.8852** | **1.2163** | **1.0894** (continuous) |
+| **Gross Sharpe Ratio** | 0.6429 | 2.0651 | 1.3472 | 1.2057 (continuous) |
+| **Maximum Drawdown** | -21.04% | -7.46% | -20.69% | **-22.30%** (continuous) |
+| **Daily Win Rate** | 49.18% | 61.72% | 51.18% | 53.81% |
+| **Daily Turnover Ratio** | 19.83% | 17.05% | 16.02% | 17.63% |
+| **Fold Transaction Cost Drag** | 2.07% | 2.10% | 2.63% | **9.12%** (cumulative) |
 
 ### 4.2 Transaction Cost & Slippage Sensitivity Analysis
-Given average daily turnover of ~16.8%, transaction friction imposes a non-trivial drag on returns:
+Given average daily turnover of ~17.6% (including drift adjustments), transaction friction imposes an institutional drag on returns:
 
 | Friction Tier | Model Description | Cumulative OOS Return | Net Excess over QQQ | Cost Drag vs Gross |
 | :--- | :--- | :---: | :---: | :---: |
-| **Tier 0: Gross (0 bps)** | Theoretical frictionless execution | **+62.46%** | +19.32% | 0.00% |
-| **Tier 1: Standard (8 bps)** | 3 bps commission + 5 bps slippage | **+53.69%** | **+10.55%** | **-8.77%** |
-| **Tier 2: Stress (15 bps)** | 5 bps commission + 10 bps slippage | **+46.44%** | **+3.30%** | **-16.02%** |
+| **Tier 0: Gross (0 bps)** | Theoretical frictionless execution | **+60.10%** | +18.72% | 0.00% |
+| **Tier 1: Standard (8 bps)** | 3 bps commission + 5 bps slippage | **+50.98%** | **+9.60%** | **-9.12%** |
+| **Tier 2: Stress (15 bps)** | 5 bps commission + 10 bps slippage | **+43.44%** | **+2.06%** | **-16.66%** |
 
-> **Key Finding**: Transaction costs reduce cumulative out-of-sample alpha by nearly half (from +19.32% gross excess down to +10.55% net excess at standard institutional friction). Under high stress friction (15 bps), net excess is compressed to +3.30%, demonstrating that low-turnover execution discipline is vital.
+> **Key Finding**: Transaction costs reduce cumulative out-of-sample alpha by half (from +18.72% gross excess down to +9.60% net excess at standard institutional friction). Under high stress friction (15 bps), net excess is compressed to +2.06%, demonstrating that asset drift accounting and execution discipline are critical.
 
 ---
 
@@ -130,10 +145,11 @@ Given average daily turnover of ~16.8%, transaction friction imposes a non-trivi
 }
 ```
 
-### 5.2 Sealed Study Hash
+### 5.2 Sealed Study Hash & Experiment Receipt
 - **Algorithm**: Canonical UTF-8 JSON serialization $\to$ SHA-256
-- **Hash**: `fe7824758bc1f5b9e98851bcaecabbffa79eae494e92a6d8e766fc15592bb6c7`
-- **Determinism Assertion**: Verified via automated test `test_walkforward_study_determinism` (identical digest across repeated executions).
+- **Hash**: `2823354863fa28dfbe9d9abf79089695d67ac8c8fa1d17773c8497253d4f9ded`
+- **Bound Experiment State**: Full `WalkForwardConfig` (study ID, market, pool, symbols, benchmark, price mode, param grid, friction parameters, fold specifications) plus exact Git commit SHA (`d232f75406cb3d62130aca8db2cf85c9fb0e0695`) and individual fold results.
+- **Determinism Assertion**: Verified via automated test `test_walkforward_study_determinism` (identical digest across repeated executions) and `test_walkforward_study_hash_binds_experiment_receipt` (any config alteration invalidates digest).
 
 ---
 

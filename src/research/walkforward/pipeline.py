@@ -2,19 +2,20 @@
 
 Governed under Track B (#1296) and ADR-0005.
 Implements:
-1. Strict Walk-Forward expanding/rolling folds with active purged margins.
-2. In-sample parameter optimization and freezing (Train -> Select -> Freeze -> OOS).
-3. Transaction cost, slippage, and turnover drag sensitivity analysis.
-4. Direct integration with governed get_research_data_slice().
-5. Fail-closed fold integrity (any fold block halts overall study publication).
-6. Continuous daily-stitched portfolio Sharpe and continuous maximum drawdown.
-7. Cryptographic sealing of fold metrics and study result digests.
+1. Complete OOS session integrity (anchor initialization covering session 1).
+2. Strict fail-closed boundary enforcement (no silent skips or zero-fills).
+3. Active purged margins with failure when train window <= margin.
+4. Institutional-grade portfolio accounting with exact asset weight drift.
+5. In-sample parameter optimization and freezing (Train -> Select -> Freeze -> OOS).
+6. Comprehensive Experiment Receipt and git commit hash binding.
+7. Continuous daily-stitched portfolio Sharpe and continuous maximum drawdown.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import warnings
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +37,11 @@ from src.research.walkforward.contracts import (
     WalkForwardFold,
     WalkForwardStudyResult,
 )
+
+
+class SimulationBlockError(Exception):
+    """Raised when simulation encounters unrecoverable data integrity violations."""
+
 
 DEFAULT_WALK_FORWARD_CONFIG = WalkForwardConfig(
     study_id="us_tech_vol_reversal_v1",
@@ -92,8 +98,25 @@ DEFAULT_WALK_FORWARD_CONFIG = WalkForwardConfig(
 )
 
 
+def _get_git_commit(root: Path) -> str:
+    """Read current git commit SHA for immutable experiment lineage."""
+    try:
+        res = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if res.returncode == 0 and res.stdout:
+            return res.stdout.strip()
+    except Exception:
+        pass
+    return "unknown"
+
+
 def _format_blocked_reasons(raw_reasons: Any) -> tuple[str, ...]:
-    """Normalize raw slice blocker receipts into strings."""
+    """Normalize raw slice blocker receipts into clean strings."""
     formatted: list[str] = []
     if isinstance(raw_reasons, (list, tuple)):
         for r in raw_reasons:
@@ -159,66 +182,118 @@ def _simulate_portfolio(
     top_k: int,
     friction_per_turnover: float,
 ) -> tuple[list[float], list[float], list[float], list[float]]:
-    """Simulate daily execution strictly from session t-1 signal to session t realization (vectorized)."""
-    valid_sessions = [s for s in sessions if s in scores.index and s in prices.index]
-    if len(valid_sessions) < 2:
+    """Simulate daily execution strictly from session t-1 signal to session t realization.
+
+    Institutional-grade accounting:
+    1. At t-1, target weights w_{i, t-1} are set (1/k for top_k assets).
+    2. Over (t-1, t], asset i realizes return r_{i, t}.
+    3. Portfolio gross return is sum(w_{i, t-1} * r_{i, t}).
+    4. At close of session t, asset weights have drifted to:
+       w_{i, t}^{drift} = w_{i, t-1} * (1 + r_{i, t}) / (1 + r_{gross, t}).
+    5. Turnover to rebalance from drifted weights to new target weights is:
+       turnover_t = 0.5 * sum(|w_{i, t}^{target} - w_{i, t}^{drift}|).
+    6. Cost drag is turnover_{t-1} * friction_per_turnover.
+    7. Net return is r_{gross, t} - cost_drag.
+
+    Fails closed on missing candidate prices, missing benchmark returns, or insufficient candidates.
+    """
+    if len(sessions) < 2:
         return [], [], [], []
 
-    # Pre-slice to numpy arrays for millisecond execution
+    missing_scores = [s for s in sessions if s not in scores.index]
+    if missing_scores:
+        raise SimulationBlockError(f"missing_scores_for_sessions: {missing_scores[:3]}")
+    missing_prices = [s for s in sessions if s not in prices.index]
+    if missing_prices:
+        raise SimulationBlockError(f"missing_prices_for_sessions: {missing_prices[:3]}")
+
     col_names = list(scores.columns)
-    score_arr = scores.loc[valid_sessions].to_numpy()
-    price_arr = prices.loc[valid_sessions, col_names].to_numpy()
-    bench_reindexed = bench_series.reindex(valid_sessions).to_numpy()
+    num_assets = len(col_names)
+    score_arr = scores.loc[sessions].to_numpy()
+    price_arr = prices.loc[sessions, col_names].to_numpy()
+    bench_reindexed = bench_series.reindex(sessions).to_numpy()
 
     daily_gross_returns: list[float] = []
     daily_net_returns: list[float] = []
     daily_turnovers: list[float] = []
     daily_bench_returns: list[float] = []
 
-    prev_top_set: set[int] = set()
+    # Session 0: compute initial target weights from anchor signal
+    s0_scores = score_arr[0]
+    valid_mask0 = ~np.isnan(s0_scores)
+    if int(np.sum(valid_mask0)) < top_k:
+        raise SimulationBlockError(
+            f"insufficient_candidates_for_top_k: anchor session {sessions[0]} has {int(np.sum(valid_mask0))} valid candidates, require {top_k}"
+        )
 
-    for i in range(1, len(valid_sessions)):
-        prev_scores = score_arr[i - 1]
-        valid_mask = ~np.isnan(prev_scores)
-        valid_cnt = int(np.sum(valid_mask))
-        if valid_cnt < top_k:
-            continue
+    masked_s0 = np.where(valid_mask0, s0_scores, -1e9)
+    top_indices0 = np.argsort(masked_s0)[-top_k:]
+    curr_target_weights = np.zeros(num_assets, dtype=np.float64)
+    curr_target_weights[top_indices0] = 1.0 / float(top_k)
 
-        # Top k assets selected based on session t-1 signal
-        if valid_cnt == len(prev_scores):
-            top_indices = np.argsort(prev_scores)[-top_k:]
-        else:
-            masked_scores = np.where(valid_mask, prev_scores, -1e9)
-            top_indices = np.argsort(masked_scores)[-top_k:]
+    # Initial turnover from cash (all zero weights) is 1.0
+    prev_turnover = 1.0
 
-        top_set = set(top_indices)
+    for i in range(1, len(sessions)):
+        prev_p = price_arr[i - 1]
+        curr_p = price_arr[i]
 
-        # Turnover calculation
-        if prev_top_set:
-            turnover = len(top_set - prev_top_set) / float(top_k)
-        else:
-            turnover = 1.0
-        daily_turnovers.append(turnover)
-        prev_top_set = top_set
+        # Fail closed on invalid candidate prices
+        if np.any(np.isnan(prev_p)) or np.any(np.isnan(curr_p)) or np.any(prev_p <= 0) or np.any(curr_p <= 0):
+            raise SimulationBlockError(
+                f"invalid_price_data: session {sessions[i]} price array contains NaN or non-positive value"
+            )
 
-        # Realized portfolio return from session t-1 to t
-        prev_p = price_arr[i - 1, top_indices]
-        curr_p = price_arr[i, top_indices]
-        gross_ret = float(np.mean((curr_p / prev_p) - 1.0))
-        cost_drag = turnover * friction_per_turnover
+        # Asset returns over (session i-1, session i]
+        asset_rets = (curr_p / prev_p) - 1.0
+
+        # Portfolio gross return
+        gross_ret = float(np.sum(curr_target_weights * asset_rets))
+
+        # Net return after transaction friction to establish position at session i-1
+        cost_drag = prev_turnover * friction_per_turnover
         net_ret = gross_ret - cost_drag
 
         daily_gross_returns.append(gross_ret)
         daily_net_returns.append(net_ret)
 
-        # Benchmark return
+        # Benchmark return (fail closed on missing benchmark data)
         prev_b = bench_reindexed[i - 1]
         curr_b = bench_reindexed[i]
-        if not np.isnan(prev_b) and not np.isnan(curr_b) and prev_b != 0:
-            bench_ret = float((curr_b / prev_b) - 1.0)
-        else:
-            bench_ret = 0.0
+        if np.isnan(prev_b) or np.isnan(curr_b) or prev_b <= 0 or curr_b <= 0:
+            raise SimulationBlockError(
+                f"missing_benchmark_data: session {sessions[i]} benchmark price invalid (prev={prev_b}, curr={curr_b})"
+            )
+        bench_ret = float((curr_b / prev_b) - 1.0)
         daily_bench_returns.append(bench_ret)
+
+        # Account for asset weight drift at close of session i
+        drifted_weights = (curr_target_weights * (1.0 + asset_rets)) / (1.0 + gross_ret)
+
+        # If at final session of interval, record turnover and finish
+        if i == len(sessions) - 1:
+            daily_turnovers.append(prev_turnover)
+            break
+
+        # Compute next target weights from signals at close of session i
+        curr_scores = score_arr[i]
+        valid_mask_i = ~np.isnan(curr_scores)
+        if int(np.sum(valid_mask_i)) < top_k:
+            raise SimulationBlockError(
+                f"insufficient_candidates_for_top_k: session {sessions[i]} has {int(np.sum(valid_mask_i))} valid candidates, require {top_k}"
+            )
+
+        masked_si = np.where(valid_mask_i, curr_scores, -1e9)
+        top_indices_i = np.argsort(masked_si)[-top_k:]
+        next_target_weights = np.zeros(num_assets, dtype=np.float64)
+        next_target_weights[top_indices_i] = 1.0 / float(top_k)
+
+        # Exact turnover to rebalance from drifted weights to new target weights
+        rebalance_turnover = float(0.5 * np.sum(np.abs(next_target_weights - drifted_weights)))
+        daily_turnovers.append(prev_turnover)
+
+        curr_target_weights = next_target_weights
+        prev_turnover = rebalance_turnover
 
     return daily_gross_returns, daily_net_returns, daily_turnovers, daily_bench_returns
 
@@ -251,20 +326,38 @@ def evaluate_walkforward_fold(
             blocked_reasons=_format_blocked_reasons(train_res.receipt.get("blocked_reasons", ["train_slice_unavailable"])),
         )
 
-    # 2. In-sample Purged Margin Execution
+    # 2. In-sample Purged Margin Execution (fail closed if train sessions <= margin)
     train_df = train_res.data
     z_rev_train, z_vol_train, train_prices = _compute_raw_features(train_df, candidates)
     train_bench = train_df[train_df["symbol"] == config.benchmark].pivot(index="time", columns="symbol", values="close")[config.benchmark]
 
     all_train_sessions = sorted([t for t in train_prices.index if fold.train_start <= t <= fold.train_end])
     purged_margin = max(0, fold.purged_margin_days)
-    if purged_margin > 0 and len(all_train_sessions) > purged_margin:
-        effective_train_sessions = all_train_sessions[:-purged_margin]
-        purged_sessions = all_train_sessions[-purged_margin:]
-        purged_rows_count = len(train_df[train_df["time"].isin(purged_sessions)])
-    else:
-        effective_train_sessions = all_train_sessions
-        purged_rows_count = 0
+    if len(all_train_sessions) <= purged_margin:
+        return FoldResult(
+            fold_id=fold.fold_id,
+            status="blocked",
+            blocked_reasons=("insufficient_train_sessions_for_purged_margin",),
+            train_data_hash=train_res.receipt["data_hash"],
+            train_row_count=train_res.receipt["total_rows"],
+        )
+
+    effective_train_sessions = all_train_sessions[:-purged_margin]
+    purged_sessions = all_train_sessions[-purged_margin:]
+    purged_rows_count = len(train_df[train_df["time"].isin(purged_sessions)])
+
+    # Exclude technical indicator warmup sessions (20-day volatility / 5-day reversal)
+    valid_score_sessions = set(z_rev_train.dropna().index.intersection(z_vol_train.dropna().index))
+    train_sim_sessions = [s for s in effective_train_sessions if s in valid_score_sessions]
+    if len(train_sim_sessions) < 2:
+        return FoldResult(
+            fold_id=fold.fold_id,
+            status="blocked",
+            blocked_reasons=("insufficient_train_sessions_after_warmup",),
+            train_data_hash=train_res.receipt["data_hash"],
+            train_row_count=train_res.receipt["total_rows"],
+            purged_rows_count=purged_rows_count,
+        )
 
     # 3. In-Sample Parameter Selection (Grid Search over IS Purged Window)
     standard_friction = (config.cost_bps + config.slippage_bps) / 10000.0
@@ -279,14 +372,17 @@ def evaluate_walkforward_fold(
         for w_v in w_vol_candidates:
             trial_score = (w_r * z_rev_train) - (w_v * z_vol_train)
             for k in top_k_candidates:
-                _, net_rets, _, _ = _simulate_portfolio(
-                    scores=trial_score,
-                    prices=train_prices,
-                    bench_series=train_bench,
-                    sessions=effective_train_sessions,
-                    top_k=k,
-                    friction_per_turnover=standard_friction,
-                )
+                try:
+                    _, net_rets, _, _ = _simulate_portfolio(
+                        scores=trial_score,
+                        prices=train_prices,
+                        bench_series=train_bench,
+                        sessions=train_sim_sessions,
+                        top_k=k,
+                        friction_per_turnover=standard_friction,
+                    )
+                except SimulationBlockError:
+                    continue
                 if len(net_rets) > 20:
                     arr = np.array(net_rets)
                     vol = float(np.std(arr) * np.sqrt(252))
@@ -301,7 +397,7 @@ def evaluate_walkforward_fold(
     fwd_5d_ret = (train_prices[candidates].shift(-5) / train_prices[candidates]) - 1.0
 
     daily_ics: list[float] = []
-    for t in effective_train_sessions:
+    for t in train_sim_sessions:
         if t in optimal_train_scores.index and t in fwd_5d_ret.index:
             sc = optimal_train_scores.loc[t].dropna()
             fwd = fwd_5d_ret.loc[t].dropna()
@@ -344,12 +440,15 @@ def evaluate_walkforward_fold(
     bench_series = full_df[full_df["symbol"] == config.benchmark].pivot(index="time", columns="symbol", values="close")[config.benchmark]
 
     oos_scores = (best_params["w_rev"] * z_rev_full) - (best_params["w_vol"] * z_vol_full)
+
+    # Session Integrity: identify the anchor session prior to test_start for day 1 position initialization
     test_sessions = sorted([t for t in full_prices.index if fold.test_start <= t <= fold.test_end])
-    if len(test_sessions) < 5:
+    prior_sessions = sorted([t for t in full_prices.index if t < fold.test_start and t <= fold.train_cutoff])
+    if not prior_sessions:
         return FoldResult(
             fold_id=fold.fold_id,
             status="blocked",
-            blocked_reasons=("insufficient_test_sessions",),
+            blocked_reasons=("missing_prior_anchor_session",),
             train_data_hash=train_res.receipt.get("data_hash", ""),
             test_data_hash=test_res.receipt.get("data_hash", ""),
             train_row_count=train_res.receipt.get("total_rows", 0),
@@ -360,33 +459,65 @@ def evaluate_walkforward_fold(
             in_sample_ic_mean=round(in_sample_ic_mean, 4),
         )
 
-    # 7. Out-of-Sample Simulation with Selected Frozen Parameters
-    daily_gross, daily_net, daily_turnovers, daily_bench = _simulate_portfolio(
-        scores=oos_scores,
-        prices=full_prices,
-        bench_series=bench_series,
-        sessions=test_sessions,
-        top_k=best_params["top_k"],
-        friction_per_turnover=standard_friction,
-    )
+    anchor_session = prior_sessions[-1]
+    simulation_sessions = [anchor_session] + test_sessions
 
-    # Cost sensitivity runs: 0 bps (gross), 8 bps (standard), 15 bps (stress)
-    _, net_0bps, _, _ = _simulate_portfolio(
-        scores=oos_scores,
-        prices=full_prices,
-        bench_series=bench_series,
-        sessions=test_sessions,
-        top_k=best_params["top_k"],
-        friction_per_turnover=0.0,
-    )
-    _, net_15bps, _, _ = _simulate_portfolio(
-        scores=oos_scores,
-        prices=full_prices,
-        bench_series=bench_series,
-        sessions=test_sessions,
-        top_k=best_params["top_k"],
-        friction_per_turnover=0.0015,
-    )
+    # 7. Out-of-Sample Simulation with Selected Frozen Parameters
+    try:
+        daily_gross, daily_net, daily_turnovers, daily_bench = _simulate_portfolio(
+            scores=oos_scores,
+            prices=full_prices,
+            bench_series=bench_series,
+            sessions=simulation_sessions,
+            top_k=best_params["top_k"],
+            friction_per_turnover=standard_friction,
+        )
+        _, net_0bps, _, _ = _simulate_portfolio(
+            scores=oos_scores,
+            prices=full_prices,
+            bench_series=bench_series,
+            sessions=simulation_sessions,
+            top_k=best_params["top_k"],
+            friction_per_turnover=0.0,
+        )
+        _, net_15bps, _, _ = _simulate_portfolio(
+            scores=oos_scores,
+            prices=full_prices,
+            bench_series=bench_series,
+            sessions=simulation_sessions,
+            top_k=best_params["top_k"],
+            friction_per_turnover=0.0015,
+        )
+    except SimulationBlockError as err:
+        return FoldResult(
+            fold_id=fold.fold_id,
+            status="blocked",
+            blocked_reasons=(str(err),),
+            train_data_hash=train_res.receipt.get("data_hash", ""),
+            test_data_hash=test_res.receipt.get("data_hash", ""),
+            train_row_count=train_res.receipt.get("total_rows", 0),
+            test_row_count=test_res.receipt.get("total_rows", 0),
+            purged_rows_count=purged_rows_count,
+            selected_parameters=best_params,
+            in_sample_best_sharpe=round(best_sharpe, 4),
+            in_sample_ic_mean=round(in_sample_ic_mean, 4),
+        )
+
+    # Fail closed if simulated daily returns count does not match declared OOS sessions count
+    if len(daily_net) != len(test_sessions):
+        return FoldResult(
+            fold_id=fold.fold_id,
+            status="blocked",
+            blocked_reasons=(f"incomplete_simulation_sessions: got {len(daily_net)}, expected {len(test_sessions)}",),
+            train_data_hash=train_res.receipt.get("data_hash", ""),
+            test_data_hash=test_res.receipt.get("data_hash", ""),
+            train_row_count=train_res.receipt.get("total_rows", 0),
+            test_row_count=test_res.receipt.get("total_rows", 0),
+            purged_rows_count=purged_rows_count,
+            selected_parameters=best_params,
+            in_sample_best_sharpe=round(best_sharpe, 4),
+            in_sample_ic_mean=round(in_sample_ic_mean, 4),
+        )
 
     gross_arr = np.array(daily_gross)
     net_arr = np.array(daily_net)
@@ -446,6 +577,7 @@ def evaluate_walkforward_fold(
             "15_bps_stress": round(cum_net_15bps, 4),
         },
         daily_net_returns=tuple(daily_net),
+        oos_sessions_count=len(test_sessions),
         pit_limitations=DEFAULT_PIT_LIMITATIONS,
     )
 
@@ -457,6 +589,7 @@ def run_walkforward_study(
     """Execute complete Walk-Forward study across declared folds with fail-closed integrity."""
     cfg = config or DEFAULT_WALK_FORWARD_CONFIG
     repo_root = (root or DEFAULT_REPO_ROOT).resolve()
+    git_commit = _get_git_commit(repo_root)
 
     fold_results: list[FoldResult] = []
     for fold in cfg.folds:
@@ -480,6 +613,8 @@ def run_walkforward_study(
             "pool_id": cfg.pool_id,
             "symbols": list(cfg.symbols),
             "benchmark": cfg.benchmark,
+            "git_commit": git_commit,
+            "config": cfg.to_dict(),
             "folds": [f.to_dict() for f in fold_results],
             "overall_oos_gross_return": 0.0,
             "overall_oos_net_return": 0.0,
@@ -513,6 +648,8 @@ def run_walkforward_study(
             cost_sensitivity_summary={},
             study_hash=study_hash,
             generated_at_utc=datetime.now(timezone.utc).isoformat(),
+            git_commit=git_commit,
+            experiment_receipt=cfg.to_dict(),
             pit_limitations=DEFAULT_PIT_LIMITATIONS,
             research_only=True,
             trade_ready=False,
@@ -556,7 +693,7 @@ def run_walkforward_study(
         "total_cost_drag_bps_8": round(overall_0bps - overall_8bps, 4),
     }
 
-    # Build canonical payload and cryptographic study hash
+    # Build canonical payload and cryptographic study hash (bound to full config and git commit)
     study_payload = {
         "study_id": cfg.study_id,
         "status": "ready",
@@ -566,6 +703,8 @@ def run_walkforward_study(
         "pool_id": cfg.pool_id,
         "symbols": list(cfg.symbols),
         "benchmark": cfg.benchmark,
+        "git_commit": git_commit,
+        "config": cfg.to_dict(),
         "folds": [f.to_dict() for f in fold_results],
         "overall_oos_gross_return": round(overall_gross_ret, 4),
         "overall_oos_net_return": round(overall_net_ret, 4),
@@ -600,6 +739,8 @@ def run_walkforward_study(
         cost_sensitivity_summary=cost_summary,
         study_hash=study_hash,
         generated_at_utc=datetime.now(timezone.utc).isoformat(),
+        git_commit=git_commit,
+        experiment_receipt=cfg.to_dict(),
         pit_limitations=DEFAULT_PIT_LIMITATIONS,
         research_only=True,
         trade_ready=False,

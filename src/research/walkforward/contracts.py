@@ -107,6 +107,7 @@ class FoldResult:
     total_cost_drag: float = 0.0
     cost_sensitivity: dict[str, float] = field(default_factory=dict)
     daily_net_returns: tuple[float, ...] = ()
+    oos_sessions_count: int = 0
     pit_limitations: tuple[str, ...] = DEFAULT_PIT_LIMITATIONS
     trade_ready: bool = False
     research_only: bool = True
@@ -152,6 +153,8 @@ class WalkForwardStudyResult:
     cost_sensitivity_summary: dict[str, float]
     study_hash: str
     generated_at_utc: str
+    git_commit: str = ""
+    experiment_receipt: dict[str, Any] = field(default_factory=dict)
     pit_limitations: tuple[str, ...] = DEFAULT_PIT_LIMITATIONS
     research_only: bool = True
     trade_ready: bool = False
@@ -177,6 +180,8 @@ class WalkForwardStudyResult:
             "pool_id": self.pool_id,
             "symbols": self.symbols,
             "benchmark": self.benchmark,
+            "git_commit": self.git_commit,
+            "experiment_receipt": self.experiment_receipt,
             "folds": [f.to_dict() for f in self.folds],
             "overall_oos_gross_return": self.overall_oos_gross_return,
             "overall_oos_net_return": self.overall_oos_net_return,

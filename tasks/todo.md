@@ -192,6 +192,28 @@
   - 明确标注固定 8 标的池存在的幸存者偏差与固定成员假设；
   - 更新并封存报告 `docs/research/us_tech_vol_reversal_walkforward_2026.md`。
 
+### Phase 6.2: Walk-Forward Engine v0.3 会话完整性、绝对 Fail-Closed 与资产负债级摩擦会计
+- [x] **6.2.1 [P0 / Session Integrity] 首日会话完整覆盖与锚定日初始化**:
+  - 修正测试区间驱动逻辑：将 In-Sample 最后一个有效交易日作为锚定日 ($T_{anchor} \le T_{train\_cutoff}$)，在 $T_{anchor}$ 收盘计算信号并在 $T_{test\_start}$ 首日开盘/收盘间执行第一笔收益；
+  - 断言验证：每个 Fold 的输出收益条数 `len(daily_net_returns)` 必须严格等于测试区间所有交易日数 `len(test_sessions)`，折叠边界零丢失（Fold 1 为 122 日、Fold 2 为 128 日、Fold 3 为 170 日，总计 420 交易日全覆盖）。
+- [x] **6.2.2 [P0 / Strict Fail-Closed] 消除四类静默放行漏洞与编写独立负面测试**:
+  - 候选股票不足 `top_k`：拒绝 `continue` 跳过，强制阻断并标记 `insufficient_candidates_for_top_k`；
+  - 基准收益缺失或为 NaN：拒绝填 0.0，强制阻断并标记 `missing_benchmark_data`；
+  - 训练样本不足以执行 Purge：拒绝退回未剪裁分支，强制阻断并标记 `insufficient_train_sessions_for_purged_margin`；
+  - 无有效模拟收益：强制阻断并标记 `incomplete_simulation_sessions`；
+  - 编写 4 项对应负面测试全部绿灯通过。
+- [x] **6.2.3 [P1 / Lineage Binding] 实验配置完整绑定至研究收据与研究哈希**:
+  - 将完整 `config.to_dict()`、当前 Git Commit SHA、数据依赖切片与评估规则完整嵌入 `study_payload`；
+  - 确保任何参数、时间区间或代码版本的变动都会直接改变 `study_hash`。
+- [x] **6.2.4 [P1 / Accounting Fidelity] 资产负债级持仓漂移与换手成本一致性**:
+  - 实施真实权重漂移计算：$w_{i, t}^{drift} = \frac{w_{i, t-1}(1 + r_{i, t})}{1 + r_{gross, t}}$；
+  - 明确换手定义为单边换手率 $\text{Turnover}_t = \frac{1}{2} \sum |w_{i, t}^{target} - w_{i, t}^{drift}|$；
+  - 首日从纯现金建仓扣除完整单边费用（Turnover = 1.0），后续换手计入组合漂移再平衡；
+  - 敏感性分析：标准 8 bps 净收益 +50.98%（超额 +9.60%），高摩擦 15 bps 净收益 +43.44%（超额 +2.06%）。
+- [x] **6.2.5 [Doc & Gate] 更新报告、全量回归与经验沉淀**:
+  - 更新 `docs/research/us_tech_vol_reversal_walkforward_2026.md`；
+  - 运行全量测试验证（11 项 Walk-Forward 测试 + 22 项 Track B 测试全绿），更新 `tasks/todo.md` 与 `tasks/lessons.md`。
+
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
   - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。
