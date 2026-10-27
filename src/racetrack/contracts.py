@@ -397,7 +397,12 @@ class PriceMatrix:
         if session not in self.prices.index:
             raise CalendarSessionError(f"Session '{session}' is not in price matrix calendar")
         if symbol not in self.prices.columns:
-            raise UnauthorizedAssetError(f"Symbol '{symbol}' is not in price matrix universe")
+            if symbol == "000300.SH" and "000300" in self.prices.columns:
+                symbol = "000300"
+            elif symbol == "000300" and "000300.SH" in self.prices.columns:
+                symbol = "000300.SH"
+            else:
+                raise UnauthorizedAssetError(f"Symbol '{symbol}' is not in price matrix universe")
         return float(self.prices.loc[session, symbol])
 
 

@@ -432,20 +432,20 @@
   - [x] 形式化 CSI 300（`000300` / `000300.SH`）宏观基准线与双超额矩阵；
   - [x] 形式化原子化发布流水线协议（`manifest.json`, `scoreboard_{session}.json`, `scoreboard_latest.json`，密码学指纹一致性与 Fail-Closed 幂等保护）；
   - [x] 撰写规范文档至 `docs/architecture/racetrack_pipeline_spec.md` 并对接 PR #1306。
-- [ ] **8.3.2 [Implementation: Pipeline & CLI] 发布流水线与命令行入口实现 (Developer Subagent)**:
-  - [ ] 修正 `src/racetrack/matrix.py` 对 CN CSI 300 符号的映射解析与日历对齐；
-  - [ ] 实现 `src/racetrack/pipeline.py`：`publish_racetrack_projection()`，整合 P/Q 引擎、池指数、宏观基准、已注册选手执行、赛季结算与原子化落盘；
-  - [ ] 在 `src/cli/main.py` 集成 `alpha racetrack publish [--market us|cn] [--as-of YYYY-MM-DD]` 与 `alpha racetrack show [--market us|cn]`；
-  - [ ] 确保零个人账户敏感字段（`shares`, `broker`, `account_id`, `pnl` 等）泄露，零外部后台守护进程依赖。
-- [ ] **8.3.3 [Tests & Invariant Proofs] 双市场与发布幂等测试套件**:
-  - [ ] 编写 `tests/test_racetrack_pipeline.py`；
-  - [ ] 验证 CN 130 选股池等权基准指数生成（1/130 权重、无漂移、现金承接未上市）；
-  - [ ] 验证 CSI 300 基准比对与双超额矩阵；
-  - [ ] 验证流水线原子发布、`manifest.json` SHA-256 校验与 Fail-Closed 脏写防御；
-  - [ ] 验证隐私守卫负面拦截。
-- [ ] **8.3.4 [Review & PR Update] 全量回归验证与提交推送**:
-  - [ ] 运行全量测试套件、静态扫描与 diff 检查；
-  - [ ] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
+- [x] **8.3.2 [Implementation: Pipeline & CLI] 发布流水线与命令行入口实现 (Developer Subagent)**:
+  - [x] 修正 `src/racetrack/matrix.py` 对 CN CSI 300 符号的映射解析与日历对齐；
+  - [x] 实现 `src/racetrack/pipeline.py`：`publish_racetrack_projection()`，整合 P/Q 引擎、池指数、宏观基准、已注册选手执行、赛季结算与原子化落盘；
+  - [x] 在 `src/cli/main.py` 集成 `alpha racetrack publish [--market us|cn] [--as-of YYYY-MM-DD]` 与 `alpha racetrack show [--market us|cn]`；
+  - [x] 确保零个人账户敏感字段（`shares`, `broker`, `account_id`, `pnl` 等）泄露，零外部后台守护进程依赖。
+- [x] **8.3.3 [Tests & Invariant Proofs] 双市场与发布幂等测试套件**:
+  - [x] 编写 `tests/test_racetrack_pipeline.py`；
+  - [x] 验证 CN 130 选股池等权基准指数生成（1/130 权重、无漂移、现金承接未上市）；
+  - [x] 验证 CSI 300 基准比对与双超额矩阵；
+  - [x] 验证流水线原子发布、`manifest.json` SHA-256 校验与 Fail-Closed 脏写防御；
+  - [x] 验证隐私守卫负面拦截。
+- [x] **8.3.4 [Review & PR Update] 全量回归验证与提交推送**:
+  - [x] 运行全量测试套件、静态扫描与 diff 检查；
+  - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
 
 ---
 
@@ -755,3 +755,30 @@
   - 测试结果：`10 passed in 3.49s`；与 Phase 1 Minimal Stack 联合回归：`25 passed in 22.65s`。
   - 静态检查：`uv run ruff check` 全面通过，零错误零警告。
 
+### Review & Completion Summary (Phase 3 Dual Benchmark & Self-Maintaining Publish Pipeline - 2026-10-28)
+- **交付核心代码与治理模块**:
+  - `src/racetrack/matrix.py`:
+    - 增强宏观基准符号解析 `resolve_reference_symbol()`，支持 CSI 300（`000300` / `000300.SH`）与美股 `QQQ`；
+    - 对齐官方交易日历（A 股严格遵循 `XSHG`，美股严格遵循 `XNYS`），全面校验非交易日与节假日；
+    - 强制执行 `end_date <= as_of_cutoff` PIT 门禁并核验 evidence catalog 注册资质。
+  - `src/racetrack/contracts.py`:
+    - `PriceMatrix.get_price()` 增强对标的别名（`000300` / `000300.SH`）的双向消解透明访问。
+  - `src/racetrack/engine.py`:
+    - 增强对停牌/未上市股票的真实市场仿真，持仓标的在停牌期间每日收益严格为 0.0，复牌日无缝结算累计价格收益。
+  - `src/racetrack/pipeline.py`:
+    - 实现 `publish_racetrack_projection()`，整合价格矩阵加载、池指数推导、宏观基准构建、已准入选手批量执行与赛季记分；
+    - 确立纵深隐私检查防线，递归式拦截 `shares`、`total_cost`、`broker`、`account_id`、`pnl` 等账户敏感字段；
+    - 确立 `.staging_{uuid}/` 事务隔离区与 Fail-Closed 机制，生成带 SHA-256 签名的不可变 `manifest.json`、历史归档 `scoreboard_{session}.json` 与前台投影 `scoreboard_latest.json`，原子化提拔（Atomic Promotion）至正式发布目录；
+    - 实现 `render_racetrack_scoreboard()`，提供终端友好渲染。
+  - `src/cli/main.py`:
+    - 扩展 `alpha racetrack publish`（`--market us|cn`, `--as-of`, `--output-dir`, `--start-date`）；
+    - 扩展 `alpha racetrack show`（`--market us|cn`, `--input-dir`, `--format markdown|table|json`）。
+  - `src/racetrack/__init__.py`:
+    - 导出全部新增核心契约与流水线函数（`publish_racetrack_projection`, `PipelineResult`, `render_racetrack_scoreboard`, `resolve_reference_symbol`）。
+- **单元与集成测试套件 (`tests/test_racetrack_pipeline.py`)**:
+  - 覆盖 TEST-RT-P3-01 至 TEST-RT-P3-10 全量 10 项严密契约与负面测试；
+  - 覆盖 CN 130 权重守恒（1/130）与上市前现金槽保护、月内零换手价格漂移、CSI 300 标的映射与 XSHG 日历对齐、双市场双基准超额矩阵、端到端发布与清单哈希校验、Fail-Closed 事务脏写防御、位级幂等性、隐私守卫零泄露、CLI 命令行交互与多格式渲染、跨市场物理隔离与摩擦单调性。
+- **质量门禁验证**:
+  - Phase 3 独立测试套件：`uv run pytest tests/test_racetrack_pipeline.py -v` -> 10 passed in 32.05s；
+  - Phase 1–3 联合回归：`uv run pytest tests/test_racetrack_minimal_stack.py tests/test_racetrack_runner_scoring.py tests/test_racetrack_pipeline.py -v` -> 35 passed in 53.19s；
+  - 静态检查：`uv run ruff check` 全部通过，零告警；`uv run ruff format` 格式化规范全部通过。

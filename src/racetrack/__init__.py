@@ -34,7 +34,12 @@ from src.racetrack.contracts import (
 )
 from src.racetrack.engine import simulate_portfolio
 from src.racetrack.ledger import EventLedger
-from src.racetrack.matrix import load_price_matrix
+from src.racetrack.matrix import load_price_matrix, resolve_reference_symbol
+from src.racetrack.pipeline import (
+    PipelineResult,
+    publish_racetrack_projection,
+    render_racetrack_scoreboard,
+)
 from src.racetrack.pool_index import generate_equal_weight_pool_index
 from src.racetrack.runner import (
     RunnerContract,
@@ -63,6 +68,7 @@ __all__ = [
     "MonthlyRankPoint",
     "NAVPoint",
     "PITViolationError",
+    "PipelineResult",
     "PointsRuleV1",
     "PriceMatrix",
     "PrivacyViolationError",
@@ -84,6 +90,9 @@ __all__ = [
     "generate_benchmark_simulation",
     "generate_equal_weight_pool_index",
     "load_price_matrix",
+    "publish_racetrack_projection",
+    "render_racetrack_scoreboard",
+    "resolve_reference_symbol",
     "simulate_portfolio",
     "validate_runner_thesis",
 ]

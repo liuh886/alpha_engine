@@ -7,6 +7,7 @@ an immutable PriceMatrix with deterministic SHA-256 fingerprint.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 import hashlib
 import io
 import json
@@ -34,8 +35,68 @@ MARKET_CALENDAR_MAP: dict[str, str] = {
 
 DEFAULT_REFERENCE_SYMBOLS: dict[str, str] = {
     "us": "QQQ",
-    "cn": "000300.SH",
+    "cn": "000300",
 }
+
+
+def resolve_reference_symbol(
+    market: str,
+    ref_config: dict[str, Any] | None = None,
+    catalog_symbols: set[str] | Sequence[str] | dict[str, Any] | None = None,
+    catalog_path: Path | None = None,
+) -> str:
+    """Resolve reference benchmark symbol for market, aligning catalog and reference registry.
+
+    Supports both '000300' and '000300.SH' for CN, preferring catalog registration.
+    """
+    market_lower = market.lower()
+    if market_lower == "us":
+        return "QQQ"
+    elif market_lower == "cn":
+        candidates = ("000300", "000300.SH", "SH000300", "sh.000300")
+        if catalog_symbols is not None:
+            if isinstance(catalog_symbols, dict):
+                if "benchmark" in catalog_symbols and catalog_symbols["benchmark"] in candidates:
+                    return str(catalog_symbols["benchmark"])
+                sym_list = catalog_symbols.get("symbols", [])
+                if isinstance(sym_list, list):
+                    sym_set = {
+                        item.get("symbol")
+                        for item in sym_list
+                        if isinstance(item, dict) and "symbol" in item
+                    }
+                else:
+                    sym_set = set(sym_list)
+            else:
+                sym_set = set(catalog_symbols)
+            for c in candidates:
+                if c in sym_set:
+                    return c
+
+        if catalog_path is not None and catalog_path.exists():
+            try:
+                cat_data = json.loads(catalog_path.read_text(encoding="utf-8"))
+                cat_bench = cat_data.get("benchmark")
+                if cat_bench in candidates:
+                    return str(cat_bench)
+                raw_syms = cat_data.get("symbols", [])
+                if isinstance(raw_syms, list):
+                    registered = {
+                        item.get("symbol")
+                        for item in raw_syms
+                        if isinstance(item, dict) and "symbol" in item
+                    }
+                elif isinstance(raw_syms, dict):
+                    registered = set(raw_syms.keys())
+                else:
+                    registered = set()
+                for c in candidates:
+                    if c in registered:
+                        return c
+            except Exception:
+                pass
+        return "000300"
+    raise ValueError(f"Unsupported market: {market}")
 
 
 def load_price_matrix(
@@ -45,16 +106,18 @@ def load_price_matrix(
     end_date: str,
     as_of_cutoff: str,
     root_path: Path,
+    reference_symbol: str | None = None,
 ) -> PriceMatrix:
     """Load canonical market price matrix P(t, s) aligned to official exchange calendar.
 
     Args:
         market: Target market identifier ('us' or 'cn').
-        pool_id: Universe candidate pool ID ('us_selected_equities_v2').
+        pool_id: Universe candidate pool ID ('us_selected_equities_v2' or 'cn_selected_equities_v3').
         start_date: Start session date string (YYYY-MM-DD).
         end_date: End session date string (YYYY-MM-DD).
         as_of_cutoff: Point-in-time publication cutoff date (YYYY-MM-DD).
         root_path: Repository root directory Path.
+        reference_symbol: Optional explicit reference symbol.
 
     Returns:
         Immutable PriceMatrix containing prices DataFrame and cryptographic manifest sha256.
@@ -101,21 +164,30 @@ def load_price_matrix(
         raise ValueError(f"Pool '{pool_id}' contains no candidate symbols in {pool_config_path}")
 
     # 3. Read reference instrument configuration
-    ref_symbol = DEFAULT_REFERENCE_SYMBOLS.get(market_lower, "QQQ")
+    catalog_path = (
+        root_path / "data" / "research" / "market_evidence" / market_lower / "catalog.json"
+    )
     ref_config_path = root_path / "configs" / "pools" / "reference_instrument_registry_v1.yaml"
+    ref_data: dict[str, Any] = {}
     if ref_config_path.exists():
         with open(ref_config_path, "r", encoding="utf-8") as f:
-            ref_data = yaml.safe_load(f)
-        market_refs = ref_data.get("markets", {}).get(market_lower, {}).get("instruments", {})
-        if "QQQ" in market_refs and market_lower == "us":
-            ref_symbol = "QQQ"
+            ref_data = yaml.safe_load(f) or {}
+
+    if reference_symbol is not None:
+        if market_lower == "cn" and reference_symbol in ("000300.SH", "SH000300", "sh.000300"):
+            ref_symbol = "000300"
+        else:
+            ref_symbol = reference_symbol
+    else:
+        ref_symbol = resolve_reference_symbol(
+            market_lower,
+            ref_config=ref_data,
+            catalog_path=catalog_path,
+        )
 
     all_symbols = candidate_symbols + (ref_symbol,)
 
     # 4. Verify data qualification & catalog.json registration
-    catalog_path = (
-        root_path / "data" / "research" / "market_evidence" / market_lower / "catalog.json"
-    )
     catalog_sha256 = ""
     if catalog_path.exists():
         cat_bytes = catalog_path.read_bytes()
@@ -133,6 +205,8 @@ def load_price_matrix(
 
         for sym in all_symbols:
             if sym not in registered_symbols:
+                if sym in ("000300.SH", "SH000300") and "000300" in registered_symbols:
+                    continue
                 raise DataQualificationError(
                     f"Symbol '{sym}' is not registered in market evidence catalog '{catalog_path}'"
                 )
@@ -145,6 +219,12 @@ def load_price_matrix(
     for symbol in all_symbols:
         symbol_file = evidence_dir / f"{symbol}.json"
         if not symbol_file.exists():
+            if symbol in ("000300.SH", "SH000300") and (evidence_dir / "000300.json").exists():
+                symbol_file = evidence_dir / "000300.json"
+            else:
+                raise FileNotFoundError(
+                    f"Market evidence JSON for symbol '{symbol}' not found at {symbol_file}"
+                )
             raise FileNotFoundError(
                 f"Market evidence JSON for symbol '{symbol}' not found at {symbol_file}"
             )

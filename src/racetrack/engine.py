@@ -134,6 +134,7 @@ def simulate_portfolio(
 
     peak_nav = max(1.0, init_nav)
     current_nav = init_nav
+    last_known_prices: dict[str, float] = {}
 
     # 3. Daily iteration over sessions t_1 to t_N
     for i in range(1, len(sessions)):
@@ -147,18 +148,34 @@ def simulate_portfolio(
         for sym, w_prev in current_weights.items():
             if w_prev <= 0:
                 continue
-            p_prev = matrix.get_price(prev_sess, sym)
             p_curr = matrix.get_price(curr_sess, sym)
-            if np.isnan(p_curr) or np.isnan(p_prev):
+            if np.isnan(p_curr):
+                # Held asset is suspended/halted on curr_sess.
+                # In real market simulation, suspended assets have zero daily return (price unchanged)
+                # until trading resumes.
+                if sym not in last_known_prices:
+                    p_prev = matrix.get_price(prev_sess, sym)
+                    if not np.isnan(p_prev) and p_prev > 0:
+                        last_known_prices[sym] = p_prev
+                    else:
+                        raise MissingPriceDataError(
+                            f"Held asset '{sym}' has missing (NaN) price on session '{curr_sess}'"
+                        )
+                asset_ret = 0.0
+                r_gross += w_prev * asset_ret
+                drifted_weights[sym] = w_prev * (1.0 + asset_ret)
+                continue
+
+            p_ref = last_known_prices.pop(sym, None)
+            if p_ref is None:
+                p_ref = matrix.get_price(prev_sess, sym)
+
+            if np.isnan(p_ref) or p_ref <= 0:
                 raise MissingPriceDataError(
-                    f"Held asset '{sym}' has missing (NaN) price on session '{curr_sess}'"
-                )
-            if p_prev <= 0:
-                raise MissingPriceDataError(
-                    f"Invalid non-positive price for '{sym}' on session '{prev_sess}': {p_prev}"
+                    f"Invalid non-positive price for '{sym}' on session '{prev_sess}': {p_ref}"
                 )
 
-            asset_ret = (p_curr / p_prev) - 1.0
+            asset_ret = (p_curr / p_ref) - 1.0
             r_gross += w_prev * asset_ret
             # Temporary storage for unnormalized drifted weight
             drifted_weights[sym] = w_prev * (1.0 + asset_ret)
