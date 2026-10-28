@@ -33,8 +33,10 @@ requests/sources retain the same request/data hashes.
   1,399 rows. Both are readable under the cutoff request, with
   `pit_certified=false`; `ready` does not check complete session coverage.
 - EA ends at 2026-08-04. Its 59 missing XNYS sessions through 2026-10-27 are
-  enumerated in the survey. They are unresolved lifecycle/data gaps, not a
-  declared halt or an excuse to drop EA from the pool.
+  enumerated in the survey. A follow-up check of the existing shared lifecycle
+  registry identifies all 59 as post-terminal sessions, not an unexplained
+  provider outage; see the [recovery diagnosis](recovery_diagnosis.md). This does
+  not certify terminal proceeds/settlement or justify dropping historical EA.
 - Other series have no missing XNYS sessions after their first observed bar
   within this inventory range. First observation is not a certified listing
   date; shorter prefixes remain explicit. BE has 1,399 rows from 2021-04-05;
@@ -70,7 +72,7 @@ evaluator, and archived experiment names are not runnable templates.
 
 Next: record RFC A–D decisions and exact timing, flat-bar/warm-up, missing/halt,
 transition precedence, clustering/OOS/baseline/shadow rules. Restore/validate
-required source payloads and resolve EA's gap before a dependent experiment.
+required source payloads and validate required terminal-event settlement before a dependent experiment.
 No research score, fifth strategy, account allocation or public raw study
 receipt is delivered by this survey. Only metadata, counts, paths and hashes
 are retained here; no bars or formal model events/targets are copied.

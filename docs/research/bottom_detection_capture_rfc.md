@@ -20,7 +20,7 @@ H4: signal utility varies strongly by regimes (broad selloff vs idiosyncratic ea
 ## Decision-time feature contract
 For symbol s and session t, only use observations timestamped and available by decision cutoff t close (or intraday cutoff in a separate later experiment).
 - Drawdown: 20/60/120-day high-to-close, standardized by realized vol or ATR; 3/5/10-day downside intensity.
-- Exhaustion: downside-volume / total-volume percentile (if actual volume valid), gap and range structure, close-location value (close-low)/(high-low), long lower wick, falling sell-volume, volatility contraction *after* expansion. Never infer buy/sell aggressor from daily bars.
+- Exhaustion: downside-volume / total-volume percentile (if actual volume valid), gap and range structure, close-position fraction (close-low)/(high-low), long lower wick, falling sell-volume, volatility contraction *after* expansion. The fraction is in [0,1]; the proposed signed CLV in section 9 is twice this fraction minus one, with different thresholds. Never mix their scales or infer buy/sell aggressor from daily bars.
 - Relative strength: 5/10-day stock-minus-QQQ and stock-minus-sector returns, rolling slope, divergence when benchmark makes fresh low but stock does not, controlled for beta.
 - Price acceptance: regained prior low, local higher low without future pivots, breakout above rolling resistance; causal lag of all confirmations.
 - Fundamental/valuation: explicitly versioned PIT filings/consensus/financing events where actually available; missing = unknown (not favorable). GAAP cash flow, dilution/debt/maturity and guidance revision veto evidence, not fictional daily scores.
@@ -82,8 +82,11 @@ bind pool/reference/catalog/source/code hashes, cutoff, commands and actual
 US87/QQQ slice receipts. All 87 candidates were surveyed, not only BE/CRDO.
 A slice reporting `ready` means readable under that request; it does not
 certify complete sessions, historical first-known availability or revisions.
-EA has 59 missing XNYS sessions after 2026-08-04. Required source-event payloads,
-owner preregistration and PIT limitations remain blockers, never filled forward.
+EA has 59 unobserved XNYS sessions after its governed terminal trading date
+2026-08-04; these are explained listing boundaries, not an unexplained provider
+outage. Required source-event payloads, current-governance validation, terminal
+settlement evidence, owner preregistration and PIT limitations remain blockers,
+never filled forward.
 
 Dated observations at 2026-10-27:
 1. **Universe & Case Studies**:
@@ -100,6 +103,13 @@ Dated observations at 2026-10-27:
    - Inspect the existing study template and walk-forward interfaces first. `BottomDetectionConfig` and `src/research/studies/bottom_detection_study.py` are proposed names, not delivered APIs. Use the existing executor and governed slice; a second evaluator is not authorized.
 
 ## 9. Proposed BD-01 Specification & State Transition Rules
+
+The [boundary draft](bottom_detection_boundaries_draft.md) makes the flat-bar,
+warm-up, session/lifecycle and same-day precedence cases reviewable. Its numerical
+conventions remain proposed, not frozen or implemented. In particular, the
+`t-2 -> t` return below spans two returns, despite its historical `RS_3` label;
+resolve the horizon/name before preregistration. See the [recovery diagnosis](evidence/bd00_2026-10-28/recovery_diagnosis.md)
+for EA's already-governed terminal listing and both event-bundle blockers.
 ### 9.1 Mathematical Feature Definitions
 - **Rolling Drawdown**: $DD_{20}(t) = \frac{\max_{0 \le k < 20}(C_{t-k}) - C_t}{\max_{0 \le k < 20}(C_{t-k})}$.
 - **RSI**: Standard 14-period Wilder RSI.
@@ -109,7 +119,7 @@ Dated observations at 2026-10-27:
 
 ### 9.2 Causal State Machine
 1. `WATCH`: Triggered when $DD_{20}(t) \ge \text{drawdown\_min}$ (default 0.15) AND $RSI_{14}(t) \le 35$. Symbol enters watchlist.
-2. `PROBE_ELIGIBLE`: In `WATCH` AND ($CLV_t \ge 0.2$ OR lower wick $\ge 0.4 \times (H_t - L_t)$) AND $RS_3(t) \ge 0.0$ AND no active hard veto. Permits a candidate small trial probe (default 30% risk budget).
+2. `PROBE_ELIGIBLE`: In `WATCH` AND ($CLV_t \ge 0.2$ OR raw lower-wick length $\min(O_t,C_t)-L_t \ge 0.4 \times (H_t - L_t)$) AND $RS_3(t) \ge 0.0$ AND no active hard veto. For a non-flat bar this wick condition is equivalently a lower-wick ratio of at least 0.4; do not compare a ratio to a price difference. Permits a candidate small trial probe (proposed 30% risk budget).
 3. `CONFIRMED`: In `PROBE_ELIGIBLE` AND $C_t > \max(C_{t-1}, C_{t-2})$ AND $C_t > SMA_5(C_t)$. Confirms short-term momentum resumption.
 4. `INVALIDATED`: If $C_t < \min(L_{probe}, L_{watch})$ (hard low breach), or dwell time in `PROBE_ELIGIBLE` exceeds $K$ days (default 5 days) without confirmation.
 5. `BLOCKED`: Data missing, PIT cutoff violated, or trading halted.
