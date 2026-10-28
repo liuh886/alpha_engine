@@ -496,7 +496,7 @@ def render_racetrack_scoreboard(
                 )
         lines.append("-" * 96)
         lines.append(
-            "Note: Adjusted-price research returns; see manifest for friction and PIT qualification. research_only=true, trade_ready=false."
+            "Note: Periods include partial calendar months; points are provisional until full-window review. Adjusted-price research returns; see manifest for friction and PIT qualification. research_only=true, trade_ready=false."
         )
         return "\n".join(lines)
 
@@ -524,6 +524,6 @@ def render_racetrack_scoreboard(
             )
     md_lines.append("")
     md_lines.append(
-        "*Note: All returns are adjusted-price research returns with the manifest-bound friction setting. research_only=true, trade_ready=false.*"
+        "*Note: Periods include partial calendar months; points are provisional until full-window review. Returns use adjusted prices and manifest-bound friction. research_only=true, trade_ready=false.*"
     )
     return "\n".join(md_lines)

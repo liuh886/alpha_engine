@@ -336,7 +336,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     rt_publish = racetrack_commands.add_parser(
         "publish",
-        help="Publish Racetrack projection and signed manifest for target market.",
+        help="Publish Racetrack projection and integrity manifest for target market.",
     )
     rt_publish.add_argument(
         "--market",
