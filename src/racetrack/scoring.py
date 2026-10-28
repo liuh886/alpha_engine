@@ -8,6 +8,7 @@ Enforces strict session alignment across all runners and benchmarks.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 import math
 import re
 
@@ -50,6 +51,18 @@ class PointsRuleV1:
     def get_points(cls, rank: int) -> int:
         """Return points awarded for a given integer rank."""
         return cls.POINTS_TABLE.get(rank, 0)
+
+
+class ReturnPointsV2:
+    """A month's net return expressed in percentage points, never rank awards."""
+
+    rule_id = "monthly_net_return_percentage_points_v2"
+
+    @staticmethod
+    def get_points(monthly_net_return: float) -> float:
+        if not math.isfinite(monthly_net_return):
+            raise ValueError("Return points require a finite monthly net return")
+        return monthly_net_return * 100.0
 
 
 def calculate_monthly_returns(simulation: SimulationResult) -> dict[str, float]:
@@ -377,3 +390,104 @@ def evaluate_race_season(
         benchmarks=benchmarks,
         top_runners_nav=top_runners_nav,
     )
+
+
+def evaluate_first_season(
+    runners: Mapping[str, RunnerContract],
+    simulation_results: Mapping[str, SimulationResult],
+    qqq_simulation: SimulationResult,
+    pool_simulation: SimulationResult,
+    season_id: str,
+    pool_id: str,
+    benchmark_symbol: str,
+    calendar_name: str,
+    pool_runner_id: str,
+) -> Scoreboard:
+    """Schema 2: full-duration window ranks and provisional monthly return points.
+
+    Reuse the existing scorer's session validation, monthly returns and risk
+    evidence. No strategy is evaluated here. Old PointsRuleV1 output is unchanged.
+    Complete calendar coverage is evidence for a later review, not settlement.
+    """
+    import exchange_calendars as xcals
+    import pandas as pd
+
+    legacy = evaluate_race_season(runners, simulation_results, qqq_simulation,
+        pool_simulation, season_id, pool_id, benchmark_symbol)
+    if not legacy.dates or pool_runner_id not in runners:
+        raise ValueError("First season requires its registered pool racer and dated evidence")
+    calendar = xcals.get_calendar(calendar_name)
+    dates = legacy.dates
+    if dates != [str(d.date()) for d in calendar.sessions_in_range(dates[0], dates[-1])]:
+        raise CalendarSessionError("First-season evidence has missing or unofficial sessions")
+
+    def ranks(values: Mapping[str, float]) -> dict[str, int]:
+        ordered = sorted(values, key=lambda key: (-values[key], key))
+        result = {}
+        previous, rank = None, 0
+        for index, key in enumerate(ordered, 1):
+            if previous is None or values[key] != previous:
+                rank = index
+            result[key] = rank
+            previous = values[key]
+        return result
+
+    month_windows = []
+    for month in sorted({d[:7] for d in dates}):
+        first = pd.Timestamp(f"{month}-01")
+        expected = [str(d.date()) for d in calendar.sessions_in_range(first, first + pd.offsets.MonthEnd())]
+        observed = [d for d in dates if d.startswith(month)]
+        month_windows.append({"month": month, "first_session": expected[0], "last_session": expected[-1],
+            "expected_sessions": len(expected), "observed_sessions": len(observed),
+            "complete_window": expected == observed, "settlement_status": "not_reviewed"})
+
+    windows, window_returns = {}, {}
+    for months in (1, 3, 6, 12):
+        target = pd.Timestamp(dates[-1]) - pd.DateOffset(months=months)
+        anchor = str(calendar.date_to_session(target, direction="previous").date())
+        start_index = dates.index(anchor) if anchor in dates else None
+        values = {key: float(sim.nav_history[-1].nav / sim.nav_history[start_index].nav - 1)
+            for key, sim in simulation_results.items()} if start_index is not None else {}
+        if any(not math.isfinite(value) for value in values.values()):
+            raise ValueError("Window return must be finite")
+        ranked = ranks(values)
+        ordered = sorted(values, key=lambda key: (-values[key], key))
+        windows[str(months)] = {"anchor_session": anchor if start_index is not None else None,
+            "end_session": dates[-1], "ranks": {key: ranked.get(key) for key in runners},
+            "top_runner_ids": ordered[:10]}
+        window_returns[months] = values
+
+    monthly_values = {month["month"]: {e.runner_id: next(p.monthly_net_return for p in e.monthly_ranks
+        if p.month == month["month"]) for e in legacy.entries} for month in month_windows}
+    monthly_rank = {month: ranks(values) for month, values in monthly_values.items()}
+    entries = []
+    for entry in legacy.entries:
+        key = entry.runner_id
+        history = [replace(p, rank=monthly_rank[p.month][key],
+            points_earned=ReturnPointsV2.get_points(p.monthly_net_return)) for p in entry.monthly_ranks]
+        returns = {m: window_returns[m].get(key) for m in (1, 3, 6, 12)}
+        # The reference excess period follows the same full-history eligibility.
+        anchor = windows["12"]["anchor_session"]
+        ref_index = dates.index(anchor) if anchor else None
+        sim = simulation_results[key]
+        def excess(reference: SimulationResult) -> float:
+            if ref_index is None:
+                return sim.cumulative_return - reference.cumulative_return
+            return returns[12] - (reference.nav_history[-1].nav / reference.nav_history[ref_index].nav - 1)
+        entries.append(replace(entry, monthly_ranks=history,
+            season_points=sum(p.points_earned for p in history if p.month == parse_season_month(season_id)),
+            cumulative_points=sum(p.points_earned for p in history), return_1m=returns[1],
+            return_3m=returns[3], return_6m=returns[6], return_1y=returns[12],
+            excess_vs_qqq=excess(qqq_simulation), excess_vs_pool=excess(pool_simulation),
+            persistence_ratio=sum(p.rank <= math.ceil(p.total_runners / 2) for p in history) / len(history)))
+    season_ranks = ranks({e.runner_id: e.season_points for e in entries})
+    entries = [replace(e, current_rank=season_ranks[e.runner_id]) for e in sorted(entries,
+        key=lambda e: (-e.season_points, e.runner_id))]
+    retained_ids = {e.runner_id for e in entries[:10]}
+    retained_ids.update(key for window in windows.values() for key in window["top_runner_ids"])
+    return replace(legacy, schema_version="2.0", entries=entries,
+        top_runners_nav={key: [p.nav for p in simulation_results[key].nav_history] for key in sorted(retained_ids)},
+        first_season={"contract_version": "first_season_v2", "points_rule": ReturnPointsV2.rule_id,
+            "rank_policy": "window_net_return_competition_rank_v1", "season_state": "provisional",
+            "month_windows": month_windows, "windows": windows, "pool_runner_id": pool_runner_id,
+            "roles": {key: "internal_benchmark_racer" if key == pool_runner_id else "strategy_racer" for key in runners}})

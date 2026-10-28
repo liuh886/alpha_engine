@@ -437,7 +437,7 @@ class MonthlyRankPoint:
     monthly_net_return: float
     monthly_excess_vs_qqq: float
     monthly_excess_vs_pool: float
-    points_earned: int
+    points_earned: int | float
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dictionary."""
@@ -461,7 +461,7 @@ class MonthlyRankPoint:
             monthly_net_return=float(data["monthly_net_return"]),
             monthly_excess_vs_qqq=float(data["monthly_excess_vs_qqq"]),
             monthly_excess_vs_pool=float(data["monthly_excess_vs_pool"]),
-            points_earned=int(data["points_earned"]),
+            points_earned=data["points_earned"],
         )
 
 
@@ -472,7 +472,7 @@ class ScoreboardEntry:
     runner_id: str
     runner_version: str
     thesis_summary: str
-    season_points: int
+    season_points: int | float
     current_rank: int
     return_1m: float | None
     return_3m: float | None
@@ -484,7 +484,7 @@ class ScoreboardEntry:
     sharpe_ratio: float
     persistence_ratio: float
     monthly_ranks: list[MonthlyRankPoint]
-    cumulative_points: int = 0
+    cumulative_points: int | float = 0
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dictionary."""
@@ -514,8 +514,8 @@ class ScoreboardEntry:
             runner_id=str(data["runner_id"]),
             runner_version=str(data["runner_version"]),
             thesis_summary=str(data["thesis_summary"]),
-            season_points=int(data["season_points"]),
-            cumulative_points=int(data.get("cumulative_points", 0)),
+            season_points=data["season_points"],
+            cumulative_points=data.get("cumulative_points", 0),
             current_rank=int(data["current_rank"]),
             return_1m=float(data["return_1m"]) if data.get("return_1m") is not None else None,
             return_3m=float(data["return_3m"]) if data.get("return_3m") is not None else None,
@@ -551,10 +551,11 @@ class Scoreboard:
     dates: list[str] = field(default_factory=list)
     benchmarks: dict[str, list[float]] = field(default_factory=dict)
     top_runners_nav: dict[str, list[float]] = field(default_factory=dict)
+    first_season: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dictionary."""
-        return {
+        payload = {
             "schema_version": self.schema_version,
             "as_of_session": self.as_of_session,
             "season_id": self.season_id,
@@ -567,6 +568,10 @@ class Scoreboard:
             "top_runners_nav": {k: [float(x) for x in v] for k, v in self.top_runners_nav.items()},
             "entries": [entry.to_dict() for entry in self.entries],
         }
+        if self.first_season is not None:
+            payload["period_policy"] = "trailing_calendar_duration_previous_session_anchor_v1"
+            payload["first_season"] = self.first_season
+        return payload
 
     def to_json(self, indent: int | None = 2) -> str:
         """Produce formatted JSON string representation."""
@@ -581,6 +586,7 @@ class Scoreboard:
             season_id=str(data["season_id"]),
             pool_id=str(data["pool_id"]),
             benchmark_symbol=str(data["benchmark_symbol"]),
+            first_season=data.get("first_season"),
             status=str(data.get("status", "operational_race")),
             dates=[str(x) for x in data.get("dates", [])],
             benchmarks={
