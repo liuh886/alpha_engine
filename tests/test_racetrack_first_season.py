@@ -229,3 +229,24 @@ def test_python_reader_rejects_hash_valid_but_inconsistent_v2_contract(tmp_path,
     result.manifest_path.write_text(json.dumps(manifest), encoding="utf-8", newline="\n")
     with pytest.raises(ValueError):
         pipeline.render_racetrack_scoreboard(result.manifest_path.parent, "json")
+
+
+def test_python_legacy_reader_rejects_stray_v2_rules_under_v1_identity(tmp_path, monkeypatch):
+    from src.racetrack import pipeline
+    source, _, _, _ = season_fixture()
+    monkeypatch.setattr(pipeline, "load_price_matrix", lambda **_: source)
+    for path in [f"configs/research_universes/{source.pool_id}.yaml",
+        "configs/pools/selected_pool_registry_v1.yaml", "configs/pools/reference_instrument_registry_v1.yaml"]:
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("synthetic identity")
+    result = pipeline.publish_racetrack_projection(root_path=tmp_path, as_of_cutoff="2026-10-27")
+    payload = json.loads(result.latest_scoreboard_path.read_text())
+    payload["first_season"] = {"contract_version": "first_season_v2"}
+    result.latest_scoreboard_path.write_text(json.dumps(payload), encoding="utf-8", newline="\n")
+    result.manifest_dict["artifacts"]["scoreboard_latest"].update(
+        sha256=pipeline.compute_file_sha256(result.latest_scoreboard_path),
+        size_bytes=result.latest_scoreboard_path.stat().st_size)
+    result.manifest_path.write_text(json.dumps(result.manifest_dict), encoding="utf-8", newline="\n")
+    with pytest.raises(ValueError, match="declared version"):
+        pipeline.render_racetrack_scoreboard(result.manifest_path.parent, "json")

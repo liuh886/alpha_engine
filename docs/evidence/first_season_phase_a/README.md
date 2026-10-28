@@ -7,7 +7,7 @@ selected-pool/model readiness, historical PIT certification or trading readiness
 
 ## Verification
 
-- 100 relevant Python tests passed, including all 15 new first-season cases and
+- 101 relevant Python tests passed, including all 16 new first-season cases and
   existing stack/scoring/pipeline/integrity/researcher-CLI/governance cases.
 - 242 frontend unit tests passed; the projection reader has 26 cases.
 - Six local HTTP boundary tests passed, including v2 private-Q integrity and

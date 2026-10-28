@@ -572,6 +572,10 @@ def render_racetrack_scoreboard(
         or scoreboard.season_id != manifest["season_id"]
     ):
         raise ValueError("Scoreboard identity does not match the manifest")
+    expected_policy = ("trailing_calendar_duration_previous_session_anchor_v1"
+        if scoreboard.schema_version == "2.0" else "calendar_month_buckets_including_partial")
+    if payload.get("period_policy") != expected_policy or (scoreboard.schema_version == "1.0" and scoreboard.first_season is not None):
+        raise ValueError("Scoreboard rules do not match its declared version")
     if scoreboard.schema_version == "2.0":
         phase = scoreboard.first_season
         ids = {entry.runner_id for entry in scoreboard.entries}
