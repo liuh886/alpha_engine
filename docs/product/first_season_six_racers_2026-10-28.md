@@ -282,9 +282,8 @@ Reviewers are asked to check, in order: (1) whether the two-track framing
 contradicts any merged spec; (2) whether Phase C is correctly scoped as a
 contract reconciliation, reusing existing runtime; (3) whether §6's blockers are
 complete — especially exact holdings, leverage and durable Q evidence; and
-(4) whether any sentence in this proposal reads as a decision on
-per-window ranking, PIT, corporate actions, or the decision loop, which
-are explicitly left open above.
+(4) whether the decisions in §10 are distinguished from unimplemented
+behavior and the remaining PIT, corporate-action and decision-loop gaps.
 
 ### Review evidence (2026-10-28, main@ba5418e0)
 
