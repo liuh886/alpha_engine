@@ -1,0 +1,53 @@
+{
+  "receipt": {
+    "as_of_cutoff": "2026-10-27",
+    "blocked_reasons": [],
+    "data_hash": "efa9e82fc99841c02d67479418ce8ac9b30035c92dd2c4a0c0ded691ce214354",
+    "generated_at_utc": "2026-10-28T09:31:23.538704+00:00",
+    "market": "us",
+    "pit_certified": false,
+    "pit_limitations": [
+      "observation_cutoff_bound_enforced: end_date <= as_of_cutoff",
+      "corporate_action_announcement_enforced_where_bridge_exists: announced_at <= as_of_cutoff",
+      "vendor_available_time_unverified: t_available timestamps are not certified across all upstream provider raw feeds",
+      "historical_restatements_untracked: multi-vintage revision history and restatement lineage are not yet reconstructed under ADR-0005"
+    ],
+    "pit_qualification": "observation_cutoff_verified_not_revision_certified",
+    "pool_id": "us_selected_equities_v2",
+    "readiness_scope": "governed_pool_and_cutoff_compliance_only",
+    "request_hash": "857bcfa6fda0f92e1dfe4a917ef3ba80566b67bfb93ba8afe2f06c326a68f4bc",
+    "research_only": true,
+    "rights_label": "academic_and_internal_research_only",
+    "schema_version": "research_data_slice_v1",
+    "slice_id": "slice_us_857bcfa6fda0",
+    "source_manifest_hashes": {
+      "corporate_actions.us_selected_equities_v2": "c596b57491f9a0a18bbafb5ea850863ee7d9162699a8f9e8e42b4afd8aef3eb1",
+      "prices.us_selected_equities_v2": "c25e4664abec20f81b036802138bac8f106d68916495eabeeab452fcafadddbf"
+    },
+    "status": "ready",
+    "symbol_row_counts": {
+      "QQQ": 1399
+    },
+    "total_rows": 1399,
+    "trade_ready": false
+  },
+  "request": {
+    "as_of_cutoff": "2026-10-27",
+    "end_date": "2026-10-27",
+    "include_corporate_actions": false,
+    "market": "us",
+    "pool_id": "us_selected_equities_v2",
+    "price_mode": "anchored_adjusted",
+    "required_fields": [
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume"
+    ],
+    "start_date": "2021-01-01",
+    "symbols": [
+      "QQQ"
+    ]
+  }
+}

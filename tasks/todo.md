@@ -453,11 +453,11 @@
 
 
 ### Phase 9.0: 投研落地设施路线图与抄底研究推进 (PR #1307 BD-00 ~ BD-02)
-- [ ] **9.0.1 [BD-00 / Audit] 价格底座、个股覆盖度与工作区扩展接口审计（初步笔记，证据验收待补）**:
-  - [x] 验证美股行情存储为 Yahoo 统一复权价格（adj_close等比缩放），无独立拆股分红事件流；
-  - [x] 验证 BE 与 CRDO 均在 US 87 候选池，日线数据 100% 具备（BE 1,398 bars, CRDO 1,191 bars），`get_research_data_slice` 就绪退出；
+- [x] **9.0.1 [BD-00 / Audit] 价格底座、全池覆盖度与工作区扩展接口盘点（已完成盘点，实验仍 BLOCKED）**:
+  - [x] 记录统一复权价格与已有 US 公司行动/基本面清单；不再声称不存在事件流。干净 checkout 缺少清单引用的 payload，未验证其完整性与历史 PIT；
+  - [x] 审计 US87 全池与独立 QQQ 参考，绑定 88 份源文件哈希和实际 slice receipts；截至 2026-10-27，BE 1,399 bars、CRDO 1,192 bars；EA 自 2026-08-04 后缺 59 个 XNYS 会话，不剔除、不补值；
   - [x] 梳理 Study Workspace 契约、分发执行器、收据比对与格式化 4 大挂载点；
-  - [ ] 将 source/pool/catalog 哈希、cutoff、实际命令与 slice receipt 绑定到 RFC 后再勾选 BD-00；ready 不代表历史 PIT 已认证，拟议挂载点不代表已实现。
+  - [x] 将 source/pool/catalog/code 哈希、cutoff、实际命令与 slice receipt 绑定到 `docs/research/evidence/bd00_2026-10-28/`；ready 不代表完整会话或历史 PIT 已认证，拟议挂载点不代表已实现。
 - [ ] **9.0.2 [BD-01 / Architecture] 架构规范、指标公式与状态机契约设计 (Architect Subagent)**:
   - [ ] 提出待裁定决策点（执行与持有窗口、分批建仓权重、硬性否决范围、评估标的池范围）；
   - [ ] 形式化状态机转移规则（`WATCH` -> `PROBE_ELIGIBLE` -> `CONFIRMED` -> `INVALIDATED`）；

@@ -66,7 +66,7 @@ G5 Human release review: operator reviews evidence and rollback; feature flag re
 - Keep current four-strategy fleet, registry, current operations, scheduler and public Pages unchanged.
 
 ## Delivery slices / Agent TODO
-- [ ] BD-00 Survey actual data coverage, benchmark roles, PIT availability and current study template APIs; publish dependency map and blockers. Initial notes are in Section 8; completion requires the source-bound receipts listed there.
+- [x] BD-00 Survey actual data coverage, benchmark roles, PIT availability and current study template APIs; publish dependency map and blockers. The dated full-pool metadata survey and reproducible receipts are linked in Section 8; experiment readiness remains BLOCKED.
 - [ ] BD-01 Create immutable versioned spec + feature contracts + synthetic fixtures; do not bake discretionary prices from 2026 examples.
 - [ ] BD-02 Implement causal daily-bar indicators + state transitions; unit/property tests for leakage and invalidation.
 - [ ] BD-03 Extend existing study CLI with BDCR hypothesis family, reuse governed WFO, baseline parity and blocked receipts.
@@ -76,20 +76,26 @@ G5 Human release review: operator reviews evidence and rollback; feature flag re
 - [ ] BD-07 Only after passing gates, propose read-only presentation integrated into existing Decision Feed, no new navigation.
 - [ ] BD-08 Explicit human GO/NO-GO review, rollback instructions, version bump and reproducible research package.
 
-## 8. BD-00 Initial Survey Notes (2026-10-28; evidence acceptance pending)
-The following are dated source observations, not a completed full-pool audit or historical PIT certification. Attach pool/reference/catalog/source SHA-256 identities, cutoff, reproducible commands and the actual slice receipt before closing BD-00. A slice reporting `ready` means it can be read under that request; it does not certify historical first-known availability or revisions. BE/CRDO cases do not establish US87 coverage.
+## 8. BD-00 Source-bound Survey (2026-10-28; inventory complete, experiment BLOCKED)
+The [full-pool survey and dependency map](evidence/bd00_2026-10-28/README.md)
+bind pool/reference/catalog/source/code hashes, cutoff, commands and actual
+US87/QQQ slice receipts. All 87 candidates were surveyed, not only BE/CRDO.
+A slice reporting `ready` means readable under that request; it does not
+certify complete sessions, historical first-known availability or revisions.
+EA has 59 missing XNYS sessions after 2026-08-04. Required source-event payloads,
+owner preregistration and PIT limitations remain blockers, never filled forward.
 
-Initial notes to verify against those receipts:
+Dated observations at 2026-10-27:
 1. **Universe & Case Studies**:
    - `BE` (Bloom Energy) and `CRDO` (Credo Tech) are officially in `configs/research_universes/us_selected_equities_v2.yaml` (US 87 candidate pool).
    - `QQQ` is registered as the benchmark in `configs/pools/reference_instrument_registry_v1.yaml`.
 2. **Market Evidence Bars**:
-   - `BE`: `data/research/market_evidence/us/symbols/BE.json` (1,398 bars from 2021-04-05 to 2026-10-26).
-   - `CRDO`: `data/research/market_evidence/us/symbols/CRDO.json` (1,191 bars from 2022-01-27 IPO to 2026-10-26).
+   - `BE`: `data/research/market_evidence/us/symbols/BE.json` (1,399 bars from first observation 2021-04-05 to 2026-10-27).
+   - `CRDO`: `data/research/market_evidence/us/symbols/CRDO.json` (1,192 bars from first observation 2022-01-27 to 2026-10-27; not listing-date certification).
    - Slice access: `get_research_data_slice()` succeeds with deterministic SHA-256 data hash and `status: "ready"`.
 3. **Price Basis & Corporate Actions**:
    - Current US evidence bars are stored as Yahoo Finance adjusted prices (`adj_close / close` scaling `open/high/low/close`), representing total-return series with reinvested dividends.
-   - There are no standalone unadjusted split/dividend raw event streams for US stocks in the repository today. Indicators and returns must be computed on this total-return adjusted basis.
+   - Existing US corporate-action and fundamental component manifests describe source event stores at 2026-09-30; their declared event/coverage payloads are absent in this clean checkout and are not validated by this survey. The earlier blanket claim that no US event streams exist was incorrect. Stored adjusted bars do not establish historical adjustment vintages or permit an unvalidated switch to raw prices.
 4. **Proposed Study Workspace Mount Points (not implemented)**:
    - Inspect the existing study template and walk-forward interfaces first. `BottomDetectionConfig` and `src/research/studies/bottom_detection_study.py` are proposed names, not delivered APIs. Use the existing executor and governed slice; a second evaluator is not authorized.
 
