@@ -62,7 +62,7 @@ uv run alpha research study compare artifacts/research_studies/<id>/<left_hash>.
 | 2. Experiment | 如何不用自己写脚本就可改条件、运行、获得证据？ | `init / run / 不可变收据`，已有 WFO 执行器 | 已合入主线 |
 | 3. Compare | 这个假设的修订真的改善了吗？是否在同一历史证据上？ | 严格对比相同数据下的实验结果，失败可解释 | 已合入主线 |
 | 4. Expand | 我怎样研究*新的因子*、宏观风险事件、不同市场？ | 接入 spec-driven cross-sectional XGBoost、多因子 Rank IC 与 #1272 RDI，统一实验入口与单一数据面；已结项实验维持不可直接运行 | 已实现并测试通过 (Phase 2) |
-| 5. Review | 如何在浏览器中审阅结果？ | 只有经过数据授权与隐私审查的研究摘要只读投影；不重新制作浏览器 IDE | 尚未实施 |
+| 5. Review | 如何在浏览器中审阅结果？ | 先复用正式策略的受验证决策证据，研究摘要只有在可审计映射与权限审查后才允许关联；[轻量实施 TODO](decision_feed_evidence_review_todo.md) | 设计待实现 |
 
 首期验证应当由真实研究者从 `list` 到 `compare` 完成一个小的条件性假设比较，并核对两份收据的哈希、阻断、成本与日期资格。**收益率不是平台开发的 DoD**；可信地否决错误假设也属于成功。
 

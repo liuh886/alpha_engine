@@ -163,7 +163,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     study_actions = study.add_subparsers(dest="study_action", required=True)
     study_actions.add_parser("list", help="List the supported research-study template.")
-    study_init = study_actions.add_parser("init", help="Write an editable research-study specification.")
+    study_init = study_actions.add_parser(
+        "init", help="Write an editable research-study specification."
+    )
     study_init.add_argument("--output", required=True, type=Path)
     study_init.add_argument(
         "--template",
@@ -171,7 +173,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Study template ID to initialize (e.g. us_tech_vol_reversal_v1, cross_sectional_xgb_v1, factor_exploration_v1, ashare_rdi_v1).",
     )
     study_run = study_actions.add_parser("run", help="Run a frozen study and retain its receipt.")
-    study_run.add_argument("--spec", type=Path, help="Optional JSON study spec; defaults to built-in.")
+    study_run.add_argument(
+        "--spec", type=Path, help="Optional JSON study spec; defaults to built-in."
+    )
     study_run.add_argument("--output", type=Path, help="Optional immutable receipt output path.")
     study_show = study_actions.add_parser("show", help="Inspect a retained research receipt.")
     study_show.add_argument("receipt", type=Path)
@@ -241,13 +245,24 @@ def _build_parser() -> argparse.ArgumentParser:
     record_decision.add_argument("--commit-sha", required=True)
     record_decision.add_argument("--created-at-utc", required=True)
 
-    acceptance = ops_commands.add_parser("acceptance", help="Summarize retained operating observations without refresh or training")
+    acceptance = ops_commands.add_parser(
+        "acceptance", help="Summarize retained operating observations without refresh or training"
+    )
     acceptance.add_argument("--input-root", type=Path, required=True)
     acceptance.add_argument("--declarations", type=Path)
     acceptance.add_argument("--output", type=Path)
-    acceptance.add_argument("--through", help="Completed cutoff YYYY-MM-DD; defaults to current completed market sessions")
-    acceptance.add_argument("--collect-repository", help="Collect the latest completed formal attempt and prepare an unapproved review packet")
-    acceptance.add_argument("--archive-repository", help="Retain the compact collected packet using the existing private archive key")
+    acceptance.add_argument(
+        "--through",
+        help="Completed cutoff YYYY-MM-DD; defaults to current completed market sessions",
+    )
+    acceptance.add_argument(
+        "--collect-repository",
+        help="Collect the latest completed formal attempt and prepare an unapproved review packet",
+    )
+    acceptance.add_argument(
+        "--archive-repository",
+        help="Retain the compact collected packet using the existing private archive key",
+    )
 
     build_ops = ops_commands.add_parser(
         "build",
@@ -313,6 +328,62 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional file path to write the output report.",
     )
 
+    racetrack = groups.add_parser(
+        "racetrack",
+        help="Racetrack competitive research and self-maintaining publish pipeline.",
+    )
+    racetrack_commands = racetrack.add_subparsers(dest="racetrack_command", required=True)
+
+    rt_publish = racetrack_commands.add_parser(
+        "publish",
+        help="Publish Racetrack projection and integrity manifest for target market.",
+    )
+    rt_publish.add_argument(
+        "--market",
+        choices=["us", "cn"],
+        default="us",
+        help="Target market (us or cn). Defaults to us.",
+    )
+    rt_publish.add_argument(
+        "--as-of",
+        default=None,
+        help="Optional point-in-time cutoff date (YYYY-MM-DD). Defaults to catalog cutoff.",
+    )
+    rt_publish.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Optional custom output directory. Defaults to data/racetrack/projections/{market}.",
+    )
+    rt_publish.add_argument(
+        "--start-date",
+        default="2024-01-01",
+        help="Start date YYYY-MM-DD. Defaults to 2024-01-01.",
+    )
+
+    rt_show = racetrack_commands.add_parser(
+        "show",
+        help="Show current published Racetrack season scoreboard.",
+    )
+    rt_show.add_argument(
+        "--market",
+        choices=["us", "cn"],
+        default="us",
+        help="Target market (us or cn). Defaults to us.",
+    )
+    rt_show.add_argument(
+        "--format",
+        choices=["markdown", "table", "json"],
+        default="markdown",
+        help="Output format (markdown, table, json). Defaults to markdown.",
+    )
+    rt_show.add_argument(
+        "--input-dir",
+        type=Path,
+        default=None,
+        help="Optional input directory. Defaults to data/racetrack/projections/{market}.",
+    )
+
     return parser
 
 
@@ -326,7 +397,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     root = args.root.resolve()
     exit_code = 0
     errors: tuple[type[Exception], ...] = (
-        OSError, json.JSONDecodeError, ActiveStrategyCatalogError,
+        OSError,
+        json.JSONDecodeError,
+        ActiveStrategyCatalogError,
     )
 
     try:
@@ -363,16 +436,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
 
             errors += (ResearchDataSliceError,)
-            req = DataSliceRequest.from_dict({
-                "market": args.market,
-                "pool_id": args.pool,
-                "symbols": args.symbols,
-                "start_date": args.start,
-                "end_date": args.end,
-                "as_of_cutoff": args.cutoff,
-                "price_mode": args.price_mode,
-                "required_fields": args.fields,
-            })
+            req = DataSliceRequest.from_dict(
+                {
+                    "market": args.market,
+                    "pool_id": args.pool,
+                    "symbols": args.symbols,
+                    "start_date": args.start,
+                    "end_date": args.end,
+                    "as_of_cutoff": args.cutoff,
+                    "price_mode": args.price_mode,
+                    "required_fields": args.fields,
+                }
+            )
             res = get_research_data_slice(req, root=root)
             payload = res.receipt
             if args.output is not None:
@@ -408,7 +483,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 source_etf_bundle=args.source_etf_bundle,
             )
         elif args.group == "research" and args.research_command == "replay":
-            from src.research.formal_model_replay import FormalModelReplayError, replay_formal_models
+            from src.research.formal_model_replay import (
+                FormalModelReplayError,
+                replay_formal_models,
+            )
 
             errors += (FormalModelReplayError,)
             payload = replay_formal_models(
@@ -450,9 +528,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     return 0
                 payload = inspected
             elif args.study_action == "compare":
-                payload = compare_studies(
-                    _resolve(root, args.left), _resolve(root, args.right)
-                )
+                payload = compare_studies(_resolve(root, args.left), _resolve(root, args.right))
             else:
                 parser.error("unsupported study action")
                 return 2
@@ -467,7 +543,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 set_primary=args.set_primary,
             )
         elif args.group == "research" and args.research_command == "rebuild-index":
-            from src.artifacts.repository_metadata_cache import RepositoryMetadataCacheError, rebuild_metadata_cache
+            from src.artifacts.repository_metadata_cache import (
+                RepositoryMetadataCacheError,
+                rebuild_metadata_cache,
+            )
 
             errors += (RepositoryMetadataCacheError,)
             payload = rebuild_metadata_cache(
@@ -479,7 +558,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 load_active_strategy_catalog,
             )
             from src.artifacts.strategy_signal_ledger import (
-                StrategySignalLedgerError, append_signal_evaluation, parse_optional_int,
+                StrategySignalLedgerError,
+                append_signal_evaluation,
+                parse_optional_int,
             )
 
             errors += (ActiveStrategyCatalogError, StrategySignalLedgerError)
@@ -523,28 +604,48 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.group == "ops" and args.ops_command == "acceptance":
             from datetime import datetime, timezone
             import zipfile
-            from src.artifacts.operating_acceptance import build_acceptance_report, collect_operating_review
+            from src.artifacts.operating_acceptance import (
+                build_acceptance_report,
+                collect_operating_review,
+            )
 
             errors += (ValueError, zipfile.BadZipFile)
             readiness = None
             if args.archive_repository and not args.collect_repository:
                 raise ValueError("private retention requires --collect-repository")
             if args.collect_repository:
-                readiness = collect_operating_review(args.collect_repository, input_root=_resolve(root, args.input_root), repository_root=root, now_utc=datetime.now(timezone.utc), archive_repository=args.archive_repository)
-            payload = build_acceptance_report(_resolve(root, args.input_root), declarations=_resolve(root, args.declarations) if args.declarations else None, through=args.through)
+                readiness = collect_operating_review(
+                    args.collect_repository,
+                    input_root=_resolve(root, args.input_root),
+                    repository_root=root,
+                    now_utc=datetime.now(timezone.utc),
+                    archive_repository=args.archive_repository,
+                )
+            payload = build_acceptance_report(
+                _resolve(root, args.input_root),
+                declarations=_resolve(root, args.declarations) if args.declarations else None,
+                through=args.through,
+            )
             if readiness is not None:
                 payload["latest_attempt_readiness"] = readiness
             if args.output:
                 target = _resolve(root, args.output)
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+                target.write_text(
+                    json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
         elif args.group == "ops" and args.ops_command == "build":
             from src.artifacts.strategy_operations import (
-                StrategyOperationsError, build_operations_payload,
-                validate_operations_payload, write_operations_payload,
+                StrategyOperationsError,
+                build_operations_payload,
+                validate_operations_payload,
+                write_operations_payload,
             )
             from src.artifacts.system_health import (
-                SystemHealthError, build_system_health, validate_system_health,
+                SystemHealthError,
+                build_system_health,
+                validate_system_health,
                 write_system_health,
             )
 
@@ -583,7 +684,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "trade_ready": False,
             }
         elif args.group == "ops" and args.ops_command == "publish":
-            from src.artifacts.strategy_operations_runtime import StrategyOperationsRuntimeError, publish_strategy_operations
+            from src.artifacts.strategy_operations_runtime import (
+                StrategyOperationsRuntimeError,
+                publish_strategy_operations,
+            )
 
             errors += (StrategyOperationsRuntimeError,)
             payload = publish_strategy_operations(_resolve(root, args.input))
@@ -613,6 +717,65 @@ def main(argv: Sequence[str] | None = None) -> int:
                     else json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
                 )
                 out_path.write_text(out_content, encoding="utf-8")
+        elif args.group == "racetrack" and args.racetrack_command == "publish":
+            from src.racetrack.contracts import (
+                CalendarSessionError,
+                DataQualificationError,
+                PITViolationError,
+                PrivacyViolationError,
+            )
+            from src.racetrack.pipeline import publish_racetrack_projection
+
+            errors += (
+                CalendarSessionError,
+                PITViolationError,
+                PrivacyViolationError,
+                DataQualificationError,
+                ValueError,
+            )
+            result = publish_racetrack_projection(
+                market=args.market,
+                as_of_cutoff=args.as_of,
+                output_dir=_resolve(root, args.output_dir) if args.output_dir is not None else None,
+                start_date=args.start_date,
+                root_path=root,
+            )
+            manifest_rel = (
+                result.manifest_path.relative_to(root).as_posix()
+                if result.manifest_path.is_relative_to(root)
+                else str(result.manifest_path)
+            )
+            payload = {
+                "status": "published",
+                "market": result.market,
+                "as_of_cutoff": result.as_of_cutoff,
+                "as_of_session": result.as_of_session,
+                "season_id": result.season_id,
+                "pool_id": result.pool_id,
+                "manifest_path": manifest_rel,
+                "manifest_sha256": result.manifest_sha256,
+                "matrix_sha256": result.matrix_sha256,
+                "runner_count": result.runner_count,
+                "research_only": True,
+                "trade_ready": False,
+            }
+        elif args.group == "racetrack" and args.racetrack_command == "show":
+            from src.racetrack.pipeline import render_racetrack_scoreboard
+
+            errors += (ValueError, KeyError)
+
+            in_dir = (
+                _resolve(root, args.input_dir)
+                if args.input_dir is not None
+                else (root / "data" / "racetrack" / "projections" / args.market)
+            )
+            output_text = render_racetrack_scoreboard(
+                input_dir=in_dir,
+                format_type=args.format,
+                market=args.market,
+            )
+            print(output_text)
+            return 0
         else:
             parser.error("unsupported command")
             return 2

@@ -317,6 +317,10 @@
   - 编写单测验证未认证 RDI 事件严格返回 10 与 `blocked_event_pit_coverage`；
   - 运行全量回归套件并通过 `uv run ruff check` 与 `git diff --check`。
 
+### Phase 7.2: Research → Decision 前端价值呈现（轻量单 PR）
+
+- [ ] **7.2.1 / Decision Feed + Evidence Review**：在现有 `/app` 与 `/strategies/:strategyId` 内复用正式策略状态、经验证的决策证据，实现「今天关注什么 → 支持/反证/局限 → 下一步」；先做展示与只读复核，不新建导航、交易引擎或数据库。**唯一实施清单及验收条件**：[Decision Feed + Evidence Review TODO](../docs/product/decision_feed_evidence_review_todo.md)。本条仅在文档/代码/测试与真实权限验收全部完成后打勾。
+
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
   - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。
@@ -370,17 +374,95 @@
   - [x] 记录 lessons 到 `tasks/lessons.md`。
   - [x] 保持 git 分支整洁，顺利推送到 `origin main`。
 
-### Phase 8.0: 投研落地设施路线图与抄底研究推进 (PR #1307 BD-00 ~ BD-02)
-- [ ] **8.0.1 [BD-00 / Audit] 价格底座、个股覆盖度与工作区扩展接口审计（初步笔记，证据验收待补）**:
+### Phase 8.0: Racetrack 最小技术栈与资产净值引擎 (PR #1306 Phase 1 Minimal Stack)
+- [x] **8.0.1 [Architecture & Spec] 最小数据底座与 P/Q 引擎技术规范设计 (Architect Subagent)**:
+  - [x] 形式化 $P(t, s)$ 价格矩阵契约（时间轴 $T \in$ 交易所日历，资产轴 $S \in$ 治理股票池，总收益复权价）；
+  - [x] 形式化 $Q(t, s)$ 持仓事件账本契约（稀疏 JSONL 事件流、SHA-256 哈希链防篡改、仅含目标百分比权重）；
+  - [x] 形式化统一净值折算与调仓摩擦公式（逐日权重漂移、单边 8 bps 真实摩擦、NAV 归一化）；
+  - [x] 撰写设计规范至 `docs/architecture/racetrack_minimal_stack_spec.md` 并写入 PR #1306。
+- [x] **8.0.2 [Implementation: P/Q Engine] 核心引擎与数据切片解析实现 (Developer Subagent)**:
+  - [x] 建立 `src/racetrack/` 核心模块包；
+  - [x] 实现 `contracts.py`：P 矩阵契约、Q 事件账本数据类；
+  - [x] 实现 `matrix.py`：构建 $P(t, s)$ 矩阵（严格基于治理候选池与真实交易所交易日历）；
+  - [x] 实现 `ledger.py`：追加和验证 $Q$ 事件账本（哈希链防篡改、无账户隐私敏感信息）；
+  - [x] 实现 `engine.py`：纯函数式净值折算（连续净值、最大回撤、单边 8 bps 摩擦、Sharpe 比率）；
+  - [x] 实现 `pool_index.py`：美股 87 池等权月度再平衡指数（Pool Index）生成器。
+- [x] **8.0.3 [Tests & Invariant Proofs] 严密契约测试与无未来函数断言**:
+  - [x] 编写 `tests/test_racetrack_minimal_stack.py`；
+  - [x] 覆盖哈希一致性、篡改拦截、漂移与摩擦数学闭环、池指数基准对比及零账户隐私泄露（10 项测试 100% 通过）。
+- [x] **8.0.4 [Review & PR Update] 回归验证与更新 PR #1306 文档与提交**:
+  - [x] 运行全量测试套件、静态代码分析与 diff 检查；
+  - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
+
+### Phase 8.1: Racetrack Phase 1 缺口收敛与方法学闭环 (Methodological Closure & Gap Remediation)
+- [x] **8.1.1 [P0 / Initial Friction] 明确初始现金投入与建仓摩擦模型**:
+  - [x] 设定 $t_0^-$ 组合为 100% 现金 ($w_{cash}^{drift}=1.0, w_i^{drift}=0.0$)；
+  - [x] 首日建仓换手严格计为 $\text{Turnover}_{t_0} = \sum w_i^{target}$，扣除初始摩擦 $\text{Friction}_{t_0}$，首日净值 $\text{NAV}(t_0) = 1.0 - \text{Friction}_{t_0}$；
+  - [x] 彻底消除首日满仓免换手与免摩擦漏洞。
+- [x] **8.1.2 [P0 / Ledger Constraints] 健全持仓账本约束与防意外覆盖**:
+  - [x] `engine.py` 严格校验 `ledger_events` 会话单调递增，杜绝乱序与同日重复事件（拒绝静默覆盖）；
+  - [x] `ledger.py` 中 `EventLedger.create()` 默认 `overwrite=False`，已存在文件抛出 `LedgerOverwriteError`；
+  - [x] `EventLedger.append()` 校验 `effective_session > last_session`，严禁追加历史或重复交易日。
+- [x] **8.1.3 [P0 / Pool Index Qualification] 规范股票池指数成分资格**:
+  - [x] `pool_index.py` 坚决杜绝静默剔除缺价/未上市股票重算权重（严格遵守 `silent_exclusion_allowed: false`）；
+  - [x] 所有声明成员固定 $1/N_{declared}$（US 87 为 $1/87$），未上市或缺失价格标的所占份额由现金持有 ($w_{cash} = N_{unlisted} / N_{declared}$)；
+  - [x] 记录逐月成分资格审计信息。
+- [x] **8.1.4 [P1 / PIT & Catalog Certification] 严格数据资格认证与 PIT 截止日阻断**:
+  - [x] `matrix.py` 严厉拦截 `end_date > as_of_cutoff` 请求，抛出 `PITViolationError`，坚决杜绝静默截短；
+  - [x] 校验 `catalog.json` 权威清单，核验所有候选标的与参考标的收录资质与角色，并在矩阵清单中记录 `catalog_sha256` 与资格声明。
+- [x] **8.1.5 [Test Suite & Regression] 编写针对性测试与全量回归**:
+  - [x] 扩充 `tests/test_racetrack_minimal_stack.py` 覆盖以上 4 类缺口的负面防御与数学闭环（15 项测试 100% 全绿）；
+  - [x] 验证全量单测通过与 `ruff check` 零告警；
+  - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`，向用户客观汇报。
+
+### Phase 8.2: Racetrack 赛道机制与记分体系 (PR #1306 Phase 2: Runner Registry & Season Scoring)
+- [x] **8.2.1 [Architecture & Spec] 选手契约与赛道记分技术规范设计 (Architect Subagent)**:
+  - [x] 形式化 `RunnerContract`（强制要求 Written Thesis、选股逻辑、调仓逻辑、标的池要求，无 Thesis 严禁参赛）；
+  - [x] 形式化 `SeasonScoring` 算法（自然月赛季结算、1M/3M/6M/1Y 滚动窗口、月度截面排名、赛季积分累计）；
+  - [x] 编写规范至 `docs/architecture/racetrack_runner_scoring_spec.md` 并写入 PR #1306 文档。
+- [x] **8.2.2 [Implementation: Runner & Scoring] 选手注册表与赛道记分器实现 (Developer Subagent)**:
+  - [x] 实现 `src/racetrack/runner.py`：`RunnerContract`, `RunnerRegistry`，挂载已有模型选手；
+  - [x] 实现 `src/racetrack/scoring.py`：多窗口收益率统计、月度排名矩阵、赛季积分累加与记分板生成；
+- [x] **8.2.3 [Tests & Invariant Proofs] 赛马场排位测试套件**:
+  - [x] 编写 `tests/test_racetrack_runner_scoring.py`；
+  - [x] 覆盖无 Thesis 拒赛、月度赛季自动结算、多窗口排名与积分单调累加。
+- [x] **8.2.4 [Review & PR Update] 回归验证与更新 PR #1306 文档与提交**:
+  - [x] 运行全量测试套件、静态代码分析与 diff 检查；
+  - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
+
+### Phase 8.3: Racetrack 双市场基准覆盖与自维护发布流水线 (PR #1306 Phase 3: Dual Benchmark & Self-Maintenance Pipeline)
+- [x] **8.3.1 [Architecture & Spec] 双市场基准与发布协议规范设计 (Architect Subagent)**:
+  - [x] 形式化 A 股选股池（CN 130 Equities `cn_selected_equities_v3`）等权基准指数生成模型；
+  - [x] 形式化 CSI 300（`000300` / `000300.SH`）宏观基准线与双超额矩阵；
+  - [x] 形式化原子化发布流水线协议（`manifest.json`, `scoreboard_{session}.json`, `scoreboard_latest.json`，密码学指纹一致性与 Fail-Closed 幂等保护）；
+  - [x] 撰写规范文档至 `docs/architecture/racetrack_pipeline_spec.md` 并对接 PR #1306。
+- [x] **8.3.2 [Implementation: Pipeline & CLI] 发布流水线与命令行入口实现 (Developer Subagent)**:
+  - [x] 修正 `src/racetrack/matrix.py` 对 CN CSI 300 符号的映射解析与日历对齐；
+  - [x] 实现 `src/racetrack/pipeline.py`：`publish_racetrack_projection()`，整合 P/Q 引擎、池指数、宏观基准、已注册选手执行、赛季结算与原子化落盘；
+  - [x] 在 `src/cli/main.py` 集成 `alpha racetrack publish [--market us|cn] [--as-of YYYY-MM-DD]` 与 `alpha racetrack show [--market us|cn]`；
+  - [x] 确保零个人账户敏感字段（`shares`, `broker`, `account_id`, `pnl` 等）泄露，零外部后台守护进程依赖。
+- [x] **8.3.3 [Tests & Invariant Proofs] 双市场与发布幂等测试套件**:
+  - [x] 编写 `tests/test_racetrack_pipeline.py`；
+  - [x] 验证 CN 130 选股池等权基准指数生成（1/130 权重、无漂移、现金承接未上市）；
+  - [x] 验证 CSI 300 基准比对与双超额矩阵；
+  - [x] 验证流水线原子发布、`manifest.json` SHA-256 校验与 Fail-Closed 脏写防御；
+  - [x] 验证隐私守卫负面拦截。
+- [x] **8.3.4 [Review & PR Update] 全量回归验证与提交推送**:
+  - [x] 运行全量测试套件、静态扫描与 diff 检查；
+  - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
+
+
+### Phase 9.0: 投研落地设施路线图与抄底研究推进 (PR #1307 BD-00 ~ BD-02)
+- [ ] **9.0.1 [BD-00 / Audit] 价格底座、个股覆盖度与工作区扩展接口审计（初步笔记，证据验收待补）**:
   - [x] 验证美股行情存储为 Yahoo 统一复权价格（adj_close等比缩放），无独立拆股分红事件流；
   - [x] 验证 BE 与 CRDO 均在 US 87 候选池，日线数据 100% 具备（BE 1,398 bars, CRDO 1,191 bars），`get_research_data_slice` 就绪退出；
   - [x] 梳理 Study Workspace 契约、分发执行器、收据比对与格式化 4 大挂载点；
   - [ ] 将 source/pool/catalog 哈希、cutoff、实际命令与 slice receipt 绑定到 RFC 后再勾选 BD-00；ready 不代表历史 PIT 已认证，拟议挂载点不代表已实现。
-- [ ] **8.0.2 [BD-01 / Architecture] 架构规范、指标公式与状态机契约设计 (Architect Subagent)**:
+- [ ] **9.0.2 [BD-01 / Architecture] 架构规范、指标公式与状态机契约设计 (Architect Subagent)**:
   - [ ] 提出待裁定决策点（执行与持有窗口、分批建仓权重、硬性否决范围、评估标的池范围）；
   - [ ] 形式化状态机转移规则（`WATCH` -> `PROBE_ELIGIBLE` -> `CONFIRMED` -> `INVALIDATED`）；
   - [ ] 编写合成数据基准用例（Synthetic Fixtures），断言时序因果性与绝对零前瞻。
-- [ ] **8.0.3 [BD-02 / Implementation] 因果量价指标、状态机流转与契约测试落地 (Developer Subagent)**:
+- [ ] **9.0.3 [BD-02 / Implementation] 因果量价指标、状态机流转与契约测试落地 (Developer Subagent)**:
   - [ ] 在 `src/research/study_workspace.py` 注册 `bottom_detection_v1` 契约配置；
   - [ ] 在 `src/research/studies/bottom_detection_study.py` 实现因果指标计算与状态流转；
   - [ ] 交付契约测试 `tests/test_bottom_detection_study.py`（单测全绿，零未来函数泄漏）。
@@ -511,3 +593,212 @@
   - **P1 纠正 Release Gate 状态**：修正 `docs/product/product_completion_scorecard_2026-10-25.md` 与 `tasks/todo.md`，将 Phase 3 定位为“公开投影修复已合并、完整隔离待验证”（A4 FAIL），Phase 4 定位为“章程已合并、RC 待执行”（A7 NOT_TESTED / NO-GO），消除了口径矛盾与不实验收。
   - **P1 启动 #1296 Track B 投研基础设施**：交付 RI-01 全量数据产品与血缘审计矩阵 `docs/architecture/investment_research_data_product_inventory_2026-10-26.md` 以及 RI-02 PIT 跨领域历史信息状态语义 ADR `docs/architecture/adr-0005-point-in-time-information-state-semantics.md`，建立五时间戳模型与 PIT-NEG-01 ~ PIT-NEG-05 负面测试。
 
+---
+
+## Racetrack Minimal Stack Spec 任务 (Phase 1 Spec)
+
+- [x] **R1. 撰写核心系统规范文档 (`docs/architecture/racetrack_minimal_stack_spec.md`)**:
+  - [x] **P(t, s) 市场价格矩阵规范**：
+    - [x] 时间轴 $T$：基于 `exchange_calendars` (XNYS / XSHG) 的真实交易日历与对齐规则；
+    - [x] 资产轴 $S$：严格绑定治理候选池 `us_selected_equities_v2.yaml` (87 标的) 与基准参考池 `QQQ` (总 88 标的)；
+    - [x] 价格源：读取 `data/research/market_evidence/us/symbols/{symbol}.json`，明确为复权总收益价 (Adjusted Total Return)；
+    - [x] 清单与哈希：输出包含 `matrix_sha256` 密码学指纹的行情清单 (Manifest)。
+  - [x] **Q(t, s) 持仓事件账本规范**：
+    - [x] 格式：稀疏 JSONL 事件流 (Sparse Event Stream)；
+    - [x] Schema 契约：定义 `event_id`, `parent_hash`, `timestamp_utc`, `effective_session`, `runner_id`, `runner_version`, `target_weights`, `cash_weight`, `reason`, `event_hash`；
+    - [x] 哈希链防篡改：逐级链接前序事件哈希，首事件 `parent_hash = "0" * 64`，清单记录 tip anchor；
+    - [x] 绝对隐私隔离：严禁出现实盘个人账户敏感信息 (shares, total_cost, broker 等)。
+  - [x] **资产价值与统一净值折算引擎数学规范 (V & NAV Engine)**：
+    - [x] 起始基准：$V(t_0) = 1.0$；
+    - [x] 逐日权重漂移公式：$w_{i, t}^{drift} = \frac{w_{i, t-1}(1 + r_{i, t})}{1 + r_{gross, t}}$；
+    - [x] 单边换手率定义：$\text{Turnover}_t = \frac{1}{2} \sum |w_{i, t}^{target} - w_{i, t}^{drift}|$；
+    - [x] 交易摩擦模型：$\text{Friction}_t = \text{Turnover}_t \times \text{friction\_rate}$ (默认单边 8 bps，支持 0 bps / 15 bps 敏感性)；
+    - [x] 净收益率与连续净值：$r_{net, t} = r_{gross, t} - \text{Friction}_t$，$NAV(t) = NAV(t-1) \cdot (1 + r_{net, t})$；
+    - [x] 关键评价指标：连续最大回撤 (MDD)、年化超额收益 (Excess Return vs QQQ)、年化夏普比率 (Sharpe)。
+  - [x] **自建股票池指数 (Pool Index) 规范**：
+    - [x] 美股 87 选股池等权基准：每个自然月首个交易日执行等权再平衡 ($w_i = 1 / 87$)，全月自然漂移；
+    - [x] 同样通过上述统一引擎折算净值，作为赛道内部第一参考基准线。
+- [x] **R2. 更新 PR #1306 说明文档 (`docs/product/racetrack_vision_2026-10-27.md`)**:
+  - [x] 在末尾追加第 12 节，简明链接并概述该 Minimal Stack 实施规范。
+- [x] **R3. 验证与审查**:
+  - [x] 检查所有公式、Schema、字段与约束；
+  - [x] 确认合规性 (`research_only=true`, `trade_ready=false`, 隐私隔离)；
+  - [x] 记录 Review 并向主 Agent 发送完整架构设计总结。
+
+### Review & Completion Summary (2026-10-28)
+- 交付规范文档：`docs/architecture/racetrack_minimal_stack_spec.md` (完整包含 P 矩阵、Q 账本、V/NAV 引擎、自建等权指数四大模块，配套 8 项负面测试矩阵与 Mermaid 架构图)；
+- 更新视觉文档：`docs/product/racetrack_vision_2026-10-27.md`（末尾追加 §12 实施规范链接与要点摘要）；
+- 质量检查：`git diff --check` 0 警告，文档完全对齐 ADR-0003, ADR-0005 与 PR #1306。
+
+---
+
+## Phase 1 Minimal Stack 代码落地与测试 (Phase 1 Minimal Stack Implementation)
+
+- [x] **M1. 契约与序列化模块 (`src/racetrack/contracts.py`, `src/racetrack/__init__.py`)**:
+  - [x] 定义 `PriceMatrix`, `RebalanceEvent`, `EngineConfig`, `SimulationResult`, `NAVPoint` 等不可变契约；
+  - [x] 实现 Canonical JSON 序列化与哈希计算；
+  - [x] 严密隐私隔离守卫白名单/黑名单校验（`shares`, `total_cost`, `broker`, `account_id`, `pnl` 等出现立即抛出 `PrivacyViolationError` / `ValueError`）。
+- [x] **M2. 市场价格矩阵构建器 (`src/racetrack/matrix.py`)**:
+  - [x] 基于 `exchange_calendars` (US -> `XNYS`) 解析官方交易日历与区间会话；
+  - [x] 读取候选池配置 `us_selected_equities_v2.yaml` (87 标的) 与基准参考 `QQQ`；
+  - [x] 从 `data/research/market_evidence/us/symbols/{symbol}.json` 提取复权日线；
+  - [x] 严禁 forward-fill，缺失会话置为 `np.nan`；
+  - [x] 输出包含确定性 `matrix_sha256` 的 `PriceMatrix` 结构。
+- [x] **M3. 稀疏持仓事件账本 (`src/racetrack/ledger.py`)**:
+  - [x] 实现 `EventLedger` 类：创建、追加、链式哈希校验 (`verify()`)；
+  - [x] 创世事件绑定 64 个 `0`，后续事件严格 SHA-256 递归绑定；
+  - [x] 篡改检测抛出 `LedgerTamperedError`；
+  - [x] `to_dense_panel(sessions)` 将稀疏事件流展开为每日密集目标权重面板。
+- [x] **M4. 统一资产净值折算引擎 (`src/racetrack/engine.py`)**:
+  - [x] 实现 `simulate_portfolio(matrix, ledger_events, config)`；
+  - [x] 起始点归一化 $V(t_0) = 1.0$；
+  - [x] 逐日自然权重漂移公式：$w_{i, t}^{drift} = \frac{w_{i, t-1}(1 + r_{i, t})}{1 + r_{gross, t}}$；
+  - [x] 单边换手率：$\text{Turnover}_t = \frac{1}{2} \sum |w_{i, t}^{target} - w_{i, t}^{drift}|$；
+  - [x] 线性交易摩擦：$\text{Friction}_t = \text{Turnover}_t \times \text{friction\_rate}$ (默认 8 bps)；
+  - [x] 净收益率与连续净值累乘更新：$\text{NAV}(t) = \text{NAV}(t-1) \cdot (1 + r_{net, t})$；
+  - [x] 计算累积收益率、CAGR、年化波动率、年化夏普 (无风险 2%)、最大回撤 (MDD)、年化超额 (vs QQQ)、累积换手率。
+- [x] **M5. 自建选股池等权指数 (`src/racetrack/pool_index.py`)**:
+  - [x] 识别每个自然月首个交易日，生成等权再平衡事件 ($1/87$)；
+  - [x] 自然月内其余交易日自然漂移，单边换手率为 0；
+  - [x] 调用统一净值引擎产生内部第一参考基准线 (Pool Index NAV)。
+- [x] **M6. 完整测试套件 (`tests/test_racetrack_minimal_stack.py`)**:
+  - [x] TEST-RT-01：交易日历对齐与缺失数据 NaN 填充；
+  - [x] TEST-RT-02：价格矩阵 SHA-256 确定性与源文件不变性；
+  - [x] TEST-RT-03：Q 账本哈希链完整性校验与中途篡改拦截；
+  - [x] TEST-RT-04：隐私阻断负面测试；
+  - [x] TEST-RT-05：权重漂移与单边换手守恒数学断言；
+  - [x] TEST-RT-06：摩擦敏感性检验 (0 bps > 8 bps > 15 bps)；
+  - [x] TEST-RT-07：美股 87 池月度等权指数生成与基准 QQQ 超额计算；
+  - [x] TEST-RT-08：端到端真实数据全生命周期演练。
+- [x] **M7. 运行验证与代码质量门禁**:
+  - [x] `uv run pytest tests/test_racetrack_minimal_stack.py -v` 验证全部 10 项测试全绿通过；
+  - [x] `uv run ruff check` 确保零告警。
+- [x] **M8. 汇报与交付**:
+  - [x] 记录结果 Review 并向主 Agent 回复交付报告。
+
+### Review & Completion Summary (Phase 1 Minimal Stack - 2026-10-28)
+- **交付包 `src/racetrack/`**:
+  - `contracts.py`: 不可变契约数据类（`PriceMatrix`, `RebalanceEvent`, `EngineConfig`, `SimulationResult`, `NAVPoint`），规范化 Canonical JSON 序列化与哈希计算，严格的个人敏感账户隐私守卫（违规立即阻断抛出 `PrivacyViolationError`）。
+  - `matrix.py`: 官方交易日历对齐（US -> `XNYS`）、US 87 + QQQ 标的加载、严禁 forward-fill 的 NaN 保护机制、确定性 `matrix_sha256` 生成。
+  - `ledger.py`: `EventLedger` 稀疏 JSONL 账本，首事件绑定 64 个 `0`，逐级 SHA-256 递归绑定，篡改拦截抛出 `LedgerTamperedError`，支持密集目标权重面板展开。
+  - `engine.py`: 统一资产净值折算引擎，精确实现起始点 1.0 归一化、自然权重漂移、单边换手率守恒计算、线性摩擦扣除、连续净值更新及完备指标统计（CAGR、夏普、MDD、超额等）。
+  - `pool_index.py`: 美股 87 等权基准指数生成器，实现自然月首个交易日再平衡与月内自然漂移零换手。
+  - `__init__.py`: 统一导出核心 API 与异常类型。
+- **测试套件 `tests/test_racetrack_minimal_stack.py`**:
+  - 10 项测试用例 100% 覆盖 TEST-RT-01 ~ TEST-RT-08 以及非法标的/权重超限负面用例。
+  - 测试结果：`10 passed in 21.39s`。
+  - 静态检查：`uv run ruff check` 0 errors / 0 warnings。
+
+---
+
+## Phase 2 赛道机制：选手准入与赛马记分系统架构设计 (Phase 2 Spec)
+
+- [x] **P2.1 选手准入契约与注册表规范设计 (`RunnerContract` & `RunnerRegistry`)**:
+  - [x] 确立 `RunnerContract` 实体强类型契约（`runner_id`, `runner_version`, `pool_id`, `benchmark_symbol`, `thesis`, `selection_logic`, `rebalance_logic`, `track_condition_associations`）；
+  - [x] 强制前置投资假设门禁（`ThesisMissingError`，少于 30 字符或空白严格拦截）；
+  - [x] 规范纯函数式 `run(matrix: PriceMatrix, ledger_path: Path) -> SimulationResult` 回放与账本落盘接口；
+  - [x] 规范 `RunnerRegistry` 发现、资产池白名单审核（拦截未注册与基准标的）与多进程并发回放。
+- [x] **P2.2 单月赛季与多周期时间窗口规范 (`Monthly Season & Rolling Windows`)**:
+  - [x] 依据 §11.1 裁定单月赛季（Monthly Season）默认规则，以交易所日历（`XNYS`）月初首日开跑，月末最后交易日收盘统一结算；
+  - [x] 滚动多周期评估窗：1M（月度）、3M（季度）、6M（半年）、1Y（年度）复合净收益率；
+  - [x] 双基准超额收益数学模型：相对纳斯达克 100 大盘（QQQ）与美股 87 等权池指数（US87_EW）超额收益。
+- [x] **P2.3 赛马记分与月度排名算法 (`Race Scoring & PointsRuleV1`)**:
+  - [x] 月度截面降序排序模型（Monthly Cross-Sectional Rank）；
+  - [x] 版本化赛季积分规则矩阵 `PointsRuleV1`（1st: 10, 2nd: 6, 3rd: 4, 4th: 2, 5th: 1, >5th: 0）；
+  - [x] 稳定性度量（Persistence Indicator）：前 50% 胜率月份占比、最长连续得分月数、月度排名波动率；
+  - [x] 机制杜绝单日暴涨后视偏差的数学论证。
+- [x] **P2.4 Scoreboard 前台记分板数据投影契约 (`Scoreboard Projection Contract`)**:
+  - [x] 统一归一化 NAV 曲线中心视图与双基准对齐；
+  - [x] 严密结构化 JSON Schema 规范（`racetrack_scoreboard_v1.json`）；
+  - [x] 天气归因指标映射与零计算纯消费前台契约。
+- [x] **P2.5 配套测试矩阵与 Mermaid 架构图**:
+  - [x] 绘制选手准入生命周期状态机与记分引擎流水线 Mermaid 流程图；
+  - [x] 制定 10 项严密测试用例（TEST-RT-P2-01 ~ TEST-RT-P2-10）。
+- [x] **P2.6 核心技术文档归档与 PR #1306 链接**:
+  - [x] 输出完整规范文档 `docs/architecture/racetrack_runner_scoring_spec.md`；
+  - [x] 在 `docs/product/racetrack_vision_2026-10-27.md` 末尾追加第 13 节。
+
+### Review & Completion Summary (Phase 2 Spec - 2026-10-28)
+- **核心交付文档**:
+  - `docs/architecture/racetrack_runner_scoring_spec.md`: 涵盖 9 大章节，系统化定义了选手契约、注册表审核、单月赛季划分、滚动多周期评估、`PointsRuleV1` 赛马记分算法、前台记分板 JSON Schema 与 10 项负面/边界测试用例。
+  - `docs/product/racetrack_vision_2026-10-27.md`: 追加第 13 节，建立对 Phase 2 实施规范的正式引用与核心系统摘要。
+
+---
+
+## Phase 2 代码落地：Runner 注册表与 Race Scoring 赛马记分系统实现
+
+- [x] **R1. 扩充核心契约 (`src/racetrack/contracts.py`)**:
+  - [x] 增加异常类 `ThesisMissingError(ValueError)`；
+  - [x] 增加数据类 `MonthlyRankPoint` (包含 month, rank, total_runners, monthly_net_return, monthly_excess_vs_qqq, monthly_excess_vs_pool, points_earned)；
+  - [x] 增加数据类 `ScoreboardEntry` (包含 runner_id, runner_version, thesis_summary, season_points, current_rank, return_1m, return_3m, return_6m, return_1y, excess_vs_qqq, excess_vs_pool, max_drawdown, sharpe_ratio, persistence_ratio, monthly_ranks)；
+  - [x] 增加数据类 `Scoreboard` (包含 schema_version, as_of_session, season_id, pool_id, benchmark_symbol, entries)，提供 `to_dict()`, `to_json()`, `from_dict()`, `from_json()` 方法；
+  - [x] 在 `src/racetrack/__init__.py` 中导出新增契约与异常。
+- [x] **R2. 选手契约与注册表实现 (`src/racetrack/runner.py`)**:
+  - [x] `RunnerContract` 基类：
+    - [x] 字段：runner_id, runner_version, pool_id, benchmark_symbol, thesis, selection_logic, rebalance_logic, track_condition_associations, target_symbols；
+    - [x] `__post_init__` 强制门禁：thesis 为 None、空白或长度 < 30 字符立即抛出 `ThesisMissingError`；
+    - [x] `run(matrix, ledger_path, config)`：纯函数式回放与账本落盘，校验候选池与基准角色隔离；
+  - [x] `RunnerRegistry` 注册表：
+    - [x] `register(runner)`：杜绝重复 ID，审核 pool_id 与 matrix.pool_id / candidate_symbols 一致性；
+    - [x] `get(runner_id)` 与 `list_runners()`；
+    - [x] `evaluate_all(matrix, ledgers_dir, config)`：遍历运行所有注册选手并返回回测结果字典。
+- [x] **R3. 赛马记分与月度排名引擎 (`src/racetrack/scoring.py`)**:
+  - [x] `PointsRuleV1`：标准积分映射表 {1: 10, 2: 6, 3: 4, 4: 2, 5: 1, >5: 0}；
+  - [x] `calculate_monthly_returns(simulation)`：真实自然月复合净收益率；
+  - [x] `calculate_rolling_window_return(simulation, months)`：1M, 3M, 6M, 1Y 复合滚动收益；
+  - [x] `evaluate_race_season(...)`：多选手月度截面排名、积分累加、双基准超额矩阵、持续度比率与记分板生成；
+  - [x] 在 `src/racetrack/__init__.py` 中导出新增模块函数。
+- [x] **R4. 编写完整单元测试套件 (`tests/test_racetrack_runner_scoring.py`)**:
+  - [x] TEST-RT-P2-01：空/过短 Thesis 触发 `ThesisMissingError` 门禁；
+  - [x] TEST-RT-P2-02：`RunnerRegistry` 注册、发现与重复注册拦截；
+  - [x] TEST-RT-P2-03：真实自然月切分与月度复合收益率数学等价性；
+  - [x] TEST-RT-P2-04：月度截面降序排名；
+  - [x] TEST-RT-P2-05：`PointsRuleV1` 积分分配与累加；
+  - [x] TEST-RT-P2-06：防单日暴涨后视偏差实测断言；
+  - [x] TEST-RT-P2-07：多周期滚动收益率计算；
+  - [x] TEST-RT-P2-08：双基准超额矩阵核算；
+  - [x] TEST-RT-P2-09：Scoreboard 前台 JSON 结构完整性与只读反序列化；
+  - [x] TEST-RT-P2-10：真实美股 87 数据全量选手赛跑与记分板生成端到端演练。
+- [x] **R5. 执行验证与代码质量门禁**:
+  - [x] `uv run pytest tests/test_racetrack_runner_scoring.py -v` 全部通过；
+  - [x] `uv run ruff check` 确保零告警；
+  - [x] 更新 `tasks/todo.md` 记录 Review 总结，使用 `send_message` 向主 Agent 回复交付报告。
+
+### Review & Completion Summary (Phase 2 Runner Registry & Race Scoring - 2026-10-28)
+- **交付代码包**:
+  - `src/racetrack/contracts.py`: 新增 `ThesisMissingError(ValueError)`，定义 `MonthlyRankPoint`、`ScoreboardEntry` 与 `Scoreboard` 核心不可变数据类，提供强类型字典转换与 JSON 往返序列化能力。
+  - `src/racetrack/runner.py`: 建立 `RunnerContract` 基类与 `RunnerRegistry` 注册表。通过 `validate_runner_thesis` 实行前置投资假设强验证（< 30 字符严苛拦截）；纯函数式 `run()` 联动稀疏 JSONL 账本落盘，执行选股池白名单与基准参考标的严格物理隔离。
+  - `src/racetrack/scoring.py`: 建立赛马竞技计分核心逻辑。实现版本化积分矩阵 `PointsRuleV1`（1st: 10, 2nd: 6, 3rd: 4, 4th: 2, 5th: 1）；计算自然月复合收益率 $R_m = \frac{\text{NAV}_{end}}{\text{NAV}_{start}} - 1.0$；实现 1M/3M/6M/1Y 滚动窗口收益率计算；通过 `evaluate_race_season` 输出全量前台只读记分板，包含截面排位、累加总分、持久度比率（Top 50% 占比）与双基准超额收益矩阵。
+  - `src/racetrack/__init__.py`: 导出全部新增公共契约、异常与核心算法函数。
+- **单元与集成测试**:
+  - `tests/test_racetrack_runner_scoring.py`: 10 项严密测试全覆盖 TEST-RT-P2-01 ~ TEST-RT-P2-10，包含单日极端暴涨惩戒数学实测断言与真实美股 87 数据端到端竞技记分板演练。
+  - 测试结果：`10 passed in 3.49s`；与 Phase 1 Minimal Stack 联合回归：`25 passed in 22.65s`。
+  - 静态检查：`uv run ruff check` 全面通过，零错误零警告。
+
+### Review & Completion Summary (Phase 3 Dual Benchmark & Self-Maintaining Publish Pipeline - 2026-10-28)
+- **交付核心代码与治理模块**:
+  - `src/racetrack/matrix.py`:
+    - 增强宏观基准符号解析 `resolve_reference_symbol()`，支持 CSI 300（`000300` / `000300.SH`）与美股 `QQQ`；
+    - 对齐官方交易日历（A 股严格遵循 `XSHG`，美股严格遵循 `XNYS`），全面校验非交易日与节假日；
+    - 强制执行 `end_date <= as_of_cutoff` PIT 门禁并核验 evidence catalog 注册资质。
+  - `src/racetrack/contracts.py`:
+    - `PriceMatrix.get_price()` 增强对标的别名（`000300` / `000300.SH`）的双向消解透明访问。
+  - `src/racetrack/engine.py`:
+    - 增强对停牌/未上市股票的真实市场仿真，持仓标的在停牌期间每日收益严格为 0.0，复牌日无缝结算累计价格收益。
+  - `src/racetrack/pipeline.py`:
+    - 实现 `publish_racetrack_projection()`，整合价格矩阵加载、池指数推导、宏观基准构建、已准入选手批量执行与赛季记分；
+    - 确立纵深隐私检查防线，递归式拦截 `shares`、`total_cost`、`broker`、`account_id`、`pnl` 等账户敏感字段；
+    - 确立 `.staging_{uuid}/` 事务隔离区与 Fail-Closed 机制，生成带 SHA-256 签名的不可变 `manifest.json`、历史归档 `scoreboard_{session}.json` 与前台投影 `scoreboard_latest.json`，原子化提拔（Atomic Promotion）至正式发布目录；
+    - 实现 `render_racetrack_scoreboard()`，提供终端友好渲染。
+  - `src/cli/main.py`:
+    - 扩展 `alpha racetrack publish`（`--market us|cn`, `--as-of`, `--output-dir`, `--start-date`）；
+    - 扩展 `alpha racetrack show`（`--market us|cn`, `--input-dir`, `--format markdown|table|json`）。
+  - `src/racetrack/__init__.py`:
+    - 导出全部新增核心契约与流水线函数（`publish_racetrack_projection`, `PipelineResult`, `render_racetrack_scoreboard`, `resolve_reference_symbol`）。
+- **单元与集成测试套件 (`tests/test_racetrack_pipeline.py`)**:
+  - 覆盖 TEST-RT-P3-01 至 TEST-RT-P3-10 全量 10 项严密契约与负面测试；
+  - 覆盖 CN 130 权重守恒（1/130）与上市前现金槽保护、月内零换手价格漂移、CSI 300 标的映射与 XSHG 日历对齐、双市场双基准超额矩阵、端到端发布与清单哈希校验、Fail-Closed 事务脏写防御、位级幂等性、隐私守卫零泄露、CLI 命令行交互与多格式渲染、跨市场物理隔离与摩擦单调性。
+- **质量门禁验证**:
+  - Phase 3 独立测试套件：`uv run pytest tests/test_racetrack_pipeline.py -v` -> 10 passed in 32.05s；
+  - Phase 1–3 联合回归：`uv run pytest tests/test_racetrack_minimal_stack.py tests/test_racetrack_runner_scoring.py tests/test_racetrack_pipeline.py -v` -> 35 passed in 53.19s；
+  - 静态检查：`uv run ruff check` 全部通过，零告警；`uv run ruff format` 格式化规范全部通过。
