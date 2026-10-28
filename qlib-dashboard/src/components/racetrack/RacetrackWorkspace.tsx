@@ -75,7 +75,7 @@ export function RacetrackWorkspace() {
       <div className="grid gap-3 sm:grid-cols-3">
         <Fact label="Evidence through" value={projection.manifest.as_of_session} note={`Publication cutoff ${projection.manifest.as_of_cutoff}`} />
         <Fact label="Published competitors" value={String(projection.manifest.runner_count)} note={phase ? 'Pool index also races · QQQ is reference only' : projection.scoreboard.status === 'diagnostic_baseline_only' ? 'Baseline only · no runners admitted' : 'Ranked by published cumulative points'} />
-        <Fact label="Season · provisional" value={projection.manifest.season_id.replace(/^season_/, '')} note={`${(projection.manifest.engine_config.friction_rate * 10000).toFixed(1)} bps friction · partial months included`} />
+        <Fact label="Season · provisional" value={projection.manifest.season_id.replace(/^season_/, '')} note={`${(projection.manifest.engine_config.friction_rate * 10000).toFixed(1)} bps friction · ${phase ? 'current month not reviewed' : 'partial months included'}`} />
       </div>
       {phase && <aside aria-label="First season rules" className="space-y-2 rounded-xl border bg-card px-5 py-4 text-xs leading-relaxed text-muted-foreground">
         <p className="font-medium text-foreground">Monthly return-points · +3.2% = 3.2 points; -1.5% = -1.5 points. The pool index earns them too.</p>
@@ -83,7 +83,7 @@ export function RacetrackWorkspace() {
         <p>Daily Brief explains the four formal strategies. This Racetrack compares separately admitted research runners; its window Top 10 does not replace the Brief.</p>
       </aside>}
       {!!phase?.source_gaps.length && <aside aria-label="Research data limitations" className="rounded-xl border border-amber-500/40 bg-amber-500/5 px-5 py-4 text-xs leading-relaxed">
-        <p className="font-medium">Unresolved price / lifecycle gaps: {phase.source_gaps.slice(0, 8).map(gap => `${gap.symbol} (${gap.missing_sessions} sessions)`).join(', ')}{phase.source_gaps.length > 8 ? ` and ${phase.source_gaps.length - 8} more` : ''}.</p>
+        <p className="font-medium">Unresolved price / lifecycle gaps: {phase.source_gaps.slice(0, 8).map(gap => `${gap.symbol} (${gap.missing_sessions} ${gap.missing_sessions === 1 ? 'session' : 'sessions'})`).join(', ')}{phase.source_gaps.length > 8 ? ` and ${phase.source_gaps.length - 8} more` : ''}.</p>
         <p className="mt-1 text-muted-foreground">The replay retains the declared last-known valuation and rebalance cash-slot policy. Missing observations are not freshly tradable prices or certified halts. No candidate is silently dropped.</p>
       </aside>}
       <div className="rounded-xl border bg-card p-4 sm:p-5">

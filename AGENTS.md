@@ -41,6 +41,11 @@ research projections use a loopback-only read boundary on the existing Vite
 server; they are not copied to public Pages or treated as current strategy
 operations. Opening the view never evaluates a runner or refreshes a provider.
 Racetrack publication contracts remain the calculation and evidence authority.
+User-directed #1312 Phase A adds an explicit US87 pool-index racer opt-in under
+the [first-season v2 contract](docs/architecture/racetrack_first_season_v2.md).
+It shares one replay with the internal benchmark and retains private hash-bound
+Q evidence. It does not admit formal-derived variants, enable CN racers, settle
+a month, change formal identities or certify source/PIT readiness.
 
 - Core value: refresh required data, evaluate due strategies, explain the
   evidence-bound result and expose freshness/blockers in one current view.

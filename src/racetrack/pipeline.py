@@ -625,11 +625,12 @@ def render_racetrack_scoreboard(
         return f"{val:.2f}" if v2 else str(val)
 
     if format_type.lower() == "table":
+        runner_width = max([22, *(len(e.runner_id) + 2 for e in scoreboard.entries)])
         lines = [
             f"=== RACETRACK SCOREBOARD [{market.upper()}] ===",
             f"As of Session: {scoreboard.as_of_session} | Season: {scoreboard.season_id} | Pool: {scoreboard.pool_id}",
             "-" * 96,
-            f"{'Rank':<5}{'Runner ID':<22}{'Ver':<7}{'Pts':<6}{'1M Ret':<10}{'3M Ret':<10}{'1Y Ret':<10}{'Sharpe':<8}{'MaxDD':<9}{'Persistence'}",
+            f"{'Rank':<5}{'Runner ID':<{runner_width}}{'Ver':<7}{'Pts':<8}{'1M Ret':<10}{'3M Ret':<10}{'1Y Ret':<10}{'Sharpe':<8}{'MaxDD':<9}{'Persistence'}",
             "-" * 96,
         ]
         if not scoreboard.entries:
@@ -637,7 +638,7 @@ def render_racetrack_scoreboard(
         else:
             for e in scoreboard.entries:
                 lines.append(
-                    f"{e.current_rank:<5}{e.runner_id:<22}{e.runner_version:<7}{_fmt_points(e.season_points):<8}"
+                    f"{e.current_rank:<5}{e.runner_id:<{runner_width}}{e.runner_version:<7}{_fmt_points(e.season_points):<8}"
                     f"{_fmt_pct(e.return_1m):<10}{_fmt_pct(e.return_3m):<10}{_fmt_pct(e.return_1y):<10}"
                     f"{_fmt_ratio(e.sharpe_ratio):<8}{_fmt_pct(e.max_drawdown):<9}{e.persistence_ratio * 100:.1f}%"
                 )

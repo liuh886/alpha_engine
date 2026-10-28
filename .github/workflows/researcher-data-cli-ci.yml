@@ -75,6 +75,7 @@ jobs:
           uv run alpha research run --help
           uv run alpha research study list
           uv run alpha research study run --help
+          uv run alpha racetrack publish --help
       - name: Ruff researcher data paths
         run: >-
           uv run ruff check

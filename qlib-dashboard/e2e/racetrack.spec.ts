@@ -163,7 +163,7 @@ test('first season shows one dual-role pool racer, negative return-points and ho
   const board = page.getByRole('region', { name: 'Published Top 10' });
   await expect(board.locator('tbody tr')).toHaveCount(1);
   await expect(page.getByRole('complementary', { name: 'First season rules' })).toContainText('not compounded NAV returns');
-  await expect(page.getByRole('complementary', { name: 'Research data limitations' })).toContainText('B (1 sessions)');
+  await expect(page.getByRole('complementary', { name: 'Research data limitations' })).toContainText('B (1 session)');
   await expect(board).toContainText('Internal benchmark, also racing');
   await expect(board).toContainText('Short history · not ranked');
   await expect(board.locator('tbody tr td').first()).toHaveText('—');

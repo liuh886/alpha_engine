@@ -132,6 +132,12 @@ of a single month, a single day, or an in-sample result alone.
 
 ### Phase A — US pool-index adapter and retained evidence first
 
+Implementation slice: [first-season v2 contract](../architecture/racetrack_first_season_v2.md).
+This explicitly opted-in US pool-racer slice implements shared Q evidence,
+return-points and full-duration window ranks; other admissions and reviewed
+settlement remain separate work. Local operating instructions are in
+[Racetrack frontend](racetrack_frontend.md).
+
 Admit the US 87 EW Pool Index as the first racer. It needs no formal-strategy
 replay and no registry extension: its rule, universe, calendar, and friction
 are already specified, and the US runner registry already exists. It still
