@@ -74,6 +74,9 @@ jobs:
       - name: TypeScript
         working-directory: qlib-dashboard
         run: npx tsc --noEmit
+      - name: Local Racetrack read boundary
+        working-directory: qlib-dashboard
+        run: node --test scripts/racetrack-local.check.mjs
       - name: Lint
         working-directory: qlib-dashboard
         run: npm run lint

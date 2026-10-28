@@ -256,11 +256,51 @@ def publish_racetrack_projection(
     scoreboard_dict = scoreboard.to_dict()
     assert_privacy_clean(scoreboard_dict)
 
+    # Detail artifacts are derived from the same evaluated runner and simulation,
+    # never by running a strategy again or inferring missing research evidence.
+    details = {}
+    for runner_id, runner in runners_map.items():
+        simulation = simulation_results[runner_id]
+        last = simulation.nav_history[-1]
+        details[runner_id] = {
+            "schema_version": "1.0",
+            "runner_id": runner_id,
+            "runner_version": runner.runner_version,
+            "pool_id": candidate_pool,
+            "market": market_lower,
+            "as_of_session": as_of_session,
+            "thesis": runner.thesis,
+            "selection_logic": runner.selection_logic,
+            "rebalance_logic": runner.rebalance_logic,
+            "model_weights": [
+                {"symbol": symbol, "weight": weight}
+                for symbol, weight in sorted(last.weights.items())
+            ],
+            "cash_weight": last.cash_weight,
+            "monthly_ranks": [
+                point.to_dict()
+                for point in next(
+                    entry for entry in scoreboard.entries if entry.runner_id == runner_id
+                ).monthly_ranks
+            ],
+            "rebalance_history": None,
+            "association_evidence": None,
+            "limitations": [
+                "Weights are hypothetical model allocations at the replay cutoff, not account holdings or live targets.",
+                "Rebalance ledgers and measured indicator associations are not published by this contract.",
+                "Source availability does not establish historical PIT revision certification.",
+            ],
+            "research_only": True,
+            "trade_ready": False,
+        }
+        assert_privacy_clean(details[runner_id])
+
     # 9. Step 7: Atomic landing with staging and fail-closed promotion
     # The current manifest is the only mutable publication pointer. Every
     # referenced release is immutable, so readers never observe mixed artifacts.
     identity = {
         "scoreboard": scoreboard_dict,
+        "runner_details": details,
         "matrix": matrix.matrix_sha256,
         "catalog": matrix.catalog_sha256,
         "cutoff": as_of_cutoff,
@@ -347,6 +387,23 @@ def publish_racetrack_projection(
                 },
             },
         }
+        manifest_dict["runner_details"] = {}
+        for runner_id, detail in details.items():
+            filename = hashlib.sha256(runner_id.encode("utf-8")).hexdigest() + ".json"
+            relative = Path("runners") / filename
+            detail_file = staging_dir / relative
+            detail_file.parent.mkdir(exist_ok=True)
+            detail_file.write_text(
+                json.dumps(detail, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n",
+                encoding="utf-8",
+            )
+            key = f"runner:{runner_id}"
+            manifest_dict["runner_details"][runner_id] = key
+            manifest_dict["artifacts"][key] = {
+                "path": (release_relative / relative).as_posix(),
+                "sha256": compute_file_sha256(detail_file),
+                "size_bytes": detail_file.stat().st_size,
+            }
 
         # Privacy verification over manifest metadata
         assert_privacy_clean(manifest_dict)
@@ -362,11 +419,11 @@ def publish_racetrack_projection(
         # match byte-for-byte; a changed same-session run gets another identity.
         release_dir.parent.mkdir(parents=True, exist_ok=True)
         if release_dir.exists():
-            for name in (
-                "manifest.json",
-                "scoreboard_latest.json",
-                f"archive/scoreboard_{as_of_session}.json",
-            ):
+            names = ["manifest.json"] + [
+                str(Path(artifact["path"]).relative_to(release_relative))
+                for artifact in manifest_dict["artifacts"].values()
+            ]
+            for name in names:
                 if (release_dir / name).read_bytes() != (staging_dir / name).read_bytes():
                     raise ValueError("Existing release differs from its content identity")
         else:
