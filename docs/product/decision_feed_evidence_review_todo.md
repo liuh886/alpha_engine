@@ -2,6 +2,22 @@
 
 **基线**：`main@e14c57838`（2026-10-27）。**状态**：产品设计 / 待实现；本 PR 只记录实施任务，不代表前端已交付。
 
+2026-10-28 收口：本文以现行 [Strategy Console 合同](strategy_console.md)
+和 [AGENTS.md](../../AGENTS.md) 为权威。上述 SHA 是计划编写基线，
+不是当前 main 或后续实现的验收 SHA。
+
+## 本文档的验收与后续实施边界
+
+- [x] 任务绑定现有页面、reader 与正式身份；不新增数据或信号权威。
+- [x] 明确研究、当前授权读取与公开历史证据的区别，保留四策略完整 fleet。
+- [x] 以下 P0/P1 和界面验收均是后续 implementation PR 的待办，
+  不表示本文档 PR 必须包含实现才可收口，也不表示已经交付。
+
+后续依次提交两个小 PR：先原位完成 Decision Feed，再完成正式证据的
+Evidence Review；每项以最终提交、测试和截图验收。P1 研究关联仅在身份
+映射、权限和脱敏摘要具备时实施。#1288 独立约束敏感公开面；这份文档
+不扩大该公开面，不以其他研究 PR 或整个赛马场 UI 完成为前提。
+
 ## 产品目标
 
 用户打开 Alpha Engine，应当在**同一条日常阅读路径**里回答：
@@ -29,7 +45,7 @@
 
 **不做**：新 Research Studio / 新一级菜单、聊天建议生成器、交易按钮、新后端/DB/调度、自动持仓指令、由研究收益推导买卖方向。
 
-## TODO（按顺序，一个轻量实施闭环）
+## 后续 implementation PR 的 TODO（按顺序，一个轻量实施闭环）
 
 - [ ] **P0 · Decision Feed** — 原位精简 `qlib-dashboard/src/components/DailyResearchBrief.tsx`：利用已有 `describeStrategyObservation()` 的 `kind/reason/nextStep` 与正式策略快照，对 `changed → attention → retained → unchanged` 等状态排序；顶部最多突出 **3 条**，无变化时直接说明“无新动作”；完整四策略列表保留在 `StrategyFleet`。每条信息显示 cutoff/状态/原因，点击进入现有策略详情。避免新增一套信号计算。
 - [ ] **P0 · Evidence Review** — 原位完善 `qlib-dashboard/src/pages/StrategyDetailPage.tsx` 的 `Research tracking assessment`：复用 `loadDecisionForRun()` 的**已验证** `gates / supporting_evidence / contradictory_evidence / interpretation_limits / next_permitted_validation_step`，按「支持 / 反证 / 局限 / 下一步」呈现。pending、blocked、absent、error 显示真实含义；不可把 `supported` 翻译为“建议买入”。
