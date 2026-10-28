@@ -142,12 +142,15 @@ formal evidence (formal evidence for all four strategies is currently
 comparable, replay-derived NAVs — not four numbers from four different
 methods.
 
-### Phase C — CN registry extension (prerequisite, not optional)
+### Phase C — CN registry extension (spec-doc amendment + instance, corrected 2026-10-28)
 
 Extend the runner registry to the CN market before any CN racer is admitted.
-The current Phase 2 spec's whitelist is US-87-only (CN is not mentioned in
-that spec). This phase must deliver, as a versioned spec change, not as a
-code-only tweak:
+Correction to the earlier wording of this phase: the current Phase 2 *spec
+document* is US-only in prose, but the Phase 2 *code* is already
+dual-market (matrix calendar map XNYS/XSHG, pipeline market specs for both
+markets, `RunnerRegistry` taking a `pool_id`). Phase C therefore does NOT
+build a new CN registry, scorer, or pipeline. It delivers, as a versioned
+spec change plus instantiation:
 
 - CN pool registry: `cn_selected_equities_v3.yaml` (130 symbols) as the
   whitelist, with the same fail-closed behaviour as the US whitelist.
@@ -158,6 +161,8 @@ code-only tweak:
 - CN privacy and PIT handling identical to the US track: no private account
   fields in ledgers or projections; `pit_certified=false` stays visible
   until a certification path exists (agenda item B1).
+- A docstring fix in `matrix.py` (currently says XNYS for US only); code
+  behaviour is unchanged by that fix.
 
 Until Phase C lands, BYD v1.3 and CN_27 V1.3 must not be admitted, even as
 "CN racers in the US registry" — that would be a whitelist violation, not a
@@ -249,3 +254,60 @@ complete — especially BYD's 515180 holding and CN_27's composition; and
 (4) whether any sentence in this proposal reads as a decision on
 per-window ranking, PIT, corporate actions, or the decision loop, which
 are explicitly left open above.
+
+## 10. Decisions fixed 2026-10-28 (user sign-off, supersedes §6 where stated)
+
+These decisions were given after the architect review and are recorded
+here, not silently folded into earlier sections. Where a decision changes
+a merged rule, the implementation must introduce a new versioned rule,
+never silently edit the old one.
+
+1. **Window ranking: true per-window rank, display-only.** Window
+   controls rank runners by that window's return (1M / 3M / 6M / 1Y),
+   computed by the scoring module from rolling window returns and emitted
+   as a `window_ranks` projection field; the frontend only switches its
+   sort key. A runner with less history than the window is labelled
+   short-history / ineligible and is never ranked on a partial return.
+   Window rank awards NO window points. This replaces the interim
+   "cumulative rank, window-sliced NAV" semantics in §6.
+2. **Season points: return-as-points, and the pool index earns them.**
+   For each calendar month, a racer's season points for that month equal
+   its monthly net return in percentage points: +3.2% = 3.2 points,
+   -1.5% = -1.5 points, 0% = 0 points. This is NOT PointsRuleV1
+   (rank points 10 / 6 / 4 / 2 / 1 / 0); it must be implemented as a new
+   versioned points rule, with PointsRuleV1 retained unchanged for
+   reference. Consequences, to be labelled on-page: (a) ranking by
+   season points for a month is identical to ranking by that month's
+   return, and ties are equal points; (b) a season total is the
+   arithmetic sum of monthly return-points, which is NOT the compounded
+   NAV total return and must never be presented as such; (c) the pool
+   index earns return-points like any racer — its pool excess is still
+   0 by construction, but its absolute monthly return still counts as
+   points, so it can rank by its own return.
+3. **BYD 515180: option (a), versioned variant.** Admit a BYD-only
+   runner (e.g. `byd_cn_runner_v1`) whose thesis states the deviation
+   from formal BYD v1.3; the reconciliation delta against formal
+   evidence is published. 515180 is never silently dropped while still
+   calling the runner "BYD v1.3", and no reference-holding gate is
+   introduced without a separate explicit decision and spec change.
+4. **Runner identity: new ids.** Every replayed formal strategy gets a
+   new runner_id / version, distinct from its formal strategy id.
+5. **Season: natural calendar month.** A season is one natural calendar
+   month on the track's exchange calendar, settled at the close of the
+   last trading session of that month, matching `season_{market}_{YYYY_MM}`
+   in code.
+6. **Dashboard location: flexible, local first.** The first season is
+   built for the local dashboard; publication to hosted Pages is not
+   required for the first season and is not authorised by this proposal
+   (it remains a separate positioning decision, gated by #1288). "Local
+   first" does not mean "local only forever".
+7. **Whitelist audit rule, fixed in advance.** Before any CN admission,
+   audit every candidate's target symbols against CN 130. Any holding
+   outside the pool is handled by the same rule as §10.3: admit a
+   versioned variant with the deviation stated, or keep the strategy
+   formal-only for the first season. No ad-hoc, per-holding exceptions.
+
+Still open after these seven decisions: PIT certification, corporate-action
+source / backfill, CN pool index publication as a versioned artefact,
+Decision Feed / Evidence Review implementation, Decision Journal, review
+rituals, and the Brief Top 3 vs Scoreboard Top 10 explanation on-page.
