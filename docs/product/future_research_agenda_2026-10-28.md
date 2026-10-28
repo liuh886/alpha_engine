@@ -4,11 +4,15 @@ Status: agenda / RFC. Docs only. No runtime, data, registry, workflow, or fronte
 
 ## 0. How to read this agenda, and what is already covered
 
-This agenda was written from a product-designer view: after the three open PRs land, what will the user still not be able to do, trust, or decide? It deliberately does not repeat what those PRs already do:
+This agenda separates proposed design, implementation awaiting acceptance, and verified delivery. As of 2026-10-28 the current authorities remain [AGENTS.md](../../AGENTS.md) and the [Strategy Console contract](strategy_console.md). An open PR's design choices do not supersede those authorities or authorize a new product surface.
 
-- **#1305 — Decision Feed + Evidence Review (docs TODO).** DailyResearchBrief upgraded to at most three meaningful items, and the existing verified Research Decision receipt made readable as supporting evidence, contradictory evidence, limitations, and next validation, with absent, blocked, stale, and unauthorized states shown truthfully. No new primary navigation, database, scheduler, or auto-trading.
-- **#1306 — Racetrack vision, Phase 1 data foundation, and frontend work design.** P/Q data model, minimal-stack contracts (price matrix, Q event ledger, V & NAV engine with baseline 8 bps friction, US 87 equal-weighted internal primary benchmark), racetrack semantics (monthly season settled at month-end close, benchmark-relative effectiveness against QQQ / CSI 300, descriptive-only track conditions, dividend-reinvestment total return), data stack (Parquet + Arrow, Polars, DuckDB, JSONL ledger, content-hash manifests), and frontend design (desktop-first, window Top 10, modify the existing dashboard directly, Lightweight Charts v5 locked).
-- **#1307 (draft) — Bottom Detection & Capture RFC.** One research family, built as a falsifiable, causal, out-of-sample-validated, shadow-released study — not a hindsight trough detector. It is the model for how a single research direction should be evidenced, not a template to copy uncritically into every direction.
+| Proposal baseline | What exists | What is not delivered or accepted |
+| --- | --- | --- |
+| #1305 at `52be20e4f61a60445be36f6c714afeaaa807b4fd` | Docs TODO using existing Brief and verified evidence readers | Top-three Brief and Evidence Review implementation; runtime acceptance |
+| #1306 at `3e014f4351b15d51d71a842c8dd9d2a96ef8c542` | Proposed P/Q/NAV backend, runner/scoring, US/CN benchmarks and publication CLI; frontend design | Integrity/CI closure, certified historical PIT and scoreboard frontend; design choices such as Lightweight Charts are not installed capabilities |
+| #1307 at `d861dd9cd8f16e58f83635736d2305200abff151` (draft) | Bottom Detection & Capture research specification and source-audit notes | Feature/state-machine implementation, independent OOS results and shadow validation |
+
+These are dated inspection baselines, not the current PR heads. Subsequent fixes require their own evidence. This agenda can be reviewed independently: it does not wait for all three PRs, nor make all its questions prerequisites for their bounded delivery.
 
 The gaps below fall into three kinds, and the kind matters for how each item should be worked: **(a) product-experience gaps** — the user can see a number but cannot complete a decision with it; **(b) trust gaps** — a number is shown but its provenance, vintage, or limits are not yet strong enough to act on; **(c) evaluation gaps** — a result looks good but has not yet survived the test that would falsify it.
 
@@ -78,7 +82,7 @@ The gaps below fall into three kinds, and the kind matters for how each item sho
 
 ### B3. CN pool index and internal benchmark
 
-**Why it matters.** §12 defines the US internal primary benchmark precisely (US 87 equal-weighted, rebalanced on the first trading session of each month, cash weight 0, same engine and friction). No equivalent CN rule exists, so the CN scoreboard today can only show CSI 300 — it cannot isolate CN selection alpha from CN pool beta the way the US view can.
+**Why it matters.** §12 defines the US internal primary benchmark precisely (US 87 equal-weighted, rebalanced on the first trading session of each month, cash weight 0, same engine and friction). PR #1306 proposes a CN130 equal-weight implementation alongside CSI 300. Code presence does not settle whether its eligibility, suspension, cash and cost rules have been accepted; there is no delivered scoreboard UI to infer acceptance from.
 
 **Research questions.** What is the CN pool's weight rule, rebalance cadence, and cash treatment, and why? Is it equal-weighted like the US internal benchmark, or does the CN market's structure (suspensions, price limits, turnover) argue for a different rule? What is the CN pool's constituent universe and version, and how do suspensions and price-limit days enter the index calculation?
 
@@ -162,9 +166,9 @@ The gaps below fall into three kinds, and the kind matters for how each item sho
 
 ### D3. Frontend integration: existing dashboard framework and Lightweight Charts
 
-**Why it matters.** §13 locks Lightweight Charts v5, but the existing dashboard's framework and current charting library are still unknown — §13.8 records this as the pre-implementation check. Integration risk lives exactly here: a charting choice is locked, but the shell it must live in has not been inspected.
+**Why it matters.** The existing dashboard package.json records React 19, Vite, react-router-dom and Recharts. Lightweight Charts v5 is a design proposal in #1306, not an installed dependency. Remaining integration risks concern attribution, component lifecycle, pane/series behaviour and the effect of replacing maintained charts.
 
-**Research questions.** What framework, build tool, routing, and theme system does the existing dashboard use, and does Lightweight Charts integrate cleanly (including its attribution requirement and its pane/series component model) or does it need a wrapper? Are there existing charting imports that must be removed to enforce the one-charting-stack rule, and what breaks if they are removed?
+**Research questions.** Given the existing React/Vite/router stack, how does the proposed chart library integrate with the theme and existing chart consumers (including its attribution requirement and its pane/series component model) or does it need a wrapper? Are there existing charting imports that must be removed to enforce the one-charting-stack rule, and what breaks if they are removed?
 
 **What would close it.** A short integration note: framework, build, and theme facts; wrapper design if needed; and a list of charting imports to retire, with the old views they served.
 
@@ -172,14 +176,14 @@ The gaps below fall into three kinds, and the kind matters for how each item sho
 
 These are not on the agenda to build. They are listed so that a future proposal for one of them must argue against this deferral explicitly, rather than slipping in as an assumed next step:
 
-- **Multi-user or SaaS use.** Personal-first is the decided goal (§11): Alpha Engine first makes its one user an excellent trader. Sharing, accounts, permissions, and hosted data are not designed until that goal changes.
+- **Multi-user or SaaS expansion.** The maintained product serves one operator. This deferral does not remove existing account entitlements, server-enforced access or protected current-data readers; these remain mandatory under AGENTS.md and the Strategy Console contract.
 - **Live trading or execution.** No order is sent by this system, under any future item in this agenda, without a separate, explicit decision that revisits the research-only guard.
-- **Mobile-first frontend.** Desktop-first is decided (§13.1). A mobile view is a separate product decision, not a responsive afterthought.
+- **A new mobile-first product.** A proposed desktop-focused research view does not retire the maintained Console’s desktop/tablet/mobile readability and acceptance tests. Preserve those existing journeys while evaluating any chart integration.
 - **Public sharing of research projections.** Work in Public (Builder) is a separate project with its own voice and scope; research projections are not published from Alpha Engine by default, and any future publication needs a privacy review against the personal-lens boundary first.
 
 ## F. Proposed order for review (not a commitment)
 
-For discussion only — the order below is a proposal for which items to investigate first, not a schedule. If the order is wrong, the correction belongs in review, not in silent reordering during implementation:
+For discussion only — the order below is a proposal for which items to investigate first, not a schedule. Near-term outputs are limited to A1/D3 integration facts and B1/B2 source/PIT evidence. A Decision Journal, corpus-wide migration and additional indicators remain questions, not dependencies to add to the current PRs. If the order is wrong, the correction belongs in review, not in silent reordering during implementation:
 
 1. **A1 (Brief versus Scoreboard architecture)** and **D3 (dashboard integration facts)** — both are cheap, both unblock frontend work, and A1 prevents the most likely user confusion.
 2. **B1 (PIT certification) and B2 (corporate-action source and backfill)** — both block how much weight any number can bear; they are the trust foundation for everything else.
