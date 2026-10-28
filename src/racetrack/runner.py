@@ -26,6 +26,29 @@ from src.racetrack.contracts import (
 )
 from src.racetrack.engine import simulate_portfolio
 from src.racetrack.ledger import EventLedger
+from src.racetrack.pool_index import generate_pool_index_events
+
+
+def create_us_pool_runner() -> RunnerContract:
+    """Phase A's real, rule-bound US87 index racer; no formal/demo strategies."""
+    runner_id = "us87_ew_pool_runner_v1"
+    return RunnerContract(
+        runner_id=runner_id,
+        runner_version="1.0.0",
+        pool_id="us_selected_equities_v2",
+        benchmark_symbol="QQQ",
+        thesis=(
+            "Track the fixed US87 pool's equal-weight return under monthly rebalancing, "
+            "rather than a single-name selection bet. It fails as a broad-market proxy "
+            "when this selected pool is unrepresentative; missing prices and historical "
+            "availability limitations remain explicit and do not establish tradability."
+        ),
+        selection_logic="Every declared US87 candidate retains a fixed 1/87 slot at rebalance; unavailable slots remain cash.",
+        rebalance_logic="Initialize at the first replay close, then rebalance at the first observed session of each calendar month with the shared engine's friction; weights drift between rebalances.",
+        events_generator=lambda matrix: generate_pool_index_events(
+            matrix, "us_selected_equities_v2", runner_id=runner_id,
+        ),
+    )
 
 
 def validate_runner_thesis(thesis: str | None) -> None:
@@ -140,7 +163,7 @@ class RunnerContract:
             temporary = None
             try:
                 with tempfile.NamedTemporaryFile(
-                    mode="w", encoding="utf-8", dir=p.parent, delete=False
+                    mode="w", encoding="utf-8", newline="\n", dir=p.parent, delete=False
                 ) as f:
                     temporary = Path(f.name)
                     for ev in events:

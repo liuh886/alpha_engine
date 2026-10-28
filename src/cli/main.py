@@ -361,6 +361,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Start date YYYY-MM-DD. Defaults to 2024-01-01.",
     )
 
+    rt_publish.add_argument(
+        "--with-pool-runner", action="store_true",
+        help="Opt into first-season v2 with the real US87 pool-index racer and retained local Q evidence.",
+    )
+
     rt_show = racetrack_commands.add_parser(
         "show",
         help="Show current published Racetrack season scoreboard.",
@@ -738,6 +743,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 as_of_cutoff=args.as_of,
                 output_dir=_resolve(root, args.output_dir) if args.output_dir is not None else None,
                 start_date=args.start_date,
+                with_pool_runner=args.with_pool_runner,
                 root_path=root,
             )
             manifest_rel = (

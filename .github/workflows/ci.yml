@@ -71,6 +71,7 @@ jobs:
           uv run ruff check
           src/racetrack
           tests/test_racetrack_integrity.py
+          tests/test_racetrack_first_season.py
           tests/test_racetrack_minimal_stack.py
           tests/test_racetrack_runner_scoring.py
           tests/test_racetrack_pipeline.py
@@ -227,6 +228,7 @@ jobs:
           tests/test_racetrack_runner_scoring.py
           tests/test_racetrack_pipeline.py
           tests/test_racetrack_integrity.py
+          tests/test_racetrack_first_season.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Package build

@@ -11,10 +11,12 @@ from dataclasses import dataclass
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
 from typing import Any
+import tempfile
 import uuid
 
 from src.racetrack.contracts import (
@@ -23,10 +25,12 @@ from src.racetrack.contracts import (
     assert_privacy_clean,
 )
 from src.racetrack.matrix import load_price_matrix
+from src.racetrack.ledger import EventLedger
 from src.racetrack.pool_index import generate_equal_weight_pool_index
-from src.racetrack.runner import RunnerRegistry, validate_runner_thesis
+from src.racetrack.runner import RunnerRegistry, create_us_pool_runner, validate_runner_thesis
 from src.racetrack.scoring import (
     evaluate_race_season,
+    evaluate_first_season,
     generate_benchmark_simulation,
 )
 
@@ -120,6 +124,7 @@ def publish_racetrack_projection(
     root_path: Path | None = None,
     season_id: str | None = None,
     generated_at_utc: str | None = None,
+    with_pool_runner: bool = False,
 ) -> PipelineResult:
     """Execute end-to-end Racetrack publication pipeline with atomic landing and fail-closed integrity.
 
@@ -146,6 +151,7 @@ def publish_racetrack_projection(
         root_path: Alias for repo_root.
         season_id: Custom season identifier. If None, derived from market and session.
         generated_at_utc: Deterministic generation timestamp (defaults to session midnight UTC).
+        with_pool_runner: Explicit Phase A opt-in: one US87 pool racer, v2 contract and retained Q evidence.
 
     Returns:
         PipelineResult containing paths, metadata, hashes, and Scoreboard contract.
@@ -161,6 +167,8 @@ def publish_racetrack_projection(
         raise ValueError(
             f"Unsupported market '{market}'. Must be one of {list(MARKET_SPECS.keys())}"
         )
+    if with_pool_runner and (market_lower != "us" or registry is not None or runners_registry is not None):
+        raise ValueError("Phase A accepts only the built-in US pool racer, without another registry")
 
     spec = MARKET_SPECS[market_lower]
     candidate_pool = spec["candidate_pool"]
@@ -196,11 +204,27 @@ def publish_racetrack_projection(
     as_of_session = matrix.end_session
 
     # 4. Step 2: Generate internal declared pool index simulation
-    pool_sim = generate_equal_weight_pool_index(
-        matrix=matrix,
-        pool_id=candidate_pool,
-        config=config,
-    )
+    retained_ledgers = {}
+    local_evidence = {}
+    pool_runner = create_us_pool_runner() if with_pool_runner else None
+    if pool_runner:
+        admitted = RunnerRegistry(pool_id=candidate_pool, candidate_symbols=matrix.candidate_symbols)
+        admitted.register(pool_runner)
+        # One successful replay writes owned Q evidence. The same result is used
+        # as the benchmark; no second replay or inferred/copy-pasted targets.
+        with tempfile.TemporaryDirectory(prefix="alpha-pool-q-") as temporary:
+            ledger_path = Path(temporary) / "pool.jsonl"
+            pool_sim = pool_runner.run(matrix, ledger_path=ledger_path, config=config)
+            ledger = EventLedger.load(ledger_path)
+            raw = ledger_path.read_bytes()
+            name = hashlib.sha256(pool_runner.runner_id.encode()).hexdigest() + ".jsonl"
+            relative = (Path("evidence") / name).as_posix()
+            retained_ledgers[relative] = raw
+            local_evidence[pool_runner.runner_id] = {"path": relative,
+                "sha256": hashlib.sha256(raw).hexdigest(), "size_bytes": len(raw),
+                "event_count": len(ledger.events), "tip_hash": ledger.tip_hash}
+    else:
+        pool_sim = generate_equal_weight_pool_index(matrix=matrix, pool_id=candidate_pool, config=config)
 
     # 5. Step 3: Generate external macro benchmark simulation
     macro_sim = generate_benchmark_simulation(
@@ -213,6 +237,9 @@ def publish_racetrack_projection(
     active_registry = registry if registry is not None else runners_registry
     simulation_results: dict[str, Any] = {}
     runners_map: dict[str, Any] = {}
+    if pool_runner:
+        simulation_results = {pool_runner.runner_id: pool_sim}
+        runners_map = {pool_runner.runner_id: pool_runner}
 
     if active_registry is not None and active_registry.list_runners():
         for runner in active_registry.list_runners():
@@ -232,15 +259,23 @@ def publish_racetrack_projection(
     else:
         resolved_season_id = season_id
 
-    scoreboard = evaluate_race_season(
-        runners=runners_map,
-        simulation_results=simulation_results,
-        qqq_simulation=macro_sim,
-        pool_simulation=pool_sim,
-        season_id=resolved_season_id,
-        pool_id=candidate_pool,
-        benchmark_symbol=benchmark_symbol,
-    )
+    if pool_runner:
+        scoreboard = evaluate_first_season(runners_map, simulation_results, macro_sim, pool_sim,
+            resolved_season_id, candidate_pool, benchmark_symbol, spec["calendar"], pool_runner.runner_id)
+        gaps = []
+        for symbol in matrix.candidate_symbols:
+            prices = matrix.prices[symbol]
+            first = prices.first_valid_index()
+            missing = prices.loc[first:].index[prices.loc[first:].isna()].tolist() if first else list(matrix.sessions)
+            if missing:
+                gaps.append({"symbol": symbol, "missing_sessions": len(missing),
+                    "first_missing_session": str(missing[0]), "last_missing_session": str(missing[-1]),
+                    "qualification": "unresolved_after_first_observation" if first else "no_observation_in_replay"})
+        scoreboard.first_season["source_gaps"] = gaps
+    else:
+        scoreboard = evaluate_race_season(runners=runners_map, simulation_results=simulation_results,
+            qqq_simulation=macro_sim, pool_simulation=pool_sim, season_id=resolved_season_id,
+            pool_id=candidate_pool, benchmark_symbol=benchmark_symbol)
 
     # 8. Step 6: Security and Privacy Guard recursive scan
     # Inspect all runners, simulations, scoreboard entries and raw dicts
@@ -263,7 +298,7 @@ def publish_racetrack_projection(
         simulation = simulation_results[runner_id]
         last = simulation.nav_history[-1]
         details[runner_id] = {
-            "schema_version": "1.0",
+            "schema_version": scoreboard.schema_version,
             "runner_id": runner_id,
             "runner_version": runner.runner_version,
             "pool_id": candidate_pool,
@@ -294,6 +329,8 @@ def publish_racetrack_projection(
             "trade_ready": False,
         }
         assert_privacy_clean(details[runner_id])
+        if pool_runner:
+            details[runner_id]["runner_role"] = "internal_benchmark_racer"
 
     # 9. Step 7: Atomic landing with staging and fail-closed promotion
     # The current manifest is the only mutable publication pointer. Every
@@ -301,6 +338,7 @@ def publish_racetrack_projection(
     identity = {
         "scoreboard": scoreboard_dict,
         "runner_details": details,
+        "local_evidence": local_evidence,
         "matrix": matrix.matrix_sha256,
         "catalog": matrix.catalog_sha256,
         "cutoff": as_of_cutoff,
@@ -328,15 +366,19 @@ def publish_racetrack_projection(
     try:
         staging_dir.mkdir(parents=True, exist_ok=True)
         staging_archive.mkdir(parents=True, exist_ok=True)
+        for path, raw in retained_ledgers.items():
+            destination = staging_dir / path
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(raw)
 
         # Write scoreboard archive snapshot
         archive_file = staging_archive / f"scoreboard_{as_of_session}.json"
         scoreboard_json_str = scoreboard.to_json(indent=2) + "\n"
-        archive_file.write_text(scoreboard_json_str, encoding="utf-8")
+        archive_file.write_text(scoreboard_json_str, encoding="utf-8", newline="\n")
 
         # Write scoreboard latest projection
         latest_file = staging_dir / "scoreboard_latest.json"
-        latest_file.write_text(scoreboard_json_str, encoding="utf-8")
+        latest_file.write_text(scoreboard_json_str, encoding="utf-8", newline="\n")
 
         # Compute cryptographic fingerprints
         archive_sha256 = compute_file_sha256(archive_file)
@@ -349,8 +391,8 @@ def publish_racetrack_projection(
         gen_time = generated_at_utc or f"{as_of_session}T00:00:00Z"
 
         manifest_dict = {
-            "schema_version": "1.0",
-            "pipeline_version": "1.1.0",
+            "schema_version": scoreboard.schema_version,
+            "pipeline_version": "2.0.0" if pool_runner else "1.1.0",
             "release_id": release_id,
             "status": scoreboard.status,
             "data_qualification": matrix.data_qualification,
@@ -388,6 +430,9 @@ def publish_racetrack_projection(
             },
         }
         manifest_dict["runner_details"] = {}
+        if pool_runner:
+            manifest_dict["local_evidence"] = {key: {**value,
+                "path": (release_relative / value["path"]).as_posix()} for key, value in local_evidence.items()}
         for runner_id, detail in details.items():
             filename = hashlib.sha256(runner_id.encode("utf-8")).hexdigest() + ".json"
             relative = Path("runners") / filename
@@ -395,7 +440,7 @@ def publish_racetrack_projection(
             detail_file.parent.mkdir(exist_ok=True)
             detail_file.write_text(
                 json.dumps(detail, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n",
-                encoding="utf-8",
+                encoding="utf-8", newline="\n",
             )
             key = f"runner:{runner_id}"
             manifest_dict["runner_details"][runner_id] = key
@@ -412,7 +457,7 @@ def publish_racetrack_projection(
         manifest_json_str = (
             json.dumps(manifest_dict, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
         )
-        manifest_file.write_text(manifest_json_str, encoding="utf-8")
+        manifest_file.write_text(manifest_json_str, encoding="utf-8", newline="\n")
         manifest_sha256 = compute_file_sha256(manifest_file)
 
         # First land the complete immutable vintage. An existing vintage must
@@ -421,7 +466,7 @@ def publish_racetrack_projection(
         if release_dir.exists():
             names = ["manifest.json"] + [
                 str(Path(artifact["path"]).relative_to(release_relative))
-                for artifact in manifest_dict["artifacts"].values()
+                for artifact in [*manifest_dict["artifacts"].values(), *manifest_dict.get("local_evidence", {}).values()]
             ]
             for name in names:
                 if (release_dir / name).read_bytes() != (staging_dir / name).read_bytes():
@@ -487,14 +532,27 @@ def render_racetrack_scoreboard(
     if expected is None or manifest.get("market") != market.lower():
         raise ValueError("Projection market does not match requested market")
     if (
-        manifest.get("schema_version") != "1.0"
-        or manifest.get("pipeline_version") != "1.1.0"
+        (manifest.get("schema_version"), manifest.get("pipeline_version")) not in [("1.0", "1.1.0"), ("2.0", "2.0.0")]
         or manifest.get("pool_id") != expected["candidate_pool"]
         or manifest.get("research_only") is not True
         or manifest.get("trade_ready") is not False
     ):
         raise ValueError("Unrecognized projection identity or research boundary")
-    for artifact in manifest["artifacts"].values():
+    if manifest.get("schema_version") == "2.0":
+        evidence = manifest.get("local_evidence")
+        if (not isinstance(evidence, dict) or not evidence or len(evidence) != manifest.get("runner_count")
+            or not re.fullmatch(r"[a-f0-9]{64}", str(manifest.get("release_id", "")))):
+            raise ValueError("First-season Q evidence is missing or incomplete")
+        for ref in evidence.values():
+            if not isinstance(ref, dict):
+                raise ValueError("Invalid retained Q evidence reference")
+            path = ref.get("path", "")
+            if (not isinstance(path, str) or not re.fullmatch(
+                rf"versions/{re.escape(manifest['release_id'])}/evidence/[a-f0-9]{{64}}\.jsonl", path
+            ) or type(ref.get("event_count")) is not int or ref["event_count"] <= 0
+                or not re.fullmatch(r"[a-f0-9]{64}", str(ref.get("tip_hash", "")))):
+                raise ValueError("Invalid retained Q evidence reference")
+    for artifact in [*manifest["artifacts"].values(), *manifest.get("local_evidence", {}).values()]:
         path = (root / artifact["path"]).resolve()
         if not path.is_relative_to(root) or not path.is_file():
             raise ValueError("Projection artifact is missing or escapes the release root")
@@ -504,14 +562,40 @@ def render_racetrack_scoreboard(
         ):
             raise ValueError("Projection artifact hash/size mismatch")
     latest_file = root / manifest["artifacts"]["scoreboard_latest"]["path"]
-    scoreboard = Scoreboard.from_json(latest_file.read_text(encoding="utf-8"))
+    payload = json.loads(latest_file.read_text(encoding="utf-8"))
+    scoreboard = Scoreboard.from_dict(payload)
     if (
-        scoreboard.pool_id != manifest["pool_id"]
+        scoreboard.schema_version != manifest["schema_version"]
+        or scoreboard.pool_id != manifest["pool_id"]
         or scoreboard.benchmark_symbol != manifest["benchmark_symbol"]
         or scoreboard.as_of_session != manifest["as_of_session"]
         or scoreboard.season_id != manifest["season_id"]
     ):
         raise ValueError("Scoreboard identity does not match the manifest")
+    expected_policy = ("trailing_calendar_duration_previous_session_anchor_v1"
+        if scoreboard.schema_version == "2.0" else "calendar_month_buckets_including_partial")
+    if payload.get("period_policy") != expected_policy or (scoreboard.schema_version == "1.0" and scoreboard.first_season is not None):
+        raise ValueError("Scoreboard rules do not match its declared version")
+    if scoreboard.schema_version == "2.0":
+        phase = scoreboard.first_season
+        ids = {entry.runner_id for entry in scoreboard.entries}
+        if (not isinstance(phase, dict) or phase.get("contract_version") != "first_season_v2"
+            or phase.get("points_rule") != "monthly_net_return_percentage_points_v2"
+            or phase.get("rank_policy") != "window_net_return_competition_rank_v1"
+            or phase.get("season_state") != "provisional"
+            or payload.get("period_policy") != "trailing_calendar_duration_previous_session_anchor_v1"
+            or set(manifest["local_evidence"]) != ids or len(ids) != len(scoreboard.entries)
+            or not isinstance(phase.get("roles"), dict) or set(phase["roles"]) != ids
+            or phase.get("pool_runner_id") not in ids
+            or any(role != ("internal_benchmark_racer" if key == phase["pool_runner_id"] else "strategy_racer")
+                for key, role in phase["roles"].items())):
+            raise ValueError("Invalid first-season scoreboard contract or Q identities")
+        for entry in scoreboard.entries:
+            ref = manifest["local_evidence"][entry.runner_id]
+            ledger = EventLedger.load(root / ref["path"])
+            if (ledger.runner_id != entry.runner_id or ledger.runner_version != entry.runner_version
+                or len(ledger.events) != ref["event_count"] or ledger.tip_hash != ref["tip_hash"]):
+                raise ValueError("Retained Q ledger identity/count/tip mismatch")
 
     if format_type.lower() == "json":
         return scoreboard.to_json(indent=2)
@@ -522,6 +606,13 @@ def render_racetrack_scoreboard(
     )
     macro_lbl = spec["macro_label"]
     pool_lbl = spec["pool_label"]
+    v2 = scoreboard.first_season is not None
+    period_note = (
+        "V2: trailing calendar-duration returns use a prior-close anchor; short history is N/A. "
+        "Monthly net return percentage points may be negative; arithmetic point totals are not compounded NAV return. "
+        "Rank is current-season rank; window ranks are published in JSON. All months remain provisional/not reviewed."
+        if v2 else "Periods include partial calendar months; points are provisional until full-window review."
+    )
 
     def _fmt_pct(val: float | None) -> str:
         if val is None:
@@ -534,12 +625,16 @@ def render_racetrack_scoreboard(
             return "N/A"
         return f"{val:.2f}"
 
+    def _fmt_points(val: int | float) -> str:
+        return f"{val:.2f}" if v2 else str(val)
+
     if format_type.lower() == "table":
+        runner_width = max([22, *(len(e.runner_id) + 2 for e in scoreboard.entries)])
         lines = [
             f"=== RACETRACK SCOREBOARD [{market.upper()}] ===",
             f"As of Session: {scoreboard.as_of_session} | Season: {scoreboard.season_id} | Pool: {scoreboard.pool_id}",
             "-" * 96,
-            f"{'Rank':<5}{'Runner ID':<22}{'Ver':<7}{'Pts':<6}{'1M Ret':<10}{'3M Ret':<10}{'1Y Ret':<10}{'Sharpe':<8}{'MaxDD':<9}{'Persistence'}",
+            f"{'Rank':<5}{'Runner ID':<{runner_width}}{'Ver':<7}{'Pts':<8}{'1M Ret':<10}{'3M Ret':<10}{'1Y Ret':<10}{'Sharpe':<8}{'MaxDD':<9}{'Persistence'}",
             "-" * 96,
         ]
         if not scoreboard.entries:
@@ -547,13 +642,13 @@ def render_racetrack_scoreboard(
         else:
             for e in scoreboard.entries:
                 lines.append(
-                    f"{e.current_rank:<5}{e.runner_id:<22}{e.runner_version:<7}{e.season_points:<6}"
+                    f"{e.current_rank:<5}{e.runner_id:<{runner_width}}{e.runner_version:<7}{_fmt_points(e.season_points):<8}"
                     f"{_fmt_pct(e.return_1m):<10}{_fmt_pct(e.return_3m):<10}{_fmt_pct(e.return_1y):<10}"
                     f"{_fmt_ratio(e.sharpe_ratio):<8}{_fmt_pct(e.max_drawdown):<9}{e.persistence_ratio * 100:.1f}%"
                 )
         lines.append("-" * 96)
         lines.append(
-            "Note: Periods include partial calendar months; points are provisional until full-window review. Adjusted-price research returns; see manifest for friction and PIT qualification. research_only=true, trade_ready=false."
+            f"Note: {period_note} Adjusted-price research returns; see manifest for friction and PIT qualification. research_only=true, trade_ready=false."
         )
         return "\n".join(lines)
 
@@ -573,7 +668,7 @@ def render_racetrack_scoreboard(
         for e in scoreboard.entries:
             summary = e.thesis_summary.replace("|", "/")
             md_lines.append(
-                f"| **{e.current_rank}** | {e.runner_id} | {e.runner_version} | **{e.season_points}** | "
+                f"| **{e.current_rank}** | {e.runner_id} | {e.runner_version} | **{_fmt_points(e.season_points)}** | "
                 f"{_fmt_pct(e.return_1m)} | {_fmt_pct(e.return_3m)} | {_fmt_pct(e.return_1y)} | "
                 f"{_fmt_pct(e.excess_vs_qqq)} | {_fmt_pct(e.excess_vs_pool)} | "
                 f"{_fmt_pct(e.max_drawdown)} | {_fmt_ratio(e.sharpe_ratio)} | "
@@ -581,6 +676,6 @@ def render_racetrack_scoreboard(
             )
     md_lines.append("")
     md_lines.append(
-        "*Note: Periods include partial calendar months; points are provisional until full-window review. Returns use adjusted prices and manifest-bound friction. research_only=true, trade_ready=false.*"
+        f"*Note: {period_note} Returns use adjusted prices and manifest-bound friction. research_only=true, trade_ready=false.*"
     )
     return "\n".join(md_lines)

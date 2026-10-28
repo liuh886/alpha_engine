@@ -26,6 +26,7 @@ export function RunnerDetail({ projection, entry, client, onClose }: {
       <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">Research runner</p>
         <DialogTitle className="mt-1 break-all text-lg font-semibold">{entry.runner_id}</DialogTitle>
         <DialogDescription className="mt-1 text-xs text-muted-foreground">Version {entry.runner_version} · model snapshot {projection.manifest.as_of_session}</DialogDescription>
+        {projection.scoreboard.first_season?.roles[entry.runner_id] === 'internal_benchmark_racer' && <p className="mt-2 text-xs font-medium">Internal benchmark, also racing · same replay and friction</p>}
       </div>
       <button onClick={onClose} className="min-h-9 rounded-md border px-3 text-xs" aria-label="Close runner detail">Close</button>
     </header>
@@ -52,10 +53,10 @@ export function RunnerDetail({ projection, entry, client, onClose }: {
       </div>
       <div><h4 className="font-semibold">Monthly rank history</h4><div className="mt-2 max-h-48 overflow-auto">
         <table className="w-full text-left text-xs tabular-nums"><thead><tr className="text-muted-foreground"><th className="py-2">Month</th><th>Rank</th><th>Points</th><th>Net return</th></tr></thead>
-          <tbody>{current.detail.monthly_ranks.map(row => <tr key={row.month} className="border-t"><td className="py-2">{row.month}</td><td>{row.rank} / {row.total_runners}</td><td>{row.points_earned}</td><td>{percent(row.monthly_net_return)}</td></tr>)}</tbody>
+          <tbody>{current.detail.monthly_ranks.map(row => <tr key={row.month} className="border-t"><td className="py-2">{row.month}</td><td>{row.rank} / {row.total_runners}</td><td>{projection.scoreboard.first_season ? row.points_earned.toFixed(2) : row.points_earned}</td><td>{percent(row.monthly_net_return)}</td></tr>)}</tbody>
         </table>
       </div></div>
-      <p className="text-xs text-muted-foreground">Rebalance ledger and measured indicator associations: not published in this contract.</p>
+      <p className="text-xs text-muted-foreground">{projection.scoreboard.first_season ? 'Q ledger retained locally and hash-bound to this release; raw ledger chunks are not browser artifacts. Monthly points remain provisional. Measured indicator associations are not published.' : 'Rebalance ledger and measured indicator associations: not published in this contract.'}</p>
       <ul className="space-y-2 border-t pt-4 text-xs leading-relaxed text-muted-foreground">{current.detail.limitations.map(line => <li key={line}>{line}</li>)}</ul>
     </div>}
   </section></DialogContent></Dialog>;

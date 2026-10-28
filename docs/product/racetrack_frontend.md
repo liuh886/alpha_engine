@@ -3,6 +3,11 @@
 Scope: 2026-10-28 user-authorized frontend for the merged research publication
 contract. This view is not a fifth formal strategy or a release acceptance gate.
 
+The #1312 Phase A opt-in adds the real US87 pool-index racer with pipeline/schema
+2.0. The [versioned first-season contract](../architecture/racetrack_first_season_v2.md)
+defines its new points/windows and private Q evidence; legacy v1 publications
+remain readable with their original cumulative ranking semantics.
+
 Open Overview, then **Racetrack research**. Strategy monitor remains the default;
 Overview and Status remain the primary navigation destinations. The view offers
 US/CN selection, 1M/3M/6M/1Y display windows, one NAV chart, the published Top 10,
@@ -18,6 +23,8 @@ access or artifact validation, and an unknown Runner does not open a detail.
 1. Use the existing `uv run --frozen alpha racetrack publish --market us`
    command from the repository root, with the intended cutoff/start-date options.
    This is the explicit research operation; the browser never invokes it.
+   For Phase A, add `--with-pool-runner` to explicitly select v2 and admit only
+   `us87_ew_pool_runner_v1`; this flag registers no demo or formal-derived racer.
 2. Run `npm run dev -- --host 127.0.0.1` in `qlib-dashboard`, or build and run
    Vite preview on loopback. Open that local Dashboard. No additional service,
    scheduler, database, registry, model or provider is introduced.
@@ -37,7 +44,7 @@ Interactive test data is explicitly synthetic and stays in `e2e/fixtures`.
 
 ## Reused and extended publication contract
 
-The frontend reads pipeline v1.1, schema v1.0, including its exact pool, market,
+The frontend reads paired pipeline/schema v1.1/1.0 or 2.0/2.0, including exact pool, market,
 cutoff, season, release ID, cost settings, artifact sizes and SHA-256 digests.
 It validates the scoreboard's ordered dates, series lengths, finite metrics,
 published ranks, model identities and research-only boundary before rendering.
@@ -52,8 +59,10 @@ monthly ranks and explicit limitations. These come from the same RunnerContract
 and SimulationResult; no runner is evaluated a second time. Detail content is
 part of release identity, including thesis edits beyond the truncated summary.
 Old projection vintages without details remain readable as summary-only data.
-Rebalance ledgers and measured indicator associations are absent and labelled
-accordingly; the frontend does not manufacture them from turnover or prose.
+V1 rebalance ledgers and measured indicator associations are absent and labelled
+accordingly. V2 retains a private local Q ledger and validates its hash at the
+local read boundary; ledger chunks are not browser artifacts. The frontend does
+not manufacture rebalance events or measured associations from turnover/prose.
 The admitted Runner contract allows empty selection/rebalance descriptions;
 these display as undocumented without discarding the verified thesis and weights.
 
@@ -63,13 +72,21 @@ manifest advances. Detail failure leaves verified rankings and NAV readable.
 
 ## Display and interpretation
 
-- Rankings are the publisher's **cumulative** ranks. Window changes do not
+- In v1, rankings are the publisher's **cumulative** ranks. Window changes do not
   re-rank runners; per-window Top 10 ranking is not present in the merged
   contract. Returns use the corresponding precomputed period fields.
+- In v2, published window Top 10/ranks change with the selected full-duration
+  window. Without its prior-close anchor a runner stays unranked; no partial
+  return is used. Monthly return-points can be negative, and their arithmetic
+  total is explicitly distinguished from compounded NAV return. The pool index
+  has a single shared curve labelled as internal benchmark and racer; QQQ is
+  labelled reference-only. Source/lifecycle gaps remain visible.
 - Display-only slicing follows calendar-month buckets, including partial first
   or last months. Curves rebase to 1 at the first displayed session. Available
   month counts and starting dates remain visible. Missing starts cannot be
   rebased; null gaps remain disconnected line segments, never interpolations.
+  This paragraph describes v1; v2 slices at the published prior-close anchor and
+  labels a short-history benchmark display separately.
 - Season points are provisional until complete-window review. Chart rebasing
   can differ from a published return that includes inception friction. Excess
   comparisons use the published 1Y period when available, otherwise full replay;
@@ -121,6 +138,9 @@ vision's larger list is not a statement that every item is implemented here:
   month snapshots, judged drawdown/indicator series, event markers, rebalance
   ledger chunks and measured association profiles. Do not calculate these in
   the browser or infer settlement from the current provisional monthly ranks.
+  Phase A now delivers v2 per-window ranks/NAV membership and local retained
+  Q evidence; reviewed settlement snapshots and browser event chunks remain
+  future work. Calendar completeness alone never marks a month settled.
 - Deferred presentation work: benchmark-only filter and reciprocal row-hover
   chart highlighting. No model/readiness promotion depends on these controls.
 

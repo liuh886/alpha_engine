@@ -6,6 +6,7 @@ with intra-month natural drift and zero intra-month turnover.
 
 from __future__ import annotations
 
+import hashlib
 import numpy as np
 
 from src.racetrack.contracts import (
@@ -42,6 +43,24 @@ def generate_equal_weight_pool_index(
     Returns:
         SimulationResult representing the internal benchmark line.
     """
+    events = generate_pool_index_events(matrix, pool_id)
+    return simulate_portfolio(matrix=matrix, ledger_events=events, config=config)
+
+
+def generate_pool_index_events(
+    matrix: PriceMatrix,
+    pool_id: str,
+    runner_id: str | None = None,
+    runner_version: str = "1.0.0",
+) -> list[RebalanceEvent]:
+    """One event derivation for the benchmark and its separately named racer.
+
+    Initialize at the replay's first session, then rebalance at each observed
+    month boundary. A partial first month is initialization, not a settled month.
+    Missing slots become cash at rebalance; interim valuation stays in the engine.
+    """
+    if matrix.pool_id != pool_id:
+        raise ValueError("Pool index identity does not match the price matrix")
     sessions = matrix.sessions
     if not sessions:
         raise CalendarSessionError("Matrix contains zero sessions")
@@ -52,6 +71,8 @@ def generate_equal_weight_pool_index(
         raise ValueError(f"Matrix contains zero candidate symbols for pool '{pool_id}'")
 
     weight_per_constituent = 1.0 / float(num_declared)
+    import exchange_calendars as xcals
+    calendar = xcals.get_calendar(matrix.calendar)
     events: list[RebalanceEvent] = []
     prev_hash = "0" * 64
 
@@ -72,8 +93,11 @@ def generate_equal_weight_pool_index(
         ev = RebalanceEvent.create(
             parent_hash=prev_hash,
             effective_session=sess,
-            runner_id=f"benchmark_{pool_id}_ew",
-            runner_version="1.0.0",
+            runner_id=runner_id or f"benchmark_{pool_id}_ew",
+            runner_version=runner_version,
+            event_id=hashlib.sha256(f"{pool_id}:{runner_id or 'benchmark'}:{runner_version}:{sess}".encode()).hexdigest(),
+            # Replay decision timestamp, not first-known provider availability.
+            timestamp_utc=calendar.session_close(sess).isoformat(),
             target_weights=target_weights,
             reason=(
                 f"Monthly equal-weight rebalance for {sess[:7]}: "
@@ -84,4 +108,4 @@ def generate_equal_weight_pool_index(
         events.append(ev)
         prev_hash = ev.event_hash
 
-    return simulate_portfolio(matrix=matrix, ledger_events=events, config=config)
+    return events
