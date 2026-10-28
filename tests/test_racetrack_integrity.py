@@ -17,7 +17,7 @@ from src.racetrack.contracts import (
     RebalanceEvent,
     WeightConstraintError,
 )
-from src.racetrack.runner import RunnerContract
+from src.racetrack.runner import RunnerContract, RunnerRegistry
 from src.racetrack.ledger import EventLedger
 from src.racetrack.scoring import evaluate_race_season
 
@@ -138,6 +138,49 @@ def test_same_session_new_vintage_and_idempotent_rerun(matrix, tmp_path, monkeyp
     assert changed.latest_scoreboard_path != first.latest_scoreboard_path
     assert first.archive_scoreboard_path.read_bytes() == original_archive
     assert len(list((tmp_path / "out" / "versions").iterdir())) == 2
+
+
+def test_runner_detail_is_hash_bound_to_same_replay(matrix, tmp_path, monkeypatch):
+    contract = runner(matrix)
+    registry = RunnerRegistry(candidate_symbols=matrix.candidate_symbols)
+    registry.register(contract)
+    result = publish(matrix, tmp_path, monkeypatch, registry=registry)
+    key = result.manifest_dict["runner_details"][contract.runner_id]
+    artifact = result.manifest_dict["artifacts"][key]
+    path = result.manifest_path.parent / artifact["path"]
+    detail = json.loads(path.read_text(encoding="utf-8"))
+    assert pipeline.compute_file_sha256(path) == artifact["sha256"]
+    assert path.stat().st_size == artifact["size_bytes"]
+    assert detail["thesis"] == contract.thesis
+    assert detail["selection_logic"] == contract.selection_logic
+    assert detail["runner_version"] == contract.runner_version
+    assert detail["as_of_session"] == matrix.end_session
+    assert detail["model_weights"] == [{"symbol": "A", "weight": 1.0}]
+    assert detail["rebalance_history"] is None
+    assert detail["association_evidence"] is None
+    assert detail["research_only"] is True and detail["trade_ready"] is False
+
+
+def test_detail_change_beyond_summary_creates_new_vintage(matrix, tmp_path, monkeypatch):
+    contract = runner(matrix)
+    contract.thesis = "A" * 120 + " original complete thesis"
+    registry = RunnerRegistry(candidate_symbols=matrix.candidate_symbols)
+    registry.register(contract)
+    first = publish(matrix, tmp_path, monkeypatch, registry=registry)
+    original = first.latest_scoreboard_path.read_bytes()
+    contract.thesis = "A" * 120 + " amended complete thesis"
+    second = publish(matrix, tmp_path, monkeypatch, registry=registry)
+    assert first.scoreboard.entries[0].thesis_summary == second.scoreboard.entries[0].thesis_summary
+    assert first.latest_scoreboard_path != second.latest_scoreboard_path
+    assert first.latest_scoreboard_path.read_bytes() == original
+    ref = first.manifest_dict["artifacts"][
+        first.manifest_dict["runner_details"][contract.runner_id]
+    ]
+    retained = first.manifest_path.parent / ref["path"]
+    retained.write_text("{}", encoding="utf-8")
+    contract.thesis = "A" * 120 + " original complete thesis"
+    with pytest.raises(ValueError, match="Existing release differs"):
+        publish(matrix, tmp_path, monkeypatch, registry=registry)
 
 
 @pytest.mark.parametrize("damage", ["hash", "market", "escape", "version"])

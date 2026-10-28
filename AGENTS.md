@@ -34,6 +34,14 @@ readiness and source-bound descriptive evidence within Operating Status.
 Keep its data blockers separate from active strategy health; no new navigation,
 uncalibrated score, live signal or strategy registration is authorized by this view.
 
+User-directed Racetrack frontend (2026-10-28): expose precomputed NAV,
+published Top 10 and Runner details within the existing Overview. Keep the
+two primary navigation destinations and the four-strategy monitor. Local
+research projections use a loopback-only read boundary on the existing Vite
+server; they are not copied to public Pages or treated as current strategy
+operations. Opening the view never evaluates a runner or refreshes a provider.
+Racetrack publication contracts remain the calculation and evidence authority.
+
 - Core value: refresh required data, evaluate due strategies, explain the
   evidence-bound result and expose freshness/blockers in one current view.
 - The active strategy registry, selected-pool/reference registries, frozen

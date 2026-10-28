@@ -171,6 +171,12 @@ This specification formalises the §4 data model and §11.2 landing order into f
    - **Uniform Evaluation**: Converted into continuous NAV through the exact same V & NAV Engine with identical 8 bps friction on rebalance days.
 ## 13. Frontend work design (2026-10-28, docs only)
 
+Implementation status: PR #1311 delivers the bounded local Overview NAV/Top 10/
+Runner-detail slice. See [current frontend delivery and remaining contract work](racetrack_frontend.md#landing-status-against-the-original-frontend-vision).
+The design below records the larger vision; it does not claim that missing
+projection fields, settled seasons or indicator panes have been implemented.
+Current AGENTS.md governance preserves the four-strategy monitor.
+
 This section turns the trading-frontend research into engineering requirements for Alpha Engine's own dashboard. It is a documentation addition only: no runtime, data, registry, workflow, or frontend code is changed by it. It refines the §5 frontend contract and the §11.2 landing order, and it is written against the §12 Phase 1 contracts — where this section and §12 appear to differ, §12 governs the data and calculation, and this section governs only how the resulting projection is displayed.
 
 ### 13.1 Decisions fixed 2026-10-27

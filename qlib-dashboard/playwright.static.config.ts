@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: ['static-artifact.spec.ts', 'strategy-operations.spec.ts', 'mobile-shell.spec.ts', 'security-history.spec.ts'],
+  testMatch: ['static-artifact.spec.ts', 'strategy-operations.spec.ts', 'mobile-shell.spec.ts', 'security-history.spec.ts', 'racetrack.spec.ts'],
   fullyParallel: false,
   forbidOnly: true,
   retries: 0,

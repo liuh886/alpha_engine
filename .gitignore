@@ -63,6 +63,7 @@ node_modules/
 .env
 
 # Generated strategy read models and frontend projections.
+data/racetrack/projections/
 # Canonical facts live in formal evidence + append-only decision ledgers.
 /data/research/strategy_operations/
 /qlib-dashboard/public/data/
