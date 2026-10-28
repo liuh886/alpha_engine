@@ -42,6 +42,24 @@ def generate_equal_weight_pool_index(
     Returns:
         SimulationResult representing the internal benchmark line.
     """
+    events = generate_pool_index_events(matrix, pool_id)
+    return simulate_portfolio(matrix=matrix, ledger_events=events, config=config)
+
+
+def generate_pool_index_events(
+    matrix: PriceMatrix,
+    pool_id: str,
+    runner_id: str | None = None,
+    runner_version: str = "1.0.0",
+) -> list[RebalanceEvent]:
+    """One event derivation for the benchmark and its separately named racer.
+
+    Initialize at the replay's first session, then rebalance at each observed
+    month boundary. A partial first month is initialization, not a settled month.
+    Missing slots become cash at rebalance; interim valuation stays in the engine.
+    """
+    if matrix.pool_id != pool_id:
+        raise ValueError("Pool index identity does not match the price matrix")
     sessions = matrix.sessions
     if not sessions:
         raise CalendarSessionError("Matrix contains zero sessions")
@@ -72,8 +90,8 @@ def generate_equal_weight_pool_index(
         ev = RebalanceEvent.create(
             parent_hash=prev_hash,
             effective_session=sess,
-            runner_id=f"benchmark_{pool_id}_ew",
-            runner_version="1.0.0",
+            runner_id=runner_id or f"benchmark_{pool_id}_ew",
+            runner_version=runner_version,
             target_weights=target_weights,
             reason=(
                 f"Monthly equal-weight rebalance for {sess[:7]}: "
@@ -84,4 +102,4 @@ def generate_equal_weight_pool_index(
         events.append(ev)
         prev_hash = ev.event_hash
 
-    return simulate_portfolio(matrix=matrix, ledger_events=events, config=config)
+    return events
