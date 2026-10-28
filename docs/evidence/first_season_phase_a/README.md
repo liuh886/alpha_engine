@@ -44,8 +44,14 @@ A rendered local browser smoke read the actual manifest, NAV and Runner detail
 (HTTP 200) without mocking a Racetrack endpoint. Only the optional membership
 widget was isolated. It verified one dual-role curve/row, 1M/1Y controls,
 thesis/ledger explanation, return to the formal monitor and no runtime errors.
-The page explicitly reported EA's 59 missing sessions through 2026-10-27.
-No lifecycle cause was inferred and no candidate was dropped. Direct JSONL
+The page explicitly reported EA's 59 unobserved sessions through 2026-10-27.
+Follow-up inspection found EA's terminal trading date (2026-08-04) already in
+the shared lifecycle registry, consistent with its linked Nasdaq notice. These
+post-terminal sessions must not be described as an unexplained provider failure.
+The warning now describes price-history limitations and states that counts do
+not verify terminal cash settlement. The mechanical valuation/cash-slot policy
+is unchanged; historical settlement and PIT validation remain separate blockers.
+No candidate was dropped. Direct JSONL
 requests returned 404; Vite `/@fs/` and `?raw` access returned 403.
 
 The actual local projection and real-source screenshot remain local/ignored.

@@ -83,8 +83,8 @@ export function RacetrackWorkspace() {
         <p>Daily Brief explains the four formal strategies. This Racetrack compares separately admitted research runners; its window Top 10 does not replace the Brief.</p>
       </aside>}
       {!!phase?.source_gaps.length && <aside aria-label="Research data limitations" className="rounded-xl border border-amber-500/40 bg-amber-500/5 px-5 py-4 text-xs leading-relaxed">
-        <p className="font-medium">Unresolved price / lifecycle gaps: {phase.source_gaps.slice(0, 8).map(gap => `${gap.symbol} (${gap.missing_sessions} ${gap.missing_sessions === 1 ? 'session' : 'sessions'})`).join(', ')}{phase.source_gaps.length > 8 ? ` and ${phase.source_gaps.length - 8} more` : ''}.</p>
-        <p className="mt-1 text-muted-foreground">The replay retains the declared last-known valuation and rebalance cash-slot policy. Missing observations are not freshly tradable prices or certified halts. No candidate is silently dropped.</p>
+        <p className="font-medium">Price-history limitations: {phase.source_gaps.slice(0, 8).map(gap => `${gap.symbol} (${gap.missing_sessions} ${gap.missing_sessions === 1 ? 'session' : 'sessions'} without observations)`).join(', ')}{phase.source_gaps.length > 8 ? ` and ${phase.source_gaps.length - 8} more` : ''}.</p>
+        <p className="mt-1 text-muted-foreground">The replay retains the declared last-known valuation and rebalance cash-slot policy. Unobserved sessions can include governed listing boundaries; this count does not diagnose provider failure, certify halts or verify terminal settlement. Retained valuations are not freshly tradable prices. No candidate is silently dropped.</p>
       </aside>}
       <div className="rounded-xl border bg-card p-4 sm:p-5">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3"><h3 className="flex items-center gap-2 font-semibold"><BarChart3 className="h-4 w-4 text-indigo-500" />NAV comparison</h3>
