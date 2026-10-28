@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { webcrypto } from 'node:crypto';
+import { createHash, webcrypto } from 'node:crypto';
 import { TextEncoder } from 'node:util';
 import { racetrackFixture } from '../../e2e/fixtures/racetrack';
 import { contiguousSegments, displayWindow, parseRaceManifest, parseRaceScoreboard, ProjectionClient } from './racetrack-projection';
@@ -33,6 +33,23 @@ test('default browser fetch keeps its required global receiver', async () => {
     return mock(args[0]);
   });
   await expect(new ProjectionClient().load('us', new AbortController().signal)).resolves.toHaveProperty('scoreboard');
+});
+
+test('admitted runners with undocumented logic retain their verified thesis and model weights', async () => {
+  const fixture = racetrackFixture();
+  const entry = fixture.scoreboard.entries[0];
+  const ref = fixture.manifest.artifacts[fixture.manifest.runner_details[entry.runner_id]];
+  const detail = JSON.parse(fixture.files[ref.path]);
+  detail.selection_logic = ''; detail.rebalance_logic = '';
+  fixture.files[ref.path] = JSON.stringify(detail);
+  ref.size_bytes = Buffer.byteLength(fixture.files[ref.path]);
+  ref.sha256 = createHash('sha256').update(fixture.files[ref.path]).digest('hex');
+  const client = new ProjectionClient(transport(fixture));
+  const signal = new AbortController().signal;
+  const projection = await client.load('us', signal);
+  await expect(client.runner(projection, projection.scoreboard.entries[0], signal)).resolves.toMatchObject({
+    thesis: detail.thesis, selection_logic: '', rebalance_logic: '', model_weights: detail.model_weights,
+  });
 });
 test('rejects altered bytes and does not cache an unverified artifact', async () => {
   const fixture = racetrackFixture(); const fetcher = transport(fixture); const client = new ProjectionClient(fetcher);

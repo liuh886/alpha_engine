@@ -1,5 +1,5 @@
-import { useOutletContext } from 'react-router-dom';
-import { lazy, Suspense, useState } from 'react';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { StrategyFleet } from '@/components/StrategyFleet';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
 import { DailyResearchBrief } from '@/components/DailyResearchBrief';
@@ -9,7 +9,14 @@ const Racetrack = lazy(() => import('@/components/racetrack/RacetrackWorkspace')
 
 export function StrategyOverviewPage() {
   const workspace = useOutletContext<RunWorkspaceContext>();
-  const [view, setView] = useState<'strategies' | 'racetrack'>('strategies');
+  const [params, setParams] = useSearchParams();
+  const view = params.get('view') === 'racetrack' ? 'racetrack' : 'strategies';
+  const setView = (next: 'strategies' | 'racetrack') => setParams(previous => {
+    const updated = new URLSearchParams(previous);
+    if (next === 'racetrack') updated.set('view', next);
+    else updated.delete('view');
+    return updated;
+  });
   const { formalRuns, snapshots, loading, issues, reload, previousRead } = workspace.operations;
   return (
     <div className="mx-auto max-w-[1500px] space-y-4 pb-16">

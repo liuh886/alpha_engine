@@ -33,8 +33,8 @@ export function RunnerDetail({ projection, entry, client, onClose }: {
     {current?.error && <div className="mt-4 space-y-3 text-sm"><p role="alert">{current.error}</p><h4 className="font-semibold">Published summary only</h4><p>{entry.thesis_summary || 'No thesis summary published.'}</p></div>}
     {current?.detail && <div className="mt-4 space-y-5 text-sm">
       <div><h4 className="font-semibold">Investment thesis</h4><p className="mt-2 whitespace-pre-wrap leading-relaxed text-muted-foreground">{current.detail.thesis}</p></div>
-      <div><h4 className="font-semibold">Selection logic</h4><p className="mt-2 text-muted-foreground">{current.detail.selection_logic}</p></div>
-      <div><h4 className="font-semibold">Rebalance logic</h4><p className="mt-2 text-muted-foreground">{current.detail.rebalance_logic}</p></div>
+      <div><h4 className="font-semibold">Selection logic</h4><p className="mt-2 text-muted-foreground">{current.detail.selection_logic.trim() || 'Not documented in this publication.'}</p></div>
+      <div><h4 className="font-semibold">Rebalance logic</h4><p className="mt-2 text-muted-foreground">{current.detail.rebalance_logic.trim() || 'Not documented in this publication.'}</p></div>
       <div><h4 className="font-semibold">Published risk and reference comparison</h4>
         <dl className="mt-3 grid grid-cols-2 gap-3 text-xs tabular-nums">
           <div><dt className="text-muted-foreground">Replay drawdown</dt><dd className="mt-1 font-medium">{percent(entry.max_drawdown)}</dd></div>

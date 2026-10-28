@@ -141,7 +141,7 @@ function parseDetail(value: unknown, p: RaceProjection, entry: RaceEntry): Runne
     && d.runner_version === entry.runner_version && d.pool_id === p.manifest.pool_id
     && d.market === p.manifest.market && d.as_of_session === p.manifest.as_of_session
     && d.research_only === true && d.trade_ready === false, 'Runner detail identity mismatch');
-  requireValue(text(d.thesis) && text(d.selection_logic) && text(d.rebalance_logic)
+  requireValue(text(d.thesis) && typeof d.selection_logic === 'string' && typeof d.rebalance_logic === 'string'
     && Array.isArray(d.model_weights) && d.model_weights.every((w: any) => text(w.symbol)
       && Number.isFinite(w.weight) && w.weight >= 0 && w.weight <= 1)
     && Number.isFinite(d.cash_weight) && d.cash_weight >= 0 && d.cash_weight <= 1

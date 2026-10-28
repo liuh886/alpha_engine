@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpRight, BarChart3, RefreshCw } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { ProjectionClient, displayWindow, windowReturn, type RaceMarket, type RaceProjection, type RaceWindow } from '@/lib/racetrack-projection';
 import { RunnerDetail, percent } from './RunnerDetail';
 
@@ -7,16 +8,26 @@ const Chart = lazy(() => import('./RacetrackChart').then(m => ({ default: m.Race
 const WINDOWS: { value: RaceWindow; label: string }[] = [{ value: 1, label: '1M' }, { value: 3, label: '3M' }, { value: 6, label: '6M' }, { value: 12, label: '1Y' }];
 
 export function RacetrackWorkspace() {
-  const [market, setMarket] = useState<RaceMarket>('us');
-  const [window, setWindow] = useState<RaceWindow>(3);
+  const [params, setParams] = useSearchParams();
+  const market: RaceMarket = params.get('raceMarket') === 'cn' ? 'cn' : 'us';
+  const requestedWindow = Number(params.get('raceWindow'));
+  const window = (WINDOWS.some(item => item.value === requestedWindow) ? requestedWindow : 3) as RaceWindow;
   const [attempt, setAttempt] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
+  const selected = params.get('raceRunner');
+  const detailOpen = params.get('raceDetail') === '1';
+  const updateParams = useCallback((values: Record<string, string | null>) => setParams(previous => {
+    const updated = new URLSearchParams(previous);
+    for (const [key, value] of Object.entries(values)) {
+      if (value === null) updated.delete(key);
+      else updated.set(key, value);
+    }
+    return updated;
+  }), [setParams]);
   const [result, setResult] = useState<{ market: RaceMarket; projection?: RaceProjection; error?: string } | null>(null);
   const [client] = useState(() => new ProjectionClient());
   const table = useRef<HTMLTableElement>(null);
   useEffect(() => {
-    const controller = new AbortController(); setResult(null); setSelected(null); setDetailOpen(false);
+    const controller = new AbortController(); setResult(null);
     if (!['localhost', '127.0.0.1', '[::1]'].includes(globalThis.location.hostname)) {
       setResult({ market, error: 'Open this Dashboard on localhost to read local research projections. Hosted Console pages do not publish this evidence.' });
       return () => controller.abort();
@@ -36,7 +47,7 @@ export function RacetrackWorkspace() {
       row.dataset.hover = row.dataset.runner === id ? 'true' : 'false';
     });
   }, []);
-  const select = useCallback((id: string) => { setSelected(id); setDetailOpen(true); }, []);
+  const select = useCallback((id: string) => updateParams({ raceRunner: id, raceDetail: '1' }), [updateParams]);
   const entry = projection?.scoreboard.entries.find(row => row.runner_id === selected);
 
   return <section aria-label="Racetrack research" className="space-y-4">
@@ -48,7 +59,7 @@ export function RacetrackWorkspace() {
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-xs text-muted-foreground">Market
-          <select aria-label="Racetrack market" value={market} onChange={e => { setSelected(null); setMarket(e.target.value as RaceMarket); }} className="min-h-10 rounded-md border bg-background px-3 text-sm text-foreground">
+          <select aria-label="Racetrack market" value={market} onChange={e => updateParams({ raceMarket: e.target.value, raceRunner: null, raceDetail: null })} className="min-h-10 rounded-md border bg-background px-3 text-sm text-foreground">
             <option value="us">US · US87 / QQQ</option><option value="cn">CN · CN130 / CSI 300</option>
           </select>
         </label>
@@ -65,10 +76,10 @@ export function RacetrackWorkspace() {
       </div>
       <div className="rounded-xl border bg-card p-4 sm:p-5">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3"><h3 className="flex items-center gap-2 font-semibold"><BarChart3 className="h-4 w-4 text-indigo-500" />NAV comparison</h3>
-          <div className="flex gap-1 rounded-lg bg-muted p-1" aria-label="Chart window">{WINDOWS.map(w => <button key={w.value} aria-pressed={window === w.value} onClick={() => setWindow(w.value)} className={`min-h-9 rounded-md px-3 text-xs ${window === w.value ? 'bg-background font-semibold shadow-sm' : 'text-muted-foreground'}`}>{w.label}</button>)}</div>
+          <div className="flex gap-1 rounded-lg bg-muted p-1" aria-label="Chart window">{WINDOWS.map(w => <button key={w.value} aria-pressed={window === w.value} onClick={() => updateParams({ raceWindow: String(w.value) })} className={`min-h-9 rounded-md px-3 text-xs ${window === w.value ? 'bg-background font-semibold shadow-sm' : 'text-muted-foreground'}`}>{w.label}</button>)}</div>
         </header>
         <Suspense fallback={<div className="h-[370px] animate-pulse rounded-lg bg-muted" role="status">Loading chart…</div>}><Chart data={display} selected={selected} onSelect={select} onHover={hover} /></Suspense>
-        <p className="mt-4 border-t pt-3 text-[11px] leading-relaxed text-muted-foreground">Chart rebasing is for display only; published returns include inception costs and may differ from the rebased curve. Gaps remain gaps. Windows include partial calendar months; points are provisional until complete-window review.</p>
+        <p className="mt-4 border-t pt-3 text-[11px] leading-relaxed text-muted-foreground">Chart rebasing is for display only; published returns include inception costs and may differ from the rebased curve. The x-axis uses trading sessions; weekends and exchange holidays are omitted. Gaps remain gaps. Windows include partial calendar months; points are provisional until complete-window review.</p>
       </div>
       <div className="grid min-w-0 gap-4">
         <section className="min-w-0 overflow-hidden rounded-xl border bg-card" aria-label="Published Top 10">
@@ -84,7 +95,7 @@ export function RacetrackWorkspace() {
             </tr>)}</tbody>
           </table></div>}
         </section>
-        {entry && detailOpen && <RunnerDetail projection={projection} entry={entry} client={client} onClose={() => setDetailOpen(false)} />}
+        {entry && detailOpen && <RunnerDetail projection={projection} entry={entry} client={client} onClose={() => updateParams({ raceDetail: null })} />}
       </div>
       <footer className="space-y-2 rounded-xl border bg-muted/20 px-5 py-4 text-[11px] leading-relaxed text-muted-foreground">
         <p className="break-all">Vintage {projection.manifest.release_id} · recorded timestamp {projection.manifest.generated_at_utc} · {projection.manifest.pool_id}</p>

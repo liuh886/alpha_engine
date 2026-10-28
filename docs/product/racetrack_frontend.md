@@ -7,6 +7,11 @@ Open Overview, then **Racetrack research**. Strategy monitor remains the default
 Overview and Status remain the primary navigation destinations. The view offers
 US/CN selection, 1M/3M/6M/1Y display windows, one NAV chart, the published Top 10,
 and a focus-managed Runner detail dialog. Closing the dialog preserves selection.
+Overview mode, market, window, selected Runner and dialog state are encoded in
+the existing hash-route query parameters. Links, reload and browser history
+restore the same view; invalid market/window parameters use US/3M defaults.
+Changing market clears the prior Runner selection. A link never bypasses local
+access or artifact validation, and an unknown Runner does not open a detail.
 
 ## Evidence path and local operation
 
@@ -49,6 +54,8 @@ part of release identity, including thesis edits beyond the truncated summary.
 Old projection vintages without details remain readable as summary-only data.
 Rebalance ledgers and measured indicator associations are absent and labelled
 accordingly; the frontend does not manufacture them from turnover or prose.
+The admitted Runner contract allows empty selection/rebalance descriptions;
+these display as undocumented without discarding the verified thesis and weights.
 
 Only the scoreboard and its Top 10 NAV series load initially. A detail artifact
 loads on selection and remains bound to that pinned vintage even if the current
@@ -89,10 +96,11 @@ table/detail interactions, missing/history-short/baseline states, hash and
 identity rejection, late-response isolation, desktop/tablet/mobile, keyboard
 access and overflow. This does not close #1288 or Direction A live release gates.
 
-Local acceptance on 2026-10-28: 85 relevant Python tests, 233 frontend unit tests,
+Local acceptance on 2026-10-28: 85 relevant Python tests, 234 frontend unit tests,
 5 local-reader boundary tests and 102 browser tests passed. TypeScript, ESLint,
 Ruff, dependency audit, bundle budget and repository governance checks passed.
-The final presentation update also passed all 15 Racetrack browser cases.
+The follow-up contract/URL restoration changes passed all 18 Racetrack browser
+cases, including reload, browser back/forward and invalid query parameters.
 A real local publication smoke check loaded the manifest and scoreboard through
 Vite without mocking the research endpoint; the empty registry displayed its
 two benchmarks and an empty leaderboard.
@@ -100,3 +108,21 @@ two benchmarks and an empty leaderboard.
 Review screenshots use explicitly synthetic test fixtures, not investment
 results: [desktop NAV](../evidence/racetrack_frontend/synthetic-desktop.png) and
 [mobile detail](../evidence/racetrack_frontend/synthetic-mobile-detail.png).
+
+## Landing status against the original frontend vision
+
+This is the bounded NAV/Top 10/detail delivery requested for PR #1311. The older
+vision's larger list is not a statement that every item is implemented here:
+
+- Delivered: existing-shell integration, pinned chart engine, verified projection
+  client, window slicing/rebasing, chart/legend/table selection, lazy details,
+  provenance/limitations, keyboard readout and URL/history restoration.
+- Requires future source contracts: per-window rankings/NAV membership, settled
+  month snapshots, judged drawdown/indicator series, event markers, rebalance
+  ledger chunks and measured association profiles. Do not calculate these in
+  the browser or infer settlement from the current provisional monthly ranks.
+- Deferred presentation work: benchmark-only filter and reciprocal row-hover
+  chart highlighting. No model/readiness promotion depends on these controls.
+
+The authoritative four-strategy monitor remains maintained. Neither this PR nor
+the older vision's proposed observation-view replacement authorizes retiring it.
