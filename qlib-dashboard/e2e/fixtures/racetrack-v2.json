@@ -1,0 +1,365 @@
+{
+  "files": {
+    "versions/d7c7f1eeccd64e6255cc1d231be51fa36076679b7835fa15ce0728350bf49bd7/archive/scoreboard_2026-10-27.json": "{\n  \"schema_version\": \"2.0\",\n  \"as_of_session\": \"2026-10-27\",\n  \"season_id\": \"season_us_2026_10\",\n  \"pool_id\": \"us_selected_equities_v2\",\n  \"benchmark_symbol\": \"QQQ\",\n  \"status\": \"operational_race\",\n  \"period_policy\": \"trailing_calendar_duration_previous_session_anchor_v1\",\n  \"dates\": [\n    \"2026-09-01\",\n    \"2026-09-02\",\n    \"2026-09-03\",\n    \"2026-09-04\",\n    \"2026-09-08\",\n    \"2026-09-09\",\n    \"2026-09-10\",\n    \"2026-09-11\",\n    \"2026-09-14\",\n    \"2026-09-15\",\n    \"2026-09-16\",\n    \"2026-09-17\",\n    \"2026-09-18\",\n    \"2026-09-21\",\n    \"2026-09-22\",\n    \"2026-09-23\",\n    \"2026-09-24\",\n    \"2026-09-25\",\n    \"2026-09-28\",\n    \"2026-09-29\",\n    \"2026-09-30\",\n    \"2026-10-01\",\n    \"2026-10-02\",\n    \"2026-10-05\",\n    \"2026-10-06\",\n    \"2026-10-07\",\n    \"2026-10-08\",\n    \"2026-10-09\",\n    \"2026-10-12\",\n    \"2026-10-13\",\n    \"2026-10-14\",\n    \"2026-10-15\",\n    \"2026-10-16\",\n    \"2026-10-19\",\n    \"2026-10-20\",\n    \"2026-10-21\",\n    \"2026-10-22\",\n    \"2026-10-23\",\n    \"2026-10-26\",\n    \"2026-10-27\"\n  ],\n  \"benchmarks\": {\n    \"pool_index\": [\n      0.9992,\n      0.996702,\n      0.9942104948,\n      0.9917254669140001,\n      0.9892468989044613,\n      0.9867747733821687,\n      0.9843090730060943,\n      0.9818497804832598,\n      0.9793968785686015,\n      0.9769503500648336,\n      0.974510177822313,\n      0.9720763447389047,\n      0.9696488337598465,\n      0.9672276278776151,\n      0.9648127101317924,\n      0.9624040636089315,\n      0.9600016714424241,\n      0.9576055168123676,\n      0.9552155829454327,\n      0.9528318531147316,\n      0.9504543106396863,\n      0.9480789371204774,\n      0.9457087397776762,\n      0.9433447049479663,\n      0.9409868160399663,\n      0.9386350565082766,\n      0.9362894098533492,\n      0.9339498596213572,\n      0.9316163894040661,\n      0.9292889828387039,\n      0.9269676236078319,\n      0.9246522954392172,\n      0.9223429821057039,\n      0.9200396674250857,\n      0.9177423352599778,\n      0.915450969517691,\n      0.9145290944357587,\n      0.9108860731535379,\n      0.9086125105686297,\n      0.9063448504802071\n    ],\n    \"macro\": [\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992\n    ]\n  },\n  \"top_runners_nav\": {\n    \"us87_ew_pool_runner_v1\": [\n      0.9992,\n      0.996702,\n      0.9942104948,\n      0.9917254669140001,\n      0.9892468989044613,\n      0.9867747733821687,\n      0.9843090730060943,\n      0.9818497804832598,\n      0.9793968785686015,\n      0.9769503500648336,\n      0.974510177822313,\n      0.9720763447389047,\n      0.9696488337598465,\n      0.9672276278776151,\n      0.9648127101317924,\n      0.9624040636089315,\n      0.9600016714424241,\n      0.9576055168123676,\n      0.9552155829454327,\n      0.9528318531147316,\n      0.9504543106396863,\n      0.9480789371204774,\n      0.9457087397776762,\n      0.9433447049479663,\n      0.9409868160399663,\n      0.9386350565082766,\n      0.9362894098533492,\n      0.9339498596213572,\n      0.9316163894040661,\n      0.9292889828387039,\n      0.9269676236078319,\n      0.9246522954392172,\n      0.9223429821057039,\n      0.9200396674250857,\n      0.9177423352599778,\n      0.915450969517691,\n      0.9145290944357587,\n      0.9108860731535379,\n      0.9086125105686297,\n      0.9063448504802071\n    ]\n  },\n  \"entries\": [\n    {\n      \"runner_id\": \"us87_ew_pool_runner_v1\",\n      \"runner_version\": \"1.0.0\",\n      \"thesis_summary\": \"Track the fixed US87 pool's equal-weight return under monthly rebalancing, rather than a single-name...\",\n      \"season_points\": -4.640881698962696,\n      \"cumulative_points\": -9.595450634994062,\n      \"current_rank\": 1,\n      \"return_1m\": -0.0535300449216235,\n      \"return_3m\": null,\n      \"return_6m\": null,\n      \"return_1y\": null,\n      \"excess_vs_qqq\": -0.0928551495197929,\n      \"excess_vs_pool\": 0.0,\n      \"max_drawdown\": -0.09365514951979292,\n      \"sharpe_ratio\": -119.78362987596336,\n      \"persistence_ratio\": 1.0,\n      \"monthly_ranks\": [\n        {\n          \"month\": \"2026-09\",\n          \"rank\": 1,\n          \"total_runners\": 1,\n          \"monthly_net_return\": -0.04954568936031367,\n          \"monthly_excess_vs_qqq\": -0.04874568936031365,\n          \"monthly_excess_vs_pool\": 0.0,\n          \"points_earned\": -4.954568936031367\n        },\n        {\n          \"month\": \"2026-10\",\n          \"rank\": 1,\n          \"total_runners\": 1,\n          \"monthly_net_return\": -0.046408816989626955,\n          \"monthly_excess_vs_qqq\": -0.046408816989626955,\n          \"monthly_excess_vs_pool\": 0.0,\n          \"points_earned\": -4.640881698962696\n        }\n      ]\n    }\n  ],\n  \"first_season\": {\n    \"contract_version\": \"first_season_v2\",\n    \"points_rule\": \"monthly_net_return_percentage_points_v2\",\n    \"rank_policy\": \"window_net_return_competition_rank_v1\",\n    \"season_state\": \"provisional\",\n    \"month_windows\": [\n      {\n        \"month\": \"2026-09\",\n        \"first_session\": \"2026-09-01\",\n        \"last_session\": \"2026-09-30\",\n        \"expected_sessions\": 21,\n        \"observed_sessions\": 21,\n        \"complete_window\": true,\n        \"settlement_status\": \"not_reviewed\"\n      },\n      {\n        \"month\": \"2026-10\",\n        \"first_session\": \"2026-10-01\",\n        \"last_session\": \"2026-10-30\",\n        \"expected_sessions\": 22,\n        \"observed_sessions\": 19,\n        \"complete_window\": false,\n        \"settlement_status\": \"not_reviewed\"\n      }\n    ],\n    \"windows\": {\n      \"1\": {\n        \"anchor_session\": \"2026-09-25\",\n        \"end_session\": \"2026-10-27\",\n        \"ranks\": {\n          \"us87_ew_pool_runner_v1\": 1\n        },\n        \"top_runner_ids\": [\n          \"us87_ew_pool_runner_v1\"\n        ]\n      },\n      \"3\": {\n        \"anchor_session\": null,\n        \"end_session\": \"2026-10-27\",\n        \"ranks\": {\n          \"us87_ew_pool_runner_v1\": null\n        },\n        \"top_runner_ids\": []\n      },\n      \"6\": {\n        \"anchor_session\": null,\n        \"end_session\": \"2026-10-27\",\n        \"ranks\": {\n          \"us87_ew_pool_runner_v1\": null\n        },\n        \"top_runner_ids\": []\n      },\n      \"12\": {\n        \"anchor_session\": null,\n        \"end_session\": \"2026-10-27\",\n        \"ranks\": {\n          \"us87_ew_pool_runner_v1\": null\n        },\n        \"top_runner_ids\": []\n      }\n    },\n    \"pool_runner_id\": \"us87_ew_pool_runner_v1\",\n    \"roles\": {\n      \"us87_ew_pool_runner_v1\": \"internal_benchmark_racer\"\n    },\n    \"source_gaps\": [\n      {\n        \"symbol\": \"B\",\n        \"missing_sessions\": 1,\n        \"first_missing_session\": \"2026-10-22\",\n        \"last_missing_session\": \"2026-10-22\",\n        \"qualification\": \"unresolved_after_first_observation\"\n      }\n    ]\n  }\n}\n",
+    "versions/d7c7f1eeccd64e6255cc1d231be51fa36076679b7835fa15ce0728350bf49bd7/evidence/9620a01395d957e59be1cacb3fd5a65a204a4cf7620e3759b0084f00720b0e1c.jsonl": "{\"cash_weight\":0.0,\"effective_session\":\"2026-09-01\",\"event_hash\":\"ef7078d227179dc3768d82fcb08703f0808a58d1cdc67c278a0672ec01e9053b\",\"event_id\":\"b2cd1dd2a9ff72d69f3a1f0c4e9a2efde04d13e7db4fef8fab4bbb98ac1b8833\",\"parent_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"reason\":\"Monthly equal-weight rebalance for 2026-09: 2/2 active constituents (weight=0.500000), 0 unlisted/halted slots held in cash (0.000000)\",\"runner_id\":\"us87_ew_pool_runner_v1\",\"runner_version\":\"1.0.0\",\"target_weights\":{\"A\":0.5,\"B\":0.5},\"timestamp_utc\":\"2026-09-01T20:00:00+00:00\"}\n{\"cash_weight\":0.0,\"effective_session\":\"2026-10-01\",\"event_hash\":\"633f9307ea7d113e3bcc4bdde48e99b906ab2fc41e58c70a1e17a14c94e065f0\",\"event_id\":\"f92ea87f9d6d0911fc7eb5fdaa0159ca1ab4984d5e22855ccca05a22a344f30f\",\"parent_hash\":\"ef7078d227179dc3768d82fcb08703f0808a58d1cdc67c278a0672ec01e9053b\",\"reason\":\"Monthly equal-weight rebalance for 2026-10: 2/2 active constituents (weight=0.500000), 0 unlisted/halted slots held in cash (0.000000)\",\"runner_id\":\"us87_ew_pool_runner_v1\",\"runner_version\":\"1.0.0\",\"target_weights\":{\"A\":0.5,\"B\":0.5},\"timestamp_utc\":\"2026-10-01T20:00:00+00:00\"}\n",
+    "versions/d7c7f1eeccd64e6255cc1d231be51fa36076679b7835fa15ce0728350bf49bd7/runners/9620a01395d957e59be1cacb3fd5a65a204a4cf7620e3759b0084f00720b0e1c.json": "{\"as_of_session\": \"2026-10-27\", \"association_evidence\": null, \"cash_weight\": 0.0, \"limitations\": [\"Weights are hypothetical model allocations at the replay cutoff, not account holdings or live targets.\", \"Rebalance ledgers and measured indicator associations are not published by this contract.\", \"Source availability does not establish historical PIT revision certification.\"], \"market\": \"us\", \"model_weights\": [{\"symbol\": \"A\", \"weight\": 0.5045111561614453}, {\"symbol\": \"B\", \"weight\": 0.4954888438385545}], \"monthly_ranks\": [{\"month\": \"2026-09\", \"monthly_excess_vs_pool\": 0.0, \"monthly_excess_vs_qqq\": -0.04874568936031365, \"monthly_net_return\": -0.04954568936031367, \"points_earned\": -4.954568936031367, \"rank\": 1, \"total_runners\": 1}, {\"month\": \"2026-10\", \"monthly_excess_vs_pool\": 0.0, \"monthly_excess_vs_qqq\": -0.046408816989626955, \"monthly_net_return\": -0.046408816989626955, \"points_earned\": -4.640881698962696, \"rank\": 1, \"total_runners\": 1}], \"pool_id\": \"us_selected_equities_v2\", \"rebalance_history\": null, \"rebalance_logic\": \"Initialize at the first replay close, then rebalance at the first observed session of each calendar month with the shared engine's friction; weights drift between rebalances.\", \"research_only\": true, \"runner_id\": \"us87_ew_pool_runner_v1\", \"runner_role\": \"internal_benchmark_racer\", \"runner_version\": \"1.0.0\", \"schema_version\": \"2.0\", \"selection_logic\": \"Every declared US87 candidate retains a fixed 1/87 slot at rebalance; unavailable slots remain cash.\", \"thesis\": \"Track the fixed US87 pool's equal-weight return under monthly rebalancing, rather than a single-name selection bet. It fails as a broad-market proxy when this selected pool is unrepresentative; missing prices and historical availability limitations remain explicit and do not establish tradability.\", \"trade_ready\": false}\n",
+    "versions/d7c7f1eeccd64e6255cc1d231be51fa36076679b7835fa15ce0728350bf49bd7/scoreboard_latest.json": "{\n  \"schema_version\": \"2.0\",\n  \"as_of_session\": \"2026-10-27\",\n  \"season_id\": \"season_us_2026_10\",\n  \"pool_id\": \"us_selected_equities_v2\",\n  \"benchmark_symbol\": \"QQQ\",\n  \"status\": \"operational_race\",\n  \"period_policy\": \"trailing_calendar_duration_previous_session_anchor_v1\",\n  \"dates\": [\n    \"2026-09-01\",\n    \"2026-09-02\",\n    \"2026-09-03\",\n    \"2026-09-04\",\n    \"2026-09-08\",\n    \"2026-09-09\",\n    \"2026-09-10\",\n    \"2026-09-11\",\n    \"2026-09-14\",\n    \"2026-09-15\",\n    \"2026-09-16\",\n    \"2026-09-17\",\n    \"2026-09-18\",\n    \"2026-09-21\",\n    \"2026-09-22\",\n    \"2026-09-23\",\n    \"2026-09-24\",\n    \"2026-09-25\",\n    \"2026-09-28\",\n    \"2026-09-29\",\n    \"2026-09-30\",\n    \"2026-10-01\",\n    \"2026-10-02\",\n    \"2026-10-05\",\n    \"2026-10-06\",\n    \"2026-10-07\",\n    \"2026-10-08\",\n    \"2026-10-09\",\n    \"2026-10-12\",\n    \"2026-10-13\",\n    \"2026-10-14\",\n    \"2026-10-15\",\n    \"2026-10-16\",\n    \"2026-10-19\",\n    \"2026-10-20\",\n    \"2026-10-21\",\n    \"2026-10-22\",\n    \"2026-10-23\",\n    \"2026-10-26\",\n    \"2026-10-27\"\n  ],\n  \"benchmarks\": {\n    \"pool_index\": [\n      0.9992,\n      0.996702,\n      0.9942104948,\n      0.9917254669140001,\n      0.9892468989044613,\n      0.9867747733821687,\n      0.9843090730060943,\n      0.9818497804832598,\n      0.9793968785686015,\n      0.9769503500648336,\n      0.974510177822313,\n      0.9720763447389047,\n      0.9696488337598465,\n      0.9672276278776151,\n      0.9648127101317924,\n      0.9624040636089315,\n      0.9600016714424241,\n      0.9576055168123676,\n      0.9552155829454327,\n      0.9528318531147316,\n      0.9504543106396863,\n      0.9480789371204774,\n      0.9457087397776762,\n      0.9433447049479663,\n      0.9409868160399663,\n      0.9386350565082766,\n      0.9362894098533492,\n      0.9339498596213572,\n      0.9316163894040661,\n      0.9292889828387039,\n      0.9269676236078319,\n      0.9246522954392172,\n      0.9223429821057039,\n      0.9200396674250857,\n      0.9177423352599778,\n      0.915450969517691,\n      0.9145290944357587,\n      0.9108860731535379,\n      0.9086125105686297,\n      0.9063448504802071\n    ],\n    \"macro\": [\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992,\n      0.9992\n    ]\n  },\n  \"top_runners_nav\": {\n    \"us87_ew_pool_runner_v1\": [\n      0.9992,\n      0.996702,\n      0.9942104948,\n      0.9917254669140001,\n      0.9892468989044613,\n      0.9867747733821687,\n      0.9843090730060943,\n      0.9818497804832598,\n      0.9793968785686015,\n      0.9769503500648336,\n      0.974510177822313,\n      0.9720763447389047,\n      0.9696488337598465,\n      0.9672276278776151,\n      0.9648127101317924,\n      0.9624040636089315,\n      0.9600016714424241,\n      0.9576055168123676,\n      0.9552155829454327,\n      0.9528318531147316,\n      0.9504543106396863,\n      0.9480789371204774,\n      0.9457087397776762,\n      0.9433447049479663,\n      0.9409868160399663,\n      0.9386350565082766,\n      0.9362894098533492,\n      0.9339498596213572,\n      0.9316163894040661,\n      0.9292889828387039,\n      0.9269676236078319,\n      0.9246522954392172,\n      0.9223429821057039,\n      0.9200396674250857,\n      0.9177423352599778,\n      0.915450969517691,\n      0.9145290944357587,\n      0.9108860731535379,\n      0.9086125105686297,\n      0.9063448504802071\n    ]\n  },\n  \"entries\": [\n    {\n      \"runner_id\": \"us87_ew_pool_runner_v1\",\n      \"runner_version\": \"1.0.0\",\n      \"thesis_summary\": \"Track the fixed US87 pool's equal-weight return under monthly rebalancing, rather than a single-name...\",\n      \"season_points\": -4.640881698962696,\n      \"cumulative_points\": -9.595450634994062,\n      \"current_rank\": 1,\n      \"return_1m\": -0.0535300449216235,\n      \"return_3m\": null,\n      \"return_6m\": null,\n      \"return_1y\": null,\n      \"excess_vs_qqq\": -0.0928551495197929,\n      \"excess_vs_pool\": 0.0,\n      \"max_drawdown\": -0.09365514951979292,\n      \"sharpe_ratio\": -119.78362987596336,\n      \"persistence_ratio\": 1.0,\n      \"monthly_ranks\": [\n        {\n          \"month\": \"2026-09\",\n          \"rank\": 1,\n          \"total_runners\": 1,\n          \"monthly_net_return\": -0.04954568936031367,\n          \"monthly_excess_vs_qqq\": -0.04874568936031365,\n          \"monthly_excess_vs_pool\": 0.0,\n          \"points_earned\": -4.954568936031367\n        },\n        {\n          \"month\": \"2026-10\",\n          \"rank\": 1,\n          \"total_runners\": 1,\n          \"monthly_net_return\": -0.046408816989626955,\n          \"monthly_excess_vs_qqq\": -0.046408816989626955,\n          \"monthly_excess_vs_pool\": 0.0,\n          \"points_earned\": -4.640881698962696\n        }\n      ]\n    }\n  ],\n  \"first_season\": {\n    \"contract_version\": \"first_season_v2\",\n    \"points_rule\": \"monthly_net_return_percentage_points_v2\",\n    \"rank_policy\": \"window_net_return_competition_rank_v1\",\n    \"season_state\": \"provisional\",\n    \"month_windows\": [\n      {\n        \"month\": \"2026-09\",\n        \"first_session\": \"2026-09-01\",\n        \"last_session\": \"2026-09-30\",\n        \"expected_sessions\": 21,\n        \"observed_sessions\": 21,\n        \"complete_window\": true,\n        \"settlement_status\": \"not_reviewed\"\n      },\n      {\n        \"month\": \"2026-10\",\n        \"first_session\": \"2026-10-01\",\n        \"last_session\": \"2026-10-30\",\n        \"expected_sessions\": 22,\n        \"observed_sessions\": 19,\n        \"complete_window\": false,\n        \"settlement_status\": \"not_reviewed\"\n      }\n    ],\n    \"windows\": {\n      \"1\": {\n        \"anchor_session\": \"2026-09-25\",\n        \"end_session\": \"2026-10-27\",\n        \"ranks\": {\n          \"us87_ew_pool_runner_v1\": 1\n        },\n        \"top_runner_ids\": [\n          \"us87_ew_pool_runner_v1\"\n        ]\n      },\n      \"3\": {\n        \"anchor_session\": null,\n        \"end_session\": \"2026-10-27\",\n        \"ranks\": {\n          \"us87_ew_pool_runner_v1\": null\n        },\n        \"top_runner_ids\": []\n      },\n      \"6\": {\n        \"anchor_session\": null,\n        \"end_session\": \"2026-10-27\",\n        \"ranks\": {\n          \"us87_ew_pool_runner_v1\": null\n        },\n        \"top_runner_ids\": []\n      },\n      \"12\": {\n        \"anchor_session\": null,\n        \"end_session\": \"2026-10-27\",\n        \"ranks\": {\n          \"us87_ew_pool_runner_v1\": null\n        },\n        \"top_runner_ids\": []\n      }\n    },\n    \"pool_runner_id\": \"us87_ew_pool_runner_v1\",\n    \"roles\": {\n      \"us87_ew_pool_runner_v1\": \"internal_benchmark_racer\"\n    },\n    \"source_gaps\": [\n      {\n        \"symbol\": \"B\",\n        \"missing_sessions\": 1,\n        \"first_missing_session\": \"2026-10-22\",\n        \"last_missing_session\": \"2026-10-22\",\n        \"qualification\": \"unresolved_after_first_observation\"\n      }\n    ]\n  }\n}\n"
+  },
+  "manifest": {
+    "artifacts": {
+      "runner:us87_ew_pool_runner_v1": {
+        "path": "versions/d7c7f1eeccd64e6255cc1d231be51fa36076679b7835fa15ce0728350bf49bd7/runners/9620a01395d957e59be1cacb3fd5a65a204a4cf7620e3759b0084f00720b0e1c.json",
+        "sha256": "ca09a1502cc335456925de42e72fcf6bbc0143d50bf1d5032f9366d3b2cdd27b",
+        "size_bytes": 1829
+      },
+      "scoreboard_archive": {
+        "path": "versions/d7c7f1eeccd64e6255cc1d231be51fa36076679b7835fa15ce0728350bf49bd7/archive/scoreboard_2026-10-27.json",
+        "sha256": "c2efc7029788dd63bbbdfd8f354c47b79a332127527639e7d5c7d9433bea39aa",
+        "size_bytes": 7027
+      },
+      "scoreboard_latest": {
+        "path": "versions/d7c7f1eeccd64e6255cc1d231be51fa36076679b7835fa15ce0728350bf49bd7/scoreboard_latest.json",
+        "sha256": "c2efc7029788dd63bbbdfd8f354c47b79a332127527639e7d5c7d9433bea39aa",
+        "size_bytes": 7027
+      }
+    },
+    "as_of_cutoff": "2026-10-27",
+    "as_of_session": "2026-10-27",
+    "benchmark_symbol": "QQQ",
+    "catalog_sha256": "",
+    "code_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "data_qualification": "synthetic_test_fixture_not_research_evidence",
+    "engine_config": {
+      "annual_trading_days": 252,
+      "friction_rate": 0.0008,
+      "risk_free_rate_annual": 0.02
+    },
+    "generated_at_utc": "2026-10-27T00:00:00Z",
+    "git_commit_sha": "uncommitted_research_working_tree",
+    "governed_config_hashes": {
+      "pool": "d6e2854cbf78b1c16a921b3419766cb74eef8ca819b4879803856fb832717466",
+      "reference_registry": "d6e2854cbf78b1c16a921b3419766cb74eef8ca819b4879803856fb832717466",
+      "selected_pool_registry": "d6e2854cbf78b1c16a921b3419766cb74eef8ca819b4879803856fb832717466"
+    },
+    "internal_benchmark_id": "benchmark_us_selected_equities_v2_ew",
+    "last_session": "2026-10-27",
+    "local_evidence": {
+      "us87_ew_pool_runner_v1": {
+        "event_count": 2,
+        "path": "versions/d7c7f1eeccd64e6255cc1d231be51fa36076679b7835fa15ce0728350bf49bd7/evidence/9620a01395d957e59be1cacb3fd5a65a204a4cf7620e3759b0084f00720b0e1c.jsonl",
+        "sha256": "eeade1c1f2779b7a1b011776c5446b50ac9f37eb8759e294dbeb5179f92c534b",
+        "size_bytes": 1158,
+        "tip_hash": "633f9307ea7d113e3bcc4bdde48e99b906ab2fc41e58c70a1e17a14c94e065f0"
+      }
+    },
+    "market": "us",
+    "matrix_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "pipeline_version": "2.0.0",
+    "pool_id": "us_selected_equities_v2",
+    "release_id": "d7c7f1eeccd64e6255cc1d231be51fa36076679b7835fa15ce0728350bf49bd7",
+    "research_only": true,
+    "runner_count": 1,
+    "runner_details": {
+      "us87_ew_pool_runner_v1": "runner:us87_ew_pool_runner_v1"
+    },
+    "schema_version": "2.0",
+    "season_id": "season_us_2026_10",
+    "status": "operational_race",
+    "trade_ready": false
+  },
+  "scoreboard": {
+    "as_of_session": "2026-10-27",
+    "benchmark_symbol": "QQQ",
+    "benchmarks": {
+      "macro": [
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992,
+        0.9992
+      ],
+      "pool_index": [
+        0.9992,
+        0.996702,
+        0.9942104948,
+        0.9917254669140001,
+        0.9892468989044613,
+        0.9867747733821687,
+        0.9843090730060943,
+        0.9818497804832598,
+        0.9793968785686015,
+        0.9769503500648336,
+        0.974510177822313,
+        0.9720763447389047,
+        0.9696488337598465,
+        0.9672276278776151,
+        0.9648127101317924,
+        0.9624040636089315,
+        0.9600016714424241,
+        0.9576055168123676,
+        0.9552155829454327,
+        0.9528318531147316,
+        0.9504543106396863,
+        0.9480789371204774,
+        0.9457087397776762,
+        0.9433447049479663,
+        0.9409868160399663,
+        0.9386350565082766,
+        0.9362894098533492,
+        0.9339498596213572,
+        0.9316163894040661,
+        0.9292889828387039,
+        0.9269676236078319,
+        0.9246522954392172,
+        0.9223429821057039,
+        0.9200396674250857,
+        0.9177423352599778,
+        0.915450969517691,
+        0.9145290944357587,
+        0.9108860731535379,
+        0.9086125105686297,
+        0.9063448504802071
+      ]
+    },
+    "dates": [
+      "2026-09-01",
+      "2026-09-02",
+      "2026-09-03",
+      "2026-09-04",
+      "2026-09-08",
+      "2026-09-09",
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-14",
+      "2026-09-15",
+      "2026-09-16",
+      "2026-09-17",
+      "2026-09-18",
+      "2026-09-21",
+      "2026-09-22",
+      "2026-09-23",
+      "2026-09-24",
+      "2026-09-25",
+      "2026-09-28",
+      "2026-09-29",
+      "2026-09-30",
+      "2026-10-01",
+      "2026-10-02",
+      "2026-10-05",
+      "2026-10-06",
+      "2026-10-07",
+      "2026-10-08",
+      "2026-10-09",
+      "2026-10-12",
+      "2026-10-13",
+      "2026-10-14",
+      "2026-10-15",
+      "2026-10-16",
+      "2026-10-19",
+      "2026-10-20",
+      "2026-10-21",
+      "2026-10-22",
+      "2026-10-23",
+      "2026-10-26",
+      "2026-10-27"
+    ],
+    "entries": [
+      {
+        "cumulative_points": -9.595450634994062,
+        "current_rank": 1,
+        "excess_vs_pool": 0.0,
+        "excess_vs_qqq": -0.0928551495197929,
+        "max_drawdown": -0.09365514951979292,
+        "monthly_ranks": [
+          {
+            "month": "2026-09",
+            "monthly_excess_vs_pool": 0.0,
+            "monthly_excess_vs_qqq": -0.04874568936031365,
+            "monthly_net_return": -0.04954568936031367,
+            "points_earned": -4.954568936031367,
+            "rank": 1,
+            "total_runners": 1
+          },
+          {
+            "month": "2026-10",
+            "monthly_excess_vs_pool": 0.0,
+            "monthly_excess_vs_qqq": -0.046408816989626955,
+            "monthly_net_return": -0.046408816989626955,
+            "points_earned": -4.640881698962696,
+            "rank": 1,
+            "total_runners": 1
+          }
+        ],
+        "persistence_ratio": 1.0,
+        "return_1m": -0.0535300449216235,
+        "return_1y": null,
+        "return_3m": null,
+        "return_6m": null,
+        "runner_id": "us87_ew_pool_runner_v1",
+        "runner_version": "1.0.0",
+        "season_points": -4.640881698962696,
+        "sharpe_ratio": -119.78362987596336,
+        "thesis_summary": "Track the fixed US87 pool's equal-weight return under monthly rebalancing, rather than a single-name..."
+      }
+    ],
+    "first_season": {
+      "contract_version": "first_season_v2",
+      "month_windows": [
+        {
+          "complete_window": true,
+          "expected_sessions": 21,
+          "first_session": "2026-09-01",
+          "last_session": "2026-09-30",
+          "month": "2026-09",
+          "observed_sessions": 21,
+          "settlement_status": "not_reviewed"
+        },
+        {
+          "complete_window": false,
+          "expected_sessions": 22,
+          "first_session": "2026-10-01",
+          "last_session": "2026-10-30",
+          "month": "2026-10",
+          "observed_sessions": 19,
+          "settlement_status": "not_reviewed"
+        }
+      ],
+      "points_rule": "monthly_net_return_percentage_points_v2",
+      "pool_runner_id": "us87_ew_pool_runner_v1",
+      "rank_policy": "window_net_return_competition_rank_v1",
+      "roles": {
+        "us87_ew_pool_runner_v1": "internal_benchmark_racer"
+      },
+      "season_state": "provisional",
+      "source_gaps": [
+        {
+          "first_missing_session": "2026-10-22",
+          "last_missing_session": "2026-10-22",
+          "missing_sessions": 1,
+          "qualification": "unresolved_after_first_observation",
+          "symbol": "B"
+        }
+      ],
+      "windows": {
+        "1": {
+          "anchor_session": "2026-09-25",
+          "end_session": "2026-10-27",
+          "ranks": {
+            "us87_ew_pool_runner_v1": 1
+          },
+          "top_runner_ids": [
+            "us87_ew_pool_runner_v1"
+          ]
+        },
+        "12": {
+          "anchor_session": null,
+          "end_session": "2026-10-27",
+          "ranks": {
+            "us87_ew_pool_runner_v1": null
+          },
+          "top_runner_ids": []
+        },
+        "3": {
+          "anchor_session": null,
+          "end_session": "2026-10-27",
+          "ranks": {
+            "us87_ew_pool_runner_v1": null
+          },
+          "top_runner_ids": []
+        },
+        "6": {
+          "anchor_session": null,
+          "end_session": "2026-10-27",
+          "ranks": {
+            "us87_ew_pool_runner_v1": null
+          },
+          "top_runner_ids": []
+        }
+      }
+    },
+    "period_policy": "trailing_calendar_duration_previous_session_anchor_v1",
+    "pool_id": "us_selected_equities_v2",
+    "schema_version": "2.0",
+    "season_id": "season_us_2026_10",
+    "status": "operational_race",
+    "top_runners_nav": {
+      "us87_ew_pool_runner_v1": [
+        0.9992,
+        0.996702,
+        0.9942104948,
+        0.9917254669140001,
+        0.9892468989044613,
+        0.9867747733821687,
+        0.9843090730060943,
+        0.9818497804832598,
+        0.9793968785686015,
+        0.9769503500648336,
+        0.974510177822313,
+        0.9720763447389047,
+        0.9696488337598465,
+        0.9672276278776151,
+        0.9648127101317924,
+        0.9624040636089315,
+        0.9600016714424241,
+        0.9576055168123676,
+        0.9552155829454327,
+        0.9528318531147316,
+        0.9504543106396863,
+        0.9480789371204774,
+        0.9457087397776762,
+        0.9433447049479663,
+        0.9409868160399663,
+        0.9386350565082766,
+        0.9362894098533492,
+        0.9339498596213572,
+        0.9316163894040661,
+        0.9292889828387039,
+        0.9269676236078319,
+        0.9246522954392172,
+        0.9223429821057039,
+        0.9200396674250857,
+        0.9177423352599778,
+        0.915450969517691,
+        0.9145290944357587,
+        0.9108860731535379,
+        0.9086125105686297,
+        0.9063448504802071
+      ]
+    }
+  }
+}

@@ -107,6 +107,34 @@ def test_v2_rejects_gapped_calendar_even_when_legacy_series_align():
             "season_us_2026_10", source.pool_id, "QQQ", "XNYS", pool_id)
 
 
+def test_window_ranking_can_differ_from_current_month_points():
+    source, runners, _, pool_id = season_fixture()
+    september_count = sum(d.startswith("2026-09") for d in source.sessions)
+    a = [100 * 1.03 ** min(i, september_count - 1) * .999 ** max(0, i - september_count + 1) for i in range(len(source.sessions))]
+    b = [100 * .97 ** min(i, september_count - 1) * 1.001 ** max(0, i - september_count + 1) for i in range(len(source.sessions))]
+    source = replace(source, prices=pd.DataFrame({"A": a, "B": b, "QQQ": [100.] * len(a)}, index=source.sessions))
+    simulations = {key: runner.run(source) for key, runner in runners.items()}
+    board = evaluate_first_season(runners, simulations, generate_benchmark_simulation(source),
+        simulations[pool_id], "season_us_2026_10", source.pool_id, "QQQ", "XNYS", pool_id)
+    assert board.entries[0].runner_id == "down"  # October winner
+    assert board.first_season["windows"]["1"]["top_runner_ids"][0] == "up"  # trailing window includes late September
+
+
+@pytest.mark.parametrize("damage", ["anchor", "season"])
+def test_v2_rejects_nonpositive_anchor_and_wrong_season_identity(damage):
+    source, runners, simulations, pool_id = season_fixture()
+    season = "season_us_2026_09" if damage == "season" else "season_us_2026_10"
+    if damage == "anchor":
+        sim = simulations["up"]
+        points = list(sim.nav_history)
+        index = source.sessions.index("2026-09-25")
+        points[index] = replace(points[index], nav=0.)
+        simulations["up"] = replace(sim, nav_history=tuple(points))
+    with pytest.raises(ValueError, match="anchor|current natural calendar month"):
+        evaluate_first_season(runners, simulations, generate_benchmark_simulation(source),
+            simulations[pool_id], season, source.pool_id, "QQQ", "XNYS", pool_id)
+
+
 def test_v2_publication_retains_ledger_once_and_tamper_cannot_advance_pointer(tmp_path, monkeypatch, capsys):
     from src.racetrack import pipeline
     source, _, _, runner_id = season_fixture()
@@ -129,12 +157,16 @@ def test_v2_publication_retains_ledger_once_and_tamper_cannot_advance_pointer(tm
     assert result.scoreboard.benchmarks["pool_index"] == result.scoreboard.top_runners_nav[runner_id]
     evidence = result.manifest_dict["local_evidence"][runner_id]
     root = result.manifest_path.parent
+    assert pipeline.compute_file_sha256(result.manifest_path) == result.manifest_sha256
+    assert (root / "versions" / result.manifest_dict["release_id"] / "manifest.json").read_bytes() == result.manifest_path.read_bytes()
     ledger = EventLedger.load(root / evidence["path"])
     assert evidence["event_count"] == len(ledger.events) == 2
     assert evidence["tip_hash"] == ledger.tip_hash
     assert pipeline.compute_file_sha256(root / evidence["path"]) == evidence["sha256"]
     assert not any(ref["path"].endswith(".jsonl") for ref in result.manifest_dict["artifacts"].values())
     assert pipeline.render_racetrack_scoreboard(root, "json")
+    assert "prior-close anchor" in pipeline.render_racetrack_scoreboard(root, "table")
+    assert "arithmetic point totals are not compounded" in pipeline.render_racetrack_scoreboard(root, "markdown")
     detail_key = result.manifest_dict["runner_details"][runner_id]
     detail = json.loads((root / result.manifest_dict["artifacts"][detail_key]["path"]).read_text())
     assert detail["runner_role"] == "internal_benchmark_racer"
@@ -161,3 +193,39 @@ def test_phase_a_does_not_silently_admit_cn_or_external_registry():
         publish_racetrack_projection(market="cn", with_pool_runner=True)
     with pytest.raises(ValueError, match="Phase A"):
         publish_racetrack_projection(with_pool_runner=True, registry=RunnerRegistry(candidate_symbols=("A",)))
+
+
+@pytest.mark.parametrize("damage", ["missing_q", "schema", "points_rule", "period", "q_identity", "q_tip"])
+def test_python_reader_rejects_hash_valid_but_inconsistent_v2_contract(tmp_path, monkeypatch, damage):
+    from src.racetrack import pipeline
+    source, _, _, _ = season_fixture()
+    monkeypatch.setattr(pipeline, "load_price_matrix", lambda **_: source)
+    for path in [f"configs/research_universes/{source.pool_id}.yaml",
+        "configs/pools/selected_pool_registry_v1.yaml", "configs/pools/reference_instrument_registry_v1.yaml"]:
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("synthetic identity")
+    result = pipeline.publish_racetrack_projection(root_path=tmp_path, as_of_cutoff="2026-10-27", with_pool_runner=True)
+    manifest = result.manifest_dict
+    if damage == "missing_q":
+        manifest.pop("local_evidence")
+    elif damage == "q_identity":
+        manifest["local_evidence"]["wrong"] = manifest["local_evidence"].pop(next(iter(manifest["local_evidence"])))
+    elif damage == "q_tip":
+        next(iter(manifest["local_evidence"].values()))["tip_hash"] = "f" * 64
+    else:
+        payload = json.loads(result.latest_scoreboard_path.read_text())
+        if damage == "schema":
+            payload["schema_version"] = "1.0"
+            payload.pop("first_season")
+        elif damage == "points_rule":
+            payload["first_season"]["points_rule"] = "rank_points_v1"
+        else:
+            payload["period_policy"] = "calendar_month_buckets_including_partial"
+        result.latest_scoreboard_path.write_text(json.dumps(payload), encoding="utf-8", newline="\n")
+        manifest["artifacts"]["scoreboard_latest"].update(
+            sha256=pipeline.compute_file_sha256(result.latest_scoreboard_path),
+            size_bytes=result.latest_scoreboard_path.stat().st_size)
+    result.manifest_path.write_text(json.dumps(manifest), encoding="utf-8", newline="\n")
+    with pytest.raises(ValueError):
+        pipeline.render_racetrack_scoreboard(result.manifest_path.parent, "json")

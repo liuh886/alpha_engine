@@ -6,11 +6,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve, relative } from 'node:path';
 import { once } from 'node:events';
 import { createRacetrackHandler } from './racetrack-local.mjs';
-import { racetrackFixture } from '../e2e/fixtures/racetrack.ts';
+import { racetrackFixture, racetrackFirstSeasonFixture } from '../e2e/fixtures/racetrack.ts';
 
-async function withServer(run) {
+async function withServer(run, fixture = racetrackFixture()) {
   const root = await mkdtemp(join(tmpdir(), 'alpha-racetrack-'));
-  const fixture = racetrackFixture();
   const marketRoot = join(root, 'us');
   await mkdir(marketRoot, { recursive: true });
   for (const [path, raw] of Object.entries(fixture.files)) {
@@ -67,3 +66,12 @@ test('non-loopback clients are refused before filesystem access', async () => {
   }, () => assert.fail('must not fall through'));
   assert.equal(status, 403);
 });
+
+test('v2 verifies private Q evidence but never serves its JSONL to the browser', () => withServer(async ({ fixture, marketRoot, base }) => {
+  const ref = Object.values(fixture.manifest.local_evidence)[0];
+  assert.equal((await fetch(`${base}/__racetrack/us/manifest.json`)).status, 200);
+  assert.equal((await fetch(`${base}/__racetrack/us/${ref.path}`)).status, 404);
+  await writeFile(join(marketRoot, ref.path), 'tampered');
+  assert.equal((await fetch(`${base}/__racetrack/us/manifest.json`)).status, 422);
+  assert.equal((await fetch(`${base}/__racetrack/us/${fixture.manifest.artifacts.scoreboard_latest.path}`)).status, 422);
+}, racetrackFirstSeasonFixture()));

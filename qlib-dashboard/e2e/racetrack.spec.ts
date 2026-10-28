@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
-import { racetrackFixture } from './fixtures/racetrack';
+import { racetrackFixture, racetrackFirstSeasonFixture } from './fixtures/racetrack';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/admin/shared/account-shell.js*', route => route.fulfill({ contentType: 'application/javascript', body: '' }));
@@ -11,9 +11,9 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-async function install(page: Page, options: { count?: number; badHash?: boolean; missing?: boolean; delayUs?: boolean; badDetail?: boolean } = {}) {
+async function install(page: Page, options: { count?: number; badHash?: boolean; missing?: boolean; delayUs?: boolean; badDetail?: boolean; firstSeason?: boolean } = {}) {
   const reads: string[] = [];
-  const fixtures = { us: racetrackFixture('us', options.count ?? 11), cn: racetrackFixture('cn', options.count ?? 11) };
+  const fixtures = { us: options.firstSeason ? racetrackFirstSeasonFixture() : racetrackFixture('us', options.count ?? 11), cn: racetrackFixture('cn', options.count ?? 11) };
   if (options.badDetail) {
     const f = fixtures.us; const ref = f.manifest.artifacts[f.manifest.runner_details[f.scoreboard.entries[0].runner_id]];
     const detail = JSON.parse(f.files[ref.path]); detail.runner_version = 'wrong';
@@ -152,4 +152,45 @@ test('unpublished projection and mismatched detail stay explicit', async ({ page
   await expect(detail.getByRole('alert')).toContainText('identity mismatch');
   await expect(detail.getByText('Published summary only', { exact: true })).toBeVisible();
   await expect(detail.getByText('Hypothetical model weights', { exact: true })).toHaveCount(0);
+});
+
+test('first season shows one dual-role pool racer, negative return-points and honest short-history states', async ({ page }, info) => {
+  if (info.project.name === 'desktop') await page.setViewportSize({ width: 1440, height: 1100 });
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const fixture = await install(page, { firstSeason: true });
+  await open(page);
+  const board = page.getByRole('region', { name: 'Published Top 10' });
+  await expect(board.locator('tbody tr')).toHaveCount(1);
+  await expect(page.getByRole('complementary', { name: 'First season rules' })).toContainText('not compounded NAV returns');
+  await expect(page.getByRole('complementary', { name: 'Research data limitations' })).toContainText('B (1 sessions)');
+  await expect(board).toContainText('Internal benchmark, also racing');
+  await expect(board).toContainText('Short history · not ranked');
+  await expect(board.locator('tbody tr td').first()).toHaveText('—');
+  const legend = page.getByLabel('NAV legend');
+  await expect(legend.getByRole('button')).toHaveCount(2); // no duplicate benchmark/racer NAV
+  await page.getByRole('button', { name: '1M', exact: true }).click();
+  await expect(board.locator('tbody tr td').first()).toHaveText('01');
+  await expect(board.locator('tbody tr td').nth(2)).toHaveText(fixture.fixtures.us.scoreboard.entries[0].season_points.toFixed(2));
+  await expect(page.getByText('Display NAV · 1.00 at 2026-09-25', { exact: true })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Racetrack normalized NAV comparison' }).locator('canvas').first()).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath(`first-season-${info.project.name}-overview.png`), fullPage: true });
+  await legend.getByRole('button', { name: /US87 EW/ }).click();
+  const detail = page.getByRole('region', { name: 'Runner detail' });
+  await expect(detail).toContainText('same replay and friction');
+  await expect(detail).toContainText('Q ledger retained locally and hash-bound');
+  await expect(detail.getByText('Investment thesis', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath(`first-season-${info.project.name}-detail.png`) });
+  await page.getByRole('button', { name: 'Close runner detail', exact: true }).click();
+  await page.getByRole('button', { name: '1Y', exact: true }).click();
+  await expect(board).toContainText('Insufficient history');
+  await expect(board.locator('tbody tr td').first()).toHaveText('—');
+  expect(fixture.reads.some(url => url.endsWith('.jsonl'))).toBe(false);
+  await page.reload();
+  await expect(page.getByRole('button', { name: '1Y', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(board).toContainText('Short history · not ranked');
+  await page.getByRole('button', { name: 'Strategy monitor', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Daily research brief' })).toBeVisible();
+  expect(errors).toEqual([]);
 });

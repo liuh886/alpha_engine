@@ -80,7 +80,7 @@ export function RacetrackChart({ data, selected, onSelect, onHover }: {
   return <div className="min-w-0">
     <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
       <span>Display NAV · 1.00 at {data.dates[0]}</span>
-      <span>{data.availableMonths} / {data.requestedMonths} month buckets available</span>
+      <span>{data.shortHistory ? 'Available replay · insufficient history for the selected window' : `${data.availableMonths} / ${data.requestedMonths} month buckets available`}</span>
       <button className="min-h-9 rounded-md border px-3 hover:bg-muted focus-visible:ring-2" onClick={() => chartRef.current?.timeScale().fitContent()}>Reset zoom</button>
     </div>
     <div ref={host} role="img" aria-label="Racetrack normalized NAV comparison" className="h-[370px] w-full" />

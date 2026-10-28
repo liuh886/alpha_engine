@@ -418,6 +418,8 @@ def evaluate_first_season(
         raise ValueError("First season requires its registered pool racer and dated evidence")
     calendar = xcals.get_calendar(calendar_name)
     dates = legacy.dates
+    if parse_season_month(season_id) != dates[-1][:7]:
+        raise ValueError("First season must identify the current natural calendar month")
     if dates != [str(d.date()) for d in calendar.sessions_in_range(dates[0], dates[-1])]:
         raise CalendarSessionError("First-season evidence has missing or unofficial sessions")
 
@@ -446,6 +448,8 @@ def evaluate_first_season(
         target = pd.Timestamp(dates[-1]) - pd.DateOffset(months=months)
         anchor = str(calendar.date_to_session(target, direction="previous").date())
         start_index = dates.index(anchor) if anchor in dates else None
+        if start_index is not None and any(sim.nav_history[start_index].nav <= 0 for sim in simulation_results.values()):
+            raise ValueError("Non-positive window anchor NAV")
         values = {key: float(sim.nav_history[-1].nav / sim.nav_history[start_index].nav - 1)
             for key, sim in simulation_results.items()} if start_index is not None else {}
         if any(not math.isfinite(value) for value in values.values()):

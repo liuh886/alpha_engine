@@ -20,7 +20,9 @@ async function containedRead(root, path, limit = MAX_BYTES) {
 
 function manifestFrom(bytes, market, version) {
   const manifest = JSON.parse(bytes.toString('utf8'));
-  if (manifest.schema_version !== '1.0' || manifest.pipeline_version !== '1.1.0'
+  const supported = manifest.schema_version === '1.0' && manifest.pipeline_version === '1.1.0'
+    || manifest.schema_version === '2.0' && manifest.pipeline_version === '2.0.0';
+  if (!supported
       || manifest.market !== market || manifest.pool_id !== pools[market]
       || manifest.research_only !== true || manifest.trade_ready !== false
       || !hashPattern.test(manifest.release_id) || (version && manifest.release_id !== version)
@@ -30,6 +32,17 @@ function manifestFrom(bytes, market, version) {
         || !/^versions\/[a-f0-9]{64}\/(scoreboard_latest\.json|archive\/scoreboard_\d{4}-\d{2}-\d{2}\.json|runners\/[a-f0-9]{64}\.json)$/.test(artifact.path)
         || !hashPattern.test(artifact.sha256) || !Number.isSafeInteger(artifact.size_bytes)
         || artifact.size_bytes < 0 || artifact.size_bytes > MAX_BYTES) throw new Error('Invalid projection artifact');
+  }
+  if (manifest.schema_version === '2.0') {
+    if (market !== 'us' || !manifest.local_evidence || !Object.keys(manifest.local_evidence).length
+        || Object.keys(manifest.local_evidence).length !== manifest.runner_count) throw new Error('Missing first-season Q evidence');
+    for (const ref of Object.values(manifest.local_evidence)) {
+      if (typeof ref.path !== 'string' || !ref.path.startsWith(`versions/${manifest.release_id}/evidence/`)
+          || !/^versions\/[a-f0-9]{64}\/evidence\/[a-f0-9]{64}\.jsonl$/.test(ref.path)
+          || !hashPattern.test(ref.sha256) || !hashPattern.test(ref.tip_hash)
+          || !Number.isSafeInteger(ref.size_bytes) || ref.size_bytes <= 0 || ref.size_bytes > MAX_BYTES
+          || !Number.isSafeInteger(ref.event_count) || ref.event_count <= 0) throw new Error('Invalid local Q evidence');
+    }
   }
   return manifest;
 }
@@ -65,6 +78,13 @@ export function createRacetrackHandler(projectionRoot) {
       const manifestPath = version ? `versions/${version}/manifest.json` : 'manifest.json';
       const bytes = await containedRead(root, manifestPath, 512 * 1024);
       const manifest = manifestFrom(bytes, market, version);
+      // Verify retained private Q evidence without exposing an evidence route.
+      for (const ref of Object.values(manifest.local_evidence ?? {})) {
+        const raw = await containedRead(root, ref.path);
+        if (raw.byteLength !== ref.size_bytes || createHash('sha256').update(raw).digest('hex') !== ref.sha256) {
+          throw new Error('Retained Q evidence hash/size mismatch');
+        }
+      }
       if (!version) return reply(200, bytes);
       const artifact = Object.values(manifest.artifacts).find(item => item.path === path);
       if (!artifact) throw new Error('Resource is not declared in the immutable manifest');

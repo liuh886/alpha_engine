@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -373,11 +374,11 @@ def publish_racetrack_projection(
         # Write scoreboard archive snapshot
         archive_file = staging_archive / f"scoreboard_{as_of_session}.json"
         scoreboard_json_str = scoreboard.to_json(indent=2) + "\n"
-        archive_file.write_text(scoreboard_json_str, encoding="utf-8")
+        archive_file.write_text(scoreboard_json_str, encoding="utf-8", newline="\n")
 
         # Write scoreboard latest projection
         latest_file = staging_dir / "scoreboard_latest.json"
-        latest_file.write_text(scoreboard_json_str, encoding="utf-8")
+        latest_file.write_text(scoreboard_json_str, encoding="utf-8", newline="\n")
 
         # Compute cryptographic fingerprints
         archive_sha256 = compute_file_sha256(archive_file)
@@ -439,7 +440,7 @@ def publish_racetrack_projection(
             detail_file.parent.mkdir(exist_ok=True)
             detail_file.write_text(
                 json.dumps(detail, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n",
-                encoding="utf-8",
+                encoding="utf-8", newline="\n",
             )
             key = f"runner:{runner_id}"
             manifest_dict["runner_details"][runner_id] = key
@@ -456,7 +457,7 @@ def publish_racetrack_projection(
         manifest_json_str = (
             json.dumps(manifest_dict, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
         )
-        manifest_file.write_text(manifest_json_str, encoding="utf-8")
+        manifest_file.write_text(manifest_json_str, encoding="utf-8", newline="\n")
         manifest_sha256 = compute_file_sha256(manifest_file)
 
         # First land the complete immutable vintage. An existing vintage must
@@ -537,6 +538,20 @@ def render_racetrack_scoreboard(
         or manifest.get("trade_ready") is not False
     ):
         raise ValueError("Unrecognized projection identity or research boundary")
+    if manifest.get("schema_version") == "2.0":
+        evidence = manifest.get("local_evidence")
+        if (not isinstance(evidence, dict) or not evidence or len(evidence) != manifest.get("runner_count")
+            or not re.fullmatch(r"[a-f0-9]{64}", str(manifest.get("release_id", "")))):
+            raise ValueError("First-season Q evidence is missing or incomplete")
+        for ref in evidence.values():
+            if not isinstance(ref, dict):
+                raise ValueError("Invalid retained Q evidence reference")
+            path = ref.get("path", "")
+            if (not isinstance(path, str) or not re.fullmatch(
+                rf"versions/{re.escape(manifest['release_id'])}/evidence/[a-f0-9]{{64}}\.jsonl", path
+            ) or type(ref.get("event_count")) is not int or ref["event_count"] <= 0
+                or not re.fullmatch(r"[a-f0-9]{64}", str(ref.get("tip_hash", "")))):
+                raise ValueError("Invalid retained Q evidence reference")
     for artifact in [*manifest["artifacts"].values(), *manifest.get("local_evidence", {}).values()]:
         path = (root / artifact["path"]).resolve()
         if not path.is_relative_to(root) or not path.is_file():
@@ -547,14 +562,36 @@ def render_racetrack_scoreboard(
         ):
             raise ValueError("Projection artifact hash/size mismatch")
     latest_file = root / manifest["artifacts"]["scoreboard_latest"]["path"]
-    scoreboard = Scoreboard.from_json(latest_file.read_text(encoding="utf-8"))
+    payload = json.loads(latest_file.read_text(encoding="utf-8"))
+    scoreboard = Scoreboard.from_dict(payload)
     if (
-        scoreboard.pool_id != manifest["pool_id"]
+        scoreboard.schema_version != manifest["schema_version"]
+        or scoreboard.pool_id != manifest["pool_id"]
         or scoreboard.benchmark_symbol != manifest["benchmark_symbol"]
         or scoreboard.as_of_session != manifest["as_of_session"]
         or scoreboard.season_id != manifest["season_id"]
     ):
         raise ValueError("Scoreboard identity does not match the manifest")
+    if scoreboard.schema_version == "2.0":
+        phase = scoreboard.first_season
+        ids = {entry.runner_id for entry in scoreboard.entries}
+        if (not isinstance(phase, dict) or phase.get("contract_version") != "first_season_v2"
+            or phase.get("points_rule") != "monthly_net_return_percentage_points_v2"
+            or phase.get("rank_policy") != "window_net_return_competition_rank_v1"
+            or phase.get("season_state") != "provisional"
+            or payload.get("period_policy") != "trailing_calendar_duration_previous_session_anchor_v1"
+            or set(manifest["local_evidence"]) != ids or len(ids) != len(scoreboard.entries)
+            or not isinstance(phase.get("roles"), dict) or set(phase["roles"]) != ids
+            or phase.get("pool_runner_id") not in ids
+            or any(role != ("internal_benchmark_racer" if key == phase["pool_runner_id"] else "strategy_racer")
+                for key, role in phase["roles"].items())):
+            raise ValueError("Invalid first-season scoreboard contract or Q identities")
+        for entry in scoreboard.entries:
+            ref = manifest["local_evidence"][entry.runner_id]
+            ledger = EventLedger.load(root / ref["path"])
+            if (ledger.runner_id != entry.runner_id or ledger.runner_version != entry.runner_version
+                or len(ledger.events) != ref["event_count"] or ledger.tip_hash != ref["tip_hash"]):
+                raise ValueError("Retained Q ledger identity/count/tip mismatch")
 
     if format_type.lower() == "json":
         return scoreboard.to_json(indent=2)
@@ -565,6 +602,13 @@ def render_racetrack_scoreboard(
     )
     macro_lbl = spec["macro_label"]
     pool_lbl = spec["pool_label"]
+    v2 = scoreboard.first_season is not None
+    period_note = (
+        "V2: trailing calendar-duration returns use a prior-close anchor; short history is N/A. "
+        "Monthly net return percentage points may be negative; arithmetic point totals are not compounded NAV return. "
+        "Rank is current-season rank; window ranks are published in JSON. All months remain provisional/not reviewed."
+        if v2 else "Periods include partial calendar months; points are provisional until full-window review."
+    )
 
     def _fmt_pct(val: float | None) -> str:
         if val is None:
@@ -576,6 +620,9 @@ def render_racetrack_scoreboard(
         if val is None:
             return "N/A"
         return f"{val:.2f}"
+
+    def _fmt_points(val: int | float) -> str:
+        return f"{val:.2f}" if v2 else str(val)
 
     if format_type.lower() == "table":
         lines = [
@@ -590,13 +637,13 @@ def render_racetrack_scoreboard(
         else:
             for e in scoreboard.entries:
                 lines.append(
-                    f"{e.current_rank:<5}{e.runner_id:<22}{e.runner_version:<7}{e.season_points:<6}"
+                    f"{e.current_rank:<5}{e.runner_id:<22}{e.runner_version:<7}{_fmt_points(e.season_points):<8}"
                     f"{_fmt_pct(e.return_1m):<10}{_fmt_pct(e.return_3m):<10}{_fmt_pct(e.return_1y):<10}"
                     f"{_fmt_ratio(e.sharpe_ratio):<8}{_fmt_pct(e.max_drawdown):<9}{e.persistence_ratio * 100:.1f}%"
                 )
         lines.append("-" * 96)
         lines.append(
-            "Note: Periods include partial calendar months; points are provisional until full-window review. Adjusted-price research returns; see manifest for friction and PIT qualification. research_only=true, trade_ready=false."
+            f"Note: {period_note} Adjusted-price research returns; see manifest for friction and PIT qualification. research_only=true, trade_ready=false."
         )
         return "\n".join(lines)
 
@@ -616,7 +663,7 @@ def render_racetrack_scoreboard(
         for e in scoreboard.entries:
             summary = e.thesis_summary.replace("|", "/")
             md_lines.append(
-                f"| **{e.current_rank}** | {e.runner_id} | {e.runner_version} | **{e.season_points}** | "
+                f"| **{e.current_rank}** | {e.runner_id} | {e.runner_version} | **{_fmt_points(e.season_points)}** | "
                 f"{_fmt_pct(e.return_1m)} | {_fmt_pct(e.return_3m)} | {_fmt_pct(e.return_1y)} | "
                 f"{_fmt_pct(e.excess_vs_qqq)} | {_fmt_pct(e.excess_vs_pool)} | "
                 f"{_fmt_pct(e.max_drawdown)} | {_fmt_ratio(e.sharpe_ratio)} | "
@@ -624,6 +671,6 @@ def render_racetrack_scoreboard(
             )
     md_lines.append("")
     md_lines.append(
-        "*Note: Periods include partial calendar months; points are provisional until full-window review. Returns use adjusted prices and manifest-bound friction. research_only=true, trade_ready=false.*"
+        f"*Note: {period_note} Returns use adjusted prices and manifest-bound friction. research_only=true, trade_ready=false.*"
     )
     return "\n".join(md_lines)

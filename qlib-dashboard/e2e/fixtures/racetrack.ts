@@ -1,6 +1,13 @@
 /// <reference types="node" />
 // Synthetic browser/reader contract fixture, never copied to public or dist.
 import { createHash } from 'node:crypto';
+import firstSeasonSnapshot from './racetrack-v2.json' with { type: 'json' };
+
+export function racetrackFirstSeasonFixture() {
+  return structuredClone(firstSeasonSnapshot) as {
+    manifest: Record<string, any>; scoreboard: Record<string, any>; files: Record<string, string>;
+  };
+}
 
 export function racetrackFixture(market: 'us' | 'cn' = 'us', count = 11) {
   const release = createHash('sha256').update(`synthetic-race-${market}-${count}`).digest('hex');

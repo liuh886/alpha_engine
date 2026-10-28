@@ -1,8 +1,8 @@
 /// <reference types="node" />
 import { createHash, webcrypto } from 'node:crypto';
 import { TextEncoder } from 'node:util';
-import { racetrackFixture } from '../../e2e/fixtures/racetrack';
-import { contiguousSegments, displayWindow, parseRaceManifest, parseRaceScoreboard, ProjectionClient } from './racetrack-projection';
+import { racetrackFixture, racetrackFirstSeasonFixture } from '../../e2e/fixtures/racetrack';
+import { contiguousSegments, displayWindow, leaderboardForWindow, parseRaceManifest, parseRaceScoreboard, ProjectionClient } from './racetrack-projection';
 
 beforeEach(() => { vi.stubGlobal('crypto', webcrypto); vi.stubGlobal('TextEncoder', TextEncoder); });
 afterEach(() => vi.unstubAllGlobals());
@@ -95,4 +95,48 @@ test('baseline-only is valid and null returns never become zero', async () => {
   const result = await client.load('cn', new AbortController().signal);
   expect(result.scoreboard.status).toBe('diagnostic_baseline_only');
   expect(displayWindow(result.scoreboard, 12).series).toHaveLength(2);
+});
+
+test('actual v2 publisher fixture preserves negative points, full-window eligibility and one pool curve', async () => {
+  const fixture = racetrackFirstSeasonFixture();
+  const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+    const path = String(url).replace('/__racetrack/us/', '');
+    return new Response(path === 'manifest.json' ? JSON.stringify(fixture.manifest) : fixture.files[path]);
+  });
+  const client = new ProjectionClient(fetcher);
+  const signal = new AbortController().signal;
+  const projection = await client.load('us', signal);
+  const entry = projection.scoreboard.entries[0];
+  expect(entry.season_points).toBeLessThan(0);
+  expect(leaderboardForWindow(projection.scoreboard, 1)[0].rank).toBe(1);
+  expect(leaderboardForWindow(projection.scoreboard, 12)[0].rank).toBeNull();
+  const month = displayWindow(projection.scoreboard, 1);
+  expect(month.dates[0]).toBe('2026-09-25');
+  expect(month.series).toHaveLength(2); // benchmark/racer share the exact published curve
+  expect(month.series[0].runnerId).toBe(entry.runner_id);
+  expect(displayWindow(projection.scoreboard, 12).shortHistory).toBe(true);
+  expect(projection.scoreboard.first_season?.source_gaps[0].symbol).toBe('B');
+  expect((await client.runner(projection, entry, signal)).runner_role).toBe('internal_benchmark_racer');
+  expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('.jsonl'))).toBe(false);
+});
+
+test.each(['points_rule', 'settlement', 'partial_rank', 'window_top', 'role', 'gap'])('rejects inconsistent v2 evidence: %s', damage => {
+  const f = racetrackFirstSeasonFixture();
+  const phase = f.scoreboard.first_season;
+  if (damage === 'points_rule') phase.points_rule = 'rank_points_v1';
+  if (damage === 'settlement') phase.month_windows[0].settlement_status = 'settled';
+  if (damage === 'partial_rank') phase.windows['12'].ranks[f.scoreboard.entries[0].runner_id] = 1;
+  if (damage === 'window_top') phase.windows['1'].top_runner_ids = [];
+  if (damage === 'role') phase.roles[phase.pool_runner_id] = 'strategy_racer';
+  if (damage === 'gap') phase.source_gaps[0].missing_sessions = -1;
+  expect(() => parseRaceScoreboard(f.scoreboard, parseRaceManifest(f.manifest, 'us'))).toThrow();
+});
+
+test('paired versions and private Q references fail closed', () => {
+  const f = racetrackFirstSeasonFixture();
+  f.manifest.schema_version = '1.0';
+  expect(() => parseRaceManifest(f.manifest, 'us')).toThrow('version');
+  f.manifest.schema_version = '2.0';
+  Object.values<any>(f.manifest.local_evidence)[0].path = '../private.jsonl';
+  expect(() => parseRaceManifest(f.manifest, 'us')).toThrow('Q evidence');
 });
