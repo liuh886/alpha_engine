@@ -24,7 +24,10 @@ redistributed. Weights drift between rebalances; the existing missing-valuation
 policy remains explicit. A partial first month is not a complete calendar month.
 
 The pool runner is evaluated once; its SimulationResult is also the internal
-benchmark. The written Q ledger is retained under the immutable release's local
+benchmark. Event IDs are deterministic by pool/runner/version/session, and event
+timestamps are official session-close replay times, not provider first-known
+availability or an actual historical order. Canonical ledger bytes use LF on
+every platform. The written Q ledger is retained under the immutable release's local
 `evidence/` directory, with byte hash/size, event count and chain-tip hash bound
 into `local_evidence` and release identity. It is not a browser artifact: the
 local HTTP reader rejects evidence/JSONL resources, and nothing is copied to

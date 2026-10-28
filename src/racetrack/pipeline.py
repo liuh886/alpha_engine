@@ -15,6 +15,7 @@ from pathlib import Path
 import shutil
 import subprocess
 from typing import Any
+import tempfile
 import uuid
 
 from src.racetrack.contracts import (
@@ -23,10 +24,12 @@ from src.racetrack.contracts import (
     assert_privacy_clean,
 )
 from src.racetrack.matrix import load_price_matrix
+from src.racetrack.ledger import EventLedger
 from src.racetrack.pool_index import generate_equal_weight_pool_index
-from src.racetrack.runner import RunnerRegistry, validate_runner_thesis
+from src.racetrack.runner import RunnerRegistry, create_us_pool_runner, validate_runner_thesis
 from src.racetrack.scoring import (
     evaluate_race_season,
+    evaluate_first_season,
     generate_benchmark_simulation,
 )
 
@@ -120,6 +123,7 @@ def publish_racetrack_projection(
     root_path: Path | None = None,
     season_id: str | None = None,
     generated_at_utc: str | None = None,
+    with_pool_runner: bool = False,
 ) -> PipelineResult:
     """Execute end-to-end Racetrack publication pipeline with atomic landing and fail-closed integrity.
 
@@ -146,6 +150,7 @@ def publish_racetrack_projection(
         root_path: Alias for repo_root.
         season_id: Custom season identifier. If None, derived from market and session.
         generated_at_utc: Deterministic generation timestamp (defaults to session midnight UTC).
+        with_pool_runner: Explicit Phase A opt-in: one US87 pool racer, v2 contract and retained Q evidence.
 
     Returns:
         PipelineResult containing paths, metadata, hashes, and Scoreboard contract.
@@ -161,6 +166,8 @@ def publish_racetrack_projection(
         raise ValueError(
             f"Unsupported market '{market}'. Must be one of {list(MARKET_SPECS.keys())}"
         )
+    if with_pool_runner and (market_lower != "us" or registry is not None or runners_registry is not None):
+        raise ValueError("Phase A accepts only the built-in US pool racer, without another registry")
 
     spec = MARKET_SPECS[market_lower]
     candidate_pool = spec["candidate_pool"]
@@ -196,11 +203,27 @@ def publish_racetrack_projection(
     as_of_session = matrix.end_session
 
     # 4. Step 2: Generate internal declared pool index simulation
-    pool_sim = generate_equal_weight_pool_index(
-        matrix=matrix,
-        pool_id=candidate_pool,
-        config=config,
-    )
+    retained_ledgers = {}
+    local_evidence = {}
+    pool_runner = create_us_pool_runner() if with_pool_runner else None
+    if pool_runner:
+        admitted = RunnerRegistry(pool_id=candidate_pool, candidate_symbols=matrix.candidate_symbols)
+        admitted.register(pool_runner)
+        # One successful replay writes owned Q evidence. The same result is used
+        # as the benchmark; no second replay or inferred/copy-pasted targets.
+        with tempfile.TemporaryDirectory(prefix="alpha-pool-q-") as temporary:
+            ledger_path = Path(temporary) / "pool.jsonl"
+            pool_sim = pool_runner.run(matrix, ledger_path=ledger_path, config=config)
+            ledger = EventLedger.load(ledger_path)
+            raw = ledger_path.read_bytes()
+            name = hashlib.sha256(pool_runner.runner_id.encode()).hexdigest() + ".jsonl"
+            relative = (Path("evidence") / name).as_posix()
+            retained_ledgers[relative] = raw
+            local_evidence[pool_runner.runner_id] = {"path": relative,
+                "sha256": hashlib.sha256(raw).hexdigest(), "size_bytes": len(raw),
+                "event_count": len(ledger.events), "tip_hash": ledger.tip_hash}
+    else:
+        pool_sim = generate_equal_weight_pool_index(matrix=matrix, pool_id=candidate_pool, config=config)
 
     # 5. Step 3: Generate external macro benchmark simulation
     macro_sim = generate_benchmark_simulation(
@@ -213,6 +236,9 @@ def publish_racetrack_projection(
     active_registry = registry if registry is not None else runners_registry
     simulation_results: dict[str, Any] = {}
     runners_map: dict[str, Any] = {}
+    if pool_runner:
+        simulation_results = {pool_runner.runner_id: pool_sim}
+        runners_map = {pool_runner.runner_id: pool_runner}
 
     if active_registry is not None and active_registry.list_runners():
         for runner in active_registry.list_runners():
@@ -232,15 +258,23 @@ def publish_racetrack_projection(
     else:
         resolved_season_id = season_id
 
-    scoreboard = evaluate_race_season(
-        runners=runners_map,
-        simulation_results=simulation_results,
-        qqq_simulation=macro_sim,
-        pool_simulation=pool_sim,
-        season_id=resolved_season_id,
-        pool_id=candidate_pool,
-        benchmark_symbol=benchmark_symbol,
-    )
+    if pool_runner:
+        scoreboard = evaluate_first_season(runners_map, simulation_results, macro_sim, pool_sim,
+            resolved_season_id, candidate_pool, benchmark_symbol, spec["calendar"], pool_runner.runner_id)
+        gaps = []
+        for symbol in matrix.candidate_symbols:
+            prices = matrix.prices[symbol]
+            first = prices.first_valid_index()
+            missing = prices.loc[first:].index[prices.loc[first:].isna()].tolist() if first else list(matrix.sessions)
+            if missing:
+                gaps.append({"symbol": symbol, "missing_sessions": len(missing),
+                    "first_missing_session": str(missing[0]), "last_missing_session": str(missing[-1]),
+                    "qualification": "unresolved_after_first_observation" if first else "no_observation_in_replay"})
+        scoreboard.first_season["source_gaps"] = gaps
+    else:
+        scoreboard = evaluate_race_season(runners=runners_map, simulation_results=simulation_results,
+            qqq_simulation=macro_sim, pool_simulation=pool_sim, season_id=resolved_season_id,
+            pool_id=candidate_pool, benchmark_symbol=benchmark_symbol)
 
     # 8. Step 6: Security and Privacy Guard recursive scan
     # Inspect all runners, simulations, scoreboard entries and raw dicts
@@ -263,7 +297,7 @@ def publish_racetrack_projection(
         simulation = simulation_results[runner_id]
         last = simulation.nav_history[-1]
         details[runner_id] = {
-            "schema_version": "1.0",
+            "schema_version": scoreboard.schema_version,
             "runner_id": runner_id,
             "runner_version": runner.runner_version,
             "pool_id": candidate_pool,
@@ -294,6 +328,8 @@ def publish_racetrack_projection(
             "trade_ready": False,
         }
         assert_privacy_clean(details[runner_id])
+        if pool_runner:
+            details[runner_id]["runner_role"] = "internal_benchmark_racer"
 
     # 9. Step 7: Atomic landing with staging and fail-closed promotion
     # The current manifest is the only mutable publication pointer. Every
@@ -301,6 +337,7 @@ def publish_racetrack_projection(
     identity = {
         "scoreboard": scoreboard_dict,
         "runner_details": details,
+        "local_evidence": local_evidence,
         "matrix": matrix.matrix_sha256,
         "catalog": matrix.catalog_sha256,
         "cutoff": as_of_cutoff,
@@ -328,6 +365,10 @@ def publish_racetrack_projection(
     try:
         staging_dir.mkdir(parents=True, exist_ok=True)
         staging_archive.mkdir(parents=True, exist_ok=True)
+        for path, raw in retained_ledgers.items():
+            destination = staging_dir / path
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(raw)
 
         # Write scoreboard archive snapshot
         archive_file = staging_archive / f"scoreboard_{as_of_session}.json"
@@ -349,8 +390,8 @@ def publish_racetrack_projection(
         gen_time = generated_at_utc or f"{as_of_session}T00:00:00Z"
 
         manifest_dict = {
-            "schema_version": "1.0",
-            "pipeline_version": "1.1.0",
+            "schema_version": scoreboard.schema_version,
+            "pipeline_version": "2.0.0" if pool_runner else "1.1.0",
             "release_id": release_id,
             "status": scoreboard.status,
             "data_qualification": matrix.data_qualification,
@@ -388,6 +429,9 @@ def publish_racetrack_projection(
             },
         }
         manifest_dict["runner_details"] = {}
+        if pool_runner:
+            manifest_dict["local_evidence"] = {key: {**value,
+                "path": (release_relative / value["path"]).as_posix()} for key, value in local_evidence.items()}
         for runner_id, detail in details.items():
             filename = hashlib.sha256(runner_id.encode("utf-8")).hexdigest() + ".json"
             relative = Path("runners") / filename
@@ -421,7 +465,7 @@ def publish_racetrack_projection(
         if release_dir.exists():
             names = ["manifest.json"] + [
                 str(Path(artifact["path"]).relative_to(release_relative))
-                for artifact in manifest_dict["artifacts"].values()
+                for artifact in [*manifest_dict["artifacts"].values(), *manifest_dict.get("local_evidence", {}).values()]
             ]
             for name in names:
                 if (release_dir / name).read_bytes() != (staging_dir / name).read_bytes():
@@ -487,14 +531,13 @@ def render_racetrack_scoreboard(
     if expected is None or manifest.get("market") != market.lower():
         raise ValueError("Projection market does not match requested market")
     if (
-        manifest.get("schema_version") != "1.0"
-        or manifest.get("pipeline_version") != "1.1.0"
+        (manifest.get("schema_version"), manifest.get("pipeline_version")) not in [("1.0", "1.1.0"), ("2.0", "2.0.0")]
         or manifest.get("pool_id") != expected["candidate_pool"]
         or manifest.get("research_only") is not True
         or manifest.get("trade_ready") is not False
     ):
         raise ValueError("Unrecognized projection identity or research boundary")
-    for artifact in manifest["artifacts"].values():
+    for artifact in [*manifest["artifacts"].values(), *manifest.get("local_evidence", {}).values()]:
         path = (root / artifact["path"]).resolve()
         if not path.is_relative_to(root) or not path.is_file():
             raise ValueError("Projection artifact is missing or escapes the release root")

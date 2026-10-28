@@ -163,7 +163,7 @@ class RunnerContract:
             temporary = None
             try:
                 with tempfile.NamedTemporaryFile(
-                    mode="w", encoding="utf-8", dir=p.parent, delete=False
+                    mode="w", encoding="utf-8", newline="\n", dir=p.parent, delete=False
                 ) as f:
                     temporary = Path(f.name)
                     for ev in events:

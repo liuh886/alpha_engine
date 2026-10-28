@@ -1,5 +1,6 @@
 """First-season contracts: real pool evidence, versioned scoring and publication."""
 from dataclasses import replace
+import json
 from pathlib import Path
 
 import numpy as np
@@ -104,3 +105,59 @@ def test_v2_rejects_gapped_calendar_even_when_legacy_series_align():
     with pytest.raises(ValueError, match="missing or unofficial"):
         evaluate_first_season(runners, simulations, simulations[pool_id], simulations[pool_id],
             "season_us_2026_10", source.pool_id, "QQQ", "XNYS", pool_id)
+
+
+def test_v2_publication_retains_ledger_once_and_tamper_cannot_advance_pointer(tmp_path, monkeypatch, capsys):
+    from src.racetrack import pipeline
+    source, _, _, runner_id = season_fixture()
+    monkeypatch.setattr(pipeline, "load_price_matrix", lambda **_: source)
+    for path in [f"configs/research_universes/{source.pool_id}.yaml",
+        "configs/pools/selected_pool_registry_v1.yaml", "configs/pools/reference_instrument_registry_v1.yaml"]:
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("synthetic identity")
+    original_run = RunnerContract.run
+    calls = []
+    def counted_run(self, *args, **kwargs):
+        calls.append(self.runner_id)
+        return original_run(self, *args, **kwargs)
+    monkeypatch.setattr(RunnerContract, "run", counted_run)
+    result = pipeline.publish_racetrack_projection(root_path=tmp_path, as_of_cutoff="2026-10-27", with_pool_runner=True)
+    assert calls == [runner_id]
+    assert result.manifest_dict["pipeline_version"] == "2.0.0"
+    assert result.runner_count == 1
+    assert result.scoreboard.benchmarks["pool_index"] == result.scoreboard.top_runners_nav[runner_id]
+    evidence = result.manifest_dict["local_evidence"][runner_id]
+    root = result.manifest_path.parent
+    ledger = EventLedger.load(root / evidence["path"])
+    assert evidence["event_count"] == len(ledger.events) == 2
+    assert evidence["tip_hash"] == ledger.tip_hash
+    assert pipeline.compute_file_sha256(root / evidence["path"]) == evidence["sha256"]
+    assert not any(ref["path"].endswith(".jsonl") for ref in result.manifest_dict["artifacts"].values())
+    assert pipeline.render_racetrack_scoreboard(root, "json")
+    detail_key = result.manifest_dict["runner_details"][runner_id]
+    detail = json.loads((root / result.manifest_dict["artifacts"][detail_key]["path"]).read_text())
+    assert detail["runner_role"] == "internal_benchmark_racer"
+    assert detail["schema_version"] == "2.0"
+    pointer = result.manifest_path.read_bytes()
+    repeat = pipeline.publish_racetrack_projection(root_path=tmp_path, as_of_cutoff="2026-10-27", with_pool_runner=True)
+    assert repeat.manifest_dict["release_id"] == result.manifest_dict["release_id"]
+    assert repeat.manifest_path.read_bytes() == pointer
+    from src.cli.main import main
+    assert main(["--root", str(tmp_path), "racetrack", "publish", "--with-pool-runner", "--as-of", "2026-10-27"]) == 0
+    assert json.loads(capsys.readouterr().out)["runner_count"] == 1
+    (root / evidence["path"]).write_bytes(b"tampered retained evidence")
+    with pytest.raises(ValueError, match="hash/size"):
+        pipeline.render_racetrack_scoreboard(root, "json")
+    with pytest.raises(ValueError, match="content identity"):
+        pipeline.publish_racetrack_projection(root_path=tmp_path, as_of_cutoff="2026-10-27", with_pool_runner=True)
+    assert result.manifest_path.read_bytes() == pointer
+    assert not list(root.glob(".staging_*"))
+
+
+def test_phase_a_does_not_silently_admit_cn_or_external_registry():
+    from src.racetrack.pipeline import publish_racetrack_projection
+    with pytest.raises(ValueError, match="Phase A"):
+        publish_racetrack_projection(market="cn", with_pool_runner=True)
+    with pytest.raises(ValueError, match="Phase A"):
+        publish_racetrack_projection(with_pool_runner=True, registry=RunnerRegistry(candidate_symbols=("A",)))

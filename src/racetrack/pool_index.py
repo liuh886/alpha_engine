@@ -6,6 +6,7 @@ with intra-month natural drift and zero intra-month turnover.
 
 from __future__ import annotations
 
+import hashlib
 import numpy as np
 
 from src.racetrack.contracts import (
@@ -70,6 +71,8 @@ def generate_pool_index_events(
         raise ValueError(f"Matrix contains zero candidate symbols for pool '{pool_id}'")
 
     weight_per_constituent = 1.0 / float(num_declared)
+    import exchange_calendars as xcals
+    calendar = xcals.get_calendar(matrix.calendar)
     events: list[RebalanceEvent] = []
     prev_hash = "0" * 64
 
@@ -92,6 +95,9 @@ def generate_pool_index_events(
             effective_session=sess,
             runner_id=runner_id or f"benchmark_{pool_id}_ew",
             runner_version=runner_version,
+            event_id=hashlib.sha256(f"{pool_id}:{runner_id or 'benchmark'}:{runner_version}:{sess}".encode()).hexdigest(),
+            # Replay decision timestamp, not first-known provider availability.
+            timestamp_utc=calendar.session_close(sess).isoformat(),
             target_weights=target_weights,
             reason=(
                 f"Monthly equal-weight rebalance for {sess[:7]}: "
