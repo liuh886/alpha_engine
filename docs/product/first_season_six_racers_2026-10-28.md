@@ -152,7 +152,8 @@ monthly ranks, and season points, alongside QQQ as reference-only.
 QQQR is currently blocked by the selected-equity-only admission rule: its
 formal contract holds QQQ/QQQI/TQQQ/SGOV, and §4.5 forbids those reference or
 out-of-pool holdings. Resolve that through a versioned strategy-specific
-admission decision before attempting an exact replay. Do not drop sleeves,
+admission contract before attempting a replay. §10.4's new IDs alone do not
+authorize reference holdings. Do not drop sleeves,
 rename instruments or call a materially different equity-only runner QQQR.
 US x1.3 also needs its frozen model/factor/source inputs, not only a daily
 price matrix, before exact replay feasibility can be established.
@@ -180,10 +181,14 @@ Formal-racer eligibility remains separate. This phase must reconcile:
 - CN privacy and PIT handling identical to the US track: no private account
   fields in ledgers or projections; `pit_certified=false` stays visible
   until a certification path exists (agenda item B1).
+- A docstring fix in `matrix.py` (currently says XNYS for US only); code
+  behaviour is unchanged by that fix.
 
 BYD also has leverage/negative-cash incompatibility and CN_27 has known
 out-of-pool equities plus an executable ETF sleeve (§6). Existing CN runtime
-support does not authorize either exception. Until these decisions land,
+support does not authorize either exception. §10.3/10.7 select versioned
+variants or formal-only status; their exact frozen contracts still need to
+resolve these constraints before admission. Until those contracts land,
 BYD v1.3 and CN_27 V1.3 must not be admitted, even as
 "CN racers in the US registry" — that would be a whitelist violation, not a
 shortcut.
@@ -204,9 +209,9 @@ closing them. Each remains an open item with its own closing test:
   per-window Top 10 ranking is not present (#1311 frontend doc, §"Display
   and interpretation"). Window controls currently rebase / slice NAV and
   use precomputed period fields; they do not re-rank runners within the
-  window. Whether the first season's "window Top 10" means cumulative rank
-  sliced by window, or true per-window rank, must be decided and written
-  into the frontend doc before the first season is read as a window race.
+  window. §10.1 now selects true per-window ranks. That decision still requires
+  scoring/projection/frontend implementation before the first season can be
+  read as a window race.
 - **Settled month snapshots.** Judged drawdown / indicator series, event
   markers, rebalance ledger chunks, and measured association profiles
   require future source contracts (per #1311 landing status). Do not
@@ -216,12 +221,14 @@ closing them. Each remains an open item with its own closing test:
 - **BYD structural incompatibilities.** The frozen BYD contract permits
   1.125 BYD exposure and -0.125 cash, independently incompatible with
   RebalanceEvent's no-leverage/nonnegative-cash limits. It also uses 515180,
-  outside CN130. Both need a versioned admission decision; neither may be
-  hidden by clipping weights or substituting cash.
+  outside CN130. §10.3 chooses a separately named BYD-only variant; its
+  exposure rule and reconciliation must be frozen explicitly. The ETF
+  decision does not implicitly authorize leverage or silent clipping.
 - **CN_27 known composition.** Its frozen 27-equity pool overlaps CN130 on
   22 names; `002156`, `002281`, `300274`, `601939`, `688183` are outside.
   The formal model also uses executable 515180 as a defensive sleeve. The
-  facts are established; only the admission policy remains undecided.
+  facts are established; §10.7 selects a documented versioned variant or
+  formal-only status. Exact variant composition and reconciliation remain TODO.
 - **QQQR / US x1.3 replay feasibility.** QQQR's ETF/reference holdings already
   conflict with §4.5. US x1.3 requires frozen model/factor evidence as well as
   prices. Exact replay and reconciliation remain unproven. An incompatible
@@ -250,7 +257,8 @@ is not a failure), and the following are all visible on-page: track
 timestamp, friction baseline (8 bps) with sensitivities kept separate,
 provisional vs settled season status, and the PIT-not-certified
 qualification. The first season is "complete" when one full calendar month
-settles under PointsRuleV1 and the season review ritual (agenda A4) has
+settles under the new versioned return-points rule in §10.2, with PointsRuleV1
+retained unchanged as reference, and the season review ritual (agenda A4) has
 been run once — a review, or an explicit "no change" record, not silence.
 
 ## 8. Non-goals
@@ -296,3 +304,61 @@ are explicitly left open above.
 These checks correct the proposal's implementation assumptions; they do not
 approve expanded asset roles, leverage, modified formal strategies or a settled
 season. Phase A remains the next bounded implementation after proposal review.
+
+
+## 10. Decisions fixed 2026-10-28 (user sign-off, supersedes §6 where stated)
+
+These decisions were given after the architect review and are recorded
+here, not silently folded into earlier sections. Where a decision changes
+a merged rule, the implementation must introduce a new versioned rule,
+never silently edit the old one.
+
+1. **Window ranking: true per-window rank, display-only.** Window
+   controls rank runners by that window's return (1M / 3M / 6M / 1Y),
+   computed by the scoring module from rolling window returns and emitted
+   as a `window_ranks` projection field; the frontend only switches its
+   sort key. A runner with less history than the window is labelled
+   short-history / ineligible and is never ranked on a partial return.
+   Window rank awards NO window points. This replaces the interim
+   "cumulative rank, window-sliced NAV" semantics in §6.
+2. **Season points: return-as-points, and the pool index earns them.**
+   For each calendar month, a racer's season points for that month equal
+   its monthly net return in percentage points: +3.2% = 3.2 points,
+   -1.5% = -1.5 points, 0% = 0 points. This is NOT PointsRuleV1
+   (rank points 10 / 6 / 4 / 2 / 1 / 0); it must be implemented as a new
+   versioned points rule, with PointsRuleV1 retained unchanged for
+   reference. Consequences, to be labelled on-page: (a) ranking by
+   season points for a month is identical to ranking by that month's
+   return, and ties are equal points; (b) a season total is the
+   arithmetic sum of monthly return-points, which is NOT the compounded
+   NAV total return and must never be presented as such; (c) the pool
+   index earns return-points like any racer — its pool excess is still
+   0 by construction, but its absolute monthly return still counts as
+   points, so it can rank by its own return.
+3. **BYD 515180: option (a), versioned variant.** Admit a BYD-only
+   runner (e.g. `byd_cn_runner_v1`) whose thesis states the deviation
+   from formal BYD v1.3; the reconciliation delta against formal
+   evidence is published. 515180 is never silently dropped while still
+   calling the runner "BYD v1.3", and no reference-holding gate is
+   introduced without a separate explicit decision and spec change.
+4. **Runner identity: new ids.** Every replayed formal strategy gets a
+   new runner_id / version, distinct from its formal strategy id.
+5. **Season: natural calendar month.** A season is one natural calendar
+   month on the track's exchange calendar, settled at the close of the
+   last trading session of that month, matching `season_{market}_{YYYY_MM}`
+   in code.
+6. **Dashboard location: flexible, local first.** The first season is
+   built for the local dashboard; publication to hosted Pages is not
+   required for the first season and is not authorised by this proposal
+   (it remains a separate positioning decision, gated by #1288). "Local
+   first" does not mean "local only forever".
+7. **Whitelist audit rule, fixed in advance.** Before any CN admission,
+   audit every candidate's target symbols against CN 130. Any holding
+   outside the pool is handled by the same rule as §10.3: admit a
+   versioned variant with the deviation stated, or keep the strategy
+   formal-only for the first season. No ad-hoc, per-holding exceptions.
+
+Still open after these seven decisions: PIT certification, corporate-action
+source / backfill, CN pool index publication as a versioned artefact,
+Decision Feed / Evidence Review implementation, Decision Journal, review
+rituals, and the Brief Top 3 vs Scoreboard Top 10 explanation on-page.
