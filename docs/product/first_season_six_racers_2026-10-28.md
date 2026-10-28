@@ -18,9 +18,11 @@ Charts 5.2.1 pinned). Related documents: `docs/product/racetrack_vision_2026-10-
 
 ## 1. Decision in one paragraph
 
-The first season runs **six racers on two tracks, three per track** — not one
+The proposed target is **six racers on two tracks, three per track** — not one
 combined Top 6. The existing four formal strategies plus the two pool indices
-are the starting grid. A racer is admitted only when it satisfies the Phase 2
+are proposed candidates, not six currently admissible racers. The structural
+incompatibilities in §6 must be resolved without changing formal identities.
+A racer is admitted only when it satisfies the Phase 2
 runner contract and is replayed through the Phase 1 V & NAV engine; no formal
 return is copied into the scoreboard. Until a racer is admitted, the
 leaderboard stays honestly empty for that track, as #1311 already does.
@@ -63,9 +65,11 @@ rules:
 
 - Equal weight: US `1/87`, CN `1/130`.
 - Rebalance: first official trading session of each calendar month.
-- Unlisted / halted constituents: the exact `1/N` slot is held in cash
-  (`w_cash = N_unlisted / N_declared`); silent redistribution across active
-  assets is prohibited.
+- At a monthly rebalance, unavailable constituents' exact `1/N` slots are held
+  in cash; silent redistribution across active assets is prohibited. Between
+  rebalances weights drift. Already-held instruments with missing/halted bars
+  retain their last known valuation under the engine's declared policy; they
+  are not automatically liquidated or continuously reset to `1/N` cash slots.
 - Friction: 8 bps one-sided transaction friction, same V & NAV engine as
   every other racer.
 - Excess decomposition per racer, once admitted: macro excess
@@ -105,7 +109,8 @@ points are counted:
    published NAV for display only and never recomputes ranks, returns, or
    points.
 5. **Pool compliance.** Target symbols are checked against the track's
-   pool registry (US: `us_selected_equities_v2.yaml`; CN: see §5.2).
+   pool registry (US: `us_selected_equities_v2.yaml`; CN:
+   `cn_selected_equities_v3.yaml`).
    Out-of-pool assets and reference benchmarks (QQQ, CSI 300) as holdings
    fail closed.
 6. **Reconciliation.** A replayed racer's NAV must be reconciled against its
@@ -125,29 +130,46 @@ of a single month, a single day, or an in-sample result alone.
 
 ## 5. Landing order
 
-### Phase A — US pool index first (unblocked)
+### Phase A — US pool-index adapter and retained evidence first
 
 Admit the US 87 EW Pool Index as the first racer. It needs no formal-strategy
 replay and no registry extension: its rule, universe, calendar, and friction
-are already specified, and the US runner registry already exists. Success
+are already specified, and the US runner registry already exists. It still
+needs a RunnerContract adapter, shared event generation with the benchmark,
+and durable local Q-ledger persistence bound by hash into the release manifest.
+The existing pool-index helper returns a SimulationResult and discards its
+generated events; the publisher currently evaluates runners without a
+`ledgers_dir`. Registering a name alone would not meet §4.3. Reuse the current
+registry and engine, and do not replay the pool index twice just to emit a ledger.
+Expose its internal-benchmark/racer role in manifest/projection metadata and
+the row, legend and detail UI. Retaining a private/local Q ledger does not
+authorize copying its chunks into public Pages. Success
 criterion: the US track shows one racing benchmark with a replayed NAV,
 monthly ranks, and season points, alongside QQQ as reference-only.
 
 ### Phase B — US formal strategies, by replay
 
-Replay QQQR v4.3 and US x1.3 through the Phase 2 contract (§4). Each needs
+QQQR is currently blocked by the selected-equity-only admission rule: its
+formal contract holds QQQ/QQQI/TQQQ/SGOV, and §4.5 forbids those reference or
+out-of-pool holdings. Resolve that through a versioned strategy-specific
+admission decision before attempting an exact replay. Do not drop sleeves,
+rename instruments or call a materially different equity-only runner QQQR.
+US x1.3 also needs its frozen model/factor/source inputs, not only a daily
+price matrix, before exact replay feasibility can be established.
+Each admitted strategy needs
 its thesis, decoupled logic, `Q` ledger, and reconciliation against its
 formal evidence (formal evidence for all four strategies is currently
 2026-10-27). Success criterion: the US track shows three racers with
 comparable, replay-derived NAVs — not four numbers from four different
 methods.
 
-### Phase C — CN registry extension (prerequisite, not optional)
+### Phase C — CN contract reconciliation and formal-racer eligibility
 
-Extend the runner registry to the CN market before any CN racer is admitted.
-The current Phase 2 spec's whitelist is US-87-only (CN is not mentioned in
-that spec). This phase must deliver, as a versioned spec change, not as a
-code-only tweak:
+Merged runtime already supports `RunnerRegistry(pool_id="cn_selected_equities_v3")`;
+the pipeline declares CN/XSHG/CSI 300, and its integration tests register CN
+runners. Do not build another CN registry. The older Phase 2 document's
+US-only wording needs a versioned documentation alignment with that runtime.
+Formal-racer eligibility remains separate. This phase must reconcile:
 
 - CN pool registry: `cn_selected_equities_v3.yaml` (130 symbols) as the
   whitelist, with the same fail-closed behaviour as the US whitelist.
@@ -159,7 +181,10 @@ code-only tweak:
   fields in ledgers or projections; `pit_certified=false` stays visible
   until a certification path exists (agenda item B1).
 
-Until Phase C lands, BYD v1.3 and CN_27 V1.3 must not be admitted, even as
+BYD also has leverage/negative-cash incompatibility and CN_27 has known
+out-of-pool equities plus an executable ETF sleeve (§6). Existing CN runtime
+support does not authorize either exception. Until these decisions land,
+BYD v1.3 and CN_27 V1.3 must not be admitted, even as
 "CN racers in the US registry" — that would be a whitelist violation, not a
 shortcut.
 
@@ -185,21 +210,24 @@ closing them. Each remains an open item with its own closing test:
 - **Settled month snapshots.** Judged drawdown / indicator series, event
   markers, rebalance ledger chunks, and measured association profiles
   require future source contracts (per #1311 landing status). Do not
-  calculate them in the browser.
-- **BYD whitelist question.** BYD v1.3's current formal target includes
-  515180 (an ETF) alongside BYD. Whether 515180 is admissible under the CN
-  pool whitelist, or must be represented differently in a runner ledger,
-  is undecided and must be resolved in Phase C — not by silently dropping
-  or renaming the holding.
-- **CN_27 composition question.** Whether CN_27's 27 holdings are all
-  within the CN 130 universe, and what happens to any holding outside it,
-  is undecided and must be resolved in Phase C.
-- **QQQR / US x1.3 replay feasibility.** Whether these two formal
-  strategies can be expressed as pure `run()` functions over the governed
-  price matrix without manual decision inputs is not yet established; if
-  either cannot, it stays a formal strategy and is not admitted, and the
-  US track starts with fewer than three racers rather than with a
-  non-replayable one.
+  calculate them in the browser. The merged scoring contract emits provisional
+  monthly points and has no complete-window settlement receipt/status; a
+  versioned calendar-aware receipt is required before §7 can claim a settled month.
+- **BYD structural incompatibilities.** The frozen BYD contract permits
+  1.125 BYD exposure and -0.125 cash, independently incompatible with
+  RebalanceEvent's no-leverage/nonnegative-cash limits. It also uses 515180,
+  outside CN130. Both need a versioned admission decision; neither may be
+  hidden by clipping weights or substituting cash.
+- **CN_27 known composition.** Its frozen 27-equity pool overlaps CN130 on
+  22 names; `002156`, `002281`, `300274`, `601939`, `688183` are outside.
+  The formal model also uses executable 515180 as a defensive sleeve. The
+  facts are established; only the admission policy remains undecided.
+- **QQQR / US x1.3 replay feasibility.** QQQR's ETF/reference holdings already
+  conflict with §4.5. US x1.3 requires frozen model/factor evidence as well as
+  prices. Exact replay and reconciliation remain unproven. An incompatible
+  model stays a formal strategy and does not enter the race; start with fewer
+  racers instead of silently changing its contract. Any materially different
+  selected-pool strategy needs its own versioned identity and thesis.
 - **PIT, corporate actions, CN benchmark publication.** PIT certification
   (agenda B1), corporate-action source / backfill (B2), and publication of
   the CN pool index as a versioned artefact (not just a spec rule) remain
@@ -244,8 +272,27 @@ been run once — a review, or an explicit "no change" record, not silence.
 
 Reviewers are asked to check, in order: (1) whether the two-track framing
 contradicts any merged spec; (2) whether Phase C is correctly scoped as a
-spec change, not a code-only tweak; (3) whether §6's open questions are
-complete — especially BYD's 515180 holding and CN_27's composition; and
+contract reconciliation, reusing existing runtime; (3) whether §6's blockers are
+complete — especially exact holdings, leverage and durable Q evidence; and
 (4) whether any sentence in this proposal reads as a decision on
 per-window ranking, PIT, corporate actions, or the decision loop, which
 are explicitly left open above.
+
+### Review evidence (2026-10-28, main@ba5418e0)
+
+- CN runtime: `src/racetrack/runner.py` (`RunnerRegistry.__init__`),
+  `src/racetrack/pipeline.py` (`MARKET_SPECS`),
+  `tests/test_racetrack_pipeline.py` (CN registry integration).
+- Ledger boundary: `src/racetrack/runner.py` (`run`, `evaluate_all`),
+  `src/racetrack/pool_index.py`, `src/racetrack/pipeline.py`.
+- QQQR: `configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml`
+  and `qqqi_qqq_tqqq_current_baseline.yaml` in the same directory.
+- BYD leverage: `configs/models/byd_v1_3_recovery_event_low_vol_confirmation_v1.yaml`;
+  event constraints: `src/racetrack/contracts.py` (`RebalanceEvent`).
+- CN_27: `configs/models/cn_27_v1_3.yaml`,
+  `configs/pools/cn_all_weather_alpha_rotation_v1.yaml`, compared with
+  `configs/research_universes/cn_selected_equities_v3.yaml`.
+
+These checks correct the proposal's implementation assumptions; they do not
+approve expanded asset roles, leverage, modified formal strategies or a settled
+season. Phase A remains the next bounded implementation after proposal review.
