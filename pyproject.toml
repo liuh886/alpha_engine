@@ -45,6 +45,9 @@ dev = [
 
 [tool.uv]
 managed = true
+# GHSA-45c3-73f7-pv4m: the fixed upstream release requires Python >=3.11.
+# Python 3.10 remains compatible but cannot claim this advisory is remediated.
+constraint-dependencies = ["dnspython>=2.9.0; python_version >= '3.11'"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
