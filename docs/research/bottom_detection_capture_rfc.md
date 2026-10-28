@@ -66,7 +66,7 @@ G5 Human release review: operator reviews evidence and rollback; feature flag re
 - Keep current four-strategy fleet, registry, current operations, scheduler and public Pages unchanged.
 
 ## Delivery slices / Agent TODO
-- [x] BD-00 Survey actual data coverage, benchmark roles, PIT availability and current study template APIs; publish dependency map and blockers. (Completed 2026-10-28, see Section 8).
+- [ ] BD-00 Survey actual data coverage, benchmark roles, PIT availability and current study template APIs; publish dependency map and blockers. Initial notes are in Section 8; completion requires the source-bound receipts listed there.
 - [ ] BD-01 Create immutable versioned spec + feature contracts + synthetic fixtures; do not bake discretionary prices from 2026 examples.
 - [ ] BD-02 Implement causal daily-bar indicators + state transitions; unit/property tests for leakage and invalidation.
 - [ ] BD-03 Extend existing study CLI with BDCR hypothesis family, reuse governed WFO, baseline parity and blocked receipts.
@@ -76,8 +76,10 @@ G5 Human release review: operator reviews evidence and rollback; feature flag re
 - [ ] BD-07 Only after passing gates, propose read-only presentation integrated into existing Decision Feed, no new navigation.
 - [ ] BD-08 Explicit human GO/NO-GO review, rollback instructions, version bump and reproducible research package.
 
-## 8. BD-00 Data Survey & Feasibility Audit (Completed 2026-10-28)
-An independent codebase & data plane audit confirmed:
+## 8. BD-00 Initial Survey Notes (2026-10-28; evidence acceptance pending)
+The following are dated source observations, not a completed full-pool audit or historical PIT certification. Attach pool/reference/catalog/source SHA-256 identities, cutoff, reproducible commands and the actual slice receipt before closing BD-00. A slice reporting `ready` means it can be read under that request; it does not certify historical first-known availability or revisions. BE/CRDO cases do not establish US87 coverage.
+
+Initial notes to verify against those receipts:
 1. **Universe & Case Studies**:
    - `BE` (Bloom Energy) and `CRDO` (Credo Tech) are officially in `configs/research_universes/us_selected_equities_v2.yaml` (US 87 candidate pool).
    - `QQQ` is registered as the benchmark in `configs/pools/reference_instrument_registry_v1.yaml`.
@@ -88,8 +90,8 @@ An independent codebase & data plane audit confirmed:
 3. **Price Basis & Corporate Actions**:
    - Current US evidence bars are stored as Yahoo Finance adjusted prices (`adj_close / close` scaling `open/high/low/close`), representing total-return series with reinvested dividends.
    - There are no standalone unadjusted split/dividend raw event streams for US stocks in the repository today. Indicators and returns must be computed on this total-return adjusted basis.
-4. **Study Workspace Mount Points**:
-   - Clean modular integration via `BottomDetectionConfig` in `src/research/study_workspace.py` and executor `src/research/studies/bottom_detection_study.py`.
+4. **Proposed Study Workspace Mount Points (not implemented)**:
+   - Inspect the existing study template and walk-forward interfaces first. `BottomDetectionConfig` and `src/research/studies/bottom_detection_study.py` are proposed names, not delivered APIs. Use the existing executor and governed slice; a second evaluator is not authorized.
 
 ## 9. Proposed BD-01 Specification & State Transition Rules
 ### 9.1 Mathematical Feature Definitions
@@ -123,6 +125,14 @@ Before subagents proceed to full code implementation, the following architectura
 
 ## Acceptance deliverables
 One machine-readable experiment config, tested feature implementation, frozen manifests, research-only receipts, baseline+ablation comparison, complete failure ledger, shadow log and read-only usability test. Each task closes only with commit + reproducible commands + evidence link; no unearned 'done' markers.
+
+### Preregistration and blocked work
+
+A–D above remain recommended alternatives awaiting an explicit dated decision; this RFC does not choose for the operator. Before implementing a dependent experiment, record the selected universe and pool identity, signal/execution price timing, holding and missed-bottom horizons, allocation/exit rules, veto inputs, event-cluster definition, baselines, untouched OOS folds and minimum shadow evidence in the immutable spec. Do not choose these from evaluation results.
+
+The feature contract must define H=L CLV, RSI warm-up, missing bars, listing/halt boundaries, same-day state transitions and timeout precedence. T-close features cannot execute at that same already-observed close. Missing earnings-calendar evidence is BLOCKED if the selected hard-veto contract requires it; do not silently switch to a technical-only rule. Missing forward labels remain unavailable until their horizon is observed.
+
+The next bounded implementation is causal features/state transitions plus synthetic negative cases, after its dependent decisions are recorded. It does not register a fifth formal strategy, execute orders or publish raw study receipts. Unresolved choices block only dependent work, not the independent Console or data-plane workstreams.
 
 ## Outstanding decisions for experimental preregistration
 Exact holding horizon and missed-bottom window; execution price realism with daily bars; score thresholds and safety veto scope; acceptable marginal net utility vs baselines; minimum number of independent event clusters and shadow duration; availability/legality of PIT fundamentals and options inputs. Treat these as questions to answer empirically, not undocumented defaults.
