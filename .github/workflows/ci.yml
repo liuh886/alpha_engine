@@ -69,6 +69,11 @@ jobs:
         if: github.event_name == 'pull_request'
         run: >-
           uv run ruff check
+          src/racetrack
+          tests/test_racetrack_integrity.py
+          tests/test_racetrack_minimal_stack.py
+          tests/test_racetrack_runner_scoring.py
+          tests/test_racetrack_pipeline.py
           src/release
           src/models/metric_contract.py
           src/research/economics.py
@@ -218,6 +223,10 @@ jobs:
           tests/test_refresh_selected_pool_prices.py
           tests/test_qlib_mlflow_recorder_smoke.py
           tests/test_mcp_transport_compatibility.py
+          tests/test_racetrack_minimal_stack.py
+          tests/test_racetrack_runner_scoring.py
+          tests/test_racetrack_pipeline.py
+          tests/test_racetrack_integrity.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Package build

@@ -762,6 +762,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.group == "racetrack" and args.racetrack_command == "show":
             from src.racetrack.pipeline import render_racetrack_scoreboard
 
+            errors += (ValueError, KeyError)
+
             in_dir = (
                 _resolve(root, args.input_dir)
                 if args.input_dir is not None

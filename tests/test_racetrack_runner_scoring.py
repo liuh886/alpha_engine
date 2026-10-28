@@ -10,12 +10,15 @@ from __future__ import annotations
 import math
 from pathlib import Path
 import tempfile
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
 from src.racetrack.contracts import (
+    CalendarSessionError,
     EngineConfig,
+    LedgerOverwriteError,
     MonthlyRankPoint,
     NAVPoint,
     PriceMatrix,
@@ -29,7 +32,11 @@ from src.racetrack.contracts import (
 )
 from src.racetrack.matrix import load_price_matrix
 from src.racetrack.pool_index import generate_equal_weight_pool_index
-from src.racetrack.runner import RunnerContract, RunnerRegistry, validate_runner_thesis
+from src.racetrack.runner import (
+    RunnerContract,
+    RunnerRegistry,
+    validate_runner_thesis,
+)
 from src.racetrack.scoring import (
     PointsRuleV1,
     calculate_monthly_returns,
@@ -448,9 +455,15 @@ def test_rt_p2_05_points_rule_v1_allocation_and_accumulation() -> None:
     # R1: 10 + 6 + 6 = 22
     # R2: 6 + 10 + 4 = 20
     # R3: 4 + 4 + 10 = 18
-    assert entry_by_id["R1"].season_points == 22
-    assert entry_by_id["R2"].season_points == 20
-    assert entry_by_id["R3"].season_points == 18
+    assert entry_by_id["R1"].cumulative_points == 22
+    assert entry_by_id["R2"].cumulative_points == 20
+    assert entry_by_id["R3"].cumulative_points == 18
+
+    # Month 3 (2024-03) target season month points:
+    assert entry_by_id["R1"].season_points == 6
+    assert entry_by_id["R2"].season_points == 4
+    assert entry_by_id["R3"].season_points == 10
+
     assert scoreboard.entries[0].runner_id == "R1"
     assert scoreboard.entries[1].runner_id == "R2"
     assert scoreboard.entries[2].runner_id == "R3"
@@ -573,9 +586,10 @@ def test_rt_p2_06_anti_spike_bias_steady_marathoner_beats_spiky_flash() -> None:
 
     # Month 1: Spiky(+200%)=1st(10), Winner(+10%)=2nd(6), Steady(+3%)=3rd(4), Bottom(-5%)=4th(2)
     # Month 2..12 (11 months): Winner(+5%)=1st(10), Steady(+3%)=2nd(6), Spiky(-2%)=3rd(4), Bottom(-5%)=4th(2)
-    # Total Season Points:
+    # Total Points:
     # Steady: 4 + 11*6 = 70 points
     # Spiky: 10 + 11*4 = 54 points (or less if 5+ runners)
+    assert steady_entry.cumulative_points > spiky_entry.cumulative_points
     assert steady_entry.season_points > spiky_entry.season_points
     assert steady_entry.current_rank < spiky_entry.current_rank
 
@@ -711,6 +725,7 @@ def test_rt_p2_09_scoreboard_json_serialization_and_roundtrip() -> None:
         runner_version="1.0.0",
         thesis_summary="Substantive multi-factor investment thesis capturing value and momentum.",
         season_points=10,
+        cumulative_points=10,
         current_rank=1,
         return_1m=0.085,
         return_3m=None,
@@ -730,6 +745,10 @@ def test_rt_p2_09_scoreboard_json_serialization_and_roundtrip() -> None:
         pool_id="us_selected_equities_v2",
         benchmark_symbol="QQQ",
         entries=[entry],
+        status="operational_race",
+        dates=["2024-01-02", "2024-01-31"],
+        benchmarks={"pool_index": [1.0, 1.05], "macro": [1.0, 1.03]},
+        top_runners_nav={"runner_prime": [1.0, 1.085]},
     )
 
     # 1. Privacy audit
@@ -747,11 +766,16 @@ def test_rt_p2_09_scoreboard_json_serialization_and_roundtrip() -> None:
     assert loaded.as_of_session == sb.as_of_session
     assert loaded.season_id == sb.season_id
     assert loaded.pool_id == sb.pool_id
+    assert loaded.status == "operational_race"
+    assert loaded.dates == ["2024-01-02", "2024-01-31"]
+    assert loaded.benchmarks == {"pool_index": [1.0, 1.05], "macro": [1.0, 1.03]}
+    assert loaded.top_runners_nav == {"runner_prime": [1.0, 1.085]}
     assert len(loaded.entries) == 1
 
     loaded_entry = loaded.entries[0]
     assert loaded_entry.runner_id == entry.runner_id
     assert loaded_entry.season_points == 10
+    assert loaded_entry.cumulative_points == 10
     assert loaded_entry.current_rank == 1
     assert loaded_entry.monthly_ranks[0].rank == 1
     assert loaded_entry.monthly_ranks[0].points_earned == 10
@@ -904,8 +928,13 @@ def test_rt_p2_10_end_to_end_real_us87_data_race() -> None:
         assert ranks == [1, 2, 3]
 
         # Top runner has highest points
-        assert scoreboard.entries[0].season_points >= scoreboard.entries[1].season_points
-        assert scoreboard.entries[1].season_points >= scoreboard.entries[2].season_points
+        assert scoreboard.entries[0].cumulative_points >= scoreboard.entries[1].cumulative_points
+        assert scoreboard.entries[1].cumulative_points >= scoreboard.entries[2].cumulative_points
+        assert scoreboard.status == "operational_race"
+        assert len(scoreboard.dates) > 0
+        assert "pool_index" in scoreboard.benchmarks
+        assert "macro" in scoreboard.benchmarks
+        assert len(scoreboard.top_runners_nav) > 0
 
         # Verify JSON serialization
         sb_json = scoreboard.to_json()
@@ -916,3 +945,260 @@ def test_rt_p2_10_end_to_end_real_us87_data_race() -> None:
         loaded_sb = Scoreboard.from_json(sb_json)
         assert len(loaded_sb.entries) == 3
         assert loaded_sb.entries[0].runner_id == scoreboard.entries[0].runner_id
+
+
+# ---------------------------------------------------------------------------
+# TEST-RT-P2-11: Strict Daily Trading Session Alignment Gate
+# ---------------------------------------------------------------------------
+def test_rt_p2_11_session_mismatch_raises_calendar_session_error() -> None:
+    """TEST-RT-P2-11: Reject runners or benchmarks with missing, extra, or misaligned sessions."""
+    base_series = [
+        ("2024-01-02", 1.0, 0.0),
+        ("2024-01-03", 1.01, 0.01),
+        ("2024-01-04", 1.02, 0.01),
+    ]
+    pool = make_synthetic_simulation("POOL", base_series)
+    qqq = make_synthetic_simulation("QQQ", base_series)
+
+    # Runner missing session 2024-01-03
+    mismatched_series = [
+        ("2024-01-02", 1.0, 0.0),
+        ("2024-01-04", 1.02, 0.02),
+    ]
+    r_bad = make_synthetic_simulation("R_BAD", mismatched_series)
+    runners = [
+        RunnerContract(
+            "R_BAD",
+            "1.0",
+            "p",
+            "QQQ",
+            "Valid thesis explaining systematic factor investment rationale.",
+            "logic",
+            "logic",
+        )
+    ]
+
+    with pytest.raises(
+        CalendarSessionError, match="does not strictly match official pool calendar"
+    ):
+        evaluate_race_season(
+            runners=runners,
+            simulation_results={"R_BAD": r_bad},
+            qqq_simulation=qqq,
+            pool_simulation=pool,
+        )
+
+    # Macro benchmark mismatched sessions
+    qqq_bad = make_synthetic_simulation("QQQ_BAD", mismatched_series)
+    r_good = make_synthetic_simulation("R_GOOD", base_series)
+    runners_good = [
+        RunnerContract(
+            "R_GOOD",
+            "1.0",
+            "p",
+            "QQQ",
+            "Valid thesis explaining systematic factor investment rationale.",
+            "logic",
+            "logic",
+        )
+    ]
+    with pytest.raises(
+        CalendarSessionError, match="Macro benchmark session sequence does not strictly match"
+    ):
+        evaluate_race_season(
+            runners=runners_good,
+            simulation_results={"R_GOOD": r_good},
+            qqq_simulation=qqq_bad,
+            pool_simulation=pool,
+        )
+
+
+# ---------------------------------------------------------------------------
+# TEST-RT-P2-12: Target Season Points vs Cumulative Points Decoupling
+# ---------------------------------------------------------------------------
+def test_rt_p2_12_season_points_decoupling_with_explicit_season_id() -> None:
+    """TEST-RT-P2-12: season_id determines target season month points, decoupled from cumulative points."""
+    r1 = make_synthetic_simulation(
+        "R1",
+        [
+            ("2024-01-02", 1.0, 0.0),
+            ("2024-01-31", 1.10, 0.10),
+            ("2024-02-01", 1.10, 0.0),
+            ("2024-02-29", 1.12, 0.018),
+        ],
+    )
+    r2 = make_synthetic_simulation(
+        "R2",
+        [
+            ("2024-01-02", 1.0, 0.0),
+            ("2024-01-31", 1.05, 0.05),
+            ("2024-02-01", 1.05, 0.0),
+            ("2024-02-29", 1.155, 0.10),
+        ],
+    )
+    qqq = make_synthetic_simulation(
+        "QQQ",
+        [
+            ("2024-01-02", 1.0, 0.0),
+            ("2024-01-31", 1.02, 0.02),
+            ("2024-02-01", 1.02, 0.0),
+            ("2024-02-29", 1.04, 0.02),
+        ],
+    )
+    runners = [
+        RunnerContract(
+            "R1",
+            "1.0",
+            "p",
+            "QQQ",
+            "Thesis explaining why R1 exists and captures returns.",
+            "l",
+            "l",
+        ),
+        RunnerContract(
+            "R2",
+            "1.0",
+            "p",
+            "QQQ",
+            "Thesis explaining why R2 exists and captures returns.",
+            "l",
+            "l",
+        ),
+    ]
+
+    # Month 1 (2024-01): R1=1st(10), R2=2nd(6)
+    # Month 2 (2024-02): R2=1st(10), R1=2nd(6)
+    # Total cumulative for both = 16 points
+
+    # Case A: evaluate for January 2024
+    sb_jan = evaluate_race_season(
+        runners=runners,
+        simulation_results={"R1": r1, "R2": r2},
+        qqq_simulation=qqq,
+        pool_simulation=qqq,
+        season_id="season_us_2024_01",
+    )
+    e_jan = {e.runner_id: e for e in sb_jan.entries}
+    assert e_jan["R1"].season_points == 10
+    assert e_jan["R2"].season_points == 6
+    assert e_jan["R1"].cumulative_points == 16
+    assert e_jan["R2"].cumulative_points == 16
+
+    # Case B: evaluate for February 2024
+    sb_feb = evaluate_race_season(
+        runners=runners,
+        simulation_results={"R1": r1, "R2": r2},
+        qqq_simulation=qqq,
+        pool_simulation=qqq,
+        season_id="season_us_2024_02",
+    )
+    e_feb = {e.runner_id: e for e in sb_feb.entries}
+    assert e_feb["R1"].season_points == 6
+    assert e_feb["R2"].season_points == 10
+    assert e_feb["R1"].cumulative_points == 16
+    assert e_feb["R2"].cumulative_points == 16
+
+
+# ---------------------------------------------------------------------------
+# TEST-RT-P2-13: Candidate Pool Whitelist Fail-Closed Behavior
+# ---------------------------------------------------------------------------
+def test_rt_p2_13_whitelist_fail_closed_on_missing_or_corrupt_yaml(tmp_path: Path) -> None:
+    """TEST-RT-P2-13: Missing or corrupt candidate pool YAML must fail closed with error."""
+    # 1. Non-existent pool YAML raises FileNotFoundError
+    with pytest.raises(FileNotFoundError):
+        RunnerRegistry(pool_id="non_existent_pool_9999", root_path=tmp_path)
+
+    # 2. Empty candidate_symbols list raises ValueError
+    with pytest.raises(ValueError, match="cannot be empty"):
+        RunnerRegistry(pool_id="p", candidate_symbols=[])
+
+    # 3. Corrupt YAML raises ValueError
+    bad_yaml_dir = tmp_path / "configs" / "research_universes"
+    bad_yaml_dir.mkdir(parents=True)
+    corrupt_file = bad_yaml_dir / "corrupt_pool.yaml"
+    corrupt_file.write_text("invalid: yaml: [unclosed", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Failed to parse candidate pool YAML"):
+        RunnerRegistry(pool_id="corrupt_pool", root_path=tmp_path)
+
+    # 4. Pool YAML with empty symbols raises ValueError
+    empty_symbols_file = bad_yaml_dir / "empty_pool.yaml"
+    empty_symbols_file.write_text("symbols: []\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="contains no symbols list"):
+        RunnerRegistry(pool_id="empty_pool", root_path=tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# TEST-RT-P2-14: Safe Ledger Writing Order & Overwrite Protection
+# ---------------------------------------------------------------------------
+def test_rt_p2_14_safe_ledger_no_dirty_ledger_on_simulation_failure(tmp_path: Path) -> None:
+    """TEST-RT-P2-14: If simulation fails, zero ledger files must be left on disk."""
+    matrix = load_price_matrix(
+        market="us",
+        pool_id="us_selected_equities_v2",
+        start_date="2024-01-02",
+        end_date="2024-01-16",
+        as_of_cutoff="2026-10-26",
+        root_path=REPO_ROOT,
+    )
+
+    # Construct runner with event targeting ARM pre-IPO (NaN price) -> will raise MissingPriceDataError during simulation
+    # But ARM is in candidate_symbols so static validation passes
+    def gen_failing_event(m: PriceMatrix) -> list[RebalanceEvent]:
+        # Pre-IPO ARM price is NaN in 2023, but here in 2024 ARM is listed.
+        # Let's target a symbol not yet listed if in 2023 or introduce negative weight
+        # Or an event where price is missing
+        return [
+            RebalanceEvent.create(
+                parent_hash="0" * 64,
+                effective_session=m.sessions[0],
+                runner_id="runner_fail",
+                runner_version="1.0.0",
+                target_weights={"AAPL": 0.5},
+                reason="Initial test",
+            )
+        ]
+
+    runner = RunnerContract(
+        runner_id="runner_fail",
+        runner_version="1.0.0",
+        pool_id="us_selected_equities_v2",
+        benchmark_symbol="QQQ",
+        thesis="Valid thesis describing testing strategy to verify ledger write failure safety.",
+        selection_logic="logic",
+        rebalance_logic="logic",
+        events_generator=gen_failing_event,
+    )
+
+    ledger_file = tmp_path / "test_ledger.jsonl"
+
+    # Successful run creates ledger
+    res = runner.run(matrix=matrix, ledger_path=ledger_file)
+    assert res is not None
+    assert ledger_file.exists()
+    assert ledger_file.stat().st_size > 0
+
+    # Overwrite protection: attempting to run again with overwrite=False raises LedgerOverwriteError
+    with pytest.raises(LedgerOverwriteError):
+        runner.run(matrix=matrix, ledger_path=ledger_file)
+
+    # A rerun requires a new evidence path; retained evidence is never replaced.
+    assert ledger_file.stat().st_size > 0
+
+    # Verify no partial ledger when simulate_portfolio raises
+    dirty_ledger_file = tmp_path / "dirty_ledger.jsonl"
+    with patch(
+        "src.racetrack.runner.simulate_portfolio", side_effect=RuntimeError("Sim math error")
+    ):
+        with pytest.raises(RuntimeError, match="Sim math error"):
+            runner.run(matrix=matrix, ledger_path=dirty_ledger_file)
+
+    assert not dirty_ledger_file.exists(), (
+        "Ledger was erroneously created on disk before simulation succeeded!"
+    )
+
+
+# ---------------------------------------------------------------------------
+# TEST-RT-P2-15: Built-in Reference Runners
+# ---------------------------------------------------------------------------

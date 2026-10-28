@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 from typing import Any
 import uuid
 
@@ -95,20 +96,16 @@ def get_code_sha256(root_path: Path) -> str:
 
 
 def get_git_commit_sha(root_path: Path) -> str:
-    """Extract current git HEAD commit SHA without external process dependency."""
+    """Resolve HEAD for normal checkouts, packed refs and linked worktrees."""
     try:
-        git_head = root_path / ".git" / "HEAD"
-        if git_head.exists():
-            head_content = git_head.read_text(encoding="utf-8").strip()
-            if head_content.startswith("ref: "):
-                ref_path = root_path / ".git" / head_content[5:]
-                if ref_path.exists():
-                    return ref_path.read_text(encoding="utf-8").strip()
-            else:
-                return head_content
-    except Exception:
-        pass
-    return "uncommitted_research_working_tree"
+        return subprocess.run(
+            ["git", "-C", str(root_path), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "uncommitted_research_working_tree"
 
 
 def publish_racetrack_projection(
@@ -260,6 +257,31 @@ def publish_racetrack_projection(
     assert_privacy_clean(scoreboard_dict)
 
     # 9. Step 7: Atomic landing with staging and fail-closed promotion
+    # The current manifest is the only mutable publication pointer. Every
+    # referenced release is immutable, so readers never observe mixed artifacts.
+    identity = {
+        "scoreboard": scoreboard_dict,
+        "matrix": matrix.matrix_sha256,
+        "catalog": matrix.catalog_sha256,
+        "cutoff": as_of_cutoff,
+        "code": get_code_sha256(root),
+        "git": get_git_commit_sha(root),
+        "config": config.__dict__,
+        "generated_at": generated_at_utc,
+    }
+    governed_configs = {
+        "pool": root / "configs" / "research_universes" / f"{candidate_pool}.yaml",
+        "selected_pool_registry": root / "configs" / "pools" / "selected_pool_registry_v1.yaml",
+        "reference_registry": root / "configs" / "pools" / "reference_instrument_registry_v1.yaml",
+    }
+    config_hashes = {name: compute_file_sha256(path) for name, path in governed_configs.items()}
+    identity["governed_config_hashes"] = config_hashes
+    identity["data_qualification"] = matrix.data_qualification
+    release_id = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, allow_nan=False).encode("utf-8")
+    ).hexdigest()
+    release_relative = Path("versions") / release_id
+    release_dir = out_dir / release_relative
     staging_dir = out_dir / f".staging_{uuid.uuid4().hex}"
     staging_archive = staging_dir / "archive"
 
@@ -288,7 +310,12 @@ def publish_racetrack_projection(
 
         manifest_dict = {
             "schema_version": "1.0",
-            "pipeline_version": "1.0.0",
+            "pipeline_version": "1.1.0",
+            "release_id": release_id,
+            "status": scoreboard.status,
+            "data_qualification": matrix.data_qualification,
+            "engine_config": config.__dict__,
+            "governed_config_hashes": config_hashes,
             "generated_at_utc": gen_time,
             "market": market_lower,
             "as_of_session": as_of_session,
@@ -307,12 +334,14 @@ def publish_racetrack_projection(
             "trade_ready": False,
             "artifacts": {
                 "scoreboard_archive": {
-                    "path": f"archive/scoreboard_{as_of_session}.json",
+                    "path": (
+                        release_relative / "archive" / f"scoreboard_{as_of_session}.json"
+                    ).as_posix(),
                     "sha256": archive_sha256,
                     "size_bytes": archive_size,
                 },
                 "scoreboard_latest": {
-                    "path": "scoreboard_latest.json",
+                    "path": (release_relative / "scoreboard_latest.json").as_posix(),
                     "sha256": latest_sha256,
                     "size_bytes": latest_size,
                 },
@@ -329,16 +358,33 @@ def publish_racetrack_projection(
         manifest_file.write_text(manifest_json_str, encoding="utf-8")
         manifest_sha256 = compute_file_sha256(manifest_file)
 
-        # Atomic promotion to destination directory
-        target_archive_dir = out_dir / "archive"
-        target_archive_dir.mkdir(parents=True, exist_ok=True)
-        target_archive_file = target_archive_dir / f"scoreboard_{as_of_session}.json"
-        target_latest_file = out_dir / "scoreboard_latest.json"
+        # First land the complete immutable vintage. An existing vintage must
+        # match byte-for-byte; a changed same-session run gets another identity.
+        release_dir.parent.mkdir(parents=True, exist_ok=True)
+        if release_dir.exists():
+            for name in (
+                "manifest.json",
+                "scoreboard_latest.json",
+                f"archive/scoreboard_{as_of_session}.json",
+            ):
+                if (release_dir / name).read_bytes() != (staging_dir / name).read_bytes():
+                    raise ValueError("Existing release differs from its content identity")
+        else:
+            os.rename(staging_dir, release_dir)
+        target_archive_file = release_dir / "archive" / f"scoreboard_{as_of_session}.json"
+        target_latest_file = release_dir / "scoreboard_latest.json"
         target_manifest_file = out_dir / "manifest.json"
-
-        os.replace(archive_file, target_archive_file)
-        os.replace(latest_file, target_latest_file)
-        os.replace(manifest_file, target_manifest_file)
+        pointer = out_dir / f".manifest_{uuid.uuid4().hex}.tmp"
+        try:
+            with pointer.open("wb") as handle:
+                handle.write(manifest_json_str.encode("utf-8"))
+                handle.flush()
+                os.fsync(handle.fileno())
+            # Single atomic replace: a failure leaves the previous release
+            # readable; an unreferenced complete vintage is harmless to retain.
+            os.replace(pointer, target_manifest_file)
+        finally:
+            pointer.unlink(missing_ok=True)
 
         return PipelineResult(
             manifest_path=target_manifest_file,
@@ -377,14 +423,38 @@ def render_racetrack_scoreboard(
     Returns:
         Formatted string representation ready for terminal printing.
     """
-    latest_file = Path(input_dir) / "scoreboard_latest.json"
-    if not latest_file.exists():
-        raise FileNotFoundError(
-            f"No Racetrack scoreboard found at '{latest_file}'. "
-            f"Please run 'alpha racetrack publish --market {market}' first."
-        )
-
+    root = Path(input_dir).resolve()
+    manifest_file = root / "manifest.json"
+    manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+    expected = MARKET_SPECS.get(market.lower())
+    if expected is None or manifest.get("market") != market.lower():
+        raise ValueError("Projection market does not match requested market")
+    if (
+        manifest.get("schema_version") != "1.0"
+        or manifest.get("pipeline_version") != "1.1.0"
+        or manifest.get("pool_id") != expected["candidate_pool"]
+        or manifest.get("research_only") is not True
+        or manifest.get("trade_ready") is not False
+    ):
+        raise ValueError("Unrecognized projection identity or research boundary")
+    for artifact in manifest["artifacts"].values():
+        path = (root / artifact["path"]).resolve()
+        if not path.is_relative_to(root) or not path.is_file():
+            raise ValueError("Projection artifact is missing or escapes the release root")
+        if (
+            compute_file_sha256(path) != artifact["sha256"]
+            or path.stat().st_size != artifact["size_bytes"]
+        ):
+            raise ValueError("Projection artifact hash/size mismatch")
+    latest_file = root / manifest["artifacts"]["scoreboard_latest"]["path"]
     scoreboard = Scoreboard.from_json(latest_file.read_text(encoding="utf-8"))
+    if (
+        scoreboard.pool_id != manifest["pool_id"]
+        or scoreboard.benchmark_symbol != manifest["benchmark_symbol"]
+        or scoreboard.as_of_session != manifest["as_of_session"]
+        or scoreboard.season_id != manifest["season_id"]
+    ):
+        raise ValueError("Scoreboard identity does not match the manifest")
 
     if format_type.lower() == "json":
         return scoreboard.to_json(indent=2)
@@ -426,7 +496,7 @@ def render_racetrack_scoreboard(
                 )
         lines.append("-" * 96)
         lines.append(
-            "Note: Net total returns with 8 bps friction. research_only=true, trade_ready=false."
+            "Note: Adjusted-price research returns; see manifest for friction and PIT qualification. research_only=true, trade_ready=false."
         )
         return "\n".join(lines)
 
@@ -434,7 +504,7 @@ def render_racetrack_scoreboard(
     md_lines = [
         f"# Racetrack Competitive Scoreboard ({market.upper()} Market)",
         f"**As of Session**: {scoreboard.as_of_session} | **Season**: {scoreboard.season_id} | "
-        f"**Pool**: {scoreboard.pool_id} | **Benchmark**: {scoreboard.benchmark_symbol}\n",
+        f"**Pool**: {scoreboard.pool_id} | **Benchmark**: {scoreboard.benchmark_symbol} | **Status**: {scoreboard.status}\n",
         f"| Rank | Runner ID | Ver | Pts | 1M Ret | 3M Ret | 1Y Ret | vs {macro_lbl} | vs {pool_lbl} | MaxDD | Sharpe | Persistence | Thesis Summary |",
         "| :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |",
     ]
@@ -454,6 +524,6 @@ def render_racetrack_scoreboard(
             )
     md_lines.append("")
     md_lines.append(
-        "*Note: All returns are dividend-reinvested net total returns with 8 bps friction. research_only=true, trade_ready=false.*"
+        "*Note: All returns are adjusted-price research returns with the manifest-bound friction setting. research_only=true, trade_ready=false.*"
     )
     return "\n".join(md_lines)

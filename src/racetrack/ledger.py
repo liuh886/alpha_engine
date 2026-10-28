@@ -46,6 +46,27 @@ class EventLedger:
         """Return a copy of all rebalance events in chronological order."""
         return list(self._events)
 
+    @staticmethod
+    def validate_events(
+        events: Sequence[RebalanceEvent], runner_id: str, runner_version: str
+    ) -> None:
+        """Validate an in-memory stream before simulation or any filesystem write."""
+        parent = GENESIS_PARENT_HASH
+        previous_session = None
+        for event in events:
+            # Reconstruct to detect mutations of dictionaries inside frozen events.
+            RebalanceEvent.from_dict(event.to_dict())
+            if (event.runner_id, event.runner_version) != (runner_id, runner_version):
+                raise LedgerTamperedError("Event runner/version does not match the ledger contract")
+            if event.parent_hash != parent:
+                raise LedgerTamperedError("Broken event parent hash chain")
+            if previous_session == event.effective_session:
+                raise DuplicateSessionError("Duplicate event session")
+            if previous_session and event.effective_session < previous_session:
+                raise ChronologyOrderError("Out-of-order event session")
+            parent = event.event_hash
+            previous_session = event.effective_session
+
     @property
     def tip_hash(self) -> str:
         """Hash of the latest event in the chain, or genesis parent hash if empty."""
@@ -71,11 +92,13 @@ class EventLedger:
         """
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
-        if p.exists() and not overwrite:
+        try:
+            with p.open("w" if overwrite else "x", encoding="utf-8"):
+                pass
+        except FileExistsError as exc:
             raise LedgerOverwriteError(
                 f"Ledger file already exists at '{p}'. Set overwrite=True to overwrite, or use EventLedger.load()."
-            )
-        p.write_text("", encoding="utf-8")
+            ) from exc
         return cls(p, runner_id, runner_version, events=[])
 
     @classmethod
@@ -226,6 +249,8 @@ class EventLedger:
 
         if not file_events:
             return True
+
+        self.validate_events(file_events, self.runner_id, self.runner_version)
 
         # 1. Genesis parent hash check
         if file_events[0].parent_hash != GENESIS_PARENT_HASH:

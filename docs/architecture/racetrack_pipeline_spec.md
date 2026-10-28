@@ -9,6 +9,32 @@
 
 ---
 
+## 2026-10-28 实施修订：版本 1.1 发布边界
+
+本节替代下文早期草案中“依次替换三个文件即为原子发布”的布局和声明。
+该 CLI 是独立研究投影，不代表正式策略晋升、历史 PIT 认证或已部署前端。
+
+- `manifest.json` 是唯一可变的当前版本指针，使用一次原子替换。
+  `versions/<content-id>/` 中的 manifest、scoreboard 与 archive 构成不可变 vintage；
+  指针引用带版本前缀的制品路径。相同输入重跑复用同一版本，变化的同日输入
+  生成新版本，不覆盖旧 archive。指针切换失败仍保留完整旧版本；可保留未引用
+  但完整的新 vintage，不能把它称为发布成功。
+- `alpha racetrack show` 先核验 manifest 的市场、股票池、schema/pipeline
+  版本、research-only 边界、制品路径、大小、SHA-256 与 scoreboard 身份，
+  不直接读取或信任根目录的 `scoreboard_latest.json`。
+- Manifest 记录实际 engine config、市场来源 catalog、治理配置哈希、数据
+  cutoff 与 revision-uncertified 限制。这里的 SHA-256 是完整性摘要，不是签名。
+- 空 registry 的投影明确为 `diagnostic_baseline_only`，不默认生成新策略。
+  价格曲线、日期和双基准序列来自同一次后端计算，前端不得重新评分。
+- runner/双基准须具有完全一致的交易日序列。当季积分与累计积分分别提供。
+  当前窗口政策为 `calendar_month_buckets_including_partial`：1M 等值包含
+  当前部分月，不能解释为已经结算的完整月或精确过去 30 天。赛季结果仍需
+  月末与完整窗口的独立验收，不能以部分月的高分自动晋升。
+- Runner 写账本前验证 runner/version、完整 hash 链并完成模拟；保留路径
+  永不覆盖。缺失/无效候选池配置、非有限权重/成本和缺失参考价格均阻塞。
+
+后续图表 UI 必须另开有范围和授权验收的 PR；本流水线不会自动启动它。
+
 ## 1. 架构定位与系统边界 (Context & Operating Principles)
 
 ### 1.1 从“赛马竞技模型”到“双市场自动化投研基础设施”

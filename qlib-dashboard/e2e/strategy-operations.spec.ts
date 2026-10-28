@@ -229,12 +229,22 @@ test('RDI published state keeps optional evidence scoped while Overview remains 
 
 // Bind current-state fixtures to the exact formal catalog shipped by this build.
 // Signal dates below intentionally differ from formal historical cutoffs.
-const formal = JSON.parse(readFileSync(new URL('../dist/data/formal-model-runs/catalog.json', import.meta.url), 'utf8'))
-  .records.find((row: { model_version_id: string }) => row.model_version_id === 'qqqi_qqq_tqqq_v4_3');
+const formalRecords = JSON.parse(readFileSync(new URL('../dist/data/formal-model-runs/catalog.json', import.meta.url), 'utf8')).records;
+const formal = formalRecords.find((row: { model_version_id: string }) => row.model_version_id === 'qqqi_qqq_tqqq_v4_3');
 const formalIdentity = { formal_bundle_id: formal.bundle_id, formal_run_id: formal.run_id,
   formal_evidence_cutoff: formal.evidence_cutoff };
 const publishedFleet = JSON.parse(readFileSync(new URL('../dist/data/strategy-operations/snapshots.json', import.meta.url), 'utf8'));
 const fleetCount = publishedFleet.records.length;
+// Healthy UI fixtures bind BOTH the protected public shell and runtime rows to
+// this build's exact projected bundle. Production canonical/projection binding
+// remains independently governed by #1288; do not weaken the reader to pass tests.
+const healthyFleet = { ...publishedFleet, records: publishedFleet.records.map((row: any) => {
+  const identity = formalRecords.find((record: any) => record.model_version_id === row.model_version_id);
+  if (!identity) throw new Error(`Missing formal fixture identity: ${row.model_version_id}`);
+  return { ...row, source_identity: { ...row.source_identity,
+    formal_bundle_id: identity.bundle_id, formal_run_id: identity.run_id,
+    formal_evidence_cutoff: identity.evidence_cutoff } };
+}) };
 
 const runtimeOperation = {
   strategy_id: 'qqq_rotation',
@@ -341,7 +351,7 @@ const operations = {
 
 async function mockOperations(page: Page, fullFleet = false) {
   await page.route('**/data/strategy-operations/snapshots.json', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fullFleet ? publishedFleet : operations) });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fullFleet ? healthyFleet : operations) });
   });
 }
 
@@ -437,11 +447,19 @@ async function installProMembership(page: Page, options: {
         },
       }),
     };
-  }, { fleetSnapshots: publishedFleet.records.map((row: any) => ({
+  }, { fleetSnapshots: publishedFleet.records.map((row: any) => {
+    // Public protected shells may retain an older formal identity. A synthetic
+    // healthy runtime fixture must bind to the catalog shipped in this build;
+    // the explicit badStrategy/mismatched branches still exercise rejection.
+    const identity = formalRecords.find((record: any) => record.model_version_id === row.model_version_id);
+    if (!identity) throw new Error(`Missing formal fixture identity: ${row.model_version_id}`);
+    return ({
     ...runtimeOperation, strategy_id: row.strategy_id, model_version_id: row.model_version_id,
     decision_reason: `Batch fixture: ${row.strategy_id} verified`, factor_evidence: [], factor_freshness: 'unknown',
-    source_identity: { ...runtimeOperation.source_identity, ...row.source_identity, ledger_fingerprint: `fixture-${row.strategy_id}` },
-  })), fullSnapshot: {
+    source_identity: { ...runtimeOperation.source_identity,
+      formal_bundle_id: identity.bundle_id, formal_run_id: identity.run_id,
+      formal_evidence_cutoff: identity.evidence_cutoff, ledger_fingerprint: `fixture-${row.strategy_id}` },
+  }); }), fullSnapshot: {
     ...runtimeOperation,
     ...(options.mismatched ? { source_identity: { ...runtimeOperation.source_identity, formal_bundle_id: 'b'.repeat(64) } } : {}),
     ...(options.stale ? { data_freshness: 'stale', factor_freshness: 'stale', state_detail: 'degraded_delayed',
@@ -474,6 +492,22 @@ test('the authorized fleet shares one read across overview and status', async ({
   await assertNoHorizontalOverflow(page);
   expect(errors).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath('batch-overview.png') });
+});
+
+test('an explicitly mismatched public shell is blocked before runtime reads', async ({ page }) => {
+  const cn = healthyFleet.records.find((row: any) => row.strategy_id === 'cn_27');
+  const mismatched = { ...healthyFleet, records: healthyFleet.records.map((row: any) => row === cn
+    ? { ...row, source_identity: { ...row.source_identity, formal_bundle_id: 'b'.repeat(64) } } : row) };
+  await page.route('**/data/strategy-operations/snapshots.json', route => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(mismatched),
+  }));
+  await installProMembership(page, { fullFleet: true });
+  await page.goto('/#/app');
+  const row = page.getByRole('region', { name: 'Daily research brief' }).getByRole('article', { name: 'CN_27 V1.3 daily observation' });
+  await expect(row.getByText('Blocked', { exact: true })).toBeVisible();
+  await expect(row.getByText('Observation blocked · Operations formal bundle identity mismatch', { exact: true })).toBeVisible();
+  await expect.poll(() => fixtureCalls(page)).toBe(1);
+  expect(await page.evaluate(() => (window as any).__operationsFixture.selectedIds())).not.toContain('cn_27');
 });
 
 test('one invalid runtime row leaves independent observations readable', async ({ page }, testInfo) => {

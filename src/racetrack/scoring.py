@@ -2,14 +2,17 @@
 
 Implements versioned PointsRuleV1, monthly compounding returns, rolling window returns
 (1M, 3M, 6M, 1Y), dual benchmark excess return computation, and persistence metrics.
+Enforces strict session alignment across all runners and benchmarks.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 import math
+import re
 
 from src.racetrack.contracts import (
+    CalendarSessionError,
     EngineConfig,
     MonthlyRankPoint,
     NAVPoint,
@@ -151,6 +154,14 @@ def generate_benchmark_simulation(
     return simulate_portfolio(matrix=matrix, ledger_events=[ev], config=config)
 
 
+def parse_season_month(season_id: str, default_month: str = "") -> str:
+    """Extract YYYY-MM target month string from season_id."""
+    match = re.search(r"(\d{4})[-_](\d{2})", season_id)
+    if match:
+        return f"{match.group(1)}-{match.group(2)}"
+    return default_month
+
+
 def evaluate_race_season(
     runners: Mapping[str, RunnerContract] | Sequence[RunnerContract] | RunnerRegistry,
     simulation_results: Mapping[str, SimulationResult],
@@ -164,12 +175,13 @@ def evaluate_race_season(
     """Evaluate full race season across all runners, allocating points and constructing Scoreboard.
 
     Algorithm:
-        1. Identify common calendar months across all active runners and benchmarks.
-        2. Monthly cross-sectional ranking: rank runners descending by monthly net return.
-        3. Distribute points per month using PointsRuleV1 and accumulate total season points.
-        4. Calculate dual excess returns (vs QQQ and vs Pool Index).
-        5. Calculate persistence ratio (fraction of months in top 50%).
-        6. Assemble Scoreboard sorted by season_points descending (with 1Y return tie-breaker).
+        1. Strict session alignment: verify every runner and benchmark has identical trading session sequence.
+        2. Identify common calendar months across all active runners and benchmarks.
+        3. Monthly cross-sectional ranking: rank runners descending by monthly net return.
+        4. Distribute points per month using PointsRuleV1.
+        5. Decouple target season_points (for month in season_id) and cumulative_points (all months).
+        6. Calculate dual excess returns (vs QQQ and vs Pool Index) and persistence ratio.
+        7. Assemble Scoreboard with timeseries (dates, benchmarks, top_runners_nav) and status.
 
     Returns:
         Scoreboard instance ready for serialization.
@@ -181,14 +193,31 @@ def evaluate_race_season(
     else:
         runner_map = {r.runner_id: r for r in runners}
 
-    # 1. Compute monthly returns for all runners and benchmarks
+    # 1. Strict trading session alignment verification
+    base_sessions = [p.session for p in pool_simulation.nav_history]
+    macro_sessions = [p.session for p in qqq_simulation.nav_history]
+    if macro_sessions != base_sessions:
+        raise CalendarSessionError(
+            f"Macro benchmark session sequence does not strictly match pool index sessions: "
+            f"expected {len(base_sessions)} sessions, got {len(macro_sessions)}"
+        )
+
+    for r_id, sim in simulation_results.items():
+        runner_sessions = [p.session for p in sim.nav_history]
+        if runner_sessions != base_sessions:
+            raise CalendarSessionError(
+                f"Runner '{r_id}' session sequence does not strictly match official pool calendar sessions: "
+                f"expected {len(base_sessions)} sessions, got {len(runner_sessions)}"
+            )
+
+    # 2. Compute monthly returns for all runners and benchmarks
     runner_monthly = {
         r_id: calculate_monthly_returns(sim) for r_id, sim in simulation_results.items()
     }
     qqq_monthly = calculate_monthly_returns(qqq_simulation)
     pool_monthly = calculate_monthly_returns(pool_simulation)
 
-    # 2. Identify common natural calendar months
+    # 3. Identify common natural calendar months
     month_sets = [set(m.keys()) for m in runner_monthly.values()]
     month_sets.append(set(qqq_monthly.keys()))
     month_sets.append(set(pool_monthly.keys()))
@@ -197,15 +226,19 @@ def evaluate_race_season(
     else:
         common_months = []
 
-    # 3. Monthly cross-sectional ranking and points attribution
+    # Target season month from season_id (or fallback to latest common month)
+    target_season_month = parse_season_month(
+        season_id,
+        default_month=common_months[-1] if common_months else "",
+    )
+
+    # 4. Monthly cross-sectional ranking and points attribution
     monthly_ranks_by_runner: dict[str, list[MonthlyRankPoint]] = {
         r_id: [] for r_id in simulation_results
     }
 
     for m in common_months:
-        # Collect returns for each runner in month m
         ret_pairs = [(r_id, runner_monthly[r_id].get(m, 0.0)) for r_id in simulation_results]
-        # Descending sort by return
         ret_pairs.sort(key=lambda x: x[1], reverse=True)
 
         total_runners = len(ret_pairs)
@@ -226,17 +259,20 @@ def evaluate_race_season(
             )
             monthly_ranks_by_runner[r_id].append(pt)
 
-    # 4. Multi-period rolling returns for benchmarks
+    # 5. Multi-period rolling returns for benchmarks
     qqq_1y = calculate_rolling_window_return(qqq_simulation, 12)
     pool_1y = calculate_rolling_window_return(pool_simulation, 12)
 
-    # 5. Build raw entries
+    # 6. Build raw entries
     raw_entries: list[tuple[ScoreboardEntry, float]] = []
 
     for r_id, sim in simulation_results.items():
         runner = runner_map.get(r_id)
         m_ranks = monthly_ranks_by_runner.get(r_id, [])
-        season_pts = sum(p.points_earned for p in m_ranks)
+
+        # Decouple cumulative all-time points vs target season month points
+        cumulative_pts = sum(p.points_earned for p in m_ranks)
+        season_pts = sum(p.points_earned for p in m_ranks if p.month == target_season_month)
 
         # Persistence ratio: fraction of months ranked in top 50%
         if m_ranks:
@@ -270,6 +306,7 @@ def evaluate_race_season(
             runner_version=version_str,
             thesis_summary=thesis_summary,
             season_points=season_pts,
+            cumulative_points=cumulative_pts,
             current_rank=1,  # will be assigned after sort
             return_1m=ret_1m,
             return_3m=ret_3m,
@@ -285,10 +322,12 @@ def evaluate_race_season(
         tie_breaker_return = ret_1y if ret_1y is not None else sim.cumulative_return
         raw_entries.append((entry, tie_breaker_return))
 
-    # 6. Sort entries: season_points descending, then 1Y return descending
-    raw_entries.sort(key=lambda item: (-item[0].season_points, -item[1]))
+    # 7. Sort entries: cumulative_points descending, season_points descending, then 1Y return descending
+    raw_entries.sort(
+        key=lambda item: (-item[0].cumulative_points, -item[0].season_points, -item[1])
+    )
 
-    # 7. Assign final ranks
+    # 8. Assign final ranks
     ranked_entries: list[ScoreboardEntry] = []
     for rank_idx, (entry, _) in enumerate(raw_entries, start=1):
         ranked_entries.append(
@@ -297,6 +336,7 @@ def evaluate_race_season(
                 runner_version=entry.runner_version,
                 thesis_summary=entry.thesis_summary,
                 season_points=entry.season_points,
+                cumulative_points=entry.cumulative_points,
                 current_rank=rank_idx,
                 return_1m=entry.return_1m,
                 return_3m=entry.return_3m,
@@ -311,7 +351,20 @@ def evaluate_race_season(
             )
         )
 
+    # 9. Extract timeseries for frontend zero-compute rendering
+    dates = [p.session for p in pool_simulation.nav_history]
+    benchmarks = {
+        "pool_index": [float(p.nav) for p in pool_simulation.nav_history],
+        "macro": [float(p.nav) for p in qqq_simulation.nav_history],
+    }
+    top_runners_nav = {
+        e.runner_id: [float(p.nav) for p in simulation_results[e.runner_id].nav_history]
+        for e in ranked_entries[:10]
+        if e.runner_id in simulation_results
+    }
+    status = "operational_race" if ranked_entries else "diagnostic_baseline_only"
     as_of_session = qqq_simulation.end_session if qqq_simulation else ""
+
     return Scoreboard(
         schema_version=schema_version,
         as_of_session=as_of_session,
@@ -319,4 +372,8 @@ def evaluate_race_season(
         pool_id=pool_id,
         benchmark_symbol=benchmark_symbol,
         entries=ranked_entries,
+        status=status,
+        dates=dates,
+        benchmarks=benchmarks,
+        top_runners_nav=top_runners_nav,
     )

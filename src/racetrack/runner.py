@@ -10,6 +10,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+import os
+import tempfile
 import yaml
 
 from src.racetrack.contracts import (
@@ -19,9 +21,11 @@ from src.racetrack.contracts import (
     SimulationResult,
     ThesisMissingError,
     UnauthorizedAssetError,
+    LedgerOverwriteError,
     canonical_json_dumps,
 )
 from src.racetrack.engine import simulate_portfolio
+from src.racetrack.ledger import EventLedger
 
 
 def validate_runner_thesis(thesis: str | None) -> None:
@@ -112,6 +116,7 @@ class RunnerContract:
             )
 
         events = self.generate_rebalance_events(matrix)
+        EventLedger.validate_events(events, self.runner_id, self.runner_version)
 
         # Closed pool and benchmark isolation verification
         for ev in events:
@@ -126,15 +131,31 @@ class RunnerContract:
                             f"Asset '{sym}' in runner '{self.runner_id}' is outside authorized candidate pool '{matrix.pool_id}'"
                         )
 
-        # Write sparse hash-chained JSONL ledger if path provided
+        # Simulation must succeed before evidence is created. Atomic no-clobber
+        # linking rejects even a destination created concurrently after validation.
+        result = simulate_portfolio(matrix=matrix, ledger_events=events, config=config)
         if ledger_path is not None:
             p = Path(ledger_path)
             p.parent.mkdir(parents=True, exist_ok=True)
-            with open(p, "w", encoding="utf-8") as f:
-                for ev in events:
-                    f.write(canonical_json_dumps(ev.to_dict()) + "\n")
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    mode="w", encoding="utf-8", dir=p.parent, delete=False
+                ) as f:
+                    temporary = Path(f.name)
+                    for ev in events:
+                        f.write(canonical_json_dumps(ev.to_dict()) + "\n")
+                    f.flush()
+                    os.fsync(f.fileno())
+                try:
+                    os.link(temporary, p)
+                except FileExistsError as exc:
+                    raise LedgerOverwriteError(f"Refusing to replace retained ledger: {p}") from exc
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
 
-        return simulate_portfolio(matrix=matrix, ledger_events=events, config=config)
+        return result
 
 
 class RunnerRegistry:
@@ -155,15 +176,16 @@ class RunnerRegistry:
         else:
             root = root_path or Path.cwd()
             pool_yaml = root / "configs" / "research_universes" / f"{pool_id}.yaml"
-            if pool_yaml.exists():
-                try:
-                    with open(pool_yaml, "r", encoding="utf-8") as f:
-                        data = yaml.safe_load(f)
-                    symbols = data.get("symbols", [])
-                    if symbols:
-                        self.candidate_symbols = set(symbols)
-                except Exception:
-                    pass
+            try:
+                with open(pool_yaml, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+            except yaml.YAMLError as exc:
+                raise ValueError(f"Failed to parse candidate pool YAML: {pool_yaml}") from exc
+            if not isinstance(data, dict) or not isinstance(data.get("symbols"), list):
+                raise ValueError(f"Invalid candidate pool configuration: {pool_yaml}")
+            self.candidate_symbols = {str(symbol) for symbol in data["symbols"]}
+        if not self.candidate_symbols:
+            raise ValueError("Candidate whitelist cannot be empty; pool contains no symbols list")
 
     def register(self, runner: RunnerContract) -> None:
         """Register a new runner contract into the registry.

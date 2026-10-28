@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Sequence
 
 import numpy as np
+from src.racetrack.ledger import EventLedger
 
 from src.racetrack.contracts import (
     CalendarSessionError,
@@ -85,6 +86,8 @@ def simulate_portfolio(
         events_by_session[ev.effective_session] = ev
         runner_id = ev.runner_id
         runner_version = ev.runner_version
+
+    EventLedger.validate_events(ledger_events, runner_id, runner_version)
 
     # 2. Inception state at t_0: initial cash capital allocation
     # Portfolio starts at t_0- with 100% cash (V(t_0-) = 1.0, w_cash = 1.0, w_i = 0.0)
@@ -285,6 +288,10 @@ def simulate_portfolio(
     # Benchmark QQQ excess return
     ref_symbol = matrix.reference_symbol
     annualized_excess_return = 0.0
+    if ref_symbol not in matrix.prices.columns:
+        raise MissingPriceDataError("Reference benchmark is missing from the price matrix")
+    if any(np.isnan(matrix.get_price(session, ref_symbol)) for session in sessions):
+        raise MissingPriceDataError("Reference benchmark has missing session prices")
     if ref_symbol in matrix.prices.columns and n_steps >= 1:
         p_start = matrix.get_price(sessions[0], ref_symbol)
         p_end = matrix.get_price(sessions[-1], ref_symbol)

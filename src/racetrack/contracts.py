@@ -6,10 +6,11 @@ and fail-closed integrity boundaries.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 from typing import Any, Mapping
 import uuid
 
@@ -160,8 +161,14 @@ class RebalanceEvent:
         # Validate weights
         sum_w = sum(self.target_weights.values())
         for s, w in self.target_weights.items():
-            if w < -1e-8:
+            if not math.isfinite(w) or w < 0:
                 raise WeightConstraintError(f"Target weight for '{s}' cannot be negative: {w}")
+        if (
+            not math.isfinite(self.cash_weight)
+            or self.cash_weight < 0
+            or not math.isclose(sum_w + self.cash_weight, 1.0, abs_tol=1e-6)
+        ):
+            raise WeightConstraintError("Cash and equity weights must be finite and sum to one")
         if sum_w > 1.000001:
             raise WeightConstraintError(f"Target weights sum to {sum_w:.6f} > 1.0")
 
@@ -300,6 +307,17 @@ class EngineConfig:
     risk_free_rate_annual: float = 0.02  # Annual risk-free rate 2.0%
     annual_trading_days: int = 252
 
+    def __post_init__(self) -> None:
+        if (
+            not math.isfinite(self.friction_rate)
+            or not 0 <= self.friction_rate < 1
+            or not math.isfinite(self.risk_free_rate_annual)
+            or self.risk_free_rate_annual <= -1
+            or not isinstance(self.annual_trading_days, int)
+            or self.annual_trading_days <= 0
+        ):
+            raise ValueError("Invalid finite friction, risk-free rate or annualization setting")
+
 
 @dataclass(frozen=True)
 class NAVPoint:
@@ -403,7 +421,10 @@ class PriceMatrix:
                 symbol = "000300.SH"
             else:
                 raise UnauthorizedAssetError(f"Symbol '{symbol}' is not in price matrix universe")
-        return float(self.prices.loc[session, symbol])
+        price = float(self.prices.loc[session, symbol])
+        if not math.isnan(price) and (not math.isfinite(price) or price <= 0):
+            raise DataQualificationError(f"Non-positive or non-finite price: {symbol} {session}")
+        return price
 
 
 @dataclass(frozen=True)
@@ -463,6 +484,7 @@ class ScoreboardEntry:
     sharpe_ratio: float
     persistence_ratio: float
     monthly_ranks: list[MonthlyRankPoint]
+    cumulative_points: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dictionary."""
@@ -471,6 +493,7 @@ class ScoreboardEntry:
             "runner_version": self.runner_version,
             "thesis_summary": self.thesis_summary,
             "season_points": self.season_points,
+            "cumulative_points": self.cumulative_points,
             "current_rank": self.current_rank,
             "return_1m": self.return_1m,
             "return_3m": self.return_3m,
@@ -492,6 +515,7 @@ class ScoreboardEntry:
             runner_version=str(data["runner_version"]),
             thesis_summary=str(data["thesis_summary"]),
             season_points=int(data["season_points"]),
+            cumulative_points=int(data.get("cumulative_points", 0)),
             current_rank=int(data["current_rank"]),
             return_1m=float(data["return_1m"]) if data.get("return_1m") is not None else None,
             return_3m=float(data["return_3m"]) if data.get("return_3m") is not None else None,
@@ -523,6 +547,10 @@ class Scoreboard:
     pool_id: str
     benchmark_symbol: str
     entries: list[ScoreboardEntry]
+    status: str = "operational_race"
+    dates: list[str] = field(default_factory=list)
+    benchmarks: dict[str, list[float]] = field(default_factory=dict)
+    top_runners_nav: dict[str, list[float]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dictionary."""
@@ -532,6 +560,11 @@ class Scoreboard:
             "season_id": self.season_id,
             "pool_id": self.pool_id,
             "benchmark_symbol": self.benchmark_symbol,
+            "status": self.status,
+            "period_policy": "calendar_month_buckets_including_partial",
+            "dates": list(self.dates),
+            "benchmarks": {k: [float(x) for x in v] for k, v in self.benchmarks.items()},
+            "top_runners_nav": {k: [float(x) for x in v] for k, v in self.top_runners_nav.items()},
             "entries": [entry.to_dict() for entry in self.entries],
         }
 
@@ -548,6 +581,14 @@ class Scoreboard:
             season_id=str(data["season_id"]),
             pool_id=str(data["pool_id"]),
             benchmark_symbol=str(data["benchmark_symbol"]),
+            status=str(data.get("status", "operational_race")),
+            dates=[str(x) for x in data.get("dates", [])],
+            benchmarks={
+                str(k): [float(x) for x in v] for k, v in data.get("benchmarks", {}).items()
+            },
+            top_runners_nav={
+                str(k): [float(x) for x in v] for k, v in data.get("top_runners_nav", {}).items()
+            },
             entries=[
                 ScoreboardEntry.from_dict(item) if isinstance(item, dict) else item
                 for item in data.get("entries", [])

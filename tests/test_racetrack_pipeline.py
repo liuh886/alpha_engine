@@ -344,7 +344,7 @@ def test_p3_05_pipeline_publish_and_manifest_hash_integrity(tmp_path: Path) -> N
     # Verify manifest.json contents
     manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
     assert manifest["schema_version"] == "1.0"
-    assert manifest["pipeline_version"] == "1.0.0"
+    assert manifest["pipeline_version"] == "1.1.0"
     assert manifest["market"] == "us"
     assert manifest["as_of_cutoff"] == "2026-10-26"
     assert manifest["research_only"] is True
@@ -428,9 +428,7 @@ def test_p3_07_pipeline_bit_level_idempotency(tmp_path: Path) -> None:
 
     # Assert bit-identical bytes across files
     assert (out_dir_1 / "manifest.json").read_bytes() == (out_dir_2 / "manifest.json").read_bytes()
-    assert (out_dir_1 / "scoreboard_latest.json").read_bytes() == (
-        out_dir_2 / "scoreboard_latest.json"
-    ).read_bytes()
+    assert res1.latest_scoreboard_path.read_bytes() == res2.latest_scoreboard_path.read_bytes()
     assert res1.manifest_sha256 == res2.manifest_sha256
     assert res1.matrix_sha256 == res2.matrix_sha256
 
@@ -491,7 +489,7 @@ def test_p3_09_cli_racetrack_publish_and_show_formatting(tmp_path: Path) -> None
         ]
     )
     assert exit_code_pub == 0
-    assert (cli_out_dir / "scoreboard_latest.json").exists()
+    assert (cli_out_dir / "manifest.json").exists()
 
     # 2. Test CLI show markdown
     with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
