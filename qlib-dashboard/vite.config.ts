@@ -4,6 +4,7 @@ import path from 'path'
 import { execSync } from 'child_process'
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
+import { racetrackLocalProjection } from './scripts/racetrack-local.mjs'
 
 // One HTML entry and one application chunk are the entire supported contract.
 // Inline only generated assets; public evidence and service-worker files keep
@@ -58,7 +59,7 @@ try {
 // research bundle valid under the GitHub Pages project sub-path and locally.
 export default defineConfig({
   base: './',
-  plugins: [tailwindcss(), inlineApplication()],
+  plugins: [tailwindcss(), inlineApplication(), racetrackLocalProjection()],
   build: {
     assetsInlineLimit: () => true,
     assetsDir: '',

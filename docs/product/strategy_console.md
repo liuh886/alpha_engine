@@ -71,6 +71,13 @@ Only Overview and Status appear in primary navigation. Strategy details open
 from the brief/fleet. Retired routes show an unavailable view with a return to
 Overview; they do not select a fallback data source.
 
+2026-10-28 user direction adds an opt-in **Racetrack research** view inside
+Overview, alongside the default four-strategy monitor. It displays already
+published local NAV series, cumulative Top 10 rankings and a Runner detail
+dialog. It does not create another navigation destination or alter current
+operations access. Its loopback-only data boundary, evidence validation and
+partial-period limitations are specified in [Racetrack frontend](racetrack_frontend.md).
+
 The product no longer includes standalone research, run comparison, standalone
 security exploration, factors/reports/library pages, local ZIP/preview loading, marketing,
 referrals, PWA/offline installation, analytics or browser access-policy editing.
