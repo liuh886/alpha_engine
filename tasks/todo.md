@@ -317,6 +317,10 @@
   - 编写单测验证未认证 RDI 事件严格返回 10 与 `blocked_event_pit_coverage`；
   - 运行全量回归套件并通过 `uv run ruff check` 与 `git diff --check`。
 
+### Phase 7.2: Research → Decision 前端价值呈现（轻量单 PR）
+
+- [ ] **7.2.1 / Decision Feed + Evidence Review**：在现有 `/app` 与 `/strategies/:strategyId` 内复用正式策略状态、经验证的决策证据，实现「今天关注什么 → 支持/反证/局限 → 下一步」；先做展示与只读复核，不新建导航、交易引擎或数据库。**唯一实施清单及验收条件**：[Decision Feed + Evidence Review TODO](../docs/product/decision_feed_evidence_review_todo.md)。本条仅在文档/代码/测试与真实权限验收全部完成后打勾。
+
 ### Phase 4.8: 双轨协同落地推进 (PR #1291 / #1288 止血与 PR #1296 落地)
 - [x] **4.8.1 [Track A / P0] 实施 #1288 止血动作 (Stop The Bleed)**:
   - [x] 修改 `scripts/refresh_cn_27_v1_3_formal.py`，停止将 `operating_state`（含敏感 `current_weights`/`target_weights`）嵌入回测包 evidence，对齐 BYD v1.3 解耦模式（`operational_monitoring: { status: "separate_runtime_signal_ledger", runtime_state_embedded: false }`）。
