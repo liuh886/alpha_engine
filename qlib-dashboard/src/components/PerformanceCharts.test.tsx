@@ -29,6 +29,30 @@ function equityChartData() {
 }
 
 describe("PerformanceCharts benchmark infrastructure", () => {
+  it('labels an observed-range comparison separately from a source metric and counts provisional marks', () => {
+    render(<PerformanceCharts benchmarkId="QQQ" report={[
+      { date: '2024-01-02', holding_end_date: '2024-01-17', account: .9, bench_qqq: 1.01 },
+      { date: '2024-01-17', holding_end_date: '2024-01-31', account: 1.1, bench_qqq: 1.1 },
+      { date: '2024-02-01', holding_end_date: '2024-02-02', account: 1.2, bench_qqq: 1.2, provisional_mtm: true },
+    ]} />);
+    expect(screen.getByTestId('visible-period-dates')).toHaveTextContent('2024-01-17 – 2024-02-02 · 3 observations · Chart comparison');
+    expect(screen.getByTestId('chart-return-basis')).toHaveTextContent('not the published source return');
+    expect(screen.getByTestId('chart-return-basis')).toHaveTextContent('wealth at the first selected observation (2024-01-17)');
+    expect(screen.getByTestId('chart-return-basis')).toHaveTextContent('excludes the interval ending at that observation');
+    expect(screen.getByTestId('chart-return-basis')).toHaveTextContent('1 provisional observation(s)');
+    expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('33.33%');
+    expect(screen.getByTestId('visible-benchmark-return')).toHaveTextContent('18.81%');
+  });
+
+  it('restores the declared strategy benchmark by default rather than a different stock comparison', () => {
+    render(<PerformanceCharts benchmarkId="BYD v1.2" report={[
+      { date: '2026-01-01', account: 1, bench_byd_v1_2: 1, bench_byd: 100 },
+      { date: '2026-01-02', account: 1.2, bench_byd_v1_2: 1.1, bench_byd: 200 },
+    ]} />);
+    expect(screen.getByTestId('equity-curve-container')).toHaveAttribute('data-default-benchmark', 'BYD v1.2');
+    expect(screen.getByTestId('visible-benchmark-return')).toHaveTextContent('10.00%');
+    expect(screen.getByTestId('visible-excess-return')).toHaveTextContent('9.09%');
+  });
   it("shows QQQ as the named default baseline for US evidence", () => {
     render(
       <PerformanceCharts report={[
@@ -267,6 +291,7 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     fireEvent.change(screen.getByLabelText('Performance start date'), { target: { value: '2026-01-01' } });
     expect(equityChartData().every(row => row.benchmark_qqq === null)).toBe(true);
     expect(screen.getByTestId('visible-benchmark-return')).toHaveTextContent('—');
+    expect(screen.getByRole('note')).toHaveTextContent('no valid wealth series at both selected boundaries');
     expect(screen.getByTestId('visible-strategy-return')).toHaveTextContent('20.00%');
   });
 
@@ -325,9 +350,11 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(screen.getByTestId("visible-strategy-return")).toHaveTextContent("43.00%");
     expect(screen.getByTestId("visible-benchmark-return")).toHaveTextContent("20.00%");
     expect(screen.getByTestId("visible-excess-return")).toHaveTextContent("19.17%");
+    expect(screen.getByTestId('chart-return-basis')).toHaveTextContent('declared opening wealth before the first observation; includes the first interval');
     expect(equityChartData()[0].strategy).toBeCloseTo(-0.05);
     expect(Object.keys(equityChartData()[0]).some(key => key.endsWith('_before'))).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: '1M' }));
+    expect(screen.getByTestId('chart-return-basis')).toHaveTextContent('wealth at the first selected observation (2026-08-01)');
     expect(equityChartData()[0].strategy).toBeCloseTo(0);
     expect(equityChartData()[0].benchmark_csi300).toBeCloseTo(0);
     expect(equityChartData()[equityChartData().length - 1].strategy).toBeCloseTo(0.1);

@@ -146,6 +146,38 @@ test('formal QQQ evidence stays public while current operations follow account p
   await expect(page.getByRole('heading', { name: 'Current decision state' })).toHaveCount(0);
 });
 
+test('strategy detail separates source metrics from chart observations and keeps the declared benchmark', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
+  await page.goto('/#/strategies/us_x1_3');
+  const scope = page.getByRole('region', { name: 'Published metric scope' });
+  await expect(scope).toContainText('source return observations');
+  await expect(scope).toContainText('non-provisional through');
+  await expect(scope).toContainText('provisional (unsettled marks)');
+  await expect(page.getByTestId('chart-return-basis')).toContainText('not the published source return');
+  await expect(page.getByTestId('chart-return-basis')).toContainText('excludes the interval ending at that observation');
+  await expect(page.getByTestId('chart-return-basis')).toContainText('provisional observation(s)');
+  await expect(page.getByTestId('visible-period-dates')).toContainText('Chart comparison');
+  await page.getByTestId('chart-return-basis').scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+  await page.screenshot({ path: testInfo.outputPath('us-chart-return-scope.png'), fullPage: false });
+
+  await page.goto('/#/strategies/byd_v1_3_recovery_event_low_vol_confirmation_v1');
+  await expect(page.getByTestId('equity-curve-container')).toHaveAttribute('data-default-benchmark', 'BYD v1.2');
+  await expect(page.getByTestId('visible-benchmark-return')).not.toHaveText('—');
+  await expect(page.getByTestId('visible-excess-return')).not.toHaveText('—');
+  await expect(page.getByTestId('chart-return-basis')).toContainText('not the published source return');
+  await page.getByRole('button', { name: 'Benchmark comparisons', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Compare BYD v1.2', exact: true, pressed: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Compare BYD', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Benchmark comparisons', exact: true }).click();
+  await page.getByTestId('chart-return-basis').scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+  await page.screenshot({ path: testInfo.outputPath('byd-declared-benchmark.png'), fullPage: false });
+  expect(errors).toEqual([]);
+});
+
 test('retired product views have no alternate execution path', async ({ page }) => {
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
   await page.goto('/#/research');
