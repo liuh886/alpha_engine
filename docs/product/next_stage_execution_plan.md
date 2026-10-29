@@ -1,6 +1,6 @@
 # Alpha Engine — 下一阶段产品架构与执行计划
 
-**状态：拟审阅的行动路线 / 非代码交付。** 审查基线：`main@00dedccd76f3db4ea8091dc2321b89dfadf64089`，2026-10-29。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；合并本文不更改任何运行行为或批准产品 GO。
+**状态：#1321 已合并，G0 分步实施中；A4 仍 FAIL。** 路线审查基线：`main@00dedccd76f3db4ea8091dc2321b89dfadf64089`，2026-10-29。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
 
 ## 1. 产品判定：从建设功能切换到交付有用的研究判断
 
@@ -98,3 +98,24 @@
 每个实现 PR 正文必须有：**用户问题 / 改动文件与唯一数据权威 / happy-path 和 blocked/negative case / 精确 SHA 与数据截止日期 / 可复现命令与实际结果 / 前后 UI 或产物证据 / 明确的 research_only 与发布资格 / 未解决问题与回滚**。涉及运行状态的 PR 必须给出真实生产/本地投递回执；涉及前端的 PR 必须检查桌面、平板和手机；涉及市场验证的 PR 必须给 OOS、费用、同窗口基准及前瞻验证限制。
 
 本计划的**最小终点**不是把所有未来功能做完，而是：①公开写入风险真正关闭；②每日能够读懂三条以内最重要的信息及其反证；③同市场至少一条独立研究 Runner 在相同条件下与股票池/市场基准比较；④能据冻结证据做第一次真实前瞻复盘。**未完成任何一个环节，都要如实标记**。
+
+## 6. G0 checkpoint foundation (2026-10-30)
+
+`alpha ops checkpoint-ledgers` now captures the **complete active-registry ledger subtrees**, using the existing ledger schema and registry identity. It preserves original bytes of latest/manifest, sealed records (including legacy fingerprint filenames), corrections, delivery receipts and ledger README. Nonactive model directories are listed explicitly as excluded and remain untouched; this is not a backup or migration of retired models.
+
+The ZIP is protected state. Its CLI output is metadata only. Use a fresh path **outside the repository**; ignored files are not private because build/artifact upload paths can include them. Restoration requires the exact archive SHA-256, size and registry bytes, and a fresh directory. Never use a partially written directory after an I/O failure; restore does not activate or overwrite a live ledger root. Local filesystem permissions remain the operator's responsibility (POSIX modes do not establish Windows ACLs).
+
+```powershell
+uv run alpha ops checkpoint-ledgers --output <private-outside-repository>/checkpoint.zip
+uv run alpha ops checkpoint-ledgers --restore <private-outside-repository>/checkpoint.zip --expected-sha256 <receipt-sha256> --expected-byte-size <receipt-size> --output <private-outside-repository>/fresh-restored-ledgers
+```
+
+This is a lossless transport foundation, **not** a live private writer cutover. It introduces no database, registry, scheduler or new workflow. Four producers, formal refresh planning, delivery deduplication and Strategy Operations still need coordinated restore/write integration, concurrency handling and fail-closed behavior before public ledger commits are removed. In particular:
+
+- Preserve canonical decision/correction/receipt semantics; never treat missing private state as an empty first run.
+- Preserve QQQ/US/CN workflow dispatch and BYD repository dispatch, without duplicate delivery.
+- Bind Operations publication/cache identity to private state content, not only public main SHA.
+- Remove raw public artifact uploads and redact public GitHub Issue bodies while preserving authorized Telegram delivery.
+- Verify authenticated entitled/denied/revoked reads and all four public-surface negatives. Existing public disclosures remain residual risk.
+
+The CN27 formal builder already strips embedded runtime state; current and historical artifact inspection remains separate. Neither checkpoint tests nor a successful private archive readback close G0 or Gate A4. See [the audit](../architecture/current_operations_security_audit_1288.md).
