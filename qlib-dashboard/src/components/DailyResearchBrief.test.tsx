@@ -24,6 +24,35 @@ describe('DailyResearchBrief', () => {
       canAccess: () => true, openAccount } as unknown as ReturnType<typeof useAccessControl>);
   });
 
+  it.each(['policy', 'membership', 'operations'])('does not present pending %s verification as an access denial', stage => {
+    vi.mocked(useAccessControl).mockReturnValue({ loading: stage === 'membership', policyLoading: stage === 'policy',
+      requiredTier: () => 'pro', canAccess: () => false, openAccount } as unknown as ReturnType<typeof useAccessControl>);
+    const snapshot = parseStrategyOperationsSnapshot({ ...record, decision_reason: 'PRIVATE pending decision',
+      as_of: '2026-10-15', latest_completed_session: '2026-10-15' });
+    const props = { runs: [run], snapshots: new Map([['qqq', snapshot]]), reload };
+    const { rerender } = render(<MemoryRouter><DailyResearchBrief {...props} loading={stage === 'operations'} /></MemoryRouter>);
+    expect(screen.getByText('Verifying access and current observations…')).toBeInTheDocument();
+    expect(screen.queryByText('Current observations require strategy access.')).not.toBeInTheDocument();
+    expect(screen.queryByText(/PRIVATE/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/2026-10-15/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Check strategy access' })).not.toBeInTheDocument();
+    vi.mocked(useAccessControl).mockReturnValue({ loading: false, policyLoading: false,
+      requiredTier: () => 'pro', canAccess: () => false, openAccount } as unknown as ReturnType<typeof useAccessControl>);
+    rerender(<MemoryRouter><DailyResearchBrief {...props} loading={false} /></MemoryRouter>);
+    expect(screen.getByText('Current observations require strategy access.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Check strategy access' })).toBeInTheDocument();
+    expect(screen.queryByText(/PRIVATE/)).not.toBeInTheDocument();
+  });
+
+  it('keeps a dated verified read visible while an independent refresh is pending', () => {
+    const snapshot = { ...parseStrategyOperationsSnapshot(record), readState: 'retained' as const };
+    render(<MemoryRouter><DailyResearchBrief runs={[run]} snapshots={new Map([['qqq', snapshot]])} loading reload={reload} /></MemoryRouter>);
+    expect(screen.getByText('Previous verified read')).toBeInTheDocument();
+    expect(screen.getByText('Volatility eased')).toBeInTheDocument();
+    expect(screen.getByText(/Observed 2026-09-30/)).toBeInTheDocument();
+    expect(screen.queryByText('Verifying access and current observations…')).not.toBeInTheDocument();
+  });
+
   it('keeps a fresh change, retained periodic target and due stale observation distinct', () => {
     const periodic = { ...run, key: 'us', title: 'US ranker', modelVersionId: 'us' };
     const delayed = { ...run, key: 'cn', title: 'CN ranker', modelVersionId: 'cn', market: 'cn' };
