@@ -378,8 +378,18 @@ export function PerformanceCharts({
           </div>
           <p data-testid="visible-period-dates" className="mt-2 text-[10px] text-muted-foreground">
             {visibleChartData.length ? `${visibleChartData[0].date} – ${visibleChartData[visibleChartData.length - 1].date}` : 'No observations in this range'}
-            {` · ${visibleChartData.length} observations · Period returns`}
+            {` · ${visibleChartData.length} observations · Chart comparison`}
           </p>
+          {visibleChartData.length > 0 && <div data-testid="chart-return-basis" className="mt-2 space-y-1 text-xs leading-relaxed text-muted-foreground">
+            <p>Observed-range comparison, not the published source return. The selected dates and opening wealth can differ from the headline metrics.</p>
+            <p>Strategy anchor: {startIndex === 0 && report[0]?.account_before !== undefined
+              ? 'declared opening wealth before the first observation; includes the first interval.'
+              : `wealth at the first selected observation (${firstDate}); excludes the interval ending at that observation.`}</p>
+            <p>Benchmark anchor: {activeBenchmark && startIndex === 0 && report[0]?.[`${activeBenchmark.field}_before`] !== undefined
+              ? 'declared opening wealth before the first observation.'
+              : activeBenchmark ? `first selected observation (${firstDate}).` : 'unavailable for the declared benchmark.'}</p>
+            {visibleChartData.some(row => row.provisional_mtm) && <p>The selected range includes {visibleChartData.filter(row => row.provisional_mtm).length} provisional observation(s): unsettled marks at the data cutoff, not completed holding intervals.</p>}
+          </div>}
           {visibleChartData.length === 1 && startIndex > 0 && <p className="mt-1 text-xs text-muted-foreground">Only one observation in this interval.</p>}
           {chartData.length > 0 && <details className="mt-2 text-xs text-muted-foreground">
             <summary className="min-h-9 cursor-pointer py-2">Custom dates</summary>
@@ -401,7 +411,7 @@ export function PerformanceCharts({
           </details>}
           <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3 sm:grid-cols-4">
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Strategy</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Strategy · chart return</p>
               <p data-testid="visible-strategy-return" className={cn("mt-1 font-mono text-sm font-semibold tabular-nums", colorReturn(visibleSummary.strategy))}>{formatPercent(visibleSummary.strategy)}</p>
             </div>
             <div>
@@ -421,9 +431,12 @@ export function PerformanceCharts({
               >{hasDrawdown ? formatPercent(visibleMaxDrawdown?.value ?? 0) : '—'}</p>
             </div>
           </div>
+          {visibleChartData.length > 0 && visibleSummary.benchmark === null && <p role="note" className="mt-2 text-xs text-muted-foreground">
+            Benchmark and relative excess unavailable: {activeBenchmark?.label ?? declaredBenchmark?.label ?? 'the declared benchmark'} has no valid wealth series at both selected boundaries. Published source metrics are retained separately; another comparison is not substituted automatically.
+          </p>}
           <details className="mt-2 text-xs text-muted-foreground">
             <summary className="min-h-9 cursor-pointer py-2">How to read this chart</summary>
-            <p className="mb-2 leading-relaxed">Curves share the selected observation boundaries and are rebased to that period. Full-history returns retain opening capital and initial gains or losses. Missing data stays unavailable.</p>
+            <p className="mb-2 leading-relaxed">Curves are rebased to the selected observations. Initial gains or losses are included only where opening wealth is explicitly declared; otherwise the interval ending at the first observation is excluded. Missing data stays unavailable.</p>
             <p data-testid="drawdown-provenance" className="mb-2 leading-relaxed">
               Chart drawdown uses equity/peak − 1 within the selected range. The sealed Bundle v2 metric may differ. Sparse settlements do not imply daily coverage; provisional MTM is not settled performance.
             </p>

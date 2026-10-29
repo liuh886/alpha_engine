@@ -244,9 +244,8 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
   const parsedPositions = tradesRaw
     ? attachRetainedTradeEvidence(basePositions, parsedTrades.rows)
     : basePositions;
-  const chartBenchmark = run.modelFamilyId === 'byd_allocation' ? 'BYD' : benchmark;
   const parsedReport = attachBydPriceBaseline(
-    parseReport(performance.report, chartBenchmark),
+    parseReport(performance.report, benchmark),
     parsedPositions,
   );
 

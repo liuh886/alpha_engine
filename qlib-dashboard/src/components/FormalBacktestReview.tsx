@@ -29,6 +29,7 @@ import {
 } from '@/lib/formal-run-evidence';
 import { type GovernedRunSummary } from '@/lib/governed-run';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
+import { effectivePerformanceDate } from '@/lib/performanceBenchmarks';
 
 const SUMMARY_METRICS = [
   'total_return',
@@ -59,7 +60,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function MetricCard({ metricId, metrics }: { metricId: string; metrics: CanonicalMetricV2[] }) {
+function MetricCard({ metricId, metrics, dateRange }: { metricId: string; metrics: CanonicalMetricV2[]; dateRange?: { start: string; end: string } }) {
   const metric = metricById(metrics, metricId);
   const available = metric?.availability_status === 'available' && metric.value !== null;
   const scopedWindow = metric?.scope && metric.scope !== 'accepted_formal_source_observed_window'
@@ -76,9 +77,10 @@ function MetricCard({ metricId, metrics }: { metricId: string; metrics: Canonica
         </div>
         <p className="mt-1 line-clamp-2 min-h-8 text-[10px] leading-relaxed text-muted-foreground" title={metric?.unavailable_reason || metric?.scope || ''}>
           {available
-            ? `Retained source metric${metric?.sample_count ? ` · ${metric.sample_count.toLocaleString()} observations` : ''}${scopedWindow}`
+            ? `Published source metric${metric?.sample_count != null ? ` · ${metric.sample_count.toLocaleString()} observations` : ''}${scopedWindow}`
             : metric?.unavailable_reason || 'The evidence contract does not declare this metric.'}
         </p>
+        {dateRange && <p className="mt-1 text-[10px] text-muted-foreground">Declared run window: {dateRange.start} → {dateRange.end}</p>}
       </CardContent>
     </Card>
   );
@@ -172,7 +174,7 @@ function PerformancePanel({ evidence }: { evidence: FormalRunEvidence }) {
           </div>
           <Badge variant="outline" className="shrink-0 font-mono text-[10px]">{formatEvidenceLabel(evidence.performance.traceFrequency)}</Badge>
         </CardHeader>
-        <CardContent className="pt-4"><PerformanceCharts report={evidence.performance.report} /></CardContent>
+        <CardContent className="pt-4"><PerformanceCharts report={evidence.performance.report} benchmarkId={evidence.performance.benchmark} /></CardContent>
       </Card>
       <Card>
         <CardHeader className="border-b pb-3">
@@ -411,6 +413,9 @@ export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
 
   const evidence = state.value;
   const complete = String(evidence.diagnostics.completeness.status) === 'complete';
+  const nonProvisional = evidence.performance.report.filter(row => row.provisional_mtm !== true && row.settlement_status !== 'provisional_mtm');
+  const provisionalCount = evidence.performance.report.length - nonProvisional.length;
+  const returnCount = metricById(evidence.metrics, 'total_return')?.sample_count;
   return (
     <div className="space-y-5" data-testid="formal-backtest-review">
       <section className="flex flex-col gap-4 border-b pb-4 lg:flex-row lg:items-end lg:justify-between">
@@ -435,9 +440,13 @@ export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
         </div>
       </section>
 
-      <p className="text-xs text-muted-foreground">Full evidence metrics · Interval returns appear with the selected chart range below.</p>
+      <section className="space-y-1 text-xs text-muted-foreground" aria-label="Published metric scope">
+        <h3 className="font-semibold text-foreground">Published source metrics · {evidence.performance.dateRange.start} → {evidence.performance.dateRange.end} · {returnCount == null ? 'source return count undeclared' : `${returnCount} source return observations`}</h3>
+        <p>The declared run window does not identify every metric's observation set. Each source metric retains its own sample count and scope; the chart below compares selected wealth observations with its own anchor.</p>
+        <p>Retained chart trace: {evidence.performance.report.length} wealth observations · {nonProvisional.length} non-provisional{nonProvisional.length ? ` through ${effectivePerformanceDate(nonProvisional[nonProvisional.length - 1])}` : ''} · {provisionalCount} provisional (unsettled marks). Inclusion in a source metric follows that metric's declared scope; the run cutoff alone does not establish its last completed interval.</p>
+      </section>
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" aria-label="Formal backtest headline metrics">
-        {SUMMARY_METRICS.map((metricId) => <MetricCard key={metricId} metricId={metricId} metrics={evidence.metrics} />)}
+        {SUMMARY_METRICS.map((metricId) => <MetricCard key={metricId} metricId={metricId} metrics={evidence.metrics} dateRange={evidence.performance.dateRange} />)}
       </section>
 
       <Tabs defaultValue="performance" className="w-full">
