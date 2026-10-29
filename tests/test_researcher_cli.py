@@ -11,7 +11,7 @@ from src.cli import main as cli
 from src.data import data_recipe, data_recipe_catalog
 
 
-@pytest.mark.parametrize("argv", [["--help"], ["data", "list"], ["research", "replay", "--help"], ["ops", "build", "--help"]])
+@pytest.mark.parametrize("argv", [["--help"], ["data", "list"], ["research", "replay", "--help"], ["ops", "build", "--help"], ["ops", "checkpoint-ledgers", "--help"]])
 def test_read_only_cli_does_not_load_research_or_provider_engines(argv) -> None:
     code = '''
 import importlib.abc

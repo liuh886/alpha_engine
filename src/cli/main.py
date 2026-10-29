@@ -221,6 +221,16 @@ def _build_parser() -> argparse.ArgumentParser:
     ops = groups.add_parser("ops", help="Record decisions and publish current strategy state.")
     ops_commands = ops.add_subparsers(dest="ops_command", required=True)
 
+    checkpoint = ops_commands.add_parser(
+        "checkpoint-ledgers", help="Create or verify/restore a protected, lossless canonical ledger checkpoint.",
+    )
+    checkpoint.add_argument("--restore", type=Path, help="Pinned private checkpoint ZIP to restore; otherwise create one.")
+    checkpoint.add_argument("--output", type=Path, required=True, help="Fresh private ZIP or restoration directory outside this repository.")
+    checkpoint.add_argument("--ledger-root", type=Path, default=Path("data/research/strategy_signal_ledgers"))
+    checkpoint.add_argument("--strategy-catalog", type=Path, default=DEFAULT_STRATEGY_CATALOG)
+    checkpoint.add_argument("--expected-sha256")
+    checkpoint.add_argument("--expected-byte-size", type=int)
+
     record_decision = ops_commands.add_parser(
         "record-decision",
         help="Append one immutable active-strategy decision evaluation.",
@@ -558,6 +568,30 @@ def main(argv: Sequence[str] | None = None) -> int:
                 root=root,
                 db_path=_resolve(root, args.output),
             )
+        elif args.group == "ops" and args.ops_command == "checkpoint-ledgers":
+            import subprocess
+            import zipfile
+            import zlib
+            from src.artifacts.strategy_signal_checkpoint import (
+                SignalCheckpointError, pack_signal_checkpoint, restore_signal_checkpoint,
+            )
+            from src.artifacts.strategy_signal_ledger import StrategySignalLedgerError
+
+            errors += (SignalCheckpointError, StrategySignalLedgerError, zipfile.BadZipFile, zlib.error, subprocess.CalledProcessError)
+            output = _resolve(root, args.output).resolve()
+            if output.is_relative_to(root):
+                raise SignalCheckpointError("protected checkpoint output must be outside the repository; ignored files may enter public build/artifact outputs")
+            catalog = _resolve(root, args.strategy_catalog)
+            if args.restore:
+                if not args.expected_sha256 or args.expected_byte_size is None:
+                    raise SignalCheckpointError("restore requires an exact archive SHA-256 and byte size")
+                payload = restore_signal_checkpoint(_resolve(root, args.restore), output, catalog=catalog,
+                    expected_sha256=args.expected_sha256, expected_byte_size=args.expected_byte_size)
+            else:
+                if args.expected_sha256 or args.expected_byte_size is not None:
+                    raise SignalCheckpointError("pinned archive arguments are only valid with --restore")
+                revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, check=True, capture_output=True, text=True).stdout.strip()
+                payload = pack_signal_checkpoint(_resolve(root, args.ledger_root), output, catalog=catalog, code_revision=revision)
         elif args.group == "ops" and args.ops_command == "record-decision":
             from src.governance.active_strategy_catalog import (
                 load_active_strategy_catalog,
