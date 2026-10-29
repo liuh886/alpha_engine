@@ -133,12 +133,14 @@ jobs:
             '{event_type: "strategy_operations_publication", client_payload: {
               producer_workflow: $producer_workflow, producer_run_id: $producer_run_id
             }}' | gh api --method POST "repos/${GITHUB_REPOSITORY}/dispatches" --input -
-      - name: Retain outbox evidence
+      - name: Retain public delivery receipt only
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: strategy-signal-delivery-${{ github.run_id }}
-          path: artifacts/signal-delivery-outbox
+          # strategy-operations.json contains protected current strategy state.
+          # Keep only metadata; never upload the entire output directory.
+          path: artifacts/signal-delivery-outbox/result.json
           if-no-files-found: error
           retention-days: 30
       - name: Fail after persisting delivery failure evidence

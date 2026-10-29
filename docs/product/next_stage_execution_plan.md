@@ -115,7 +115,7 @@ This is a lossless transport foundation, **not** a live private writer cutover. 
 - Preserve canonical decision/correction/receipt semantics; never treat missing private state as an empty first run.
 - Preserve QQQ/US/CN workflow dispatch and BYD repository dispatch, without duplicate delivery.
 - Bind Operations publication/cache identity to private state content, not only public main SHA.
-- Remove raw public artifact uploads and redact public GitHub Issue bodies while preserving authorized Telegram delivery.
+- Remove remaining raw public artifact uploads: the outbox now retains only its metadata `result.json`, excluding its protected Operations projection. It also renders new public GitHub Issues as generic delivery-attempt receipts (including the title), while keeping detailed Telegram text and the original deduplication marker. Other workflows and existing disclosures remain open; no live notification was triggered to test this change.
 - Verify authenticated entitled/denied/revoked reads and all four public-surface negatives. Existing public disclosures remain residual risk.
 
 The CN27 formal builder already strips embedded runtime state; current and historical artifact inspection remains separate. Neither checkpoint tests nor a successful private archive readback close G0 or Gate A4. See [the audit](../architecture/current_operations_security_audit_1288.md).
