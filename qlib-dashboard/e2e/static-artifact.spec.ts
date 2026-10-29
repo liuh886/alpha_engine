@@ -104,6 +104,38 @@ test('the homepage opens daily research and reads only the formal operating surf
   await page.screenshot({ path: testInfo.outputPath('focused-daily-overview.png'), fullPage: false });
 });
 
+test('pending catalog and operations reads show verification rather than empty or denied states', async ({ page }, testInfo) => {
+  let releaseCatalog!: () => void;
+  let releaseOperations!: () => void;
+  const catalogGate = new Promise<void>(resolve => { releaseCatalog = resolve; });
+  const operationsGate = new Promise<void>(resolve => { releaseOperations = resolve; });
+  await page.route('**/data/formal-model-runs/catalog.json', async route => { await catalogGate; await route.continue(); });
+  await page.route('**/data/strategy-operations/snapshots.json', async route => { await operationsGate; await route.continue(); });
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
+  try {
+    await page.goto('/#/app');
+    const context = page.getByRole('status', { name: 'Strategy fleet context' });
+    await expect(context).toContainText('Reading formal strategy catalog…');
+    await expect(context).not.toContainText('0 strategies');
+    await expect(page.getByRole('status', { name: 'Loading formal strategy evidence' })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('catalog-verification-pending.png'), fullPage: false });
+    releaseCatalog();
+    const brief = page.getByRole('region', { name: 'Daily research brief' });
+    await expect(brief).toHaveAttribute('aria-busy', 'true');
+    await expect(brief.getByRole('article')).toHaveCount(4);
+    await expect(brief).toContainText('Verifying access and current observations…');
+    await expect(brief).not.toContainText('Current observations require strategy access.');
+    await expect(brief.getByRole('button', { name: 'Check strategy access' })).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('operations-verification-pending.png'), fullPage: false });
+    releaseOperations();
+    await expect(brief).toHaveAttribute('aria-busy', 'false');
+    await expect(brief).not.toContainText('Verifying access and current observations…');
+    await expect(context).toContainText('4 strategies');
+  } finally {
+    releaseCatalog(); releaseOperations();
+  }
+});
+
 test('strategy navigation reuses verified formal sections without loading them on overview', async ({ page }, testInfo) => {
   const sections: string[] = [];
   const retiredRequests: string[] = [];

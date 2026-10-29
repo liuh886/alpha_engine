@@ -3,10 +3,14 @@ import { ArrowUpRight, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import type { GovernedRunSummary } from '@/lib/governed-run';
-import { describeStrategyObservation, type StrategyOperationsSnapshot } from '@/lib/strategy-operations';
+import { describeStrategyObservation, type StrategyObservationBrief, type StrategyOperationsSnapshot } from '@/lib/strategy-operations';
 
 const WORKFLOWS = 'https://github.com/liuh886/alpha_engine/actions/workflows/';
 const DISPLAY_ORDER = { changed: 0, attention: 1, retained: 2, unchanged: 3, access: 4, pending: 5 };
+const CHECKING_OBSERVATION: StrategyObservationBrief = {
+  kind: 'pending', label: 'Checking observation', reason: 'Verifying access and current observations…',
+  nextStep: 'Formal historical evidence remains available while verification completes.', recovery: null,
+};
 
 export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
   runs: GovernedRunSummary[];
@@ -15,22 +19,26 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
   reload: () => void;
 }) {
   const access = useAccessControl();
+  const accessPending = access.loading || access.policyLoading;
+  const busy = loading || accessPending;
   const entries = runs.map(run => {
     const snapshot = snapshots.get(run.modelVersionId);
-    const accessible = snapshot ? Boolean(snapshot.strategyId) && !access.policyLoading
+    const accessible = snapshot ? Boolean(snapshot.strategyId) && !accessPending
       && access.canAccess(access.requiredTier('strategy', snapshot.strategyId)) : true;
-    return { run, snapshot: accessible && (!snapshot?.readState || snapshot.readState === 'retained') ? snapshot : undefined,
-      brief: snapshot && !snapshot.strategyId ? describeStrategyObservation() : describeStrategyObservation(snapshot, accessible) };
+    const visibleSnapshot = accessible && (!snapshot?.readState || snapshot.readState === 'retained') ? snapshot : undefined;
+    const checking = accessPending || (loading && !visibleSnapshot);
+    return { run, snapshot: visibleSnapshot,
+      brief: checking ? CHECKING_OBSERVATION : snapshot && !snapshot.strategyId ? describeStrategyObservation() : describeStrategyObservation(snapshot, accessible) };
   }).sort((a, b) => DISPLAY_ORDER[a.brief.kind] - DISPLAY_ORDER[b.brief.kind]);
   const count = (kind: string) => entries.filter(entry => entry.brief.kind === kind).length;
   return (
-    <section className="overflow-hidden rounded-2xl border bg-card shadow-sm" aria-label="Daily research brief" aria-busy={loading}>
+    <section className="overflow-hidden rounded-2xl border bg-card shadow-sm" aria-label="Daily research brief" aria-busy={busy}>
       <header className="border-b bg-muted/15 px-5 py-4">
         <h2 className="flex items-center gap-2 font-semibold"><ClipboardList className="h-4 w-4 text-primary" />Daily research brief</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Latest verified observations by strategy. Each market keeps its own cutoff; retained targets are dated separately.</p>
-        <p className="mt-2 text-xs" role="status">{loading ? 'Reading current observations…' : `${count('changed')} changed · ${count('unchanged')} unchanged · ${count('retained')} retained · ${count('attention')} need attention · ${count('access')} require access · ${count('pending')} awaiting verification`}</p>
+        <p className="mt-2 text-xs" role="status">{busy ? 'Reading current observations…' : `${count('changed')} changed · ${count('unchanged')} unchanged · ${count('retained')} retained · ${count('attention')} need attention · ${count('access')} require access · ${count('pending')} awaiting verification`}</p>
       </header>
-      {!runs.length && <p className="p-5 text-sm text-muted-foreground">No formal strategies are available for this brief.</p>}
+      {!runs.length && <p className="p-5 text-sm text-muted-foreground">{busy ? 'Reading formal strategies…' : 'No formal strategies are available for this brief.'}</p>}
       <div className="divide-y">{entries.map(({ run, snapshot, brief }) => (
         <article key={run.key} className="px-5 py-4" aria-label={`${run.title} daily observation`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -50,8 +58,8 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
             ))}</ul>
             <Link className="mt-2 inline-block text-primary underline" to={`/strategies/${encodeURIComponent(run.modelVersionId)}`}>Inspect all evidence</Link>
           </details> : null}
-          {!loading && brief.kind === 'access' && <Button variant="outline" size="sm" className="mt-3 min-h-[44px]" onClick={access.openAccount}>Check strategy access</Button>}
-          {!loading && brief.recovery === 'read' && <Button variant="outline" size="sm" className="mt-3 min-h-[44px]" onClick={reload}>Retry reading observations</Button>}
+          {!busy && brief.kind === 'access' && <Button variant="outline" size="sm" className="mt-3 min-h-[44px]" onClick={access.openAccount}>Check strategy access</Button>}
+          {!busy && brief.recovery === 'read' && <Button variant="outline" size="sm" className="mt-3 min-h-[44px]" onClick={reload}>Retry reading observations</Button>}
           {brief.recovery && brief.recovery !== 'read' && <details className="mt-3 rounded-lg border bg-muted/15 p-3 text-xs">
             <summary className="cursor-pointer font-medium">Recovery steps</summary>
             <p className="mt-2 leading-relaxed text-muted-foreground">{brief.recovery === 'delivery'

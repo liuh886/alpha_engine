@@ -46,9 +46,9 @@ function Layout(props: ReturnType<typeof useAppBootstrap>) {
           </Button>
         </div>
       </header>
-      {!location.pathname.startsWith('/securities/') && <ResearchContextBar run={activeRun} fleet={location.pathname === '/app' ? props.runs : undefined} />}
+      {!location.pathname.startsWith('/securities/') && <ResearchContextBar run={activeRun} fleet={location.pathname === '/app' ? props.runs : undefined} loading={props.loading} unavailable={Boolean(props.loadError)} />}
       <main ref={mainRef} className="research-main">
-        {props.loading ? <div className="space-y-6"><Skeleton className="h-28 rounded-xl" /><Skeleton className="h-96 rounded-xl" /></div>
+        {props.loading ? <div className="space-y-6" role="status" aria-label="Loading formal strategy evidence"><p className="text-sm text-muted-foreground">Reading formal strategy evidence…</p><Skeleton className="h-28 rounded-xl" /><Skeleton className="h-96 rounded-xl" /></div>
           : props.loadError ? <div className="research-empty-state">
             <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
             <h2 className="mt-4 text-lg font-semibold">Strategy evidence unavailable</h2>
