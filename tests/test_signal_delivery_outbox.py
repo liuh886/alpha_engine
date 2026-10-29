@@ -3,9 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 import yaml
 
 import scripts.run_signal_delivery_outbox as outbox
+from src.artifacts.strategy_signal_ledger import append_signal_evaluation, read_latest_evaluation
+from test_strategy_signal_ledger import MODEL, _signal
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,7 +26,7 @@ def test_message_uses_common_signal_contract() -> None:
         "test_model",
         {
             "signal_date": "2026-08-14",
-            "fingerprint": "abc",
+            "fingerprint": "a" * 20,
             "action": "REBALANCE",
             "current_weights": {"AAA": 1.0},
             "target_weights": {"BBB": 1.0},
@@ -31,10 +34,142 @@ def test_message_uses_common_signal_contract() -> None:
             "reason_code": "test_reason",
         },
     )
-    assert title == "[策略信号] test_model 2026-08-14"
-    assert "signal-decision:test_model:2026-08-14:abc" in body
+    assert title == "[策略投递回执] test_model 2026-08-14"
+    assert f"signal-decision:test_model:2026-08-14:{'a' * 20}" in body
+    for sensitive in ("AAA", "BBB", "100.0%", "REBALANCE", "test_reason", "next_eligible_open"):
+        assert sensitive not in title + body
     assert "当前：AAA 100.0%" in telegram
     assert "目标：BBB 100.0%" in telegram
+
+
+def test_public_receipt_does_not_copy_free_text_or_unknown_signal_fields():
+    signal = {
+        "signal_date": "2026-08-14", "fingerprint": "b" * 64,
+        "title": "PRIVATE_TITLE", "action": "PRIVATE_ACTION",
+        "reason_code": "PRIVATE_REASON", "execution_time": "PRIVATE_TIME",
+        "current_weights": {"PRIVATE_ASSET": 0.25},
+        "target_weights": {"PRIVATE_TARGET": 0.75},
+        "future_private_field": "PRIVATE_FUTURE",
+    }
+    title, body, telegram = outbox._message("test_model", signal)
+    assert "PRIVATE_" not in title + body
+    assert "25.0%" not in body and "75.0%" not in body
+    for value in ("PRIVATE_TITLE", "PRIVATE_ACTION", "PRIVATE_REASON", "PRIVATE_TIME",
+                  "PRIVATE_ASSET 25.0%", "PRIVATE_TARGET 75.0%"):
+        assert value in telegram
+    assert "does not confirm delivery" in body
+
+
+@pytest.mark.parametrize("field,value", [
+    ("model", 'bad\"model'), ("model", "private\nmodel"),
+    ("signal_date", "2026-02-30"), ("signal_date", "2026-08-14\nPRIVATE"),
+    ("fingerprint", "<!-- PRIVATE -->"), ("fingerprint", "target-100-percent"),
+])
+def test_unsafe_public_identity_is_rejected_without_echoing_input(field, value):
+    signal = {"signal_date": "2026-08-14", "fingerprint": "a" * 20}
+    model = value if field == "model" else "test_model"
+    if field != "model":
+        signal[field] = value
+    with pytest.raises(ValueError, match="invalid public delivery receipt") as error:
+        outbox._message(model, signal)
+    assert value not in str(error.value)
+
+
+@pytest.fixture
+def canonical_outbox(tmp_path, monkeypatch):
+    ledger = tmp_path / MODEL
+    signal = _signal(fingerprint="a" * 20)
+    signal.update(title="PRIVATE_TITLE", action="PRIVATE_ACTION", reason_code="PRIVATE_REASON")
+    append_signal_evaluation(ledger_root=ledger, model_version_id=MODEL, signal=signal,
+        delivery_status="pending", workflow_run_id="seal", commit_sha="a" * 40,
+        created_at_utc="2026-08-13T00:00:00Z")
+    sealed = (ledger / "latest.json").read_bytes()
+    strategy = SimpleNamespace(strategy_id="qqq_rotation", model_version_id=MODEL, signal_ledger=str(ledger))
+    monkeypatch.setattr(outbox, "load_active_strategy_catalog", lambda: SimpleNamespace(strategies=(strategy,)))
+    issues, messages, lookups = [], [], []
+
+    def existing(repository, marker):
+        lookups.append(marker)
+        return 42 if issues else None
+
+    def create(repository, title, body):
+        issues.append((title, body))
+        return 42
+
+    def send(token, chat, text):
+        messages.append(text)
+        return 99
+
+    monkeypatch.setattr(outbox, "_existing_issue", existing)
+    monkeypatch.setattr(outbox, "_create_issue", create)
+    monkeypatch.setattr(outbox, "_send_telegram", send)
+    runs = 0
+
+    def drain(*, configured=True):
+        nonlocal runs
+        runs += 1
+        result = outbox.drain_outbox(repository="owner/repo", workflow_run_id=f"delivery-{runs}",
+            commit_sha="b" * 40, created_at_utc=f"2026-08-13T{runs:02d}:00:00Z",
+            telegram_token="test-token" if configured else None,
+            telegram_chat_id="test-chat" if configured else None)
+        assert (ledger / "latest.json").read_bytes() == sealed
+        return result[0]
+
+    return SimpleNamespace(drain=drain, ledger=ledger, issues=issues, messages=messages, lookups=lookups, send=send)
+
+
+def test_public_redaction_preserves_private_delivery_and_terminal_dedup(canonical_outbox):
+    context = canonical_outbox
+    result = context.drain()
+    assert result.status == "sent" and result.github_issue_number == 42 and result.telegram_message_id == 99
+    assert len(context.issues) == len(context.messages) == 1
+    title, body = context.issues[0]
+    assert "PRIVATE_" not in title + body
+    assert body.splitlines()[0] == context.lookups[0]
+    assert "PRIVATE_TITLE" in context.messages[0] and "QQQI 50.0%" in context.messages[0]
+    latest = read_latest_evaluation(context.ledger, model_version_id=MODEL)
+    assert latest["delivery"]["status"] == "sent"
+    assert context.drain().status == "sent"
+    assert len(context.issues) == len(context.messages) == len(context.lookups) == 1
+
+
+def test_existing_legacy_issue_marker_blocks_ambiguous_pending_replay(canonical_outbox):
+    context = canonical_outbox
+    context.issues.append(("legacy detailed title", "legacy detailed body"))
+    result = context.drain()
+    assert result.status == "failed" and result.error == "ambiguous_external_delivery_state"
+    assert result.github_issue_number == 42
+    assert context.messages == []
+    assert context.lookups == [f"<!-- signal-decision:{MODEL}:2026-08-12:{'a' * 20} -->"]
+    assert context.drain().error == "ambiguous_external_delivery_state"
+    assert len(context.lookups) == 1 and len(context.issues) == 1
+
+
+@pytest.mark.parametrize("error", ["telegram_api_rejected", "telegram_transport_ambiguous"])
+def test_private_delivery_failure_keeps_existing_retry_rules(canonical_outbox, monkeypatch, error):
+    context = canonical_outbox
+
+    def failed(*args):
+        raise RuntimeError(error)
+
+    monkeypatch.setattr(outbox, "_send_telegram", failed)
+    assert context.drain().error == error
+    title, body = context.issues[0]
+    assert "PRIVATE_" not in title + body
+    monkeypatch.setattr(outbox, "_send_telegram", context.send)
+    retried = context.drain()
+    if error == "telegram_api_rejected":
+        assert retried.status == "sent" and len(context.messages) == 1
+    else:
+        assert retried.error == error and context.messages == []
+    assert len(context.issues) == 1
+
+
+def test_missing_telegram_configuration_keeps_public_receipt_generic(canonical_outbox):
+    context = canonical_outbox
+    assert context.drain(configured=False).status == "skipped_not_configured"
+    assert context.messages == []
+    assert "PRIVATE_" not in "".join(context.issues[0])
 
 
 def test_no_change_is_finalized_without_transport(monkeypatch) -> None:

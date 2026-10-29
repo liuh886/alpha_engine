@@ -6,11 +6,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -64,6 +66,16 @@ def _weights(value: object) -> str:
 def _message(model: str, signal: Mapping[str, Any]) -> tuple[str, str, str]:
     signal_date = str(signal.get("signal_date") or "")
     fingerprint = str(signal.get("fingerprint") or "")
+    # Keep the existing deduplication marker, but do not interpolate arbitrary
+    # signal strings into either public Issue field (including its title).
+    if (not re.fullmatch(r"[a-z0-9][a-z0-9._-]{1,127}", model)
+        or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", signal_date)
+        or not re.fullmatch(r"(?:[0-9a-f]{20}|[0-9a-f]{64})", fingerprint)):
+        raise ValueError("invalid public delivery receipt identity")
+    try:
+        date.fromisoformat(signal_date)
+    except ValueError:
+        raise ValueError("invalid public delivery receipt date") from None
     marker = f"<!-- signal-decision:{model}:{signal_date}:{fingerprint} -->"
     title = str(signal.get("title") or f"[策略信号] {model} {signal_date}")
     action = str(
@@ -91,8 +103,14 @@ def _message(model: str, signal: Mapping[str, Any]) -> tuple[str, str, str]:
         f"原因：{reason}\n\n"
         "Research only; not trade ready."
     )
-    body = f"{marker}\n\n{text}"
-    return title, body, text
+    public_title = f"[策略投递回执] {model} {signal_date}"
+    public_body = (
+        f"{marker}\n\n"
+        "Delivery attempt receipt only; this Issue does not confirm delivery.\n"
+        "Current strategy details are restricted to authorized channels.\n\n"
+        "Research only; not trade ready."
+    )
+    return public_title, public_body, text
 
 
 def _existing_issue(repository: str, marker: str) -> int | None:
