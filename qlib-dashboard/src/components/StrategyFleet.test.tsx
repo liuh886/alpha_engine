@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadRunSection } from '@/lib/governed-run';
 import { StrategyFleet } from './StrategyFleet';
 import type { GovernedRunSummary } from '@/lib/governed-run';
@@ -186,15 +186,100 @@ const mockSnapshots = new Map<string, StrategyOperationsSnapshot>([
   ],
 ]);
 
-function renderFleet() {
+function renderFleet(runs = mockRuns) {
   return render(
     <MemoryRouter>
-      <StrategyFleet runs={mockRuns} snapshots={mockSnapshots} />
+      <StrategyFleet runs={runs} snapshots={mockSnapshots} />
     </MemoryRouter>,
   );
 }
 
 describe('StrategyFleet', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it.each(['2026-09-04', '2026-09-28'])('does not present a window ending %s as current 1M evidence', async end => {
+    vi.mocked(loadRunSection).mockResolvedValue({ report: [
+      { date: '2026-08-04', account: 1 }, { date: end, account: 2 },
+    ] });
+    renderFleet([{ ...mockRuns[0], evidenceCutoff: '2026-10-28' }]);
+    fireEvent.click(screen.getByRole('button', { name: '1M' }));
+    const row = screen.getByTestId('fleet-us_x1_3');
+    await waitFor(() => expect(row).toHaveAttribute('data-window-status', 'expired'));
+    expect(row).toHaveTextContent('Window expired');
+    expect(row).toHaveTextContent(end);
+    expect(row).toHaveTextContent('evidence cutoff 2026-10-28');
+    expect(row).toHaveTextContent('No measured wealth interval after 2026-09-28');
+    expect(row).not.toHaveTextContent('+100.0%');
+    expect(row).not.toHaveTextContent('0.0%');
+  });
+
+  it.each(['invalid', 'future', 'single'])('does not turn %s period evidence into a measured zero return', async damage => {
+    vi.mocked(loadRunSection).mockResolvedValue({ report: damage === 'single'
+      ? [{ date: '2026-10-27', account: 1 }]
+      : [{ date: '2026-09-28', account: 1 }, { date: damage === 'future' ? '2026-10-29' : '2026-10-27', account: 2 }] });
+    renderFleet([{ ...mockRuns[0], evidenceCutoff: damage === 'invalid' ? '2026-02-30' : '2026-10-28' }]);
+    fireEvent.click(screen.getByRole('button', { name: '1M' }));
+    const row = screen.getByTestId('fleet-us_x1_3');
+    await waitFor(() => expect(row).toHaveTextContent('Period metrics unavailable:'));
+    expect(row).toHaveTextContent(damage === 'invalid' ? 'cutoff is invalid' : damage === 'future' ? 'beyond the formal evidence cutoff' : 'Insufficient observations');
+    expect(row).not.toHaveTextContent('0.0%');
+    expect(row).not.toHaveTextContent('+100.0%');
+  });
+
+  it('retains a first measured interval with declared opening wealth but does not compare mismatched benchmark boundaries', async () => {
+    vi.mocked(loadRunSection).mockResolvedValue({ report: [
+      { date: '2026-10-27', account_before: 1, account: 1.1, bench_qqq: 1.2, provisional_mtm: true },
+    ] });
+    renderFleet([{ ...mockRuns[0], evidenceCutoff: '2026-10-28' }]);
+    fireEvent.click(screen.getByRole('button', { name: '1M' }));
+    const row = screen.getByTestId('fleet-us_x1_3');
+    await waitFor(() => expect(row).toHaveTextContent('+10.0%'));
+    expect(row).toHaveTextContent('1 provisional');
+    expect(row).toHaveTextContent('do not retain matching opening boundaries');
+    expect(row).not.toHaveTextContent('Window expired');
+  });
+
+  it('explains a missing source excess without manufacturing a value and removes only displayed signed zero', () => {
+    const reason = 'This source did not retain relative terminal wealth.';
+    renderFleet([{ ...mockRuns[0], summary: { metrics: [
+      { metric_id: 'total_return', value: -0.00001, availability_status: 'available' },
+      { metric_id: 'max_drawdown', value: -0.00001, availability_status: 'available' },
+      { metric_id: 'excess_return', value: null, availability_status: 'not_retained', unavailable_reason: reason },
+    ] } }]);
+    const row = screen.getByTestId('fleet-us_x1_3');
+    expect(row).toHaveTextContent('0.0%');
+    expect(row).not.toHaveTextContent(/[-+]0\.0%/);
+    expect(row).toHaveTextContent(`Excess unavailable: ${reason}`);
+  });
+
+  it('does not divide by zero benchmark wealth or substitute another available benchmark', async () => {
+    vi.mocked(loadRunSection).mockResolvedValue({ report: [
+      { date: '2026-09-28', account: 1, bench_qqq: 1, bench_hs300: 1 },
+      { date: '2026-10-27', account: 1.2, bench_qqq: 0, bench_hs300: 1.1 },
+    ] });
+    renderFleet([{ ...mockRuns[0], evidenceCutoff: '2026-10-28' }]);
+    fireEvent.click(screen.getByRole('button', { name: '1M' }));
+    const row = screen.getByTestId('fleet-us_x1_3');
+    await waitFor(() => expect(row).toHaveTextContent('benchmark QQQ has no valid values'));
+    expect(row).toHaveTextContent('+20.0%');
+    expect(row).not.toHaveTextContent('Infinity');
+  });
+
+  it('invalidates period evidence when the same run key is rebound to a new bundle', async () => {
+    const run = { ...mockRuns[0], evidenceCutoff: '2026-10-28' };
+    vi.mocked(loadRunSection).mockResolvedValue({ report: [
+      { date: '2026-09-28', account: 1 }, { date: '2026-10-27', account: 1.1 },
+    ] });
+    const { rerender } = renderFleet([run]);
+    fireEvent.click(screen.getByRole('button', { name: '1M' }));
+    await waitFor(() => expect(screen.getByTestId('fleet-us_x1_3')).toHaveTextContent('+10.0%'));
+    vi.mocked(loadRunSection).mockResolvedValue({ report: [
+      { date: '2026-09-28', account: 1 }, { date: '2026-10-27', account: 1.2 },
+    ] });
+    rerender(<MemoryRouter><StrategyFleet runs={[{ ...run, bundleId: 'new-bundle' }]} snapshots={mockSnapshots} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByTestId('fleet-us_x1_3')).toHaveTextContent('+20.0%'));
+    expect(loadRunSection).toHaveBeenCalledTimes(2);
+  });
   it('presents verified periodic retention without hiding its old signal date', () => {
     const original = mockSnapshots.get('us_x1_3')!;
     const retained = { ...original, asOf: '2026-09-08', latestCompletedSession: '2026-09-08',
@@ -283,7 +368,7 @@ describe('StrategyFleet', () => {
     vi.mocked(loadRunSection).mockRejectedValue(new Error('Section integrity mismatch'));
     renderFleet();
     fireEvent.click(screen.getByRole('button', { name: '1M' }));
-    await waitFor(() => expect(screen.getAllByText('Period evidence unavailable')).toHaveLength(2));
+    await waitFor(() => mockRuns.forEach(run => expect(screen.getByTestId(`fleet-${run.modelVersionId}`)).toHaveTextContent('Period evidence unavailable')));
     expect(within(screen.getByTestId('fleet-us_x1_3')).queryByText('+25.0%')).not.toBeInTheDocument();
   });
 

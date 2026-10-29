@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { latestPerformanceObservation, periodStartIndex, strategyPeriodSummary } from './performancePeriods';
+import { isPerformanceDate, latestPerformanceObservation, performancePeriodStart, periodStartIndex, strategyPeriodSummary } from './performancePeriods';
 
 describe('observed performance windows', () => {
+  it('uses the declared evidence cutoff for calendar eligibility, with leap/month/year boundaries', () => {
+    expect(performancePeriodStart('2024-03-31', '1m')).toBe('2024-02-29');
+    expect(performancePeriodStart('2026-03-31', '1m')).toBe('2026-02-28');
+    expect(performancePeriodStart('2026-01-31', '3m')).toBe('2025-10-31');
+    expect(performancePeriodStart('2026-01-01', 'ytd')).toBe('2026-01-01');
+    expect(performancePeriodStart('2026-10-28', 'all')).toBeNull();
+    expect(performancePeriodStart('2026-02-30', '1m')).toBeNull();
+    expect(performancePeriodStart('', '1m')).toBeNull();
+    expect(isPerformanceDate('2024-02-29')).toBe(true);
+    expect(isPerformanceDate('2026-02-29')).toBe(false);
+  });
   it('explains the latest sparse or provisional change with actual boundaries', () => {
     const observation = latestPerformanceObservation([
       { date: '2026-09-01', holding_end_date: '2026-09-17', account_before: 1, account: 0.95 },

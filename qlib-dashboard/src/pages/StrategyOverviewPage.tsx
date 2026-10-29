@@ -31,7 +31,7 @@ export function StrategyOverviewPage() {
       {view === 'racetrack' ? <Suspense fallback={<p role="status">Loading Racetrack…</p>}><Racetrack /></Suspense> : <>
       <OperationsReadStatus loading={loading} issues={issues} reload={reload} previousRead={previousRead} />
       <DailyResearchBrief runs={formalRuns} snapshots={snapshots} loading={loading} reload={reload} />
-      <StrategyFleet runs={formalRuns} snapshots={snapshots} loading={loading} />
+      <StrategyFleet runs={formalRuns} snapshots={snapshots} />
       </>}
     </div>
   );
