@@ -314,3 +314,7 @@ def test_outbox_workflow_triggers_and_fallback_schedule() -> None:
     assert commit["id"] == "receipts"
     assert 'changed=false' in commit["run"] and 'changed=true' in commit["run"]
     assert commit["run"].index('git push origin HEAD:main') < commit["run"].index('changed=true')
+    uploads = [step for step in steps if str(step.get("uses", "")).startswith("actions/upload-artifact@")]
+    assert len(uploads) == 1
+    assert uploads[0]["with"]["path"] == "artifacts/signal-delivery-outbox/result.json"
+    assert uploads[0]["if"] == "always()"
