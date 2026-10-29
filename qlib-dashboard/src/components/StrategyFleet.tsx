@@ -14,7 +14,7 @@ import {
 import { useAccessControl } from '@/hooks/useAccessControl';
 import { loadRunSection, type GovernedRunSummary } from '@/lib/governed-run';
 import { discoverBenchmarkOptions, declaredBenchmarkDescriptor } from '@/lib/performanceBenchmarks';
-import { strategyPeriodSummary, type PerformancePeriod } from '@/lib/performancePeriods';
+import { isPerformanceDate, performancePeriodStart, positiveNumber, strategyPeriodSummary, type PerformancePeriod } from '@/lib/performancePeriods';
 import type { ReportRow } from '@/lib/types';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
 import {
@@ -41,10 +41,20 @@ function metric(run: GovernedRunSummary, id: string): CanonicalMetricV2 | null {
   return (metrics as CanonicalMetricV2[]).find((item) => item.metric_id === id) ?? null;
 }
 
+function periodEvidenceKey(run: GovernedRunSummary): string {
+  return JSON.stringify([run.key, run.bundleId, run.manifestSha256]);
+}
+
+function percent(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  const rounded = (value * 100).toFixed(1);
+  return Number(rounded) === 0 ? '0.0%' : `${value > 0 ? '+' : ''}${rounded}%`;
+}
+
 function metricPercent(run: GovernedRunSummary, id: string): string {
   const item = metric(run, id);
   return item?.availability_status === 'available' && typeof item.value === 'number'
-    ? `${item.value >= 0 ? '+' : ''}${(item.value * 100).toFixed(1)}%`
+    ? percent(item.value)
     : '—';
 }
 
@@ -98,11 +108,9 @@ function signalBadgeTone(direction: string): string {
 export function StrategyFleet({
   runs,
   snapshots,
-  loading = false,
 }: {
   runs: GovernedRunSummary[];
   snapshots: Map<string, StrategyOperationsSnapshot>;
-  loading?: boolean;
 }) {
   const navigate = useNavigate();
   const access = useAccessControl();
@@ -116,15 +124,15 @@ export function StrategyFleet({
   useEffect(() => {
     if (period === 'all') return;
     let active = true;
-    const pending = runs.filter(run => !(run.key in periodReports));
+    const pending = runs.filter(run => !(periodEvidenceKey(run) in periodReports));
     void Promise.all(pending.map(async run => {
       try {
         const payload = await loadRunSection(run, 'performance');
         const rows = (payload as { report?: unknown })?.report;
         if (!Array.isArray(rows)) throw new Error('Performance observations missing');
-        return [run.key, rows as ReportRow[]] as const;
+        return [periodEvidenceKey(run), rows as ReportRow[]] as const;
       } catch {
-        return [run.key, null] as const;
+        return [periodEvidenceKey(run), null] as const;
       }
     })).then(entries => {
       if (active && entries.length) setPeriodReports(current => ({ ...current, ...Object.fromEntries(entries) }));
@@ -226,9 +234,13 @@ export function StrategyFleet({
         </div>
       </div>
 
+      {period !== 'all' && <p className="text-xs leading-relaxed text-muted-foreground" role="note">
+        Each row uses its own observed window, shown below. A window is expired if it ends on or before this period starts at the run's formal evidence cutoff. Drawdown uses retained wealth marks, without interpolating daily prices.
+      </p>}
+
       {/* Main Table / Fleet Container */}
       <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <div className="hidden grid-cols-[minmax(220px,1.4fr)_100px_130px_100px_minmax(200px,1.2fr)_110px_36px] gap-4 border-b bg-muted/25 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground lg:grid">
+        <div className="hidden grid-cols-[minmax(180px,1.4fr)_100px_130px_100px_minmax(160px,1.2fr)_110px_36px] gap-4 border-b bg-muted/25 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground xl:grid">
           <span>Strategy</span>
           <span>Return</span>
           <span>Excess / benchmark</span>
@@ -246,19 +258,43 @@ export function StrategyFleet({
             const summary = summarizeStrategySignal(snapshot);
             const expanded = expandedKey === run.key;
 
-            const rows = periodReports[run.key];
+            const reportKey = periodEvidenceKey(run);
+            const rows = periodReports[reportKey];
             const window = rows ? strategyPeriodSummary(rows, period) : null;
-            const percent = (value: number | null | undefined) => value == null ? '—' : `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`;
+            const requestedStart = performancePeriodStart(run.evidenceCutoff, period);
+            const expired = Boolean(period !== 'all' && requestedStart && isPerformanceDate(window?.startDate) && isPerformanceDate(window?.endDate) && window.endDate <= requestedStart);
+            const hasInterval = Boolean(window && (window.rows.length > 1 || window.startIndex === 0 && positiveNumber(rows?.[0]?.account_before) !== null));
+            const periodProblem = period === 'all' || !rows ? null
+              : !requestedStart ? 'The formal evidence cutoff is invalid.'
+                : !isPerformanceDate(window?.startDate) || !isPerformanceDate(window?.endDate) ? 'Observed window dates could not be verified.'
+                  : window.endDate > run.evidenceCutoff ? 'Observed wealth extends beyond the formal evidence cutoff.'
+                    : expired ? `No measured wealth interval after ${requestedStart} through ${run.evidenceCutoff}; the window is expired.`
+                      : !hasInterval ? 'Insufficient observations: a single mark without declared opening wealth cannot measure a period return.' : null;
+            const periodUsable = Boolean(window && requestedStart && !periodProblem);
+            const declaredWindow = run.manifest?.comparability_key;
+            const provisionalCount = window?.rows.filter(row => row.provisional_mtm === true || row.settlement_status === 'provisional_mtm').length ?? 0;
+            const windowLabel = period === 'all'
+              ? `${declaredWindow ? `Declared run window ${declaredWindow.start} – ${declaredWindow.end}` : 'Declared run window unavailable'} · evidence cutoff ${run.evidenceCutoff}`
+              : window?.startDate ? `${expired ? 'Window expired · ' : periodProblem ? 'Period evidence unavailable · ' : ''}Observed ${window.startDate} – ${window.endDate} · ${window.rows.length} observations${provisionalCount ? ` (${provisionalCount} provisional)` : ''} · evidence cutoff ${run.evidenceCutoff}`
+                : reportKey in periodReports ? 'Period evidence unavailable' : 'Loading period evidence';
             const declared = rows ? declaredBenchmarkDescriptor(rows, run.benchmark) : null;
             const benchmark = rows ? discoverBenchmarkOptions(rows, run.benchmark).find(option => option.key === declared?.key) : null;
             const firstBenchmark = window && benchmark ? benchmark.series[window.startIndex] : null;
             const lastBenchmark = benchmark?.series[benchmark.series.length - 1];
             const benchmarkStart = window?.startIndex === 0 && benchmark && rows?.[0]?.[`${benchmark.field}_before`] !== undefined ? 0 : firstBenchmark;
-            const benchmarkReturn = benchmarkStart != null && lastBenchmark != null ? (1 + lastBenchmark) / (1 + benchmarkStart) - 1 : null;
-            const relativeExcess = window?.return != null && benchmarkReturn != null ? (1 + window.return) / (1 + benchmarkReturn) - 1 : null;
-            const totalReturn = period === 'all' ? metricPercent(run, 'total_return') : percent(window?.return);
-            const excessReturn = period === 'all' ? metricPercent(run, 'excess_return') : percent(relativeExcess);
-            const maxDd = period === 'all' ? metricPercent(run, 'max_drawdown') : percent(window?.drawdown);
+            const matchingOpening = window?.startIndex !== 0 || (rows?.[0]?.account_before !== undefined) === (benchmark ? rows?.[0]?.[`${benchmark.field}_before`] !== undefined : false);
+            const benchmarkReturn = matchingOpening && benchmarkStart != null && lastBenchmark != null && Number.isFinite(benchmarkStart) && Number.isFinite(lastBenchmark) && benchmarkStart > -1 && lastBenchmark > -1
+              ? (1 + lastBenchmark) / (1 + benchmarkStart) - 1 : null;
+            const relativeExcess = window?.return != null && Number.isFinite(window.return) && benchmarkReturn != null && Number.isFinite(benchmarkReturn) && benchmarkReturn > -1
+              ? (1 + window.return) / (1 + benchmarkReturn) - 1 : null;
+            const totalReturn = period === 'all' ? metricPercent(run, 'total_return') : percent(periodUsable ? window?.return : null);
+            const excessReturn = period === 'all' ? metricPercent(run, 'excess_return') : percent(periodUsable ? relativeExcess : null);
+            const maxDd = period === 'all' ? metricPercent(run, 'max_drawdown') : percent(periodUsable ? window?.drawdown : null);
+            const excessReason = excessReturn !== '—' || periodProblem ? null
+              : period === 'all' ? metric(run, 'excess_return')?.unavailable_reason || 'A finite excess-return metric is unavailable from the formal source; it is not synthesized from other headline values.'
+                : !rows ? reportKey in periodReports ? 'Period evidence could not be verified.' : 'Reading period evidence.'
+                  : !matchingOpening ? 'Strategy and declared benchmark do not retain matching opening boundaries.'
+                    : `The declared benchmark ${run.benchmark} has no valid values at both observed window boundaries; no alternative benchmark is substituted.`;
             const sharpe = metricDecimal(run, 'sharpe_ratio');
 
             const applicableDate = snapshot?.asOf
@@ -270,15 +306,16 @@ export function StrategyFleet({
                 key={run.key}
                 data-testid={`fleet-${run.modelVersionId}`}
                 data-performance-period={period}
-                title={period === 'all' ? `Full evidence through ${run.evidenceCutoff}` : window?.startDate ? `Observed settlements: ${window.startDate} – ${window.endDate}` : run.key in periodReports ? 'Period evidence unavailable' : 'Loading verified period evidence'}
-                className="group px-5 py-4 transition-colors hover:bg-muted/20 lg:grid lg:grid-cols-[minmax(220px,1.4fr)_100px_130px_100px_minmax(200px,1.2fr)_110px_36px] lg:items-center lg:gap-4 lg:py-5"
+                data-window-status={expired ? 'expired' : period !== 'all' && !periodUsable ? 'unavailable' : 'observed'}
+                title={windowLabel}
+                className="group min-w-0 px-5 py-4 transition-colors hover:bg-muted/20 xl:grid xl:grid-cols-[minmax(180px,1.4fr)_100px_130px_100px_minmax(160px,1.2fr)_110px_36px] xl:items-center xl:gap-4 xl:py-5"
               >
                 {/* 1. Strategy Title and Details */}
-                <div className="block w-full text-left lg:contents">
+                <div className="block min-w-0 w-full text-left xl:contents">
                   <button
                     type="button"
                     onClick={() => navigate(`/strategies/${encodeURIComponent(run.modelVersionId)}`)}
-                    className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+                    className="block min-w-0 w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
                     aria-label={liveLocked ? `${run.title}, historical evidence public, live operations require ${requiredTier}` : run.title}
                   >
                     <span className="flex flex-wrap items-center gap-2">
@@ -291,15 +328,15 @@ export function StrategyFleet({
                         </span>
                       )}
                     </span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
+                    <span className="mt-1 block truncate text-xs text-muted-foreground" title={run.modelVersionId}>
                       {run.market.toUpperCase()} · {run.modelVersionId}
                     </span>
                   </button>
 
                   {/* Mobile-only metrics preview row */}
-                  <div className="mt-2 flex items-center justify-between font-mono text-sm font-semibold tabular-nums lg:hidden">
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 font-mono text-sm font-semibold tabular-nums xl:hidden">
                     <div className="flex items-center gap-3">
-                      <span className={cn(totalReturn.startsWith('+') && 'text-emerald-600 dark:text-emerald-400')}>
+                      <span data-testid="fleet-return" className={cn(totalReturn.startsWith('+') && 'text-emerald-600 dark:text-emerald-400')}>
                         {totalReturn}
                       </span>
                       <span className="text-xs text-muted-foreground">Ex {excessReturn}</span>
@@ -320,17 +357,17 @@ export function StrategyFleet({
                   </div>
 
                   {/* Desktop Return */}
-                  <div className="hidden lg:block">
-                    <span className={cn('font-mono text-sm font-semibold tabular-nums', totalReturn.startsWith('+') && 'text-emerald-600 dark:text-emerald-400')}>
+                  <div className="hidden xl:block">
+                    <span data-testid="fleet-return" className={cn('font-mono text-sm font-semibold tabular-nums', totalReturn.startsWith('+') && 'text-emerald-600 dark:text-emerald-400')}>
                       {totalReturn}
                     </span>
-                    <span className="block text-[11px] text-muted-foreground">
-                      {period === 'all' ? loading ? 'Updating' : 'Full formal evidence' : window?.startDate ? `${window.startDate} – ${window.endDate}` : run.key in periodReports ? 'Period evidence unavailable' : 'Loading period evidence'}
+                    <span data-testid="fleet-window" className="block text-[11px] text-muted-foreground">
+                      {windowLabel}
                     </span>
                   </div>
 
                   {/* Desktop Excess / benchmark */}
-                  <div className="hidden lg:block">
+                  <div className="hidden xl:block">
                     <span className="font-mono text-sm font-medium tabular-nums">
                       {excessReturn}
                     </span>
@@ -340,7 +377,7 @@ export function StrategyFleet({
                   </div>
 
                   {/* Desktop Drawdown */}
-                  <div className="hidden lg:block">
+                  <div className="hidden xl:block">
                     <span className="font-mono text-sm font-medium tabular-nums text-muted-foreground">
                       {maxDd}
                     </span>
@@ -351,7 +388,7 @@ export function StrategyFleet({
                 </div>
 
                 {/* 2. Latest Signal column */}
-                <div className="mt-3 lg:mt-0 lg:block hidden">
+                <div className="mt-3 xl:mt-0 xl:block hidden">
                   {liveLocked ? (
                     <div className="rounded-lg border border-primary/15 bg-primary/[0.035] p-2">
                       <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
@@ -384,7 +421,7 @@ export function StrategyFleet({
                 </div>
 
                 {/* 3. Applicable / Freshness Date */}
-                <div className="hidden text-xs text-muted-foreground lg:block">
+                <div className="hidden text-xs text-muted-foreground xl:block">
                   <p className="font-medium text-foreground">
                     {summary.isAttention ? (
                       <span className="text-rose-600 dark:text-rose-400">{summary.badgeLabel} · {applicableDate}</span>
@@ -401,14 +438,18 @@ export function StrategyFleet({
                 <button
                   type="button"
                   onClick={() => navigate(`/strategies/${encodeURIComponent(run.modelVersionId)}`)}
-                  className="hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-transform hover:text-primary group-hover:translate-x-0.5 lg:flex"
+                  className="hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-transform hover:text-primary group-hover:translate-x-0.5 xl:flex"
                   aria-label={`Open ${run.title} strategy detail`}
                 >
                   <ArrowRight className="h-4 w-4" />
                 </button>
 
+                <p data-testid="fleet-window" className="mt-2 text-[11px] text-muted-foreground xl:hidden">{windowLabel}</p>
+                {periodProblem && <p className="mt-2 min-w-0 break-words text-xs text-amber-700 dark:text-amber-300 xl:col-span-7">Period metrics unavailable: {periodProblem} Historical evidence remains readable in strategy detail.</p>}
+                {excessReason && <p className="mt-2 min-w-0 break-words text-xs text-muted-foreground xl:col-span-7">Excess unavailable: {excessReason}</p>}
+
                 {/* Mobile accordion toggle & quick links */}
-                <div className="mt-3 flex items-center justify-between lg:hidden border-t pt-2">
+                <div className="mt-3 flex items-center justify-between xl:hidden border-t pt-2">
                   <button
                     type="button"
                     onClick={() => setExpandedKey(expanded ? null : run.key)}
@@ -431,7 +472,7 @@ export function StrategyFleet({
 
                 {/* Mobile Expanded Drawer Info */}
                 {expanded && (
-                  <div className="mt-2 space-y-2 rounded-lg border bg-muted/30 p-3 text-xs lg:hidden">
+                  <div className="mt-2 space-y-2 rounded-lg border bg-muted/30 p-3 text-xs xl:hidden">
                     <p><span className="font-semibold">Sharpe Ratio (all):</span> <span className="font-mono tabular-nums">{sharpe}</span></p>
                     <p><span className="font-semibold">Benchmark:</span> {run.benchmark}</p>
                     <p><span className="font-semibold">Allocations:</span> {allocationSummary(snapshot, 'current')} → {allocationSummary(snapshot, 'target')}</p>

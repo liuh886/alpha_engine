@@ -43,10 +43,16 @@ export function latestPerformanceObservation(report: ReportRow[]) {
   return null;
 }
 
-export function periodStartIndex(report: ReportRow[], period: PerformancePeriod): number {
-  if (!report.length || period === 'all') return 0;
-  const end = new Date(`${effectivePerformanceDate(report[report.length - 1])}T00:00:00Z`);
-  if (!Number.isFinite(end.getTime())) return -1;
+export function isPerformanceDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+/** Calendar lower bound; callers choose the evidence date, never the wall clock. */
+export function performancePeriodStart(asOf: string, period: PerformancePeriod): string | null {
+  if (period === 'all' || !isPerformanceDate(asOf)) return null;
+  const end = new Date(`${asOf}T00:00:00Z`);
   if (period === 'ytd') end.setUTCMonth(0, 1);
   else {
     const months = { '1m': 1, '3m': 3, '6m': 6, '1y': 12, '3y': 36 }[period];
@@ -56,7 +62,14 @@ export function periodStartIndex(report: ReportRow[], period: PerformancePeriod)
     const lastDay = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate();
     end.setUTCDate(Math.min(day, lastDay));
   }
-  return report.findIndex(row => Date.parse(`${effectivePerformanceDate(row)}T00:00:00Z`) >= end.getTime());
+  return end.toISOString().slice(0, 10);
+}
+
+export function periodStartIndex(report: ReportRow[], period: PerformancePeriod): number {
+  if (!report.length || period === 'all') return 0;
+  const start = performancePeriodStart(effectivePerformanceDate(report[report.length - 1]), period);
+  if (start === null) return -1;
+  return report.findIndex(row => Date.parse(`${effectivePerformanceDate(row)}T00:00:00Z`) >= Date.parse(`${start}T00:00:00Z`));
 }
 
 /** Subranges start at the first observed settlement, never an interpolated price. */

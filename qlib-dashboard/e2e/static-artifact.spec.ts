@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
-type FormalCatalog = { records?: Array<{ manifest_path?: string }> };
-type FormalManifest = { sections?: Array<{ section_id?: string; availability_status?: string; path?: string }> };
+type FormalCatalog = { records?: Array<{ manifest_path?: string; model_version_id?: string; evidence_cutoff?: string }> };
+type FormalManifest = { comparability_key?: { start: string; end: string }; sections?: Array<{ section_id?: string; availability_status?: string; path?: string }> };
 type FormalSummary = { display_name?: string; model_version_id?: string };
 
 interface MembershipFixture {
@@ -134,6 +134,59 @@ test('pending catalog and operations reads show verification rather than empty o
   } finally {
     releaseCatalog(); releaseOperations();
   }
+});
+
+test('fleet periods retain visible evidence windows and do not promote expired returns', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
+  await page.goto('/#/app');
+  const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
+  await expect(fleet.getByRole('article')).toHaveCount(4);
+  const catalog = await (await page.request.get('/data/formal-model-runs/catalog.json')).json() as FormalCatalog;
+  const sources = await Promise.all((catalog.records ?? []).map(async record => {
+    const base = '/data/formal-model-runs/' + String(record.manifest_path).replace(/manifest\.json$/, '');
+    const manifest = await (await page.request.get(base + 'manifest.json')).json() as FormalManifest;
+    const summaryPath = manifest.sections?.find(section => section.section_id === 'summary')?.path;
+    const performancePath = manifest.sections?.find(section => section.section_id === 'performance')?.path;
+    const summary = await (await page.request.get(base + summaryPath)).json() as { metrics: Array<{ metric_id: string; availability_status: string; unavailable_reason?: string }> };
+    const performance = await (await page.request.get(base + performancePath)).json() as { report: Array<{ date: string; holding_end_date?: string }> };
+    const row = fleet.getByTestId('fleet-' + record.model_version_id);
+    await expect(row.locator('[data-testid="fleet-window"]:visible')).toContainText(`Declared run window ${manifest.comparability_key?.start} – ${manifest.comparability_key?.end}`);
+    expect(await row.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(2);
+    const excess = summary.metrics.find(metric => metric.metric_id === 'excess_return');
+    if (excess?.availability_status !== 'available') {
+      await expect(row).toContainText('Excess unavailable:');
+      if (excess?.unavailable_reason) await expect(row).toContainText(excess.unavailable_reason);
+    }
+    return { record, performance };
+  }));
+  await fleet.getByRole('button', { name: '1M', exact: true }).click();
+  await expect(fleet.getByRole('note')).toContainText('Drawdown uses retained wealth marks');
+  for (const { record, performance } of sources) {
+    const row = fleet.getByTestId('fleet-' + record.model_version_id);
+    const last = performance.report[performance.report.length - 1];
+    const end = last.holding_end_date ?? last.date;
+    const cutoff = new Date(String(record.evidence_cutoff) + 'T00:00:00Z');
+    const day = cutoff.getUTCDate();
+    cutoff.setUTCDate(1); cutoff.setUTCMonth(cutoff.getUTCMonth() - 1);
+    cutoff.setUTCDate(Math.min(day, new Date(Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth() + 1, 0)).getUTCDate()));
+    const expired = end <= cutoff.toISOString().slice(0, 10);
+    await expect(row.locator('[data-testid="fleet-window"]:visible')).toContainText(`– ${end}`);
+    expect(await row.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(2);
+    expect(await row.locator('[data-testid="fleet-window"]:visible').evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(2);
+    await expect(row).toHaveAttribute('data-window-status', expired ? 'expired' : 'observed');
+    if (expired) {
+      await expect(row).toContainText('Window expired');
+      await expect(row).toContainText('Period metrics unavailable:');
+      expect(await row.getByTestId('fleet-return').allTextContents()).toEqual(['—', '—']);
+    }
+  }
+  await expect(fleet.getByText(/[-+]0\.0%/)).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+  expect(errors).toEqual([]);
+  await fleet.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('fleet-period-evidence.png'), fullPage: false });
 });
 
 test('strategy navigation reuses verified formal sections without loading them on overview', async ({ page }, testInfo) => {
