@@ -1,5 +1,7 @@
 # Alpha Engine 开放 PR 推进与基础设施演进实施计划 (Task Master Plan)
 
+> **当前下一阶段产品与架构执行顺序（2026-10-29 起）**：[`docs/product/next_stage_execution_plan.md`](../docs/product/next_stage_execution_plan.md)。本文保留既有 Phase/PR 验收记录与运行任务，不再充当未来功能开发的第二份优先级清单；未验收的项目不得因为在旧阶段表内出现而视为完成。
+
 > **基准主线**：`main` @ `58a56c14c` (数据截止 2026-10-23)
 > **双轨战略 (Dual-Track)**：
 > - **Track A (当前冲刺交付)**: Direction A v1 个人量化工作站收口、四策略控制台、核心缺陷修复与 A0–A7 门禁硬核闭环。

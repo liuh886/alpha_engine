@@ -1,8 +1,8 @@
 # Investment Research Infrastructure — 下一阶段 TODO 与本地 Agent 实施路线
 
-**更新：2026-10-27 · PR #1296 (Draft) · 规划基线：main `f94b0dde2cb8d1254f0c2c0453daa22e06cc08b9`。**
+**历史快照（2026-10-26～27，PR #1296 时点）；不是当前待办。** 当前下一阶段的唯一执行计划是 [Next-stage execution plan](next_stage_execution_plan.md)（基线 `main@00dedccd`，2026-10-29）。下述已过时的“未实现”描述仅反映当时状态，不可据此重复创建 data slice、Study Workspace 或 Racetrack。
 
-**唯一目的：** 将 Alpha Engine 从“四个既有策略的工程组合”，演进为**单一研究者能够复用可信数据、历史信息状态和实验收据的投资研究基础设施**。本文件是 **#1296 内唯一的下一阶段任务清单**；[产品定位](investment_research_infrastructure_charter_2026-10-26.md)定义目标，[历史基线](../architecture/investment_research_infrastructure_baseline_2026-10-26.md)保留 2026-10-26 当时的事实；`main/tasks/todo.md` 是现行 v1 运维任务入口，不在此复制其已结项清单。
+**唯一目的：** 将 Alpha Engine 从“四个既有策略的工程组合”，演进为**单一研究者能够复用可信数据、历史信息状态和实验收据的投资研究基础设施**。本文件保留 **#1296 时点的研究路线讨论和决策背景**；[产品定位](investment_research_infrastructure_charter_2026-10-26.md)定义目标，[历史基线](../architecture/investment_research_infrastructure_baseline_2026-10-26.md)保留 2026-10-26 当时的事实；`main/tasks/todo.md` 是现行 v1 运维任务入口，不在此复制其已结项清单。
 
 > **PR #1296 仍为规划 PR：本文列的是后续独立任务的 Definition of Done，不等同于实现完成、Owner 批准上线或 v1 Release PASS。** 不修改正式模型、仓位、策略注册表、密封历史、用户权限或生产数据；`research_only=true` / `trade_ready=false`。
 

@@ -6,6 +6,8 @@ Alpha Engine 的长期定位是个人使用的 **Investment Research Infrastruct
 
 本地 Agent 从 [AGENTS.md](AGENTS.md) 开始，按[当前产品与交接入口](docs/product/strategy_console.md#local-agent-start-here)定位权威、运行恢复与验收任务。旧任务板和 Research Studio 页面清单只保留历史，不代表当前支持范围。
 
+**当前产品与架构下一阶段顺序：** [证据可信性、研究竞技与决策价值执行计划](docs/product/next_stage_execution_plan.md)（清晰区分待办、已交付和未通过的发布门禁）。
+
 ## 投资研究工作流（本地）
 
 研究者无需为每次假设重新编写数据获取、回测或证据保存脚本。首个可用流程围绕既有的 US Tech Volatility/Reversal Walk-Forward 引擎，支持：
