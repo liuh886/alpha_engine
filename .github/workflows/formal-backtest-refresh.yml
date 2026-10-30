@@ -656,7 +656,7 @@ jobs:
         env:
           GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
-          python -m scripts.run_formal_refresh_transaction plan \
+          uv run python -m scripts.run_formal_refresh_transaction plan \
             --formal-v2-root "$CURRENT_FORMAL_V2_ROOT" \
             --us-provider-manifest artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
             --cn-provider-manifest artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json \
