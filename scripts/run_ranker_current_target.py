@@ -15,7 +15,7 @@ from typing import Any, cast
 
 import pandas as pd
 
-from src.artifacts.strategy_signal_ledger import correct_latest_decision
+from src.artifacts.strategy_signal_ledger import correct_latest_decision, public_signal_write_receipt
 from src.data.listing_lifecycle import ineligible_symbols
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.governance.strategy_runtime_capabilities import load_active_strategy_runtime_capabilities
@@ -327,7 +327,7 @@ def _build(args: argparse.Namespace) -> int:
     if signal.get("model_version_id") != strategy.model_version_id:
         raise RankerCurrentTargetCommandError("current-target adapter changed model identity")
     _write(args.output, signal)
-    print(json.dumps(signal, sort_keys=True))
+    print(json.dumps(public_signal_write_receipt(signal, model_version_id=strategy.model_version_id), sort_keys=True))
     return 0
 
 

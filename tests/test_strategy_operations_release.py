@@ -160,7 +160,7 @@ def test_byd_terminates_deep_workflow_chain_with_repository_dispatch() -> None:
     assert '"repos/${GITHUB_REPOSITORY}/dispatches"' in request["run"]
     assert request["run"].index("producer_workflow") < request["run"].index("gh api")
 
-    assert steps.index(by_name["Commit canonical BYD decision"]) < steps.index(request)
+    assert steps.index(by_name["Persist canonical decision to private authority"]) < steps.index(request)
     # BYD Daily can itself be the third workflow_run hop. Deliver through the
     # existing outbox before its receipt dispatches operations publication.
     outbox = yaml.safe_load((ROOT / ".github/workflows/strategy-signal-delivery-outbox.yml").read_text())

@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from src.artifacts.strategy_signal_ledger import read_latest_evaluation
+from src.artifacts.strategy_signal_ledger import public_signal_write_receipt, read_latest_evaluation
 from src.factors.strategy_snapshot import build_strategy_factor_snapshot
 from src.research.byd_signal_alerts import (
     MODEL_ID,
@@ -86,7 +86,6 @@ def _github_outputs(path: Path, alert: dict[str, Any]) -> None:
         )
         handle.write(f"fingerprint={alert['fingerprint']}\n")
         handle.write(f"signal_date={alert['signal_date']}\n")
-        handle.write(f"title={alert['title']}\n")
 
 
 def main() -> int:
@@ -134,10 +133,8 @@ def main() -> int:
             _github_outputs(args.github_output, previous)
             with args.github_output.open("a", encoding="utf-8") as handle:
                 handle.write("reused_sealed_decision=true\n")
-        print(json.dumps({
-            "status": "reused_sealed_decision", "signal_date": previous["signal_date"],
-            "fingerprint": previous["fingerprint"], "research_only": True, "trade_ready": False,
-        }, ensure_ascii=False, sort_keys=True))
+        print(json.dumps(public_signal_write_receipt(previous, model_version_id=MODEL_ID,
+            status="reused_sealed_decision"), sort_keys=True))
         return 0
 
     alert = build_byd_signal_alert(
@@ -171,7 +168,7 @@ def main() -> int:
     _write_outputs(args.output_dir, alert)
     if args.github_output is not None:
         _github_outputs(args.github_output, alert)
-    print(json.dumps(alert, ensure_ascii=False, indent=2, sort_keys=True))
+    print(json.dumps(public_signal_write_receipt(alert, model_version_id=MODEL_ID), sort_keys=True))
     return 0
 
 

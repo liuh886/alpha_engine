@@ -18,7 +18,7 @@
 | Study Workspace | 四类研究入口：Walk-Forward、XGBoost、Factor、RDI；研究收据与比较接口已存在 | 历史 PIT 并未因此认证；RDI 的 predictive edge 没有成立 |
 | Racetrack | #1306 P/Q/NAV、双基准、积分、发布；#1311 Lightweight Charts 主图/榜单/详情；#1314 US87 等权池实际 Runner、私有 Q、v2 时间窗口排名 | US87 Runner 与内部等权基准共用一个回放，不能充当**独立策略有效性**证据；没有六名合格选手 |
 | 前端决策解释 | `DailyResearchBrief` 可排序状态；`StrategyDetailPage` 已展示失败门禁/反证/下一步 | [#1305 的实际实现 TODO](decision_feed_evidence_review_todo.md)仍未闭环；Brief 现在仍 `entries.map()` 列出全部四个而不是前三重点 |
-| 发布与数据权限 | Formal 受治理刷新/策略投递继续运作；本地 Racetrack 不向公共 Pages 发布 | `#1288` 虽 Closed，**A4 仍 FAIL**；当前敏感账本可从公开 Git 获取，4 个日常工作流仍提交到 `main` |
+| 发布与数据权限 | #1326/#1327 私有接线与正式运行收据已建立；本次切换停止活动账本的公开 Git/日志/producer 上传；本地 Racetrack 不向公共 Pages 发布 | `#1288` 虽 Closed，**A4 仍 FAIL**；Formal 跨 job 原始 artifact、旧密封/历史披露及实际权限负验证仍未关闭 |
 
 ### 1.2 现在的 P0 证据（2026-10-29 main；不摘录任何权重）
 
@@ -110,7 +110,7 @@ uv run alpha ops checkpoint-ledgers --output <private-outside-repository>/checkp
 uv run alpha ops checkpoint-ledgers --restore <private-outside-repository>/checkpoint.zip --expected-sha256 <receipt-sha256> --expected-byte-size <receipt-size> --output <private-outside-repository>/fresh-restored-ledgers
 ```
 
-This is a lossless transport foundation, **not** a live private writer cutover. It introduces no database, registry, scheduler or new workflow. Four producers, formal refresh planning, delivery deduplication and Strategy Operations still need coordinated restore/write integration, concurrency handling and fail-closed behavior before public ledger commits are removed. In particular:
+This describes the #1322 lossless transport foundation; live integration and the subsequent public boundary are tracked in §6.1. It introduces no database, registry, scheduler or new workflow. Acceptance must preserve the following properties independently of whether a PR has merged:
 
 - Preserve canonical decision/correction/receipt semantics; never treat missing private state as an empty first run.
 - Preserve QQQ/US/CN workflow dispatch and BYD repository dispatch, without duplicate delivery.
@@ -122,6 +122,8 @@ The CN27 formal builder already strips embedded runtime state; current and histo
 
 ### 6.1 私有生产接线（按 #1322 的 2026-10-30 评论裁决）
 
-下一实现将四个 producer、Formal prepare/plan/strategy/publish、Operations 和 Outbox 接入既有私有 archive 中的同一完整 checkpoint。Git 快进推送提供 CAS，陈旧写入拒绝；Formal 固定私有提交，Operations 缓存绑定私有内容；Outbox 在外部副作用前持久化含糊状态护栏。安装前验证私有种子包含本地/公开密封记录；恢复回滚二次失败保留备份。
+#1326 已将四个 producer、Formal prepare/plan/strategy/publish、Operations 和 Outbox 接入既有私有 archive 中的同一完整 checkpoint；#1327 修正 Formal plan 的锁定 Python 环境。Git 快进推送提供 CAS，陈旧写入拒绝；Formal 固定私有提交，Operations 缓存绑定私有内容；Outbox 在外部副作用前持久化含糊状态护栏。安装前验证私有种子包含本地/公开密封记录；恢复回滚二次失败保留备份。真实 Formal run `40999354397` 以及后续 QQQ `40999790973`、BYD `40999790914` 成功；此前 US、CN、Outbox 和 Operations 也已有成功收据。
+
+公开边界后续切换移除四个 producer / Outbox 的 Git 镜像及四活动账本当前树，详细信号不再打印到 stdout，producer / Operations 上传范围限定为元数据。旧密封经济轨迹保持；未来 MTM lineage 仅带私有输入引用，不复制当前权重。Formal 跨 job 原始 artifact、旧原生 MTM 内容及历史暴露、真实匿名/权限负验证仍待完成，不能据此宣布 A4 PASS。
 
 实现与恢复约束见 [私有账本运行手册](../operations/private_signal_ledger.md)。代码/测试、真实 SSH probe、四策略实际运行连续性分别记录，不互相替代。公开镜像与其余 raw artifact 必须在后续独立 PR 撤下；G0/A4 尚未通过。#1315 的源级收益一致性与 #1324 的 RDI 价格更新可以按各自评论并行，不扩大为 UI 重设计、事件补零或正式信号。

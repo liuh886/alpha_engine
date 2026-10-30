@@ -28,10 +28,12 @@ directories are not migrated or deleted.
    fast-forward-only push is the CAS. A stale source or concurrent push fails;
    there is no force push, rebase or automatic replay of external side effects.
    Unrelated archive retention can also reject a racing push; restore and rerun.
-5. Only after confirmed private persistence may the temporary public mirror and
-   existing dispatch chain continue. This first integration deliberately keeps
-   the mirror and other raw artifact paths until a separate removal PR. They
-   remain P0 disclosures, not protected backups or a second authority.
+5. Only after confirmed private persistence may the existing dispatch chain
+   continue. The subsequent public-boundary change removes the four producer
+   and Outbox Git mirrors, ignores hydrated runtime paths and uploads only
+   transport metadata. GitHub Issues remain generic attempt receipts; detailed
+   signals remain in private output/ledger files and the authorized Telegram
+   channel. Source-generation stdout uses an explicit metadata allowlist.
 
 No-op persistence does not publish a new checkpoint. It authenticates a dry-run
 receive-pack request to verify write-key scope without changing strategy state.
@@ -41,8 +43,9 @@ retrying rather than assuming nothing was accepted.
 ## Consumers
 
 - QQQ, US ranker, CN27 and BYD restore before existing due/build logic and persist
-  before public mirror publication. Mirror staging includes the full restored
-  tree, avoiding dirty sibling subtrees if private main is ahead of public main.
+  before handoff. They do not commit hydrated ledger files to public Git. Only
+  the last verified private transport identity is retained as a public artifact;
+  after a failure that identity is not proof of successful new publication.
 - Formal prepare captures one private commit; plan, strategy fan-out and publish
   restore that exact commit. The formal evidence release boundary is unchanged.
 - Operations restores before cache lookup. The cache key and success receipt
@@ -61,6 +64,17 @@ do not erase receipts or casually generate a new signal/fingerprint to bypass
 the fence. Explicit Telegram API rejection keeps the existing retry rule;
 ambiguous transport remains blocked. Public Issue content stays a generic
 attempt receipt. Current weights never belong in PRs, logs or reports.
+
+Outbox publication uses an `any_changed` flag accumulated across successful
+private writes, so a later no-op cannot suppress an earlier changed/failure
+receipt. It no longer depends on a public Git commit. Operations artifacts
+contain only the publication receipt; review packet contents remain in the
+existing private archive, with just their archive binding uploaded publicly.
+
+MTM's private input still drives the unchanged economic calculation. Future
+native lineage exports only a versioned reference and complete private-input
+digest, not its raw weights or arbitrary private fields. Already sealed native
+files and historical economic traces are not rewritten by this exporter change.
 
 ## Bootstrap and non-notifying verification
 
@@ -106,9 +120,16 @@ contract, with retained original records and delivery evidence.
 Code rollback must not restore an old public-only writer after private main has
 advanced. Keep dispatch/delivery stopped for the affected operation until its
 private reader/persistence path is repaired; inspect exact manifests and receipts.
-Normal public-ledger removal is a separate reviewed PR after continuity evidence.
+All 267 files removed from the four active public subtrees were checked against
+private commit `b798c41e593b58474a66bcb83f696d44286a46ce` (489915-byte archive,
+SHA-256 `d6b389fba81b1b4832e003d2ae5fbbedfa1dc59ddd5b5fa0dd45b0001d7f1616`).
+Existing Git history and nonactive historical model subtrees remain. The active
+registry still declares local hydrated paths; those paths are not a public
+fallback and may be absent in a clean public checkout.
 
-**Not complete:** all four producers' live continuity receipts, public Git/raw
-artifact removal, historical disclosure inventory, four-surface anonymous
-negatives, entitled/denied/revoked runtime reads and A0–A7 acceptance. G0 is
-incomplete and A4 remains FAIL. `research_only=true`, `trade_ready=false`.
+**Not complete:** Formal cross-job raw artifact transport, old public native
+MTM material/historical disclosure inventory, post-cutover public-surface
+negative proofs, entitled/denied/revoked runtime reads and A0–A7 acceptance. The
+four producers, Outbox and Operations ran successfully after #1326/#1327; this
+does not certify the remaining surfaces. G0 is incomplete and A4 remains FAIL.
+`research_only=true`, `trade_ready=false`.

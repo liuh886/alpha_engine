@@ -81,7 +81,16 @@ def test_cn_27_historical_projection_identity_contract(synced_public_assets: Pat
     canonical_cn27 = next(
         r for r in canonical_catalog["records"] if r["model_version_id"] == "cn_27_v1_3"
     )
-    # Must declare projection_contract
+    if cn27_record.get("projection_contract") is None:
+        # Clean canonical evidence needs no redaction. Preserve its exact identity
+        # rather than manufacturing a second bundle; zero-leakage checks still run.
+        assert cn27_record["bundle_id"] == canonical_cn27["bundle_id"]
+        assert cn27_record["manifest_sha256"] == canonical_cn27["manifest_sha256"]
+        public_manifest = synced_public_assets / "formal-model-runs" / cn27_record["manifest_path"]
+        canonical_manifest = canonical_catalog_path.parent / canonical_cn27["manifest_path"]
+        assert public_manifest.read_bytes() == canonical_manifest.read_bytes()
+        return
+    # Redacted evidence must declare and bind its projection contract.
     assert cn27_record.get("projection_contract") == "public_historical_projection_v1"
     assert cn27_record.get("canonical_bundle_id") == canonical_cn27["bundle_id"]
     assert cn27_record.get("canonical_manifest_sha256") == canonical_cn27["manifest_sha256"]

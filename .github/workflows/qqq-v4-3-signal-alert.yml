@@ -34,7 +34,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   SIGNAL_ROOT: artifacts/signals/qqq_rotation_v4_3
@@ -144,29 +144,11 @@ jobs:
         env:
           GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY }}
         run: uv run alpha ops private-ledgers persist --receipt "$RUNNER_TEMP/private-ledgers.json"
-      - name: Commit canonical QQQ decision
-        if: steps.due.outputs.due == 'true'
-        run: |
-          set -euo pipefail
-          git config user.name "AlphaEngine Signal Agent"
-          git config user.email "signal-agent@alphaengine.local"
-          git add data/research/strategy_signal_ledgers
-          if git diff --cached --quiet; then
-            echo "Canonical QQQ decision already sealed."
-          else
-            git commit -m "signal: seal QQQ v4.3 decision ${{ steps.signal.outputs.signal_date }}"
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi
       - name: Retain decision evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: qqq-v4-3-signal-${{ github.run_id }}
-          path: |
-            artifacts/data/qqqi_qqq_tqqq_reference_research_v2/bundle_manifest.json
-            artifacts/evidence/qqq_rotation_v4_3_current_monitor/current_summary.json
-            artifacts/signals/qqq_rotation_v4_3
-            data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3
+          path: ${{ runner.temp }}/private-ledgers.json
           if-no-files-found: warn
           retention-days: 30

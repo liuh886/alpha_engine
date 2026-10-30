@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import shutil
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from src.artifacts.formal_preview_builder import (
     project_provisional_mtm_preview,
 )
 from src.artifacts.model_run_exporter import update_catalog
+from src.artifacts.model_run_bundle_v2 import canonical_json_bytes
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.governance.model_contract import load_performance_semantics
 
@@ -161,6 +163,7 @@ def test_us_mtm_preview_preserves_native_evidence_closure(tmp_path: Path) -> Non
         "trade_ready": False,
     }
     package_path = tmp_path / "us-refresh-state.json"
+    package["provisional_mtm"]["future_private_context"] = {"current_weights": {"PRIVATE_CANARY": 1.0}}
     _write(package_path, package)
 
     catalog = _read(NATIVE / "catalog.json")
@@ -194,3 +197,12 @@ def test_us_mtm_preview_preserves_native_evidence_closure(tmp_path: Path) -> Non
     ):
         assert len(lineage[field]) == 64
     assert lineage["mtm_projection"]["provider_identity_sha256"] == "a" * 64
+    assert lineage["mtm_projection"]["schema_version"] == "ranker_mtm_projection_reference_v1"
+    assert lineage["mtm_projection"]["runtime_state_embedded"] is False
+    assert "target_weights" not in lineage["mtm_projection"]
+    assert "performance_row" not in lineage["mtm_projection"]
+    assert len(lineage["mtm_projection"]["private_input_sha256"]) == 64
+    assert lineage["mtm_projection"]["private_input_sha256"] == hashlib.sha256(
+        canonical_json_bytes(package["provisional_mtm"])
+    ).hexdigest()
+    assert "PRIVATE_CANARY" not in json.dumps(lineage["mtm_projection"])

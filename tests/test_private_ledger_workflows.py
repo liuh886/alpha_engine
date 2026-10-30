@@ -17,13 +17,17 @@ def workflow(name):
     ("ranker-10d-current-target.yml", "Evaluate active markets independently"),
     ("cn27-current-target.yml", "Evaluate CN_27 current target"),
 ])
-def test_every_producer_restores_before_due_and_persists_before_public_mirror(filename, consumer):
+def test_every_producer_restores_before_due_and_persists_without_public_mirror(filename, consumer):
     steps = workflow(filename)["jobs"]["evaluate"]["steps"]
     names = [step.get("name") for step in steps]
     restore = names.index("Restore authoritative private ledgers")
     assert restore < names.index(consumer)
     body = "\n".join(step.get("run", "") for step in steps)
-    assert body.index("private-ledgers restore") < body.index("private-ledgers persist") < body.index("git add data/research/strategy_signal_ledgers")
+    assert body.index("private-ledgers restore") < body.index("private-ledgers persist")
+    for forbidden in ("git add", "git commit", "git push", "git pull", "git reset"):
+        assert forbidden not in body
+    uploads = [step for step in steps if str(step.get("uses", "")).startswith("actions/upload-artifact@")]
+    assert len(uploads) == 1 and uploads[0]["with"]["path"] == "${{ runner.temp }}/private-ledgers.json"
     assert "continue-on-error" not in steps[restore]
     if filename == "cn27-current-target.yml":
         assert steps[restore]["if"] == "github.event_name != 'pull_request'"
@@ -64,7 +68,7 @@ def test_outbox_private_probe_cannot_invoke_notifications_or_dispatch():
     assert probe["if"] == "inputs.verify_private_state_only == true"
     assert "private-ledgers persist" in probe["run"]
     for name in ("Drain canonical pending decisions", "Materialize Strategy Operations evidence",
-                 "Commit append-only delivery receipts", "Request strategy operations publication"):
+                 "Record private delivery persistence receipt", "Request strategy operations publication"):
         assert "inputs.verify_private_state_only != true" in steps[name]["if"]
     drain = steps["Drain canonical pending decisions"]
     assert '--private-ledger-receipt "$RUNNER_TEMP/private-ledgers.json"' in drain["run"]

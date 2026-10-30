@@ -47,7 +47,7 @@ def test_qqq_handoff_is_trusted_main_only_and_gates_network_and_sealing():
     assert "conclusion == 'success'" not in condition and "head_branch == 'main'" in condition
     assert "head_repository.full_name == github.repository" in condition
     steps = {step.get("name"): step for step in workflow["jobs"]["evaluate"]["steps"]}
-    for name in ("Build governed QQQ reference bundle", "Evaluate current allocation", "Build factor-bound decision", "Seal canonical QQQ decision", "Commit canonical QQQ decision"):
+    for name in ("Build governed QQQ reference bundle", "Evaluate current allocation", "Build factor-bound decision", "Seal canonical QQQ decision", "Persist canonical decision to private authority"):
         assert steps[name]["if"] == "steps.due.outputs.due == 'true'"
     assert "steps.due.outputs.cutoff" in steps["Build governed QQQ reference bundle"]["run"]
     assert "--expected-cutoff" in steps["Evaluate current allocation"]["run"]

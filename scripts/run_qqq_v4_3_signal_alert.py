@@ -6,6 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
+from src.artifacts.strategy_signal_ledger import public_signal_write_receipt
+
 from src.factors.strategy_snapshot import build_strategy_factor_snapshot
 from src.research.qqq_v4_3_signal_alerts import build_v4_3_signal_alert
 
@@ -60,9 +62,8 @@ def main() -> int:
                 f"{str(bool(alert['factor_freshness_ok'])).lower()}\n"
             )
             handle.write(f"fingerprint={alert['fingerprint']}\n")
-            handle.write(f"title={alert['title']}\n")
             handle.write(f"telegram_path={telegram_path}\n")
-    print(json.dumps(alert, ensure_ascii=False, indent=2, sort_keys=True))
+    print(json.dumps(public_signal_write_receipt(alert, model_version_id=alert["model_id"]), sort_keys=True))
     return 0
 
 

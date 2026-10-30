@@ -8,6 +8,10 @@
 
 ## 1. Five-Surface Security Audit Matrix
 
+The matrix records the initial disclosure baseline; §7–§8 track subsequent code
+and transport changes. Historical observations are not current acceptance proof.
+Gate A4 remains FAIL until the stated independent post-cutover checks pass.
+
 | Surface | Scope / Target | Observed Finding | Leakage Status | Required Remediation |
 | :--- | :--- | :--- | :--- | :--- |
 | **1. 公开 Git**<br>(Current tracked files) | `data/research/formal_model_runs/`<br>`data/research/strategy_signal_ledgers/`<br>`data/research/model_decisions/` | `cn_27_v1_3` formal lineage (`blob 13489a0d...`) contains raw `operating_state.current_weights`. All 4 active strategy ledgers contain `latest.json` with target weights in public git. | **LEAKING (P0)** | 1. Stop embedding `operating_state` in formal bundle lineage.<br>2. Cease committing new signal ledgers into public git.<br>3. Sanitize current tracked files. |
@@ -118,3 +122,43 @@ publication, ambiguous-outcome recovery acceptance and subsequent removal of
 public mirrors/raw uploads still require their own receipts. Code rollback must
 not silently return an advanced private authority to public-only writers.
 **G0 incomplete, A4 FAIL, full product NO-GO.**
+
+## 8. Stop active public mirrors, producer logs and raw runtime uploads
+
+After #1327, real Formal run `40999354397` succeeded through prepare, both
+providers, plan and publish; strategy recomputation was correctly unnecessary.
+QQQ `40999790973` and BYD `40999790914` then succeeded on private paths, joining
+US `40998276868`, CN `40998276839`, Outbox `40998387772` / `40998395769` and
+Operations `40998276856`. The outbox receipts retain the four original terminal
+delivery identities; these observations do not invent a new signal/delivery.
+
+This follow-up stops the four producer Git mirrors and the Outbox receipt mirror.
+Dispatch follows confirmed private persistence, with `any_changed` accumulated
+across writes. QQQ/US no longer need public contents-write permission; BYD/CN/
+Outbox retain it for the existing repository dispatch operations. The four
+active public ledger subtrees are removed and fresh hydrated paths are ignored.
+All 267 removed files were checked as retained by private commit
+`b798c41e593b58474a66bcb83f696d44286a46ce`, archive SHA-256
+`d6b389fba81b1b4832e003d2ae5fbbedfa1dc59ddd5b5fa0dd45b0001d7f1616`, 489915
+bytes. Git history and nonactive sealed model subtrees remain intact.
+
+The producer CLI handlers previously printed full signal objects. They now emit
+only a validated six-field write receipt; raw private JSON and Telegram payloads
+remain unchanged. Unused free-text title GitHub outputs are removed. Producer
+artifacts contain only the last verified private transport receipt; a retained
+base receipt after job failure is not proof of a new publication. Operations
+uploads only its publication receipt, and review packets upload only their
+existing private archive binding. No raw current snapshot is uploaded there.
+
+Future native MTM lineage uses `ranker_mtm_projection_reference_v1`, whitelisted
+identity fields and `private_input_sha256`; it no longer copies the entire
+private MTM object or its raw target into public lineage. Frozen economic
+sections and existing sealed files are not rewritten. Older native lineage and
+historical portfolio target traces remain separately inventoried; deleting
+every historical weight key is not a legitimate way to preserve sealed evidence.
+
+**Still open:** Formal strategy-result cross-job raw artifact transfer, older
+published native MTM/Actions/Git disclosure, independent post-cutover Git/Pages/
+artifact/writer negatives and entitled/denied/revoked runtime reads. Local
+allowlist/canary tests and source-file removal do not replace those proofs.
+**A4 remains FAIL; this is not full operating or product release acceptance.**

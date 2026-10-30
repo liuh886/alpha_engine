@@ -94,13 +94,18 @@ def test_doctor_keeps_training_blockers_scoped_to_unbound_profiles(repository: P
     assert "current_allocations" not in output and "target_allocations" not in output
 
 
-def test_doctor_reports_real_session_delay_as_failure(repository: Path, monkeypatch, capsys) -> None:
+def test_doctor_reports_session_delay_alongside_missing_private_state(repository: Path, monkeypatch, capsys) -> None:
     freshness_path = repository / FORMAL / "freshness.json"
     freshness = json.loads(freshness_path.read_text(encoding="utf-8"))
     freshness["markets"]["cn"] = "2026-01-02"
     freshness_path.write_text(json.dumps(freshness), encoding="utf-8")
     health, operations = doctor.diagnose(repository, generated_at=_observed_at(repository))
-    assert health["state"] == "delayed"
+    # A public checkout deliberately has no hydrated active ledgers. That
+    # independent blocker must not become "delayed" or healthy just because
+    # this case also introduces a provider lag.
+    active = load_active_strategy_catalog(repository / "configs/strategies/registry.json")
+    assert all(not (repository / row.signal_ledger / "latest.json").exists() for row in active.strategies)
+    assert health["state"] == "blocked"
     assert next(row for row in health["markets"] if row["market"] == "cn")["state"] == "delayed"
     monkeypatch.setattr(doctor, "diagnose", lambda *args, **kwargs: (health, operations))
     assert doctor.main(["--root", str(repository)]) == 1

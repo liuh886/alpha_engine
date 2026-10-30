@@ -174,6 +174,11 @@ def test_verified_retention_preserves_factor_date_without_a_false_delay(newer_ma
                status="current_no_change", delivery_status="not_required")
     catalog = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
     cutoff = next(item["evidence_cutoff"] for item in catalog["records"] if item["model_version_id"] == "cn_27_v1_3")
+    # Current private ledgers are not a public test fixture. Declare the retained
+    # snapshot and an older factor watermark explicitly for this health case.
+    factor_start = (date.fromisoformat(cutoff) - timedelta(days=14)).isoformat()
+    row["factor_evidence"] = [{"observed_at": exchange_sessions("cn", factor_start, cutoff)[0]}]
+    row["as_of"] = row["latest_completed_session"] = cutoff
     # Isolate the declared snapshot from newer live ledger commits. A BYD daily
     # observation can advance independently of the retained CN formal bundle.
     for operation in operations["records"]:

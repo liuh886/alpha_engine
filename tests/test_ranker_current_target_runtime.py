@@ -45,7 +45,7 @@ command.main()
 
 @pytest.mark.parametrize("market", ["us"])
 def test_build_loads_only_the_selected_governed_inference(
-    tmp_path: Path, monkeypatch, market: str
+    tmp_path: Path, monkeypatch, capsys, market: str
 ) -> None:
     model = "us_x1_3" if market == "us" else "cn_x1_2"
     adapter = f"{model}_current_target_v1"
@@ -56,7 +56,9 @@ def test_build_loads_only_the_selected_governed_inference(
     imports, calls = [], []
     def score(**kwargs):
         calls.append(kwargs)
-        return {"model_version_id": model, "research_only": True, "trade_ready": False}
+        return {"model_version_id": model, "signal_date": kwargs["signal_date"],
+                "target_weights": {"PRIVATE_CANARY": 1.0}, "title": "PRIVATE_TITLE",
+                "research_only": True, "trade_ready": False}
     def load(module):
         imports.append(module)
         return SimpleNamespace(**{f"score_{model}_current_target": score})
@@ -65,12 +67,16 @@ def test_build_loads_only_the_selected_governed_inference(
                            signal_date="2026-09-30", market_cutoff="2026-09-30",
                            output=tmp_path / "signal.json")
     assert ranker_command._build(args) == 0
+    public = json.loads(capsys.readouterr().out)
+    assert public["status"] == "written" and public["signal_date"] == args.signal_date
+    assert "PRIVATE_" not in json.dumps(public) and "target_weights" not in public
     assert imports == [f"src.research.{model}_current_target"]
     assert calls == [{"provider_dir": args.provider_dir, "formal_manifest": manifest,
                       "formal_portfolio": portfolio, "ledger_dir": tmp_path / "ledger",
                       "signal_date": args.signal_date, "market_cutoff": args.market_cutoff,
                       "repository_root": ranker_command.ROOT}]
     assert json.loads(args.output.read_text())["model_version_id"] == model
+    assert json.loads(args.output.read_text())["target_weights"] == {"PRIVATE_CANARY": 1.0}
 
 
 def test_unknown_adapter_fails_before_loading_inference(monkeypatch) -> None:

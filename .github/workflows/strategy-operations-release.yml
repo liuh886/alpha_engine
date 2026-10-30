@@ -154,7 +154,6 @@ jobs:
         with:
           name: strategy-operations-runtime-${{ github.run_id }}
           path: |
-            data/research/strategy_operations/snapshots.json
             artifacts/strategy-operations-publication-receipt.json
           if-no-files-found: error
           retention-days: 14
@@ -242,7 +241,6 @@ jobs:
         with:
           name: strategy-operating-review-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            artifacts/operating-review
-            artifacts/operating-review-command.json
+            artifacts/operating-review/archive-binding.json
           if-no-files-found: error
           retention-days: 90
