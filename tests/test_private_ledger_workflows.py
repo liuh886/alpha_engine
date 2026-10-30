@@ -39,6 +39,11 @@ def test_formal_transaction_pins_one_private_revision_across_all_consumers():
         if name != "prepare":
             assert '--revision "${{ needs.prepare.outputs.private_commit }}"' in restored[0]["run"]
         assert "continue-on-error" not in restored[0]
+    plan_steps = jobs["plan"]["steps"]
+    plan = next(step for step in plan_steps if step.get("name") == "Build pure active-strategy plan")
+    assert plan["run"].lstrip().startswith("uv run python -m scripts.run_formal_refresh_transaction plan")
+    setup = next(i for i, step in enumerate(plan_steps) if step.get("uses") == "./.github/actions/setup-python-uv")
+    assert setup < plan_steps.index(plan)
 
 
 def test_operations_resolves_private_content_before_cache_lookup():
