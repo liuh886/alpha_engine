@@ -138,7 +138,7 @@ Outbox runs succeeded; their inspected public artifacts contain metadata only.
 These proofs do not cover old Git history, all historical artifacts or real
 entitled/denied/revoked reads; A4 remains FAIL.
 
-The next implementation replaces the Formal cross-job raw strategy-result
+Merged #1329 (`5c8a3151deac366a439288dad995a9848ad33e2a`) replaces the Formal cross-job raw strategy-result
 upload with immutable members in the **same existing private archive**. Public
 artifacts carry only exact run/attempt/code/plan/task/archive bindings. Restore
 must finish for all required siblings before the unchanged atomic fan-in reads
@@ -153,3 +153,24 @@ an incremental update through 2026-10-30, while its existing fallback admission
 requires `fetched_full_refresh`. Neither the action nor the admission gate may
 be relabeled to pass. Investigate exact source/provider/basis continuity in a
 separate scoped fix; no new Formal candidate was published by that run.
+
+## 9. Authorized sequential delivery
+
+The operator authorized this order on 2026-10-30. Each step needs its own
+reviewed implementation and evidence; a later independent blocker does not
+erase earlier verified results.
+
+1. **515180 source contract — implementing.** Keep strict full-refresh Yahoo
+   fallback admission. Only requested, already-authorized CN formal auxiliaries
+   that actually select Yahoo obtain a complete requested-range source vintage;
+   never merge a legacy seed into that full snapshot, drop prior observation
+   dates, relabel an incremental fetch, or refresh the whole candidate pool.
+2. **Real Formal private transport — NOT_TESTED.** After source recovery, obtain
+   an eligible normal run with exact private archive and atomic fan-in receipts.
+   Stop on data/transport failure; do not invent a strategy task to pass a gate.
+3. **#1315 source consistency — pending.** Reconcile US x1.3 dates, opening NAV,
+   observation counts and source identity; preserve source economics. Desktop,
+   mobile, production build and deployed-SHA browser evidence remain required.
+4. **A4 — FAIL.** Complete independently possible public-surface negatives and
+   entitled/denied/revoked real reads using the existing access system. Missing
+   real-session evidence stays explicit; fixtures/CI never substitute for it.

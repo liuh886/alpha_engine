@@ -554,3 +554,74 @@ def test_failed_refresh_removes_stale_publication_manifest(
         )
 
     assert not publication_path.exists()
+
+
+@pytest.mark.parametrize("case", ["complete", "failed_full", "tail_only", "missing_cutoff", "preferred"])
+def test_formal_yahoo_auxiliary_fetches_real_full_history_without_broad_refresh(tmp_path, monkeypatch, case):
+    import pandas as pd
+    from test_refresh_selected_pool_prices import _prepare_contract, _frame, _write_csv
+    from src.data.adapters.base import FetchResult
+    from src.data.router import RouterAttempt, RouterResponse
+
+    _prepare_contract(tmp_path, monkeypatch)
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    source = tmp_path / "seed"
+    for symbol in ("000001", "000002", "000300", "515180"):
+        _write_csv(source / f"{symbol}.csv", _frame(9.0))
+    original = (source / "515180.csv").read_bytes()
+    router = build_hardened_router("cn")
+    calls = []
+
+    def fetch(*, symbol, market, start, end, **kwargs):
+        calls.append((symbol, start, end))
+        auxiliary = symbol == "515180" and case != "preferred"
+        provider = "yfinance" if auxiliary else "akshare"
+        provider_symbol = "515180.SS" if auxiliary else symbol
+        is_full = start == "2021-01-01"
+        dates = ("2021-01-04", "2021-01-05", "2021-01-06") if is_full else ("2021-01-05", "2021-01-06")
+        if auxiliary and is_full and case == "tail_only":
+            dates = ("2021-01-05", "2021-01-06")
+        if auxiliary and is_full and case == "missing_cutoff":
+            dates = ("2021-01-04", "2021-01-05")
+        success = not (auxiliary and is_full and case == "failed_full")
+        frame = _frame(2.0, dates=dates)
+        attempts = ([RouterAttempt(provider=name, ok=False, provider_symbol=symbol, error="synthetic unavailable")
+                    for name in router.providers_for_request(market, symbol) if name != "yfinance"] if auxiliary else [])
+        attempts.append(RouterAttempt(provider=provider, ok=success, provider_symbol=provider_symbol,
+                                      rows=len(frame) if success else 0))
+        result = FetchResult(provider=provider, symbol=symbol, market=market, start=start, end=end,
+                             df=frame, provider_symbol=provider_symbol) if success else None
+        return RouterResponse(result=result, attempts=attempts)
+
+    monkeypatch.setattr(router, "fetch_daily_bars", fetch)
+    output = tmp_path / "provider"
+    arguments = dict(root=tmp_path, market="cn", source_csv_dir=source, output_root=output,
+                     start="2021-01-01", cutoff="2021-01-06", max_rounds=1,
+                     auxiliary_symbols=["515180"], router=router)
+    if case in {"tail_only", "missing_cutoff", "failed_full"}:
+        with pytest.raises((ValueError, RuntimeError)):
+            refresh_selected_pool_prices_v2(**arguments)
+        assert not (output / "artifacts" / PUBLICATION_MANIFEST_NAME).exists()
+    else:
+        result = refresh_selected_pool_prices_v2(**arguments)
+        record = next(record for record in result["records"] if record["symbol"] == "515180")
+        assert record["action"] == ("fetched_incremental_update" if case == "preferred" else "fetched_full_refresh")
+        publication = load_selected_pool_price_publication_manifest(output / "artifacts" / PUBLICATION_MANIFEST_NAME)
+        assert publication["formal_auxiliary_fallback_symbols"] == ([] if case == "preferred" else ["515180"])
+        materialized = pd.read_csv(output / "data" / "csv_source" / "515180.csv")
+        # Full source vintage replaces all factors; an incremental seed+tail cannot pass.
+        assert materialized["factor"].tolist() == ([9.0, 2.0, 2.0] if case == "preferred" else [2.0, 2.0, 2.0])
+    assert (source / "515180.csv").read_bytes() == original
+    assert all(start == "2021-01-05" for symbol, start, _ in calls if symbol != "515180")
+    auxiliary_calls = [start for symbol, start, _ in calls if symbol == "515180"]
+    assert auxiliary_calls == (["2021-01-05"] if case == "preferred" else ["2021-01-05", "2021-01-01"])
+
+
+def test_full_history_fallback_cannot_target_a_selected_candidate(tmp_path, monkeypatch):
+    from test_refresh_selected_pool_prices import _prepare_contract
+    from scripts.data.refresh_selected_pool_prices import refresh_selected_pool_prices
+    _prepare_contract(tmp_path, monkeypatch)
+    with pytest.raises(ValueError, match="scoped to requested auxiliaries"):
+        refresh_selected_pool_prices(root=tmp_path, market="cn", source_csv_dir=tmp_path / "unused",
+            output_root=tmp_path / "out", start="2021-01-01", cutoff="2021-01-06",
+            full_history_fallback_symbols=("000001",))
