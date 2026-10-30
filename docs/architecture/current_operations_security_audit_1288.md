@@ -80,3 +80,41 @@ The detailed Telegram text, existing old-Issue marker lookup and canonical deliv
 The same outbox workflow now uploads only `artifacts/signal-delivery-outbox/result.json` (metadata receipt), rather than its entire output directory, which also contains a protected Strategy Operations projection. The protected local projection is still built for the existing operating path. Other producer/Operations/formal workflow uploads and older artifacts remain separate open blockers; this restricted mask is not proof that all Actions artifacts are safe.
 
 No production notification was triggered for verification. This is code/fixture evidence for subsequent Issue rendering, not a live delivery acceptance receipt, historical Issue cleanup, private-ledger cutover or A4 closure. Scheduled Issue paths pick up the change from main; previously running revisions and already public messages remain residual exposure.
+
+## 7. Private integration and real transport evidence (#1326)
+
+The #1322 owner comment of 2026-10-30 requires all consumers to use the same
+protected canonical state before public-write removal. #1326 connects four
+producers, Formal prepare/plan/strategy/publish, Operations and Outbox through
+the existing archive's `archives/strategy-signal-ledgers/latest.zip`. Details,
+CAS/conflict semantics, durable pre-send fences and recovery are in the
+[runbook](../operations/private_signal_ledger.md).
+
+- Bootstrap public source: `96c70b4142a100820816d639cad925b9a54f1754`, including
+  the new QQQ 2026-10-29 decision and actual delivery receipt. Private seed commit:
+  `2be909d6b46f88221d0cf76fe3fd18769c44157a`. All 265 active files were preserved
+  byte-for-byte and all four canonical readers matched. An obsolete public
+  source was rejected before seeding; source equality was rechecked afterwards.
+- Archive: 486726 bytes, SHA-256
+  `da57d9ddef99a7e2e4afdbc6e178b424c4c3980f13132a963f4b050e9805203a`.
+  Registry SHA-256 remains
+  `636b76803029fff5358c40ecb7f1572d9c4868399a606a0440f1d36f402a654c`.
+  Active file inventory SHA-256:
+  `392817bb00e3b2c2a033285054e690d6c034b53bd83c9757a7ed54d86e1324d7`.
+  Anonymous archive Contents/raw requests both returned 404.
+- Real SSH [run 40996617113](https://github.com/liuh886/alpha_engine/actions/runs/40996617113),
+  code head `0bfe7d9b6d0db99145a52bb230542553f7eac01b`, succeeded. Its metadata
+  receipt reports the same archive SHA/size and all four models, `changed=false`
+  and `write_access_verified=true`. Private main had advanced to
+  `e68a4d9e80269577233aadd248372b0689c5606e` through unrelated retention; the
+  canonical checkpoint content remained identical. The run verified restore,
+  semantic closure and dry-run receive-pack authorization without changing
+  protected state. Drain, public mirror, Operations materialization/publication
+  and dispatch were all skipped; Telegram secrets were not exposed to the probe.
+
+This is real transport evidence, not a newly generated four-strategy signal or
+actual delivery acceptance. The four normal producer executions, Operations
+publication, ambiguous-outcome recovery acceptance and subsequent removal of
+public mirrors/raw uploads still require their own receipts. Code rollback must
+not silently return an advanced private authority to public-only writers.
+**G0 incomplete, A4 FAIL, full product NO-GO.**
