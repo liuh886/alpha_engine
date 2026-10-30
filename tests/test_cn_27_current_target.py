@@ -233,21 +233,29 @@ def test_runner_build_reports_missing_positions_on_current_main() -> None:
         assert "target_weights" not in payload
 
 
-def test_runner_due_respects_activated_thirty_session_cadence() -> None:
-    code, output, _ = _run_command(
-        "due",
-        "--formal-root",
-        "data/research/formal_model_runs",
-        "--evidence-path",
-        "data/research/market_evidence/cn/symbols/000300.json",
-        "--as-of",
-        "2026-09-08",
-    )
+def test_runner_due_respects_activated_thirty_session_cadence(tmp_path, monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    import pandas as pd
+
+    import scripts.run_cn_27_current_target as runner
+
+    # Pin cadence inputs instead of mixing a historical request with whichever
+    # future decision happens to be in the advancing current production ledger.
+    monkeypatch.setattr(runner, "prospective_source_status", lambda **kwargs: {"current_target_available": False})
+    monkeypatch.setattr(runner, "load_previous_state", lambda **kwargs: ("2026-09-04", {}))
+    monkeypatch.setattr(runner, "_resolve_market_sessions", lambda **kwargs: (
+        pd.DatetimeIndex(["2026-09-04", "2026-09-07", "2026-09-08"]), None,
+    ))
+    output = tmp_path / "due.json"
+    code = runner._due(SimpleNamespace(
+        formal_root=REAL_FORMAL_ROOT, evidence_path=tmp_path / "unused-evidence.json",
+        as_of="2026-09-08", output=output,
+    ))
     assert code == 0
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["due"] is False
-    if "anchor" in payload:
-        assert payload["anchor"] == "2026-09-04"
+    assert payload["anchor"] == "2026-09-04"
     assert payload["cadence_sessions"] == 30
 
 
