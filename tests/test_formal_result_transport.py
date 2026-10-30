@@ -129,6 +129,26 @@ def test_same_archive_is_idempotent_and_changed_same_member_is_rejected(evidence
     assert git(store, "rev-parse", "main") == first["archive"]["commit"]
 
 
+def test_epoch_dated_canonical_input_roundtrip_preserves_bytes_and_source_metadata(evidence, store, tmp_path):
+    path = evidence["results_root"] / "byd" / "input" / "native.json"
+    original = path.read_bytes()
+    os.utime(path, (0, 0))
+    timestamp = path.stat().st_mtime_ns
+    binding = transport.retain_result(**evidence, strategy="byd")
+    assert path.read_bytes() == original
+    assert path.stat().st_mtime_ns == timestamp
+    raw = subprocess.check_output(["git", "show", f"{binding['archive']['commit']}:{binding['archive']['path']}"], cwd=store)
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        assert archive.read("byd/input/native.json") == original
+        assert archive.getinfo("byd/input/native.json").date_time == (1980, 1, 1, 0, 0, 0)
+    # Keep the same complete sibling/attempt requirements for the real restore.
+    for strategy in transport._tasks(evidence["plan_path"]):
+        if strategy != "byd":
+            transport.retain_result(**evidence, strategy=strategy)
+    transport.restore_results(**{**evidence, "results_root": tmp_path / "restored"})
+    assert (tmp_path / "restored" / "byd" / "input" / "native.json").read_bytes() == original
+
+
 def test_restored_data_blocked_receipts_keep_existing_degraded_publication_semantics(
     evidence, tmp_path
 ):
