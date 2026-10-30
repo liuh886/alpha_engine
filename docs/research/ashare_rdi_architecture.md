@@ -133,8 +133,13 @@ subsequent exchange sessions**:
    episodes, unstable split performance, inconclusive incremental utility =>
    status 'not validated'. Retain failures and null outcomes.
 
-Treat **2026 July–October** as a motivating prospective evaluation case, not
-a threshold-tuning target retroactively masquerading as out-of-sample.
+Treat **2026 July–October** as an already observed, hypothesis-motivating,
+retrospective descriptive stress case, never independent prospective/OOS
+evidence. Do not tune thresholds to those episodes. Genuine prospective
+observation starts with future completed sessions after a newly frozen
+protocol/source/as-of, with 7/14/28-session outcomes eligible only when mature.
+This 2026-10-30 clarification corrects the former prospective label; it does
+not retune a frozen experiment or certify historical PIT event coverage.
 
 ## Deferred decisions (tracked, not silently assumed)
 

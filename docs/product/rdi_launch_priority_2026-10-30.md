@@ -2,6 +2,12 @@
 
 **Date:** 2026-10-30 · **Type:** product priority / launch specification (docs only)
 **Baseline:** main `2dfb2a8` · **Companion issue:** #1272 (RDI phase 2, open)
+**Review correction:** 2026-10-30 owner comment on #1324; governed CN renewal
+candidate now reaches 2026-10-29 (#1325, `d779137d77`). This does not renew RDI's
+own source or qualify an already observed episode as prospective evidence.
+**Execution boundary:** the owner comment scopes the next implementation to
+Step 1 price/recomputation evidence. Steps 2–4 remain proposals requiring their
+declared choices, frozen scope and reviews; merging this document passes no gate.
 **Authority read before drafting:** `docs/research/ashare_rdi_architecture.md`,
 `docs/research/ashare_rdi_phase2_protocol.md`, `src/research/ashare_rdi/`,
 `src/research/studies/rdi_study.py`,
@@ -62,9 +68,11 @@ it says nothing yet about July–October 2026 — see §1.3, blocker 1.
 
 1. **Its price evidence ends 2026-06-25.** The reviewed CSI300 file spans
    index inception 2005-04-08 → 2026-06-25. RDI literally cannot see the
-   July or October 2026 episodes. This blocker is now removable by renewal,
-   not new sourcing: governed CN evidence elsewhere in this repository
-   already reaches 2026-10-28 (#1316, #1319).
+   July or October 2026 episodes. Governed CN evidence elsewhere now reaches
+   2026-10-29 (#1325), but its 2021-start history is only a renewal candidate.
+   Verify index identity, source bytes, overlapping prices, calendar and price
+   basis before append-only extension; never replace the 2005-start history
+   with the shorter projection or assume its readiness certifies RDI.
 2. **Zero of ten event families have verified historical PIT coverage.**
    `configs/research_experiments/ashare_rdi_phase2_sources.yaml` labels all
    archived completeness `unverified`; the `company_events` adapters supply
@@ -78,21 +86,28 @@ it says nothing yet about July–October 2026 — see §1.3, blocker 1.
 4. **Issue #1272 has not moved since 2026-10-25.** Its data-contract and
    backtest-protocol checklists are the launch work; they are still open.
 
-Net: the machinery is built and honest; the **evidence** is what is missing.
-RDI did not fail in July or October — it was never in a state where it
-could have spoken.
+The prototype and its blocked state exist. Evidence renewal also needs explicit
+code/receipt integration: `briefing.py` binds the reviewed 2026-10-24 receipts and
+price path/blob. Replacing the CSV alone produces `evidence_mismatch`; the current
+price-baseline CLI output is not a drop-in replacement for the reviewed receipt.
+This audit cannot establish that a validated RDI would have warned in either
+episode, and does not treat missing data as evidence of predictive effectiveness.
 
 ## 2. Framing guardrails (read before §3)
 
 - RDI's hypothesis is **forward downside frequency over 7/14/28 sessions**
   conditional on known-event density and market state. It is not, and must
-  not be sold as, a drawdown-depth predictor. A launched RDI would have
-  said "downside is materially more likely than usual in this state"; it
-  would not have said how deep July or October would go.
-- **July–October 2026 is a prospective evaluation case, never a tuning
-  target** (charter, falsification-first protocol). Thresholds or weights
+  not be sold as, a drawdown-depth predictor. A future validated module may
+  describe contract-bound conditional frequencies and uncertainty; there is no
+  evidence yet that it would have issued useful July/October warnings.
+- **July–October 2026 is an already observed, hypothesis-motivating,
+  retrospective descriptive stress case**, never independent prospective/OOS
+  evidence. Thresholds or weights
   chosen because they "would have caught" those two episodes are
   overfitting with extra steps and are rejected by this specification.
+  True prospective observation begins with future completed sessions after a
+  newly frozen spec, thresholds, source identities and as-of; each 7/14/28-session
+  outcome becomes observable only after its own horizon matures.
 - "Launch" in §3 means a **dated, evidence-bound published assessment**
   inside the existing Operating Status RDI section. It does not mean a
   composite 0–100 score (forbidden until probabilistic calibration
@@ -101,29 +116,39 @@ could have spoken.
 
 ## 3. Launch ladder — priority order, each step independently shippable
 
-### Step 1 — Renew the price layer (first; days, not weeks)
+### Step 1 — Renew the price layer (the next implementation PR only)
 
 Extend the reviewed CSI300 price/calendar evidence from 2026-06-25 to the
 current governed CN cutoff by reusing the repository's existing governed
-evidence path (CN through 2026-10-28 at baseline), under existing provider
-discipline. Re-run `price_baseline` and the B (persistent bear state)
-features through July–October 2026 and issue a renewed dated readiness
-receipt; the Status RDI section then shows the renewed cutoff and review
-date.
+evidence path (CN through 2026-10-29 at review), under existing provider
+discipline. Freeze exact source/price-basis/calendar/version hashes and as-of;
+verify overlap and append-only continuity with the existing long history.
+Re-run `price_baseline` and the B (persistent bear state) features independently
+of the still-blocked event study, preserving the predefined definitions.
+Deliver source-verifiable replay commands and a dated recomputation receipt.
+No UI, database or scheduler change is part of this next PR. An eventual update
+to the existing Status projection requires explicit evidence rebinding and
+tests; file replacement does not automatically update its hard-bound reader.
 
 Acceptance:
 
-- `phase2_audit` no longer reports price recency as a blocker.
+- Source identity/hash, actual cutoff, index/calendar/session closure and price
+  basis pass replay checks. Preserve old source blobs and receipts. Do not claim
+  to clear a price-recency gate that `phase2_audit` does not currently implement;
+  its event-PIT status remains blocked while required event coverage is absent.
 - The renewed descriptive table (same predefined −10% / ≥5% definitions,
-  unchanged) covers the July–October 2026 window and labels it
-  prospective/descriptive.
-- B-state values for July and October 2026 sessions are published in the
-  receipt, so the owner can see what the price layer alone would have said,
-  with no event-layer claim attached.
+  unchanged) reports the observed July–October price-state period as retrospective
+  descriptive evidence. For each horizon, publish eligible start/end dates,
+  sample count, label-end range and missing tail; include only outcomes whose
+  label end is at or before cutoff. Preserve `insufficient_future_bars` rather
+  than shorten a horizon, fill future bars or imply all October labels matured.
+- B-state features may run through cutoff once their lookbacks are satisfied;
+  7/14/28-session outcome maturity is a separate boundary. Publish these states
+  and limitations without an event-layer, counterfactual warning or prediction claim.
 
-Rationale for first: B needs no event coverage, is computable today, and is
-the only layer that could have spoken during the two episodes. It converts
-RDI from "cannot see 2026 at all" to "price-state assessment current".
+Rationale for first: B has no event inputs. Source and lookback checks can
+qualify a price-only descriptive reconstruction of observed states. This renews
+price evidence without establishing event readiness or launch approval.
 
 ### Step 2 — Certify ONE narrow event family end-to-end
 
@@ -132,15 +157,18 @@ against existing `company_events` adapters — earnings disclosure windows or
 restricted-share unlocks are the candidates — and certify it: coverage era,
 per-session completeness verdicts, first-availability evidence, story
 identity. Produce the coverage matrix for that family and wire the verdict
-into `coverage.py`. All other families remain `unknown`; nothing is
+into `coverage.py` only after the family and scope are explicitly selected
+and frozen. All other families remain `unknown`; nothing is
 zero-filled.
 
 Acceptance:
 
 - The corresponding #1272 data-contract checklist items are closed with
   evidence links for this family only.
-- `rdi_study` remains blocked for uncertified families and unblocks only
-  the certified family's features.
+- One certificate does not automatically unblock the current full-contract
+  `rdi_study` gate. It stays blocked until its declared required coverage passes;
+  any narrower research scope needs its own reviewed, frozen contract in the
+  existing study framework, not silent substitution of its requirements.
 
 ### Step 3 — Frozen multi-episode evaluation (pre-registered before running)
 
@@ -149,9 +177,11 @@ families only), E+B; purged walk-forward folds with ≥28-session boundary
 protection; episode/block bootstrap confidence intervals; the charter's
 baselines and metrics (conditional downside hit rates, AUC where both
 classes occur, Brier/calibration for any probability claim, incremental
-out-of-sample utility of E over B). July–October 2026 sits in the test
-partition as prospective episodes; every threshold comes from the
-development sample only.
+out-of-sample utility of E over B). Historical held-out folds must be declared
+without claiming independence for the already observed July–October motivating
+cases. Keep those cases separately labelled retrospective descriptive stress
+evidence. True prospective sessions begin after the new freeze and mature per
+horizon; every threshold comes from the declared development sample only.
 
 Acceptance:
 
@@ -162,8 +192,9 @@ Acceptance:
 
 ### Step 4 — Definition of "launched"
 
-Only if Step 3 passes its predeclared gates: the Operating Status RDI
-section graduates from readiness display to a **dated current assessment**
+Only if Step 3 and the declared prospective gates pass may a separately reviewed
+product change graduate the Operating Status RDI section to a **dated
+research assessment**
 for the latest completed session — B state plus certified E density, with
 7/14/28 conditional downside frequencies and their intervals. Still no
 composite score until calibration succeeds; still no strategy overlay
@@ -173,8 +204,9 @@ from the failure record.
 
 ## 4. Sequencing and boundaries
 
-- Steps 1–2 are data/evidence work under existing provider discipline and
-  reuse existing entrypoints (`phase2_audit`, `briefing`). No new workflow,
+- The next PR is Step 1 price/recomputation evidence only, as the owner comment
+  requires. Later event work is separately frozen; reuse existing entrypoints
+  where their actual gates and receipt contracts apply. No new workflow,
   scheduler, registry, store or navigation — the workflow ceiling and the
   `AGENTS.md` RDI boundary (no uncalibrated score, live signal or strategy
   registration from this view) are unchanged.
@@ -192,7 +224,7 @@ from the failure record.
 - No alerts, no new navigation, no strategy registration or risk overlay.
 - No claim that RDI predicts drawdown depth.
 
-## 6. Decisions requested from the owner (do not block Steps 1–2)
+## 6. Decisions requested from the owner (do not block Step 1)
 
 1. **Step 2 first family:** earnings disclosure windows, or restricted-share
    unlocks?
