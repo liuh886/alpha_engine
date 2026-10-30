@@ -167,13 +167,14 @@ erase earlier verified results.
    dates, relabel an incremental fetch, or refresh the whole candidate pool.
    Normal run `41083709573` verified preferred Tencent source through 2026-10-30;
    the Yahoo-only conditional remains fixture-verified, not live-exercised.
-2. **Real Formal private transport — core path PASS, release verification pending.** After source recovery, obtain
+2. **Real Formal private transport — PASS.** After source recovery, obtain
    an eligible normal run with exact private archive and atomic fan-in receipts.
    Stop on data/transport failure; do not invent a strategy task to pass a gate.
    #1331 (`2a80e4f5`) fixes ZIP container dates for sealed epoch-dated BYD inputs.
    Run `41083709573` passed both real private retentions, exact restoration,
    atomic fan-in and Bundle construction; candidate #1332 merged `30a3df54`.
-   Final Pages/overall-run result is recorded independently. CN economic prefix
+   The same real run completed successfully, including candidate checks, merge
+   and exact Pages verification. CN economic prefix
    is preserved within the existing numerical tolerance, not byte-identically;
    BYD's old report prefix is exact. Failed/cancelled runs remain retained.
 3. **#1315 source consistency — implementing, not yet deployed.** Reconcile US x1.3 dates, opening NAV,
