@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
+
 
 WORKFLOW = Path(".github/workflows/formal-backtest-refresh.yml")
 CI_WORKFLOW = Path(".github/workflows/formal-backtest-refresh-ci.yml")
@@ -115,7 +117,16 @@ def test_heavy_formal_refresh_does_not_publish_after_explicit_cancellation() -> 
     assert publish_job in text
     assert "if: always()" not in text
     assert "      - name: Resolve effective publication delta" in text
-    assert text.count("if: ${{ !cancelled() }}") == 6
+    jobs = yaml.safe_load(text)["jobs"]
+    guarded_steps = {
+        "strategy": {"Retain complete strategy result privately", "Upload private strategy result binding"},
+        "publish": {"Resolve effective publication delta", "Upsert refresh operating status",
+                    "Capture operating acceptance observation", "Upload bounded refresh evidence"},
+    }
+    for job, names in guarded_steps.items():
+        steps = {step.get("name"): step for step in jobs[job]["steps"]}
+        for name in names:
+            assert steps[name].get("if") == "${{ !cancelled() }}", name
     assert "      - name: Capture operating acceptance observation\n        if: ${{ !cancelled() }}" in text
 
 
