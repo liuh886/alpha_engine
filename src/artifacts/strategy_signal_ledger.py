@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -638,12 +639,18 @@ def read_latest_evaluation(
     result.pop("delivery_workflow", None)
     receipts = _delivery_receipts(ledger_root, decision=decision)
     if receipts:
+        def order(item: tuple[Path, dict[str, Any]]) -> tuple[datetime, str]:
+            try:
+                stamp = datetime.fromisoformat(str(item[1].get("created_at_utc") or "").replace("Z", "+00:00"))
+                if stamp.tzinfo is None:
+                    raise ValueError("missing timezone")
+            except ValueError:
+                raise StrategySignalLedgerError("invalid delivery receipt timestamp") from None
+            return stamp.astimezone(timezone.utc), str(item[1].get("workflow", {}).get("run_id") or "")
+
         _, receipt = max(
             receipts,
-            key=lambda item: (
-                str(item[1].get("created_at_utc") or ""),
-                str(item[1].get("workflow", {}).get("run_id") or ""),
-            ),
+            key=order,
         )
         result["delivery"] = dict(receipt["delivery"])
         result["delivery_workflow"] = dict(receipt["workflow"])

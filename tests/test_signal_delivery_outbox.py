@@ -105,13 +105,13 @@ def canonical_outbox(tmp_path, monkeypatch):
     monkeypatch.setattr(outbox, "_send_telegram", send)
     runs = 0
 
-    def drain(*, configured=True):
+    def drain(*, configured=True, persist=None, created_at=None):
         nonlocal runs
         runs += 1
         result = outbox.drain_outbox(repository="owner/repo", workflow_run_id=f"delivery-{runs}",
-            commit_sha="b" * 40, created_at_utc=f"2026-08-13T{runs:02d}:00:00Z",
+            commit_sha="b" * 40, created_at_utc=created_at or f"2026-08-13T{runs:02d}:00:00Z",
             telegram_token="test-token" if configured else None,
-            telegram_chat_id="test-chat" if configured else None)
+            telegram_chat_id="test-chat" if configured else None, persist=persist)
         assert (ledger / "latest.json").read_bytes() == sealed
         return result[0]
 
@@ -309,7 +309,7 @@ def test_outbox_workflow_triggers_and_fallback_schedule() -> None:
     assert names.index("Commit append-only delivery receipts") < names.index("Request strategy operations publication") < names.index("Fail after persisting delivery failure evidence")
     dispatch = next(step for step in steps if step.get("name") == "Request strategy operations publication")
     assert 'event_type: "strategy_operations_publication"' in dispatch["run"]
-    assert dispatch["if"] == "steps.receipts.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'"
+    assert dispatch["if"] == "inputs.verify_private_state_only != true && (steps.receipts.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')"
     commit = next(step for step in steps if step.get("name") == "Commit append-only delivery receipts")
     assert commit["id"] == "receipts"
     assert 'changed=false' in commit["run"] and 'changed=true' in commit["run"]
@@ -318,3 +318,74 @@ def test_outbox_workflow_triggers_and_fallback_schedule() -> None:
     assert len(uploads) == 1
     assert uploads[0]["with"]["path"] == "artifacts/signal-delivery-outbox/result.json"
     assert uploads[0]["if"] == "always()"
+
+
+def test_private_claim_is_persisted_before_transport_and_final_status_after(canonical_outbox):
+    context = canonical_outbox
+    persisted = []
+
+    def persist():
+        delivery = read_latest_evaluation(context.ledger, model_version_id=MODEL)["delivery"]
+        persisted.append(delivery["status"])
+        if len(persisted) == 1:
+            assert delivery["error"] == "ambiguous_external_delivery_state"
+            assert context.issues == context.messages == []
+        else:
+            assert len(context.messages) == 1
+
+    assert context.drain(persist=persist).status == "sent"
+    assert persisted == ["failed", "sent"]
+
+
+def test_failed_private_claim_prevents_all_external_side_effects(canonical_outbox):
+    context = canonical_outbox
+
+    def conflict():
+        raise RuntimeError("CAS conflict")
+
+    with pytest.raises(RuntimeError, match="CAS conflict"):
+        context.drain(persist=conflict)
+    assert context.issues == context.messages == []
+
+
+def test_failed_final_persistence_retains_ambiguity_fence_for_recovery(canonical_outbox):
+    context = canonical_outbox
+    persisted = []
+
+    def persist():
+        if persisted:
+            raise RuntimeError("private store unavailable after send")
+        persisted.append(True)
+
+    with pytest.raises(RuntimeError, match="after send"):
+        context.drain(persist=persist)
+    assert len(context.messages) == 1
+    # Simulate restoring the private authority, which contains only the claim.
+    (context.ledger / "deliveries" / "2026-08-12" / "delivery-1.json").unlink()
+    result = context.drain(persist=persist)
+    assert result.error == "ambiguous_external_delivery_state"
+    assert len(context.messages) == 1
+
+
+def test_one_second_retry_claim_wins_over_prior_rejection_and_prevents_replay(canonical_outbox, monkeypatch):
+    context = canonical_outbox
+
+    def rejected(*args):
+        raise RuntimeError("telegram_api_rejected")
+
+    monkeypatch.setattr(outbox, "_send_telegram", rejected)
+    assert context.drain(created_at="2026-08-13T01:00:00Z").error == "telegram_api_rejected"
+    monkeypatch.setattr(outbox, "_send_telegram", context.send)
+    claims = []
+
+    def persist():
+        if claims:
+            raise RuntimeError("final persistence failed")
+        claims.append(True)
+        assert read_latest_evaluation(context.ledger, model_version_id=MODEL)["delivery"]["error"] == "ambiguous_external_delivery_state"
+
+    with pytest.raises(RuntimeError, match="final persistence"):
+        context.drain(persist=persist, created_at="2026-08-13T01:00:01Z")
+    (context.ledger / "deliveries" / "2026-08-12" / "delivery-2.json").unlink()
+    assert context.drain().error == "ambiguous_external_delivery_state"
+    assert len(context.messages) == 1

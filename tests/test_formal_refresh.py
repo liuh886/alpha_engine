@@ -505,6 +505,7 @@ def test_formal_plan_job_checkout_only_plan_inputs() -> None:
     assert "sparse-checkout-cone-mode: true" in checkout
     assert (
         "sparse-checkout: |\n"
+        "            .github\n"
         "            configs\n"
         "            data/research/formal_model_runs\n"
         "            data/research/strategy_signal_ledgers\n"

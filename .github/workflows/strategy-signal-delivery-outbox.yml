@@ -22,6 +22,11 @@ on:
   schedule:
     - cron: "15 */6 * * *"
   workflow_dispatch:
+    inputs:
+      verify_private_state_only:
+        description: "Verify private restore/CAS no-op without notifications or public state publication"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -63,12 +68,10 @@ jobs:
     timeout-minutes: 20
     env:
       GH_TOKEN: ${{ github.token }}
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_private_state_only == true && github.ref || 'main' }}
           fetch-depth: 0
       - uses: ./.github/actions/setup-python-uv
       - name: Validate outbox contract
@@ -82,8 +85,27 @@ jobs:
             tests/test_signal_delivery_outbox.py \
             tests/test_strategy_signal_ledger.py \
             -q --strict-markers --tb=short
+      - name: Restore authoritative private ledgers
+        env:
+          GOVERNED_SOURCE_ARCHIVE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_SSH_KEY }}
+        run: >-
+          uv run alpha ops private-ledgers restore
+          --receipt "$RUNNER_TEMP/private-ledgers.json"
+      - name: Verify private state without external delivery
+        if: inputs.verify_private_state_only == true
+        env:
+          GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY }}
+        run: |
+          uv run alpha ops private-ledgers persist --receipt "$RUNNER_TEMP/private-ledgers.json"
+          mkdir -p artifacts/signal-delivery-outbox
+          cp "$RUNNER_TEMP/private-ledgers.json" artifacts/signal-delivery-outbox/result.json
       - name: Drain canonical pending decisions
+        if: inputs.verify_private_state_only != true
         id: drain
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY }}
         shell: bash
         run: |
           set +e
@@ -93,17 +115,21 @@ jobs:
             --workflow-run-id "$GITHUB_RUN_ID" \
             --commit-sha "$(git rev-parse HEAD)" \
             --created-at-utc "$created_at" \
+            --private-ledger-receipt "$RUNNER_TEMP/private-ledgers.json" \
             --output artifacts/signal-delivery-outbox/result.json
           status=$?
           set -e
           echo "status=$status" >> "$GITHUB_OUTPUT"
+          test -f artifacts/signal-delivery-outbox/result.json
       - name: Materialize Strategy Operations evidence
+        if: inputs.verify_private_state_only != true
         run: |
           generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           uv run alpha ops build \
             --generated-at "$generated_at" \
             --output artifacts/signal-delivery-outbox/strategy-operations.json
       - name: Commit append-only delivery receipts
+        if: inputs.verify_private_state_only != true
         id: receipts
         run: |
           set -euo pipefail
@@ -123,7 +149,7 @@ jobs:
         # Skip duplicate strategy handoffs, retaining manual/scheduled recovery
         # when a previous dispatch failed after committing its receipt.
         # New failure receipts still publish before the final failure step.
-        if: steps.receipts.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+        if: inputs.verify_private_state_only != true && (steps.receipts.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -144,5 +170,5 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Fail after persisting delivery failure evidence
-        if: steps.drain.outputs.status != '0'
+        if: inputs.verify_private_state_only != true && steps.drain.outputs.status != '0'
         run: exit 1

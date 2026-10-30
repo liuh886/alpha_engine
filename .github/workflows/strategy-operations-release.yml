@@ -58,18 +58,7 @@ jobs:
           # Deduplicate within a scheduled observation window, not forever by SHA.
           echo "window=$(($(date -u +%s) / 21600))" >> "$GITHUB_OUTPUT"
 
-      - name: Restore publication idempotency receipt
-        id: cache
-        continue-on-error: true
-        uses: actions/cache/restore@v5
-        with:
-          path: artifacts/strategy-operations-publication-receipt.json
-          key: strategy-operations-publication-v2-${{ steps.revision.outputs.sha }}-${{ steps.revision.outputs.window }}
-
-          lookup-only: true
-
       - name: Checkout canonical revision
-        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
         uses: actions/checkout@v6
         with:
           ref: ${{ steps.revision.outputs.sha }}
@@ -87,12 +76,28 @@ jobs:
           sparse-checkout-cone-mode: true
 
       - name: Verify canonical revision identity
-        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
         run: test "$(git rev-parse HEAD)" = "${{ steps.revision.outputs.sha }}"
 
       - name: Setup governed Python environment
         uses: ./.github/actions/setup-python-uv
-        if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
+
+      - name: Restore authoritative private ledgers
+        id: private_ledgers
+        env:
+          GOVERNED_SOURCE_ARCHIVE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_SSH_KEY }}
+        run: >-
+          uv run alpha ops private-ledgers restore
+          --receipt "$RUNNER_TEMP/private-ledgers.json"
+          --github-output "$GITHUB_OUTPUT"
+      - name: Restore publication idempotency receipt
+        id: cache
+        continue-on-error: true
+        uses: actions/cache/restore@v5
+        with:
+          path: artifacts/strategy-operations-publication-receipt.json
+          key: strategy-operations-publication-v3-${{ steps.revision.outputs.sha }}-${{ steps.private_ledgers.outputs.archive_sha256 }}-${{ steps.revision.outputs.window }}
+
+          lookup-only: true
 
       - name: Validate runtime publisher contract
         if: steps.cache.outputs.cache-hit != 'true' || inputs.force == true
@@ -119,6 +124,7 @@ jobs:
           CANONICAL_SHA: ${{ steps.revision.outputs.sha }}
           RUN_ID: ${{ github.run_id }}
           EVENT_NAME: ${{ github.event_name }}
+          PRIVATE_LEDGER_SHA256: ${{ steps.private_ledgers.outputs.archive_sha256 }}
         run: |
           mkdir -p artifacts
           python - <<'PY'
@@ -132,6 +138,7 @@ jobs:
               "canonical_sha": os.environ["CANONICAL_SHA"],
               "run_id": os.environ["RUN_ID"],
               "event_name": os.environ["EVENT_NAME"],
+              "private_ledger_sha256": os.environ["PRIVATE_LEDGER_SHA256"],
               "research_only": True,
               "trade_ready": False,
           }
@@ -160,7 +167,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: artifacts/strategy-operations-publication-receipt.json
-          key: strategy-operations-publication-v2-${{ steps.revision.outputs.sha }}-${{ steps.revision.outputs.window }}
+          key: strategy-operations-publication-v3-${{ steps.revision.outputs.sha }}-${{ steps.private_ledgers.outputs.archive_sha256 }}-${{ steps.revision.outputs.window }}
 
   collect-operating-evidence:
     needs: publish-operations
@@ -191,6 +198,12 @@ jobs:
             tests
           sparse-checkout-cone-mode: true
       - uses: ./.github/actions/setup-python-uv
+      - name: Restore authoritative private ledgers
+        env:
+          GOVERNED_SOURCE_ARCHIVE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_SSH_KEY }}
+        run: >-
+          uv run alpha ops private-ledgers restore
+          --receipt "$RUNNER_TEMP/private-ledgers.json"
       - name: Collect current review without declaring acceptance
         env:
           GH_TOKEN: ${{ github.token }}

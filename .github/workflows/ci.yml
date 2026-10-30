@@ -101,6 +101,9 @@ jobs:
           src/factors/ranker_snapshot.py
           src/artifacts/strategy_operations.py
           src/artifacts/strategy_signal_checkpoint.py
+          src/artifacts/private_signal_ledger.py
+          tests/test_private_signal_ledger.py
+          tests/test_private_ledger_workflows.py
           tests/test_strategy_signal_checkpoint.py
           src/artifacts/system_health.py
           src/artifacts/operating_acceptance.py
@@ -216,6 +219,8 @@ jobs:
           tests/test_strategy_operations.py
           tests/test_strategy_operations_release.py
           tests/test_strategy_signal_checkpoint.py
+          tests/test_private_signal_ledger.py
+          tests/test_private_ledger_workflows.py
           tests/test_model_run_decision.py
           tests/test_t47_drift_monitor.py
           tests/test_active_research_spec_validation.py
