@@ -128,23 +128,19 @@ jobs:
           uv run alpha ops build \
             --generated-at "$generated_at" \
             --output artifacts/signal-delivery-outbox/strategy-operations.json
-      - name: Commit append-only delivery receipts
+      - name: Record private delivery persistence receipt
         if: inputs.verify_private_state_only != true
         id: receipts
         run: |
-          set -euo pipefail
-          git config user.name "AlphaEngine Delivery Outbox"
-          git config user.email "delivery-outbox@alphaengine.local"
-          git add data/research/strategy_signal_ledgers
-          if git diff --cached --quiet; then
-            echo "No pending delivery receipt changes."
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            git commit -m "ops: publish strategy delivery receipts"
-            git pull --rebase origin main
-            git push origin HEAD:main
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          receipt = json.loads(Path(os.environ['RUNNER_TEMP'], 'private-ledgers.json').read_text())
+          changed = bool(receipt.get('any_changed', False))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as handle:
+              handle.write(f"changed={str(changed).lower()}\n")
+          PY
       - name: Request strategy operations publication
         # Skip duplicate strategy handoffs, retaining manual/scheduled recovery
         # when a previous dispatch failed after committing its receipt.

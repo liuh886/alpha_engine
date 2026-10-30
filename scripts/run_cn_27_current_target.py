@@ -16,7 +16,7 @@ from typing import Any
 import pandas as pd
 
 from src.artifacts.formal_bundle_reader import FormalBundleReadError, load_formal_run
-from src.artifacts.strategy_signal_ledger import read_latest_evaluation
+from src.artifacts.strategy_signal_ledger import public_signal_write_receipt, read_latest_evaluation
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.governance.strategy_runtime_capabilities import (
     load_active_strategy_runtime_capabilities,
@@ -171,12 +171,12 @@ def _build(args: argparse.Namespace) -> int:
             raise
         receipt = _blocked_receipt(signal_date=args.signal_date, reason=str(exc))
         _write(args.output, receipt)
-        print(json.dumps(receipt, sort_keys=True))
+        print(json.dumps(public_signal_write_receipt(receipt, model_version_id=MODEL_ID, status="data_blocked"), sort_keys=True))
         return 0
     if signal.get("model_version_id") != MODEL_ID:
         raise CN27CurrentTargetCommandError("current-target adapter changed model identity")
     _write(args.output, signal)
-    print(json.dumps(signal, sort_keys=True))
+    print(json.dumps(public_signal_write_receipt(signal, model_version_id=MODEL_ID), sort_keys=True))
     return 0
 
 

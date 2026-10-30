@@ -78,8 +78,6 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p artifacts/cn27-current-target
-          git config user.name "AlphaEngine CN27 Operations"
-          git config user.email "cn27-operations@alphaengine.local"
           as_of="$(date -u +%F)"
           failures=()
 
@@ -125,22 +123,9 @@ jobs:
                 --created-at-utc "$created_at"; then
                 failures+=("seal")
                 echo "::error::cn_27 canonical decision seal failed"
-                git reset -- data/research/strategy_signal_ledgers >/dev/null 2>&1 || true
               else
-                # Private CAS must succeed before any public mirror publication.
+                # Private authority must be durable before dispatch.
                 uv run alpha ops private-ledgers persist --receipt "$RUNNER_TEMP/private-ledgers.json" || exit 1
-                git add data/research/strategy_signal_ledgers
-                if git diff --cached --quiet; then
-                  echo "cn_27: canonical decision already sealed"
-                else
-                  git commit -m "ops: seal ${model} decision ${signal_date}"
-                  if ! git pull --rebase origin main || ! git push origin HEAD:main; then
-                    failures+=("publish")
-                    echo "::error::cn_27 canonical decision publication failed"
-                    git rebase --abort >/dev/null 2>&1 || true
-                    git reset --hard origin/main >/dev/null 2>&1 || true
-                  fi
-                fi
               fi
             else
               echo "cn_27: dormant, data_blocked receipt retained"
@@ -168,6 +153,6 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: cn27-current-target-${{ github.run_id }}
-          path: artifacts/cn27-current-target
+          path: ${{ runner.temp }}/private-ledgers.json
           if-no-files-found: error
           retention-days: 30

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,25 @@ TERMINAL_DELIVERY_STATUSES = {
 
 class StrategySignalLedgerError(ValueError):
     """Raised when a governed signal transaction violates the ledger contract."""
+
+
+def public_signal_write_receipt(signal: Mapping[str, Any], *, model_version_id: str,
+                                status: str = "written") -> dict[str, Any]:
+    """Allowlisted stdout only; detailed signals remain in the output file."""
+    signal_date = signal.get("signal_date")
+    if (not isinstance(model_version_id, str)
+        or not re.fullmatch(r"[a-z0-9][a-z0-9._-]{1,127}", model_version_id)
+        or not isinstance(signal_date, str)
+        or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", signal_date)
+        or status not in {"written", "reused_sealed_decision", "data_blocked"}):
+        raise StrategySignalLedgerError("invalid public signal receipt identity")
+    try:
+        date.fromisoformat(signal_date)
+    except ValueError:
+        raise StrategySignalLedgerError("invalid public signal receipt date") from None
+    return {"schema_version": "strategy_signal_write_receipt_v1", "status": status,
+        "model_version_id": model_version_id, "signal_date": signal_date,
+        "research_only": True, "trade_ready": False}
 
 
 def canonical_json_bytes(value: object) -> bytes:

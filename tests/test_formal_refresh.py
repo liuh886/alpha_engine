@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 import src.artifacts.formal_refresh as formal_refresh
+import scripts.run_formal_refresh_transaction as transaction
 from scripts.data.refresh_selected_pool_prices_v2 import (
     _decorate_manifest,
     build_hardened_router,
@@ -25,6 +26,7 @@ from src.artifacts.formal_refresh import (
     market_provider_cutoff,
     write_object,
 )
+from src.artifacts.strategy_signal_ledger import append_signal_evaluation, read_latest_evaluation
 from src.governance.active_strategy_catalog import load_active_strategy_catalog
 from src.governance.strategy_runtime_capabilities import (
     RANKER_FORMAL_REFRESH_ADAPTERS,
@@ -32,6 +34,34 @@ from src.governance.strategy_runtime_capabilities import (
 )
 
 FORMAL_V2 = Path("data/research/formal_model_runs")
+
+
+@pytest.fixture
+def private_planner_ledgers(tmp_path: Path, monkeypatch) -> None:
+    """Exercise real canonical readers without a public or live private ledger."""
+    from test_strategy_signal_ledger import _signal
+
+    reader = FormalBundleReader.open(Path("."), relative_root=FORMAL_V2)
+    active = load_active_strategy_catalog()
+    capabilities = load_active_strategy_runtime_capabilities(active=active)
+    for strategy in active.strategies:
+        if capabilities[strategy.strategy_id].formal_refresh.adapter_id not in RANKER_FORMAL_REFRESH_ADAPTERS:
+            continue
+        model_id = strategy.model_version_id
+        portfolio = reader.load(model_id).section("portfolio")
+        signal_date = transaction._latest_formal_signal_date(portfolio)
+        signal = _signal(signal_date=signal_date)
+        signal["model_id"] = model_id
+        append_signal_evaluation(
+            ledger_root=tmp_path / model_id, model_version_id=model_id,
+            signal=signal, delivery_status="pending", workflow_run_id="synthetic-plan",
+            commit_sha="a" * 40, created_at_utc=f"{signal_date}T00:00:00Z",
+        )
+
+    def read_private(_path: Path, *, model_version_id: str):
+        return read_latest_evaluation(tmp_path / model_version_id, model_version_id=model_version_id)
+
+    monkeypatch.setattr(transaction, "read_latest_evaluation", read_private)
 
 
 def test_legacy_single_file_refresh_runtime_is_not_exported() -> None:
@@ -177,7 +207,7 @@ def test_formal_planner_accepts_governed_cn_auxiliary_yahoo_fallback(
     assert manifest["formal_auxiliary_fallback_symbols"] == ["515180"]
 
 
-def test_plan_is_formal_v2_catalog_driven() -> None:
+def test_plan_is_formal_v2_catalog_driven(private_planner_ledgers) -> None:
     plan = build_task_plan(
         formal_v2_root=FORMAL_V2,
         cutoffs=_non_regressing_cutoffs(),
@@ -201,7 +231,17 @@ def test_plan_is_formal_v2_catalog_driven() -> None:
     }
 
 
-def test_plan_never_rewinds_accepted_model_evidence() -> None:
+def test_plan_without_private_ledgers_fails_closed(monkeypatch) -> None:
+    monkeypatch.setattr(transaction, "read_latest_evaluation", lambda *args, **kwargs: None)
+    with pytest.raises(FormalRefreshError, match="canonical ranker signal ledger is missing"):
+        build_task_plan(
+            formal_v2_root=FORMAL_V2,
+            cutoffs={"us": "2026-10-29", "cn": "2026-10-29"},
+            generated_at="2026-10-30T00:00:00Z",
+        )
+
+
+def test_plan_never_rewinds_accepted_model_evidence(private_planner_ledgers) -> None:
     cutoffs = _non_regressing_cutoffs()
     cutoffs["us"] = "2026-08-10"
     plan = build_task_plan(
@@ -255,7 +295,7 @@ def test_ranker_ledger_advance_is_the_settled_rebuild_trigger() -> None:
     assert mtm is False
 
 
-def test_future_cutoff_still_marks_non_rankers_stale() -> None:
+def test_future_cutoff_still_marks_non_rankers_stale(private_planner_ledgers) -> None:
     cutoffs = {
         market: (date.fromisoformat(cutoff) + timedelta(days=1)).isoformat()
         for market, cutoff in _non_regressing_cutoffs().items()
@@ -400,7 +440,11 @@ def test_formal_prepare_job_checkout_only_preflight_inputs() -> None:
     active = load_active_strategy_catalog()
     for strategy in active.strategies:
         assert Path(strategy.model_contract).is_file()
-        assert Path(strategy.signal_ledger).is_dir()
+        assert strategy.signal_ledger.startswith("data/research/strategy_signal_ledgers/")
+
+    assert prepare.index("Restore authoritative private ledgers") < prepare.index(
+        "Validate refresh implementation before network work"
+    )
 
     reader = FormalBundleReader.open(Path("."), relative_root=FORMAL_V2)
     for model_version_id in reader.records:
@@ -521,7 +565,9 @@ def test_formal_plan_job_checkout_only_plan_inputs() -> None:
         assert strategy.model_contract.startswith("configs/")
         assert Path(strategy.model_contract).is_file()
         assert strategy.signal_ledger.startswith("data/research/strategy_signal_ledgers/")
-        assert Path(strategy.signal_ledger).is_dir()
+    assert plan.index("Restore authoritative private ledgers") < plan.index(
+        "Build pure active-strategy plan"
+    )
 
     reader = FormalBundleReader.open(Path("."), relative_root=FORMAL_V2)
     for model_version_id in reader.records:

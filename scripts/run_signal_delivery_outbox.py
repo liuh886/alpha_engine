@@ -435,6 +435,7 @@ def main() -> int:
                 catalog=Path("configs/strategies/registry.json"),
                 ssh_key=os.environ.get("GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY", ""),
                 base=receipt, code_revision=args.commit_sha)
+            updated["any_changed"] = bool(receipt.get("any_changed", False) or updated.get("changed", False))
             save_receipt(args.private_ledger_receipt, updated)
 
     results = drain_outbox(

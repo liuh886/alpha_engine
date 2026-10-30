@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from src.artifacts.formal_bundle_v2_builder import FormalBundleV2BuildError, build_plan
-from src.artifacts.model_run_bundle_v2 import ModelRunBundleV2Error, validate_manifest
+from src.artifacts.model_run_bundle_v2 import ModelRunBundleV2Error, canonical_json_bytes, validate_manifest
 from src.artifacts.model_run_exporter import RunExportPlan, SectionPlan, export_model_run
 from src.governance.active_strategy_catalog import ActiveStrategy
 from src.governance.model_contract import ModelContractError, load_performance_semantics
@@ -188,7 +188,22 @@ def _preserve_mtm_base_preview(
             continue
         if section.section_id == "lineage" and isinstance(retained.payload, Mapping):
             lineage = dict(retained.payload)
-            lineage["mtm_projection"] = dict(provisional)
+            # MTM consumes a private current target, but public lineage needs
+            # only its identity. Keep frozen economic sections unchanged.
+            target = provisional.get("target_weights")
+            if not isinstance(target, Mapping) or not target:
+                raise FormalPreviewBuildError("MTM private target identity is unavailable")
+            reference = {key: provisional[key] for key in (
+                "as_of", "signal_date", "entry_date", "source", "provider_identity_sha256",
+                "research_only", "trade_ready",
+            ) if key in provisional}
+            reference.update({
+                "schema_version": "ranker_mtm_projection_reference_v1",
+                "source_schema_version": provisional.get("schema_version"),
+                "private_input_sha256": hashlib.sha256(canonical_json_bytes(dict(provisional))).hexdigest(),
+                "runtime_state_embedded": False,
+            })
+            lineage["mtm_projection"] = reference
             projected.append(replace(retained, payload=lineage))
             continue
         projected.append(retained)

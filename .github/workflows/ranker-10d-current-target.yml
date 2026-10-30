@@ -29,7 +29,7 @@ on:
       - "data/research/market_evidence/**"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ranker-10d-current-target
@@ -79,8 +79,6 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p artifacts/ranker-current-target
-          git config user.name "AlphaEngine Ranker Operations"
-          git config user.email "ranker-operations@alphaengine.local"
           as_of="$(date -u +%F)"
           failures=()
 
@@ -147,27 +145,12 @@ jobs:
               --created-at-utc "$created_at"; then
               failures+=("${market}:seal")
               echo "::error::${market} canonical decision seal failed"
-              git reset -- data/research/strategy_signal_ledgers >/dev/null 2>&1 || true
               echo "::endgroup::"
               continue
             fi
 
-            # Private CAS must succeed before any public mirror publication.
+            # Private authority must be durable before the successful workflow handoff.
             uv run alpha ops private-ledgers persist --receipt "$RUNNER_TEMP/private-ledgers.json" || exit 1
-            git add data/research/strategy_signal_ledgers
-            if git diff --cached --quiet; then
-              echo "${market}: canonical decision already sealed"
-            else
-              git commit -m "ops: seal ${model} decision ${signal_date}"
-              if ! git pull --rebase origin main || ! git push origin HEAD:main; then
-                failures+=("${market}:publish")
-                echo "::error::${market} canonical decision publication failed"
-                git rebase --abort >/dev/null 2>&1 || true
-                git reset --hard origin/main >/dev/null 2>&1 || true
-                echo "::endgroup::"
-                continue
-              fi
-            fi
             echo "::endgroup::"
           done
 
@@ -185,6 +168,6 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: ranker-current-target-${{ github.run_id }}
-          path: artifacts/ranker-current-target
+          path: ${{ runner.temp }}/private-ledgers.json
           if-no-files-found: error
           retention-days: 30

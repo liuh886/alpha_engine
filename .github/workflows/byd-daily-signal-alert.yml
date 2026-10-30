@@ -107,19 +107,6 @@ jobs:
         env:
           GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY }}
         run: uv run alpha ops private-ledgers persist --receipt "$RUNNER_TEMP/private-ledgers.json"
-      - name: Commit canonical BYD decision
-        run: |
-          set -euo pipefail
-          git config user.name "AlphaEngine Signal Agent"
-          git config user.email "signal-agent@alphaengine.local"
-          git add data/research/strategy_signal_ledgers
-          if git diff --cached --quiet; then
-            echo "Canonical BYD decision already sealed."
-          else
-            git commit -m "signal: seal BYD v1.3 decision ${{ steps.signal.outputs.signal_date }}"
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi
       - name: Request canonical decision delivery
         env:
           GH_TOKEN: ${{ github.token }}
@@ -142,8 +129,6 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: byd-v1-3-signal-${{ github.run_id }}
-          path: |
-            artifacts/signals/byd_v1_3
-            data/research/strategy_signal_ledgers/byd_v1_3_recovery_event_low_vol_confirmation_v1
+          path: ${{ runner.temp }}/private-ledgers.json
           if-no-files-found: error
           retention-days: 30

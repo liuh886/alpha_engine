@@ -306,14 +306,14 @@ def test_outbox_workflow_triggers_and_fallback_schedule() -> None:
     assert "pull_request" in triggers
     steps = content["jobs"]["deliver"]["steps"]
     names = [step.get("name") for step in steps]
-    assert names.index("Commit append-only delivery receipts") < names.index("Request strategy operations publication") < names.index("Fail after persisting delivery failure evidence")
+    assert names.index("Record private delivery persistence receipt") < names.index("Request strategy operations publication") < names.index("Fail after persisting delivery failure evidence")
     dispatch = next(step for step in steps if step.get("name") == "Request strategy operations publication")
     assert 'event_type: "strategy_operations_publication"' in dispatch["run"]
     assert dispatch["if"] == "inputs.verify_private_state_only != true && (steps.receipts.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')"
-    commit = next(step for step in steps if step.get("name") == "Commit append-only delivery receipts")
-    assert commit["id"] == "receipts"
-    assert 'changed=false' in commit["run"] and 'changed=true' in commit["run"]
-    assert commit["run"].index('git push origin HEAD:main') < commit["run"].index('changed=true')
+    receipt = next(step for step in steps if step.get("name") == "Record private delivery persistence receipt")
+    assert receipt["id"] == "receipts"
+    assert "any_changed" in receipt["run"] and "GITHUB_OUTPUT" in receipt["run"]
+    assert "git " not in receipt["run"]
     uploads = [step for step in steps if str(step.get("uses", "")).startswith("actions/upload-artifact@")]
     assert len(uploads) == 1
     assert uploads[0]["with"]["path"] == "artifacts/signal-delivery-outbox/result.json"
