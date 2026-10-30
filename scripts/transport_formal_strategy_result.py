@@ -139,7 +139,10 @@ def retain_result(
     _require(result.is_dir() and not result.is_symlink() and not results_root.is_symlink())
     with tempfile.TemporaryDirectory(prefix="formal-result-pack-") as temporary:
         archive_path = Path(temporary) / "result.zip"
-        with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        # Sealed reproducible TAR inputs carry Unix epoch mtimes. Clamp only
+        # ZIP headers to its representable range; never touch source bytes/mtime.
+        with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED,
+                             strict_timestamps=False) as archive:
             count = total = 0
             for path in sorted(result.rglob("*")):
                 _require(not path.is_symlink())

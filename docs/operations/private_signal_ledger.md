@@ -172,6 +172,13 @@ does not establish a real production strategy transfer receipt; that acceptance
 requires an eligible strategy run. Do not force retraining or notification to
 manufacture transport acceptance.
 
+Reproducible canonical TAR inputs may retain Unix epoch filesystem timestamps.
+The transport ZIP clamps only its container header timestamps to the ZIP date
+range; source bytes and source filesystem timestamps stay unchanged. Canonical
+dates inside CSV/JSON and their source hashes are never changed. This avoids
+rejecting valid sealed BYD evidence before retention without weakening any
+member/path/size/hash/attempt or fan-in validation.
+
 **Not complete:** production Formal private-transfer acceptance, old public native
 MTM material/historical disclosure inventory, post-cutover public-surface
 negative proofs, entitled/denied/revoked runtime reads and A0–A7 acceptance. The
