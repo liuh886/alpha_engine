@@ -559,6 +559,7 @@ def refresh_selected_pool_prices(
     max_rounds: int = 2,
     full_refresh: bool = False,
     auxiliary_symbols: list[str] | tuple[str, ...] | None = None,
+    full_history_fallback_symbols: tuple[str, ...] = (),
     allow_partial: bool = False,
 ) -> dict[str, Any]:
     """Build one isolated provider through ``cutoff`` for the selected pool.
@@ -587,6 +588,8 @@ def refresh_selected_pool_prices(
         candidates=candidates,
         benchmark=benchmark,
     )
+    if not set(full_history_fallback_symbols).issubset(auxiliaries):
+        raise ValueError("full-history fallback must be scoped to requested auxiliaries")
     required = [*candidates, benchmark, *auxiliaries]
 
     source_dir = Path(source_csv_dir).resolve()
@@ -716,6 +719,22 @@ def refresh_selected_pool_prices(
                 cutoff=cutoff,
                 max_rounds=max_rounds,
             )
+            full_history_fallback = (
+                symbol in full_history_fallback_symbols
+                and response.ok and response.result is not None
+                and response.result.provider == "yfinance"
+            )
+            if full_history_fallback:
+                # Formal auxiliary Yahoo admission requires a complete source
+                # vintage. Never label a seed+tail merge as a full refresh.
+                if fetch_start != start:
+                    response, full_attempts = _fetch_with_retries(
+                        data_router, symbol=symbol, market=market_key,
+                        start=start, cutoff=cutoff, max_rounds=max_rounds,
+                    )
+                    attempt_rows.extend(full_attempts)
+                incremental = False
+                fetch_start = start
             if not response.ok or response.result is None:
                 retained = _retain_stale_source(
                     source_path=source_path,
@@ -747,13 +766,14 @@ def refresh_selected_pool_prices(
                     provider_symbol=response.result.provider_symbol,
                 )
                 fetched = _normalize_frame(response.result.df, symbol=symbol)
-                if incremental and not fetched["date"].eq(pd.Timestamp(cutoff)).any():
+                if (incremental or full_history_fallback) and not fetched["date"].eq(pd.Timestamp(cutoff)).any():
                     retained = _retain_stale_source(
                         source_path=source_path, output_path=output_path,
                         symbol=symbol, market=market_key, start=start,
                         cutoff=cutoff, audit=audit, attempts=attempt_rows,
                     )
-                    assert retained is not None  # incremental requires a ready seed
+                    if retained is None:
+                        raise ValueError("provider response does not reach the requested cutoff")
                     retained["stale_reason"] = "provider_cutoff_incomplete"
                     records.append(retained)
                     continue
@@ -763,6 +783,11 @@ def refresh_selected_pool_prices(
                     start=fetch_start,
                     cutoff=cutoff,
                 )
+                if full_history_fallback and audit.get("status") == "ready":
+                    seeded = _normalize_frame(pd.read_csv(source_path), symbol=symbol)
+                    seeded = seeded.loc[seeded["date"].between(pd.Timestamp(start), pd.Timestamp(cutoff))]
+                    if not set(seeded["date"]).issubset(set(fetched["date"])):
+                        raise ValueError("full-history fallback omits governed observation dates")
                 if incremental:
                     governed = _normalize_frame(
                         pd.read_csv(source_path), symbol=symbol
@@ -847,7 +872,7 @@ def refresh_selected_pool_prices(
                     "symbol": symbol,
                     "action": (
                         "fetched_full_refresh"
-                        if full_refresh
+                        if full_refresh or full_history_fallback
                         else (
                             "fetched_incremental_update"
                             if incremental

@@ -474,6 +474,10 @@ def refresh_selected_pool_prices_v2(
             max_rounds=max_rounds,
             full_refresh=full_refresh,
             auxiliary_symbols=requested_auxiliaries,
+            full_history_fallback_symbols=tuple(
+                symbol for symbol in FORMAL_MARKET_AUXILIARIES.get("cn", ())
+                if str(market).lower() == "cn" and symbol in (requested_auxiliaries or ())
+            ),
             allow_partial=allow_partial,
         )
     except Exception:
