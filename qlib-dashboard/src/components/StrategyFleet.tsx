@@ -17,6 +17,7 @@ import { discoverBenchmarkOptions, declaredBenchmarkDescriptor } from '@/lib/per
 import { isPerformanceDate, performancePeriodStart, positiveNumber, strategyPeriodSummary, type PerformancePeriod } from '@/lib/performancePeriods';
 import type { ReportRow } from '@/lib/types';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
+import { readPerformanceSourceContext, type PerformanceSourceContext } from '@/lib/performanceSourceContext';
 import {
   summarizeStrategySignal,
   type StrategyOperationsSnapshot,
@@ -130,6 +131,8 @@ export function StrategyFleet({
         const payload = await loadRunSection(run, 'performance');
         const rows = (payload as { report?: unknown })?.report;
         if (!Array.isArray(rows)) throw new Error('Performance observations missing');
+        readPerformanceSourceContext((payload as { public_evidence_context?: unknown }).public_evidence_context,
+          rows as ReportRow[], run.manifest, run.evidenceCutoff, run.summary, run.canonicalManifest);
         return [periodEvidenceKey(run), rows as ReportRow[]] as const;
       } catch {
         return [periodEvidenceKey(run), null] as const;
@@ -260,6 +263,7 @@ export function StrategyFleet({
 
             const reportKey = periodEvidenceKey(run);
             const rows = periodReports[reportKey];
+            const sourceReturnWindow = (run.summary.public_evidence_context as PerformanceSourceContext | undefined)?.total_return_window;
             const window = rows ? strategyPeriodSummary(rows, period) : null;
             const requestedStart = performancePeriodStart(run.evidenceCutoff, period);
             const expired = Boolean(period !== 'all' && requestedStart && isPerformanceDate(window?.startDate) && isPerformanceDate(window?.endDate) && window.endDate <= requestedStart);
@@ -274,7 +278,9 @@ export function StrategyFleet({
             const declaredWindow = run.manifest?.comparability_key;
             const provisionalCount = window?.rows.filter(row => row.provisional_mtm === true || row.settlement_status === 'provisional_mtm').length ?? 0;
             const windowLabel = period === 'all'
-              ? `${declaredWindow ? `Declared run window ${declaredWindow.start} – ${declaredWindow.end}` : 'Declared run window unavailable'} · evidence cutoff ${run.evidenceCutoff}`
+              ? sourceReturnWindow
+                ? `Source return window ${sourceReturnWindow.start} – ${sourceReturnWindow.end} · ${sourceReturnWindow.sample_count} return observations · ${sourceReturnWindow.includes_provisional ? 'includes' : 'excludes'} provisional marks · evidence cutoff ${run.evidenceCutoff}`
+                : `${declaredWindow ? `Declared run window ${declaredWindow.start} – ${declaredWindow.end}` : 'Declared run window unavailable'} · evidence cutoff ${run.evidenceCutoff}`
               : window?.startDate ? `${expired ? 'Window expired · ' : periodProblem ? 'Period evidence unavailable · ' : ''}Observed ${window.startDate} – ${window.endDate} · ${window.rows.length} observations${provisionalCount ? ` (${provisionalCount} provisional)` : ''} · evidence cutoff ${run.evidenceCutoff}`
                 : reportKey in periodReports ? 'Period evidence unavailable' : 'Loading period evidence';
             const declared = rows ? declaredBenchmarkDescriptor(rows, run.benchmark) : null;

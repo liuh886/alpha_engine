@@ -60,7 +60,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function MetricCard({ metricId, metrics, dateRange }: { metricId: string; metrics: CanonicalMetricV2[]; dateRange?: { start: string; end: string } }) {
+function MetricCard({ metricId, metrics, dateRange, sourceWindow }: { metricId: string; metrics: CanonicalMetricV2[]; dateRange?: { start: string; end: string }; sourceWindow?: boolean }) {
   const metric = metricById(metrics, metricId);
   const available = metric?.availability_status === 'available' && metric.value !== null;
   const scopedWindow = metric?.scope && metric.scope !== 'accepted_formal_source_observed_window'
@@ -80,7 +80,7 @@ function MetricCard({ metricId, metrics, dateRange }: { metricId: string; metric
             ? `Published source metric${metric?.sample_count != null ? ` · ${metric.sample_count.toLocaleString()} observations` : ''}${scopedWindow}`
             : metric?.unavailable_reason || 'The evidence contract does not declare this metric.'}
         </p>
-        {dateRange && <p className="mt-1 text-[10px] text-muted-foreground">Declared run window: {dateRange.start} → {dateRange.end}</p>}
+        {dateRange && <p className="mt-1 text-[10px] text-muted-foreground">{sourceWindow ? 'Verified source window' : 'Declared run window'}: {dateRange.start} → {dateRange.end}</p>}
       </CardContent>
     </Card>
   );
@@ -416,6 +416,8 @@ export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
   const nonProvisional = evidence.performance.report.filter(row => row.provisional_mtm !== true && row.settlement_status !== 'provisional_mtm');
   const provisionalCount = evidence.performance.report.length - nonProvisional.length;
   const returnCount = metricById(evidence.metrics, 'total_return')?.sample_count;
+  const sourceContext = evidence.performance.sourceContext;
+  const sourceWindow = sourceContext?.total_return_window;
   return (
     <div className="space-y-5" data-testid="formal-backtest-review">
       <section className="flex flex-col gap-4 border-b pb-4 lg:flex-row lg:items-end lg:justify-between">
@@ -441,12 +443,18 @@ export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
       </section>
 
       <section className="space-y-1 text-xs text-muted-foreground" aria-label="Published metric scope">
-        <h3 className="font-semibold text-foreground">Published source metrics · {evidence.performance.dateRange.start} → {evidence.performance.dateRange.end} · {returnCount == null ? 'source return count undeclared' : `${returnCount} source return observations`}</h3>
+        <h3 className="font-semibold text-foreground">Published source metrics · {sourceWindow?.start ?? evidence.performance.dateRange.start} → {sourceWindow?.end ?? evidence.performance.dateRange.end} · {returnCount == null ? 'source return count undeclared' : `${returnCount} source return observations`}</h3>
+        {sourceContext && <p>Source opening wealth {sourceContext.opening_account.toFixed(4)} at {sourceContext.opening_date}; first settlement {sourceContext.first_observation_date}. Total-return source window {sourceWindow?.includes_provisional ? 'includes' : 'excludes'} provisional marks. Source cutoff {sourceContext.evidence_cutoff}.</p>}
         <p>The declared run window does not identify every metric's observation set. Each source metric retains its own sample count and scope; the chart below compares selected wealth observations with its own anchor.</p>
         <p>Retained chart trace: {evidence.performance.report.length} wealth observations · {nonProvisional.length} non-provisional{nonProvisional.length ? ` through ${effectivePerformanceDate(nonProvisional[nonProvisional.length - 1])}` : ''} · {provisionalCount} provisional (unsettled marks). Inclusion in a source metric follows that metric's declared scope; the run cutoff alone does not establish its last completed interval.</p>
       </section>
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" aria-label="Formal backtest headline metrics">
-        {SUMMARY_METRICS.map((metricId) => <MetricCard key={metricId} metricId={metricId} metrics={evidence.metrics} dateRange={evidence.performance.dateRange} />)}
+        {SUMMARY_METRICS.map((metricId) => {
+          const metric = metricById(evidence.metrics, metricId);
+          const matchesSourceWindow = Boolean(sourceWindow && metric?.sample_count === sourceWindow.sample_count && metric.scope === sourceWindow.scope);
+          return <MetricCard key={metricId} metricId={metricId} metrics={evidence.metrics}
+            dateRange={matchesSourceWindow ? sourceWindow : evidence.performance.dateRange} sourceWindow={matchesSourceWindow} />;
+        })}
       </section>
 
       <Tabs defaultValue="performance" className="w-full">

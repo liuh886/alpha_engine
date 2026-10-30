@@ -69,6 +69,32 @@ def test_public_formal_runs_have_zero_operational_leakage(synced_public_assets: 
             assert '"target_weights"' not in text, f"Forbidden 'target_weights' found in {path}"
 
 
+def test_us_wealth_context_binds_original_source_and_preserves_economics(synced_public_assets: Path) -> None:
+    canonical_root = REPO_ROOT / "data/research/formal_model_runs"
+    catalog = json.loads((canonical_root / "catalog.json").read_text())
+    source_record = next(r for r in catalog["records"] if r["model_version_id"] == "us_x1_3")
+    source_directory = (canonical_root / source_record["manifest_path"]).parent
+    source_manifest = json.loads((source_directory / "manifest.json").read_text())
+    source = json.loads((source_directory / "performance.json").read_text())
+    public = json.loads((synced_public_assets / "formal-model-runs" / Path(source_record["manifest_path"]).parent / "performance.json").read_text())
+    context = public["public_evidence_context"]
+    assert context["canonical_bundle_id"] == source_record["bundle_id"]
+    assert context["canonical_manifest_sha256"] == source_record["manifest_sha256"]
+    for field, section_id in (("source_performance_sha256", "performance"), ("source_summary_sha256", "summary")):
+        section = next(s for s in source_manifest["sections"] if s["section_id"] == section_id)
+        assert context[field] == section["sha256"]
+    assert len(public["report"]) == len(source["report"])
+    for index, row in enumerate(source["report"]):
+        assert all(public["report"][index][key] == value for key, value in row.items())
+        assert set(public["report"][index]) - set(row) <= ({"account_before", "bench_qqq_before"} if index == 0 else set())
+    first = source["report"][0]
+    assert context["opening_account"] == pytest.approx(first["account"] / (1 + first["period_return"]))
+    settled = [row for row in source["report"] if not row.get("provisional_mtm") and row.get("settlement_status") != "provisional_mtm"]
+    assert context["total_return_window"]["sample_count"] == len(settled)
+    assert context["total_return_window"]["end"] == settled[-1]["holding_end_date"]
+    assert context["wealth_observation_count"] == len(source["report"])
+
+
 def test_cn_27_historical_projection_identity_contract(synced_public_assets: Path) -> None:
     """CN_27 public asset must declare projection contract and bind to canonical source."""
     catalog_path = synced_public_assets / "formal-model-runs" / "catalog.json"
