@@ -377,6 +377,9 @@ def test_private_git_archive_is_commit_and_digest_bound(monkeypatch, tmp_path, c
         if command[1] == "show":
             assert command[2] == f"{binding.commit}:{binding.path}"
             kwargs["stdout"].write(b"tampered" if corrupt else payload)
+        if command[1] == "cat-file":
+            from types import SimpleNamespace
+            return SimpleNamespace(stdout=str(len(payload)).encode())
 
     monkeypatch.setattr("src.data.governed_actions_artifact.subprocess.run", run)
     destination = tmp_path / "archive.zip"
@@ -386,7 +389,7 @@ def test_private_git_archive_is_commit_and_digest_bound(monkeypatch, tmp_path, c
     else:
         _download_durable_git(archive=binding, destination=destination, ssh_key="PRIVATE MATERIAL")
         assert destination.read_bytes() == payload
-    assert calls[1][-1] == binding.commit
+    assert next(call for call in calls if call[1] == "fetch")[-1] == binding.commit
 
 
 def test_receipt_contract_stays_json_serializable() -> None:

@@ -597,8 +597,8 @@ def test_formal_refresh_fans_out_and_fans_in_preview_v2_atomically() -> None:
     assert "if: needs.plan.outputs.refresh_required == 'true'" in workflow
     assert workflow.count("fail-fast: false") >= 2
     assert "uv run python scripts/run_formal_strategy_refresh.py" in workflow
-    assert "pattern: formal-strategy-*-${{ github.run_id }}" in workflow
-    download_start = workflow.index("      - name: Download all strategy results")
+    assert "pattern: formal-strategy-*-${{ github.run_id }}-attempt-${{ github.run_attempt }}" in workflow
+    download_start = workflow.index("      - name: Download private strategy result bindings")
     download_end = workflow.index("      - name: Atomically fan in", download_start)
     assert (
         "if: needs.plan.outputs.refresh_required == 'true'"
@@ -622,7 +622,7 @@ def test_formal_refresh_yaml_contains_no_model_execution_recipe() -> None:
 
 def test_strategy_results_are_uploaded_after_failure_unless_cancelled() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(encoding="utf-8")
-    start = workflow.index("      - name: Upload bounded strategy receipt and evidence")
+    start = workflow.index("      - name: Upload private strategy result binding")
     end = workflow.index("\n\n  publish:", start)
     block = workflow[start:end]
     assert "if: ${{ !cancelled() }}" in block
@@ -639,7 +639,7 @@ def test_transfer_artifacts_remain_overwritable_but_observations_preserve_attemp
         ("Transfer verified provider", 7),
         ("Upload failed provider diagnostics", 7),
         ("Upload immutable plan", 7),
-        ("Upload bounded strategy receipt and evidence", 30),
+        ("Upload private strategy result binding", 30),
         ("Upload bounded refresh evidence", 90),
     )
     assert workflow.count("uses: actions/upload-artifact@v6") == len(upload_contracts)
@@ -649,10 +649,11 @@ def test_transfer_artifacts_remain_overwritable_but_observations_preserve_attemp
         block = workflow[start : next_start if next_start >= 0 else None]
         assert "uses: actions/upload-artifact@v6" in block, (index, name)
         assert "github.run_id" in block, (index, name)
-        if name == "Upload bounded refresh evidence":
+        if name in {"Upload bounded refresh evidence", "Upload private strategy result binding"}:
             assert "overwrite: false" in block
             assert "github.run_attempt" in block
-            assert "operating-observation.json" in block
+            if name == "Upload bounded refresh evidence":
+                assert "operating-observation.json" in block
         else:
             assert "overwrite: true" in block, (index, name)
         assert f"retention-days: {retention_days}" in block, (index, name)
@@ -803,7 +804,7 @@ def test_publish_validates_upstream_artifacts_before_installing_environments() -
             "Download verified US provider",
             "Download verified CN provider",
             "Download immutable plan",
-            "Download all strategy results",
+            "Download private strategy result bindings",
         )
     )
     setup_python = publish.index("      - uses: ./.github/actions/setup-python-uv")

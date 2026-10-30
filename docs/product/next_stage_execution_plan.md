@@ -126,4 +126,30 @@ The CN27 formal builder already strips embedded runtime state; current and histo
 
 公开边界后续切换移除四个 producer / Outbox 的 Git 镜像及四活动账本当前树，详细信号不再打印到 stdout，producer / Operations 上传范围限定为元数据。旧密封经济轨迹保持；未来 MTM lineage 仅带私有输入引用，不复制当前权重。Formal 跨 job 原始 artifact、旧原生 MTM 内容及历史暴露、真实匿名/权限负验证仍待完成，不能据此宣布 A4 PASS。
 
-实现与恢复约束见 [私有账本运行手册](../operations/private_signal_ledger.md)。代码/测试、真实 SSH probe、四策略实际运行连续性分别记录，不互相替代。公开镜像与其余 raw artifact 必须在后续独立 PR 撤下；G0/A4 尚未通过。#1315 的源级收益一致性与 #1324 的 RDI 价格更新可以按各自评论并行，不扩大为 UI 重设计、事件补零或正式信号。
+实现与恢复约束见 [私有账本运行手册](../operations/private_signal_ledger.md)。代码/测试、真实 SSH probe、四策略实际运行连续性分别记录，不互相替代。#1315 的源级收益一致性与 #1324 的 RDI 价格更新可以按各自评论并行，不扩大为 UI 重设计、事件补零或正式信号。
+
+## 8. Forward cutover and Formal private transfer (2026-10-30)
+
+#1328 merged as `66243fa646873db3b10e59fdeacfa47c06ba071f`. Four active public
+ledger subtrees and their mirror writers were removed after preserving all 267
+files privately. Anonymous Raw/Contents checks on main and the exact merge SHA
+returned 404 for all 16 active-latest requests. Post-cutover US/CN/Operations/
+Outbox runs succeeded; their inspected public artifacts contain metadata only.
+These proofs do not cover old Git history, all historical artifacts or real
+entitled/denied/revoked reads; A4 remains FAIL.
+
+The next implementation replaces the Formal cross-job raw strategy-result
+upload with immutable members in the **same existing private archive**. Public
+artifacts carry only exact run/attempt/code/plan/task/archive bindings. Restore
+must finish for all required siblings before the unchanged atomic fan-in reads
+them. Failed evidence is retained, not converted into a successful result.
+Local concurrency and negative tests are implementation evidence; real eligible
+strategy transfer remains NOT_TESTED until a production receipt exists. No new
+registry, database, evaluator, workflow or scheduler is introduced.
+
+Separate operating blocker: Formal run `41043423440` passed private prepare and
+US provider work but CN publication failed closed: the 515180 Yahoo record was
+an incremental update through 2026-10-30, while its existing fallback admission
+requires `fetched_full_refresh`. Neither the action nor the admission gate may
+be relabeled to pass. Investigate exact source/provider/basis continuity in a
+separate scoped fix; no new Formal candidate was published by that run.
