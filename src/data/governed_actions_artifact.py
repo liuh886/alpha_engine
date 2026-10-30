@@ -418,14 +418,25 @@ def _private_git_environment(ssh_key: str) -> Iterator[tuple[Path, dict[str, str
 
 def _download_durable_git(*, archive: DurableGitArchive, destination: Path, ssh_key: str) -> None:
     """Read exact bytes with a repository-scoped read-only deploy key, no PAT."""
+    if (not _REPOSITORY.fullmatch(archive.repository) or not re.fullmatch(r"[0-9a-f]{40}", archive.commit)
+            or not _safe_relative(archive.path) or not _SHA256.fullmatch(archive.sha256)
+            or not 0 < archive.size_bytes <= 90 * 1024 * 1024):
+        raise GovernedActionsArtifactError("invalid private archive binding")
     with _private_git_environment(ssh_key) as (repository, env):
         commands = [
             ["git", "init", "--quiet"],
-            ["git", "fetch", "--quiet", "--depth=1", f"ssh://git@ssh.github.com:443/{archive.repository}.git", archive.commit],
+            ["git", "remote", "add", "origin", _private_archive_remote(archive.repository)],
+            ["git", "config", "remote.origin.promisor", "true"],
+            ["git", "config", "remote.origin.partialclonefilter", "blob:none"],
+            ["git", "fetch", "--quiet", "--filter=blob:none", "--depth=1", "origin", archive.commit],
         ]
         try:
             for command in commands:
                 subprocess.run(command, cwd=repository, env=env, check=True, capture_output=True, timeout=120)
+            size = subprocess.run(["git", "cat-file", "-s", f"{archive.commit}:{archive.path}"],
+                cwd=repository, env=env, check=True, capture_output=True, timeout=120).stdout
+            if int(size) != archive.size_bytes:
+                raise GovernedActionsArtifactError("private Git archive size or digest mismatch")
             with destination.open("wb") as handle:
                 subprocess.run(["git", "show", f"{archive.commit}:{archive.path}"], cwd=repository, env=env, check=True, stdout=handle, stderr=subprocess.PIPE, timeout=120)
         except (subprocess.SubprocessError, OSError) as exc:
@@ -434,38 +445,69 @@ def _download_durable_git(*, archive: DurableGitArchive, destination: Path, ssh_
         raise GovernedActionsArtifactError("private Git archive size or digest mismatch")
 
 
+def _private_archive_remote(repository: str) -> str:
+    return f"ssh://git@ssh.github.com:443/{repository}.git"
+
+
+def _archive_git(worktree: Path, env: dict[str, str], *args: str) -> str:
+    try:
+        result = subprocess.run(["git", "-c", f"core.hooksPath={worktree / 'no-hooks'}", *args],
+            cwd=worktree, env=env, check=True, capture_output=True, timeout=180)
+        return result.stdout.decode().strip()
+    except (subprocess.SubprocessError, OSError):
+        raise GovernedActionsArtifactError("private archive Git operation failed") from None
+
+
 def retain_private_archive(*, repository: str, member: str, archive_path: Path, ssh_key: str) -> dict[str, Any]:
     """Append one source archive using a key scoped only to the private archive repo."""
-    if not _REPOSITORY.fullmatch(repository) or not _safe_relative(member) or not member.startswith("archives/"):
+    if (not _REPOSITORY.fullmatch(repository) or not _safe_relative(member)
+            or not re.fullmatch(r"archives/[A-Za-z0-9_./-]+", member)):
         raise GovernedActionsArtifactError("invalid private archive destination")
     if not archive_path.is_file() or archive_path.stat().st_size > 90 * 1024 * 1024:
         raise GovernedActionsArtifactError("source archive missing or exceeds private Git size limit")
-    digest = _sha256(archive_path)
     with _private_git_environment(ssh_key) as (worktree, env):
-        remote = f"ssh://git@ssh.github.com:443/{repository}.git"
+        remote = _private_archive_remote(repository)
+        # Freeze bytes once. Concurrency retries append this same immutable member;
+        # they never replay a producer or retry the mutable ledger CAS protocol.
+        captured = worktree.parent / "captured.zip"
+        shutil.copyfile(archive_path, captured)
+        size = captured.stat().st_size
+        if not 0 < size <= 90 * 1024 * 1024:
+            raise GovernedActionsArtifactError("source archive exceeds private Git size limit")
+        digest = _sha256(captured)
 
         def git(*args: str) -> str:
-            try:
-                result = subprocess.run(["git", *args], cwd=worktree, env=env, check=True, capture_output=True, timeout=180)
-                return result.stdout.decode().strip()
-            except (subprocess.SubprocessError, OSError) as exc:
-                raise GovernedActionsArtifactError(f"private archive append failed: {type(exc).__name__}") from None
+            return _archive_git(worktree, env, *args)
 
         git("init", "--quiet")
-        git("fetch", "--quiet", "--depth=1", remote, "main")
-        git("checkout", "--quiet", "-b", "archive-upload", "FETCH_HEAD")
-        target = worktree / member
-        if target.exists():
-            if _sha256(target) != digest:
-                raise GovernedActionsArtifactError("refusing to replace an existing private source archive")
-        else:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(archive_path, target)
-            git("add", "--", member)
-            git("-c", "user.name=Alpha Engine Research", "-c", "user.email=research@alphaengine.local", "-c", f"core.hooksPath={worktree / 'no-hooks'}", "commit", "--quiet", "-m", f"Retain source evidence {member}")
-            git("push", "--quiet", remote, "HEAD:refs/heads/main")
-        commit = git("rev-parse", "HEAD")
-    return {"repository": repository, "commit": commit, "path": member, "sha256": digest, "size_bytes": archive_path.stat().st_size}
+        git("remote", "add", "origin", remote)
+        git("config", "remote.origin.promisor", "true")
+        git("config", "remote.origin.partialclonefilter", "blob:none")
+        for attempt in range(5):
+            git("fetch", "--quiet", "--filter=blob:none", "--depth=1", "origin", "main")
+            parent = git("rev-parse", "FETCH_HEAD")
+            blob = git("hash-object", "-w", str(captured))
+            existing = git("ls-tree", parent, "--", member)
+            if existing:
+                if existing != f"100644 blob {blob}\t{member}":
+                    raise GovernedActionsArtifactError("refusing to replace an existing private source archive")
+                commit = parent
+                break
+            git("read-tree", parent)
+            git("update-index", "--add", "--cacheinfo", f"100644,{blob},{member}")
+            tree = git("write-tree")
+            commit = git("-c", "user.name=Alpha Engine Research", "-c", "user.email=research@alphaengine.local",
+                "commit-tree", tree, "-p", parent, "-m", f"Retain source evidence {member}")
+            try:
+                git("push", "--quiet", "origin", f"{commit}:refs/heads/main")
+                break
+            except GovernedActionsArtifactError:
+                git("fetch", "--quiet", "--filter=blob:none", "--depth=1", "origin", "main")
+                if git("rev-parse", "FETCH_HEAD") == parent or attempt == 4:
+                    raise GovernedActionsArtifactError("private archive append failed or concurrency budget exhausted") from None
+        else:  # pragma: no cover - bounded loop either returns or raises
+            raise GovernedActionsArtifactError("private archive concurrency budget exhausted")
+    return {"repository": repository, "commit": commit, "path": member, "sha256": digest, "size_bytes": size}
 
 
 def _safe_extract(source: GovernedSource, archive: Path, destination: Path) -> None:

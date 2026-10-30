@@ -60,6 +60,7 @@ on:
       - "src/research/xgb_ranker_explainability.py"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/run_formal_strategy_refresh.py"
+      - "scripts/transport_formal_strategy_result.py"
       - "scripts/build_market_evidence.py"
       - "scripts/build_us_x1_3_preview.py"
       - "scripts/build_cn_x1_2_prospective_ledger.py"
@@ -110,6 +111,7 @@ on:
       - "tests/test_system_health.py"
       - "tests/test_model_data_bundle.py"
       - "tests/test_governed_actions_artifact.py"
+      - "tests/test_formal_result_transport.py"
       - "tests/test_repository_research_store.py"
       - "tests/test_sync_formal_bundle_v2.py"
       - "tests/test_us_x1_3_preview_publication.py"
@@ -249,6 +251,7 @@ jobs:
             src/research/market_session_clock.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py \
+            scripts/transport_formal_strategy_result.py \
             scripts/data/resolve_formal_provider_cutoff.py \
             scripts/data/fetch_governed_model_data.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
@@ -280,6 +283,7 @@ jobs:
             tests/test_formal_provider_cache.py \
             tests/test_market_evidence.py \
             tests/test_governed_actions_artifact.py \
+            tests/test_formal_result_transport.py \
             tests/test_model_data_bundle.py \
             tests/test_refresh_selected_pool_prices_v2.py \
             tests/test_selected_pool_price_publication.py
@@ -295,7 +299,8 @@ jobs:
             scripts/data/resolve_formal_provider_cutoff.py \
             scripts/data/fetch_governed_model_data.py \
             scripts/run_formal_refresh_transaction.py \
-            scripts/run_formal_strategy_refresh.py
+            scripts/run_formal_strategy_refresh.py \
+            scripts/transport_formal_strategy_result.py
           uv run pytest \
             tests/test_active_strategy_catalog.py \
             tests/test_strategy_runtime_capabilities.py \
@@ -320,6 +325,7 @@ jobs:
             tests/test_formal_provider_cache.py \
             tests/test_market_evidence.py \
             tests/test_governed_actions_artifact.py \
+            tests/test_formal_result_transport.py \
             tests/test_model_data_bundle.py \
             tests/test_refresh_selected_pool_prices_v2.py \
             tests/test_selected_pool_price_publication.py \
@@ -357,6 +363,7 @@ jobs:
             scripts/build_market_evidence.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/run_formal_strategy_refresh.py \
+            scripts/transport_formal_strategy_result.py \
             scripts/ranker_provisional_mtm.py \
             scripts/govern_formal_provider_cache.py \
             scripts/data/refresh_selected_pool_prices.py \
@@ -403,6 +410,7 @@ jobs:
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
             tests/test_governed_actions_artifact.py \
+            tests/test_formal_result_transport.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_sync_formal_bundle_v2.py \
@@ -427,7 +435,8 @@ jobs:
             scripts/data/fetch_governed_model_data.py \
             scripts/data/resolve_formal_provider_cutoff.py \
             scripts/run_formal_refresh_transaction.py \
-            scripts/run_formal_strategy_refresh.py
+            scripts/run_formal_strategy_refresh.py \
+            scripts/transport_formal_strategy_result.py
           uv run pytest \
             tests/test_active_strategy_catalog.py \
             tests/test_strategy_runtime_capabilities.py \
@@ -459,6 +468,7 @@ jobs:
             tests/test_strategy_operations.py \
             tests/test_system_health.py \
             tests/test_governed_actions_artifact.py \
+            tests/test_formal_result_transport.py \
             tests/test_model_data_bundle.py \
             tests/test_repository_research_store.py \
             tests/test_us_x1_3_preview_publication.py \

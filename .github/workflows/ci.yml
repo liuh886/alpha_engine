@@ -104,6 +104,7 @@ jobs:
           src/artifacts/private_signal_ledger.py
           tests/test_private_signal_ledger.py
           tests/test_private_ledger_workflows.py
+          tests/test_formal_result_transport.py
           tests/test_signal_publication_boundary.py
           tests/test_strategy_signal_checkpoint.py
           src/artifacts/system_health.py
@@ -114,6 +115,7 @@ jobs:
           scripts/run_research_experiment.py
           scripts/run_active_research_experiments.py
           scripts/run_formal_refresh_transaction.py
+          scripts/transport_formal_strategy_result.py
           scripts/verify_rules_formal_replay.py
           scripts/refresh_ranker_formal.py
           scripts/build_cn_x1_2_prospective_ledger.py
@@ -222,6 +224,7 @@ jobs:
           tests/test_strategy_signal_checkpoint.py
           tests/test_private_signal_ledger.py
           tests/test_private_ledger_workflows.py
+          tests/test_formal_result_transport.py
           tests/test_signal_publication_boundary.py
           tests/test_model_run_decision.py
           tests/test_t47_drift_monitor.py

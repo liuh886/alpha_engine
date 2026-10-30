@@ -127,7 +127,52 @@ Existing Git history and nonactive historical model subtrees remain. The active
 registry still declares local hydrated paths; those paths are not a public
 fallback and may be absent in a clean public checkout.
 
-**Not complete:** Formal cross-job raw artifact transport, old public native
+## Formal result transport
+
+The Formal strategy job retains its complete result directory, including failed
+receipts and source inputs, in the same private archive. It does not upload the
+directory to public Actions artifacts. The only public transfer is
+`<strategy_id>/archive-binding.json`; it contains fixed identities, hashes, size
+and the exact private commit/member, never a receipt reason or source payload.
+
+The immutable member is
+`archives/formal-strategy-results/<run_id>/attempt-<attempt>/<strategy_id>.zip`.
+Bindings require the exact workflow run, code revision, plan bytes, task hash
+and active model identity. Restore reads that commit and verifies compressed
+size/SHA before bounded extraction. Every required sibling must validate before
+the assembled directory appears; the original Formal atomic fan-in then checks
+receipt states and preview evidence without changes. Failed receipts remain
+failed, and retained/data-blocked evidence keeps its existing degraded semantics.
+Missing results, malformed ZIPs, unavailable keys or changed same-member content
+stop publication; there is no public artifact or latest-success fallback.
+
+Only the **current attempt** is accepted. Both archive members and public
+binding artifact names retain their producing attempt; neither is overwritten.
+An older successful or data-blocked binding cannot hide a retry that failed
+before uploading new evidence. `Rerun failed jobs` may therefore stop on missing
+siblings; recovery requires **Rerun all jobs** or a new normal workflow run.
+This conservative boundary avoids a second job-provenance API/state layer. Do
+not force expensive research solely for acceptance: use the next eligible run
+when replay is not operationally required. A new attempt can retain different
+evidence without overwriting the old member.
+
+Four strategy jobs may append different immutable members concurrently. The
+existing archive helper freezes each ZIP once, builds a tree from current private
+main without checking out unrelated datasets, and uses fast-forward-only pushes.
+It retries at most five times only when a rejected push observes a moved remote
+head; all sibling changes remain in each new parent. An unchanged remote head
+fails immediately. An existing member must have identical bytes. This bounded
+append retry **does not apply to mutable signal-ledger CAS**, which continues to
+reject stale state and requires explicit authoritative restoration.
+
+Local Git integration tests cover four concurrent writers, exact-byte restore,
+same-member conflicts, unchanged-head write denial, sibling ledger updates,
+malformed bindings/ZIPs and original fan-in failure/degradation behavior. This
+does not establish a real production strategy transfer receipt; that acceptance
+requires an eligible strategy run. Do not force retraining or notification to
+manufacture transport acceptance.
+
+**Not complete:** production Formal private-transfer acceptance, old public native
 MTM material/historical disclosure inventory, post-cutover public-surface
 negative proofs, entitled/denied/revoked runtime reads and A0–A7 acceptance. The
 four producers, Outbox and Operations ran successfully after #1326/#1327; this
