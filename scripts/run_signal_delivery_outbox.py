@@ -12,9 +12,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from src.artifacts.strategy_signal_ledger import (
     TERMINAL_DELIVERY_STATUSES,
@@ -204,7 +204,13 @@ def drain_outbox(
     created_at_utc: str,
     telegram_token: str | None,
     telegram_chat_id: str | None,
+    persist: Callable[[], None] | None = None,
 ) -> list[DeliveryResult]:
+    def record_delivery(**kwargs: Any) -> None:
+        _record(**kwargs)
+        if persist is not None:
+            persist()
+
     results: list[DeliveryResult] = []
     for strategy in load_active_strategy_catalog().strategies:
         ledger = Path(strategy.signal_ledger)
@@ -256,7 +262,7 @@ def drain_outbox(
             )
             continue
         if signal.get("should_alert") is not True:
-            _record(
+            record_delivery(
                 ledger=ledger,
                 model=strategy.model_version_id,
                 signal=signal,
@@ -280,7 +286,7 @@ def drain_outbox(
         issue = _existing_issue(repository, marker)
         if issue is not None and prior_status == "pending":
             error = "ambiguous_external_delivery_state"
-            _record(
+            record_delivery(
                 ledger=ledger,
                 model=strategy.model_version_id,
                 signal=signal,
@@ -302,12 +308,20 @@ def drain_outbox(
                 )
             )
             continue
+        if persist is not None:
+            # Persist an ambiguity fence BEFORE the first external side effect.
+            # If final persistence fails, recovery must not blindly resend.
+            claim_time = (datetime.fromisoformat(created_at_utc.replace("Z", "+00:00"))
+                          - timedelta(microseconds=1)).isoformat().replace("+00:00", "Z")
+            record_delivery(ledger=ledger, model=strategy.model_version_id, signal=signal,
+                status="failed", issue=issue, error="ambiguous_external_delivery_state",
+                workflow_run_id=f"{workflow_run_id}-claim", commit_sha=commit_sha, created_at_utc=claim_time)
         if issue is None:
             try:
                 issue = _create_issue(repository, title, body)
             except (subprocess.CalledProcessError, RuntimeError):
                 error = "github_issue_delivery_failed"
-                _record(
+                record_delivery(
                     ledger=ledger,
                     model=strategy.model_version_id,
                     signal=signal,
@@ -329,7 +343,7 @@ def drain_outbox(
                 continue
 
         if not telegram_token or not telegram_chat_id:
-            _record(
+            record_delivery(
                 ledger=ledger,
                 model=strategy.model_version_id,
                 signal=signal,
@@ -354,7 +368,7 @@ def drain_outbox(
             message = _send_telegram(telegram_token, telegram_chat_id, telegram_text)
         except RuntimeError as exc:
             error = str(exc)
-            _record(
+            record_delivery(
                 ledger=ledger,
                 model=strategy.model_version_id,
                 signal=signal,
@@ -377,7 +391,7 @@ def drain_outbox(
             )
             continue
 
-        _record(
+        record_delivery(
             ledger=ledger,
             model=strategy.model_version_id,
             signal=signal,
@@ -408,7 +422,20 @@ def main() -> int:
     parser.add_argument("--commit-sha", required=True)
     parser.add_argument("--created-at-utc", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--private-ledger-receipt", type=Path, help="Require private CAS persistence before/after transport.")
     args = parser.parse_args()
+
+    persist = None
+    if args.private_ledger_receipt:
+        from src.artifacts.private_signal_ledger import persist_private_ledgers, save_receipt
+
+        def persist() -> None:
+            receipt = json.loads(args.private_ledger_receipt.read_bytes())
+            updated = persist_private_ledgers(root=Path("data/research/strategy_signal_ledgers"),
+                catalog=Path("configs/strategies/registry.json"),
+                ssh_key=os.environ.get("GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY", ""),
+                base=receipt, code_revision=args.commit_sha)
+            save_receipt(args.private_ledger_receipt, updated)
 
     results = drain_outbox(
         repository=args.repository,
@@ -417,6 +444,7 @@ def main() -> int:
         created_at_utc=args.created_at_utc,
         telegram_token=os.getenv("TELEGRAM_BOT_TOKEN") or None,
         telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID") or None,
+        persist=persist,
     )
     payload = {
         "schema_version": "strategy_delivery_outbox_v1",

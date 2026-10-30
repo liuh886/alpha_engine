@@ -221,6 +221,14 @@ def _build_parser() -> argparse.ArgumentParser:
     ops = groups.add_parser("ops", help="Record decisions and publish current strategy state.")
     ops_commands = ops.add_subparsers(dest="ops_command", required=True)
 
+    private = ops_commands.add_parser("private-ledgers", help="Restore or CAS-persist canonical ledgers in the existing private archive.")
+    private.add_argument("operation", choices=("restore", "persist"))
+    private.add_argument("--ledger-root", type=Path, default=Path("data/research/strategy_signal_ledgers"))
+    private.add_argument("--strategy-catalog", type=Path, default=DEFAULT_STRATEGY_CATALOG)
+    private.add_argument("--receipt", type=Path, required=True, help="Transport metadata outside the repository.")
+    private.add_argument("--revision", help="Restore an exact private Git SHA (otherwise current private main).")
+    private.add_argument("--github-output", type=Path)
+
     checkpoint = ops_commands.add_parser(
         "checkpoint-ledgers", help="Create or verify/restore a protected, lossless canonical ledger checkpoint.",
     )
@@ -568,6 +576,40 @@ def main(argv: Sequence[str] | None = None) -> int:
                 root=root,
                 db_path=_resolve(root, args.output),
             )
+        elif args.group == "ops" and args.ops_command == "private-ledgers":
+            import os
+            import subprocess
+            import zipfile
+            import zlib
+            from src.artifacts.private_signal_ledger import (
+                PrivateLedgerError, persist_private_ledgers, restore_private_ledgers, save_receipt,
+            )
+            from src.artifacts.strategy_signal_checkpoint import SignalCheckpointError
+            from src.artifacts.strategy_signal_ledger import StrategySignalLedgerError
+            from src.data.governed_actions_artifact import GovernedActionsArtifactError
+
+            errors += (PrivateLedgerError, SignalCheckpointError, StrategySignalLedgerError,
+                       GovernedActionsArtifactError, zipfile.BadZipFile, zlib.error, subprocess.CalledProcessError)
+            receipt_path = _resolve(root, args.receipt).resolve()
+            if receipt_path.is_relative_to(root):
+                raise PrivateLedgerError("private ledger transport receipt must be outside the repository")
+            catalog = _resolve(root, args.strategy_catalog)
+            ledger_root = _resolve(root, args.ledger_root)
+            if args.operation == "restore":
+                payload = restore_private_ledgers(root=ledger_root, catalog=catalog,
+                    ssh_key=os.environ.get("GOVERNED_SOURCE_ARCHIVE_SSH_KEY", ""), revision=args.revision)
+            else:
+                if args.revision:
+                    raise PrivateLedgerError("persist uses the restored receipt; a revision override is not allowed")
+                revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, check=True, capture_output=True, text=True).stdout.strip()
+                payload = persist_private_ledgers(root=ledger_root, catalog=catalog,
+                    ssh_key=os.environ.get("GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY", ""),
+                    base=json.loads(receipt_path.read_bytes()), code_revision=revision)
+            save_receipt(receipt_path, payload)
+            if args.github_output:
+                with args.github_output.open("a", encoding="utf-8") as handle:
+                    for key in ("private_commit", "archive_sha256"):
+                        handle.write(f"{key}={payload[key]}\n")
         elif args.group == "ops" and args.ops_command == "checkpoint-ledgers":
             import subprocess
             import zipfile

@@ -77,6 +77,7 @@ jobs:
           uv run alpha research study run --help
           uv run alpha racetrack publish --help
           uv run alpha ops checkpoint-ledgers --help
+          uv run alpha ops private-ledgers --help
       - name: Ruff researcher data paths
         run: >-
           uv run ruff check

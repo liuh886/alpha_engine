@@ -62,10 +62,18 @@ jobs:
             tests/test_strategy_runtime_capabilities.py \
             tests/test_strategy_signal_ledger.py \
             -q --strict-markers --tb=short
+      - name: Restore authoritative private ledgers
+        if: github.event_name != 'pull_request'
+        env:
+          GOVERNED_SOURCE_ARCHIVE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_SSH_KEY }}
+        run: >-
+          uv run alpha ops private-ledgers restore
+          --receipt "$RUNNER_TEMP/private-ledgers.json"
       - name: Evaluate CN_27 current target
         if: github.event_name != 'pull_request'
         env:
           EXECUTION_SHA: ${{ steps.source.outputs.sha }}
+          GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY }}
         shell: bash
         run: |
           set -uo pipefail
@@ -119,7 +127,9 @@ jobs:
                 echo "::error::cn_27 canonical decision seal failed"
                 git reset -- data/research/strategy_signal_ledgers >/dev/null 2>&1 || true
               else
-                git add "data/research/strategy_signal_ledgers/$model"
+                # Private CAS must succeed before any public mirror publication.
+                uv run alpha ops private-ledgers persist --receipt "$RUNNER_TEMP/private-ledgers.json" || exit 1
+                git add data/research/strategy_signal_ledgers
                 if git diff --cached --quiet; then
                   echo "cn_27: canonical decision already sealed"
                 else

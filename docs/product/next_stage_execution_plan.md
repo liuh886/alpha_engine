@@ -119,3 +119,9 @@ This is a lossless transport foundation, **not** a live private writer cutover. 
 - Verify authenticated entitled/denied/revoked reads and all four public-surface negatives. Existing public disclosures remain residual risk.
 
 The CN27 formal builder already strips embedded runtime state; current and historical artifact inspection remains separate. Neither checkpoint tests nor a successful private archive readback close G0 or Gate A4. See [the audit](../architecture/current_operations_security_audit_1288.md).
+
+### 6.1 私有生产接线（按 #1322 的 2026-10-30 评论裁决）
+
+下一实现将四个 producer、Formal prepare/plan/strategy/publish、Operations 和 Outbox 接入既有私有 archive 中的同一完整 checkpoint。Git 快进推送提供 CAS，陈旧写入拒绝；Formal 固定私有提交，Operations 缓存绑定私有内容；Outbox 在外部副作用前持久化含糊状态护栏。安装前验证私有种子包含本地/公开密封记录；恢复回滚二次失败保留备份。
+
+实现与恢复约束见 [私有账本运行手册](../operations/private_signal_ledger.md)。代码/测试、真实 SSH probe、四策略实际运行连续性分别记录，不互相替代。公开镜像与其余 raw artifact 必须在后续独立 PR 撤下；G0/A4 尚未通过。#1315 的源级收益一致性与 #1324 的 RDI 价格更新可以按各自评论并行，不扩大为 UI 重设计、事件补零或正式信号。

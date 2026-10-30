@@ -154,6 +154,7 @@ jobs:
       cn_seed_cutoff: ${{ steps.clock.outputs.cn_seed_cutoff }}
       published_us: ${{ steps.published.outputs.us }}
       published_cn: ${{ steps.published.outputs.cn }}
+      private_commit: ${{ steps.private_ledgers.outputs.private_commit }}
     steps:
       - name: Check out triggering revision
         uses: actions/checkout@v6
@@ -191,6 +192,14 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
+      - name: Restore authoritative private ledgers
+        id: private_ledgers
+        env:
+          GOVERNED_SOURCE_ARCHIVE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_SSH_KEY }}
+        run: >-
+          uv run alpha ops private-ledgers restore
+          --receipt "$RUNNER_TEMP/private-ledgers.json"
+          --github-output "$GITHUB_OUTPUT"
       - name: Validate refresh implementation before network work
         run: |
           uv run ruff check \
@@ -617,6 +626,7 @@ jobs:
           fetch-depth: 1
           lfs: false
           sparse-checkout: |
+            .github
             configs
             data/research/formal_model_runs
             data/research/strategy_signal_ledgers
@@ -633,6 +643,14 @@ jobs:
         with:
           name: formal-provider-cn-${{ github.run_id }}
           path: artifacts/formal-refresh/provider-cn
+      - uses: ./.github/actions/setup-python-uv
+      - name: Restore authoritative private ledgers
+        env:
+          GOVERNED_SOURCE_ARCHIVE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_SSH_KEY }}
+        run: >-
+          uv run alpha ops private-ledgers restore
+          --receipt "$RUNNER_TEMP/private-ledgers.json"
+          --revision "${{ needs.prepare.outputs.private_commit }}"
       - name: Build pure active-strategy plan
         id: plan
         env:
@@ -680,6 +698,13 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen
+      - name: Restore authoritative private ledgers
+        env:
+          GOVERNED_SOURCE_ARCHIVE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_SSH_KEY }}
+        run: >-
+          uv run alpha ops private-ledgers restore
+          --receipt "$RUNNER_TEMP/private-ledgers.json"
+          --revision "${{ needs.prepare.outputs.private_commit }}"
       - name: Download strategy provider
         uses: actions/download-artifact@v6
         with:
@@ -816,6 +841,13 @@ jobs:
           path: artifacts/formal-refresh/strategy-results
           merge-multiple: true
       - uses: ./.github/actions/setup-python-uv
+      - name: Restore authoritative private ledgers
+        env:
+          GOVERNED_SOURCE_ARCHIVE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_SSH_KEY }}
+        run: >-
+          uv run alpha ops private-ledgers restore
+          --receipt "$RUNNER_TEMP/private-ledgers.json"
+          --revision "${{ needs.prepare.outputs.private_commit }}"
       - name: Atomically fan in active preview results
         run: |
           uv run python scripts/run_formal_refresh_transaction.py assemble \

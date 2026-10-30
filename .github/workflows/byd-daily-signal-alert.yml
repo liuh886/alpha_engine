@@ -78,6 +78,12 @@ jobs:
         id: source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/setup-python-uv
+      - name: Restore authoritative private ledgers
+        env:
+          GOVERNED_SOURCE_ARCHIVE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_SSH_KEY }}
+        run: >-
+          uv run alpha ops private-ledgers restore
+          --receipt "$RUNNER_TEMP/private-ledgers.json"
       - name: Build exact formal V1.3 decision
         id: signal
         run: |
@@ -97,12 +103,16 @@ jobs:
             --workflow-run-id "$GITHUB_RUN_ID" \
             --commit-sha "$EXECUTION_SHA" \
             --created-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      - name: Persist canonical decision to private authority
+        env:
+          GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY: ${{ secrets.GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY }}
+        run: uv run alpha ops private-ledgers persist --receipt "$RUNNER_TEMP/private-ledgers.json"
       - name: Commit canonical BYD decision
         run: |
           set -euo pipefail
           git config user.name "AlphaEngine Signal Agent"
           git config user.email "signal-agent@alphaengine.local"
-          git add "$LEDGER_DIR"
+          git add data/research/strategy_signal_ledgers
           if git diff --cached --quiet; then
             echo "Canonical BYD decision already sealed."
           else

@@ -93,14 +93,11 @@ def test_release_uses_exact_revision_and_success_only_idempotency_receipt() -> N
     assert restore["uses"] == "actions/cache/restore@v5"
     assert restore["with"] == {
         "path": "artifacts/strategy-operations-publication-receipt.json",
-        "key": "strategy-operations-publication-v2-${{ steps.revision.outputs.sha }}-${{ steps.revision.outputs.window }}",
+        "key": "strategy-operations-publication-v3-${{ steps.revision.outputs.sha }}-${{ steps.private_ledgers.outputs.archive_sha256 }}-${{ steps.revision.outputs.window }}",
         "lookup-only": True,
     }
 
     gated_names = {
-        "Checkout canonical revision",
-        "Verify canonical revision identity",
-        "Setup governed Python environment",
         "Validate runtime publisher contract",
         "Materialize current operations from canonical evidence",
         "Publish current operations through GitHub OIDC",
@@ -111,6 +108,9 @@ def test_release_uses_exact_revision_and_success_only_idempotency_receipt() -> N
     for name in gated_names:
         assert by_name[name]["if"] == PUBLICATION_GATE
 
+    ordered = list(by_name)
+    assert ordered.index("Restore authoritative private ledgers") < ordered.index("Restore publication idempotency receipt")
+    assert "if" not in by_name["Restore authoritative private ledgers"]
     checkout = by_name["Checkout canonical revision"]
     assert checkout["with"]["ref"] == "${{ steps.revision.outputs.sha }}"
     verify = by_name["Verify canonical revision identity"]["run"]
@@ -144,7 +144,7 @@ def test_release_uses_exact_revision_and_success_only_idempotency_receipt() -> N
     assert save["uses"] == "actions/cache/save@v5"
     assert save["with"] == {
         "path": "artifacts/strategy-operations-publication-receipt.json",
-        "key": "strategy-operations-publication-v2-${{ steps.revision.outputs.sha }}-${{ steps.revision.outputs.window }}",
+        "key": "strategy-operations-publication-v3-${{ steps.revision.outputs.sha }}-${{ steps.private_ledgers.outputs.archive_sha256 }}-${{ steps.revision.outputs.window }}",
     }
 
 
