@@ -477,8 +477,8 @@ test('the authorized fleet shares one read across overview and status', async ({
   await installProMembership(page, { fullFleet: true });
   await page.goto('/#/app');
   const brief = page.getByRole('region', { name: 'Daily research brief' });
-  await expect(brief.getByRole('article')).toHaveCount(fleetCount);
-  await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(fleetCount);
+  await expect(brief.getByRole('article')).toHaveCount(Math.min(3, fleetCount));
+  await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(Math.min(3, fleetCount));
   expect(await fixtureCalls(page)).toBe(1);
   await openConsoleView(page, 'system');
   const current = page.getByRole('region', { name: 'Current strategy observations' });
@@ -503,9 +503,12 @@ test('an explicitly mismatched public shell is blocked before runtime reads', as
   }));
   await installProMembership(page, { fullFleet: true });
   await page.goto('/#/app');
-  const row = page.getByRole('region', { name: 'Daily research brief' }).getByRole('article', { name: 'CN_27 V1.3 daily observation' });
-  await expect(row.getByText('Blocked', { exact: true })).toBeVisible();
-  await expect(row.getByText('Observation blocked · Operations formal bundle identity mismatch', { exact: true })).toBeVisible();
+  const row = page.getByTestId('fleet-cn_27_v1_3');
+  const blocked = row.getByRole('button', { name: /^(Blocked|Inspect signal for CN_27 V1.3: Blocked)$/ }).first();
+  await expect(blocked).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Daily research brief' })).toContainText('1 need attention');
+  await blocked.click();
+  await expect(page.getByRole('dialog').getByText('Operations formal bundle identity mismatch', { exact: true })).toBeVisible();
   await expect.poll(() => fixtureCalls(page)).toBe(1);
   expect(await page.evaluate(() => (window as any).__operationsFixture.selectedIds())).not.toContain('cn_27');
 });
@@ -529,7 +532,7 @@ test('a pro account does not request strategies with undeclared access policies'
   await page.goto('/#/app');
   const brief = page.getByRole('region', { name: 'Daily research brief' });
   await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(1);
-  await expect(brief.getByText('Access required', { exact: true })).toHaveCount(fleetCount - 1);
+  await expect(brief.getByText('Access required', { exact: true })).toHaveCount(Math.min(2, fleetCount - 1));
   expect(await fixtureCalls(page)).toBe(1);
   expect(await page.evaluate(() => (window as any).__operationsFixture.selectedIds())).toEqual(['qqq_rotation']);
   await expect(brief.getByText('Batch fixture: us_x verified', { exact: true })).toHaveCount(0);
@@ -544,7 +547,7 @@ test('failed access policies recover through operations retry without repeating 
   expect(await fixtureCalls(page)).toBe(0);
   await reader.getByRole('button', { name: 'Retry operations', exact: true }).click();
   const brief = page.getByRole('region', { name: 'Daily research brief' });
-  await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(fleetCount);
+  await expect(brief.getByText('Changed at last evaluation', { exact: true })).toHaveCount(Math.min(3, fleetCount));
   expect(await fixtureCalls(page)).toBe(1);
   expect(await page.evaluate(() => (window as any).__operationsFixture.policyReads())).toBe(2);
   await reader.getByRole('button', { name: 'Refresh operations', exact: true }).click();
@@ -560,6 +563,8 @@ test('overview brief explains the last evaluation and retains its actual dates',
   await page.goto('/#/app');
   const brief = page.getByRole('region', { name: 'Daily research brief' });
   const row = brief.getByRole('article', { name: 'QQQR v4.3 daily observation' });
+  await expect(brief.getByRole('article')).toHaveCount(3);
+  await expect(page.getByRole('region', { name: 'Formal strategy fleet' }).getByRole('article')).toHaveCount(4);
   await expect(row.getByText('Changed at last evaluation', { exact: true })).toBeVisible();
   await expect(row.getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
   await expect(row.getByText('Observed 2026-07-31 · target dated 2026-07-31', { exact: false })).toBeVisible();
