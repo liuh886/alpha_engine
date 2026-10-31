@@ -179,6 +179,26 @@ def test_windowed_baseline_keeps_prior_warmup_and_never_shortens_tail():
     assert row["insufficient_future_bars"]["count"] == 7
 
 
+def test_unrelated_lock_drift_is_recorded_without_changing_frozen_price_output(monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    original = subprocess.check_output
+    changed_lock = b"synthetic unrelated security dependency patch\n"
+
+    def with_changed_lock(command, *args, **kwargs):
+        if command == ["git", "show", "HEAD:uv.lock"]:
+            return changed_lock
+        return original(command, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "check_output", with_changed_lock)
+    contract = root / "configs/research_experiments/ashare_rdi_csi300_price_repair_2026-10-31.json"
+    prices, receipt = recompute(root, contract, completed_cutoff=date(2026, 10, 30))
+    archived = json.loads((root / "docs/evidence/ashare_rdi_phase2/csi300_price_recomputation_2026-10-31.json").read_bytes())
+    assert receipt["output_sha256"] == archived["output_sha256"] == hashlib.sha256(prices).hexdigest()
+    assert receipt["uv_lock_git_sha256"] == archived["uv_lock_git_sha256"]
+    assert receipt["replay_uv_lock_git_sha256"] == hashlib.sha256(changed_lock).hexdigest()
+    assert receipt["replay_lock_matches_capture"] is False
+
+
 def _cov(day: date, family: str = "holding_change", archived: bool = True) -> FamilyCoverage:
     return FamilyCoverage(day, family, "verified", "fixture://cninfo", "a" * 64, archived)
 

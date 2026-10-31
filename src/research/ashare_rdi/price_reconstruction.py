@@ -45,8 +45,7 @@ def replay_source(root: Path, manifest: dict) -> bytes:
                 inspect.getsource(akshare.stock_zh_index_daily).encode())
             and manifest["adapter_module_sha256"] == sha256(
                 (root / "src/data/adapters/akshare_adapter.py").read_bytes())
-            and manifest["uv_lock_git_sha256"] == sha256(subprocess.check_output(
-                ["git", "show", "HEAD:uv.lock"], cwd=root))
+            and re.fullmatch("[0-9a-f]{64}", manifest["uv_lock_git_sha256"])
             and manifest["historical_first_availability_verified"] is False
             and manifest["research_only"] is True and manifest["trade_ready"] is False):
         raise ValueError("source identity, basis or decoder mismatch")
@@ -225,4 +224,10 @@ def recompute(root: Path, contract_path: Path, *, completed_cutoff: date) -> tup
     receipt["source_api_function_sha256"] = manifest["vendor_decoder_sha256"]
     receipt["vendor_decoder_constant_sha256"] = sha256(hk_js_decode.encode())
     receipt["uv_lock_git_sha256"] = manifest["uv_lock_git_sha256"]
+    # The captured lock is immutable provenance. Unrelated dependency patches
+    # may change today's lock without changing any source/decoder/CSV bytes.
+    # Exact source/API/adapter/CSV checks above still gate every replay.
+    receipt["replay_uv_lock_git_sha256"] = sha256(subprocess.check_output(
+        ["git", "show", "HEAD:uv.lock"], cwd=root))
+    receipt["replay_lock_matches_capture"] = receipt["replay_uv_lock_git_sha256"] == receipt["uv_lock_git_sha256"]
     return prices, receipt
