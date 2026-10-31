@@ -1,0 +1,138 @@
+{
+  "schema_version": "accountless_access_observation_v1",
+  "checked_at_utc": "2026-10-31T07:04:09.763Z",
+  "source_main_commit": "2536181c3306ce7c7239e061821f3142dd8f4b90",
+  "formal_run_id": 41083709573,
+  "research_only": true,
+  "trade_ready": false,
+  "a4": "FAIL",
+  "active_git_latest": {
+    "probe_count": 16,
+    "all_expected_404": true
+  },
+  "formal_artifacts": {
+    "run_id": 41083709573,
+    "scope": "new strategy locator artifacts and final publication observation artifact only",
+    "results": [
+      {
+        "artifact_id": 12992380395,
+        "members": [
+          "byd/archive-binding.json"
+        ],
+        "json_count": 1,
+        "forbidden_operational_key_count": 0
+      },
+      {
+        "artifact_id": 12990774128,
+        "members": [
+          "cn_27/archive-binding.json"
+        ],
+        "json_count": 1,
+        "forbidden_operational_key_count": 0
+      },
+      {
+        "artifact_id": 12992183016,
+        "members": [
+          "operating-observation.json",
+          "plan/plan.json",
+          "strategy-results/byd/receipt.json",
+          "strategy-results/cn_27/receipt.json",
+          "strategy-fan-in-receipt.json",
+          "formal-refresh-receipt.json",
+          "formal-v2-sync-receipt.json",
+          "publication-delta-receipt.json",
+          "publication-delta-latest-main-receipt.json",
+          "freshness-input/freshness.json",
+          "provider-us/artifacts/selected_pool_price_refresh_manifest.json",
+          "provider-us/artifacts/selected_pool_price_publication_manifest.json",
+          "provider-cn/artifacts/selected_pool_price_publication_manifest.json",
+          "provider-cn/artifacts/selected_pool_price_refresh_manifest.json",
+          "market-evidence/us/catalog.json",
+          "market-evidence/cn/catalog.json"
+        ],
+        "json_count": 16,
+        "forbidden_operational_key_count": 0
+      }
+    ],
+    "status": "PASS"
+  },
+  "static_runtime_shells": {
+    "scope": "live static runtime shells only",
+    "record_count": 4,
+    "all_protected": true,
+    "allocation_count": 0,
+    "factor_count": 0,
+    "status": "PASS",
+    "private_archive_anonymous_statuses": [
+      404,
+      403
+    ]
+  },
+  "anonymous_runtime": {
+    "session_present": false,
+    "http_status": 200,
+    "policy_rows": [
+      {
+        "resource_type": "strategy",
+        "resource_id": "us_x",
+        "required_tier": "public"
+      },
+      {
+        "resource_type": "strategy",
+        "resource_id": "cn_x",
+        "required_tier": "public"
+      },
+      {
+        "resource_type": "strategy",
+        "resource_id": "byd",
+        "required_tier": "public"
+      },
+      {
+        "resource_type": "strategy",
+        "resource_id": "qqq_rotation",
+        "required_tier": "public"
+      },
+      {
+        "resource_type": "strategy",
+        "resource_id": "cn_27",
+        "required_tier": "public"
+      }
+    ],
+    "visible_model_ids": [
+      "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+      "qqqi_qqq_tqqq_v4_3",
+      "cn_x1_2",
+      "cn_27_v1_3",
+      "us_x1_3"
+    ],
+    "all_visible_rows_have_public_policy": true,
+    "protected_row_rejection": "NOT_TESTED: no non-public strategy policy in observed production configuration",
+    "entitled_denied_revoked_real_sessions": "NOT_TESTED: operator reports no dedicated test account/session"
+  },
+  "historical_portfolio_inventory": {
+    "model_version_id": "us_x1_3",
+    "target_weights_key_count": 71,
+    "section_id": "portfolio",
+    "classification": "retained historical source portfolio evidence; not a blanket current-data privacy PASS"
+  },
+  "residuals": [
+    "Older Git/Actions/native lineage disclosures remain inventoried; no history rewrite performed.",
+    "Retired cn_x1_2 runtime snapshot remains visible under public cn_x policy.",
+    "Private Contents anonymous request returned 403; no successful read, but not certified as private-specific denial.",
+    "No entitlement, access-tier or runtime-row mutation was performed."
+  ],
+  "formal_job_logs": [
+    {
+      "job_id": 124165494860,
+      "serialized_operational_key_count": 0
+    },
+    {
+      "job_id": 124165495029,
+      "serialized_operational_key_count": 0
+    },
+    {
+      "job_id": 124166280967,
+      "serialized_operational_key_count": 0
+    }
+  ]
+}

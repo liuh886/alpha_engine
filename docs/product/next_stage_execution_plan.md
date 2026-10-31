@@ -177,11 +177,19 @@ erase earlier verified results.
    and exact Pages verification. CN economic prefix
    is preserved within the existing numerical tolerance, not byte-identically;
    BYD's old report prefix is exact. Failed/cancelled runs remain retained.
-3. **#1315 source consistency — implementing, not yet deployed.** Reconcile US x1.3 dates, opening NAV,
+3. **#1315 source consistency — PASS for the scoped source-window defect, #1333 merged and deployed.** Reconcile US x1.3 dates, opening NAV,
    observation counts and source identity; preserve source economics. Desktop,
-   mobile, production build and deployed-SHA browser evidence remain required.
+   mobile, production build and deployed-SHA browser evidence passed at
+   `22d4e07d6dea796084642b6d61be670913499a64`: 288 unit tests and 117 static
+   browser tests passed. Live desktop/mobile both matched the source window
+   2024-01-02–2026-10-23 (68 settled observations), opening NAV 1 and first
+   settlement 2024-01-17, with no horizontal overflow. This does not complete
+   every historical #1315 item or the full A3 acceptance gate.
 4. **A4 — FAIL.** Complete independently possible public-surface negatives and
    entitled/denied/revoked real reads using the existing access system. Missing
    real-session evidence stays explicit; fixtures/CI never substitute for it.
    The operator confirmed no dedicated real test account/session is available;
-   proceed with accountless checks and retain real-session tests as NOT_TESTED.
+   accountless observations are recorded in the
+   [A4 receipt](../evidence/product_v1/accountless_access_observation_2026-10-31.json).
+   All live strategy policies currently read public; retired CN x1.2 remains
+   visible. Protected-row rejection and real-session tests stay NOT_TESTED.
