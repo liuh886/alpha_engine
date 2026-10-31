@@ -1,0 +1,68 @@
+{
+  "schema_version": "operating_closure_checkpoint_v1",
+  "through": "2026-10-30",
+  "status": "BLOCKED_INCOMPLETE_RELEASE_ACCEPTANCE",
+  "private_revision": "a1efd513c06fe95eeb9a291cc6771399ce863025",
+  "private_ledger_archive_sha256": "385df76bb8dae516e195899a912f3db2d55411c080b6386528f76b3630b5f9f1",
+  "private_ledger_archive_bytes": 493139,
+  "archive_inventory": {
+    "private_revision": "a1efd513c06fe95eeb9a291cc6771399ce863025",
+    "operating_archive_capture_count": 405,
+    "distinct_formal_run_attempts": 58,
+    "scope": "archive filename inventory only; not a qualified-session count",
+    "twenty_sessions_certified": false
+  },
+  "latest_packet": {
+    "run_id": 41160909644,
+    "run_attempt": 1,
+    "mechanically_ready": true,
+    "qualification_status": "awaiting_independent_review",
+    "manual_interventions": null,
+    "strategy_checks": [
+      {
+        "due_cycle_strategy_ids": [
+          "qqq_rotation"
+        ],
+        "mechanically_verified": true,
+        "retained_target_strategy_ids": [],
+        "strategy_id": "qqq_rotation"
+      },
+      {
+        "due_cycle_strategy_ids": [],
+        "mechanically_verified": true,
+        "retained_target_strategy_ids": [
+          "us_x"
+        ],
+        "strategy_id": "us_x"
+      },
+      {
+        "due_cycle_strategy_ids": [],
+        "mechanically_verified": true,
+        "retained_target_strategy_ids": [
+          "cn_27"
+        ],
+        "strategy_id": "cn_27"
+      },
+      {
+        "due_cycle_strategy_ids": [
+          "byd"
+        ],
+        "mechanically_verified": true,
+        "retained_target_strategy_ids": [],
+        "strategy_id": "byd"
+      }
+    ]
+  },
+  "collection_scope": "Latest completed formal attempt only; not a re-audit of all 405 private captures or 20-session qualification",
+  "local_environment_correction": "restored exact private ledger to ignored local paths; initial clean-public-checkout missing decisions were not a production failure",
+  "remote_writes": false,
+  "notifications_triggered": false,
+  "twenty_sessions_certified": false,
+  "next_actions": [
+    "Independently review the complete per-market 20-session ledger using exact private evidence and latest capture per run/attempt, retaining failures.",
+    "Verify manual intervention counts; null stays unqualified.",
+    "Attach current US/CN periodic due-cycle and recovery evidence; latest daily QQQ/BYD checks do not substitute."
+  ],
+  "research_only": true,
+  "trade_ready": false
+}

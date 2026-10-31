@@ -1,0 +1,33 @@
+{
+  "results": [
+    {
+      "viewport": "desktop",
+      "commit_sha": "eb5c2b1866540890d89fb5d12a06a6e4dba8923c",
+      "status": "PASS",
+      "reviewed_at": "2026-10-31",
+      "price_cutoff": "2026-10-30",
+      "rows": 5238,
+      "source_link": "https://github.com/liuh886/alpha_engine/blob/eb5c2b1866540890d89fb5d12a06a6e4dba8923c/data/research/ashare_rdi/price_sources/sina_2026-10-31/manifest.json",
+      "overflow_px": 0,
+      "checked_at_utc": "2026-10-31T10:28:25.295Z"
+    },
+    {
+      "viewport": "mobile",
+      "commit_sha": "eb5c2b1866540890d89fb5d12a06a6e4dba8923c",
+      "status": "PASS",
+      "reviewed_at": "2026-10-31",
+      "price_cutoff": "2026-10-30",
+      "rows": 5238,
+      "source_link": "https://github.com/liuh886/alpha_engine/blob/eb5c2b1866540890d89fb5d12a06a6e4dba8923c/data/research/ashare_rdi/price_sources/sina_2026-10-31/manifest.json",
+      "overflow_px": 0,
+      "checked_at_utc": "2026-10-31T10:28:30.134Z"
+    }
+  ],
+  "schema_version": "rdi_status_live_acceptance_v1",
+  "pull_request": 1340,
+  "pages_workflow_run_id": 41192493672,
+  "pages_workflow_conclusion": "success",
+  "research_only": true,
+  "trade_ready": false,
+  "scope": "dated research evidence view only; no RDI predictive or product GO acceptance"
+}
