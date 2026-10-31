@@ -51,7 +51,11 @@
         "retained_target_strategy_ids": [],
         "strategy_id": "byd"
       }
-    ]
+    ],
+    "qualified_sessions": {
+      "us": 0,
+      "cn": 0
+    }
   },
   "collection_scope": "Latest completed formal attempt only; not a re-audit of all 405 private captures or 20-session qualification",
   "local_environment_correction": "restored exact private ledger to ignored local paths; initial clean-public-checkout missing decisions were not a production failure",

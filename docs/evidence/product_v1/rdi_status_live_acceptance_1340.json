@@ -29,5 +29,27 @@
   "pages_workflow_conclusion": "success",
   "research_only": true,
   "trade_ready": false,
-  "scope": "dated research evidence view only; no RDI predictive or product GO acceptance"
+  "scope": "dated research evidence view only; no RDI predictive or product GO acceptance",
+  "event_families_qualified": 0,
+  "event_families_total": 10,
+  "horizon_maturity": [
+    {
+      "horizon_sessions": 7,
+      "latest_mature_observation": "2026-10-21",
+      "latest_label_end": "2026-10-30",
+      "immature_observations": 7
+    },
+    {
+      "horizon_sessions": 14,
+      "latest_mature_observation": "2026-10-12",
+      "latest_label_end": "2026-10-30",
+      "immature_observations": 14
+    },
+    {
+      "horizon_sessions": 28,
+      "latest_mature_observation": "2026-09-14",
+      "latest_label_end": "2026-10-30",
+      "immature_observations": 28
+    }
+  ]
 }
