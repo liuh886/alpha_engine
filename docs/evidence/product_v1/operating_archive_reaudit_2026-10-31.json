@@ -1,0 +1,905 @@
+{
+  "schema_version": "operating_archive_reaudit_v1",
+  "private_revision": "a1efd513c06fe95eeb9a291cc6771399ce863025",
+  "archive_capture_count": 405,
+  "validated_capture_count": 405,
+  "distinct_run_attempts": 58,
+  "selected_latest_packets": 56,
+  "selection_blockers": [
+    {
+      "run_id": "40169474676",
+      "attempt": "1",
+      "reason": "capture integrity or ordering unresolved; no earlier-green fallback"
+    },
+    {
+      "run_id": "41078830067",
+      "attempt": "1",
+      "reason": "capture integrity or ordering unresolved; no earlier-green fallback"
+    }
+  ],
+  "selection": "latest verified captured_at per exact run/attempt; any unresolved ordering blocks that attempt, never previous green",
+  "declarations_provided": false,
+  "manual_interventions_verified": false,
+  "markets": {
+    "us": {
+      "through": "2026-10-30",
+      "observed_sessions": 12,
+      "qualified_sessions": 0,
+      "consecutive_qualified_sessions": 0,
+      "missing_due_cycle_strategy_ids": [],
+      "twenty_session_evidence_complete": false,
+      "sessions": [
+        {
+          "session": "2026-10-15",
+          "observed_attempts": 5,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "38845776829:1",
+            "38851424464:1",
+            "38852192355:1",
+            "38872155879:1",
+            "38882149937:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-16",
+          "observed_attempts": 1,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "38990571632:1"
+          ],
+          "cutoff_lag_sessions": [
+            1
+          ]
+        },
+        {
+          "session": "2026-10-19",
+          "observed_attempts": 1,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "39356182714:1"
+          ],
+          "cutoff_lag_sessions": [
+            0
+          ]
+        },
+        {
+          "session": "2026-10-20",
+          "observed_attempts": 5,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "39529055859:1",
+            "39567189022:1",
+            "39605535423:1",
+            "39644694043:1",
+            "39646515125:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            0,
+            0,
+            null,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-21",
+          "observed_attempts": 8,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "39707157983:1",
+            "39755885071:1",
+            "39758256517:1",
+            "39791850107:1",
+            "39802448678:1",
+            "39814345734:1",
+            "39819972998:1",
+            "39822036478:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-22",
+          "observed_attempts": 2,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "39885711914:1",
+            "39963438754:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-23",
+          "observed_attempts": 11,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "40051447643:1",
+            "40079647125:1",
+            "40169478271:1",
+            "40315520454:1",
+            "40315557255:1",
+            "40321512230:1",
+            "40348664222:1",
+            "40352431918:1",
+            "40366751934:1",
+            "40369241106:1",
+            "40376018094:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            null,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-26",
+          "observed_attempts": 6,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "40437613183:1",
+            "40444900380:1",
+            "40445446606:1",
+            "40449864718:1",
+            "40481390308:1",
+            "40524626052:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            0,
+            0,
+            0,
+            null,
+            null
+          ]
+        },
+        {
+          "session": "2026-10-27",
+          "observed_attempts": 4,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "40621346985:1",
+            "40664159813:1",
+            "40709932251:1",
+            "40714809378:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            null,
+            null,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-28",
+          "observed_attempts": 3,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "40807598082:1",
+            "40901278134:1",
+            "40924590288:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            null,
+            null
+          ]
+        },
+        {
+          "session": "2026-10-29",
+          "observed_attempts": 7,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "40993710881:1",
+            "40998276893:1",
+            "40999354397:1",
+            "41043423440:1",
+            "41064678118:1",
+            "41078311198:1",
+            "41083709573:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            null,
+            0,
+            null,
+            null,
+            0,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-30",
+          "observed_attempts": 1,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "41160909644:1"
+          ],
+          "cutoff_lag_sessions": [
+            0
+          ]
+        }
+      ],
+      "required_twenty_session_window": [
+        "2026-10-05",
+        "2026-10-06",
+        "2026-10-07",
+        "2026-10-08",
+        "2026-10-09",
+        "2026-10-12",
+        "2026-10-13",
+        "2026-10-14",
+        "2026-10-15",
+        "2026-10-16",
+        "2026-10-19",
+        "2026-10-20",
+        "2026-10-21",
+        "2026-10-22",
+        "2026-10-23",
+        "2026-10-26",
+        "2026-10-27",
+        "2026-10-28",
+        "2026-10-29",
+        "2026-10-30"
+      ],
+      "missing_observation_sessions_in_required_window": [
+        "2026-10-05",
+        "2026-10-06",
+        "2026-10-07",
+        "2026-10-08",
+        "2026-10-09",
+        "2026-10-12",
+        "2026-10-13",
+        "2026-10-14"
+      ],
+      "current_fleet_identity_observed_sessions_in_required_window": [
+        "2026-10-23",
+        "2026-10-26",
+        "2026-10-27",
+        "2026-10-28",
+        "2026-10-29",
+        "2026-10-30"
+      ]
+    },
+    "cn": {
+      "through": "2026-10-30",
+      "observed_sessions": 12,
+      "qualified_sessions": 0,
+      "consecutive_qualified_sessions": 0,
+      "missing_due_cycle_strategy_ids": [],
+      "twenty_session_evidence_complete": false,
+      "sessions": [
+        {
+          "session": "2026-10-15",
+          "observed_attempts": 3,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "38845776829:1",
+            "38851424464:1",
+            "38852192355:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-16",
+          "observed_attempts": 3,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "38872155879:1",
+            "38882149937:1",
+            "38990571632:1"
+          ],
+          "cutoff_lag_sessions": [
+            1,
+            1,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-19",
+          "observed_attempts": 1,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "39356182714:1"
+          ],
+          "cutoff_lag_sessions": [
+            0
+          ]
+        },
+        {
+          "session": "2026-10-20",
+          "observed_attempts": 1,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "39529055859:1"
+          ],
+          "cutoff_lag_sessions": [
+            0
+          ]
+        },
+        {
+          "session": "2026-10-21",
+          "observed_attempts": 5,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "39567189022:1",
+            "39605535423:1",
+            "39644694043:1",
+            "39646515125:1",
+            "39707157983:1"
+          ],
+          "cutoff_lag_sessions": [
+            1,
+            1,
+            null,
+            0,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-22",
+          "observed_attempts": 8,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "39755885071:1",
+            "39758256517:1",
+            "39791850107:1",
+            "39802448678:1",
+            "39814345734:1",
+            "39819972998:1",
+            "39822036478:1",
+            "39885711914:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-23",
+          "observed_attempts": 4,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "39963438754:1",
+            "40051447643:1",
+            "40079647125:1",
+            "40169478271:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-26",
+          "observed_attempts": 12,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "40315520454:1",
+            "40315557255:1",
+            "40321512230:1",
+            "40348664222:1",
+            "40352431918:1",
+            "40366751934:1",
+            "40369241106:1",
+            "40376018094:1",
+            "40437613183:1",
+            "40444900380:1",
+            "40445446606:1",
+            "40449864718:1"
+          ],
+          "cutoff_lag_sessions": [
+            0,
+            0,
+            0,
+            0,
+            null,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-27",
+          "observed_attempts": 3,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "40481390308:1",
+            "40524626052:1",
+            "40621346985:1"
+          ],
+          "cutoff_lag_sessions": [
+            null,
+            null,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-28",
+          "observed_attempts": 4,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "40664159813:1",
+            "40709932251:1",
+            "40714809378:1",
+            "40807598082:1"
+          ],
+          "cutoff_lag_sessions": [
+            null,
+            null,
+            0,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-29",
+          "observed_attempts": 5,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "40901278134:1",
+            "40924590288:1",
+            "40993710881:1",
+            "40998276893:1",
+            "40999354397:1"
+          ],
+          "cutoff_lag_sessions": [
+            null,
+            null,
+            0,
+            null,
+            0
+          ]
+        },
+        {
+          "session": "2026-10-30",
+          "observed_attempts": 5,
+          "status": "awaiting_review_or_blocked",
+          "run_attempts": [
+            "41043423440:1",
+            "41064678118:1",
+            "41078311198:1",
+            "41083709573:1",
+            "41160909644:1"
+          ],
+          "cutoff_lag_sessions": [
+            null,
+            null,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "required_twenty_session_window": [
+        "2026-09-28",
+        "2026-09-29",
+        "2026-09-30",
+        "2026-10-08",
+        "2026-10-09",
+        "2026-10-12",
+        "2026-10-13",
+        "2026-10-14",
+        "2026-10-15",
+        "2026-10-16",
+        "2026-10-19",
+        "2026-10-20",
+        "2026-10-21",
+        "2026-10-22",
+        "2026-10-23",
+        "2026-10-26",
+        "2026-10-27",
+        "2026-10-28",
+        "2026-10-29",
+        "2026-10-30"
+      ],
+      "missing_observation_sessions_in_required_window": [
+        "2026-09-28",
+        "2026-09-29",
+        "2026-09-30",
+        "2026-10-08",
+        "2026-10-09",
+        "2026-10-12",
+        "2026-10-13",
+        "2026-10-14"
+      ],
+      "current_fleet_identity_observed_sessions_in_required_window": [
+        "2026-10-23",
+        "2026-10-26",
+        "2026-10-27",
+        "2026-10-28",
+        "2026-10-29",
+        "2026-10-30"
+      ]
+    }
+  },
+  "research_only": true,
+  "trade_ready": false,
+  "twenty_sessions_certified": false,
+  "current_fleet_identity_packet_count": 15,
+  "selected_source_bindings": [
+    {
+      "path": "archives/operating-review-38845776829-1-38851424477-1.zip",
+      "git_blob": "7ef68a037ee65c837e69c9cd8c621613f69e1cad",
+      "sha256": "1e6e7aa6d1f28165cd980b25bc49bf3218855aa8b2c652c5a176f86d09da7ee3",
+      "capture": "2026-10-16T04:36:53.900410+00:00"
+    },
+    {
+      "path": "archives/operating-review-38851424464-1-38852456374-1.zip",
+      "git_blob": "b828b24ab75cf1fb63767acc9c9b970678a98367",
+      "sha256": "9519e01401055f16d636d90a35f4002faaf997030dae64d07d790840261ebb68",
+      "capture": "2026-10-16T04:48:56.725404+00:00"
+    },
+    {
+      "path": "archives/operating-review-38852192355-1-38872310784-1.zip",
+      "git_blob": "3d918c9a6b528d2516164982c42ab24a6cda8d4c",
+      "sha256": "3386baae4934ea291731c5eb13aff187bf0edfdccbf83e34dd249bbf234b62ca",
+      "capture": "2026-10-16T08:16:38.552362+00:00"
+    },
+    {
+      "path": "archives/operating-review-38872155879-1-38882312868-1.zip",
+      "git_blob": "98e372b0d7133bf59bdf6e619ee3db07ecfec682",
+      "sha256": "d53e1b6759169e12448446b4c184ef24746deb1f8b1a8733b6ae88379872c9f9",
+      "capture": "2026-10-16T09:44:20.778342+00:00"
+    },
+    {
+      "path": "archives/operating-review-38882149937-1-38967301805-1.zip",
+      "git_blob": "23debc294bc8ce6951365d7a103ae1e4737e9612",
+      "sha256": "772b8c821eacacd45e76fd986cc8c4fdb7d16c903c266a3d819b9a1ec11828d0",
+      "capture": "2026-10-16T21:09:37.757891+00:00"
+    },
+    {
+      "path": "archives/operating-review-38990571632-1-39334380906-1.zip",
+      "git_blob": "90dbc75bf9d679c03e87d37c5777125c8c23c36a",
+      "sha256": "a23af3cc58217e0be728a797268c6a09e1068d372b581ecbb24b0de192f85894",
+      "capture": "2026-10-19T22:23:02.082239+00:00"
+    },
+    {
+      "path": "archives/operating-review-39356182714-1-39501909016-1.zip",
+      "git_blob": "b0b981cebb463313d23e9b1737b93a0bccf4dace",
+      "sha256": "a9608d352e2ec357c2e3b1fb454a50be15cc4d5894de80a5b49be22583e35f55",
+      "capture": "2026-10-20T21:38:25.849833+00:00"
+    },
+    {
+      "path": "archives/operating-review-39529055859-1-39569135518-1.zip",
+      "git_blob": "c1c0b0da6d5a1f772cab0b2b4f69ab78fef1accf",
+      "sha256": "6c8f9cbea879c23ed3c8906ef08a7f41e4206c57c8356ea1d8ee3f1d3bae1155",
+      "capture": "2026-10-21T08:26:34.855833+00:00"
+    },
+    {
+      "path": "archives/operating-review-39567189022-1-39605535353-1.zip",
+      "git_blob": "a6fdb24003a2b7e8e4212ebd31c039eabc275b57",
+      "sha256": "143bfea92f8a690334388a1356e2d715fccea9b4dc60eaf594bfc0c32cc70e92",
+      "capture": "2026-10-21T13:12:20.039234+00:00"
+    },
+    {
+      "path": "archives/operating-review-39605535423-1-39642893298-1.zip",
+      "git_blob": "cf0cc64d55c779fc32a52c7e1d23f52c215e1185",
+      "sha256": "4cfdcc92bee71564b48013370a8825f2551f3eb771f85d5fb508aa569966585a",
+      "capture": "2026-10-21T17:22:05.509820+00:00"
+    },
+    {
+      "path": "archives/operating-review-39642893468-1-39644693978-1.zip",
+      "git_blob": "b92b1d98ea190b4103ca877eccffa1a120e70be6",
+      "sha256": "93c5a213cd733798304568956c7b456f576d5a62ff8783c1b68ffac2364e1165",
+      "capture": "2026-10-21T17:34:27.981467+00:00"
+    },
+    {
+      "path": "archives/operating-review-39644694043-1-39646515002-1.zip",
+      "git_blob": "30d2ebe053280dac433ac602cc296a57f4f0431b",
+      "sha256": "dc6c74ed3186b737ad0022983240e07ce17ec6d6811e1949334f0909fcf426e6",
+      "capture": "2026-10-21T17:47:25.615027+00:00"
+    },
+    {
+      "path": "archives/operating-review-39646515125-1-39681027223-1.zip",
+      "git_blob": "e3c90e04ecaac2bfe07dc50cebf2342b3fb5f832",
+      "sha256": "48b589904ce466d65a6bab6bfd238bc57dd16250f804e49dd099e3aa5ad7497d",
+      "capture": "2026-10-21T21:44:31.595044+00:00"
+    },
+    {
+      "path": "archives/operating-review-39707157983-1-39755885219-1.zip",
+      "git_blob": "90d33e5fcc86ae508aaaa22a69224b4b7206daf1",
+      "sha256": "a2c2b7a8faee152f83f0074e7883763cb3a21cb09e02fbfebaf9cd2322d04c00",
+      "capture": "2026-10-22T09:31:59.255412+00:00"
+    },
+    {
+      "path": "archives/operating-review-39755885071-1-39758722073-1.zip",
+      "git_blob": "b5f3cc1fbd050d76479fed267ac5fc445a01def3",
+      "sha256": "36e157f9bb84b10a4b6dafc2725428e1e1097572ac352e0820763ffe27ffd6d7",
+      "capture": "2026-10-22T09:54:20.093539+00:00"
+    },
+    {
+      "path": "archives/operating-review-39758256517-1-39791607270-1.zip",
+      "git_blob": "a5c9095b8e3e603f403e1deeb2e3b937b63f0729",
+      "sha256": "e9dc26ff18ecb16ae90f983e478cbacb9bc9844f500c8556268d48d090bb2332",
+      "capture": "2026-10-22T14:00:53.847873+00:00"
+    },
+    {
+      "path": "archives/operating-review-39791850107-1-39802448633-1.zip",
+      "git_blob": "61c4933019edbcb1be3c25a4e6f6fb5e8d8da4e3",
+      "sha256": "714ec62b4ad7fe64210dd911a90ab7e18c0ef5bcf75f4fa90188eb49c03f9bb2",
+      "capture": "2026-10-22T15:12:18.755100+00:00"
+    },
+    {
+      "path": "archives/operating-review-39802448678-1-39811182202-1.zip",
+      "git_blob": "6b7ed08290dfe4dcc0157fc977ac85bc962e407e",
+      "sha256": "4d39cbf7c5b08242ed8ad034620cace5d2a2e2fe908632171263ca1aff3f7cf5",
+      "capture": "2026-10-22T16:08:06.616631+00:00"
+    },
+    {
+      "path": "archives/operating-review-39814345734-1-39820395689-1.zip",
+      "git_blob": "489fdd6e8cdddc317647ba83ffde3d5bb716bec8",
+      "sha256": "c31e084b6ec76a50059d542b14fb2a86d11ef570caaf37aac6ea5c4aa9c835ee",
+      "capture": "2026-10-22T17:11:21.546417+00:00"
+    },
+    {
+      "path": "archives/operating-review-39819972998-1-39822036470-1.zip",
+      "git_blob": "24b0b59644b022c4df2a2071358289b892ee0c15",
+      "sha256": "522108d2d4f12cc5f964408b0dfb95a8de191d196498cfc26c0557543c4d459f",
+      "capture": "2026-10-22T17:23:01.229370+00:00"
+    },
+    {
+      "path": "archives/operating-review-39822036478-1-39858531764-1.zip",
+      "git_blob": "116d014fb54578d2f3a00e3e6528eb34b33ff704",
+      "sha256": "31ded246bcccbde3e7c8efde14c82d381d749e786cbd5f049236c9bba644c0f6",
+      "capture": "2026-10-22T21:36:11.482315+00:00"
+    },
+    {
+      "path": "archives/operating-review-39885711914-1-39947619300-1.zip",
+      "git_blob": "828828887ccbd2dc6ae0d05f2b41eb85caf2d2f3",
+      "sha256": "460af86c5e4de89e993a308b8823c6579dfac3396f17604dcd0dfc7f36e10f41",
+      "capture": "2026-10-23T11:39:59.604909+00:00"
+    },
+    {
+      "path": "archives/operating-review-39963438754-1-40026627154-1.zip",
+      "git_blob": "836b905e7c511cfbeb6abfd4640fa555ec9fb9a2",
+      "sha256": "0836eab0f48c48c567c71f219486f5bf9f1d9c1d1434fea8a898f68e3ecdd2c2",
+      "capture": "2026-10-23T21:25:48.353758+00:00"
+    },
+    {
+      "path": "archives/operating-review-40051447643-1-40080411265-1.zip",
+      "git_blob": "6566da6f34a728db61761e498a8677998ae38e84",
+      "sha256": "aa0bc38d82cf3f5caae22a3ae28910b516942a7b89d6058dcec7b57ca2e3ab69",
+      "capture": "2026-10-24T09:04:01.500365+00:00"
+    },
+    {
+      "path": "archives/operating-review-40079647125-1-40162771768-1.zip",
+      "git_blob": "4934d24e655be71d64f260ebcc91c601955c7c83",
+      "sha256": "0e2caa1a3861bdcb3b66ce5d543b548996840b6b2400ad4c39b5a79382e5c454",
+      "capture": "2026-10-25T04:41:29.510803+00:00"
+    },
+    {
+      "path": "archives/operating-review-40169478271-1-40317698059-1.zip",
+      "git_blob": "46eb5e20ef3daa1d85c2272524fdc2803cd5b1a6",
+      "sha256": "3c0fefd1a063325474737860a6fa58e078f77ffcd61567877a537fe25db50aec",
+      "capture": "2026-10-26T11:48:31.970329+00:00"
+    },
+    {
+      "path": "archives/operating-review-40315520454-1-40318371688-1.zip",
+      "git_blob": "a7cee6545225bce440d233bd455b9c89a8c93f4f",
+      "sha256": "b5cac6536b3232442e030dba36d12174b50acedc53086e851f84a01186e86377",
+      "capture": "2026-10-26T11:53:39.300283+00:00"
+    },
+    {
+      "path": "archives/operating-review-40315557255-1-40322177834-1.zip",
+      "git_blob": "53f8b22463e41363d2dd165b8a10b94eef0f71dc",
+      "sha256": "569f20a35df2dc5946d088d2c768896bc432c7009b304c07f9612a020cfc3c62",
+      "capture": "2026-10-26T12:24:42.231243+00:00"
+    },
+    {
+      "path": "archives/operating-review-40321512230-1-40327208950-1.zip",
+      "git_blob": "3cf0076c655eab2a4768ecd4077a1280b6fff44f",
+      "sha256": "fb3e296efbc3e3ee24a2f1c8a241eae9428c4eb82e35cf6066d69f06b80d10ce",
+      "capture": "2026-10-26T13:03:07.702094+00:00"
+    },
+    {
+      "path": "archives/operating-review-40348664222-1-40352610617-1.zip",
+      "git_blob": "84b4a0fc8e75f444e7dd20d061045a91344e6b80",
+      "sha256": "6532e643f21ac39d6552bbdd50e5e7899013b6e6430d94657b3b360973764594",
+      "capture": "2026-10-26T15:47:02.924062+00:00"
+    },
+    {
+      "path": "archives/operating-review-40352431918-1-40354018310-1.zip",
+      "git_blob": "000b354b08beca26588c9352d16bf657f348493c",
+      "sha256": "37ecba9c8912c46d23d29d7fac5f5355262588f88e86f88f23e95cb0d8e447ac",
+      "capture": "2026-10-26T15:56:32.379152+00:00"
+    },
+    {
+      "path": "archives/operating-review-40359577256-1-40371918323-1.zip",
+      "git_blob": "fba13460dbe24e2e97c34212678c0b7c59a3334d",
+      "sha256": "6771b90dc0e0b47d43d721906b07827807aab06690038ee487fb78f5e39ce859",
+      "capture": "2026-10-26T17:47:56.018149+00:00"
+    },
+    {
+      "path": "archives/operating-review-40366751934-1-40372347126-1.zip",
+      "git_blob": "db74ec0836e1677bc9ca0cf80276b0a9d49243aa",
+      "sha256": "a4346b29538410337e1934578690f7b44062570183e50def42bf4407c11c19bb",
+      "capture": "2026-10-26T17:51:31.134245+00:00"
+    },
+    {
+      "path": "archives/operating-review-40369241106-1-40376017516-1.zip",
+      "git_blob": "5552670e0446335e4ce74f382d24d13e8f95c521",
+      "sha256": "1dd438f2c40024d48e385e92c07b1462050d4f5ef8dcb960e0f3fa85b3686eec",
+      "capture": "2026-10-26T18:15:56.153106+00:00"
+    },
+    {
+      "path": "archives/operating-review-40376018094-1-40414206857-1.zip",
+      "git_blob": "ca1f61665ca88b41af57942b89b2ae08af1251ee",
+      "sha256": "574edfc370c1577058b8b880aa7a8dcf57919858b49c0fb696a613dc67b845aa",
+      "capture": "2026-10-26T22:40:41.770283+00:00"
+    },
+    {
+      "path": "archives/operating-review-40437613183-1-40445446787-1.zip",
+      "git_blob": "0ca12a19bab8a1a8f297954e14695209aa550586",
+      "sha256": "f519b73ecdea8ce1c6e1954c347cc9254b323c202a0d5402e76f09a8d0f9fd76",
+      "capture": "2026-10-27T03:41:09.387936+00:00"
+    },
+    {
+      "path": "archives/operating-review-40444900380-1-40446901028-1.zip",
+      "git_blob": "92b0dc83c7f78007d0339d456d20da96a7cf443d",
+      "sha256": "f594a2152958549808e0f5f980ba120b4eee0cf8fecc5e986e24acc9a6898509",
+      "capture": "2026-10-27T03:56:47.827025+00:00"
+    },
+    {
+      "path": "archives/operating-review-40445446606-1-40449864640-1.zip",
+      "git_blob": "ffe474a35d669070207d985de46103599184d06c",
+      "sha256": "bfa0e0481df5add4af4755c78122254835ee5f35cf2eed6e3f5f34bcfd1541e3",
+      "capture": "2026-10-27T04:28:43.100511+00:00"
+    },
+    {
+      "path": "archives/operating-review-40449864718-1-40481547684-1.zip",
+      "git_blob": "c3abc20fe8f1a67b71440b3e53d38afdb4ad33ce",
+      "sha256": "bf4e017f8dc0f10f86b6232b94166619548bdff763e106602f59847d03aba17f",
+      "capture": "2026-10-27T09:32:49.298254+00:00"
+    },
+    {
+      "path": "archives/operating-review-40481390308-1-40515027425-1.zip",
+      "git_blob": "549437a9d37b2f7e19d87addc08bb6a635f68cc0",
+      "sha256": "0d9734aafa3c57333db000aad0af7d0453700617b5f97303e7e4c12bba701a9b",
+      "capture": "2026-10-27T13:47:26.532340+00:00"
+    },
+    {
+      "path": "archives/operating-review-40524626052-1-40623419394-1.zip",
+      "git_blob": "36203cb9c683f0042b884d9aa87ad34ed21ff97b",
+      "sha256": "a18519717c6385b8caff60c5865240134a82caf60b40ebadb52218d19884920c",
+      "capture": "2026-10-28T02:53:09.286631+00:00"
+    },
+    {
+      "path": "archives/operating-review-40621346985-1-40665173187-1.zip",
+      "git_blob": "f9dc09251b5d36f1262f1c802a2e77a8d20669fd",
+      "sha256": "d9e4b5ec29d4706da30aed98df1b305ccf2c393230231424f8a5639f35b2200d",
+      "capture": "2026-10-28T09:34:28.078459+00:00"
+    },
+    {
+      "path": "archives/operating-review-40664159813-1-40709932351-1.zip",
+      "git_blob": "5cc0d4d414192eab8db559f71937747feb3bb915",
+      "sha256": "3881b032e5196d85aa6747b0c0151f93182269fe0e59019b7cca25fd1e7c3ac8",
+      "capture": "2026-10-28T14:51:34.413983+00:00"
+    },
+    {
+      "path": "archives/operating-review-40709932251-1-40712247896-1.zip",
+      "git_blob": "aad24de71ffa9dc6dae4c25f4514f2ca174e1a98",
+      "sha256": "012dc4f9772f401390eccb26c437c41d73e778442814a9827a756eb73bf913bd",
+      "capture": "2026-10-28T15:05:43.554833+00:00"
+    },
+    {
+      "path": "archives/operating-review-40714809378-1-40796472153-1.zip",
+      "git_blob": "6da9a69e3f1aa8fb352ed6ef49bb6f5e0bf8549a",
+      "sha256": "a252abd81b615bcbbfabba86750e726b5db638a6c7c4e75c1a852fb1fff6b432",
+      "capture": "2026-10-29T00:49:51.115157+00:00"
+    },
+    {
+      "path": "archives/operating-review-40807598082-1-40895366330-1.zip",
+      "git_blob": "d7774c6977df066b635934acc9b99ac2d3df0229",
+      "sha256": "b5227d54fdff65a921d054f011ac0261624f4316ebb01eb70bdc7d7b6e1428bd",
+      "capture": "2026-10-29T14:50:48.145738+00:00"
+    },
+    {
+      "path": "archives/operating-review-40901278134-1-40924590286-1.zip",
+      "git_blob": "95a15ef3e4f43591ee6cd5baa688514d64cf1cb2",
+      "sha256": "dffd8aae8f15e7caad408d5de57c21f380d876c86b12b79da02a6a017a379319",
+      "capture": "2026-10-29T17:48:01.052019+00:00"
+    },
+    {
+      "path": "archives/operating-review-40924590288-1-40968302393-1.zip",
+      "git_blob": "004daae7d058ab048809df2fba98358d2517d854",
+      "sha256": "cab1e7e8d04f02cb349dd73a4cf3ab0edd4c49204f7e6c71b2a21b7dbf060a38",
+      "capture": "2026-10-29T22:46:12.167666+00:00"
+    },
+    {
+      "path": "archives/operating-review-40993710881-1-40998395846-1.zip",
+      "git_blob": "93b4bc4cb3a3fcc48e1ee9a43e6ba9a1b55955b4",
+      "sha256": "ff22e5dbc2a3c19163f63d410d50501a2997a766e08892440dd40951bf5b059c",
+      "capture": "2026-10-30T03:38:05.775722+00:00"
+    },
+    {
+      "path": "archives/operating-review-40998276893-1-40999354348-1.zip",
+      "git_blob": "1fdaea40228363aa85b5740c1a20f2865a8f3d7b",
+      "sha256": "44191e492899b06a813d76a89200d5055f21d1a1d522b1b75f2cf94cc62de50d",
+      "capture": "2026-10-30T03:48:45.167412+00:00"
+    },
+    {
+      "path": "archives/operating-review-40999354397-1-41043569132-1.zip",
+      "git_blob": "7e984c8a7d1307367a570334d94f47e0172604ca",
+      "sha256": "64794bafd2e84c675f5e0f027cb9ba6dfe157fa3f4a498c883c5f53d7d9037e5",
+      "capture": "2026-10-30T10:50:25.365980+00:00"
+    },
+    {
+      "path": "archives/operating-review-41043423440-1-41064677879-1.zip",
+      "git_blob": "507cecc3e6cf29566441fbdf56eee1dc6c501414",
+      "sha256": "ca28a66afeb391d7b2666833dcdf3356f9b746c653b99329a0d19778692f7787",
+      "capture": "2026-10-30T13:37:40.259474+00:00"
+    },
+    {
+      "path": "archives/operating-review-41064678118-1-41079061390-1.zip",
+      "git_blob": "fd4228617bdd0ba7bcd378771c6487fc6ef0ca0c",
+      "sha256": "48028b58ff49b6cc80daefd1d3e784c4093b00da87f90e22eea90dae4715f806",
+      "capture": "2026-10-30T15:16:33.987014+00:00"
+    },
+    {
+      "path": "archives/operating-review-41078311198-1-41081059017-1.zip",
+      "git_blob": "ab017b942d3bfaa6c192ab7aa91d7599ebc75943",
+      "sha256": "0d95f2bfb9ba27d76c5a49d6ca65ff5b99542b45cd0e4263d7473fa5e76fda07",
+      "capture": "2026-10-30T15:29:24.770384+00:00"
+    },
+    {
+      "path": "archives/operating-review-41083709573-1-41137405465-1.zip",
+      "git_blob": "d9f7ab2eb40531f3e78fd6f779fe84b1ded957b2",
+      "sha256": "22883ac340c0a63698ae60e8c8a637a4a4bb2c028b22f1bec980d61835dc9303",
+      "capture": "2026-10-30T22:20:43.493434+00:00"
+    },
+    {
+      "path": "archives/operating-review-41160909644-1-41191536282-1.zip",
+      "git_blob": "75368ea0b0cfcb830912511be1745cb4dca1dc43",
+      "sha256": "5c6133bdafe7e93c45bda2e073fc11c3d20d7fe8b91a2b0aef517e8b8246c374",
+      "capture": "2026-10-31T10:09:40.511706+00:00"
+    }
+  ],
+  "scope": "source integrity and observed-session coverage only; existing build_acceptance_report used without review declarations; no session qualification",
+  "public_payload_policy": "No private snapshots, targets, allocations or raw ledger files included.",
+  "status": "BLOCKED",
+  "strategy_registry_sha256": "636b76803029fff5358c40ecb7f1572d9c4868399a606a0440f1d36f402a654c",
+  "acceptance_report_function_sha256": "fc0de82ddc0ad19a5cb5499447ef30ed86dcea32819eaf58227ce87bcd34326e",
+  "calendar_authority": "existing src.research.market_session_clock.exchange_sessions, XNYS/XSHG; observed coverage is not qualified evidence"
+}

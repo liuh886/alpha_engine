@@ -103,6 +103,8 @@ def test_remote_collection_never_falls_back_or_accepts_unbound_archives(tmp_path
         result = collect_operating_review("owner/repo", **kwargs)
         assert result["run_id"] == 2 and result["qualification_status"] == "blocked"
         assert result["manual_interventions"] is None
+        assert result["captured_at_utc"] == "2026-10-16T03:00:00+00:00"
+        assert json.loads((tmp_path / "readiness.json").read_text())["captured_at_utc"] == result["captured_at_utc"]
         assert "missing or expired" in result["blockers"][0]
     else:
         with pytest.raises(ValueError, match="hash or size mismatch" if scenario == "bad_hash" else "unsafe"):
@@ -110,6 +112,20 @@ def test_remote_collection_never_falls_back_or_accepts_unbound_archives(tmp_path
     assert called[0] == "repos/owner/repo/actions/workflows/formal-backtest-refresh.yml/runs?per_page=10"
     assert all(f"runs/{run_id}/" not in endpoint for endpoint in called for run_id in (1, 3, 4, 5, 6))
     assert not (tmp_path.parent / "escape.json").exists()
+
+
+def test_capture_rejects_naive_time_before_network_or_writes(tmp_path, monkeypatch):
+    from datetime import datetime
+    from src.artifacts.operating_acceptance import collect_operating_review
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("unexpected network request")
+
+    monkeypatch.setattr("subprocess.run", forbidden)
+    with pytest.raises(ValueError, match="timezone-aware"):
+        collect_operating_review("owner/repo", input_root=tmp_path / "new",
+                                 repository_root=tmp_path, now_utc=datetime(2026, 10, 16))
+    assert not (tmp_path / "new").exists()
 
 
 @pytest.mark.parametrize("runs", [
