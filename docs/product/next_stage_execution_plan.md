@@ -1,6 +1,65 @@
 # Alpha Engine — 下一阶段产品架构与执行计划
 
-**状态：#1321 已合并，G0 分步实施中；A4 仍 FAIL。** 路线审查基线：`main@00dedccd76f3db4ea8091dc2321b89dfadf64089`，2026-10-29。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
+**当前裁决：产品 NO-GO；RDI 价格层已交付，完整 RDI 未验证。** 最新核对基线为 `main@d59e4e626065644d9d835f0ff59d4f2b0e169c57`，2026-10-31；2026-10-29 的原路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
+
+## 0. 产品与功能上线路线图（2026-10-31 当前执行入口）
+
+### 0.1 三个交付层级，分别验收
+
+| 层级 | 上线含义 | 当前裁决 / 退出标准 |
+| --- | --- | --- |
+| 可部署工程版本 | 已有四策略只读 Console 的具体 SHA 可以构建、部署和读取 | 已有局部发布证据；不等于完整产品验收 |
+| 正式产品发布 | 单操作者能持续读懂策略、核实证据、恢复故障并安全读取当前状态 | **NO-GO**；下表 A0–A6 证据闭环后，由 Owner 在 A7 明确 GO |
+| RDI 功能 | 先交付带日期的研究证据视图，再考虑经过验证的研究评估 | 价格层已交付；证据视图待重绑；正式评估须事件资格、冻结评估及真实前瞻门禁通过；无未校准分数 |
+
+RDI 未验证不阻断四策略产品独立验收；产品部署成功也不证明 RDI 有效。
+产品发布范围仍是 Overview、策略/标的解释与 Operating Status，以及既有本地 CLI。
+本地 Racetrack、未来 Runner 和 BDCR 各用自己的冻结合同，不变成第五个正式策略或新主导航。
+
+### 0.2 产品发布门禁与待完成事项
+
+状态表示现有证据，不用旧统计推断今天已积累多少合格交易日。
+详细门禁由 [产品验收 scorecard](product_completion_scorecard_2026-10-25.md) 和既有 Issue 定义。
+
+| Gate / 原任务 | 当前证据 | 下一可验收交付 | 执行者 / 外部依赖 |
+| --- | --- | --- | --- |
+| A0 身份与权威，#1278 | 实现与身份对齐已通过；旧路线文字需跟进 | 保持四策略、正式/研究边界及同一当前路线入口；以当前 SHA 复核，不恢复退役路径 | Agent |
+| A1 持续运行，#1277 | **BLOCKED**；最新成功运行不是 20 日验收 | 复用现有 operating acceptance，逐 US/CN 市场重审实际 20 个合格交易日、所有失败/保留/not-due 分类与真实 due-cycle；缺收据明确列缺口 | Agent 审核已有收据；缺失的真实未来交易日必须等待，禁止补造 |
+| A2 数据完整性 | **BLOCKED**；正式 cutoffs、RDI 价格及窄回放各有局部证明 | 为四策略实际依赖列源级 PIT/复权/生命周期/版本证据；将独立研究阻塞与策略必需输入分开，缺项定向修复 | Agent；必要原始来源或权限需 Owner/提供方 |
+| A3 用户旅程，#1279 / #1315 | 部分线上/模拟验收通过，完整边界矩阵未关闭 | 完成四策略桌面/手机的变化、未变化/not-due、延迟/阻断、拒绝旅程；修复日期/driver 语义和证据审阅缺口，保留真实证据 | Agent 负责可复现代码/公开旅程；真实受限会话需 Owner |
+| A4 权限与披露，#1279 / #1288 | **FAIL**；活动公开账本、新原始传输路径已止血，旧披露和真实权限验收未关闭 | 处置旧 Git/Actions/native lineage 披露、退役 CN x1.2 运行行；准备受保护测试资源，完成匿名/无权/过期/撤权/授权及缓存负验证 | Agent 做只读审计与修复 PR；Owner 决定披露处置、提供专用会话并批准实际权限/数据治理 |
+| A5 本地研究，#1282 | 有界 CN/QQQ 回放通过，最终验收范围仍需确认 | 用已接受 US/CN 参考研究和精确依赖/数据哈希复核重放与限制；不要求新模型盈利，也不把无关训练阻塞泛化 | Agent 复核；Owner 最终确认 |
+| A6 发布与恢复，#1281 | 具体 SHA 发布校验通过；完整恢复演练未验收 | 形成 RC 证据包，在既有工具下验证恢复/回滚、数据与运行状态身份；不改密封经济历史，不新建发布系统 | Agent 先完成可审阅演练包；涉及实际生产回滚及 Owner 本机操作需 Owner 明确执行/批准 |
+| A7 发布决定 | **NOT_TESTED / NO-GO** | 汇总 A0–A6 的 PASS/BLOCKED/NOT_TESTED、剩余风险和回滚证据，Owner 给出带日期的 GO/NO-GO | Owner；不能由 Agent 或绿色 CI 自动代签 |
+
+已确认无专用测试账号/会话。全体策略当前 live tier 为 public 的观察不能替代受保护行拒绝测试；
+Agent 不自行修改线上 tier、entitlement 或删除生产行以制造通过样本。
+
+### 0.3 RDI 功能里程碑
+
+| 里程碑 | 当前状态 | 下一事项与通过标准 |
+| --- | --- | --- |
+| M1 价格层 | **已交付 #1338**：5,238 个完整 XSHG session 至 2026-10-30，版本化修复、原始响应归档、离线重放及未成熟尾部 | 既有手工节奏下按需更新来源/冻结版本并校验 overlap；不让 Status 读取触发取数、重放或重算 |
+| 证据视图（当前优先实施） | Status 仍绑定 2026-10-24 / 6 月 25 日旧审核 | 在现有 RDI briefing 重绑已审收据与来源身份，显示新截止日和描述性限制；tamper/missing 失败关闭；桌面/手机及部署 SHA 验收。仍 `not_validated`，无 score |
+| M2 事件资格 | 十类资格表已发布，**0/10 合格** | 审计逐 session 完整性、真实 available-at、修订与 absence 证据；未知保持 unknown |
+| M3 首个事件家族 | **待选择与冻结**；推荐限售解禁公告，备选业绩披露窗口 | Owner 选择家族后，Agent 冻结窄 universe/era/来源/时点/去重/覆盖合同并实现；单类合格不自动解锁完整十类 study |
+| M4 冻结评估与前瞻起点 | **NOT_STARTED** | 预先提交 B/E/E+B、基准、阈值、purge/fold/区间与成败标准；冻结后才记录未来 session，不追认已观察的 7–10 月为前瞻 |
+| M5 验证与研究评估上线 | **BLOCKED** | 在真实合格数据上检验增量效用、区间与校准，保留负结果；分别等待 7/14/28-session 标签及足够独立事件。通过既定前瞻门禁后再单独审查研究评估展示 |
+
+不承诺“28 天后上线”：28 是交易日标签长度，不能替代足够样本、独立事件和评估通过。
+无校准证据不发布 0–100 分数或概率；无 EvidenceBundle 门禁和 Owner 批准不加策略覆盖层。
+
+### 0.4 实施队列与收口方式
+
+1. **当前批次**：合并本路线收口；单独实现 RDI 证据重绑，完成正负验证和线上验收。
+2. **产品闭环批次**：重审 A1 已有真实收据；按 A3/#1315 的已观察缺陷逐项落地日期与 driver 语义、Decision Feed 最多三重点、正式证据支持/反证/下一步。每个小 PR 只关闭已验证子项，完整 fleet 保留。
+3. **权限/恢复批次**：完成可无账号执行的 A4 清点和 A6 演练准备；将真实账号、生产治理、实际观察日及 Owner 操作准确交接。补齐证据后才提交 A7。
+4. **RDI 研究批次**：取得 M3 选择后独立推进窄事件证书与 M4；不能以赶产品发布为由降低研究门禁。
+5. **维护与后置功能**：审查 #1335 依赖修复；#1315 其余 P1/P2 按用户价值完成；独立 Runner、研究→正式身份映射和 #1307 RFC 只有各自范围冻结/来源与权限成立后实施。后置研究不是正式产品 GO 的隐含前置条件。
+
+每项使用已有 Issue/PR 和证据路径记账：实现 SHA、实际 cutoff、正负结果、未完成原因、下一动作。
+能由 Agent 完成的代码、检查和诊断继续推进；需要真实时间或 Owner 输入的项目保持明确状态，
+不重复创建路线、假账号或永久监控工作流，不把“全部未来功能做完”当作唯一发布终点。
 
 ## 1. 产品判定：从建设功能切换到交付有用的研究判断
 
@@ -15,12 +74,17 @@
 | 领域 | 已证实的实现 | 不得扩大解读 |
 | --- | --- | --- |
 | Formal Console | 四个正式策略的 Overview、Detail、Instrument、Status；#1317/#1318/#1320 纠正日期/权限过渡/历史窗口误导 | 局部 UI/CI 通过 ≠ A0–A7 产品上线验收 |
-| Study Workspace | 四类研究入口：Walk-Forward、XGBoost、Factor、RDI；研究收据与比较接口已存在 | 历史 PIT 并未因此认证；RDI 的 predictive edge 没有成立 |
+| 本地 CLI 研究 | 既有研究收据与比较合同；RDI #1338 价格层可重放 | 不恢复退役浏览器研究入口；历史 PIT 和 RDI predictive edge 未获认证 |
 | Racetrack | #1306 P/Q/NAV、双基准、积分、发布；#1311 Lightweight Charts 主图/榜单/详情；#1314 US87 等权池实际 Runner、私有 Q、v2 时间窗口排名 | US87 Runner 与内部等权基准共用一个回放，不能充当**独立策略有效性**证据；没有六名合格选手 |
 | 前端决策解释 | `DailyResearchBrief` 可排序状态；`StrategyDetailPage` 已展示失败门禁/反证/下一步 | [#1305 的实际实现 TODO](decision_feed_evidence_review_todo.md)仍未闭环；Brief 现在仍 `entries.map()` 列出全部四个而不是前三重点 |
-| 发布与数据权限 | #1326/#1327 私有接线与正式运行收据已建立；本次切换停止活动账本的公开 Git/日志/producer 上传；本地 Racetrack 不向公共 Pages 发布 | `#1288` 虽 Closed，**A4 仍 FAIL**；Formal 跨 job 原始 artifact、旧密封/历史披露及实际权限负验证仍未关闭 |
+| 发布与数据权限 | #1326–#1331 私有接线、活动公开写入止血与 Formal 结果私有传输已建立，真实 run 41083709573 通过 #1332 与精确 Pages 校验；本地 Racetrack 不公开 | **A4 仍 FAIL**；旧密封/历史披露、退役运行行及真实权限负验证仍未关闭 |
 
-### 1.2 现在的 P0 证据（2026-10-29 main；不摘录任何权重）
+### 1.2 原 P0 基线及后续处置（2026-10-29 历史观察；不摘录任何权重）
+
+以下原始观察不能当作当前树状态。#1328 已撤下活动账本子树及 producer 公开镜像，
+#1329/#1331 关闭新 Formal 原始结果跨 job 公开传输；#1336 记录当前 Git 16 次匿名 404、
+静态空壳和新制品/日志限域负验证。#1333 已关闭 US 源窗口/起始 NAV 的该项缺陷，
+不等于关闭 #1315 全部事项。当前剩余项与交付证据以 §0 为准。
 
 - **公开数据平面**：`data/research/strategy_signal_ledgers/{qqqi_qqq_tqqq_v4_3,us_x1_3,cn_27_v1_3,byd_v1_3_recovery_event_low_vol_confirmation_v1}/latest.json` 在公开 Git 路径中存在，包含 `current_weights` / `target_weights`。
 - **自动写入面**：`.github/workflows/{cn27-current-target,ranker-10d-current-target,qqq-v4-3-signal-alert,byd-daily-signal-alert}.yml` 仍执行 `git add` 该类账本并推至公共 `main`；`formal-backtest-refresh.yml` 也仍需独立审查公开投影、制品与出版边界。
@@ -52,8 +116,8 @@
 
 | 顺序 | 工作包与明确范围 | 完成标准（DoD） | 依赖/禁区 |
 | --- | --- | --- | --- |
-| **P0 / G0** | **当前操作状态的公开写入止血与重接线**：追踪 Git 最新树/历史、四个每日 writer、Formal lineage、Actions artifacts 和 Pages；先建立**受权限保护**的既有 Ledger 写入与 Strategy Operations 发布/读取端到端路径，再撤下公开 Git 新写入；清理当前树的敏感操作字段，封存已公开历史为残余风险记录 | 四面独立匿名负面验证（公开 Git 当前树、Pages、Actions artifacts、新写入流水线）+ entitled/denied/revoked 读测试；US/CN 正式信号仍按原调度生成、发布、投递，失败 fail closed；`A4` 依据新证据裁定，不按关闭 issue 推定 PASS | **必须先于新增对外可见研究数据、正式发布**；不重写密封历史、不创建第二真相库 |
-| **P1 / U1** | **修正图表/收益的证据身份**：#1315 剩余 US x1.3 首行 opening wealth、模型/基准观测边界与汇总值差异，使用版本化 source projection；统一 date vocabulary 和 driver 语义；Status 去除重复和错误提示 | 真实来源数据下汇总、图表的起止日期/净值/收益/样本数可逐行核对；不存在把“待加载”说成“无权限”；桌面/平板/手机 + 完整测试回归 | 在 #1315 已完成 #1317/#1318/#1320 基础上继续；不能在前端硬塞 NAV=1、改写 sealed metric |
+| **P0 / G0** | **当前操作状态的公开写入止血与重接线**：追踪 Git 最新树/历史、四个每日 writer、Formal lineage、Actions artifacts 和 Pages；先建立**受权限保护**的既有 Ledger 写入与 Strategy Operations 发布/读取端到端路径，再撤下公开 Git 新写入；清理当前树的敏感操作字段，封存已公开历史为残余风险记录 | 四面独立匿名负面验证（公开 Git 当前树、Pages、Actions artifacts、新写入流水线）+ entitled/denied/revoked 读测试；US/CN 正式信号仍按原调度生成、发布、投递，失败 fail closed；`A4` 依据新证据裁定，不按关闭 issue 推定 PASS | **必须先于受保护当前数据的公开面扩张和正式产品发布**；既有 Status 内非敏感、未验证的描述性 RDI 证据重绑可独立小 PR 验收，不解除 A4；不重写密封历史、不创建第二真相库 |
+| **P1 / U1** | **修正剩余解释语义**：US x1.3 opening wealth/source-window 已由 #1333 版本化投影完成；继续 #1315 的 date vocabulary 和 driver 语义，Status 去除重复和错误提示 | 真实来源数据下汇总、图表的起止日期/净值/收益/样本数可逐行核对；不存在把“待加载”说成“无权限”；桌面/平板/手机 + 完整测试回归 | 在 #1315 已完成 #1317/#1318/#1320/#1333 基础上继续；不能在前端硬塞 NAV=1、改写 sealed metric |
 | **P1 / U2** | **完成 #1305 的 Decision Feed**：直接调整 `DailyResearchBrief.tsx`；首页只突出最多三项有意义的变化、风险、阻断，按时间和优先级说明 *why now*，保留原四策略完整 Fleet；无新变化给明确“无新动作” | 变化/无变化/过期/阻断/权限待定的读法清楚；每条带 cutoff、原因、下一动作，`/app → evidence` ≤2 点击；不增加新导航或信号计算 | 继续复用现有 `describeStrategyObservation` 和共享读器，不把研究收益榜和运营关注榜合并 |
 | **P1 / U3** | **完成 Evidence Review**：`StrategyDetailPage.tsx` 用已有 `loadDecisionForRun` 分开列出支持证据、反证、解释局限、下一次允许验证；精确表明无绑定/过期/拒绝读取/等待审批 | 抽样一个支持、一个失败门禁、一个无有效证据情形；显示的结论、身份和日期与原 Bundle/Decision receipt 一致；不变成“买入/卖出建议” | 未有可审计映射时**不**自动接入研究 Runner，也不暴露本地未审查收据 |
 | **P1 / R1** | **真实独立研究选手**：在同一 US87 轨道内选择**一个**不等于 US87 EW 的简单、事前冻结的基线策略（先查现有 Study Workspace/现成 Runner 能否复用），按现有 Q/NAV 引擎、公平窗口与成本实测；保留输给基准的情形 | 冻结 thesis/spec/候选池/再平衡规则/费用/训练与 OOS 边界；产生可重跑 Q + source/code SHA + 相同 sessions 的 NAV 与 QQQ、US87 对照；回放、局限和失败案例同版本可读；没有收益保证或自动升为正式策略 | US87 Phase A #1314 已完成。**不能**用原样不合规的 QQQR/US x1.3、随机伪信号或“回测胜者筛选”来凑选手 |
@@ -65,7 +129,7 @@
 ### 3.1 建议实现 PR 切片
 
 1. **#A4-stop-bleed**：只处理 P0/G0，完成受保护数据写入和四面负面验收。不混入 Racetrack / 前端美化。
-2. **#console-evidence-math**：#1315 剩余「源级 opening wealth / 观测窗口」与解释歧义。UI 其他视觉事项单独按屏拆分。
+2. **#console-evidence-math**：源级 opening wealth / 观测窗口已由 #1333 完成；继续 #1315 的日期、driver 和 Status 解释歧义。UI 其他视觉事项单独按屏拆分。
 3. **#decision-brief** + **#evidence-review**：一屏一 PR，复用现有 reader，完成 #1305 未完成的代码工作。
 4. **#research-runner-1**：冻结简单独立策略、研究回放、成本、收据和前端只读消费，作为第二位真正有比较意义的 US Runner。
 5. **#cn-pool-runner**：CN130 EW + 原 CN registry/scorer；之后才考虑正式策略派生与月度审查。
