@@ -130,7 +130,10 @@ The CN27 formal builder already strips embedded runtime state; current and histo
 
 RDI 的 [2026-10-31 进度与十类事件资格审计](../research/ashare_rdi_progress_2026-10-31.md)
 记录了可重放价格续接预检：候选已至 2026-10-30，但旧证据缺 2026-06-23、
-2026-06-22 OHLC 有冲突，M1 仍 BLOCKED，事件层仍 0/10；未续接、未重算、未刷新 UI。
+2026-06-22 OHLC 有冲突，原 append-only 路径仍 BLOCKED。
+随后 [版本化修复与续接重算](../research/ashare_rdi_price_reconstruction_2026-10-31.md)
+通过归档原始响应回放，保留原源文件，交付至 2026-10-30 的价格层证据及未成熟尾部；
+事件层仍 0/10，未刷新 UI、未冻结前瞻评估、未生成 RDI 分数。
 
 ## 8. Forward cutover and Formal private transfer (2026-10-30)
 

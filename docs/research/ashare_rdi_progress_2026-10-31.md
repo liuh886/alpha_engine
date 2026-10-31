@@ -9,13 +9,20 @@ It records source failures rather than retroactively claiming July–October war
 
 | Milestone from #1324 review | Actual state |
 | --- | --- |
-| M1: renewed price evidence and replayable splice | **BLOCKED**: preflight implemented; no splice/baseline recomputation admitted |
+| M1: renewed price evidence and replayable splice | **Price-only versioned repair/recomputation verified** in the [follow-up](ashare_rdi_price_reconstruction_2026-10-31.md); original append-only preflight failure preserved; UI binding unchanged |
 | M2: ten-family eligibility audit | Table below published; **0/10 historically PIT-qualified**; inventory is not a coverage certificate |
 | M3: select first family and freeze scope | NOT_STARTED; neither earnings nor unlocks silently selected |
 | M4: freeze prospective evaluation spec | NOT_STARTED; no prospective clock is claimed |
 | M5: publish frozen evaluation evidence | BLOCKED by upstream source/spec gates; no predictive result |
 
-## Price renewal: failure is now reproducible
+## Price renewal: original failure is reproducible
+
+The failure below remains valid for the original unmodified source. The
+[versioned repair and renewal](ashare_rdi_price_reconstruction_2026-10-31.md)
+now preserves that source while recording a separately frozen two-field repair,
+one inserted session and 85 appended sessions, followed by price-only descriptive
+recomputation through 2026-10-30. It does not waive the original contract or
+qualify historical event PIT / predictions.
 
 Run from the reviewed revision in a full Git checkout (the retained Git blob
 must be available). Existing package lock and explicit XSHG range are used:

@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import csv
+import io
 
 import pytest
 
@@ -18,6 +20,7 @@ from src.research.ashare_rdi.phase2 import build_pit_panel, evaluate_blocked_oos
 from src.research.ashare_rdi.phase2_audit import source_readiness
 from src.research.ashare_rdi.price_baseline import descriptive_drawdown_comparison
 from src.research.ashare_rdi.price_renewal import audit_price_renewal
+from src.research.ashare_rdi.price_reconstruction import repair_prices, replay_source, recompute, repo_file
 from src.research.ashare_rdi.sector_etfs import SectorETFCandidate, audit_sector_etf
 
 
@@ -80,6 +83,100 @@ def test_renewal_rejects_unbound_candidate_bytes():
     old, catalog, security, cutoff = _renewal_inputs()
     with pytest.raises(ValueError, match="identity/hash mismatch"):
         audit_price_renewal(old, catalog, security + b" ", completed_cutoff=cutoff)
+
+
+def _repair_fixture():
+    old = b"date,open,high,low,close\n2021-01-04,100.000,101,98.000,100.00\n2021-01-06,100,101,98,99\n"
+    source = b"date,open,high,low,close\n2021-01-04,100,101,98,100\n2021-01-05,100,101,98,100\n2021-01-06,100,101,98,100\n2021-01-07,100,101,98,100\n"
+    contract = {"start": "2021-01-04", "cutoff": "2021-01-07", "retained_cutoff": "2021-01-06",
+                "legacy_sha256": hashlib.sha256(old).hexdigest(), "expected_retained_rows": 2,
+                "expected_output_rows": 4, "expected_append_rows": 1,
+                "ohlc_audit_resolution_index_points": 0.01,
+                "output_fields": ["date", "open", "high", "low", "close"],
+                "insert_sessions": ["2021-01-05"],
+                "replacements": [{"date": "2021-01-06", "field": "close", "old": "99", "new": "100"}]}
+    return old, source, contract
+
+
+def test_versioned_repair_preserves_untouched_strings_and_declares_every_change():
+    old, source, contract = _repair_fixture()
+    result, receipt = repair_prices(old, source, contract)
+    rows = list(csv.DictReader(io.StringIO(result.decode())))
+    assert rows[0]["open"] == "100.000" and rows[0]["close"] == "100.00"
+    assert rows[2]["close"] == "100" and len(rows) == 4
+    assert receipt["insert_sessions"] == ["2021-01-05"] and receipt["append_rows"] == 1
+
+
+@pytest.mark.parametrize("mutation", ["replacement", "insert", "legacy", "extra_repair", "tolerance"])
+def test_versioned_repair_rejects_undeclared_or_unnecessary_changes(mutation):
+    old, source, contract = _repair_fixture()
+    if mutation == "replacement":
+        contract["replacements"][0]["new"] = "100.5"
+    elif mutation == "insert":
+        contract["insert_sessions"] = []
+    elif mutation == "legacy":
+        old += b" "
+    elif mutation == "extra_repair":
+        contract["replacements"].append({"date": "2021-01-04", "field": "open", "old": "100.000", "new": "100"})
+    else:
+        contract["ohlc_audit_resolution_index_points"] = 2
+    with pytest.raises(ValueError):
+        repair_prices(old, source, contract)
+
+
+def test_reconstruction_paths_cannot_escape_repository(tmp_path):
+    with pytest.raises(ValueError):
+        repo_file(tmp_path, "../external/source.gz")
+
+
+def test_source_replay_rejects_archive_tampering(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "data/research/ashare_rdi/price_sources/sina_2026-10-31/manifest.json").read_bytes())
+    manifest["archive_sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="archive digest"):
+        replay_source(root, manifest)
+
+
+def test_real_reconstruction_is_offline_preserves_legacy_and_bounds_labels(monkeypatch):
+    import requests
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("offline reconstruction attempted a network call")
+
+    monkeypatch.setattr(requests, "get", forbidden)
+    root = Path(__file__).resolve().parents[1]
+    contract = root / "configs/research_experiments/ashare_rdi_csi300_price_repair_2026-10-31.json"
+    frozen = contract.read_bytes()
+    prices, receipt = recompute(root, contract, completed_cutoff=date(2026, 10, 30))
+    assert receipt["repairs"]["output_rows"] == 5238
+    assert receipt["repairs"]["append_rows"] == 85
+    assert receipt["repairs"]["insert_sessions"] == ["2026-06-23"]
+    assert len(receipt["repairs"]["replacement_fields"]) == 2
+    assert not receipt["legacy_source_overwritten"] and not receipt["event_study_ready"]
+    assert hashlib.sha256(prices).hexdigest() == receipt["output_sha256"]
+    assert contract.read_bytes() == frozen
+    original = subprocess.check_output(["git", "cat-file", "blob", receipt["legacy_git_blob_sha1"]], cwd=root)
+    output = {r["date"]: r for r in csv.DictReader(io.StringIO(prices.decode()))}
+    exceptions = {("2026-06-22", "high"), ("2026-06-22", "close")}
+    for row in csv.DictReader(io.StringIO(original.decode())):
+        if row["date"] >= "2005-04-08":
+            for field in ("open", "high", "low", "close"):
+                if (row["date"], field) not in exceptions:
+                    assert output[row["date"]][field] == row[field]
+    for row in receipt["retrospective_stress_case"]["results"]:
+        assert row["label_end_end"] == "2026-10-30"
+        assert row["insufficient_future_bars"]["count"] == row["horizon_sessions"]
+        assert row["eligible_observation_end"] < "2026-10-30"
+
+
+def test_windowed_baseline_keeps_prior_warmup_and_never_shortens_tail():
+    bars = _bars(100)
+    result = descriptive_drawdown_comparison(bars, observation_start=bars[90].session, horizons=(7,))
+    row = result["results"][0]
+    assert row["drawdown_at_least_threshold"]["observations"] + row["other"]["observations"] == 3
+    assert row["eligible_observation_start"] == bars[90].session.isoformat()
+    assert row["label_end_end"] == bars[-1].session.isoformat()
+    assert row["insufficient_future_bars"]["count"] == 7
 
 
 def _cov(day: date, family: str = "holding_change", archived: bool = True) -> FamilyCoverage:
