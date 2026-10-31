@@ -8,7 +8,7 @@
 
 ## 1. Five-Surface Security Audit Matrix
 
-The matrix records the initial disclosure baseline; §7–§8 track subsequent code
+The matrix records the initial disclosure baseline; §7–§9 track subsequent code
 and transport changes. Historical observations are not current acceptance proof.
 Gate A4 remains FAIL until the stated independent post-cutover checks pass.
 
