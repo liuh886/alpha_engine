@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { GovernedRunSummary } from './governed-run';
-import { parseResearchDecision } from './model-run-decision';
+import { loadDecisionForRun, parseResearchDecision } from './model-run-decision';
 import type { ModelRunBundleV2Manifest } from './model-run-bundle-v2';
+import { sha256Text } from './model-run-bundle-v2';
 
 const DIGEST = 'a'.repeat(64);
 const BUNDLE = 'b'.repeat(64);
@@ -87,6 +88,28 @@ function decision() {
 }
 
 describe('manifest-bound research decisions', () => {
+  it('retains canonical decision and claim binding across a disposable projection', async () => {
+    const original = run();
+    const projected = { ...original, bundleId: 'c'.repeat(64), canonicalManifest: original.manifest,
+      manifest: { ...original.manifest!, bundle_id: 'c'.repeat(64), projection_contract: 'public_historical_projection_v1',
+        source_identity: { canonical_bundle_id: BUNDLE, canonical_manifest_sha256: DIGEST },
+        sections: original.manifest!.sections.map(section => ({ ...section, sha256: 'd'.repeat(64) })),
+      } };
+    expect(parseResearchDecision(decision(), projected).bundle_id).toBe(BUNDLE);
+    const forged = decision();
+    forged.gates[0].source_sha256 = 'd'.repeat(64);
+    expect(() => parseResearchDecision(forged, projected)).toThrow('evidence binding failed');
+    expect(() => parseResearchDecision(decision(), { ...projected, canonicalManifest: null })).toThrow('canonical source manifest');
+    const text = JSON.stringify(decision());
+    const catalog = { schema_version: '2.0.0', generated_at: '2026-08-03T00:00:00Z', research_only: true, trade_ready: false,
+      records: [{ run_id: original.runId, bundle_id: BUNDLE, status: 'completed', verdict: 'supported',
+        path: 'fixture.json', sha256: await sha256Text(text), byte_size: new TextEncoder().encode(text).byteLength }] };
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(url.endsWith('catalog.json') ? JSON.stringify(catalog) : text)));
+    try {
+      expect(await loadDecisionForRun(projected)).toMatchObject({ state: 'completed', decision: { bundle_id: BUNDLE } });
+    } finally { vi.unstubAllGlobals(); }
+  });
+
   it('accepts a completed verdict only when every claim binds to the manifest', () => {
     const parsed = parseResearchDecision(decision(), run());
     expect(parsed.verdict).toBe('supported');

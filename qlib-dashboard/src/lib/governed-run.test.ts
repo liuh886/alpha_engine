@@ -48,6 +48,49 @@ async function formalAssets(summarySizeDelta = 0, performanceText?: string) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('formal-only console reader', () => {
+  it.each([false, true])('verifies embedded canonical manifest bytes for retained decisions (tamper=%s)', async tamper => {
+    const { catalog, manifest, assets } = await formalAssets();
+    const originalText = canonicalJson(manifest);
+    const originalId = manifest.bundle_id;
+    const originalHash = await sha256Text(originalText);
+    const projected = manifest as typeof manifest & { projection_contract: string; source_identity: {
+      canonical_bundle_id: string; canonical_manifest_sha256: string; canonical_manifest_json: string;
+    } };
+    projected.projection_contract = 'public_historical_projection_v1';
+    projected.source_identity = { canonical_bundle_id: originalId, canonical_manifest_sha256: originalHash,
+      canonical_manifest_json: originalText + (tamper ? ' ' : '') };
+    const identity = { ...projected } as Record<string, unknown>;
+    delete identity.bundle_id;
+    projected.bundle_id = await sha256Text(canonicalJson(identity));
+    const text = canonicalJson(projected);
+    assets.set('/data/formal-model-runs/fixture/manifest.json', text);
+    Object.assign(catalog.records[0], { projection_contract: projected.projection_contract,
+      canonical_bundle_id: originalId, canonical_manifest_sha256: originalHash,
+      bundle_id: projected.bundle_id, manifest_sha256: await sha256Text(text) });
+    const result = await loadFormalRuns();
+    expect(result.runs).toHaveLength(tamper ? 0 : 1);
+    if (tamper) expect(result.errors[0]).toContain('Canonical source manifest integrity');
+    else expect(result.runs[0].canonicalManifest?.bundle_id).toBe(originalId);
+  });
+
+  it.each([false, true])('verifies a projected bundle against its declared canonical identity (mismatch=%s)', async mismatch => {
+    const { catalog, manifest, assets } = await formalAssets();
+    const projected = manifest as typeof manifest & { projection_contract: string; source_identity: { canonical_bundle_id: string; canonical_manifest_sha256: string } };
+    projected.projection_contract = 'public_historical_projection_v1';
+    projected.source_identity = { canonical_bundle_id: 'a'.repeat(64), canonical_manifest_sha256: 'b'.repeat(64) };
+    const identity = { ...projected } as Record<string, unknown>;
+    delete identity.bundle_id;
+    projected.bundle_id = await sha256Text(canonicalJson(identity));
+    const text = canonicalJson(projected);
+    assets.set('/data/formal-model-runs/fixture/manifest.json', text);
+    Object.assign(catalog.records[0], { projection_contract: projected.projection_contract,
+      canonical_bundle_id: (mismatch ? 'c' : 'a').repeat(64), canonical_manifest_sha256: 'b'.repeat(64),
+      bundle_id: projected.bundle_id, manifest_sha256: await sha256Text(text) });
+    const result = await loadFormalRuns();
+    expect(result.runs).toHaveLength(mismatch ? 0 : 1);
+    if (mismatch) expect(result.errors[0]).toContain('projection source identity mismatch');
+  });
+
   it('loads the accepted summary while keeping unavailable required evidence explicit', async () => {
     const { manifest, fetcher } = await formalAssets();
     const result = await loadFormalRuns();

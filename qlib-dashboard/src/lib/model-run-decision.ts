@@ -112,11 +112,18 @@ export function parseResearchDecision(value: unknown, run: GovernedRunSummary): 
   const status = String(value.status) as ResearchDecisionStatus;
   requireValue(VERDICTS.has(verdict) && STATUSES.has(status), 'Decision verdict or status is invalid');
   requireValue(value.research_only === true && value.trade_ready === false, 'Decision research boundary is invalid');
-  requireValue(Boolean(run.bundleId && value.bundle_id === run.bundleId), 'Decision bundle identity mismatch');
+  const canonicalBundle = run.manifest?.source_identity?.canonical_bundle_id ?? run.bundleId;
+  requireValue(Boolean(canonicalBundle && value.bundle_id === canonicalBundle), 'Decision bundle identity mismatch');
   requireValue(value.run_id === run.runId, 'Decision run identity mismatch');
   requireValue(Boolean(run.manifest), 'Decision requires a verified Bundle v2 manifest');
+  if (run.manifest?.source_identity || run.manifest?.projection_contract) {
+    requireValue(run.manifest?.projection_contract === 'public_historical_projection_v1'
+      && run.canonicalManifest?.bundle_id === canonicalBundle
+      && run.canonicalManifest.run_id === run.runId && run.canonicalManifest.model_version_id === run.modelVersionId
+      && run.canonicalManifest.evidence_cutoff === run.evidenceCutoff, 'Decision requires a verified canonical source manifest');
+  }
   const sections = new Map(
-    run.manifest!.sections
+    (run.canonicalManifest ?? run.manifest)!.sections
       .filter((section) => section.availability_status === 'available' && section.path && section.sha256)
       .map((section) => [section.path!, section.sha256!]),
   );
@@ -143,7 +150,7 @@ export function parseResearchDecision(value: unknown, run: GovernedRunSummary): 
   return {
     schema_version: '2.0.0',
     run_id: run.runId,
-    bundle_id: run.bundleId!,
+    bundle_id: canonicalBundle!,
     verdict,
     status,
     gates,
@@ -196,7 +203,8 @@ export async function loadDecisionForRun(run: GovernedRunSummary): Promise<Decis
   if (!run.bundleId || !run.manifest) return { state: 'absent', decision: null, error: null };
   try {
     const catalog = parseCatalog(JSON.parse(await fetchText('catalog.json')) as unknown);
-    const record = catalog.records.find((candidate) => candidate.bundle_id === run.bundleId);
+    const canonicalBundle = run.manifest.source_identity?.canonical_bundle_id ?? run.bundleId;
+    const record = catalog.records.find((candidate) => candidate.bundle_id === canonicalBundle);
     if (!record) return { state: 'absent', decision: null, error: null };
     requireValue(record.run_id === run.runId, 'Decision catalog run identity mismatch');
     const text = await fetchText(record.path);

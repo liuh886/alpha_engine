@@ -2,6 +2,7 @@ import type { CanonicalMetricV2, ModelRunSectionDeclaration } from './model-run-
 import { parseCanonicalMetricV2 } from './model-run-bundle-v2';
 import { loadRunSection, type GovernedRunSummary } from './governed-run';
 import type { Position, ReportRow } from './types';
+import { readPerformanceSourceContext, type PerformanceSourceContext } from './performanceSourceContext';
 
 export interface FormalPerformanceEvidence {
   benchmark: string;
@@ -9,6 +10,7 @@ export interface FormalPerformanceEvidence {
   report: ReportRow[];
   traceFrequency: string;
   semantics: Record<string, unknown>;
+  sourceContext?: PerformanceSourceContext | null;
 }
 
 export interface FormalRiskEvidence {
@@ -258,6 +260,8 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
       report: parsedReport,
       traceFrequency: String(performance.trace_frequency ?? run.manifest.comparability_key.trace_frequency),
       semantics: isRecord(performance.performance_semantics) ? performance.performance_semantics : {},
+      sourceContext: readPerformanceSourceContext(performance.public_evidence_context, parsedReport,
+        run.manifest, run.evidenceCutoff, summary, run.canonicalManifest),
     },
     risk: {
       metrics: risk ? canonicalMetrics(risk.metrics, 'risk.metrics') : [],

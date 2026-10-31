@@ -1,4 +1,5 @@
 import { publicModelDisplayName } from './model-presentation';
+import { readSummaryPerformanceSourceContext } from './performanceSourceContext';
 import {
   parseModelRunBundleV2Manifest,
   sha256Text,
@@ -30,6 +31,7 @@ export interface GovernedRunSummary {
   manifestSha256: string | null;
   summary: Record<string, unknown>;
   manifest: ModelRunBundleV2Manifest | null;
+  canonicalManifest?: ModelRunBundleV2Manifest | null;
   loadWarnings: string[];
 }
 
@@ -162,6 +164,31 @@ async function loadCatalogRecord(record: ModelRunCatalogRecord): Promise<Governe
   if (!(await verifyModelRunBundleId(manifest)) || manifest.bundle_id !== record.bundle_id) {
     throw new Error(`formal bundle identity mismatch: ${record.model_family_id}/${record.run_id}`);
   }
+  if (record.projection_contract !== undefined || manifest.projection_contract !== undefined) {
+    if (record.projection_contract !== 'public_historical_projection_v1'
+        || manifest.projection_contract !== record.projection_contract
+        || !record.canonical_bundle_id || !record.canonical_manifest_sha256
+        || manifest.source_identity?.canonical_bundle_id !== record.canonical_bundle_id
+        || manifest.source_identity?.canonical_manifest_sha256 !== record.canonical_manifest_sha256) {
+      throw new Error(`Formal projection source identity mismatch: ${record.model_family_id}/${record.run_id}`);
+    }
+  } else if (manifest.source_identity !== undefined) {
+    throw new Error('Formal projection source identity is undeclared.');
+  }
+  let canonicalManifest: ModelRunBundleV2Manifest | null = null;
+  const canonicalText = manifest.source_identity?.canonical_manifest_json;
+  if (canonicalText !== undefined) {
+    if (canonicalText.length > 128_000 || await sha256Text(canonicalText) !== record.canonical_manifest_sha256) {
+      throw new Error('Canonical source manifest integrity mismatch.');
+    }
+    canonicalManifest = parseModelRunBundleV2Manifest(JSON.parse(canonicalText));
+    if (!await verifyModelRunBundleId(canonicalManifest) || canonicalManifest.bundle_id !== record.canonical_bundle_id
+        || canonicalManifest.model_version_id !== manifest.model_version_id || canonicalManifest.run_id !== manifest.run_id
+        || canonicalManifest.evidence_cutoff !== manifest.evidence_cutoff || canonicalManifest.projection_contract !== undefined
+        || canonicalManifest.publication_channel !== 'formal' || canonicalManifest.publication_status !== 'accepted_formal_baseline') {
+      throw new Error('Canonical source manifest identity mismatch.');
+    }
+  }
   if (manifest.publication_channel !== 'formal' || manifest.publication_status !== record.publication_status) {
     throw new Error(`formal channel/status mismatch: ${record.model_family_id}/${record.run_id}`);
   }
@@ -179,6 +206,7 @@ async function loadCatalogRecord(record: ModelRunCatalogRecord): Promise<Governe
   }
   const parsed = JSON.parse(summaryTextValue) as unknown;
   if (!isRecord(parsed)) throw new Error(`formal summary must be an object: ${record.model_family_id}/${record.run_id}`);
+  readSummaryPerformanceSourceContext(parsed.public_evidence_context, manifest, canonicalManifest, manifest.evidence_cutoff, parsed);
   const optionalWarnings = manifest.sections
     .filter((section) => section.section_id !== 'decision' && !section.required_for_model_kind && section.availability_status !== 'available')
     .map((section) => `${section.section_id}: ${section.reason ?? section.availability_status}`);
@@ -205,6 +233,7 @@ async function loadCatalogRecord(record: ModelRunCatalogRecord): Promise<Governe
     manifestSha256: record.manifest_sha256,
     summary: parsed,
     manifest,
+    canonicalManifest,
     loadWarnings: optionalWarnings,
   };
 }

@@ -160,17 +160,28 @@ The operator authorized this order on 2026-10-30. Each step needs its own
 reviewed implementation and evidence; a later independent blocker does not
 erase earlier verified results.
 
-1. **515180 source contract — implementing.** Keep strict full-refresh Yahoo
+1. **515180 source contract — implemented #1330, merged `5a6670a3`.** Keep strict full-refresh Yahoo
    fallback admission. Only requested, already-authorized CN formal auxiliaries
    that actually select Yahoo obtain a complete requested-range source vintage;
    never merge a legacy seed into that full snapshot, drop prior observation
    dates, relabel an incremental fetch, or refresh the whole candidate pool.
-2. **Real Formal private transport — NOT_TESTED.** After source recovery, obtain
+   Normal run `41083709573` verified preferred Tencent source through 2026-10-30;
+   the Yahoo-only conditional remains fixture-verified, not live-exercised.
+2. **Real Formal private transport — PASS.** After source recovery, obtain
    an eligible normal run with exact private archive and atomic fan-in receipts.
    Stop on data/transport failure; do not invent a strategy task to pass a gate.
-3. **#1315 source consistency — pending.** Reconcile US x1.3 dates, opening NAV,
+   #1331 (`2a80e4f5`) fixes ZIP container dates for sealed epoch-dated BYD inputs.
+   Run `41083709573` passed both real private retentions, exact restoration,
+   atomic fan-in and Bundle construction; candidate #1332 merged `30a3df54`.
+   The same real run completed successfully, including candidate checks, merge
+   and exact Pages verification. CN economic prefix
+   is preserved within the existing numerical tolerance, not byte-identically;
+   BYD's old report prefix is exact. Failed/cancelled runs remain retained.
+3. **#1315 source consistency — implementing, not yet deployed.** Reconcile US x1.3 dates, opening NAV,
    observation counts and source identity; preserve source economics. Desktop,
    mobile, production build and deployed-SHA browser evidence remain required.
 4. **A4 — FAIL.** Complete independently possible public-surface negatives and
    entitled/denied/revoked real reads using the existing access system. Missing
    real-session evidence stays explicit; fixtures/CI never substitute for it.
+   The operator confirmed no dedicated real test account/session is available;
+   proceed with accountless checks and retain real-session tests as NOT_TESTED.

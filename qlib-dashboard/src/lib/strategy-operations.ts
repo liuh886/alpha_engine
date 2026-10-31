@@ -370,7 +370,12 @@ async function fetchOperations(signal?: AbortSignal): Promise<Map<string, unknow
 
 export function assertStrategyOperationRun(snapshot: StrategyOperationsSnapshot, run: GovernedRunSummary): void {
   assert(snapshot.modelVersionId === run.modelVersionId, 'Operations model identity mismatch');
-  assert(Boolean(run.bundleId) && snapshot.sourceIdentity.formalBundleId === run.bundleId, 'Operations formal bundle identity mismatch');
+  const source = run.manifest?.source_identity;
+  if (source) assert(run.manifest?.projection_contract === 'public_historical_projection_v1'
+    && /^[a-f0-9]{64}$/.test(source.canonical_bundle_id)
+    && /^[a-f0-9]{64}$/.test(source.canonical_manifest_sha256), 'Operations projection source identity is invalid');
+  const canonicalBundle = source?.canonical_bundle_id ?? run.bundleId;
+  assert(Boolean(canonicalBundle) && snapshot.sourceIdentity.formalBundleId === canonicalBundle, 'Operations formal bundle identity mismatch');
   assert(Boolean(run.runId) && snapshot.sourceIdentity.formalRunId === run.runId, 'Operations formal run identity mismatch');
   assert(Boolean(run.evidenceCutoff) && snapshot.sourceIdentity.formalEvidenceCutoff === run.evidenceCutoff, 'Operations formal cutoff mismatch');
 }
