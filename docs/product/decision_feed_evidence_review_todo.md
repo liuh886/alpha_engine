@@ -1,6 +1,6 @@
 # Decision Feed + Evidence Review — 轻量实施 TODO
 
-**基线**：`main@e14c57838`（2026-10-27）。**当前状态（2026-10-31）**：Decision Feed 的三重点呈现已实现；Evidence Review 与 P1 研究身份映射仍待各自验收。原规划基线保留，不代表完整产品 GO。
+**基线**：`main@e14c57838`（2026-10-27）。**当前状态（2026-10-31）**：Decision Feed 的三重点呈现已实现；Evidence Review 已实现，浏览器验收单独记录；P1 研究身份映射仍待具备正式映射和权限条件。原规划基线保留，不代表完整产品 GO。
 
 2026-10-28 收口：本文以现行 [Strategy Console 合同](strategy_console.md)
 和 [AGENTS.md](../../AGENTS.md) 为权威。上述 SHA 是计划编写基线，
@@ -48,7 +48,7 @@ Evidence Review；每项以最终提交、测试和截图验收。P1 研究关�
 ## 后续 implementation PR 的 TODO（按顺序，一个轻量实施闭环）
 
 - [x] **P0 · Decision Feed** — 原位精简 `qlib-dashboard/src/components/DailyResearchBrief.tsx`：利用已有 `describeStrategyObservation()` 的 `kind/reason/nextStep` 与正式策略快照，对 `changed → attention → retained → unchanged` 等状态排序；顶部最多突出 **3 条**，无变化时直接说明“无新动作”；完整四策略列表保留在 `StrategyFleet`。每条信息显示 cutoff/状态/原因，点击进入现有策略详情。避免新增一套信号计算。
-- [ ] **P0 · Evidence Review** — 原位完善 `qlib-dashboard/src/pages/StrategyDetailPage.tsx` 的 `Research tracking assessment`：复用 `loadDecisionForRun()` 的**已验证** `gates / supporting_evidence / contradictory_evidence / interpretation_limits / next_permitted_validation_step`，按「支持 / 反证 / 局限 / 下一步」呈现。pending、blocked、absent、error 显示真实含义；不可把 `supported` 翻译为“建议买入”。
+- [x] **P0 · Evidence Review** — 原位完善 `qlib-dashboard/src/pages/StrategyDetailPage.tsx` 的 `Research tracking assessment`：复用 `loadDecisionForRun()` 的**已验证** `gates / supporting_evidence / contradictory_evidence / interpretation_limits / next_permitted_validation_step`，按「支持 / 反证 / 局限 / 下一步」呈现。pending、blocked、absent、error 显示真实含义；不可把 `supported` 翻译为“建议买入”。
 - [ ] **P1 · 研究与策略的只读关联** — 优先复用既有 `research_study` 收据和 Model Run Bundle v2 的明确身份；只有存在**可审计的研究→正式模型映射**以及可授权读取的脱敏摘要，才在证据区域加研究入口。否则维持“尚无关联研究证据”，研究结果继续留在本地 CLI；**不自动复制本地收据到公共 Pages**，不按股票代码猜测关联。#1288/A4 FAIL 未关闭前禁止扩大敏感公开面。
 - [ ] **验收与收口** — 扩充**现有** React 单测 / Playwright 检查：变化、无变化、过期、数据阻断、缺证据、无权限、研究未认证、移动端 375px；验证点击详情保持身份与日期正确、没有新发单入口或隐私字段。记录测试结果、截图、commit 和阻断事实，再标记完成。
 
@@ -70,3 +70,7 @@ Evidence Review；每项以最终提交、测试和截图验收。P1 研究关�
 retained 时才显示无新模型变化；pending/access/attention/空数据不作该声明。
 完整 Fleet、Status 四策略、身份拒绝与 source-read 去重均保留。此实现不新增
 排序计算权威、模型、导航或当前信号。Evidence Review/P1/整体产品门禁未因此关闭。
+
+## 2026-10-31 Evidence Review 实现
+
+在既有策略详情中复用已验证 DecisionLoadState，展开支持证据、全部 gate 及其 outcome、反证、解释局限、失败模式与下一步。继续保留主要反证摘要、证据 cutoff，以及 pending/absent/error 的真实状态；supported 仍仅是研究判断。无新 reader、请求、来源路径链接或研究身份推断。测试样例经过现有 parseResearchDecision 校验；独立代码审阅通过。P1 和产品上线门禁不因此关闭。
