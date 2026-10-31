@@ -176,3 +176,15 @@ RDI remains independent. Review the linked PRs before deciding next actions.
 - **Gate A7 Status (NOT_TESTED / NO-GO)**: 章程已合并，RC 待执行。在真实发布与完整隔离验证通过前，当前裁决维持 NO-GO。
 - **Direction A v1 Scope Locked**: Alpha Engine v1 remains strictly a single-operator personal quantitative research workstation with exactly 4 active strategies and read-only Strategy Console.
 - **Track B Relationship (#1296)**: Future quantitative research infrastructure expansion (point-in-time data planes, cross-sectional evaluation, reusable factor libraries) belongs to Track B under PR #1296 and subsequent dedicated issues. Track B initiatives must respect Direction A v1 boundaries and must not reactivate retired features, add secondary registries, or bypass immutable evidence contracts.
+
+### 2026-10-31 accountless acceptance update
+
+Real Formal run `41083709573` closed the new private result transport through
+#1332 and exact Pages verification. The
+[accountless receipt](../evidence/product_v1/accountless_access_observation_2026-10-31.json)
+records active Git negatives, metadata-only new Formal artifacts and empty
+static operation shells. All observed live strategy policies are public, so
+protected-row denial cannot be inferred from anonymous snapshot visibility.
+The retired CN x1.2 runtime row remains visible; older disclosures remain open.
+No dedicated account/session is available: entitled/denied/revoked tests remain
+NOT_TESTED. **A4 stays FAIL and the full-product decision stays NO-GO.**
