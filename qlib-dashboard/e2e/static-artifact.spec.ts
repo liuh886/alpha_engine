@@ -241,6 +241,19 @@ test('strategy detail separates source metrics from chart observations and keeps
   page.on('pageerror', error => errors.push(error.message));
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
   await page.goto('/#/strategies/us_x1_3');
+  const assessment = page.getByRole('region', { name: 'Research tracking assessment' });
+  await expect(assessment).toContainText('Continuing effectiveness awaits review.');
+  await assessment.getByText('Supporting evidence, counterevidence, limits and next validation', { exact: true }).click();
+  for (const name of ['Supporting evidence', 'Gates', 'Counterevidence', 'Interpretation limits', 'Next permitted validation']) {
+    await expect(assessment.getByRole('heading', { name, exact: true })).toBeVisible();
+  }
+  await expect(assessment).toContainText('Research only.');
+  await expect(assessment).toContainText('Evidence through');
+  expect(await assessment.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(2);
+  await assessment.getByRole('heading', { name: 'Supporting evidence', exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('formal-evidence-review.png') });
+  await assessment.getByRole('heading', { name: 'Next permitted validation', exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('formal-evidence-next-validation.png') });
   const scope = page.getByRole('region', { name: 'Published metric scope' });
   await expect(scope).toContainText('source return observations');
   await expect(scope).toContainText('non-provisional through');

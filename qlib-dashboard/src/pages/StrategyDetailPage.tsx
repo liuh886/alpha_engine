@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowUpRight, CalendarClock, Crown, Database, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
+import { ResearchTrackingAssessment } from '@/components/ResearchTrackingAssessment';
 import { FormalBacktestReview } from '@/components/FormalBacktestReview';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
 import { Badge } from '@/components/ui/badge';
@@ -162,31 +163,7 @@ export function StrategyDetailPage() {
       </section>
 
       <OperationsReadStatus loading={loading} issues={issues} reload={reload} previousRead={snapshot?.readState === 'retained'} />
-      <section aria-label="Research tracking assessment" className="rounded-xl border bg-card p-5 text-sm">
-        <h2 className="font-semibold">Research tracking assessment</h2>
-        <p className="mt-2 text-muted-foreground">
-          {decisionState?.decision
-            ? decisionState.decision.status === 'pending_review' ? 'Continuing effectiveness awaits review. Formal acceptance does not establish validation.' : `Reviewed research result: ${decisionState.decision.verdict.replace(/_/g, ' ')}`
-            : decisionState?.state === 'error' ? 'Assessment evidence could not be verified.' : decisionState?.state === 'absent' ? 'No assessment is bound to this evidence bundle.' : 'Loading verified assessment…'}
-        </p>
-        {decisionState?.decision && (
-          <p className="mt-2 text-muted-foreground">{primaryCounterevidence?.statement || 'Retained evidence has no recorded counterevidence; this does not establish continued effectiveness.'}</p>
-        )}
-        {decisionState?.decision && (
-          <p className="mt-2 text-muted-foreground">
-            {decisionState.decision.gates.filter(row => row.outcome === 'failed').length} retained failed gates · {decisionState.decision.contradictory_evidence.length} counterevidence records. Evidence through {run.evidenceCutoff || 'unknown'}.
-          </p>
-        )}
-        {decisionState?.decision && (
-          <details className="mt-3">
-            <summary className="cursor-pointer font-medium">Retained counterevidence and next validation</summary>
-            <ul className="mt-2 list-disc space-y-2 pl-5 text-muted-foreground">
-              {[...decisionState.decision.gates.filter(row => row.outcome === 'failed'), ...decisionState.decision.contradictory_evidence].map(row => <li key={row.claim_id}>{row.statement}</li>)}
-            </ul>
-            <p className="mt-3 text-muted-foreground">{decisionState.decision.next_permitted_validation_step}</p>
-          </details>
-        )}
-      </section>
+      <ResearchTrackingAssessment state={decisionState} evidenceCutoff={run.evidenceCutoff} primaryCounterevidence={primaryCounterevidence?.statement} />
 
       <section aria-label="Latest retained change and risk" className="rounded-xl border bg-card p-5 text-sm">
         <h2 className="font-semibold">Latest retained change and risk</h2>
