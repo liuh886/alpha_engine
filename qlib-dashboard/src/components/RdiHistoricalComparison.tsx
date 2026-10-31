@@ -46,6 +46,7 @@ export function RdiHistoricalComparison({ rows, priceCutoff, horizon, onHorizonC
         <div><dt className="min-h-8 text-muted-foreground sm:min-h-0">Prior drawdown ≥10%</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{percent(selected.drawdown_loss_frequency, 2)}</dd><dd className="mt-1 text-muted-foreground">n={count(selected.drawdown_observations)}</dd></div>
         <div><dt className="min-h-8 text-muted-foreground sm:min-h-0">Other price states</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{percent(selected.other_loss_frequency, 2)}</dd><dd className="mt-1 text-muted-foreground">n={count(selected.other_observations)}</dd></div>
       </dl>
+      <p className="mt-3 text-xs text-muted-foreground">Latest mature observation {selected.latest_mature_observation}; labels through {selected.latest_label_end}. {selected.immature_observations} later observations await complete future sessions.</p>
       <p className="mt-3 border-t pt-2 text-xs text-muted-foreground">Frequency difference <span className="font-semibold tabular-nums text-foreground">{difference > 0 ? '+' : ''}{difference.toFixed(2)} pp</span> <span className="whitespace-nowrap">(percentage points)</span></p>
     </div>
     <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Prices end {priceCutoff}. Overlapping observations are not independent samples. This is not a current loss probability, calibrated RDI forecast or tradable return.</p>

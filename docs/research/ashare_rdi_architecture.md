@@ -326,3 +326,21 @@ fault cases (mismatch, invalid research boundary, invalid JSON) continued to hid
 old statistics and recovered correctly. Narrow light/dark geometry and screenshot
 checks passed. No unresolved frontend blocker was found in this acceptance pass;
 the historical-data and predictive-validation gates above remain open.
+
+## 2026-10-31 reviewed price evidence rebinding
+
+The existing Status RDI section now consumes the separately reviewed versioned
+price reconstruction through 2026-10-30 (5,238 post-inception XSHG rows).
+`rdi_product_review_2026-10-31.json` pins the reconstruction receipt, source
+manifest/archive identity, frozen repair contract, source/sector inventory and
+protocol. It does not rerun a source decoder, provider or evaluator on a status
+read. Schema 1.1 distinguishes retained historical Git lineage from the new
+reconstructed output SHA-256 and links the reviewed source manifest.
+
+Historical comparison details expose each horizon's last mature observation,
+actual label end and immature tail. Missing or contradictory inputs hide
+statistics; no legacy receipt fallback is available. The original failed
+append-only preflight remains independently replayable from its old source.
+This is a dated, descriptive evidence update, not Step 4 research-assessment
+promotion. Event qualification remains 0/10, status stays `not_validated`, no
+score/probability forecast, prospective validation or strategy overlay is added.

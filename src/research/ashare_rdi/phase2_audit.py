@@ -75,13 +75,14 @@ def main() -> None:
     elif args.price_renewal_audit:
         from src.research.market_session_clock import completed_market_date
 
-        from .briefing import READINESS
         from .price_renewal import audit_price_renewal
 
         if args.product_briefing or not args.as_of:
             parser.error("renewal audit requires --as-of and excludes --product-briefing")
         root = Path(__file__).resolve().parents[3]
-        readiness_bytes = (root / READINESS).read_bytes()
+        # This mode reproduces the original failed append-only preflight;
+        # product review rebinding must not change its historical input.
+        readiness_bytes = (root / "docs/evidence/ashare_rdi_phase2/csi300_input_readiness_2026-10-24.json").read_bytes()
         reviewed = json.loads(readiness_bytes)
         blob = reviewed["source_git_blob_sha1"]
         if len(blob) != 40 or any(c not in "0123456789abcdef" for c in blob):

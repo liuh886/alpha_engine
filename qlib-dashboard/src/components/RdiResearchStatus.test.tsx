@@ -12,9 +12,9 @@ afterEach(() => { vi.resetAllMocks(); vi.useRealTimers(); });
 const sample = {
   ...rdiFixture,
   historical_comparison: [
-    { horizon_sessions: 7, drawdown_loss_frequency: 0.12, other_loss_frequency: 0.08, drawdown_observations: 100, other_observations: 200 },
-    { horizon_sessions: 14, drawdown_loss_frequency: 0.172496, other_loss_frequency: 0.119864, drawdown_observations: 1200, other_observations: 2200 },
-    { horizon_sessions: 28, drawdown_loss_frequency: 0.23, other_loss_frequency: 0.2, drawdown_observations: 140, other_observations: 240 },
+    { ...rdiFixture.historical_comparison[0], horizon_sessions: 7, drawdown_loss_frequency: 0.12, other_loss_frequency: 0.08, drawdown_observations: 100, other_observations: 200 },
+    { ...rdiFixture.historical_comparison[1], horizon_sessions: 14, drawdown_loss_frequency: 0.172496, other_loss_frequency: 0.119864, drawdown_observations: 1200, other_observations: 2200 },
+    { ...rdiFixture.historical_comparison[2], horizon_sessions: 28, drawdown_loss_frequency: 0.23, other_loss_frequency: 0.2, drawdown_observations: 140, other_observations: 240 },
   ],
   event_families: [
     rdiFixture.event_families[0],
