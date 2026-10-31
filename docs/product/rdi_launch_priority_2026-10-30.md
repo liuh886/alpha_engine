@@ -122,9 +122,11 @@ episode, and does not treat missing data as evidence of predictive effectiveness
 [M1–M5 / ten-family audit](../research/ashare_rdi_progress_2026-10-31.md)
 now make the blocking inputs replayable. The retained source lacks XSHG session
 2026-06-23 and conflicts with the governed candidate on 2026-06-22 OHLC.
-M1 remains BLOCKED: no price splice, baseline recomputation or Status rebinding
-has been admitted. Preserve the old evidence and resolve the source discrepancy
-before treating the 85 candidate append rows as a continuous price history.
+The original append-only path remains BLOCKED. A separately frozen
+[versioned repair and renewal](../research/ashare_rdi_price_reconstruction_2026-10-31.md)
+now supplies source-replayed price-only reconstruction and descriptive
+recomputation through 2026-10-30, preserving the original blob and receipts.
+Status rebinding, event qualification and predictive evaluation remain separate.
 
 Extend the reviewed CSI300 price/calendar evidence from 2026-06-25 to the
 current governed CN cutoff by reusing the repository's existing governed

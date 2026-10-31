@@ -48,8 +48,31 @@ def main() -> None:
     parser.add_argument("--product-briefing", action="store_true", help="project reviewed evidence only")
     parser.add_argument("--price-renewal-audit", action="store_true", help="read-only splice preflight")
     parser.add_argument("--as-of", help="completed CN cutoff for renewal preflight")
+    parser.add_argument("--price-reconstruction-contract", help="frozen versioned price-only repair contract")
+    parser.add_argument("--write-reconstructed-prices", help="optional disposable CSV under artifacts/")
     args = parser.parse_args()
-    if args.price_renewal_audit:
+    if args.price_reconstruction_contract:
+        from src.research.market_session_clock import completed_market_date
+
+        from .price_reconstruction import recompute, repo_file
+
+        if args.product_briefing or args.price_renewal_audit or not args.as_of:
+            parser.error("price reconstruction requires --as-of and excludes other modes")
+        root = Path(__file__).resolve().parents[3]
+        prices, result = recompute(
+            root, repo_file(root, args.price_reconstruction_contract),
+            completed_cutoff=date.fromisoformat(completed_market_date("cn", args.as_of)),
+        )
+        if args.write_reconstructed_prices:
+            destination = repo_file(root, args.write_reconstructed_prices)
+            destination.relative_to((root / "artifacts").resolve())
+            if destination.exists() and destination.read_bytes() != prices:
+                raise ValueError("refusing to overwrite a different reconstructed artifact")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(prices)
+    elif args.write_reconstructed_prices:
+        parser.error("--write-reconstructed-prices requires a reconstruction contract")
+    elif args.price_renewal_audit:
         from src.research.market_session_clock import completed_market_date
 
         from .briefing import READINESS
