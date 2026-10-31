@@ -250,8 +250,10 @@ test('strategy detail separates source metrics from chart observations and keeps
   await expect(assessment).toContainText('Research only.');
   await expect(assessment).toContainText('Evidence through');
   expect(await assessment.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(2);
-  await assessment.scrollIntoViewIfNeeded();
-  await assessment.screenshot({ path: testInfo.outputPath('formal-evidence-review.png') });
+  await assessment.getByRole('heading', { name: 'Supporting evidence', exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('formal-evidence-review.png') });
+  await assessment.getByRole('heading', { name: 'Next permitted validation', exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('formal-evidence-next-validation.png') });
   const scope = page.getByRole('region', { name: 'Published metric scope' });
   await expect(scope).toContainText('source return observations');
   await expect(scope).toContainText('non-provisional through');
