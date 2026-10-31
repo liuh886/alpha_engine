@@ -128,6 +128,10 @@ The CN27 formal builder already strips embedded runtime state; current and histo
 
 实现与恢复约束见 [私有账本运行手册](../operations/private_signal_ledger.md)。代码/测试、真实 SSH probe、四策略实际运行连续性分别记录，不互相替代。#1315 的源级收益一致性与 #1324 的 RDI 价格更新可以按各自评论并行，不扩大为 UI 重设计、事件补零或正式信号。
 
+RDI 的 [2026-10-31 进度与十类事件资格审计](../research/ashare_rdi_progress_2026-10-31.md)
+记录了可重放价格续接预检：候选已至 2026-10-30，但旧证据缺 2026-06-23、
+2026-06-22 OHLC 有冲突，M1 仍 BLOCKED，事件层仍 0/10；未续接、未重算、未刷新 UI。
+
 ## 8. Forward cutover and Formal private transfer (2026-10-30)
 
 #1328 merged as `66243fa646873db3b10e59fdeacfa47c06ba071f`. Four active public

@@ -8,6 +8,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
+from datetime import date
 from pathlib import Path
 
 STUDY_HORIZONS = (7, 14, 28)
@@ -44,8 +46,45 @@ def main() -> None:
     parser.add_argument("--benchmark-csv", default="data/csv_source/000300.csv")
     parser.add_argument("--output", default="", help="optional JSON output path")
     parser.add_argument("--product-briefing", action="store_true", help="project reviewed evidence only")
+    parser.add_argument("--price-renewal-audit", action="store_true", help="read-only splice preflight")
+    parser.add_argument("--as-of", help="completed CN cutoff for renewal preflight")
     args = parser.parse_args()
-    if args.product_briefing:
+    if args.price_renewal_audit:
+        from src.research.market_session_clock import completed_market_date
+
+        from .briefing import READINESS
+        from .price_renewal import audit_price_renewal
+
+        if args.product_briefing or not args.as_of:
+            parser.error("renewal audit requires --as-of and excludes --product-briefing")
+        root = Path(__file__).resolve().parents[3]
+        readiness_bytes = (root / READINESS).read_bytes()
+        reviewed = json.loads(readiness_bytes)
+        blob = reviewed["source_git_blob_sha1"]
+        if len(blob) != 40 or any(c not in "0123456789abcdef" for c in blob):
+            raise ValueError("invalid retained source Git blob")
+        legacy = subprocess.check_output(["git", "cat-file", "blob", blob], cwd=root)
+        market = root / "data/research/market_evidence/cn"
+        result = audit_price_renewal(
+            legacy, (market / "catalog.json").read_bytes(),
+            (market / "symbols/000300.json").read_bytes(),
+            completed_cutoff=date.fromisoformat(completed_market_date("cn", args.as_of)),
+        )
+        result.update({
+            "source_git_blob_sha1": blob,
+            "reviewed_readiness_sha256": hashlib.sha256(readiness_bytes).hexdigest(),
+            "repository_commit": subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=root, text=True,
+            ).strip(),
+            "implementation_sha256": hashlib.sha256(
+                (root / "src/research/ashare_rdi/price_renewal.py").read_bytes(),
+            ).hexdigest(),
+            "uv_lock_sha256": hashlib.sha256((root / "uv.lock").read_bytes()).hexdigest(),
+            "reference_registry_sha256": hashlib.sha256(
+                (root / "configs/pools/reference_instrument_registry_v1.yaml").read_bytes(),
+            ).hexdigest(),
+        })
+    elif args.product_briefing:
         from .briefing import build_research_briefing
 
         result = build_research_briefing(Path(__file__).resolve().parents[3])
