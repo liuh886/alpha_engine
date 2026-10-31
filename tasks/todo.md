@@ -453,6 +453,22 @@
   - [x] 运行全量测试套件、静态扫描与 diff 检查；
   - [x] 提交并推送到 `origin/docs/racetrack-vision-2026-10-27`。
 
+
+### Phase 9.0: 投研落地设施路线图与抄底研究推进 (PR #1307 BD-00 ~ BD-02)
+- [x] **9.0.1 [BD-00 / Audit] 价格底座、全池覆盖度与工作区扩展接口盘点（已完成盘点，实验仍 BLOCKED）**:
+  - [x] 记录统一复权价格与已有 US 公司行动/基本面清单；不再声称不存在事件流。干净 checkout 缺少清单引用的 payload，未验证其完整性与历史 PIT；
+  - [x] 审计 US87 全池与独立 QQQ 参考，绑定 88 份源文件哈希和实际 slice receipts；截至 2026-10-27，BE 1,399 bars、CRDO 1,192 bars；EA 自 2026-08-04 后缺 59 个 XNYS 会话，不剔除、不补值；
+  - [x] 梳理 Study Workspace 契约、分发执行器、收据比对与格式化 4 大挂载点；
+  - [x] 将 source/pool/catalog/code 哈希、cutoff、实际命令与 slice receipt 绑定到 `docs/research/evidence/bd00_2026-10-28/`；ready 不代表完整会话或历史 PIT 已认证，拟议挂载点不代表已实现。
+- [ ] **9.0.2 [BD-01 / Architecture] 架构规范、指标公式与状态机契约设计 (Architect Subagent)**:
+  - [ ] 提出待裁定决策点（执行与持有窗口、分批建仓权重、硬性否决范围、评估标的池范围）；
+  - [ ] 形式化状态机转移规则（`WATCH` -> `PROBE_ELIGIBLE` -> `CONFIRMED` -> `INVALIDATED`）；
+  - [ ] 编写合成数据基准用例（Synthetic Fixtures），断言时序因果性与绝对零前瞻。
+- [ ] **9.0.3 [BD-02 / Implementation] 因果量价指标、状态机流转与契约测试落地 (Developer Subagent)**:
+  - [ ] 在 `src/research/study_workspace.py` 注册 `bottom_detection_v1` 契约配置；
+  - [ ] 在 `src/research/studies/bottom_detection_study.py` 实现因果指标计算与状态流转；
+  - [ ] 交付契约测试 `tests/test_bottom_detection_study.py`（单测全绿，零未来函数泄漏）。
+
 ---
 
 ## 阶段验收与复盘 (Review Section)
