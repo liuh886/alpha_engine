@@ -1,0 +1,64 @@
+{
+  "append_candidate_rows": 85,
+  "baseline_recomputed": false,
+  "benchmark_type": "nontraded_equity_index",
+  "blockers": [
+    "retained_history_calendar_conflict",
+    "overlapping_ohlc_conflict",
+    "original_provider_bytes_and_index_price_basis_not_certified"
+  ],
+  "calendar": {
+    "id": "XSHG",
+    "package": "exchange_calendars",
+    "version": "4.13.2"
+  },
+  "candidate": {
+    "cutoff": "2026-10-30",
+    "first_session": "2021-01-04",
+    "missing_sessions": [],
+    "non_session_bars": [],
+    "rows": 1410
+  },
+  "candidate_projection_sha256": "5f1da97e73037357795efbe71c51e05ada0b32ea65955fcb92d47667c95f257b",
+  "catalog_sha256": "e1c4c659a01037ed9365f305b47fff0ea47b2bd43048c05a78fdd7b23320e819",
+  "completed_cutoff": "2026-10-30",
+  "event_history_ready": false,
+  "implementation_sha256": "0b46684778e440878a4d72d05cafddcdf0eee36361bf7d853dfff9a022721af0",
+  "legacy_sha256": "896b33968ccb41cec0767d789f1dfa74e762cb72deeaad3c77c8c531d1ae4776",
+  "ohlc_resolution_index_points": 0.01,
+  "overlap_conflicts": [
+    {
+      "absolute_index_point_differences": {
+        "close": 10.846964843750357,
+        "high": 5.451429687500422,
+        "low": 7.812500371073838e-06,
+        "open": 0.00029687499954889063
+      },
+      "session": "2026-06-22"
+    }
+  ],
+  "overlap_rows": 1324,
+  "predictive_skill_established": false,
+  "price_splice_written": false,
+  "provider_manifest_sha256": "99aa67eb758b7f49ab1f0acf048ed4914909d3527eb477b501bb718dce63604d",
+  "reference": "CSI300 / 000300.SH",
+  "reference_registry_sha256": "0f98b3161edee2a9ed8f28a1a49a37fec961d1e0775c08d9f7ba6efea569cf40",
+  "repository_commit": "ee50ce60a92e0ba572051249b9fda08569fb5a41",
+  "research_only": true,
+  "retained_history": {
+    "cutoff": "2026-06-25",
+    "first_session": "2005-04-08",
+    "missing_sessions": [
+      "2026-06-23"
+    ],
+    "non_session_bars": [],
+    "rows": 5152
+  },
+  "reviewed_readiness_sha256": "a6e8eaaabd00b3f48e806e4a3b30dc49cc4c0bb1c23a66c0d363a53f7f9d3aef",
+  "schema_version": "rdi_price_renewal_preflight_v1",
+  "source_csv_sha256_claim": "27fcaeb87ec94d16dd748384a773942353c1c1fd536d6cf5e3756d1c1d4e147e",
+  "source_git_blob_sha1": "4f6f2dec557b8a55af748f73c49465d5d4686beb",
+  "status": "blocked_price_renewal",
+  "trade_ready": false,
+  "uv_lock_sha256": "fbb0803f001231ec77ac6516a621ad9992c7c1418c0a554571bdc2117ea3b825"
+}

@@ -17,7 +17,69 @@ from src.research.ashare_rdi.outcomes import PriceBar
 from src.research.ashare_rdi.phase2 import build_pit_panel, evaluate_blocked_oos, read_price_csv
 from src.research.ashare_rdi.phase2_audit import source_readiness
 from src.research.ashare_rdi.price_baseline import descriptive_drawdown_comparison
+from src.research.ashare_rdi.price_renewal import audit_price_renewal
 from src.research.ashare_rdi.sector_etfs import SectorETFCandidate, audit_sector_etf
+
+
+def _renewal_inputs(*, missing=False, conflict=False, wrong_identity=False, future=False):
+    days = ["2021-01-04", "2021-01-05", "2021-01-06", "2021-01-07"]
+    old_days = days[:3] if not missing else [days[0], days[2]]
+    legacy = ("date,open,high,low,close\n" + "".join(
+        f"{day},100,101,99,100\n" for day in old_days)).encode()
+    security = {"market": "cn", "instrument_id": "cn:000300", "symbol": "000300",
+                "provider_symbol": "000300", "roles": ["benchmark"], "start": days[0],
+                "cutoff": days[-1], "source_csv_sha256": "a" * 64,
+                "provider_manifest_sha256": "b" * 64, "research_only": True,
+                "trade_ready": False, "bars": [dict(time=d, open=100, high=101, low=99, close=100) for d in days]}
+    if conflict:
+        security["bars"][1]["close"] = 100.5
+    if wrong_identity:
+        security["symbol"] = "515180"
+    raw = json.dumps(security).encode()
+    catalog = {"market": "cn", "cutoff": days[-1], "provider_manifest_sha256": "b" * 64,
+               "research_only": True, "trade_ready": False,
+               "symbols": [{"instrument_id": "cn:000300", "path": "symbols/000300.json",
+                            "sha256": hashlib.sha256(raw).hexdigest(), "start": days[0], "cutoff": days[-1]}]}
+    return legacy, json.dumps(catalog).encode(), raw, date(2021, 1, 6 if future else 7)
+
+
+def test_renewal_clean_overlap_is_not_provider_or_pit_admission():
+    old, catalog, security, cutoff = _renewal_inputs()
+    result = audit_price_renewal(old, catalog, security, completed_cutoff=cutoff)
+    assert result["blockers"] == ["original_provider_bytes_and_index_price_basis_not_certified"]
+    assert result["overlap_rows"] == 3 and result["append_candidate_rows"] == 1
+    assert not result["price_splice_written"] and not result["baseline_recomputed"]
+    assert not result["event_history_ready"] and not result["predictive_skill_established"]
+
+
+@pytest.mark.parametrize("condition,blocker", [
+    ("missing", "retained_history_calendar_conflict"),
+    ("conflict", "overlapping_ohlc_conflict"),
+])
+def test_renewal_preserves_calendar_and_overlap_failures(condition, blocker):
+    old, catalog, security, cutoff = _renewal_inputs(**{condition: True})
+    result = audit_price_renewal(old, catalog, security, completed_cutoff=cutoff)
+    assert blocker in result["blockers"]
+    assert result["status"] == "blocked_price_renewal"
+    if condition == "missing":
+        assert result["retained_history"]["missing_sessions"] == ["2021-01-05"]
+    else:
+        assert result["overlap_conflicts"][0]["session"] == "2021-01-05"
+
+
+@pytest.mark.parametrize("condition,message", [
+    ("wrong_identity", "identity/hash mismatch"), ("future", "completed-session cutoff"),
+])
+def test_renewal_rejects_wrong_instrument_and_future_prices(condition, message):
+    old, catalog, security, cutoff = _renewal_inputs(**{condition: True})
+    with pytest.raises(ValueError, match=message):
+        audit_price_renewal(old, catalog, security, completed_cutoff=cutoff)
+
+
+def test_renewal_rejects_unbound_candidate_bytes():
+    old, catalog, security, cutoff = _renewal_inputs()
+    with pytest.raises(ValueError, match="identity/hash mismatch"):
+        audit_price_renewal(old, catalog, security + b" ", completed_cutoff=cutoff)
 
 
 def _cov(day: date, family: str = "holding_change", archived: bool = True) -> FamilyCoverage:
