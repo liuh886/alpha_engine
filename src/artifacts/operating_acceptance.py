@@ -124,6 +124,9 @@ def collect_operating_review(
     import zipfile
     from pathlib import PurePosixPath
 
+    if now_utc.utcoffset() is None:
+        raise ValueError("operating capture time must be timezone-aware")
+    now_utc = now_utc.astimezone(timezone.utc)
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
         raise ValueError("invalid operating evidence repository")
     input_root.mkdir(parents=True, exist_ok=True)
@@ -192,6 +195,9 @@ def collect_operating_review(
             raise ValueError("operating observation does not bind the selected final attempt")
         readiness = prepare_operating_review(source, metadata=metadata, repository_root=repository_root, output_root=input_root, now_utc=now_utc)
         readiness["artifact_identity"] = {key: artifact[key] for key in ("id", "name", "digest", "size_in_bytes")}
+    # Failed/missing-artifact captures need an ordering identity too. Never
+    # force an auditor to choose an older successful packet for its timestamp.
+    readiness["captured_at_utc"] = now_utc.astimezone(timezone.utc).isoformat()
     readiness["observation_scope"] = "latest_completed_formal_attempt_only; historical packets remain separate evidence"
     (input_root / "readiness.json").write_text(json.dumps(readiness, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     if archive_repository:
