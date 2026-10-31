@@ -1,0 +1,59 @@
+{
+  "contract_id": "ashare_rdi_csi300_price_repair_v1_2026_10_31",
+  "research_only": true,
+  "trade_ready": false,
+  "scope": "versioned_price_only_reconstruction_not_strategy_or_event_pit_admission",
+  "canonical_symbol": "000300.SH",
+  "price_basis": "unadjusted_index_points",
+  "start": "2005-04-08",
+  "cutoff": "2026-10-30",
+  "source_manifest": "data/research/ashare_rdi/price_sources/sina_2026-10-31/manifest.json",
+  "source_manifest_sha256": "2430104188b8ace0288a17e913e6ad431b1d1a38f3e1375533a2e450f6254192",
+  "legacy_git_blob_sha1": "4f6f2dec557b8a55af748f73c49465d5d4686beb",
+  "legacy_sha256": "896b33968ccb41cec0767d789f1dfa74e762cb72deeaad3c77c8c531d1ae4776",
+  "ohlc_audit_resolution_index_points": 0.01,
+  "replacements": [
+    {
+      "date": "2026-06-22",
+      "field": "high",
+      "old": "5056.0595703125",
+      "new": "5061.511"
+    },
+    {
+      "date": "2026-06-22",
+      "field": "close",
+      "old": "5048.81103515625",
+      "new": "5059.658"
+    }
+  ],
+  "insert_sessions": [
+    "2026-06-23"
+  ],
+  "retained_cutoff": "2026-06-25",
+  "expected_retained_rows": 5152,
+  "expected_output_rows": 5238,
+  "expected_append_rows": 85,
+  "output_fields": [
+    "date",
+    "open",
+    "high",
+    "low",
+    "close"
+  ],
+  "preservation": "Every other retained OHLC field is copied lexically; no source CSV or old receipt is overwritten. Volume/amount/factor are outside this price-only contract.",
+  "descriptive_protocol": {
+    "lookback_sessions": 60,
+    "drawdown_threshold": -0.1,
+    "severe_loss_threshold": -0.05,
+    "horizons": [
+      7,
+      14,
+      28
+    ],
+    "retrospective_start": "2026-07-01",
+    "retrospective_end": "2026-10-30"
+  },
+  "historical_first_availability_verified": false,
+  "event_study_ready": false,
+  "predictive_skill_established": false
+}
