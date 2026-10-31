@@ -344,3 +344,15 @@ append-only preflight remains independently replayable from its old source.
 This is a dated, descriptive evidence update, not Step 4 research-assessment
 promotion. Event qualification remains 0/10, status stays `not_validated`, no
 score/probability forecast, prospective validation or strategy overlay is added.
+
+### Dependency maintenance and replay provenance
+
+The captured `uv_lock_git_sha256` remains immutable source-environment
+provenance. A later unrelated security dependency update may use another lock.
+Offline replay still requires the exact source/API/adapter identity, original
+response hashes, and byte-identical normalized CSV; changed economics cannot
+pass by changing lock metadata. A new replay reports its own
+`replay_uv_lock_git_sha256` and `replay_lock_matches_capture`. A different lock
+is not claimed as reproduction of the original environment. Old source
+contracts, receipts and product review bindings are preserved; no source replay
+is introduced into the Status reader.
