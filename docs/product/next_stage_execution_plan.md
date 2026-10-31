@@ -116,8 +116,8 @@ Agent 不自行修改线上 tier、entitlement 或删除生产行以制造通过
 
 | 顺序 | 工作包与明确范围 | 完成标准（DoD） | 依赖/禁区 |
 | --- | --- | --- | --- |
-| **P0 / G0** | **当前操作状态的公开写入止血与重接线**：追踪 Git 最新树/历史、四个每日 writer、Formal lineage、Actions artifacts 和 Pages；先建立**受权限保护**的既有 Ledger 写入与 Strategy Operations 发布/读取端到端路径，再撤下公开 Git 新写入；清理当前树的敏感操作字段，封存已公开历史为残余风险记录 | 四面独立匿名负面验证（公开 Git 当前树、Pages、Actions artifacts、新写入流水线）+ entitled/denied/revoked 读测试；US/CN 正式信号仍按原调度生成、发布、投递，失败 fail closed；`A4` 依据新证据裁定，不按关闭 issue 推定 PASS | **必须先于新增对外可见研究数据、正式发布**；不重写密封历史、不创建第二真相库 |
-| **P1 / U1** | **修正图表/收益的证据身份**：#1315 剩余 US x1.3 首行 opening wealth、模型/基准观测边界与汇总值差异，使用版本化 source projection；统一 date vocabulary 和 driver 语义；Status 去除重复和错误提示 | 真实来源数据下汇总、图表的起止日期/净值/收益/样本数可逐行核对；不存在把“待加载”说成“无权限”；桌面/平板/手机 + 完整测试回归 | 在 #1315 已完成 #1317/#1318/#1320 基础上继续；不能在前端硬塞 NAV=1、改写 sealed metric |
+| **P0 / G0** | **当前操作状态的公开写入止血与重接线**：追踪 Git 最新树/历史、四个每日 writer、Formal lineage、Actions artifacts 和 Pages；先建立**受权限保护**的既有 Ledger 写入与 Strategy Operations 发布/读取端到端路径，再撤下公开 Git 新写入；清理当前树的敏感操作字段，封存已公开历史为残余风险记录 | 四面独立匿名负面验证（公开 Git 当前树、Pages、Actions artifacts、新写入流水线）+ entitled/denied/revoked 读测试；US/CN 正式信号仍按原调度生成、发布、投递，失败 fail closed；`A4` 依据新证据裁定，不按关闭 issue 推定 PASS | **必须先于受保护当前数据的公开面扩张和正式产品发布**；既有 Status 内非敏感、未验证的描述性 RDI 证据重绑可独立小 PR 验收，不解除 A4；不重写密封历史、不创建第二真相库 |
+| **P1 / U1** | **修正剩余解释语义**：US x1.3 opening wealth/source-window 已由 #1333 版本化投影完成；继续 #1315 的 date vocabulary 和 driver 语义，Status 去除重复和错误提示 | 真实来源数据下汇总、图表的起止日期/净值/收益/样本数可逐行核对；不存在把“待加载”说成“无权限”；桌面/平板/手机 + 完整测试回归 | 在 #1315 已完成 #1317/#1318/#1320/#1333 基础上继续；不能在前端硬塞 NAV=1、改写 sealed metric |
 | **P1 / U2** | **完成 #1305 的 Decision Feed**：直接调整 `DailyResearchBrief.tsx`；首页只突出最多三项有意义的变化、风险、阻断，按时间和优先级说明 *why now*，保留原四策略完整 Fleet；无新变化给明确“无新动作” | 变化/无变化/过期/阻断/权限待定的读法清楚；每条带 cutoff、原因、下一动作，`/app → evidence` ≤2 点击；不增加新导航或信号计算 | 继续复用现有 `describeStrategyObservation` 和共享读器，不把研究收益榜和运营关注榜合并 |
 | **P1 / U3** | **完成 Evidence Review**：`StrategyDetailPage.tsx` 用已有 `loadDecisionForRun` 分开列出支持证据、反证、解释局限、下一次允许验证；精确表明无绑定/过期/拒绝读取/等待审批 | 抽样一个支持、一个失败门禁、一个无有效证据情形；显示的结论、身份和日期与原 Bundle/Decision receipt 一致；不变成“买入/卖出建议” | 未有可审计映射时**不**自动接入研究 Runner，也不暴露本地未审查收据 |
 | **P1 / R1** | **真实独立研究选手**：在同一 US87 轨道内选择**一个**不等于 US87 EW 的简单、事前冻结的基线策略（先查现有 Study Workspace/现成 Runner 能否复用），按现有 Q/NAV 引擎、公平窗口与成本实测；保留输给基准的情形 | 冻结 thesis/spec/候选池/再平衡规则/费用/训练与 OOS 边界；产生可重跑 Q + source/code SHA + 相同 sessions 的 NAV 与 QQQ、US87 对照；回放、局限和失败案例同版本可读；没有收益保证或自动升为正式策略 | US87 Phase A #1314 已完成。**不能**用原样不合规的 QQQR/US x1.3、随机伪信号或“回测胜者筛选”来凑选手 |
@@ -129,7 +129,7 @@ Agent 不自行修改线上 tier、entitlement 或删除生产行以制造通过
 ### 3.1 建议实现 PR 切片
 
 1. **#A4-stop-bleed**：只处理 P0/G0，完成受保护数据写入和四面负面验收。不混入 Racetrack / 前端美化。
-2. **#console-evidence-math**：#1315 剩余「源级 opening wealth / 观测窗口」与解释歧义。UI 其他视觉事项单独按屏拆分。
+2. **#console-evidence-math**：源级 opening wealth / 观测窗口已由 #1333 完成；继续 #1315 的日期、driver 和 Status 解释歧义。UI 其他视觉事项单独按屏拆分。
 3. **#decision-brief** + **#evidence-review**：一屏一 PR，复用现有 reader，完成 #1305 未完成的代码工作。
 4. **#research-runner-1**：冻结简单独立策略、研究回放、成本、收据和前端只读消费，作为第二位真正有比较意义的 US Runner。
 5. **#cn-pool-runner**：CN130 EW + 原 CN registry/scorer；之后才考虑正式策略派生与月度审查。
