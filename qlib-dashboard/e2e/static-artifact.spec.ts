@@ -94,8 +94,10 @@ test('the homepage opens daily research and reads only the formal operating surf
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
   const brief = page.getByRole('region', { name: 'Daily research brief' });
   const names = await loadFormalDisplayNames(page);
-  await expect(brief.getByRole('article')).toHaveCount(names.length);
-  for (const name of names) await expect(brief.getByRole('link', { name, exact: true })).toBeVisible();
+  await expect(brief.getByRole('article')).toHaveCount(Math.min(3, names.length));
+  const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
+  await expect(fleet.getByRole('article')).toHaveCount(names.length);
+  for (const name of names) await expect(fleet.getByRole('button', { name: `Open ${name} strategy detail`, exact: true }).first()).toBeVisible();
   if (testInfo.project.name === 'mobile') await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('tab')).toHaveCount(2);
   else await expect(page.getByRole('navigation', { name: 'Strategy console navigation' }).getByRole('link')).toHaveCount(2);
   expect(retiredRequests).toEqual([]);
@@ -122,7 +124,7 @@ test('pending catalog and operations reads show verification rather than empty o
     releaseCatalog();
     const brief = page.getByRole('region', { name: 'Daily research brief' });
     await expect(brief).toHaveAttribute('aria-busy', 'true');
-    await expect(brief.getByRole('article')).toHaveCount(4);
+    await expect(brief.getByRole('article')).toHaveCount(3);
     await expect(brief).toContainText('Verifying access and current observations…');
     await expect(brief).not.toContainText('Current observations require strategy access.');
     await expect(brief.getByRole('button', { name: 'Check strategy access' })).toHaveCount(0);
@@ -204,7 +206,7 @@ test('strategy navigation reuses verified formal sections without loading them o
   });
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
   await page.goto('/#/app');
-  const strategy = page.getByRole('region', { name: 'Daily research brief' }).getByRole('link', { name: 'QQQR v4.3', exact: true });
+  const strategy = page.getByRole('region', { name: 'Formal strategy fleet' }).getByRole('button', { name: 'Open QQQR v4.3 strategy detail', exact: true }).first();
   await expect(strategy).toBeVisible();
   expect(sections).toHaveLength(0);
   await strategy.click();

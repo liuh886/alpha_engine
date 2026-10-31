@@ -24,6 +24,28 @@ describe('DailyResearchBrief', () => {
       canAccess: () => true, openAccount } as unknown as ReturnType<typeof useAccessControl>);
   });
 
+  it('keeps three priorities while counting every observation and preserving stable order', () => {
+    const runs = [0, 1, 2, 3].map(i => ({ ...run, key: `run-${i}`, title: `Strategy ${i}`, modelVersionId: `model-${i}` }));
+    const snapshots = new Map(runs.map((item, i) => [item.modelVersionId,
+      parseStrategyOperationsSnapshot({ ...record, model_version_id: item.modelVersionId, evaluation_changed: i !== 0 })]));
+    render(<MemoryRouter><DailyResearchBrief runs={runs} snapshots={snapshots} loading={false} reload={reload} /></MemoryRouter>);
+    expect(screen.getAllByRole('article').map(row => row.getAttribute('aria-label'))).toEqual([
+      'Strategy 1 daily observation', 'Strategy 2 daily observation', 'Strategy 3 daily observation',
+    ]);
+    expect(screen.getByText(/3 changed · 1 unchanged/)).toBeInTheDocument();
+    expect(screen.getByText('Showing 3 of 4 priority observations. All 4 strategies remain in the fleet below.')).toBeInTheDocument();
+    expect(screen.queryByText(/No new model changes/)).not.toBeInTheDocument();
+  });
+
+  it('states no model changes only when every observation is verified unchanged or retained', () => {
+    const snapshot = parseStrategyOperationsSnapshot({ ...record, evaluation_changed: false });
+    const props = { runs: [run], snapshots: new Map([['qqq', snapshot]]), reload };
+    const { rerender } = render(<MemoryRouter><DailyResearchBrief {...props} loading={false} /></MemoryRouter>);
+    expect(screen.getByText(/No new model changes/)).toBeInTheDocument();
+    rerender(<MemoryRouter><DailyResearchBrief {...props} snapshots={new Map()} loading={true} /></MemoryRouter>);
+    expect(screen.queryByText(/No new model changes/)).not.toBeInTheDocument();
+  });
+
   it.each(['policy', 'membership', 'operations'])('does not present pending %s verification as an access denial', stage => {
     vi.mocked(useAccessControl).mockReturnValue({ loading: stage === 'membership', policyLoading: stage === 'policy',
       requiredTier: () => 'pro', canAccess: () => false, openAccount } as unknown as ReturnType<typeof useAccessControl>);

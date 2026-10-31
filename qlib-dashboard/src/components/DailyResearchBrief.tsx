@@ -31,15 +31,19 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
       brief: checking ? CHECKING_OBSERVATION : snapshot && !snapshot.strategyId ? describeStrategyObservation() : describeStrategyObservation(snapshot, accessible) };
   }).sort((a, b) => DISPLAY_ORDER[a.brief.kind] - DISPLAY_ORDER[b.brief.kind]);
   const count = (kind: string) => entries.filter(entry => entry.brief.kind === kind).length;
+  const priorities = entries.slice(0, 3);
+  const noNewChanges = !busy && entries.length > 0
+    && entries.every(entry => entry.brief.kind === 'unchanged' || entry.brief.kind === 'retained');
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm" aria-label="Daily research brief" aria-busy={busy}>
       <header className="border-b bg-muted/15 px-5 py-4">
         <h2 className="flex items-center gap-2 font-semibold"><ClipboardList className="h-4 w-4 text-primary" />Daily research brief</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Latest verified observations by strategy. Each market keeps its own cutoff; retained targets are dated separately.</p>
         <p className="mt-2 text-xs" role="status">{busy ? 'Reading current observations…' : `${count('changed')} changed · ${count('unchanged')} unchanged · ${count('retained')} retained · ${count('attention')} need attention · ${count('access')} require access · ${count('pending')} awaiting verification`}</p>
+        {noNewChanges && <p className="mt-2 text-sm">No new model changes. Retained targets keep their recorded dates.</p>}
       </header>
       {!runs.length && <p className="p-5 text-sm text-muted-foreground">{busy ? 'Reading formal strategies…' : 'No formal strategies are available for this brief.'}</p>}
-      <div className="divide-y">{entries.map(({ run, snapshot, brief }) => (
+      <div className="divide-y">{priorities.map(({ run, snapshot, brief }) => (
         <article key={run.key} className="px-5 py-4" aria-label={`${run.title} daily observation`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Link to={`/strategies/${encodeURIComponent(run.modelVersionId)}`} className="font-semibold text-sm hover:text-primary">{run.title}</Link>
@@ -73,6 +77,7 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
           </details>}
         </article>
       ))}</div>
+      {entries.length > priorities.length && <p className="border-t px-5 py-3 text-xs text-muted-foreground">Showing {priorities.length} of {entries.length} priority observations. All {entries.length} strategies remain in the fleet below.</p>}
     </section>
   );
 }

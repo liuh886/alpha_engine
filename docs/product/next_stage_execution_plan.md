@@ -76,7 +76,7 @@ Agent 不自行修改线上 tier、entitlement 或删除生产行以制造通过
 | Formal Console | 四个正式策略的 Overview、Detail、Instrument、Status；#1317/#1318/#1320 纠正日期/权限过渡/历史窗口误导 | 局部 UI/CI 通过 ≠ A0–A7 产品上线验收 |
 | 本地 CLI 研究 | 既有研究收据与比较合同；RDI #1338 价格层可重放 | 不恢复退役浏览器研究入口；历史 PIT 和 RDI predictive edge 未获认证 |
 | Racetrack | #1306 P/Q/NAV、双基准、积分、发布；#1311 Lightweight Charts 主图/榜单/详情；#1314 US87 等权池实际 Runner、私有 Q、v2 时间窗口排名 | US87 Runner 与内部等权基准共用一个回放，不能充当**独立策略有效性**证据；没有六名合格选手 |
-| 前端决策解释 | `DailyResearchBrief` 可排序状态；`StrategyDetailPage` 已展示失败门禁/反证/下一步 | [#1305 的实际实现 TODO](decision_feed_evidence_review_todo.md)仍未闭环；Brief 现在仍 `entries.map()` 列出全部四个而不是前三重点 |
+| 前端决策解释 | `DailyResearchBrief` 可排序状态；`StrategyDetailPage` 已展示失败门禁/反证/下一步 | [#1305 的实际实现 TODO](decision_feed_evidence_review_todo.md)仍未闭环；Brief 三重点呈现已实现，完整四策略仍在 Fleet；Evidence Review 及其他子项继续单独验收 |
 | 发布与数据权限 | #1326–#1331 私有接线、活动公开写入止血与 Formal 结果私有传输已建立，真实 run 41083709573 通过 #1332 与精确 Pages 校验；本地 Racetrack 不公开 | **A4 仍 FAIL**；旧密封/历史披露、退役运行行及真实权限负验证仍未关闭 |
 
 ### 1.2 原 P0 基线及后续处置（2026-10-29 历史观察；不摘录任何权重）
