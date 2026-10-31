@@ -10,6 +10,9 @@
         "scope": "certification_development_plus_reporting_and_partial_prospective",
         "start": "2024-01-02"
       },
+      "opening_account": 1,
+      "checked_at_utc": "2026-10-31T07:18:29.084Z",
+      "site_url": "https://liuh886.github.io/alpha_engine/",
       "opening_date": "2024-01-02",
       "first_observation_date": "2024-01-17",
       "overflow_px": 0,
@@ -25,6 +28,9 @@
         "scope": "certification_development_plus_reporting_and_partial_prospective",
         "start": "2024-01-02"
       },
+      "opening_account": 1,
+      "checked_at_utc": "2026-10-31T07:18:35.966Z",
+      "site_url": "https://liuh886.github.io/alpha_engine/",
       "opening_date": "2024-01-02",
       "first_observation_date": "2024-01-17",
       "overflow_px": 0,
@@ -37,5 +43,7 @@
   "static_browser_passed": 117,
   "research_only": true,
   "trade_ready": false,
-  "scope": "US x1.3 source-window/opening-NAV consistency only; full A3 and A4 not certified"
+  "scope": "US x1.3 source-window/opening-NAV consistency only; full A3 and A4 not certified",
+  "pages_workflow_run_id": 41179707199,
+  "pages_workflow_conclusion": "success"
 }
