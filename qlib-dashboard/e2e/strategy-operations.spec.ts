@@ -231,18 +231,18 @@ test('RDI published state keeps optional evidence scoped while Overview remains 
 // Signal dates below intentionally differ from formal historical cutoffs.
 const formalRecords = JSON.parse(readFileSync(new URL('../dist/data/formal-model-runs/catalog.json', import.meta.url), 'utf8')).records;
 const formal = formalRecords.find((row: { model_version_id: string }) => row.model_version_id === 'qqqi_qqq_tqqq_v4_3');
-const formalIdentity = { formal_bundle_id: formal.bundle_id, formal_run_id: formal.run_id,
+const formalIdentity = { formal_bundle_id: formal.canonical_bundle_id ?? formal.bundle_id, formal_run_id: formal.run_id,
   formal_evidence_cutoff: formal.evidence_cutoff };
 const publishedFleet = JSON.parse(readFileSync(new URL('../dist/data/strategy-operations/snapshots.json', import.meta.url), 'utf8'));
 const fleetCount = publishedFleet.records.length;
-// Healthy UI fixtures bind BOTH the protected public shell and runtime rows to
-// this build's exact projected bundle. Production canonical/projection binding
-// remains independently governed by #1288; do not weaken the reader to pass tests.
+// Runtime rows bind to this build's verified canonical source, while public
+// projections keep their own display hashes. Bad-identity fixtures below still
+// reject mismatches; none of these mocks substitutes for real access tests.
 const healthyFleet = { ...publishedFleet, records: publishedFleet.records.map((row: any) => {
   const identity = formalRecords.find((record: any) => record.model_version_id === row.model_version_id);
   if (!identity) throw new Error(`Missing formal fixture identity: ${row.model_version_id}`);
   return { ...row, source_identity: { ...row.source_identity,
-    formal_bundle_id: identity.bundle_id, formal_run_id: identity.run_id,
+    formal_bundle_id: identity.canonical_bundle_id ?? identity.bundle_id, formal_run_id: identity.run_id,
     formal_evidence_cutoff: identity.evidence_cutoff } };
 }) };
 
@@ -457,7 +457,7 @@ async function installProMembership(page: Page, options: {
     ...runtimeOperation, strategy_id: row.strategy_id, model_version_id: row.model_version_id,
     decision_reason: `Batch fixture: ${row.strategy_id} verified`, factor_evidence: [], factor_freshness: 'unknown',
     source_identity: { ...runtimeOperation.source_identity,
-      formal_bundle_id: identity.bundle_id, formal_run_id: identity.run_id,
+      formal_bundle_id: identity.canonical_bundle_id ?? identity.bundle_id, formal_run_id: identity.run_id,
       formal_evidence_cutoff: identity.evidence_cutoff, ledger_fingerprint: `fixture-${row.strategy_id}` },
   }); }), fullSnapshot: {
     ...runtimeOperation,

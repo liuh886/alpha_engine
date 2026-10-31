@@ -127,7 +127,7 @@ PRs, **not owner acceptance, automatic merge or a v1 release declaration**.
 | A1 | BLOCKED | Merged [#1284](https://github.com/liuh886/alpha_engine/pull/1284): 211 captures / 27 formal attempts, 7 observed / 0 independently qualified sessions; truthful evidence retained |
 | A2 | BLOCKED | Doctor verifies all 4 strategy cutoffs; independent complete required-source PIT acceptance remains unproved; 2 unrelated blocked training profiles stay scoped |
 | A3 | BLOCKED (8 baseline journeys PASS) | Merged [#1287](https://github.com/liuh886/alpha_engine/pull/1287): 8 desktop/mobile four-strategy journeys verified with sealed screenshots; full edge-scenario coverage pending |
-| A4 | FAIL | Merged [#1291](https://github.com/liuh886/alpha_engine/pull/1291) / [#1297](https://github.com/liuh886/alpha_engine/pull/1297): 公开投影修复已合并，完整隔离待验证。公开 Pages 静态投影片段 (`public_historical_projection_v1`) 已脱敏并完成测试；但公共 GitHub 仓库仍然追踪包含敏感 `operating_state.current_weights` 的原始决策账本与历史 `lineage.json` (Blob `13489a0d...`)，完整安全隔离待验证。 |
+| A4 | FAIL | Merged [#1291](https://github.com/liuh886/alpha_engine/pull/1291) / [#1297](https://github.com/liuh886/alpha_engine/pull/1297): 公开投影修复已合并，完整隔离待验证。公开 Pages 静态投影片段 (`public_historical_projection_v1`) 已脱敏并完成测试；2026-10-25 基线曾确认公共 Git 原始账本及历史 lineage 披露。#1328 已删除活动账本子树，本次 16 项匿名入口检查为 404；旧历史披露和真实权限验收仍未关闭，参见文末 2026-10-31 更新。 |
 | A5 | PASS (for bounded CN & QQQ replay) | Merged [#1289](https://github.com/liuh886/alpha_engine/pull/1289) and [#1293](https://github.com/liuh886/alpha_engine/pull/1293): bounded CN & QQQ local replay pass with 1e-6 tolerance without commercial subscriptions; Owner final signoff pending |
 | A6 | BLOCKED | Merged [#1290](https://github.com/liuh886/alpha_engine/pull/1290): `owner_local_workstation_runbook.md` delivered; live release rehearsal pending |
 | A7 | NOT_TESTED | 章程已合并，RC 待执行。Owner 尚未签署 GO/NO-GO。**当前裁决维持 NO-GO** (A1/A2/A3/A6 BLOCKED, A4 FAIL)。 |
@@ -172,7 +172,19 @@ RDI remains independent. Review the linked PRs before deciding next actions.
 ## Final Direction A v1 status and Track B boundary — 2026-10-26
 
 - **Integrated main commit**: `3d98a3c30` integrates all Phase 1–3 changes (#1283, #1286, #1293, #1295, #1284, #1287, #1289, #1290, #1291, #1297).
-- **Gate A4 Status (FAIL)**: 公开投影修复已合并，完整隔离待验证。公开 Pages 静态投影已脱敏，但公共仓库原始决策账本与历史 lineage 需完全隔离迁移，#1288 维持重新打开，A4 维持 FAIL。
+- **Gate A4 Status (FAIL)**: 公开投影修复已合并，完整隔离待验证。公开 Pages 静态投影已脱敏，该节记录 2026-10-26 基线；后续 #1328 已撤下活动账本子树，旧历史 lineage 披露及真实权限验收仍未关闭，#1288 维持重新打开，A4 维持 FAIL。
 - **Gate A7 Status (NOT_TESTED / NO-GO)**: 章程已合并，RC 待执行。在真实发布与完整隔离验证通过前，当前裁决维持 NO-GO。
 - **Direction A v1 Scope Locked**: Alpha Engine v1 remains strictly a single-operator personal quantitative research workstation with exactly 4 active strategies and read-only Strategy Console.
 - **Track B Relationship (#1296)**: Future quantitative research infrastructure expansion (point-in-time data planes, cross-sectional evaluation, reusable factor libraries) belongs to Track B under PR #1296 and subsequent dedicated issues. Track B initiatives must respect Direction A v1 boundaries and must not reactivate retired features, add secondary registries, or bypass immutable evidence contracts.
+
+### 2026-10-31 accountless acceptance update
+
+Real Formal run `41083709573` closed the new private result transport through
+#1332 and exact Pages verification. The
+[accountless receipt](../evidence/product_v1/accountless_access_observation_2026-10-31.json)
+records active Git negatives, metadata-only new Formal artifacts and empty
+static operation shells. All observed live strategy policies are public, so
+protected-row denial cannot be inferred from anonymous snapshot visibility.
+The retired CN x1.2 runtime row remains visible; older disclosures remain open.
+No dedicated account/session is available: entitled/denied/revoked tests remain
+NOT_TESTED. **A4 stays FAIL and the full-product decision stays NO-GO.**

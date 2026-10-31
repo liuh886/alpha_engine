@@ -88,6 +88,19 @@ describe('operations publication reader', () => {
   const published = { ...record, strategy_id: 'cn_x', source_identity: {
     formal_bundle_id: run.bundleId, formal_run_id: run.runId, formal_evidence_cutoff: run.evidenceCutoff,
   } };
+  it('binds protected operations to canonical source while public presentation has its own bundle hash', () => {
+    const projected = { ...run, bundleId: 'c'.repeat(64), manifest: {
+      projection_contract: 'public_historical_projection_v1', source_identity: {
+        canonical_bundle_id: run.bundleId, canonical_manifest_sha256: 'b'.repeat(64),
+      },
+    } } as GovernedRunSummary;
+    expect(() => assertStrategyOperationRun(parseStrategyOperationsSnapshot(published), projected)).not.toThrow();
+    expect(() => assertStrategyOperationRun(parseStrategyOperationsSnapshot({ ...published,
+      source_identity: { ...published.source_identity, formal_bundle_id: projected.bundleId } }), projected)).toThrow('bundle identity');
+    expect(() => assertStrategyOperationRun(parseStrategyOperationsSnapshot(published), {
+      ...projected, manifest: { ...projected.manifest!, projection_contract: undefined },
+    })).toThrow('projection source identity');
+  });
   const otherRun = { ...run, modelVersionId: 'us_x1_3', modelFamilyId: 'us_ranker', runId: 'other-run' };
   const other = { ...published, model_version_id: otherRun.modelVersionId, strategy_id: 'us_x',
     source_identity: { ...published.source_identity, formal_run_id: otherRun.runId } };

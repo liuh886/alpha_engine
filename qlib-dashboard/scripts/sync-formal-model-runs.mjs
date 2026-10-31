@@ -2,6 +2,7 @@ import { copyFile, lstat, mkdir, readFile, readdir, rm, writeFile } from 'node:f
 import { createHash } from 'node:crypto';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { projectPerformanceContext } from './formal-performance-context.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const dashboardRoot = resolve(scriptDir, '..');
@@ -95,6 +96,21 @@ for (const runDirectory of runDirectories) {
   const manifest = JSON.parse(manifestBytes.toString('utf8'));
   const originalBundleId = catalogRecord.bundle_id;
   const originalManifestSha = catalogRecord.manifest_sha256;
+  const readVerifiedSection = async (sectionId) => {
+    const section = manifest.sections.find(s => s.section_id === sectionId);
+    if (!section || section.availability_status !== 'available'
+        || !/^[a-zA-Z0-9_-]+\.json$/.test(section.path)) throw new Error('Required source section is unavailable.');
+    const bytes = await readFile(join(sourceRunDir, section.path));
+    if (digest(bytes) !== section.sha256 || bytes.length !== section.byte_size) throw new Error('Source section integrity mismatch.');
+    return { section, payload: JSON.parse(bytes.toString('utf8')) };
+  };
+  const sourcePerformance = await readVerifiedSection('performance');
+  const sourceSummary = await readVerifiedSection('summary');
+  const performanceProjection = projectPerformanceContext(sourcePerformance.payload, sourceSummary.payload, {
+    canonical_bundle_id: originalBundleId, canonical_manifest_sha256: originalManifestSha,
+    performance_sha256: sourcePerformance.section.sha256, summary_sha256: sourceSummary.section.sha256,
+    evidence_cutoff: manifest.evidence_cutoff,
+  });
 
   let runProjected = false;
   const entries = await readdir(sourceRunDir, { withFileTypes: true });
@@ -109,6 +125,24 @@ for (const runDirectory of runDirectories) {
     }
     if (!entry.isFile() || !entry.name.endsWith('.json')) {
       throw new Error(`Formal model-run publication accepts JSON files only: ${relative(sourceRoot, sourceFilePath)}`);
+    }
+
+    if (entry.name === sourcePerformance.section.path && performanceProjection) {
+      const encoded = canonicalJson(performanceProjection);
+      await writeFile(targetFilePath, encoded, 'utf8');
+      sourcePerformance.section.sha256 = digest(encoded);
+      sourcePerformance.section.byte_size = Buffer.byteLength(encoded, 'utf8');
+      runProjected = true;
+      continue;
+    }
+    if (entry.name === sourceSummary.section.path && performanceProjection) {
+      const projectedSummary = { ...sourceSummary.payload, public_evidence_context: performanceProjection.public_evidence_context };
+      const encoded = canonicalJson(projectedSummary);
+      await writeFile(targetFilePath, encoded, 'utf8');
+      sourceSummary.section.sha256 = digest(encoded);
+      sourceSummary.section.byte_size = Buffer.byteLength(encoded, 'utf8');
+      runProjected = true;
+      continue;
     }
 
     if (entry.name === 'lineage.json') {
@@ -139,6 +173,7 @@ for (const runDirectory of runDirectories) {
     manifest.source_identity = {
       canonical_bundle_id: originalBundleId,
       canonical_manifest_sha256: originalManifestSha,
+      canonical_manifest_json: manifestBytes.toString('utf8'),
     };
     manifest.bundle_id = computeBundleId(manifest);
     const manifestEncoded = canonicalJson(manifest);

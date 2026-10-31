@@ -19,6 +19,8 @@ def descriptive_drawdown_comparison(
     drawdown_threshold: float = -0.10,
     severe_loss_threshold: float = -0.05,
     horizons: tuple[int, ...] = (7, 14, 28),
+    observation_start: date | None = None,
+    observation_end: date | None = None,
 ) -> dict[str, object]:
     """Price-only fixed-rule *historical association* with overlapping labels.
 
@@ -34,13 +36,24 @@ def descriptive_drawdown_comparison(
         raise ValueError("thresholds must be fractions strictly between -1 and 0")
     if not horizons or any(h <= 0 for h in horizons):
         raise ValueError("horizons must be positive")
+    if observation_start and observation_end and observation_start > observation_end:
+        raise ValueError("invalid observation window")
     horizon_rows: list[dict[str, object]] = []
     for h in horizons:
         groups: dict[str, list[tuple[float, float]]] = {
             "drawdown_at_least_threshold": [],
             "other": [],
         }
-        for i in range(lookback_sessions - 1, len(bars) - h):
+        eligible: list[int] = []
+        immature: list[str] = []
+        for i in range(lookback_sessions - 1, len(bars)):
+            if ((observation_start and bars[i].session < observation_start)
+                    or (observation_end and bars[i].session > observation_end)):
+                continue
+            if i + h >= len(bars):
+                immature.append(bars[i].session.isoformat())
+                continue
+            eligible.append(i)
             peak = max(b.close for b in bars[i - lookback_sessions + 1 : i + 1])
             dd = bars[i].close / peak - 1
             end_return = bars[i + h].close / bars[i].close - 1
@@ -63,6 +76,13 @@ def descriptive_drawdown_comparison(
 
         horizon_rows.append({
             "horizon_sessions": h,
+            "eligible_observation_start": dates[eligible[0]].isoformat() if eligible else None,
+            "eligible_observation_end": dates[eligible[-1]].isoformat() if eligible else None,
+            "label_end_start": dates[eligible[0] + h].isoformat() if eligible else None,
+            "label_end_end": dates[eligible[-1] + h].isoformat() if eligible else None,
+            "insufficient_future_bars": {"count": len(immature),
+                                         "first_session": immature[0] if immature else None,
+                                         "last_session": immature[-1] if immature else None},
             "drawdown_at_least_threshold": summary(groups["drawdown_at_least_threshold"]),
             "other": summary(groups["other"]),
         })

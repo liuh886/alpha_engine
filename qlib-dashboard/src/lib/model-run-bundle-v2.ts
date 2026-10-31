@@ -45,6 +45,7 @@ export interface ModelRunBundleV2Manifest {
   source_identity?: {
     canonical_bundle_id: string;
     canonical_manifest_sha256: string;
+    canonical_manifest_json?: string;
   };
 }
 
@@ -169,6 +170,9 @@ export function parseModelRunBundleV2Manifest(value: unknown): ModelRunBundleV2M
       canonical_bundle_id: String(raw.source_identity.canonical_bundle_id ?? ''),
       canonical_manifest_sha256: String(raw.source_identity.canonical_manifest_sha256 ?? ''),
     };
+    if (typeof raw.source_identity.canonical_manifest_json === 'string') {
+      manifest.source_identity.canonical_manifest_json = raw.source_identity.canonical_manifest_json;
+    }
   }
   return manifest;
 }

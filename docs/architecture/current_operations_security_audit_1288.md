@@ -8,7 +8,7 @@
 
 ## 1. Five-Surface Security Audit Matrix
 
-The matrix records the initial disclosure baseline; §7–§8 track subsequent code
+The matrix records the initial disclosure baseline; §7–§9 track subsequent code
 and transport changes. Historical observations are not current acceptance proof.
 Gate A4 remains FAIL until the stated independent post-cutover checks pass.
 
@@ -162,3 +162,43 @@ published native MTM/Actions/Git disclosure, independent post-cutover Git/Pages/
 artifact/writer negatives and entitled/denied/revoked runtime reads. Local
 allowlist/canary tests and source-file removal do not replace those proofs.
 **A4 remains FAIL; this is not full operating or product release acceptance.**
+
+## 9. Real Formal closure and accountless observations (2026-10-31)
+
+#1329, #1330 and #1331 are merged. Normal Formal run
+[41083709573](https://github.com/liuh886/alpha_engine/actions/runs/41083709573)
+passed both real private strategy retentions, exact restoration, atomic fan-in,
+candidate #1332 merge and exact Pages verification. Its two strategy artifacts
+contain only archive bindings; its 16 final observation JSON members contain no
+`current_weights`, `target_weights` or `operating_state` keys. This closes the
+new cross-job raw-artifact path, not older disclosed history.
+
+The [accountless receipt](../evidence/product_v1/accountless_access_observation_2026-10-31.json)
+records 16 anonymous Raw/Contents active-latest probes returning 404 at current
+main and its exact SHA. Live Pages has four protected static runtime shells,
+zero allocations and zero factor evidence. The private ledger Raw URL returns
+404; its Contents request returned 403 and is not certified as a private-specific
+denial. Public formal portfolio history remains distinct: US x1.3 has 71
+`target_weights` keys in its retained historical portfolio section. A generic
+key scan is therefore not a whole-site privacy PASS.
+
+A fresh browser with no session read five runtime snapshots. All five have an
+explicit live `public` strategy policy, including QQQ; this observation matches
+current policy and does not prove a protected-row RLS failure. It also means
+there is no currently non-public strategy row for anonymous-denial acceptance.
+The retired `cn_x1_2` snapshot remains readable under the legacy public `cn_x`
+policy; it is not part of the maintained four-strategy Console.
+
+Next actions:
+
+- Review and retire the legacy `cn_x` current runtime row/policy through the
+  existing owner-governed lifecycle; preserve sealed historical evidence.
+- Obtain an owner-approved protected test resource and dedicated sessions for
+  entitled, denied, expired and revoked reads. Do not silently change production
+  tiers or use an owner/service-role read as anonymous evidence.
+- Complete older Git/Actions/native-lineage disclosure disposition separately.
+
+The operator confirmed no test accounts/sessions are available. Real-session
+tests and protected-row anonymous rejection remain **NOT_TESTED**; no access
+policy, entitlement or production row was changed. **A4 remains FAIL; full
+product acceptance remains NO-GO.**

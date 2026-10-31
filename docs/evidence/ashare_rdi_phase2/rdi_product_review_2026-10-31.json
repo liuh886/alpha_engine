@@ -1,0 +1,20 @@
+{
+  "schema_version": "rdi_product_review_binding_v1",
+  "reviewed_at": "2026-10-31",
+  "price_cutoff": "2026-10-30",
+  "price_rows": 5238,
+  "price_output_sha256": "c868c3bc811beb48bec3206872e14fdc0d2c8ed844018db4813ca0163d097bbc",
+  "source_archive_git_blob_sha1": "1470fa736d9cf10b6314212852bf807a6ca2e9db",
+  "input_sha256": {
+    "docs/evidence/ashare_rdi_phase2/csi300_price_recomputation_2026-10-31.json": "85474ede7e6371007e67c09e5ff2b1658fb43769e744d1bb86c1f24d058b7818",
+    "configs/research_experiments/ashare_rdi_csi300_price_repair_2026-10-31.json": "e4c69518bd2acfafcd52148b9a342805eb946e882745e0cf6ef19c919ecfb53f",
+    "data/research/ashare_rdi/price_sources/sina_2026-10-31/manifest.json": "2430104188b8ace0288a17e913e6ad431b1d1a38f3e1375533a2e450f6254192",
+    "configs/research_experiments/ashare_rdi_phase2_sources.yaml": "d10c28af717d4bc13d602e13c96db20418b2c8fbec82ff9730cc453166878421",
+    "configs/research_experiments/ashare_rdi_phase2_sector_candidates.yaml": "b4f43a2d8c413b763707d33d6a48aa38ed66f4c0df5334a207e66e652d14537b",
+    "docs/research/ashare_rdi_price_reconstruction_2026-10-31.md": "36ebd5658016c3fbc05f5df90deff370874667993ccf6fec540ea10ac5e079ff"
+  },
+  "research_only": true,
+  "trade_ready": false,
+  "rdi_validated": false,
+  "scope": "dated descriptive evidence projection only, not a calibrated research assessment"
+}

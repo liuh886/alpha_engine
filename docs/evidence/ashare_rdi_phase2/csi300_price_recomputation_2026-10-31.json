@@ -1,0 +1,274 @@
+{
+  "calendar": {
+    "id": "XSHG",
+    "package": "exchange_calendars",
+    "version": "4.13.2"
+  },
+  "calendar_gaps": [],
+  "contract_id": "ashare_rdi_csi300_price_repair_v1_2026_10_31",
+  "contract_sha256": "e4c69518bd2acfafcd52148b9a342805eb946e882745e0cf6ef19c919ecfb53f",
+  "cutoff": "2026-10-30",
+  "event_study_ready": false,
+  "full_history_descriptive": {
+    "drawdown_threshold": -0.1,
+    "event_rdi_evaluated": false,
+    "first_price_session": "2005-04-08",
+    "last_price_session": "2026-10-30",
+    "limitations": [
+      "overlapping forward labels, not independent observations",
+      "no official calendar gap or independent provider quality certification in this diagnostic",
+      "single descriptive sample, no purged out-of-sample test or confidence intervals",
+      "no PIT archival event coverage; price-only association is not RDI validation"
+    ],
+    "lookback_sessions": 60,
+    "predictive_skill_established": false,
+    "reference": "CSI300 / 000300.SH",
+    "research_only": true,
+    "results": [
+      {
+        "drawdown_at_least_threshold": {
+          "mean_return": 0.0009855379480533317,
+          "mean_worst_excursion": -0.03944255084356871,
+          "observations": 1283,
+          "p_down": 0.4621979734996103,
+          "p_severe_loss": 0.13717848791894
+        },
+        "eligible_observation_end": "2026-10-21",
+        "eligible_observation_start": "2005-07-07",
+        "horizon_sessions": 7,
+        "insufficient_future_bars": {
+          "count": 7,
+          "first_session": "2026-10-22",
+          "last_session": "2026-10-30"
+        },
+        "label_end_end": "2026-10-30",
+        "label_end_start": "2005-07-18",
+        "other": {
+          "mean_return": 0.0037436733566816134,
+          "mean_worst_excursion": -0.025093321190048427,
+          "observations": 3889,
+          "p_down": 0.46310105425559267,
+          "p_severe_loss": 0.0673695037284649
+        }
+      },
+      {
+        "drawdown_at_least_threshold": {
+          "mean_return": 0.0035443044514230173,
+          "mean_worst_excursion": -0.054394028892851456,
+          "observations": 1276,
+          "p_down": 0.45219435736677116,
+          "p_severe_loss": 0.17633228840125392
+        },
+        "eligible_observation_end": "2026-10-12",
+        "eligible_observation_start": "2005-07-07",
+        "horizon_sessions": 14,
+        "insufficient_future_bars": {
+          "count": 14,
+          "first_session": "2026-10-13",
+          "last_session": "2026-10-30"
+        },
+        "label_end_end": "2026-10-30",
+        "label_end_start": "2005-07-27",
+        "other": {
+          "mean_return": 0.007134698652996857,
+          "mean_worst_excursion": -0.03625304818528805,
+          "observations": 3889,
+          "p_down": 0.4695294420159424,
+          "p_severe_loss": 0.12085368989457444
+        }
+      },
+      {
+        "drawdown_at_least_threshold": {
+          "mean_return": 0.004188499232172441,
+          "mean_worst_excursion": -0.07488051754522529,
+          "observations": 1268,
+          "p_down": 0.42586750788643535,
+          "p_severe_loss": 0.2358044164037855
+        },
+        "eligible_observation_end": "2026-09-14",
+        "eligible_observation_start": "2005-07-07",
+        "horizon_sessions": 28,
+        "insufficient_future_bars": {
+          "count": 28,
+          "first_session": "2026-09-15",
+          "last_session": "2026-10-30"
+        },
+        "label_end_end": "2026-10-30",
+        "label_end_start": "2005-08-16",
+        "other": {
+          "mean_return": 0.015933685480544864,
+          "mean_worst_excursion": -0.05147477681771219,
+          "observations": 3883,
+          "p_down": 0.47901107391192377,
+          "p_severe_loss": 0.2083440638681432
+        }
+      }
+    ],
+    "rows": 5238,
+    "severe_loss_threshold": -0.05,
+    "status": "price_only_descriptive_not_out_of_sample",
+    "trade_ready": false
+  },
+  "governed_overlap_conflicts": [],
+  "governed_projection_sha256": "5f1da97e73037357795efbe71c51e05ada0b32ea65955fcb92d47667c95f257b",
+  "historical_first_availability_verified": false,
+  "implementation_sha256": {
+    "price_baseline.py": "7d94322ffa5159219ced3d4d829a01bcc5a7f60232036e130a8c0aaf9a77e374",
+    "price_reconstruction.py": "aeeaea82edebbd9b074bdcd9fbd75de2af91dca89aa27a8523b870831cc7b8a6",
+    "price_renewal.py": "0b46684778e440878a4d72d05cafddcdf0eee36361bf7d853dfff9a022721af0"
+  },
+  "latest_price_only_B_state": {
+    "drawdown_at_least_10_percent": true,
+    "drawdown_from_trailing_close_peak": -0.15937173203338129,
+    "interpretation": "retrospective observed price state, not a forecast or RDI score",
+    "lookback_sessions": 60,
+    "session": "2026-10-30"
+  },
+  "legacy_git_blob_sha1": "4f6f2dec557b8a55af748f73c49465d5d4686beb",
+  "legacy_sha256": "896b33968ccb41cec0767d789f1dfa74e762cb72deeaad3c77c8c531d1ae4776",
+  "legacy_source_overwritten": false,
+  "limitations": [
+    "single Sina transport; agreement with governed projection is not independent provider corroboration",
+    "retrieved now, not a historical first-availability or source-revision certificate",
+    "overlapping labels and retrospective stress case, no OOS or prospective inference",
+    "no event PIT qualification, ETF admission, strategy overlay or product briefing rebinding"
+  ],
+  "output_sha256": "c868c3bc811beb48bec3206872e14fdc0d2c8ed844018db4813ca0163d097bbc",
+  "predictive_skill_established": false,
+  "price_basis": "unadjusted_index_points",
+  "reference_registry_sha256": "0f98b3161edee2a9ed8f28a1a49a37fec961d1e0775c08d9f7ba6efea569cf40",
+  "repairs": {
+    "all_other_retained_ohlc_strings_preserved": true,
+    "append_rows": 85,
+    "insert_sessions": [
+      "2026-06-23"
+    ],
+    "output_rows": 5238,
+    "replacement_fields": [
+      {
+        "date": "2026-06-22",
+        "field": "high",
+        "new": "5061.511",
+        "old": "5056.0595703125"
+      },
+      {
+        "date": "2026-06-22",
+        "field": "close",
+        "new": "5059.658",
+        "old": "5048.81103515625"
+      }
+    ],
+    "retained_rows": 5152
+  },
+  "research_only": true,
+  "retrospective_stress_case": {
+    "drawdown_threshold": -0.1,
+    "event_rdi_evaluated": false,
+    "first_price_session": "2005-04-08",
+    "last_price_session": "2026-10-30",
+    "limitations": [
+      "overlapping forward labels, not independent observations",
+      "no official calendar gap or independent provider quality certification in this diagnostic",
+      "single descriptive sample, no purged out-of-sample test or confidence intervals",
+      "no PIT archival event coverage; price-only association is not RDI validation"
+    ],
+    "lookback_sessions": 60,
+    "predictive_skill_established": false,
+    "reference": "CSI300 / 000300.SH",
+    "research_only": true,
+    "results": [
+      {
+        "drawdown_at_least_threshold": {
+          "mean_return": -0.016273398350886453,
+          "mean_worst_excursion": -0.03164354304478211,
+          "observations": 25,
+          "p_down": 0.76,
+          "p_severe_loss": 0.04
+        },
+        "eligible_observation_end": "2026-10-21",
+        "eligible_observation_start": "2026-07-01",
+        "horizon_sessions": 7,
+        "insufficient_future_bars": {
+          "count": 7,
+          "first_session": "2026-10-22",
+          "last_session": "2026-10-30"
+        },
+        "label_end_end": "2026-10-30",
+        "label_end_start": "2026-07-10",
+        "other": {
+          "mean_return": -0.016011171916464836,
+          "mean_worst_excursion": -0.03482490131702811,
+          "observations": 50,
+          "p_down": 0.76,
+          "p_severe_loss": 0.08
+        }
+      },
+      {
+        "drawdown_at_least_threshold": {
+          "mean_return": -0.03341038347492799,
+          "mean_worst_excursion": -0.05045830449599618,
+          "observations": 18,
+          "p_down": 0.8333333333333334,
+          "p_severe_loss": 0.4444444444444444
+        },
+        "eligible_observation_end": "2026-10-12",
+        "eligible_observation_start": "2026-07-01",
+        "horizon_sessions": 14,
+        "insufficient_future_bars": {
+          "count": 14,
+          "first_session": "2026-10-13",
+          "last_session": "2026-10-30"
+        },
+        "label_end_end": "2026-10-30",
+        "label_end_start": "2026-07-21",
+        "other": {
+          "mean_return": -0.02775355447432153,
+          "mean_worst_excursion": -0.049310253571589,
+          "observations": 50,
+          "p_down": 0.9,
+          "p_severe_loss": 0.18
+        }
+      },
+      {
+        "drawdown_at_least_threshold": {
+          "mean_return": -0.06539661789340322,
+          "mean_worst_excursion": -0.07695346019942927,
+          "observations": 10,
+          "p_down": 0.7,
+          "p_severe_loss": 0.7
+        },
+        "eligible_observation_end": "2026-09-14",
+        "eligible_observation_start": "2026-07-01",
+        "horizon_sessions": 28,
+        "insufficient_future_bars": {
+          "count": 28,
+          "first_session": "2026-09-15",
+          "last_session": "2026-10-30"
+        },
+        "label_end_end": "2026-10-30",
+        "label_end_start": "2026-08-10",
+        "other": {
+          "mean_return": -0.0448926740024527,
+          "mean_worst_excursion": -0.0659555060215238,
+          "observations": 44,
+          "p_down": 0.9772727272727273,
+          "p_severe_loss": 0.36363636363636365
+        }
+      }
+    ],
+    "rows": 5238,
+    "severe_loss_threshold": -0.05,
+    "status": "price_only_descriptive_not_out_of_sample",
+    "trade_ready": false
+  },
+  "schema_version": "rdi_versioned_price_reconstruction_v1",
+  "source_api_function_sha256": "376b86e9cb2f6b68b5cac29db383c57df87678041ad81b3f45a9c6633e0a1440",
+  "source_manifest_sha256": "2430104188b8ace0288a17e913e6ad431b1d1a38f3e1375533a2e450f6254192",
+  "source_response_sha256": "370e36487d35c84c8a324dce76798233e35ca32748e348c33e9fd535847ef942",
+  "source_retrieved_at": "2026-10-31T09:43:38.295588+00:00",
+  "start": "2005-04-08",
+  "status": "price_only_reconstruction_verified_not_rdi_validated",
+  "trade_ready": false,
+  "uv_lock_git_sha256": "76700bf117ebc0e995db5966b61b59d78495475c5f1c186f879e0e244fc2411b",
+  "vendor_decoder_constant_sha256": "39a599c94dde4df1c2eb0882d4bff9560160cfd52ead0797cebb04b3122c2f52"
+}

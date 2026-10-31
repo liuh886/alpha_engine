@@ -31,6 +31,37 @@ The initial implementation fixes period rebasing and unifies relative excess
 between the curve and summary. Existing settlement and initial-capital semantics
 remain intact.
 
+## Source-bound opening and metric windows (2026-10-31)
+
+The existing `public_historical_projection_v1` may publish a compact
+`formal_performance_source_context_v1` in its summary and performance sections.
+Canonical files, economic rows, metric values and decision receipts stay intact.
+The public manifest includes the original canonical manifest bytes as metadata;
+the reader verifies their SHA, bundle identity and model/run/cutoff before using
+original claim section hashes or binding protected Operations to that source.
+Instrument evidence continues to bind its own verified public projection ID.
+
+Only the declared non-overlapping 10-session QQQ contract currently supports the
+opening projection. It derives opening wealth from the first retained account
+and net period return, verifies both wealth recurrences and non-overlapping
+dates, and reconciles the declared total-return sample count/value against the
+retained closing wealth. It does not hardcode an initial account, recompute costs
+or invent an earlier plotted point. Other trace contracts retain their declared
+boundaries without an inferred opening.
+
+The summary carries the same small source/count/window context so initial All
+can display the exact source return window without loading every wealth trace.
+Detail and selected-period readers validate the context against the verified
+canonical section hashes, actual rows, cutoff and source metric. Missing or
+contradictory context on this projected contract blocks the affected evidence.
+
+Source returns and chart returns retain distinct observation sets when declared
+that way: for the US x1.3 source through 2026-10-29, 68 source return observations
+end at the last completed holding interval, while the 69-row chart also retains
+one provisional mark. Show each actual endpoint/count, preserve the first loss,
+and identify the provisional inclusion explicitly. No evidence qualification,
+live trading access or new research claim follows from this presentation work.
+
 ## Next improvements, in priority order
 
 | Question | View | Quality requirement |

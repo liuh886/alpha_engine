@@ -150,9 +150,12 @@ test('fleet periods retain visible evidence windows and do not promote expired r
     const summaryPath = manifest.sections?.find(section => section.section_id === 'summary')?.path;
     const performancePath = manifest.sections?.find(section => section.section_id === 'performance')?.path;
     const summary = await (await page.request.get(base + summaryPath)).json() as { metrics: Array<{ metric_id: string; availability_status: string; unavailable_reason?: string }> };
-    const performance = await (await page.request.get(base + performancePath)).json() as { report: Array<{ date: string; holding_end_date?: string }> };
+    const performance = await (await page.request.get(base + performancePath)).json() as { report: Array<{ date: string; holding_end_date?: string }>; public_evidence_context?: { total_return_window: { start: string; end: string; sample_count: number } } };
     const row = fleet.getByTestId('fleet-' + record.model_version_id);
-    await expect(row.locator('[data-testid="fleet-window"]:visible')).toContainText(`Declared run window ${manifest.comparability_key?.start} – ${manifest.comparability_key?.end}`);
+    const sourceWindow = performance.public_evidence_context?.total_return_window;
+    await expect(row.locator('[data-testid="fleet-window"]:visible')).toContainText(sourceWindow
+      ? `Source return window ${sourceWindow.start} – ${sourceWindow.end}`
+      : `Declared run window ${manifest.comparability_key?.start} – ${manifest.comparability_key?.end}`);
     expect(await row.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(2);
     const excess = summary.metrics.find(metric => metric.metric_id === 'excess_return');
     if (excess?.availability_status !== 'available') {
@@ -241,7 +244,9 @@ test('strategy detail separates source metrics from chart observations and keeps
   await expect(scope).toContainText('non-provisional through');
   await expect(scope).toContainText('provisional (unsettled marks)');
   await expect(page.getByTestId('chart-return-basis')).toContainText('not the published source return');
-  await expect(page.getByTestId('chart-return-basis')).toContainText('excludes the interval ending at that observation');
+  await expect(page.getByTestId('chart-return-basis')).toContainText('includes the first interval');
+  await expect(scope).toContainText('Source opening wealth');
+  await expect(scope).toContainText('excludes provisional marks');
   await expect(page.getByTestId('chart-return-basis')).toContainText('provisional observation(s)');
   await expect(page.getByTestId('visible-period-dates')).toContainText('Chart comparison');
   await page.getByTestId('chart-return-basis').scrollIntoViewIfNeeded();
