@@ -31,7 +31,8 @@ export function RdiEvidenceSources({ briefing, needsIntegration, onNeedsIntegrat
       <summary onClick={event => { event.preventDefault(); onProvenanceOpenChange(!provenanceOpen); }} className="min-h-12 cursor-pointer py-4 text-sm font-medium">Evidence provenance</summary>
       <div className="pb-5">
         <a className="inline-block min-h-10 py-2 text-sm text-primary underline" href={rdiEvidenceUrl(briefing.protocol_path, briefing.repository_commit)} target="_blank" rel="noreferrer">Research protocol and limitations</a>
-        <p className="mt-2 break-all text-xs text-muted-foreground"><a className="text-primary underline" href={rdiEvidenceUrl('data/csv_source/000300.csv', briefing.repository_commit)} target="_blank" rel="noreferrer">Price source at this build</a> · Git blob {briefing.price_source_git_blob_sha1}</p>
+        <p className="mt-2 break-all text-xs text-muted-foreground"><a className="text-primary underline" href={rdiEvidenceUrl(briefing.price_source_path, briefing.repository_commit)} target="_blank" rel="noreferrer">Reviewed price source</a> · Output SHA-256 {briefing.price_output_sha256}</p>
+        <p className="mt-2 break-all text-xs text-muted-foreground">Retained source Git blob {briefing.retained_source_git_blob_sha1}</p>
         <ul className="mt-4 space-y-3">{briefing.evidence.map(row => <li key={row.path} className="min-w-0 text-xs">
           <a className="break-all text-primary underline" href={rdiEvidenceUrl(row.path, briefing.repository_commit)} target="_blank" rel="noreferrer">{row.path}</a>
           <p className="mt-1 break-all font-mono text-muted-foreground">SHA-256 {row.sha256}</p>

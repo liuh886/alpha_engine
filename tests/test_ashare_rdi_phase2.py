@@ -13,7 +13,7 @@ import io
 import pytest
 
 from src.research.ashare_rdi.contracts import RiskEvent
-from src.research.ashare_rdi.briefing import BASELINE, PRICE, READINESS, SECTORS, SOURCES, build_research_briefing
+from src.research.ashare_rdi.briefing import BASELINE, PRICE, READINESS, SECTORS, SOURCES, CONTRACT, SOURCE_MANIFEST, PROTOCOL, build_research_briefing
 from src.research.ashare_rdi.coverage import FamilyCoverage, audit_coverage, coverage_cells_ready
 from src.research.ashare_rdi.outcomes import PriceBar
 from src.research.ashare_rdi.phase2 import build_pit_panel, evaluate_blocked_oos, read_price_csv
@@ -340,19 +340,10 @@ def test_price_only_baseline_is_descriptive_not_rdi() -> None:
 @pytest.fixture
 def briefing_repo(tmp_path: Path) -> Path:
     root = Path(__file__).resolve().parents[1]
-    for name in (READINESS, BASELINE, SOURCES, SECTORS):
+    for name in (READINESS, BASELINE, SOURCES, SECTORS, CONTRACT, SOURCE_MANIFEST, PRICE, PROTOCOL):
         dest = tmp_path / name
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(root / name, dest)
-    price = tmp_path / PRICE
-    price.parent.mkdir(parents=True, exist_ok=True)
-    price.write_bytes(b"date,open,low,close\n2020-01-02,10,9,10\n")
-    raw = price.read_bytes()
-    blob = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
-    for name in (READINESS, BASELINE):
-        report = json.loads((tmp_path / name).read_text())
-        report["source_git_blob_sha1"] = blob
-        (tmp_path / name).write_text(json.dumps(report), encoding="utf-8")
     subprocess.run(["git", "init", "--quiet", str(tmp_path)], check=True)
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
     subprocess.run(["git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
@@ -363,7 +354,8 @@ def briefing_repo(tmp_path: Path) -> Path:
 def test_product_briefing_is_dated_and_never_promotes(briefing_repo: Path) -> None:
     result = build_research_briefing(briefing_repo)
     assert result["status"] == "not_validated"
-    assert result["reviewed_price_cutoff"] == "2026-06-25"
+    assert result["reviewed_price_cutoff"] == "2026-10-30"
+    assert result["reviewed_price_rows"] == 5238
     assert [r["horizon_sessions"] for r in result["historical_comparison"]] == [7, 14, 28]
     assert all(not r["historical_pit_verified"] for r in result["event_families"])
     assert all(not r["admitted"] for r in result["sector_candidates"])
@@ -377,6 +369,38 @@ def test_sparse_checkout_uses_source_tree_without_copying_prices(briefing_repo: 
     result = build_research_briefing(briefing_repo)
     assert result["status"] == "not_validated"
     assert not (briefing_repo / PRICE).exists()
+
+
+@pytest.mark.parametrize("name", [CONTRACT, SOURCE_MANIFEST, PROTOCOL])
+def test_rebound_source_chain_changes_withhold_comparison(briefing_repo: Path, name: str):
+    path = briefing_repo / name
+    path.write_bytes(path.read_bytes() + b"\n")
+    result = build_research_briefing(briefing_repo)
+    assert result["status"] == "evidence_mismatch" and result["historical_comparison"] == []
+
+
+def test_product_read_does_not_import_price_decoder_or_evaluator(briefing_repo: Path):
+    import sys
+
+    command = ("import sys; from pathlib import Path; "
+               "from src.research.ashare_rdi.briefing import build_research_briefing; "
+               f"build_research_briefing(Path({str(briefing_repo)!r})); "
+               "assert 'akshare' not in sys.modules; assert 'sklearn' not in sys.modules; "
+               "assert 'src.research.ashare_rdi.price_reconstruction' not in sys.modules")
+    subprocess.run([sys.executable, "-c", command], check=True)
+
+
+def test_original_preflight_remains_replayable_after_product_rebinding():
+    import sys
+
+    raw = subprocess.check_output([
+        sys.executable, "-m", "src.research.ashare_rdi.phase2_audit",
+        "--price-renewal-audit", "--as-of", "2026-10-30",
+    ])
+    report = json.loads(raw)
+    assert report["source_git_blob_sha1"] == "4f6f2dec557b8a55af748f73c49465d5d4686beb"
+    assert report["status"] == "blocked_price_renewal"
+    assert report["retained_history"]["missing_sessions"] == ["2026-06-23"]
 
 
 def test_source_change_suppresses_all_descriptive_statistics(briefing_repo: Path) -> None:

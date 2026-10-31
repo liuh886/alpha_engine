@@ -12,8 +12,11 @@ describe('RDI reviewed evidence boundary', () => {
   it.each([
     { trade_ready: true }, { research_only: false }, { status: 'validated' },
     { repository_commit: 'main' }, { historical_comparison: [] },
+    { schema_version: '1.0.0' }, { price_output_sha256: 'unknown' }, { price_source_path: '../secret' },
     { evidence: [{ path: 'docs/../../secret', sha256: 'a'.repeat(64) }] },
     { historical_comparison: [{ ...rdiFixture.historical_comparison[0], drawdown_loss_frequency: 1.1 }] },
+    { historical_comparison: rdiFixture.historical_comparison.map(row => ({ ...row, latest_label_end: '2099-01-01' })) },
+    { historical_comparison: rdiFixture.historical_comparison.map(row => ({ ...row, immature_observations: 0 })) },
   ])('rejects unsupported or contradictory claims: %j', change => {
     expect(() => parseRdiResearch({ ...rdiFixture, ...change })).toThrow();
   });

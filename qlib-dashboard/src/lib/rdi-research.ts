@@ -1,14 +1,16 @@
 export interface RdiResearchBriefing {
   status: 'not_validated' | 'evidence_mismatch';
   repository_commit: string;
-  price_source_git_blob_sha1: string;
+  retained_source_git_blob_sha1: string;
+  price_output_sha256: string;
+  price_source_path: string;
   reviewed_at: string;
   reviewed_price_cutoff: string;
   reviewed_price_rows: number;
   event_families: { id: string; source: string; readiness: string; historical_pit_verified: boolean }[];
   sector_candidates: { symbol: string; sector: string; admitted: false }[];
   historical_comparison: { horizon_sessions: number; drawdown_loss_frequency: number; other_loss_frequency: number;
-    drawdown_observations: number; other_observations: number }[];
+    drawdown_observations: number; other_observations: number; latest_mature_observation: string; latest_label_end: string; immature_observations: number }[];
   evidence: { path: string; sha256: string }[];
   protocol_path: string;
 }
@@ -18,16 +20,19 @@ function object(value: unknown): value is Record<string, unknown> {
 }
 const positiveInteger = (value: unknown) => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 const frequency = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
-const date = (value: unknown) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+const date = (value: unknown) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+  && Number.isFinite(Date.parse(value)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 const repoPath = (value: unknown) => typeof value === 'string' && /^(docs|configs|data)\/[\w/.-]+$/.test(value)
   && !value.split('/').includes('..');
 
 export function parseRdiResearch(value: unknown): RdiResearchBriefing {
-  if (!object(value) || value.schema_version !== '1.0.0' || value.research_only !== true || value.trade_ready !== false
+  if (!object(value) || value.schema_version !== '1.1.0' || value.research_only !== true || value.trade_ready !== false
     || !['not_validated', 'evidence_mismatch'].includes(String(value.status))
     || value.benchmark !== 'CSI300 / 000300.SH' || !date(value.reviewed_at) || !date(value.reviewed_price_cutoff)
     || typeof value.repository_commit !== 'string' || !/^[a-f0-9]{40}$/.test(value.repository_commit)
-    || typeof value.price_source_git_blob_sha1 !== 'string' || !/^[a-f0-9]{40}$/.test(value.price_source_git_blob_sha1)
+    || typeof value.retained_source_git_blob_sha1 !== 'string' || !/^[a-f0-9]{40}$/.test(value.retained_source_git_blob_sha1)
+    || typeof value.price_output_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(value.price_output_sha256)
+    || !repoPath(value.price_source_path)
     || !positiveInteger(value.reviewed_price_rows) || !repoPath(value.protocol_path)
     || !Array.isArray(value.event_families) || !value.event_families.length
     || !Array.isArray(value.sector_candidates) || !value.sector_candidates.length
@@ -51,7 +56,10 @@ export function parseRdiResearch(value: unknown): RdiResearchBriefing {
   }
   for (const row of value.historical_comparison) {
     if (!object(row) || !frequency(row.drawdown_loss_frequency) || !frequency(row.other_loss_frequency)
-      || !positiveInteger(row.drawdown_observations) || !positiveInteger(row.other_observations)) {
+      || !positiveInteger(row.drawdown_observations) || !positiveInteger(row.other_observations)
+      || !date(row.latest_mature_observation) || !date(row.latest_label_end)
+      || String(row.latest_mature_observation) > String(row.latest_label_end) || String(row.latest_label_end) > String(value.reviewed_price_cutoff)
+      || row.immature_observations !== row.horizon_sessions) {
       throw new Error('RDI historical comparison is invalid.');
     }
   }
