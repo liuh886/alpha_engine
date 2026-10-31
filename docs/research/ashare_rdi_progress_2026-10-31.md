@@ -55,6 +55,11 @@ verified. Old CSV bytes, receipts, source metrics and the Status briefing
 binding are unchanged. Neither all October labels nor price-layer readiness
 is claimed.
 
+The old 2026-10-24 descriptive frequencies remain archived, but their row-count
+horizons are not newly certified as complete exchange-session horizons: the
+missing trading day matters. Do not reuse those percentages as current,
+calendar-validated statistics or silently revise the old receipt.
+
 ## Ten-family historical PIT eligibility table
 
 Authority: `configs/research_experiments/ashare_rdi_phase2_sources.yaml`.
