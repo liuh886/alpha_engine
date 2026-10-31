@@ -40,7 +40,7 @@ Agent 不自行修改线上 tier、entitlement 或删除生产行以制造通过
 | 里程碑 | 当前状态 | 下一事项与通过标准 |
 | --- | --- | --- |
 | M1 价格层 | **已交付 #1338**：5,238 个完整 XSHG session 至 2026-10-30，版本化修复、原始响应归档、离线重放及未成熟尾部 | 既有手工节奏下按需更新来源/冻结版本并校验 overlap；不让 Status 读取触发取数、重放或重算 |
-| 证据视图（当前优先实施） | Status 仍绑定 2026-10-24 / 6 月 25 日旧审核 | 在现有 RDI briefing 重绑已审收据与来源身份，显示新截止日和描述性限制；tamper/missing 失败关闭；桌面/手机及部署 SHA 验收。仍 `not_validated`，无 score |
+| 证据视图 | **已交付 #1340**：Status 价格截止 2026-10-30，审核日 2026-10-31，桌面/手机精确 SHA 线上验收通过 | 维持已审来源绑定与 missing/tamper 失败关闭；不触发取数/重算。仍 `not_validated`、0/10 事件家族、无 score；[线上收据](../evidence/product_v1/rdi_status_live_acceptance_1340.json) |
 | M2 事件资格 | 十类资格表已发布，**0/10 合格** | 审计逐 session 完整性、真实 available-at、修订与 absence 证据；未知保持 unknown |
 | M3 首个事件家族 | **待选择与冻结**；推荐限售解禁公告，备选业绩披露窗口 | Owner 选择家族后，Agent 冻结窄 universe/era/来源/时点/去重/覆盖合同并实现；单类合格不自动解锁完整十类 study |
 | M4 冻结评估与前瞻起点 | **NOT_STARTED** | 预先提交 B/E/E+B、基准、阈值、purge/fold/区间与成败标准；冻结后才记录未来 session，不追认已观察的 7–10 月为前瞻 |
@@ -51,7 +51,7 @@ Agent 不自行修改线上 tier、entitlement 或删除生产行以制造通过
 
 ### 0.4 实施队列与收口方式
 
-1. **当前批次**：合并本路线收口；单独实现 RDI 证据重绑，完成正负验证和线上验收。
+1. **首批已交付**：#1339 路线收口、#1340 RDI 证据重绑及正负/线上验收完成。当前转入 A1 真实证据重审和下一项既定产品缺陷；后续状态见 §10。
 2. **产品闭环批次**：重审 A1 已有真实收据；按 A3/#1315 的已观察缺陷逐项落地日期与 driver 语义、Decision Feed 最多三重点、正式证据支持/反证/下一步。每个小 PR 只关闭已验证子项，完整 fleet 保留。
 3. **权限/恢复批次**：完成可无账号执行的 A4 清点和 A6 演练准备；将真实账号、生产治理、实际观察日及 Owner 操作准确交接。补齐证据后才提交 A7。
 4. **RDI 研究批次**：取得 M3 选择后独立推进窄事件证书与 M4；不能以赶产品发布为由降低研究门禁。
@@ -264,3 +264,19 @@ erase earlier verified results.
    [A4 receipt](../evidence/product_v1/accountless_access_observation_2026-10-31.json).
    All live strategy policies currently read public; retired CN x1.2 remains
    visible. Protected-row rejection and real-session tests stay NOT_TESTED.
+
+## 10. 2026-10-31 发布闭环检查点
+
+- #1339 收口产品 A0–A7 与 RDI 里程碑；#1340 将新价格证据接入现有 Status。
+  Pages run `41192493672` 成功；`eb5c2b1866540890d89fb5d12a06a6e4dba8923c`
+  桌面/手机均验证新来源链接、5,238 行、各周期成熟边界、0/10 及无横向溢出。
+- [A1 最新取证检查点](../evidence/product_v1/operating_closure_checkpoint_2026-10-31.json)：
+  精确私有版本恢复后，Formal `41160909644:1` 四策略机械检查通过，QQQ/BYD
+  具本次 daily due 证明，US/CN 为保留目标；独立复核和人工干预计数仍待完成。
+  405 份采集、58 个不同运行尝试只是归档目录库存；本次只重审最新 packet，
+  不能据此声称全历史已审、20 日合格或人工干预为零。A1 继续 BLOCKED。
+- #1335 的无关锁文件升级会触发旧 RDI 全锁哈希相等断言；#1341 单独处理
+  采集/回放依赖来源记录的兼容性，保留所有来源与 CSV 精确校验，再验证真实升级。
+  不因旧分支 CI 绿色而跳过当前 main 的依赖兼容检查。
+
+产品仍 NO-GO；A4 真实账号和历史披露处置、A6 恢复演练、A7 Owner 决定均未自动关闭。
