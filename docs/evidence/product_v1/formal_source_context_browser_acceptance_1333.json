@@ -1,0 +1,41 @@
+{
+  "results": [
+    {
+      "viewport": "desktop",
+      "commit_sha": "22d4e07d6dea796084642b6d61be670913499a64",
+      "source_window": {
+        "end": "2026-10-23",
+        "includes_provisional": false,
+        "sample_count": 68,
+        "scope": "certification_development_plus_reporting_and_partial_prospective",
+        "start": "2024-01-02"
+      },
+      "opening_date": "2024-01-02",
+      "first_observation_date": "2024-01-17",
+      "overflow_px": 0,
+      "status": "PASS"
+    },
+    {
+      "viewport": "mobile",
+      "commit_sha": "22d4e07d6dea796084642b6d61be670913499a64",
+      "source_window": {
+        "end": "2026-10-23",
+        "includes_provisional": false,
+        "sample_count": 68,
+        "scope": "certification_development_plus_reporting_and_partial_prospective",
+        "start": "2024-01-02"
+      },
+      "opening_date": "2024-01-02",
+      "first_observation_date": "2024-01-17",
+      "overflow_px": 0,
+      "status": "PASS"
+    }
+  ],
+  "schema_version": "formal_source_context_browser_acceptance_v1",
+  "pull_request": 1333,
+  "vitest_passed": 288,
+  "static_browser_passed": 117,
+  "research_only": true,
+  "trade_ready": false,
+  "scope": "US x1.3 source-window/opening-NAV consistency only; full A3 and A4 not certified"
+}
