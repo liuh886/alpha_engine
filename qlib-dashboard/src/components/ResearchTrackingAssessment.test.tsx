@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { DecisionLoadState, ResearchDecisionReceipt } from '@/lib/model-run-decision';
 import { parseResearchDecision } from '@/lib/model-run-decision';
 import type { GovernedRunSummary } from '@/lib/governed-run';
-import { ResearchTrackingAssessment } from './ResearchTrackingAssessment';
+import { formatEvidenceStatement, ResearchTrackingAssessment } from './ResearchTrackingAssessment';
 
 const claim = { claim_id: 'support', outcome: 'passed' as const, statement: 'Retained source coverage passed.', source_path: 'evidence/source.json', source_sha256: 'a'.repeat(64) };
 const decision: ResearchDecisionReceipt = {
@@ -60,5 +60,10 @@ describe('ResearchTrackingAssessment', () => {
     expect(screen.getByText(message)).toBeInTheDocument();
     expect(screen.queryByText(/PRIVATE|retained failed gates/)).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Supporting evidence' })).not.toBeInTheDocument();
+  });
+
+  it('truncates floating-point precision noise in evidence statements without converting units', () => {
+    expect(formatEvidenceStatement('net return -0.2310626845334285, relative excess -0.20921387779521705, max drawdown -0.2310626845334285')).toBe('net return -0.2311, relative excess -0.2092, max drawdown -0.2311');
+    expect(formatEvidenceStatement('Retained source coverage passed.')).toBe('Retained source coverage passed.');
   });
 });

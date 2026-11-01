@@ -1,11 +1,19 @@
 import type { DecisionLoadState, ResearchDecisionClaim } from '@/lib/model-run-decision';
 
+export function formatEvidenceStatement(statement: string): string {
+  if (!statement) return '';
+  return statement.replace(/(-?\d+\.\d{4})\d{2,}/g, (match) => {
+    const val = parseFloat(match);
+    return Number.isFinite(val) ? Number(val.toFixed(4)).toString() : match;
+  });
+}
+
 function Claims({ title, claims }: { title: string; claims: ResearchDecisionClaim[] }) {
   return <div className="min-w-0">
     <h3 className="font-semibold">{title}</h3>
     {claims.length ? <ul className="mt-2 space-y-3 text-muted-foreground">
       {claims.map(row => <li key={row.claim_id} className="break-words">
-        <span className="text-xs font-semibold uppercase">{row.outcome}</span> · {row.statement}
+        <span className="text-xs font-semibold uppercase">{row.outcome}</span> · {formatEvidenceStatement(row.statement)}
       </li>)}
     </ul> : <p className="mt-2 text-muted-foreground">No records in this assessment.</p>}
   </div>;
@@ -26,7 +34,7 @@ export function ResearchTrackingAssessment({ state, evidenceCutoff, primaryCount
     </p>
     <p className="mt-2 text-xs text-muted-foreground">Research only. This assessment does not establish a trading instruction.</p>
     {decision && <>
-      <p className="mt-2 break-words text-muted-foreground">{primaryCounterevidence || 'Retained evidence has no recorded counterevidence; this does not establish continued effectiveness.'}</p>
+      <p className="mt-2 break-words text-muted-foreground">{primaryCounterevidence ? formatEvidenceStatement(primaryCounterevidence) : 'Retained evidence has no recorded counterevidence; this does not establish continued effectiveness.'}</p>
       <p className="mt-2 text-muted-foreground">{decision.gates.filter(row => row.outcome === 'failed').length} retained failed gates · {decision.contradictory_evidence.length} counterevidence records. Formal evidence through {evidenceCutoff || 'unknown'}.</p>
       <details className="mt-3">
         <summary className="cursor-pointer font-medium">Supporting evidence, counterevidence, limits and next validation</summary>
