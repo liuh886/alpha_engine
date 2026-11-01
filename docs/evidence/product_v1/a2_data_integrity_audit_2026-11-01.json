@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.0.0",
+  "audit_id": "gate_a2_data_integrity_audit_2026-11-01",
+  "timestamp_utc": "2026-11-01T10:55:00Z",
+  "gate": "A2",
+  "parent_issues": [
+    "#324",
+    "#325",
+    "#1279"
+  ],
+  "gate_decision": {
+    "active_strategies_operational_data": "PASS",
+    "experimental_research_training_plane": "SCOPED_BLOCKED",
+    "overall_gate_status": "BLOCKED",
+    "rationale": "Four active console strategies have verified, sealed source/cutoff/adjustment contracts with zero runtime dependencies on unconfigured providers. The broader US87/CN130 model training plane remains honestly scoped-blocked on OTC entitlements and historical PIT joins without invalidating active console operations."
+  },
+  "research_only": true,
+  "trade_ready": false,
+  "active_strategies": {
+    "qqqi_qqq_tqqq_v4_3": {
+      "strategy_id": "qqq_rotation",
+      "model_version_id": "qqqi_qqq_tqqq_v4_3",
+      "model_kind": "rules_based_allocation",
+      "contract": "configs/research_paradigms/qqqi_qqq_tqqq_current_baseline.yaml",
+      "data_contract": "configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml",
+      "instruments": {
+        "tradable": ["QQQ", "QQQI", "TQQQ", "SGOV"],
+        "signals": ["^VIX", "^VXN", "CNN_FEAR_GREED"],
+        "benchmark": "QQQ"
+      },
+      "source_provider": "Yahoo Finance (yahoo_research_v2) + CNN Fear & Greed",
+      "price_basis": "governed_adjusted_open (uniform_adj_close_ratio)",
+      "measurement": "adjusted_open_to_next_adjusted_open",
+      "transaction_cost_bps": 10.0,
+      "cadence": "Every completed US market session",
+      "operational_status": "verified_healthy",
+      "decoupled_from_us87_training_plane": true
+    },
+    "us_x1_3": {
+      "strategy_id": "us_x",
+      "model_version_id": "us_x1_3",
+      "model_kind": "cross_sectional_ranker",
+      "contract": "configs/models/us_x1_3.yaml",
+      "universe": "configs/research_universes/us_selected_equities_v2.yaml (87 equities)",
+      "classification": "configs/research_classifications/us87_sector_industry_v1.yaml",
+      "source_provider": "pyqlib binary provider (data/providers/us)",
+      "provider_identity": "sha256:c2b8cc29ad70afde1b4590a03da6f82d4a9fd1e242426bc936333b7f7c3bd39d",
+      "price_basis": "governed_adjusted_close",
+      "measurement": "adjusted_close_t_to_t_plus_10_sessions",
+      "transaction_cost_bps": 20.0,
+      "cadence": "Every 10 provider sessions with fast-path provisional MTM",
+      "operational_status": "verified_healthy",
+      "decoupled_from_alpaca_otc_training_plane": true
+    },
+    "cn_27_v1_3": {
+      "strategy_id": "cn_27",
+      "model_version_id": "cn_27_v1_3",
+      "model_kind": "rules_based_allocation",
+      "contract": "configs/models/cn_27_v1_3.yaml",
+      "candidate_pool": "configs/pools/cn_all_weather_alpha_rotation_v1.yaml (27 equities + 515180.SH)",
+      "benchmark": "000300",
+      "source_provider": "pyqlib binary provider (data/providers/cn) with Tencent QFQ recovery adapter",
+      "price_basis": "governed_front_adjusted_open (QFQ forward-adjusted open)",
+      "measurement": "prior_adjusted_open_to_current_adjusted_open",
+      "transaction_cost_bps": {
+        "stock_buy": 5.0,
+        "stock_sell": 10.0,
+        "etf_buy": 2.0,
+        "etf_sell": 2.0
+      },
+      "cadence": "Every 30 completed CN market sessions with daily locked retry",
+      "operational_status": "verified_healthy",
+      "decoupled_from_cn130_fundamental_pit_store": true
+    },
+    "byd_v1_3_recovery_event_low_vol_confirmation_v1": {
+      "strategy_id": "byd",
+      "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+      "model_kind": "rules_based_allocation",
+      "contract": "configs/models/byd_v1_3_recovery_event_low_vol_confirmation_v1.yaml",
+      "universe": ["002594.SZ", "515180.SH"],
+      "benchmark": "byd_v1.2",
+      "source_provider": "Yahoo Finance (002594.SZ, 515180.SS) cross-audited against AkShare/Eastmoney/Sina",
+      "sealed_snapshots": {
+        "byd": "sha256:2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179",
+        "etf_515180": "sha256:7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f"
+      },
+      "price_basis": "governed_adjusted_common_open (chain_link_provider_history)",
+      "measurement": "adjusted_common_open_to_next_adjusted_common_open",
+      "cadence": "Every completed CN market session",
+      "operational_status": "verified_healthy",
+      "decoupled_from_broader_event_plane": true
+    }
+  },
+  "test_suite_verification": {
+    "total_tests": 56,
+    "passed": 56,
+    "failed": 0,
+    "skipped": 0,
+    "suites": {
+      "tests/test_canonical_vwap.py": {"tests": 12, "status": "PASSED"},
+      "tests/test_alpaca_adapter.py": {"tests": 10, "status": "PASSED"},
+      "tests/test_selected_pool_event_population.py": {"tests": 14, "status": "PASSED"},
+      "tests/test_cn_selected_pool_event_sources.py": {"tests": 5, "status": "PASSED"},
+      "tests/test_ashare_primary_company_events.py": {"tests": 9, "status": "PASSED"},
+      "tests/test_fundamental_event_store_contract.py": {"tests": 6, "status": "PASSED"}
+    }
+  },
+  "preflight_and_entitlements": {
+    "alpaca": {
+      "credential_names_configured": ["APCA_API_KEY_ID", "APCA_API_SECRET_KEY"],
+      "sip_feed_status": "verified_available_for_us85",
+      "otc_feed_status": "blocked_403_requires_broker_plan",
+      "affected_equities": ["ABBNY", "SBGSY"],
+      "impact": "Scoped to full-history US87 Alpha158 training plane (#325); zero impact on 4 active console strategies."
+    },
+    "sec_edgar": {
+      "user_agent_configuration": "configured_with_safe_default_fallback",
+      "egress_mode": "direct",
+      "rate_limit_compliance": "enforced_0.12s_minimum_interval",
+      "identity_missing_declarations": ["SBGSY"],
+      "impact": "Scoped to US87 fundamental event store (#324); zero impact on 4 active console strategies."
+    },
+    "cn_selected_pool_events": {
+      "sources": ["sina_financials", "cninfo_disclosures", "eastmoney_dividends"],
+      "concurrency_policy": "sequential_symbols_bounded_provider_lanes",
+      "exact_frame_caching": "active",
+      "new_listing_coverage_limits": ["301666"],
+      "impact": "Scoped to CN130 event store (#324); zero impact on 4 active console strategies."
+    }
+  },
+  "model_data_bundle_readiness": {
+    "evidence_cutoff": "2026-10-30",
+    "ready_training_profiles": [
+      "cn_selected_alpha158_v1",
+      "cn_selected_price_only_v1",
+      "cn_selected_price_plus_fundamentals_v1",
+      "qqqi_qqq_tqqq_rotation_v1",
+      "us_selected_price_only_v1",
+      "us_selected_price_plus_fundamentals_v1"
+    ],
+    "blocked_training_profiles": [
+      "us_selected_alpha158_v1",
+      "us_small_pool_price_plus_fundamentals_v1"
+    ],
+    "isolation_boundary_verified": true
+  }
+}
