@@ -833,3 +833,43 @@
   - [x] 运行 `tests/test_formal_model_replay.py`（15 项）与 `tests/test_rules_formal_replay_gate.py`（18 项）全部 33 项测试通过；
 - [x] **H2.4 证据包归档与合规记录**：
   - [x] 归档 `docs/evidence/product_v1/h2_replay_cn_27_v1_3_2026-11-01.json` 与 `h2_replay_qqq_v4_3_2026-11-01.json`，状态标定为 `PENDING_OWNER_ACCEPTANCE`。
+
+---
+
+## Phase 11: Direction A 上线交付 — A2 数据可信性与依赖清单核实 (#324 / #325 / Gate A2)
+- [x] **A2.1 四策略依赖与数据面逐一核验 (Subagent 协同走查)**:
+  - [x] 核验 QQQ Rotation v4.3 必需输入（ETF 参考池 QQQI/QQQ/TQQQ/SGOV，VIX/VXN 信号，Yahoo 日线切片与复权语义）；
+  - [x] 核验 US x1.3 必需输入（23 标的 narrow bundle，Yahoo/Qlib provider，10d 调仓周期，复权与截止日）；
+  - [x] 核验 CN 27 v1.3 必需输入（27 标的 pool，Sina/Tushare provider，价格与复权对账，30d 调仓周期）；
+  - [x] 核验 BYD v1.3 必需输入（002594.SZ / 1211.HK / 515180.SH，recovery event 与低波确认，每日 close 判定）；
+  - [x] 严格区分四策略每日运行必需输入与 US87/CN130 Alpha158 训练池输入（明确后者阻塞不导致四策略失效）。
+- [x] **A2.2 远端凭据与外部源权限安全预检 (零明文暴露)**:
+  - [x] 预检 Alpaca API 凭据配置状态（`APCA_API_KEY_ID` / `APCA_API_SECRET_KEY`），核验 SIP/OTC entitlement 与 US87 来源可行性；
+  - [x] 预检 SEC Company Facts 访问配置（`SEC_USER_AGENT` 存在，`SEC_EGRESS_PROXY_URL` 缺失状态审计）；
+  - [x] 审计 CN130 事件源（Sina/CNINFO/Eastmoney）及 `model_data_bundle_v1` 就绪状态（5 ready, 3 partial, 2 blocked 训练 profile）。
+- [x] **A2.3 契约与负面测试验证**:
+  - [x] 运行 `tests/test_canonical_vwap.py` 与 `tests/test_alpaca_adapter.py`；
+  - [x] 运行 `tests/test_selected_pool_event_population.py`、`tests/test_cn_selected_pool_event_sources.py`；
+  - [x] 运行 `tests/test_fundamental_event_store_contract.py`；
+  - [x] 保证全量数据面单测通过（56 项测试全绿），无静默 forward-fill，无伪造事实。
+- [x] **A2.4 交付 A2 数据可信性审计报告与依赖清单**:
+  - [x] 产出 `docs/evidence/product_v1/a2_data_integrity_audit_2026-11-01.json` 与 `.md`；
+  - [x] 明确标定 Gate A2 状态（四策略运行依赖已对账闭环，独立研究训练集维持 SCOPED_BLOCKED，无违规外溢）。
+
+---
+
+## Phase 12: Direction A 上线交付 — A4 权限与安全验收 (#1279 / #1288 / Gate A4)
+- [ ] **A4.1 公开历史披露与受保护状态全景审计**:
+  - [ ] 审计公开 Git 历史记录中的敏感持仓暴露与止血动作闭环情况；
+  - [ ] 审计 Pages 静态部署 (`public_historical_projection_v1`) 的脱敏与加密哈希解耦；
+  - [ ] 审计 Actions Artifacts 与运行时日志零凭据泄露；
+- [ ] **A4.2 访问控制策略与负面拒绝测试**:
+  - [ ] 验证匿名未授权访问策略（返回 404 / 拒绝，不透露任何敏感持仓）；
+  - [ ] 验证过期、撤权或非法 Token 访问阻断；
+  - [ ] 验证缓存隔离策略（受保护数据禁止公开 CDN / 客户端持久缓存）；
+- [ ] **A4.3 自动化安全门禁测试回归**:
+  - [ ] 运行 `tests/test_public_source_boundary.py`、`tests/test_signal_publication_boundary.py`；
+  - [ ] 运行 `tests/test_private_signal_ledger.py`、`tests/test_strategy_signal_checkpoint.py`；
+- [ ] **A4.4 归档 A4 安全与权限验收证据包**:
+  - [ ] 产出 `docs/evidence/product_v1/a4_security_audit_2026-11-01.json` 与 `.md`；
+  - [ ] 客观标定 Gate A4 裁决。
