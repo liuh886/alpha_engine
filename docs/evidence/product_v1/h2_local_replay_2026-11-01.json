@@ -1,0 +1,87 @@
+{
+  "schema_version": "direction_a_local_replay_v1",
+  "captured_at_utc": "2026-11-01T09:49:00.000000+00:00",
+  "main_sha": "f68f1c1198e1af4b8fcdd60219dee878d5c64321",
+  "status": "PENDING_OWNER_ACCEPTANCE",
+  "research_only": true,
+  "trade_ready": false,
+  "promotion_authorized": false,
+  "commands": [
+    {
+      "command": "uv run --frozen alpha research replay cn_27_v1_3",
+      "exit_code": 0,
+      "result": {
+        "decision": "exact_replay",
+        "promotion_authorized": false,
+        "requested_replay": "cn_27_v1_3",
+        "research_only": true,
+        "results": [
+          {
+            "baseline": {
+              "bundle_id": "3212bd7cee3aa85ee92c4180c3b2681969322f58a15d473de03e13a8a2c5c32d",
+              "evidence_cutoff": "2026-10-30",
+              "manifest_path": "data/research/formal_model_runs/cn_27_rotation/cn_27_v1_3/cn_27_v1_3-through-2026_10_30/manifest.json",
+              "manifest_sha256": "00f3121744ecf58ad65cec02cba45090ae70a03964a7334f2f04a490f99bf2f0",
+              "model_family_id": "cn_27_rotation",
+              "model_kind": "rules_based_allocation",
+              "model_version_id": "cn_27_v1_3",
+              "run_id": "cn_27_v1_3-through-2026_10_30"
+            },
+            "decision": "exact_replay",
+            "model_id": "cn_27_v1_3",
+            "reason": "ok",
+            "replay_id": "cn_27_v1_3_formal_replay_v1",
+            "research_only": true,
+            "trade_ready": false
+          }
+        ],
+        "runner": "formal_model_replay_v2",
+        "schema_version": "2.0",
+        "status": "completed",
+        "trade_ready": false
+      }
+    },
+    {
+      "command": "uv run --frozen alpha research replay qqq_v4_3",
+      "exit_code": 1,
+      "result": {
+        "decision": "replay_failed",
+        "promotion_authorized": false,
+        "requested_replay": "qqq_v4_3",
+        "research_only": true,
+        "results": [
+          {
+            "baseline": {
+              "bundle_id": "12764f1145f7a4c8c8fb92c5a5ac1a58039337d6aa429810b74cb47edb09b994",
+              "evidence_cutoff": "2026-10-30",
+              "manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_10_30/manifest.json",
+              "manifest_sha256": "78d1783b65f9f5551ac9bcd3f311eb3c29a89038af2599374626b2953e74acf7",
+              "model_family_id": "qqq_rotation",
+              "model_kind": "rules_based_allocation",
+              "model_version_id": "qqqi_qqq_tqqq_v4_3",
+              "run_id": "qqqi_qqq_tqqq_v4_3-through-2026_10_30"
+            },
+            "decision": "invalid_evidence",
+            "model_version_id": "qqqi_qqq_tqqq_v4_3",
+            "promotion_authorized": false,
+            "reason": "QQQ exact replay requires a professional bundle or the exact frozen Yahoo research source",
+            "replay_id": "qqq_v4_3",
+            "research_only": true,
+            "runner": "formal_model_replay_v2",
+            "schema_version": "2.0",
+            "status": "blocked",
+            "trade_ready": false
+          }
+        ],
+        "runner": "formal_model_replay_v2",
+        "schema_version": "2.0",
+        "status": "blocked",
+        "trade_ready": false
+      }
+    }
+  ],
+  "evaluated_test_suites": [
+    "tests/test_formal_model_replay.py (15 passed)",
+    "tests/test_rules_formal_replay_gate.py (17 passed)"
+  ]
+}
