@@ -859,17 +859,32 @@
 ---
 
 ## Phase 12: Direction A 上线交付 — A4 权限与安全验收 (#1279 / #1288 / Gate A4)
-- [ ] **A4.1 公开历史披露与受保护状态全景审计**:
-  - [ ] 审计公开 Git 历史记录中的敏感持仓暴露与止血动作闭环情况；
-  - [ ] 审计 Pages 静态部署 (`public_historical_projection_v1`) 的脱敏与加密哈希解耦；
-  - [ ] 审计 Actions Artifacts 与运行时日志零凭据泄露；
-- [ ] **A4.2 访问控制策略与负面拒绝测试**:
-  - [ ] 验证匿名未授权访问策略（返回 404 / 拒绝，不透露任何敏感持仓）；
-  - [ ] 验证过期、撤权或非法 Token 访问阻断；
-  - [ ] 验证缓存隔离策略（受保护数据禁止公开 CDN / 客户端持久缓存）；
-- [ ] **A4.3 自动化安全门禁测试回归**:
-  - [ ] 运行 `tests/test_public_source_boundary.py`、`tests/test_signal_publication_boundary.py`；
-  - [ ] 运行 `tests/test_private_signal_ledger.py`、`tests/test_strategy_signal_checkpoint.py`；
-- [ ] **A4.4 归档 A4 安全与权限验收证据包**:
-  - [ ] 产出 `docs/evidence/product_v1/a4_security_audit_2026-11-01.json` 与 `.md`；
-  - [ ] 客观标定 Gate A4 裁决。
+- [x] **A4.1 公开历史披露与受保护状态全景审计**:
+  - [x] 审计公开 Git 历史记录中的敏感持仓暴露与止血动作闭环情况（四策略最新活跃账本已剔除，16 次匿名请求均 404）；
+  - [x] 审计 Pages 静态部署 (`public_historical_projection_v1`) 的脱敏与加密哈希解耦（0 仓位、0 因子暴露）；
+  - [x] 审计 Actions Artifacts 与运行时日志零凭据泄露（收口为仅上传元数据收据）；
+- [x] **A4.2 访问控制策略与负面拒绝测试**:
+  - [x] 验证匿名未授权访问策略（返回 404 / 拒绝，不透露任何敏感持仓）；
+  - [x] 验证过期、撤权或非法 Token 访问阻断（因无专用测试账号，标记为 NOT_TESTED，不虚报）；
+  - [x] 验证缓存隔离策略（受保护数据禁止公开 CDN / 客户端持久缓存）；
+- [x] **A4.3 自动化安全门禁测试回归**:
+  - [x] 运行 `tests/test_public_source_boundary.py`、`tests/test_signal_publication_boundary.py`；
+  - [x] 运行 `tests/test_private_signal_ledger.py`、`tests/test_strategy_signal_checkpoint.py`、`tests/test_private_ledger_workflows.py`（82 项全绿）；
+- [x] **A4.4 归档 A4 安全与权限验收证据包**:
+  - [x] 产出 `docs/evidence/product_v1/a4_security_audit_2026-11-01.json` 与 `.md`；
+  - [x] 客观标定 Gate A4 裁决为 **FAIL**（保持 Fail-closed，列明残留风险与 NOT_TESTED 范围）。
+
+---
+
+## Phase 13: Direction A 上线交付 — A6 发布、恢复与回滚演练 (#1281 / Gate A6)
+- [ ] **A6.1 发布与恢复系统审计与环境准备**:
+  - [ ] 核验单操作员运行手册 `docs/operations/owner_local_workstation_runbook.md` 中的恢复与回滚流程；
+  - [ ] 审计现存发布验证器 `src/artifacts/pages_release_verification.py` 与 release gate；
+- [ ] **A6.2 离线恢复与篡改/损坏证据拦截演练**:
+  - [ ] 执行篡改/损坏证据注入，验证发布流水线强制 Fail-closed 拦截；
+  - [ ] 执行从指定孤立 SHA / 制品包的幂等恢复演练；
+- [ ] **A6.3 发布治理与自动化测试全量回归**:
+  - [ ] 运行 release 验证与治理测试；
+- [ ] **A6.4 交付 A6 发布与恢复演练证据包**:
+  - [ ] 产出 `docs/evidence/product_v1/a6_release_recovery_rehearsal_2026-11-01.json` 与 `.md`；
+  - [ ] 客观标定 Gate A6 验收状态。

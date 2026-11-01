@@ -1,0 +1,96 @@
+{
+  "schema_version": "1.0.0",
+  "audit_id": "gate_a4_security_audit_2026-11-01",
+  "timestamp_utc": "2026-11-01T11:00:00Z",
+  "gate": "A4",
+  "parent_issues": [
+    "#1279",
+    "#1288"
+  ],
+  "gate_decision": {
+    "status": "FAIL",
+    "rationale": "Active runtime leakage has been successfully halted across public Git, Pages, Actions Artifacts, and write pipelines (four negative proofs verified). However, Gate A4 remains strictly FAIL because: (1) real-session tests for entitled, denied, expired, and revoked reads remain NOT_TESTED due to the absence of dedicated non-production test accounts; (2) historical Git commits retain disclosed allocations as documented residual exposure; and (3) retired legacy cn_x1_2 row requires owner-governed decommission."
+  },
+  "research_only": true,
+  "trade_ready": false,
+  "five_surface_audit_summary": {
+    "surface_1_public_git": {
+      "target": "Current tracked files in public main",
+      "status": "STOPPED_AND_SANITIZED",
+      "findings": "Active runtime signal ledgers removed from git tracking; fresh hydration is git-ignored (.gitignore); 16 anonymous Raw/Contents requests to active latest endpoints return 404.",
+      "tests_passed": [
+        "test_active_runtime_ledgers_are_not_git_tracked_and_fresh_hydration_is_ignored"
+      ]
+    },
+    "surface_2_historical_git": {
+      "target": "Historical commit trees prior to cutover",
+      "status": "DOCUMENTED_RESIDUAL_RISK",
+      "findings": "Historical commits on main contain disclosed weights; per ADR-0004, history is not rewritten retrospectively to preserve cryptographic immutability."
+    },
+    "surface_3_pages": {
+      "target": "Static build output (qlib-dashboard/dist)",
+      "status": "PROTECTED_AT_BUILD_LEVEL",
+      "findings": "sync-formal-model-runs.mjs produces public_historical_projection_v1 with zero operating_state, zero current_weights, zero target_weights; verified on live Pages deployment.",
+      "tests_passed": [
+        "test_public_formal_runs_have_zero_operational_leakage",
+        "test_cn_27_historical_projection_identity_contract",
+        "test_all_public_formal_assets_pass_release_verifier"
+      ]
+    },
+    "surface_4_actions_artifacts": {
+      "target": "GitHub Actions workflow run artifacts",
+      "status": "SANITIZED_AND_MASKED",
+      "findings": "Daily producer alerts upload only verified metadata receipts (result.json); Formal run 41083709573 uploaded only archive-bindings and publication observation with zero operational keys.",
+      "tests_passed": [
+        "test_every_producer_restores_before_due_and_persists_without_public_mirror"
+      ]
+    },
+    "surface_5_write_pipelines": {
+      "target": "Automated workflow writers",
+      "status": "ISOLATED_TO_PRIVATE_ARCHIVE",
+      "findings": "All 4 producer workflows (QQQ, BYD, US Ranker, CN27) and Formal refresh transactions write exclusively to private CAS archive (archives/strategy-signal-ledgers/latest.zip) via authenticated SSH with CAS conflict detection; public git commits completely removed.",
+      "tests_passed": [
+        "test_formal_transaction_pins_one_private_revision_across_all_consumers",
+        "test_operations_resolves_private_content_before_cache_lookup",
+        "test_outbox_private_probe_cannot_invoke_notifications_or_dispatch"
+      ]
+    }
+  },
+  "runtime_access_and_permissions": {
+    "anonymous_access": {
+      "observed_live_tier": "public",
+      "live_shells": 4,
+      "allocations_exposed_on_static_shell": 0,
+      "factor_evidence_exposed_on_static_shell": 0
+    },
+    "protected_row_denial": {
+      "status": "NOT_TESTED",
+      "reason": "No non-public strategy access policy is currently declared in production configuration; cannot test unauthorized rejection without introducing dummy test rows or altering production tiers."
+    },
+    "entitled_denied_revoked_real_sessions": {
+      "status": "NOT_TESTED",
+      "reason": "Single-operator workstation environment lacks dedicated testing accounts/sessions."
+    }
+  },
+  "test_verification": {
+    "total_tests": 82,
+    "passed": 82,
+    "failed": 0,
+    "skipped": 0,
+    "suites": {
+      "tests/test_public_source_boundary.py": 7,
+      "tests/test_signal_publication_boundary.py": 8,
+      "tests/test_private_signal_ledger.py": 10,
+      "tests/test_strategy_signal_checkpoint.py": 21,
+      "tests/test_private_ledger_workflows.py": 7,
+      "tests/test_strategy_operations.py": 19,
+      "tests/test_strategy_operations_release.py": 7,
+      "tests/test_strategy_operations_runtime.py": 3
+    }
+  },
+  "owner_action_items": [
+    "Formally acknowledge and accept historical Git disclosure as residual risk per ADR-0004.",
+    "Authorize retirement of legacy cn_x1_2 row from current operations runtime.",
+    "Provide dedicated test credentials if formal entitled/denied/revoked automated session test is required prior to v1 release signoff."
+  ]
+}
