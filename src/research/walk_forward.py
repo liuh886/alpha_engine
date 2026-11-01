@@ -1098,7 +1098,8 @@ def walk_forward_vectorized(
 
     train_end = train_end or default_train_end()
     qlib_cfg = build_qlib_init_cfg(None, market=market)
-    safe_qlib_init(qlib_cfg)
+    if _shared_matrices is None:
+        safe_qlib_init(qlib_cfg)
 
     # --- Load symbols ---
     instr_path = Path("data/watchlist/instruments") / f"{market}.txt"

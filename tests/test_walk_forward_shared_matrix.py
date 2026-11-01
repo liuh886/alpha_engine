@@ -23,9 +23,10 @@ def _tiny_matrix() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def _run_shared(monkeypatch, *, split_workers: int):
     def forbidden_load(*args, **kwargs):
-        raise AssertionError("model matrix cache must not be loaded for shared matrices")
+        raise AssertionError("shared matrices must not access the provider or cache")
 
     monkeypatch.setattr(model_matrix_cache, "load_model_matrix_snapshot", forbidden_load)
+    monkeypatch.setattr("src.common.qlib_init.safe_qlib_init", forbidden_load)
 
     features, labels = _tiny_matrix()
     return walk_forward.walk_forward_vectorized(
