@@ -31,8 +31,10 @@ tests. No Tiingo purchase or provider substitution is needed for this declared
 research replay. Its receipt explicitly distinguishes retained frozen economic
 prefix integrity from the recomputed decision path, appended economics and
 cumulative continuity. It does not claim historical economics were independently
-recalculated from restated current-provider prices. The implementation is pending
-review/merge; the baseline command failure is not silently overwritten.
+recalculated from restated current-provider prices. PR #1293 is merged as `874492a748e5bdd1614d8470107b08c0c1c5f916`.
+The baseline command failure is not silently overwritten. A fresh current-lock
+replay and Owner A5 acceptance remain separate work in #1282; this dated
+packet does not establish that they passed.
 
 An isolated temporary copy of the accepted CN bundle with its frozen source
 prices absent returned `data_blocked` with the exact missing-source reason.

@@ -30,7 +30,10 @@ Read these authorities before changing code:
 5. [Local setup and verification](../../README.md#本地运行) and
    [CI governance](../ci-governance.md): existing CLI and release checks; no extra scheduler or state store.
 
-Direction A implementation follows W0 [#1278](https://github.com/liuh886/alpha_engine/issues/1278),
+Current delivery order and task disposition live in the
+[maintained execution plan](next_stage_execution_plan.md#11-2026-11-01-远端任务收敛).
+
+Direction A acceptance is tracked by W0 [#1278](https://github.com/liuh886/alpha_engine/issues/1278),
 W1 [#1277](https://github.com/liuh886/alpha_engine/issues/1277), W1b/W2
 [#1279](https://github.com/liuh886/alpha_engine/issues/1279), W3
 [#1282](https://github.com/liuh886/alpha_engine/issues/1282), then W4
@@ -38,8 +41,7 @@ W1 [#1277](https://github.com/liuh886/alpha_engine/issues/1277), W1b/W2
 per branch/PR from current main. Attach positive and negative evidence, exact
 SHA/cutoffs and PASS/FAIL/BLOCKED/NOT_TESTED results. Actual operating sessions,
 live permission tests, independent research replay and owner release approval
-cannot be replaced by fixtures or green CI. The detailed A0–A7 proposal remains
-reviewable in draft [PR #1276](https://github.com/liuh886/alpha_engine/pull/1276).
+cannot be replaced by fixtures or green CI. The detailed A0–A7 proposal is recorded in merged [PR #1276](https://github.com/liuh886/alpha_engine/pull/1276).
 
 [TASKS.md](../../TASKS.md), [old product vision](../product_vision.md) and
 [Research Studio capability matrix](RUNTIME_CAPABILITY_MATRIX.md) retain
