@@ -877,14 +877,29 @@
 ---
 
 ## Phase 13: Direction A 上线交付 — A6 发布、恢复与回滚演练 (#1281 / Gate A6)
-- [ ] **A6.1 发布与恢复系统审计与环境准备**:
-  - [ ] 核验单操作员运行手册 `docs/operations/owner_local_workstation_runbook.md` 中的恢复与回滚流程；
-  - [ ] 审计现存发布验证器 `src/artifacts/pages_release_verification.py` 与 release gate；
-- [ ] **A6.2 离线恢复与篡改/损坏证据拦截演练**:
-  - [ ] 执行篡改/损坏证据注入，验证发布流水线强制 Fail-closed 拦截；
-  - [ ] 执行从指定孤立 SHA / 制品包的幂等恢复演练；
-- [ ] **A6.3 发布治理与自动化测试全量回归**:
-  - [ ] 运行 release 验证与治理测试；
-- [ ] **A6.4 交付 A6 发布与恢复演练证据包**:
-  - [ ] 产出 `docs/evidence/product_v1/a6_release_recovery_rehearsal_2026-11-01.json` 与 `.md`；
-  - [ ] 客观标定 Gate A6 验收状态。
+- [x] **A6.1 发布与恢复系统审计与环境准备**:
+  - [x] 核验单操作员运行手册 `docs/operations/owner_local_workstation_runbook.md` 中的恢复与回滚流程；
+  - [x] 审计现存发布验证器 `src/artifacts/pages_release_verification.py` 与 release gate；
+- [x] **A6.2 离线恢复与篡改/损坏证据拦截演练**:
+  - [x] 执行篡改/损坏证据注入，验证发布流水线强制 Fail-closed 拦截；
+  - [x] 执行从指定孤立 SHA / 制品包的幂等恢复演练；
+- [x] **A6.3 发布治理与自动化测试全量回归**:
+  - [x] 运行 release 验证与候选包门禁测试（46 项全绿）；
+- [x] **A6.4 交付 A6 发布与恢复演练证据包**:
+  - [x] 产出 `docs/evidence/product_v1/a6_release_recovery_rehearsal_2026-11-01.json` 与 `.md`；
+  - [x] 客观标定 Gate A6 验收状态（本地演练通过，线上生产操作待 Owner 执行）。
+
+---
+
+## Phase 14: Direction A 上线交付 — 真实运维复核与产品上线终审记分卡 (#1277 / Gate A1, A3, A7)
+- [ ] **A14.1 真实运维追踪复核 (Gate A1 - #1277)**:
+  - [ ] 核对 `operating_archive_reaudit_2026-10-31.json` 真实收据（US/CN 各 12/20 个日期被观察，6 个匹配当前身份，0 个独立合格）；
+  - [ ] 严格恪守真实观测窗口，坚决杜绝补造未到的未来交易日，客观标定 A1 为 BLOCKED；
+- [ ] **A14.2 用户旅程全端覆盖复核 (Gate A3 - #1279 / #1315)**:
+  - [ ] 确认四策略 8 条基础交互链路与移动端 375px 零横向溢出通过；
+  - [ ] 标注受限会话与拒绝旅程因无专用测试账号保持 NOT_TESTED，标定 A3 状态；
+- [ ] **A14.3 全量 A0–A7 状态矩阵闭环与产品记分卡汇总**:
+  - [ ] 汇总 A0 (PASS), A1 (BLOCKED), A2 (BLOCKED - Ops PASS), A3 (BLOCKED - 8 baseline PASS), A4 (FAIL), A5 (PASS - for bounded replay), A6 (BLOCKED - Rehearsal PASS), A7 (NOT_TESTED / NO-GO)；
+  - [ ] 更新 `docs/product/product_completion_scorecard_2026-10-25.md` 或交付最新终审记分卡；
+- [ ] **A14.4 形成单操作员发布决策包向 Owner 终审汇报**:
+  - [ ] 清晰阐述核心成果、真实技术卡点、剩余风险与确切的 GO/NO-GO 裁定建议。
