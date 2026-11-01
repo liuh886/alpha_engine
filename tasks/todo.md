@@ -892,14 +892,40 @@
 ---
 
 ## Phase 14: Direction A 上线交付 — 真实运维复核与产品上线终审记分卡 (#1277 / Gate A1, A3, A7)
-- [ ] **A14.1 真实运维追踪复核 (Gate A1 - #1277)**:
-  - [ ] 核对 `operating_archive_reaudit_2026-10-31.json` 真实收据（US/CN 各 12/20 个日期被观察，6 个匹配当前身份，0 个独立合格）；
-  - [ ] 严格恪守真实观测窗口，坚决杜绝补造未到的未来交易日，客观标定 A1 为 BLOCKED；
-- [ ] **A14.2 用户旅程全端覆盖复核 (Gate A3 - #1279 / #1315)**:
-  - [ ] 确认四策略 8 条基础交互链路与移动端 375px 零横向溢出通过；
-  - [ ] 标注受限会话与拒绝旅程因无专用测试账号保持 NOT_TESTED，标定 A3 状态；
-- [ ] **A14.3 全量 A0–A7 状态矩阵闭环与产品记分卡汇总**:
-  - [ ] 汇总 A0 (PASS), A1 (BLOCKED), A2 (BLOCKED - Ops PASS), A3 (BLOCKED - 8 baseline PASS), A4 (FAIL), A5 (PASS - for bounded replay), A6 (BLOCKED - Rehearsal PASS), A7 (NOT_TESTED / NO-GO)；
-  - [ ] 更新 `docs/product/product_completion_scorecard_2026-10-25.md` 或交付最新终审记分卡；
-- [ ] **A14.4 形成单操作员发布决策包向 Owner 终审汇报**:
-  - [ ] 清晰阐述核心成果、真实技术卡点、剩余风险与确切的 GO/NO-GO 裁定建议。
+- [x] **A14.1 真实运维追踪复核 (Gate A1 - #1277)**:
+  - [x] 核对 `operating_archive_reaudit_2026-10-31.json` 真实收据（US/CN 各 12/20 个日期被观察，6 个匹配当前身份，0 个独立合格）；
+  - [x] 严格恪守真实观测窗口，坚决杜绝补造未到的未来交易日，客观标定 A1 为 BLOCKED；
+- [x] **A14.2 用户旅程全端覆盖复核 (Gate A3 - #1279 / #1315)**:
+  - [x] 确认四策略 8 条基础交互链路与移动端 375px 零横向溢出通过；
+  - [x] 标注受限会话与拒绝旅程因无专用测试账号保持 NOT_TESTED，标定 A3 状态；
+- [x] **A14.3 全量 A0–A7 状态矩阵闭环与产品记分卡汇总**:
+  - [x] 汇总 A0 (PASS), A1 (BLOCKED), A2 (BLOCKED - Ops PASS), A3 (BLOCKED - 8 baseline PASS), A4 (FAIL), A5 (PASS - for bounded replay), A6 (BLOCKED - Rehearsal PASS), A7 (NOT_TESTED / NO-GO)；
+  - [x] 更新 `docs/product/product_completion_scorecard_2026-10-25.md`，追加 2026-11-01 完整终审记分卡附录；
+- [x] **A14.4 形成单操作员发布决策包向 Owner 终审汇报**:
+  - [x] 清晰阐述核心成果、真实技术卡点、剩余风险与确切的 GO/NO-GO 裁定建议。
+
+---
+
+## 阶段验收与复盘 (Review Section: Direction A 全阶段收口与 A0–A7 终审)
+
+- **交付日期**: 2026-11-01
+- **集成基准**: `main` @ `579de93572`
+- **全阶段执行总结**:
+  1. **Phase 1 (收口 #1351 与 #1350)**:
+     - PR #1351：归档 CN27 与 QQQ 当前环境有界重放证据，修复并新增 Windows junction 路径解析回归用例，顺利合入主线；
+     - PR #1350：修复 Evidence Review 长浮点数截断，对齐 E2E 浏览器断言，302 项单元测试 + 117 项 Playwright 静态端到端全绿，GitHub Actions 远程 CI 全绿合入主线。顺序合并完好保留了 H1/H2 历史任务记录。
+  2. **Phase 2 (Gate A2 数据可信性与依赖核查 - #324 / #325)**:
+     - 派遣 Data Plane Auditor Subagent 深入四策略模型契约与数据源，证实四策略日常运行依赖与 US87/CN130 Alpha158 训练宽表在物理与逻辑上完全解耦；
+     - 完成 Alpaca API（SIP 可用，OTC ADR 受限）与 SEC EDGAR（0.12s 频控合规回退）预检；
+     - 运行 56 项 Gate A2 契约与负面测试（100% 通过），创建并合并 PR #1352，归档证据至 `a2_data_integrity_audit_2026-11-01.json/.md`。
+  3. **Phase 3 (Gate A4 安全与权限验收 - #1279 / #1288)**:
+     - 审计确认活跃泄露在四大表面（公开 Git, Pages, Actions Artifacts, 写入流水线）已彻底切断止血；
+     - 运行 82 项安全边界与私有账本测试（100% 通过）；
+     - 客观记录真实拒绝会话因缺少独立非生产账号保持 NOT_TESTED，历史披露记录为残留风险，退役 `cn_x1_2` 运行行待清理；Gate A4 严格维持 **FAIL**，创建并合并 PR #1353。
+  4. **Phase 4 (Gate A6 发布与恢复演练 - #1281)**:
+     - 验证发布验证器 `pages_release_verification.py` 三大守卫机制（防篡改、防降级、防泄露）；
+     - 演练静态控制台版本切回与私有账本 CAS 确定性回滚；
+     - 运行 46 项发布门禁测试（100% 通过），创建并合并 PR #1354，标定为 `REHEARSAL_VERIFIED / PENDING_OWNER_EXECUTION`。
+  5. **终审裁决 (Gate A7)**:
+     - **产品当前综合裁决维持：NO-GO**。
+     - 严格恪守 Fail-closed 铁律，不向 Owner 隐瞒真实差距，待 A1 真实交易日累积与 Owner 最终决策。
