@@ -1,6 +1,6 @@
 # Alpha Engine — 下一阶段产品架构与执行计划
 
-**当前裁决：产品 NO-GO；RDI 价格层已交付，完整 RDI 未验证。** 最新核对基线为 `main@594706836415fcc73d407c33bfae137de26e89c8`，2026-11-01；2026-10-29 的原路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
+**当前裁决：产品 NO-GO；RDI 价格层已交付，完整 RDI 未验证。** 最新核对基线为 `main@f68f1c1198e1af4b8fcdd60219dee878d5c64321`，2026-11-01；2026-10-29 的原路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
 
 ## 0. 产品与功能上线路线图（2026-10-31 当前执行入口）
 
@@ -375,10 +375,10 @@ US/CN 的最近 20 个应有交易日窗口内各有 12 个日期被观察、8 �
 | 既有 Issue / PR | 状态和当前动作 |
 | --- | --- |
 | #1074 | 保留为收敛总纲，链接本路线与上述五项；不再有第二套独立执行排序 |
-| #1278 | 当前权威与历史入口已验证；本次路线链接落地后关闭为 completed |
-| #828 | 八月前端总纲含旧导航/旧基线；关闭为 superseded，由本路线/#1279 接续；不是宣称所有历史功能已完成 |
+| #1278 | 已关闭 completed；当前权威与历史入口已验证，#1347 已补当前路线链接 |
+| #828 | 已关闭 superseded；八月前端总纲由本路线/#1279 接续，不是宣称所有历史功能已完成 |
 | #858 | 八月混合架构审计后置为历史待核对，由 #1074 统筹；不照旧计数恢复引擎、模型或扩因子 |
-| #1113 | 当前 Formal 的旧 incident 待收口：后续 `41083709573`、`41216055804` 成功及 #1332/#1343 已证明当前发布路径恢复；原失败和旧决策不重写，关闭 incident 不代表 A1 通过 |
+| #1113 | 已关闭的旧 incident：后续 `41083709573`、`41216055804` 成功及 #1332/#1343 已证明当前发布路径恢复；原失败和旧决策不重写，关闭 incident 不代表 A1 通过 |
 | #1277 | 继续 BLOCKED；完整归档复查已交付。当前身份仅 6 个观察日期、0 独立合格；真实日期、due-cycle/恢复和干预审阅不能补造 |
 | #1279 | 继续开放；上述界面工作与无账号检查可推进，实际授权/拒绝/过期/撤权和旧披露处置保留门禁 |
 | #1281 / #1282 | 继续开放；按队列准备 A6 / 更新 A5 证据；Owner 验收与实际生产动作不代签 |
@@ -410,7 +410,206 @@ calendar 读取保留原合同。附加持仓测试使用临时合成资料与�
 全部成功；独立重读四份 JUnit：**4,231 passed / 8 skipped / 0 failures / 0 errors**。
 另有 60 项相邻测试、Ruff、普通 PR backend 与独立代码审阅通过。
 本段是在完整结果产生后补记的文档；该运行绑定上述代码提交，不冒充测试后补记文字的 SHA。
-原失败 run `41287052604` 保留，#1227 可随修复合并收口。
+原失败 run `41287052604` 保留；#1348 已合并为 `f68f1c1198e1af4b8fcdd60219dee878d5c64321`，#1227 已关闭 completed。
 
 当前执行队列从 **第 2 项 #1279 的日期/driver/Status 实际页面复核**继续；
 A1、A4、A5、A6、Owner A7 与 RDI 的各自门禁不因全仓测试绿色而关闭。
+
+## 12. 接手 Agent 的执行细则（2026-11-01）
+
+本节是 **§11 同一队列的可执行交接**，不是另一个 roadmap；父 Issue 仍是任务归属。
+本交接 PR 只整理工作，不宣称下列未勾选项已完成，也不要求一个实现 PR 包办全部事项。
+接手时先 fetch 当前远端；`f68f1c1198e1af4b8fcdd60219dee878d5c64321` 仅为交接核对基线。
+
+### 12.1 接手前先确认
+
+1. 阅读 [AGENTS.md](../../AGENTS.md)、[当前产品/本地 Agent 入口](strategy_console.md#local-agent-start-here)、
+   §0 门禁、§11 全量归属和父 Issue 的最新评论；旧任务标题/旧审计不自动代表当前状态。
+2. 确认 `git status --short`，保留用户 WIP；在独立 branch/worktree 做一项工作。
+   不把其他 Agent 本机的 ignored ledger、临时 archive/cache 或登录会话当作干净 checkout 的前提。
+3. 读取 [四策略 registry](../../configs/strategies/registry.json) 和
+   [正式 catalog](../../data/research/formal_model_runs/catalog.json)；保存实际 SHA、模型/Bundle 身份与 cutoff。
+   不把 registry 中的 `qqqi_qqq_tqqq_v4_3` 与 CLI 别名 `qqq_v4_3` 混淆。
+4. 复用现有锁文件：仓库根 `uv sync --frozen --extra dev`；前端在 `qlib-dashboard` 执行 `npm ci`。
+   Node 版本以 package.json engines 为准。缺依赖先报实际错误，不顺手升级整个工具链。
+5. 一项实现一个小 PR，PR body 写输入身份、前后行为、验收结果、剩余阻塞及回滚方式。
+   共享合同改动先查调用者；跨工作包不复制来源、权威、evaluator、scheduler 或状态数据库。
+
+### 12.2 已完成：不要重新实现
+
+- [x] #1278 权威文档收口；#828 与 #1315 旧提案已被替代，#1113 旧 incident 已恢复。
+- [x] #1333 US 源窗口/起始 NAV；#1344 Overview 三重点且完整四策略保留。
+- [x] #1346 正式 Evidence Review：支持、门禁、反证、局限、下一步；真实 desktop/mobile 已验证。
+- [x] #1338/#1340 RDI 版本化价格层和 Status 证据视图；依然 `not_validated`、0/10。
+- [x] #1348 全仓健康修复：4,231 passed / 8 skipped；精确代码 SHA 与完整 run 见 §11.5。
+
+历史测试数字是对应提交的证据，不是接手时自动获得的 PASS；只有修改范围、失败或未解风险
+要求时才重跑/扩大检查。纯文档交接不需要启动全仓研究或重新取数。
+
+### 12.3 H1 · 当前首项：界面语义与无账号旅程（#1279）
+
+- [ ] **先复核，再修已见缺陷**。在实际部署 SHA 上逐四策略走
+  Overview → Detail → linked Instrument → Status；覆盖 desktop 与 375px mobile。
+  依次核对 data cutoff、decision applies、retained target date、backtest/settled/provisional window、
+  声明基准与 excess、driver state/effect/reason、next due、loading/error/retained 状态。
+  changed/unchanged/not-due/blocked 的 fixture 是可复现代码检查；缺实际样本仍 NOT_TESTED。
+- [ ] 根据 §11.3 的原 18 项逐项记 PASS / observed defect / absent-retired / NOT_TESTED；
+  不恢复不存在的 Selected Evidence/旧导航。先处理真实 P0；没有更高严重度缺陷时，
+  处理已见的证据文案长小数，随后再考虑密度/平板等 P1/P2。
+- [ ] **数字格式化必须先确认源语义**：证据 statement 当前是来源文本，不保证是结构化比率。
+  不对任意文本做全局正则乘百分比/舍入替换，不修改密封收据来美化展示。
+  优先复用已有结构化指标/格式器；若需要新字段，先独立提交源合同与投影校验的小 PR。
+- 代码入口：[DailyResearchBrief](../../qlib-dashboard/src/components/DailyResearchBrief.tsx)、
+  [StrategyFleet](../../qlib-dashboard/src/components/StrategyFleet.tsx)、
+  [StrategyDetailPage](../../qlib-dashboard/src/pages/StrategyDetailPage.tsx)、
+  [SystemHubPage](../../qlib-dashboard/src/pages/SystemHubPage.tsx)、
+  [ResearchTrackingAssessment](../../qlib-dashboard/src/components/ResearchTrackingAssessment.tsx)。
+  读取边界：[strategy-operations](../../qlib-dashboard/src/lib/strategy-operations.ts)、
+  [model-run-decision](../../qlib-dashboard/src/lib/model-run-decision.ts)。
+- 验收：先有原图/复现步骤、cutoff/Bundle 与期望含义；新增必要的定向正负用例，
+  再运行现有生产 build、静态三端与实际部署验收。不得让 pending/access/error 变成“无变化”或假成功。
+- 产物：一份不含当前私有配置/仓位的旅程矩阵与截图/trace 引用；一个范围明确的修复 PR，
+  或带准确原因的“当前无该缺陷”审计结果。Owner 完整 UAT 和真实权限不是本包自动完成项。
+
+### 12.4 H2 · 当前 US/CN 有界重放证据（#1282）
+
+- [ ] 阅读 [W3 说明](../evidence/product_v1/w3_local_replay_2026-10-25.md)、
+  [旧收据](../evidence/product_v1/w3_local_replay_2026-10-25.json)、
+  [QQQ CLI 对齐收据](../evidence/product_v1/qqq_cli_replay_alignment_1292.json)，
+  重新验证它们的实际输入是否在当前环境可得。#1293 已合并，不再等待其实现。
+- [ ] 在当前 frozen 环境执行既有 `alpha research replay qqq_v4_3` 和
+  `alpha research replay cn_27_v1_3`；先看 `--help`。不默认加 `--refresh-data`、
+  不新训练、不替换来源/模型/截止日。原始来源缺失时先记录 BLOCKED，而不是补造 PASS。
+- [ ] 保存命令/退出码、lock/源/模型/evaluator/费用/日历哈希，重复核对确定性及既定容差；
+  区分 frozen economic prefix、重算决策/追加经济和旧历史截止日。
+  使用已有缺源/错身份负例；不得修改密封经济证据或把重放算作新 OOS。
+- 代码：[CLI](../../src/cli/main.py)、[QQQ authoritative replay](../../src/research/qqq_authoritative_replay.py)、
+  [CN_27 replay](../../src/research/cn27_v1_3_replay.py)、
+  [rules replay gate](../../src/research/rules_formal_replay_gate.py)。
+  相关测试：[formal replay](../../tests/test_formal_model_replay.py)、
+  [rules replay](../../tests/test_rules_formal_replay_gate.py)。
+- 产物：当前环境的新有界收据/解释和精确阻塞；旧收据与初始失败保留。Owner A5 接受单列，
+  不因命令成功关闭完整数据资格或所有模型的训练复现要求。
+
+### 12.5 H3 · 必需输入清单与来源预检（#1279 A2；#324/#325）
+
+- [ ] 首先从四策略 frozen contracts 与正式 manifests 列出**实际必需**来源、PIT、复权、
+  lifecycle、benchmark、cutoff/版本/调用路径；区分 selected-pool 训练要求和窄策略参考。
+  复用现有 manifests/readiness，不建立另一套规则或以无关训练阻塞判四策略失效。
+- [ ] #325：远端 Alpaca key/secret 的配置名称已存在；只读验证认证、SIP/OTC 权限、
+  精确 US87 identity 和请求窗口，先拿到可审阅的小范围可用/阻断结果。
+  不打印秘密值、HTTP authorization headers 或未经脱敏的响应。
+- [ ] 来源角色/单位/复权资格通过后，再按现有 workflow 做明确 cutoff 的有界物化。
+  `recent_us_research` 是独立近期资格范围，不等于 original 全历史通过；
+  不用 validation-only 来源、close-as-VWAP 或临时改池填洞。
+- [ ] #324：SEC trusted-egress 配置名在上次核查中未见，接手时重新确认；
+  不使用任意代理或声明缺失事件等于“无事件”。CN 当前资格也按实际新收据核对，
+  不把 2026-09-01 的 129/130 或 130/130 直接作为今天的认证。
+- 代码：[canonical VWAP](../../src/data/canonical_vwap.py)、
+  [Alpaca adapter](../../src/data/adapters/alpaca_adapter.py)、
+  [event population](../../src/data/selected_pool_event_population.py)。
+  复用 [VWAP workflow](../../.github/workflows/alpha158-canonical-vwap-ci.yml) 与
+  [event workflow](../../.github/workflows/selected-pool-event-population-ci.yml)，
+  VWAP 显式选 `market/source_scope/cutoff`；event 仅支持 `market/cutoff`。
+  先读各自 inputs，禁止默认 both 全历史跑来代替预检。
+- 产物：逐策略/逐来源矩阵和小范围预检收据；后续 materialization PR 只能认领该合同实际通过的覆盖。
+  训练和 factor readiness 仍由 #324/#325/#826 各自 authority 认定。
+
+### 12.6 H4 · RC 与非生产恢复演练准备（#1281）
+
+- [ ] 从已验证版本构造单一候选证据包，分别绑定静态产品、formal catalog/Bundle、
+  私有 current-operations checkpoint 与 lock/source 身份；不能把三层不同版本揉成一个“最新”。
+- [ ] 先在临时目录演练安装/恢复、精确源哈希和错误包/缺文件/错身份拒绝；
+  复用既有 release gate/restore helper，不新增发布系统、兼容读链或调度。
+  正向验收不得用 `--allow-verification-failure` 把候选校验失败伪装为成功。
+- [ ] 输出可审阅的 Owner runbook：前置检查、预期结果、失败处置、回滚目标及恢复后验证。
+  旧 artifact 若含历史公开披露，不能作为“隐私干净”的回滚目标重新发布。
+  实际生产回滚、权限/披露治理以及 Owner 本机执行继续留待其明确执行/批准。
+- 代码：[release gate](../../scripts/release_gate.py)、
+  [private ledger/checkpoint](../../src/artifacts/private_signal_ledger.py)、
+  [release candidate](../../src/release/candidate.py)。
+  相关测试：[candidate gate](../../tests/test_release_candidate_gate.py)、
+  [candidate generation](../../tests/test_release_candidate_generation.py)、
+  [private ledger](../../tests/test_private_signal_ledger.py)。
+- 产物：非生产试运行包、恢复/回滚步骤和 PASS/BLOCKED/NOT_TESTED。不得据此代签 Owner A6/A7。
+
+### 12.7 持续证据 / 外部阻塞：可做部分工作，但不能伪造关闭
+
+| 工作包 / 原 Issue | Agent 现在可以做 | 必须保留的外部依赖 / 退出证据 |
+| --- | --- | --- |
+| G1 · A1 / #1277 | 用现有 `alpha ops acceptance` 审计归档/最新 attempt、身份、eligible sessions、due/retained/recovery、声明完整性；保持 compact source-bound receipts | §11 的 6 个当前身份观察日期、0 独立合格是截止 2026-10-30 的审计，不是今天自动累计数。真实后续观察、真实干预计数和独立复核不可由 CI/回填替代；两个缺时间的旧失败继续保留，不退回更早绿包 |
+| G2 · A4 / #1279 | 复核公开静态/Git/Actions/native lineage 披露清单、账户切换/缓存隔离的可复现负例；先读 access 合同及适用技能，真实检查保留 metadata | 用户确认无专用测试账号/会话；不得反复索取密码/token，不能改 live tier/entitlement 或造生产行来制造拒绝样本。实际授权/拒绝/过期/撤权、旧披露处置和 Owner 决定仍未闭合 |
+| G3 · RDI / #1272 | 维护既有价格原始来源/冻结修复/重放与只读 Status；核对 M2 资格表，准备可审阅的首类 PIT 窄合同草案 | 首事件家族尚未选择（限售解禁公告为推荐、业绩披露窗口为备选）；不得自动选定或在确认前开始 M3 取数。0/10 / not_validated，真实 available-at/修订/absence/OOS/前瞻不足不能补造，无 score/第五策略 |
+| G4 · Owner 发布 / A7 | 汇总 H1–H4 与 G1–G3 的版本化证据及准确风险，准备 GO/NO-GO 材料 | Owner 明确、带日期的发布裁决；Agent 或 CI 不代签。RDI 未验证不全局否决独立四策略证据，也不被产品部署成功顺带认证 |
+
+私有证据恢复统一先读 [private ledger 手册](../operations/private_signal_ledger.md)：
+通过项目既有权限定位精确 archive revision/commit、哈希及大小，恢复到**新的隔离目录**，
+先校验身份再读取。若当前环境无读取权限或原包不可得，该依赖保持 BLOCKED 并继续独立项；
+不假定机主的 ignored ledger/cache 已存在，不自动向用户重复索取账号，不复制私有 payload 到 PR。
+公开交接只记录必要的身份、哈希、数量和状态，不输出实际目标/配置或秘密值。
+
+G1 入口：[operating acceptance](../../src/artifacts/operating_acceptance.py)、
+[完整归档收据](../evidence/product_v1/operating_archive_reaudit_2026-10-31.json)。
+G2 入口：[access contract](../architecture/frontend_access_control.md)、
+[无账号检查收据](../evidence/product_v1/accountless_access_observation_2026-10-31.json)。
+G3 入口：[RDI architecture](../research/ashare_rdi_architecture.md)、
+[价格修复与重放说明](../research/ashare_rdi_price_reconstruction_2026-10-31.md)。
+不得编辑被当前 RDI review hash 绑定的源文档来添加进度；修改会使现有来源校验失败，需独立显式重绑。
+
+### 12.8 PR 拆分、协作与验收命令
+
+| 可领取的下一 PR | 写入范围 / 协作规则 | 如何完成而不扩大范围 |
+| --- | --- | --- |
+| H1-a 页面审计；H1-b 单个已见缺陷 | 通常 dashboard 组件/formatter 与相关 tests；共享 reader/schema 另拆合同 PR | 审计不预设旧 bug；修复不改源经济，精确部署与截图闭环 |
+| H2 当前重放包 | 原 replay 模块仅在真实缺陷时改；新 dated evidence 与既有说明 | 原收据保留；命令成功与 Owner 接受分开 |
+| H3-a 来源预检；H3-b 单 market/contract 物化 | provider/event/VWAP modules、既有 manifests/workflow inputs | 先证明 source-role/窗口，覆盖只能如实认领；不新建 provider/gate |
+| H4 RC/恢复包 | 现有 release/restore 与 tests、runbook、证据引用 | 临时目录演练；不实际回滚生产，不复制原始私有 payload 到 PR |
+
+默认顺序执行 H1 → H2 → H3 → H4；在某一项外部受阻时可继续独立项。
+若确有多个接手者，H2 的只读证据核查和 H1 的界面工作可以分 branch/path 进行；
+这是工作边界说明，不是要求启动新 Agent。共享 source/schema/manifest/reader 同时修改前先协调，
+证据生产/公开资产同步不能在同一工作目录并行跑。
+
+**命令使用现有接口；示例均非发布授权。** 按 `--help` 核对参数和实际 source prerequisite，
+先定向验证；以下较宽验收只在相应实现变化/失败确实需要时执行。
+
+```powershell
+# 仓库根：有界重放（不默认刷新或训练）
+uv run --frozen --extra dev alpha research replay --help
+uv run --frozen --extra dev alpha research replay qqq_v4_3
+uv run --frozen --extra dev alpha research replay cn_27_v1_3
+
+# 运行观察仅阅读；input-root/through 用本次真实 packet 与截止日
+uv run --frozen --extra dev alpha ops acceptance --help
+# RC 必须明确 candidate；先核对当前工具，不默认选择或发布候选
+uv run --frozen --extra dev python scripts/release_gate.py --help
+```
+
+前端在 `qlib-dashboard` 下执行 `npx tsc --noEmit`、定向 Vitest/ESLint，
+需要宽验收时 `npm run build`、`npm run check:bundle-budget`，再运行
+`npx playwright test --config playwright.static.config.ts`。
+该 build 包含单测与资产同步，不与会修改相同 `public/data` 的其他测试同时运行。
+实际部署在根目录设置 `$env:PYTHONPATH='.'` 后执行
+`uv run --frozen --extra dev python scripts/verify_pages_release.py --base-url <实际PagesURL> --expected-commit <实际40位部署SHA>`
+（替换占位参数，不能拿默认/旧 SHA 通过），再在前端设置 `$env:PAGE_URL='https://liuh886.github.io/alpha_engine/'`，执行
+`npx playwright test --config playwright.live.config.ts`。
+现有 live config 的 mobile 是 Pixel 7，若验收要求 375px，须另记录实际 375px 结果；
+不得把设备 preset 名称当成已验证指定宽度。截图/日志只保留可公开证据区，不包含当前私有权重。
+
+全仓健康复用 `.github/workflows/ci.yml` 的有界 manual/scheduled 分片；
+不得把普通 PR backend 的 selected/core 测试等同完整健康。
+需要时 `gh workflow run ci.yml --ref <已推送的候选branch>`，记录实际 run SHA 和四份 JUnit，
+保留失败。不是每个文案 PR 都重新运行所有研究/训练/健康流程。
+
+### 12.9 每项必须回写的交接格式
+
+- [ ] 父 Issue、范围、当前 branch/base SHA、实际代码/测试 SHA；docs 后补必须明确区别。
+- [ ] 输入 contract/registry/pool/source/Bundle/hash/cutoff、依赖可得性；无凭据值/私有权重/个人笔记。
+- [ ] 复现与期望、最小改动、PASS/FAIL/BLOCKED/NOT_TESTED；fixture 与真实验收分别列。
+- [ ] 相关命令、退出码、精确 CI run/artifact 与必要的安全截图/trace；不只写“tests pass”。
+- [ ] 独立 review、原失败与源不可变性、回滚方式、未完成部分及接手的第一条动作。
+- [ ] 更新本路线相应项和原 Issue/PR；只有实际完成的子项打勾，Owner/时间门禁不自动关闭。
+
+后置的 #1307、factor-memory、旧模型认证、仓库 refs 维护等仍依 §11.4 归属，
+不是接手 H1 的隐含前置条件。整个交接保持 `research_only=true`、`trade_ready=false`；
+不恢复退役入口、不新增主导航、模型、分数、策略、执行器或常驻工作流。
