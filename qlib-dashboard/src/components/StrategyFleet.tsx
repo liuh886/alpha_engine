@@ -6,8 +6,8 @@ import {
   CircleSlash2,
   Crown,
   LockKeyhole,
+  PauseCircle,
   ShieldAlert,
-  ShieldCheck,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
@@ -83,7 +83,7 @@ function SignalStatusIcon({ direction }: { direction: string }) {
     case 'reduce':
       return <TrendingDown className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />;
     case 'hold':
-      return <ShieldCheck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />;
+      return <PauseCircle className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />;
     case 'attention':
       return <ShieldAlert className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />;
     default:
@@ -436,7 +436,15 @@ export function StrategyFleet({
                     )}
                   </p>
                   <p className="text-[11px]">
-                    {snapshot?.readState === 'protected' || liveLocked ? 'Formal evidence cutoff' : summary.isAttention ? 'Last known cutoff' : 'Signal session'}
+                    {snapshot?.readState === 'protected' || liveLocked
+                      ? 'Formal evidence cutoff'
+                      : summary.isAttention
+                        ? 'Last known cutoff'
+                        : snapshot?.asOf
+                          ? 'Signal session'
+                          : snapshot?.latestCompletedSession
+                            ? 'Observation cutoff'
+                            : 'Formal evidence cutoff'}
                   </p>
                 </div>
 

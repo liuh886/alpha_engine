@@ -32,6 +32,7 @@ export function formatCanonicalMetric(metric: CanonicalMetricV2 | null): string 
       'annualized_volatility',
       'max_drawdown',
       'transaction_cost',
+      'turnover',
     ].includes(metric.metric_id)
   ) {
     return `${(metric.value * 100).toFixed(2)}%`;

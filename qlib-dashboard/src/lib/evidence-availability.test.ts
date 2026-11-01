@@ -51,4 +51,8 @@ describe('formal evidence availability rendering', () => {
     expect(values).not.toContain('Not declared');
     expect(values).toEqual(['0.040', 'Not applicable', 'Not computed', 'Not retained', 'Blocked by source']);
   });
+
+  it('formats turnover as percentage rather than raw float', () => {
+    expect(formatCanonicalMetric(metric({ metric_id: 'turnover', availability_status: 'available', value: 0.25 }))).toBe('25.00%');
+  });
 });

@@ -248,7 +248,7 @@ test('strategy detail separates source metrics from chart observations and keeps
     await expect(assessment.getByRole('heading', { name, exact: true })).toBeVisible();
   }
   await expect(assessment).toContainText('Research only.');
-  await expect(assessment).toContainText('Evidence through');
+  await expect(assessment).toContainText('Formal evidence through');
   expect(await assessment.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(2);
   await assessment.getByRole('heading', { name: 'Supporting evidence', exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('formal-evidence-review.png') });
