@@ -788,7 +788,6 @@
   - Phase 3 独立测试套件：`uv run pytest tests/test_racetrack_pipeline.py -v` -> 10 passed in 32.05s；
   - Phase 1–3 联合回归：`uv run pytest tests/test_racetrack_minimal_stack.py tests/test_racetrack_runner_scoring.py tests/test_racetrack_pipeline.py -v` -> 35 passed in 53.19s；
   - 静态检查：`uv run ruff check` 全部通过，零告警；`uv run ruff format` 格式化规范全部通过。
-
 ---
 
 ## Phase 9: Direction A 上线交付 — H1 界面语义、日期与体验收敛 (#1279 / #1315)
@@ -814,6 +813,23 @@
 - [x] **H1.6 单元测试、打包预算与回归验证**:
   - [x] 更新 `evidence-availability.test.ts` 补充 turnover 百分比测试；
   - [x] 更新 `ResearchTrackingAssessment.test.tsx` 对齐新标题断言；
-  - [x] `npm test`（36 个测试文件、301 项测试）全绿通过；
-  - [x] `npm run check:bundle-budget` 验证通过（161.63 KB headroom）；
-  - [x] `npm run build` 完整生产打包验证通过。
+  - [x] `npm test`（36 个测试文件、302 项测试）全绿通过；
+  - [x] `npm run check:bundle-budget` 验证通过（94.47 KB headroom）；
+  - [x] `npm run build` 完整生产打包验证通过；
+  - [x] Playwright 静态端到端全量 117 项测试全绿通过。
+
+---
+
+## Phase 10: Direction A 上线交付 — H2 当前环境 US/CN 有界重放证据固化 (#1282 / A5)
+- [x] **H2.1 依赖环境与命令校验**：
+  - [x] 核查 W3 与 QQQ CLI 历史收据输入与约束；
+  - [x] 验证 `alpha research replay --help`；
+- [x] **H2.2 运行当前环境有界重放**：
+  - [x] 执行 `alpha research replay cn_27_v1_3`：exit code 0 / `exact_replay` / `status: completed`，精度容差 $\le 10^{-6}$ 完全吻合；
+  - [x] 执行 `alpha research replay qqq_v4_3`：exit code 1 / `replay_failed` / `status: blocked`，如实记录 2026-10-30 相比本机 2026-10-23 缺少外部 Yahoo 数据源切片的事实，坚决 Fail-closed 不造假；
+- [x] **H2.3 路径可移植性与单测验证**：
+  - [x] 修复 `_load_cn_frozen_score_cross_sections` 在 Windows 目录联接（junction）下的 `relative_to` 路径解析异常；
+  - [x] 新增 Windows junction 路径解析回归测试用例；
+  - [x] 运行 `tests/test_formal_model_replay.py`（15 项）与 `tests/test_rules_formal_replay_gate.py`（18 项）全部 33 项测试通过；
+- [x] **H2.4 证据包归档与合规记录**：
+  - [x] 归档 `docs/evidence/product_v1/h2_replay_cn_27_v1_3_2026-11-01.json` 与 `h2_replay_qqq_v4_3_2026-11-01.json`，状态标定为 `PENDING_OWNER_ACCEPTANCE`。

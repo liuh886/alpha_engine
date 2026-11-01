@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import sys
+import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -173,6 +176,45 @@ def test_committed_cn_frozen_score_cross_sections_reproduce_sector_selection() -
         day = ledger.loc[ledger["datetime"].eq(pd.Timestamp(date))]
         chosen = choose_holdings(day, variant)
         assert set(chosen["instrument"].astype(str)) == instruments
+
+
+def test_cn_frozen_score_cross_sections_handles_junction_and_unresolved_alias_paths() -> None:
+    universe = yaml.safe_load(
+        Path("configs/research_universes/cn_selected_equities_v3.yaml").read_text(encoding="utf-8")
+    )
+    symbols = [str(value).zfill(6) for value in universe["symbols"]]
+
+    # 1. Unresolved relative path
+    ledger, identity = _load_cn_frozen_score_cross_sections(Path("."), symbols=symbols)
+    assert len(ledger) == 260
+    assert not Path(identity["manifest_path"]).is_absolute()
+
+    # 2. Junction or symlink directory alias
+    with tempfile.TemporaryDirectory() as tmp:
+        alias_root = Path(tmp) / "repo_alias"
+        created = False
+        try:
+            if hasattr(os, "symlink"):
+                os.symlink(Path.cwd().resolve(), alias_root, target_is_directory=True)
+                created = True
+        except (OSError, NotImplementedError):
+            pass
+
+        if not created and sys.platform == "win32":
+            try:
+                import _winapi
+
+                _winapi.CreateJunction(str(Path.cwd().resolve()), str(alias_root))
+                created = True
+            except Exception:
+                pass
+
+        if created:
+            ledger_alias, identity_alias = _load_cn_frozen_score_cross_sections(
+                alias_root, symbols=symbols
+            )
+            assert len(ledger_alias) == 260
+            assert not Path(identity_alias["manifest_path"]).is_absolute()
 
 
 def test_qqq_current_source_replay_ignores_restated_historical_observations() -> None:
