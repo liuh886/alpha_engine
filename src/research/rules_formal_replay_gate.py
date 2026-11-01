@@ -276,8 +276,9 @@ def _load_cn_frozen_score_cross_sections(
     *,
     symbols: Sequence[str],
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    evidence_root = (root / CN_FROZEN_EVIDENCE).resolve()
-    manifest_path = (root / CN_FROZEN_SCORE_MANIFEST).resolve()
+    normalized_root = Path(root).resolve()
+    evidence_root = (normalized_root / CN_FROZEN_EVIDENCE).resolve()
+    manifest_path = (normalized_root / CN_FROZEN_SCORE_MANIFEST).resolve()
     manifest = load_object(manifest_path)
     if manifest.get("schema_version") != "cn_x1_1_frozen_score_cross_sections_v1":
         raise RulesFormalReplayError("CN frozen score manifest schema is invalid")
@@ -372,7 +373,7 @@ def _load_cn_frozen_score_cross_sections(
         raise RulesFormalReplayError("CN frozen score accepted dates changed")
     combined = pd.concat(frames, ignore_index=True)
     return combined, {
-        "manifest_path": str(manifest_path.relative_to(root)),
+        "manifest_path": str(manifest_path.relative_to(normalized_root)),
         "manifest_sha256": sha256(manifest_path),
         "accepted_signal_dates": declared_dates,
         "cross_section_sha256": {

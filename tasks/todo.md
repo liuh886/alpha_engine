@@ -788,3 +788,144 @@
   - Phase 3 独立测试套件：`uv run pytest tests/test_racetrack_pipeline.py -v` -> 10 passed in 32.05s；
   - Phase 1–3 联合回归：`uv run pytest tests/test_racetrack_minimal_stack.py tests/test_racetrack_runner_scoring.py tests/test_racetrack_pipeline.py -v` -> 35 passed in 53.19s；
   - 静态检查：`uv run ruff check` 全部通过，零告警；`uv run ruff format` 格式化规范全部通过。
+---
+
+## Phase 9: Direction A 上线交付 — H1 界面语义、日期与体验收敛 (#1279 / #1315)
+
+- [x] **H1.1 前端代码与架构审计 (Subagent 协同走查)**:
+  - [x] 派遣专业前端审计 Subagent 排查 `DailyResearchBrief`、`StrategyFleet`、`StrategyDetailPage`、`SystemHubPage`、`ResearchTrackingAssessment`；
+  - [x] 确认长浮点数裸露点位（`factorReference`、`drawdownChange`、`turnover`、反向证据声明）；
+  - [x] 确认日期词汇混淆（`Signal session` 回退越权、`Signal through` 离散交易日误称）；
+  - [x] 确认移动端（375px）自适应与布局缺陷（`grid-cols-2` 在小屏下挤压）。
+- [x] **H1.2 消除证据长小数与健全格式化**:
+  - [x] 在 `src/lib/evidence-availability.ts` 中补全 `'turnover'` 换手率百分比格式化（避免渲染为裸小数 `0.250`）；
+  - [x] 在 `StrategyDetailPage.tsx` 针对 `factorReference` 实现结构化数字截断 `formatRefValue`，消除 IEEE 754 浮点噪声；
+  - [x] 在 `StrategyDetailPage.tsx` 为回撤变化（drawdown change）正值补全 `+` 号。
+- [x] **H1.3 纠偏日期词汇与消除虚假声称**:
+  - [x] 在 `StrategyFleet.tsx` 严格限制 `'Signal session'` 标签仅在 `snapshot.asOf` 存在时渲染，回退时清晰标注 `'Observation cutoff'` 或 `'Formal evidence cutoff'`，严禁将历史留存截止日冒充当前信号日；
+  - [x] 在 `StrategyDetailPage.tsx` 修正词汇为 `Signal applies to session {asOf} ... data cutoff {latestCompletedSession}`；
+  - [x] 在 `ResearchTrackingAssessment.tsx` 明确标注 `Formal evidence through {evidenceCutoff}`。
+- [x] **H1.4 纠正 Driver 状态与风险误导**:
+  - [x] 在 `StrategyFleet.tsx` 中将 `hold` 状态的 `<ShieldCheck>` 安全盾牌图标替换为中立的 `<PauseCircle>`，消除未到调仓期或持仓未变即“无风险”的误导心理暗示；
+  - [x] 在 `StrategyDetailPage.tsx` 补充对 `neutral` 驱动效果的说明（`Neutral indicates no threshold rule trigger; it does not indicate absence of risk`）。
+- [x] **H1.5 优化移动端 (375px) 排版与响应**:
+  - [x] 在 `StrategyDetailPage.tsx` 将操作卡片网格从固定 `grid-cols-2` 调整为 `grid-cols-1 sm:grid-cols-2`，杜绝小屏下内容高度拉伸变形。
+- [x] **H1.6 单元测试、打包预算与回归验证**:
+  - [x] 更新 `evidence-availability.test.ts` 补充 turnover 百分比测试；
+  - [x] 更新 `ResearchTrackingAssessment.test.tsx` 对齐新标题断言；
+  - [x] `npm test`（36 个测试文件、302 项测试）全绿通过；
+  - [x] `npm run check:bundle-budget` 验证通过（94.47 KB headroom）；
+  - [x] `npm run build` 完整生产打包验证通过；
+  - [x] Playwright 静态端到端全量 117 项测试全绿通过。
+
+---
+
+## Phase 10: Direction A 上线交付 — H2 当前环境 US/CN 有界重放证据固化 (#1282 / A5)
+- [x] **H2.1 依赖环境与命令校验**：
+  - [x] 核查 W3 与 QQQ CLI 历史收据输入与约束；
+  - [x] 验证 `alpha research replay --help`；
+- [x] **H2.2 运行当前环境有界重放**：
+  - [x] 执行 `alpha research replay cn_27_v1_3`：exit code 0 / `exact_replay` / `status: completed`，精度容差 $\le 10^{-6}$ 完全吻合；
+  - [x] 执行 `alpha research replay qqq_v4_3`：exit code 1 / `replay_failed` / `status: blocked`，如实记录 2026-10-30 相比本机 2026-10-23 缺少外部 Yahoo 数据源切片的事实，坚决 Fail-closed 不造假；
+- [x] **H2.3 路径可移植性与单测验证**：
+  - [x] 修复 `_load_cn_frozen_score_cross_sections` 在 Windows 目录联接（junction）下的 `relative_to` 路径解析异常；
+  - [x] 新增 Windows junction 路径解析回归测试用例；
+  - [x] 运行 `tests/test_formal_model_replay.py`（15 项）与 `tests/test_rules_formal_replay_gate.py`（18 项）全部 33 项测试通过；
+- [x] **H2.4 证据包归档与合规记录**：
+  - [x] 归档 `docs/evidence/product_v1/h2_replay_cn_27_v1_3_2026-11-01.json` 与 `h2_replay_qqq_v4_3_2026-11-01.json`，状态标定为 `PENDING_OWNER_ACCEPTANCE`。
+
+---
+
+## Phase 11: Direction A 上线交付 — A2 数据可信性与依赖清单核实 (#324 / #325 / Gate A2)
+- [x] **A2.1 四策略依赖与数据面逐一核验 (Subagent 协同走查)**:
+  - [x] 核验 QQQ Rotation v4.3 必需输入（ETF 参考池 QQQI/QQQ/TQQQ/SGOV，VIX/VXN 信号，Yahoo 日线切片与复权语义）；
+  - [x] 核验 US x1.3 必需输入（23 标的 narrow bundle，Yahoo/Qlib provider，10d 调仓周期，复权与截止日）；
+  - [x] 核验 CN 27 v1.3 必需输入（27 标的 pool，Sina/Tushare provider，价格与复权对账，30d 调仓周期）；
+  - [x] 核验 BYD v1.3 必需输入（002594.SZ / 1211.HK / 515180.SH，recovery event 与低波确认，每日 close 判定）；
+  - [x] 严格区分四策略每日运行必需输入与 US87/CN130 Alpha158 训练池输入（明确后者阻塞不导致四策略失效）。
+- [x] **A2.2 远端凭据与外部源权限安全预检 (零明文暴露)**:
+  - [x] 预检 Alpaca API 凭据配置状态（`APCA_API_KEY_ID` / `APCA_API_SECRET_KEY`），核验 SIP/OTC entitlement 与 US87 来源可行性；
+  - [x] 预检 SEC Company Facts 访问配置（`SEC_USER_AGENT` 存在，`SEC_EGRESS_PROXY_URL` 缺失状态审计）；
+  - [x] 审计 CN130 事件源（Sina/CNINFO/Eastmoney）及 `model_data_bundle_v1` 就绪状态（5 ready, 3 partial, 2 blocked 训练 profile）。
+- [x] **A2.3 契约与负面测试验证**:
+  - [x] 运行 `tests/test_canonical_vwap.py` 与 `tests/test_alpaca_adapter.py`；
+  - [x] 运行 `tests/test_selected_pool_event_population.py`、`tests/test_cn_selected_pool_event_sources.py`；
+  - [x] 运行 `tests/test_fundamental_event_store_contract.py`；
+  - [x] 保证全量数据面单测通过（56 项测试全绿），无静默 forward-fill，无伪造事实。
+- [x] **A2.4 交付 A2 数据可信性审计报告与依赖清单**:
+  - [x] 产出 `docs/evidence/product_v1/a2_data_integrity_audit_2026-11-01.json` 与 `.md`；
+  - [x] 明确标定 Gate A2 状态（四策略运行依赖已对账闭环，独立研究训练集维持 SCOPED_BLOCKED，无违规外溢）。
+
+---
+
+## Phase 12: Direction A 上线交付 — A4 权限与安全验收 (#1279 / #1288 / Gate A4)
+- [x] **A4.1 公开历史披露与受保护状态全景审计**:
+  - [x] 审计公开 Git 历史记录中的敏感持仓暴露与止血动作闭环情况（四策略最新活跃账本已剔除，16 次匿名请求均 404）；
+  - [x] 审计 Pages 静态部署 (`public_historical_projection_v1`) 的脱敏与加密哈希解耦（0 仓位、0 因子暴露）；
+  - [x] 审计 Actions Artifacts 与运行时日志零凭据泄露（收口为仅上传元数据收据）；
+- [x] **A4.2 访问控制策略与负面拒绝测试**:
+  - [x] 验证匿名未授权访问策略（返回 404 / 拒绝，不透露任何敏感持仓）；
+  - [x] 验证过期、撤权或非法 Token 访问阻断（因无专用测试账号，标记为 NOT_TESTED，不虚报）；
+  - [x] 验证缓存隔离策略（受保护数据禁止公开 CDN / 客户端持久缓存）；
+- [x] **A4.3 自动化安全门禁测试回归**:
+  - [x] 运行 `tests/test_public_source_boundary.py`、`tests/test_signal_publication_boundary.py`；
+  - [x] 运行 `tests/test_private_signal_ledger.py`、`tests/test_strategy_signal_checkpoint.py`、`tests/test_private_ledger_workflows.py`（82 项全绿）；
+- [x] **A4.4 归档 A4 安全与权限验收证据包**:
+  - [x] 产出 `docs/evidence/product_v1/a4_security_audit_2026-11-01.json` 与 `.md`；
+  - [x] 客观标定 Gate A4 裁决为 **FAIL**（保持 Fail-closed，列明残留风险与 NOT_TESTED 范围）。
+
+---
+
+## Phase 13: Direction A 上线交付 — A6 发布、恢复与回滚演练 (#1281 / Gate A6)
+- [x] **A6.1 发布与恢复系统审计与环境准备**:
+  - [x] 核验单操作员运行手册 `docs/operations/owner_local_workstation_runbook.md` 中的恢复与回滚流程；
+  - [x] 审计现存发布验证器 `src/artifacts/pages_release_verification.py` 与 release gate；
+- [x] **A6.2 离线恢复与篡改/损坏证据拦截演练**:
+  - [x] 执行篡改/损坏证据注入，验证发布流水线强制 Fail-closed 拦截；
+  - [x] 执行从指定孤立 SHA / 制品包的幂等恢复演练；
+- [x] **A6.3 发布治理与自动化测试全量回归**:
+  - [x] 运行 release 验证与候选包门禁测试（46 项全绿）；
+- [x] **A6.4 交付 A6 发布与恢复演练证据包**:
+  - [x] 产出 `docs/evidence/product_v1/a6_release_recovery_rehearsal_2026-11-01.json` 与 `.md`；
+  - [x] 客观标定 Gate A6 验收状态（本地演练通过，线上生产操作待 Owner 执行）。
+
+---
+
+## Phase 14: Direction A 上线交付 — 真实运维复核与产品上线终审记分卡 (#1277 / Gate A1, A3, A7)
+- [x] **A14.1 真实运维追踪复核 (Gate A1 - #1277)**:
+  - [x] 核对 `operating_archive_reaudit_2026-10-31.json` 真实收据（US/CN 各 12/20 个日期被观察，6 个匹配当前身份，0 个独立合格）；
+  - [x] 严格恪守真实观测窗口，坚决杜绝补造未到的未来交易日，客观标定 A1 为 BLOCKED；
+- [x] **A14.2 用户旅程全端覆盖复核 (Gate A3 - #1279 / #1315)**:
+  - [x] 确认四策略 8 条基础交互链路与移动端 375px 零横向溢出通过；
+  - [x] 标注受限会话与拒绝旅程因无专用测试账号保持 NOT_TESTED，标定 A3 状态；
+- [x] **A14.3 全量 A0–A7 状态矩阵闭环与产品记分卡汇总**:
+  - [x] 汇总 A0 (PASS), A1 (BLOCKED), A2 (BLOCKED - Ops PASS), A3 (BLOCKED - 8 baseline PASS), A4 (FAIL), A5 (PASS - for bounded replay), A6 (BLOCKED - Rehearsal PASS), A7 (NOT_TESTED / NO-GO)；
+  - [x] 更新 `docs/product/product_completion_scorecard_2026-10-25.md`，追加 2026-11-01 完整终审记分卡附录；
+- [x] **A14.4 形成单操作员发布决策包向 Owner 终审汇报**:
+  - [x] 清晰阐述核心成果、真实技术卡点、剩余风险与确切的 GO/NO-GO 裁定建议。
+
+---
+
+## 阶段验收与复盘 (Review Section: Direction A 全阶段收口与 A0–A7 终审)
+
+- **交付日期**: 2026-11-01
+- **集成基准**: `main` @ `579de93572`
+- **全阶段执行总结**:
+  1. **Phase 1 (收口 #1351 与 #1350)**:
+     - PR #1351：归档 CN27 与 QQQ 当前环境有界重放证据，修复并新增 Windows junction 路径解析回归用例，顺利合入主线；
+     - PR #1350：修复 Evidence Review 长浮点数截断，对齐 E2E 浏览器断言，302 项单元测试 + 117 项 Playwright 静态端到端全绿，GitHub Actions 远程 CI 全绿合入主线。顺序合并完好保留了 H1/H2 历史任务记录。
+  2. **Phase 2 (Gate A2 数据可信性与依赖核查 - #324 / #325)**:
+     - 派遣 Data Plane Auditor Subagent 深入四策略模型契约与数据源，证实四策略日常运行依赖与 US87/CN130 Alpha158 训练宽表在物理与逻辑上完全解耦；
+     - 完成 Alpaca API（SIP 可用，OTC ADR 受限）与 SEC EDGAR（0.12s 频控合规回退）预检；
+     - 运行 56 项 Gate A2 契约与负面测试（100% 通过），创建并合并 PR #1352，归档证据至 `a2_data_integrity_audit_2026-11-01.json/.md`。
+  3. **Phase 3 (Gate A4 安全与权限验收 - #1279 / #1288)**:
+     - 审计确认活跃泄露在四大表面（公开 Git, Pages, Actions Artifacts, 写入流水线）已彻底切断止血；
+     - 运行 82 项安全边界与私有账本测试（100% 通过）；
+     - 客观记录真实拒绝会话因缺少独立非生产账号保持 NOT_TESTED，历史披露记录为残留风险，退役 `cn_x1_2` 运行行待清理；Gate A4 严格维持 **FAIL**，创建并合并 PR #1353。
+  4. **Phase 4 (Gate A6 发布与恢复演练 - #1281)**:
+     - 验证发布验证器 `pages_release_verification.py` 三大守卫机制（防篡改、防降级、防泄露）；
+     - 演练静态控制台版本切回与私有账本 CAS 确定性回滚；
+     - 运行 46 项发布门禁测试（100% 通过），创建并合并 PR #1354，标定为 `REHEARSAL_VERIFIED / PENDING_OWNER_EXECUTION`。
+  5. **终审裁决 (Gate A7)**:
+     - **产品当前综合裁决维持：NO-GO**。
+     - 严格恪守 Fail-closed 铁律，不向 Owner 隐瞒真实差距，待 A1 真实交易日累积与 Owner 最终决策。

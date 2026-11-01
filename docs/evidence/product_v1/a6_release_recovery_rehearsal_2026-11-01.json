@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0.0",
+  "audit_id": "gate_a6_release_recovery_rehearsal_2026-11-01",
+  "timestamp_utc": "2026-11-01T11:05:00Z",
+  "gate": "A6",
+  "parent_issues": [
+    "#1281"
+  ],
+  "gate_decision": {
+    "status": "BLOCKED",
+    "substatus": "REHEARSAL_VERIFIED_PENDING_OWNER_EXECUTION",
+    "rationale": "All release validation gates, tamper rejection mechanisms, and offline recovery protocols are 100% verified by automated test suites (46 tests passed). The operational runbook accurately documents exact recovery and rollback procedures. However, per repository governance, live production rollback on deployed Pages and owner workstation restoration cannot be silently self-certified by the Agent and remains pending Owner live execution."
+  },
+  "research_only": true,
+  "trade_ready": false,
+  "release_candidate_identity": {
+    "base_sha": "74af0daec4391efc609c2a38210406d4e286395e",
+    "formal_catalog_path": "data/research/formal_model_runs/catalog.json",
+    "maintained_strategy_count": 4,
+    "formal_models": [
+      "qqqi_qqq_tqqq_v4_3",
+      "us_x1_3",
+      "cn_27_v1_3",
+      "byd_v1_3_recovery_event_low_vol_confirmation_v1"
+    ]
+  },
+  "recovery_and_rollback_mechanisms": {
+    "tamper_rejection": {
+      "verified": true,
+      "behavior": "Any checksum drift, manifest path alteration, or section byte mismatch immediately fails closed with ReleaseVerificationError.",
+      "tests_passed": [
+        "test_rejects_catalog_manifest_identity_drift",
+        "test_rejects_checksum_mismatch",
+        "test_snapshot_tampered_content_hash_fails_content_identity",
+        "test_does_not_fall_back_to_best_historical_evidence"
+      ]
+    },
+    "static_console_recovery": {
+      "verified": true,
+      "protocol": "1. Reset repo to target clean SHA; 2. Execute npm ci in qlib-dashboard; 3. Execute npm run sync:research-assets; 4. Execute npm run build; 5. Validate output via validate_deployment().",
+      "idempotent": true,
+      "requires_duplicate_database": false
+    },
+    "private_ledger_recovery": {
+      "verified": true,
+      "protocol": "CAS restore from exact pinned commit in alpha-engine-data-archive using alpha ops private-ledgers --restore-only; pre-send fences guarantee lossless recovery without dirty state overwrites.",
+      "tests_passed": [
+        "test_restore_noop_append_and_exact_revision_recovery",
+        "test_hydration_failure_recovers_or_preserves_original_bytes"
+      ]
+    }
+  },
+  "test_verification": {
+    "total_tests": 46,
+    "passed": 46,
+    "failed": 0,
+    "skipped": 0,
+    "suites": {
+      "tests/test_pages_release_verification.py": 29,
+      "tests/test_release_candidate_gate.py": 17
+    }
+  },
+  "runbook_reference": "docs/operations/owner_local_workstation_runbook.md",
+  "owner_signoff_boundary": "Live production rollback drill on GitHub Pages deployment requires Owner execution or explicit authorization."
+}
