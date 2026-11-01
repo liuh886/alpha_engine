@@ -188,3 +188,43 @@ protected-row denial cannot be inferred from anonymous snapshot visibility.
 The retired CN x1.2 runtime row remains visible; older disclosures remain open.
 No dedicated account/session is available: entitled/denied/revoked tests remain
 NOT_TESTED. **A4 stays FAIL and the full-product decision stays NO-GO.**
+
+## Direction A Delivery Convergence Addendum — 2026-11-01
+
+Reviewed baseline: `main` @ `579de93572` (2026-11-01).
+
+### Milestone Deliveries Completed Across PRs #1350, #1351, #1352, #1353, #1354
+
+1. **H1 Console Audit & Playwright E2E Alignments (PR #1350)**:
+   - Fixed float precision noise in evidence statements via `formatEvidenceStatement` (truncating long decimal tails without unit conversion or metric distortion);
+   - Clarified date vocabulary (`Signal session` restricted to true as-of sessions, `Formal evidence through` vs `Observation cutoff`);
+   - Replaced misleading risk shield `<ShieldCheck>` on hold with neutral `<PauseCircle>`;
+   - Verified 302 Vitest unit tests and 117 Playwright static browser tests (Desktop, Tablet, Mobile) 100% green.
+2. **H2 Current Environment Bounded Replay Evidence (PR #1351)**:
+   - Verified CN27 v1.3 deterministic local replay with exit code 0 (`exact_replay` at $\le 10^{-6}$ tolerance);
+   - QQQ v4.3 local replay truthfully recorded as `blocked` due to local offline cutoff (2026-10-23 vs 2026-10-30);
+   - Added dedicated regression test for Windows junction / alias paths in CN replay; 33/33 tests pass.
+3. **Gate A2 Data Integrity Audit & Decoupling (PR #1352)**:
+   - Completed full-matrix audit of four active console strategies: verified that operational execution relies exclusively on sealed providers and is decoupled from experimental model training plane;
+   - Prechecked Alpaca (SIP ready, OTC 403 on ADRs) and SEC EDGAR (compliant rate-limiting, non-secret user agent fallback);
+   - All 56 Gate A2 test invariants pass 100%.
+4. **Gate A4 Security & Permission Audit (PR #1353)**:
+   - Confirmed active leaking stopped across four surfaces (Git, Pages, Actions Artifacts, Write Pipelines);
+   - Recorded residual exposure and unfulfilled testing requirements (dedicated test accounts for entitled/denied session reads); 82 security tests pass.
+5. **Gate A6 Release, Recovery & Rollback Rehearsal (PR #1354)**:
+   - Verified three guard mechanisms in `pages_release_verification.py` (checksum verification, fail-closed tamper rejection, and operational leakage prevention);
+   - Documented static console and private ledger disaster recovery procedures; 46 release tests pass.
+
+### Comprehensive Gate Status Matrix (2026-11-01)
+
+| Gate | Current Verdict | Evidence & Current Status Summary |
+| :--- | :---: | :--- |
+| **A0 身份与权威** | **PASS** | 四策略注册表、正式 Catalog、Sealed Runs 身份完全对账，退役路径彻底屏蔽。 |
+| **A1 持续运行** | **BLOCKED** | 最近 20 交易日仅 12 日被观察，仅 6 日匹配当前身份，0 日独立合格；真实运行日必须连续累积，坚决杜绝伪造。 |
+| **A2 数据可信性** | **BLOCKED**<br>(Ops PASS / Training SCOPED_BLOCKED) | 四策略运行数据面 100% 验证通过；全量 US87/CN130 Alpha158 训练面受限于 OTC ADR 凭据与新标的历史长度，维持独立 SCOPED_BLOCKED。 |
+| **A3 用户旅程** | **BLOCKED**<br>(8 Journeys PASS) | 四策略桌面与移动端（375px 零横向溢出）8 条核心交互链路全绿通过；受限/撤权真实会话因无专用测试账号保持 NOT_TESTED。 |
+| **A4 权限与安全** | **FAIL** | 活跃公开泄露已在四大表面（Git, Pages, Artifacts, Pipelines）彻底切断；但因无非生产专用账号，真实拒绝/撤权会话验收保持 NOT_TESTED，历史披露记录为残留风险。 |
+| **A5 本地研究** | **PASS**<br>(Bounded Replay) | CN27（精确复现 $\le 10^{-6}$）与 QQQ（有界离线阻断）重放证据如实封存，保持 `PENDING_OWNER_ACCEPTANCE`。 |
+| **A6 发布与恢复** | **BLOCKED**<br>(Rehearsal PASS) | 完整离线恢复、防篡改负面拦截与回滚演练通过（46 项测试全绿）；线上生产 Pages 物理回滚待 Owner 审批与执行。 |
+| **A7 发布裁决** | **NOT_TESTED / NO-GO** | **综合裁决维持 NO-GO**。各项技术指标透明真实，待真实交易日累积（A1）、权限会话核验（A4）与 Owner 终审决策。 |
+
