@@ -32,6 +32,8 @@ Read these authorities before changing code:
 
 Current delivery order and task disposition live in the
 [maintained execution plan](next_stage_execution_plan.md#11-2026-11-01-远端任务收敛).
+For an implementation handoff, use the [scoped work packages and acceptance
+commands](next_stage_execution_plan.md#12-接手-agent-的执行细则2026-11-01).
 
 Direction A acceptance is tracked by W0 [#1278](https://github.com/liuh886/alpha_engine/issues/1278),
 W1 [#1277](https://github.com/liuh886/alpha_engine/issues/1277), W1b/W2
