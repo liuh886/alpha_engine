@@ -1,6 +1,6 @@
 # Alpha Engine — 下一阶段产品架构与执行计划
 
-**当前裁决：产品 NO-GO；RDI 价格层已交付，完整 RDI 未验证。** 最新核对基线为 `main@f68f1c1198e1af4b8fcdd60219dee878d5c64321`，2026-11-01；2026-10-29 的原路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
+**当前裁决：产品 NO-GO；RDI 价格层已交付，完整 RDI 未验证。** 最新核对基线为 `main@65622788d9`，2026-11-01；2026-10-29 的原路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
 
 ## 0. 产品与功能上线路线图（2026-10-31 当前执行入口）
 
@@ -23,13 +23,13 @@ RDI 未验证不阻断四策略产品独立验收；产品部署成功也不证�
 
 | Gate / 原任务 | 当前证据 | 下一可验收交付 | 执行者 / 外部依赖 |
 | --- | --- | --- | --- |
-| A0 身份与权威，#1278 | 实现与身份对齐已通过；旧路线文字需跟进 | 保持四策略、正式/研究边界及同一当前路线入口；以当前 SHA 复核，不恢复退役路径 | Agent |
+| A0 身份与权威，#1278 | **PASS**；权威入口与四策略身份对齐已闭环 | 保持四策略、正式/研究边界及同一当前路线入口；以当前 SHA 复核，不恢复退役路径 | Agent |
 | A1 持续运行，#1277 | **BLOCKED**；最新成功运行不是 20 日验收 | 复用现有 operating acceptance，逐 US/CN 市场重审实际 20 个合格交易日、所有失败/保留/not-due 分类与真实 due-cycle；缺收据明确列缺口 | Agent 审核已有收据；缺失的真实未来交易日必须等待，禁止补造 |
-| A2 数据完整性 | **BLOCKED**；正式 cutoffs、RDI 价格及窄回放各有局部证明 | 为四策略实际依赖列源级 PIT/复权/生命周期/版本证据；将独立研究阻塞与策略必需输入分开，缺项定向修复 | Agent；必要原始来源或权限需 Owner/提供方 |
-| A3 用户旅程，#1279 / #1315 | 部分线上/模拟验收通过，完整边界矩阵未关闭 | 完成四策略桌面/手机的变化、未变化/not-due、延迟/阻断、拒绝旅程；修复日期/driver 语义和证据审阅缺口，保留真实证据 | Agent 负责可复现代码/公开旅程；真实受限会话需 Owner |
-| A4 权限与披露，#1279 / #1288 | **FAIL**；活动公开账本、新原始传输路径已止血，旧披露和真实权限验收未关闭 | 处置旧 Git/Actions/native lineage 披露、退役 CN x1.2 运行行；准备受保护测试资源，完成匿名/无权/过期/撤权/授权及缓存负验证 | Agent 做只读审计与修复 PR；Owner 决定披露处置、提供专用会话并批准实际权限/数据治理 |
-| A5 本地研究，#1282 | 有界 CN/QQQ 回放通过，最终验收范围仍需确认 | 用已接受 US/CN 参考研究和精确依赖/数据哈希复核重放与限制；不要求新模型盈利，也不把无关训练阻塞泛化 | Agent 复核；Owner 最终确认 |
-| A6 发布与恢复，#1281 | 具体 SHA 发布校验通过；完整恢复演练未验收 | 形成 RC 证据包，在既有工具下验证恢复/回滚、数据与运行状态身份；不改密封经济历史，不新建发布系统 | Agent 先完成可审阅演练包；涉及实际生产回滚及 Owner 本机操作需 Owner 明确执行/批准 |
+| A2 数据完整性 | **BLOCKED / Ops PASS**；四策略运行依赖已对账闭环（#1352） | 独立研究训练集维持 SCOPED_BLOCKED，无违规外溢；已完成 Alpaca/SEC EDGAR 预检与 56 项测试全绿 | Agent；必要原始来源或权限需 Owner/提供方 |
+| A3 用户旅程，#1279 / #1315 | **BLOCKED / Baseline PASS**；四策略 8 条基础交互与 375px 移动端通过（#1350） | 302 项单元测试 + 117 项 Playwright 静态端到端全绿；受限会话因无专用测试账号保持 NOT_TESTED | Agent 负责可复现代码/公开旅程；真实受限会话需 Owner |
+| A4 权限与披露，#1279 / #1288 | **FAIL**；活动公开账本、新原始传输路径已止血（#1353） | 82 项安全与私有账本测试全绿；因无专用测试账号真实会话保持 NOT_TESTED，历史披露列为残留风险，维持严格 FAIL | Agent 做只读审计与修复 PR；Owner 决定披露处置、提供专用会话并批准实际权限/数据治理 |
+| A5 本地研究，#1282 | **PASS (bounded) / PENDING_OWNER**；有界 CN/QQQ 回放证据固化（#1351） | CN27 重放误差 $\le 10^{-6}$，QQQ 如实记录数据源阻断，Windows junction 修复通过 33 项单测 | Agent 复核；Owner 最终确认 |
+| A6 发布与恢复，#1281 | **BLOCKED / Rehearsal PASS**；发布守卫与 CAS 恢复演练通过（#1354） | 静态控制台回退与私有账本 CAS 恢复双向演练验证，46 项发布门禁测试全绿，待 Owner 生产操作 | Agent 先完成可审阅演练包；涉及实际生产回滚及 Owner 本机操作需 Owner 明确执行/批准 |
 | A7 发布决定 | **NOT_TESTED / NO-GO** | 汇总 A0–A6 的 PASS/BLOCKED/NOT_TESTED、剩余风险和回滚证据，Owner 给出带日期的 GO/NO-GO | Owner；不能由 Agent 或绿色 CI 自动代签 |
 
 已确认无专用测试账号/会话。全体策略当前 live tier 为 public 的观察不能替代受保护行拒绝测试；
@@ -442,13 +442,22 @@ A1、A4、A5、A6、Owner A7 与 RDI 的各自门禁不因全仓测试绿色而�
 - [x] #1346 正式 Evidence Review：支持、门禁、反证、局限、下一步；真实 desktop/mobile 已验证。
 - [x] #1338/#1340 RDI 版本化价格层和 Status 证据视图；依然 `not_validated`、0/10。
 - [x] #1348 全仓健康修复：4,231 passed / 8 skipped；精确代码 SHA 与完整 run 见 §11.5。
+- [x] #1350 (H1) 控制台 UI 语义、日期格式与 E2E 断言修复；302 项单元测试 + 117 项 Playwright 静态端到端全绿，已合入主线。
+
+- [x] #1351 (H2) 当前环境有界重放证据固化与 Windows junction 修复；CN27 重放误差 <= 1e-6，QQQ 真实记录数据阻断，已合入主线。
+- [x] #1352 (H3/A2) 四策略数据依赖对账与凭据预检；解耦训练池与四策略运行依赖，56 项测试全绿，已合入主线。
+
+- [x] #1353 (G2/A4) 安全与权限验收；四大暴露面止血验证，82 项测试全绿，明确残留风险并维持 A4=FAIL，已合入主线。
+- [x] #1354 (H4/A6) 发布、恢复与回滚演练；发布守卫与 CAS 恢复验证，46 项测试全绿，已合入主线。
+
+- [x] #1355 (Scorecard) 记分卡与任务清单终审收敛；更新 product_completion_scorecard 与 Master Plan，已合入主线。
 
 历史测试数字是对应提交的证据，不是接手时自动获得的 PASS；只有修改范围、失败或未解风险
 要求时才重跑/扩大检查。纯文档交接不需要启动全仓研究或重新取数。
 
-### 12.3 H1 · 当前首项：界面语义与无账号旅程（#1279）
+### 12.3 H1 · 界面语义与无账号旅程（已完成，PR #1350）
 
-- [ ] **先复核，再修已见缺陷**。在实际部署 SHA 上逐四策略走
+- [x] **页面走查与真实缺陷修复（已合入 PR #1350）**：在实际部署 SHA 上逐四策略走
   Overview → Detail → linked Instrument → Status；覆盖 desktop 与 375px mobile。
   依次核对 data cutoff、decision applies、retained target date、backtest/settled/provisional window、
   声明基准与 excess、driver state/effect/reason、next due、loading/error/retained 状态。
@@ -471,9 +480,9 @@ A1、A4、A5、A6、Owner A7 与 RDI 的各自门禁不因全仓测试绿色而�
 - 产物：一份不含当前私有配置/仓位的旅程矩阵与截图/trace 引用；一个范围明确的修复 PR，
   或带准确原因的“当前无该缺陷”审计结果。Owner 完整 UAT 和真实权限不是本包自动完成项。
 
-### 12.4 H2 · 当前 US/CN 有界重放证据（#1282）
+### 12.4 H2 · 当前 US/CN 有界重放证据（已完成，PR #1351）
 
-- [ ] 阅读 [W3 说明](../evidence/product_v1/w3_local_replay_2026-10-25.md)、
+- [x] **当前环境重放与路径修复（已合入 PR #1351）**：阅读 [W3 说明](../evidence/product_v1/w3_local_replay_2026-10-25.md)、
   [旧收据](../evidence/product_v1/w3_local_replay_2026-10-25.json)、
   [QQQ CLI 对齐收据](../evidence/product_v1/qqq_cli_replay_alignment_1292.json)，
   重新验证它们的实际输入是否在当前环境可得。#1293 已合并，不再等待其实现。
@@ -491,9 +500,9 @@ A1、A4、A5、A6、Owner A7 与 RDI 的各自门禁不因全仓测试绿色而�
 - 产物：当前环境的新有界收据/解释和精确阻塞；旧收据与初始失败保留。Owner A5 接受单列，
   不因命令成功关闭完整数据资格或所有模型的训练复现要求。
 
-### 12.5 H3 · 必需输入清单与来源预检（#1279 A2；#324/#325）
+### 12.5 H3 · 必需输入清单与来源预检（已完成，PR #1352）
 
-- [ ] 首先从四策略 frozen contracts 与正式 manifests 列出**实际必需**来源、PIT、复权、
+- [x] **数据可信性与解耦核验（已合入 PR #1352）**：首先从四策略 frozen contracts 与正式 manifests 列出**实际必需**来源、PIT、复权、
   lifecycle、benchmark、cutoff/版本/调用路径；区分 selected-pool 训练要求和窄策略参考。
   复用现有 manifests/readiness，不建立另一套规则或以无关训练阻塞判四策略失效。
 - [ ] #325：远端 Alpaca key/secret 的配置名称已存在；只读验证认证、SIP/OTC 权限、
@@ -515,9 +524,9 @@ A1、A4、A5、A6、Owner A7 与 RDI 的各自门禁不因全仓测试绿色而�
 - 产物：逐策略/逐来源矩阵和小范围预检收据；后续 materialization PR 只能认领该合同实际通过的覆盖。
   训练和 factor readiness 仍由 #324/#325/#826 各自 authority 认定。
 
-### 12.6 H4 · RC 与非生产恢复演练准备（#1281）
+### 12.6 H4 · RC 与非生产恢复演练准备（已完成，PR #1354）
 
-- [ ] 从已验证版本构造单一候选证据包，分别绑定静态产品、formal catalog/Bundle、
+- [x] **发布守卫与恢复演练（已合入 PR #1354）**：从已验证版本构造单一候选证据包，分别绑定静态产品、formal catalog/Bundle、
   私有 current-operations checkpoint 与 lock/source 身份；不能把三层不同版本揉成一个“最新”。
 - [ ] 先在临时目录演练安装/恢复、精确源哈希和错误包/缺文件/错身份拒绝；
   复用既有 release gate/restore helper，不新增发布系统、兼容读链或调度。
