@@ -27,7 +27,7 @@ export function ResearchTrackingAssessment({ state, evidenceCutoff, primaryCount
     <p className="mt-2 text-xs text-muted-foreground">Research only. This assessment does not establish a trading instruction.</p>
     {decision && <>
       <p className="mt-2 break-words text-muted-foreground">{primaryCounterevidence || 'Retained evidence has no recorded counterevidence; this does not establish continued effectiveness.'}</p>
-      <p className="mt-2 text-muted-foreground">{decision.gates.filter(row => row.outcome === 'failed').length} retained failed gates · {decision.contradictory_evidence.length} counterevidence records. Evidence through {evidenceCutoff || 'unknown'}.</p>
+      <p className="mt-2 text-muted-foreground">{decision.gates.filter(row => row.outcome === 'failed').length} retained failed gates · {decision.contradictory_evidence.length} counterevidence records. Formal evidence through {evidenceCutoff || 'unknown'}.</p>
       <details className="mt-3">
         <summary className="cursor-pointer font-medium">Supporting evidence, counterevidence, limits and next validation</summary>
         <div className="mt-4 grid gap-5 sm:grid-cols-2">

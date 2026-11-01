@@ -29,7 +29,7 @@ describe('ResearchTrackingAssessment', () => {
     render(<ResearchTrackingAssessment state={{ state: 'completed', decision: verified(decision), error: null }} evidenceCutoff="2026-10-30" primaryCounterevidence="Stress result failed." />);
     fireEvent.click(screen.getByText('Supporting evidence, counterevidence, limits and next validation'));
     expect(screen.getByText('Reviewed research result: not supported')).toBeInTheDocument();
-    expect(screen.getByText(/Evidence through 2026-10-30/)).toBeInTheDocument();
+    expect(screen.getByText(/Formal evidence through 2026-10-30/)).toBeInTheDocument();
     const section = screen.getByRole('region', { name: 'Research tracking assessment' });
     for (const heading of ['Supporting evidence', 'Gates', 'Counterevidence', 'Interpretation limits', 'Recorded failure modes', 'Next permitted validation']) {
       expect(within(section).getByRole('heading', { name: heading })).toBeInTheDocument();

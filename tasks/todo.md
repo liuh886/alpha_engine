@@ -788,3 +788,32 @@
   - Phase 3 独立测试套件：`uv run pytest tests/test_racetrack_pipeline.py -v` -> 10 passed in 32.05s；
   - Phase 1–3 联合回归：`uv run pytest tests/test_racetrack_minimal_stack.py tests/test_racetrack_runner_scoring.py tests/test_racetrack_pipeline.py -v` -> 35 passed in 53.19s；
   - 静态检查：`uv run ruff check` 全部通过，零告警；`uv run ruff format` 格式化规范全部通过。
+
+---
+
+## Phase 9: Direction A 上线交付 — H1 界面语义、日期与体验收敛 (#1279 / #1315)
+
+- [x] **H1.1 前端代码与架构审计 (Subagent 协同走查)**:
+  - [x] 派遣专业前端审计 Subagent 排查 `DailyResearchBrief`、`StrategyFleet`、`StrategyDetailPage`、`SystemHubPage`、`ResearchTrackingAssessment`；
+  - [x] 确认长浮点数裸露点位（`factorReference`、`drawdownChange`、`turnover`、反向证据声明）；
+  - [x] 确认日期词汇混淆（`Signal session` 回退越权、`Signal through` 离散交易日误称）；
+  - [x] 确认移动端（375px）自适应与布局缺陷（`grid-cols-2` 在小屏下挤压）。
+- [x] **H1.2 消除证据长小数与健全格式化**:
+  - [x] 在 `src/lib/evidence-availability.ts` 中补全 `'turnover'` 换手率百分比格式化（避免渲染为裸小数 `0.250`）；
+  - [x] 在 `StrategyDetailPage.tsx` 针对 `factorReference` 实现结构化数字截断 `formatRefValue`，消除 IEEE 754 浮点噪声；
+  - [x] 在 `StrategyDetailPage.tsx` 为回撤变化（drawdown change）正值补全 `+` 号。
+- [x] **H1.3 纠偏日期词汇与消除虚假声称**:
+  - [x] 在 `StrategyFleet.tsx` 严格限制 `'Signal session'` 标签仅在 `snapshot.asOf` 存在时渲染，回退时清晰标注 `'Observation cutoff'` 或 `'Formal evidence cutoff'`，严禁将历史留存截止日冒充当前信号日；
+  - [x] 在 `StrategyDetailPage.tsx` 修正词汇为 `Signal applies to session {asOf} ... data cutoff {latestCompletedSession}`；
+  - [x] 在 `ResearchTrackingAssessment.tsx` 明确标注 `Formal evidence through {evidenceCutoff}`。
+- [x] **H1.4 纠正 Driver 状态与风险误导**:
+  - [x] 在 `StrategyFleet.tsx` 中将 `hold` 状态的 `<ShieldCheck>` 安全盾牌图标替换为中立的 `<PauseCircle>`，消除未到调仓期或持仓未变即“无风险”的误导心理暗示；
+  - [x] 在 `StrategyDetailPage.tsx` 补充对 `neutral` 驱动效果的说明（`Neutral indicates no threshold rule trigger; it does not indicate absence of risk`）。
+- [x] **H1.5 优化移动端 (375px) 排版与响应**:
+  - [x] 在 `StrategyDetailPage.tsx` 将操作卡片网格从固定 `grid-cols-2` 调整为 `grid-cols-1 sm:grid-cols-2`，杜绝小屏下内容高度拉伸变形。
+- [x] **H1.6 单元测试、打包预算与回归验证**:
+  - [x] 更新 `evidence-availability.test.ts` 补充 turnover 百分比测试；
+  - [x] 更新 `ResearchTrackingAssessment.test.tsx` 对齐新标题断言；
+  - [x] `npm test`（36 个测试文件、301 项测试）全绿通过；
+  - [x] `npm run check:bundle-budget` 验证通过（161.63 KB headroom）；
+  - [x] `npm run build` 完整生产打包验证通过。

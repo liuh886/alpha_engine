@@ -54,16 +54,23 @@ function modelContributions(factor: StrategyFactorEvidence): ModelContribution[]
   });
 }
 
+function formatRefValue(item: unknown): string {
+  if (typeof item === 'number') {
+    return Number.isInteger(item) ? String(item) : Number(item.toFixed(4)).toString();
+  }
+  return String(item);
+}
+
 function factorReference(factor: StrategyFactorEvidence): string | null {
   const value = factor.reference;
   if (value === null || value === undefined) return null;
   if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (typeof value === 'number') return String(value);
+  if (typeof value === 'number') return formatRefValue(value);
   if (typeof value === 'string') return value;
   if (typeof value === 'object') {
     return Object.entries(value as Record<string, unknown>)
       .filter(([key, item]) => key !== 'model_contributions' && item !== null && item !== undefined && ['string', 'number', 'boolean'].includes(typeof item))
-      .map(([key, item]) => `${key} ${String(item)}`)
+      .map(([key, item]) => `${key} ${formatRefValue(item)}`)
       .join(' · ') || null;
   }
   return String(value);
@@ -172,7 +179,7 @@ export function StrategyDetailPage() {
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <p>Observed return <strong className="block font-mono">{observation.observedReturn === null ? '—' : pct(observation.observedReturn)}</strong></p>
             <p>Drawdown from observed peak <strong className="block font-mono">{pct(observation.drawdown)}</strong></p>
-            <p>Drawdown change <strong className="block font-mono">{observation.drawdownChange === null ? '—' : `${(observation.drawdownChange * 100).toFixed(2)} pp`}</strong></p>
+            <p>Drawdown change <strong className="block font-mono">{observation.drawdownChange === null ? '—' : `${observation.drawdownChange > 0 ? '+' : ''}${(observation.drawdownChange * 100).toFixed(2)} pp`}</strong></p>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">Dates bound this observation. Sparse settlements do not establish daily risk coverage; provisional marks do not establish execution or strategy validation.</p>
         </> : <p className="mt-2 text-muted-foreground">{observationPending ? 'Loading verified observations…' : 'Change and risk observations could not be verified.'}</p>}
@@ -208,7 +215,7 @@ export function StrategyDetailPage() {
           <>
             <div className="rounded-xl border bg-card p-4 text-sm" aria-label="Observation and evaluation cadence">
               <p className="font-semibold">Observation and evaluation cadence</p>
-              <p className="mt-2 text-muted-foreground">Signal through {snapshot?.asOf || 'unknown'} · completed market through {snapshot?.decisionSchedule?.completedThrough || 'unknown'} · observed data through {snapshot?.latestCompletedSession || 'unknown'}.</p>
+              <p className="mt-2 text-muted-foreground">Signal applies to session {snapshot?.asOf || 'unknown'} · completed market through {snapshot?.decisionSchedule?.completedThrough || 'unknown'} · data cutoff {snapshot?.latestCompletedSession || 'unknown'}.</p>
               <p className="mt-2">
                 {snapshot?.decisionSchedule?.state === 'within_cadence'
                   ? `Next evaluation in ${snapshot.decisionSchedule.sessionsUntilDue} exchange sessions; an unchanged target between evaluations is expected.`
@@ -242,7 +249,7 @@ export function StrategyDetailPage() {
                   <p className="mt-2 text-xl font-bold">{snapshot?.stateLabel || 'Formal evidence only'}</p>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{snapshot?.decisionReason || 'A live decision reason is not published for this strategy.'}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="rounded-xl border bg-card p-4"><CalendarClock className="h-4 w-4 text-primary" /><p className="mt-3 text-xs text-muted-foreground">Next decision</p><p className="mt-1 text-sm font-semibold">{snapshot?.nextDecision || 'Not declared'}</p></div>
                   <div className="rounded-xl border bg-card p-4"><Database className="h-4 w-4 text-primary" /><p className="mt-3 text-xs text-muted-foreground">Data / factors</p><p className="mt-1 text-sm font-semibold">{snapshot ? `${snapshot.dataFreshness} / ${snapshot.factorFreshness}` : 'unknown'}</p></div>
                 </div>
@@ -278,7 +285,7 @@ export function StrategyDetailPage() {
                     })}
                   </div>
                 </div>
-                <p className="mt-4 text-xs text-muted-foreground">Rules-based strategies show cutoff-bound inputs and direct support/veto states. XGBoost rankers show the canonical factor snapshot retained with the current decision. Model evidence explains the fitted score, not causality.</p>
+                <p className="mt-4 text-xs text-muted-foreground">Rules-based strategies show cutoff-bound inputs and direct support/veto states. Neutral indicates no threshold rule trigger; it does not indicate absence of risk. XGBoost rankers show the canonical factor snapshot retained with the current decision. Model evidence explains the fitted score, not causality.</p>
               </div>
             ) : snapshot ? (
               <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground shadow-sm">
