@@ -40,6 +40,13 @@ export function SystemHubPage() {
         const observation = !snapshot?.strategyId ? describeStrategyObservation() : describeStrategyObservation(snapshot, allowed);
         const lastGoodCutoff = snapshot?.latestCompletedSession ?? null;
         const failureClass = observation.kind === 'attention' ? observation.label : snapshot?.status === 'stale' ? 'Stale observation' : null;
+        // Only a source-backed operational status can justify a recovery workflow.
+        // Attention due to access or verification failure is not an instruction to refresh data.
+        const recoveryWorkflow = snapshot?.status === 'delivery_failed'
+          ? { file: 'strategy-signal-delivery-outbox.yml', label: 'Inspect delivery workflow' }
+          : snapshot?.status === 'stale' || snapshot?.status === 'blocked' || snapshot?.status === 'pipeline_unavailable'
+            ? { file: 'formal-backtest-refresh.yml', label: 'Inspect formal refresh workflow' }
+            : null;
         return <article key={run.key} className="border-b p-4 last:border-0">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Link className="font-semibold text-primary" to={'/strategies/' + encodeURIComponent(run.modelVersionId)}>{run.title}</Link>
@@ -59,16 +66,16 @@ export function SystemHubPage() {
           )}
           <p className="mt-2 text-sm">{observation.reason}</p>
           <p className="mt-1 text-xs text-muted-foreground">{observation.nextStep}</p>
-          {observation.kind === 'attention' && (
+          {recoveryWorkflow && allowed && (
             <div className="mt-3 flex items-center gap-2 text-xs">
               <span className="text-muted-foreground">Recovery action:</span>
               <a
                 className="text-primary underline"
-                href={WORKFLOWS + 'formal-backtest-refresh.yml'}
+                href={WORKFLOWS + recoveryWorkflow.file}
                 target="_blank"
                 rel="noreferrer"
               >
-                Trigger formal refresh workflow
+                {recoveryWorkflow.label}
               </a>
             </div>
           )}
