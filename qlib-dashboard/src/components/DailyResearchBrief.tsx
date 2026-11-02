@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, ClipboardList } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import type { GovernedRunSummary } from '@/lib/governed-run';
@@ -75,6 +75,17 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
             </div>
             <p className="mt-2 text-muted-foreground">An authorized operator can use Run workflow on main. This page reads records; it does not start jobs or send orders.</p>
           </details>}
+          <div className="mt-3 flex items-center justify-between border-t pt-2">
+            <span className="text-[11px] text-muted-foreground">
+              Review: {brief.recovery ? 'Action required' : 'Scheduled cadence'}
+            </span>
+            <Link
+              to={`/strategies/${encodeURIComponent(run.modelVersionId)}`}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              Inspect evidence <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         </article>
       ))}</div>
       {entries.length > priorities.length && <p className="border-t px-5 py-3 text-xs text-muted-foreground">Showing {priorities.length} of {entries.length} priority observations. All {entries.length} strategies remain in the fleet below.</p>}

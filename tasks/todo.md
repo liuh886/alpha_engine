@@ -1054,10 +1054,61 @@
 
 ---
 
-## 验收与复盘记录 (Review: Phase 17 / H0 稳定化成果)
+
+---
+
+## Phase 18: H1 (P0) Today 投研信息设计增强与准入感知卡片
+
+- [x] **18.1 Today 市场卡片信息层级重构 (H1.1)**
+  - [x] 准确展示各市场形式化策略数量与经过验证的证据截止范围（US 与 CN 各自维护独立证据窗口）
+  - [x] 严格区分策略 Formal 证据窗口与当前目标评估日，禁止推断跨策略虚构统一市场日；明示 Provider 数据源健康由 `/system` 专门承载
+  - [x] 优雅降级，保持零附加网络请求以契约化保证导航复用已有读数（`healthReads === 1`）
+- [x] **18.2 四策略快照卡片准入感知与观察状态增强 (H1.2)**
+  - [x] 在 `StrategyOverviewPage` 的 `Formal strategy snapshot` 中复用 `useAccessControl` 与 `describeStrategyObservation`
+  - [x] 为四策略卡片补充访问感知状态徽章（如 Changed、Retained、Needs attention、Access required 等语义色彩样式）
+  - [x] 保证策略名称精准可见（保持现有 E2E `getByText(name, { exact: true })` 断言 100% 兼容通过）
+  - [x] 保留清晰证据 CTA（`Inspect evidence <ArrowRight />`），点击直达策略详情证据页，满足 <=2 点击路径预算
+- [x] **18.3 每日简报优先级与证据审查行动闭环 (H1.3)**
+  - [x] 保持高优先级队列上限为 3，底部舰队完整保留
+  - [x] 为每个简报条目强化统一明晰的单一证据 CTA（`Inspect evidence`），同时标明审核状态（Action required vs Scheduled cadence）
+  - [x] 优化侧边引导“Your next research step”，明确指向横向对比 (`/strategies`)、源状态检查 (`/system`) 与研究实验室 (`/research`)
+- [x] **18.4 完整质量验收与 CI 绿灯 (H1.4)**
+  - [x] 运行 `pnpm --dir qlib-dashboard lint` 零错误零警告
+  - [x] 运行 `pnpm --dir qlib-dashboard exec tsc --noEmit` 类型检查通过
+  - [x] 运行 306 项 Vitest 单元测试全绿
+  - [x] 运行 Vite build 打包构建通过（1.63s）
+  - [x] 运行 Playwright E2E 完整套件（桌面 1440px、平板 768px、手机 375px），123/123 测试 100% 全绿通过
+  - [x] 提交、推送分支 `docs/product/ux-rearchitecture-reference-first-20261102` 并追踪 GitHub Actions CI
+
+---
+
+## 阶段验收与复盘记录 (Review: Phase 18 / H1 交付成果)
 
 - **交付日期**: 2026-11-02
 - **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **核心成果**:
+  1. **市场卡片信息层级与诚实边界 (H1.1)**:
+     - 摒弃占位式伪统一市场日期，准确提取各市场独立形式化策略证据截止日（`Through 2026-10-30` 等）；
+     - 明示目标评估按各策略特定周期计算，不虚构跨市场统一日期；
+     - 将数据源提供商健康清晰指引至 `/system`（Operating Status），保持 Today 轻量纯粹，满足 E2E 单次读取与跨页面导航复用契约（`healthReads === 1`）。
+  2. **四策略快照准入感知与观察状态增强 (H1.2)**:
+     - 在 `StrategyOverviewPage` 中集成 `useAccessControl` 与 `describeStrategyObservation`；
+     - 赋予各策略卡片访问状态徽章（Changed / Retained / Attention / Access required / Pending），并使用语义化配色方案；
+     - 显示最新观测交易日（在被授权可见时），保持策略名称精确匹配（100% 兼容 Playwright `exact: true` 断言）；
+     - 卡片底部强化 `Inspect evidence` CTA，点击直达详情，支持 <=2 次点击审查证据并返回。
+  3. **每日简报优先级与行动闭环 (H1.3)**:
+     - 严格维持最多 3 个高优先级观察条目；
+     - 每个优先级条目新增专用 `Inspect evidence` 单击直达 CTA，并标明 `Review: Action required` 或 `Review: Scheduled cadence`；
+     - 侧边引导栏清晰提供横向对比 (`/strategies`)、数据源健康 (`/system`) 与投研实验室 (`/research`) 深度导航。
+  4. **全量端到端测试与质量门禁 (H1.4)**:
+     - ESLint 0 警告 0 报错；`tsc --noEmit` 0 报错；306 项 Vitest 单元测试全部通过；
+     - Vite 生产打包通过；
+     - Playwright E2E 完整套件（Desktop 1440px, Tablet 768px, Mobile 375px）**123/123 测试 100% 通过**。
+
+
+
+## 阶段验收与复盘记录 (Review: Phase 17 / H0 稳定化成果)
 - **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
 - **提交 SHA**: `fa606547cd`
 - **核心成果**:
