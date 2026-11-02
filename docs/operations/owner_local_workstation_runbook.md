@@ -141,7 +141,7 @@ uv run --frozen python scripts/release_gate.py --run-quality-gates --evidence-di
 | **A1 连续运行** | **BLOCKED** | 各市场 12/20 个已观察会话，0 个独立合格；等待自然交易日累积与干预审计 |
 | **A2 数据完整性** | **OPS_PASS** | 四策略日常运行输入与复权对账全绿通过；US87/CN130 训练宽表维持范围隔离阻断 |
 | **A3 用户路径** | **BASELINE_PASS** | 8 条基础交互路径在桌面与移动端 375px 全绿；未授权/受限旅程无测试账号记为 NOT_TESTED |
-| **A4 隐私与安全** | **CONDITIONAL_FAIL** | 主动四大泄露面已止血；`cn_x` 退役迁移就绪；历史 Git 披露作为已知残留风险待 Owner 签批 |
+| **A4 隐私与安全** | **FAIL** | 主动四大泄露面已止血；生产观测 4 策略均为 public；服务端发布强校验通过；`cn_x` 迁移待 Owner 执行；历史 Git 披露作为已知残留风险待 Owner 签批 |
 | **A5 本地研究** | **BOUNDED_PASS** | CN27 精确重放 (容差 $\le 10^{-6}$)，QQQ 真实记录缺源阻断；有界回放口径待 Owner 独立确认 |
 | **A6 发布恢复** | **REHEARSAL_PASS** | 篡改证据强制拦截，离线恢复验证通过；生产发布/回滚专属边界明确归属 Owner |
 | **A7 owner 决策** | **PENDING_OWNER** | **Agent 综合建议维持：NO-GO**。等待 A1 交易日累积完成与 Owner 最终裁决 |

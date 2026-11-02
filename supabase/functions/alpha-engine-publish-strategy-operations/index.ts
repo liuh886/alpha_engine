@@ -65,6 +65,15 @@ async function fingerprint(record: Record<string, unknown>): Promise<string> {
   return Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
+const AUTHORIZED_ACTIVE_STRATEGIES: Record<string, string> = {
+  byd: "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+  cn_27: "cn_27_v1_3",
+  qqq_rotation: "qqqi_qqq_tqqq_v4_3",
+  us_x: "us_x1_3",
+};
+
+const RETIRED_ALLOWLIST_STRATEGY_IDS: readonly string[] = ["cn_x"];
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
@@ -75,6 +84,11 @@ Deno.serve(async (req: Request) => {
     if (document.research_only !== true || document.trade_ready !== false) throw new Error("invalid research/trade boundary");
     if (!Array.isArray(document.records) || document.records.length === 0) throw new Error("strategy operations records are required");
 
+    const expectedCount = Object.keys(AUTHORIZED_ACTIVE_STRATEGIES).length;
+    if (document.records.length !== expectedCount) {
+      throw new Error(`exact ${expectedCount} active strategy records required; received ${document.records.length}`);
+    }
+
     const strategyIds = new Set<string>();
     const modelVersionIds = new Set<string>();
     const rows = [];
@@ -83,6 +97,15 @@ Deno.serve(async (req: Request) => {
       const record = raw as Record<string, unknown>;
       assertString(record.strategy_id, "strategy_id");
       assertString(record.model_version_id, "model_version_id");
+
+      const expectedModel = AUTHORIZED_ACTIVE_STRATEGIES[record.strategy_id];
+      if (!expectedModel) {
+        throw new Error(`unauthorized strategy_id: ${record.strategy_id}`);
+      }
+      if (record.model_version_id !== expectedModel) {
+        throw new Error(`model_version_id mismatch for ${record.strategy_id}: expected ${expectedModel}, received ${record.model_version_id}`);
+      }
+
       if (strategyIds.has(record.strategy_id)) throw new Error(`duplicate strategy_id: ${record.strategy_id}`);
       if (modelVersionIds.has(record.model_version_id)) throw new Error(`duplicate model_version_id: ${record.model_version_id}`);
       strategyIds.add(record.strategy_id);
@@ -94,6 +117,12 @@ Deno.serve(async (req: Request) => {
         snapshot: { ...record, research_only: true, trade_ready: false },
         updated_at: new Date().toISOString(),
       });
+    }
+
+    for (const expectedId of Object.keys(AUTHORIZED_ACTIVE_STRATEGIES)) {
+      if (!strategyIds.has(expectedId)) {
+        throw new Error(`missing authorized active strategy: ${expectedId}`);
+      }
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -119,11 +148,13 @@ Deno.serve(async (req: Request) => {
       .upsert(rows, { onConflict: "strategy_id" });
     if (upsertError) throw upsertError;
 
-    const { error: pruneError } = await admin
-      .from("strategy_operation_snapshots")
-      .delete()
-      .not("strategy_id", "in", `(${[...strategyIds].join(",")})`);
-    if (pruneError) throw pruneError;
+    if (RETIRED_ALLOWLIST_STRATEGY_IDS.length > 0) {
+      const { error: pruneError } = await admin
+        .from("strategy_operation_snapshots")
+        .delete()
+        .in("strategy_id", [...RETIRED_ALLOWLIST_STRATEGY_IDS]);
+      if (pruneError) throw pruneError;
+    }
 
     return json({
       status: "published",

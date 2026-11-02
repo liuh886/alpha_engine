@@ -3,8 +3,8 @@ import {
   evidenceAvailabilityLabel,
   formatCanonicalMetric,
   formatDeclaredValue,
+  formatRefValue,
 } from './evidence-availability';
-import { formatRefValue } from '../pages/StrategyDetailPage';
 import type { CanonicalMetricV2 } from './model-run-bundle-v2';
 
 function metric(overrides: Partial<CanonicalMetricV2>): CanonicalMetricV2 {

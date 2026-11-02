@@ -14,6 +14,7 @@ import { latestPerformanceObservation } from '@/lib/performancePeriods';
 import type { ReportRow } from '@/lib/types';
 import { STRATEGY_STATUS_LABEL, summarizeStrategySignal } from '@/lib/strategy-operations';
 import type { StrategyFactorEvidence } from '@/lib/strategy-operations';
+import { formatRefValue } from '@/lib/evidence-availability';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 
 const ACCESS_TIER_LABEL: Record<AccessTier, string> = {
@@ -52,18 +53,6 @@ function modelContributions(factor: StrategyFactorEvidence): ModelContribution[]
     if (typeof row.instrument !== 'string' || typeof row.decision_role !== 'string' || typeof row.contribution !== 'number' || !Number.isFinite(row.contribution)) return [];
     return [{ instrument: row.instrument, decisionRole: row.decision_role, contribution: row.contribution }];
   });
-}
-
-export function formatRefValue(item: unknown): string {
-  if (typeof item === 'number') {
-    if (!Number.isFinite(item)) return String(item);
-    if (Number.isInteger(item)) return String(item);
-    if (item !== 0 && Math.abs(item) < 0.0001) {
-      return Number(item.toPrecision(4)).toString();
-    }
-    return Number(item.toFixed(4)).toString();
-  }
-  return String(item);
 }
 
 function factorReference(factor: StrategyFactorEvidence): string | null {

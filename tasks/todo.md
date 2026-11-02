@@ -924,11 +924,12 @@
 - [x] **15.1.2 验证真实授权、拒绝和撤权行为 (不虚构测试账户、不改变生产权限)**:
   - [x] 梳理前端 `useAccessControl`、`useStrategyOperations` 与后端 RLS SQL 策略的访问控制契约；
   - [x] 明确区分代码可实证部分与线上真实会话缺失（真实受限会话维持客观记录 `NOT_TESTED`，绝不伪造通过）。
-- [x] **15.1.3 清理经批准退役的 CN x1.2 运行行**:
-  - [x] 编写 Supabase 数据库迁移脚本 `supabase/migrations/20261102000000_retire_cn_x_strategy_operations.sql`，清理 `cn_x` 运行快照和策略；
-  - [x] 在 `supabase/functions/alpha-engine-publish-strategy-operations/index.ts` 增加发布时自动修剪非活跃策略行逻辑；
+- [x] **15.1.3 清理经批准退役的 CN x1.2 运行行与发布防御性强校验**:
+  - [x] 编写 Supabase 数据库迁移脚本 `supabase/migrations/20261102000000_retire_cn_x_strategy_operations.sql`，清理 `cn_x` 运行快照和策略（待 Owner 执行）；
+  - [x] 在 `supabase/functions/alpha-engine-publish-strategy-operations/index.ts` 引入前置白名单强校验（严格 4 策略与不可变版本，拒绝残缺/多余/不匹配）与退役白名单专向修剪（杜绝误删活跃策略）；
+  - [x] 编写 `tests/test_strategy_operations_publish_guard.py` 验证 5 项发布安全不变式；
   - [x] 清理 `src/artifacts/strategy_operations.py:698` 中对退役 `cn_x1_2` 的残留判断分支；
-  - [x] 运行单测验证全量策略运行测试通过（29 项测试全绿）。
+  - [x] 运行单测验证全量策略运行测试通过（36 项测试全绿）；
   - [x] 交付 `docs/evidence/product_v1/a4_permission_resolution_2026-11-02.md`。
 
 ### 15.2 第二条工作线：持续收集与独立复核 A1
@@ -957,12 +958,12 @@
 - **执行总结**:
   1. **两个小问题修复**:
      - `docs/product/next_stage_execution_plan.md` §11.2 表格状态已与 §0/§12 统一，消除陈旧“待执行”冲突；
-     - `StrategyDetailPage.tsx` 的 `formatRefValue` 完成极小非零数（$< 0.0001$）采用 4 位有效精度转换，302 项 Vitest 单元测试全绿。
+     - `formatRefValue` 完成极小非零数（$< 0.0001$）采用 4 位有效精度转换，并解耦为纯数学工具函数移入 `evidence-availability.ts`，消除前端单测对 Page 组件的不必要依赖；306 项 Vitest 单元测试全绿。
   2. **第一条工作线 (A4/A3 真实权限缺口)**:
-     - 明确四策略在公开层（Pages 静态脱敏历史证据均为 public）与运行时快照层（byd/cn_27/us_x 为 public，qqq_rotation 为 pro）的确切策略；
-     - 坚持不为验收在生产中伪造测试账户或篡改权限，未验证真实会话客观记录为 NOT_TESTED，维持 Fail-closed 铁律；
-     - 完成 `cn_x1_2` 运行时退役全链路收口：编写 SQL 迁移脚本、Edge Function 自动修剪、代码死分支清除与 29 项测试通过；
-     - 交付 `docs/evidence/product_v1/a4_permission_resolution_2026-11-02.md`。
+     - 权威对账明确：四策略在公开层（Pages 静态脱敏历史证据）与真实生产运行时快照层（`accountless_access_observation_2026-10-31.json` 实测）中，四大活跃策略当前均为 `public`；历史迁移 `20260812022634` 曾声明 `qqq_rotation: pro`，但未在生产生效，在此彻底澄清对齐；
+     - 坚持不为验收在生产中伪造测试账户或篡改权限，未验证真实会话客观记录为 NOT_TESTED，生产策略全 public 导致受保护行线上拒绝无法验证，客观标定 NOT_TESTED，Gate A4 严格维持 **FAIL**；
+     - 完成 Edge Function 服务端防御性校验升级：引入前置白名单强校验（严格 4 策略与不可变版本，拒绝残缺/多余/不匹配）与退役白名单专向修剪（杜绝误删活跃策略），补齐 5 项负面单测；
+     - 交付 `cn_x` 数据库迁移脚本（待 Owner 生产执行）、清理代码死分支并交付更新后的 `docs/evidence/product_v1/a4_permission_resolution_2026-11-02.md`。
   3. **第二条工作线 (A1 真实运行持续收集与对账)**:
      - 基于私有重审收据对账：US/CN 保持 12/20 会话被观测、6 个匹配当前身份、0 个独立合格；
      - 完整保留 Run 40321512230 事故与 2 个选择器阻断历史事实，不以旧绿顶替；
@@ -970,7 +971,7 @@
      - 交付 `docs/evidence/product_v1/a1_operating_reconciliation_2026-11-02.md`。
   4. **第三条工作线 (Direction A v1 官方 Release Candidate 清单)**:
      - 交付官方 Release Candidate 清单：`release_candidate_v1_manifest.json` 与 `release_candidate_v1_manifest.md`；
-     - 严格绑定 Git SHA、Pages SHA、4 大正式模型 Bundle ID、私有数据版本（493KB / 405 captures）；
+     - 严格区分候选源码分支、当前线上部署 Git SHA、Pages SHA、4 大正式模型 Bundle ID、私有数据版本（493KB / 405 captures）；
      - 界定 A5 为有界重放验收口径（$\le 10^{-6}$），在 `owner_local_workstation_runbook.md` 中划定三项 Owner 专属生产操作边界；
      - 全量 A0–A7 状态矩阵清晰呈现，Agent 综合建议维持客观公正的 **NO-GO**。
 

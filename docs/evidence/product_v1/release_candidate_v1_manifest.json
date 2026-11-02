@@ -4,8 +4,12 @@
   "created_at_utc": "2026-11-02T03:00:00Z",
   "research_only": true,
   "trade_ready": false,
-  "deployed_git_sha": "4202741d81ba663f551e231e1133e98b061451d4",
-  "deployed_pages_sha": "f97d8b55077d85ea7aa559f2146f4817a3a92543",
+  "identity_provenance": {
+    "candidate_source_ref": "refs/heads/feat/v1-rc-permission-closure",
+    "currently_deployed_git_sha": "4202741d81ba663f551e231e1133e98b061451d4",
+    "deployed_pages_sha": "f97d8b55077d85ea7aa559f2146f4817a3a92543",
+    "note": "Candidate source contains proposed Edge Function validation, UI formatting cleanup, and migration; deployed SHA represents currently live environment."
+  },
   "pages_release_receipt": {
     "status": "verified",
     "verified_commit": "f97d8b55077d85ea7aa559f2146f4817a3a92543",
@@ -98,10 +102,14 @@
       "restricted_journeys": "NOT_TESTED (No dedicated non-production test accounts configured; zero fake test account policy)"
     },
     "A4_security_and_privacy": {
-      "status": "CONDITIONAL_FAIL_PENDING_OWNER_RISK_ACCEPTANCE",
+      "status": "FAIL",
       "leakage_stoppage": "PASS (Public Git, Pages, Actions Artifacts, and Write Pipelines completely decoupled and verified)",
-      "runtime_cn_x_decommission": "PASS (SQL migration 20261102000000 and auto-pruning edge function implemented)",
+      "observed_production_tiers": "All 4 active strategies observed as public in accountless_access_observation_2026-10-31.json",
+      "source_sql_discrepancy_resolved": "Historical migration 20260812022634 had declared pro for QQQ, but production deployed configuration is public",
+      "publisher_safety_guard": "PASS (Server-side validation enforces exact 4 models before any DB mutations; prune strictly restricted to allowlist cn_x)",
+      "runtime_cn_x_decommission": "PENDING_OWNER_EXECUTION (SQL migration 20261102000000 written, pending execution on production DB)",
       "token_expiration_revocation": "NOT_TESTED (No dedicated non-production test accounts; zero fake test account policy)",
+      "protected_row_rejection": "NOT_TESTED (No non-public strategy policy in observed production configuration)",
       "historical_git_disclosure": "KNOWN_RESIDUAL_RISK (Documented in security audit §1, pending Owner formal sign-off)"
     },
     "A5_research_replay": {

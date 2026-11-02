@@ -41,3 +41,15 @@ export function formatCanonicalMetric(metric: CanonicalMetricV2 | null): string 
   if (metric.unit === 'count') return metric.value.toLocaleString();
   return metric.value.toFixed(3);
 }
+
+export function formatRefValue(item: unknown): string {
+  if (typeof item === 'number') {
+    if (!Number.isFinite(item)) return String(item);
+    if (Number.isInteger(item)) return String(item);
+    if (item !== 0 && Math.abs(item) < 0.0001) {
+      return Number(item.toPrecision(4)).toString();
+    }
+    return Number(item.toFixed(4)).toString();
+  }
+  return String(item);
+}
