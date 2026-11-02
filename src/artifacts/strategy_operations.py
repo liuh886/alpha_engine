@@ -695,7 +695,7 @@ def _ranker(
     factor_freshness, factors, factor_error = _factor_snapshot(signal, latest_data_date=latest)
     family = strategy.model_family_id
     diagnostics = _mapping(signal.get("diagnostics"))
-    risk_on = diagnostics.get("risk_on_eligible") if strategy.model_version_id == "cn_x1_2" else diagnostics.get("risk_on")
+    risk_on = diagnostics.get("risk_on")
     if family == US_RANKER_FAMILY:
         state_label = "US Top-15 rebalance"
     elif risk_on is False:

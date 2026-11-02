@@ -1,9 +1,11 @@
 # 单人本地工作站运行与恢复手册
 
-方向 A / #1281，2026-10-25。当前已观察部署为
-`58a56c14c18197f700ab00b526513a571aff35be`，不是已批准的 v1 候选。
-详细 [A0–A7 回执](../evidence/product_v1/w4_release_review_2026-10-25.json)
-给出的 Agent 建议为 **NO-GO**；A7 仍由 owner 决定。
+方向 A / #1281，最新更新 2026-11-02。当前已部署验证为 Pages
+`f97d8b55077d85ea7aa559f2146f4817a3a92543`，主线 commit
+`4202741d81ba663f551e231e1133e98b061451d4`。官方候选清单见
+[`release_candidate_v1_manifest.json`](../evidence/product_v1/release_candidate_v1_manifest.json)。
+详细 [A0–A7 状态矩阵](#8-当前放行结论) 给出的 Agent 建议维持 **NO-GO**；
+A7 最终放行决策仍由 owner 决定。
 
 ## 1. 从当前权威开始
 
@@ -125,17 +127,23 @@ uv run --frozen python scripts/release_gate.py --run-quality-gates --evidence-di
 本轮没有执行生产 dispatch、发布或回滚。只恢复获审查的产品产物；不回退或
 重写不可变研究包、决策/投递账本，不删有效保留状态，不新增数据库或调度器。
 
-## 8. 当前放行结论
+### 7.1 Owner 专属审批与执行边界 (Owner-Only Operations)
+以下高风险关键生产操作**严禁自动化 Agent 自行执行，必须由 Owner 独立批准或在本机执行**：
+1. **Pages 生产发布与域名切换**: 必须由 Owner 本人执行 `scripts/verify_pages_release.py` 并触发正式部署流水线。
+2. **生产环境物理回滚**: 必须由 Owner 亲自审查回滚目标 SHA，确认目标版本不会重新引入已修复的敏感信息泄露 (#1288)。
+3. **生产数据库权限与结构迁移**: 针对 `supabase/migrations/20261102000000_retire_cn_x_strategy_operations.sql`（清理 `cn_x` 运行快照与策略），必须由 Owner 在 Supabase 生产控制台或通过安全凭据应用迁移。
 
-| Gate | 本轮状态 | 尚缺事项 |
+## 8. 当前放行结论 (2026-11-02 状态矩阵)
+
+| Gate | 本轮状态 | 现状依据与尚缺事项 |
 | --- | --- | --- |
-| A0 身份权威 | PASS | 文档 PR 仍需审阅，四策略身份已核验 |
-| A1 连续运行 | BLOCKED | 各市场 20 个真实独立合格会话、due/recovery、人工计数 |
-| A2 数据完整性 | BLOCKED | 活跃合同所需来源/PIT 完整独立验收 |
-| A3 用户路径 | BLOCKED | 八条普通路径通过；逐策略真实异常/权限场景不全 |
-| A4 隐私 | FAIL | #1288；真实账号撤销/到期；owner 确认现行策略政策 |
-| A5 本地研究 | BLOCKED | CN/QQQ 声明范围重放通过；#1293 合并与 owner 验收待完成 |
-| A6 发布恢复 | BLOCKED | 获批候选、完整质量回执、隐私合格回滚目标及 runtime 恢复 |
-| A7 owner 决策 | NOT_TESTED | owner 尚未签署；Agent 仅建议 NO-GO |
+| **A0 身份权威** | **PASS** | 单一 ResearchAssistant 运行；四策略合同与 ADR-0003 唯一权威锁死 |
+| **A1 连续运行** | **BLOCKED** | 各市场 12/20 个已观察会话，0 个独立合格；等待自然交易日累积与干预审计 |
+| **A2 数据完整性** | **OPS_PASS** | 四策略日常运行输入与复权对账全绿通过；US87/CN130 训练宽表维持范围隔离阻断 |
+| **A3 用户路径** | **BASELINE_PASS** | 8 条基础交互路径在桌面与移动端 375px 全绿；未授权/受限旅程无测试账号记为 NOT_TESTED |
+| **A4 隐私与安全** | **FAIL** | 主动四大泄露面已止血；生产观测 4 策略均为 public；服务端发布强校验通过；`cn_x` 迁移待 Owner 执行；历史 Git 披露作为已知残留风险待 Owner 签批 |
+| **A5 本地研究** | **BOUNDED_PASS** | CN27 精确重放 (容差 $\le 10^{-6}$)，QQQ 真实记录缺源阻断；有界回放口径待 Owner 独立确认 |
+| **A6 发布恢复** | **REHEARSAL_PASS** | 篡改证据强制拦截，离线恢复验证通过；生产发布/回滚专属边界明确归属 Owner |
+| **A7 owner 决策** | **PENDING_OWNER** | **Agent 综合建议维持：NO-GO**。等待 A1 交易日累积完成与 Owner 最终裁决 |
 
 RDI 独立研究不阻塞本轮；正 alpha、绿色测试或历史收益都不能代替上述验收。

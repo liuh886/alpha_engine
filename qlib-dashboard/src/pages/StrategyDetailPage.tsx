@@ -14,6 +14,7 @@ import { latestPerformanceObservation } from '@/lib/performancePeriods';
 import type { ReportRow } from '@/lib/types';
 import { STRATEGY_STATUS_LABEL, summarizeStrategySignal } from '@/lib/strategy-operations';
 import type { StrategyFactorEvidence } from '@/lib/strategy-operations';
+import { formatRefValue } from '@/lib/evidence-availability';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 
 const ACCESS_TIER_LABEL: Record<AccessTier, string> = {
@@ -54,13 +55,6 @@ function modelContributions(factor: StrategyFactorEvidence): ModelContribution[]
   });
 }
 
-function formatRefValue(item: unknown): string {
-  if (typeof item === 'number') {
-    return Number.isInteger(item) ? String(item) : Number(item.toFixed(4)).toString();
-  }
-  return String(item);
-}
-
 function factorReference(factor: StrategyFactorEvidence): string | null {
   const value = factor.reference;
   if (value === null || value === undefined) return null;
@@ -82,7 +76,7 @@ function contributionSummary(factor: StrategyFactorEvidence): string | null {
   const strongest = [...rows]
     .sort((left, right) => Math.abs(right.contribution) - Math.abs(left.contribution) || left.instrument.localeCompare(right.instrument))
     .slice(0, 3)
-    .map((row) => `${row.instrument} ${row.contribution >= 0 ? '+' : ''}${row.contribution.toFixed(4)}`)
+    .map((row) => `${row.instrument} ${row.contribution >= 0 ? '+' : ''}${formatRefValue(row.contribution)}`)
     .join(' · ');
   const role = rows.some((row) => row.decisionRole === 'ranker_reference_vetoed_by_regime') ? 'ranker reference · regime vetoed' : 'selected holdings';
   return `XGBoost pred_contribs · ${role} · ${strongest}`;
