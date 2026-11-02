@@ -2,6 +2,16 @@
 
 **当前裁决：产品 NO-GO；RDI 价格层已交付，完整 RDI 未验证。** 最新核对基线为 `main@65622788d9`，2026-11-01；2026-10-29 的原路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
 
+## 2026-11-02 前端架构方向与独立交付
+
+Owner 选择 **A / Decision-first** 作为 Alpha Engine 默认设计。
+[PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) 已提出
+Today / Strategies / Research Lab / System 的代码骨架，以及
+[架构实现与本地 Agent 接手清单](frontend_reference_first_architecture_handoff_2026-11-02.md)。
+该 PR 仍处于设计与实现验收阶段，**不批准主干部署，不替代 A0–A7，
+不开放研究私有数据，更不批准交易执行**。
+原有产品上线程序继续推进，与这次 UI 框架改造并行。
+
 ## 0. 产品与功能上线路线图（2026-10-31 当前执行入口）
 
 ### 0.1 三个交付层级，分别验收

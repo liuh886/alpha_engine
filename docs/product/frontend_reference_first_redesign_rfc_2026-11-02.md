@@ -1,7 +1,7 @@
 # Alpha Engine 前端重设计：Reference-first 产品体验与交互架构 RFC
 
 **提出日期：2026-11-02**  
-**状态：PROPOSAL / OWNER DESIGN REVIEW / docs only**  
+**状态：D1 APPROVED（2026-11-02）；本 PR 已开始代码架构落地，其他设计细节和验收未完成。**  
 **范围：Alpha Engine Strategy Console + local Racetrack 的信息架构、交互模型、组件复用、TradingView 图表迁移评估。**  
 **权限边界：不得因本 RFC 修改研究事实、受保护信号公开范围、交易执行权限或既有数据权威。**
 

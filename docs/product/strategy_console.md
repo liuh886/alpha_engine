@@ -2,6 +2,14 @@
 
 Status: active focused-core product contract, effective 2026-10-21 by user direction.
 
+2026-11-02 Owner decision: **A / Decision-first** as the new homepage direction.
+Draft PR #1357 implements a proposed Today / Strategies / Research Lab / System
+front-end navigation and reuses existing read-only data flows. The earlier
+two-destination navigation notes below are historical when this PR merges;
+until actual route UAT + merge they still describe production. Source,
+permission, model registration, data cutoffs and release gates are unchanged.
+See frontend_reference_first_architecture_handoff_2026-11-02.md.
+
 2026-10-24 user direction: retire CN x1.2 from the active registry, publication
 catalogs and scheduled evaluation adapters. The maintained fleet now has four
 strategies. Frozen contracts, historical bundles and failure evidence remain

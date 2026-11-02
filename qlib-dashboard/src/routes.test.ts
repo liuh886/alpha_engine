@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { groupRoutes, isRuntimeVisible, routes } from './routes';
-describe('focused daily console routes', () => {
-  it('keeps the daily view, strategy drill-down and operating status', () => {
-    expect(routes.map(route => route.path)).toEqual(['app', 'strategies/:strategyId', 'securities/:market/:symbol', 'system']);
+describe('Decision-first workspace routes', () => {
+  it('preserves strategy and instrument deep links while separating independent research', () => {
+    expect(routes.map(route => route.path)).toEqual([
+      'app', 'strategies', 'strategies/:strategyId', 'securities/:market/:symbol', 'research', 'system',
+    ]);
     expect(new Set(routes.map(route => route.path)).size).toBe(routes.length);
     for (const route of routes) expect(route.title && route.label && route.icon && route.component).toBeTruthy();
   });
-  it('exposes only the two primary destinations', () => {
-    expect(routes.filter(isRuntimeVisible).map(route => route.path)).toEqual(['app', 'system']);
-    expect([...groupRoutes().values()].flat()).toEqual(routes.filter(isRuntimeVisible));
+  it('groups research jobs and system operations separately', () => {
+    expect(routes.filter(isRuntimeVisible).map(route => route.path)).toEqual(['app', 'strategies', 'research', 'system']);
+    const groups = groupRoutes();
+    expect(groups.get('Workspace')?.map(route => route.path)).toEqual(['app', 'strategies', 'research']);
+    expect(groups.get('Operations')?.map(route => route.path)).toEqual(['system']);
+    expect([...groups.values()].flat()).toEqual(routes.filter(isRuntimeVisible));
   });
 });

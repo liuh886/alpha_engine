@@ -63,7 +63,7 @@ export function MobileNavigation() {
                 <span className="research-brand-mark"><Orbit className="h-4 w-4" /></span>
                 <span>
                   <span className="block text-sm font-bold">Alpha Engine</span>
-                  <span className="block text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Strategy Console</span>
+                  <span className="block text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Research Workspace</span>
                 </span>
               </Link>
               <Button type="button" variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close strategy navigation">

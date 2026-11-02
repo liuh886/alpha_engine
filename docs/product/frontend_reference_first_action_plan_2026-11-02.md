@@ -1,7 +1,7 @@
 # Alpha Engine 前端重设计：落地行动清单与 PR 切分
 
 **日期：2026-11-02**  
-**状态：PROPOSED，尚未获 Owner 设计定案**  
+**状态：D1 已批准：A 决策优先；代码骨架已提交本 PR，D2–D6 仍需在实际用户验收中定案。**  
 **对应设计 RFC**：[frontend_reference_first_redesign_rfc_2026-11-02.md](frontend_reference_first_redesign_rfc_2026-11-02.md)
 
 > 本清单可直接交给 Agent 按序执行，但“建议实施”不等于已经授权修改生产代码。第一步是完成真实视觉/交互取证与 Owner 对齐；不要在没有选择的情况下擅自重写导航。执行采用 feature-first、少量可验收 PR、定点测试优先，避免为修 UI 建造新数据层。

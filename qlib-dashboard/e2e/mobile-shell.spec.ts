@@ -12,19 +12,19 @@ async function isHandset(page: Page): Promise<boolean> {
   return (viewport?.width ?? 1280) < 768;
 }
 
-test('mobile tab bar is visible only on handsets with two reachable tabs', async ({ page }) => {
+test('mobile tab bar is visible only on handsets with four reachable tabs', async ({ page }) => {
   await openOverview(page);
   const tabbar = page.getByRole('navigation', { name: 'Primary' });
   if (await isHandset(page)) {
     await expect(tabbar).toBeVisible();
     const tabs = tabbar.getByRole('tab');
-    await expect(tabs).toHaveCount(2);
+    await expect(tabs).toHaveCount(4);
     await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
     for (const tab of await tabs.all()) {
       const box = await tab.boundingBox();
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
     }
-    await tabs.nth(1).click();
+    await tabs.nth(3).click();
     await expect(page).toHaveURL(/#\/system/);
   } else {
     await expect(tabbar).toBeHidden();
