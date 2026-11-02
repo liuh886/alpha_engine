@@ -5,14 +5,14 @@
   "research_only": true,
   "trade_ready": false,
   "identity_provenance": {
-    "candidate_source_ref": "refs/heads/feat/v1-rc-permission-closure",
-    "currently_deployed_git_sha": "4202741d81ba663f551e231e1133e98b061451d4",
-    "deployed_pages_sha": "f97d8b55077d85ea7aa559f2146f4817a3a92543",
-    "note": "Candidate source contains proposed Edge Function validation, UI formatting cleanup, and migration; deployed SHA represents currently live environment."
+    "candidate_source_ref": "refs/heads/main (merged #1356)",
+    "currently_deployed_git_sha": "724fe0f6569724a2dbe9568d1b2311da5d9567bf",
+    "deployed_pages_sha": "724fe0f6569724a2dbe9568d1b2311da5d9567bf",
+    "note": "Candidate source merged via PR #1356 into main; live Pages deployment and Backend CI verified at commit 724fe0f656."
   },
   "pages_release_receipt": {
     "status": "verified",
-    "verified_commit": "f97d8b55077d85ea7aa559f2146f4817a3a92543",
+    "verified_commit": "724fe0f6569724a2dbe9568d1b2311da5d9567bf",
     "formal_sections_verified": 36,
     "active_models_verified": 4,
     "operational_leakage_count": 0,

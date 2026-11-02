@@ -2,10 +2,10 @@
 
 - **候选发布标识**: `rc_direction_a_v1_20261102`
 - **生成日期**: 2026-11-02
-- **候选源码分支**: `refs/heads/feat/v1-rc-permission-closure`
-- **当前已部署 Git SHA**: `4202741d81ba663f551e231e1133e98b061451d4` (`main`)
-- **当前已部署 Pages SHA**: `f97d8b55077d85ea7aa559f2146f4817a3a92543`
-- **说明**: 候选源码包含 PR 提出的 Edge Function 服务端防御性校验、UI 格式化解耦与数据库清理迁移；已部署 SHA 代表当前线上生产实际运行基线。
+- **候选源码基准**: `main @ 724fe0f6569724a2dbe9568d1b2311da5d9567bf` (合并 PR #1356)
+- **当前已部署 Git SHA**: `724fe0f6569724a2dbe9568d1b2311da5d9567bf` (`main`)
+- **当前已部署 Pages SHA**: `724fe0f6569724a2dbe9568d1b2311da5d9567bf`
+- **说明**: PR #1356 已成功合并入主线，包含 Edge Function 服务端防御性校验、UI 格式化解耦与数据库清理迁移脚本；Pages 自动构建部署及 Backend CI 已完成通过。
 - **治理约束**: `research_only=true` / `trade_ready=false`，不可变数据与证据，Fail-closed。
 
 ---
@@ -23,9 +23,9 @@
 | **`us_x`** | `us_x1_3` | `us_ranker` | US | `f69bac180f...` | `5096420032...` |
 
 ### 1.2 生产 Pages 部署验证收据
-- **已验证 Commit**: `f97d8b55077d85ea7aa559f2146f4817a3a92543`
+- **已部署并验证 Commit**: `724fe0f6569724a2dbe9568d1b2311da5d9567bf`
 - **核验项目**: 36 个正式分节核验通过，4 大活跃模型全部匹配，敏感 `operating_state` 与目标仓位泄露计数为 **0**。
-- **验证命令**: `python scripts/verify_pages_release.py --base-url https://liuh886.github.io/alpha_engine/ --expected-commit f97d8b55077d85ea7aa559f2146f4817a3a92543` $\to$ **`status: verified`**。
+- **验证命令**: `python scripts/verify_pages_release.py --base-url https://liuh886.github.io/alpha_engine/ --expected-commit 724fe0f6569724a2dbe9568d1b2311da5d9567bf` $\to$ **`status: verified`**。
 
 ### 1.3 私有数据与运行账本版本
 - **私有归档提交版本**: `a1efd513c06fe95eeb9a291cc6771399ce863025`

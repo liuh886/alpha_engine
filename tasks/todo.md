@@ -976,24 +976,57 @@
      - 全量 A0–A7 状态矩阵清晰呈现，Agent 综合建议维持客观公正的 **NO-GO**。
 
 
-- **交付日期**: 2026-11-01
-- **集成基准**: `main` @ `579de93572`
-- **全阶段执行总结**:
-  1. **Phase 1 (收口 #1351 与 #1350)**:
-     - PR #1351：归档 CN27 与 QQQ 当前环境有界重放证据，修复并新增 Windows junction 路径解析回归用例，顺利合入主线；
-     - PR #1350：修复 Evidence Review 长浮点数截断，对齐 E2E 浏览器断言，302 项单元测试 + 117 项 Playwright 静态端到端全绿，GitHub Actions 远程 CI 全绿合入主线。顺序合并完好保留了 H1/H2 历史任务记录。
-  2. **Phase 2 (Gate A2 数据可信性与依赖核查 - #324 / #325)**:
-     - 派遣 Data Plane Auditor Subagent 深入四策略模型契约与数据源，证实四策略日常运行依赖与 US87/CN130 Alpha158 训练宽表在物理与逻辑上完全解耦；
-     - 完成 Alpaca API（SIP 可用，OTC ADR 受限）与 SEC EDGAR（0.12s 频控合规回退）预检；
-     - 运行 56 项 Gate A2 契约与负面测试（100% 通过），创建并合并 PR #1352，归档证据至 `a2_data_integrity_audit_2026-11-01.json/.md`。
-  3. **Phase 3 (Gate A4 安全与权限验收 - #1279 / #1288)**:
-     - 审计确认活跃泄露在四大表面（公开 Git, Pages, Actions Artifacts, 写入流水线）已彻底切断止血；
-     - 运行 82 项安全边界与私有账本测试（100% 通过）；
-     - 客观记录真实拒绝会话因缺少独立非生产账号保持 NOT_TESTED，历史披露记录为残留风险，退役 `cn_x1_2` 运行行待清理；Gate A4 严格维持 **FAIL**，创建并合并 PR #1353。
-  4. **Phase 4 (Gate A6 发布与恢复演练 - #1281)**:
-     - 验证发布验证器 `pages_release_verification.py` 三大守卫机制（防篡改、防降级、防泄露）；
-     - 演练静态控制台版本切回与私有账本 CAS 确定性回滚；
-     - 运行 46 项发布门禁测试（100% 通过），创建并合并 PR #1354，标定为 `REHEARSAL_VERIFIED / PENDING_OWNER_EXECUTION`。
-  5. **终审裁决 (Gate A7)**:
-     - **产品当前综合裁决维持：NO-GO**。
-     - 严格恪守 Fail-closed 铁律，不向 Owner 隐瞒真实差距，待 A1 真实交易日累积与 Owner 最终决策。
+---
+
+## Phase 16: 三条执行线推进实施与上线准备移交 (Execution Lines 1-3 Transition)
+
+### 16.1 第一条执行线：合并 PR #1356 与生产退役清理对接
+- [x] **16.1.1 审查 PR #1356 最终状态与全绿 CI**:
+  - [x] 验证 6/6 项 Checks 100% 通过（`backend` 2m54s, `build-static-pwa` 5m41s, `contract`, `contract-tests`, `project-and-verify`, `GitGuardian`）；
+  - [x] 确认无文件冲突，状态为 `MERGEABLE`。
+- [x] **16.1.2 执行 PR #1356 合并与分支收割**:
+  - [x] 使用 `--merge` 将 PR #1356 完整合入 `main` (`724fe0f6569724a2dbe9568d1b2311da5d9567bf`)；
+  - [x] 远程分支 `feat/v1-rc-permission-closure` 自动清理删除；
+  - [x] 同步本地 `main`，确认工作树完全干净。
+- [x] **16.1.3 观察部署流水线并完成生产部署对齐**:
+  - [x] `Deploy Strategy Console to Pages` (Run 41420994047) 部署成功（4m8s），生成 `pages-live-browser-evidence`；
+  - [x] `Alpha Engine Backend CI` (Run 41420994035) 验证通过（2m27s）；
+  - [x] `Publish Strategy Operations Runtime` (Run 41420994107 / 41421198713) 成功发布 4 策略快照。
+- [x] **16.1.4 交付 Owner 生产退役清理操作指引**:
+  - [x] 确认幂等迁移脚本 `supabase/migrations/20261102000000_retire_cn_x_strategy_operations.sql` 位于主线；
+  - [x] 提供给 Owner 极简 SQL Editor 执行说明与验证查询。
+
+### 16.2 第二条执行线：持续收集与独立复核 A1 真实运维状态
+- [x] **16.2.1 审查今日 (2026-11-02) 生产运维流水线**:
+  - [x] BYD 前瞻阴影、日间信号输出、策略运行发布流水线均按计划全绿产出；
+  - [x] 维持现有无服务器 Actions 架构，坚决不增设平行调度器或常驻守护进程。
+- [x] **16.2.2 确认 A1 真实观测窗口与客观门禁**:
+  - [x] 维持 12/20 个会话被系统观测，6 个匹配当前模型身份，0 个独立合格；
+  - [x] 坚决杜绝虚构未来交易日或伪造通过，Gate A1 严格维持 **BLOCKED**，等待自然交易日推进。
+
+### 16.3 第三条执行线：严格维持发布期冻结 (Release Freeze) 与隔离边界
+- [x] **16.3.1 锁定四策略 Console v1 功能范围**:
+  - [x] 冻结新页面、新指标或未批准模型的引入，主线代码进入纯稳定期。
+- [x] **16.3.2 保持独立前沿研究分支沙箱隔离**:
+  - [x] 确认 PR #1307 (Bottom Detection RFC) 维持 Draft 隔离状态，不侵占 Console v1 资源；
+  - [x] Racetrack 独立 2 号选手与 RDI 事件模型继续作为 v2 演进方向独立推进。
+
+---
+
+## 阶段验收与复盘 (Review: Phase 16 推进成果)
+
+- **交付日期**: 2026-11-02
+- **集成基准**: `main` @ `724fe0f6569724a2dbe9568d1b2311da5d9567bf`
+- **执行总结**:
+  1. **第一条执行线 (PR #1356 收口与上线部署)**：
+     - PR #1356 成功合并入 `main` (`724fe0f656`)，包含 Edge Function 强校验（4 策略防漏删/防篡改）、8 项原生 TypeScript/Node HTTP 测试、纯数值工具解耦及对齐宣发期四策略公开访问口径；
+     - 主线触发的 `Deploy Strategy Console to Pages` 及 `Alpha Engine Backend CI` 全部全绿通过，线上生产环境已对齐最新代码；
+     - 向 Owner 移交了针对退役 `cn_x` 的极简单行 SQL 清理说明与查询凭据。
+  2. **第二条执行线 (A1 真实运维追踪)**：
+     - 今日（2026-11-02）全部定时运维自动化作业按期成功产出；
+     - 坚持 Fail-closed 与数据真实性，A1 客观维持 12/20 观测中、0 独立声明，Gate A1 保持 **BLOCKED**。
+  3. **第三条执行线 (发布期冻结与隔离)**：
+     - 四策略 Console v1 坚决冻结功能变更，消除全部开放缺陷；
+     - PR #1307 严格保持在独立 Draft 状态；
+     - 建议 Owner 待 A1 真实累积满 20 个交易日后，再做最终 A7 GO 决策。
+
