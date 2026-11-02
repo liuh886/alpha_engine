@@ -16,7 +16,7 @@ test('formal instrument link opens price history with model markers and a retain
   const lcContainer = page.getByTestId('security-lightweight-chart-container');
   await expect(lcContainer).toBeVisible();
   await expect(page.getByText('TradingView Lightweight Charts™', { exact: false }).first()).toBeVisible();
-  await expect(page.getByText('Parity verified:')).toBeVisible();
+  await expect(page.getByText('Shared source:')).toBeVisible();
   await expect(page.getByTestId('security-candle').first()).toBeAttached();
   await expect(page.getByTestId('security-trade-marker').first()).toBeAttached();
   const toggle = page.getByRole('checkbox', { name: /QQQR v4.3/ });
