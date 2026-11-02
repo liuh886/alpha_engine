@@ -11,15 +11,15 @@ architecture PR #1276 does not establish a completed release.
 ## 2026-11-02 frontend Owner decision (PR #1357)
 
 Owner selected **A: Decision-first Investment Research Workspace**.
-PR #1357 now proposes a concrete frontend implementation: Today default,
-Formal Strategies comparison, independent Research Lab (Racetrack + RDI),
-and operations-only System. The older *two primary navigation destinations*
-guideline below records the prior product scope; it is superseded for frontend
-information architecture **if and when PR #1357 is accepted and merged**.
-Until then main remains authoritative. Existing formal strategy evidence,
-current-operations entitlement and localhost-only Racetrack boundaries
-remain unchanged; this proposal does not authorize trade execution,
-RDI forecast release or publication of private research artifacts.
+PR #1357 implements the concrete frontend architecture: Today default (`/app`),
+Formal Strategies comparison (`/strategies`), independent Research Lab (`/research`
+for Racetrack + RDI), and operations-only System (`/system`). The older *two
+primary navigation destinations* guideline below records the prior product scope;
+it is superseded by the four task-based destinations established by PR #1357.
+Existing formal strategy evidence, current-operations entitlement, and
+localhost-only Racetrack boundaries remain unchanged; this architecture does
+not authorize trade execution, RDI forecast release, or publication of
+private research artifacts.
 
 Handoff: [A-first frontend architecture](docs/product/frontend_reference_first_architecture_handoff_2026-11-02.md).
 

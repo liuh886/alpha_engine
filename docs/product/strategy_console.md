@@ -2,12 +2,12 @@
 
 Status: active focused-core product contract, effective 2026-10-21 by user direction.
 
-2026-11-02 Owner decision: **A / Decision-first** as the new homepage direction.
-Draft PR #1357 implements a proposed Today / Strategies / Research Lab / System
-front-end navigation and reuses existing read-only data flows. The earlier
-two-destination navigation notes below are historical when this PR merges;
-until actual route UAT + merge they still describe production. Source,
-permission, model registration, data cutoffs and release gates are unchanged.
+2026-11-02 Owner decision: **A / Decision-first Investment Research Workspace** as the primary frontend architecture.
+PR #1357 implements the four task-oriented destinations: Today (`/app`), Strategies (`/strategies`),
+Research Lab (`/research`), and System (`/system`), alongside Instrument Detail (`/securities/:market/:symbol`).
+The older two-destination notes below are historical records superseded by this architecture. Source,
+permission, model registration, data cutoffs, and release gates are strictly unchanged.
+This frontend workspace does not constitute Gate A7 GO, live execution capability, or uncertified signal release.
 See frontend_reference_first_architecture_handoff_2026-11-02.md.
 
 2026-10-24 user direction: retire CN x1.2 from the active registry, publication
@@ -60,8 +60,11 @@ local ZIP readers and offline support are not implementation requirements.
 
 2026-10-24 user correction: instrument price detail and model buy/sell markers
 are useful maintained strategy-explanation features. Formal holdings, trade and
-attribution instruments link to the detail page. Overview and Status remain the
-two primary navigation destinations.
+attribution instruments link to the detail page.
+
+2026-11-02 architecture update (PR #1357): the primary navigation destinations
+are Today (`/app`), Strategies (`/strategies`), Research Lab (`/research`), and
+System (`/system`).
 
 ## Purpose
 
@@ -74,21 +77,22 @@ evidence; it does not execute research or orders.
 
 | Route | Purpose |
 | --- | --- |
-| `/app` (also the root destination) | Daily brief and formal strategy fleet |
-| `/strategies/:strategyId` | Current observation and formal historical evidence |
-| `/securities/:market/:symbol` | Instrument OHLCV, volume and historical model events |
-| `/system` | Operating Status, dated source publication and recovery links |
+| `/app` (also the root destination) | Today: daily research brief, top 3 priorities, formal strategy fleet quick access |
+| `/strategies` | Strategies: formal fleet comparison, operations read status, and links to details |
+| `/strategies/:strategyId` | Strategy detail: task-oriented subsections (Summary, Decisions, Risk, Evidence), period sync |
+| `/securities/:market/:symbol` | Instrument detail: TradingView Lightweight Charts POC + Recharts dual-engine OHLCV, volume and model events |
+| `/research` | Research Lab: Racetrack local projections & RDI historical descriptive evidence |
+| `/system` | Operating Status: source publication, health diagnosis, recovery and workflow actions |
 
-Only Overview and Status appear in primary navigation. Strategy details open
-from the brief/fleet. Retired routes show an unavailable view with a return to
-Overview; they do not select a fallback data source.
+Primary navigation links Today, Strategies, Research Lab, and System. Strategy details open
+from the brief or fleet; instrument details open from formal holdings/trades/attribution.
+Retired routes show an unavailable view with a return to Today; they do not select a fallback data source.
 
-2026-10-28 user direction adds an opt-in **Racetrack research** view inside
-Overview, alongside the default four-strategy monitor. It displays already
-published local NAV series, cumulative Top 10 rankings and a Runner detail
-dialog. It does not create another navigation destination or alter current
-operations access. Its loopback-only data boundary, evidence validation and
-partial-period limitations are specified in [Racetrack frontend](racetrack_frontend.md).
+Racetrack research is accessible in Research Lab (`/research?section=racetrack`) and also preserved
+via existing `/app?view=racetrack` bookmarks. It displays already published local NAV series,
+cumulative Top 10 rankings and Runner detail. It does not alter current operations access.
+Its loopback-only data boundary, evidence validation and partial-period limitations are
+specified in [Racetrack frontend](racetrack_frontend.md).
 
 The product no longer includes standalone research, run comparison, standalone
 security exploration, factors/reports/library pages, local ZIP/preview loading, marketing,

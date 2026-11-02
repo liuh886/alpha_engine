@@ -1252,7 +1252,7 @@
 - **交付日期**: 2026-11-03
 - **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
 - **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
-- **提交 SHA**: 待提交 (H4 提交)
+- **提交 SHA**: `1fb0d514f1`
 - **核心成果**:
   1. **系统运维页聚焦与故障分类清晰化 (`SystemHubPage.tsx`)**:
      - 展示策略/数据源受影响状态，直观标注故障级别（如 `Stale observation`、`Attention`、`Source degraded`）；
@@ -1271,15 +1271,40 @@
 
 ## Phase 22: H5 (P2) 权威与发布就绪归档 (Authority, Scorecard & Release Alignment)
 
-- [ ] **22.1 架构决策对齐与文档收敛 (H5.1 - Authority Alignment)**
-  - [ ] 基于已合入的真实前端代码，更新 `AGENTS.md`、`docs/product/strategy_console.md` 与 `docs/product/next_stage_execution_plan.md`，反映四目的地架构（Today, Strategies, Research Lab, System）与 H1–H4 真实实现；
-  - [ ] 确保文档表述严谨：澄清 PR #1357 的前端合并绝不等同于 A7 生产正式 GO，亦不构成实盘交易授权或新数据源公开发布；
-- [ ] **22.2 发布候选集成度量与门禁对齐 (H5.2 - Release Candidate Verification)**
-  - [ ] 记录真实部署 SHA 与环境状态；
-  - [ ] 检验回滚与安全边界，维持 A0–A7 门禁的客观判定（A1/A2/A3/A5/A6 BLOCKED, A4 FAIL, A7 NOT_TESTED/NO-GO）；
-- [ ] **22.3 PR #1357 交付就绪评审与总结 (H5.3 - PR Delivery Package)**
-  - [ ] 汇总 H0~H5 完整执行证据链、测试命令与多端验证结果；
-  - [ ] 向用户交付最终状态与后续三条工作线的推进建议。
+- [x] **22.1 架构决策对齐与文档收敛 (H5.1 - Authority Alignment)**
+  - [x] 基于已合入的真实前端代码，更新 `AGENTS.md`、`docs/product/strategy_console.md` 与 `docs/product/next_stage_execution_plan.md`，反映四目的地架构（Today, Strategies, Research Lab, System）与 H1–H4 真实实现；
+  - [x] 确保文档表述严谨：澄清 PR #1357 的前端合并绝不等同于 A7 生产正式 GO，亦不构成实盘交易授权或新数据源公开发布；
+- [x] **22.2 发布候选集成度量与门禁对齐 (H5.2 - Release Candidate Verification)**
+  - [x] 记录真实部署 SHA 与环境状态；
+  - [x] 检验回滚与安全边界，维持 A0–A7 门禁的客观判定（A1/A2/A3/A5/A6 BLOCKED, A4 FAIL, A7 NOT_TESTED/NO-GO）；
+- [x] **22.3 PR #1357 交付就绪评审与总结 (H5.3 - PR Delivery Package)**
+  - [x] 汇总 H0~H5 完整执行证据链、测试命令与多端验证结果；
+  - [x] 向用户交付最终状态与后续三条工作线的推进建议。
+
+---
+
+## 阶段验收与复盘记录 (Review: Phase 22 / H5 交付成果)
+
+- **交付日期**: 2026-11-03
+- **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **提交 SHA**: `e8af8603c7`
+- **核心成果**:
+  1. **文档权威层级与架构对齐**:
+     - `AGENTS.md` 与 `strategy_console.md` 全面对齐 PR #1357 确立的 4 大工作台目的地：Today (`/app`)、Strategies (`/strategies`)、Research Lab (`/research`)、System (`/system`) 以及 Instrument Detail 联动；
+     - 显式声明 PR #1357 的前端演进绝不改变 `research_only=true` / `trade_ready=false` 核心底线，不虚增生产权限，不代签 Gate A7 GO；
+     - 更新 `next_stage_execution_plan.md`，确认 H0~H5 全部高质量闭环，重申后续聚焦于三条主线。
+  2. **门禁客观独立性维持**:
+     - 持续维持 A0–A7 严格判定：A1/A2/A3/A5/A6 BLOCKED，A4 FAIL，A7 NOT_TESTED / NO-GO；
+     - 杜绝因 UI 焕新或 CI 绿色而伪造上线资格。
+  3. **H0~H5 全序列高质量交付**:
+     - H0 (P0) 稳定性加固：123 项 E2E 测试全绿；
+     - H1 (P0) Today 信息架构重构：按策略独立截止日呈现，<=2 击直达证据；
+     - H2 (P0) TradingView Lightweight Charts 5.2.1 证券详情 POC：与 Recharts 严格 1:1 等价性保障；
+     - H3 (P1) 策略详情与研究深度重塑：任务式章节吸顶导航、分析周期多表联动、RDI 四阶递进叙事、Racetrack 本地/托管边界加固；
+     - H4 (P1) 系统可用性优化：故障精准分类、last-good cutoff 呈现、快捷运维工作流跳转；
+     - H5 (P2) 权威收口：全文档对齐真实代码现状。
+
 
 
 
