@@ -130,10 +130,10 @@ export function SecurityLightweightChart({
       } else {
         return;
       }
-      const matched = markers.find(m => m.time === timeStr);
-      if (matched) {
-        onSelect(matched.events);
-      }
+      // Multiple model directions can share one session. A date click should
+      // expose every matched historical model event rather than the first cluster.
+      const sessionEvents = markers.filter(m => m.time === timeStr).flatMap(m => m.events);
+      if (sessionEvents.length > 0) onSelect(sessionEvents);
     });
 
     // 5. Responsive resize
@@ -151,7 +151,7 @@ export function SecurityLightweightChart({
       chart.remove();
       chartInstanceRef.current = null;
     };
-  }, [bars, events, modelName, onSelect]);
+  }, [bars, events, onSelect]);
 
   return (
     <div className="space-y-2">
