@@ -19,12 +19,12 @@ import { securityMarkers } from './SecurityHistoryChart';
 export function SecurityLightweightChart({
   bars,
   events,
-  modelName,
+  modelName: _modelName,
   onSelect,
 }: {
   bars: SecurityBar[];
   events: SecurityEvent[];
-  modelName: (id: string) => string;
+  modelName?: (id: string) => string;
   onSelect: (events: SecurityEvent[]) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
