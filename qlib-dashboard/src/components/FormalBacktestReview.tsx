@@ -30,6 +30,7 @@ import {
 import { type GovernedRunSummary } from '@/lib/governed-run';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
 import { effectivePerformanceDate } from '@/lib/performanceBenchmarks';
+import { strategyPeriodSummary, type PerformancePeriod } from '@/lib/performancePeriods';
 
 const SUMMARY_METRICS = [
   'total_return',
@@ -149,7 +150,15 @@ function EvidenceTable({
   );
 }
 
-function PerformancePanel({ evidence }: { evidence: FormalRunEvidence }) {
+function PerformancePanel({
+  evidence,
+  selectedPeriod,
+  onPeriodChange,
+}: {
+  evidence: FormalRunEvidence;
+  selectedPeriod?: PerformancePeriod;
+  onPeriodChange?: (period: PerformancePeriod) => void;
+}) {
   const semantics = evidence.performance.semantics;
   const cost = typeof semantics.cost === 'object' && semantics.cost !== null && !Array.isArray(semantics.cost)
     ? semantics.cost as Record<string, unknown>
@@ -174,7 +183,14 @@ function PerformancePanel({ evidence }: { evidence: FormalRunEvidence }) {
           </div>
           <Badge variant="outline" className="shrink-0 font-mono text-[10px]">{formatEvidenceLabel(evidence.performance.traceFrequency)}</Badge>
         </CardHeader>
-        <CardContent className="pt-4"><PerformanceCharts report={evidence.performance.report} benchmarkId={evidence.performance.benchmark} /></CardContent>
+        <CardContent className="pt-4">
+          <PerformanceCharts
+            report={evidence.performance.report}
+            benchmarkId={evidence.performance.benchmark}
+            selectedPeriod={selectedPeriod}
+            onPeriodChange={onPeriodChange}
+          />
+        </CardContent>
       </Card>
       <Card>
         <CardHeader className="border-b pb-3">
@@ -212,10 +228,46 @@ function PerformancePanel({ evidence }: { evidence: FormalRunEvidence }) {
   );
 }
 
-function RiskPanel({ evidence }: { evidence: FormalRunEvidence }) {
+function RiskPanel({
+  evidence,
+  selectedPeriod = 'all',
+}: {
+  evidence: FormalRunEvidence;
+  selectedPeriod?: PerformancePeriod;
+}) {
   const windowColumns = visibleWindowColumns(evidence.robustness.windowSummary);
+  const periodSummary = useMemo(
+    () => strategyPeriodSummary(evidence.performance.report, selectedPeriod),
+    [evidence.performance.report, selectedPeriod],
+  );
   return (
     <div className="space-y-4">
+      {selectedPeriod !== 'all' && periodSummary.startDate && (
+        <Card className="border-primary/20 bg-primary/[0.02]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold text-primary">
+              Active period risk profile ({selectedPeriod.toUpperCase()})
+            </CardTitle>
+            <p className="text-[10px] text-muted-foreground">
+              Bounded window: {periodSummary.startDate} → {periodSummary.endDate} · {periodSummary.rows.length} verified settlements
+            </p>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <span className="text-xs text-muted-foreground">Period return</span>
+              <p className="font-mono text-xl font-bold tabular-nums">
+                {periodSummary.return === null ? '—' : `${(periodSummary.return * 100).toFixed(2)}%`}
+              </p>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground">Period maximum drawdown</span>
+              <p className="font-mono text-xl font-bold tabular-nums text-rose-600 dark:text-rose-400">
+                {periodSummary.drawdown === null ? '—' : `${(periodSummary.drawdown * 100).toFixed(2)}%`}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {['max_drawdown', 'annualized_volatility', 'turnover', 'transaction_cost'].map((metricId) => (
           <MetricCard key={metricId} metricId={metricId} metrics={evidence.risk.metrics} />
@@ -391,7 +443,21 @@ function EvidencePanel({ evidence }: { evidence: FormalRunEvidence }) {
   );
 }
 
-export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
+export function FormalBacktestReview({
+  run,
+  selectedPeriod: externalPeriod,
+  onPeriodChange,
+}: {
+  run: GovernedRunSummary;
+  selectedPeriod?: PerformancePeriod;
+  onPeriodChange?: (period: PerformancePeriod) => void;
+}) {
+  const [internalPeriod, setInternalPeriod] = useState<PerformancePeriod>('all');
+  const selectedPeriod = externalPeriod ?? internalPeriod;
+  const handlePeriodChange = (period: PerformancePeriod) => {
+    setInternalPeriod(period);
+    onPeriodChange?.(period);
+  };
   const [state, setState] = useState<{ loading: boolean; value: FormalRunEvidence | null; error: string | null }>({ loading: true, value: null, error: null });
 
   useEffect(() => {
@@ -466,8 +532,12 @@ export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
           <TabsTrigger value="attribution" className="shrink-0 gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" />Attribution</TabsTrigger>
           <TabsTrigger value="evidence" className="shrink-0 gap-1.5"><FileSearch className="h-3.5 w-3.5" />Evidence boundary</TabsTrigger>
         </TabsList>
-        <TabsContent value="performance"><PerformancePanel evidence={evidence} /></TabsContent>
-        <TabsContent value="risk"><RiskPanel evidence={evidence} /></TabsContent>
+        <TabsContent value="performance">
+          <PerformancePanel evidence={evidence} selectedPeriod={selectedPeriod} onPeriodChange={handlePeriodChange} />
+        </TabsContent>
+        <TabsContent value="risk">
+          <RiskPanel evidence={evidence} selectedPeriod={selectedPeriod} />
+        </TabsContent>
         <TabsContent value="portfolio"><PortfolioPanel evidence={evidence} /></TabsContent>
         <TabsContent value="trades"><TradesPanel evidence={evidence} /></TabsContent>
         <TabsContent value="attribution"><AttributionPanel evidence={evidence} /></TabsContent>

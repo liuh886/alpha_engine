@@ -45,14 +45,23 @@ function periodReturn(startValue: unknown, endValue: unknown) {
 export function PerformanceCharts({
   report,
   benchmarkId,
+  selectedPeriod,
+  onPeriodChange,
 }: {
   report: ReportRow[];
   benchmarkId?: string;
+  selectedPeriod?: RangeKey;
+  onPeriodChange?: (period: RangeKey) => void;
 }) {
   const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({});
   const [selectedBenchmarkKey, setSelectedBenchmarkKey] = useState<BenchmarkKey | null>(null);
   const [selectedComparisonKeys, setSelectedComparisonKeys] = useState<string[] | null>(null);
-  const [rangeKey, setRangeKey] = useState<RangeKey>('all');
+  const [internalRangeKey, setInternalRangeKey] = useState<RangeKey>('all');
+  const rangeKey = selectedPeriod ?? internalRangeKey;
+  const setRangeKey = (key: RangeKey) => {
+    setInternalRangeKey(key);
+    onPeriodChange?.(key);
+  };
   const [customRange, setCustomRange] = useState<{
     report: ReportRow[]; start: number; end: number;
   } | null>(null);

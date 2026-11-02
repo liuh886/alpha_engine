@@ -575,19 +575,19 @@ G3 入口：[RDI architecture](../research/ashare_rdi_architecture.md)、
 [价格修复与重放说明](../research/ashare_rdi_price_reconstruction_2026-10-31.md)。
 不得编辑被当前 RDI review hash 绑定的源文档来添加进度；修改会使现有来源校验失败，需独立显式重绑。
 
-### 12.8 PR 拆分、协作与验收命令
+### 12.8 PR 拆分、协作与验收记录（H1–H4 已收口完成）
 
-| 可领取的下一 PR | 写入范围 / 协作规则 | 如何完成而不扩大范围 |
+| 原规划 PR | 交付成果与合并 PR | 完成状态与核验结果 |
 | --- | --- | --- |
-| H1-a 页面审计；H1-b 单个已见缺陷 | 通常 dashboard 组件/formatter 与相关 tests；共享 reader/schema 另拆合同 PR | 审计不预设旧 bug；修复不改源经济，精确部署与截图闭环 |
-| H2 当前重放包 | 原 replay 模块仅在真实缺陷时改；新 dated evidence 与既有说明 | 原收据保留；命令成功与 Owner 接受分开 |
-| H3-a 来源预检；H3-b 单 market/contract 物化 | provider/event/VWAP modules、既有 manifests/workflow inputs | 先证明 source-role/窗口，覆盖只能如实认领；不新建 provider/gate |
-| H4 RC/恢复包 | 现有 release/restore 与 tests、runbook、证据引用 | 临时目录演练；不实际回滚生产，不复制原始私有 payload 到 PR |
+| H1 控制台语义与无账号旅程 | **已完成 #1350**：通常 dashboard 组件/formatter 与相关 tests 修复；长小数截断与移动端自适应闭环 | 302 项单测 + 117 项 Playwright 静态端到端全绿通过，已合入主线 |
+| H2 当前环境有界重放包 | **已完成 #1351**：固化 CN27 重放（容差 $\le 10^{-6}$），QQQ 真实记录数据阻断，修复 Windows junction | 33 项单测全绿，新旧收据并存，已合入主线 |
+| H3 必需输入清单与来源预检 | **已完成 #1352**：解耦四策略日常运行依赖与训练宽表，完成 Alpaca/SEC EDGAR 预检 | 56 项数据面契约测试全绿，已合入主线 |
+| H4 RC 与恢复演练准备 | **已完成 #1354**：验证发布验证器三大守卫机制，演练静态版本回滚与私有账本 CAS 恢复 | 46 项发布门禁测试全绿，待 Owner 生产操作 |
 
-默认顺序执行 H1 → H2 → H3 → H4；在某一项外部受阻时可继续独立项。
-若确有多个接手者，H2 的只读证据核查和 H1 的界面工作可以分 branch/path 进行；
-这是工作边界说明，不是要求启动新 Agent。共享 source/schema/manifest/reader 同时修改前先协调，
-证据生产/公开资产同步不能在同一工作目录并行跑。
+历史顺序 H1 → H2 → H3 → H4 已全量落地合入主线。当前后续关注点集中在三条主线：
+1. 关闭 A4 / A3 权限边界与清理退役运行行；
+2. 持续收集并客观复核 A1 真实交易日（等待自然交易日累积，不伪造通过）；
+3. 形成最终绑定的 Release Candidate（A5 有界验收口径与 A6 Owner 签批）。
 
 **命令使用现有接口；示例均非发布授权。** 按 `--help` 核对参数和实际 source prerequisite，
 先定向验证；以下较宽验收只在相应实现变化/失败确实需要时执行。

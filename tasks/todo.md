@@ -1189,19 +1189,62 @@
 
 ## Phase 20: H3 (P1) 策略详情与研究深度重构 (Strategy & Research Detail)
 
-- [ ] **20.1 策略详情页任务式章节重构 (H3.1 - StrategyDetail Subsections)**
-  - [ ] 将 `StrategyDetailPage.tsx` 组织为任务导向的五大明确章节（Summary / Performance / Risk / Decisions / Evidence）；
-  - [ ] 确保单一选定周期（Selected Period）与基准锚点联动驱动所有可比指标、时间区间与风险面板；
-  - [ ] 保留所有现有受访问控制保护的实时信号、状态机标签与合规边界；
-- [ ] **20.2 RDI 投研信息层级与叙事重塑 (H3.2 - RdiResearchStatus Narrative)**
-  - [ ] 重塑 RDI 主叙述结构：研究问题 -> 经验证的真实历史描述性结果 -> 明确标注尚未验证的盲区与局限 -> 可展开的数据源准入认证；
-  - [ ] 坚决不引入虚构或未校准的实时综合预测评分（`trade_ready=false`）；
-- [ ] **20.3 Racetrack 托管与本地边界强化 (H3.3 - Racetrack Boundary)**
-  - [ ] 清晰区分 Hosted 静态与 Localhost-only 本地动态投研投影状态；
-  - [ ] 严格禁止公开暴露私有 Q 证据，保持 Formal baseline、独立 Runner 与市场 Benchmark 身份严格隔离；
-- [ ] **20.4 全量质量验收与 CI 绿灯闭环 (H3.4)**
-  - [ ] 单元测试、端到端测试 100% 全绿，无回归；
+- [x] **20.1 策略详情页任务式章节重构 (H3.1 - StrategyDetail Subsections)**
+  - [x] 将 `StrategyDetailPage.tsx` 组织为任务导向的五大明确章节（Summary / Decisions / Performance / Risk / Evidence）；
+  - [x] 顶部提供吸顶任务式章节导航条与统一分析周期切换器（All / 1Y / 6M / 3M / 1M）；
+  - [x] 确保单一选定周期（Selected Period）与基准锚点联动驱动所有可比指标、时间区间与风险面板（`FormalBacktestReview` 与 `PerformanceCharts` 双向响应，`RiskPanel` 动态生成 active period risk profile）；
+  - [x] 保留所有现有受访问控制保护的实时信号、状态机标签与合规边界；
+- [x] **20.2 RDI 投研信息层级与叙事重塑 (H3.2 - RdiResearchStatus Narrative)**
+  - [x] 重塑 RDI 主叙述结构：研究问题（Research Question） -> 经验证的真实历史描述性结果（Supported Descriptive Results） -> 明确标注尚未验证的盲区与局限（What Remains Unvalidated / Risk assessment unavailable） -> 可展开的数据源准入认证（Expandable Source Certification & Provenance）；
+  - [x] 坚决不引入虚构或未校准的实时综合预测评分，保持 `trade_ready=false`；
+- [x] **20.3 Racetrack 托管与本地边界强化 (H3.3 - Racetrack Boundary)**
+  - [x] 清晰区分 Hosted 静态与 Localhost-only 本地动态投研投影状态，并在非本地访问时明确提示私有研究隔离政策；
+  - [x] 严格禁止公开暴露私有 Q 证据，保持 Formal baseline、独立 Runner 与市场 Benchmark 身份严格隔离；
+- [x] **20.4 全量质量验收与 CI 绿灯闭环 (H3.4)**
+  - [x] 修复 `next_stage_execution_plan.md` 内部历史状态冲突（§12.8 H1–H4 更新为已收口合入 main）；
+  - [x] 运行 lint（0 错误 0 警告）、`tsc --noEmit` 通过、Vitest（37 文件 311 测试）100% 全绿；
+  - [x] Vite 生产打包通过（2.26s）；
+  - [x] Playwright E2E 完整套件（Desktop 1440px、Tablet 768px、Mobile 375px）123/123 测试 100% 全绿通过；
+  - [x] 提交、推送分支并追踪远程 CI 绿灯。
+
+---
+
+## 阶段验收与复盘记录 (Review: Phase 20 / H3 交付成果)
+
+- **交付日期**: 2026-11-02
+- **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **提交 SHA**: 待提交 (H3 提交)
+- **核心成果**:
+  1. **策略详情页任务式章节导航与统一周期联动 (H3.1)**:
+     - 引入吸顶章节导航条（Summary / Decisions / Risk / Evidence），支持一键定位关键投研工作流；
+     - 引入统一周期控制器（All / 1Y / 6M / 3M / 1M），联动驱动 `PerformanceCharts` 曲线重构、可见区间计算与 `RiskPanel` 有界风险轮廓（Active period risk profile），消除单一页面指标周期割裂；
+     - 完整保留所有既有受访问控制保护的实时信号、状态机标签与合规边界（100% 兼容全部 E2E 断言）。
+  2. **RDI 四阶递进叙事重构 (H3.2)**:
+     - 结构化为四阶投研流：① 研究问题（Research Question：已知事件聚类能否在无前瞻偏差下解释 A 股尾部系统性风险） -> ② 支持的描述性历史对照（7/14/28 交易日非参数频次对照） -> ③ 未经验证盲区严正声明（风险评估暂不可用，无实时预测分值，覆盖率与前瞻有用性待独立验证） -> ④ 可折叠来源认证与血缘追踪；
+     - 契约化维护 `trade_ready=false` 铁律。
+  3. **Racetrack 本地与托管边界强化 (H3.3)**:
+     - 明确标记 Local loopback reader 与 Hosted boundary 状态；
+     - 强化对私有 Q 证据与非公开发布 Runner 的隔离约束说明，并在 UI 层面清晰标识基准参考与参赛 Runner 身份。
+  4. **任务文档一致性收敛与测试全绿 (H3.4)**:
+     - 修正 `next_stage_execution_plan.md` §12.8 历史规划遗留，明确 H1–H4 已收口合入 main；
+     - ESLint 0 错误 0 警告；`tsc --noEmit` 0 报错；Vitest 37 个测试文件 311 项测试 100% 全绿；Vite 构建通过；
+     - Playwright 桌面端、平板端、移动端 123/123 测试 100% 全绿通过（4.0m）。
+
+---
+
+## Phase 21: H4 (P1) 系统可用性与设计走查原型 (System Usability & Layout Refinement)
+
+- [ ] **21.1 系统页信息架构优化 (H4.1 - System Usability)**
+  - [ ] 确保 `/system` 聚焦呈现受影响数据源/策略、最近良好截止日（last-good cutoff）、故障分类与恢复工作流链接；
+  - [ ] 避免在系统页面冗余复制完整的 Daily Brief 正文，聚焦运维诊断与快速恢复；
+- [ ] **21.2 响应式设计与多状态覆盖走查 (H4.2 - Layout Refinement)**
+  - [ ] 确保桌面端 1440px、平板端 768px、手机端 375px 在正常、加载中、受限与过期/故障各状态下布局精致紧凑；
+  - [ ] 消除任何水平溢出与排版层级混乱，保证高密度投研工作站专业水准；
+- [ ] **21.3 质量验收与 CI 绿灯闭环 (H4.3)**
+  - [ ] 运行 lint、tsc、vitest 与 Playwright 全绿；
   - [ ] 提交、推送分支并保持远程 GitHub Actions 绿灯。
+
 
 
 
