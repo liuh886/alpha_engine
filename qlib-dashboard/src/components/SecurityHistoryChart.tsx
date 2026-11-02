@@ -77,7 +77,7 @@ export function SecurityHistoryChart({ bars, events, modelName, onSelect }: {
         </div>
       </div>
       <div className="text-xs text-muted-foreground">
-        Parity verified: <span className="font-mono font-medium text-foreground">{bars.length}</span> sessions · <span className="font-mono font-medium text-foreground">{markers.length}</span> marker clusters
+        Shared source: <span className="font-mono font-medium text-foreground">{bars.length}</span> sessions · <span className="font-mono font-medium text-foreground">{markers.length}</span> marker clusters
       </div>
     </div>
 
