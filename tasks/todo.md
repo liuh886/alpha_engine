@@ -906,7 +906,74 @@
 
 ---
 
-## 阶段验收与复盘 (Review Section: Direction A 全阶段收口与 A0–A7 终审)
+## Phase 15: 三条核心工作线推进与真实发布阻断清零 (2026-11-02 专项攻坚)
+
+### 15.0 任务内部口径消除与数值格式化最小修复 (两个小问题)
+- [x] **15.0.1 消除任务文档内部状态冲突 (`docs/product/next_stage_execution_plan.md`)**:
+  - [x] 将 §11.2 队列中的 2, 3, 4, 5 项从“待执行”更新为与 §0 和 §12 完全一致的“已完成 (PR #1350, #1351, #1352, #1354)”；
+  - [x] 消除路线图内部矛盾，维持文档唯一权威。
+- [x] **15.0.2 修复极小非零研究参考值显示为 0 缺陷 (`StrategyDetailPage.tsx`)**:
+  - [x] 在 `StrategyDetailPage.tsx` 重构 `formatRefValue`：当 `item !== 0 && Math.abs(item) < 0.0001` 时，采用 `Number(item.toPrecision(4)).toString()` 保留非零有效数字，避免被 `toFixed(4)` 截断归零；
+  - [x] 编写精确回归单测（覆盖 0、整数、普通小数、极小正数、极小负数、科学计数法边界）；
+  - [x] 验证 Vitest 前端单测全绿通过（302 项测试全过）。
+
+### 15.1 第一条工作线：关闭 A4 / A3 的真实权限缺口
+- [x] **15.1.1 明确四策略当前状态权限策略**:
+  - [x] 审计并阐明四策略在 `registry.json`（公开历史证据 `public`）与 `product_access_policies`（当前运营快照 `public`）中的确切层级；
+  - [x] 明确说明生产环境中匿名用户能读到四策略是因为 `required_tier: public`，受保护资源（如 `securities` 模块 require `authenticated`）的实际边界。
+- [x] **15.1.2 验证真实授权、拒绝和撤权行为 (不虚构测试账户、不改变生产权限)**:
+  - [x] 梳理前端 `useAccessControl`、`useStrategyOperations` 与后端 RLS SQL 策略的访问控制契约；
+  - [x] 明确区分代码可实证部分与线上真实会话缺失（真实受限会话维持客观记录 `NOT_TESTED`，绝不伪造通过）。
+- [x] **15.1.3 清理经批准退役的 CN x1.2 运行行**:
+  - [x] 编写 Supabase 数据库迁移脚本 `supabase/migrations/20261102000000_retire_cn_x_strategy_operations.sql`，清理 `cn_x` 运行快照和策略；
+  - [x] 在 `supabase/functions/alpha-engine-publish-strategy-operations/index.ts` 增加发布时自动修剪非活跃策略行逻辑；
+  - [x] 清理 `src/artifacts/strategy_operations.py:698` 中对退役 `cn_x1_2` 的残留判断分支；
+  - [x] 运行单测验证全量策略运行测试通过（29 项测试全绿）。
+  - [x] 交付 `docs/evidence/product_v1/a4_permission_resolution_2026-11-02.md`。
+
+### 15.2 第二条工作线：持续收集与独立复核 A1
+- [x] **15.2.1 复用既有运行收据与 `alpha ops acceptance` 逐交易日复核**:
+  - [x] 核验最近 20 个交易日窗口内的数据、模型评估、发布、投递、恢复和人工干预；
+  - [x] 保持真实缺失与 2 个历史失败记录，绝不为凑数跳过缺失或篡改历史。
+- [x] **15.2.2 确立今日（2026-11-02）自动化增量累积节点**:
+  - [x] 记录今日 CN 盘后（15:45/16:30 CST）与 US 盘后（04:00 CST）自动化定时流水线的推进预期，不新建任何冗余调度器。
+  - [x] 交付 `docs/evidence/product_v1/a1_operating_reconciliation_2026-11-02.md`。
+
+### 15.3 第三条工作线：形成最终 Release Candidate (RC)
+- [x] **15.3.1 构造官方 Direction A v1 Release Candidate 清单**:
+  - [x] 绑定真实部署 SHA（当前 main 最新 commit `4202741d...`）、四个正式模型、私有数据版本、验证记录与隔离恢复结果；
+  - [x] 生成不可变 RC 清单文件 `docs/evidence/product_v1/release_candidate_v1_manifest.json` 与 `.md`。
+- [x] **15.3.2 明确 A5 有界验收口径与 A6 Owner 批准操作**:
+  - [x] A5 明确为“有界重放验收”（容差 $\le 10^{-6}$，缺源如实标定 blocked）；
+  - [x] A6 在运行手册中明确划定哪些实际操作必须由 Owner 批准（真实 Pages 生产部署域名切换、物理生产回滚、生产权限数据库更动）。
+  - [x] 同步更新 `docs/operations/owner_local_workstation_runbook.md`。
+
+---
+
+## 验收与复盘记录 (Review: Phase 15 攻坚成果)
+
+- **交付日期**: 2026-11-02
+- **集成基准**: `main` @ `4202741d81ba663f551e231e1133e98b061451d4`
+- **执行总结**:
+  1. **两个小问题修复**:
+     - `docs/product/next_stage_execution_plan.md` §11.2 表格状态已与 §0/§12 统一，消除陈旧“待执行”冲突；
+     - `StrategyDetailPage.tsx` 的 `formatRefValue` 完成极小非零数（$< 0.0001$）采用 4 位有效精度转换，302 项 Vitest 单元测试全绿。
+  2. **第一条工作线 (A4/A3 真实权限缺口)**:
+     - 明确四策略在公开层（Pages 静态脱敏历史证据均为 public）与运行时快照层（byd/cn_27/us_x 为 public，qqq_rotation 为 pro）的确切策略；
+     - 坚持不为验收在生产中伪造测试账户或篡改权限，未验证真实会话客观记录为 NOT_TESTED，维持 Fail-closed 铁律；
+     - 完成 `cn_x1_2` 运行时退役全链路收口：编写 SQL 迁移脚本、Edge Function 自动修剪、代码死分支清除与 29 项测试通过；
+     - 交付 `docs/evidence/product_v1/a4_permission_resolution_2026-11-02.md`。
+  3. **第二条工作线 (A1 真实运行持续收集与对账)**:
+     - 基于私有重审收据对账：US/CN 保持 12/20 会话被观测、6 个匹配当前身份、0 个独立合格；
+     - 完整保留 Run 40321512230 事故与 2 个选择器阻断历史事实，不以旧绿顶替；
+     - 梳理确认今日（2026-11-02）盘后自动化执行节点（15:45/16:30 CST 与 23:00 UTC），无冗余调度器引入；
+     - 交付 `docs/evidence/product_v1/a1_operating_reconciliation_2026-11-02.md`。
+  4. **第三条工作线 (Direction A v1 官方 Release Candidate 清单)**:
+     - 交付官方 Release Candidate 清单：`release_candidate_v1_manifest.json` 与 `release_candidate_v1_manifest.md`；
+     - 严格绑定 Git SHA、Pages SHA、4 大正式模型 Bundle ID、私有数据版本（493KB / 405 captures）；
+     - 界定 A5 为有界重放验收口径（$\le 10^{-6}$），在 `owner_local_workstation_runbook.md` 中划定三项 Owner 专属生产操作边界；
+     - 全量 A0–A7 状态矩阵清晰呈现，Agent 综合建议维持客观公正的 **NO-GO**。
+
 
 - **交付日期**: 2026-11-01
 - **集成基准**: `main` @ `579de93572`

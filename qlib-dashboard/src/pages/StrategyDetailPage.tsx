@@ -54,9 +54,14 @@ function modelContributions(factor: StrategyFactorEvidence): ModelContribution[]
   });
 }
 
-function formatRefValue(item: unknown): string {
+export function formatRefValue(item: unknown): string {
   if (typeof item === 'number') {
-    return Number.isInteger(item) ? String(item) : Number(item.toFixed(4)).toString();
+    if (!Number.isFinite(item)) return String(item);
+    if (Number.isInteger(item)) return String(item);
+    if (item !== 0 && Math.abs(item) < 0.0001) {
+      return Number(item.toPrecision(4)).toString();
+    }
+    return Number(item.toFixed(4)).toString();
   }
   return String(item);
 }
@@ -82,7 +87,7 @@ function contributionSummary(factor: StrategyFactorEvidence): string | null {
   const strongest = [...rows]
     .sort((left, right) => Math.abs(right.contribution) - Math.abs(left.contribution) || left.instrument.localeCompare(right.instrument))
     .slice(0, 3)
-    .map((row) => `${row.instrument} ${row.contribution >= 0 ? '+' : ''}${row.contribution.toFixed(4)}`)
+    .map((row) => `${row.instrument} ${row.contribution >= 0 ? '+' : ''}${formatRefValue(row.contribution)}`)
     .join(' · ');
   const role = rows.some((row) => row.decisionRole === 'ranker_reference_vetoed_by_regime') ? 'ranker reference · regime vetoed' : 'selected holdings';
   return `XGBoost pred_contribs · ${role} · ${strongest}`;

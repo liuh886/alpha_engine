@@ -1,0 +1,129 @@
+{
+  "schema_version": "direction_a_v1_release_candidate_manifest_v1",
+  "candidate_id": "rc_direction_a_v1_20261102",
+  "created_at_utc": "2026-11-02T03:00:00Z",
+  "research_only": true,
+  "trade_ready": false,
+  "deployed_git_sha": "4202741d81ba663f551e231e1133e98b061451d4",
+  "deployed_pages_sha": "f97d8b55077d85ea7aa559f2146f4817a3a92543",
+  "pages_release_receipt": {
+    "status": "verified",
+    "verified_commit": "f97d8b55077d85ea7aa559f2146f4817a3a92543",
+    "formal_sections_verified": 36,
+    "active_models_verified": 4,
+    "operational_leakage_count": 0,
+    "evidence_violations": 0
+  },
+  "formal_models": [
+    {
+      "strategy_id": "byd",
+      "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+      "model_family_id": "byd_allocation",
+      "model_kind": "rules_based_allocation",
+      "market": "cn",
+      "bundle_id": "5b35c849cab91db9930090eaa9f4659e396914808634d41a10543a9701bc6074",
+      "manifest_path": "byd_allocation/byd_v1_3_recovery_event_low_vol_confirmation_v1/byd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_10_30/manifest.json",
+      "manifest_sha256": "eb3e676d62a317f0aa14402cd2cd4153ce53578e6ec9c81314eaa7145fc510f7",
+      "evidence_cutoff": "2026-10-30",
+      "publication_status": "accepted_formal_baseline"
+    },
+    {
+      "strategy_id": "cn_27",
+      "model_version_id": "cn_27_v1_3",
+      "model_family_id": "cn_27_rotation",
+      "model_kind": "rules_based_allocation",
+      "market": "cn",
+      "bundle_id": "3212bd7cee3aa85ee92c4180c3b2681969322f58a15d473de03e13a8a2c5c32d",
+      "manifest_path": "cn_27_rotation/cn_27_v1_3/cn_27_v1_3-through-2026_10_30/manifest.json",
+      "manifest_sha256": "00f3121744ecf58ad65cec02cba45090ae70a03964a7334f2f04a490f99bf2f0",
+      "evidence_cutoff": "2026-10-30",
+      "publication_status": "accepted_formal_baseline"
+    },
+    {
+      "strategy_id": "qqq_rotation",
+      "model_version_id": "qqqi_qqq_tqqq_v4_3",
+      "model_family_id": "qqq_rotation",
+      "model_kind": "rules_based_allocation",
+      "market": "us",
+      "bundle_id": "12764f1145f7a4c8c8fb92c5a5ac1a58039337d6aa429810b74cb47edb09b994",
+      "manifest_path": "qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_10_30/manifest.json",
+      "manifest_sha256": "78d1783b65f9f5551ac9bcd3f311eb3c29a89038af2599374626b2953e74acf7",
+      "evidence_cutoff": "2026-10-30",
+      "publication_status": "accepted_formal_baseline"
+    },
+    {
+      "strategy_id": "us_x",
+      "model_version_id": "us_x1_3",
+      "model_family_id": "us_ranker",
+      "model_kind": "cross_sectional_ranker",
+      "market": "us",
+      "bundle_id": "f69bac180fca4a53e4cee4becc052846e1a243369bcde64bc22873ef4704f7b0",
+      "manifest_path": "us_ranker/us_x1_3/us_x1_3-through-2026_10_30/manifest.json",
+      "manifest_sha256": "5096420032ca50535fe0bac8cc480af2961104f7393e71ebe65ced5a78e64c4d",
+      "evidence_cutoff": "2026-10-30",
+      "publication_status": "accepted_formal_baseline"
+    }
+  ],
+  "private_data_binding": {
+    "private_revision": "a1efd513c06fe95eeb9a291cc6771399ce863025",
+    "private_ledger_archive_sha256": "385df76bb8dae516e195899a912f3db2d55411c080b6386528f76b3630b5f9f1",
+    "private_ledger_archive_bytes": 493139,
+    "distinct_formal_run_attempts": 58,
+    "validated_archive_captures": 405
+  },
+  "gate_verification_summary": {
+    "A0_identity_authority": {
+      "status": "PASS",
+      "evidence": "Single ResearchAssistant, 4 strategies locked in registry.json, ADR-0003 single operator quant workstation."
+    },
+    "A1_continuous_operation": {
+      "status": "BLOCKED",
+      "observed_sessions_us": 12,
+      "observed_sessions_cn": 12,
+      "required_sessions": 20,
+      "certified_sessions": 0,
+      "blockers": [
+        "Incomplete 20-session accumulation window",
+        "Awaiting Owner independent review declaration of zero unauthorized manual interventions"
+      ]
+    },
+    "A2_data_integrity": {
+      "status": "OPS_PASS_RESEARCH_SCOPED_BLOCKED",
+      "active_four_strategy_inputs": "PASS (Sources, PIT, adjustments, and lifecycle reconciled; decoupled from wide training tables)",
+      "wide_selected_pool_training": "SCOPED_BLOCKED (US87/CN130 Alpha158 training tables blocked; strictly isolated to research scope)"
+    },
+    "A3_user_journey": {
+      "status": "BASELINE_PASS_RESTRICTED_NOT_TESTED",
+      "baseline_journeys": "PASS (8 interaction paths on desktop and mobile 375px verified)",
+      "restricted_journeys": "NOT_TESTED (No dedicated non-production test accounts configured; zero fake test account policy)"
+    },
+    "A4_security_and_privacy": {
+      "status": "CONDITIONAL_FAIL_PENDING_OWNER_RISK_ACCEPTANCE",
+      "leakage_stoppage": "PASS (Public Git, Pages, Actions Artifacts, and Write Pipelines completely decoupled and verified)",
+      "runtime_cn_x_decommission": "PASS (SQL migration 20261102000000 and auto-pruning edge function implemented)",
+      "token_expiration_revocation": "NOT_TESTED (No dedicated non-production test accounts; zero fake test account policy)",
+      "historical_git_disclosure": "KNOWN_RESIDUAL_RISK (Documented in security audit §1, pending Owner formal sign-off)"
+    },
+    "A5_research_replay": {
+      "status": "BOUNDED_REPLAY_PASS_PENDING_OWNER_ACCEPTANCE",
+      "scope": "Bounded replay tolerance <= 1e-6; missing vendor slice fail-closed blocked",
+      "cn_27_v1_3": "exact_replay (exit code 0, tolerance <= 1e-6 verified)",
+      "qqq_v4_3": "blocked (exit code 1, missing vendor slice 2026-10-30 vs 2026-10-23 fail-closed recorded without falsification)"
+    },
+    "A6_release_and_recovery": {
+      "status": "REHEARSAL_VERIFIED_PENDING_OWNER_EXECUTION",
+      "tampered_evidence_rejection": "PASS (pages_release_verification enforces strict integrity)",
+      "isolated_recovery_rehearsal": "PASS (Local loopback restoration verified)",
+      "production_execution": "PENDING_OWNER_EXECUTION (Production domain switch, rollback, DB permissions require Owner approval)"
+    },
+    "A7_owner_decision": {
+      "status": "PENDING_OWNER_DECISION",
+      "agent_recommendation": "NO-GO (until A1 session accumulation and Owner sign-off on A4 residual risks)"
+    }
+  },
+  "owner_operation_boundaries": {
+    "pages_production_domain_switch": "Owner CLI execution only with explicit --expected-commit",
+    "production_rollback": "Owner approval required; must verify target commit preserves privacy fixes (#1288)",
+    "production_database_migration": "Owner execution of supabase migration up for retire_cn_x_strategy_operations"
+  }
+}

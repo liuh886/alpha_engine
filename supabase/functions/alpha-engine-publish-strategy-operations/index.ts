@@ -119,6 +119,12 @@ Deno.serve(async (req: Request) => {
       .upsert(rows, { onConflict: "strategy_id" });
     if (upsertError) throw upsertError;
 
+    const { error: pruneError } = await admin
+      .from("strategy_operation_snapshots")
+      .delete()
+      .not("strategy_id", "in", `(${[...strategyIds].join(",")})`);
+    if (pruneError) throw pruneError;
+
     return json({
       status: "published",
       strategy_count: rows.length,
