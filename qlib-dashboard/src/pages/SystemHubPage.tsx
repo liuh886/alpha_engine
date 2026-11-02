@@ -38,13 +38,13 @@ export function SystemHubPage() {
         const snapshot = operations.snapshots.get(run.modelVersionId);
         const allowed = Boolean(snapshot?.strategyId) && !access.policyLoading && access.canAccess(access.requiredTier('strategy', snapshot!.strategyId));
         const observation = !snapshot?.strategyId ? describeStrategyObservation() : describeStrategyObservation(snapshot, allowed);
-        const lastGoodCutoff = snapshot?.latestCompletedSession || run.evidenceCutoff;
+        const lastGoodCutoff = snapshot?.latestCompletedSession ?? null;
         const failureClass = observation.kind === 'attention' ? observation.label : snapshot?.status === 'stale' ? 'Stale observation' : null;
         return <article key={run.key} className="border-b p-4 last:border-0">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Link className="font-semibold text-primary" to={'/strategies/' + encodeURIComponent(run.modelVersionId)}>{run.title}</Link>
             <div className="flex items-center gap-2">
-              {failureClass && (
+              {failureClass && failureClass !== observation.label && (
                 <span className="rounded bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-700 dark:text-rose-300">
                   {failureClass}
                 </span>
@@ -54,7 +54,7 @@ export function SystemHubPage() {
           </div>
           {allowed && snapshot && (!snapshot.readState || snapshot.readState === 'retained') && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Observed {snapshot.latestCompletedSession || 'unknown'} · target dated {snapshot.decisionSchedule?.signalDate || snapshot.asOf || 'unknown'} · formal evidence {run.evidenceCutoff} · last-good cutoff {lastGoodCutoff}
+              Observed {snapshot.latestCompletedSession || 'unknown'} · target dated {snapshot.decisionSchedule?.signalDate || snapshot.asOf || 'unknown'} · formal evidence {run.evidenceCutoff}{lastGoodCutoff ? ` · last-good observed session ${lastGoodCutoff}` : ''}
             </p>
           )}
           <p className="mt-2 text-sm">{observation.reason}</p>
