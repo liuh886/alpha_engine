@@ -1048,8 +1048,38 @@
   - [x] 验证旧 Racetrack URL（`/#/app?view=racetrack`）兼容重定向与新路由（`/#/research?section=racetrack`）
   - [x] 验证 RDI 在 `/research?section=rdi` 下独立可用性与降级状态（即使 formal catalog 500 仍可独立访问）
   - [x] 验证未授权/公开访问边界，确保不泄露实时受保护信号
-- [ ] **17.4 提交、推送与 CI 绿灯闭环 (H0.4)**
-  - [ ] 提交修改至分支 `docs/product/ux-rearchitecture-reference-first-20261102`
-  - [ ] 推送并追踪 PR #1357 远程 GitHub Actions CI 直至全绿
+- [x] **17.4 提交、推送与 CI 绿灯闭环 (H0.4)**
+  - [x] 提交修改至分支 `docs/product/ux-rearchitecture-reference-first-20261102` (`fa606547cd`)
+  - [x] 推送并追踪 PR #1357 远程 GitHub Actions CI 4/4 绿灯通过 (`build-static-pwa`, `contract`, `project-and-verify`, `GitGuardian`)
+
+---
+
+## 验收与复盘记录 (Review: Phase 17 / H0 稳定化成果)
+
+- **交付日期**: 2026-11-02
+- **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **提交 SHA**: `fa606547cd`
+- **核心成果**:
+  1. **代码与编译闭环**:
+     - 修复 `qlib-dashboard/src/routes.ts` 中 `System` 路由的闭合括号语法错误，消除 TS1005 与 ESLint 解析阻断；
+     - 验证 `pnpm --dir qlib-dashboard lint` 0 错误 0 警告；`tsc --noEmit` 0 类型错误；306 项 Vitest 单元测试全绿；Vite 构建成功（1.55s）。
+  2. **信息架构与路由适配**:
+     - `Today` (`/#/app`): 呈现 Daily Research Brief（置顶 3 优先级策略）、市场概览卡片、下一行动向导与 4 策略快照链接卡片；
+     - `Strategies` (`/#/strategies`): 承载完整的 `<StrategyFleet />` 表现对比与 `<OperationsReadStatus />`；
+     - `Research Lab` (`/#/research`): 承载 `<RacetrackWorkspace />`（策略实验）与 `<RdiResearchStatus />`（风险研究），支持 `?section=racetrack` 与 `?section=rdi` 参数切换及独立状态刷新；
+     - `System` (`/#/system`): 承载系统源健康快照、恢复流水线链接、深链跳转至 RDI，并保留受访问控制保护的 `Current strategy observations`，确保运维视图与每日简报数据一致。
+  3. **Playwright E2E 测试全覆盖**:
+     - 适配全部测试套件以符合 4 目的地工作站架构，未删除任何实质性研究/业务断言；
+     - 新增覆盖 `/research?section=racetrack` 完整历史回退/前进选择持久化；
+     - 新增覆盖当 formal catalog 异常（500/503）时，`/research?section=rdi` 的独立可用性与 `evidence_mismatch` 优雅降级验证；
+     - 运行 123 项端到端场景（桌面 1440px、平板 768px、手机 375px），**123/123 100% 通过**。
+  4. **GitHub Actions 远程 CI 验证**:
+     - `build-static-pwa` (Run 41454685146): **PASS** (5m50s)
+     - `contract` (Run 41454685113): **PASS** (4m0s)
+     - `project-and-verify` (Run 41454685127): **PASS** (3m7s)
+     - `GitGuardian Security Checks`: **PASS** (1s)
+     - PR #1357 达到完全稳定化门禁标准（H0 DoD 全部满足）。
+
 
 
