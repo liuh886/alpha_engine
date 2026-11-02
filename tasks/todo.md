@@ -1288,7 +1288,7 @@
 - **交付日期**: 2026-11-03
 - **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
 - **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
-- **提交 SHA**: `e8af8603c7`
+- **提交 SHA**: `c08d0cf976`
 - **核心成果**:
   1. **文档权威层级与架构对齐**:
      - `AGENTS.md` 与 `strategy_console.md` 全面对齐 PR #1357 确立的 4 大工作台目的地：Today (`/app`)、Strategies (`/strategies`)、Research Lab (`/research`)、System (`/system`) 以及 Instrument Detail 联动；
@@ -1304,6 +1304,22 @@
      - H3 (P1) 策略详情与研究深度重塑：任务式章节吸顶导航、分析周期多表联动、RDI 四阶递进叙事、Racetrack 本地/托管边界加固；
      - H4 (P1) 系统可用性优化：故障精准分类、last-good cutoff 呈现、快捷运维工作流跳转；
      - H5 (P2) 权威收口：全文档对齐真实代码现状。
+
+---
+
+## Phase 23: PR #1357 最终稳态闭环与 Issue #1358 独立研究选手就绪
+
+- [x] **23.1 消除 Strict Mode 重复文案与 TS 编译警告 (H4/H2 Polish)**
+  - [x] 消除 `SystemHubPage` 中的重复 `Read unavailable` 标签（`af49b8c`），按真实运行状态分类恢复动作（`0f13490`）；
+  - [x] 修复 `SecurityLightweightChart.tsx` 中 `modelName` 未使用参数警告（`8a64572`），ESLint 与 `tsc --noEmit` 0 报错；
+  - [x] 重新构建 `dist/`，运行静态 Playwright 测试套件（`playwright.static.config.ts`），**123/123 项端到端测试 100% 全绿通过**（3.9m）；
+- [ ] **23.2 Issue #1358 独立研究选手架构设计与准备 (R1 - First Independent US87 Challenger)**
+  - [ ] 严格遵循独立性原则：选择一个确定、简单且可证伪的 US87 横截面选股/再平衡规则（绝不与内部基准共用回放）；
+  - [ ] 100% 复用既有 `src/racetrack` 基础设施（runner, pipeline, engine, ledger, scoring），坚决不新增回测系统或数据库；
+  - [ ] 确保与 US87 EW Pool Index 及 QQQ 拥有完全一致的观测窗口与成本模型，如数据不足严格报 blocked 而非虚构排名；
+  - [ ] 保持私有 Q-ledger 密码学绑定，绝不公开发布私有持仓，绝不生成实盘交易信号；
+  - [ ] 待 PR #1357 正式合入主线后，基于 main 开启独立功能 PR 实施。
+
 
 
 
