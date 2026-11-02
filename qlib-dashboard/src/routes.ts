@@ -12,7 +12,7 @@ const Strategies = lazy(() => import('./pages/StrategiesPage').then(m => ({ defa
 const Strategy = lazy(() => import('./pages/StrategyDetailPage').then(m => ({ default: m.StrategyDetailPage })));
 const Security = lazy(() => import('./pages/SecurityDetailPage').then(m => ({ default: m.SecurityDetailPage })));
 const Research = lazy(() => import('./pages/ResearchHubPage').then(m => ({ default: m.ResearchHubPage })));
-const System = lazy(() => import('./pages/SystemHubPage').then(m => ({ default: m.SystemHubPage }));
+const System = lazy(() => import('./pages/SystemHubPage').then(m => ({ default: m.SystemHubPage })));
 
 export const routes: RouteDefinition[] = [
   { path: 'app', title: 'Today', label: 'Today', icon: LayoutDashboard, component: Today },

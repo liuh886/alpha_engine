@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
+import { useAccessControl } from '@/hooks/useAccessControl';
+import { describeStrategyObservation } from '@/lib/strategy-operations';
 import { fetchSystemHealth, type LiveSystemHealth } from '@/lib/system-health';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 
 const WORKFLOWS = 'https://github.com/liuh886/alpha_engine/actions/workflows/';
 export function SystemHubPage() {
   const { operations } = useOutletContext<RunWorkspaceContext>();
+  const access = useAccessControl();
   const [health, setHealth] = useState<LiveSystemHealth | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -26,9 +29,26 @@ export function SystemHubPage() {
       <Button variant="outline" disabled={operations.loading} onClick={() => {
         operations.reload();
         setAttempt(value => value + 1);
-      }}>Refresh published status</Button>
+      }}>Refresh status</Button>
     </header>
     <OperationsReadStatus {...operations} />
+    <section className="overflow-hidden rounded-xl border bg-card" aria-label="Current strategy observations">
+      <h2 className="border-b p-4 font-semibold">Current strategy observations</h2>
+      {operations.formalRuns.map(run => {
+        const snapshot = operations.snapshots.get(run.modelVersionId);
+        const allowed = Boolean(snapshot?.strategyId) && !access.policyLoading && access.canAccess(access.requiredTier('strategy', snapshot!.strategyId));
+        const observation = !snapshot?.strategyId ? describeStrategyObservation() : describeStrategyObservation(snapshot, allowed);
+        return <article key={run.key} className="border-b p-4 last:border-0">
+          <div className="flex flex-wrap justify-between gap-2">
+            <Link className="font-semibold text-primary" to={'/strategies/' + encodeURIComponent(run.modelVersionId)}>{run.title}</Link>
+            <span className="text-sm">{observation.label}</span>
+          </div>
+          {allowed && snapshot && (!snapshot.readState || snapshot.readState === 'retained') && <p className="mt-2 text-xs text-muted-foreground">Observed {snapshot.latestCompletedSession || 'unknown'} · target dated {snapshot.decisionSchedule?.signalDate || snapshot.asOf || 'unknown'} · formal evidence {run.evidenceCutoff}</p>}
+          <p className="mt-2 text-sm">{observation.reason}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{observation.nextStep}</p>
+        </article>;
+      })}
+    </section>
     <section className="rounded-xl border bg-card p-4" aria-label="Published source snapshot">
       <h2 className="font-semibold">Published data snapshot</h2>
       <p className="mt-2 text-xs text-muted-foreground">

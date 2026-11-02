@@ -1030,3 +1030,26 @@
      - PR #1307 严格保持在独立 Draft 状态；
      - 建议 Owner 待 A1 真实累积满 20 个交易日后，再做最终 A7 GO 决策。
 
+---
+
+## Phase 17: PR #1357 前端投研工作站重构稳定化与交付 (H0 稳定化门禁)
+
+- [x] **17.1 代码与编译修复 (H0.1)**
+  - [x] 修复 `qlib-dashboard/src/routes.ts` 括号语法错误
+  - [x] 验证 `pnpm --dir qlib-dashboard lint` 零错误零警告
+  - [x] 验证 `pnpm --dir qlib-dashboard exec tsc --noEmit` 通过
+  - [x] 验证 306 项 Vitest 单元测试全绿并通过 build 打包
+- [x] **17.2 Playwright 静态端到端测试适配 (H0.2)**
+  - [x] 适配 `qlib-dashboard/e2e/static-artifact.spec.ts`（更新 4 项导航断言、Snapshot vs Fleet 路径划分、退役路径测试由 `/research` 改为 `/runs`，24 项用例全绿）
+  - [x] 适配 `qlib-dashboard/e2e/strategy-operations.spec.ts`（适配导航辅助函数为 4 目的地、RDI 迁至 `/research?section=rdi` 验证、`/system` 关联深链、保留全部核心断言，63 项用例全绿）
+  - [x] 适配 `qlib-dashboard/e2e/live-pages.spec.ts`（适配 4 导航项与桌面/移动端断言）
+  - [x] 运行全部 Playwright E2E 套件验证（桌面 1440px、平板 768px、手机 375px，123 项测试 100% 通过）
+- [x] **17.3 兼容性与边界验证 (H0.3)**
+  - [x] 验证旧 Racetrack URL（`/#/app?view=racetrack`）兼容重定向与新路由（`/#/research?section=racetrack`）
+  - [x] 验证 RDI 在 `/research?section=rdi` 下独立可用性与降级状态（即使 formal catalog 500 仍可独立访问）
+  - [x] 验证未授权/公开访问边界，确保不泄露实时受保护信号
+- [ ] **17.4 提交、推送与 CI 绿灯闭环 (H0.4)**
+  - [ ] 提交修改至分支 `docs/product/ux-rearchitecture-reference-first-20261102`
+  - [ ] 推送并追踪 PR #1357 远程 GitHub Actions CI 直至全绿
+
+

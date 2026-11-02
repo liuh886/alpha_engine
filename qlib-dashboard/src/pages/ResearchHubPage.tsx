@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { RdiResearchStatus } from '@/components/RdiResearchStatus';
 
 const Racetrack = lazy(() => import('@/components/racetrack/RacetrackWorkspace')
@@ -7,6 +8,7 @@ const Racetrack = lazy(() => import('@/components/racetrack/RacetrackWorkspace')
 
 export function ResearchHubPage() {
   const [params, setParams] = useSearchParams();
+  const [attempt, setAttempt] = useState(0);
   const section = params.get('section') === 'rdi' ? 'rdi' : 'racetrack';
   const select = (next: 'racetrack' | 'rdi') => setParams(previous => {
     const updated = new URLSearchParams(previous);
@@ -17,14 +19,17 @@ export function ResearchHubPage() {
     return updated;
   });
   return <div className="mx-auto max-w-[1500px] space-y-5 pb-16">
-    <header className="border-b pb-5">
-      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Independent research · not live strategies</p>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight">Research Lab</h1>
-      <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-        Examine hypotheses and retained results. Research Runners and historical risk observations
-        do not become formal strategies or trading signals without separate validation.
-      </p>
-      <Link to="/app" className="mt-3 inline-block text-sm text-primary underline">Back to today's brief</Link>
+    <header className="flex flex-wrap items-start justify-between gap-4 border-b pb-5">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Independent research · not live strategies</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight">Research Lab</h1>
+        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+          Examine hypotheses and retained results. Research Runners and historical risk observations
+          do not become formal strategies or trading signals without separate validation.
+        </p>
+        <Link to="/app" className="mt-3 inline-block text-sm text-primary underline">Back to today's brief</Link>
+      </div>
+      <Button variant="outline" onClick={() => setAttempt(value => value + 1)}>Refresh status</Button>
     </header>
     <div className="grid gap-3 sm:grid-cols-2" aria-label="Independent research areas">
       <button type="button" aria-pressed={section === 'racetrack'} onClick={() => select('racetrack')}
@@ -44,7 +49,7 @@ export function ResearchHubPage() {
         </span>
       </button>
     </div>
-    {section === 'rdi' ? <RdiResearchStatus attempt={0} /> :
+    {section === 'rdi' ? <RdiResearchStatus attempt={attempt} /> :
       <Suspense fallback={<p role="status">Loading Racetrack research…</p>}><Racetrack /></Suspense>}
   </div>;
 }

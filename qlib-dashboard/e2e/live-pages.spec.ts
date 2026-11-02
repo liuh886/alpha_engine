@@ -162,9 +162,9 @@ async function assertPrimaryNavigation(page: Page, projectName: string): Promise
   const mobile = projectName === 'mobile';
   if (mobile) await page.getByRole('button', { name: 'Open strategy navigation' }).click();
   const navigation = page.getByRole('navigation', {
-    name: mobile ? 'Mobile strategy console navigation' : 'Strategy console navigation',
+    name: mobile ? 'Mobile strategy console navigation' : 'Research workspace navigation',
   });
-  for (const label of ['Overview', 'Status']) {
+  for (const label of ['Today', 'Strategies', 'Research', 'System']) {
     await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
   }
   await expect(navigation.getByRole('link', { name: 'Runs', exact: true })).toHaveCount(0);
@@ -211,6 +211,12 @@ test('live Pages renders or explicitly policy-gates every catalog-governed forma
   expect(new Set(formalModels.map((model) => model.version)).size).toBe(formalModels.length);
   expect(new Set(formalModels.map((model) => model.displayName)).size).toBe(formalModels.length);
 
+  const snapshot = page.getByRole('region', { name: 'Formal strategy snapshot' });
+  for (const model of formalModels) {
+    await expect(snapshot.getByText(model.displayName, { exact: true })).toBeVisible();
+  }
+
+  await page.goto(`?live_acceptance=${Date.now()}#/strategies`, { waitUntil: 'networkidle' });
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   for (const model of formalModels) {
     await expect(fleet.getByText(model.displayName, { exact: true })).toBeVisible();

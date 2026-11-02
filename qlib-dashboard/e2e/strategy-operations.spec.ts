@@ -31,6 +31,10 @@ test('RDI workspace compares horizons, filters sources and retries independently
   await mockOperations(page);
   await installProMembership(page);
   await page.goto('/#/system');
+  const relatedResearch = page.getByRole('region', { name: 'Related research' });
+  await expect(relatedResearch).toBeVisible();
+  await relatedResearch.getByRole('link', { name: 'Open the independent research view' }).click();
+  await expect(page).toHaveURL(/#\/research\?section=rdi$/);
   const section = page.getByRole('region', { name: 'Risk density · RDI' });
   await expect(section.getByRole('alert')).toContainText('could not be verified');
   const refresh = page.getByRole('button', { name: 'Refresh status', exact: true });
@@ -38,9 +42,8 @@ test('RDI workspace compares horizons, filters sources and retries independently
   await expect.poll(() => fixtureCalls(page)).toBe(1);
   const beforeRetry = { snapshotReads, healthReads, runtimeReads: await fixtureCalls(page) };
   const windowYBeforeJump = await page.evaluate(() => window.scrollY);
-  await page.getByRole('button', { name: 'RDI research', exact: true }).click();
-  await expect(page).toHaveURL(/#\/system$/);
-  await expect(section.getByRole('heading', { name: 'Risk density · RDI', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: /RDI · A-share risk research/ }).click();
+  await expect(page).toHaveURL(/#\/research\?section=rdi$/);
   expect(await page.evaluate(() => window.scrollY)).toBe(windowYBeforeJump);
   const topbar = page.locator('.research-topbar');
   await expect(topbar).toBeInViewport();
@@ -114,7 +117,7 @@ test('RDI workspace retains context and keyboard focus through refresh recovery'
   });
   await mockOperations(page);
   await installProMembership(page);
-  await page.goto('/#/system');
+  await page.goto('/#/research?section=rdi');
   const section = page.getByRole('region', { name: 'Risk density · RDI' });
   const localRead = section.locator('header').getByRole('button');
   const globalRefresh = page.getByRole('button', { name: 'Refresh status', exact: true });
@@ -203,7 +206,7 @@ test('RDI published state keeps optional evidence scoped while Overview remains 
   })();
   await mockOperations(page);
   await installProMembership(page);
-  await page.goto('/#/system');
+  await page.goto('/#/research?section=rdi');
   const section = page.getByRole('region', { name: 'Risk density · RDI' });
   if (published?.status === 'not_validated') {
     await expect(section.getByRole('heading', { name: 'Historical price comparison', exact: true })).toBeVisible();
@@ -225,6 +228,21 @@ test('RDI published state keeps optional evidence scoped while Overview remains 
   }
   await openConsoleView(page, 'app');
   await expect(page.getByRole('region', { name: 'Daily research brief' })).toBeVisible();
+});
+
+test('research lab RDI view remains accessible and functional when formal catalog fails', async ({ page }) => {
+  await page.route('**/data/formal-model-runs/catalog.json', route => route.fulfill({ status: 500, body: 'catalog error' }));
+  await page.route('**/data/strategy-operations/rdi-research.json', route => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify({
+      ...rdiInteractionFixture, status: 'evidence_mismatch', historical_comparison: [],
+    }),
+  }));
+  await installProMembership(page);
+  await page.goto('/#/research?section=rdi');
+  const section = page.getByRole('region', { name: 'Risk density · RDI' });
+  await expect(section.getByRole('heading', { name: 'Risk density · RDI', exact: true })).toBeVisible();
+  await expect(section.getByRole('alert')).toContainText('Source evidence has changed');
+  await expect(section.getByRole('heading', { name: 'Historical comparison withheld', exact: true })).toBeVisible();
 });
 
 // Bind current-state fixtures to the exact formal catalog shipped by this build.
@@ -503,10 +521,11 @@ test('an explicitly mismatched public shell is blocked before runtime reads', as
   }));
   await installProMembership(page, { fullFleet: true });
   await page.goto('/#/app');
+  await expect(page.getByRole('region', { name: 'Daily research brief' })).toContainText('1 need attention');
+  await page.goto('/#/strategies');
   const row = page.getByTestId('fleet-cn_27_v1_3');
   const blocked = row.getByRole('button', { name: /^(Blocked|Inspect signal for CN_27 V1.3: Blocked)$/ }).first();
   await expect(blocked).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Daily research brief' })).toContainText('1 need attention');
   await blocked.click();
   await expect(page.getByRole('dialog').getByText('Operations formal bundle identity mismatch', { exact: true })).toBeVisible();
   await expect.poll(() => fixtureCalls(page)).toBe(1);
@@ -564,7 +583,7 @@ test('overview brief explains the last evaluation and retains its actual dates',
   const brief = page.getByRole('region', { name: 'Daily research brief' });
   const row = brief.getByRole('article', { name: 'QQQR v4.3 daily observation' });
   await expect(brief.getByRole('article')).toHaveCount(3);
-  await expect(page.getByRole('region', { name: 'Formal strategy fleet' }).getByRole('article')).toHaveCount(4);
+  await expect(page.getByRole('region', { name: 'Formal strategy snapshot' }).getByRole('link', { name: /Inspect evidence/ })).toHaveCount(4);
   await expect(row.getByText('Changed at last evaluation', { exact: true })).toBeVisible();
   await expect(row.getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
   await expect(row.getByText('Observed 2026-07-31 · target dated 2026-07-31', { exact: false })).toBeVisible();
@@ -689,6 +708,7 @@ test('stale observations require attention while cadence and execution stay expl
   // This fixture publishes only QQQ: four missing strategies must leave QQQ
   // readable while the reader offers recovery for their independent failures.
   await expect(page.getByRole('button', { name: 'Retry operations' })).toBeEnabled();
+  await page.goto('/#/strategies');
   await page.getByLabel('Signal filter', { exact: true }).selectOption('attention');
   const row = page.getByTestId('fleet-qqqi_qqq_tqqq_v4_3');
   await expect(row).toBeVisible();
@@ -700,7 +720,7 @@ test('operating status reads the same verified current observation as the daily 
   await mockOperations(page);
   await installProMembership(page);
   await page.goto('/#/system');
-  await expect(page.getByRole('heading', { name: 'Operating Status', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('heading', { name: 'Operating Status', exact: true })).toBeVisible();
   const row = page.getByRole('region', { name: 'Current strategy observations' }).getByRole('article').filter({ hasText: 'QQQR v4.3' });
   await expect(row.getByText('Changed at last evaluation', { exact: true })).toBeVisible();
   await expect(row.getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
@@ -710,12 +730,18 @@ test('operating status reads the same verified current observation as the daily 
 });
 
 
-async function openConsoleView(page: Page, path: 'app' | 'system') {
+async function openConsoleView(page: Page, path: 'app' | 'strategies' | 'research' | 'system') {
   const mobile = (page.viewportSize()?.width ?? 1280) < 768;
-  const navigation = page.getByRole('navigation', { name: mobile ? 'Primary' : 'Strategy console navigation', exact: true });
+  const navigation = page.getByRole('navigation', { name: mobile ? 'Primary' : 'Research workspace navigation', exact: true });
   await navigation.locator(`a[href="#/${path}"]`).click();
+  const headings: Record<string, string> = {
+    app: 'What are the strategies doing now?',
+    strategies: 'Strategies',
+    research: 'Research Lab',
+    system: 'Operating Status',
+  };
   await expect(page.getByRole('main').getByRole('heading', {
-    name: path === 'app' ? 'What are the strategies doing now?' : 'Operating Status', level: 1, exact: true,
+    name: headings[path], level: 1, exact: true,
   })).toBeVisible();
 }
 
