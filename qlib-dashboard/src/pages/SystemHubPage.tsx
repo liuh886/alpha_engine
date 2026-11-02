@@ -38,14 +38,40 @@ export function SystemHubPage() {
         const snapshot = operations.snapshots.get(run.modelVersionId);
         const allowed = Boolean(snapshot?.strategyId) && !access.policyLoading && access.canAccess(access.requiredTier('strategy', snapshot!.strategyId));
         const observation = !snapshot?.strategyId ? describeStrategyObservation() : describeStrategyObservation(snapshot, allowed);
+        const lastGoodCutoff = snapshot?.latestCompletedSession || run.evidenceCutoff;
+        const failureClass = observation.kind === 'attention' ? observation.label : snapshot?.status === 'stale' ? 'Stale observation' : null;
         return <article key={run.key} className="border-b p-4 last:border-0">
-          <div className="flex flex-wrap justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <Link className="font-semibold text-primary" to={'/strategies/' + encodeURIComponent(run.modelVersionId)}>{run.title}</Link>
-            <span className="text-sm">{observation.label}</span>
+            <div className="flex items-center gap-2">
+              {failureClass && (
+                <span className="rounded bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-700 dark:text-rose-300">
+                  {failureClass}
+                </span>
+              )}
+              <span className="text-sm">{observation.label}</span>
+            </div>
           </div>
-          {allowed && snapshot && (!snapshot.readState || snapshot.readState === 'retained') && <p className="mt-2 text-xs text-muted-foreground">Observed {snapshot.latestCompletedSession || 'unknown'} · target dated {snapshot.decisionSchedule?.signalDate || snapshot.asOf || 'unknown'} · formal evidence {run.evidenceCutoff}</p>}
+          {allowed && snapshot && (!snapshot.readState || snapshot.readState === 'retained') && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Observed {snapshot.latestCompletedSession || 'unknown'} · target dated {snapshot.decisionSchedule?.signalDate || snapshot.asOf || 'unknown'} · formal evidence {run.evidenceCutoff} · last-good cutoff {lastGoodCutoff}
+            </p>
+          )}
           <p className="mt-2 text-sm">{observation.reason}</p>
           <p className="mt-1 text-xs text-muted-foreground">{observation.nextStep}</p>
+          {observation.kind === 'attention' && (
+            <div className="mt-3 flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">Recovery action:</span>
+              <a
+                className="text-primary underline"
+                href={WORKFLOWS + 'formal-backtest-refresh.yml'}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Trigger formal refresh workflow
+              </a>
+            </div>
+          )}
         </article>;
       })}
     </section>
@@ -56,7 +82,14 @@ export function SystemHubPage() {
         Strategy decisions may advance independently of this source snapshot.
       </p>
       {health?.health?.markets.map(market => <div key={market.market} className="mt-3 rounded-lg border p-3 text-sm">
-        <h3 className="font-semibold">{market.market.toUpperCase()} · {market.state}</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-semibold">{market.market.toUpperCase()} · {market.state}</h3>
+          {market.state !== 'current' && (
+            <span className="rounded bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+              Source degraded
+            </span>
+          )}
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">Provider cutoff {market.provider_cutoff || 'unknown'} · expected {market.market_expected_cutoff || 'unknown'}</p>
       </div>)}
       {health && !health.health && <p role="alert" className="mt-3 text-sm">{health.message}</p>}

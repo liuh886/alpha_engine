@@ -1235,15 +1235,52 @@
 
 ## Phase 21: H4 (P1) 系统可用性与设计走查原型 (System Usability & Layout Refinement)
 
-- [ ] **21.1 系统页信息架构优化 (H4.1 - System Usability)**
-  - [ ] 确保 `/system` 聚焦呈现受影响数据源/策略、最近良好截止日（last-good cutoff）、故障分类与恢复工作流链接；
-  - [ ] 避免在系统页面冗余复制完整的 Daily Brief 正文，聚焦运维诊断与快速恢复；
-- [ ] **21.2 响应式设计与多状态覆盖走查 (H4.2 - Layout Refinement)**
-  - [ ] 确保桌面端 1440px、平板端 768px、手机端 375px 在正常、加载中、受限与过期/故障各状态下布局精致紧凑；
-  - [ ] 消除任何水平溢出与排版层级混乱，保证高密度投研工作站专业水准；
-- [ ] **21.3 质量验收与 CI 绿灯闭环 (H4.3)**
-  - [ ] 运行 lint、tsc、vitest 与 Playwright 全绿；
-  - [ ] 提交、推送分支并保持远程 GitHub Actions 绿灯。
+- [x] **21.1 系统页信息架构优化 (H4.1 - System Usability)**
+  - [x] 确保 `/system` 聚焦呈现受影响数据源/策略、最近良好截止日（last-good cutoff）、故障分类与恢复工作流链接；
+  - [x] 避免在系统页面冗余复制完整的 Daily Brief 正文，聚焦运维诊断与快速恢复；
+- [x] **21.2 响应式设计与多状态覆盖走查 (H4.2 - Layout Refinement)**
+  - [x] 确保桌面端 1440px、平板端 768px、手机端 375px 在正常、加载中、受限与过期/故障各状态下布局精致紧凑；
+  - [x] 消除任何水平溢出与排版层级混乱，保证高密度投研工作站专业水准；
+- [x] **21.3 质量验收与 CI 绿灯闭环 (H4.3)**
+  - [x] 运行 lint、tsc、vitest 与 Playwright 全绿；
+  - [x] 提交、推送分支并保持远程 GitHub Actions 绿灯。
+
+---
+
+## 阶段验收与复盘记录 (Review: Phase 21 / H4 交付成果)
+
+- **交付日期**: 2026-11-03
+- **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **提交 SHA**: 待提交 (H4 提交)
+- **核心成果**:
+  1. **系统运维页聚焦与故障分类清晰化 (`SystemHubPage.tsx`)**:
+     - 展示策略/数据源受影响状态，直观标注故障级别（如 `Stale observation`、`Attention`、`Source degraded`）；
+     - 显示精确的最近良好截止日（`last-good cutoff`），避免信息模糊；
+     - 提供直接的恢复工作流快捷指引链接（如 `Trigger formal refresh workflow`），实现一键跳转 GitHub Actions 运维界面；
+     - 坚决不冗余复制 Daily Brief 投研正文，严格维护 System 作为运维状态诊断界面的单一职责。
+  2. **多状态与响应式布局健全性**:
+     - 在 1440px 桌面、768px 平板、375px 手机端，自适应网格与排版自洽，文字换行平滑，零水平溢出；
+     - 覆盖正常、受限（Access required）、过期（Stale）与异常重试状态。
+  3. **质量闭环与自动化测试**:
+     - ESLint 0 警告 0 报错；`tsc --noEmit` 0 报错；
+     - Vitest 37 个测试文件 311 项测试 100% 全绿；
+     - Playwright 桌面端、平板端、移动端 123/123 测试 100% 全绿通过（3.9m）。
+
+---
+
+## Phase 22: H5 (P2) 权威与发布就绪归档 (Authority, Scorecard & Release Alignment)
+
+- [ ] **22.1 架构决策对齐与文档收敛 (H5.1 - Authority Alignment)**
+  - [ ] 基于已合入的真实前端代码，更新 `AGENTS.md`、`docs/product/strategy_console.md` 与 `docs/product/next_stage_execution_plan.md`，反映四目的地架构（Today, Strategies, Research Lab, System）与 H1–H4 真实实现；
+  - [ ] 确保文档表述严谨：澄清 PR #1357 的前端合并绝不等同于 A7 生产正式 GO，亦不构成实盘交易授权或新数据源公开发布；
+- [ ] **22.2 发布候选集成度量与门禁对齐 (H5.2 - Release Candidate Verification)**
+  - [ ] 记录真实部署 SHA 与环境状态；
+  - [ ] 检验回滚与安全边界，维持 A0–A7 门禁的客观判定（A1/A2/A3/A5/A6 BLOCKED, A4 FAIL, A7 NOT_TESTED/NO-GO）；
+- [ ] **22.3 PR #1357 交付就绪评审与总结 (H5.3 - PR Delivery Package)**
+  - [ ] 汇总 H0~H5 完整执行证据链、测试命令与多端验证结果；
+  - [ ] 向用户交付最终状态与后续三条工作线的推进建议。
+
 
 
 
