@@ -1,5 +1,26 @@
 # Alpha Engine — A-first 前端架构实现与 Agent 接手清单
 
+## 2026-11-03 architecture review update (read before the original handoff)
+
+This file began as the handoff at commit 95e1fd2. **H0–H5 have since received concrete commits on PR #1357**, so the original unchecked instructions below are historical initial work packages; do not redo them merely because the old boxes remain unchecked.
+
+| Delivered on PR branch | Commit | Review status |
+| --- | --- | --- |
+| H0 route/browser adaptation | fa60654 | Earlier CI green; currently revalidated on integrated head |
+| H1 Today hierarchy/access-aware cards | f2e39cd | Code implemented; real user UAT outstanding |
+| H2 TradingView Lightweight Charts side-by-side POC | 090e7da | Implemented; default is still POC comparison, not signed-off final chart |
+| H3 Strategy period/risk sync + research view | b61e48f | Code implemented; exact-window parity and readability remain UAT gates |
+| H4 System failure/recovery presentation | 1fb0d51 | Code implemented; latest integrated check found duplicate status and overbroad recovery links; fixes applied in this PR |
+| H5 docs synchronization | c08d0cf | Initial authority updates in branch; merge into main not yet approved |
+
+**Observed integrated CI at c08d0cf:** Static PWA lint/build/bundle checks passed; static Playwright was 120 passed / 3 failed across desktop/tablet/mobile from one strict locator ambiguity in the System current observations. Fixed duplicate labels in af49b8c, and recovery workflow classification in 0f13490; follow-up CI results must be read at the newest HEAD before merging. The earlier proof cannot be reused as a fresh PASS.
+
+**Remaining merge checklist:** latest-head static browser PASS; actual TradingView event-selection, mobile/touch/keyboard and accessibility walkthrough; screenshot-based UX review; authorization-boundary negative verification (real restricted session NOT_TESTED if unavailable); preserve the protected-current and localhost-only research boundaries; verify old Racetrack bookmarks. Owner confirmation for navigation/release remains separate from automatic CI.
+
+**Next independent functional PR (after current UX changes stabilize):** one genuinely independent US87 challenger, with a frozen thesis, existing replay + Q/NAV engine and comparable fee/window proof. Tracked in the maintained [execution plan](next_stage_execution_plan.md#3-按依赖排序的行动清单每行可单独成为小-pr). Do not open another UX framework PR or a docs-only duplicate.
+
+---
+
 **Owner decision:** 2026-11-02, A / Decision-first Investment Research Workspace.
 **PR:** #1357, Draft / implementation foundation; **not yet CI- or browser-validated**.
 **Scope:** page responsibility, route/nav, cross-page journeys, reuse of existing evidence readers; no new storage, computation, API, trading or permission change.
