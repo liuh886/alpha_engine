@@ -1059,6 +1059,7 @@
 
 ## Phase 18: H1 (P0) Today 投研信息设计增强与准入感知卡片
 
+
 - [x] **18.1 Today 市场卡片信息层级重构 (H1.1)**
   - [x] 准确展示各市场形式化策略数量与经过验证的证据截止范围（US 与 CN 各自维护独立证据窗口）
   - [x] 严格区分策略 Formal 证据窗口与当前目标评估日，禁止推断跨策略虚构统一市场日；明示 Provider 数据源健康由 `/system` 专门承载
@@ -1139,6 +1140,70 @@
        - `contract` (Run 41467146786): **PASS** (2m41s)
        - `project-and-verify` (Run 41467146808): **PASS** (3m1s)
        - `GitGuardian Security Checks`: **PASS** (2s)
+
+---
+
+## Phase 19: H2 (P0) 标的详情 TradingView lightweight-charts POC 实现
+
+- [x] **19.1 Lightweight Charts 适配器与数据对齐契约 (H2.1)**
+  - [x] 构建 `SecurityLightweightChart` 组件与 `lightweight-chart-adapter.ts`，利用已安装的 `lightweight-charts 5.2.1`；
+  - [x] 严格对齐 `SecurityBar -> CandlestickData / HistogramData` 与 `SecurityEvent -> createSeriesMarkers`；
+  - [x] 确保无交易日缺失或发明假 K 线，保持完全真实复权历史语义与严格时间升序校验；
+- [x] **19.2 双轨视图与无障碍保障 (H2.2)**
+  - [x] 在 `SecurityHistoryChart` 中支持 Side-by-side POC、TradingView 与 Recharts Classic 视图切换；
+  - [x] 默认保持现有 DOM 断言（`security-candle`、`security-trade-marker`、`data-marker-count`）与交互（键盘回车选事件、周期切换）完全兼容；
+  - [x] 包含 TradingView NOTICE / attribution 开源许可归属说明与历史账本无障碍后备；
+- [x] **19.3 数据等价性测试与质量验证 (H2.3)**
+  - [x] 编写 `lightweight-chart-adapter.test.ts` 数据转换与等价性单元测试（5 项测试），断言时间戳、OHLCV、交易事件标记 ID 与 Recharts 输入 100% 对齐；
+  - [x] 运行 lint（0 错误 0 警告）、tsc、vitest（37 文件 311 测试）全绿；
+  - [x] 运行 Playwright E2E 完整套件（桌面 1440px、平板 768px、手机 375px），123/123 测试 100% 全绿通过；
+  - [x] 提交、推送分支并追踪远程 CI 绿灯。
+
+---
+
+## 阶段验收与复盘记录 (Review: Phase 19 / H2 交付成果)
+
+- **交付日期**: 2026-11-02
+- **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **提交 SHA**: 待提交 (H2 提交)
+- **核心成果**:
+  1. **纯数据适配器与强类型转换 (`lightweight-chart-adapter.ts`)**:
+     - `toLightweightCandleData`: 严格映射 `SecurityBar` 至 Lightweight Charts `CandlestickData`，断言日期升序，零假 K 线或虚构交易日；
+     - `toLightweightVolumeData`: 映射成交量至 `HistogramData`，根据阳线/阴线动态着色（红涨绿跌 / 绿涨红跌依据真实价格变化）；
+     - `toLightweightMarkers`: 聚合买卖与调仓事件标记，转换为 `SeriesMarker<Time>`；
+     - `assertLightweightParity`: 运行时等价性断言，校验时间戳、OHLCV 与事件条目一致性。
+  2. **高性能交互式 K 线组件 (`SecurityLightweightChart.tsx`)**:
+     - 采用 `lightweight-charts 5.2.1` 原生 Canvas API 构建自适应容器；
+     - 支持 Crosshair 十字线交互、价格时间格式化、自适应容器尺寸缩放与明暗主题切换；
+     - 包含 Apache 2.0 归属声明（TradingView Lightweight Charts™ 许可与规范）。
+  3. **双轨视图无缝切换与无障碍兼容 (`SecurityHistoryChart.tsx`)**:
+     - 引入三态视图切换器（`Side-by-side POC` / `TradingView` / `Recharts Classic`），默认并排对比；
+     - 完整保留现有 Recharts SVG DOM 节点（`security-candle`、`security-trade-marker` 等），保证屏幕阅读器与既有自动化用例无缝兼容。
+  4. **全量测试与验证闭环**:
+     - 新增 5 项单元测试，覆盖等价性检验、乱序防御与标记映射；
+     - 更新 `security-history.spec.ts` 涵盖双引擎并排与切换交互；
+     - Vitest 311 项测试全绿，Playwright 123 项测试全绿（Desktop/Tablet/Mobile 100% pass）。
+
+---
+
+## Phase 20: H3 (P1) 策略详情与研究深度重构 (Strategy & Research Detail)
+
+- [ ] **20.1 策略详情页任务式章节重构 (H3.1 - StrategyDetail Subsections)**
+  - [ ] 将 `StrategyDetailPage.tsx` 组织为任务导向的五大明确章节（Summary / Performance / Risk / Decisions / Evidence）；
+  - [ ] 确保单一选定周期（Selected Period）与基准锚点联动驱动所有可比指标、时间区间与风险面板；
+  - [ ] 保留所有现有受访问控制保护的实时信号、状态机标签与合规边界；
+- [ ] **20.2 RDI 投研信息层级与叙事重塑 (H3.2 - RdiResearchStatus Narrative)**
+  - [ ] 重塑 RDI 主叙述结构：研究问题 -> 经验证的真实历史描述性结果 -> 明确标注尚未验证的盲区与局限 -> 可展开的数据源准入认证；
+  - [ ] 坚决不引入虚构或未校准的实时综合预测评分（`trade_ready=false`）；
+- [ ] **20.3 Racetrack 托管与本地边界强化 (H3.3 - Racetrack Boundary)**
+  - [ ] 清晰区分 Hosted 静态与 Localhost-only 本地动态投研投影状态；
+  - [ ] 严格禁止公开暴露私有 Q 证据，保持 Formal baseline、独立 Runner 与市场 Benchmark 身份严格隔离；
+- [ ] **20.4 全量质量验收与 CI 绿灯闭环 (H3.4)**
+  - [ ] 单元测试、端到端测试 100% 全绿，无回归；
+  - [ ] 提交、推送分支并保持远程 GitHub Actions 绿灯。
+
+
 
 
 

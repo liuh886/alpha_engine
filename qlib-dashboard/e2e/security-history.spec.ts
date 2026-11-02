@@ -13,6 +13,10 @@ test('formal instrument link opens price history with model markers and a retain
   await expect(page.getByRole('heading', { name: 'QQQ · QQQ' })).toBeVisible();
   const chart = page.getByTestId('security-history-chart');
   await expect(chart).toBeVisible();
+  const lcContainer = page.getByTestId('security-lightweight-chart-container');
+  await expect(lcContainer).toBeVisible();
+  await expect(page.getByText('TradingView Lightweight Charts™', { exact: false }).first()).toBeVisible();
+  await expect(page.getByText('Parity verified:')).toBeVisible();
   await expect(page.getByTestId('security-candle').first()).toBeAttached();
   await expect(page.getByTestId('security-trade-marker').first()).toBeAttached();
   const toggle = page.getByRole('checkbox', { name: /QQQR v4.3/ });
@@ -22,6 +26,15 @@ test('formal instrument link opens price history with model markers and a retain
   await page.getByTestId('security-trade-marker').first().focus();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('security-selected-event')).toContainText('QQQR v4.3');
+
+  // Verify chart engine switching
+  await page.getByRole('button', { name: 'TradingView', exact: true }).click();
+  await expect(lcContainer).toBeVisible();
+  await page.getByRole('button', { name: 'Recharts Classic', exact: true }).click();
+  await expect(page.getByTestId('security-candle').first()).toBeAttached();
+  await page.getByRole('button', { name: 'Side-by-side POC', exact: true }).click();
+  await expect(lcContainer).toBeVisible();
+
   await page.getByRole('button', { name: '1M', exact: true }).click();
   await expect(page).toHaveURL(/[?&]range=1m/);
   await expect(page.getByRole('button', { name: '1M', exact: true })).toHaveAttribute('aria-pressed', 'true');
