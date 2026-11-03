@@ -191,6 +191,48 @@ def _build_parser() -> argparse.ArgumentParser:
     study_compare.add_argument("left", type=Path)
     study_compare.add_argument("right", type=Path)
 
+    # Study Review (E1 Continuous Hypothesis Review Loop)
+    study_review = study_actions.add_parser(
+        "review", help="Continuous hypothesis review, counter-evidence and lifecycle tracking (E1)."
+    )
+    study_review_actions = study_review.add_subparsers(dest="review_action", required=True)
+
+    review_list = study_review_actions.add_parser("list", help="List all tracked study reviews.")
+    review_list.add_argument("--dir", type=Path, default=Path("data/research/study_reviews"))
+
+    review_show = study_review_actions.add_parser("show", help="Inspect a study review record.")
+    review_show.add_argument("review", type=Path, help="Path to study review JSON file.")
+    review_show.add_argument("--format", choices=["json", "markdown"], default="markdown")
+
+    review_init = study_review_actions.add_parser("init", help="Scaffold a study review record.")
+    review_init.add_argument("--review-id", required=True)
+    review_init.add_argument("--title", required=True)
+    review_init.add_argument("--runner-id", required=True)
+    review_init.add_argument("--statement", required=True)
+    review_init.add_argument("--output", required=True, type=Path)
+    review_init.add_argument("--market", default="us")
+    review_init.add_argument("--pool-id", default="us_selected_equities_v2")
+    review_init.add_argument("--economic-rationale", default="")
+    review_init.add_argument("--expected-edge", default="")
+    review_init.add_argument("--cost-bps", type=float, default=8.0)
+    review_init.add_argument("--frozen-cutoff", default="2024-01-01")
+    review_init.add_argument("--next-review", default="2026-12-01")
+
+    review_add_ce = study_review_actions.add_parser(
+        "add-counter-evidence", help="Record counter-evidence for a hypothesis."
+    )
+    review_add_ce.add_argument("review", type=Path)
+    review_add_ce.add_argument(
+        "--category",
+        required=True,
+        choices=["beta_drag", "drawdown_breach", "liquidity_drag", "turnover_drag", "regime_inversion"],
+    )
+    review_add_ce.add_argument("--observation", required=True)
+    review_add_ce.add_argument("--session", required=True)
+    review_add_ce.add_argument(
+        "--severity", choices=["info", "warning", "falsifying"], default="warning"
+    )
+
     import_run = research_commands.add_parser(
         "import-run",
         help="Validate a local training/backtest run and copy it into data/research/runs.",
@@ -559,6 +601,75 @@ def main(argv: Sequence[str] | None = None) -> int:
                 payload = inspected
             elif args.study_action == "compare":
                 payload = compare_studies(_resolve(root, args.left), _resolve(root, args.right))
+            elif args.study_action == "review":
+                from src.research.study_review import (
+                    CounterEvidenceSeverity,
+                    FrozenConditions,
+                    HypothesisSpec,
+                    ScheduledReview,
+                    add_counter_evidence,
+                    create_study_review,
+                    format_study_review_markdown,
+                    list_study_reviews,
+                    load_study_review,
+                    save_study_review,
+                )
+
+                if args.review_action == "list":
+                    payload = {"reviews": list_study_reviews(_resolve(root, args.dir))}
+                elif args.review_action == "show":
+                    record = load_study_review(_resolve(root, args.review))
+                    if getattr(args, "format", "markdown") == "markdown":
+                        print(format_study_review_markdown(record))
+                        return 0
+                    payload = record.to_dict()
+                elif args.review_action == "init":
+                    new_record = create_study_review(
+                        review_id=args.review_id,
+                        title=args.title,
+                        hypothesis=HypothesisSpec(
+                            statement=args.statement,
+                            economic_rationale=args.economic_rationale or args.statement,
+                            expected_edge=args.expected_edge or "Capital preservation or alpha edge",
+                            falsification_criteria=["Max drawdown exceeds benchmark by >5%"],
+                        ),
+                        frozen_conditions=FrozenConditions(
+                            frozen_at_cutoff=args.frozen_cutoff,
+                            market=args.market,
+                            pool_id=args.pool_id,
+                            runner_id=args.runner_id,
+                            benchmarks=["us87_ew_pool_runner_v1", "QQQ"],
+                            cost_bps=args.cost_bps,
+                        ),
+                        scheduled_review=ScheduledReview(
+                            next_review_session=args.next_review,
+                            cadence="monthly",
+                            review_triggers=["max_drawdown_below_-0.25"],
+                        ),
+                    )
+                    out_path = save_study_review(new_record, _resolve(root, args.output))
+                    payload = {"status": "created", "path": str(out_path), "review_id": new_record.review_id}
+                elif args.review_action == "add-counter-evidence":
+                    rev_path = _resolve(root, args.review)
+                    cur_record = load_study_review(rev_path)
+                    sev = CounterEvidenceSeverity(args.severity)
+                    cur_record = add_counter_evidence(
+                        cur_record,
+                        category=args.category,
+                        observation=args.observation,
+                        session=args.session,
+                        severity=sev,
+                    )
+                    save_study_review(cur_record, rev_path)
+                    payload = {
+                        "status": "counter_evidence_added",
+                        "review_id": cur_record.review_id,
+                        "evidence_count": len(cur_record.counter_evidence),
+                        "lifecycle_state": cur_record.lifecycle_state.value,
+                    }
+                else:
+                    parser.error("unsupported review action")
+                    return 2
             else:
                 parser.error("unsupported study action")
                 return 2

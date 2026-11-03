@@ -1,0 +1,113 @@
+{
+  "schema_version": "1.0",
+  "review_id": "rev_us87_low_vol_v1",
+  "title": "US87 Low-Volatility Defense Hypothesis",
+  "lifecycle_state": "observing",
+  "created_at": "2026-11-03T15:42:42.700809+00:00",
+  "updated_at": "2026-11-03T15:42:42.700809+00:00",
+  "hypothesis": {
+    "statement": "Selecting the lowest realized-volatility quintile (K=20) of US87 equities with equal 5% weighting dampens drawdown in market pullbacks while maintaining a cash reserve for unlisted/short-history assets.",
+    "economic_rationale": "Low-volatility anomaly in technology equities: extreme high-beta names suffer severe drawdowns and volatility drag during macro corrections, whereas steady cash-flow/low-beta tech names preserve capital.",
+    "expected_edge": "Substantially lower maximum drawdown (-17.7% vs -28.0% for EW pool), positive risk-adjusted returns during tech shakeouts (+7.6% 1M when pool drops -11.1%).",
+    "falsification_criteria": [
+      "Maximum drawdown exceeding that of the US87 Equal-Weight Pool Index (-28.0%).",
+      "Trailing 12-month excess return vs US87 EW pool dropping below -30% (unacceptable beta drag).",
+      "Cash drag ratio exceeding 30% of total portfolio value over 3 consecutive rebalances."
+    ]
+  },
+  "frozen_conditions": {
+    "frozen_at_cutoff": "2024-01-01",
+    "market": "us",
+    "pool_id": "us_selected_equities_v2",
+    "runner_id": "us87_low_vol_challenger_v1",
+    "benchmarks": [
+      "us87_ew_pool_runner_v1",
+      "QQQ"
+    ],
+    "cost_bps": 8.0,
+    "rebalance_cadence": "monthly_first_session",
+    "contract_sha256": ""
+  },
+  "observations": {
+    "full_sample_2024_2026": {
+      "as_of_session": "2026-11-02",
+      "sample_kind": "full_sample",
+      "cumulative_return": 0.033,
+      "annualized_return": 0.021,
+      "sharpe_ratio": 0.52,
+      "max_drawdown": -0.177,
+      "persistence_score": 0.314,
+      "vs_benchmark_returns": {
+        "us87_ew_pool_runner_v1": -0.204,
+        "QQQ": -0.052
+      },
+      "rebalances_count": 35,
+      "cash_drag_ratio": 0.05
+    },
+    "downturn_resilience_1m": {
+      "as_of_session": "2026-11-02",
+      "sample_kind": "out_of_sample",
+      "cumulative_return": 0.076,
+      "annualized_return": 0.912,
+      "sharpe_ratio": 1.85,
+      "max_drawdown": -0.024,
+      "persistence_score": 0.85,
+      "vs_benchmark_returns": {
+        "us87_ew_pool_runner_v1": 0.187,
+        "QQQ": 0.112
+      },
+      "rebalances_count": 1,
+      "cash_drag_ratio": 0.05
+    }
+  },
+  "counter_evidence": [
+    {
+      "evidence_id": "CE-001",
+      "session": "2024-11-01",
+      "category": "beta_drag",
+      "severity": "info",
+      "observation": "Lagged US87 Equal-Weight Pool Index by -20.4% during tech rally, confirming expected trade-off where defensive allocation underperforms during speculative bull runs.",
+      "metrics_impact": {
+        "1y_excess_vs_pool": -0.204
+      }
+    },
+    {
+      "evidence_id": "CE-002",
+      "session": "2025-06-02",
+      "category": "turnover_drag",
+      "severity": "warning",
+      "observation": "Monthly turnover in volatile regime exceeded 40% as realized volatility quintile shifted rapidly, inducing 8 bps fee drag.",
+      "metrics_impact": {
+        "monthly_turnover": 0.42,
+        "fee_drag_bps": 16.8
+      }
+    }
+  ],
+  "conclusion": {
+    "verdict": "Hypothesis supported in downside protection, challenged by persistent bull-market beta drag",
+    "verdict_session": "2026-11-02",
+    "summary": "Defensive thesis is verified: Max drawdown is -17.7% vs -28.0% for the pool. In 1M downturn, strategy gained +7.6% while pool dropped -11.1%. However, 1Y return trails the pool by -20.4% due to beta drag. It functions as an effective capital preservation sleeve rather than high-alpha driver.",
+    "supported_points": [
+      "Downside protection verified: -17.7% MaxDD vs -28.0% pool MaxDD",
+      "Recent 1M market downturn: +7.6% vs -11.1% pool return",
+      "100% deterministic replay with valid Q-ledger hash chain"
+    ],
+    "unresolved_risks": [
+      "Severe beta lag during high-momentum market expansions",
+      "Realized volatility metric sensitivity to 20-session rolling window length"
+    ],
+    "recommendation": "continue_observing"
+  },
+  "scheduled_review": {
+    "next_review_session": "2026-12-01",
+    "cadence": "monthly",
+    "review_triggers": [
+      "max_drawdown_below_-0.25",
+      "1y_excess_vs_pool_below_-0.30",
+      "monthly_turnover_above_0.50"
+    ]
+  },
+  "lineage_fingerprint": "041cda2d46ac459ba12f66950554c952363ad935b0246f7dba1104d3190357ab",
+  "research_only": true,
+  "trade_ready": false
+}

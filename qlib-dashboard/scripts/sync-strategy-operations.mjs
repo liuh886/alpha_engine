@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -226,4 +226,29 @@ try {
   }) + '\n', 'utf8');
   process.stderr.write('RDI reviewed evidence unavailable; independent strategy publication remains valid.\n');
 }
+// Synchronize governed Study Reviews for continuous hypothesis review desk (E1).
+try {
+  const reviewsDir = resolve(repoRoot, 'data/research/study_reviews');
+  const files = (await readdir(reviewsDir).catch(() => [])).filter(f => f.endsWith('.json'));
+  const reviews = [];
+  for (const f of files) {
+    try {
+      const content = JSON.parse(await readFile(resolve(reviewsDir, f), 'utf8'));
+      if (content.schema_version === '1.0' && content.review_id) {
+        reviews.push(content);
+      }
+    } catch {
+      // Skip invalid JSON
+    }
+  }
+  await writeFile(resolve(outputDir, 'study-reviews.json'), JSON.stringify({
+    schema_version: '1.0.0',
+    research_only: true,
+    trade_ready: false,
+    reviews,
+  }, null, 2) + '\n', 'utf8');
+} catch (err) {
+  process.stderr.write(`Study reviews sync failed: ${err.message}\n`);
+}
+
 console.log(`Published public strategy identity and system-health shells for ${projection.operationIds.length} formal models; protected current operations stay on the runtime access plane.`);

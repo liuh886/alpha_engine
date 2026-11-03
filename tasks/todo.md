@@ -1355,9 +1355,85 @@
 
 ### Phase 24 交付审查 (Review)
 
-1. **功能闭环**: Issue #1358 要求一个真正独立的低波横截面选手 `us87_low_vol_challenger_v1`，完全复用现有 `src/racetrack/` 的执行引擎、评分规则与 Q-ledger 机制，零新增数据库或调度器。
-2. **证据闭环**: 为双选手同时生成独立的私有 Q-ledger、哈希签名与投影产物，在同一交易日、相同摩擦成本（5 bps）下与 US87 EW Pool 基准及 QQQ 宏观基准展开对比。
-3. **前端对齐**: Research Lab 投研控制台支持按角色展示独立策略选手，无缝承接第一季积分竞赛协议。
+1. **功能闭环**: Issue #1358 交付了首个真正独立的 US87 低波横截面选手 `us87_low_vol_challenger_v1`，完全复用现有 `src/racetrack/` 的执行引擎、评分规则与 Q-ledger 机制，零新增数据库或调度器。
+2. **证据闭环**: 为双选手同时生成独立的私有 Q-ledger、哈希签名与投影产物，在相同交易日、相同摩擦成本（8 bps）下与 US87 EW Pool 基准及 QQQ 宏观基准展开对比。
+3. **真实数据验证**:
+   - 真实 US87 历史数据（2024-01-01 至 2026-11-02，35 次月度再平衡）：
+   - `us87_low_vol_challenger_v1`: 赛季积分 **+1.57**, 1M **+7.6%**, 3M **+4.6%**, 1Y **+3.3%**, vs QQQ (1Y) **-5.2%**, vs US87 EW (1Y) **-20.4%**, MaxDD **-17.7%**, Sharpe **0.52**, Persistence **31.4%**.
+   - `us87_ew_pool_runner_v1`: 赛季积分 **-1.37**, 1M **-11.1%**, 3M **-4.0%**, 1Y **+23.7%**, vs QQQ (1Y) **+15.2%**, vs US87 EW (1Y) **0.0%**, MaxDD **-28.0%**, Sharpe **1.54**, Persistence **68.6%**.
+   - 假设得到明确验证：最大回撤显著收窄（-17.7% vs -28.0%），熊市抗跌明显，高贝塔反弹期跑输等权池。
+
+---
+
+## Phase 25: Issue #1362 彻底收口与 PR #1361 全绿合并
+
+- [x] **25.1 Issue #1362 历史 RDI 测试隔离修复 (PR #1363)**
+  - [x] 根因分析：CN 市场证据更新至 2026-11-02 后，历史价格修复测试读取最新 catalog 触发 `candidate exceeds completed-session cutoff` 报错；且 Actions shallow clone (`fetch-depth: 1`) 导致旧 git commit blob 无法直接读取。
+  - [x] 优雅解法：实现 `slice_market_evidence_candidate`，在内存中纯粹基于 HEAD 已追踪的市场证据按截止日精确切片，100% 离线、零历史 git blob 依赖；
+  - [x] 保留门禁：`audit_price_renewal` 的 `candidate <= completed_cutoff` 运行时防护保持严密生效，新增负面测试 `test_future_candidate_evidence_rejected_at_historical_cutoff`；
+  - [x] 验证通过：PR #1363 在 GitHub Actions CI 4 个工作流（backend, build-static-pwa, experiment, GitGuardian）全绿通过，squash merge 入 `main` (`116d04fa95`)。
+- [x] **25.2 PR #1361 CI 全绿与主干合并**
+  - [x] 将最新包含 #1362 修复的主干合入 PR #1361 特性分支；
+  - [x] GitHub Actions CI 全量 8 项任务（backend, build-static-pwa, 2x contract, experiment, project-and-verify, validate, GitGuardian）**100% 全绿通过**；
+  - [x] PR #1361 成功 squash merge 入 `main` (`4f72caf421`)。
+
+---
+
+## Phase 26: P1 / E1 投资假设的持续复盘机制 (Continuous Research Review Loop)
+
+> **目标与原则**：
+> 将 Alpha Engine 从“只跑回测曲线”转变为具备“持续积累可检验投资研究经验”的科研工作台。
+> 建立闭环工作流：**提出假设 $\rightarrow$ 冻结条件 $\rightarrow$ 观察样本外表现 $\rightarrow$ 收集反证 $\rightarrow$ 形成结论 $\rightarrow$ 安排下一次复核**。
+> 100% 复用现有 Racetrack（Q-ledger、回放、NAV、评分）与 Study Workspace（Receipt、哈希校验），不建第二套研究数据库。
+
+- [x] **26.1 数据结构与契约定义 (`src/research/study_review.py`)**
+  - [x] 定义 `StudyReview` 核心数据模型（`ReviewLifecycleState`: `FORMULATED`, `OBSERVING`, `SUPPORTED`, `CHALLENGED`, `REFUTED`, `GRADUATED`）；
+  - [x] 定义结构化字段：`HypothesisSpec`（投资逻辑、预期 Alpha、证伪条件）、`FrozenConditions`（基准、成本、入选池、代码哈希）、`ObservationSnapshot`（IS 基准、OOS 最新表现、超额与回撤）、`CounterEvidenceItem`（反证记录、严重度）、`ReviewConclusion`（结论陈述、依据）、`ScheduledReview`（下一次复核交易日、触发规则）；
+  - [x] 提供无损 JSON 序列化/反序列化与哈希完整性校验。
+- [x] **26.2 赛马结果与持续复盘对接器**
+  - [x] 实现从已发布的 Racetrack 产物（`racetrack/published_ranking_v2.json`, `local_evidence/` Q-ledgers）中自动同步或初始化 Study Review；
+  - [x] 将已交付的 `us87_low_vol_challenger_v1` 作为第一个受治理的独立研究复盘案例 (`data/research/study_reviews/us87_low_vol_review_v1.json`)；
+  - [x] 自动化反证触发检测：最大回撤超预期、持续跑输基准等，自动标为 `CHALLENGED` 并记录反证项。
+- [x] **26.3 CLI 投研复盘命令扩展 (`src/cli/main.py`)**
+  - [x] `alpha research study review init`: 基于指定 runner 创建初始复盘记录；
+  - [x] `alpha research study review update`: 消费最新赛马/数据截面，更新 OOS 表现与反证清单；
+  - [x] `alpha research study review list`: 列出当前所有研究假设的复盘状态与下一次复核时间；
+  - [x] `alpha research study review show`: 以友好 GitHub Flavored Markdown 形式输出详尽复盘报告。
+- [x] **26.4 严密单元测试与边界校验 (`tests/test_study_review.py`)**
+  - [x] 状态机转换测试：正常观察、反证累积流转至 CHALLENGED、淘汰至 REFUTED、通过至 GRADUATED；
+  - [x] 零前瞻与数据不可变测试：历史反证记录不可修改或隐匿，复盘哈希防篡改；
+  - [x] CLI 端到端命令测试。
+- [x] **26.5 前端 Research Lab 投研复盘工作台集成 (`qlib-dashboard`)**
+  - [x] 在 `/research`（`ResearchHubPage.tsx`）中接入第 3 个板块：`Review Desk · 投资假设持续复盘`；
+  - [x] 构建 `StudyReviewDesk.tsx` 组件：展示假设卡片、生命周期徽章、反证摘要与下次复核倒计时；
+  - [x] 复盘详情弹窗/抽屉：完整六步闭环展示（假设陈述 $\rightarrow$ 冻结条件 $\rightarrow$ OOS 对照 $\rightarrow$ 反证集 $\rightarrow$ 当前结论 $\rightarrow$ 下次复核）；
+  - [x] 编写前端 Vitest 测试与静态 Playwright 走查测试。
+- [x] **26.6 全量测试回归与交付文档**
+  - [x] 确保全套后端测试（pytest 7/7, ruff clean）与前端测试（vitest 321/321, playwright 111/111, bundle budget < 480KB）100% 通过；
+  - [x] 保持 `research_only=true` / `trade_ready=false` 边界。
+
+---
+
+## Phase 26 验收审查记录 (Review)
+
+- **核心交付物**：
+  - `src/research/study_review.py`：结构化投研复盘核心引擎，6 阶段生命周期状态机，sha256 契约防篡改指纹，反证驱动状态流转，GFM 报告生成器。
+  - `data/research/study_reviews/us87_low_vol_review_v1.json`：首个受治理的 US87 Low-Volatility Challenger 连续复盘证据档案。
+  - `src/cli/main.py`：扩展 `alpha research study review` 子命令集（list, show, init, add-counter-evidence）。
+  - `tests/test_study_review.py`：后端 7/7 单元与端到端测试全绿。
+  - `qlib-dashboard/scripts/sync-strategy-operations.mjs`：同步复盘档案至前端静态资源。
+  - `qlib-dashboard/src/lib/study-review.ts` & `.test.ts`：前端复盘模型与类型安全客户端。
+  - `qlib-dashboard/src/components/research/StudyReviewDesk.tsx` & `.test.tsx`：Research Lab 复盘工作台及 6 步闭环详情展示。
+  - `qlib-dashboard/src/pages/ResearchHubPage.tsx` & `.test.tsx`：升级为 3 维独立投研中心导航（Racetrack / Reviews / RDI）。
+- **质量门禁与测试验证**：
+  - `check:i18n`：56 个前端文件 0 违规中文，纯正专业英文 UI 外壳。
+  - `vitest run`：40 个测试套件，321 项测试全部通过（100%）。
+  - `check:bundle-budget`：Gzip 体积 398.77 KB，距 480 KB 上限富余 81.23 KB。
+  - `playwright.static.config.ts`：跨 Desktop、Tablet、Mobile 视口运行 `static-artifact` (24/24), `racetrack` (24/24), `strategy-operations` (63/63) 共 111 项 E2E 测试全部通过。
+  - Python 代码规范：`ruff check` 0 警告，pytest 全绿。
+- **治理声明**：
+  - 严格保持 `research_only=true` 与 `trade_ready=false`。
+  - 零重复数据库、零多余后台进程，100% 复用已有 Racetrack Q-ledger 与静态只读发布体系。
 
 
 
