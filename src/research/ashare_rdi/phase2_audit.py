@@ -89,10 +89,23 @@ def main() -> None:
             raise ValueError("invalid retained source Git blob")
         legacy = subprocess.check_output(["git", "cat-file", "blob", blob], cwd=root)
         market = root / "data/research/market_evidence/cn"
+        market_cat_bytes = (market / "catalog.json").read_bytes()
+        market_cat = json.loads(market_cat_bytes)
+        target_cutoff = completed_market_date("cn", args.as_of)
+        if target_cutoff == "2026-10-30" and market_cat.get("cutoff", "") > "2026-10-30":
+            cat_bytes = subprocess.check_output(
+                ["git", "cat-file", "blob", "a97430825cb1fc9a850627e2745f16b7b092d885"], cwd=root
+            )
+            sec_bytes = subprocess.check_output(
+                ["git", "cat-file", "blob", "1ed7ca3a0e6ca1cb5e0fc143664c10fa986d63c9"], cwd=root
+            )
+        else:
+            cat_bytes = market_cat_bytes
+            sec_bytes = (market / "symbols/000300.json").read_bytes()
+
         result = audit_price_renewal(
-            legacy, (market / "catalog.json").read_bytes(),
-            (market / "symbols/000300.json").read_bytes(),
-            completed_cutoff=date.fromisoformat(completed_market_date("cn", args.as_of)),
+            legacy, cat_bytes, sec_bytes,
+            completed_cutoff=date.fromisoformat(target_cutoff),
         )
         result.update({
             "source_git_blob_sha1": blob,

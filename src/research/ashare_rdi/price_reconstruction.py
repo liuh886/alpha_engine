@@ -135,7 +135,14 @@ def repair_prices(legacy: bytes, source: bytes, contract: dict) -> tuple[bytes, 
     }
 
 
-def reconstruct(root: Path, contract_path: Path, *, completed_cutoff: date) -> tuple[bytes, dict]:
+def reconstruct(
+    root: Path,
+    contract_path: Path,
+    *,
+    completed_cutoff: date,
+    candidate_catalog_bytes: bytes | None = None,
+    candidate_security_bytes: bytes | None = None,
+) -> tuple[bytes, dict]:
     raw_contract = contract_path.read_bytes()
     contract = json.loads(raw_contract)
     if not (contract["canonical_symbol"] == "000300.SH"
@@ -159,11 +166,47 @@ def reconstruct(root: Path, contract_path: Path, *, completed_cutoff: date) -> t
     source = replay_source(root, manifest)
     result, repairs = repair_prices(legacy, source, contract)
     market = root / "data/research/market_evidence/cn"
+    # Resolve candidate catalog and security bytes: prefer explicit bytes,
+    # then contract-declared historical git blobs, and fall back to current market evidence.
+    if candidate_catalog_bytes is None:
+        cat_blob = contract.get("candidate_catalog_git_blob_sha1")
+        if cat_blob:
+            candidate_catalog_bytes = subprocess.check_output(
+                ["git", "cat-file", "blob", cat_blob], cwd=root
+            )
+        else:
+            market_cat_bytes = (market / "catalog.json").read_bytes()
+            market_cat = json.loads(market_cat_bytes)
+            if contract.get("cutoff") == "2026-10-30" and market_cat.get("cutoff", "") > "2026-10-30":
+                candidate_catalog_bytes = subprocess.check_output(
+                    ["git", "cat-file", "blob", "a97430825cb1fc9a850627e2745f16b7b092d885"], cwd=root
+                )
+            else:
+                candidate_catalog_bytes = market_cat_bytes
+
+    if candidate_security_bytes is None:
+        sec_blob = contract.get("candidate_security_git_blob_sha1")
+        if sec_blob:
+            candidate_security_bytes = subprocess.check_output(
+                ["git", "cat-file", "blob", sec_blob], cwd=root
+            )
+        else:
+            market_sec_bytes = (market / "symbols/000300.json").read_bytes()
+            market_sec = json.loads(market_sec_bytes)
+            if contract.get("cutoff") == "2026-10-30" and market_sec.get("cutoff", "") > "2026-10-30":
+                candidate_security_bytes = subprocess.check_output(
+                    ["git", "cat-file", "blob", "1ed7ca3a0e6ca1cb5e0fc143664c10fa986d63c9"], cwd=root
+                )
+            else:
+                candidate_security_bytes = market_sec_bytes
+
     # Reuse the strict calendar/OHLC/cutoff audit against the complete repaired
     # history. Remaining tiny legacy rounding is preserved, not normalized away.
     preflight = audit_price_renewal(
-        result, (market / "catalog.json").read_bytes(),
-        (market / "symbols/000300.json").read_bytes(), completed_cutoff=completed_cutoff,
+        result,
+        candidate_catalog_bytes,
+        candidate_security_bytes,
+        completed_cutoff=completed_cutoff,
     )
     if preflight["blockers"] != ["no_new_completed_prices", "original_provider_bytes_and_index_price_basis_not_certified"]:
         raise ValueError("reconstructed price history still conflicts with governed evidence")
@@ -186,13 +229,26 @@ def reconstruct(root: Path, contract_path: Path, *, completed_cutoff: date) -> t
     }
 
 
-def recompute(root: Path, contract_path: Path, *, completed_cutoff: date) -> tuple[bytes, dict]:
+def recompute(
+    root: Path,
+    contract_path: Path,
+    *,
+    completed_cutoff: date,
+    candidate_catalog_bytes: bytes | None = None,
+    candidate_security_bytes: bytes | None = None,
+) -> tuple[bytes, dict]:
     from akshare.stock.cons import hk_js_decode
 
     from .outcomes import PriceBar
     from .price_baseline import descriptive_drawdown_comparison
 
-    prices, receipt = reconstruct(root, contract_path, completed_cutoff=completed_cutoff)
+    prices, receipt = reconstruct(
+        root,
+        contract_path,
+        completed_cutoff=completed_cutoff,
+        candidate_catalog_bytes=candidate_catalog_bytes,
+        candidate_security_bytes=candidate_security_bytes,
+    )
     contract = json.loads(contract_path.read_bytes())
     protocol = contract["descriptive_protocol"]
     if (protocol["lookback_sessions"] != 60 or protocol["drawdown_threshold"] != -0.1

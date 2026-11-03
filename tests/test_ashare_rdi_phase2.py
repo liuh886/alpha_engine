@@ -147,7 +147,13 @@ def test_real_reconstruction_is_offline_preserves_legacy_and_bounds_labels(monke
     root = Path(__file__).resolve().parents[1]
     contract = root / "configs/research_experiments/ashare_rdi_csi300_price_repair_2026-10-31.json"
     frozen = contract.read_bytes()
-    prices, receipt = recompute(root, contract, completed_cutoff=date(2026, 10, 30))
+    candidate_catalog = subprocess.check_output(["git", "cat-file", "blob", "a97430825cb1fc9a850627e2745f16b7b092d885"], cwd=root)
+    candidate_security = subprocess.check_output(["git", "cat-file", "blob", "1ed7ca3a0e6ca1cb5e0fc143664c10fa986d63c9"], cwd=root)
+    prices, receipt = recompute(
+        root, contract, completed_cutoff=date(2026, 10, 30),
+        candidate_catalog_bytes=candidate_catalog,
+        candidate_security_bytes=candidate_security,
+    )
     assert receipt["repairs"]["output_rows"] == 5238
     assert receipt["repairs"]["append_rows"] == 85
     assert receipt["repairs"]["insert_sessions"] == ["2026-06-23"]
@@ -191,12 +197,34 @@ def test_unrelated_lock_drift_is_recorded_without_changing_frozen_price_output(m
 
     monkeypatch.setattr(subprocess, "check_output", with_changed_lock)
     contract = root / "configs/research_experiments/ashare_rdi_csi300_price_repair_2026-10-31.json"
-    prices, receipt = recompute(root, contract, completed_cutoff=date(2026, 10, 30))
+    candidate_catalog = original(["git", "cat-file", "blob", "a97430825cb1fc9a850627e2745f16b7b092d885"], cwd=root)
+    candidate_security = original(["git", "cat-file", "blob", "1ed7ca3a0e6ca1cb5e0fc143664c10fa986d63c9"], cwd=root)
+    prices, receipt = recompute(
+        root, contract, completed_cutoff=date(2026, 10, 30),
+        candidate_catalog_bytes=candidate_catalog,
+        candidate_security_bytes=candidate_security,
+    )
     archived = json.loads((root / "docs/evidence/ashare_rdi_phase2/csi300_price_recomputation_2026-10-31.json").read_bytes())
     assert receipt["output_sha256"] == archived["output_sha256"] == hashlib.sha256(prices).hexdigest()
     assert receipt["uv_lock_git_sha256"] == archived["uv_lock_git_sha256"]
     assert receipt["replay_uv_lock_git_sha256"] == hashlib.sha256(changed_lock).hexdigest()
     assert receipt["replay_lock_matches_capture"] is False
+
+
+def test_future_candidate_evidence_rejected_at_historical_cutoff():
+    """Verify that candidate evidence with cutoff > completed_cutoff is rejected by audit_price_renewal."""
+    root = Path(__file__).resolve().parents[1]
+    contract = root / "configs/research_experiments/ashare_rdi_csi300_price_repair_2026-10-31.json"
+    market = root / "data/research/market_evidence/cn"
+    live_catalog = (market / "catalog.json").read_bytes()
+    live_security = (market / "symbols/000300.json").read_bytes()
+    with pytest.raises(ValueError, match="candidate exceeds completed-session cutoff"):
+        # Explicitly passing live market evidence (2026-11-02) at historical cutoff (2026-10-30) fails closed
+        recompute(
+            root, contract, completed_cutoff=date(2026, 10, 30),
+            candidate_catalog_bytes=live_catalog,
+            candidate_security_bytes=live_security,
+        )
 
 
 def _cov(day: date, family: str = "holding_change", archived: bool = True) -> FamilyCoverage:
