@@ -75,6 +75,7 @@ def main() -> None:
     elif args.price_renewal_audit:
         from src.research.market_session_clock import completed_market_date
 
+        from .price_reconstruction import slice_market_evidence_candidate
         from .price_renewal import audit_price_renewal
 
         if args.product_briefing or not args.as_of:
@@ -90,18 +91,11 @@ def main() -> None:
         legacy = subprocess.check_output(["git", "cat-file", "blob", blob], cwd=root)
         market = root / "data/research/market_evidence/cn"
         market_cat_bytes = (market / "catalog.json").read_bytes()
-        market_cat = json.loads(market_cat_bytes)
+        market_sec_bytes = (market / "symbols/000300.json").read_bytes()
         target_cutoff = completed_market_date("cn", args.as_of)
-        if target_cutoff == "2026-10-30" and market_cat.get("cutoff", "") > "2026-10-30":
-            cat_bytes = subprocess.check_output(
-                ["git", "cat-file", "blob", "a97430825cb1fc9a850627e2745f16b7b092d885"], cwd=root
-            )
-            sec_bytes = subprocess.check_output(
-                ["git", "cat-file", "blob", "1ed7ca3a0e6ca1cb5e0fc143664c10fa986d63c9"], cwd=root
-            )
-        else:
-            cat_bytes = market_cat_bytes
-            sec_bytes = (market / "symbols/000300.json").read_bytes()
+        cat_bytes, sec_bytes = slice_market_evidence_candidate(
+            market_cat_bytes, market_sec_bytes, as_of_cutoff=target_cutoff,
+        )
 
         result = audit_price_renewal(
             legacy, cat_bytes, sec_bytes,

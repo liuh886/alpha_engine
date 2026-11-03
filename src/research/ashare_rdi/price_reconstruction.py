@@ -20,6 +20,46 @@ def sha256(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def slice_market_evidence_candidate(
+    catalog_bytes: bytes,
+    security_bytes: bytes,
+    *,
+    as_of_cutoff: str,
+) -> tuple[bytes, bytes]:
+    """Slice governed market evidence to a historical cutoff for bounded preflight audit.
+
+    Retains all governed projection fields while filtering bars and aligning catalog
+    metadata strictly as-of the declared historical cutoff, without synthesizing
+    unobserved prices or altering raw provider values.
+    """
+    cat = json.loads(catalog_bytes)
+    sec = json.loads(security_bytes)
+
+    if sec.get("cutoff", "") <= as_of_cutoff and cat.get("cutoff", "") <= as_of_cutoff:
+        return catalog_bytes, security_bytes
+
+    sec_bars = [b for b in sec.get("bars", []) if b["time"] <= as_of_cutoff]
+    if not sec_bars:
+        raise ValueError(f"no security bars remain as of cutoff {as_of_cutoff}")
+    sec["bars"] = sec_bars
+    sec["cutoff"] = sec_bars[-1]["time"]
+    if "chart_studies" in sec and isinstance(sec["chart_studies"], dict):
+        for study_name, points in sec["chart_studies"].items():
+            if isinstance(points, list):
+                sec["chart_studies"][study_name] = [p for p in points if p.get("time", "") <= as_of_cutoff]
+    filtered_sec_bytes = json.dumps(sec, separators=(",", ":")).encode()
+
+    cat["cutoff"] = as_of_cutoff
+    sec_digest = hashlib.sha256(filtered_sec_bytes).hexdigest()
+    for sym in cat.get("symbols", []):
+        if sym.get("instrument_id") == sec.get("instrument_id"):
+            sym["cutoff"] = sec["cutoff"]
+            sym["sha256"] = sec_digest
+    filtered_cat_bytes = json.dumps(cat, separators=(",", ":")).encode()
+
+    return filtered_cat_bytes, filtered_sec_bytes
+
+
 def repo_file(root: Path, path: str) -> Path:
     resolved = (root / path).resolve()
     resolved.relative_to(root.resolve())
@@ -167,38 +207,18 @@ def reconstruct(
     result, repairs = repair_prices(legacy, source, contract)
     market = root / "data/research/market_evidence/cn"
     # Resolve candidate catalog and security bytes: prefer explicit bytes,
-    # then contract-declared historical git blobs, and fall back to current market evidence.
-    if candidate_catalog_bytes is None:
-        cat_blob = contract.get("candidate_catalog_git_blob_sha1")
-        if cat_blob:
-            candidate_catalog_bytes = subprocess.check_output(
-                ["git", "cat-file", "blob", cat_blob], cwd=root
-            )
-        else:
-            market_cat_bytes = (market / "catalog.json").read_bytes()
-            market_cat = json.loads(market_cat_bytes)
-            if contract.get("cutoff") == "2026-10-30" and market_cat.get("cutoff", "") > "2026-10-30":
-                candidate_catalog_bytes = subprocess.check_output(
-                    ["git", "cat-file", "blob", "a97430825cb1fc9a850627e2745f16b7b092d885"], cwd=root
-                )
-            else:
-                candidate_catalog_bytes = market_cat_bytes
-
-    if candidate_security_bytes is None:
-        sec_blob = contract.get("candidate_security_git_blob_sha1")
-        if sec_blob:
-            candidate_security_bytes = subprocess.check_output(
-                ["git", "cat-file", "blob", sec_blob], cwd=root
-            )
-        else:
-            market_sec_bytes = (market / "symbols/000300.json").read_bytes()
-            market_sec = json.loads(market_sec_bytes)
-            if contract.get("cutoff") == "2026-10-30" and market_sec.get("cutoff", "") > "2026-10-30":
-                candidate_security_bytes = subprocess.check_output(
-                    ["git", "cat-file", "blob", "1ed7ca3a0e6ca1cb5e0fc143664c10fa986d63c9"], cwd=root
-                )
-            else:
-                candidate_security_bytes = market_sec_bytes
+    # or slice current market evidence to the contract's declared cutoff
+    # to isolate historical reconstruction without forward data leakage.
+    if candidate_catalog_bytes is None or candidate_security_bytes is None:
+        market_cat_bytes = (market / "catalog.json").read_bytes()
+        market_sec_bytes = (market / "symbols/000300.json").read_bytes()
+        sliced_cat, sliced_sec = slice_market_evidence_candidate(
+            market_cat_bytes, market_sec_bytes, as_of_cutoff=contract["cutoff"]
+        )
+        if candidate_catalog_bytes is None:
+            candidate_catalog_bytes = sliced_cat
+        if candidate_security_bytes is None:
+            candidate_security_bytes = sliced_sec
 
     # Reuse the strict calendar/OHLC/cutoff audit against the complete repaired
     # history. Remaining tiny legacy rounding is preserved, not normalized away.

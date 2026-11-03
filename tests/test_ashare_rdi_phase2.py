@@ -147,13 +147,7 @@ def test_real_reconstruction_is_offline_preserves_legacy_and_bounds_labels(monke
     root = Path(__file__).resolve().parents[1]
     contract = root / "configs/research_experiments/ashare_rdi_csi300_price_repair_2026-10-31.json"
     frozen = contract.read_bytes()
-    candidate_catalog = subprocess.check_output(["git", "cat-file", "blob", "a97430825cb1fc9a850627e2745f16b7b092d885"], cwd=root)
-    candidate_security = subprocess.check_output(["git", "cat-file", "blob", "1ed7ca3a0e6ca1cb5e0fc143664c10fa986d63c9"], cwd=root)
-    prices, receipt = recompute(
-        root, contract, completed_cutoff=date(2026, 10, 30),
-        candidate_catalog_bytes=candidate_catalog,
-        candidate_security_bytes=candidate_security,
-    )
+    prices, receipt = recompute(root, contract, completed_cutoff=date(2026, 10, 30))
     assert receipt["repairs"]["output_rows"] == 5238
     assert receipt["repairs"]["append_rows"] == 85
     assert receipt["repairs"]["insert_sessions"] == ["2026-06-23"]
@@ -197,13 +191,7 @@ def test_unrelated_lock_drift_is_recorded_without_changing_frozen_price_output(m
 
     monkeypatch.setattr(subprocess, "check_output", with_changed_lock)
     contract = root / "configs/research_experiments/ashare_rdi_csi300_price_repair_2026-10-31.json"
-    candidate_catalog = original(["git", "cat-file", "blob", "a97430825cb1fc9a850627e2745f16b7b092d885"], cwd=root)
-    candidate_security = original(["git", "cat-file", "blob", "1ed7ca3a0e6ca1cb5e0fc143664c10fa986d63c9"], cwd=root)
-    prices, receipt = recompute(
-        root, contract, completed_cutoff=date(2026, 10, 30),
-        candidate_catalog_bytes=candidate_catalog,
-        candidate_security_bytes=candidate_security,
-    )
+    prices, receipt = recompute(root, contract, completed_cutoff=date(2026, 10, 30))
     archived = json.loads((root / "docs/evidence/ashare_rdi_phase2/csi300_price_recomputation_2026-10-31.json").read_bytes())
     assert receipt["output_sha256"] == archived["output_sha256"] == hashlib.sha256(prices).hexdigest()
     assert receipt["uv_lock_git_sha256"] == archived["uv_lock_git_sha256"]
