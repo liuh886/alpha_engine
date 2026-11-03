@@ -8,6 +8,21 @@ they do not authorize restoring retired runtime paths. Direction A release
 acceptance work is tracked in #1278, #1277, #1279, #1282 and #1281; draft
 architecture PR #1276 does not establish a completed release.
 
+## 2026-11-02 frontend Owner decision (PR #1357)
+
+Owner selected **A: Decision-first Investment Research Workspace**.
+PR #1357 implements the concrete frontend architecture: Today default (`/app`),
+Formal Strategies comparison (`/strategies`), independent Research Lab (`/research`
+for Racetrack + RDI), and operations-only System (`/system`). The older *two
+primary navigation destinations* guideline below records the prior product scope;
+it is superseded by the four task-based destinations established by PR #1357.
+Existing formal strategy evidence, current-operations entitlement, and
+localhost-only Racetrack boundaries remain unchanged; this architecture does
+not authorize trade execution, RDI forecast release, or publication of
+private research artifacts.
+
+Handoff: [A-first frontend architecture](docs/product/frontend_reference_first_architecture_handoff_2026-11-02.md).
+
 ## Lightweight operating governance
 
 User-directed priority (2026-10-03): keep Alpha Engine simple, responsive and

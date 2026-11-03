@@ -95,11 +95,11 @@ test('the homepage opens daily research and reads only the formal operating surf
   const brief = page.getByRole('region', { name: 'Daily research brief' });
   const names = await loadFormalDisplayNames(page);
   await expect(brief.getByRole('article')).toHaveCount(Math.min(3, names.length));
-  const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
-  await expect(fleet.getByRole('article')).toHaveCount(names.length);
-  for (const name of names) await expect(fleet.getByRole('button', { name: `Open ${name} strategy detail`, exact: true }).first()).toBeVisible();
-  if (testInfo.project.name === 'mobile') await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('tab')).toHaveCount(2);
-  else await expect(page.getByRole('navigation', { name: 'Strategy console navigation' }).getByRole('link')).toHaveCount(2);
+  const snapshot = page.getByRole('region', { name: 'Formal strategy snapshot' });
+  await expect(snapshot.getByRole('link', { name: /Inspect evidence/ })).toHaveCount(names.length);
+  for (const name of names) await expect(snapshot.getByText(name, { exact: true })).toBeVisible();
+  if (testInfo.project.name === 'mobile') await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('tab')).toHaveCount(4);
+  else await expect(page.getByRole('navigation', { name: 'Research workspace navigation' }).getByRole('link')).toHaveCount(4);
   expect(retiredRequests).toEqual([]);
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
@@ -142,7 +142,7 @@ test('fleet periods retain visible evidence windows and do not promote expired r
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
-  await page.goto('/#/app');
+  await page.goto('/#/strategies');
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   await expect(fleet.getByRole('article')).toHaveCount(4);
   const catalog = await (await page.request.get('/data/formal-model-runs/catalog.json')).json() as FormalCatalog;
@@ -205,7 +205,7 @@ test('strategy navigation reuses verified formal sections without loading them o
     if (path.includes('/data/formal-model-runs/') && /\/(performance|risk|robustness|portfolio|trades|attribution|diagnostics|lineage)\.json$/.test(path)) sections.push(path);
   });
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
-  await page.goto('/#/app');
+  await page.goto('/#/strategies');
   const strategy = page.getByRole('region', { name: 'Formal strategy fleet' }).getByRole('button', { name: 'Open QQQR v4.3 strategy detail', exact: true }).first();
   await expect(strategy).toBeVisible();
   expect(sections).toHaveLength(0);
@@ -214,6 +214,7 @@ test('strategy navigation reuses verified formal sections without loading them o
   expect(sections).toHaveLength(8);
   expect(sections.filter(path => path.endsWith('/performance.json'))).toHaveLength(1);
   await page.getByRole('main').getByRole('link', { name: 'Overview', exact: true }).click();
+  await page.goto('/#/strategies');
   await strategy.click();
   await expect(page.getByRole('tablist', { name: 'Formal backtest evidence views' })).toBeVisible();
   expect(sections).toHaveLength(8);
@@ -285,7 +286,7 @@ test('strategy detail separates source metrics from chart observations and keeps
 
 test('retired product views have no alternate execution path', async ({ page }) => {
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
-  await page.goto('/#/research');
+  await page.goto('/#/runs');
   await expect(page.getByRole('heading', { name: 'View unavailable', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Open overview', exact: true }).click();
   await expect(page).toHaveURL(/#\/app$/);

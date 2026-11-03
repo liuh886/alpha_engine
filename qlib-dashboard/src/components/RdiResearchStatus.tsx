@@ -49,6 +49,13 @@ export function RdiResearchStatus({ attempt }: { attempt: number }) {
       : !briefing ? <div className="space-y-4 p-4 sm:p-6">
         <div role="alert"><h3 className="font-semibold">Reviewed evidence unavailable</h3><p className="mt-2 text-sm text-muted-foreground">RDI reviewed evidence could not be verified. No earlier statistics are shown. Other strategy observations remain independent.</p></div>
       </div> : <>
+        <div className="border-b bg-muted/20 px-4 py-3 sm:px-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">Research Question</span>
+            <p className="text-xs font-semibold text-foreground">Can known event clusters explain systematic tail risk in A-shares without lookahead bias?</p>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Evaluating whether historical event concentrations correlate with forward loss frequency over 7, 14, and 28 exchange sessions.</p>
+        </div>
         <div className="grid gap-6 p-4 sm:p-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)]">
           <div className="min-w-0 space-y-5">
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">

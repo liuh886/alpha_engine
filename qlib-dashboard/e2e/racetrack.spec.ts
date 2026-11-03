@@ -134,6 +134,28 @@ test('research links restore market, window and Runner through reload and browse
   await expect(board.locator('tbody tr')).toHaveCount(10);
   await expect(detail).toHaveCount(0);
 });
+
+test('new /research?section=racetrack route restores market, window and Runner through reload and browser history', async ({ page }) => {
+  const fixture = await install(page);
+  await page.goto('/#/research?section=racetrack&raceMarket=cn&raceWindow=12&raceRunner=fixture_cn_02&raceDetail=1');
+  const detail = page.getByRole('region', { name: 'Runner detail' });
+  await expect(detail).toContainText('Synthetic thesis for fixture_cn_02');
+  expect(fixture.reads.some(url => url.includes('/us/'))).toBe(false);
+  await page.getByRole('button', { name: 'Close runner detail', exact: true }).click();
+  await expect(page.getByRole('button', { name: '1Y', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const board = page.getByRole('region', { name: 'Published Top 10' });
+  await expect(board.getByRole('button', { name: 'fixture_cn_02', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: '1M', exact: true }).click();
+  await page.reload();
+  await expect(page.getByRole('button', { name: '1M', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('combobox', { name: 'Racetrack market' })).toHaveValue('cn');
+  await page.goBack();
+  await expect(page.getByRole('button', { name: '1Y', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.goBack();
+  await expect(detail).toContainText('Synthetic thesis for fixture_cn_02');
+  await page.goForward();
+  await expect(detail).toHaveCount(0);
+});
 test('hash failure clears the research view, retries and leaves the strategy view usable', async ({ page }) => {
   await install(page, { badHash: true }); await open(page);
   await expect(page.getByRole('alert')).toContainText('hash/size mismatch');

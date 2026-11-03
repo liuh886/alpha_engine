@@ -24,6 +24,10 @@ function Layout(props: ReturnType<typeof useAppBootstrap>) {
   const title = declared?.title ?? 'Unavailable route';
   const activeRun = useMemo(() => props.runs.find(run => run.key === props.activeRunKey) ?? props.runs[0] ?? null,
     [props.activeRunKey, props.runs]);
+  const formalPage = location.pathname === '/app' || location.pathname === '/strategies'
+    || location.pathname.startsWith('/strategies/') || location.pathname.startsWith('/securities/');
+  const formalContext = location.pathname === '/app' || location.pathname === '/strategies'
+    || location.pathname.startsWith('/strategies/');
   useEffect(() => { document.documentElement.classList.toggle('dark', theme === 'dark'); }, [theme]);
   useEffect(() => { document.title = title + ' — Alpha Engine'; }, [title]);
   useEffect(() => { mainRef.current?.scrollTo({ top: 0, left: 0 }); }, [location.pathname]);
@@ -32,7 +36,7 @@ function Layout(props: ReturnType<typeof useAppBootstrap>) {
     runLoadErrors: props.runLoadErrors, selectRun: props.selectRun, operations,
   };
   return <div className="research-app-shell">
-    <Sidebar activeRun={activeRun} />
+    <Sidebar />
     <div className="research-workspace">
       <header className="research-topbar">
         <div className="min-w-0"><p className="research-topbar-eyebrow">Alpha Engine / Research only</p><h1 className="truncate">{title}</h1></div>
@@ -46,10 +50,12 @@ function Layout(props: ReturnType<typeof useAppBootstrap>) {
           </Button>
         </div>
       </header>
-      {!location.pathname.startsWith('/securities/') && <ResearchContextBar run={activeRun} fleet={location.pathname === '/app' ? props.runs : undefined} loading={props.loading} unavailable={Boolean(props.loadError)} />}
+      {formalContext && <ResearchContextBar run={activeRun}
+        fleet={location.pathname === '/app' || location.pathname === '/strategies' ? props.runs : undefined}
+        loading={props.loading} unavailable={Boolean(props.loadError)} />}
       <main ref={mainRef} className="research-main">
-        {props.loading ? <div className="space-y-6" role="status" aria-label="Loading formal strategy evidence"><p className="text-sm text-muted-foreground">Reading formal strategy evidence…</p><Skeleton className="h-28 rounded-xl" /><Skeleton className="h-96 rounded-xl" /></div>
-          : props.loadError ? <div className="research-empty-state">
+        {formalPage && props.loading ? <div className="space-y-6" role="status" aria-label="Loading formal strategy evidence"><p className="text-sm text-muted-foreground">Reading formal strategy evidence…</p><Skeleton className="h-28 rounded-xl" /><Skeleton className="h-96 rounded-xl" /></div>
+          : formalPage && props.loadError ? <div className="research-empty-state">
             <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
             <h2 className="mt-4 text-lg font-semibold">Strategy evidence unavailable</h2>
             <p className="mt-2 text-sm text-muted-foreground">{props.loadError}</p>

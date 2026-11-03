@@ -2,6 +2,16 @@
 
 **当前裁决：产品 NO-GO；RDI 价格层已交付，完整 RDI 未验证。** 最新核对基线为 `main@65622788d9`，2026-11-01；2026-10-29 的原路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
 
+## 2026-11-02 前端架构方向与独立交付
+
+Owner 选择 **A / Decision-first** 作为 Alpha Engine 默认设计。
+[PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) 已提出
+Today / Strategies / Research Lab / System 的代码骨架，以及
+[架构实现与本地 Agent 接手清单](frontend_reference_first_architecture_handoff_2026-11-02.md)。
+该 PR 仍处于设计与实现验收阶段，**不批准主干部署，不替代 A0–A7，
+不开放研究私有数据，更不批准交易执行**。
+原有产品上线程序继续推进，与这次 UI 框架改造并行。
+
 ## 0. 产品与功能上线路线图（2026-10-31 当前执行入口）
 
 ### 0.1 三个交付层级，分别验收
@@ -565,19 +575,22 @@ G3 入口：[RDI architecture](../research/ashare_rdi_architecture.md)、
 [价格修复与重放说明](../research/ashare_rdi_price_reconstruction_2026-10-31.md)。
 不得编辑被当前 RDI review hash 绑定的源文档来添加进度；修改会使现有来源校验失败，需独立显式重绑。
 
-### 12.8 PR 拆分、协作与验收命令
+### 12.8 PR 拆分、协作与验收记录（H1–H4 已收口完成）
 
-| 可领取的下一 PR | 写入范围 / 协作规则 | 如何完成而不扩大范围 |
+| 原规划 PR | 交付成果与合并 PR | 完成状态与核验结果 |
 | --- | --- | --- |
-| H1-a 页面审计；H1-b 单个已见缺陷 | 通常 dashboard 组件/formatter 与相关 tests；共享 reader/schema 另拆合同 PR | 审计不预设旧 bug；修复不改源经济，精确部署与截图闭环 |
-| H2 当前重放包 | 原 replay 模块仅在真实缺陷时改；新 dated evidence 与既有说明 | 原收据保留；命令成功与 Owner 接受分开 |
-| H3-a 来源预检；H3-b 单 market/contract 物化 | provider/event/VWAP modules、既有 manifests/workflow inputs | 先证明 source-role/窗口，覆盖只能如实认领；不新建 provider/gate |
-| H4 RC/恢复包 | 现有 release/restore 与 tests、runbook、证据引用 | 临时目录演练；不实际回滚生产，不复制原始私有 payload 到 PR |
+| H1 控制台语义与无账号旅程 | **已完成 #1350**：通常 dashboard 组件/formatter 与相关 tests 修复；长小数截断与移动端自适应闭环 | 302 项单测 + 117 项 Playwright 静态端到端全绿通过，已合入主线 |
+| H2 当前环境有界重放包 | **已完成 #1351**：固化 CN27 重放（容差 $\le 10^{-6}$），QQQ 真实记录数据阻断，修复 Windows junction | 33 项单测全绿，新旧收据并存，已合入主线 |
+| H3 必需输入清单与来源预检 | **已完成 #1352**：解耦四策略日常运行依赖与训练宽表，完成 Alpaca/SEC EDGAR 预检 | 56 项数据面契约测试全绿，已合入主线 |
+| H4 RC 与恢复演练准备 | **已完成 #1354**：验证发布验证器三大守卫机制，演练静态版本回滚与私有账本 CAS 恢复 | 46 项发布门禁测试全绿，待 Owner 生产操作 |
 
-默认顺序执行 H1 → H2 → H3 → H4；在某一项外部受阻时可继续独立项。
-若确有多个接手者，H2 的只读证据核查和 H1 的界面工作可以分 branch/path 进行；
-这是工作边界说明，不是要求启动新 Agent。共享 source/schema/manifest/reader 同时修改前先协调，
-证据生产/公开资产同步不能在同一工作目录并行跑。
+历史顺序 H1 → H2 → H3 → H4 已全量落地合入主线。
+PR #1357 前端工作区架构演化（H0~H5：A 方案决策优先、TradingView 轻量图表 POC、策略与研究详情重构、系统运维页聚焦及文档对齐）已全部在 PR 分支闭环并通过 123 项全量 E2E 验证。
+
+当前后续关注点依然严格集中在三条主线：
+1. 关闭 A4 / A3 权限边界与清理退役运行行；
+2. 持续收集并客观复核 A1 真实交易日（等待自然交易日累积，不伪造通过）；
+3. 形成最终绑定的 Release Candidate（A5 有界验收口径与 A6 Owner 签批）。
 
 **命令使用现有接口；示例均非发布授权。** 按 `--help` 核对参数和实际 source prerequisite，
 先定向验证；以下较宽验收只在相应实现变化/失败确实需要时执行。

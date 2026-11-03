@@ -1030,3 +1030,302 @@
      - PR #1307 严格保持在独立 Draft 状态；
      - 建议 Owner 待 A1 真实累积满 20 个交易日后，再做最终 A7 GO 决策。
 
+---
+
+## Phase 17: PR #1357 前端投研工作站重构稳定化与交付 (H0 稳定化门禁)
+
+- [x] **17.1 代码与编译修复 (H0.1)**
+  - [x] 修复 `qlib-dashboard/src/routes.ts` 括号语法错误
+  - [x] 验证 `pnpm --dir qlib-dashboard lint` 零错误零警告
+  - [x] 验证 `pnpm --dir qlib-dashboard exec tsc --noEmit` 通过
+  - [x] 验证 306 项 Vitest 单元测试全绿并通过 build 打包
+- [x] **17.2 Playwright 静态端到端测试适配 (H0.2)**
+  - [x] 适配 `qlib-dashboard/e2e/static-artifact.spec.ts`（更新 4 项导航断言、Snapshot vs Fleet 路径划分、退役路径测试由 `/research` 改为 `/runs`，24 项用例全绿）
+  - [x] 适配 `qlib-dashboard/e2e/strategy-operations.spec.ts`（适配导航辅助函数为 4 目的地、RDI 迁至 `/research?section=rdi` 验证、`/system` 关联深链、保留全部核心断言，63 项用例全绿）
+  - [x] 适配 `qlib-dashboard/e2e/live-pages.spec.ts`（适配 4 导航项与桌面/移动端断言）
+  - [x] 运行全部 Playwright E2E 套件验证（桌面 1440px、平板 768px、手机 375px，123 项测试 100% 通过）
+- [x] **17.3 兼容性与边界验证 (H0.3)**
+  - [x] 验证旧 Racetrack URL（`/#/app?view=racetrack`）兼容重定向与新路由（`/#/research?section=racetrack`）
+  - [x] 验证 RDI 在 `/research?section=rdi` 下独立可用性与降级状态（即使 formal catalog 500 仍可独立访问）
+  - [x] 验证未授权/公开访问边界，确保不泄露实时受保护信号
+- [x] **17.4 提交、推送与 CI 绿灯闭环 (H0.4)**
+  - [x] 提交修改至分支 `docs/product/ux-rearchitecture-reference-first-20261102` (`fa606547cd`)
+  - [x] 推送并追踪 PR #1357 远程 GitHub Actions CI 4/4 绿灯通过 (`build-static-pwa`, `contract`, `project-and-verify`, `GitGuardian`)
+
+---
+
+
+---
+
+## Phase 18: H1 (P0) Today 投研信息设计增强与准入感知卡片
+
+
+- [x] **18.1 Today 市场卡片信息层级重构 (H1.1)**
+  - [x] 准确展示各市场形式化策略数量与经过验证的证据截止范围（US 与 CN 各自维护独立证据窗口）
+  - [x] 严格区分策略 Formal 证据窗口与当前目标评估日，禁止推断跨策略虚构统一市场日；明示 Provider 数据源健康由 `/system` 专门承载
+  - [x] 优雅降级，保持零附加网络请求以契约化保证导航复用已有读数（`healthReads === 1`）
+- [x] **18.2 四策略快照卡片准入感知与观察状态增强 (H1.2)**
+  - [x] 在 `StrategyOverviewPage` 的 `Formal strategy snapshot` 中复用 `useAccessControl` 与 `describeStrategyObservation`
+  - [x] 为四策略卡片补充访问感知状态徽章（如 Changed、Retained、Needs attention、Access required 等语义色彩样式）
+  - [x] 保证策略名称精准可见（保持现有 E2E `getByText(name, { exact: true })` 断言 100% 兼容通过）
+  - [x] 保留清晰证据 CTA（`Inspect evidence <ArrowRight />`），点击直达策略详情证据页，满足 <=2 点击路径预算
+- [x] **18.3 每日简报优先级与证据审查行动闭环 (H1.3)**
+  - [x] 保持高优先级队列上限为 3，底部舰队完整保留
+  - [x] 为每个简报条目强化统一明晰的单一证据 CTA（`Inspect evidence`），同时标明审核状态（Action required vs Scheduled cadence）
+  - [x] 优化侧边引导“Your next research step”，明确指向横向对比 (`/strategies`)、源状态检查 (`/system`) 与研究实验室 (`/research`)
+- [x] **18.4 完整质量验收与 CI 绿灯 (H1.4)**
+  - [x] 运行 `pnpm --dir qlib-dashboard lint` 零错误零警告
+  - [x] 运行 `pnpm --dir qlib-dashboard exec tsc --noEmit` 类型检查通过
+  - [x] 运行 306 项 Vitest 单元测试全绿
+  - [x] 运行 Vite build 打包构建通过（1.63s）
+  - [x] 运行 Playwright E2E 完整套件（桌面 1440px、平板 768px、手机 375px），123/123 测试 100% 全绿通过
+  - [x] 提交、推送分支 `docs/product/ux-rearchitecture-reference-first-20261102` (`f2e39cd80b`) 并追踪 GitHub Actions CI (4/4 绿灯通过)
+
+---
+
+## 阶段验收与复盘记录 (Review: Phase 17 / H0 稳定化成果)
+- **交付日期**: 2026-11-02
+- **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **提交 SHA**: `fa606547cd`
+- **核心成果**:
+  1. **代码与编译闭环**:
+     - 修复 `qlib-dashboard/src/routes.ts` 中 `System` 路由的闭合括号语法错误，消除 TS1005 与 ESLint 解析阻断；
+     - 验证 `pnpm --dir qlib-dashboard lint` 0 错误 0 警告；`tsc --noEmit` 0 类型错误；306 项 Vitest 单元测试全绿；Vite 构建成功（1.55s）。
+  2. **信息架构与路由适配**:
+     - `Today` (`/#/app`): 呈现 Daily Research Brief（置顶 3 优先级策略）、市场概览卡片、下一行动向导与 4 策略快照链接卡片；
+     - `Strategies` (`/#/strategies`): 承载完整的 `<StrategyFleet />` 表现对比与 `<OperationsReadStatus />`；
+     - `Research Lab` (`/#/research`): 承载 `<RacetrackWorkspace />`（策略实验）与 `<RdiResearchStatus />`（风险研究），支持 `?section=racetrack` 与 `?section=rdi` 参数切换及独立状态刷新；
+     - `System` (`/#/system`): 承载系统源健康快照、恢复流水线链接、深链跳转至 RDI，并保留受访问控制保护的 `Current strategy observations`，确保运维视图与每日简报数据一致。
+  3. **Playwright E2E 测试全覆盖**:
+     - 适配全部测试套件以符合 4 目的地工作站架构，未删除任何实质性研究/业务断言；
+     - 新增覆盖 `/research?section=racetrack` 完整历史回退/前进选择持久化；
+     - 新增覆盖当 formal catalog 异常（500/503）时，`/research?section=rdi` 的独立可用性与 `evidence_mismatch` 优雅降级验证；
+     - 运行 123 项端到端场景（桌面 1440px、平板 768px、手机 375px），**123/123 100% 通过**。
+  4. **GitHub Actions 远程 CI 验证**:
+     - `build-static-pwa` (Run 41454685146): **PASS** (5m50s)
+     - `contract` (Run 41454685113): **PASS** (4m0s)
+     - `project-and-verify` (Run 41454685127): **PASS** (3m7s)
+     - `GitGuardian Security Checks`: **PASS** (1s)
+     - PR #1357 达到完全稳定化门禁标准（H0 DoD 全部满足）。
+
+---
+
+## 阶段验收与复盘记录 (Review: Phase 18 / H1 交付成果)
+
+- **交付日期**: 2026-11-02
+- **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **提交 SHA**: `f2e39cd80b`
+- **核心成果**:
+  1. **市场卡片信息层级与诚实边界 (H1.1)**:
+     - 摒弃占位式伪统一市场日期，准确提取各市场独立形式化策略证据截止日（`Through 2026-10-30` 等）；
+     - 明示目标评估按各策略特定周期计算，不虚构跨市场统一日期；
+     - 将数据源提供商健康清晰指引至 `/system`（Operating Status），保持 Today 轻量纯粹，满足 E2E 单次读取与跨页面导航复用契约（`healthReads === 1`）。
+  2. **四策略快照准入感知与观察状态增强 (H1.2)**:
+     - 在 `StrategyOverviewPage` 中集成 `useAccessControl` 与 `describeStrategyObservation`；
+     - 赋予各策略卡片访问状态徽章（Changed / Retained / Attention / Access required / Pending），并使用语义化配色方案；
+     - 显示最新观测交易日（在被授权可见时），保持策略名称精确匹配（100% 兼容 Playwright `exact: true` 断言）；
+     - 卡片底部强化 `Inspect evidence` CTA，点击直达详情，支持 <=2 次点击审查证据并返回。
+  3. **每日简报优先级与行动闭环 (H1.3)**:
+     - 严格维持最多 3 个高优先级观察条目；
+     - 每个优先级条目新增专用 `Inspect evidence` 单击直达 CTA，并标明 `Review: Action required` 或 `Review: Scheduled cadence`；
+     - 侧边引导栏清晰提供横向对比 (`/strategies`)、数据源健康 (`/system`) 与投研实验室 (`/research`) 深度导航。
+  4. **全量端到端测试与质量门禁 (H1.4)**:
+     - ESLint 0 警告 0 报错；`tsc --noEmit` 0 报错；306 项 Vitest 单元测试全部通过；
+     - Vite 生产打包通过（1.63s）；
+     - Playwright E2E 完整套件（Desktop 1440px, Tablet 768px, Mobile 375px）**123/123 测试 100% 通过**；
+     - GitHub Actions 远程 CI 4/4 绿灯通过：
+       - `build-static-pwa` (Run 41467146848): **PASS** (5m49s)
+       - `contract` (Run 41467146786): **PASS** (2m41s)
+       - `project-and-verify` (Run 41467146808): **PASS** (3m1s)
+       - `GitGuardian Security Checks`: **PASS** (2s)
+
+---
+
+## Phase 19: H2 (P0) 标的详情 TradingView lightweight-charts POC 实现
+
+- [x] **19.1 Lightweight Charts 适配器与数据对齐契约 (H2.1)**
+  - [x] 构建 `SecurityLightweightChart` 组件与 `lightweight-chart-adapter.ts`，利用已安装的 `lightweight-charts 5.2.1`；
+  - [x] 严格对齐 `SecurityBar -> CandlestickData / HistogramData` 与 `SecurityEvent -> createSeriesMarkers`；
+  - [x] 确保无交易日缺失或发明假 K 线，保持完全真实复权历史语义与严格时间升序校验；
+- [x] **19.2 双轨视图与无障碍保障 (H2.2)**
+  - [x] 在 `SecurityHistoryChart` 中支持 Side-by-side POC、TradingView 与 Recharts Classic 视图切换；
+  - [x] 默认保持现有 DOM 断言（`security-candle`、`security-trade-marker`、`data-marker-count`）与交互（键盘回车选事件、周期切换）完全兼容；
+  - [x] 包含 TradingView NOTICE / attribution 开源许可归属说明与历史账本无障碍后备；
+- [x] **19.3 数据等价性测试与质量验证 (H2.3)**
+  - [x] 编写 `lightweight-chart-adapter.test.ts` 数据转换与等价性单元测试（5 项测试），断言时间戳、OHLCV、交易事件标记 ID 与 Recharts 输入 100% 对齐；
+  - [x] 运行 lint（0 错误 0 警告）、tsc、vitest（37 文件 311 测试）全绿；
+  - [x] 运行 Playwright E2E 完整套件（桌面 1440px、平板 768px、手机 375px），123/123 测试 100% 全绿通过；
+  - [x] 提交、推送分支并追踪远程 CI 绿灯。
+
+---
+
+## 阶段验收与复盘记录 (Review: Phase 19 / H2 交付成果)
+
+- **交付日期**: 2026-11-02
+- **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **提交 SHA**: 待提交 (H2 提交)
+- **核心成果**:
+  1. **纯数据适配器与强类型转换 (`lightweight-chart-adapter.ts`)**:
+     - `toLightweightCandleData`: 严格映射 `SecurityBar` 至 Lightweight Charts `CandlestickData`，断言日期升序，零假 K 线或虚构交易日；
+     - `toLightweightVolumeData`: 映射成交量至 `HistogramData`，根据阳线/阴线动态着色（红涨绿跌 / 绿涨红跌依据真实价格变化）；
+     - `toLightweightMarkers`: 聚合买卖与调仓事件标记，转换为 `SeriesMarker<Time>`；
+     - `assertLightweightParity`: 运行时等价性断言，校验时间戳、OHLCV 与事件条目一致性。
+  2. **高性能交互式 K 线组件 (`SecurityLightweightChart.tsx`)**:
+     - 采用 `lightweight-charts 5.2.1` 原生 Canvas API 构建自适应容器；
+     - 支持 Crosshair 十字线交互、价格时间格式化、自适应容器尺寸缩放与明暗主题切换；
+     - 包含 Apache 2.0 归属声明（TradingView Lightweight Charts™ 许可与规范）。
+  3. **双轨视图无缝切换与无障碍兼容 (`SecurityHistoryChart.tsx`)**:
+     - 引入三态视图切换器（`Side-by-side POC` / `TradingView` / `Recharts Classic`），默认并排对比；
+     - 完整保留现有 Recharts SVG DOM 节点（`security-candle`、`security-trade-marker` 等），保证屏幕阅读器与既有自动化用例无缝兼容。
+  4. **全量测试与验证闭环**:
+     - 新增 5 项单元测试，覆盖等价性检验、乱序防御与标记映射；
+     - 更新 `security-history.spec.ts` 涵盖双引擎并排与切换交互；
+     - Vitest 311 项测试全绿，Playwright 123 项测试全绿（Desktop/Tablet/Mobile 100% pass）。
+
+---
+
+## Phase 20: H3 (P1) 策略详情与研究深度重构 (Strategy & Research Detail)
+
+- [x] **20.1 策略详情页任务式章节重构 (H3.1 - StrategyDetail Subsections)**
+  - [x] 将 `StrategyDetailPage.tsx` 组织为任务导向的五大明确章节（Summary / Decisions / Performance / Risk / Evidence）；
+  - [x] 顶部提供吸顶任务式章节导航条与统一分析周期切换器（All / 1Y / 6M / 3M / 1M）；
+  - [x] 确保单一选定周期（Selected Period）与基准锚点联动驱动所有可比指标、时间区间与风险面板（`FormalBacktestReview` 与 `PerformanceCharts` 双向响应，`RiskPanel` 动态生成 active period risk profile）；
+  - [x] 保留所有现有受访问控制保护的实时信号、状态机标签与合规边界；
+- [x] **20.2 RDI 投研信息层级与叙事重塑 (H3.2 - RdiResearchStatus Narrative)**
+  - [x] 重塑 RDI 主叙述结构：研究问题（Research Question） -> 经验证的真实历史描述性结果（Supported Descriptive Results） -> 明确标注尚未验证的盲区与局限（What Remains Unvalidated / Risk assessment unavailable） -> 可展开的数据源准入认证（Expandable Source Certification & Provenance）；
+  - [x] 坚决不引入虚构或未校准的实时综合预测评分，保持 `trade_ready=false`；
+- [x] **20.3 Racetrack 托管与本地边界强化 (H3.3 - Racetrack Boundary)**
+  - [x] 清晰区分 Hosted 静态与 Localhost-only 本地动态投研投影状态，并在非本地访问时明确提示私有研究隔离政策；
+  - [x] 严格禁止公开暴露私有 Q 证据，保持 Formal baseline、独立 Runner 与市场 Benchmark 身份严格隔离；
+- [x] **20.4 全量质量验收与 CI 绿灯闭环 (H3.4)**
+  - [x] 修复 `next_stage_execution_plan.md` 内部历史状态冲突（§12.8 H1–H4 更新为已收口合入 main）；
+  - [x] 运行 lint（0 错误 0 警告）、`tsc --noEmit` 通过、Vitest（37 文件 311 测试）100% 全绿；
+  - [x] Vite 生产打包通过（2.26s）；
+  - [x] Playwright E2E 完整套件（Desktop 1440px、Tablet 768px、Mobile 375px）123/123 测试 100% 全绿通过；
+  - [x] 提交、推送分支并追踪远程 CI 绿灯。
+
+---
+
+## 阶段验收与复盘记录 (Review: Phase 20 / H3 交付成果)
+
+- **交付日期**: 2026-11-02
+- **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **提交 SHA**: 待提交 (H3 提交)
+- **核心成果**:
+  1. **策略详情页任务式章节导航与统一周期联动 (H3.1)**:
+     - 引入吸顶章节导航条（Summary / Decisions / Risk / Evidence），支持一键定位关键投研工作流；
+     - 引入统一周期控制器（All / 1Y / 6M / 3M / 1M），联动驱动 `PerformanceCharts` 曲线重构、可见区间计算与 `RiskPanel` 有界风险轮廓（Active period risk profile），消除单一页面指标周期割裂；
+     - 完整保留所有既有受访问控制保护的实时信号、状态机标签与合规边界（100% 兼容全部 E2E 断言）。
+  2. **RDI 四阶递进叙事重构 (H3.2)**:
+     - 结构化为四阶投研流：① 研究问题（Research Question：已知事件聚类能否在无前瞻偏差下解释 A 股尾部系统性风险） -> ② 支持的描述性历史对照（7/14/28 交易日非参数频次对照） -> ③ 未经验证盲区严正声明（风险评估暂不可用，无实时预测分值，覆盖率与前瞻有用性待独立验证） -> ④ 可折叠来源认证与血缘追踪；
+     - 契约化维护 `trade_ready=false` 铁律。
+  3. **Racetrack 本地与托管边界强化 (H3.3)**:
+     - 明确标记 Local loopback reader 与 Hosted boundary 状态；
+     - 强化对私有 Q 证据与非公开发布 Runner 的隔离约束说明，并在 UI 层面清晰标识基准参考与参赛 Runner 身份。
+  4. **任务文档一致性收敛与测试全绿 (H3.4)**:
+     - 修正 `next_stage_execution_plan.md` §12.8 历史规划遗留，明确 H1–H4 已收口合入 main；
+     - ESLint 0 错误 0 警告；`tsc --noEmit` 0 报错；Vitest 37 个测试文件 311 项测试 100% 全绿；Vite 构建通过；
+     - Playwright 桌面端、平板端、移动端 123/123 测试 100% 全绿通过（4.0m）。
+
+---
+
+## Phase 21: H4 (P1) 系统可用性与设计走查原型 (System Usability & Layout Refinement)
+
+- [x] **21.1 系统页信息架构优化 (H4.1 - System Usability)**
+  - [x] 确保 `/system` 聚焦呈现受影响数据源/策略、最近良好截止日（last-good cutoff）、故障分类与恢复工作流链接；
+  - [x] 避免在系统页面冗余复制完整的 Daily Brief 正文，聚焦运维诊断与快速恢复；
+- [x] **21.2 响应式设计与多状态覆盖走查 (H4.2 - Layout Refinement)**
+  - [x] 确保桌面端 1440px、平板端 768px、手机端 375px 在正常、加载中、受限与过期/故障各状态下布局精致紧凑；
+  - [x] 消除任何水平溢出与排版层级混乱，保证高密度投研工作站专业水准；
+- [x] **21.3 质量验收与 CI 绿灯闭环 (H4.3)**
+  - [x] 运行 lint、tsc、vitest 与 Playwright 全绿；
+  - [x] 提交、推送分支并保持远程 GitHub Actions 绿灯。
+
+---
+
+## 阶段验收与复盘记录 (Review: Phase 21 / H4 交付成果)
+
+- **交付日期**: 2026-11-03
+- **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **提交 SHA**: `1fb0d514f1`
+- **核心成果**:
+  1. **系统运维页聚焦与故障分类清晰化 (`SystemHubPage.tsx`)**:
+     - 展示策略/数据源受影响状态，直观标注故障级别（如 `Stale observation`、`Attention`、`Source degraded`）；
+     - 显示精确的最近良好截止日（`last-good cutoff`），避免信息模糊；
+     - 提供直接的恢复工作流快捷指引链接（如 `Trigger formal refresh workflow`），实现一键跳转 GitHub Actions 运维界面；
+     - 坚决不冗余复制 Daily Brief 投研正文，严格维护 System 作为运维状态诊断界面的单一职责。
+  2. **多状态与响应式布局健全性**:
+     - 在 1440px 桌面、768px 平板、375px 手机端，自适应网格与排版自洽，文字换行平滑，零水平溢出；
+     - 覆盖正常、受限（Access required）、过期（Stale）与异常重试状态。
+  3. **质量闭环与自动化测试**:
+     - ESLint 0 警告 0 报错；`tsc --noEmit` 0 报错；
+     - Vitest 37 个测试文件 311 项测试 100% 全绿；
+     - Playwright 桌面端、平板端、移动端 123/123 测试 100% 全绿通过（3.9m）。
+
+---
+
+## Phase 22: H5 (P2) 权威与发布就绪归档 (Authority, Scorecard & Release Alignment)
+
+- [x] **22.1 架构决策对齐与文档收敛 (H5.1 - Authority Alignment)**
+  - [x] 基于已合入的真实前端代码，更新 `AGENTS.md`、`docs/product/strategy_console.md` 与 `docs/product/next_stage_execution_plan.md`，反映四目的地架构（Today, Strategies, Research Lab, System）与 H1–H4 真实实现；
+  - [x] 确保文档表述严谨：澄清 PR #1357 的前端合并绝不等同于 A7 生产正式 GO，亦不构成实盘交易授权或新数据源公开发布；
+- [x] **22.2 发布候选集成度量与门禁对齐 (H5.2 - Release Candidate Verification)**
+  - [x] 记录真实部署 SHA 与环境状态；
+  - [x] 检验回滚与安全边界，维持 A0–A7 门禁的客观判定（A1/A2/A3/A5/A6 BLOCKED, A4 FAIL, A7 NOT_TESTED/NO-GO）；
+- [x] **22.3 PR #1357 交付就绪评审与总结 (H5.3 - PR Delivery Package)**
+  - [x] 汇总 H0~H5 完整执行证据链、测试命令与多端验证结果；
+  - [x] 向用户交付最终状态与后续三条工作线的推进建议。
+
+---
+
+## 阶段验收与复盘记录 (Review: Phase 22 / H5 交付成果)
+
+- **交付日期**: 2026-11-03
+- **PR 目标**: [PR #1357](https://github.com/liuh886/alpha_engine/pull/1357) (`feat(frontend): A-first investment research workspace shell + UX architecture and agent handoff`)
+- **分支**: `docs/product/ux-rearchitecture-reference-first-20261102`
+- **提交 SHA**: `c08d0cf976`
+- **核心成果**:
+  1. **文档权威层级与架构对齐**:
+     - `AGENTS.md` 与 `strategy_console.md` 全面对齐 PR #1357 确立的 4 大工作台目的地：Today (`/app`)、Strategies (`/strategies`)、Research Lab (`/research`)、System (`/system`) 以及 Instrument Detail 联动；
+     - 显式声明 PR #1357 的前端演进绝不改变 `research_only=true` / `trade_ready=false` 核心底线，不虚增生产权限，不代签 Gate A7 GO；
+     - 更新 `next_stage_execution_plan.md`，确认 H0~H5 全部高质量闭环，重申后续聚焦于三条主线。
+  2. **门禁客观独立性维持**:
+     - 持续维持 A0–A7 严格判定：A1/A2/A3/A5/A6 BLOCKED，A4 FAIL，A7 NOT_TESTED / NO-GO；
+     - 杜绝因 UI 焕新或 CI 绿色而伪造上线资格。
+  3. **H0~H5 全序列高质量交付**:
+     - H0 (P0) 稳定性加固：123 项 E2E 测试全绿；
+     - H1 (P0) Today 信息架构重构：按策略独立截止日呈现，<=2 击直达证据；
+     - H2 (P0) TradingView Lightweight Charts 5.2.1 证券详情 POC：与 Recharts 严格 1:1 等价性保障；
+     - H3 (P1) 策略详情与研究深度重塑：任务式章节吸顶导航、分析周期多表联动、RDI 四阶递进叙事、Racetrack 本地/托管边界加固；
+     - H4 (P1) 系统可用性优化：故障精准分类、last-good cutoff 呈现、快捷运维工作流跳转；
+     - H5 (P2) 权威收口：全文档对齐真实代码现状。
+
+---
+
+## Phase 23: PR #1357 最终稳态闭环与 Issue #1358 独立研究选手就绪
+
+- [x] **23.1 消除 Strict Mode 重复文案与 TS 编译警告 (H4/H2 Polish)**
+  - [x] 消除 `SystemHubPage` 中的重复 `Read unavailable` 标签（`af49b8c`），按真实运行状态分类恢复动作（`0f13490`）；
+  - [x] 修复 `SecurityLightweightChart.tsx` 中 `modelName` 未使用参数警告（`8a64572`），ESLint 与 `tsc --noEmit` 0 报错；
+  - [x] 重新构建 `dist/`，运行静态 Playwright 测试套件（`playwright.static.config.ts`），**123/123 项端到端测试 100% 全绿通过**（3.9m）；
+- [ ] **23.2 Issue #1358 独立研究选手架构设计与准备 (R1 - First Independent US87 Challenger)**
+  - [ ] 严格遵循独立性原则：选择一个确定、简单且可证伪的 US87 横截面选股/再平衡规则（绝不与内部基准共用回放）；
+  - [ ] 100% 复用既有 `src/racetrack` 基础设施（runner, pipeline, engine, ledger, scoring），坚决不新增回测系统或数据库；
+  - [ ] 确保与 US87 EW Pool Index 及 QQQ 拥有完全一致的观测窗口与成本模型，如数据不足严格报 blocked 而非虚构排名；
+  - [ ] 保持私有 Q-ledger 密码学绑定，绝不公开发布私有持仓，绝不生成实盘交易信号；
+  - [ ] 待 PR #1357 正式合入主线后，基于 main 开启独立功能 PR 实施。
+
+
+
+
+
+
+
+
+
+

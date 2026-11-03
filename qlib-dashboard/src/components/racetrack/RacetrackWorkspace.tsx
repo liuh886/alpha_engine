@@ -55,7 +55,13 @@ export function RacetrackWorkspace() {
 
   return <section aria-label="Racetrack research" className="space-y-4">
     <div className="flex flex-wrap items-end justify-between gap-4 rounded-xl border bg-card px-5 py-4">
-      <div><p className="text-[10px] font-semibold uppercase tracking-[.22em] text-muted-foreground">Racetrack · research only</p>
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-muted-foreground">Racetrack · research only</p>
+          <span className="rounded-full border bg-muted/40 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {['localhost', '127.0.0.1', '[::1]'].includes(globalThis.location.hostname) ? 'Local loopback reader' : 'Hosted boundary'}
+          </span>
+        </div>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">{phase ? 'The first season.' : 'The long race.'}</h2>
         <p className="mt-2 text-sm text-muted-foreground">Compare published NAV, consistency and risk. Keep the thesis in view.</p>
         {projection && <p className="mt-2 max-w-3xl break-words text-[11px] text-muted-foreground">Qualification: {projection.manifest.data_qualification.replace(/_/g, ' ')}.</p>}
@@ -70,7 +76,20 @@ export function RacetrackWorkspace() {
       </div>
     </div>
     {!current && <div role="status" className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">Reading and verifying the local projection…</div>}
-    {current?.error && <div className="rounded-xl border bg-card p-8"><h3 className="font-semibold">Research projection unavailable</h3><p role="alert" className="mt-3 max-w-2xl text-sm text-muted-foreground">{current.error}</p><p className="mt-3 text-xs text-muted-foreground">The four-strategy monitor remains independent. Reading this view never trains, replays or downloads market data.</p></div>}
+    {current?.error && (
+      <div className="rounded-xl border bg-card p-8">
+        <h3 className="font-semibold">Research projection unavailable</h3>
+        <p role="alert" className="mt-3 max-w-2xl text-sm text-muted-foreground">{current.error}</p>
+        {current.error.includes('Hosted Console pages') && (
+          <div className="mt-4 max-w-2xl rounded-lg border bg-muted/20 p-4 text-xs leading-relaxed text-muted-foreground space-y-1.5">
+            <p className="font-medium text-foreground">Loopback research boundary & privacy policy:</p>
+            <p>Private research projections, unreleased model weights and private Q evidence are strictly confined to local loopback storage (<code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">localhost</code>). They are never published to public GitHub Pages.</p>
+            <p>The four formal strategies remain fully observable independently via the Overview and Strategies destinations.</p>
+          </div>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">The four-strategy monitor remains independent. Reading this view never trains, replays or downloads market data.</p>
+      </div>
+    )}
     {projection && display && <>
       <div className="grid gap-3 sm:grid-cols-3">
         <Fact label="Evidence through" value={projection.manifest.as_of_session} note={`Publication cutoff ${projection.manifest.as_of_cutoff}`} />
