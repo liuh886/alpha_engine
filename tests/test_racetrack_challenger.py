@@ -62,7 +62,7 @@ def test_challenger_thesis_and_contract_metadata():
     assert len(runner.thesis) >= 30
     assert len(runner.selection_logic) >= 30
     assert len(runner.rebalance_logic) >= 30
-    assert "lowest realized-volatility" in runner.thesis
+    assert "lowest-realized-volatility" in runner.thesis
     assert "20-session" in runner.selection_logic
     assert "friction" in runner.rebalance_logic
 
