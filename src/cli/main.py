@@ -383,6 +383,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "--with-pool-runner", action="store_true",
         help="Opt into first-season v2 with the real US87 pool-index racer and retained local Q evidence.",
     )
+    rt_publish.add_argument(
+        "--with-challenger-runner",
+        "--with-challenger",
+        action="store_true",
+        dest="with_challenger_runner",
+        help="Opt into first-season v2 with both the real US87 pool benchmark racer and the independent low-volatility challenger racer.",
+    )
 
     rt_show = racetrack_commands.add_parser(
         "show",
@@ -819,7 +826,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 as_of_cutoff=args.as_of,
                 output_dir=_resolve(root, args.output_dir) if args.output_dir is not None else None,
                 start_date=args.start_date,
-                with_pool_runner=args.with_pool_runner,
+                with_pool_runner=args.with_pool_runner or args.with_challenger_runner,
+                with_challenger_runner=args.with_challenger_runner,
                 root_path=root,
             )
             manifest_rel = (

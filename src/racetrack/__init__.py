@@ -32,6 +32,17 @@ from src.racetrack.contracts import (
     canonical_json_dumps,
     compute_canonical_sha256,
 )
+from src.racetrack.challenger import (
+    US87_LOW_VOL_REBALANCE,
+    US87_LOW_VOL_RUNNER_ID,
+    US87_LOW_VOL_RUNNER_VERSION,
+    US87_LOW_VOL_SELECTION,
+    US87_LOW_VOL_THESIS,
+    compute_realized_volatility,
+    create_us_low_vol_runner,
+    generate_low_vol_events,
+    simulate_us_low_vol_challenger,
+)
 from src.racetrack.engine import simulate_portfolio
 from src.racetrack.ledger import EventLedger
 from src.racetrack.matrix import load_price_matrix, resolve_reference_symbol
@@ -44,6 +55,7 @@ from src.racetrack.pool_index import generate_equal_weight_pool_index
 from src.racetrack.runner import (
     RunnerContract,
     RunnerRegistry,
+    create_us_pool_runner,
     validate_runner_thesis,
 )
 from src.racetrack.scoring import (
@@ -79,6 +91,11 @@ __all__ = [
     "ScoreboardEntry",
     "SimulationResult",
     "ThesisMissingError",
+    "US87_LOW_VOL_REBALANCE",
+    "US87_LOW_VOL_RUNNER_ID",
+    "US87_LOW_VOL_RUNNER_VERSION",
+    "US87_LOW_VOL_SELECTION",
+    "US87_LOW_VOL_THESIS",
     "UnauthorizedAssetError",
     "WeightConstraintError",
     "assert_privacy_clean",
@@ -86,13 +103,18 @@ __all__ = [
     "calculate_rolling_window_return",
     "canonical_json_dumps",
     "compute_canonical_sha256",
+    "compute_realized_volatility",
+    "create_us_low_vol_runner",
+    "create_us_pool_runner",
     "evaluate_race_season",
     "generate_benchmark_simulation",
     "generate_equal_weight_pool_index",
+    "generate_low_vol_events",
     "load_price_matrix",
     "publish_racetrack_projection",
     "render_racetrack_scoreboard",
     "resolve_reference_symbol",
     "simulate_portfolio",
+    "simulate_us_low_vol_challenger",
     "validate_runner_thesis",
 ]

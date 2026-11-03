@@ -140,3 +140,84 @@ test('paired versions and private Q references fail closed', () => {
   Object.values<any>(f.manifest.local_evidence)[0].path = '../private.jsonl';
   expect(() => parseRaceManifest(f.manifest, 'us')).toThrow('Q evidence');
 });
+
+test('v2 publisher supports independent strategy racer alongside pool benchmark', async () => {
+  const fixture = racetrackFirstSeasonFixture();
+  const challengerId = 'us87_low_vol_challenger_v1';
+  const runnerHash = createHash('sha256').update(challengerId).digest('hex');
+  fixture.manifest.runner_count = 2;
+  fixture.manifest.runner_details[challengerId] = `runner:${challengerId}`;
+  fixture.manifest.local_evidence[challengerId] = {
+    event_count: 2,
+    path: `versions/${fixture.manifest.release_id}/evidence/${runnerHash}.jsonl`,
+    sha256: 'b'.repeat(64),
+    size_bytes: 1200,
+    tip_hash: 'c'.repeat(64),
+  };
+  const dates = fixture.scoreboard.dates;
+  const navHistory = dates.map((_: string, i: number) => 1 + i * 0.001);
+  fixture.scoreboard.top_runners_nav[challengerId] = navHistory;
+  const challengerEntry = {
+    ...fixture.scoreboard.entries[0],
+    runner_id: challengerId,
+    season_points: 3.5,
+    cumulative_points: 7.2,
+    current_rank: 1,
+  };
+  // Sort descending by season_points: challenger (3.5) is rank 1, pool runner (-4.64) is rank 2
+  const poolEntry = { ...fixture.scoreboard.entries[0], current_rank: 2 };
+  fixture.scoreboard.entries = [challengerEntry, poolEntry];
+  fixture.scoreboard.first_season.roles[challengerId] = 'strategy_racer';
+  for (const w of Object.values<any>(fixture.scoreboard.first_season.windows)) {
+    w.ranks[challengerId] = null;
+  }
+  fixture.scoreboard.first_season.windows['1'].ranks[challengerId] = 1;
+  fixture.scoreboard.first_season.windows['1'].ranks[poolEntry.runner_id] = 2;
+  fixture.scoreboard.first_season.windows['1'].top_runner_ids = [challengerId, poolEntry.runner_id];
+
+  const detailPath = `runners/${runnerHash}.json`;
+  const detailRaw = JSON.stringify({
+    schema_version: '2.0',
+    runner_id: challengerId,
+    runner_version: '1.0.0',
+    pool_id: 'us_selected_equities_v2',
+    market: 'us',
+    as_of_session: fixture.scoreboard.as_of_session,
+    thesis: 'Test low volatility thesis',
+    selection_logic: '20-session volatility selection',
+    rebalance_logic: 'Monthly equal weight in cash and equities',
+    model_weights: [{ symbol: 'AAPL', weight: 0.05 }],
+    cash_weight: 0.95,
+    monthly_ranks: challengerEntry.monthly_ranks,
+    limitations: ['Test limitation'],
+    runner_role: 'strategy_racer',
+    research_only: true,
+    trade_ready: false,
+  });
+  fixture.manifest.artifacts[`runner:${challengerId}`] = {
+    path: `versions/${fixture.manifest.release_id}/${detailPath}`,
+    sha256: createHash('sha256').update(detailRaw).digest('hex'),
+    size_bytes: Buffer.byteLength(detailRaw),
+  };
+  fixture.files[`versions/${fixture.manifest.release_id}/${detailPath}`] = detailRaw;
+
+  const scoreboardRaw = JSON.stringify(fixture.scoreboard);
+  const scoreboardRef = fixture.manifest.artifacts.scoreboard_latest;
+  scoreboardRef.size_bytes = Buffer.byteLength(scoreboardRaw);
+  scoreboardRef.sha256 = createHash('sha256').update(scoreboardRaw).digest('hex');
+  fixture.files[scoreboardRef.path] = scoreboardRaw;
+
+  const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+    const path = String(url).replace('/__racetrack/us/', '');
+    return new Response(path === 'manifest.json' ? JSON.stringify(fixture.manifest) : fixture.files[path]);
+  });
+  const client = new ProjectionClient(fetcher);
+  const signal = new AbortController().signal;
+  const projection = await client.load('us', signal);
+  expect(projection.scoreboard.entries).toHaveLength(2);
+  const challengerDetail = await client.runner(projection, challengerEntry, signal);
+  expect(challengerDetail.runner_role).toBe('strategy_racer');
+  expect(challengerDetail.runner_id).toBe(challengerId);
+  const window1 = displayWindow(projection.scoreboard, 1);
+  expect(window1.series.some(s => s.runnerId === challengerId)).toBe(true);
+});

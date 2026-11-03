@@ -1313,12 +1313,52 @@
   - [x] 消除 `SystemHubPage` 中的重复 `Read unavailable` 标签（`af49b8c`），按真实运行状态分类恢复动作（`0f13490`）；
   - [x] 修复 `SecurityLightweightChart.tsx` 中 `modelName` 未使用参数警告（`8a64572`），ESLint 与 `tsc --noEmit` 0 报错；
   - [x] 重新构建 `dist/`，运行静态 Playwright 测试套件（`playwright.static.config.ts`），**123/123 项端到端测试 100% 全绿通过**（3.9m）；
-- [ ] **23.2 Issue #1358 独立研究选手架构设计与准备 (R1 - First Independent US87 Challenger)**
-  - [ ] 严格遵循独立性原则：选择一个确定、简单且可证伪的 US87 横截面选股/再平衡规则（绝不与内部基准共用回放）；
-  - [ ] 100% 复用既有 `src/racetrack` 基础设施（runner, pipeline, engine, ledger, scoring），坚决不新增回测系统或数据库；
-  - [ ] 确保与 US87 EW Pool Index 及 QQQ 拥有完全一致的观测窗口与成本模型，如数据不足严格报 blocked 而非虚构排名；
-  - [ ] 保持私有 Q-ledger 密码学绑定，绝不公开发布私有持仓，绝不生成实盘交易信号；
-  - [ ] 待 PR #1357 正式合入主线后，基于 main 开启独立功能 PR 实施。
+- [x] **23.2 Issue #1358 独立研究选手架构设计与准备 (R1 - First Independent US87 Challenger)**
+  - [x] 严格遵循独立性原则：选择一个确定、简单且可证伪的 US87 横截面选股/再平衡规则（绝不与内部基准共用回放）；
+  - [x] 100% 复用既有 `src/racetrack` 基础设施（runner, pipeline, engine, ledger, scoring），坚决不新增回测系统或数据库；
+  - [x] 确保与 US87 EW Pool Index 及 QQQ 拥有完全一致的观测窗口与成本模型，如数据不足严格报 blocked 而非虚构排名；
+  - [x] 保持私有 Q-ledger 密码学绑定，绝不公开发布私有持仓，绝不生成实盘交易信号；
+  - [x] **PR #1357 已由 Owner 正式合并入 main (`42340a2853`)**，基于最新 main 创建功能分支 `feat/racetrack-us87-independent-challenger-1358` 启动实施。
+
+---
+
+## Phase 24: Issue #1358 (R1) 首个真正独立的 US87 Challenger 垂直切片
+
+- [x] **24.1 冻结假设与独立选股规则 (`src/racetrack/challenger.py`)**
+  - [x] 实现 `create_us_low_vol_runner() -> RunnerContract` 与 `generate_low_vol_events(matrix, pool_id, ...)`；
+  - [x] 冻结清晰的投资假设（Thesis $\ge 30$ chars，包含 488 字符完整陈述），解释构建原因、下注方向与失效场景；
+  - [x] 确定性选股逻辑：回测第一天初始化为现金，月度首个交易日计算候选池过去 20 交易日已实现波动率，选最低的前 20 标的等权分配（各 5%），历史不足或停牌者严格置为现金缓冲，无向前填充；
+  - [x] 严格限制标的在候选池范围内，严禁引入 QQQ（宏观基准）或非 US87 标的；
+- [x] **24.2 赛马流水线支持多选手与独立 Q-Ledger (`src/racetrack/pipeline.py`)**
+  - [x] 调整 `publish_racetrack_projection`，解除只能单独运行 `pool_runner` 的单选手限制；
+  - [x] 允许同时接入 `pool_runner`（内部基准选手）与 `challenger_runner`（独立选手）；
+  - [x] 为每个独立选手生成唯一的私有 Q-ledger 文件与哈希，收录入 `local_evidence`；
+  - [x] 正确映射 `runner_role`（`internal_benchmark_racer` vs `strategy_racer`）；
+  - [x] 保留所有隐私审计断言（无真实账户、无 PnL、无实盘信号字段）；
+- [x] **24.3 CLI 命令与本地投研产物导出 (`src/cli/main.py`)**
+  - [x] 扩展 `alpha racetrack publish --with-challenger-runner`（及别名 `--with-challenger`），支持多选手并发赛跑；
+- [x] **24.4 完备的单元测试与负面边界验证 (`tests/test_racetrack_challenger.py`)**
+  - [x] 独立性测试：验证 Challenger 与 EW Pool 产生完全不同的权重、不同持仓、不同收益曲线；
+  - [x] 确定性测试：验证多次重放产生相同事件序列与相同 Q-ledger SHA-256；
+  - [x] 负面测试：非 US87 资产侵入抛 `UnauthorizedAssetError`，选 QQQ 抛 `UnauthorizedAssetError`，跨市场抛 `ValueError`；
+  - [x] 零前瞻测试：验证截面排序仅依赖历史 $t-1$ 数据；
+  - [x] 数据缺失测试：不足 lookback 期的候选留空现金，不重新平分给其他标的；
+- [x] **24.5 前端呈现与 E2E 走查 (`qlib-dashboard`)**
+  - [x] 校验 `/research?section=racetrack` 在双选手（EW Racer + Challenger）模式下排行榜展示与详情弹窗查看正常；
+  - [x] 校验角色标识与独立研究标签：`internal_benchmark_racer` 标识为内部基准，`strategy_racer` 标识为独立挑战者；
+  - [x] 在 `racetrack-projection.test.ts` 中加入双选手（池基准 + 独立策略选手）全套校验测试；
+- [x] **24.6 全量测试回归与交付记录**
+  - [x] 运行 83 项 Python Racetrack 测试全部通过（`test_racetrack_*.py` 100% passed）；
+  - [x] 运行 37 个测试文件、312 项前端 Vitest 测试全部通过（100% passed）；
+  - [x] 运行 123 项 Playwright 浏览器端到端测试全绿通过（123 passed in 2.7m）；
+  - [x] 保持 `research_only=true`, `trade_ready=false`。
+
+### Phase 24 交付审查 (Review)
+
+1. **功能闭环**: Issue #1358 要求一个真正独立的低波横截面选手 `us87_low_vol_challenger_v1`，完全复用现有 `src/racetrack/` 的执行引擎、评分规则与 Q-ledger 机制，零新增数据库或调度器。
+2. **证据闭环**: 为双选手同时生成独立的私有 Q-ledger、哈希签名与投影产物，在同一交易日、相同摩擦成本（5 bps）下与 US87 EW Pool 基准及 QQQ 宏观基准展开对比。
+3. **前端对齐**: Research Lab 投研控制台支持按角色展示独立策略选手，无缝承接第一季积分竞赛协议。
+
 
 
 
