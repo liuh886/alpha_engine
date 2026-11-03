@@ -155,7 +155,7 @@ test('v2 publisher supports independent strategy racer alongside pool benchmark'
     tip_hash: 'c'.repeat(64),
   };
   const dates = fixture.scoreboard.dates;
-  const navHistory = dates.map((_, i) => 1 + i * 0.001);
+  const navHistory = dates.map((_: string, i: number) => 1 + i * 0.001);
   fixture.scoreboard.top_runners_nav[challengerId] = navHistory;
   const challengerEntry = {
     ...fixture.scoreboard.entries[0],
