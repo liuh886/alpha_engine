@@ -24,7 +24,7 @@ US87_LOW_VOL_RUNNER_ID = "us87_low_vol_challenger_v1"
 US87_LOW_VOL_RUNNER_VERSION = "1.0.0"
 
 US87_LOW_VOL_THESIS = (
-    "Select the lowest realized-volatility quintile of US87 candidate equities "
+    "Select the 20 lowest-realized-volatility US87 candidate equities "
     "under monthly rebalancing to test defensive risk-adjusted performance against "
     "the unselected equal-weight pool benchmark. The hypothesis expects reduced "
     "drawdowns during market turbulence but underperformance during speculative, "
@@ -44,7 +44,7 @@ US87_LOW_VOL_SELECTION = (
 US87_LOW_VOL_REBALANCE = (
     "Initialize in cash at the first replay session. Rebalance at the first trading "
     "session of each calendar month with complete lookback history. Deduct shared "
-    "engine friction (5 bps) on rebalance turnover. Holdings drift naturally intra-month "
+    "engine friction (8 bps default) on rebalance turnover. Holdings drift naturally intra-month "
     "with zero rebalance turnover between monthly boundaries."
 )
 
