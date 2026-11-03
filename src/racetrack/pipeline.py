@@ -28,6 +28,7 @@ from src.racetrack.matrix import load_price_matrix
 from src.racetrack.ledger import EventLedger
 from src.racetrack.pool_index import generate_equal_weight_pool_index
 from src.racetrack.runner import RunnerRegistry, create_us_pool_runner, validate_runner_thesis
+from src.racetrack.challenger import create_us_low_vol_runner
 from src.racetrack.scoring import (
     evaluate_race_season,
     evaluate_first_season,
@@ -125,6 +126,7 @@ def publish_racetrack_projection(
     season_id: str | None = None,
     generated_at_utc: str | None = None,
     with_pool_runner: bool = False,
+    with_challenger_runner: bool = False,
 ) -> PipelineResult:
     """Execute end-to-end Racetrack publication pipeline with atomic landing and fail-closed integrity.
 
@@ -152,6 +154,7 @@ def publish_racetrack_projection(
         season_id: Custom season identifier. If None, derived from market and session.
         generated_at_utc: Deterministic generation timestamp (defaults to session midnight UTC).
         with_pool_runner: Explicit Phase A opt-in: one US87 pool racer, v2 contract and retained Q evidence.
+        with_challenger_runner: Explicit Issue #1358 opt-in: independent US87 low-volatility challenger racer.
 
     Returns:
         PipelineResult containing paths, metadata, hashes, and Scoreboard contract.
@@ -167,8 +170,10 @@ def publish_racetrack_projection(
         raise ValueError(
             f"Unsupported market '{market}'. Must be one of {list(MARKET_SPECS.keys())}"
         )
-    if with_pool_runner and (market_lower != "us" or registry is not None or runners_registry is not None):
+    if with_pool_runner and not with_challenger_runner and (market_lower != "us" or registry is not None or runners_registry is not None):
         raise ValueError("Phase A accepts only the built-in US pool racer, without another registry")
+    if with_challenger_runner and (market_lower != "us" or registry is not None or runners_registry is not None):
+        raise ValueError("Issue #1358 accepts only the built-in US racers, without another registry")
 
     spec = MARKET_SPECS[market_lower]
     candidate_pool = spec["candidate_pool"]
@@ -203,26 +208,46 @@ def publish_racetrack_projection(
     )
     as_of_session = matrix.end_session
 
-    # 4. Step 2: Generate internal declared pool index simulation
+    # 4. Step 2: Generate internal declared pool index simulation and built-in racers
     retained_ledgers = {}
     local_evidence = {}
-    pool_runner = create_us_pool_runner() if with_pool_runner else None
-    if pool_runner:
-        admitted = RunnerRegistry(pool_id=candidate_pool, candidate_symbols=matrix.candidate_symbols)
-        admitted.register(pool_runner)
-        # One successful replay writes owned Q evidence. The same result is used
-        # as the benchmark; no second replay or inferred/copy-pasted targets.
-        with tempfile.TemporaryDirectory(prefix="alpha-pool-q-") as temporary:
-            ledger_path = Path(temporary) / "pool.jsonl"
-            pool_sim = pool_runner.run(matrix, ledger_path=ledger_path, config=config)
-            ledger = EventLedger.load(ledger_path)
-            raw = ledger_path.read_bytes()
-            name = hashlib.sha256(pool_runner.runner_id.encode()).hexdigest() + ".jsonl"
-            relative = (Path("evidence") / name).as_posix()
-            retained_ledgers[relative] = raw
-            local_evidence[pool_runner.runner_id] = {"path": relative,
-                "sha256": hashlib.sha256(raw).hexdigest(), "size_bytes": len(raw),
-                "event_count": len(ledger.events), "tip_hash": ledger.tip_hash}
+    built_in_runners: list[Any] = []
+    if with_pool_runner or with_challenger_runner:
+        pool_runner = create_us_pool_runner()
+        built_in_runners.append(pool_runner)
+    else:
+        pool_runner = None
+
+    if with_challenger_runner:
+        challenger_runner = create_us_low_vol_runner()
+        built_in_runners.append(challenger_runner)
+    else:
+        challenger_runner = None
+
+    simulation_results: dict[str, Any] = {}
+    runners_map: dict[str, Any] = {}
+
+    if built_in_runners:
+        for r in built_in_runners:
+            runners_map[r.runner_id] = r
+            # Each admitted runner writes its own isolated private Q ledger.
+            with tempfile.TemporaryDirectory(prefix=f"alpha-racetrack-q-{r.runner_id}-") as temporary:
+                ledger_path = Path(temporary) / f"{r.runner_id}.jsonl"
+                sim_res = r.run(matrix, ledger_path=ledger_path, config=config)
+                simulation_results[r.runner_id] = sim_res
+                ledger = EventLedger.load(ledger_path)
+                raw = ledger_path.read_bytes()
+                name = hashlib.sha256(r.runner_id.encode()).hexdigest() + ".jsonl"
+                relative = (Path("evidence") / name).as_posix()
+                retained_ledgers[relative] = raw
+                local_evidence[r.runner_id] = {
+                    "path": relative,
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "size_bytes": len(raw),
+                    "event_count": len(ledger.events),
+                    "tip_hash": ledger.tip_hash,
+                }
+        pool_sim = simulation_results[pool_runner.runner_id]
     else:
         pool_sim = generate_equal_weight_pool_index(matrix=matrix, pool_id=candidate_pool, config=config)
 
@@ -233,15 +258,9 @@ def publish_racetrack_projection(
         config=config,
     )
 
-    # 6. Step 4: Batch evaluate registered runners (if provided)
+    # 6. Step 4: Batch evaluate registered runners (if custom external registry provided)
     active_registry = registry if registry is not None else runners_registry
-    simulation_results: dict[str, Any] = {}
-    runners_map: dict[str, Any] = {}
-    if pool_runner:
-        simulation_results = {pool_runner.runner_id: pool_sim}
-        runners_map = {pool_runner.runner_id: pool_runner}
-
-    if active_registry is not None and active_registry.list_runners():
+    if not built_in_runners and active_registry is not None and active_registry.list_runners():
         for runner in active_registry.list_runners():
             validate_runner_thesis(runner.thesis)
             # Cross-market isolation check
@@ -328,9 +347,11 @@ def publish_racetrack_projection(
             "research_only": True,
             "trade_ready": False,
         }
-        assert_privacy_clean(details[runner_id])
-        if pool_runner:
+        if pool_runner and runner_id == pool_runner.runner_id:
             details[runner_id]["runner_role"] = "internal_benchmark_racer"
+        elif pool_runner:
+            details[runner_id]["runner_role"] = "strategy_racer"
+        assert_privacy_clean(details[runner_id])
 
     # 9. Step 7: Atomic landing with staging and fail-closed promotion
     # The current manifest is the only mutable publication pointer. Every

@@ -27,6 +27,7 @@ export function RunnerDetail({ projection, entry, client, onClose }: {
         <DialogTitle className="mt-1 break-all text-lg font-semibold">{entry.runner_id}</DialogTitle>
         <DialogDescription className="mt-1 text-xs text-muted-foreground">Version {entry.runner_version} · model snapshot {projection.manifest.as_of_session}</DialogDescription>
         {projection.scoreboard.first_season?.roles[entry.runner_id] === 'internal_benchmark_racer' && <p className="mt-2 text-xs font-medium">Internal benchmark, also racing · same replay and friction</p>}
+        {projection.scoreboard.first_season?.roles[entry.runner_id] === 'strategy_racer' && <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">Independent research challenger · evaluated on common replay</p>}
       </div>
       <button onClick={onClose} className="min-h-9 rounded-md border px-3 text-xs" aria-label="Close runner detail">Close</button>
     </header>
