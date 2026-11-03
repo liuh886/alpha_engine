@@ -75,6 +75,7 @@ def main() -> None:
     elif args.price_renewal_audit:
         from src.research.market_session_clock import completed_market_date
 
+        from .price_reconstruction import slice_market_evidence_candidate
         from .price_renewal import audit_price_renewal
 
         if args.product_briefing or not args.as_of:
@@ -89,10 +90,16 @@ def main() -> None:
             raise ValueError("invalid retained source Git blob")
         legacy = subprocess.check_output(["git", "cat-file", "blob", blob], cwd=root)
         market = root / "data/research/market_evidence/cn"
+        market_cat_bytes = (market / "catalog.json").read_bytes()
+        market_sec_bytes = (market / "symbols/000300.json").read_bytes()
+        target_cutoff = completed_market_date("cn", args.as_of)
+        cat_bytes, sec_bytes = slice_market_evidence_candidate(
+            market_cat_bytes, market_sec_bytes, as_of_cutoff=target_cutoff,
+        )
+
         result = audit_price_renewal(
-            legacy, (market / "catalog.json").read_bytes(),
-            (market / "symbols/000300.json").read_bytes(),
-            completed_cutoff=date.fromisoformat(completed_market_date("cn", args.as_of)),
+            legacy, cat_bytes, sec_bytes,
+            completed_cutoff=date.fromisoformat(target_cutoff),
         )
         result.update({
             "source_git_blob_sha1": blob,

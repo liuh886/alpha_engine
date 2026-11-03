@@ -199,6 +199,22 @@ def test_unrelated_lock_drift_is_recorded_without_changing_frozen_price_output(m
     assert receipt["replay_lock_matches_capture"] is False
 
 
+def test_future_candidate_evidence_rejected_at_historical_cutoff():
+    """Verify that candidate evidence with cutoff > completed_cutoff is rejected by audit_price_renewal."""
+    root = Path(__file__).resolve().parents[1]
+    contract = root / "configs/research_experiments/ashare_rdi_csi300_price_repair_2026-10-31.json"
+    market = root / "data/research/market_evidence/cn"
+    live_catalog = (market / "catalog.json").read_bytes()
+    live_security = (market / "symbols/000300.json").read_bytes()
+    with pytest.raises(ValueError, match="candidate exceeds completed-session cutoff"):
+        # Explicitly passing live market evidence (2026-11-02) at historical cutoff (2026-10-30) fails closed
+        recompute(
+            root, contract, completed_cutoff=date(2026, 10, 30),
+            candidate_catalog_bytes=live_catalog,
+            candidate_security_bytes=live_security,
+        )
+
+
 def _cov(day: date, family: str = "holding_change", archived: bool = True) -> FamilyCoverage:
     return FamilyCoverage(day, family, "verified", "fixture://cninfo", "a" * 64, archived)
 

@@ -20,6 +20,46 @@ def sha256(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def slice_market_evidence_candidate(
+    catalog_bytes: bytes,
+    security_bytes: bytes,
+    *,
+    as_of_cutoff: str,
+) -> tuple[bytes, bytes]:
+    """Slice governed market evidence to a historical cutoff for bounded preflight audit.
+
+    Retains all governed projection fields while filtering bars and aligning catalog
+    metadata strictly as-of the declared historical cutoff, without synthesizing
+    unobserved prices or altering raw provider values.
+    """
+    cat = json.loads(catalog_bytes)
+    sec = json.loads(security_bytes)
+
+    if sec.get("cutoff", "") <= as_of_cutoff and cat.get("cutoff", "") <= as_of_cutoff:
+        return catalog_bytes, security_bytes
+
+    sec_bars = [b for b in sec.get("bars", []) if b["time"] <= as_of_cutoff]
+    if not sec_bars:
+        raise ValueError(f"no security bars remain as of cutoff {as_of_cutoff}")
+    sec["bars"] = sec_bars
+    sec["cutoff"] = sec_bars[-1]["time"]
+    if "chart_studies" in sec and isinstance(sec["chart_studies"], dict):
+        for study_name, points in sec["chart_studies"].items():
+            if isinstance(points, list):
+                sec["chart_studies"][study_name] = [p for p in points if p.get("time", "") <= as_of_cutoff]
+    filtered_sec_bytes = json.dumps(sec, separators=(",", ":")).encode()
+
+    cat["cutoff"] = as_of_cutoff
+    sec_digest = hashlib.sha256(filtered_sec_bytes).hexdigest()
+    for sym in cat.get("symbols", []):
+        if sym.get("instrument_id") == sec.get("instrument_id"):
+            sym["cutoff"] = sec["cutoff"]
+            sym["sha256"] = sec_digest
+    filtered_cat_bytes = json.dumps(cat, separators=(",", ":")).encode()
+
+    return filtered_cat_bytes, filtered_sec_bytes
+
+
 def repo_file(root: Path, path: str) -> Path:
     resolved = (root / path).resolve()
     resolved.relative_to(root.resolve())
@@ -135,7 +175,14 @@ def repair_prices(legacy: bytes, source: bytes, contract: dict) -> tuple[bytes, 
     }
 
 
-def reconstruct(root: Path, contract_path: Path, *, completed_cutoff: date) -> tuple[bytes, dict]:
+def reconstruct(
+    root: Path,
+    contract_path: Path,
+    *,
+    completed_cutoff: date,
+    candidate_catalog_bytes: bytes | None = None,
+    candidate_security_bytes: bytes | None = None,
+) -> tuple[bytes, dict]:
     raw_contract = contract_path.read_bytes()
     contract = json.loads(raw_contract)
     if not (contract["canonical_symbol"] == "000300.SH"
@@ -159,11 +206,27 @@ def reconstruct(root: Path, contract_path: Path, *, completed_cutoff: date) -> t
     source = replay_source(root, manifest)
     result, repairs = repair_prices(legacy, source, contract)
     market = root / "data/research/market_evidence/cn"
+    # Resolve candidate catalog and security bytes: prefer explicit bytes,
+    # or slice current market evidence to the contract's declared cutoff
+    # to isolate historical reconstruction without forward data leakage.
+    if candidate_catalog_bytes is None or candidate_security_bytes is None:
+        market_cat_bytes = (market / "catalog.json").read_bytes()
+        market_sec_bytes = (market / "symbols/000300.json").read_bytes()
+        sliced_cat, sliced_sec = slice_market_evidence_candidate(
+            market_cat_bytes, market_sec_bytes, as_of_cutoff=contract["cutoff"]
+        )
+        if candidate_catalog_bytes is None:
+            candidate_catalog_bytes = sliced_cat
+        if candidate_security_bytes is None:
+            candidate_security_bytes = sliced_sec
+
     # Reuse the strict calendar/OHLC/cutoff audit against the complete repaired
     # history. Remaining tiny legacy rounding is preserved, not normalized away.
     preflight = audit_price_renewal(
-        result, (market / "catalog.json").read_bytes(),
-        (market / "symbols/000300.json").read_bytes(), completed_cutoff=completed_cutoff,
+        result,
+        candidate_catalog_bytes,
+        candidate_security_bytes,
+        completed_cutoff=completed_cutoff,
     )
     if preflight["blockers"] != ["no_new_completed_prices", "original_provider_bytes_and_index_price_basis_not_certified"]:
         raise ValueError("reconstructed price history still conflicts with governed evidence")
@@ -186,13 +249,26 @@ def reconstruct(root: Path, contract_path: Path, *, completed_cutoff: date) -> t
     }
 
 
-def recompute(root: Path, contract_path: Path, *, completed_cutoff: date) -> tuple[bytes, dict]:
+def recompute(
+    root: Path,
+    contract_path: Path,
+    *,
+    completed_cutoff: date,
+    candidate_catalog_bytes: bytes | None = None,
+    candidate_security_bytes: bytes | None = None,
+) -> tuple[bytes, dict]:
     from akshare.stock.cons import hk_js_decode
 
     from .outcomes import PriceBar
     from .price_baseline import descriptive_drawdown_comparison
 
-    prices, receipt = reconstruct(root, contract_path, completed_cutoff=completed_cutoff)
+    prices, receipt = reconstruct(
+        root,
+        contract_path,
+        completed_cutoff=completed_cutoff,
+        candidate_catalog_bytes=candidate_catalog_bytes,
+        candidate_security_bytes=candidate_security_bytes,
+    )
     contract = json.loads(contract_path.read_bytes())
     protocol = contract["descriptive_protocol"]
     if (protocol["lookback_sessions"] != 60 or protocol["drawdown_threshold"] != -0.1
