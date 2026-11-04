@@ -182,10 +182,11 @@ class TestCloudExchange(unittest.TestCase):
         with self.assertRaisesRegex(ExchangeError, "exact pinned"):
             stage(self.archive, clone)
 
-    def test_frontend_output_is_forbidden(self) -> None:
+    def test_output_inside_repository_is_forbidden(self) -> None:
         self._save_recipe()
-        with self.assertRaisesRegex(ExchangeError, "frontend"):
+        with self.assertRaisesRegex(ExchangeError, "outside the public repository"):
             pack(self.repo, self.spec, self.repo / "qlib-dashboard" / "public" / "data.zip")
+        self.assertFalse((self.repo / "qlib-dashboard").exists())
 
 
 if __name__ == "__main__":
