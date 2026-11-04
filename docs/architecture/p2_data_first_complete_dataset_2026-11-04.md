@@ -26,7 +26,9 @@ The proposed full dataset refers to the **frozen selected pools**, not all liste
 
 - US events: liuh886/alpha-engine-data-archive, archives/us-events-36869443810.zip; SHA256 23d192b96e3bf4f38e1937c2c6896e112b7d8962f8a45bed06e56fe8fc5f686e.
 - US reference bundle: same repo, archives/qqq-reference-research-38757752731.zip; SHA256 6da52ca8563264ec0fdaba50819bba828f9e1cd70e026bd85111297bb9bab9ad.
-- CN events and CN Alpha158 source receipt entries use durable release locators, not durable_git paths. Agent must first resolve exact release/byte SHA and verify actual retained payload. **This PR has not downloaded or verified those binary artifacts.**
+- CN events: exact source-receipt [GitHub Release](https://github.com/liuh886/alpha_engine/releases/tag/model-data-source-cn-events-36145411810), asset selected-pool-event-live-cn-36145411810.zip; provider-reported asset SHA256 546cebd6be53c4de4f514887b1ef0649d737ceb58c88395457c51dd7341dee32 (2,021,932 bytes).
+- CN Alpha158: exact source-receipt [GitHub Release](https://github.com/liuh886/alpha_engine/releases/tag/model-data-source-cn-alpha158-36145403372), asset alpha158-canonical-vwap-cn-36145403372.zip; provider-reported asset SHA256 a65e7d54e81dfedec54ca8b6ebb4734f58897135c06ff63809ee494fe99fcd3c (124,842,414 bytes).
+- These legacy releases match the source IDs in governed-source-receipt.json; **newer CN releases also exist and must not silently replace pinned sources. This PR has not downloaded/verified any binary source bytes.**
 
 ## Implemented data-first command
 
