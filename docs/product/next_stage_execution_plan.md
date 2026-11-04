@@ -2,6 +2,14 @@
 
 **当前裁决：产品 NO-GO；RDI 价格层已交付，完整 RDI 未验证。** 最新核对基线为 `main@65622788d9`，2026-11-01；2026-10-29 的原路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
 
+## 2026-11-04 Owner 决策：P2 本地条件化策略验证（架构已定义，代码待实现）
+
+Owner 已批准 P2 / **Conditional Strategy Validation** 作为投资研究能力的后续扩展，但明确限制为 **日线或更慢周期**、**本地 Agent/CLI 开发和执行新策略**；网页仍是 Today / Strategies / Research Lab / System 的**只读展示与证据审阅**，不得成为浏览器研究 IDE、策略提交或回测运行入口。不得因引用日线动量研究而引入分钟级行情、日内交易模拟或 Ross Cameron 分钟级策略复刻。
+
+唯一范围与本地 Agent 交付合同见 [P2 local-only daily conditional validation architecture](conditional_strategy_validation_p2_2026-11-04.md)（附非可执行示例 `examples/conditional_daily_momentum_p2_design.json`）。本阶段优先 **P2-1 真实 US87 日线条件研究垂直切片**、随后 P2-2 统计与样本外评估；研究结果浏览器展示属于后续可选工作包，不作为首个垂直切片验收条件。继续复用现有 selected-pool、Study Workspace、experiment harness、data slice、Racetrack 和 Study Review 权威，无第二套数据/引擎、调度器或策略注册表。
+
+**状态：此架构 PR 仅做设计与路线图链接；实现、数据资格、真实回测与科学结论均未验收。** P2 不替代本文件 A0–A7 产品收口队列，不自动释放 RDI、正式策略晋级或任何 `trade_ready` 能力。
+
 ## 2026-11-02 前端架构方向与独立交付
 
 Owner 选择 **A / Decision-first** 作为 Alpha Engine 默认设计。
