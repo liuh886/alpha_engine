@@ -81,7 +81,9 @@ jobs:
           src/research/replay_comparison.py
           src/research/experiment_harness.py
           src/research/cloud_exchange.py
+          src/research/comprehensive_dataset.py
           tests/test_cloud_exchange.py
+          tests/test_comprehensive_dataset.py
           src/research/cross_sectional_experiment_runner.py
           src/research/ranker_execution.py
           src/research/ranker_training.py
@@ -206,6 +208,7 @@ jobs:
           tests/test_data_runtime_truth.py
           tests/test_experiment_harness.py
           tests/test_cloud_exchange.py
+          tests/test_comprehensive_dataset.py
           tests/test_cross_sectional_experiment_runner.py
           tests/test_ranker_training.py
           tests/test_formal_baseline_onboarding.py
