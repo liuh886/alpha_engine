@@ -37,7 +37,7 @@ Use **one exact existing source version and one pinned Git revision** for the lo
 ### First use: owner/local Agent steps
 
 1. Review the source data provider's rights, candidate-pool membership and manifest, and assert that a **private** cloud copy is permitted. Do not make assumptions about vendor licensing or sensitive fields. If rights are uncertain, stop at local-only analysis.
-2. Copy `docs/product/examples/colab_exchange_recipe_example.json` to a **local untracked** JSON file (the example uses placeholders and is intentionally not runnable). Replace every pinned SHA and revision from verified source bytes and `git rev-parse HEAD`; list only required verified daily data, canonical source manifest and selected-pool file. Do **not** include account/operations paths.
+2. Copy `docs/product/examples/colab_exchange_recipe_example.json` to a **local untracked** JSON file (the example uses placeholders and is intentionally not runnable). **Remove the illustrative `$comment` key**, replace every pinned SHA and revision from verified source bytes and `git rev-parse HEAD`; list only required verified daily data, canonical source manifest and selected-pool file. Do **not** include account/operations paths. Use an output archive path **outside the public Git checkout**; the packer rejects in-repository outputs.
 3. Run on a clean, source-verified workstation:
 
 ```bash
