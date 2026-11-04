@@ -246,7 +246,7 @@ def verify(archive_path: Path) -> dict[str, Any]:
                                           str(manifest["pool_id"]).startswith("us_")):
             raise ExchangeError("archive market/pool mismatch")
         if not isinstance(manifest.get("data_cutoff"), str) or not re.fullmatch(
-            r"\\d{4}-\\d{2}-\\d{2}", manifest["data_cutoff"]
+            r"\d{4}-\d{2}-\d{2}", manifest["data_cutoff"]
         ):
             raise ExchangeError("invalid archive data cutoff")
         entries = manifest.get("files")
