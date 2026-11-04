@@ -125,8 +125,24 @@ def _market(root: Path, market: str, components: list[dict]) -> dict:
     for rel in [REGISTRY.as_posix(), REF_REGISTRY.as_posix(), DATA_COMPONENTS.as_posix(),
                 (RESEARCH_ROOT / "model-data-readiness.json").as_posix(),
                 (RESEARCH_ROOT / "model-data-bundle.json").as_posix(),
-                (RESEARCH_ROOT / "training-profiles.json").as_posix()]:
+                (RESEARCH_ROOT / "training-profiles.json").as_posix(),
+                (RESEARCH_ROOT / "sources/governed-source-receipt.json").as_posix()]:
         files.append(_entry(root, rel, "data"))
+    for comp in components:
+        if comp.get("market") != market:
+            continue
+        manifest_rel = comp.get("manifest_path")
+        if not manifest_rel:
+            continue
+        manifest_path = (RESEARCH_ROOT / manifest_rel).as_posix()
+        # Some summary products refer to the existing price component summary,
+        # while events reference source-family component manifests.
+        if manifest_path in {x["path"] for x in files}:
+            continue
+        try:
+            files.append(_entry(root, manifest_path, "data", comp.get("manifest_sha256")))
+        except ExchangeError as exc:
+            failures.append({"kind": comp.get("component_id"), "error": str(exc)})
     for rec in symbols:
         if str(rec.get("symbol")) not in expected_symbols:
             continue
