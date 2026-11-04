@@ -188,9 +188,14 @@ def pack(repo_root: Path, recipe_path: Path, output_zip: Path) -> dict[str, Any]
     output_zip.parent.mkdir(parents=True, exist_ok=True)
     if output_zip.resolve().is_relative_to(root / "qlib-dashboard"):
         raise ExchangeError("never place exchange archives in the frontend directory")
+    created = False
     try:
+        # Exclusive creation: a pre-existing archive must never be deleted or replaced.
+        if output_zip.exists():
+            raise ExchangeError("archive already exists; immutable packages cannot be overwritten")
         with zipfile.ZipFile(output_zip, "x", compression=zipfile.ZIP_DEFLATED, compresslevel=6,
                              allowZip64=True) as archive:
+            created = True
             payload = json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                                  separators=(",", ":")).encode("utf-8") + b"\n"
             header = zipfile.ZipInfo("manifest.json", date_time=(1980, 1, 1, 0, 0, 0))
@@ -204,8 +209,9 @@ def pack(repo_root: Path, recipe_path: Path, output_zip: Path) -> dict[str, Any]
                 with (root / filename).open("rb") as src, archive.open(info, "w") as dst:
                     shutil.copyfileobj(src, dst, length=1024 * 1024)
     except Exception:
-        # Never leave a partial archive that could later masquerade as a complete package.
-        output_zip.unlink(missing_ok=True)
+        # Never delete an existing immutable archive after an exclusive-open failure.
+        if created:
+            output_zip.unlink(missing_ok=True)
         raise
     return {"package": str(output_zip), "sha256": _digest(output_zip), "manifest": manifest}
 
@@ -297,13 +303,17 @@ def stage(archive_path: Path, checkout: Path) -> dict[str, Any]:
             if dest.exists():
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
+            created = False
             try:
-                with dest.open("xb") as out, archive.open(f"files/{entry['path']}") as source:
-                    shutil.copyfileobj(source, out, length=1024 * 1024)
+                with dest.open("xb") as out:
+                    created = True
+                    with archive.open(f"files/{entry['path']}") as source:
+                        shutil.copyfileobj(source, out, length=1024 * 1024)
                 if _digest(dest) != entry["sha256"]:
                     raise ExchangeError(f"staged file mismatch: {entry['path']}")
             except Exception:
-                dest.unlink(missing_ok=True)
+                if created:
+                    dest.unlink(missing_ok=True)
                 raise
             imported += 1
     return {"staged_new_files": imported, "study_id": manifest["study_id"],
