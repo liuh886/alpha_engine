@@ -152,7 +152,7 @@ class TestCloudExchange(unittest.TestCase):
             for member in src.infolist():
                 content = src.read(member)
                 if member.filename == f"files/{self.data}":
-                    content = b"session,close\n2026-11-03,9000\n"
+                    content = b"session,close\n2026-11-03,90\n"
                 dst.writestr(member, content)
         with self.assertRaisesRegex(ExchangeError, "content mismatch"):
             verify(tampered)
