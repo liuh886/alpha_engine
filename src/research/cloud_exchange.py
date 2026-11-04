@@ -67,7 +67,14 @@ def _safe_name(value: Any) -> str:
     path = Path(value)
     if path.is_absolute() or any(part in ("", ".", "..") for part in value.split("/")):
         raise ExchangeError(f"unsafe relative path: {value}")
-    if path.as_posix() != value or any(part.lower() in DENIED_PARTS for part in path.parts):
+    blocked_fragments = (
+        "secret", "credential", "token", ".env", "api_key", "broker", "ibkr",
+        "account", "private", "strategy_operation", "signal_ledger",
+    )
+    if path.as_posix() != value or any(
+        part.lower() in DENIED_PARTS or any(flag in part.lower() for flag in blocked_fragments)
+        for part in path.parts
+    ):
         raise ExchangeError(f"forbidden research path: {value}")
     if not value.startswith(ALLOWED_PREFIXES):
         raise ExchangeError(f"path not in approved research prefixes: {value}")
@@ -212,6 +219,14 @@ def pack(repo_root: Path, recipe_path: Path, output_zip: Path) -> dict[str, Any]
         # Never delete an existing immutable archive after an exclusive-open failure.
         if created:
             output_zip.unlink(missing_ok=True)
+        raise
+    # Re-hash the completed archive to close the source-refresh race between
+    # initial source checks and ZIP streaming; never return a bad package as ready.
+    try:
+        if verify(output_zip) != manifest:
+            raise ExchangeError("archive manifest differs from frozen source")
+    except Exception:
+        output_zip.unlink(missing_ok=True)
         raise
     return {"package": str(output_zip), "sha256": _digest(output_zip), "manifest": manifest}
 
