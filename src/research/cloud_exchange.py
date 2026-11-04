@@ -185,9 +185,9 @@ def pack(repo_root: Path, recipe_path: Path, output_zip: Path) -> dict[str, Any]
     root = repo_root.resolve()
     recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
     manifest = _checked_recipe(recipe, root)
-    output_zip.parent.mkdir(parents=True, exist_ok=True)
     if output_zip.resolve().is_relative_to(root / "qlib-dashboard"):
         raise ExchangeError("never place exchange archives in the frontend directory")
+    output_zip.parent.mkdir(parents=True, exist_ok=True)
     created = False
     try:
         # Exclusive creation: a pre-existing archive must never be deleted or replaced.
@@ -241,6 +241,14 @@ def verify(archive_path: Path) -> dict[str, Any]:
             str(manifest.get("repo_revision", ""))
         ):
             raise ExchangeError("invalid identity or execution revision")
+        market = manifest.get("market")
+        if market not in {"us", "cn"} or ((market == "us") !=
+                                          str(manifest["pool_id"]).startswith("us_")):
+            raise ExchangeError("archive market/pool mismatch")
+        if not isinstance(manifest.get("data_cutoff"), str) or not re.fullmatch(
+            r"\\d{4}-\\d{2}-\\d{2}", manifest["data_cutoff"]
+        ):
+            raise ExchangeError("invalid archive data cutoff")
         entries = manifest.get("files")
         if not isinstance(entries, list) or len(entries) < 3 or len(entries) > MAX_FILES:
             raise ExchangeError("invalid archive entries")
@@ -251,6 +259,8 @@ def verify(archive_path: Path) -> dict[str, Any]:
             if not isinstance(entry, dict) or set(entry) != {"path", "sha256", "size", "role"}:
                 raise ExchangeError("invalid file manifest entry")
             name = _safe_name(entry["path"])
+            if entry["role"] not in {"pool_spec", "source_manifest", "data", "study_spec"}:
+                raise ExchangeError("unexpected file role")
             sha = _sha(entry["sha256"], f"sha256:{name}")
             size = entry["size"]
             if not isinstance(size, int) or size < 0:
