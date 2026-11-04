@@ -185,8 +185,8 @@ def pack(repo_root: Path, recipe_path: Path, output_zip: Path) -> dict[str, Any]
     root = repo_root.resolve()
     recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
     manifest = _checked_recipe(recipe, root)
-    if output_zip.resolve().is_relative_to(root / "qlib-dashboard"):
-        raise ExchangeError("never place exchange archives in the frontend directory")
+    if output_zip.resolve().is_relative_to(root):
+        raise ExchangeError("private exchange archives must be written outside the public repository")
     output_zip.parent.mkdir(parents=True, exist_ok=True)
     created = False
     try:
