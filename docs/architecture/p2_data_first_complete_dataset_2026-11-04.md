@@ -47,6 +47,18 @@ Approval file structure: owner_approved_private_cloud_copy=true; rights_class=pr
 
 The existing src/research/cloud_exchange.py handles archive contents and pinned files; no new authoritative database, backend, scheduler, frontend data endpoint or Colab work is added. Actual full-family assembly needs verified source bytes and a separate aggregate manifest before acceptance.
 
+## Exact source recovery (local only; zero Colab calls)
+
+The exact four legacy archive locators, commit/tag, version and expected SHA are already recorded in the canonical governed-source-receipt.json. The new recovery CLI uses them **without inventing a new source registry**.
+
+    python -m src.research.source_archive_recovery list --repo-root .
+    python -m src.research.source_archive_recovery fetch --repo-root . --source all --destination /private/outside-repo/source-archives
+    python -m src.research.source_archive_recovery verify --repo-root . --source all --destination /private/outside-repo/source-archives
+
+The tool records four independently pinned ZIPs (us_events.zip, cn_events.zip, cn_alpha158.zip, qqq_reference.zip), verifies original byte count and SHA256 from the authoritative receipt, and refuses overwrite or content substitution. Release GitHub metadata was checked against the CN artifact SHA; the archive bytes themselves have NOT been downloaded and checked in this conversation. Public HTTP URL access may fail for a protected GitHub asset: the local Agent should then download that **exact named archive** using authenticated GitHub CLI and run the same verification, not change the source revision. An original ZIP is not automatically safe or complete for a research study: inspect its actual member manifests and data rights before making any Drive copy.
+
+These recovered archives are held **outside** the public repository. The D0-B aggregate bundle index and archive-member validation remain implementation work: they must bind both US/CN market-history ZIPs and the four verified source archives before Colab use. A successful local source download alone does NOT make the full research dataset accepted.
+
 ## Ordered implementation tasks
 
 1. **D0-1 physical source recovery:** validate every candidate symbol and reference by exact SHA, retrieve/pin original US/CN fundamentals and corporate-action payload, original CN Alpha158 panel, existing reference source archive. Record source edition/UTC cutoff and archive SHA. Missing sources remain BLOCKED; do not silently replace with new provider data.
