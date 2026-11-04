@@ -27,6 +27,8 @@ ALLOWED_PREFIXES = (
     "data/research/model_data_bundle_v1/",
     "data/research/market_evidence/",
     "configs/research_universes/",
+    "configs/pools/selected_pool_registry_v1.yaml",
+    "configs/pools/reference_instrument_registry_v1.yaml",
     "configs/research_experiments/",
     "artifacts/research_studies/",
 )
