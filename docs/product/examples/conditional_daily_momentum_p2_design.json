@@ -1,0 +1,99 @@
+{
+  "$comment": "DESIGN EXAMPLE ONLY. Not an executable alpha research study spec, not a validated signal. Keep outside configs/research_experiments until implementation and acceptance.",
+  "schema_version": "p2_conditional_daily_v0_design",
+  "status": "design_only",
+  "research_only": true,
+  "trade_ready": false,
+  "pit_certified": false,
+  "study_id": "us87_daily_breakout_rvol_condition_v0",
+  "hypothesis": {
+    "statement": "Within frozen US87, close-confirmed 20-session breakout with elevated daily RVOL may have positive 5-session forward excess returns under specified ex-ante regimes.",
+    "mechanism": "attention/volume-demand shock conditional on an already observable daily breakout",
+    "falsification": "No robust positive net excess effect against matched US87 EW and QQQ after specified costs, temporal holdout and dependence-adjusted uncertainty"
+  },
+  "universe": {
+    "market": "us",
+    "pool_id": "us_selected_equities_v2",
+    "pool_registry": "configs/pools/selected_pool_registry_v1.yaml",
+    "pool_hash": "RESOLVE_FROM_GOVERNED_SOURCE_AT_FREEZE",
+    "membership_semantics": "current_pool_historical_replay",
+    "reference_symbols": [
+      "QQQ"
+    ],
+    "reference_role": "market_benchmark_not_candidate"
+  },
+  "information": {
+    "frequency": "1d",
+    "as_of": "completed_session_close",
+    "data_source": "existing_governed_US87_research_source",
+    "manifest_hash": "RESOLVE_AT_FREEZE",
+    "cutoff": "REPLACE_WITH_VERIFIED_SESSION",
+    "adjustment_role": "EXPLICIT_RESEARCH_PRICE_ROLE_REQUIRED",
+    "allow_synthetic_intraday": false
+  },
+  "signal": {
+    "name": "20-session high with daily volume anomaly",
+    "breakout": "close_t > max(close[t-20:t-1])",
+    "rvol": "volume_t / mean(volume[t-20:t-1])",
+    "rvol_threshold": 2,
+    "min_complete_prior_sessions": 200,
+    "future_columns_prohibited": true
+  },
+  "conditions": [
+    {
+      "name": "all",
+      "rule": "all eligible signal sessions"
+    },
+    {
+      "name": "bull_prior_known",
+      "rule": "QQQ close_t > SMA200(QQQ close through t)"
+    },
+    {
+      "name": "bear_prior_known",
+      "rule": "QQQ close_t <= SMA200(QQQ close through t)"
+    }
+  ],
+  "outcome": {
+    "study_level": "event_study_first",
+    "forward_horizon_sessions": 5,
+    "execution_if_portfolio": "next_session_open_only_with_authentic_price_evidence",
+    "allow_portfolio_nav_without_execution_evidence": false,
+    "costs_bps": {
+      "base": "FREEZE_NUMERIC_VALUE_BEFORE_EXECUTION",
+      "stress": "FREEZE_NUMERIC_VALUE_BEFORE_EXECUTION"
+    }
+  },
+  "evaluation": {
+    "development": "FREEZE_START_END",
+    "selection": "FREEZE_START_END",
+    "untouched_test": "FREEZE_START_END",
+    "prospective_start": "NOT_APPLICABLE_UNTIL_FROZEN",
+    "purge_sessions": 5,
+    "embargo_sessions": 5,
+    "benchmarks": [
+      "us87_ew_pool_runner_v1",
+      "QQQ"
+    ],
+    "metrics": [
+      "event_count",
+      "independent_event_clusters",
+      "coverage",
+      "mean_excess_return",
+      "median_excess_return",
+      "uncertainty_interval",
+      "cost_adjusted_effect",
+      "test_vs_selection_effect"
+    ],
+    "inference": "predeclared time-block or clustered bootstrap with stated assumptions",
+    "multiple_testing": "declare full threshold/family search before inspecting outcomes",
+    "min_effect": "predefine economically material edge"
+  },
+  "output": {
+    "immutable_local_receipt": true,
+    "connect_to_study_review": true,
+    "browser_execution": false,
+    "browser_editing": false,
+    "publication": "local_reviewed_read_only_summary_only_after_separate_authorization"
+  },
+  "validation_requirement": "UNRUNNABLE_UNTIL_SCHEMA_RUNNER_AND_DATA_GATES_IMPLEMENTED"
+}
