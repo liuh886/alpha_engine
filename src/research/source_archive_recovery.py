@@ -6,15 +6,16 @@ data redistribution rights, or upload to Drive or GitHub Pages.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
-import os
 import re
+import subprocess
 import sys
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from src.research.cloud_exchange import ExchangeError
 
@@ -51,6 +52,8 @@ def _source_plan(root: Path) -> dict[str, dict]:
                 raise ExchangeError("archive sha differs from canonical source receipt")
             url = f"https://raw.githubusercontent.com/{ARCHIVE_REPO}/{revision}/{path}"
             size = git.get("size_bytes")
+            locator = {"github_api_path":
+                       f"repos/{ARCHIVE_REPO}/contents/{path}?ref={revision}"}
         elif release:
             tag = release.get("tag")
             name = release.get("asset_name")
@@ -63,6 +66,7 @@ def _source_plan(root: Path) -> dict[str, dict]:
             url = (f"https://github.com/{SOURCE_REPO}/releases/download/"
                    f"{tag}/{name}")
             size = release.get("size_bytes")
+            locator = {"github_release_tag": tag, "github_asset_name": name}
         else:
             raise ExchangeError(f"source {source_id} has no pinned durable archive")
         if not isinstance(size, int) or size <= 0:
@@ -76,6 +80,7 @@ def _source_plan(root: Path) -> dict[str, dict]:
             "local_filename": f"{source_id}.zip",
             "market": item.get("market"),
             "cutoff": item.get("evidence_cutoff"),
+            **locator,
         }
     if set(sources) != ALLOWED:
         raise ExchangeError(f"missing source archive: {sorted(ALLOWED - set(sources))}")
@@ -95,12 +100,63 @@ def verify_archive(path: Path, record: dict) -> dict:
         raise ExchangeError(f"source archive hash mismatch: {record['source_id']}")
     if not zipfile.is_zipfile(path):
         raise ExchangeError(f"source archive is not a valid ZIP: {record['source_id']}")
+    with zipfile.ZipFile(path) as archive:
+        names = archive.namelist()
+        if len(names) != len(set(names)) or len(names) > 10000:
+            raise ExchangeError("duplicate or excessive source archive members")
+        for info in archive.infolist():
+            name = info.filename
+            if ("\\" in name or ":" in name or name.startswith("/") or
+                    ".." in name.split("/") or
+                    (info.external_attr >> 16) & 0o170000 == 0o120000):
+                raise ExchangeError("unsafe source archive member")
+        if sum(info.file_size for info in archive.infolist()) > 2 * 1024**3:
+            raise ExchangeError("expanded source archive exceeds limit")
+        if archive.testzip() is not None:
+            raise ExchangeError("source archive CRC mismatch")
     return {"source_id": record["source_id"], "status": "VERIFIED",
             "path": str(path), "sha256": sha.hexdigest(),
-            "size_bytes": path.stat().st_size, "market": record["market"]}
+            "size_bytes": path.stat().st_size, "market": record["market"],
+            "member_count": len(names)}
 
 
-def fetch_archive(destination: Path, record: dict) -> dict:
+def _github_download(record: dict, output: BinaryIO) -> None:
+    """Use gh's existing authentication without extracting or logging a token."""
+    def metadata(endpoint: str) -> dict:
+        result = subprocess.run(["gh", "api", endpoint], capture_output=True, timeout=120)
+        if result.returncode:
+            raise ExchangeError("authenticated GitHub metadata request failed")
+        return json.loads(result.stdout)
+
+    if record.get("github_api_path"):
+        entry = metadata(record["github_api_path"])
+        if entry.get("size") != record["size_bytes"] or entry.get("type") != "file":
+            raise ExchangeError("pinned Git source size/type mismatch")
+        # gh's raw output renderer can transform non-UTF8 ZIP bytes on Windows.
+        # The authenticated blob JSON endpoint transports base64 losslessly.
+        blob = metadata(f"repos/{ARCHIVE_REPO}/git/blobs/{entry['sha']}")
+        if blob.get("encoding") != "base64" or blob.get("size") != record["size_bytes"]:
+            raise ExchangeError("pinned Git blob metadata mismatch")
+        output.write(base64.b64decode(blob["content"]))
+    else:
+        release = metadata(
+            f"repos/{SOURCE_REPO}/releases/tags/{record['github_release_tag']}"
+        )
+        assets = [a for a in release.get("assets", [])
+                  if a.get("name") == record["github_asset_name"]]
+        if (len(assets) != 1 or assets[0].get("size") != record["size_bytes"] or
+                assets[0].get("digest") != "sha256:" + record["sha256"]):
+            raise ExchangeError("exact release asset identity mismatch")
+        result = subprocess.run(
+            ["gh", "api", f"repos/{SOURCE_REPO}/releases/assets/{assets[0]['id']}",
+             "-H", "Accept: application/octet-stream"],
+            stdout=output, stderr=subprocess.PIPE, timeout=600,
+        )
+        if result.returncode:
+            raise ExchangeError("authenticated GitHub asset download failed")
+
+
+def fetch_archive(destination: Path, record: dict, *, github_cli: bool = False) -> dict:
     destination.mkdir(parents=True, exist_ok=True)
     target = destination / record["local_filename"]
     if target.exists():
@@ -110,17 +166,22 @@ def fetch_archive(destination: Path, record: dict) -> dict:
         raise ExchangeError(f"prior partial download exists, inspect and remove it: {partial}")
     created = False
     try:
-        req = urllib.request.Request(
-            record["url"],
-            headers={"User-Agent": "AlphaEngine-ResearchSourceRecovery/1.0"},
-        )
-        with partial.open("xb") as out:
-            created = True
-            with urllib.request.urlopen(req, timeout=120) as stream:
-                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-                    out.write(chunk)
-                    if out.tell() > record["size_bytes"]:
-                        raise ExchangeError("unexpected oversized source archive")
+        if github_cli:
+            with partial.open("xb") as out:
+                created = True
+                _github_download(record, out)
+        else:
+            req = urllib.request.Request(
+                record["url"],
+                headers={"User-Agent": "AlphaEngine-ResearchSourceRecovery/1.0"},
+            )
+            with partial.open("xb") as out:
+                created = True
+                with urllib.request.urlopen(req, timeout=120) as stream:
+                    for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                        out.write(chunk)
+                        if out.tell() > record["size_bytes"]:
+                            raise ExchangeError("unexpected oversized source archive")
         verify_archive(partial, record)
         if target.exists():
             raise ExchangeError("download target concurrently created; not overwriting")
@@ -140,6 +201,8 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--repo-root", type=Path, default=Path("."))
         command.add_argument("--destination", type=Path)
         command.add_argument("--source", choices=("all", *sorted(ALLOWED)), default="all")
+        command.add_argument("--github-cli", action="store_true",
+                             help="Use existing authenticated gh session for exact archives")
     args = parser.parse_args(argv)
     try:
         catalog = _source_plan(args.repo_root.resolve())
@@ -159,10 +222,11 @@ def main(argv: list[str] | None = None) -> int:
             if args.action == "verify":
                 output.append(verify_archive(destination / record["local_filename"], record))
             else:
-                output.append(fetch_archive(destination, record))
+                output.append(fetch_archive(destination, record, github_cli=args.github_cli))
         print(json.dumps({"sources": output}, indent=2))
         return 0
     except (ExchangeError, OSError, ValueError, KeyError, urllib.error.URLError,
+            subprocess.TimeoutExpired,
             json.JSONDecodeError) as exc:
         print(f"BLOCKED_SOURCE_RECOVERY: {exc}", file=sys.stderr)
         return 10

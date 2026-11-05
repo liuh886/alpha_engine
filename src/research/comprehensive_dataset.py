@@ -109,8 +109,11 @@ def _market(root: Path, market: str, components: list[dict]) -> dict:
         raise ExchangeError(f"catalogue candidates differ from frozen pool: {market}")
     ref_records = [x for x in symbols
                    if x.get("symbol") == catalog.get("benchmark") or
-                   x.get("symbol") in catalog.get("auxiliary_symbols", [])]
-    expected_refs = set(map(str, catalog.get("auxiliary_symbols", []))) | {catalog["benchmark"]}
+                   x.get("symbol") in catalog.get("auxiliary_symbols", []) or
+                   'comparison_reference' in x.get('roles', [])]
+    expected_refs = (set(map(str, catalog.get("auxiliary_symbols", []))) |
+                     {catalog["benchmark"]} |
+                     {str(x['symbol']) for x in symbols if 'comparison_reference' in x.get('roles', [])})
     observed_refs = {str(x["symbol"]) for x in ref_records}
     if expected_refs != observed_refs:
         raise ExchangeError(f"reference/auxiliary market coverage mismatch: {market}")
@@ -207,13 +210,18 @@ def _market(root: Path, market: str, components: list[dict]) -> dict:
     }
 
 
-def plan(root: Path, market: str = "all") -> dict:
+def plan(root: Path, market: str = "all", *, detailed: bool = False) -> dict:
     root = root.resolve()
     components = _read_json(_file(root, DATA_COMPONENTS.as_posix()))
     if not isinstance(components, list):
         raise ExchangeError("data-components must be a list")
     markets = MARKETS if market == "all" else (market,)
     results = [_market(root, mk, components) for mk in markets]
+    if detailed:
+        from src.research.dataset_inventory import audit_market
+        for item in results:
+            catalog = _read_json(root / f"data/research/market_evidence/{item['market']}/catalog.json")
+            item['physical_inventory'] = audit_market(root, catalog)
     return {
         "schema_version": "p2_comprehensive_data_plan_v1",
         "source_repository_revision": _git_head(root),
@@ -288,24 +296,31 @@ def main(argv: list[str] | None = None) -> int:
     export = sub.add_parser("pack-market-history")
     export.add_argument("--repo-root", type=Path, default=Path("."))
     export.add_argument("--market", choices=MARKETS, required=True)
-    export.add_argument("--approval", type=Path, required=True)
+    rights = export.add_mutually_exclusive_group(required=True)
+    rights.add_argument("--approval", type=Path)
+    rights.add_argument("--local-only", action="store_true",
+                        help="Build an explicitly non-cloud-approved local archive")
     export.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.cmd == "audit":
-            result = plan(args.repo_root, args.market)
+            result = plan(args.repo_root, args.market, detailed=True)
             if args.output:
                 args.output.parent.mkdir(parents=True, exist_ok=True)
                 args.output.write_text(json.dumps(result, indent=2), encoding="utf-8")
             # Do not flood stdout with 200+ file hashes.
             brief = {k: v for k, v in result.items() if k != "markets"}
             brief["markets"] = [
-                {k: v for k, v in m.items() if k != "files"}
+                {k: v for k, v in m.items() if k not in {"files", "physical_inventory"}}
                 for m in result["markets"]
             ]
             print(json.dumps(brief, indent=2))
             return 0 if result["readiness"]["market_history"] != "BLOCKED" else 10
-        result = approved_pack(args.repo_root, args.market, args.approval, args.output)
+        if args.local_only:
+            from src.research.comprehensive_bundle import local_history_pack
+            result = local_history_pack(args.repo_root, args.market, args.output)
+        else:
+            result = approved_pack(args.repo_root, args.market, args.approval, args.output)
         print(json.dumps(result, indent=2))
         return 0
     except (ExchangeError, OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:

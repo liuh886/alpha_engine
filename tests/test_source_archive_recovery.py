@@ -2,14 +2,17 @@
 from __future__ import annotations
 
 import hashlib
+import base64
 import json
 import tempfile
 import unittest
 import zipfile
+from types import SimpleNamespace
+from unittest.mock import patch
 from pathlib import Path
 
 from src.research.cloud_exchange import ExchangeError
-from src.research.source_archive_recovery import _source_plan, verify_archive
+from src.research.source_archive_recovery import _source_plan, fetch_archive, verify_archive
 
 
 class SourceRecoveryTest(unittest.TestCase):
@@ -91,6 +94,32 @@ class SourceRecoveryTest(unittest.TestCase):
         self._write()
         with self.assertRaisesRegex(ExchangeError, "unexpected"):
             _source_plan(self.root)
+
+    def test_authenticated_binary_git_recovery_uses_exact_revision_and_lossless_base64(self):
+        record = _source_plan(self.root)['us_events']
+        payload = self.path.read_bytes()
+        calls = []
+        def run(command, **kwargs):
+            calls.append(command)
+            value = ({'type': 'file', 'size': len(payload), 'sha': 'b' * 40}
+                     if '/contents/' in command[2] else
+                     {'encoding': 'base64', 'size': len(payload),
+                      'content': base64.b64encode(payload).decode()})
+            return SimpleNamespace(returncode=0, stdout=json.dumps(value).encode())
+        with patch('src.research.source_archive_recovery.subprocess.run', side_effect=run):
+            result = fetch_archive(self.root / 'downloads', record, github_cli=True)
+        self.assertEqual(result['status'], 'VERIFIED')
+        self.assertIn('ref=' + 'a' * 40, calls[0][2])
+        self.assertEqual((self.root / 'downloads/us_events.zip').read_bytes(), payload)
+
+    def test_source_zip_with_unsafe_member_is_rejected_even_with_matching_outer_sha(self):
+        with zipfile.ZipFile(self.path, 'w') as archive:
+            archive.writestr('../escape.json', '{}')
+        record = _source_plan(self.root)['us_events']
+        record.update(size_bytes=self.path.stat().st_size,
+                      sha256=hashlib.sha256(self.path.read_bytes()).hexdigest())
+        with self.assertRaisesRegex(ExchangeError, 'unsafe'):
+            verify_archive(self.path, record)
 
 
 if __name__ == "__main__":
