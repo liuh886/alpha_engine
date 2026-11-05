@@ -115,7 +115,8 @@ def plan(spec: dict, data_root: Path | None = None) -> dict[str, Any]:
                 for s in seeds) or len(seeds) != len(set(seeds))):
         raise ExchangeError("invalid deterministic seeds")
     max_trials = spec.get("max_trials")
-    if not isinstance(max_trials, int) or isinstance(max_trials, bool) or not 1 <= max_trials <= 100:
+    if (not isinstance(max_trials, int) or isinstance(max_trials, bool)
+            or not 1 <= max_trials <= 100):
         raise ExchangeError("explicit max_trials must be between 1 and 100")
     if data_root is not None:
         root_doc = verify_stage(data_root)
