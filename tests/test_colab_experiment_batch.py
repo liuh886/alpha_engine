@@ -104,6 +104,42 @@ class BatchPlanningTests(unittest.TestCase):
         with patch("src.research.study_workspace.run_study", side_effect=AssertionError):
             self.assertEqual(plan(spec())["trial_count"], 8)
 
+    def test_checkpoint_chunk_resume_avoids_rerunning_previous_trials(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = root / "isolated"
+            pool = data / "configs/research_universes/us_selected_equities_v2.yaml"
+            pool.parent.mkdir(parents=True)
+            pool.write_text(
+                "symbols:\\n" + "".join(f"  - S{i:03}\\n" for i in range(87)),
+                encoding="utf-8")
+            batch_file = root / "batch.json"
+            batch_file.write_text(json.dumps(spec()), encoding="utf-8")
+            calls: list[str] = []
+
+            def fake_run(spec_path: Path, source_root: Path, output: Path) -> dict:
+                calls.append(spec_path.parent.name)
+                output.write_text('{"status":"ready","research_only":true}', encoding="utf-8")
+                return {"status": "ready"}
+
+            with patch("src.research.colab_experiment_batch.verify_stage",
+                       return_value={"bundle_manifest_sha256": "a" * 64,
+                                     "history_archive_sha256": "b" * 64}), patch(
+                       "src.research.colab_experiment_batch._git_head", return_value="1" * 40
+                       ), patch("src.research.study_workspace.run_study", side_effect=fake_run):
+                first = execute(batch_spec=batch_file, data_root=data,
+                                output_root=root / "outputs", max_new_trials=2)
+                self.assertEqual(first["status"], "BATCH_PARTIAL_CHECKPOINT_READY")
+                self.assertEqual(first["new_trials"], 2)
+                self.assertEqual(first["pending_trials"], 6)
+                second = execute(batch_spec=batch_file, data_root=data,
+                                 output_root=root / "outputs",
+                                 max_new_trials=6, resume=True)
+                self.assertEqual(second["status"], "BATCH_EXECUTED_RESEARCH_ONLY")
+                self.assertEqual(second["resumed_trials"], 2)
+                self.assertEqual(second["new_trials"], 6)
+                self.assertEqual(len(calls), 8)
+
     def test_study_run_refuses_wrong_checkout_before_fitting(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
