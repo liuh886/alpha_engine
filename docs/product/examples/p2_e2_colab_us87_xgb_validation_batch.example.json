@@ -1,5 +1,5 @@
 {
-  "$comment": "EXAMPLE ONLY. Copy to private location; replace runner_git_sha with exact CI-green PR HEAD. Requires rights-reviewed v5, and data_root outside repo. This defines validation searches, NOT untouched final test/trade readiness.",
+  "$comment": "EXAMPLE ONLY. Confirmed frozen v5 US87+QQQ common observed window 2025-06-05..2026-08-04 (292 sessions); EA series stops 2026-08-04. Copy privately and replace runner_git_sha with exact CI-green PR HEAD. Validation search only; no untouched holdout or provider cloud rights grant.",
   "schema_version": "p2_e2_xgb_validation_batch_v1",
   "batch_id": "us87_xgb_validation_pilot_v1",
   "runner_git_sha": "REPLACE_WITH_EXACT_40_CHAR_VERIFIED_SHA",
@@ -50,7 +50,7 @@
       "train_start": "2025-06-05",
       "train_end": "2026-04-30",
       "test_start": "2026-05-04",
-      "test_end": "2026-08-31"
+      "test_end": "2026-08-04"
     }
   ],
   "search_space": {
