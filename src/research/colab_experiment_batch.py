@@ -13,6 +13,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -34,16 +35,46 @@ def _canonical(data: Any) -> bytes:
 
 
 def _write_new(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("x", encoding="utf-8") as out:
-        json.dump(data, out, indent=2, sort_keys=True, allow_nan=False)
-        out.write("\n")
+    from src.research.study_workspace import save_receipt_exclusive
+    save_receipt_exclusive(path, data)
 
 
 def _git_head() -> str:
     root = Path(__file__).resolve().parents[2]
+    if subprocess.run(["git", "diff", "--quiet", "HEAD", "--", "src", "pyproject.toml", "uv.lock"],
+                      cwd=root, check=False).returncode:
+        raise ExchangeError("runner source/dependencies differ from committed revision")
     return subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+
+
+def _study_status(path: Path, run_spec: dict, runner_sha: str) -> str:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    content = {k: v for k, v in raw.items() if k not in ("study_hash", "generated_at_utc")}
+    if (raw.get("status") not in ("ready", "blocked") or
+            raw.get("experiment_receipt") != run_spec or raw.get("git_commit") != runner_sha or
+            raw.get("research_only") is not True or raw.get("trade_ready") is not False or
+            raw.get("pit_certified") is not False or raw.get("study_hash") != _digest(_canonical(content))):
+        raise ExchangeError("retained study identity/hash mismatch")
+    return str(raw["status"])
+
+
+def _trial_status(directory: Path, entry: dict, batch: dict, run_spec: dict) -> str:
+    out, frozen = directory / "study-receipt.json", directory / "study-spec.json"
+    rec = json.loads((directory / "trial-result.json").read_text(encoding="utf-8"))
+    if (rec.get("trial_id") != entry["trial_id"] or
+            rec.get("batch_spec_sha256") != batch["batch_spec_sha256"] or
+            rec.get("runner_git_sha") != batch["runner_git_sha"] or
+            rec.get("study_spec_sha256") != _digest(_canonical(run_spec)) or
+            not frozen.is_file() or json.loads(frozen.read_text(encoding="utf-8")) != run_spec or
+            not out.is_file() or rec.get("receipt_sha256") != _digest(out.read_bytes()) or
+            rec.get("research_only") is not True or rec.get("trade_ready") is not False or
+            rec.get("pit_certified") is not False or rec.get("review_status") != "incoming_unreviewed"):
+        raise ExchangeError("resume result identity mismatch")
+    status = _study_status(out, run_spec, batch["runner_git_sha"])
+    if rec.get("study_status") != status:
+        raise ExchangeError("resume status differs from retained study")
+    return status
 
 
 def plan(spec: dict, data_root: Path | None = None) -> dict[str, Any]:
@@ -195,13 +226,9 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
         out = td / "study-receipt.json"
         receipt = td / "trial-result.json"
         if receipt.exists():
-            rec = json.loads(receipt.read_text(encoding="utf-8"))
-            if (not resume or rec.get("trial_id") != entry["trial_id"] or
-                    rec.get("study_spec_sha256") != _digest(_canonical(run_spec)) or
-                    not out.is_file() or
-                    rec.get("receipt_sha256") != _digest(out.read_bytes())):
-                raise ExchangeError("resume result identity mismatch")
+            status = _trial_status(td, entry, batch, run_spec)
             completed += 1
+            blocked += status == "blocked"
             continue
         if max_new_trials is not None and new >= max_new_trials:
             break
@@ -213,7 +240,9 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
         else:
             _write_new(cfg_path, run_spec)
         load_study_spec(cfg_path)  # canonical Study Workspace validation
+        started = time.perf_counter()
         result = run_study(cfg_path, data_root, output=out)
+        elapsed = time.perf_counter() - started
         if result["status"] not in ("ready", "blocked"):
             raise ExchangeError("unexpected study receipt status")
         _write_new(receipt, {
@@ -224,9 +253,11 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
             "study_spec_sha256": _digest(_canonical(run_spec)),
             "receipt_sha256": _digest(out.read_bytes()),
             "study_status": result["status"],
+            "elapsed_seconds": elapsed,
             "blocked_reasons": result.get("blocked_reasons", []),
             "research_only": True, "trade_ready": False, "pit_certified": False,
             "review_status": "incoming_unreviewed"})
+        _trial_status(td, entry, batch, run_spec)
         new += 1
         if result["status"] == "blocked":
             blocked += 1

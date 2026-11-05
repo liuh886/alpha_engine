@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from src.research.cloud_exchange import ExchangeError
 from src.research.colab_experiment_batch import SCHEMA, plan, execute
@@ -38,6 +41,74 @@ def spec() -> dict:
         "seeds": [42, 43],
         "max_trials": 8,
     }
+
+
+def fake_study(spec_path: Path, source_root: Path, output: Path, status="ready") -> dict:
+    raw = {"status": status, "research_only": True, "trade_ready": False,
+           "pit_certified": False, "git_commit": "1" * 40,
+           "experiment_receipt": json.loads(spec_path.read_text())}
+    raw["study_hash"] = hashlib.sha256(json.dumps(
+        raw, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    output.write_text(json.dumps(raw), encoding="utf-8")
+    return {"status": status}
+
+
+@pytest.fixture
+def retained_trial(tmp_path):
+    data = tmp_path / "data"
+    pool = data / "configs/research_universes/us_selected_equities_v2.yaml"
+    pool.parent.mkdir(parents=True)
+    pool.write_text("symbols:\n" + "".join(f"  - S{i:03}\n" for i in range(87)))
+    batch_file = tmp_path / "batch.json"
+    batch_file.write_text(json.dumps(spec()))
+    outputs = tmp_path / "outputs"
+    with patch("src.research.colab_experiment_batch.verify_stage", return_value={
+        "bundle_manifest_sha256": "a" * 64, "history_archive_sha256": "b" * 64}), patch(
+        "src.research.colab_experiment_batch._git_head", return_value="1" * 40), patch(
+        "src.research.study_workspace.run_study", side_effect=fake_study):
+        execute(batch_spec=batch_file, data_root=data, output_root=outputs, max_new_trials=1)
+        yield batch_file, data, outputs
+
+
+@pytest.mark.parametrize("field,value", [
+    ("batch_spec_sha256", "f" * 64), ("runner_git_sha", "2" * 40),
+    ("study_status", "blocked"), ("trade_ready", True),
+])
+def test_resume_rejects_foreign_or_changed_trial_identity(retained_trial, field, value):
+    batch_file, data, outputs = retained_trial
+    receipt = next(outputs.rglob("trial-result.json"))
+    raw = json.loads(receipt.read_text())
+    raw[field] = value
+    receipt.write_text(json.dumps(raw))
+    with pytest.raises(ExchangeError, match="identity|status differs"):
+        execute(batch_spec=batch_file, data_root=data, output_root=outputs,
+                max_new_trials=1, resume=True)
+
+
+def test_resume_rejects_altered_study_even_if_outer_hash_is_replaced(retained_trial):
+    batch_file, data, outputs = retained_trial
+    receipt = next(outputs.rglob("trial-result.json"))
+    study = receipt.parent / "study-receipt.json"
+    raw = json.loads(study.read_text())
+    raw["fabricated_performance"] = 99
+    study.write_text(json.dumps(raw))
+    wrapper = json.loads(receipt.read_text())
+    wrapper["receipt_sha256"] = hashlib.sha256(study.read_bytes()).hexdigest()
+    receipt.write_text(json.dumps(wrapper))
+    with pytest.raises(ExchangeError, match="study identity/hash"):
+        execute(batch_spec=batch_file, data_root=data, output_root=outputs,
+                max_new_trials=1, resume=True)
+
+
+def test_resumed_blocked_trials_remain_in_aggregate_counts(retained_trial):
+    batch_file, data, outputs = retained_trial
+    with patch("src.research.study_workspace.run_study", side_effect=lambda *a, **kw: fake_study(*a, **kw, status="blocked")):
+        first = execute(batch_spec=batch_file, data_root=data, output_root=outputs,
+                        max_new_trials=1, resume=True)
+    assert first["blocked_trials"] == 1
+    second = execute(batch_spec=batch_file, data_root=data, output_root=outputs,
+                     max_new_trials=1, resume=True)
+    assert second["resumed_trials"] == 2 and second["blocked_trials"] == 1
 
 
 class BatchPlanningTests(unittest.TestCase):
@@ -119,8 +190,7 @@ class BatchPlanningTests(unittest.TestCase):
 
             def fake_run(spec_path: Path, source_root: Path, output: Path) -> dict:
                 calls.append(spec_path.parent.name)
-                output.write_text('{"status":"ready","research_only":true}', encoding="utf-8")
-                return {"status": "ready"}
+                return fake_study(spec_path, source_root, output)
 
             with patch("src.research.colab_experiment_batch.verify_stage",
                        return_value={"bundle_manifest_sha256": "a" * 64,
