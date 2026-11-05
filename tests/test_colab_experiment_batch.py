@@ -111,7 +111,7 @@ class BatchPlanningTests(unittest.TestCase):
             pool = data / "configs/research_universes/us_selected_equities_v2.yaml"
             pool.parent.mkdir(parents=True)
             pool.write_text(
-                "symbols:\\n" + "".join(f"  - S{i:03}\\n" for i in range(87)),
+                "symbols:\n" + "".join(f"  - S{i:03}\n" for i in range(87)),
                 encoding="utf-8")
             batch_file = root / "batch.json"
             batch_file.write_text(json.dumps(spec()), encoding="utf-8")
