@@ -95,3 +95,13 @@ def test_future_component_and_candidate_count_mismatch_remain_blockers(tmp_path)
     reasons = result['profiles'][0]['failed_gates']
     assert any('exceeds' in s for s in reasons)
     assert any('candidate_count_mismatch' in s for s in reasons)
+
+
+def test_actual_registry_retains_market_projection_index_alias():
+    root = Path(__file__).resolve().parents[1]
+    registry = yaml.safe_load((root / 'configs/pools/reference_instrument_registry_v1.yaml').read_text())
+    index = registry['markets']['cn']['instruments']['CSI300']
+    assert index['canonical_symbol'] == '000300.SH'
+    assert '000300' in index['provider_aliases']
+    assert index['instrument_type'] == 'equity_index'
+    assert not index['executable']

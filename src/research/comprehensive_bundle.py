@@ -27,7 +27,8 @@ from src.research.source_archive_recovery import (
     ALLOWED, RECEIPT, _source_plan, inspect_market_archive, verify_archive,
 )
 
-VERSION = 'p2_local_research_bundle_v1'
+VERSION = 'p2_local_research_bundle_v2'
+LEGACY_VERSION = 'p2_local_research_bundle_v1'
 HISTORY_VERSION = 'p2_local_market_history_v1'
 DATA_ONLY_SECURITY_KEYS = frozenset((
     'schema_version', 'evidence_type', 'market', 'symbol', 'instrument_id', 'provider_symbol',
@@ -558,6 +559,8 @@ def build_local(root: Path, archive_root: Path, output: Path,
             Path('configs/data_quality/symbol_identity_and_lifecycle_v1.yaml'),
             Path('configs/providers/us_selected_equities_sec_cik_v3.yaml'),
             Path('configs/data/qqqi_qqq_tqqq_reference_research_v2.yaml')]
+    from src.research.dataset_readiness import CONTRACT, inspect_bundle_profiles
+    cfgs.append(Path(CONTRACT))
     for relative in cfgs:
         source = root / relative
         if not source.is_file():
@@ -603,6 +606,8 @@ def build_local(root: Path, archive_root: Path, output: Path,
     if market_sources:
         gaps = [g for g in gaps if g['class'] != 'RAW_CSV_EDITION_NOT_RECOVERED']
     _write_json(output / 'reports/gaps.json', gaps)
+    readiness = inspect_bundle_profiles(output)
+    _write_json(output / 'reports/profile-readiness.json', readiness)
     all_files = sorted(p for p in output.rglob('*') if p.is_file())
     for path in all_files:
         if path.suffix in ('.json', '.jsonl', '.yaml', '.toml', '.lock'):
@@ -611,9 +616,12 @@ def build_local(root: Path, archive_root: Path, output: Path,
                 'code_module_sha256': {p: sha256(root / p) for p in (
                     'src/research/comprehensive_bundle.py', 'src/research/comprehensive_dataset.py',
                     'src/research/dataset_inventory.py', 'src/research/source_archive_recovery.py',
+                    'src/research/dataset_readiness.py', 'src/data/model_data_bundle.py',
                     'src/data/fundamentals/ashare_public_financials.py')},
                 'research_only': True, 'trade_ready': False, 'pit_certified': False,
-                'status': 'PARTIAL', 'transfer_scope': 'local_only',
+                'status': 'PARTIAL', 'profile_readiness': {
+                    k: readiness[k] for k in ('status', 'ready_profiles', 'blocked_profiles', 'contract_sha256')},
+                'transfer_scope': 'local_only',
                 'owner_approved_private_cloud_copy': False,
                 'cloud_copy_status': 'BLOCKED_PENDING_SOURCE_RIGHTS_AND_REMOTE_ACL',
                 'colab_executed': False, 'source_archives': inventories,
@@ -630,7 +638,7 @@ def verify_bundle(root: Path) -> dict:
 
     root = root.resolve()
     manifest = json.loads(_file(root, 'bundle-manifest.json').read_text(encoding='utf-8'))
-    if (manifest.get('schema_version') != VERSION or manifest.get('research_only') is not True or
+    if (manifest.get('schema_version') not in (VERSION, LEGACY_VERSION) or manifest.get('research_only') is not True or
             manifest.get('trade_ready') is not False or manifest.get('pit_certified') is not False or
             manifest.get('transfer_scope') != 'local_only' or
             manifest.get('owner_approved_private_cloud_copy') is not False or
@@ -673,7 +681,17 @@ def verify_bundle(root: Path) -> dict:
             for entry in record['records']:
                 if hashlib.sha256(archive.read(entry['member'])).hexdigest() != entry['expected_sha256']:
                     raise ExchangeError('market provider source CSV hash changed')
-    return {'status': 'PARTIAL', 'integrity': 'PASS', 'offline_read': 'PASS',
+    readiness_summary = {}
+    if manifest['schema_version'] == VERSION:
+        from src.research.dataset_readiness import inspect_bundle_profiles
+        readiness = inspect_bundle_profiles(root)
+        saved = json.loads(_file(root, 'reports/profile-readiness.json').read_text(encoding='utf-8'))
+        readiness_summary = {k: readiness[k] for k in
+                             ('status', 'ready_profiles', 'blocked_profiles', 'contract_sha256')}
+        if saved != readiness or manifest.get('profile_readiness') != readiness_summary:
+            raise ExchangeError('profile readiness does not reproduce from physical inputs')
+    return {'status': 'PARTIAL', 'profile_readiness': readiness_summary,
+            'integrity': 'PASS', 'offline_read': 'PASS',
             'files': len(paths) + 1, 'total_bytes': sum(p.stat().st_size for p in root.rglob('*') if p.is_file()),
             'parquet_rows_read': rows, 'original_archives_verified': len(manifest['source_archives']),
             'manifest_sha256': sha256(root / 'bundle-manifest.json'),
