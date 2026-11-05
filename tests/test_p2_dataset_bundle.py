@@ -16,6 +16,7 @@ from src.data.fundamentals.ashare_public_financials import AsharePublicFinancial
 from src.research.cloud_exchange import ExchangeError, verify
 from src.research.comprehensive_bundle import inventory_archive, local_history_pack, verify_local_history
 from src.research.dataset_inventory import inspect_security
+from src.research.comprehensive_dataset import approved_pack
 
 
 class P2DatasetBundleTest(unittest.TestCase):
@@ -49,6 +50,37 @@ class P2DatasetBundleTest(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             local_history_pack(fixture.root, 'us', a)
         self.assertEqual(a.read_bytes(), before)
+
+    def _add_model_events(self, fixture):
+        path = fixture.root / 'data/research/market_evidence/us/symbols/U000.json'
+        payload = json.loads(path.read_text())
+        payload['formal_model_events'] = [{'target_weight': 0.25, 'previous_weight': 0.1}]
+        path.write_text(json.dumps(payload), encoding='utf-8')
+        catalog = fixture.root / fixture.catalog_path
+        data = json.loads(catalog.read_text())
+        data['symbols'][0]['sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
+        catalog.write_text(json.dumps(data), encoding='utf-8')
+        return data['symbols'][0]['sha256']
+
+    def test_market_data_projection_excludes_model_weights_but_pins_original_sha(self):
+        fixture = self._history_fixture()
+        original_sha = self._add_model_events(fixture)
+        out = self.home / 'clean.zip'
+        local_history_pack(fixture.root, 'us', out)
+        manifest = verify_local_history(out)
+        with zipfile.ZipFile(out) as archive:
+            payload = archive.read('files/data/research/market_evidence/us/symbols/U000.json')
+            self.assertNotIn(b'target_weight', payload)
+            self.assertNotIn(b'formal_model_events', payload)
+        entry = next(f for f in manifest['files'] if f['path'].endswith('U000.json'))
+        self.assertEqual(entry['upstream_sha256'], original_sha)
+
+    def test_legacy_cloud_market_pack_fails_closed_on_mixed_model_payload(self):
+        fixture = self._history_fixture()
+        self._add_model_events(fixture)
+        fixture._rights(True)
+        with self.assertRaisesRegex(ExchangeError, 'model events'):
+            approved_pack(fixture.root, 'us', fixture.approval, self.home / 'cloud.zip')
 
     def test_history_member_tampering_is_rejected(self):
         fixture = self._history_fixture()

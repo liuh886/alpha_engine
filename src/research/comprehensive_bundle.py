@@ -27,6 +27,16 @@ from src.research.source_archive_recovery import ALLOWED, RECEIPT, _source_plan,
 
 VERSION = 'p2_local_research_bundle_v1'
 HISTORY_VERSION = 'p2_local_market_history_v1'
+DATA_ONLY_SECURITY_KEYS = frozenset((
+    'schema_version', 'evidence_type', 'market', 'symbol', 'instrument_id', 'provider_symbol',
+    'roles', 'start', 'cutoff', 'provider_manifest_sha256', 'source_csv_sha256',
+    'bars', 'factor_series', 'factor_series_scope', 'research_only', 'trade_ready',
+))
+
+
+def _data_only_security(payload: dict) -> dict:
+    """A market source may also serve UI model markers; those never enter P2."""
+    return {key: value for key, value in payload.items() if key in DATA_ONLY_SECURITY_KEYS}
 
 
 def repair_cn_gaps(root: Path, destination: Path) -> dict:
@@ -104,7 +114,30 @@ def local_history_pack(root: Path, market: str, target: Path) -> dict:
     item = report['markets'][0]
     if item['market_history_status'] != 'READY_FOR_RIGHTS_REVIEW':
         raise ExchangeError('market history hash/roster verification failed')
-    entries = item['files']
+    entries = [dict(entry) for entry in item['files']]
+    catalog_path = f'data/research/market_evidence/{market}/catalog.json'
+    catalog = json.loads((root / catalog_path).read_text(encoding='utf-8'))
+    transformed = {}
+    upstream_hashes = {}
+    for record in catalog['symbols']:
+        name = f'data/research/market_evidence/{market}/' + record['path']
+        payload = json.loads((root / name).read_text(encoding='utf-8'))
+        data = json.dumps(_data_only_security(payload), sort_keys=True,
+                          separators=(',', ':'), allow_nan=False).encode() + b'\n'
+        transformed[name] = data
+        record['upstream_projection_sha256'] = record.get('upstream_projection_sha256', record['sha256'])
+        upstream_hashes[name] = record['upstream_projection_sha256']
+        record['sha256'] = hashlib.sha256(data).hexdigest()
+    catalog['p2_data_only_projection'] = True
+    catalog['upstream_catalog_sha256'] = catalog.get('upstream_catalog_sha256', sha256(root / catalog_path))
+    upstream_hashes[catalog_path] = catalog['upstream_catalog_sha256']
+    transformed[catalog_path] = json.dumps(catalog, sort_keys=True,
+        separators=(',', ':'), allow_nan=False).encode() + b'\n'
+    for entry in entries:
+        if entry['path'] in transformed:
+            entry['upstream_sha256'] = upstream_hashes[entry['path']]
+            entry['sha256'] = hashlib.sha256(transformed[entry['path']]).hexdigest()
+            entry['size'] = len(transformed[entry['path']])
     manifest = {
         'schema_version': HISTORY_VERSION, 'market': market, 'pool_id': item['pool_id'],
         'repo_revision': report['source_repository_revision'], 'data_cutoff': item['source_cutoff'],
@@ -113,6 +146,8 @@ def local_history_pack(root: Path, market: str, target: Path) -> dict:
         'transfer_scope': 'local_only', 'owner_approved_private_cloud_copy': False,
         'rights_class': 'UNREVIEWED_FOR_CLOUD_COPY',
         'history_scope': 'all_retained_projection_rows_not_certified_listing_history',
+        'data_only': True, 'model_events_and_weights_included': False,
+        'upstream_catalog_sha256': catalog['upstream_catalog_sha256'],
         'files': entries,
     }
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -128,6 +163,9 @@ def local_history_pack(root: Path, market: str, target: Path) -> dict:
                 info = zipfile.ZipInfo('files/' + name, (1980, 1, 1, 0, 0, 0))
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = 0o600 << 16
+                if name in transformed:
+                    archive.writestr(info, transformed[name])
+                    continue
                 with (root / name).open('rb') as src, archive.open(info, 'w') as dst:
                     shutil.copyfileobj(src, dst)
         verify_local_history(target)
@@ -149,6 +187,8 @@ def verify_local_history(path: Path) -> dict:
                 manifest.get('transfer_scope') != 'local_only' or
                 manifest.get('owner_approved_private_cloud_copy') is not False or
                 manifest.get('research_only') is not True or
+                manifest.get('data_only') is not True or
+                manifest.get('model_events_and_weights_included') is not False or
                 manifest.get('trade_ready') is not False or manifest.get('pit_certified') is not False):
             raise ExchangeError('invalid local-only history boundary')
         expected = {'manifest.json'}
@@ -184,6 +224,11 @@ def verify_local_history(path: Path) -> dict:
                         for r in catalog['symbols']}
         if not symbol_files.issubset(expected):
             raise ExchangeError('catalog security payload missing')
+        for name in symbol_files:
+            payload = json.loads(archive.read(name))
+            if set(payload) - DATA_ONLY_SECURITY_KEYS:
+                raise ExchangeError('unexpected non-data fields in P2 security payload')
+            _privacy_bytes(archive.read(name))
     return manifest
 
 
@@ -358,15 +403,21 @@ def _reference_comparison(output: Path) -> list[dict]:
     return records
 
 
-def _privacy_check(path: Path) -> None:
+def _privacy_bytes(content: bytes) -> None:
     # Only explicitly selected research files enter the bundle. Scan names and
     # textual credential signatures as a second boundary; do not copy whole trees.
     import re
     patterns = (rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY',
                 rb'\bgh[pousr]_[A-Za-z0-9]{25,}', rb'\bgithub_pat_[A-Za-z0-9_]{20,}',
                 rb'\bAIza[A-Za-z0-9_-]{30,}')
-    if any(re.search(p, path.read_bytes()) for p in patterns):
-        raise ExchangeError(f'credential signature in input: {path.name}')
+    patterns += (rb'"(?:target_weight|previous_weight|weight_delta|formal_model_events|current_target|positions|holdings)"\s*:',
+                 rb'"(?:api_key|access_token|refresh_token|password|secret)"\s*:\s*"[^"]+"')
+    if any(re.search(p, content) for p in patterns):
+        raise ExchangeError('credential or model/account signal signature in input')
+
+
+def _privacy_check(path: Path) -> None:
+    _privacy_bytes(path.read_bytes())
 
 
 def build_local(root: Path, archive_root: Path, output: Path,

@@ -258,6 +258,11 @@ def approved_pack(root: Path, market: str, approval_path: Path, target: Path) ->
     source = next(x for x in item["files"] if x["role"] == "source_manifest")
     if approval["source_manifest_sha256"] != source["sha256"]:
         raise ExchangeError("source manifest changed after provider rights approval")
+    for entry in item['files']:
+        if '/symbols/' in entry['path']:
+            payload = _read_json(root / entry['path'])
+            if payload.get('formal_model_events'):
+                raise ExchangeError('model events in source projection; use sanitized local-only P2 package')
     recipe = {
         "schema_version": "alpha_research_exchange_v1",
         "study_id": f"{market}_complete_daily_history_{item['source_cutoff'].replace('-', '')}",
