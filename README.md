@@ -33,7 +33,7 @@ uv run alpha research study compare artifacts/research_studies/<study_id>/<hash_
 
 **范围限制：** 当前提供四个经过代码实现的专用研究模板，修改规格不会自动创造新信号或新策略。跨研究家族比较仍受限于现有执行和证据契约；源数据的历史可得性尚不构成完整 PIT 认证；所有结果严格为 `research_only=true`、`trade_ready=false`。详见[研究工作流](docs/product/research_study_workspace.md)。
 
-**规划中 P2（未实现）：** [本地条件化策略验证框架](docs/product/conditional_strategy_validation_p2_2026-11-04.md) 仅研究日线及更慢周期，新增策略由本地 Agent/CLI 开发与执行；网页保持只读研究证据展示，不提供实验提交、参数编辑或回测执行，也不规划分钟级/日内策略。
+**规划中 P2（复杂训练未实现）：** [条件化策略验证框架](docs/product/conditional_strategy_validation_p2_2026-11-04.md) 仅研究日线及更慢周期，**本地 Agent 负责实验设计、数据治理和结果审查，[Colab-first 计算方案](docs/product/colab_first_research_compute_p2_2026-11-06.md)负责后续复杂模型训练、超参数搜索和 Walk-forward 批量计算**；对应 [Issue #1373](https://github.com/liuh886/alpha_engine/issues/1373)。网页只读，不提供实验提交、参数编辑、回测或日内交易执行。
 
 ## 日常使用
 
