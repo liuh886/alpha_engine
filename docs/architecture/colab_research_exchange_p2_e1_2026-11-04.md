@@ -1,6 +1,6 @@
 # Alpha Engine P2-E1 — Local/Drive/Colab Research Exchange Pilot
 
-> **Status: implementation pilot, not accepted real-data E2E**, 2026-11-04.
+> **Status: implementation pilot, not accepted real-data E2E**, updated 2026-11-06. **IMPORTANT:** original `notebooks/colab_research_exchange_pilot.ipynb` is ONLY compatible with `alpha_research_exchange_v1`, **NOT the actual v5** `p2_local_market_history_v1` ZIP. For US87 v5 use the new rights-gated `notebooks/colab_v5_price_preflight.ipynb` and `src/research/e1a_price_preflight.py`. E1-A proceeds on complete D0-A US87 prices after per-recipe provider rights, independently of global US Alpha158 BLOCKED. No Colab run or study parity is claimed.
 > Compatible with owner-approved [P2 local-only strategy validation PR #1367](https://github.com/liuh886/alpha_engine/pull/1367). This document is subordinate to `AGENTS.md`, `configs/pools/selected_pool_registry_v1.yaml`, the existing governed source manifests and the authoritative product execution plan. Do not treat this as a second canonical data source.
 
 ## Objective and negative boundaries
@@ -46,7 +46,7 @@ python -m src.research.cloud_exchange verify --archive /private/path/us87-study-
 ```
 
 4. Only after reviewing the archive and legal/private storage boundary, manually copy it into a dedicated, non-public Google Drive study-exchange folder. Keep files out of public share links. Folder permission metadata must be reviewed again if moved; do not write Drive folder IDs or OAuth credentials in this public repository.
-5. Open `notebooks/colab_research_exchange_pilot.ipynb` in Google Colab **from the trusted repository**. Configure the actual mounted Drive folder path; copy the archive **once** into Colab scratch disk, inspect its manifest, clone the pinned Git revision, run `verify` then `stage`. The notebook intentionally stops short of executing a heavy strategy automatically. Run a real `alpha research study ...` only after the study's dataset/requirements are actually present and governed.
+5. **Only for an independently generated `alpha_research_exchange_v1` ZIP**: open `notebooks/colab_research_exchange_pilot.ipynb` in Google Colab **from the trusted repository**. For the existing v5 US87 price archive, use **`notebooks/colab_v5_price_preflight.ipynb` instead**; never call legacy `cloud_exchange.stage` on v5, and do not flip original local-only producer flags. Configure the actual mounted Drive folder path; copy the archive **once** into Colab scratch disk, inspect its manifest, clone the pinned Git revision, run `verify` then `stage`. The notebook intentionally stops short of executing a heavy strategy automatically. Run a real `alpha research study ...` only after the study's dataset/requirements are actually present and governed.
 6. Store the resulting research receipt in a Drive **incoming/unreviewed** directory as an immutable uniquely named artifact and re-hash after copy. The local Agent imports and validates it separately, then uses existing research review/publication gates. The website never reads Drive directly.
 
 ### Example transfer structure (illustrative, not a new database)
