@@ -23,7 +23,9 @@ from typing import Any
 from src.research.cloud_exchange import ExchangeError, _git_head, _safe_name
 from src.research.comprehensive_dataset import plan
 from src.research.dataset_inventory import sha256
-from src.research.source_archive_recovery import ALLOWED, RECEIPT, _source_plan, verify_archive
+from src.research.source_archive_recovery import (
+    ALLOWED, RECEIPT, _source_plan, inspect_market_archive, verify_archive,
+)
 
 VERSION = 'p2_local_research_bundle_v1'
 HISTORY_VERSION = 'p2_local_market_history_v1'
@@ -403,6 +405,49 @@ def _reference_comparison(output: Path) -> list[dict]:
     return records
 
 
+def _market_sources(root: Path, archives: Path, recovery_report: Path, output: Path) -> list[dict]:
+    import pandas as pd
+
+    records = json.loads(recovery_report.read_text(encoding='utf-8'))['market_source_archives']
+    if {r['market'] for r in records} != {'us', 'cn'} or len(records) != 2:
+        raise ExchangeError('both market source editions are required')
+    checked = []
+    for record in records:
+        market = record['market']
+        original = _file(archives, record['archive'])
+        admitted = inspect_market_archive(root, original, record)
+        target = output / 'sources' / record['archive']
+        try:
+            os.link(original, target)
+        except OSError:
+            shutil.copyfile(original, target)
+        manifest = json.loads((root / f'data/research/model_data_bundle_v1/components/{market}-selected-pool-prices.json').read_text())
+        contracts = manifest.get('provider_architecture', {}).get('selected_provider_contracts', {})
+        frames = []
+        with zipfile.ZipFile(original) as archive:
+            for entry in admitted['records']:
+                frame = pd.read_csv(io.BytesIO(archive.read(entry['member'])))
+                provider = manifest['selected_providers'].get(entry['symbol'], 'not_declared_in_primary_provider_summary')
+                frame = frame.assign(market=market, symbol=entry['symbol'], source_provider=provider,
+                    volume_unit=contracts.get(provider, {}).get('volume_unit', 'UNREVIEWED'),
+                    source_csv_sha256=entry['sha256'])
+                frames.append(frame)
+                entry['columns'] = frame.columns.tolist()
+                entry['rows'] = len(frame)
+                entry['null_by_field'] = {c: int(frame[c].isna().sum()) for c in frame.columns}
+            for name in archive.namelist():
+                if name.endswith(('.json', '.jsonl', '.csv', '.yaml', '.txt')):
+                    _privacy_bytes(archive.read(name))
+        combined = pd.concat(frames, ignore_index=True, sort=False)
+        combined.to_parquet(output / f'normalized/{market}_provider_source.parquet',
+                            engine='pyarrow', compression='zstd', index=False)
+        admitted['rows'] = len(combined)
+        admitted['field_policy'] = 'preserve_reported_columns_and_nulls_no_synthetic_adjustment_or_volume_unit_conversion'
+        checked.append(admitted)
+    _write_json(output / 'reports/market-source-recovery.json', {'market_source_archives': checked})
+    return checked
+
+
 def _privacy_bytes(content: bytes) -> None:
     # Only explicitly selected research files enter the bundle. Scan names and
     # textual credential signatures as a second boundary; do not copy whole trees.
@@ -421,7 +466,8 @@ def _privacy_check(path: Path) -> None:
 
 
 def build_local(root: Path, archive_root: Path, output: Path,
-                supplement_root: Path | None = None) -> dict:
+                supplement_root: Path | None = None,
+                market_source_report: Path | None = None) -> dict:
     root, archive_root, output = root.resolve(), archive_root.resolve(), output.resolve()
     if output.is_relative_to(root) or archive_root.is_relative_to(root):
         raise ExchangeError('all physical datasets must remain outside the public repository')
@@ -519,6 +565,8 @@ def build_local(root: Path, archive_root: Path, output: Path,
         dest = output / 'provenance' / relative
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, dest)
+    market_sources = (_market_sources(root, archive_root, market_source_report, output)
+                      if market_source_report else [])
     _write_json(output / 'reports/dataset-plan.json', report)
     _write_json(output / 'reports/archive-inventory.json', inventories)
     _write_json(output / 'reports/component-coverage.json', components)
@@ -552,6 +600,8 @@ def build_local(root: Path, archive_root: Path, output: Path,
                          'class': 'UNEXPLAINED_INTERIOR_SESSION_GAPS',
                          'symbols': inventory['symbols_with_interior_gaps'],
                          'detail': 'May include suspension or provider gaps; exact missing dates are retained.'})
+    if market_sources:
+        gaps = [g for g in gaps if g['class'] != 'RAW_CSV_EDITION_NOT_RECOVERED']
     _write_json(output / 'reports/gaps.json', gaps)
     all_files = sorted(p for p in output.rglob('*') if p.is_file())
     for path in all_files:
@@ -567,6 +617,7 @@ def build_local(root: Path, archive_root: Path, output: Path,
                 'owner_approved_private_cloud_copy': False,
                 'cloud_copy_status': 'BLOCKED_PENDING_SOURCE_RIGHTS_AND_REMOTE_ACL',
                 'colab_executed': False, 'source_archives': inventories,
+                'market_source_archives': market_sources,
                 'supplements': supplements, 'gaps': gaps,
                 'files': [_entry(output, p, 'original_source' if p.parent.name == 'sources' else 'research_component')
                           for p in all_files]}
@@ -615,6 +666,13 @@ def verify_bundle(root: Path) -> dict:
         checked = inventory_archive(path, {**record, 'local_filename': path.name}, by_id[sid])
         if checked != record:
             raise ExchangeError('archive member inventory changed')
+    for record in manifest.get('market_source_archives', []):
+        path = _file(root, 'sources/' + record['archive'])
+        verify_archive(path, {**record, 'source_id': 'market_source_' + record['market']})
+        with zipfile.ZipFile(path) as archive:
+            for entry in record['records']:
+                if hashlib.sha256(archive.read(entry['member'])).hexdigest() != entry['expected_sha256']:
+                    raise ExchangeError('market provider source CSV hash changed')
     return {'status': 'PARTIAL', 'integrity': 'PASS', 'offline_read': 'PASS',
             'files': len(paths) + 1, 'total_bytes': sum(p.stat().st_size for p in root.rglob('*') if p.is_file()),
             'parquet_rows_read': rows, 'original_archives_verified': len(manifest['source_archives']),
@@ -630,6 +688,7 @@ def main(argv: list[str] | None = None) -> int:
     create.add_argument('--archive-root', type=Path, required=True)
     create.add_argument('--output-dir', type=Path, required=True)
     create.add_argument('--supplement-root', type=Path)
+    create.add_argument('--market-source-report', type=Path)
     check = sub.add_parser('verify')
     check.add_argument('--bundle', type=Path, required=True)
     repair = sub.add_parser('repair-cn-gaps')
@@ -638,7 +697,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.action == 'build-local':
-            result = build_local(args.repo_root, args.archive_root, args.output_dir, args.supplement_root)
+            result = build_local(args.repo_root, args.archive_root, args.output_dir,
+                                 args.supplement_root, args.market_source_report)
         elif args.action == 'repair-cn-gaps':
             result = repair_cn_gaps(args.repo_root, args.destination)
         else:

@@ -20,6 +20,7 @@ import pyarrow.parquet as pq
 
 from src.research.cloud_exchange import ExchangeError, _safe_name, _safe_target
 from src.research.dataset_inventory import sha256
+from src.research.comprehensive_bundle import _privacy_bytes
 
 
 def verify(bundle: Path, checkout: Path, report_path: Path) -> dict:
@@ -81,6 +82,21 @@ def verify(bundle: Path, checkout: Path, report_path: Path) -> dict:
         raise ExchangeError('frozen offline verifier failed: ' + child.stderr[-500:])
     results = {'frozen_code_revision': revision, 'socket_connections_denied': True,
                'frozen_verifier': json.loads(child.stdout), 'parity': {}}
+    privacy_files = 0
+    for path in bundle.rglob('*'):
+        if not path.is_file():
+            continue
+        if path.suffix == '.zip':
+            with zipfile.ZipFile(path) as archive:
+                for name in archive.namelist():
+                    if name.endswith(('.json', '.jsonl', '.csv', '.yaml', '.txt')):
+                        _privacy_bytes(archive.read(name))
+                        privacy_files += 1
+        elif path.suffix in ('.json', '.jsonl', '.yaml', '.toml', '.lock'):
+            _privacy_bytes(path.read_bytes())
+            privacy_files += 1
+    results['privacy'] = {'status': 'PASS', 'text_payloads_scanned': privacy_files,
+                          'model_weights_or_account_or_credential_signatures': 0}
     fields = ['market', 'symbol', 'date', 'open', 'high', 'low', 'close', 'volume']
     for market in ('us', 'cn'):
         catalog = json.loads((checkout / f'data/research/market_evidence/{market}/catalog.json').read_text())
@@ -112,6 +128,23 @@ def verify(bundle: Path, checkout: Path, report_path: Path) -> dict:
             normalized = pd.read_parquet(bundle / f'normalized/reference_20261014/{symbol}.parquet').drop(columns=['symbol'])
             pd.testing.assert_frame_equal(raw, normalized, check_dtype=False, check_exact=True)
         results['parity']['qqq_reference'] = {'symbols': 3, 'status': 'EXACT'}
+    for source in manifest.get('market_source_archives', []):
+        market = source['market']
+        combined = pd.read_parquet(bundle / f'normalized/{market}_provider_source.parquet')
+        with zipfile.ZipFile(bundle / 'sources' / source['archive']) as archive:
+            for entry in source['records']:
+                content = archive.read(entry['member'])
+                if hashlib.sha256(content).hexdigest() != entry['expected_sha256']:
+                    raise ExchangeError('provider CSV does not match exact source edition')
+                current = json.loads((checkout / f'data/research/market_evidence/{market}/symbols/{entry["symbol"]}.json').read_text())
+                if current['source_csv_sha256'] != entry['expected_sha256']:
+                    raise ExchangeError('provider CSV differs from governed market projection identity')
+                raw = pd.read_csv(io.BytesIO(content))
+                normalized = combined.loc[combined.symbol == entry['symbol'], raw.columns].reset_index(drop=True)
+                pd.testing.assert_frame_equal(raw, normalized, check_dtype=False, check_exact=True)
+        results['parity'][f'{market}_provider_source'] = {
+            'symbols': source['verified_symbols'], 'rows': len(combined),
+            'status': 'EXACT_INCLUDING_ADJUSTMENT_AND_AMOUNT_FIELDS'}
     audit = report_path.with_name('frozen-checkout-dataset-plan.json')
     child = subprocess.run([sys.executable, '-m', 'src.research.comprehensive_dataset', 'audit',
                             '--repo-root', str(checkout), '--market', 'all', '--output', str(audit)],

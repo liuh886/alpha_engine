@@ -17,6 +17,7 @@ from src.research.cloud_exchange import ExchangeError, verify
 from src.research.comprehensive_bundle import inventory_archive, local_history_pack, verify_local_history
 from src.research.dataset_inventory import inspect_security
 from src.research.comprehensive_dataset import approved_pack
+from src.research.source_archive_recovery import inspect_market_archive
 
 
 class P2DatasetBundleTest(unittest.TestCase):
@@ -148,6 +149,25 @@ class P2DatasetBundleTest(unittest.TestCase):
             with self.assertRaisesRegex(KeyError, 'orgId'):
                 AsharePublicFinancialClient().fetch_disclosures(
                     symbol='301666', start_date='20210101', end_date='20260904')
+
+    def test_market_archive_must_match_existing_per_symbol_source_hash(self):
+        root = self.home / 'repo'
+        base = root / 'data/research/market_evidence/us'
+        (base / 'symbols').mkdir(parents=True)
+        (base / 'catalog.json').write_text(json.dumps({'cutoff':'2026-11-03',
+            'symbols':[{'symbol':'AAPL','path':'symbols/AAPL.json'}]}))
+        expected = b'date,close,factor\n2026-11-03,10,1\n'
+        (base / 'symbols/AAPL.json').write_text(json.dumps(
+            {'source_csv_sha256':hashlib.sha256(expected).hexdigest()}))
+        archive = self.home / 'provider.zip'
+        with zipfile.ZipFile(archive, 'w') as z:
+            z.writestr('data/csv_source/AAPL.csv', expected)
+        record = {'market':'us','cutoff':'2026-11-03','size_bytes':archive.stat().st_size,
+                  'sha256':hashlib.sha256(archive.read_bytes()).hexdigest()}
+        self.assertEqual(inspect_market_archive(root,archive,record)['verified_symbols'],1)
+        (base / 'symbols/AAPL.json').write_text(json.dumps({'source_csv_sha256':'0'*64}))
+        with self.assertRaisesRegex(ExchangeError,'exact market source CSV mismatch'):
+            inspect_market_archive(root,archive,record)
 
 
 if __name__ == '__main__':
