@@ -27,7 +27,8 @@ class V5StagingTests(unittest.TestCase):
         self.manifest.write_bytes(b"test-manifest")
         self.files = {
             "configs/research_universes/us_selected_equities_v2.yaml": b"pool_id: us_selected_equities_v2\nsymbols: [AAPL]\n",
-            "data/research/market_evidence/us/catalog.json": b'{"pool_id":"us_selected_equities_v2"}',
+            "data/research/market_evidence/us/catalog.json": (
+                b'{"pool_id":"us_selected_equities_v2"}'),
         }
         entries = [{"path": k, "size": len(v), "sha256": sha(v)}
                    for k, v in self.files.items()]
