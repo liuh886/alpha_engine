@@ -1,13 +1,13 @@
-# P2 — Local Conditional Strategy Validation Framework
-> Architecture decision / implementation handoff · 2026-11-04 · **DESIGN ONLY / NOT IMPLEMENTED**
+# P2 — Conditional Strategy Validation Framework (local authority, Colab-ready compute)
+> Architecture decision / implementation handoff · 2026-11-04; **2026-11-06 Colab-first compute location amendment** · **DESIGN ONLY / NOT IMPLEMENTED**
 
 ## 0. Owner decision: the non-negotiable product boundary
 
 Alpha Engine is a **single-operator investment hypothesis validation platform constrained to governed, versioned selected stock pools**. This P2 extends local research, not live trading or the browser runtime.
 
 1. **Daily or slower only**: supported signal bars are completed daily sessions (and aggregations of daily sessions such as weekly or monthly). **No 1m/5m/30m intraday data, micro-pullback execution, tape reading, or intraday backtest roadmap** for this P2. A daily momentum proxy must never be described as a reproduction of Ross Cameron's intraday strategy.
-2. **Local research authoring and execution only**: the owner / local Agent edits versioned specifications and evaluator code, then runs existing CLI locally. **No browser strategy creation, parameter editor, submit/run button, browser training, backtest compute service or remote experiment scheduler.**
-3. **Browser = read-only presentation**: Today / Strategies / Research Lab / System retain the PR #1357 task boundaries. Research Lab may **read** reviewed, local-only, precomputed summaries and explain hypotheses, conditional evidence, failures and next reviews. It must never infer validation status from a chart. No private Q-ledger, research source bars or owner account state may be copied to public Pages.
+2. **Local research authority, portable compute**: the owner / local Agent authors, freezes and reviews specifications and evaluator code, and runs local baseline/parity checks. **After explicit data-provider private cloud-compute rights review, owner-initiated Google Colab handles model exploration, training, hyperparameter optimization and walk-forward batches using the same Python CLI.** No browser strategy creation, parameter editor, submit/run button, remote service API, persistent Colab worker or unattended scheduling. The concrete staged compute plan is [P2 Colab-first research compute](colab_first_research_compute_p2_2026-11-06.md) and [#1373](https://github.com/liuh886/alpha_engine/issues/1373).
+3. **Browser = read-only presentation**: Today / Strategies / Research Lab / System retain the PR #1357 task boundaries. Research Lab may **read** locally reviewed, precomputed summaries and explain hypotheses, conditional evidence, failures and next reviews. It must never infer validation status from a chart. No private Q-ledger, research source bars or owner account state may be copied to public Pages.
 4. **Closed selected pools**: US87 = `us_selected_equities_v2`, CN130 = `cn_selected_equities_v3` through `configs/pools/selected_pool_registry_v1.yaml`; no web-scale discovery, dynamic substitution or new public universe. QQQ/CSI300 and governed ETFs are external benchmarks/references, not pool candidates. Version and hash the pool, identity/lifecycle, source/adjustment policy and effective cutoff.
 5. **Research-only by default**: `research_only=true`, `trade_ready=false`, `pit_certified=false` unless a separately authorized evidence contract proves otherwise. P2 does not modify four formal strategies, operations, account access, scheduled alerts, A0–A7 release gates, RDI readiness or the formal promotion pipeline.
 6. **No new source of truth**: reuse existing authoritative data readers, evaluator paths and immutable receipts; no second market data cache/database, standalone backtest engine, second strategy registry, new GitHub Actions workflows or speculative frontend APIs.
@@ -40,7 +40,7 @@ Separate three noninterchangeable questions:
 
 A signal-study result cannot become a Racetrack runner, formal strategy, alert or trade-ready action merely by having positive forward returns.
 
-## 3. Proposed local-only contract (v0 design, not an executable spec)
+## 3. Proposed locally governed, portable compute contract (v0 design, not an executable spec)
 
 Create a typed, validated `ConditionalStudySpec` adapter around existing Study Workspace; **do not introduce a second study registry**. Store versioned specs alongside research experiments; generated receipts live in the existing immutable local research-artifact lineage. The included file `docs/product/examples/conditional_daily_momentum_p2_design.json` is a **non-executable example for implementation and schema review**. Do not put it in the live discovered `configs/research_experiments/` until a runner and tests exist.
 
@@ -115,14 +115,14 @@ local owner / Agent -> versioned local Study Spec -> CLI "alpha research study .
                                                 |
                          src/research/study_review.py
                                                 |
-                 optional local-only, reviewed, read-only Research Lab projection
+                 optional locally reviewed, read-only Research Lab projection
 ```
 
 - Signal-study adapter can be a narrow `src/research/conditional_evaluation.py` with shared outcome schema and tests. **No parallel general-purpose portfolio simulator.**
 - Candidate strategy implementations continue in local Python; parameter schema is validated and source-bound. Arbitrary natural language **does not** compile itself into an executable strategy.
 - Cross-family comparison is **not automatically permitted**: a normalizer may compare event outcomes only with event outcomes, and NAV only with NAV under same calendar, universe membership, pricing, exposure, fees and execution contract. Else refuse with a reason.
 - Reuse Study Workspace's atomic write + hash-bound compare; store both failed and successful evidence. Study Review may annotate a verdict but cannot rewrite existing receipts.
-- Research Lab is a **consumer of precomputed published summaries**, not a producer. Existing local-only transport/permissions (not Pages) must be reused; any new projection must pass source-path, entitlement, data-leak and fallback/denied tests before being visible. No UI extension is required for the V1 research acceptance.
+- Research Lab is a **consumer of precomputed published summaries**, not a producer. Existing private transport/permissions and local review (not Pages) must be reused; any new projection must pass source-path, entitlement, data-leak and fallback/denied tests before being visible. No UI extension is required for the V1 research acceptance.
 
 ## 7. Work packages and acceptance (local Agent ownership)
 
@@ -132,7 +132,7 @@ local owner / Agent -> versioned local Study Spec -> CLI "alpha research study .
 | **P2-1 / daily V1 evidence** | Small separate code PR: daily conditional signal adapter + schema validator, US87 momentum case, local CLI + receipts | Real governed eligible data or honest BLOCKED; one command runs frozen case; deterministic rerun same bytes/hashes; no site changes |
 | **P2-2 / comparable evaluation** | Separate PR: group matrix, clustered/block intervals, N, OOS folds, costs, negative controls and multiple-testing ledger | Baseline/effect same sample; deliberate leakage, 0-event, high cost, survivorship and incomparable execution negatives all blocked/labeled; per-condition confidence stated |
 | **P2-3 / reuse other families** | Separate PR: adapter for an **existing** daily strategy family, cross-family gated comparison; no new engine | Event-vs-NAV incompatibility rejected; comparable NAV under equivalent assumptions succeeds; regression tests for all four study families |
-| **P2-4 / browser review (optional, later)** | Optional separate PR: local-only precomputed research summary reader in existing Research Lab | Pure read-only UI, no author/run/compute APIs, exact evidence cutoff/limitations, private-path negative tests; no public research data leak |
+| **P2-4 / browser review (optional, later)** | Optional separate PR: locally reviewed precomputed research summary reader in existing Research Lab | Pure read-only UI, no author/run/compute APIs, exact evidence cutoff/limitations, private-path negative tests; no public research data leak |
 
 **Ordering**: P2-1 then P2-2 are the minimal useful research capability; do not start P2-4 to imitate product progress before the backend evidence is independently reproducible. P2 work is **independent of** and must not falsely mark product A0–A7 or RDI gates complete. Avoid new schedules.
 
