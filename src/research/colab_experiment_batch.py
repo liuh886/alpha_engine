@@ -152,8 +152,11 @@ def plan(spec: dict, data_root: Path | None = None) -> dict[str, Any]:
 
 
 def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
-            resume: bool = False) -> dict:
+            resume: bool = False, max_new_trials: int | None = None) -> dict:
     """Run existing Study Workspace specs, checkpoint one immutable receipt per trial."""
+    if max_new_trials is not None and (not isinstance(max_new_trials, int)
+                                       or not 1 <= max_new_trials <= 100):
+        raise ExchangeError("max_new_trials must be within 1..100")
     spec = json.loads(batch_spec.read_text(encoding="utf-8"))
     batch = plan(spec, data_root)
     if _git_head() != batch["runner_git_sha"]:
@@ -200,6 +203,8 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
                 raise ExchangeError("resume result identity mismatch")
             completed += 1
             continue
+        if max_new_trials is not None and new >= max_new_trials:
+            break
         if out.exists():
             raise ExchangeError("incomplete prior trial requires manual review")
         if cfg_path.exists():
@@ -225,9 +230,11 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
         new += 1
         if result["status"] == "blocked":
             blocked += 1
-    return {"status": "BATCH_EXECUTED_RESEARCH_ONLY", "batch_id": batch["batch_id"],
+    pending = len(batch["trials"]) - completed - new
+    return {"status": ("BATCH_PARTIAL_CHECKPOINT_READY" if pending else
+                       "BATCH_EXECUTED_RESEARCH_ONLY"), "batch_id": batch["batch_id"],
             "trials": len(batch["trials"]), "resumed_trials": completed,
-            "new_trials": new, "blocked_trials": blocked,
+            "new_trials": new, "pending_trials": pending, "blocked_trials": blocked,
             "review_status": "incoming_unreviewed",
             "trade_ready": False, "pit_certified": False}
 
@@ -242,6 +249,7 @@ def main(argv: list[str] | None = None) -> int:
             subp.add_argument("--data-root", required=True, type=Path)
             subp.add_argument("--output-root", required=True, type=Path)
             subp.add_argument("--resume", action="store_true")
+            subp.add_argument("--max-new-trials", type=int)
     args = p.parse_args(argv)
     try:
         if args.action == "plan":
@@ -251,7 +259,8 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, indent=2))
         else:
             print(json.dumps(execute(batch_spec=args.batch_spec, data_root=args.data_root,
-                                     output_root=args.output_root, resume=args.resume), indent=2))
+                                     output_root=args.output_root, resume=args.resume,
+                                     max_new_trials=args.max_new_trials), indent=2))
         return 0
     except (ExchangeError, OSError, ValueError, KeyError, TypeError,
             subprocess.CalledProcessError) as exc:
