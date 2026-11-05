@@ -18,7 +18,8 @@ on:
       - '.github/workflows/ranker-10d-current-target.yml'
       - '.github/workflows/strategy-signal-delivery-outbox.yml'
   pull_request:
-    branches: [main]
+    # Validate the dependent Colab E2 PR before its physical-data base PR lands.
+    branches: [main, feat/p2-colab-research-exchange-mvp-20261104]
     paths:
       - 'src/**'
       - 'tests/**'
