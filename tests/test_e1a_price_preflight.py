@@ -5,6 +5,7 @@ import hashlib
 import json
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -22,7 +23,10 @@ class E1APricePreflightTest(unittest.TestCase):
         self.addCleanup(t.cleanup)
         self.root = Path(t.name)
         self.archive = self.root / "us_market_history.zip"
-        self.archive.write_bytes(b"fake ZIP whose contract verifier is mocked only in these unit tests")
+        with zipfile.ZipFile(self.archive, "w") as archive:
+            archive.writestr(
+                "files/data/research/model_data_bundle_v1/components/us-selected-pool-prices.json",
+                json.dumps({"selected_providers": {"AAPL": "synthetic_test"}}))
         self.source_revision = "3" * 40
         self.bundle = self.root / "bundle-manifest.json"
         self.summary = {
@@ -117,6 +121,14 @@ class E1APricePreflightTest(unittest.TestCase):
         j["provider_rights"][0]["private_cloud_compute_permitted"] = False
         rights.write_text(json.dumps(j))
         with self.assertRaisesRegex(ExchangeError, "explicit checked"):
+            self._check(rights)
+
+    def test_approval_for_unrelated_provider_cannot_approve_actual_source(self) -> None:
+        rights = self._approved()
+        doc = json.loads(rights.read_text())
+        doc["provider_rights"][0]["provider"] = "unrelated_provider"
+        rights.write_text(json.dumps(doc))
+        with self.assertRaisesRegex(ExchangeError, "actual source providers"):
             self._check(rights)
 
     def test_wrong_producer_revision_is_rejected(self) -> None:
