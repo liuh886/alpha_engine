@@ -2,11 +2,17 @@
 
 **当前裁决：产品 NO-GO；RDI 价格层已交付，完整 RDI 未验证。** 最新核对基线为 `main@65622788d9`，2026-11-01；2026-10-29 的原路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
 
-## 2026-11-04 Owner 决策：P2 本地条件化策略验证（架构已定义，代码待实现）
+## 2026-11-06 Owner 决策：P2 Colab-first 复杂模型研究计算（阶段性架构，训练代码待实现）
 
-Owner 已批准 P2 / **Conditional Strategy Validation** 作为投资研究能力的后续扩展，但明确限制为 **日线或更慢周期**、**本地 Agent/CLI 开发和执行新策略**；网页仍是 Today / Strategies / Research Lab / System 的**只读展示与证据审阅**，不得成为浏览器研究 IDE、策略提交或回测运行入口。不得因引用日线动量研究而引入分钟级行情、日内交易模拟或 Ross Cameron 分钟级策略复刻。
+**新的执行定位：本地 Agent 设计与审查，Colab 优先负责复杂研究计算。** 原 2026-11-04 的“local-only”应理解为**本地对研究假设、版本、数据权利与证据晋级负责**，不再要求模型训练、HPO 或 Walk-forward 一律占用本地工作站。单次 Colab 预检只是 E1-A 最小准入，不是最终能力；真正研发交付是可复现、可恢复、多模型/多折、多 seed 的 Colab 训练实验，数据权利按研究配方单独审核。
 
-唯一范围与本地 Agent 交付合同见 [P2 local-only daily conditional validation architecture](conditional_strategy_validation_p2_2026-11-04.md)（附非可执行示例 `examples/conditional_daily_momentum_p2_design.json`）。本阶段优先 **P2-1 真实 US87 日线条件研究垂直切片**、随后 P2-2 统计与样本外评估；研究结果浏览器展示属于后续可选工作包，不作为首个垂直切片验收条件。继续复用现有 selected-pool、Study Workspace、experiment harness、data slice、Racetrack 和 Study Review 权威，无第二套数据/引擎、调度器或策略注册表。
+**权威架构**：[Colab-first research compute plane](colab_first_research_compute_p2_2026-11-06.md)；**实施任务**：[Issue #1373](https://github.com/liuh886/alpha_engine/issues/1373)。[PR #1368](https://github.com/liuh886/alpha_engine/pull/1368) / [Issue #1370](https://github.com/liuh886/alpha_engine/issues/1370) 管数据实体，[Issue #1369](https://github.com/liuh886/alpha_engine/issues/1369) 管第一条权利合规的本地/Colab 计算一致性链路；**US Alpha158 仍 BLOCKED**，不能通过合成 VWAP 或降低原门禁解除。网页只读、日线及更慢周期、无新常驻调度器/交易入口均保持不变。当前尚无真实 Colab 训练验收。
+
+## 2026-11-04 Owner 决策：P2 条件化策略验证（本地治理，Colab 可承担计算）
+
+Owner 已批准 P2 / **Conditional Strategy Validation** 作为投资研究能力的后续扩展，明确限制为 **日线或更慢周期**。**本地 Agent/CLI 负责研究定义、冻结与证据审查，复杂训练和优化在完成数据许可与 E1-A 接线后优先通过 Colab 计算。** 网页仍是 Today / Strategies / Research Lab / System 的**只读展示与证据审阅**，不得成为浏览器研究 IDE、策略提交或回测运行入口。不得因引用日线动量研究而引入分钟级行情、日内交易模拟或 Ross Cameron 分钟级策略复刻。
+
+策略验证与本地 Agent 合同见 [P2 conditional validation architecture](conditional_strategy_validation_p2_2026-11-04.md)，计算执行的增补权威见 [Colab-first](colab_first_research_compute_p2_2026-11-06.md)（附非可执行示例 `examples/conditional_daily_momentum_p2_design.json`）。本阶段优先 **P2-1 真实 US87 日线条件研究垂直切片**、随后 P2-2 统计与样本外评估；研究结果浏览器展示属于后续可选工作包，不作为首个垂直切片验收条件。继续复用现有 selected-pool、Study Workspace、experiment harness、data slice、Racetrack 和 Study Review 权威，无第二套数据/引擎、调度器或策略注册表。
 
 **状态：此架构 PR 仅做设计与路线图链接；实现、数据资格、真实回测与科学结论均未验收。** P2 不替代本文件 A0–A7 产品收口队列，不自动释放 RDI、正式策略晋级或任何 `trade_ready` 能力。
 
