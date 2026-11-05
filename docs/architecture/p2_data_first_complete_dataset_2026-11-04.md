@@ -1,6 +1,6 @@
 # P2-D0 — Comprehensive research datasets before Colab
 
-**Owner decision 2026-11-04: DATA FIRST**, reaffirmed by the 2026-11-05 local execution request: no Colab, new strategy or frontend work. Neither source data access nor Colab real execution may be called complete until a **comprehensive, hash-verified, rights-approved multi-domain package** has been physically built and placed in the private Drive research exchange. **2026-11-05 execution: a real data-only local multi-domain bundle is built and independently readable (198 files, 452,754,802 bytes); status PARTIAL. All four exact original archives are recovered. Drive upload, per-source cloud rights and remote ACL acceptance remain incomplete.** The dated evidence and retained gaps are recorded below; infrastructure/CI success does not mean FULL_DATASET_ACCEPTED.
+**Owner decision 2026-11-04: DATA FIRST**, reaffirmed by the 2026-11-05 local execution request: no Colab, new strategy or frontend work. Neither source data access nor Colab real execution may be called complete until a **comprehensive, hash-verified, rights-approved multi-domain package** has been physically built and placed in the private Drive research exchange. **Latest execution: immutable v5 contains 200 files / 452,928,235 bytes, independently reads offline, and reproduces five READY profiles plus one BLOCKED US Alpha158 profile under the unchanged existing contract. All four original archives are verified; v5 and a separately bound CN suspension evidence archive are saved to the Owner-designated Drive Desktop directory with matching readback SHA.** Overall status remains PARTIAL: US VWAP/SIP/OTC entitlement is unavailable, broader source/PIT limitations remain, and remote synchronization/ACL acceptance is unverified. Vendor rights are Owner-attested. See the latest checkpoint below; profile coverage readiness does not mean FULL_DATASET_ACCEPTED.
 
 ## Acceptance definition
 
@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | D0-A complete daily market history | All 87 US equity candidates, 130 CN equity candidates, every declared benchmark and auxiliary symbol, full retained history per eligible symbol, accompanying market factor series, factor diagnostics, source and pool/benchmark manifest bytes with SHA256 and rights labels | First packable dataset tier, but only after all local SHA checks and explicit private cloud copy approval |
 | D0-B complete multi-domain dataset | D0-A plus original US/CN fundamental events and availability/revision fields, US/CN corporate actions and adjusted-price roles, original CN Qlib Alpha158 panel, source version and calendar, full reference ETF sources, lifecycle/identity maps, explicit per-symbol and per-time coverage; component family inventories must reference real, verified payload bytes | **PARTIAL** after 2026-11-05 physical recovery and independent local validation; missingness/semantics remain qualified, full acceptance remains blocked |
-| D0-C verified private Drive copy | Versioned, immutable files and aggregate bundle index, local-vs-Drive exact SHA, Drive ACL review, no redistributions or private account data | NOT EXECUTED |
+| D0-C verified private Drive copy | Versioned, immutable files and aggregate bundle index, local-vs-Drive exact SHA, Drive ACL review, no redistributions or private account data | Owner-directed directory save and local Drive SHA parity PASS; remote sync/ACL/download acceptance NOT_TESTED |
 | E1 Colab execution | Verify exact packages and same code/version; execute existing study, compare results locally, record independent receipt | FORBIDDEN until D0-B/C accepted |
 
 The proposed full dataset refers to the **frozen selected pools**, not all listed equities. Do not invent historical index membership or substitute missing symbols, and do not confuse an original source manifest with an actual dataset. No minute-level / intraday research is in scope.
@@ -222,3 +222,70 @@ The requested directory save is complete. Dataset coverage remains PARTIAL for
 the already documented source/time/factor gaps; FULL_DATASET_ACCEPTED and PIT
 certification are not asserted. No Colab experiment was started. All previously
 observed PR checks, including GitGuardian, passed at `15d18cafa0`.
+
+## 2026-11-05 physical profile readiness and immutable v5
+
+Owner approved advancing the existing research gates and explicitly confirmed
+that Alpaca SIP/OTC credentials and entitlement are currently unavailable. Keep
+US87 canonical Alpha158 blocked; independent valid profiles remain readable.
+
+The new consumer projection in `src/research/dataset_readiness.py` reuses
+`evaluate_training_profile` and the unchanged
+`configs/data_contracts/model_data_bundle_v1.yaml`. It verifies real price,
+event/coverage and CN Alpha158 members against their original component hashes,
+requires physically present reference prices, and records each component's
+actual cutoff. A missing payload or mismatched hash cannot inherit READY from a
+copied summary. The reference registry now explicitly maps the already retained
+`000300` provider identifier to canonical CSI300 index `000300.SH`; no ETF or
+candidate substitution is made.
+
+Actual outcomes: **five READY, one BLOCKED**. US87/CN130 price-only and
+price-plus-fundamental profiles pass their existing coverage thresholds. CN130
+Alpha158 passes the existing not-yet-applicable partition with 301666 retained;
+its 29 insufficient factors stay recorded. US87 Alpha158 fails the required
+canonical factor-component gate. No threshold, selected pool, factor definition
+or declared exception was loosened. READY here is a coverage-and-payload result
+at disclosed editions, not PIT certification or permission to execute a model.
+
+Immutable `us87-cn130-20261103-local-v5` is **200 files / 452,928,235 bytes**,
+frozen code `32c30ef05258a35e4300b6a21ea7a96d0dab17cf`, aggregate Manifest SHA256
+`d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c`.
+It adds the frozen existing profile contract and reproducible physical-profile
+report. v4 remains unchanged. Price cutoffs are 2026-11-03; CN events/factors
+remain 2026-09-04, US events 2026-09-30, dedicated references 2026-10-14. Source
+freshness is not inferred from the newest price observation.
+
+Independent verification used a fresh checkout at this exact producer revision
+with socket connections denied. All original/Parquet values, all 130 CN panels
+including NaNs, all 229 original provider CSVs and the inventory reproduce.
+Privacy scanned 1,119 text payloads. The source gate regression suite has 92
+passing tests; Ruff and Mypy pass. Both market-history ZIPs were rebuilt from
+the frozen input checkout for byte parity.
+
+A separately sealed `cn130-trading-status-review-v1.zip` contains 16 primary
+issuer PDFs plus local MinerU 4.1.3 extractions and hash-bound review records.
+Manual notice review and exact XSHG exchange-session set equality account for
+**all 85 previously unexplained interior absences across 11 CN candidates and
+14 suspension intervals**. Every absent date is a confirmed suspension; zero
+bars were added or symbols removed. This retrospective annotation does not
+rewrite the original audit, certify PIT or resolve source-history prefixes.
+The ZIP is 3,902,212 bytes, SHA256
+`79b15366beb69cfbaf974a1d2fe2d9cf31237df3959e3ce9d6369590d58a8b01`.
+
+All 200 v5 files and the supplemental evidence were saved to the existing
+Owner-designated Drive Desktop `input_packages` directory and passed local
+filesystem size/SHA readback. `p2-d0-delivery-v5.json` binds the dataset,
+supplemental review, offline acceptance and original transfer receipt; its SHA256
+is `2dbddea0402dfdda01e492b15f6df5f0f712ddad11893a6e1eb720908bf7aff1`.
+Owner approval/rights attestation is retained in the sidecar; producer flags are
+unchanged. Remote sync completion, remote private ACL and cloud download/hash
+parity remain unverified under the Owner's automatic-sync workflow.
+
+See [current evidence index](../evidence/p2_d0_2026-11-05/README.md),
+[physical readiness](../evidence/p2_d0_2026-11-05/profile-readiness-v5.json),
+[offline receipt](../evidence/p2_d0_2026-11-05/offline-acceptance-v5.json), and
+[session review](../evidence/p2_d0_2026-11-05/cn-session-gap-review.json).
+Overall verdict remains **PARTIAL**, with US true-VWAP/SIP/OTC, historical
+prefixes, adjustment/action availability semantics, source freshness and remote
+acceptance limitations preserved. No Colab, new strategy, frontend work or
+automatic formal source promotion was performed.

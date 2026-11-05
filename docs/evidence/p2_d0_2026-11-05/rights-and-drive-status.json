@@ -20,22 +20,24 @@
       "source": "Tencent qfq history (135 CN price instruments)"
     }
   ],
+  "delivery_index_sha256": "2dbddea0402dfdda01e492b15f6df5f0f712ddad11893a6e1eb720908bf7aff1",
   "drive_desktop_filesystem_readback": "PASS",
   "drive_desktop_saved": true,
   "drive_transport": "Files physically saved through the installed Drive for Desktop filesystem; each file size/SHA read back and matched. Remote synchronization is owner-managed and not independently certified.",
   "drive_uploaded": "NOT_INDEPENDENTLY_VERIFIED",
-  "file_count": 198,
-  "logical_target": "AlphaEngine/03_Data/Research_Exchange_P2/input_packages/us87-cn130-20261103-local-v4",
+  "file_count": 200,
+  "logical_target": "AlphaEngine/03_Data/Research_Exchange_P2/input_packages/us87-cn130-20261103-local-v5",
   "no_colab_execution": true,
   "original_bundle_and_approval_flags_modified": false,
   "owner_approved_private_cloud_copy": true,
   "owner_statement": "Existing permission attested in prior reply; current instruction explicitly requests saving into the designated auto-synchronized Google Drive directory.",
   "remote_acl": "NOT_TESTED_OWNER_REQUESTED_DIRECTORY_SAVE_ONLY",
   "remote_sync_completion": "NOT_INDEPENDENTLY_VERIFIED",
-  "saved_at_utc": "2026-11-05T14:37:24.840468+00:00",
-  "source_bundle_manifest_sha256": "ec753ad3af8a418e18e06ec39e0ee67f710d8bc3836a0ab00fa17f4c18ac2d61",
+  "saved_at_utc": "2026-11-05T15:10:59.201772+00:00",
+  "source_bundle_manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
   "source_rights_review": "OWNER_ATTESTED_NOT_INDEPENDENTLY_CERTIFIED",
   "status": "OWNER_DIRECTED_DRIVE_DESKTOP_SAVE_VERIFIED",
-  "total_bytes": 452754802,
-  "transfer_receipt_sha256": "f46ea667660f60524bfabc3e589b49f432b9e8b5f8ef1a6a05e84d5edbf31fac"
+  "supplemental_review_archive_sha256": "79b15366beb69cfbaf974a1d2fe2d9cf31237df3959e3ce9d6369590d58a8b01",
+  "total_bytes": 452928235,
+  "transfer_receipt_sha256": "3044413f8087e4eb113818b6f8e90b884730d91063bbe523d81fed3329fe898a"
 }

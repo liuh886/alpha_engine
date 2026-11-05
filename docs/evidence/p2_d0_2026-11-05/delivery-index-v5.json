@@ -1,0 +1,48 @@
+{
+  "blocked_profiles": 1,
+  "cn_interior_gap_review": {
+    "confirmed_suspension_sessions": 85,
+    "primary_pdfs": 16,
+    "raw_bars_modified": false,
+    "symbols": 11
+  },
+  "colab_executed": false,
+  "dataset_manifest": {
+    "file_count": 200,
+    "path": "us87-cn130-20261103-local-v5/bundle-manifest.json",
+    "sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
+    "total_bytes": 452928235
+  },
+  "dataset_profile_report": {
+    "path": "us87-cn130-20261103-local-v5/reports/profile-readiness.json",
+    "sha256": "dbb894addc1126cb5cd9807c4408e1c4a7366ef4d3a1f9562ed91375a3468055"
+  },
+  "dataset_status": "PARTIAL",
+  "dataset_transfer_receipt": {
+    "path": "us87-cn130-20261103-local-v5.transfer-receipt.json",
+    "sha256": "3044413f8087e4eb113818b6f8e90b884730d91063bbe523d81fed3329fe898a"
+  },
+  "owner_directed_private_directory_copy": true,
+  "pit_certified": false,
+  "ready_profiles": 5,
+  "remote_acl": "NOT_TESTED_OWNER_REQUESTED_DIRECTORY_SAVE_ONLY",
+  "remote_sync_completion": "NOT_INDEPENDENTLY_VERIFIED",
+  "research_only": true,
+  "schema_version": "p2_private_delivery_index_v1",
+  "source_rights_review": "OWNER_ATTESTED_NOT_INDEPENDENTLY_CERTIFIED",
+  "supplemental_files": [
+    {
+      "drive_desktop_readback": "PASS",
+      "path": "cn130-trading-status-review-v1.zip",
+      "sha256": "79b15366beb69cfbaf974a1d2fe2d9cf31237df3959e3ce9d6369590d58a8b01",
+      "size_bytes": 3902212
+    },
+    {
+      "drive_desktop_readback": "PASS",
+      "path": "offline-acceptance-v5.json",
+      "sha256": "f969fb93a70460800800ff3bcac3b7ec1eb72436c7dac725e3f676c7c6fc8b0c",
+      "size_bytes": 2092
+    }
+  ],
+  "trade_ready": false
+}

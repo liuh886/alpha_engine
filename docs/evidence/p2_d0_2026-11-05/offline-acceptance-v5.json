@@ -1,0 +1,76 @@
+{
+  "frozen_code_revision": "32c30ef05258a35e4300b6a21ea7a96d0dab17cf",
+  "socket_connections_denied": true,
+  "frozen_verifier": {
+    "status": "PARTIAL",
+    "profile_readiness": {
+      "status": "PARTIAL",
+      "ready_profiles": 5,
+      "blocked_profiles": 1,
+      "contract_sha256": "a4f7d3e352adcd994e74e1152e27a9a241ea307c04578b6f1ca2258fa81b7ac5"
+    },
+    "integrity": "PASS",
+    "offline_read": "PASS",
+    "files": 200,
+    "total_bytes": 452928235,
+    "parquet_rows_read": 897383,
+    "original_archives_verified": 4,
+    "manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
+    "cloud_copy_approved": false,
+    "colab_executed": false
+  },
+  "parity": {
+    "us_prices": {
+      "rows": 122641,
+      "status": "EXACT"
+    },
+    "us_fundamentals": {
+      "rows": 71433,
+      "status": "EXACT"
+    },
+    "us_corporate_actions": {
+      "rows": 3579,
+      "status": "EXACT"
+    },
+    "cn_prices": {
+      "rows": 184434,
+      "status": "EXACT"
+    },
+    "cn_fundamentals": {
+      "rows": 17202,
+      "status": "EXACT"
+    },
+    "cn_corporate_actions": {
+      "rows": 2792,
+      "status": "EXACT"
+    },
+    "cn_alpha158": {
+      "symbols": 130,
+      "factor_count": 158,
+      "status": "EXACT_INCLUDING_NANS"
+    },
+    "qqq_reference": {
+      "symbols": 3,
+      "status": "EXACT"
+    },
+    "us_provider_source": {
+      "symbols": 92,
+      "rows": 122641,
+      "status": "EXACT_INCLUDING_ADJUSTMENT_AND_AMOUNT_FIELDS"
+    },
+    "cn_provider_source": {
+      "symbols": 137,
+      "rows": 184434,
+      "status": "EXACT_INCLUDING_ADJUSTMENT_AND_AMOUNT_FIELDS"
+    }
+  },
+  "privacy": {
+    "status": "PASS",
+    "text_payloads_scanned": 1119,
+    "model_weights_or_account_or_credential_signatures": 0
+  },
+  "inventory_reproduced": true,
+  "status": "PARTIAL",
+  "sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
+  "acceptance_script_sha256": "e112f88033300dfc85933d8537638446288dd00dc1d30c407d686b462a29128a"
+}
