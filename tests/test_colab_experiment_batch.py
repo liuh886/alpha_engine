@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 
 from src.research.cloud_exchange import ExchangeError
-from src.research.colab_experiment_batch import SCHEMA, plan, execute
+from src.research.colab_experiment_batch import SCHEMA, plan, execute, checkpoint, restore
 from src.research.study_workspace import DEFAULT_XGB_CONFIG
 
 
@@ -109,6 +109,88 @@ def test_resumed_blocked_trials_remain_in_aggregate_counts(retained_trial):
     second = execute(batch_spec=batch_file, data_root=data, output_root=outputs,
                      max_new_trials=1, resume=True)
     assert second["resumed_trials"] == 2 and second["blocked_trials"] == 1
+
+
+def test_completed_study_recovers_after_interruption_before_wrapper(retained_trial):
+    batch_file, data, outputs = retained_trial
+    result = next(outputs.rglob("trial-result.json"))
+    study = result.parent / "study-receipt.json"
+    original = study.read_bytes()
+    result.unlink()  # Simulate VM termination after atomic study retention.
+    with patch("src.research.study_workspace.run_study", side_effect=fake_study) as fitter:
+        recovered = execute(batch_spec=batch_file, data_root=data, output_root=outputs,
+                            resume=True, max_new_trials=1)
+    assert fitter.call_count == 1  # Only the next trial is fitted.
+    assert study.read_bytes() == original
+    assert recovered["recovered_completed_trials"] == 1
+    assert recovered["resumed_trials"] == 1 and recovered["new_trials"] == 1
+
+
+def test_private_checkpoint_restores_to_fresh_session_and_resumes(retained_trial, tmp_path):
+    batch_file, data, outputs = retained_trial
+    saved = tmp_path / "checkpoint"
+    pin = checkpoint(batch_spec=batch_file, data_root=data, output_root=outputs, destination=saved)
+    fresh = tmp_path / "fresh-session"
+    got = restore(batch_spec=batch_file, data_root=data, checkpoint_root=saved,
+                  expected_index_sha256=pin["index_sha256"], output_root=fresh)
+    assert got["files"] == 4
+    resumed = execute(batch_spec=batch_file, data_root=data, output_root=fresh,
+                      resume=True, max_new_trials=1)
+    assert resumed["resumed_trials"] == 1 and resumed["new_trials"] == 1
+    original = next(outputs.rglob("study-receipt.json"))
+    assert original.read_bytes() == (fresh / original.relative_to(outputs)).read_bytes()
+
+
+@pytest.mark.parametrize("field,value", [
+    ("runner_git_sha", "2" * 40), ("history_archive_sha256", "f" * 64),
+    ("review_status", "accepted"),
+])
+def test_checkpoint_rejects_changed_identity_before_copy(retained_trial, tmp_path, field, value):
+    batch_file, data, outputs = retained_trial
+    saved = tmp_path / "checkpoint"
+    checkpoint(batch_spec=batch_file, data_root=data, output_root=outputs, destination=saved)
+    index = saved / "checkpoint-index.json"
+    changed = json.loads(index.read_text())
+    changed[field] = value
+    index.write_text(json.dumps(changed))
+    with pytest.raises(ExchangeError, match="source/batch/runner"):
+        restore(batch_spec=batch_file, data_root=data, checkpoint_root=saved,
+                expected_index_sha256=hashlib.sha256(index.read_bytes()).hexdigest(),
+                output_root=tmp_path / "fresh")
+    assert not (tmp_path / "fresh").exists()
+
+
+def test_checkpoint_refuses_raw_data_and_unlisted_files(retained_trial, tmp_path):
+    batch_file, data, outputs = retained_trial
+    (outputs / "raw-prices.csv").write_text("unexpected market data")
+    with pytest.raises(ExchangeError, match="unexpected file"):
+        checkpoint(batch_spec=batch_file, data_root=data, output_root=outputs,
+                   destination=tmp_path / "checkpoint")
+    assert not (tmp_path / "checkpoint").exists()
+
+
+def test_checkpoint_requires_independent_pin_and_refuses_overwrite(retained_trial, tmp_path):
+    batch_file, data, outputs = retained_trial
+    saved = tmp_path / "checkpoint"
+    pin = checkpoint(batch_spec=batch_file, data_root=data, output_root=outputs, destination=saved)
+    with pytest.raises(ExchangeError, match="fresh"):
+        checkpoint(batch_spec=batch_file, data_root=data, output_root=outputs, destination=saved)
+    with pytest.raises(ExchangeError, match="independently pinned"):
+        restore(batch_spec=batch_file, data_root=data, checkpoint_root=saved,
+                expected_index_sha256="f" * 64, output_root=tmp_path / "fresh")
+    assert not (tmp_path / "fresh").exists()
+    assert hashlib.sha256((saved / "checkpoint-index.json").read_bytes()).hexdigest() == pin["index_sha256"]
+
+
+def test_checkpoint_refuses_tampered_inner_file_before_copy(retained_trial, tmp_path):
+    batch_file, data, outputs = retained_trial
+    saved = tmp_path / "checkpoint"
+    pin = checkpoint(batch_spec=batch_file, data_root=data, output_root=outputs, destination=saved)
+    next(saved.rglob("study-receipt.json")).write_text('{"status":"ready"}')
+    with pytest.raises(ExchangeError):
+        restore(batch_spec=batch_file, data_root=data, checkpoint_root=saved,
+                expected_index_sha256=pin["index_sha256"], output_root=tmp_path / "fresh")
+    assert not (tmp_path / "fresh").exists()
 
 
 class BatchPlanningTests(unittest.TestCase):
