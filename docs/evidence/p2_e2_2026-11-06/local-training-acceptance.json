@@ -1,0 +1,103 @@
+{
+  "agent_accessed_colab": false,
+  "batch_file_sha256": "a5f3902bf323f18b13b665589f7aa7f298b07d2463e2568e185d5857a3013bd7",
+  "batch_semantic_identity": "29f4ebdff9ff095e227dc891aedd54c30e0f3591f1bdc994d01ad6243bba4c6a",
+  "benchmark": "QQQ",
+  "candidate_symbols": 87,
+  "colab_execution": "NOT_RUN_OWNER_WILL_ACCESS",
+  "commands": [
+    {
+      "action": "run",
+      "elapsed_seconds": 7.956026600000769,
+      "peak_process_tree_rss_bytes_sampled": 222609408,
+      "status": "BATCH_PARTIAL_CHECKPOINT_READY"
+    },
+    {
+      "action": "checkpoint",
+      "elapsed_seconds": 1.849347499999567,
+      "peak_process_tree_rss_bytes_sampled": 178917376,
+      "status": "CHECKPOINT_VERIFIED_UNREVIEWED"
+    },
+    {
+      "action": "restore",
+      "elapsed_seconds": 1.7021420999990369,
+      "peak_process_tree_rss_bytes_sampled": 178900992,
+      "status": "RESTORED_VERIFIED_UNREVIEWED"
+    },
+    {
+      "action": "run",
+      "elapsed_seconds": 7.04303660000005,
+      "peak_process_tree_rss_bytes_sampled": 222429184,
+      "status": "BATCH_PARTIAL_CHECKPOINT_READY"
+    },
+    {
+      "action": "checkpoint",
+      "elapsed_seconds": 1.9005460000007588,
+      "peak_process_tree_rss_bytes_sampled": 178839552,
+      "status": "CHECKPOINT_VERIFIED_UNREVIEWED"
+    }
+  ],
+  "common_first_session": "2025-06-05",
+  "common_last_session": "2026-08-04",
+  "common_us87_plus_qqq_sessions": 292,
+  "documentary_license_proof_path_provided": false,
+  "duplicate_completed_model_fits": 0,
+  "earlier_receipt_bytes_unchanged": true,
+  "environment": {
+    "cpu_count": 16,
+    "packages": {
+      "numpy": "1.26.4",
+      "pandas": "3.0.1",
+      "scipy": "1.17.1",
+      "xgboost": "3.2.0"
+    },
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.12",
+    "uv": "0.9.10",
+    "uv_lock_sha256": "917d30ebfb3c9888e8db79aa125d62971cb699659816a78a0505509afa69df2b"
+  },
+  "executed_primary_acceptance_trials": 2,
+  "focused_tests_passed": 52,
+  "gpu_training": "NOT_RUN_CPU_BASELINE_ONLY",
+  "local_notebook_flow": "PASS_WITH_LOCAL_MOUNT_AND_BOOTSTRAP_SUBSTITUTION",
+  "local_notebook_matching_study_hash": true,
+  "pit_certified": false,
+  "planned_trials": 16,
+  "research_only": true,
+  "review_status": "incoming_unreviewed",
+  "runner_git_sha": "79e1045bf3ed99bab13ef092cbb07af6ebbf8d99",
+  "source_producer_git_sha": "32c30ef05258a35e4300b6a21ea7a96d0dab17cf",
+  "source_rights": "OWNER_ATTESTED_DOCUMENTARY_PROOF_PATH_NOT_PROVIDED",
+  "source_stage_files": 106,
+  "status": "LOCAL_REAL_TRAINING_AND_FRESH_SESSION_RESTORE_PASS",
+  "trade_ready": false,
+  "trials": [
+    {
+      "measured_study_seconds": 5.13855329999933,
+      "study_hash": "15d565410e364fc48f3abd206ccfd0086829b6f40765d4e458390492307c985b",
+      "study_receipt_sha256": "c37bfffd0d308111175eb11c6ec44ba293ca32a43c879e584b1a4a838b7a74b9",
+      "study_status": "ready",
+      "training_row_symbol_count": 10440,
+      "training_sessions": 120,
+      "trial_id": "fold_a-s42-420ab35833fa",
+      "validation_sessions": 61
+    },
+    {
+      "measured_study_seconds": 5.206248200000118,
+      "study_hash": "641f41842d4486ffb6a9657776c6b70fd42ce70497f97a31d333b6192737f0d7",
+      "study_receipt_sha256": "37b94135232ab6de3455fd15661bc0ff095e18380c884254da999797e4861390",
+      "study_status": "ready",
+      "training_row_symbol_count": 10440,
+      "training_sessions": 120,
+      "trial_id": "fold_a-s42-e25ef76b714f",
+      "validation_sessions": 61
+    }
+  ],
+  "v5_manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
+  "workload_estimate": {
+    "cloud_speedup": "NOT_MEASURED",
+    "mean_first_fold_study_seconds": 5.172400749999724,
+    "method": "16 planned trials times mean observed first-fold study seconds; excludes larger fold, setup, Drive and hardware differences",
+    "same_first_fold_16_trial_seconds": 82.75841199999559
+  }
+}

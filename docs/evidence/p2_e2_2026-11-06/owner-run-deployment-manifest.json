@@ -1,0 +1,58 @@
+{
+  "agent_accessed_colab": false,
+  "authorization_basis": "Owner explicitly confirmed existing cloud-compute permission and stated they will personally access Colab; this configured copy only executes when owner runs it manually.",
+  "cloud_execution": "NOT_RUN_OWNER_WILL_ACCESS",
+  "default_owner_chunk_trials": 2,
+  "files": [
+    {
+      "path": "AlphaEngine_US87_Colab_READY.ipynb",
+      "sha256": "d5adcbdf9bcdf8856098acfbb765dccfd15060ae3c7058d207e78468968970ad",
+      "size_bytes": 16952
+    },
+    {
+      "path": "batch.json",
+      "sha256": "a5f3902bf323f18b13b665589f7aa7f298b07d2463e2568e185d5857a3013bd7",
+      "size_bytes": 2240
+    },
+    {
+      "path": "cloud-rights.json",
+      "sha256": "68d028983db8b0b3ba07a42d15eb1fa5a3a60bfcf63e20b1ea0e59036e76687a",
+      "size_bytes": 1235
+    },
+    {
+      "path": "local-validation-summary.json",
+      "sha256": "b001302dc7601fcdb3481e7ddd7d7b10bd8939fb39c529c85054e36f2e83ba24",
+      "size_bytes": 3871
+    },
+    {
+      "path": "runtime-code-sha.txt",
+      "sha256": "d63aaf890d1b64c2cb4bd5931503d2b3402e2bb1f5d4cc5e270bb8949a0295c5",
+      "size_bytes": 42
+    },
+    {
+      "path": "\u5f00\u59cb\u8fd0\u884c.md",
+      "sha256": "c4ee091959e8baec6c0d37d0fdaf36cecfa436de4b533c37b61717de08ebfd43",
+      "size_bytes": 3512
+    }
+  ],
+  "local_checkpoint": {
+    "index_sha256": "1def7c1513849d0577dbf109c5684786595199c0721058f79028f2e7121b0eb9",
+    "logical_path": "incoming_unreviewed/local-pilot-79e1045bf3-20261106"
+  },
+  "local_primary_acceptance_trials": 2,
+  "logical_target": "AlphaEngine/03_Data/Research_Exchange_P2/colab_jobs/us87-validation-79e1045bf3",
+  "owner_launch_opt_ins": true,
+  "pit_certified": false,
+  "planned_validation_trials": 16,
+  "private_cloud_vendor_certified": false,
+  "remote_acl": "NOT_INDEPENDENTLY_VERIFIED",
+  "remote_sync_completion": "NOT_INDEPENDENTLY_VERIFIED",
+  "research_only": true,
+  "runner_git_sha": "79e1045bf3ed99bab13ef092cbb07af6ebbf8d99",
+  "schema_version": "p2_e2_owner_run_colab_deployment_v1",
+  "source_producer_git_sha": "32c30ef05258a35e4300b6a21ea7a96d0dab17cf",
+  "source_rights": "OWNER_ATTESTED_DOCUMENTARY_PROOF_PATH_NOT_PROVIDED",
+  "status": "LOCAL_ACCEPTED_OWNER_RUN_READY",
+  "trade_ready": false,
+  "v5_bundle_manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c"
+}

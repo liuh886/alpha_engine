@@ -97,6 +97,9 @@ def test_phase2_xgb_study_run_and_causal_simulation(tmp_path: Path) -> None:
     assert out_receipt.exists()
 
     receipt_data = json.loads(out_receipt.read_text(encoding="utf-8"))
+    assert receipt_data["training_sessions_count"] >= 5
+    assert receipt_data["training_row_symbol_count"] == receipt_data["training_sessions_count"] * len(receipt_data["symbols"])
+    assert receipt_data["training_last_session"] < receipt_data["experiment_receipt"]["train_end"]
     # Verify causal properties:
     # 1. Gross return >= Net return (friction accounted for)
     assert receipt_data["overall_oos_gross_return"] >= receipt_data["overall_oos_net_return"]
