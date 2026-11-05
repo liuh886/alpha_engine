@@ -12,6 +12,12 @@ This is **executable preparation**, not an accepted real-data model run, proven 
 - `docs/product/examples/p2_e2_colab_us87_xgb_validation_batch.example.json`: first 16-trial **validation-only** budget (2 chronological folds × 2 depths × 2 learning rates × 2 seeds). This is a *config example*, not a claim that every US87 constituent has sufficient training history.
 - Targeted unit tests (plan, domain/split/budget refusal, source no-overwrite/tamper, interrupted checkpoint/resume) in existing CI.
 
+## Verified US87 common-sample constraint (actual v5 source bytes)
+
+Independent direct read of `us_market_history.zip` (106 archive entries + manifest) confirms that **all 87 selected candidates AND QQQ share only 292 fully observed trading sessions from 2025-06-05 through 2026-08-04**. The **EA** price series stops on **2026-08-04**, although other members and QQQ extend to the 2026-11-03 dataset cutoff. The sole CRCL row start 2025-06-05 is the common-window beginning. For the first *strict full-87* search, train/test must stay inside this common session intersection; the example second validation period is therefore capped at **2026-08-04** (not 2026-08-31). The XGBoost trainer uses 20-session lookback features and a 5-session *forward* ranking label, reducing effective training rows. Check the actual resulting training/validation counts and no-inference-on-nontrading stocks.
+
+These facts do **not** mean the entire portfolio's historical 2021–2026 period is uniformly complete, do **not** guarantee every new study has sufficient data, and do **not** establish PIT or survivorship-free training. A later date-varying universe needs a different, explicitly authorized experiment protocol, not a silent exclusion of EA from the frozen US87 pool.
+
 ## Local Agent first real-data commands (Windows PowerShell)
 
 Use **latest** stacked branch once PR #1368 is synced. Do not accidentally switch to `main`, which does not yet include the v5 staging/preflight code.
