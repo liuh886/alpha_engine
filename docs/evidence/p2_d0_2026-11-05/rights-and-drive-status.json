@@ -1,0 +1,29 @@
+{
+  "components": [
+    {
+      "evidence": "https://www.sec.gov/about/webmaster-frequently-asked-questions",
+      "review": "PUBLIC_ACCESS_AND_REUSE_CONFIRMED",
+      "source": "SEC EDGAR public filing data"
+    },
+    {
+      "evidence": "https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html",
+      "review": "OWNER_ASSERTED_PERMISSION_DOCUMENT_NOT_LOCATED",
+      "source": "Yahoo Finance prices/actions/reference"
+    },
+    {
+      "review": "OWNER_ASSERTED_PERMISSION_DOCUMENT_NOT_LOCATED",
+      "source": "Sina/CNINFO/Eastmoney"
+    },
+    {
+      "review": "PRIVATE_CLOUD_COPY_NOT_VERIFIED",
+      "source": "Tencent qfq history (135 CN price instruments)"
+    }
+  ],
+  "drive_transport": "Installed Drive for Desktop path is available; not proof of remote parity or ACL.",
+  "drive_uploaded": false,
+  "no_colab_execution": true,
+  "owner_approved_private_cloud_copy": false,
+  "owner_statement": "Owner replied existing permission and supplied G:/My Drive; no specific provider license document was identified in the project folder.",
+  "remote_acl": "NOT_TESTED",
+  "status": "BLOCKED_PENDING_PER_SOURCE_CLOUD_RIGHTS_AND_REMOTE_ACL"
+}
