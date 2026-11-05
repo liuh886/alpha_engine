@@ -1,4 +1,5 @@
 {
+  "approval_basis": "Owner previously attested existing permissions, agreed to proceed, then explicitly directed a directory save and stated their Google Drive synchronizes that directory.",
   "components": [
     {
       "evidence": "https://www.sec.gov/about/webmaster-frequently-asked-questions",
@@ -7,23 +8,34 @@
     },
     {
       "evidence": "https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html",
-      "review": "OWNER_ASSERTED_PERMISSION_DOCUMENT_NOT_LOCATED",
+      "review": "OWNER_ATTESTED_PRIVATE_DIRECTORY_COPY_APPROVED_NOT_INDEPENDENTLY_CERTIFIED",
       "source": "Yahoo Finance prices/actions/reference"
     },
     {
-      "review": "OWNER_ASSERTED_PERMISSION_DOCUMENT_NOT_LOCATED",
+      "review": "OWNER_ATTESTED_PRIVATE_DIRECTORY_COPY_APPROVED_NOT_INDEPENDENTLY_CERTIFIED",
       "source": "Sina/CNINFO/Eastmoney"
     },
     {
-      "review": "PRIVATE_CLOUD_COPY_NOT_VERIFIED",
+      "review": "OWNER_ATTESTED_PRIVATE_DIRECTORY_COPY_APPROVED_NOT_INDEPENDENTLY_CERTIFIED",
       "source": "Tencent qfq history (135 CN price instruments)"
     }
   ],
-  "drive_transport": "Installed Drive for Desktop path is available; not proof of remote parity or ACL.",
-  "drive_uploaded": false,
+  "drive_desktop_filesystem_readback": "PASS",
+  "drive_desktop_saved": true,
+  "drive_transport": "Files physically saved through the installed Drive for Desktop filesystem; each file size/SHA read back and matched. Remote synchronization is owner-managed and not independently certified.",
+  "drive_uploaded": "NOT_INDEPENDENTLY_VERIFIED",
+  "file_count": 198,
+  "logical_target": "AlphaEngine/03_Data/Research_Exchange_P2/input_packages/us87-cn130-20261103-local-v4",
   "no_colab_execution": true,
-  "owner_approved_private_cloud_copy": false,
-  "owner_statement": "Owner replied existing permission and supplied G:/My Drive; no specific provider license document was identified in the project folder.",
-  "remote_acl": "NOT_TESTED",
-  "status": "BLOCKED_PENDING_PER_SOURCE_CLOUD_RIGHTS_AND_REMOTE_ACL"
+  "original_bundle_and_approval_flags_modified": false,
+  "owner_approved_private_cloud_copy": true,
+  "owner_statement": "Existing permission attested in prior reply; current instruction explicitly requests saving into the designated auto-synchronized Google Drive directory.",
+  "remote_acl": "NOT_TESTED_OWNER_REQUESTED_DIRECTORY_SAVE_ONLY",
+  "remote_sync_completion": "NOT_INDEPENDENTLY_VERIFIED",
+  "saved_at_utc": "2026-11-05T14:37:24.840468+00:00",
+  "source_bundle_manifest_sha256": "ec753ad3af8a418e18e06ec39e0ee67f710d8bc3836a0ab00fa17f4c18ac2d61",
+  "source_rights_review": "OWNER_ATTESTED_NOT_INDEPENDENTLY_CERTIFIED",
+  "status": "OWNER_DIRECTED_DRIVE_DESKTOP_SAVE_VERIFIED",
+  "total_bytes": 452754802,
+  "transfer_receipt_sha256": "f46ea667660f60524bfabc3e589b49f432b9e8b5f8ef1a6a05e84d5edbf31fac"
 }

@@ -191,3 +191,34 @@ current provider edition, resolve the CN session holes and select a governed SBG
 source. A later Alpha158 edition may address the short-history factors, but must
 not replace the pinned legacy archive under the same identity. Final verdict is
 **PARTIAL**, not FULL_DATASET_ACCEPTED; no Colab experiment is started.
+
+
+## 2026-11-05 Owner-directed Drive Desktop save
+
+Following the local acceptance checkpoint, Owner explicitly instructed the Agent
+to save directly into the designated directory and stated that Google Drive
+automatically synchronizes its contents. Together with the prior existing-license
+attestation, this is recorded as Owner approval for this exact private copy, not
+as independently obtained vendor-license proof. No repeated approval or browser
+operation is required for the requested filesystem save.
+
+The entire immutable v4 directory was physically saved to the existing logical
+`AlphaEngine/03_Data/Research_Exchange_P2/input_packages/us87-cn130-20261103-local-v4`.
+**198 files / 452,754,802 bytes; all 198 file sizes and SHA256 values match after
+Drive Desktop filesystem readback.** The aggregate Manifest remains
+`ec753ad3af8a418e18e06ec39e0ee67f710d8bc3836a0ab00fa17f4c18ac2d61`.
+A separate sibling `.transfer-receipt.json` records explicit authorization,
+file-by-file parity and the untested remote boundaries. The original 198-file
+package, producer code and producer approval flags were not changed.
+
+See [save receipt](../evidence/p2_d0_2026-11-05/drive-desktop-save-receipt.json)
+and [current rights/Drive status](../evidence/p2_d0_2026-11-05/rights-and-drive-status.json).
+Earlier NOT-UPLOADED notes above describe the prior checkpoint and are superseded
+for the directory-save step. Remote synchronization completion, remote ACL and
+independent remote download/hash verification remain NOT_TESTED; the Owner chose
+Drive Desktop automatic synchronization instead of browser operations.
+
+The requested directory save is complete. Dataset coverage remains PARTIAL for
+the already documented source/time/factor gaps; FULL_DATASET_ACCEPTED and PIT
+certification are not asserted. No Colab experiment was started. All previously
+observed PR checks, including GitGuardian, passed at `15d18cafa0`.
