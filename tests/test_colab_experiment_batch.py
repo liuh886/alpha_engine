@@ -1,7 +1,6 @@
 """P2-E2 trial-matrix contract tests, without model fitting or private data."""
 from __future__ import annotations
 
-import copy
 import json
 import tempfile
 import unittest
