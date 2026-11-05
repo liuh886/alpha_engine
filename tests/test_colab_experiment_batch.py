@@ -70,7 +70,8 @@ class BatchPlanningTests(unittest.TestCase):
 
     def test_reject_validation_overlap(self) -> None:
         s = spec()
-        s["validation_folds"][1]["test_start"] = "2026-02-01"
+        s["validation_folds"][1]["train_end"] = "2026-02-28"
+        s["validation_folds"][1]["test_start"] = "2026-03-01"
         with self.assertRaisesRegex(ExchangeError, "validation windows overlap"):
             plan(s)
 
