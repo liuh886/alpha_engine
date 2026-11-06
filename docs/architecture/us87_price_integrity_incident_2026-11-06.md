@@ -26,6 +26,12 @@ Independent read-only inspection of the unmodified archive over `2025-06-05` thr
 
 This is evidence of **source adjustment-scale discontinuity**, not proof of an exact exchange effective date or of an authorized split adjustment. The presence of reversal oscillations for KLAC makes the contaminated daily-return inference especially strong. Other symbols and events may still need deeper corporate-action review; this conservative screen is *not* comprehensive data certification.
 
+### Upstream origin confirmed from retained source archive
+
+The owner's private v5 `sources/market_source_us_41764999985.zip` contains `data/csv_source/KLAC.csv` and `CRWD.csv` with the same discontinuities. The frozen `selected_pool_price_refresh_manifest.json` identifies `yfinance` as the US provider and `fetched_incremental_update` as the latest action for both symbols. The problem therefore **precedes ZIP construction**; simply rebuilding the v5 wrapper from unchanged CSV bytes would preserve it.
+
+The existing canonical price refresh now invokes the same semantic screen on prior US CSVs and newly returned price frames. An anomalous retained CSV is classified invalid even when its cutoff is current; the refresh requests a **full-history replacement**, not an incremental tail merge. A still-invalid returned series produces a blocked/quarantined symbol, not a fabricated repaired output. Successful source regeneration remains conditional on the actual provider returning consistently adjusted daily prices.
+
 The recorded high returns in `fold_c` (several model configurations >1,000% excess within a short validation window) should not be used in model selection. Three seeds frequently produced identical return/drawdown/Rank-IC metrics, so repetitions are not independent confirmation.
 
 ### Authoritative event-date cross-check
