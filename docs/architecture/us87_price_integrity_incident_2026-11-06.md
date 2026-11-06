@@ -28,6 +28,13 @@ This is evidence of **source adjustment-scale discontinuity**, not proof of an e
 
 The recorded high returns in `fold_c` (several model configurations >1,000% excess within a short validation window) should not be used in model selection. Three seeds frequently produced identical return/drawdown/Rank-IC metrics, so repetitions are not independent confirmation.
 
+### Authoritative event-date cross-check
+
+- **KLA (KLAC)** announced a 10-for-1 forward split on 2026-05-07, but its **first split-adjusted trading date was 2026-06-12** according to its SEC exhibit. The mixed 10x price scales seen 2026-05-07 through 2026-06-01 are **before** the authorized effective trading date. [KLA 8-K exhibit](https://www.sec.gov/Archives/edgar/data/319201/000119312526212093/d116682dex991.htm).
+- **CrowdStrike (CRWD)** announced a 4-for-1 stock split on 2026-06-03; the first split-adjusted trading date was **2026-07-02**, according to its official SEC 8-K. The 2026-06-18 quarter-scale break occurs before that date. [CrowdStrike SEC 8-K](https://www.sec.gov/Archives/edgar/data/1535527/000153552726000022/crwd-20260603.htm).
+
+These official records establish split factors and expected effective trading dates. They do **not** certify which individual vendor OHLCV rows were raw vs adjusted or justify bulk price rewriting without upstream source and component-manifest reconciliation.
+
 ## Run the audit locally (no Colab or provider fetch)
 
 From a checkout of the **PR code** with frozen dependencies installed:
