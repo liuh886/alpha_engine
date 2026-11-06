@@ -1,0 +1,92 @@
+{
+  "status": "LOCAL_THREE_FAMILY_ZIP_RESUME_PASS",
+  "runner_git_sha": "b3764bab1a4eb694e302053db16426de2e3573fb",
+  "planned_cloud_configurations": 29,
+  "planned_cloud_tasks": 261,
+  "pilot_spec_sha256": "3cba4d3a104d99572cb6200bdda6dcbea5b0d9989831028a74fff8c11b8fb0de",
+  "pilot_selected_before_fitting": true,
+  "local_trials": [
+    {
+      "model_family": "lightgbm",
+      "status": "ready",
+      "model_fitted": true,
+      "training_sessions_count": 114,
+      "training_row_symbol_count": 9918,
+      "oos_sessions_count": 39,
+      "inference_anchor_session": "2025-12-31",
+      "study_hash": "16d33ff003b271ce310fab4af726e89d49ba792cfdae4fa8587c84bab72cfe9c",
+      "blocked_reasons": []
+    },
+    {
+      "model_family": "momentum_20d",
+      "status": "ready",
+      "model_fitted": false,
+      "training_sessions_count": 0,
+      "training_row_symbol_count": 0,
+      "oos_sessions_count": 39,
+      "inference_anchor_session": "2025-12-31",
+      "study_hash": "828ce2527951c89709e65520be055d273aa2bb2e1b6d86ef1691e047e3c29708",
+      "blocked_reasons": []
+    },
+    {
+      "model_family": "xgboost",
+      "status": "ready",
+      "model_fitted": true,
+      "training_sessions_count": 114,
+      "training_row_symbol_count": 9918,
+      "oos_sessions_count": 39,
+      "inference_anchor_session": "2025-12-31",
+      "study_hash": "b9d376a3ff260454d37ec9e5f9b13f7fa50f0de6ef55815701b8520490de553d",
+      "blocked_reasons": []
+    }
+  ],
+  "checkpoint_resume_prior_bytes_unchanged": true,
+  "holdout_evaluated": false,
+  "heavy_local_sweep_executed": false,
+  "colab_accessed": false,
+  "research_only": true,
+  "trade_ready": false,
+  "pit_certified": false,
+  "regression_tests_passed": 107,
+  "ruff": "PASS",
+  "mypy": "PASS",
+  "local_notebook_flow": {
+    "status": "LOCAL_NOTEBOOK_FLOW_PASS",
+    "remote_colab_executed": false,
+    "notebook_cells": 17,
+    "study_hashes_match_cli": true,
+    "comparison_table_visually_inspected": true,
+    "actual_output_figure_visually_inspected": true,
+    "local_mount_and_bootstrap_substituted": true,
+    "scope": "Actual frozen local code/data/ML, substituted mount/bootstrap, three-task pilot, ZIP restore/export, descriptive figure."
+  },
+  "source_availability": {
+    "common_first": "2025-06-05",
+    "common_last": "2026-08-04",
+    "common_sessions": 292,
+    "candidates": 87,
+    "benchmark": "QQQ",
+    "fields": "Existing four OHLCV-derived features; not US Alpha158."
+  },
+  "review_status": "incoming_unreviewed",
+  "cloud_compute_rights_evidence": "Owner attestation for exact Yahoo/yfinance price source; documentary path not supplied; not independent certification.",
+  "zip_checkpoint": {
+    "archive_sha256": "0909d2576b00b04674b17156e349e8cef3ea29bfac2ed4c7490a5d60be2e4e29",
+    "archive_size_bytes": 6663,
+    "index_sha256": "9a37e95658096d267945eb2589b1dc94f53c7e0fa95ae939f79186eb3350e0c7",
+    "files": 4
+  },
+  "resume_result": {
+    "retained_trials_skipped": 1,
+    "new_trials": 2,
+    "blocked_trials": 0,
+    "prior_bytes_unchanged": true
+  },
+  "full_cloud_campaign_executed": false,
+  "frozen_runner_remote_checks": {
+    "backend": "PASS",
+    "Policy": "PASS",
+    "GitGuardian": "PASS",
+    "backend_url": "https://github.com/liuh886/alpha_engine/actions/runs/42165775575/job/127721803126"
+  }
+}
