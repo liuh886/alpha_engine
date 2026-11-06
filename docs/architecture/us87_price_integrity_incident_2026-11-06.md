@@ -4,6 +4,14 @@
 
 The owner completed 261/261 Google Colab tasks with 0 runtime failures and a private immutable final checkpoint named `e2-us87-checkpoint-20261106T130711006241Z.zip`. That establishes successful execution/checkpointing, **not** economically valid returns or a promoted model.
 
+## Current data-repair acceptance — 2026-11-06
+
+**US87 price repair ACCEPTED LOCALLY; next Colab configuration PREPARED, training OFF.**
+The original contaminated v5 and all14CheckpointZIPs are unchanged, including the
+completed261-task artifact. The new full-price edition is independent and the
+old engineering results remain inadmissible for model selection. No retraining,
+Colab access or PR merge was performed. Detailed acceptance follows below.
+
 ## Reproducible source finding
 
 Frozen original local v5 US archive SHA256:
@@ -121,3 +129,111 @@ Volume is passed through unchanged, factor=1 is an already-adjusted identity,
 and amount is adjusted close times provider volume, not an exchange turnover.
 Provider Close with auto_adjust disabled is not certified as as-traded raw price;
 preserve actual split/action records and document vendor historical restatement.
+
+
+## Executed canonical rebuild and immutable v6 delivery
+
+Frozen producer/next-runner Git SHA:
+`0c8152496ebeeed559ceab9b095594501fca516b` (Backend/Policy/GitGuardian PASS).
+The requested original audit actually ran on retained v5 and reproduced nine
+KLAC and one CRWD event. Original per-file/source/checkpoint hashes were sealed
+before data acquisition and independently rechecked after packaging.
+
+The canonical command was executed with `--full-refresh`, start2021-01-04,
+cutoff2026-11-03, no `--allow-partial`, and then with explicit QQQI/TQQQ/SGOV/CGDV
+references plus exact provider-response capture. The final build materialized
+**87candidates + QQQ + 4references = 92securities**: **91fresh full-history Yahoo
+responses**, plus EA's exact declared terminal history through2026-08-04
+(`dbc6ea09520cfa073fa948b3a4cac3d5ef2f4bc65bd5fb5c5ed6feb4477b58fe`).
+No contaminated incremental tail was merged. The terminal exception is disclosed,
+not labelled a fresh provider fetch or dropped from US87.
+
+Each of91exact recorded yfinance returned DataFrames reproduces normalized
+Parquet byte values through the existing adapter. Canonical CSV values match
+within the unchanged serialization tolerance; every volume value matches the
+provider directly. All92 full histories have **zero scale anomalies and zero
+unexplained interior trading-session gaps**. Official SEC split dates match the
+recorded action columns: KLAC10:1 first adjusted trading2026-06-12, CRWD4:1
+2026-07-02; announcement, record and distribution dates remain distinct.
+
+Request semantics: yfinance1.2.0, `auto_adjust=False`, `repair=False`,
+`actions=True`, inclusive requested cutoff handled by exclusive provider end
+2026-11-04. [Maintainer adjustment documentation](https://ranaroussi.github.io/yfinance/advanced/price_adjustment.html)
+states that auto_adjust=False OHLC is already split-adjusted and AdjClose also
+includes dividends. The canonical adapter uniformly multiplies OHLC by
+AdjClose/Close, keeps volume unchanged, sets factor=1 as already-adjusted
+identity and recomputes synthetic amount=adjusted_close×volume. Exact original
+client frames, events, adjustment ratios, request/client/code hashes and
+reconciliation evidence are retained. These are not certified exchange
+as-traded raw prices/volume or historical source vintages. Independent second
+Yahoo requests showed tiny historical AdjClose-vintage differences; capturing
+the actual canonical return resolves reproducibility without relaxing gates.
+
+US market evidence and affected OHLCV factor series were rebuilt using existing
+provider/market-evidence tooling and the canonical model-data builder, followed
+by existing P2 `build_local`, `local_history_pack` and `verify_bundle`. Shared
+market projection requires accepted formal metadata; it was read only for that
+existing input identity/event interface. P2 data-only filtering removed all
+formal events/model/account signals before transport. No model fitting or
+strategy evaluation occurred. New US producer source archive contains the
+canonical CSVs and exact raw/normalized response evidence. The four original
+US/CN events, CNAlpha158 and professional-reference archives remain at their
+prior byte-identical source versions.
+
+Final edition: **`us87-cn130-20261103-local-v6-us87-fullrefresh`**, 207files /
+**463,622,539bytes**.
+
+- Total Manifest SHA256:
+  `4f8225f3c68ee0886b9b707ca140e91dcb509b739b8548fdc10f258574d3da1a`.
+- US market ZIP SHA256:
+  `b4745e46fc26b0328e22de50e579ebbf1d400996258ea6ebb43c1ff739ed5a1a`
+  (16,035,050bytes).
+- All bound file hashes/sizes, original4domainarchives, allZIPCRCs and
+  1,030,712Parquetrows passed offline reads. A second US ZIP build reproduced
+  exactly the same bytes. A fresh106-file isolated root passed source and scale
+  validation. Network-blocked preflight and campaign planning passed.
+- US87 actual candidate rows120,401; all92US histories126,671rows over retained
+  2021-01-04..2026-11-03. Full87+QQQ common history remains292sessions
+  2025-06-05..2026-08-04; no claim of complete listing history.
+- Whole cross-domain bundle remains **PARTIAL**, 5existingprofilesREADY /
+  1USAlpha158BLOCKED, with source/PIT/volume/universe limitations retained.
+
+Saved to Owner's Drive Desktop root project:
+`G:/My Drive/AlphaEngine/03_Data/Research_Exchange_P2/input_packages/us87-cn130-20261103-local-v6-us87-fullrefresh`.
+All207files passed strict size/SHA readback. Remote sync and ACL verification
+remain unperformed, per Owner's directory-sync workflow.
+
+Next job: `colab_jobs/us87-v6-price-repair-0c8152496e`, 8files/55,943bytes,
+Manifest SHA256
+`487e5085bddcaa2b193a8ca3ae43facda11ea5107c97dac6cbecf548a04353b9`.
+Current direct root entry `AlphaEngine/运行模型探索.ipynb` selects this version;
+the previous Owner-edited notebook was backed up privately before replacement.
+All model/feature/parameter/seed/fold/cost/pool choices are unchanged. New
+`batch_id=us87_colab_model_search_v6_20261103`, source hashes and run identity
+are frozen; checkpoint parent is a new job-specific subdirectory under
+`incoming_unreviewed`. All restore pins areNone and training defaultsOFF.
+The legacy `v5_bundle_manifest_sha256` field/staging module name remains a
+compatibility identifier; verified content is the separately bound v6 edition.
+Owner's existing exact Yahoo cloud-compute attestation is rebound to new hashes;
+documentary proof remains absent, not vendor-certified, and immutable source
+approval flags were not switched on.
+
+Originalv5's200files and all14existingCheckpointZIPs retain SHA256s. Completed
+261-task checkpoint SHA256:
+`a760372a8ef8e704ec428b77a66598451de9e3095bc2a1461acc9063129e8219`,
+innerindexSHA256
+`215e2599685f57b9d86b6bb62691436bdd879f3a9741ecb6c019ba47b4d727b5`.
+It is preserved as engineering evidence only and cannot resume the new dataset.
+
+Evidence and all new pins:
+[repair acceptance](../evidence/us87_price_repair_2026-11-06/README.md),
+[exact v6 Manifest](../evidence/us87_price_repair_2026-11-06/bundle-manifest-v6.json),
+[per-symbol coverage](../evidence/us87_price_repair_2026-11-06/coverage.json),
+[old/new anomaly ratios](../evidence/us87_price_repair_2026-11-06/v5-v6-anomaly-comparison.json),
+[next configuration](../evidence/us87_price_repair_2026-11-06/next-colab-config.json),
+[Drive readback](../evidence/us87_price_repair_2026-11-06/drive-delivery.json).
+
+Current remaining acceptance is explicitly future work: Owner-initiated initial
+cloud chunk, fresh-session restore and a new corrected-source campaign, then
+independent results review. This task stops after data/config preparation; no
+new research training, final holdout evaluation or PR merge is authorized here.

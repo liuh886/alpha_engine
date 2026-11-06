@@ -1,0 +1,79 @@
+{
+  "v5_us_zip_sha256": "93b2d42cebf3ebfac7b80298f6822fdc4305f7550b73ac1b2bb8d272d3fb3de8",
+  "v6_us_zip_sha256": "b4745e46fc26b0328e22de50e579ebbf1d400996258ea6ebb43c1ff739ed5a1a",
+  "original_anomaly_count": 10,
+  "v6_full_history_anomaly_count": 0,
+  "repair_method": "Canonical full-history provider replacement; no mechanical price/volume scaling or threshold changes.",
+  "events": [
+    {
+      "symbol": "CRWD",
+      "date": "2026-06-18",
+      "v5_close_ratio": 0.250695,
+      "v6_close_ratio": 1.0027819540204101,
+      "v6_ratio_passes_unchanged_scale_screen": true
+    },
+    {
+      "symbol": "KLAC",
+      "date": "2026-05-07",
+      "v5_close_ratio": 0.09708,
+      "v6_close_ratio": 0.9707976087535761,
+      "v6_ratio_passes_unchanged_scale_screen": true
+    },
+    {
+      "symbol": "KLAC",
+      "date": "2026-05-08",
+      "v5_close_ratio": 10.600822,
+      "v6_close_ratio": 1.0600822736122424,
+      "v6_ratio_passes_unchanged_scale_screen": true
+    },
+    {
+      "symbol": "KLAC",
+      "date": "2026-05-11",
+      "v5_close_ratio": 0.098716,
+      "v6_close_ratio": 0.9871600966801921,
+      "v6_ratio_passes_unchanged_scale_screen": true
+    },
+    {
+      "symbol": "KLAC",
+      "date": "2026-05-21",
+      "v5_close_ratio": 10.069474,
+      "v6_close_ratio": 1.0069473489612084,
+      "v6_ratio_passes_unchanged_scale_screen": true
+    },
+    {
+      "symbol": "KLAC",
+      "date": "2026-05-22",
+      "v5_close_ratio": 0.102508,
+      "v6_close_ratio": 1.0250789412735302,
+      "v6_ratio_passes_unchanged_scale_screen": true
+    },
+    {
+      "symbol": "KLAC",
+      "date": "2026-05-26",
+      "v5_close_ratio": 10.651405,
+      "v6_close_ratio": 1.0651405569534649,
+      "v6_ratio_passes_unchanged_scale_screen": true
+    },
+    {
+      "symbol": "KLAC",
+      "date": "2026-05-27",
+      "v5_close_ratio": 0.097305,
+      "v6_close_ratio": 0.9730533933259025,
+      "v6_ratio_passes_unchanged_scale_screen": true
+    },
+    {
+      "symbol": "KLAC",
+      "date": "2026-05-28",
+      "v5_close_ratio": 9.848967,
+      "v6_close_ratio": 0.9848967687647338,
+      "v6_ratio_passes_unchanged_scale_screen": true
+    },
+    {
+      "symbol": "KLAC",
+      "date": "2026-06-01",
+      "v5_close_ratio": 0.100954,
+      "v6_close_ratio": 1.0095383103571325,
+      "v6_ratio_passes_unchanged_scale_screen": true
+    }
+  ]
+}

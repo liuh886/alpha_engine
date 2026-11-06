@@ -1,0 +1,105 @@
+{
+  "status": "US87_PRICE_REPAIR_ACCEPTED_LOCALLY_NO_RETRAIN",
+  "dataset_edition": "us87-cn130-20261103-local-v6-us87-fullrefresh",
+  "producer_and_next_runner_git_sha": "0c8152496ebeeed559ceab9b095594501fca516b",
+  "manifest_sha256": "4f8225f3c68ee0886b9b707ca140e91dcb509b739b8548fdc10f258574d3da1a",
+  "us_history_zip_sha256": "b4745e46fc26b0328e22de50e579ebbf1d400996258ea6ebb43c1ff739ed5a1a",
+  "canonical_cli_full_refresh": true,
+  "fresh_yahoo_provider_symbols": 91,
+  "governed_terminal_history": [
+    "EA"
+  ],
+  "price_scale_anomalies": 0,
+  "interior_missing_sessions": 0,
+  "exact_provider_return_normalization_reproduced": true,
+  "volume_values_unchanged_from_provider": true,
+  "effective_split_dates": {
+    "KLAC": {
+      "ratio": 10,
+      "first_adjusted_trading_date": "2026-06-12"
+    },
+    "CRWD": {
+      "ratio": 4,
+      "first_adjusted_trading_date": "2026-07-02"
+    }
+  },
+  "p2_bundle_verification": {
+    "cloud_copy_approved": false,
+    "colab_executed": false,
+    "files": 207,
+    "integrity": "PASS",
+    "manifest_sha256": "4f8225f3c68ee0886b9b707ca140e91dcb509b739b8548fdc10f258574d3da1a",
+    "offline_read": "PASS",
+    "original_archives_verified": 4,
+    "parquet_rows_read": 1030712,
+    "profile_readiness": {
+      "blocked_profiles": 1,
+      "contract_sha256": "a4f7d3e352adcd994e74e1152e27a9a241ea307c04578b6f1ca2258fa81b7ac5",
+      "ready_profiles": 5,
+      "status": "PARTIAL"
+    },
+    "status": "PARTIAL",
+    "total_bytes": 463622539
+  },
+  "preflight": {
+    "schema_version": "e1a_v5_price_preflight_v1",
+    "data_status": "VERIFIED_US87_COMPLETE_RETAINED_PRICE_DOMAIN",
+    "cloud_execution_rights": {
+      "status": "OWNER_ATTESTATION_RECORDED_NOT_VENDOR_CERTIFIED",
+      "provider_count": 1,
+      "required_providers": [
+        "yfinance"
+      ],
+      "record_sha256": "c483796940000f1f7e16dcdedffb9aeec76aa72e58eddd3c986aa9cc97377f9e"
+    },
+    "bundle_manifest_sha256": "4f8225f3c68ee0886b9b707ca140e91dcb509b739b8548fdc10f258574d3da1a",
+    "archive_sha256": "b4745e46fc26b0328e22de50e579ebbf1d400996258ea6ebb43c1ff739ed5a1a",
+    "archive_size_bytes": 16035050,
+    "pool_id": "us_selected_equities_v2",
+    "candidate_count": 87,
+    "reference_symbols": [
+      "CGDV",
+      "QQQ",
+      "QQQI",
+      "SGOV",
+      "TQQQ"
+    ],
+    "data_cutoff": "2026-11-03",
+    "source_producer_revision": "0c8152496ebeeed559ceab9b095594501fca516b",
+    "source_providers": [
+      "yfinance"
+    ],
+    "source_frozen_local_only": true,
+    "model_execution_authorized": false,
+    "pit_certified": false,
+    "trade_ready": false,
+    "colab_executed": false
+  },
+  "fresh_staged_files": 106,
+  "campaign_count": 29,
+  "planned_tasks": 261,
+  "campaign_identity_changed": true,
+  "previous_search_design_unchanged": true,
+  "new_training_executed": false,
+  "holdout_evaluated": false,
+  "original_v5_and_checkpoint_immutability": {
+    "status": "PASS_OLD_ARTIFACTS_UNCHANGED",
+    "v5_files_verified": 200,
+    "v5_manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
+    "v5_us_zip_sha256": "93b2d42cebf3ebfac7b80298f6822fdc4305f7550b73ac1b2bb8d272d3fb3de8",
+    "checkpoint_zips_unchanged": 14,
+    "completed_261_checkpoint": {
+      "filename": "e2-us87-checkpoint-20261106T130711006241Z.zip",
+      "sha256": "a760372a8ef8e704ec428b77a66598451de9e3095bc2a1461acc9063129e8219",
+      "files_in_zip": 785,
+      "retained_trials": 261,
+      "index_sha256": "215e2599685f57b9d86b6bb62691436bdd879f3a9741ecb6c019ba47b4d727b5"
+    },
+    "new_training_or_colab_execution": false
+  },
+  "us_zip_byte_reproducibility": "PASS",
+  "source_lag_and_universe_limits": "AllUS87+QQQ share292sessions2025-06-05..2026-08-04; snapshot PIT and as-traded exchange price/volume not certified. US Alpha158 remains BLOCKED.",
+  "research_only": true,
+  "trade_ready": false,
+  "pit_certified": false
+}
