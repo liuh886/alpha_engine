@@ -1,0 +1,39 @@
+{
+  "status": "ROOT_PATH_MIGRATION_AND_OWNER_NOTEBOOK_REFRESH_ACCEPTED_LOCALLY",
+  "project_drive_directory": "AlphaEngine",
+  "colab_project_path": "/content/drive/MyDrive/AlphaEngine",
+  "root_notebook": "AlphaEngine/\u8fd0\u884c\u6a21\u578b\u63a2\u7d22.ipynb",
+  "root_notebook_sha256": "02af0a08a25c0fccb951e4ad253b1dd0d2df7dcda3234832147773ab0fdf569d",
+  "original_files": 442,
+  "original_total_bytes": 916719479,
+  "regular_files_sha256_verified": 435,
+  "google_native_pointer_paths_and_lengths_verified": 7,
+  "old_source_absent": true,
+  "original_data_and_results_and_deployment_bytes_preserved": true,
+  "runtime_data_specs_rights_hashes_unchanged": true,
+  "remote_sync_and_acl_verified": false,
+  "new_training_or_colab_execution": false,
+  "research_only": true,
+  "trade_ready": false,
+  "pit_certified": false,
+  "deployments": [
+    {
+      "job_id": "us87-exploration-root",
+      "notebook": "AlphaEngine_US87_Model_Exploration_READY.ipynb",
+      "files": 8,
+      "total_bytes": 56157,
+      "deployment_manifest_sha256": "3d6cb1464306c15bf4915822c4bcd1a4914bcb59965c3b08b8be8e0a7311af4a",
+      "all_sizes_and_sha256_readback_match": true,
+      "spec_rights_data_and_runtime_pins_unchanged": true
+    },
+    {
+      "job_id": "us87-validation-root",
+      "notebook": "AlphaEngine_US87_Colab_READY.ipynb",
+      "files": 7,
+      "total_bytes": 31011,
+      "deployment_manifest_sha256": "18ec98b2bf62dd8f660fbd86a1f41eabafa3daf3234904630ba390f2968b5f50",
+      "all_sizes_and_sha256_readback_match": true,
+      "spec_rights_data_and_runtime_pins_unchanged": true
+    }
+  ]
+}

@@ -71,3 +71,18 @@ prior use by other research is NOT_CERTIFIED. Optuna/Bayesian pruning, neural
 architectures, GPU gain, actual Colab execution and remote parity are NOT_RUN or
 not implemented. Owner rights attestation remains distinct from documentary
 vendor proof. Backend/Policy/GitGuardian passed at the frozen runner.
+
+
+## Current Drive root entry (Owner relocation)
+
+Owner requested moving AlphaEngine directly into Drive root. Use
+`AlphaEngine/运行模型探索.ipynb`; its paired current job is
+`AlphaEngine/03_Data/Research_Exchange_P2/colab_jobs/us87-exploration-root`.
+The basic version is `us87-validation-root`. Prior deployment summaries above
+remain historical and their original bytes are retained. See
+`drive-root-relocation.json`, `us87-exploration-root-deployment-manifest.json`
+and `us87-validation-root-deployment-manifest.json`. All 435 ordinary original
+files retained SHA256s; seven native Drive virtual pointers retained relative
+paths/lengths. Current notebook/configuration paths and source/spec/rights hashes
+were validated without new model training or Colab access. Remote sync and ACL
+verification remain outstanding.

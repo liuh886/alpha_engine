@@ -4,6 +4,8 @@
 
 **Latest local execution (2026-11-06):** two actual full-US87 XGBoost trials are ready, a fresh-directory checkpoint restore continues without fitting the completed trial twice, and the notebook's local flow independently reproduces the CLI study hash. Fixed runner `79e1045bf3ed99bab13ef092cbb07af6ebbf8d99` passed Backend/Policy/GitGuardian. Owner confirmed existing cloud-compute permission and explicitly instructed the Agent **not to access Colab**; Owner will operate it personally. A configured private notebook/spec/attestation bundle is saved to Drive Desktop. **Colab execution remains NOT_RUN**, GPU benefit unmeasured, and documentary license proof path not supplied. Keep `research_only=true / trade_ready=false / pit_certified=false`. Immutable v5 and original producer SHA are unchanged.
 
+**Current Owner entry after Drive relocation (2026-11-06):** `G:/My Drive/AlphaEngine/运行模型探索.ipynb`. The project is now directly in Drive root, and the current owner job is `AlphaEngine/03_Data/Research_Exchange_P2/colab_jobs/us87-exploration-root`. The original SHA-named deployments below are retained historical records; use the root entry or new `-root` job. Data/runner/spec/rights pins remain unchanged.
+
 ## Implemented now
 
 - `src/research/v5_isolated_staging.py`: verifies root v5 manifest and US market-history ZIP against two independently pinned SHA256s, invokes the established full archive member verifier and stages real `configs/` + `data/` source files in a **fresh directory outside Git**. It emits a source/sha receipt and rescans all staged files before training. **No silent original-source overwrite, current Git catalog fallback or provider fetch.**
@@ -27,8 +29,8 @@ git fetch origin
 git switch --track origin/feat/p2-e2-colab-batch-foundation-20261106
 uv sync --frozen
 
-$v5 = 'G:/My Drive/03_PROJECTS｜个人项目/AlphaEngine/03_Data/Research_Exchange_P2/input_packages/us87-cn130-20261103-local-v5'
-$private = 'G:/My Drive/03_PROJECTS｜个人项目/AlphaEngine/03_Data/Research_Exchange_P2/agent_e2_work'
+$v5 = 'G:/My Drive/AlphaEngine/03_Data/Research_Exchange_P2/input_packages/us87-cn130-20261103-local-v5'
+$private = 'G:/My Drive/AlphaEngine/03_Data/Research_Exchange_P2/agent_e2_work'
 
 # Avoid writing large/temporary training data into Git or a public folder.
 # Prefer a non-synced local scratch directory for training; Drive is transport/checkpoints.
@@ -233,3 +235,38 @@ local/Colab task hashes/numerical tolerances and actual resource observations;
 only these real cloud runs can close #1369/#1373 acceptance. Keep #1376 stacked
 on #1374; remove temporary CI feature-base filters when retargeting the merged
 stack to main. Do not close the roadmap on preparation alone.
+
+
+## Owner-requested Drive root relocation, 2026-11-06
+
+Moved the complete project from `03_PROJECTS｜个人项目/AlphaEngine` to Drive root
+`AlphaEngine`, verified the old source is absent and retained the original
+**442 files / 916,719,479 bytes**. SHA256 matched for **435 ordinary files**;
+seven Google Docs/Sheets virtual pointers cannot be opened as normal file bytes
+and were checked by relative path and filesystem length. Original data, results,
+ZIP archives and previous deployed job bytes were not changed.
+
+Current direct entry: `G:/My Drive/AlphaEngine/运行模型探索.ipynb`, identical to
+the configured notebook in `colab_jobs/us87-exploration-root`. All paths use
+`/content/drive/MyDrive/AlphaEngine`; model source remains frozen at
+`b3764bab1a4eb694e302053db16426de2e3573fb`. A second relocated basic XGBoost
+job is `colab_jobs/us87-validation-root`, still using its original runner.
+Updated deployments are new versions; SHA-named originals retain every byte.
+Both new notebooks compile, preserve the original source code except configured
+paths, and bind unchanged datasets, study specs, runtime SHA and rights records.
+The current source/manifest/spec/rights hashes and resolved paths were checked.
+No new training or Colab access was needed for this relocation.
+
+- Multi-model job: **8 files / 56,157 bytes**, Manifest SHA256
+  `3d6cb1464306c15bf4915822c4bcd1a4914bcb59965c3b08b8be8e0a7311af4a`.
+- Basic job: **7 files / 31,011 bytes**, Manifest SHA256
+  `18ec98b2bf62dd8f660fbd86a1f41eabafa3daf3234904630ba390f2968b5f50`.
+- Root notebook SHA256:
+  `02af0a08a25c0fccb951e4ad253b1dd0d2df7dcda3234832147773ab0fdf569d`.
+
+All new files passed Drive filesystem size/SHA readback. Remote Drive
+synchronization/ACLs and Colab execution remain unverified; Owner's Drive
+Desktop sync is responsible for upload. Existing historical transfer receipts
+retain their original location statements. Use the
+[relocation receipt](../evidence/p2_e2_2026-11-06/drive-root-relocation.json)
+and new job deployment manifests for current locations.

@@ -1,0 +1,71 @@
+{
+  "schema_version": "p2_e2_owner_model_exploration_deployment_v1",
+  "job_id": "us87-exploration-root",
+  "runner_git_sha": "b3764bab1a4eb694e302053db16426de2e3573fb",
+  "dataset_producer_git_sha": "32c30ef05258a35e4300b6a21ea7a96d0dab17cf",
+  "v5_bundle_manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
+  "history_archive_sha256": "93b2d42cebf3ebfac7b80298f6822fdc4305f7550b73ac1b2bb8d272d3fb3de8",
+  "files": [
+    {
+      "path": "AlphaEngine_US87_Model_Exploration_READY.ipynb",
+      "size_bytes": 22094,
+      "sha256": "02af0a08a25c0fccb951e4ad253b1dd0d2df7dcda3234832147773ab0fdf569d"
+    },
+    {
+      "path": "campaign-plan-summary.json",
+      "size_bytes": 16089,
+      "sha256": "221d111e35521190ac4f2568e451e0d0a4e79daeb3ba5d12b6141f345fb31096"
+    },
+    {
+      "path": "campaign.json",
+      "size_bytes": 5854,
+      "sha256": "eaf26dfe059b4b5aded311938de68b79c338597018a3e572e04d81859962e662"
+    },
+    {
+      "path": "cloud-rights.json",
+      "size_bytes": 1235,
+      "sha256": "68d028983db8b0b3ba07a42d15eb1fa5a3a60bfcf63e20b1ea0e59036e76687a"
+    },
+    {
+      "path": "local-validation-summary.json",
+      "size_bytes": 3180,
+      "sha256": "e1bbe66707ab5c7fab0f557c003c4d514af37ae86c2dff54b3b644297eb15ad1"
+    },
+    {
+      "path": "runtime-code-sha.txt",
+      "size_bytes": 42,
+      "sha256": "228540ef001a7a054589fa83551f984d696ff95236d07563c81f423bf40f84c1"
+    },
+    {
+      "path": "\u5f00\u59cb\u8fd0\u884c.md",
+      "size_bytes": 4939,
+      "sha256": "17d55375cdd9d9779be07ca1c6c1607d9dbdcc3613b9037cd176bef9a0168222"
+    }
+  ],
+  "configurations": 29,
+  "fold_seed_tasks": 261,
+  "trained_model_tasks": 252,
+  "baseline_tasks": 9,
+  "default_chunk_task_budget": 6,
+  "default_chunk_wall_start_budget_seconds": 300,
+  "local_acceptance": "PASS",
+  "actual_colab_execution": "NOT_RUN",
+  "full_search_execution": "NOT_RUN",
+  "owner_manual_operation": true,
+  "cloud_rights_record_basis": "OWNER_ATTESTATION_DOCUMENTARY_PROOF_PATH_NOT_SUPPLIED",
+  "research_only": true,
+  "trade_ready": false,
+  "pit_certified": false,
+  "raw_market_data_included": false,
+  "sensitive_fields_scan": "PASS",
+  "automatic_model_promotion": false,
+  "path_relocation": {
+    "date": "2026-11-06",
+    "project_drive_path": "AlphaEngine",
+    "colab_project_path": "/content/drive/MyDrive/AlphaEngine",
+    "supersedes_deployment_directory": "us87-exploration-b3764bab1a",
+    "supersedes_deployment_manifest_sha256": "d73cf9ffb3d5491a626b58487055ba82a3b292e72c701a38a631e33cb65e11d7",
+    "data_and_runner_and_specs_and_rights_unchanged": true,
+    "new_training_executed": false
+  }
+}
