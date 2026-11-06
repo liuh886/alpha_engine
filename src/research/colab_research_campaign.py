@@ -30,10 +30,21 @@ def _sha(value: Any) -> str:
 def _common_history(spec: dict, data_root: Path, sessions: list[str], last: date) -> dict:
     import yaml
     symbols = yaml.safe_load((data_root / "configs/research_universes/us_selected_equities_v2.yaml").read_text(encoding="utf-8"))["symbols"]
+    from src.research.us87_price_integrity import _audit_symbol
+
     dates = []
+    anomalies = []
     for symbol in [*symbols, "QQQ"]:
         doc = json.loads((data_root / f"data/research/market_evidence/us/symbols/{symbol}.json").read_text(encoding="utf-8"))
         dates.append({bar["time"] for bar in doc["bars"]})
+        anomalies.extend(_audit_symbol(symbol, doc["bars"], spec["study"]["train_start"], str(last)))
+    if anomalies:
+        examples = ", ".join(f'{row["symbol"]}@{row["date"]} ({row["close_ratio"]}x)'
+                             for row in anomalies[:6])
+        raise ExchangeError(
+            f"BLOCKED_PRICE_SCALE_INTEGRITY: {len(anomalies)} adjustment-scale jumps: "
+            f"{examples}. Quarantine source v5; obtain corrected, independently verified "
+            "price data and a new hash-bound bundle before training.")
     common = set.intersection(*dates)
     required = {s for s in sessions if spec["study"]["train_start"] <= s <= str(last)}
     if not required.issubset(common):
@@ -189,9 +200,29 @@ def comparison_report(batch_spec: Path, data_root: Path, output_root: Path) -> d
             else:
                 blocked += 1
         complete = len(observations) == len(trials)
+        by_fold: dict[str, list[dict]] = {}
+        for trial in trials:
+            directory = output_root / batch["batch_id"] / "trials" / trial["trial_id"]
+            if (directory / "trial-result.json").is_file():
+                wrapper = json.loads((directory / "trial-result.json").read_text(encoding="utf-8"))
+                if wrapper["study_status"] == "ready":
+                    by_fold.setdefault(trial["fold_id"], []).append(
+                        json.loads((directory / "study-receipt.json").read_text(encoding="utf-8")))
+        fold_diagnostics = [{
+            "fold_id": fold_id, "ready_seeds": len(fold_rows),
+            "median_net_excess": statistics.median(
+                r["overall_oos_net_excess_return"] for r in fold_rows),
+            "worst_drawdown": min(r["overall_oos_max_drawdown"] for r in fold_rows),
+            "distinct_performance_vectors": len({
+                (r["overall_oos_net_excess_return"], r["overall_oos_max_drawdown"],
+                 r["rank_ic"]) for r in fold_rows}),
+        } for fold_id, fold_rows in sorted(by_fold.items())]
         rows.append({k: cfg[k] for k in ("configuration_id", "candidate_id", "model_family", "feature_set", "phase", "params", "cost_bps", "slippage_bps")} | {
             "planned_tasks": len(trials), "ready_tasks": len(observations), "blocked_tasks": blocked,
             "complete": complete, "eligible_for_validation_ranking": complete and cfg["phase"] == "search",
+            "fold_diagnostics": fold_diagnostics,
+            "seed_repetitions_identical": complete and all(
+                fold["distinct_performance_vectors"] == 1 for fold in fold_diagnostics),
             "median_validation_net_excess": statistics.median(r["overall_oos_net_excess_return"] for r in observations) if observations else None,
             "worst_validation_drawdown": min((r["overall_oos_max_drawdown"] for r in observations), default=None),
             "median_validation_rank_ic": statistics.median(r["rank_ic"] for r in observations) if observations else None})
@@ -204,4 +235,6 @@ def comparison_report(batch_spec: Path, data_root: Path, output_root: Path) -> d
         "model_promoted": False, "trade_ready": False, "pit_certified": False,
         "review_status": "incoming_unreviewed", "research_only": True,
         "limitations": [batch["multiple_comparison_warning"],
-            "Medians across dependent folds/seeds are descriptive and do not certify alpha or independent test performance."]}
+            "Medians across dependent folds/seeds are descriptive and do not certify alpha or independent test performance.",
+            "Identical seed outputs are deterministic repeats, not independent confirmations; inspect fold_diagnostics before selection.",
+            "Scale-integrity gate is a conservative screen, not corporate-action or PIT certification."]}
