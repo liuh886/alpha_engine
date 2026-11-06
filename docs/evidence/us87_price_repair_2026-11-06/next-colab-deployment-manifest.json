@@ -1,0 +1,59 @@
+{
+  "schema_version": "p2_e2_corrected_price_owner_job_v1",
+  "job_id": "us87-v6-price-repair-0c8152496e",
+  "dataset_edition": "us87-cn130-20261103-local-v6-us87-fullrefresh",
+  "dataset_manifest_sha256": "4f8225f3c68ee0886b9b707ca140e91dcb509b739b8548fdc10f258574d3da1a",
+  "us_history_zip_sha256": "b4745e46fc26b0328e22de50e579ebbf1d400996258ea6ebb43c1ff739ed5a1a",
+  "runner_git_sha": "0c8152496ebeeed559ceab9b095594501fca516b",
+  "campaign_spec_sha256": "c68c58283b1dc7619e1da394801892a22e415777196339df5b9219452c519e1e",
+  "batch_id": "us87_colab_model_search_v6_20261103",
+  "run_id": "c027ba478d4386d943ccdd8e960ce733b0744349acb4ed9190a1cf89e57d5f0b",
+  "files": [
+    {
+      "path": "AlphaEngine_US87_V6_READY.ipynb",
+      "size_bytes": 22877,
+      "sha256": "415a4d8cfe0caf88a18ae257abfb467896a869f060f8130cdfa9dcfdb29a853e"
+    },
+    {
+      "path": "campaign-plan-summary.json",
+      "size_bytes": 15980,
+      "sha256": "967f381d68a0abe736d92444b3a49bde1eaaef3e2aac18d6e579b4737369e31c"
+    },
+    {
+      "path": "campaign.json",
+      "size_bytes": 5863,
+      "sha256": "c68c58283b1dc7619e1da394801892a22e415777196339df5b9219452c519e1e"
+    },
+    {
+      "path": "cloud-rights.json",
+      "size_bytes": 1639,
+      "sha256": "c483796940000f1f7e16dcdedffb9aeec76aa72e58eddd3c986aa9cc97377f9e"
+    },
+    {
+      "path": "data-repair-acceptance.json",
+      "size_bytes": 3997,
+      "sha256": "be709f049872b3e19e90b4de81c37f6d1e6c6774d6dfc3ce905f5105d68ff684"
+    },
+    {
+      "path": "runtime-code-sha.txt",
+      "size_bytes": 42,
+      "sha256": "0991f1ff4c01ec92286ef401026b6fcb5655f5b36f2ca1ecf0b0fdf5bd29b4d7"
+    },
+    {
+      "path": "\u5f00\u59cb\u8fd0\u884c.md",
+      "size_bytes": 3213,
+      "sha256": "30eed38b6404a863a52a03390818990bd5efb2a13c56de38dbd50ca76300a756"
+    }
+  ],
+  "training_default_enabled": false,
+  "model_training_executed": false,
+  "old_checkpoint_reuse_allowed": false,
+  "new_checkpoint_parent": "/content/drive/MyDrive/AlphaEngine/03_Data/Research_Exchange_P2/incoming_unreviewed/us87-v6-price-repair-0c8152496e",
+  "planned_tasks": 261,
+  "configurations": 29,
+  "actual_colab_execution": "NOT_RUN",
+  "provider_cloud_rights_basis": "OWNER_ATTESTATION_NOT_INDEPENDENT_VENDOR_CERTIFICATION",
+  "research_only": true,
+  "trade_ready": false,
+  "pit_certified": false
+}

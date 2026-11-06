@@ -1,9 +1,9 @@
 {
   "schema_version": "p2_e2_model_search_campaign_v1",
-  "batch_id": "us87_colab_model_search_v1",
-  "runner_git_sha": "REPLACE_WITH_REVIEWED_40_CHAR_SHA",
-  "v5_bundle_manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
-  "history_archive_sha256": "93b2d42cebf3ebfac7b80298f6822fdc4305f7550b73ac1b2bb8d272d3fb3de8",
+  "batch_id": "us87_colab_model_search_v6_20261103",
+  "runner_git_sha": "0c8152496ebeeed559ceab9b095594501fca516b",
+  "v5_bundle_manifest_sha256": "4f8225f3c68ee0886b9b707ca140e91dcb509b739b8548fdc10f258574d3da1a",
+  "history_archive_sha256": "b4745e46fc26b0328e22de50e579ebbf1d400996258ea6ebb43c1ff739ed5a1a",
   "purpose": "validation_search_only",
   "study": {
     "study_id": "cross_sectional_xgb_v1",
