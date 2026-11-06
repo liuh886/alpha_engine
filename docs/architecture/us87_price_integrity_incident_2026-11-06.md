@@ -56,6 +56,23 @@ Exit status `10` and `BLOCKED_PRICE_SCALE_INTEGRITY` are **expected** for the kn
 
 The same CLI accepts `--data-root /path/to/hash-verified-staged-root` instead of `--archive`. Campaign compilation with `data_root` calls the same per-bar screen automatically, before fitting or issuing any model ranking. Training now fails closed with `BLOCKED_PRICE_SCALE_INTEGRITY` on the known v5.
 
+## Owner/local Agent — first repair command (local only)
+
+The already-merged canonical US price-refresh CLI supports `--full-refresh`. With the **original source CSVs unpacked into a new read-only private directory**, run from this PR checkout:
+
+```bash
+uv run python -m scripts.data.refresh_selected_pool_prices \\
+  --root . --market us \\
+  --source-csv-dir "/PRIVATE/UNPACKED_ORIGINAL_SOURCE/data/csv_source" \\
+  --output-root "/PRIVATE/NEW_EDITION/us_price_refresh" \\
+  --start 2021-01-04 --cutoff 2026-11-03 \\
+  --full-refresh
+```
+
+`/PRIVATE/UNPACKED_ORIGINAL_SOURCE` is the extracted original `market_source_us_41764999985.zip` parent; `/PRIVATE/NEW_EDITION` must be outside Git and have an unused output child. **Do not copy this placeholder verbatim.** Run only under the operator's existing vendor entitlements; a rate-limit, missing 87-symbol coverage, still-contaminated row or mismatched OHLCV must block the edition. **Do not pass `--allow-partial` for the full-US87 research rerun.** This command builds a new isolated producer price output; it does **not** by itself create a compliant new v6 bundle or approve its Colab rights.
+
+When ready, use the existing P2 dataset builder/verification workflow to create a separately named immutable versioned bundle with updated manifests, producer and provider provenance, and all affected derived components. It is **not** valid to patch the original v5 ZIP in-place or to just change SHA strings in a Colab notebook.
+
 ## Repair at the source, not in the portfolio evaluator
 
 1. **Local data agent / owner:** obtain independent provider evidence for both stocks across the affected dates, including raw and adjusted OHLCV, split declarations and **effective trading dates**. Check whether 2026 corporate actions were incorrectly back-adjusted for only part of the historical series; establish whether volume and factor series are on the same scale. Do not mechanically divide or multiply dates based solely on observed ratios. Preserve terms, licenses and provider request receipts.
