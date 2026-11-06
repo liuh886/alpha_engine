@@ -226,6 +226,9 @@ def _retain_trial(td: Path, entry: dict, batch: dict, run_spec: dict,
 
 def plan(spec: dict, data_root: Path | None = None) -> dict[str, Any]:
     """Validate a complete, bounded selection-only search without executing."""
+    from src.research.colab_research_campaign import SCHEMA as CAMPAIGN_SCHEMA, compile_campaign
+    if isinstance(spec, dict) and spec.get("schema_version") == CAMPAIGN_SCHEMA:
+        return compile_campaign(spec, data_root)
     if not isinstance(spec, dict) or spec.get("schema_version") != SCHEMA:
         raise ExchangeError("unsupported batch schema")
     if not isinstance(spec.get("batch_id"), str) or not NAME.fullmatch(spec["batch_id"]):
@@ -330,11 +333,15 @@ def plan(spec: dict, data_root: Path | None = None) -> dict[str, Any]:
 
 
 def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
-            resume: bool = False, max_new_trials: int | None = None) -> dict:
+            resume: bool = False, max_new_trials: int | None = None,
+            max_wall_seconds: int | None = None) -> dict:
     """Run existing Study Workspace specs, checkpoint one immutable receipt per trial."""
     if max_new_trials is not None and (not isinstance(max_new_trials, int)
                                        or not 1 <= max_new_trials <= 100):
         raise ExchangeError("max_new_trials must be within 1..100")
+    if max_wall_seconds is not None and (type(max_wall_seconds) is not int or not 1 <= max_wall_seconds <= 7200):
+        raise ExchangeError("wall-time start budget must be within 1..7200 seconds")
+    invocation_start = time.perf_counter()
     batch = plan(json.loads(batch_spec.read_text(encoding="utf-8")))
     if _git_head() != batch["runner_git_sha"]:
         raise ExchangeError("runner checkout revision mismatch")
@@ -362,6 +369,8 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
     new = 0
     blocked = 0
     recovered = 0
+    failed_in_sequence = 0
+    stop_reason = "complete"
     for entry in batch["trials"]:
         td = path / "trials" / entry["trial_id"]
         run_spec = {**entry["study"], "symbols": symbols}
@@ -380,6 +389,13 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
             blocked += status == "blocked"
             continue
         if max_new_trials is not None and new >= max_new_trials:
+            stop_reason = "chunk_trial_budget"
+            continue
+        if max_wall_seconds is not None and time.perf_counter() - invocation_start >= max_wall_seconds:
+            stop_reason = "wall_time_start_budget"
+            continue
+        if failed_in_sequence >= 3:
+            stop_reason = "consecutive_model_failure_budget"
             continue
         if cfg_path.exists():
             if json.loads(cfg_path.read_text(encoding="utf-8")) != run_spec:
@@ -388,7 +404,21 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
             _write_new(cfg_path, run_spec)
         load_study_spec(cfg_path)  # canonical Study Workspace validation
         started = time.perf_counter()
-        result = run_study(cfg_path, data_root, output=out)
+        try:
+            result = run_study(cfg_path, data_root, output=out)
+        except Exception as exc:
+            # Per-trial research failures remain immutable evidence. The source
+            # and configuration gates above still fail before any model starts.
+            if out.exists():
+                raise
+            failure = {"study_id": run_spec["study_id"], "status": "blocked",
+                "experiment_receipt": run_spec, "git_commit": batch["runner_git_sha"],
+                "model_fitted": False, "research_only": True, "trade_ready": False, "pit_certified": False,
+                "blocked_reasons": [{"code": "model_execution_failed", "exception_type": type(exc).__name__,
+                                     "detail": str(exc)[:500]}]}
+            failure["study_hash"] = _digest(_canonical(failure))
+            _write_new(out, failure)
+            result = {"status": "blocked"}
         elapsed = time.perf_counter() - started
         if result["status"] not in ("ready", "blocked"):
             raise ExchangeError("unexpected study receipt status")
@@ -396,12 +426,17 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
         new += 1
         if status == "blocked":
             blocked += 1
+            failed_in_sequence += 1
+        else:
+            failed_in_sequence = 0
     pending = len(batch["trials"]) - completed - new
     return {"status": ("BATCH_PARTIAL_CHECKPOINT_READY" if pending else
                        "BATCH_EXECUTED_RESEARCH_ONLY"), "batch_id": batch["batch_id"],
             "trials": len(batch["trials"]), "resumed_trials": completed,
             "new_trials": new, "pending_trials": pending, "blocked_trials": blocked,
             "recovered_completed_trials": recovered,
+            "stop_reason": stop_reason if pending else "complete",
+            "elapsed_seconds": time.perf_counter() - invocation_start,
             "review_status": "incoming_unreviewed",
             "trade_ready": False, "pit_certified": False}
 
@@ -409,7 +444,7 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest="action", required=True)
-    for cmd in ("plan", "run", "checkpoint", "restore"):
+    for cmd in ("plan", "run", "checkpoint", "restore", "report"):
         subp = sub.add_parser(cmd)
         subp.add_argument("--batch-spec", required=True, type=Path)
         if cmd != "plan":
@@ -418,6 +453,7 @@ def main(argv: list[str] | None = None) -> int:
         if cmd == "run":
             subp.add_argument("--resume", action="store_true")
             subp.add_argument("--max-new-trials", type=int)
+            subp.add_argument("--max-wall-seconds", type=int)
         if cmd == "checkpoint":
             subp.add_argument("--destination", required=True, type=Path)
         if cmd == "restore":
@@ -437,10 +473,14 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(restore(batch_spec=args.batch_spec, data_root=args.data_root,
                 output_root=args.output_root, checkpoint_root=args.checkpoint_root,
                 expected_index_sha256=args.expected_index_sha256), indent=2))
+        elif args.action == "report":
+            from src.research.colab_research_campaign import comparison_report
+            print(json.dumps(comparison_report(args.batch_spec, args.data_root, args.output_root), indent=2))
         else:
             print(json.dumps(execute(batch_spec=args.batch_spec, data_root=args.data_root,
                                      output_root=args.output_root, resume=args.resume,
-                                     max_new_trials=args.max_new_trials), indent=2))
+                                     max_new_trials=args.max_new_trials,
+                                     max_wall_seconds=args.max_wall_seconds), indent=2))
         return 0
     except (ExchangeError, OSError, ValueError, KeyError, TypeError,
             subprocess.CalledProcessError) as exc:

@@ -193,6 +193,28 @@ def test_checkpoint_refuses_tampered_inner_file_before_copy(retained_trial, tmp_
     assert not (tmp_path / "fresh").exists()
 
 
+def test_failed_model_attempts_are_retained_and_stop_after_failure_budget(retained_trial):
+    batch_file, data, outputs = retained_trial
+    with patch("src.research.study_workspace.run_study", side_effect=ValueError("declared candidate fit failed")):
+        result = execute(batch_spec=batch_file, data_root=data, output_root=outputs,
+                         resume=True, max_new_trials=7)
+    assert result["resumed_trials"] == 1 and result["blocked_trials"] == 3
+    assert result["stop_reason"] == "consecutive_model_failure_budget"
+    assert len(list(outputs.rglob("trial-result.json"))) == 4
+    failed = [json.loads(p.read_text()) for p in outputs.rglob("study-receipt.json")
+              if json.loads(p.read_text())["status"] == "blocked"]
+    assert all(r["blocked_reasons"][0]["code"] == "model_execution_failed" for r in failed)
+
+
+def test_wall_time_budget_stops_starting_new_trials_and_preserves_prior_results(retained_trial):
+    batch_file, data, outputs = retained_trial
+    with patch("src.research.colab_experiment_batch.time.perf_counter", side_effect=[0, 2, 2, 2, 2, 2, 2, 2, 2]):
+        result = execute(batch_spec=batch_file, data_root=data, output_root=outputs,
+                         resume=True, max_new_trials=7, max_wall_seconds=1)
+    assert result["new_trials"] == 0 and result["resumed_trials"] == 1
+    assert result["stop_reason"] == "wall_time_start_budget"
+
+
 class BatchPlanningTests(unittest.TestCase):
     def test_stable_full_scope_plan(self) -> None:
         first = plan(spec())
