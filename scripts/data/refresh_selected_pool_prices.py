@@ -249,11 +249,20 @@ def _slice_requested_window(
     return result
 
 
-def _audit_source(path: Path, symbol: str) -> dict[str, Any]:
+def _audit_source(path: Path, symbol: str, *, market: str | None = None) -> dict[str, Any]:
     if not path.is_file():
         return {"symbol": symbol, "status": "missing", "errors": ["missing"]}
     try:
         frame = _normalize_frame(pd.read_csv(path), symbol=symbol)
+        if market == "us":
+            # A current last_date does not establish consistent historical
+            # adjusted OHLCV after a provider's split restatement.
+            from src.research.us87_price_integrity import audit_dataframe
+            events = audit_dataframe(frame, symbol=symbol)
+            if events:
+                raise ValueError(
+                    "BLOCKED_PRICE_SCALE_INTEGRITY: "
+                    + ", ".join(f'{e["date"]} ({e["close_ratio"]}x)' for e in events[:6]))
     except Exception as exc:
         return {
             "symbol": symbol,
@@ -598,7 +607,7 @@ def refresh_selected_pool_prices(
         raise FileExistsError(f"output root is not empty: {destination}")
 
     before = {
-        symbol: _audit_source(source_dir / f"{symbol}.csv", symbol)
+        symbol: _audit_source(source_dir / f"{symbol}.csv", symbol, market=market_key)
         for symbol in required
     }
     targets = (
@@ -854,6 +863,14 @@ def refresh_selected_pool_prices(
                     start=start,
                     cutoff=cutoff,
                 )
+                if market_key == "us":
+                    from src.research.us87_price_integrity import audit_dataframe
+                    events = audit_dataframe(frame, symbol=symbol)
+                    if events:
+                        raise ValueError(
+                            "BLOCKED_PRICE_SCALE_INTEGRITY: vendor full-history "
+                            "or incremental price response remains inconsistent: "
+                            + ", ".join(e["date"] for e in events[:6]))
                 _write_csv(output_path, frame)
             except Exception as exc:
                 failure = {
@@ -958,7 +975,7 @@ def refresh_selected_pool_prices(
             symbol for symbol in required if symbol not in set(quarantined_symbols)
         ]
         after = {
-            symbol: _audit_source(csv_out / f"{symbol}.csv", symbol)
+            symbol: _audit_source(csv_out / f"{symbol}.csv", symbol, market=market_key)
             for symbol in covered
         }
         blocked = [
