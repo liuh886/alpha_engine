@@ -34,7 +34,7 @@ class ResearchStudyError(ValueError):
 
 @dataclass(frozen=True)
 class CrossSectionalXGBConfig:
-    """Configuration for cross-sectional XGBoost ranking study."""
+    """Legacy study schema with an explicit native-ranker or rule model family."""
 
     study_id: str
     hypothesis_name: str

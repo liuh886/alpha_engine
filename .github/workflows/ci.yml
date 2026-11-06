@@ -19,7 +19,7 @@ on:
       - '.github/workflows/strategy-signal-delivery-outbox.yml'
   pull_request:
     # Validate the dependent Colab E2 PR before its physical-data base PR lands.
-    branches: [main, feat/p2-colab-research-exchange-mvp-20261104]
+    branches: [main, feat/p2-colab-research-exchange-mvp-20261104, feat/p2-e2-colab-batch-foundation-20261106]
     paths:
       - 'src/**'
       - 'tests/**'
@@ -97,6 +97,7 @@ jobs:
           src/research/e1a_price_preflight.py
           src/research/v5_isolated_staging.py
           src/research/colab_experiment_batch.py
+          src/research/colab_research_campaign.py
           src/data/fundamentals/ashare_public_financials.py
           tests/test_cloud_exchange.py
           tests/test_comprehensive_dataset.py
@@ -106,6 +107,7 @@ jobs:
           tests/test_e1a_price_preflight.py
           tests/test_v5_isolated_staging.py
           tests/test_colab_experiment_batch.py
+          tests/test_colab_research_campaign.py
           src/research/cross_sectional_experiment_runner.py
           src/research/ranker_execution.py
           src/research/ranker_training.py
@@ -237,6 +239,7 @@ jobs:
           tests/test_e1a_price_preflight.py
           tests/test_v5_isolated_staging.py
           tests/test_colab_experiment_batch.py
+          tests/test_colab_research_campaign.py
           tests/test_cross_sectional_experiment_runner.py
           tests/test_ranker_training.py
           tests/test_formal_baseline_onboarding.py

@@ -1,4 +1,4 @@
-"""Cross-Sectional XGBoost Ranking Study Execution Module.
+"""Shared cross-sectional study evaluation under the legacy XGBoost study ID.
 
 Governed under Track B and ADR-0005.
 Implements institutional-grade causal simulation for tree-based ranking:
@@ -244,7 +244,7 @@ def run_cross_sectional_xgb_study(
     else:
         ranker = fit_xgb_native_daily_ranker(X_train, y_train, groups_train, calibration=calib)
         raw_scores = ranker.model.get_score(importance_type="gain")
-    total_gain = sum(raw_scores.values()) if raw_scores else 1.0
+    total_gain = float(sum(raw_scores.values())) or 1.0
     feature_importance = {k: round(v / total_gain, 4) for k, v in sorted(raw_scores.items())}
 
     # 5. Temporal Causality Setup: In-Sample Anchor Session T_anchor
