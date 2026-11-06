@@ -111,3 +111,34 @@ def test_common_history_blocks_before_any_fitting(tmp_path):
         (root / rel).write_text(data)
     outcome = _common_history(spec, root, sessions, date(2026, 5, 5))
     assert outcome["common_sessions"] == 3
+
+def test_upstream_csv_refresh_replaces_dirty_history_instead_of_incremental_append(tmp_path):
+    import pandas as pd
+    from scripts.data.refresh_selected_pool_prices import _audit_source, _source_needs_refresh
+    from src.research.us87_price_integrity import audit_dataframe
+
+    csv = tmp_path / "KLAC.csv"
+    rows = [bar(day, close) for day, close in zip(
+        ("2026-05-01", "2026-05-04", "2026-05-05"),
+        (1000.0, 100.0, 1020.0))]
+    for row in rows:
+        row["date"] = row.pop("time")
+        row["amount"] = row["close"] * row["volume"]
+        row["factor"] = 1.0
+    pd.DataFrame(rows).to_csv(csv, index=False)
+
+    before = _audit_source(csv, "KLAC", market="us")
+    assert before["status"] == "invalid"
+    assert "BLOCKED_PRICE_SCALE_INTEGRITY" in before["errors"][0]
+    assert _source_needs_refresh(before, cutoff="2026-05-05")
+    # A short incremental tail cannot clean contaminated earlier observations.
+    assert len(audit_dataframe(pd.read_csv(csv).assign(
+        date=lambda d: pd.to_datetime(d["date"])), symbol="KLAC")) == 2
+
+    # Model a properly re-fetched full adjusted-price edition from a provider.
+    rows[0].update(open=100, close=100, high=101, low=99)
+    rows[2].update(open=102, close=102, high=103.02, low=100.98)
+    pd.DataFrame(rows).to_csv(csv, index=False)
+    after = _audit_source(csv, "KLAC", market="us")
+    assert after["status"] == "ready"
+    assert not _source_needs_refresh(after, cutoff="2026-05-05")
