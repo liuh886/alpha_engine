@@ -54,9 +54,10 @@ class CrossSectionalXGBConfig:
     slippage_bps: float
     xgb_params: dict[str, Any]
     features: tuple[str, ...] = ("return_5d", "return_20d", "volatility_20d", "volume_ratio_20d")
+    model_family: str = "xgboost"
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "study_id": self.study_id,
             "hypothesis_name": self.hypothesis_name,
             "hypothesis_description": self.hypothesis_description,
@@ -76,6 +77,9 @@ class CrossSectionalXGBConfig:
             "xgb_params": dict(self.xgb_params),
             "features": list(self.features),
         }
+        if self.model_family != "xgboost":
+            result["model_family"] = self.model_family
+        return result
 
 
 @dataclass(frozen=True)
@@ -387,7 +391,7 @@ def load_study_spec(path: Path) -> WalkForwardConfig | CrossSectionalXGBConfig |
 
     elif study_id == DEFAULT_XGB_CONFIG.study_id:
         allowed = {f.name for f in fields(CrossSectionalXGBConfig)}
-        if set(raw) != allowed:
+        if set(raw) not in (allowed, allowed - {"model_family"}):
             raise ResearchStudyError(f"study fields mismatch: missing={sorted(allowed - set(raw))}, "
                                      f"unknown={sorted(set(raw) - allowed)}")
         if raw["market"] != "us" or raw["pool_id"] != "us_selected_equities_v2":
@@ -404,6 +408,22 @@ def load_study_spec(path: Path) -> WalkForwardConfig | CrossSectionalXGBConfig |
             raise ResearchStudyError("xgb_params must be a non-empty dictionary")
         if not isinstance(raw.get("features"), list) or not raw["features"]:
             raise ResearchStudyError("features must be a non-empty list")
+        if (len(set(raw["features"])) != len(raw["features"]) or
+                set(raw["features"]) - set(DEFAULT_XGB_CONFIG.features)):
+            raise ResearchStudyError("features must be unique versioned OHLCV feature IDs")
+        if raw.get("model_family", "xgboost") not in ("xgboost", "lightgbm", "momentum_20d"):
+            raise ResearchStudyError("unsupported cross-sectional model family")
+        family = raw.get("model_family", "xgboost")
+        param_names = {
+            "xgboost": {"n_gain_bins", "num_boost_round", "max_depth", "learning_rate", "seed"},
+            "lightgbm": {"n_gain_bins", "num_boost_round", "max_depth", "learning_rate", "seed",
+                         "num_leaves", "min_data_in_leaf"},
+            "momentum_20d": {"seed"},
+        }
+        if set(raw["xgb_params"]) - param_names[family]:
+            raise ResearchStudyError("parameters are not supported by this model family")
+        if family == "momentum_20d" and raw["features"] != ["return_20d"]:
+            raise ResearchStudyError("momentum baseline uses exactly return_20d")
         if int(raw["top_k"]) <= 0 or int(raw["top_k"]) > len(raw["symbols"]):
             raise ResearchStudyError("top_k must be positive and <= len(symbols)")
         return CrossSectionalXGBConfig(
@@ -425,6 +445,7 @@ def load_study_spec(path: Path) -> WalkForwardConfig | CrossSectionalXGBConfig |
             slippage_bps=float(raw["slippage_bps"]),
             xgb_params=dict(raw["xgb_params"]),
             features=tuple(raw["features"]),
+            model_family=raw.get("model_family", "xgboost"),
         )
 
     elif study_id == DEFAULT_FACTOR_EXPLORATION_CONFIG.study_id:

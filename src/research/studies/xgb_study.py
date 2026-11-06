@@ -63,6 +63,7 @@ def _get_code_source_sha256(root: Path) -> dict[str, str]:
         "study_workspace": (Path(__file__).resolve().parents[1] / "study_workspace.py").resolve(),
         "research_data_slice": (Path(__file__).resolve().parents[2] / "data" / "research_slice.py").resolve(),
         "xgb_native_calibration": (Path(__file__).resolve().parents[1] / "xgb_native_calibration.py").resolve(),
+        "daily_ranker_model": (Path(__file__).resolve().parents[1] / "daily_ranker_model.py").resolve(),
         "walkforward_pipeline": (Path(__file__).resolve().parents[1] / "walkforward" / "pipeline.py").resolve(),
     }
     return {
@@ -106,6 +107,15 @@ def run_cross_sectional_xgb_study(
     )
     test_res = get_research_data_slice(test_req, root=root)
 
+    # Inference context includes embargo sessions without using their labels for
+    # fitting. Concatenating only train+test would skip those days in features.
+    context_req = DataSliceRequest(
+        market=cfg.market, pool_id=cfg.pool_id, symbols=cfg.symbols,
+        start_date=cfg.train_start, end_date=cfg.test_end,
+        as_of_cutoff=cfg.as_of_cutoff, price_mode=cfg.price_mode,
+        required_fields=("open", "high", "low", "close", "volume"),
+    )
+    context_res = get_research_data_slice(context_req, root=root)
     # 3. Fetch Benchmark slices (both train and test for continuous anchoring)
     bench_req = DataSliceRequest(
         market=cfg.market,
@@ -120,7 +130,8 @@ def run_cross_sectional_xgb_study(
     bench_res = get_research_data_slice(bench_req, root=root)
 
     blocked = []
-    for s, name in ((train_res, "train_slice"), (test_res, "test_slice"), (bench_res, "benchmark_slice")):
+    for s, name in ((train_res, "train_slice"), (test_res, "test_slice"),
+                    (context_res, "inference_context"), (bench_res, "benchmark_slice")):
         if s.receipt.get("status") != "ready" or s.data is None:
             reasons = s.receipt.get("blocked_reasons", [])
             if reasons:
@@ -208,7 +219,7 @@ def run_cross_sectional_xgb_study(
             rows_y.append(float(t_fwd5_rank.loc[d, sym]))
         groups_train.append(len(cfg.symbols))
 
-    X_train = pd.DataFrame(rows_x)
+    X_train = pd.DataFrame(rows_x).loc[:, list(cfg.features)]
     y_train = pd.Series(rows_y)
 
     calib = XGBNativeCalibration(
@@ -218,16 +229,30 @@ def run_cross_sectional_xgb_study(
         learning_rate=float(cfg.xgb_params.get("learning_rate", 0.05)),
         seed=int(cfg.xgb_params.get("seed", 42)),
     )
-    ranker = fit_xgb_native_daily_ranker(X_train, y_train, groups_train, calibration=calib)
-    raw_scores = ranker.model.get_score(importance_type="gain")
+    ranker: Any
+    if cfg.model_family == "lightgbm":
+        from src.research.daily_ranker_model import fit_lgbm_daily_ranker
+        native = {k: v for k, v in cfg.xgb_params.items() if k not in ("n_gain_bins", "num_boost_round")}
+        native.update(deterministic=True, force_col_wise=True, num_threads=2)
+        ranker = fit_lgbm_daily_ranker(X_train, y_train, groups_train,
+            n_gain_bins=int(cfg.xgb_params.get("n_gain_bins", 5)), params=native,
+            num_boost_round=int(cfg.xgb_params.get("num_boost_round", 20)))
+        raw_scores = dict(zip(X_train.columns, ranker.model.feature_importance(importance_type="gain")))
+    elif cfg.model_family == "momentum_20d":
+        ranker = None
+        raw_scores = {"return_20d": 1.0}
+    else:
+        ranker = fit_xgb_native_daily_ranker(X_train, y_train, groups_train, calibration=calib)
+        raw_scores = ranker.model.get_score(importance_type="gain")
     total_gain = sum(raw_scores.values()) if raw_scores else 1.0
     feature_importance = {k: round(v / total_gain, 4) for k, v in sorted(raw_scores.items())}
 
     # 5. Temporal Causality Setup: In-Sample Anchor Session T_anchor
-    train_sessions = sorted(train_df["time"].unique())
+    context_df = context_res.data
+    train_sessions = sorted(context_df["time"].unique())
     test_sessions = sorted(test_res.data["time"].unique())
 
-    prior_anchor_sessions = [s for s in train_sessions if s <= cfg.train_end and s < cfg.test_start]
+    prior_anchor_sessions = [s for s in train_sessions if s < cfg.test_start]
     if not prior_anchor_sessions:
         payload = {
             "schema_version": "1.0",
@@ -253,8 +278,8 @@ def run_cross_sectional_xgb_study(
     all_sim_sessions = [t_anchor, *test_sessions]
 
     # Warmup feature generation combining IS tail (>= 30 sessions prior to test) with test data
-    warmup_sessions_tail = train_sessions[-35:]
-    warmup_df = train_df[train_df["time"].isin(warmup_sessions_tail)]
+    warmup_sessions_tail = prior_anchor_sessions[-35:]
+    warmup_df = context_df[context_df["time"].isin(warmup_sessions_tail)]
     full_eval_df = pd.concat([warmup_df, test_res.data], ignore_index=True).drop_duplicates(subset=["symbol", "time"])
 
     full_close = full_eval_df.pivot(index="time", columns="symbol", values="close")
@@ -276,8 +301,13 @@ def run_cross_sectional_xgb_study(
                 "volatility_20d": float(f_vol20.loc[sess, sym]),
                 "volume_ratio_20d": float(f_vol_ratio20.loc[sess, sym]),
             })
-        dmat = xgb.DMatrix(pd.DataFrame(sess_features))
-        preds = ranker.model.predict(dmat)
+        matrix = pd.DataFrame(sess_features).loc[:, list(cfg.features)]
+        if cfg.model_family == "momentum_20d":
+            preds = f_ret20.loc[sess, list(cfg.symbols)].to_numpy()
+        elif cfg.model_family == "lightgbm":
+            preds = ranker.model.predict(matrix)
+        else:
+            preds = ranker.model.predict(xgb.DMatrix(matrix))
         score_rows[sess] = {sym: float(preds[i]) for i, sym in enumerate(cfg.symbols)}
 
     oos_scores_df = pd.DataFrame.from_dict(score_rows, orient="index")
@@ -405,10 +435,15 @@ def run_cross_sectional_xgb_study(
         "experiment_receipt": cfg.to_dict(),
         "train_data_hash": train_res.receipt.get("data_hash"),
         "test_data_hash": test_res.receipt.get("data_hash"),
-        "training_sessions_count": len(valid_train_dates),
-        "training_row_symbol_count": len(X_train),
-        "training_first_session": str(valid_train_dates[0]),
-        "training_last_session": str(valid_train_dates[-1]),
+        "inference_context_hash": context_res.receipt.get("data_hash"),
+        "model_family": cfg.model_family,
+        "model_fitted": cfg.model_family != "momentum_20d",
+        "inference_anchor_session": str(t_anchor),
+        "training_sessions_count": len(valid_train_dates) if ranker is not None else 0,
+        "training_row_symbol_count": len(X_train) if ranker is not None else 0,
+        "training_available_sessions_count": len(valid_train_dates),
+        "training_first_session": str(valid_train_dates[0]) if ranker is not None else None,
+        "training_last_session": str(valid_train_dates[-1]) if ranker is not None else None,
         "feature_lookback_sessions": 20,
         "label_horizon_sessions": 5,
         "oos_sessions_count": len(test_sessions),
