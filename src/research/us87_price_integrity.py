@@ -78,6 +78,21 @@ def _audit_symbol(symbol: str, bars: list[dict], start: str, end: str) -> list[d
     return events
 
 
+def audit_dataframe(frame: Any, *, symbol: str) -> list[dict]:
+    """Reuse the same close-scale and OHLCV check on normalized provider CSV rows."""
+    if frame.empty:
+        raise ExchangeError(f"{symbol}: empty normalized price frame")
+    rows = []
+    for record in frame.to_dict(orient="records"):
+        day = record["date"]
+        date_string = day.date().isoformat() if hasattr(day, "date") else str(day)[:10]
+        rows.append({
+            "time": date_string,
+            **{key: record[key] for key in ("open", "high", "low", "close", "volume")},
+        })
+    return _audit_symbol(symbol, rows, rows[0]["time"], rows[-1]["time"])
+
+
 def audit_source(*, read_text: Callable[[str], str], symbols: list[str],
                  start_date: str, end_date: str, source_sha256: str | None = None) -> dict[str, Any]:
     """Call with a stable, explicitly selected archive or staged data root."""
