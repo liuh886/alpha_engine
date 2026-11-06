@@ -118,6 +118,41 @@ def test_phase2_xgb_study_run_and_causal_simulation(tmp_path: Path) -> None:
     assert inspected["oos_sessions_count"] > 0
 
 
+@pytest.mark.parametrize("family", ["lightgbm", "momentum_20d"])
+def test_shared_study_supports_declared_family_without_new_evaluator(tmp_path, family):
+    spec = tmp_path / "study.json"
+    initialize_study(spec, template="cross_sectional_xgb_v1")
+    config = json.loads(spec.read_text())
+    config["model_family"] = family
+    if family == "momentum_20d":
+        config["features"] = ["return_20d"]
+        config["xgb_params"] = {"seed": 42}
+    else:
+        config["xgb_params"]["num_leaves"] = 7
+    spec.write_text(json.dumps(config))
+    output = tmp_path / "receipt.json"
+    assert run_study(spec, root=ROOT, output=output)["status"] == "ready"
+    receipt = json.loads(output.read_text())
+    assert receipt["model_family"] == family
+    assert receipt["model_fitted"] == (family == "lightgbm")
+    assert receipt["training_row_symbol_count"] > 0 if family == "lightgbm" else receipt["training_row_symbol_count"] == 0
+    assert receipt["experiment_receipt"]["model_family"] == family
+
+
+def test_embargo_context_preserves_latest_prevalidation_anchor_and_gap_prices(tmp_path):
+    spec = tmp_path / "study.json"
+    initialize_study(spec, template="cross_sectional_xgb_v1")
+    config = json.loads(spec.read_text())
+    config["train_end"] = "2024-12-20"
+    spec.write_text(json.dumps(config))
+    output = tmp_path / "receipt.json"
+    assert run_study(spec, root=ROOT, output=output)["status"] == "ready"
+    receipt = json.loads(output.read_text())
+    assert receipt["inference_anchor_session"] == "2024-12-31"
+    assert receipt["training_last_session"] < "2024-12-20"
+    assert receipt["inference_context_hash"]
+
+
 def test_phase2_factor_exploration_run_and_inspect(tmp_path: Path) -> None:
     spec_path = tmp_path / "factor_spec.json"
     initialize_study(spec_path, template="factor_exploration_v1")

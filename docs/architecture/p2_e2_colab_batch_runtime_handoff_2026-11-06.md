@@ -4,6 +4,8 @@
 
 **Latest local execution (2026-11-06):** two actual full-US87 XGBoost trials are ready, a fresh-directory checkpoint restore continues without fitting the completed trial twice, and the notebook's local flow independently reproduces the CLI study hash. Fixed runner `79e1045bf3ed99bab13ef092cbb07af6ebbf8d99` passed Backend/Policy/GitGuardian. Owner confirmed existing cloud-compute permission and explicitly instructed the Agent **not to access Colab**; Owner will operate it personally. A configured private notebook/spec/attestation bundle is saved to Drive Desktop. **Colab execution remains NOT_RUN**, GPU benefit unmeasured, and documentary license proof path not supplied. Keep `research_only=true / trade_ready=false / pit_certified=false`. Immutable v5 and original producer SHA are unchanged.
 
+**Current Owner entry after Drive relocation (2026-11-06):** `G:/My Drive/AlphaEngine/运行模型探索.ipynb`. The project is now directly in Drive root, and the current owner job is `AlphaEngine/03_Data/Research_Exchange_P2/colab_jobs/us87-exploration-root`. The original SHA-named deployments below are retained historical records; use the root entry or new `-root` job. Data/runner/spec/rights pins remain unchanged.
+
 ## Implemented now
 
 - `src/research/v5_isolated_staging.py`: verifies root v5 manifest and US market-history ZIP against two independently pinned SHA256s, invokes the established full archive member verifier and stages real `configs/` + `data/` source files in a **fresh directory outside Git**. It emits a source/sha receipt and rescans all staged files before training. **No silent original-source overwrite, current Git catalog fallback or provider fetch.**
@@ -27,8 +29,8 @@ git fetch origin
 git switch --track origin/feat/p2-e2-colab-batch-foundation-20261106
 uv sync --frozen
 
-$v5 = 'G:/My Drive/03_PROJECTS｜个人项目/AlphaEngine/03_Data/Research_Exchange_P2/input_packages/us87-cn130-20261103-local-v5'
-$private = 'G:/My Drive/03_PROJECTS｜个人项目/AlphaEngine/03_Data/Research_Exchange_P2/agent_e2_work'
+$v5 = 'G:/My Drive/AlphaEngine/03_Data/Research_Exchange_P2/input_packages/us87-cn130-20261103-local-v5'
+$private = 'G:/My Drive/AlphaEngine/03_Data/Research_Exchange_P2/agent_e2_work'
 
 # Avoid writing large/temporary training data into Git or a public folder.
 # Prefer a non-synced local scratch directory for training; Drive is transport/checkpoints.
@@ -148,3 +150,123 @@ frozen runner SHA passed. Evidence:
 [deployment manifest](../evidence/p2_e2_2026-11-06/owner-run-deployment-manifest.json).
 No Colab access by the Agent, broad automatic sweep, model promotion, frontend
 change or original v5 mutation occurred. PR remains Draft and #1373 stays open.
+
+
+## Current multi-model preparation — Owner-directed expansion, PR #1376
+
+This section supersedes the initial slice's XGBoost-only workload restriction;
+its immutable data, rights and evidence boundaries still apply. Issue #1373
+remains the roadmap authority. Owner will operate Colab personally; the Agent
+has not accessed it. The prior #1374 deployment and all v5 bytes are unchanged.
+
+Frozen runtime: `b3764bab1a4eb694e302053db16426de2e3573fb`. A specification
+compiler adds XGBoost, existing LightGBM and a fixed 20-day momentum comparator
+to the same Study Workspace, native adapters and causal simulator. Legacy
+`cross_sectional_xgb_v1` XGBoost specs keep their original serialized form;
+non-default model families are explicit in specs and every new receipt. No new
+trainer, model registry or scheduler was introduced. The shared evaluator now
+uses real embargo-period inference context and the last actual pre-validation
+session as its anchor; training labels remain restricted to train_end. This
+fix prevents a skipped-price gap from becoming a multi-day first test return.
+
+The executable example is
+[`p2_e2_colab_us87_model_search.example.json`](../product/examples/p2_e2_colab_us87_model_search.example.json).
+It freezes **29 configurations / 261 fold-seed tasks** (252 model fits and 9
+rule-baseline evaluations), including 12 pre-sampled XGBoost and 12 LightGBM
+parameter configurations, controlled full/momentum/risk-liquidity feature
+comparisons and higher-cost stress. The compiler deterministically samples
+without replacement, not Optuna/Bayesian/pruning. Each configuration uses three
+expanding chronological folds × seeds 17/42/123. At least five XNYS sessions
+separate train_end from validation. July 1–August 4, 2026 is excluded from every
+search cutoff; historical non-consumption is explicitly **NOT_CERTIFIED**.
+
+[`colab_e2_model_exploration.ipynb`](../../notebooks/colab_e2_model_exploration.ipynb)
+retains public opt-ins OFF and source/spec/rights/code/environment pins. Default
+owner chunks start at most six new tasks and stop starting work after 300 seconds;
+a running native fit may complete later. Three consecutive model exceptions
+stop new attempts and preserve blocked receipts. Reports retain incomplete and
+failed candidates; a search configuration enters validation ranking only after
+all nine tasks are ready. Scores are descriptive, never final-test admission.
+
+Single-ZIP checkpoint transport wraps the existing strict sealed inventory and
+20 MiB uncompressed result budget, reducing Drive small-file writes. Both ZIP
+and inner-index SHA256 must be independently provided on fresh-session restore;
+unsafe members, changed identities, unexpected files and modified receipts are
+rejected before final output copy. ZIPs contain specs/receipts, not source bars
+or model weights. An interruption within a native fit restarts that unfinished
+trial; completed atomic studies are recovered without refitting.
+
+Actual final-code acceptance: **107 relevant tests PASS**, Ruff PASS, Mypy PASS;
+Backend, Policy and GitGuardian PASS. A three-task real local pilot retained
+one rule baseline, exported/restored one ZIP into fresh outputs, skipped the
+retained task and fitted XGBoost/LightGBM. Each trained model used 114 effective
+training sessions / 9,918 row-symbol observations and 39 validation sessions;
+all three were ready. Prior bytes were unchanged. The 17-cell notebook local
+flow then restored that exact pilot, fitted the two models and generated the
+comparison table/figure and new ZIP; matching CLI/notebook study hashes passed.
+Mount and clone/install were explicitly substituted with local equivalents;
+actual model/evidence code was unchanged. HTML/table and figure were inspected.
+
+Owner delivery: private Drive Desktop logical exchange
+`colab_jobs/us87-exploration-b3764bab1a`, **8 files / 55,447 bytes**: configured
+`AlphaEngine_US87_Model_Exploration_READY.ipynb`, campaign/plan summary, rights
+record, runtime SHA, local validation, Chinese instructions and total manifest.
+All file sizes and SHA256s matched on filesystem readback. Manifest SHA256:
+`d73cf9ffb3d5491a626b58487055ba82a3b292e72c701a38a631e33cb65e11d7`.
+See [actual local acceptance](../evidence/p2_e2_2026-11-06/model-exploration-local-acceptance.json),
+[deployment hashes](../evidence/p2_e2_2026-11-06/model-exploration-deployment-manifest.json)
+and [Drive filesystem readback](../evidence/p2_e2_2026-11-06/model-exploration-drive-readback.json).
+Remote Drive sync/ACLs and real Colab training/parity/resources remain unverified.
+
+Status: **LOCAL_ACCEPTED_OWNER_RUN_READY**, E2 cloud acceptance still **PARTIAL**.
+No local 261-task sweep, Colab access, GPU speedup claim, final holdout evaluation
+or automatic model promotion. Full US87+QQQ remains 292 sessions; snapshot PIT,
+curated-universe bias and unavailable true US Alpha158 remain independent limits.
+Current models use CPU and existing OHLCV features; deeper/neural/CN experiments
+require a separate frozen source/applicability contract and measured need.
+Owner's exact Yahoo/yfinance cloud-compute attestation is reused unchanged;
+documentary proof path is still absent and no vendor certification is claimed.
+
+Next concrete action belongs to Owner: run the configured notebook's first six
+cloud tasks, retain its ZIP path plus archive/index SHA256, then continue chunks
+or restore in a fresh session. Local Agent verifies returned raw study receipts
+against the frozen spec/code/source before evidence admission. Compare matched
+local/Colab task hashes/numerical tolerances and actual resource observations;
+only these real cloud runs can close #1369/#1373 acceptance. Keep #1376 stacked
+on #1374; remove temporary CI feature-base filters when retargeting the merged
+stack to main. Do not close the roadmap on preparation alone.
+
+
+## Owner-requested Drive root relocation, 2026-11-06
+
+Moved the complete project from `03_PROJECTS｜个人项目/AlphaEngine` to Drive root
+`AlphaEngine`, verified the old source is absent and retained the original
+**442 files / 916,719,479 bytes**. SHA256 matched for **435 ordinary files**;
+seven Google Docs/Sheets virtual pointers cannot be opened as normal file bytes
+and were checked by relative path and filesystem length. Original data, results,
+ZIP archives and previous deployed job bytes were not changed.
+
+Current direct entry: `G:/My Drive/AlphaEngine/运行模型探索.ipynb`, identical to
+the configured notebook in `colab_jobs/us87-exploration-root`. All paths use
+`/content/drive/MyDrive/AlphaEngine`; model source remains frozen at
+`b3764bab1a4eb694e302053db16426de2e3573fb`. A second relocated basic XGBoost
+job is `colab_jobs/us87-validation-root`, still using its original runner.
+Updated deployments are new versions; SHA-named originals retain every byte.
+Both new notebooks compile, preserve the original source code except configured
+paths, and bind unchanged datasets, study specs, runtime SHA and rights records.
+The current source/manifest/spec/rights hashes and resolved paths were checked.
+No new training or Colab access was needed for this relocation.
+
+- Multi-model job: **8 files / 56,157 bytes**, Manifest SHA256
+  `3d6cb1464306c15bf4915822c4bcd1a4914bcb59965c3b08b8be8e0a7311af4a`.
+- Basic job: **7 files / 31,011 bytes**, Manifest SHA256
+  `18ec98b2bf62dd8f660fbd86a1f41eabafa3daf3234904630ba390f2968b5f50`.
+- Root notebook SHA256:
+  `02af0a08a25c0fccb951e4ad253b1dd0d2df7dcda3234832147773ab0fdf569d`.
+
+All new files passed Drive filesystem size/SHA readback. Remote Drive
+synchronization/ACLs and Colab execution remain unverified; Owner's Drive
+Desktop sync is responsible for upload. Existing historical transfer receipts
+retain their original location statements. Use the
+[relocation receipt](../evidence/p2_e2_2026-11-06/drive-root-relocation.json)
+and new job deployment manifests for current locations.
