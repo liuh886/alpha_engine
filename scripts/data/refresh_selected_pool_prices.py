@@ -280,7 +280,7 @@ def _audit_source(path: Path, symbol: str, *, market: str | None = None) -> dict
     }
 
 
-def _default_router(market: str) -> MarketDataRouter:
+def _default_router(market: str, evidence_root: Path | None = None) -> MarketDataRouter:
     adapters: list[MarketDataAdapter]
     policy: dict[str, list[str]]
     if market == "cn":
@@ -295,7 +295,7 @@ def _default_router(market: str) -> MarketDataRouter:
         ]
         policy = {"cn": ["efinance", "akshare", "baostock", "yfinance"]}
     elif market == "us":
-        adapters = [YFinanceAdapter()]
+        adapters = [YFinanceAdapter(evidence_root=evidence_root)]
         policy = {"us": ["yfinance"]}
     else:
         raise ValueError(f"unsupported market: {market}")
@@ -570,6 +570,7 @@ def refresh_selected_pool_prices(
     auxiliary_symbols: list[str] | tuple[str, ...] | None = None,
     full_history_fallback_symbols: tuple[str, ...] = (),
     allow_partial: bool = False,
+    provider_evidence_root: Path | None = None,
 ) -> dict[str, Any]:
     """Build one isolated provider through ``cutoff`` for the selected pool.
 
@@ -620,7 +621,9 @@ def refresh_selected_pool_prices(
         ]
     )
     target_set = set(targets)
-    data_router = router or _default_router(market_key)
+    if provider_evidence_root is not None and (router is not None or market_key != "us"):
+        raise ValueError("exact response capture requires the canonical US router")
+    data_router = router or _default_router(market_key, provider_evidence_root)
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
@@ -1040,6 +1043,8 @@ def main() -> None:
     parser.add_argument("--start", default="2021-01-01")
     parser.add_argument("--cutoff", default="2026-06-18")
     parser.add_argument("--max-rounds", type=int, default=2)
+    parser.add_argument("--provider-evidence-root", type=Path,
+                        help="Private directory retaining exact Yahoo raw responses and normalization evidence.")
     parser.add_argument(
         "--auxiliary-symbol",
         action="append",
@@ -1073,6 +1078,7 @@ def main() -> None:
         full_refresh=args.full_refresh,
         auxiliary_symbols=args.auxiliary_symbol,
         allow_partial=args.allow_partial,
+        provider_evidence_root=args.provider_evidence_root,
     )
     print(json.dumps(payload, indent=2, sort_keys=True))
 

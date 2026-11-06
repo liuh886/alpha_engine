@@ -99,3 +99,25 @@ Research boundaries remain `research_only=true`, `trade_ready=false`, `pit_certi
 | New immutable bundle and exact code/data pins | NOT_RUN |
 | Owner cloud retrain on corrected data | NOT_RUN |
 | Scientific ranking / final untouched holdout | BLOCKED / NOT_CERTIFIED |
+
+
+## Exact canonical provider-response retention
+
+For a new full refresh, pass `--provider-evidence-root /PRIVATE/NEW_EDITION/provider_responses`
+to the same `scripts.data.refresh_selected_pool_prices` CLI. The default US
+Yahoo adapter then requests action columns with `auto_adjust=False, repair=False`,
+retains each exact returned frame as Parquet before normalization, and records
+request options, retrieval UTC, client/code SHA256, raw SHA256 and the normalized
+frame/hash with reconciliation metadata. No cookies or credentials are retained.
+The directory must be outside the source checkout. Failed material OHLC frames
+retain raw request evidence but have no successful normalization artifact.
+
+This records the actual frame used by the canonical producer; a second Yahoo
+request is a separate source vintage and can differ even in rounded historical
+Adj Close. Do not patch canonical CSVs or loosen integrity thresholds to force
+that separate response to agree. Verify the recorded raw frame through the
+unchanged adapter normalization, then compare it with the exact canonical output.
+Volume is passed through unchanged, factor=1 is an already-adjusted identity,
+and amount is adjusted close times provider volume, not an exchange turnover.
+Provider Close with auto_adjust disabled is not certified as as-traded raw price;
+preserve actual split/action records and document vendor historical restatement.
