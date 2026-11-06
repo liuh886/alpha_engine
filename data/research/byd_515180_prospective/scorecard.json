@@ -2,19 +2,19 @@
   "completed_defense_episode_count": 0,
   "cumulative_cost_scenarios_bps": {
     "20": {
-      "candidate_incremental_return": 0.004951781120433374,
+      "candidate_incremental_return": 0.0020325252409689742,
       "strategy_returns": {
         "byd_v1_cash": -0.08050472311708468,
-        "fixed_75_25": -0.07595158376468825,
-        "v1_dividend_75_25": -0.07595158376468825
+        "fixed_75_25": -0.07863582575786832,
+        "v1_dividend_75_25": -0.07863582575786832
       }
     },
     "40": {
-      "candidate_incremental_return": 0.0039633655913973165,
+      "candidate_incremental_return": 0.0010469809321236312,
       "strategy_returns": {
         "byd_v1_cash": -0.08323919987063655,
-        "fixed_75_25": -0.0796057416598619,
-        "v1_dividend_75_25": -0.0796057416598619
+        "fixed_75_25": -0.08227936879358266,
+        "v1_dividend_75_25": -0.08227936879358266
       }
     }
   },
@@ -22,7 +22,7 @@
   "market_states": [
     "bear"
   ],
-  "observation_count": 62,
+  "observation_count": 63,
   "prospective_days": 73,
   "prospective_eligible_observation_count": 10,
   "re_evaluation_gate": {
