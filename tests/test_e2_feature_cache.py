@@ -1,8 +1,6 @@
 """R1 shared-feature cache stays opt-in, bounded and numerically exact."""
 from __future__ import annotations
 
-import json
-
 import numpy as np
 import pandas as pd
 import pytest
