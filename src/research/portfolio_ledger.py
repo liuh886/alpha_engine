@@ -125,6 +125,7 @@ def summarize_ledger(daily: pd.DataFrame, assets: pd.DataFrame) -> dict:
         "max_held_weight": float(daily["max_held_weight"].max()),
         "max_drifted_weight": float(daily["max_drifted_weight"].max()),
         "mean_held_hhi": float(daily["held_hhi"].mean()),
-        "mean_new_names_per_day": float(daily["full_replacements"].iloc[1:].mean()),
+        "mean_new_names_per_day": (float(daily["full_replacements"].iloc[1:].mean())
+                                   if len(daily)>1 else None),
         "research_only": True, "trade_ready": False, "pit_certified": False,
     }
