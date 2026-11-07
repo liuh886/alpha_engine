@@ -81,11 +81,17 @@ See [acceptance](../evidence/e5_us73_ledger_2026-11-07/README.md) and the
 
 Private local package:
 `D:/Documents/AlphaEnginePrivate/P2-E5/2026-11-07/delivery/`.
-Drive filesystem delivery (four files, SHA256 readback PASS):
+Drive filesystem delivery (four core files plus one exact-code provenance
+capsule, SHA256 readback PASS):
 `AlphaEngine/03_Data/Research_Exchange_P2/incoming_unreviewed/e5-us73-ledger-v1-8d65008762/`.
 ZIP SHA256 `e4856a9b5260b612a92038e1d27b9d3be293ffa6da85d6f8213055a59934abda`;
 manifest SHA256 `850d4f4a298b7257011d0d99d9472ce939b6f75004422deb6a3ef6b199ec0992`.
 No new remote ACL or sync-completion certification is claimed.
+The separate provenance capsule preserves the two exact script versions used
+by the early slices and committed expansion, the pinned private E4 driver,
+evaluator source and lockfile. Its SHA256 is
+`7dedd312e8e2490b3c9f6d5c3d4ba73804b3c86b9c80675bc78af3f9693e00dd`.
+This supplement does not change the immutable main result archive or receipts.
 
 The approved E5 shortlist has no durable model-complexity premium under the
 tested delay: p03's paired median advantage over 60d momentum changes from

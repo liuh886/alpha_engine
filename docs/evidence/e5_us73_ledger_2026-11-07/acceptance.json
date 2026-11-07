@@ -3,6 +3,11 @@
   "aggregate_tolerance": 5.1e-09,
   "checkpoint_records_untouched": 288,
   "cloud_upload_completion_reverified": false,
+  "code_provenance_capsule": {
+    "bytes": 393245,
+    "covers_all_reconstructor_receipt_hashes": true,
+    "sha256": "7dedd312e8e2490b3c9f6d5c3d4ba73804b3c86b9c80675bc78af3f9693e00dd"
+  },
   "daily_max_abs_parity_error": 4.9994793027696716e-11,
   "daily_tolerance": 5.1e-11,
   "evaluator_code_sha256": {

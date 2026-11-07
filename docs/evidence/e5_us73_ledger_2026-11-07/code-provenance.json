@@ -1,0 +1,52 @@
+{
+  "archive_sha256": "7dedd312e8e2490b3c9f6d5c3d4ba73804b3c86b9c80675bc78af3f9693e00dd",
+  "archive_bytes": 393245,
+  "schema_version": "e5_exact_code_provenance_v1",
+  "evaluator_git_sha": "8d65008762f07a1d260eadeb83a29c9f00337242",
+  "native_git_sha": "0c8152496ebeeed559ceab9b095594501fca516b",
+  "legacy_worker_usage": "source snapshot and first two slices; original bytes reconstructed and SHA256 matched to their receipts",
+  "committed_worker_usage": "remaining30 score jobs; adds source/output boundary validation, unchanged feature/model math",
+  "main_results_archive_sha256": "e4856a9b5260b612a92038e1d27b9d3be293ffa6da85d6f8213055a59934abda",
+  "files": [
+    {
+      "path": "committed-reconstructor-76451f3f.py",
+      "size": 8095,
+      "sha256": "76451f3f4d3ce6c75f56a3a08f580fef5c77b829e91fafa0203b10779f38d8e8"
+    },
+    {
+      "path": "evaluator/e5_execution_review.py",
+      "size": 11549,
+      "sha256": "612f155f6e879752f94e1498cfddef045e96498385122f75c6f45ae13a342ce4"
+    },
+    {
+      "path": "evaluator/e5_research_report.py",
+      "size": 10720,
+      "sha256": "8334c9dd1e331b5408e202d495d17f937f8ab69853251df3bf1804e9e46ed67f"
+    },
+    {
+      "path": "evaluator/portfolio_ledger.py",
+      "size": 7397,
+      "sha256": "4fd9cc4b3abb16474f7d622b6c8b65e8a0f325eaa9049d1ce801412324aeffc0"
+    },
+    {
+      "path": "evaluator/walkforward/pipeline.py",
+      "size": 37143,
+      "sha256": "e1e86548040d3b9e9c12e8d3419d96d6b2b826d93b48e2dfdb5e5a3426a067e7"
+    },
+    {
+      "path": "frozen-e4-driver.py",
+      "size": 33423,
+      "sha256": "ff44d808be2f3391d9216f824c6e14f836803d56355131b680de66999615c62c"
+    },
+    {
+      "path": "legacy-reconstructor-3bb2026d.py",
+      "size": 7357,
+      "sha256": "3bb2026d5ccc5abf17fd9af6fdc13ee7713661e5e98aa8871ab9b5ad86107775"
+    },
+    {
+      "path": "uv.lock",
+      "size": 1150795,
+      "sha256": "2cdd7f86d2bbd73dd9975903399c088a910fc83f4772183108e7d3352ae7d040"
+    }
+  ]
+}
