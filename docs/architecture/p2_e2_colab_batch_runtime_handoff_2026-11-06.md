@@ -1,5 +1,7 @@
 # P2-E2 US87 Colab training batch — working handoff
 
+**2026-11-07 current acceptance:** Owner completed corrected v6 at261ready/0blocked. Independent local restore and all261 input-hash comparisons PASS; researchPROVISIONAL/promotionBLOCKED. Source remains frozen0c8152496e with v6 SHA bindings. [Postrun acceptance](../evidence/us87_v6_colab_review_2026-11-07/README.md) and PR#1380 hold current review/cache status; older NOT_RUN paragraphs below record prior preparation stages. No new training or merge was performed by this review.
+
 **Current corrected-source entry (PR #1377):** `G:/My Drive/AlphaEngine/运行模型探索.ipynb` now binds independent v6, new batch ID/checkpoint parent, runner `0c8152496ebeeed559ceab9b095594501fca516b`; training defaults OFF. Original v5 has KLAC/CRWD contamination; old261-task outputs are preserved engineering evidence and inadmissible for model selection. See [executed price-repair acceptance](us87_price_integrity_incident_2026-11-06.md#executed-canonical-rebuild-and-immutable-v6-delivery). Earlier deployment entries below are historical.
 
 **Branch:** `feat/p2-e2-colab-batch-foundation-20261106` (stacked **Draft [PR #1374](https://github.com/liuh886/alpha_engine/pull/1374)** onto data [PR #1368](https://github.com/liuh886/alpha_engine/pull/1368)). **Issue:** [#1373](https://github.com/liuh886/alpha_engine/issues/1373). Architecture authority [PR #1367](https://github.com/liuh886/alpha_engine/pull/1367).

@@ -19,7 +19,7 @@ on:
       - '.github/workflows/strategy-signal-delivery-outbox.yml'
   pull_request:
     # Validate the dependent Colab E2 PR before its physical-data base PR lands.
-    branches: [main, feat/p2-colab-research-exchange-mvp-20261104, feat/p2-e2-colab-batch-foundation-20261106, feat/p2-e2-colab-model-exploration-20261106]
+    branches: [main, feat/p2-colab-research-exchange-mvp-20261104, feat/p2-e2-colab-batch-foundation-20261106, feat/p2-e2-colab-model-exploration-20261106, fix/p2-e2-us87-price-integrity-20261106]
     paths:
       - 'src/**'
       - 'tests/**'
@@ -99,6 +99,10 @@ jobs:
           src/research/colab_experiment_batch.py
           src/research/colab_research_campaign.py
           src/research/us87_price_integrity.py
+          src/research/e2_postrun_review.py
+          src/research/e2_resource_taskgraph.py
+          src/research/e2_feature_cache.py
+          src/research/studies/xgb_study.py
           src/data/fundamentals/ashare_public_financials.py
           tests/test_cloud_exchange.py
           tests/test_comprehensive_dataset.py
@@ -110,6 +114,9 @@ jobs:
           tests/test_colab_experiment_batch.py
           tests/test_colab_research_campaign.py
           tests/test_us87_price_integrity.py
+          tests/test_e2_postrun_review.py
+          tests/test_e2_resource_taskgraph.py
+          tests/test_e2_feature_cache.py
           src/research/cross_sectional_experiment_runner.py
           src/research/ranker_execution.py
           src/research/ranker_training.py
@@ -243,6 +250,9 @@ jobs:
           tests/test_colab_experiment_batch.py
           tests/test_colab_research_campaign.py
           tests/test_us87_price_integrity.py
+          tests/test_e2_postrun_review.py
+          tests/test_e2_resource_taskgraph.py
+          tests/test_e2_feature_cache.py
           tests/test_cross_sectional_experiment_runner.py
           tests/test_ranker_training.py
           tests/test_formal_baseline_onboarding.py

@@ -73,6 +73,39 @@ def _get_code_source_sha256(root: Path) -> dict[str, str]:
     }
 
 
+
+def _materialize_training_features(
+    train_df: pd.DataFrame, symbols: tuple[str, ...],
+) -> tuple[list[str], pd.DataFrame, pd.Series, list[int]]:
+    """Original full-feature training math, computed once per source/fold."""
+    train_close = train_df.pivot(index="time", columns="symbol", values="close")
+    train_volume = train_df.pivot(index="time", columns="symbol", values="volume")
+    t_ret5 = train_close.pct_change(5, fill_method=None)
+    t_ret20 = train_close.pct_change(20, fill_method=None)
+    t_vol20 = train_close.pct_change(1, fill_method=None).rolling(20).std()
+    t_vol_ratio20 = train_volume / train_volume.rolling(20).mean() - 1.0
+    t_fwd5 = train_close.shift(-5) / train_close - 1.0
+    t_fwd5_rank = t_fwd5.rank(axis=1, pct=True)
+    valid_train_dates = [
+        d for d in train_close.index
+        if not pd.isna(t_ret20.loc[d]).any() and not pd.isna(t_fwd5_rank.loc[d]).any()
+    ]
+    rows_x: list[dict[str, float]] = []
+    rows_y: list[float] = []
+    groups_train: list[int] = []
+    for d in valid_train_dates:
+        for sym in symbols:
+            rows_x.append({
+                "return_5d": float(t_ret5.loc[d, sym]),
+                "return_20d": float(t_ret20.loc[d, sym]),
+                "volatility_20d": float(t_vol20.loc[d, sym]),
+                "volume_ratio_20d": float(t_vol_ratio20.loc[d, sym]),
+            })
+            rows_y.append(float(t_fwd5_rank.loc[d, sym]))
+        groups_train.append(len(symbols))
+    return valid_train_dates, pd.DataFrame(rows_x), pd.Series(rows_y), groups_train
+
+
 def run_cross_sectional_xgb_study(
     cfg: CrossSectionalXGBConfig,
     root: Path,
@@ -80,6 +113,13 @@ def run_cross_sectional_xgb_study(
     """Execute cross-sectional multi-factor XGBoost ranker study with strict temporal causality."""
     git_commit = _get_git_commit(root)
     code_sources = _get_code_source_sha256(root)
+    from src.research.e2_feature_cache import get_or_build
+
+    def read_slice(req: DataSliceRequest):
+        return get_or_build("slice", {
+            "root": str(root.resolve()), "request": req.to_dict(),
+            "reader_sha256": code_sources["research_data_slice"],
+        }, lambda: get_research_data_slice(req, root=root))
 
     # 1. Fetch In-Sample training slice
     train_req = DataSliceRequest(
@@ -92,7 +132,7 @@ def run_cross_sectional_xgb_study(
         price_mode=cfg.price_mode,
         required_fields=("open", "high", "low", "close", "volume"),
     )
-    train_res = get_research_data_slice(train_req, root=root)
+    train_res = read_slice(train_req)
 
     # 2. Fetch Out-of-Sample test slice
     test_req = DataSliceRequest(
@@ -105,7 +145,7 @@ def run_cross_sectional_xgb_study(
         price_mode=cfg.price_mode,
         required_fields=("open", "high", "low", "close", "volume"),
     )
-    test_res = get_research_data_slice(test_req, root=root)
+    test_res = read_slice(test_req)
 
     # Inference context includes embargo sessions without using their labels for
     # fitting. Concatenating only train+test would skip those days in features.
@@ -115,7 +155,7 @@ def run_cross_sectional_xgb_study(
         as_of_cutoff=cfg.as_of_cutoff, price_mode=cfg.price_mode,
         required_fields=("open", "high", "low", "close", "volume"),
     )
-    context_res = get_research_data_slice(context_req, root=root)
+    context_res = read_slice(context_req)
     # 3. Fetch Benchmark slices (both train and test for continuous anchoring)
     bench_req = DataSliceRequest(
         market=cfg.market,
@@ -127,7 +167,7 @@ def run_cross_sectional_xgb_study(
         price_mode=cfg.price_mode,
         required_fields=("open", "high", "low", "close", "volume"),
     )
-    bench_res = get_research_data_slice(bench_req, root=root)
+    bench_res = read_slice(bench_req)
 
     blocked = []
     for s, name in ((train_res, "train_slice"), (test_res, "test_slice"),
@@ -172,20 +212,14 @@ def run_cross_sectional_xgb_study(
 
     # 4. Training Feature Generation & Model Calibration
     train_df = train_res.data
-    train_close = train_df.pivot(index="time", columns="symbol", values="close")
-    train_volume = train_df.pivot(index="time", columns="symbol", values="volume")
-
-    t_ret5 = train_close.pct_change(5, fill_method=None)
-    t_ret20 = train_close.pct_change(20, fill_method=None)
-    t_vol20 = train_close.pct_change(1, fill_method=None).rolling(20).std()
-    t_vol_ratio20 = train_volume / train_volume.rolling(20).mean() - 1.0
-    t_fwd5 = train_close.shift(-5) / train_close - 1.0
-    t_fwd5_rank = t_fwd5.rank(axis=1, pct=True)
-
-    valid_train_dates = [
-        d for d in train_close.index
-        if not pd.isna(t_ret20.loc[d]).any() and not pd.isna(t_fwd5_rank.loc[d]).any()
-    ]
+    valid_train_dates, X_train_all, y_train, groups_train = get_or_build(
+        "train_features", {
+            "root": str(root.resolve()), "market": cfg.market,
+            "pool_id": cfg.pool_id, "symbols": list(cfg.symbols),
+            "train_start": cfg.train_start, "train_end": cfg.train_end,
+            "as_of_cutoff": cfg.train_end, "price_mode": cfg.price_mode,
+            "feature_contract_sha256": code_sources["xgb_study"],
+        }, lambda: _materialize_training_features(train_df, cfg.symbols))
     if len(valid_train_dates) < 5:
         payload = {
             "schema_version": "1.0",
@@ -207,20 +241,7 @@ def run_cross_sectional_xgb_study(
         payload["generated_at_utc"] = datetime.now(timezone.utc).isoformat()
         return payload
 
-    rows_x, rows_y, groups_train = [], [], []
-    for d in valid_train_dates:
-        for sym in cfg.symbols:
-            rows_x.append({
-                "return_5d": float(t_ret5.loc[d, sym]),
-                "return_20d": float(t_ret20.loc[d, sym]),
-                "volatility_20d": float(t_vol20.loc[d, sym]),
-                "volume_ratio_20d": float(t_vol_ratio20.loc[d, sym]),
-            })
-            rows_y.append(float(t_fwd5_rank.loc[d, sym]))
-        groups_train.append(len(cfg.symbols))
-
-    X_train = pd.DataFrame(rows_x).loc[:, list(cfg.features)]
-    y_train = pd.Series(rows_y)
+    X_train = X_train_all.loc[:, list(cfg.features)]
 
     calib = XGBNativeCalibration(
         n_gain_bins=int(cfg.xgb_params.get("n_gain_bins", 5)),
