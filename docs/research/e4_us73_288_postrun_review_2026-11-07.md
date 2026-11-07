@@ -36,6 +36,22 @@
 
 **Search bias:** 36 configurations share the same 8 retrospective folds, and original v6 knowledge influenced the v7 grid. Six positive folds out of eight for the selected winner are descriptive, not a multiple-comparison-adjusted significance test. Since user has already observed full 2023–2026 outcomes, **do not label any of these periods “independently untouched.”**
 
+## 2A. Already executed: exact post-fit cost repricing (zero model refits)
+
+The archived **daily_trace** contains `gross`, `net`, `turnover`, and `qqq` per date. For each previously frozen candidate and fold, recompute:
+`hypothetical_daily_net = saved_daily_gross - saved_daily_turnover × friction_bps / 10000`, compound within each fold, then subtract the saved same-fold compounded QQQ benchmark. This equation reproduced **every original 8 bps daily `net` within ~1e-10** (receipt precision); it retains the *same signal/ranking, weights and turnover* and is **not** a new simulated fill/impact model.
+
+| Per-turnover total friction | p03 median net excess vs QQQ | 60-day momentum median net excess vs QQQ | p03 vs 60-day **paired median** | p03 paired wins |
+| --- | ---: | ---: | ---: | ---: |
+| **0 bps** | +42.81 pp | +17.48 pp | **+10.63 pp** | 6/8 |
+| **8 bps** (E4 original 3+5) | +35.47 pp | +15.44 pp | **+6.29 pp** | 6/8 |
+| **25 bps** | +20.99 pp | +11.19 pp | **+2.55 pp** | 5/8 |
+| **50 bps** | +2.18 pp | +5.20 pp | **-0.78 pp** | 4/8 |
+
+**Do not subtract the separate QQQ-excess medians** in the two middle columns to claim a model premium; paired median is recomputed on each identical fold. Total saved turnover across 8 folds: p03 **425.98**, 60-day momentum **146.95** (2.90x). Assumes zero change in trading decisions or impact with higher friction; 25/50 bps are synthetic stress assumptions, not executable quote estimates. There are still no verified actual holdings, spread, participation-rate caps, latency, borrow or market-impact costs.
+
+**Decision effect:** p03's model premium is smaller against the stronger 60-day benchmark and may disappear under plausible additional friction, depending on liquidity. Prioritize execution-policy and capacity ledger over new HPO; the cheap post-fit cost reprice has already been performed offline using E4 saved traces, so **do not schedule another 288 fits merely for those four cost points.**
+
 ## 3. E5 implementation priorities — increase scientific validity before increasing workload
 
 | Priority | Functional slice | Concrete output and acceptance |
