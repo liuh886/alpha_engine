@@ -119,6 +119,21 @@ def rank_ic(scores: pd.DataFrame, prices: pd.DataFrame,
     return results
 
 
+def score_diagnostics(scores: pd.DataFrame, sessions: list[str],
+                      assets: pd.DataFrame, record: dict) -> dict:
+    values = np.sort(scores.loc[sessions[:-1]].to_numpy(), axis=1)
+    ties = int((values[:, -5] == values[:, -6]).sum())
+    # Comparison only: the archived strings never drive the ledger or portfolio.
+    held = {date: set(group.loc[group["simulated_held_weight"] > 0, "symbol"])
+            for date, group in assets.groupby("date")}
+    mismatches = sum(set(row["top5_signal_symbols"]) != held[row["date"]]
+                     for row in record["top5_score_signals_not_executed_trades"])
+    return {"decision_dates": len(values), "top5_cutoff_tied_decisions": ties,
+            "published_signal_set_differs_from_engine_holdings_dates": mismatches,
+            "tie_policy": "UNCHANGED_E4_np.argsort_ascending_default_last5",
+            "published_signal_policy": "stable_descending_not_engine_tie_policy"}
+
+
 def review_one(*, snapshot: Path, scores_root: Path, record: dict,
                output: Path) -> dict:
     cfg, fold = record["configuration_id"], record["fold_id"]
@@ -155,6 +170,7 @@ def review_one(*, snapshot: Path, scores_root: Path, record: dict,
     result = {"configuration_id": cfg, "fold_id": fold, "parity": parity,
               "original": original, "delayed": summarize_ledger(ld, la),
               "signal_ic": rank_ic(scores, prices, dates),
+              "score_diagnostics": score_diagnostics(scores, sessions, assets, record),
               "score_receipt_sha256": sha(score_root / "score-receipt.json"),
               "source_snapshot_sha256": sha(snapshot / "snapshot.json"),
               "evaluator_git_sha": subprocess.check_output(["git", "rev-parse", "HEAD"],
@@ -169,6 +185,9 @@ def review_one(*, snapshot: Path, scores_root: Path, record: dict,
                   "end_of_fold": "both modes liquidate at identical final close under E4 convention",
                   "cash_fee_funding": "not modelled by E4; normalized quantities only"},
               "research_only": True, "trade_ready": False, "pit_certified": False}
+    result["files"] = {name: sha(output / name) for name in
+                       ("original-daily.parquet", "original-assets.parquet",
+                        "delayed-daily.parquet", "delayed-assets.parquet")}
     write_json(output / "result.json", result)
     return result
 
