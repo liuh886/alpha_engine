@@ -206,6 +206,13 @@ def review(checkpoint_zip: Path, comparison_file: Path, *,
             aggregate_excess[cfg_id] = _median([r["overall_oos_net_excess_return"] for k in results for r in receipt_groups[k]])
             _same(aggregate_excess[cfg_id],
                   float(config["median_validation_net_excess"]), context=f"{cfg_id} median")
+            observations = [r for key in results for r in receipt_groups[key]]
+            if not {"worst_validation_drawdown", "median_validation_rank_ic"} <= config.keys():
+                raise ReviewError("missing published configuration risk/IC aggregates")
+            _same(min(float(r["overall_oos_max_drawdown"]) for r in observations),
+                  float(config["worst_validation_drawdown"]), context=f"{cfg_id} worst drawdown")
+            _same(_median([float(r["rank_ic"]) for r in observations]),
+                  float(config["median_validation_rank_ic"]), context=f"{cfg_id} median rank IC")
             if all(f["distinct_outcomes"] == 1 for f in folded[cfg_id].values()) != config["seed_repetitions_identical"]:
                 raise ReviewError("seed summary mismatch")
         baselines = [c["configuration_id"] for c in configs.values() if c["phase"] == "baseline"]

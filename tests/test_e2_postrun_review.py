@@ -82,6 +82,8 @@ def _fixture(tmp_path, *, corrupt=False, two_folds=False, two_search=False):
             "model_family": "momentum_20d" if name == "rule" else "xgboost",
             "phase": phase, "ready_tasks": 2 * len(folds), "planned_tasks": 2 * len(folds), "complete": True,
             "median_validation_net_excess": value,
+            "worst_validation_drawdown": -0.1,
+            "median_validation_rank_ic": 0.05,
             "seed_repetitions_identical": True,
             "fold_diagnostics": [{"fold_id": fold, "ready_seeds": 2,
                                   "median_net_excess": value, "worst_drawdown": -0.1,
@@ -128,6 +130,27 @@ def test_review_rejects_false_performance_ranking(tmp_path):
     data["configurations"][1]["fold_diagnostics"][0]["median_net_excess"] = 0.99
     compare.write_text(json.dumps(data))
     with pytest.raises(ReviewError, match="mismatch with published comparison"):
+        review(path, compare)
+
+
+@pytest.mark.parametrize("field", ["worst_validation_drawdown", "median_validation_rank_ic"])
+@pytest.mark.parametrize("wrong", [0.99, float("nan"), float("inf")])
+def test_review_rejects_false_configuration_risk_and_ic(tmp_path, field, wrong):
+    path, compare, _ = _fixture(tmp_path)
+    report = json.loads(compare.read_text())
+    report["configurations"][1][field] = wrong
+    compare.write_text(json.dumps(report))
+    with pytest.raises(ReviewError, match="mismatch|non-finite"):
+        review(path, compare)
+
+
+@pytest.mark.parametrize("field", ["worst_validation_drawdown", "median_validation_rank_ic"])
+def test_review_requires_published_configuration_risk_and_ic(tmp_path, field):
+    path, compare, _ = _fixture(tmp_path)
+    report = json.loads(compare.read_text())
+    del report["configurations"][1][field]
+    compare.write_text(json.dumps(report))
+    with pytest.raises(ReviewError, match="missing published"):
         review(path, compare)
 
 
