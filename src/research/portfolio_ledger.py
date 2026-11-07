@@ -89,7 +89,8 @@ def replay_ledger(*, scores: pd.DataFrame, prices: pd.DataFrame, qqq: pd.Series,
                   signal_sessions: dict[str, str] | None = None,
                   mode: str = "e4_same_close_idealized",
                   selection: Callable | None = None,
-                  liquidate_at_end: bool = True) -> tuple[pd.DataFrame, pd.DataFrame]:
+                  liquidate_at_end: bool = True,
+                  end_state: dict | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Record a canonical simulation, never infer trades from published Top5 strings."""
     from src.research.walkforward.pipeline import _simulate_portfolio
     if mode not in ("e4_same_close_idealized", "delayed_close_1session"):
@@ -99,7 +100,8 @@ def replay_ledger(*, scores: pd.DataFrame, prices: pd.DataFrame, qqq: pd.Series,
             raise ValueError("nonfinite replay matrix")
     snapshots: list[dict[str, Any]] = []
     _simulate_portfolio(scores, prices, qqq, sessions, top_k, friction,
-                        liquidate_at_end=liquidate_at_end, ledger=snapshots, selection=selection)
+                        liquidate_at_end=liquidate_at_end, ledger=snapshots, selection=selection,
+                        end_state=end_state)
     return ledger_tables(snapshots, signal_sessions=signal_sessions or
                          {s: s for s in sessions}, mode=mode)
 
@@ -123,6 +125,7 @@ def summarize_ledger(daily: pd.DataFrame, assets: pd.DataFrame) -> dict:
         "max_held_weight": float(daily["max_held_weight"].max()),
         "max_drifted_weight": float(daily["max_drifted_weight"].max()),
         "mean_held_hhi": float(daily["held_hhi"].mean()),
-        "mean_new_names_per_day": float(daily["full_replacements"].iloc[1:].mean()),
+        "mean_new_names_per_day": (float(daily["full_replacements"].iloc[1:].mean())
+                                   if len(daily)>1 else None),
         "research_only": True, "trade_ready": False, "pit_certified": False,
     }

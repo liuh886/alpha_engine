@@ -2,6 +2,15 @@
 
 **当前裁决：产品 NO-GO；RDI 价格层已交付，完整 RDI 未验证。** 最新核对基线为 `main@65622788d9`，2026-11-01；2026-10-29 的原路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
 
+## 2026-11-07 独立 E7 真实时间纸面研究
+
+Owner 在 [#1382 Review](https://github.com/liuh886/alpha_engine/pull/1382)
+接受 E6 研究工程后，将下一研究重点改为每日真实时间证据。
+[E7 运行交接](../research/e7_continuous_paper_2026-11-07.md)记录规则 60/120 日动量的
+独立 11/10 合同、真实 74 资产行情预热、专用冻结环境与本机原生每日任务。
+当前仅本地部署通过，未来预测/纸面成交/持有收益均为零；树模型、真实容量、PIT 仍阻塞。
+E4/v6/E5/E6 证据保持原样；依赖 PR 均保持 Draft，无主干合并、Colab 或正式交易发布。
+
 ## 2026-11-02 前端架构方向与独立交付
 
 Owner 选择 **A / Decision-first** 作为 Alpha Engine 默认设计。
