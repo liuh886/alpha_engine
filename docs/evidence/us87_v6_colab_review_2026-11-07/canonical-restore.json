@@ -1,0 +1,8 @@
+{
+  "status": "RESTORED_VERIFIED_UNREVIEWED",
+  "files": 784,
+  "index_sha256": "eb3b720ffc64e5cc62ace5295adef357559bab0074eddb45bc224ed028ef306f",
+  "trade_ready": false,
+  "validator_git_revision": "0c8152496ebeeed559ceab9b095594501fca516b",
+  "training_executed": false
+}

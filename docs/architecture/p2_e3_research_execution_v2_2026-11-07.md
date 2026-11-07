@@ -133,3 +133,26 @@ R1 *status*: cache integration and focused synthetic parity tests implemented; r
 - No change to existing 261 v6 receipts, original v5, current public trading strategies, UI, brokerage, cloud pricing, private provider ZIPs or rights declarations.
 - No Alpha158 synthesis or certified VWAP claim. Both experiment and future scheduler remain `research_only / trade_ready=false / pit_certified=false`.
 - New PR is stacked on #1377 until upstream PR #1368 → #1374 → #1376 → #1377 merges and is correctly retargeted.
+
+
+## Verified R0 closure and remaining engineering gates (2026-11-07)
+
+Actual v6 Owner run independently verifies261ready/0blocked,784indexedfiles,
+canonical frozen-runner restore, study/spec/inner hashes and local/cloud
+train/test/context input parity. See
+[acceptance evidence](../evidence/us87_v6_colab_review_2026-11-07/README.md).
+The read-only postrun verifier now rejects NaN comparison metrics, duplicate or
+misordered rankings, incomplete/duplicate diagnostic folds, mismatched configs,
+study/wrapper hashes, unequal fold windows and unbounded checkpoint inputs.
+It makes no external verification claim when independent archive/index pins are
+absent. These fixes change validation only; original261results are untouched.
+
+R1 tests prove scoped feature-matrix reuse/mutation isolation only. The16-entry
+cache is entry-count bounded, not a measured byte/peak-RAM budget. Full-study
+real-source cold/warm parity and throughput remainNOT_RUN; cache stays opt-inOFF.
+No6–12trialbenchmark or R2workerpool was launched because this task is a postrun
+review and the previous no-new-training boundary is retained. Future benchmarks
+require a new frozen runner/batch and separate outputs, never v6 checkpoint reuse.
+Saved actual cloud output records2logicalCPUs, but worker peak RAM, utilization,
+end-to-end wall and Compute Unit consumption are still unmeasured. R2/R3 and the
+1,032-task E4 proposal remain gated; this is not a claim of scheduler/GPU speedup.

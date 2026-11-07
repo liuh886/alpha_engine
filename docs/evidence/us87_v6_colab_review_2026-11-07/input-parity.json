@@ -1,0 +1,47 @@
+{
+  "status": "LOCAL_FROZEN_INPUT_HASHES_MATCH_ALL_CLOUD_STUDIES",
+  "validator_git_sha": "0c8152496ebeeed559ceab9b095594501fca516b",
+  "cloud_studies_verified": 261,
+  "folds": [
+    {
+      "test_start": "2026-01-02",
+      "test_end": "2026-02-27",
+      "matched_cloud_studies": 87,
+      "local_input_hashes_match_cloud": true,
+      "hashes": {
+        "train_data_hash": "61323c56cdf63157980b13c7499a9d34535cfc132e078f3051e7485512dbd07a",
+        "test_data_hash": "2e63573079388a5c93f4359799c4ac588fc8681bccc6cacb2be465532af5f352",
+        "inference_context_hash": "44d7d28f3c62fb57901842202259a48f540e0d4bdcb0ac860cbe8c3fbb1eb66e"
+      },
+      "qqq_cumulative_return_matches": true
+    },
+    {
+      "test_start": "2026-03-02",
+      "test_end": "2026-04-30",
+      "matched_cloud_studies": 87,
+      "local_input_hashes_match_cloud": true,
+      "hashes": {
+        "train_data_hash": "e935a6baec0d26b1fa910e541c55fa8c9dd1a4abd8a4a355ab32152817c8d2c7",
+        "test_data_hash": "705df6ea65ac07bf9f2392ef2b4238d7895126d87f1a8d1ace99c3904a4635d7",
+        "inference_context_hash": "05df1ca9ffc0df9b988204037f5fa7b941db1d0b776055d60b8d665d2966c3bd"
+      },
+      "qqq_cumulative_return_matches": true
+    },
+    {
+      "test_start": "2026-05-04",
+      "test_end": "2026-06-30",
+      "matched_cloud_studies": 87,
+      "local_input_hashes_match_cloud": true,
+      "hashes": {
+        "train_data_hash": "e5f7773bce0587591c05d083d705d1111aff6a7d141dc2d3c5fc4b1573a183cc",
+        "test_data_hash": "ac6e74d5a2a7d404c20835d7c0f149e31f63bcc362a3ad664ba2e052a9c4b86e",
+        "inference_context_hash": "a27dae59fccdf30b53acce3d1f548fffa1b451adfe1d932c822ca0dbd95f7cda"
+      },
+      "qqq_cumulative_return_matches": true
+    }
+  ],
+  "network_used": false,
+  "model_fit_executed": false,
+  "full_model_numerical_parity_certified": false,
+  "holdout_evaluated": false
+}

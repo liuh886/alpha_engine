@@ -56,3 +56,37 @@
 5. **Decision gate.** No production or trading integration until a distinct evaluation can support a stable paired advantage net of costs, coherent exposure explanations, and adequate PIT/universe provenance. In the meantime retain p06 and LGB p03 as challengers.
 
 **Review disposition:** **RESEARCH_SIGNAL_PROVISIONAL; MODEL_PROMOTION_BLOCKED**. Execution and evidence integrity are distinct from independent financial efficacy.
+
+
+## Independent local verification after Owner completion (PR #1380)
+
+The local Agent independently copied the exact Owner final ZIP/comparison to a
+fresh private namespace, checked the externally recorded archive/index SHA256s
+and ZIP CRC, and ran the frozen0c8152496e canonical restore against verified v6
+inputs offline:784files restored,261study/spec/wrapper and inner hashes valid,
+0blocked. Locally reconstructed train/test/inference-context data hashes match
+**all261cloudstudies**, as do QQQ fold returns. No new model was fitted; complete
+model-level cross-platform parity and a real fresh-Colab-session restart remain
+unobserved. The original price package, checkpoint files, recovery tip and source
+comparison were not modified.
+
+The initial postrun reviewer accepted deliberately falsified comparison copies:
+NaN aggregate, a duplicated search ranking, or the removal of FoldC from every
+config. These acceptance holes are fixed, with source/spec/study-inner-hash,
+comparison/config identity, full fold coverage, seed/window comparability,
+finite-value, ranking order and bounded ZIP checks. Unpinned review is labelled
+internal integrity only. Original actual findings remain unchanged. **72focused
+regressions/Ruff/MypyPASS**; raw evidence stays private.
+
+A copied saved notebook output records Python3.12.12,2logicalCPUs and locked
+NumPy1.26.4/Pandas3.0.1/SciPy1.17.1/XGBoost3.2.0/LightGBM4.6.0. The2410.3474s
+sum is whole-task wall time, not fit-only CPU or end-to-end notebook time. There
+is still no measured peak Colab RAM, actual CPU utilization, Compute Units bill
+or cache/GPU benefit. Do not infer these values from the task timer sum.
+
+The same-fold p06 paired median remains+5.56pp; scientific status remains
+PROVISIONAL and promotionBLOCKED. Cache benchmarks, R2workers and the E4RFC
+were not executed in this review. Daily attributable portfolio evidence,
+winner-matched cost stress and independent eligible OOS still precede promotion.
+
+See [machine-readable acceptance and private delivery](../evidence/us87_v6_colab_review_2026-11-07/README.md).

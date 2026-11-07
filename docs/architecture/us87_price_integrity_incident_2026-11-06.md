@@ -237,3 +237,21 @@ Current remaining acceptance is explicitly future work: Owner-initiated initial
 cloud chunk, fresh-session restore and a new corrected-source campaign, then
 independent results review. This task stops after data/config preparation; no
 new research training, final holdout evaluation or PR merge is authorized here.
+
+
+## Later Owner cloud completion — independent local verification, 2026-11-07
+
+The Owner subsequently ran the corrected-source v6 campaign to261/261ready,
+0blocked. This supersedes the earlier NOT_RUN preparation status for this actual
+run, not its unchanged source identities or historical preparation record.
+Final ZIP SHA256
+`0b209944f3fa3219ce4bad03f7ed2b5b2e203fb097697d46bca608c9852bb5a9`,
+indexSHA256
+`eb3b720ffc64e5cc62ace5295adef357559bab0074eddb45bc224ed028ef306f`.
+Independent local frozen-runner restore checks784files and261study/spec/inner
+hashes; reconstructed train/test/context input hashes match all261cloudstudies
+and QQQ returns match. No Agent retraining or Colab access. See
+[PR1380 postrun acceptance](../evidence/us87_v6_colab_review_2026-11-07/README.md).
+Research remainsPROVISIONAL, promotionBLOCKED, full fitted-model cross-platform
+numeric parity/fresh cloud restart unobserved. The whole-source PARTIAL/PIT and
+USAlpha158 restrictions remain; old v5 artifacts stay engineering-only.

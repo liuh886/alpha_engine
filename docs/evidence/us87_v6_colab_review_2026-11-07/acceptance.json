@@ -1,0 +1,174 @@
+{
+  "schema_version": "p2_e3_independent_colab_postrun_acceptance_v1",
+  "review_date": "2026-11-07",
+  "reviewed_cloud_pr": 1380,
+  "reviewer_git_sha": "f1ef98d25493225dd2b32f87da1b284bf51d6997",
+  "reviewer_module_sha256": "5fb4471b861bf35d9b6b801881af6cdbd823f9844288d0db68f82e7fe9e831a2",
+  "execution_status": "PASS_VERIFIED_V6_261_READY_0_BLOCKED",
+  "research_status": "PROVISIONAL_VALIDATION_SELECTION_ONLY",
+  "promotion_status": "BLOCKED",
+  "archive_sha256": "0b209944f3fa3219ce4bad03f7ed2b5b2e203fb097697d46bca608c9852bb5a9",
+  "index_sha256": "eb3b720ffc64e5cc62ace5295adef357559bab0074eddb45bc224ed028ef306f",
+  "comparison_sha256": "f8fc59d7039a6d899c1d88cc49102ec5855ab5ac3ad29ee8a4a419f44b8217f0",
+  "data_manifest_sha256": "4f8225f3c68ee0886b9b707ca140e91dcb509b739b8548fdc10f258574d3da1a",
+  "us_history_sha256": "b4745e46fc26b0328e22de50e579ebbf1d400996258ea6ebb43c1ff739ed5a1a",
+  "frozen_runner_sha": "0c8152496ebeeed559ceab9b095594501fca516b",
+  "batch_id": "us87_colab_model_search_v6_20261103",
+  "run_id": "c027ba478d4386d943ccdd8e960ce733b0744349acb4ed9190a1cf89e57d5f0b",
+  "trial_count": 261,
+  "blocked_trials": 0,
+  "indexed_files_verified": 784,
+  "study_specs_and_inner_hashes_verified": 261,
+  "canonical_frozen_runner_restore": {
+    "status": "RESTORED_VERIFIED_UNREVIEWED",
+    "files": 784,
+    "index_sha256": "eb3b720ffc64e5cc62ace5295adef357559bab0074eddb45bc224ed028ef306f",
+    "trade_ready": false,
+    "validator_git_revision": "0c8152496ebeeed559ceab9b095594501fca516b",
+    "training_executed": false
+  },
+  "local_cloud_input_parity": {
+    "status": "LOCAL_FROZEN_INPUT_HASHES_MATCH_ALL_CLOUD_STUDIES",
+    "validator_git_sha": "0c8152496ebeeed559ceab9b095594501fca516b",
+    "cloud_studies_verified": 261,
+    "folds": [
+      {
+        "test_start": "2026-01-02",
+        "test_end": "2026-02-27",
+        "matched_cloud_studies": 87,
+        "local_input_hashes_match_cloud": true,
+        "hashes": {
+          "train_data_hash": "61323c56cdf63157980b13c7499a9d34535cfc132e078f3051e7485512dbd07a",
+          "test_data_hash": "2e63573079388a5c93f4359799c4ac588fc8681bccc6cacb2be465532af5f352",
+          "inference_context_hash": "44d7d28f3c62fb57901842202259a48f540e0d4bdcb0ac860cbe8c3fbb1eb66e"
+        },
+        "qqq_cumulative_return_matches": true
+      },
+      {
+        "test_start": "2026-03-02",
+        "test_end": "2026-04-30",
+        "matched_cloud_studies": 87,
+        "local_input_hashes_match_cloud": true,
+        "hashes": {
+          "train_data_hash": "e935a6baec0d26b1fa910e541c55fa8c9dd1a4abd8a4a355ab32152817c8d2c7",
+          "test_data_hash": "705df6ea65ac07bf9f2392ef2b4238d7895126d87f1a8d1ace99c3904a4635d7",
+          "inference_context_hash": "05df1ca9ffc0df9b988204037f5fa7b941db1d0b776055d60b8d665d2966c3bd"
+        },
+        "qqq_cumulative_return_matches": true
+      },
+      {
+        "test_start": "2026-05-04",
+        "test_end": "2026-06-30",
+        "matched_cloud_studies": 87,
+        "local_input_hashes_match_cloud": true,
+        "hashes": {
+          "train_data_hash": "e5f7773bce0587591c05d083d705d1111aff6a7d141dc2d3c5fc4b1573a183cc",
+          "test_data_hash": "ac6e74d5a2a7d404c20835d7c0f149e31f63bcc362a3ad664ba2e052a9c4b86e",
+          "inference_context_hash": "a27dae59fccdf30b53acce3d1f548fffa1b451adfe1d932c822ca0dbd95f7cda"
+        },
+        "qqq_cumulative_return_matches": true
+      }
+    ],
+    "network_used": false,
+    "model_fit_executed": false,
+    "full_model_numerical_parity_certified": false,
+    "holdout_evaluated": false
+  },
+  "scientific_summary_unchanged_by_verifier_fix": true,
+  "p06_paired_comparison": {
+    "configuration_id": "xgb_search-p06",
+    "median_paired_delta_pp": 5.56,
+    "median_validation_net_excess_pp": 48.2,
+    "paired_deltas_vs_momentum_pp": [
+      -1.66,
+      5.56,
+      28.39
+    ],
+    "wins_vs_momentum": 2
+  },
+  "lgb_p03_paired_comparison": {
+    "configuration_id": "lgb_search-p03",
+    "median_paired_delta_pp": 18.14,
+    "median_validation_net_excess_pp": 34.29,
+    "paired_deltas_vs_momentum_pp": [
+      -17.26,
+      21.04,
+      18.14
+    ],
+    "wins_vs_momentum": 2
+  },
+  "cost_stress": {
+    "control": "xgb_control-p00",
+    "median_cost_loss_pp": 3.57,
+    "paired_cost_loss_pp": [
+      3.3,
+      4.05,
+      3.57
+    ],
+    "stress": "xgb_cost_stress-p00",
+    "warning": "stress compares the fixed control, not a selected search winner"
+  },
+  "identical_seed_outcome_groups": 87,
+  "distinct_config_fold_groups": 87,
+  "extra_seed_runs_without_distinct_observed_metric_vectors": 174,
+  "task_wall_seconds_sum": 2410.3474,
+  "task_timer_scope": "Per-study wall timers include data preparation, fitting and portfolio evaluation; not fit-only CPU time, total notebook wall or billable units.",
+  "saved_cloud_environment": [
+    {
+      "python": "3.12.12",
+      "cpu_count": 2,
+      "packages": {
+        "numpy": "1.26.4",
+        "pandas": "3.0.1",
+        "scipy": "1.17.1",
+        "xgboost": "3.2.0",
+        "lightgbm": "4.6.0"
+      }
+    }
+  ],
+  "colab_end_to_end_wall_seconds": null,
+  "compute_units_consumed": null,
+  "peak_cloud_ram": null,
+  "gpu_benefit_measured": false,
+  "fresh_colab_runtime_restart_observed": false,
+  "r1_full_study_cold_warm_benchmark": "NOT_RUN_NO_NEW_RESEARCH_TRAINING",
+  "r1_cache_default": "OFF",
+  "r2_process_workers": "NOT_IMPLEMENTED",
+  "e4_1032_task_campaign": "RFC_NOT_EXECUTABLE_NOT_APPROVED_NOT_RUN",
+  "verifier_regressions_rejected": [
+    {
+      "case": "nonfinite_metric",
+      "rejected": true,
+      "reason": "non-finite performance observation: momentum_rule-p00 median"
+    },
+    {
+      "case": "duplicate_ranking",
+      "rejected": true,
+      "reason": "validation ranking identities/order differ from verified observations"
+    },
+    {
+      "case": "missing_fold",
+      "rejected": true,
+      "reason": "fold diagnostics differ from frozen trial coverage"
+    }
+  ],
+  "focused_tests_passed": 72,
+  "ruff": "PASS",
+  "mypy": "PASS",
+  "new_model_fit_executed_by_local_agent": false,
+  "agent_accessed_colab": false,
+  "old_v5_and_v6_inputs_mutated": false,
+  "research_only": true,
+  "trade_ready": false,
+  "pit_certified": false,
+  "model_promoted": false,
+  "holdout_evaluated": false,
+  "full_model_numeric_parity_certified": false,
+  "missing_scientific_evidence": [
+    "daily holdings/returns/turnover and constituent attribution",
+    "cost stress matched to selected p06",
+    "independent eligible holdout or forward OOS",
+    "PIT/curated-roster source constraints"
+  ],
+  "remaining_data_plane_blocker": "US Alpha158 true VWAP/SIP/OTC unchanged"
+}
