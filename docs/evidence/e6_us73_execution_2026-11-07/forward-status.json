@@ -1,0 +1,16 @@
+{
+  "actual_execution_gate": "BLOCKED_SOURCE_UNITS_ACTION_BRIDGE_AND_FILL_EVIDENCE",
+  "contract_sha256": "1a034d711b6b8e6fd4cb5bb8a0877e769c68d05e585450585984ccfefe964424",
+  "first_signal_session": "2026-11-09",
+  "future_has_started": false,
+  "market_packets": 0,
+  "missing_model_artifacts": [
+    "xgb_p03",
+    "lgb_p05"
+  ],
+  "model_fits": 0,
+  "pit_certified": false,
+  "policy": "weekly_min5_buffer10_asc",
+  "predictions_captured": 0,
+  "trade_ready": false
+}

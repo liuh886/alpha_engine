@@ -1,0 +1,28 @@
+{
+  "destination": "AlphaEngine/03_Data/Research_Exchange_P2/incoming_unreviewed/e6-us73-execution-v1-fe4c551062",
+  "filesystem_readback": "PASS",
+  "remote_sync_completion": "NOT_OBSERVED_GOOGLE_DRIVE_DESKTOP_MANAGED",
+  "remote_acl_reverified": false,
+  "files": [
+    {
+      "name": "delivery.json",
+      "size": 573,
+      "sha256": "8dc5af24de7136edaef350596583543242a880389f152c1542b3eaef4109382c"
+    },
+    {
+      "name": "e6-us73-execution-v1-fe4c551062.zip",
+      "size": 49124929,
+      "sha256": "2f09756d3eb14142c9a047dd48072d4bfd76eb24df13f08aaad07b57beab350e"
+    },
+    {
+      "name": "manifest.json",
+      "size": 184906,
+      "sha256": "863753a650200fb5064c4d87274cb41e0700169e76b66d88457210ff999bcd8f"
+    },
+    {
+      "name": "\u7814\u7a76\u62a5\u544a.md",
+      "size": 6942,
+      "sha256": "78e1930225f9bf6985d2be33482ffa2360fe105652933e11f46725a715f216ba"
+    }
+  ]
+}

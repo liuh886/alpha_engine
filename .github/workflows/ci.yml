@@ -19,7 +19,7 @@ on:
       - '.github/workflows/strategy-signal-delivery-outbox.yml'
   pull_request:
     # Validate the dependent Colab E2 PR before its physical-data base PR lands.
-    branches: [main, feat/p2-colab-research-exchange-mvp-20261104, feat/p2-e2-colab-batch-foundation-20261106, feat/p2-e2-colab-model-exploration-20261106, fix/p2-e2-us87-price-integrity-20261106, feat/p2-e3-v6-review-resource-orchestrator-20261107]
+    branches: [main, feat/p2-colab-research-exchange-mvp-20261104, feat/p2-e2-colab-batch-foundation-20261106, feat/p2-e2-colab-model-exploration-20261106, fix/p2-e2-us87-price-integrity-20261106, feat/p2-e3-v6-review-resource-orchestrator-20261107, feat/p2-e5-portfolio-ledger-20261107]
     paths:
       - 'src/**'
       - 'tests/**'
@@ -106,6 +106,11 @@ jobs:
           src/research/e5_execution_review.py
           src/research/e5_score_reconstruction.py
           src/research/e5_research_report.py
+          src/research/execution_selection.py
+          src/research/e6_execution.py
+          src/research/e6_capacity.py
+          src/research/e6_forward.py
+          src/research/e6_report.py
           src/research/studies/xgb_study.py
           src/data/fundamentals/ashare_public_financials.py
           tests/test_cloud_exchange.py
@@ -124,6 +129,10 @@ jobs:
           tests/test_portfolio_ledger.py
           tests/test_e5_execution_review.py
           tests/test_e5_research_report.py
+          tests/test_execution_selection.py
+          tests/test_e6_execution.py
+          tests/test_e6_capacity.py
+          tests/test_e6_forward.py
           src/research/cross_sectional_experiment_runner.py
           src/research/ranker_execution.py
           src/research/ranker_training.py
@@ -263,6 +272,10 @@ jobs:
           tests/test_portfolio_ledger.py
           tests/test_e5_execution_review.py
           tests/test_e5_research_report.py
+          tests/test_execution_selection.py
+          tests/test_e6_execution.py
+          tests/test_e6_capacity.py
+          tests/test_e6_forward.py
           tests/test_cross_sectional_experiment_runner.py
           tests/test_ranker_training.py
           tests/test_formal_baseline_onboarding.py

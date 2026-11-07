@@ -19,7 +19,7 @@ import subprocess
 import warnings
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -209,6 +209,7 @@ def _simulate_portfolio(
     *,
     liquidate_at_end: bool = True,
     ledger: list[dict[str, Any]] | None = None,
+    selection: Callable[[int, str, np.ndarray, np.ndarray], np.ndarray] | None = None,
 ) -> tuple[list[float], list[float], list[float], list[float]]:
     """Simulate daily execution strictly from session t-1 signal to session t realization.
 
@@ -258,6 +259,18 @@ def _simulate_portfolio(
     top_indices0 = np.argsort(masked_s0)[-top_k:]
     curr_target_weights = np.zeros(num_assets, dtype=np.float64)
     curr_target_weights[top_indices0] = 1.0 / float(top_k)
+
+    def selected(step: int, drifted: np.ndarray) -> np.ndarray:
+        assert selection is not None
+        target = np.asarray(selection(step, sessions[step], score_arr[step].copy(), drifted.copy()))
+        if (target.shape != (num_assets,) or not np.isfinite(target).all() or
+                (target < 0).any() or int((target > 0).sum()) != top_k or
+                not np.isclose(target.sum(), 1.0, atol=1e-12, rtol=0)):
+            raise SimulationBlockError("selection violated fully-invested long-only TopK contract")
+        return target.copy()
+
+    if selection is not None:
+        curr_target_weights = selected(0, np.zeros(num_assets))
 
     # Initial turnover from cash (all zero weights) is 1.0
     prev_turnover = 1.0
@@ -341,6 +354,8 @@ def _simulate_portfolio(
         top_indices_i = np.argsort(masked_si)[-top_k:]
         next_target_weights = np.zeros(num_assets, dtype=np.float64)
         next_target_weights[top_indices_i] = 1.0 / float(top_k)
+        if selection is not None:
+            next_target_weights = selected(i, drifted_weights)
 
         # Exact turnover to rebalance from drifted weights to new target weights
         rebalance_turnover = float(0.5 * np.sum(np.abs(next_target_weights - drifted_weights)))
