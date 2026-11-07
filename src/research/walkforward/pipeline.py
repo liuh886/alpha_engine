@@ -210,6 +210,7 @@ def _simulate_portfolio(
     liquidate_at_end: bool = True,
     ledger: list[dict[str, Any]] | None = None,
     selection: Callable[[int, str, np.ndarray, np.ndarray], np.ndarray] | None = None,
+    end_state: dict[str, Any] | None = None,
 ) -> tuple[list[float], list[float], list[float], list[float]]:
     """Simulate daily execution strictly from session t-1 signal to session t realization.
 
@@ -226,8 +227,10 @@ def _simulate_portfolio(
 
     Fails closed on missing candidate prices, missing benchmark returns, or insufficient candidates.
     """
-    if len(sessions) < 2:
+    if not sessions or (len(sessions) < 2 and end_state is None):
         return [], [], [], []
+    if end_state is not None and liquidate_at_end:
+        raise SimulationBlockError("pending close state requires continuous, non-liquidating mode")
 
     missing_scores = [s for s in sessions if s not in scores.index]
     if missing_scores:
@@ -277,6 +280,19 @@ def _simulate_portfolio(
     # Optional observation only: retain the exact states used by this engine.
     # No ledger consumer may select positions or change the return arithmetic.
     before_fill = np.zeros(num_assets, dtype=np.float64)
+
+    def pending_state(step: int, before: np.ndarray, target: np.ndarray, turnover: float) -> None:
+        if end_state is not None:
+            if not np.isfinite(price_arr[step]).all() or (price_arr[step] <= 0).any():
+                raise SimulationBlockError("invalid closing prices for pending paper fill")
+            end_state.update({"session": sessions[step], "symbols": col_names.copy(),
+                "weight_before_fill": before.copy(), "target_weight": target.copy(),
+                "turnover": turnover, "pending_fee_return": turnover * friction_per_turnover,
+                "cost_timing": "charged_in_next_observed_holding_interval_not_fabricated_now"})
+
+    if len(sessions) == 1:
+        pending_state(0, before_fill, curr_target_weights, prev_turnover)
+        return [], [], [], []
 
     def record_interval(i: int, drifted: np.ndarray, closing_turnover: float = 0.0) -> None:
         if ledger is not None:
@@ -340,6 +356,14 @@ def _simulate_portfolio(
                 daily_net_returns[-1] -= terminal_cost_drag
                 daily_turnovers[-1] += closing_turnover
             record_interval(i, drifted_weights, closing_turnover)
+            if end_state is not None:
+                if selection is not None:
+                    target_at_close = selected(i, drifted_weights)
+                else:
+                    target_at_close = np.zeros(num_assets)
+                    target_at_close[np.argsort(score_arr[i])[-top_k:]] = 1.0 / top_k
+                turnover_at_close = float(0.5 * np.abs(target_at_close - drifted_weights).sum())
+                pending_state(i, drifted_weights, target_at_close, turnover_at_close)
             break
 
         # Compute next target weights from signals at close of session i
