@@ -110,6 +110,24 @@ uv run python -m src.research.e2_resource_taskgraph \\
 
 The second command is an **illustrative invocation**, not a statement that the owner's Colab instance has 4 cores or 16 GiB RAM. It reads the checkpoint's exact `<batch_id>/batch-plan.json` extracted to the private path, and emits a plan with resource ceilings and task-to-worker-slot assignments but **performs zero model training or checkpoint writes**. R1/R2 must wire this planner to real cache and worker code using a new frozen code/batch ID, then prove parity via pilot.
 
+## R1 implemented in this PR: opt-in in-memory feature reuse
+
+This branch now includes a **working** `e2_feature_cache` at the existing `run_study` data path. Under a new frozen runner/batch identity, the serial CLI can opt into:
+
+```bash
+uv run python -m src.research.colab_experiment_batch run \\
+  --batch-spec "/PRIVATE/NEW_RUNNER_CAMPAIGN.json" \\
+  --data-root "/PRIVATE/VERIFIED_NEW_STAGED_ROOT" \\
+  --output-root "/PRIVATE/FRESH_OUTPUT_ROOT" \\
+  --max-new-trials 6 --shared-feature-cache
+```
+
+The feature-cache session is scoped to one CLI invocation and bound to the raw batch-spec SHA256; per-task source slices are keyed on exact request/reader code, while the common full-column train-feature matrix is keyed on fold/train bounds, pool, symbol roster, price unit and trainer source hash. The exact **original feature formulas** are retained, and each hit returns a deep copy before callers select their feature subset. Bounded memory cache (16 entries) is discarded after the CLI returns. Nothing is written to disk/Drive; no trusted receipt, experiment code identity, held-out-window or checkpoint path is modified. Opt-in output adds a `feature_cache` hit/miss/eviction counter block.
+
+**Cold/warm parity obligation:** `--shared-feature-cache` does not alter the frozen v6 runner retrospectively, and actual 261-task v6 receipts are **not** re-run in this PR. To benchmark, the local Agent must first create a **new code SHA-bound campaign and fresh separate output roots** with the same small, predeclared tasks, then compare original evaluator result metrics, study identity, stable feature matrices, elapsed time and resource use across cache OFF/ON. Raw receipt SHA256 can differ due to commit identity and generated-at timestamps; compare equivalent scientific result fields and exact features within the **same new runner**, not old-v6 receipt digests. Never mutate or resume v6 archived checkpoint under an updated runner.
+
+R1 *status*: cache integration and focused synthetic parity tests implemented; real v6-data speedup and full receipt parity **NOT_MEASURED**. Cache is disabled by default and must not be advertised as a proven speedup until measured. R2 process workers, cross-process caching, reusable fitting/prediction and GPU remain design-only.
+
 ## Change boundary
 
 - No change to existing 261 v6 receipts, original v5, current public trading strategies, UI, brokerage, cloud pricing, private provider ZIPs or rights declarations.
