@@ -106,3 +106,12 @@ and hashes before producing paired, contribution and timing reports. Full
 holdings/score detail stays private. Actual fills/capacity, fee financing,
 source PIT and new independent future evidence remain research gates; no
 remaining E4 campaign branch or live execution was enabled.
+
+## E6 follow-up
+
+The subsequent owner-directed [E6 execution-policy work](e6_execution_policy_2026-11-07.md)
+reuses these exact saved scores with zero fits. The original E5 archived
+results, code identity and hashes remain unchanged; new selection policies are
+opt-in on a separately frozen evaluator revision. Its224 fixed comparisons
+did not restore persistent ML advantage, and its real capacity/forward gates
+remain explicit. This does not supersede or rewrite E5's original evidence.
