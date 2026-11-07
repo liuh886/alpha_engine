@@ -100,6 +100,7 @@ jobs:
           src/research/colab_research_campaign.py
           src/research/us87_price_integrity.py
           src/research/e2_postrun_review.py
+          src/research/e2_resource_taskgraph.py
           src/data/fundamentals/ashare_public_financials.py
           tests/test_cloud_exchange.py
           tests/test_comprehensive_dataset.py
@@ -112,6 +113,7 @@ jobs:
           tests/test_colab_research_campaign.py
           tests/test_us87_price_integrity.py
           tests/test_e2_postrun_review.py
+          tests/test_e2_resource_taskgraph.py
           src/research/cross_sectional_experiment_runner.py
           src/research/ranker_execution.py
           src/research/ranker_training.py
@@ -246,6 +248,7 @@ jobs:
           tests/test_colab_research_campaign.py
           tests/test_us87_price_integrity.py
           tests/test_e2_postrun_review.py
+          tests/test_e2_resource_taskgraph.py
           tests/test_cross_sectional_experiment_runner.py
           tests/test_ranker_training.py
           tests/test_formal_baseline_onboarding.py
