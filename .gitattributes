@@ -60,3 +60,7 @@ data/research/runs/**/*.onnx filter=lfs diff=lfs merge=lfs -text
 # original bytes rather than invalidating frozen source and lineage hashes.
 artifacts/evidence/cn_27*/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 artifacts/evidence/cn_all_weather_alpha_rotation_v1/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+# This offline receipt is bound by the private v5 delivery index. Preserve its
+# original Windows bytes so the public copy retains the delivered SHA256.
+docs/evidence/p2_d0_2026-11-05/offline-acceptance-v5.json -text whitespace=cr-at-eol

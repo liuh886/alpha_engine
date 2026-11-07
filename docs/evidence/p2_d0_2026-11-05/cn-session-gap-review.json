@@ -1,0 +1,858 @@
+{
+  "bars_added": 0,
+  "bundle_manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
+  "calendar": "XSHG",
+  "calendar_library_version": "4.13.2",
+  "confirmed_suspension_sessions": 85,
+  "dataset_plan_sha256": "5fbcb133e9de25d4ad747b11f1464955e8a4a4a8f9653a1c8f1d8ff6df77e12b",
+  "interval_count": 14,
+  "lifecycle_registry_modified": false,
+  "limits": [
+    "Retrospective explanation does not certify event PIT availability.",
+    "Prefix-history limits, corporate-action semantics and US Alpha158 blockers are unaffected.",
+    "The immutable original audit retains its original unexplained classification; this review is a separately bound annotation."
+  ],
+  "missing_session_count": 85,
+  "original_bundle_modified": false,
+  "pit_certified": false,
+  "pool_symbols_removed": 0,
+  "primary_evidence": [
+    {
+      "extraction_path": "extractions/000063-2021-03-31.json",
+      "extraction_sha256": "99a27fb20d9c41e9a0d8f91d84a35e767d3eb998e58d8a95b8f15e98aaf283dd",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:5896af9/tier:flash/page:1/block:16",
+          "page_range": "1",
+          "start": "doc:5896af9/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/000063-2021-03-31.pdf",
+      "resume_date_exclusive": "2021-04-01",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "5896af9f6f368a09fa177ff0a1de833b3ca5f6c8a764bd10e35ce41188ee9153",
+      "size_bytes": 204060,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2021-04-01/1209567370.PDF",
+      "start_notice": {
+        "page_ranges": [
+          {
+            "end": "doc:83ab9f1/tier:flash/page:1/block:18",
+            "page_range": "1",
+            "start": "doc:83ab9f1/tier:flash/page:1"
+          }
+        ],
+        "path": "primary_notices/000063-2021-03-31-start.pdf",
+        "sha256": "83ab9f13607dae047fe902d7df5384b8c927d2cd58e41d8cbd2a14a166dba59f",
+        "size_bytes": 203132,
+        "source_url": "https://static.cninfo.com.cn/finalpage/2021-03-31/1209484316.PDF",
+        "suspension_start": "2021-03-31",
+        "symbol": "000063"
+      },
+      "suspension_start": "2021-03-31",
+      "symbol": "000063",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/000408-2021-05-11.json",
+      "extraction_sha256": "f2aae40c61341dfb3bcecff386779084664a30e4860ee4b6d67cc3bd4dcb7cf7",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:fe96fdb/tier:flash/page:3/block:3",
+          "page_range": "1-3",
+          "start": "doc:fe96fdb/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/000408-2021-05-11.pdf",
+      "resume_date_exclusive": "2021-05-12",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "fe96fdb7116f989dd8e2391d9ffbf16fccc078d6229b906c4288ef3e47f160fa",
+      "size_bytes": 198791,
+      "source_url": "https://disc.static.szse.cn/download/disc/disk02/finalpage/2021-05-11/f9006990-ffd3-40bb-9cb9-be8dc0511516.PDF",
+      "suspension_start": "2021-05-11",
+      "symbol": "000408",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/000408-2025-01-10.json",
+      "extraction_sha256": "afd6c10f1ab28272bf71ffa5df80ac7c758bdc7b5f74989f63f0c22fba1bd3c7",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:04b274a/tier:flash/page:2/block:10",
+          "page_range": "1-2",
+          "start": "doc:04b274a/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/000408-2025-01-10.pdf",
+      "resume_date_exclusive": "2025-01-17",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "04b274aadc1d083e5bed96550cb824da63cb06c32a5aa99683e0b98f2f63d400",
+      "size_bytes": 261389,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2025-01-17/1222355440.PDF",
+      "suspension_start": "2025-01-10",
+      "symbol": "000408",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/002142-2021-11-24.json",
+      "extraction_sha256": "48e59c8aa47f5ef66e1127ace83e0b8b5291177faa3eac3dc189d9ab14a14a74",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:1b155a9/tier:flash/page:9/block:10",
+          "page_range": "1-9",
+          "start": "doc:1b155a9/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/002142-2021-11-24.pdf",
+      "resume_date_exclusive": "2021-12-02",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "1b155a9aa1ce71b6efe2ab687d69a3c8f683853cf3789bb01d2380800830035a",
+      "size_bytes": 224185,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2021-11-30/1211720080.PDF",
+      "suspension_start": "2021-11-24",
+      "symbol": "002142",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/002456-2025-04-01.json",
+      "extraction_sha256": "80019cf4ef81b978bd810f19686163bea2dd6c6ac9f258bfb98bbfa2ca116188",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:8a7eb5e/tier:flash/page:2/block:6",
+          "page_range": "1-2",
+          "start": "doc:8a7eb5e/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/002456-2025-04-01.pdf",
+      "resume_date_exclusive": "2025-04-16",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080",
+      "size_bytes": 239779,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2025-04-16/1223103742.PDF",
+      "suspension_start": "2025-04-01",
+      "symbol": "002456",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/300548-2022-03-31.json",
+      "extraction_sha256": "f5d93b49016a41fbba7bbe4033375292f04e495935c2eba7ce56b09136e940e3",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:ea9bed2/tier:flash/page:2/block:4",
+          "page_range": "1-2",
+          "start": "doc:ea9bed2/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/300548-2022-03-31.pdf",
+      "resume_date_exclusive": "2022-04-08",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "ea9bed21cc4e66dc048c97101b3c45ff2bcda08cf1dccd4249ce55a4ff90cfc2",
+      "size_bytes": 124193,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2022-04-08/1212841094.PDF",
+      "suspension_start": "2022-03-31",
+      "symbol": "300548",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/301309-2026-03-24.json",
+      "extraction_sha256": "08bc2e75c04d7cc9ee0088d558b98a7c595b8231dba41a7e1019ea872992e050",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:4d7cacd/tier:flash/page:2/block:6",
+          "page_range": "1-2",
+          "start": "doc:4d7cacd/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/301309-2026-03-24.pdf",
+      "resume_date_exclusive": "2026-04-08",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd",
+      "size_bytes": 102504,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2026-04-08/1225082360.PDF",
+      "suspension_start": "2026-03-24",
+      "symbol": "301309",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/301666-2026-05-19.json",
+      "extraction_sha256": "12143965517c4fc86efd8a283ac9ca359f5df212d5412057f59e918af72c0dda",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:a79f21d/tier:flash/page:3/block:9",
+          "page_range": "1-3",
+          "start": "doc:a79f21d/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/301666-2026-05-19.pdf",
+      "resume_date_exclusive": "2026-05-22",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "a79f21d53cab9be0eea256231b0a2263eb2a317fd41701903f310bf409ca3ef2",
+      "size_bytes": 102800,
+      "source_url": "https://disc.static.szse.cn/download/disc/disk03/finalpage/2026-05-22/146f0759-5afb-418b-96a2-b4c6e06ce5ec.PDF",
+      "suspension_start": "2026-05-19",
+      "symbol": "301666",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/600009-2021-06-10.json",
+      "extraction_sha256": "2d8f533ec6cdd2df93cd1f806301609a8d95c7cc986012c79eb4c84fed51a21e",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:dbc6caf/tier:flash/page:2/block:7",
+          "page_range": "1-2",
+          "start": "doc:dbc6caf/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/600009-2021-06-10.pdf",
+      "resume_date_exclusive": "2021-06-25",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53",
+      "size_bytes": 293024,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2021-06-25/1210329404.PDF",
+      "suspension_start": "2021-06-10",
+      "symbol": "600009",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/600009-2022-04-08.json",
+      "extraction_sha256": "e9242611ab828f25db1f59912ed43b62608628c1a8748e9960a9ff8f8680af9c",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:c800fc4/tier:flash/page:2/block:4",
+          "page_range": "1-2",
+          "start": "doc:c800fc4/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/600009-2022-04-08.pdf",
+      "resume_date_exclusive": "2022-04-11",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "c800fc47ce8403acd45b597f27fbec552f3e06e8c5d75aa79cda04f9c0006f06",
+      "size_bytes": 283605,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2022-04-09/1212855594.PDF",
+      "start_notice": {
+        "page_ranges": [
+          {
+            "end": "doc:dc0f386/tier:flash/page:2/block:4",
+            "page_range": "1-2",
+            "start": "doc:dc0f386/tier:flash/page:1"
+          }
+        ],
+        "path": "primary_notices/600009-2022-04-08-start.pdf",
+        "sha256": "dc0f3861bc1bb93337dedba6168627f537c72090f007b09e89255d5528e79140",
+        "size_bytes": 282372,
+        "source_url": "https://static.cninfo.com.cn/finalpage/2022-04-08/1212839321.PDF",
+        "suspension_start": "2022-04-08",
+        "symbol": "600009"
+      },
+      "suspension_start": "2022-04-08",
+      "symbol": "600009",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/600150-2024-09-03.json",
+      "extraction_sha256": "d61ad0e7e0cbc62b5d72da2e6ec672a6153237da37c17031843deaa3cd7ad268",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:261e50e/tier:flash/page:2/block:8",
+          "page_range": "1-2",
+          "start": "doc:261e50e/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/600150-2024-09-03.pdf",
+      "resume_date_exclusive": "2024-09-19",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c",
+      "size_bytes": 626540,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2024-09-19/1221234288.PDF",
+      "suspension_start": "2024-09-03",
+      "symbol": "600150",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/600150-2025-08-13.json",
+      "extraction_sha256": "68fd7f5bdbfe1da6e1d0ae397ba144e3b8e0e0a05dd856a992e87b6dd7712e72",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:a529af2/tier:flash/page:2/block:8",
+          "page_range": "1-2",
+          "start": "doc:a529af2/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/600150-2025-08-13.pdf",
+      "resume_date_exclusive": "2025-08-19",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "a529af260766407070b8d800cb890b26d06bee07adca3192244fe225546a1dbe",
+      "size_bytes": 89199,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2025-08-19/1224504273.PDF",
+      "suspension_start": "2025-08-13",
+      "symbol": "600150",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/603160-2024-11-25.json",
+      "extraction_sha256": "163ef78c1bf840647257590ce029b83294b15d3f90a0b7fb2edfa17fd1f6c968",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:25973cd/tier:flash/page:2/block:10",
+          "page_range": "1-2",
+          "start": "doc:25973cd/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/603160-2024-11-25.pdf",
+      "resume_date_exclusive": "2024-12-09",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef",
+      "size_bytes": 630454,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2024-12-07/1221957776.PDF",
+      "suspension_start": "2024-11-25",
+      "symbol": "603160",
+      "tier": "flash"
+    },
+    {
+      "extraction_path": "extractions/688521-2025-08-29.json",
+      "extraction_sha256": "0aec77af0e88de6d18e68b62b37321793b39a6e8edc549cad3d95bf3bb2ff5b0",
+      "mineru_version": "4.1.3",
+      "page_ranges": [
+        {
+          "end": "doc:7b17a94/tier:flash/page:2/block:10",
+          "page_range": "1-2",
+          "start": "doc:7b17a94/tier:flash/page:1"
+        }
+      ],
+      "path": "primary_notices/688521-2025-08-29.pdf",
+      "resume_date_exclusive": "2025-09-12",
+      "review_status": "START_AND_RESUME_DATES_READ_AND_REVIEWED",
+      "sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def",
+      "size_bytes": 121744,
+      "source_url": "https://static.cninfo.com.cn/finalpage/2025-09-12/1224652741.PDF",
+      "suspension_start": "2025-08-29",
+      "symbol": "688521",
+      "tier": "flash"
+    }
+  ],
+  "primary_pdf_count": 16,
+  "research_only": true,
+  "review_method": "MinerU 4.1.3 flash local extraction, manual start/resume review, exact exchange-session set equality against frozen per-symbol audit",
+  "reviewed_at": "2026-11-05",
+  "schema_version": "p2_retrospective_session_gap_review_v1",
+  "scope": "CN130 interior exchange-session absences only, at frozen market edition 2026-11-03",
+  "securities": [
+    {
+      "projection_sha256": "53fd7de82f5700fa5d8b7ba8a07e456b96d7232793cb6afe3780aff1c4287eda",
+      "sessions": [
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-03-31",
+          "primary_notice_sha256": "5896af9f6f368a09fa177ff0a1de833b3ca5f6c8a764bd10e35ce41188ee9153"
+        }
+      ],
+      "source_csv_sha256": "a65eb555e4d5aad7b75b9d69673017ae64f90ada416eb4830437c62899c7b612",
+      "symbol": "000063"
+    },
+    {
+      "projection_sha256": "8383bdc5662f17d4f1797fde46f6d6e1478b77e9e444681353b508fdd26a7a08",
+      "sessions": [
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-05-11",
+          "primary_notice_sha256": "fe96fdb7116f989dd8e2391d9ffbf16fccc078d6229b906c4288ef3e47f160fa"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-01-10",
+          "primary_notice_sha256": "04b274aadc1d083e5bed96550cb824da63cb06c32a5aa99683e0b98f2f63d400"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-01-13",
+          "primary_notice_sha256": "04b274aadc1d083e5bed96550cb824da63cb06c32a5aa99683e0b98f2f63d400"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-01-14",
+          "primary_notice_sha256": "04b274aadc1d083e5bed96550cb824da63cb06c32a5aa99683e0b98f2f63d400"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-01-15",
+          "primary_notice_sha256": "04b274aadc1d083e5bed96550cb824da63cb06c32a5aa99683e0b98f2f63d400"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-01-16",
+          "primary_notice_sha256": "04b274aadc1d083e5bed96550cb824da63cb06c32a5aa99683e0b98f2f63d400"
+        }
+      ],
+      "source_csv_sha256": "53ba05455223bc1acfc7561d2fe448368bfe73ec01cc19e4cd15eca38cd79536",
+      "symbol": "000408"
+    },
+    {
+      "projection_sha256": "faf62384190e541f68ade843f4315e2403b99e461b40268da55ecc25203a932b",
+      "sessions": [
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-11-24",
+          "primary_notice_sha256": "1b155a9aa1ce71b6efe2ab687d69a3c8f683853cf3789bb01d2380800830035a"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-11-25",
+          "primary_notice_sha256": "1b155a9aa1ce71b6efe2ab687d69a3c8f683853cf3789bb01d2380800830035a"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-11-26",
+          "primary_notice_sha256": "1b155a9aa1ce71b6efe2ab687d69a3c8f683853cf3789bb01d2380800830035a"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-11-29",
+          "primary_notice_sha256": "1b155a9aa1ce71b6efe2ab687d69a3c8f683853cf3789bb01d2380800830035a"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-11-30",
+          "primary_notice_sha256": "1b155a9aa1ce71b6efe2ab687d69a3c8f683853cf3789bb01d2380800830035a"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-12-01",
+          "primary_notice_sha256": "1b155a9aa1ce71b6efe2ab687d69a3c8f683853cf3789bb01d2380800830035a"
+        }
+      ],
+      "source_csv_sha256": "50afaa299365f80478ce7b30cf51cbb3cadb747438ad5cbe49948dede5b906d6",
+      "symbol": "002142"
+    },
+    {
+      "projection_sha256": "e75558748d35c65a93b7732a697f54ce9df945cb89428dae00ea6c5586db8e55",
+      "sessions": [
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-04-01",
+          "primary_notice_sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-04-02",
+          "primary_notice_sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-04-03",
+          "primary_notice_sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-04-07",
+          "primary_notice_sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-04-08",
+          "primary_notice_sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-04-09",
+          "primary_notice_sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-04-10",
+          "primary_notice_sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-04-11",
+          "primary_notice_sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-04-14",
+          "primary_notice_sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-04-15",
+          "primary_notice_sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080"
+        }
+      ],
+      "source_csv_sha256": "00c444e83d962f3a709053e7bc4c0089d1b4204791bbea453f1bcb1932e4a3ef",
+      "symbol": "002456"
+    },
+    {
+      "projection_sha256": "ec5efe49195bdc3dc79159437d171576e752445ed6de5c3c62146dbd07af52f5",
+      "sessions": [
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2022-03-31",
+          "primary_notice_sha256": "ea9bed21cc4e66dc048c97101b3c45ff2bcda08cf1dccd4249ce55a4ff90cfc2"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2022-04-01",
+          "primary_notice_sha256": "ea9bed21cc4e66dc048c97101b3c45ff2bcda08cf1dccd4249ce55a4ff90cfc2"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2022-04-06",
+          "primary_notice_sha256": "ea9bed21cc4e66dc048c97101b3c45ff2bcda08cf1dccd4249ce55a4ff90cfc2"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2022-04-07",
+          "primary_notice_sha256": "ea9bed21cc4e66dc048c97101b3c45ff2bcda08cf1dccd4249ce55a4ff90cfc2"
+        }
+      ],
+      "source_csv_sha256": "e61dd3edc03820c949efda15f24de2968c0c5b6c95f07cf50a6f9c17c3a887f0",
+      "symbol": "300548"
+    },
+    {
+      "projection_sha256": "85c8bd00287ed1c555323891389fc06f5023289fc2919bcd54fbdac47bba0dba",
+      "sessions": [
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-03-24",
+          "primary_notice_sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-03-25",
+          "primary_notice_sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-03-26",
+          "primary_notice_sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-03-27",
+          "primary_notice_sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-03-30",
+          "primary_notice_sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-03-31",
+          "primary_notice_sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-04-01",
+          "primary_notice_sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-04-02",
+          "primary_notice_sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-04-03",
+          "primary_notice_sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-04-07",
+          "primary_notice_sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd"
+        }
+      ],
+      "source_csv_sha256": "bd36ff0f9bfbf9a009d1d2eccb8eb03da5d800eb797a932510b76140ae5759fa",
+      "symbol": "301309"
+    },
+    {
+      "projection_sha256": "be9b04db274314a41a3588da3de9d9bf91662c4b05f7e74de2fb508295988e61",
+      "sessions": [
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-05-19",
+          "primary_notice_sha256": "a79f21d53cab9be0eea256231b0a2263eb2a317fd41701903f310bf409ca3ef2"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-05-20",
+          "primary_notice_sha256": "a79f21d53cab9be0eea256231b0a2263eb2a317fd41701903f310bf409ca3ef2"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2026-05-21",
+          "primary_notice_sha256": "a79f21d53cab9be0eea256231b0a2263eb2a317fd41701903f310bf409ca3ef2"
+        }
+      ],
+      "source_csv_sha256": "a4c99eebe3fe1982b2e233f1804acebcc0111c025c106eb372cd889bbd70c005",
+      "symbol": "301666"
+    },
+    {
+      "projection_sha256": "44fb7020ba16fced51ea18b55a86095e232191a23a256adac22b81c2e00b9885",
+      "sessions": [
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-06-10",
+          "primary_notice_sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-06-11",
+          "primary_notice_sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-06-15",
+          "primary_notice_sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-06-16",
+          "primary_notice_sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-06-17",
+          "primary_notice_sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-06-18",
+          "primary_notice_sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-06-21",
+          "primary_notice_sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-06-22",
+          "primary_notice_sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-06-23",
+          "primary_notice_sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2021-06-24",
+          "primary_notice_sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2022-04-08",
+          "primary_notice_sha256": "c800fc47ce8403acd45b597f27fbec552f3e06e8c5d75aa79cda04f9c0006f06"
+        }
+      ],
+      "source_csv_sha256": "5176c266316b6055db46419974e32761a2540a92406a0cd485968e0ec9bb15bb",
+      "symbol": "600009"
+    },
+    {
+      "projection_sha256": "67090c2dbcc32ec03a91a734ea8424288ec97ac832ab3ab045a4c2d4e2b2d91d",
+      "sessions": [
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-09-03",
+          "primary_notice_sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-09-04",
+          "primary_notice_sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-09-05",
+          "primary_notice_sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-09-06",
+          "primary_notice_sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-09-09",
+          "primary_notice_sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-09-10",
+          "primary_notice_sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-09-11",
+          "primary_notice_sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-09-12",
+          "primary_notice_sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-09-13",
+          "primary_notice_sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-09-18",
+          "primary_notice_sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-08-13",
+          "primary_notice_sha256": "a529af260766407070b8d800cb890b26d06bee07adca3192244fe225546a1dbe"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-08-14",
+          "primary_notice_sha256": "a529af260766407070b8d800cb890b26d06bee07adca3192244fe225546a1dbe"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-08-15",
+          "primary_notice_sha256": "a529af260766407070b8d800cb890b26d06bee07adca3192244fe225546a1dbe"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-08-18",
+          "primary_notice_sha256": "a529af260766407070b8d800cb890b26d06bee07adca3192244fe225546a1dbe"
+        }
+      ],
+      "source_csv_sha256": "021cdfdd9ce37806dfd1f21e8847aaa60f0a3b6cacd8a1ef43348a089e35b6f4",
+      "symbol": "600150"
+    },
+    {
+      "projection_sha256": "a40bfaff60b517f8b695be89dd832c74259c99f35149bb4c3917da3d0fa3802c",
+      "sessions": [
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-11-25",
+          "primary_notice_sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-11-26",
+          "primary_notice_sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-11-27",
+          "primary_notice_sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-11-28",
+          "primary_notice_sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-11-29",
+          "primary_notice_sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-12-02",
+          "primary_notice_sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-12-03",
+          "primary_notice_sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-12-04",
+          "primary_notice_sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-12-05",
+          "primary_notice_sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2024-12-06",
+          "primary_notice_sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef"
+        }
+      ],
+      "source_csv_sha256": "2f786a34f9cf9fd657ecba1ae5b4680878c59f75f3fe37c8339a1734ed08b2a7",
+      "symbol": "603160"
+    },
+    {
+      "projection_sha256": "3b039497fcf5523e0ccab33a131f81bee00222e5aedbe3ab7165aaf2489bdb9e",
+      "sessions": [
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-08-29",
+          "primary_notice_sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-09-01",
+          "primary_notice_sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-09-02",
+          "primary_notice_sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-09-03",
+          "primary_notice_sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-09-04",
+          "primary_notice_sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-09-05",
+          "primary_notice_sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-09-08",
+          "primary_notice_sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-09-09",
+          "primary_notice_sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-09-10",
+          "primary_notice_sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def"
+        },
+        {
+          "classification": "CONFIRMED_SUSPENSION",
+          "date": "2025-09-11",
+          "primary_notice_sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def"
+        }
+      ],
+      "source_csv_sha256": "0268d46a19beaa60cf9cdd14bbce81c73a6d659389ce0264aaadc10cbb5d1aed",
+      "symbol": "688521"
+    }
+  ],
+  "symbol_count": 11,
+  "trade_ready": false,
+  "unexplained_interior_sessions": 0
+}

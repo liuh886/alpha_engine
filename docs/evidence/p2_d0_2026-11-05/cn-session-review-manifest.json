@@ -1,0 +1,189 @@
+{
+  "files": [
+    {
+      "path": "000063-2021-03-31-start-receipt.json",
+      "sha256": "d11fd374e1044934e5e0eb1d413eb36ab6926c4baeeac9aef461ba091a050da2",
+      "size_bytes": 484
+    },
+    {
+      "path": "600009-2022-04-08-start-receipt.json",
+      "sha256": "4861d7ca00439f7f3496fc7277c4c1399e36fe8c68e7588333143940034af804",
+      "size_bytes": 485
+    },
+    {
+      "path": "extractions/000063-2021-03-31-start.json",
+      "sha256": "9536a9c4dd4886903960bdc35d6b9e65dda011f9f45276903d49a58d665148f3",
+      "size_bytes": 2913
+    },
+    {
+      "path": "extractions/000063-2021-03-31.json",
+      "sha256": "99a27fb20d9c41e9a0d8f91d84a35e767d3eb998e58d8a95b8f15e98aaf283dd",
+      "size_bytes": 2584
+    },
+    {
+      "path": "extractions/000408-2021-05-11.json",
+      "sha256": "f2aae40c61341dfb3bcecff386779084664a30e4860ee4b6d67cc3bd4dcb7cf7",
+      "size_bytes": 6307
+    },
+    {
+      "path": "extractions/000408-2025-01-10.json",
+      "sha256": "afd6c10f1ab28272bf71ffa5df80ac7c758bdc7b5f74989f63f0c22fba1bd3c7",
+      "size_bytes": 4570
+    },
+    {
+      "path": "extractions/002142-2021-11-24.json",
+      "sha256": "48e59c8aa47f5ef66e1127ace83e0b8b5291177faa3eac3dc189d9ab14a14a74",
+      "size_bytes": 11860
+    },
+    {
+      "path": "extractions/002456-2025-04-01.json",
+      "sha256": "80019cf4ef81b978bd810f19686163bea2dd6c6ac9f258bfb98bbfa2ca116188",
+      "size_bytes": 4246
+    },
+    {
+      "path": "extractions/300548-2022-03-31.json",
+      "sha256": "f5d93b49016a41fbba7bbe4033375292f04e495935c2eba7ce56b09136e940e3",
+      "size_bytes": 4091
+    },
+    {
+      "path": "extractions/301309-2026-03-24.json",
+      "sha256": "08bc2e75c04d7cc9ee0088d558b98a7c595b8231dba41a7e1019ea872992e050",
+      "size_bytes": 4438
+    },
+    {
+      "path": "extractions/301666-2026-05-19.json",
+      "sha256": "12143965517c4fc86efd8a283ac9ca359f5df212d5412057f59e918af72c0dda",
+      "size_bytes": 7433
+    },
+    {
+      "path": "extractions/600009-2021-06-10.json",
+      "sha256": "2d8f533ec6cdd2df93cd1f806301609a8d95c7cc986012c79eb4c84fed51a21e",
+      "size_bytes": 3660
+    },
+    {
+      "path": "extractions/600009-2022-04-08-start.json",
+      "sha256": "8c4ef4b4c40f0a3e0a48d06e3646b0cf81e083a585cc595444cce1a2f0b945d0",
+      "size_bytes": 2901
+    },
+    {
+      "path": "extractions/600009-2022-04-08.json",
+      "sha256": "e9242611ab828f25db1f59912ed43b62608628c1a8748e9960a9ff8f8680af9c",
+      "size_bytes": 2797
+    },
+    {
+      "path": "extractions/600150-2024-09-03.json",
+      "sha256": "d61ad0e7e0cbc62b5d72da2e6ec672a6153237da37c17031843deaa3cd7ad268",
+      "size_bytes": 4275
+    },
+    {
+      "path": "extractions/600150-2025-08-13.json",
+      "sha256": "68fd7f5bdbfe1da6e1d0ae397ba144e3b8e0e0a05dd856a992e87b6dd7712e72",
+      "size_bytes": 3710
+    },
+    {
+      "path": "extractions/603160-2024-11-25.json",
+      "sha256": "163ef78c1bf840647257590ce029b83294b15d3f90a0b7fb2edfa17fd1f6c968",
+      "size_bytes": 4562
+    },
+    {
+      "path": "extractions/688521-2025-08-29.json",
+      "sha256": "0aec77af0e88de6d18e68b62b37321793b39a6e8edc549cad3d95bf3bb2ff5b0",
+      "size_bytes": 4717
+    },
+    {
+      "path": "notice-records.json",
+      "sha256": "a2e1116a97ef15e42077a7eeef89743d0599e5203da11e2ee4891ea52fe48449",
+      "size_bytes": 10795
+    },
+    {
+      "path": "primary_notices/000063-2021-03-31-start.pdf",
+      "sha256": "83ab9f13607dae047fe902d7df5384b8c927d2cd58e41d8cbd2a14a166dba59f",
+      "size_bytes": 203132
+    },
+    {
+      "path": "primary_notices/000063-2021-03-31.pdf",
+      "sha256": "5896af9f6f368a09fa177ff0a1de833b3ca5f6c8a764bd10e35ce41188ee9153",
+      "size_bytes": 204060
+    },
+    {
+      "path": "primary_notices/000408-2021-05-11.pdf",
+      "sha256": "fe96fdb7116f989dd8e2391d9ffbf16fccc078d6229b906c4288ef3e47f160fa",
+      "size_bytes": 198791
+    },
+    {
+      "path": "primary_notices/000408-2025-01-10.pdf",
+      "sha256": "04b274aadc1d083e5bed96550cb824da63cb06c32a5aa99683e0b98f2f63d400",
+      "size_bytes": 261389
+    },
+    {
+      "path": "primary_notices/002142-2021-11-24.pdf",
+      "sha256": "1b155a9aa1ce71b6efe2ab687d69a3c8f683853cf3789bb01d2380800830035a",
+      "size_bytes": 224185
+    },
+    {
+      "path": "primary_notices/002456-2025-04-01.pdf",
+      "sha256": "8a7eb5e8e2bcd6f4245cb570878829be197adbcf9bbdd1b57e0a2169f1f88080",
+      "size_bytes": 239779
+    },
+    {
+      "path": "primary_notices/300548-2022-03-31.pdf",
+      "sha256": "ea9bed21cc4e66dc048c97101b3c45ff2bcda08cf1dccd4249ce55a4ff90cfc2",
+      "size_bytes": 124193
+    },
+    {
+      "path": "primary_notices/301309-2026-03-24.pdf",
+      "sha256": "4d7cacd7fd3a0649bcad37ec53ab257fc491f00ffd141f9440269863c8a594bd",
+      "size_bytes": 102504
+    },
+    {
+      "path": "primary_notices/301666-2026-05-19.pdf",
+      "sha256": "a79f21d53cab9be0eea256231b0a2263eb2a317fd41701903f310bf409ca3ef2",
+      "size_bytes": 102800
+    },
+    {
+      "path": "primary_notices/600009-2021-06-10.pdf",
+      "sha256": "dbc6cafb47a4352b1b6de9ac798bf1640732f1409265e4408caf5c2e08c1bd53",
+      "size_bytes": 293024
+    },
+    {
+      "path": "primary_notices/600009-2022-04-08-start.pdf",
+      "sha256": "dc0f3861bc1bb93337dedba6168627f537c72090f007b09e89255d5528e79140",
+      "size_bytes": 282372
+    },
+    {
+      "path": "primary_notices/600009-2022-04-08.pdf",
+      "sha256": "c800fc47ce8403acd45b597f27fbec552f3e06e8c5d75aa79cda04f9c0006f06",
+      "size_bytes": 283605
+    },
+    {
+      "path": "primary_notices/600150-2024-09-03.pdf",
+      "sha256": "261e50eb9575269f0d377e3912f06a80dd67a6361e80c2edf7699db11fe14b0c",
+      "size_bytes": 626540
+    },
+    {
+      "path": "primary_notices/600150-2025-08-13.pdf",
+      "sha256": "a529af260766407070b8d800cb890b26d06bee07adca3192244fe225546a1dbe",
+      "size_bytes": 89199
+    },
+    {
+      "path": "primary_notices/603160-2024-11-25.pdf",
+      "sha256": "25973cd911a42aa42081490a91f2b26c21c01fecd38c0b29d1693e69db7f8fef",
+      "size_bytes": 630454
+    },
+    {
+      "path": "primary_notices/688521-2025-08-29.pdf",
+      "sha256": "7b17a948d3e67524fe2451d4d65dc1f2391b38b153aaa2bdac84f8e3e9cf1def",
+      "size_bytes": 121744
+    },
+    {
+      "path": "session-gap-review.json",
+      "sha256": "ab5d04386071b6af563637253acebfc9e681e756c8a2831503d17ab900e6e46c",
+      "size_bytes": 34923
+    }
+  ],
+  "pit_certified": false,
+  "research_only": true,
+  "schema_version": "p2_supplemental_evidence_bundle_v1",
+  "source_bundle_manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
+  "trade_ready": false
+}

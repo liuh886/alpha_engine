@@ -1,0 +1,21 @@
+{
+  "authorization_basis": "Owner confirmed existing permission, agreed to proceed, then explicitly requested saving directly to the directory and stated Google Drive automatically synchronizes its contents.",
+  "colab_executed": false,
+  "copied_files": 198,
+  "dataset_status": "PARTIAL",
+  "drive_desktop_filesystem_readback": "PASS",
+  "file_count": 198,
+  "frozen_dataset_code": "3f0f54f8730d5af189fb24da98735a53f31c6af0",
+  "logical_target": "AlphaEngine/03_Data/Research_Exchange_P2/input_packages/us87-cn130-20261103-local-v4",
+  "original_bundle_and_approval_flags_modified": false,
+  "owner_directed_private_directory_copy": true,
+  "private_full_receipt_sha256": "f46ea667660f60524bfabc3e589b49f432b9e8b5f8ef1a6a05e84d5edbf31fac",
+  "remote_acl": "NOT_TESTED_OWNER_REQUESTED_DIRECTORY_SAVE_ONLY",
+  "remote_sync_completion": "NOT_INDEPENDENTLY_VERIFIED",
+  "reused_files": 0,
+  "saved_at_utc": "2026-11-05T14:37:24.840468+00:00",
+  "schema_version": "p2_owner_directed_drive_desktop_copy_v1",
+  "source_bundle_manifest_sha256": "ec753ad3af8a418e18e06ec39e0ee67f710d8bc3836a0ab00fa17f4c18ac2d61",
+  "source_rights_review": "OWNER_ATTESTED_NOT_INDEPENDENTLY_CERTIFIED",
+  "total_bytes": 452754802
+}

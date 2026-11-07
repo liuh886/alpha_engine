@@ -1,0 +1,20 @@
+{
+  "colab_executed": false,
+  "copied_files": 200,
+  "dataset_status": "PARTIAL",
+  "drive_desktop_filesystem_readback": "PASS",
+  "file_count": 200,
+  "frozen_dataset_code": "32c30ef05258a35e4300b6a21ea7a96d0dab17cf",
+  "original_bundle_and_approval_flags_modified": false,
+  "owner_directed_private_directory_copy": true,
+  "remote_acl": "NOT_TESTED_OWNER_REQUESTED_DIRECTORY_SAVE_ONLY",
+  "remote_sync_completion": "NOT_INDEPENDENTLY_VERIFIED",
+  "reused_files": 0,
+  "saved_at_utc": "2026-11-05T15:10:59.201772+00:00",
+  "schema_version": "p2_owner_directed_drive_desktop_copy_v1",
+  "source_bundle_manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
+  "source_rights_review": "OWNER_ATTESTED_NOT_INDEPENDENTLY_CERTIFIED",
+  "total_bytes": 452928235,
+  "logical_target": "AlphaEngine/03_Data/Research_Exchange_P2/input_packages/us87-cn130-20261103-local-v5",
+  "file_by_file_receipt_saved_beside_private_dataset": true
+}

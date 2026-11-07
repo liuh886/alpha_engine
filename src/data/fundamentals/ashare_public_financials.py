@@ -235,13 +235,24 @@ class AsharePublicFinancialClient:
         frames: list[pd.DataFrame] = []
         ak = self._akshare()
         for category in ("年报", "半年报", "一季报", "三季报"):
-            frame = ak.stock_zh_a_disclosure_report_cninfo(
-                symbol=symbol,
-                market="沪深京",
-                category=category,
-                start_date=start_date,
-                end_date=end_date,
-            )
+            try:
+                frame = ak.stock_zh_a_disclosure_report_cninfo(
+                    symbol=symbol,
+                    market="沪深京",
+                    category=category,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+            except KeyError as exc:
+                from src.data.company_events.ashare_primary_announcements import (
+                    is_expected_empty_cninfo_error,
+                )
+                # A new listing may have a half-year report but no annual report.
+                # Reuse the existing narrow upstream no-result classifier; other
+                # schema/identity/transport failures must still propagate.
+                if is_expected_empty_cninfo_error(exc):
+                    continue
+                raise
             if frame is not None and not frame.empty:
                 frames.append(frame)
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
