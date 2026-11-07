@@ -208,6 +208,7 @@ def _simulate_portfolio(
     friction_per_turnover: float,
     *,
     liquidate_at_end: bool = True,
+    ledger: list[dict[str, Any]] | None = None,
 ) -> tuple[list[float], list[float], list[float], list[float]]:
     """Simulate daily execution strictly from session t-1 signal to session t realization.
 
@@ -260,6 +261,25 @@ def _simulate_portfolio(
 
     # Initial turnover from cash (all zero weights) is 1.0
     prev_turnover = 1.0
+    # Optional observation only: retain the exact states used by this engine.
+    # No ledger consumer may select positions or change the return arithmetic.
+    before_fill = np.zeros(num_assets, dtype=np.float64)
+
+    def record_interval(i: int, drifted: np.ndarray, closing_turnover: float = 0.0) -> None:
+        if ledger is not None:
+            ledger.append({
+                "return_start": sessions[i - 1], "return_end": sessions[i],
+                "symbols": col_names.copy(),
+                "price_start": price_arr[i - 1].copy(), "price_end": price_arr[i].copy(),
+                "weight_before_fill": before_fill.copy(),
+                "target_and_held_weight": curr_target_weights.copy(),
+                "weight_drifted": drifted.copy(),
+                "entry_from_cash": i == 1,
+                "terminal_liquidation": closing_turnover != 0.0,
+                "turnover": daily_turnovers[-1], "terminal_turnover": closing_turnover,
+                "gross": daily_gross_returns[-1], "net": daily_net_returns[-1],
+                "qqq": daily_bench_returns[-1], "friction_per_turnover": friction_per_turnover,
+            })
 
     for i in range(1, len(sessions)):
         prev_p = price_arr[i - 1]
@@ -300,11 +320,13 @@ def _simulate_portfolio(
         # If at final session of interval, record turnover, execute terminal liquidation if requested, and finish
         if i == len(sessions) - 1:
             daily_turnovers.append(prev_turnover)
+            closing_turnover = 0.0
             if liquidate_at_end:
                 closing_turnover = float(np.sum(drifted_weights))
                 terminal_cost_drag = closing_turnover * friction_per_turnover
                 daily_net_returns[-1] -= terminal_cost_drag
                 daily_turnovers[-1] += closing_turnover
+            record_interval(i, drifted_weights, closing_turnover)
             break
 
         # Compute next target weights from signals at close of session i
@@ -323,7 +345,9 @@ def _simulate_portfolio(
         # Exact turnover to rebalance from drifted weights to new target weights
         rebalance_turnover = float(0.5 * np.sum(np.abs(next_target_weights - drifted_weights)))
         daily_turnovers.append(prev_turnover)
+        record_interval(i, drifted_weights)
 
+        before_fill = drifted_weights.copy()
         curr_target_weights = next_target_weights
         prev_turnover = rebalance_turnover
 
