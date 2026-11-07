@@ -10,7 +10,7 @@ Alpha Engine 的长期定位是个人使用的 **Investment Research Infrastruct
 
 ## 投资研究工作流（本地）
 
-研究者无需为每次假设重新编写数据获取、回测或证据保存脚本。首个可用流程围绕既有的 US Tech Volatility/Reversal Walk-Forward 引擎，支持：
+研究者无需为每次已支持的假设重新编写数据获取、回测或证据保存脚本。当前本地 Study Workspace 已有四个专用研究模板（US 波动率反转、US XGBoost 排序、CN 因子探索、A 股 RDI），下例展示默认的 US Tech Volatility/Reversal Walk-Forward 流程：
 
 ```powershell
 # 1. 发现可执行研究模型及其边界
@@ -31,7 +31,9 @@ uv run alpha research study compare artifacts/research_studies/<study_id>/<hash_
 
 也可直接执行默认研究：`uv run alpha research study run`。收据保存在 `artifacts/research_studies/<study_id>/<study_hash>.json`，同一证据重复运行不会覆盖旧收据；被阻断的研究仍保留原因，命令退出码为 10。比较必须使用相同研究标的、交易窗口、底层数据哈希和执行代码，否则拒绝比较，避免误导。
 
-**范围限制：** 当前只提供一个经过代码实现的波动率/短期反转研究家族；修改规格不会自动创造新因子。源数据的历史可得性尚不构成完整 PIT 认证；所有结果严格为 `research_only=true`、`trade_ready=false`。详见[研究工作流](docs/product/research_study_workspace.md)。
+**范围限制：** 当前提供四个经过代码实现的专用研究模板，修改规格不会自动创造新信号或新策略。跨研究家族比较仍受限于现有执行和证据契约；源数据的历史可得性尚不构成完整 PIT 认证；所有结果严格为 `research_only=true`、`trade_ready=false`。详见[研究工作流](docs/product/research_study_workspace.md)。
+
+**规划中 P2（复杂训练未实现）：** [条件化策略验证框架](docs/product/conditional_strategy_validation_p2_2026-11-04.md) 仅研究日线及更慢周期，**本地 Agent 负责实验设计、数据治理和结果审查，[Colab-first 计算方案](docs/product/colab_first_research_compute_p2_2026-11-06.md)负责后续复杂模型训练、超参数搜索和 Walk-forward 批量计算**；对应 [Issue #1373](https://github.com/liuh886/alpha_engine/issues/1373)。网页只读，不提供实验提交、参数编辑、回测或日内交易执行。
 
 ## 日常使用
 
