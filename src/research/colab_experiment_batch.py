@@ -513,6 +513,7 @@ def main(argv: list[str] | None = None) -> int:
             subp.add_argument("--resume", action="store_true")
             subp.add_argument("--max-new-trials", type=int)
             subp.add_argument("--max-wall-seconds", type=int)
+            subp.add_argument("--shared-feature-cache", action="store_true")
         if cmd == "checkpoint":
             subp.add_argument("--destination", required=True, type=Path)
         if cmd == "restore":
@@ -549,10 +550,22 @@ def main(argv: list[str] | None = None) -> int:
                 expected_archive_sha256=args.expected_archive_sha256,
                 expected_index_sha256=args.expected_index_sha256), indent=2))
         else:
-            print(json.dumps(execute(batch_spec=args.batch_spec, data_root=args.data_root,
-                                     output_root=args.output_root, resume=args.resume,
-                                     max_new_trials=args.max_new_trials,
-                                     max_wall_seconds=args.max_wall_seconds), indent=2))
+            run_kwargs = dict(batch_spec=args.batch_spec, data_root=args.data_root,
+                              output_root=args.output_root, resume=args.resume,
+                              max_new_trials=args.max_new_trials,
+                              max_wall_seconds=args.max_wall_seconds)
+            if args.shared_feature_cache:
+                from src.research.e2_feature_cache import feature_cache_scope
+                # The frozen private batch spec includes source and runner identities.
+                # This is only a same-process, same-invocation optimization.
+                spec_sha = _digest(args.batch_spec.read_bytes())
+                with feature_cache_scope(batch_spec_sha256=spec_sha) as cache:
+                    result = execute(**run_kwargs)
+                    cache_metrics = cache.summary()
+                result["feature_cache"] = cache_metrics
+            else:
+                result = execute(**run_kwargs)
+            print(json.dumps(result, indent=2))
         return 0
     except (ExchangeError, OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile,
             subprocess.CalledProcessError) as exc:
