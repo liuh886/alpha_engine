@@ -1,0 +1,33 @@
+{
+  "destination": "AlphaEngine/03_Data/Research_Exchange_P2/incoming_unreviewed/e5-us73-ledger-v1-8d65008762",
+  "filesystem_readback": "PASS",
+  "remote_sync_completion": "NOT_OBSERVED_GOOGLE_DRIVE_DESKTOP_MANAGED",
+  "remote_acl_reverified": false,
+  "files": [
+    {
+      "name": "delivery.json",
+      "size": 671,
+      "sha256": "151983cf0b3995b01185da8778a9fcd35709315cb90bca35f215cc7fb7312713"
+    },
+    {
+      "name": "e5-us73-ledger-v1-8d65008762.zip",
+      "size": 15873353,
+      "sha256": "e4856a9b5260b612a92038e1d27b9d3be293ffa6da85d6f8213055a59934abda"
+    },
+    {
+      "name": "manifest.json",
+      "size": 43432,
+      "sha256": "850d4f4a298b7257011d0d99d9472ce939b6f75004422deb6a3ef6b199ec0992"
+    },
+    {
+      "name": "\u7814\u7a76\u62a5\u544a.md",
+      "size": 8168,
+      "sha256": "7cfe60ed4b0685ff65e25534f0e21e0eb08522870d9c820b8324d60f67be83b1"
+    },
+    {
+      "name": "e5-code-provenance-v1.zip",
+      "size": 393245,
+      "sha256": "7dedd312e8e2490b3c9f6d5c3d4ba73804b3c86b9c80675bc78af3f9693e00dd"
+    }
+  ]
+}

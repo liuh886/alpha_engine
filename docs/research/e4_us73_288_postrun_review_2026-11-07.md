@@ -71,3 +71,16 @@ The near-term next run should **not be another 1,032 model fits**. First produce
 - Existing PR #1380 has v6/R1 research executor controls and E4 campaign RFC; this document closes E4 run evidence, **but no new E5 code or replay has been executed by this report**. Implement E5 slices in fresh code/run identity; retain old E4 checkpoint and legacy v6 unaffected. E5 scope can be a new follow-on issue only after the existing stacked PR's boundaries are reviewed.
 - Cloud resources: current US73 E4 used CPU native XGB/LGB with per-task wall timers summing ~17.26 min. This does **not** certify an effective 2/4 worker speedup; cost-per-effective-trial and end-to-end utilization still need measurement. CPU-first benchmark against serial same-code baseline before parallel default.
 - Report status: **E4 EXECUTION_VERIFIED; RESEARCH SIGNAL HYPOTHESIS; NO LIVE TRADING**.
+
+## 5. E5 phase-one follow-up (independent feature PR)
+
+The owner-authorized shortlist ledger now reproduces all four approved
+strategies across all eight folds under the exact E4 assumptions. The
+[implementation and acceptance](e5_portfolio_ledger_2026-11-07.md) and
+[derived research report](e5_us73_shortlist_results_2026-11-07.md) retain
+E4's frozen source/receipts and original tie handling. Only 16 missing tree
+score recipes were reconstructed; this is not a rerun of all 288 tasks.
+The one-session delay removes p03's median paired advantage over 60d/120d
+momentum in this retrospective sample. No PIT, actual-fill, independent OOS
+or trade promotion claim follows. Continue through the remaining scientific
+gates before increasing the search budget.

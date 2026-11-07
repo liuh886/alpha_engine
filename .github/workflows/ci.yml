@@ -19,7 +19,7 @@ on:
       - '.github/workflows/strategy-signal-delivery-outbox.yml'
   pull_request:
     # Validate the dependent Colab E2 PR before its physical-data base PR lands.
-    branches: [main, feat/p2-colab-research-exchange-mvp-20261104, feat/p2-e2-colab-batch-foundation-20261106, feat/p2-e2-colab-model-exploration-20261106, fix/p2-e2-us87-price-integrity-20261106]
+    branches: [main, feat/p2-colab-research-exchange-mvp-20261104, feat/p2-e2-colab-batch-foundation-20261106, feat/p2-e2-colab-model-exploration-20261106, fix/p2-e2-us87-price-integrity-20261106, feat/p2-e3-v6-review-resource-orchestrator-20261107]
     paths:
       - 'src/**'
       - 'tests/**'
@@ -102,6 +102,10 @@ jobs:
           src/research/e2_postrun_review.py
           src/research/e2_resource_taskgraph.py
           src/research/e2_feature_cache.py
+          src/research/portfolio_ledger.py
+          src/research/e5_execution_review.py
+          src/research/e5_score_reconstruction.py
+          src/research/e5_research_report.py
           src/research/studies/xgb_study.py
           src/data/fundamentals/ashare_public_financials.py
           tests/test_cloud_exchange.py
@@ -117,6 +121,9 @@ jobs:
           tests/test_e2_postrun_review.py
           tests/test_e2_resource_taskgraph.py
           tests/test_e2_feature_cache.py
+          tests/test_portfolio_ledger.py
+          tests/test_e5_execution_review.py
+          tests/test_e5_research_report.py
           src/research/cross_sectional_experiment_runner.py
           src/research/ranker_execution.py
           src/research/ranker_training.py
@@ -253,6 +260,9 @@ jobs:
           tests/test_e2_postrun_review.py
           tests/test_e2_resource_taskgraph.py
           tests/test_e2_feature_cache.py
+          tests/test_portfolio_ledger.py
+          tests/test_e5_execution_review.py
+          tests/test_e5_research_report.py
           tests/test_cross_sectional_experiment_runner.py
           tests/test_ranker_training.py
           tests/test_formal_baseline_onboarding.py
