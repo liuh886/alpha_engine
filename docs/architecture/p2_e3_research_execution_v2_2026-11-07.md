@@ -80,6 +80,36 @@ Also compare `effective_experiments_per_unit` once real Colab usage snapshots ar
 
 Do **targeted tests and a small real pilot** at each stage; defer broad/full-suite validation until release/contract changes. Avoid defensive complexity without a functional gain. Track scientific validity and engineering execution as separate statuses.
 
+## Implemented v2 dry-run compiler and reviewer (no cloud resources used)
+
+This PR includes `src.research.e2_resource_taskgraph`: a **working, read-only** capacity-constrained DAG compiler, not a live training scheduler. Its task graph conservatively retains all 261 original trial IDs and only shares planned **feature nodes**; explicit seed deduplication is disabled. It uses the *existing frozen* batch plan and operator-provided **measured** RAM per worker, so it never guesses instance capacity.
+
+Actual v6 campaign has **12 distinct fold × feature-set groups**, of which the three `full` feature groups cover **234 / 261 task references**. Cache reuse should first optimize these three heavy shared inputs rather than every task independently. These are **planned opportunities**, not proven cache hits or time savings.
+
+Run the independent review offline in an authorized private environment with no price/ZIP files in Git:
+
+```bash
+uv run python -m src.research.e2_postrun_review \\
+  --checkpoint "/PRIVATE/e2-us87-v6-checkpoint-20261106T170336967106Z-e4a6c8aa.zip" \\
+  --comparison "/PRIVATE/20261106T170349394542Z-validation-comparison-v6.json" \\
+  --expected-archive-sha256 0b209944f3fa3219ce4bad03f7ed2b5b2e203fb097697d46bca608c9852bb5a9 \\
+  --expected-index-sha256 eb3b720ffc64e5cc62ace5295adef357559bab0074eddb45bc224ed028ef306f \\
+  --output "/PRIVATE/new-e2-v6-postrun-review.json"
+```
+
+Run a **resource-safe planning dry run** with separately measured runtime hardware and worker peak RSS; substitute real values and a new `--output` path:
+
+```bash
+uv run python -m src.research.e2_resource_taskgraph \\
+  --batch-plan "/PRIVATE/EXTRACTED_V6_BATCH_PLAN.json" \\
+  --cpu-threads 4 --ram-gb 16 \\
+  --measured-worker-peak-gb 2 \\
+  --worker-threads 2 --max-workers 4 \\
+  --output "/PRIVATE/new-v2-taskgraph-dryrun.json"
+```
+
+The second command is an **illustrative invocation**, not a statement that the owner's Colab instance has 4 cores or 16 GiB RAM. It reads the checkpoint's exact `<batch_id>/batch-plan.json` extracted to the private path, and emits a plan with resource ceilings and task-to-worker-slot assignments but **performs zero model training or checkpoint writes**. R1/R2 must wire this planner to real cache and worker code using a new frozen code/batch ID, then prove parity via pilot.
+
 ## Change boundary
 
 - No change to existing 261 v6 receipts, original v5, current public trading strategies, UI, brokerage, cloud pricing, private provider ZIPs or rights declarations.
