@@ -63,5 +63,40 @@ one-day IC which also included the pre-fold anchor signal.
 
 Historical US73 remains retrospective and survivor-biased, non-PIT, and not an
 independently untouched holdout. A later-close sensitivity is not a promotion
-gate or live-trading claim. Full 4×8 acceptance and interpretation follow only
-after the first slices pass.
+gate or live-trading claim.
+
+## Completed 4×8 expansion
+
+After the first slices passed, all 32 approved config/folds passed original
+daily and aggregate parity without a tolerance change. Only 16 necessary tree
+recipe fits were performed; complete scores were sealed and reused for both
+execution modes. The final diagnostic replay performed zero fits. Evaluator
+Git identity: `8d65008762f07a1d260eadeb83a29c9f00337242`.
+
+All 64 ledgers passed a separate network-disabled arithmetic audit. Fresh
+offline archive extraction verified all 234 component hashes and a canonical
+momentum60/2026H1 replay reproduced both stored execution-mode summaries.
+See [acceptance](../evidence/e5_us73_ledger_2026-11-07/README.md) and the
+[actual report](e5_us73_shortlist_results_2026-11-07.md).
+
+Private local package:
+`D:/Documents/AlphaEnginePrivate/P2-E5/2026-11-07/delivery/`.
+Drive filesystem delivery (four files, SHA256 readback PASS):
+`AlphaEngine/03_Data/Research_Exchange_P2/incoming_unreviewed/e5-us73-ledger-v1-8d65008762/`.
+ZIP SHA256 `e4856a9b5260b612a92038e1d27b9d3be293ffa6da85d6f8213055a59934abda`;
+manifest SHA256 `850d4f4a298b7257011d0d99d9472ce939b6f75004422deb6a3ef6b199ec0992`.
+No new remote ACL or sync-completion certification is claimed.
+
+The approved E5 shortlist has no durable model-complexity premium under the
+tested delay: p03's paired median advantage over 60d momentum changes from
++6.29pp to -0.23pp, and over 120d momentum from +20.70pp to -1.91pp. No new
+policy is selected on this evidence. Original p03 has 328/961 cutoff ties and
+208/961 published signal sets differ from actual engine holdings; their
+documented tie policies differ. E5 retains original engine semantics and
+never substitutes those signal strings for fills.
+
+The new `src.research.e5_research_report` CLI validates the full ledger matrix
+and hashes before producing paired, contribution and timing reports. Full
+holdings/score detail stays private. Actual fills/capacity, fee financing,
+source PIT and new independent future evidence remain research gates; no
+remaining E4 campaign branch or live execution was enabled.
