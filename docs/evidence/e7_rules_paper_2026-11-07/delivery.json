@@ -1,0 +1,45 @@
+{
+  "drive_desktop_path": "G:\\My Drive\\AlphaEngine\\03_Data\\Research_Exchange_P2\\incoming_unreviewed\\e7-rules-paper-bootstrap-20261107-a5b8e3fef3",
+  "readback": "PASS",
+  "files": [
+    {
+      "name": "e7-rules-paper-bootstrap-20261107-a5b8e3fef3.manifest.json",
+      "bytes": 788,
+      "sha256": "8845752a6f2273eb4ce8c23c6731dd2071d7440585a1d3d8e5a9e9d1ee4a1637"
+    },
+    {
+      "name": "e7-rules-paper-bootstrap-20261107-a5b8e3fef3.zip",
+      "bytes": 2588803,
+      "sha256": "61c2908f1371ebbce8a8816aa22517852f34746e5e42327381536be9ec335ce7"
+    },
+    {
+      "name": "README.md",
+      "bytes": 1908,
+      "sha256": "262f62fb05e6d0be48a39909c3d98ec41f16b2ac64b09290699a921c883d4f4b"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "bytes": 319,
+      "sha256": "d5f563bc5fed20add3b9f695fc4191f34548658b12bc5a5cddd4b3d93eb1f85e"
+    }
+  ],
+  "schema_version": "e7_bootstrap_delivery_v1",
+  "archive": "e7-rules-paper-bootstrap-20261107-a5b8e3fef3.zip",
+  "archive_bytes": 2588803,
+  "archive_sha256": "61c2908f1371ebbce8a8816aa22517852f34746e5e42327381536be9ec335ce7",
+  "index_sha256": "1f74373285be4948fbc02f279e6726096e789892c6b7400c9845fc6182634952",
+  "members": 11,
+  "contract_sha256": "f37a4d7a039c52f8acd0175e22715f8f2f7cd0c5c02d20c240ab6e2baa857b1b",
+  "runtime_revision": "a5b8e3fef3",
+  "forward_status": "NOT_STARTED",
+  "predictions": 0,
+  "paper_fills": 0,
+  "model_fits": 0,
+  "raw_market_data_included": false,
+  "research_only": true,
+  "trade_ready": false,
+  "pit_certified": false,
+  "cloud_raw_copy_approved": false,
+  "remote_sync_verified": false,
+  "remote_acl_verified": false
+}

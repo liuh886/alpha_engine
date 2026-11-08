@@ -1,0 +1,595 @@
+{
+  "schema_version": "e7_deployment_offline_acceptance_v1",
+  "verified_at_utc": "2026-11-07T13:57:09.408975+00:00",
+  "status": "LOCAL_DEPLOYMENT_WARMUP_ACCEPTED_FORWARD_NOT_STARTED",
+  "first_signal_session": "2026-11-10",
+  "contract_sha256": "f37a4d7a039c52f8acd0175e22715f8f2f7cd0c5c02d20c240ab6e2baa857b1b",
+  "runtime_revision": "a5b8e3fef3",
+  "source_cutoff": "2026-11-06",
+  "source_rows": 8954,
+  "source_assets": 74,
+  "market_receipt_sha256": "1485031d636c5918897d65df2c55c5e5d9c664f247a61dfa26061c799c757994",
+  "cycle_sha256": "4996327182b27707080bd543fc8a9bd88f6e240043456cf3268b672bff7674e1",
+  "raw_normalized_frame_identity": "PASS_ALL_74",
+  "as_observed_time_identity": "PASS_NOT_HISTORICAL_AVAILABLE_AT_CERTIFICATION",
+  "forecast_fill_paper_failure_receipts": {
+    "predictions": 0,
+    "fills": 0,
+    "paper": 0,
+    "failures": 0
+  },
+  "source_coverage": [
+    {
+      "symbol": "AAOI",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "4f5db5b52150fa58c24a80a792bea6e9fd5c05b3ebf2cc7833b0bae711db02c1"
+    },
+    {
+      "symbol": "AAPL",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "6d85fa12054da1d3a3b5cca5563f14c59f8263fd15687ed18b4ffb0eb1784971"
+    },
+    {
+      "symbol": "ABBNY",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "78c3d6e4368b14b0167cbde4a5a441b1bf0dec10d476d8dec69bf498f36eae5e"
+    },
+    {
+      "symbol": "ADP",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "b5c7fa8366405693be2611d782d940344d3a47d9e80e341916dd6acc34e52530"
+    },
+    {
+      "symbol": "ADSK",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "df1ff60fd0e8d5e6ed077f54cd33d60de8a35c7bef8639e8bcc7aab8fb508053"
+    },
+    {
+      "symbol": "AEHR",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "a958f0196037e9d8bf04410e8e4fe2f2e7c0149bd0265c899e96cfbfefd2f7c9"
+    },
+    {
+      "symbol": "AMAT",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "2e76e31da612382b1a285aabf08d27b9e5f7f7709aaa77d26d8abc352af89bee"
+    },
+    {
+      "symbol": "AMD",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "73ff08864826401f3d7137a40e622511613f4a072c483e367bcbb2e50a3b08a5"
+    },
+    {
+      "symbol": "AMZN",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "800a740f7024522c5780e6ac6b21a386a1bec94e72a77bf13132be902d0b836b"
+    },
+    {
+      "symbol": "ANET",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "9f1e7628894d812e90e0c7449ea8c36b9231280556070f3b4ed5210bff1f88ff"
+    },
+    {
+      "symbol": "ASML",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "d83e877dd642e687ac2b115aef41266b9bbb98ddc74f4207758f3d79112e15ff"
+    },
+    {
+      "symbol": "AVGO",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "5c9c09fbb85aaa74be9873ca968c2a54f892352154894da8120e163fdd6ea812"
+    },
+    {
+      "symbol": "AXON",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "94e713a746b509540f68e176b84fca0c6c4446ca0d44b7b427d2c0059ac41a82"
+    },
+    {
+      "symbol": "BE",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "74be2391493f7ef2e737d2ba633eb14218f9f34ca579f3c17cf6781aa77d411a"
+    },
+    {
+      "symbol": "BKNG",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "7a92fffbbf1de5e238b0d1657415599f7e8ce39dc2a727988aa03de8548c3e87"
+    },
+    {
+      "symbol": "BKR",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "f58b491c2cc9b9466ac250b69724f85f082d9b241399dcc70bb551b4192636b5"
+    },
+    {
+      "symbol": "CDNS",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "e95d8900504cf9ade12ba0141aa74b65d5acc8ccbf23357589916b9081f8faa0"
+    },
+    {
+      "symbol": "COHR",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "e32739773cea38f9fd8fdd9ddf81eedf5b75e18273b474df12185623c2286cdc"
+    },
+    {
+      "symbol": "COST",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "090fc6845c3ba823fbd43468f4991d3408829efcb90d3ebad40b47c3a775cf6a"
+    },
+    {
+      "symbol": "CPRT",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "6240482102a993d6e4819faa038f15aa72c3e1b456e139a4c63984ff39e4f363"
+    },
+    {
+      "symbol": "CRWD",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "ccec4b7a2d668988fe858681646abc787745f48ee8a140958bf18d899967e5b5"
+    },
+    {
+      "symbol": "CSCO",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "1bb0a5455da4d75317cffaa5538cb7bae4555c0c6a777edd38585e7a692cc2d2"
+    },
+    {
+      "symbol": "CTAS",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "55e76385a46327b46bd468b4ed124f8ab7b0601eb583c7f05861ee082acbf089"
+    },
+    {
+      "symbol": "DASH",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "f423f078193b72efdd5f06735266d0dcdb18f54d512405446d67bba21c554ae1"
+    },
+    {
+      "symbol": "DDOG",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "9c533954b6f33dfe78fcddb21a35be8f75ca6f1f3d9189fd61bc796780778541"
+    },
+    {
+      "symbol": "EME",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "d5ba211040cd1aeeb63a12be2fb1d70a8b11d2ecb0da49d21d8e691644f87420"
+    },
+    {
+      "symbol": "ETN",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "c055ea475cf3c6e831d35149995babf2975af116c48f4433d4eed02c88fd95d7"
+    },
+    {
+      "symbol": "FANG",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "caeaf4c8462381336e5ab9ec403805edc63731b230bf126ec198b1ba568c21bc"
+    },
+    {
+      "symbol": "FIX",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "ff80f7d02e0f78eef8bd022f558b15227ec4d6e5c79661c266fdcc481a5488bf"
+    },
+    {
+      "symbol": "FN",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "fab7e46d76ba3f4f1dfb5b5ac14bd1a5f1a9a3a03ca9cc2c507f1a4c4d6b3c75"
+    },
+    {
+      "symbol": "GOOGL",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "c9ac4a52d312400f02f8bc248aa10c094301edaf16d38925e02f9402d743cae7"
+    },
+    {
+      "symbol": "HIMS",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "0f309fa9643ce63ac0d26e3aec3505c33e52a1dd054d58f53bdae971c41caa69"
+    },
+    {
+      "symbol": "HIMX",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "4c675fd22916da6e21c604eeba635abf3f7e9c32c36fe283dbba7893a72febe8"
+    },
+    {
+      "symbol": "HON",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "034b5fa256690e2e9fc0dfb66f60c6fd75566309d76755034ca816cf1ce07b11"
+    },
+    {
+      "symbol": "INTC",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "e148d06cc7dcf1ae27e57ac2cc66bce4379dd6542af6d598c6d898241cca51d5"
+    },
+    {
+      "symbol": "INTU",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "a21a7136620eb43b44a2f809d10cfb1bfe4442775c695a163060930324ee15c8"
+    },
+    {
+      "symbol": "ISRG",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "a4bb4f926e09f12c37c26e02478229a0289c56e8b3e84c99ec021eba082e4ace"
+    },
+    {
+      "symbol": "KLAC",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "c2189cc1d71352ea6ac7346b13ee576b6f641c5af2cd192345f835fd5a080fab"
+    },
+    {
+      "symbol": "LIN",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "10c110f01bf2f166aca735fd26591577e17bf42716fcc1279ddf58e149191c7f"
+    },
+    {
+      "symbol": "LITE",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "cebd50d28ca6bb69ec02c80054c337adaa195fdec070bb1536ad2b072369a5ba"
+    },
+    {
+      "symbol": "LRCX",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "bd05679f6fb6e4baf418511640762e3c9fd303fd521d0c1769e46dcc0827f350"
+    },
+    {
+      "symbol": "MELI",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "adc05d81e3264b6f558027a7e279c3d84db3ad49476505a0463c6c4b74fb72f1"
+    },
+    {
+      "symbol": "META",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "d90712c57248e4b63f212c9cb533051ad60d78b449c392e77667860c9afe518a"
+    },
+    {
+      "symbol": "MPWR",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "46a39a85b5fd0a8297f89cdf4f2af9bfc22f99dfa9101e8bea3bcd7f6999a346"
+    },
+    {
+      "symbol": "MRVL",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "2681c296fa3c946fa11463e9194769de7ecbb5c9caad5f4cecdd7e097a306377"
+    },
+    {
+      "symbol": "MSFT",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "9661b0f24645380d06f29a9c0ddc663e332bf139d33386b09e30df8290188965"
+    },
+    {
+      "symbol": "MU",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "b39eda14aec3b4776f79ce03d7324c9d5d32ad402b7088c8a7eea584a257bef4"
+    },
+    {
+      "symbol": "NFLX",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "63ae299290f3f060d0fccfdcf37eaffbb1451d23c4a665f6ffc3edf213eaa459"
+    },
+    {
+      "symbol": "NOK",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "e021af6c3d017f4eaf344e48218e096ea4807d13d3d9b7bef95866057af2560c"
+    },
+    {
+      "symbol": "NVDA",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "3798980410d1ffa6064adfad9b48f62951c25bf3bc088793f55f6d2846ba8c84"
+    },
+    {
+      "symbol": "ORCL",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "edfc7cfc62e0ea9665eb6fd6b508b64af65fe2b1f99e0dc5534039624f7261a5"
+    },
+    {
+      "symbol": "ORLY",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "7b11ee6b6f3cfed1d47da8eaad7a997a16b1418ed7f9d75be4b06cd9971e26ff"
+    },
+    {
+      "symbol": "PANW",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "9b03c25816dc973847a7e0a7bed58c200fe9502a4a10a4428bd9ec501e59f645"
+    },
+    {
+      "symbol": "PDD",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "99e7ef2477768ddf0fb1ae9ef484e42b6b4fa4645c95e328d2ff8aff8f13836f"
+    },
+    {
+      "symbol": "PEP",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "43a323a8e1f4b925a5baa223c816e315bfe41e3e404823dc298d0de558362769"
+    },
+    {
+      "symbol": "PLTR",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "2f1386ff168778204bb03c43a69c37cbe7db905ca16cf333700a746b260b04c0"
+    },
+    {
+      "symbol": "POET",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "9f0814af3a89fa40a4cb3e359cdf33a3853bef794f446de70cfb90cf8053cff9"
+    },
+    {
+      "symbol": "PWR",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "f7c3ea4684c5fd371c8ba3a9e80e1012f8330a247c72d8409685da4f92abf1ab"
+    },
+    {
+      "symbol": "QCOM",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "e27a0d9076b4f8e50ee701b749ed56f410b4c59bd3aa9c0203d1371a3d224e46"
+    },
+    {
+      "symbol": "REGN",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "3052aed32125aa733f2c5889bcabecf62f991542f37d06c40ac4c5cede011c56"
+    },
+    {
+      "symbol": "ROP",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "a406b7061fc8d4316a2b8a74fba721ed6dcca66c44a9d3dd16ba2e45dd9f6a55"
+    },
+    {
+      "symbol": "SBGSY",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "2b3cc0647b54c829c201c2948b65df65a46ee52d7aab02a6990d9e6349297e56"
+    },
+    {
+      "symbol": "SHOP",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "e5d1955a2461a711fb9b85bab6df6a6f1960a98e4250fb2c7292d8bb8223f17f"
+    },
+    {
+      "symbol": "SNPS",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "5668399a0e4f6ffd86e9c92151c0963265235aea9d9bdb90c230837cd4a404e2"
+    },
+    {
+      "symbol": "TIGO",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "7e5c8badec688dfc7b582ce9e09797387c6c90e31b35a26a8ae1c7458a01e26d"
+    },
+    {
+      "symbol": "TMUS",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "ee04de73a0c067b07cba1a95368c08ebe52fbae6e96a5ef361a30b40c6ddf1f6"
+    },
+    {
+      "symbol": "TSLA",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "3152798404c306ae0084432c2a26f5429b574b00c96ccb837d7916649dc389ba"
+    },
+    {
+      "symbol": "TSM",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "82554fd0d093197d59856c9e565ce8dbe657abede10d1a7dcd953581e0239b4a"
+    },
+    {
+      "symbol": "TTWO",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "41694565e8e5f00950da68e58fcc63c73740e4abe224f66c3fbdb8ae1576f2db"
+    },
+    {
+      "symbol": "VRT",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "f3796f4cd987cb9c71e606d9aee842275d34d268b02015416245f3ebe418a57d"
+    },
+    {
+      "symbol": "VRTX",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "f44b438a033b5049c45b9645faabd6d80f054c900e704dde73927299bc3766cd"
+    },
+    {
+      "symbol": "WDC",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "4ab8e89d0e1aedb2a087a3ebacecfcd94ad48447ad6b9cc45c0c0b08a1184a48"
+    },
+    {
+      "symbol": "WMT",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "26b1e9a9a8b3b7628994d4d87e0f71478a9634d50b8a80cb384eeb93ab798fbe"
+    },
+    {
+      "symbol": "QQQ",
+      "first_session": "2026-05-18",
+      "last_session": "2026-11-06",
+      "sessions": 121,
+      "source_sha256": "b4d52fe55035ad857f97c5671d87a324ac9b35907f1cf285e83383d8722fed1a"
+    }
+  ],
+  "last_job": {
+    "completed_at_utc": "2026-11-07T13:42:36.0580172Z",
+    "exit_code": 0,
+    "log_name": "20261107T1342334735100Z-c741f77e66af4eb78b03172c2c154672.log",
+    "started_at_utc": "2026-11-07T13:42:33.5217199Z",
+    "trade_ready": false,
+    "log_sha256": "48de56990779140fb041b5abd515b8e152f6469f32e8ed7b87e910b964b00beb",
+    "research_only": true
+  },
+  "installation": {
+    "schedule_utc": "22:00 daily",
+    "status": "INSTALLED",
+    "task_name": "AlphaEngine-E7-Rules-Paper",
+    "start_when_available": true,
+    "trade_ready": false,
+    "task_xml_sha256": "3817c94b32530494718357733ce25861858ce586a4171ec11796a5642549edef",
+    "research_only": true,
+    "logon_requirement": "current user signed in",
+    "wake_to_run": true,
+    "launcher_sha256": "2dab05761b002c2b6cdc22b9f7d0f1546cec9f6729a15c241885052a1daa8332"
+  },
+  "original_artifacts": [
+    {
+      "name": "E4_288",
+      "sha256": "f689d5494dcec4022218acadc94768e3e669ed308dadc331d660ba60091551d4",
+      "bytes": 1644518,
+      "unchanged": true
+    },
+    {
+      "name": "v6_261",
+      "sha256": "0b209944f3fa3219ce4bad03f7ed2b5b2e203fb097697d46bca608c9852bb5a9",
+      "bytes": 1170120,
+      "unchanged": true
+    },
+    {
+      "name": "E5",
+      "sha256": "e4856a9b5260b612a92038e1d27b9d3be293ffa6da85d6f8213055a59934abda",
+      "bytes": 15873353,
+      "unchanged": true
+    },
+    {
+      "name": "E6",
+      "sha256": "2f09756d3eb14142c9a047dd48072d4bfd76eb24df13f08aaad07b57beab350e",
+      "bytes": 49124929,
+      "unchanged": true
+    }
+  ],
+  "research_only": true,
+  "trade_ready": false,
+  "pit_certified": false,
+  "actual_capacity_status": "BLOCKED",
+  "tree_models_status": "BLOCKED_MISSING_VERIFIED_ARTIFACTS",
+  "independent_timestamp_attested": false,
+  "cloud_source_copy_approved": false
+}
