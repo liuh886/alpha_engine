@@ -1,0 +1,71 @@
+{
+  "$comment": "EXAMPLE ONLY. Confirmed frozen v5 US87+QQQ common observed window 2025-06-05..2026-08-04 (292 sessions); EA series stops 2026-08-04. Copy privately and replace runner_git_sha with exact CI-green PR HEAD. Validation search only; no untouched holdout or provider cloud rights grant.",
+  "schema_version": "p2_e2_xgb_validation_batch_v1",
+  "batch_id": "us87_xgb_validation_pilot_v1",
+  "runner_git_sha": "REPLACE_WITH_EXACT_40_CHAR_VERIFIED_SHA",
+  "v5_bundle_manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
+  "history_archive_sha256": "93b2d42cebf3ebfac7b80298f6822fdc4305f7550b73ac1b2bb8d272d3fb3de8",
+  "purpose": "validation_search_only",
+  "study": {
+    "study_id": "cross_sectional_xgb_v1",
+    "hypothesis_name": "US87 Daily Cross-Sectional XGBoost — E2 Validation Search",
+    "hypothesis_description": "Daily OHLCV-derived non-linear ranking benchmark with chronological folds, fixed slippage and QQQ reference. Research only; selected-universe survivorship and PIT limitations retained.",
+    "market": "us",
+    "pool_id": "us_selected_equities_v2",
+    "symbols": "$US87",
+    "benchmark": "QQQ",
+    "price_mode": "anchored_adjusted",
+    "train_start": "2025-06-05",
+    "train_end": "2025-12-31",
+    "test_start": "2026-01-02",
+    "test_end": "2026-03-31",
+    "as_of_cutoff": "2026-11-03",
+    "top_k": 5,
+    "cost_bps": 3,
+    "slippage_bps": 5,
+    "xgb_params": {
+      "n_gain_bins": 5,
+      "num_boost_round": 20,
+      "max_depth": 3,
+      "learning_rate": 0.05,
+      "seed": 42
+    },
+    "features": [
+      "return_5d",
+      "return_20d",
+      "volatility_20d",
+      "volume_ratio_20d"
+    ]
+  },
+  "validation_folds": [
+    {
+      "fold_id": "fold_a",
+      "train_start": "2025-06-05",
+      "train_end": "2025-12-31",
+      "test_start": "2026-01-02",
+      "test_end": "2026-03-31"
+    },
+    {
+      "fold_id": "fold_b",
+      "train_start": "2025-06-05",
+      "train_end": "2026-04-30",
+      "test_start": "2026-05-04",
+      "test_end": "2026-08-04"
+    }
+  ],
+  "search_space": {
+    "max_depth": [
+      2,
+      3
+    ],
+    "learning_rate": [
+      0.03,
+      0.05
+    ]
+  },
+  "seeds": [
+    42,
+    123
+  ],
+  "max_trials": 16
+}

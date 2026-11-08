@@ -13,6 +13,7 @@ import hashlib
 import json
 import re
 import sys
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +40,8 @@ def _regular(path: Path) -> Path:
     return path
 
 
-def _rights(path: Path | None, *, market: str, bundle_sha: str, history_sha: str) -> dict:
+def _rights(path: Path | None, *, market: str, bundle_sha: str, history_sha: str,
+            required_providers: set[str]) -> dict:
     if path is None:
         return {"status": "BLOCKED_NO_PER_SOURCE_CLOUD_RIGHTS_RECORD"}
     source = json.loads(_regular(path).read_text(encoding="utf-8"))
@@ -68,9 +70,14 @@ def _rights(path: Path | None, *, market: str, bundle_sha: str, history_sha: str
             raise ExchangeError("provider rights record lacks explicit checked terms/basis")
     if not isinstance(source.get("reviewed_at"), str) or not source["reviewed_at"].strip():
         raise ExchangeError("rights review date must be explicit")
+    approved = {row["provider"] for row in provider_rights}
+    if not required_providers.issubset(approved):
+        raise ExchangeError("cloud rights do not cover actual source providers: " +
+                            ", ".join(sorted(required_providers - approved)))
     # This is the owner's bounded declaration, NOT independent vendor certification.
     return {"status": "OWNER_ATTESTATION_RECORDED_NOT_VENDOR_CERTIFIED",
-            "provider_count": len(provider_rights), "record_sha256": _hash(path)}
+            "provider_count": len(provider_rights), "required_providers": sorted(required_providers),
+            "record_sha256": _hash(path)}
 
 
 def inspect(*, manifest_path: Path, archive_path: Path, expected_manifest_sha256: str,
@@ -116,8 +123,14 @@ def inspect(*, manifest_path: Path, archive_path: Path, expected_manifest_sha256
             history.get("trade_ready") is not False or
             history.get("pit_certified") is not False):
         raise ExchangeError("US87 roster, cutoff or producer identity mismatch")
+    with zipfile.ZipFile(archive_path) as archive:
+        component = json.loads(archive.read(
+            "files/data/research/model_data_bundle_v1/components/us-selected-pool-prices.json"))
+    providers = set(component["selected_providers"].values())
+    if not providers or any(not isinstance(p, str) or not p.strip() for p in providers):
+        raise ExchangeError("actual source provider identities missing")
     rights = _rights(rights_record, market=market, bundle_sha=actual_manifest_sha,
-                     history_sha=actual_archive_sha)
+                     history_sha=actual_archive_sha, required_providers=providers)
     return {"schema_version": "e1a_v5_price_preflight_v1",
             "data_status": "VERIFIED_US87_COMPLETE_RETAINED_PRICE_DOMAIN",
             "cloud_execution_rights": rights,
@@ -127,6 +140,7 @@ def inspect(*, manifest_path: Path, archive_path: Path, expected_manifest_sha256
             "reference_symbols": history.get("reference_symbols", []),
             "data_cutoff": history["data_cutoff"],
             "source_producer_revision": history["repo_revision"],
+            "source_providers": sorted(providers),
             "source_frozen_local_only": True,
             "model_execution_authorized": False, "pit_certified": False,
             "trade_ready": False, "colab_executed": False}
@@ -151,7 +165,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.require_cloud_rights and result["cloud_execution_rights"]["status"].startswith("BLOCKED"):
             return 11
         return 0
-    except (ExchangeError, OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+    except (ExchangeError, OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile) as exc:
         print(f"BLOCKED_E1A_PRICE_PREFLIGHT: {exc}", file=sys.stderr)
         return 10
 
