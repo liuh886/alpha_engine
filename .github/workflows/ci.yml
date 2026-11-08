@@ -113,6 +113,7 @@ jobs:
           src/research/e6_report.py
           src/research/e7_source.py
           src/research/e7_paper_daily.py
+          src/research/c0_resource_benchmark.py
           src/research/studies/xgb_study.py
           src/data/fundamentals/ashare_public_financials.py
           tests/test_cloud_exchange.py
@@ -137,6 +138,7 @@ jobs:
           tests/test_e6_forward.py
           tests/test_e7_paper_daily.py
           tests/test_paper_close_state.py
+          tests/test_c0_resource_benchmark.py
           src/research/cross_sectional_experiment_runner.py
           src/research/ranker_execution.py
           src/research/ranker_training.py
@@ -282,6 +284,7 @@ jobs:
           tests/test_e6_forward.py
           tests/test_e7_paper_daily.py
           tests/test_paper_close_state.py
+          tests/test_c0_resource_benchmark.py
           tests/test_cross_sectional_experiment_runner.py
           tests/test_ranker_training.py
           tests/test_formal_baseline_onboarding.py

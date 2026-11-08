@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import ast
 
 import numpy as np
 import pytest
@@ -66,3 +67,17 @@ def test_no_incomplete_stage_is_accepted_as_six_paired_tasks(tmp_path):
     (folder / "stage.json").write_text(json.dumps({"files": {}, "tasks": []}))
     with pytest.raises(ValueError, match="logical task/phase coverage"):
         verify(tmp_path)
+
+
+def test_owner_notebook_and_six_task_contract_pin_the_same_runner():
+    root = Path(__file__).resolve().parents[1]
+    cfg = json.loads(
+        (root / "configs/research_experiments/c0_us73_resources_20261108_v3.json").read_bytes()
+    )
+    validate_spec(cfg)
+    notebook = json.loads((root / "notebooks/C0_resource_benchmark.ipynb").read_bytes())
+    assert notebook["metadata"]["alpha_engine"]["runner_sha"] == cfg["runner_git_sha"]
+    assert {t["study"]["study_id"] for t in cfg["tasks"]} == {"cross_sectional_xgb_v1"}
+    for i, cell in enumerate(notebook["cells"]):
+        if cell["cell_type"] == "code":
+            ast.parse("".join(cell["source"]), filename=f"notebook-cell-{i}")
