@@ -1,0 +1,17 @@
+[
+  {
+    "case": "nonfinite_metric",
+    "rejected": true,
+    "reason": "non-finite performance observation: momentum_rule-p00 median"
+  },
+  {
+    "case": "duplicate_ranking",
+    "rejected": true,
+    "reason": "validation ranking identities/order differ from verified observations"
+  },
+  {
+    "case": "missing_fold",
+    "rejected": true,
+    "reason": "fold diagnostics differ from frozen trial coverage"
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "status": "PRIVATE_REVIEW_FILESYSTEM_DELIVERED_VERIFIED",
+  "logical_directory": "AlphaEngine/03_Data/Research_Exchange_P2/incoming_unreviewed/us87-v6-price-repair-0c8152496e/research_reports/local_review_20261107_f1ef98d254",
+  "files": 8,
+  "total_bytes": 22639,
+  "review_manifest_sha256": "a4c7a858ad0bb7605cff905b0f04e12c3423f13a09e27a5cf0196657950fd857",
+  "original_checkpoint_zips_unchanged": 14,
+  "original_tip_and_comparison_unchanged": true,
+  "remote_acl_and_cloud_bytes_independently_checked": false,
+  "model_training_executed": false
+}
