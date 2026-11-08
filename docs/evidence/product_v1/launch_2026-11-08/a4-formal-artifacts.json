@@ -1,0 +1,65 @@
+{
+  "run_id": 42445636083,
+  "run_head_sha": "67be60fb813e6eca4c0a6f1063e1bf2b7b448df5",
+  "checked_at_utc": "2026-11-08T10:48:43.376006+00:00",
+  "artifacts": [
+    {
+      "artifact_id": 13604525301,
+      "name": "formal-provider-cn-42445636083",
+      "bytes": 11222943,
+      "sha256": "878d4d97c0cba4aed5379fc65dc6cc0a761e2c1fa91729d20f87cd860b9a5064",
+      "anonymous_download_status": 403,
+      "zip_crc": "PASS",
+      "members": 1104,
+      "json_members_inspected": 4,
+      "nonempty_operational_key_counts": {}
+    },
+    {
+      "artifact_id": 13604437824,
+      "name": "formal-backtest-refresh-42445636083-attempt-1",
+      "bytes": 87465,
+      "sha256": "666b940389fdb10a95f62e5299da486f638eb98269d66bcc506ac3ce4185fa7b",
+      "anonymous_download_status": 403,
+      "zip_crc": "PASS",
+      "members": 15,
+      "json_members_inspected": 15,
+      "nonempty_operational_key_counts": {}
+    },
+    {
+      "artifact_id": 13604435770,
+      "name": "formal-refresh-plan-42445636083",
+      "bytes": 680,
+      "sha256": "1e4b2160967fa00e9f848c0fdfee7100a52ae38e24840048c8062fc43147e5e7",
+      "anonymous_download_status": 403,
+      "zip_crc": "PASS",
+      "members": 1,
+      "json_members_inspected": 1,
+      "nonempty_operational_key_counts": {}
+    },
+    {
+      "artifact_id": 13603513250,
+      "name": "formal-strategy-us_x-42445636083-attempt-1",
+      "bytes": 611,
+      "sha256": "4c368686c11708973b1a7cdd8ec2029acd31a1aa007f9a2b7b4fbe1c7d3263db",
+      "anonymous_download_status": 403,
+      "zip_crc": "PASS",
+      "members": 1,
+      "json_members_inspected": 1,
+      "nonempty_operational_key_counts": {}
+    },
+    {
+      "artifact_id": 13603487985,
+      "name": "formal-provider-us-42445636083",
+      "bytes": 8111430,
+      "sha256": "c5b9f7ddf2fae5681056ff352692884bb14076d718bde6270443be5149ce1fbd",
+      "anonymous_download_status": 403,
+      "zip_crc": "PASS",
+      "members": 744,
+      "json_members_inspected": 4,
+      "nonempty_operational_key_counts": {}
+    }
+  ],
+  "scope": "all five artifacts of this exact formal refresh; JSON bodies recursively scanned; not all historical artifacts/logs",
+  "research_only": true,
+  "trade_ready": false
+}

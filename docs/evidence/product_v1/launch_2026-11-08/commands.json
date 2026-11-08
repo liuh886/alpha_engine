@@ -1,0 +1,120 @@
+{
+  "python_source_sha": "1463156c4ad22757d10413a34ef91ca83266e830",
+  "security_source_sha": "c1c3c005759b6cdee37e36a9fbbacce111231a62",
+  "commands": [
+    {
+      "command": "git fetch origin main:main",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "source baseline synchronized"
+    },
+    {
+      "command": "uv run --frozen python scripts/verify_pages_release.py --base-url https://liuh886.github.io/alpha_engine/ --expected-commit 1463156c4ad22757d10413a34ef91ca83266e830 --attempts 2 --delay-seconds 1 --timeout-seconds 20",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "four models /36 sections"
+    },
+    {
+      "command": ".venv/Scripts/python.exe artifacts/a4_anonymous.py",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "actual anonymous API exposure reproduced; verdict FAIL"
+    },
+    {
+      "command": ".venv/Scripts/python.exe artifacts/download_operating_captures.py",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "535 retained ZIPs;525 observations/10 missing-observation captures"
+    },
+    {
+      "command": ".venv/Scripts/python.exe artifacts/a1_reaudit.py",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "US/CN17 observed/20 requested;0 independently qualified"
+    },
+    {
+      "command": "npm ci --no-audit --no-fund",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108/qlib-dashboard",
+      "exit_code": 0,
+      "evidence": "Launch-only node_modules"
+    },
+    {
+      "command": "npm run build",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108/qlib-dashboard",
+      "exit_code": 0,
+      "evidence": "321 tests / production build"
+    },
+    {
+      "command": "npm run check:bundle-budget",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108/qlib-dashboard",
+      "exit_code": 0,
+      "evidence": "398.77KB gzip /480KB ceiling"
+    },
+    {
+      "command": "npx playwright test --config playwright.live.config.ts",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108/qlib-dashboard",
+      "exit_code": 0,
+      "evidence": "desktop/mobile2 PASS actual deployment"
+    },
+    {
+      "command": "npx playwright test --config ../artifacts/launch-375.config.ts",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108/qlib-dashboard",
+      "exit_code": 0,
+      "evidence": "exact375px1 PASS actual deployment"
+    },
+    {
+      "command": "node --experimental-strip-types --test tests/test_publish_strategy_operations_handler.test.ts",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "13 PASS publisher regressions"
+    },
+    {
+      "command": ".venv/Scripts/python.exe artifacts/test_preview_rls.py",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "11 PASS temporary synthetic PostgreSQL role cases; server stopped"
+    },
+    {
+      "command": ".venv/Scripts/python.exe -m pytest tests/test_public_source_boundary.py tests/test_strategy_access_policy_coverage.py tests/test_signal_publication_boundary.py tests/test_strategy_operations_release.py -q",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "24 PASS after source-contract-aware test correction"
+    },
+    {
+      "command": "npx playwright test --config playwright.static.config.ts --grep \"strategy detail separates source metrics\"",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108/qlib-dashboard",
+      "exit_code": 0,
+      "evidence": "3 layout regression cases PASS"
+    },
+    {
+      "command": "uv run --frozen --extra dev alpha research replay qqq_v4_3",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "exact_replay through2026-11-06; no refresh/fits"
+    },
+    {
+      "command": "uv run --frozen --extra dev alpha research replay cn_27_v1_3",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "exact_replay through2026-11-06; no refresh/fits"
+    },
+    {
+      "command": ".venv/Scripts/python.exe artifacts/a6_checkpoint_restore.py",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "288 files/2 private restores byte-identical; tampered source rejected"
+    },
+    {
+      "command": ".venv/Scripts/python.exe -m pytest tests/test_pages_release_verification.py tests/test_release_candidate_gate.py tests/test_strategy_signal_checkpoint.py -q",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "67 PASS"
+    },
+    {
+      "command": ".venv/Scripts/python.exe artifacts/artifact_audit.py",
+      "cwd": "D:/Documents/GitHub/alpha_engine/.worktrees/launch-20261108",
+      "exit_code": 0,
+      "evidence": "all five exact formal-run artifacts inspected through authorized GH fallback"
+    }
+  ]
+}

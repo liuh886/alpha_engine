@@ -1,0 +1,15 @@
+{
+  "base_url": "https://liuh886.github.io/alpha_engine/",
+  "commit_sha": "1463156c4ad22757d10413a34ef91ca83266e830",
+  "formal_models": [
+    "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+    "cn_27_v1_3",
+    "qqqi_qqq_tqqq_v4_3",
+    "us_x1_3"
+  ],
+  "formal_sections_verified": 36,
+  "public_operations_verified": true,
+  "research_only": true,
+  "status": "verified",
+  "trade_ready": false
+}

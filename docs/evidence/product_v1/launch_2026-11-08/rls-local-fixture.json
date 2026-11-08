@@ -1,0 +1,73 @@
+{
+  "scope": "LOCAL_TEMPORARY_POSTGRESQL_SYNTHETIC_ROLE_FIXTURE_NOT_REAL_SESSIONS",
+  "status": "PASS",
+  "checks": [
+    {
+      "case": "BEFORE anonymous exposure replica",
+      "status": "PASS",
+      "expected_rows": 5,
+      "actual_rows": 5
+    },
+    {
+      "case": "AFTER anonymous direct table access",
+      "status": "PASS_DENIED"
+    },
+    {
+      "case": "signed in without entitlement",
+      "status": "PASS",
+      "expected_rows": 0,
+      "actual_rows": 0
+    },
+    {
+      "case": "valid Pro",
+      "status": "PASS",
+      "expected_rows": 4,
+      "actual_rows": 4
+    },
+    {
+      "case": "expired Pro",
+      "status": "PASS",
+      "expected_rows": 0,
+      "actual_rows": 0
+    },
+    {
+      "case": "revoked Pro",
+      "status": "PASS",
+      "expected_rows": 0,
+      "actual_rows": 0
+    },
+    {
+      "case": "Owner",
+      "status": "PASS",
+      "expected_rows": 4,
+      "actual_rows": 4
+    },
+    {
+      "case": "public tier drift still denies non-entitled user",
+      "status": "PASS",
+      "expected_rows": 0,
+      "actual_rows": 0
+    },
+    {
+      "case": "public tier drift cannot expose retired row to Pro",
+      "status": "PASS",
+      "expected_rows": 4,
+      "actual_rows": 4
+    },
+    {
+      "case": "migration preserves stricter Owner policy for Pro",
+      "status": "PASS",
+      "expected_rows": 3,
+      "actual_rows": 3
+    },
+    {
+      "case": "Owner keeps four active rows",
+      "status": "PASS",
+      "expected_rows": 4,
+      "actual_rows": 4
+    }
+  ],
+  "migration_sha256": "a36afa50d038f067bde4e9702264f580322474d6fc08d0a41ce1f58a61fe1eee",
+  "production_migration_applied": false,
+  "new_product_database_created": false
+}

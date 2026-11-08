@@ -1,0 +1,152 @@
+{
+  "schema_version": "launch_acceptance_20261108_v1",
+  "source_main_sha": "1463156c4ad22757d10413a34ef91ca83266e830",
+  "p0_fix_code_sha": "c1c3c005759b6cdee37e36a9fbbacce111231a62",
+  "public_preview_scope": "historical_evidence_and_sanitized_status_only",
+  "preview_verdict": "NO_GO_ANONYMOUS_CURRENT_OPERATIONS_EXPOSURE",
+  "formal_v1_verdict": "NO_GO_A1_A4_A6_A7_OPEN",
+  "checked_at_utc": "2026-11-08T11:22:09.700157+00:00",
+  "source_private_revision": "a3ddb4482e801c9d6efcbc7bd5b931d0da2948f9",
+  "gates": {
+    "A0": "PASS_FOUR_CANONICAL_MODELS_IDENTITY",
+    "A1": "BLOCKED_17_OBSERVED_0_QUALIFIED_EACH_MARKET",
+    "A2": "PASS_FORMAL_OPS_SCOPE_BROAD_TRAINING_SEPARATE",
+    "A3": "PASS_PUBLIC_LIVE_JOURNEYS_REAL_RESTRICTED_SESSIONS_NOT_TESTED",
+    "A4": "FAIL_ANONYMOUS_ALLOCATION_API_EXPOSURE_5_ROWS",
+    "A5": "PASS_BOUNDED_QQQ_CN27_EXACT_REPLAY_PENDING_OWNER_ACCEPTANCE",
+    "A6": "PASS_ISOLATED_RESTORE_BLOCKED_CURRENT_RC_AND_PRODUCTION_EXERCISE",
+    "A7": "NOT_TESTED_OWNER_V1_SIGNOFF_NOT_GIVEN"
+  },
+  "production_changes_performed": false,
+  "real_entitled_denied_expired_revoked_sessions": "NOT_TESTED_NO_ISOLATED_IDENTITIES",
+  "local_fixture_is_not_real_session_proof": true,
+  "historical_git_exposure": "RESIDUAL_OWNER_ACKNOWLEDGEMENT_PENDING",
+  "raw_private_evidence_published": false,
+  "commands": [
+    [
+      "git fetch origin main:main",
+      0,
+      "source baseline synchronized"
+    ],
+    [
+      "python scripts/verify_pages_release.py --base-url https://liuh886.github.io/alpha_engine/ --expected-commit 1463156c4ad22757d10413a34ef91ca83266e830 --attempts 2 --delay-seconds 1 --timeout-seconds 20",
+      0,
+      "four models /36 sections"
+    ],
+    [
+      "python artifacts/a4_anonymous.py",
+      0,
+      "actual anonymous API exposure reproduced; verdict FAIL"
+    ],
+    [
+      "python artifacts/download_operating_captures.py",
+      0,
+      "535 retained ZIPs;525 observations/10 missing-observation captures"
+    ],
+    [
+      "python artifacts/a1_reaudit.py",
+      0,
+      "US/CN17 observed/20 requested;0 independently qualified"
+    ],
+    [
+      "npm ci --no-audit --no-fund",
+      0,
+      "Launch-only node_modules"
+    ],
+    [
+      "npm run build (canonical real worktree path)",
+      0,
+      "321 tests / production build"
+    ],
+    [
+      "npm run check:bundle-budget",
+      0,
+      "398.77KB gzip /480KB ceiling"
+    ],
+    [
+      "npx playwright test --config playwright.live.config.ts",
+      0,
+      "desktop/mobile2 PASS actual deployment"
+    ],
+    [
+      "npx playwright test --config ../artifacts/launch-375.config.ts",
+      0,
+      "exact375px1 PASS actual deployment"
+    ],
+    [
+      "node --experimental-strip-types --test tests/test_publish_strategy_operations_handler.test.ts",
+      0,
+      "13 PASS publisher regressions"
+    ],
+    [
+      "python artifacts/test_preview_rls.py",
+      0,
+      "11 PASS temporary synthetic PostgreSQL role cases; server stopped"
+    ],
+    [
+      "pytest tests/test_public_source_boundary.py tests/test_strategy_access_policy_coverage.py tests/test_signal_publication_boundary.py tests/test_strategy_operations_release.py -q",
+      0,
+      "24 PASS after source-contract-aware test correction"
+    ],
+    [
+      "npx playwright test --config playwright.static.config.ts --grep \"strategy detail separates source metrics\"",
+      0,
+      "3 layout regression cases PASS"
+    ],
+    [
+      "alpha research replay qqq_v4_3",
+      0,
+      "exact_replay through2026-11-06; no refresh/fits"
+    ],
+    [
+      "alpha research replay cn_27_v1_3",
+      0,
+      "exact_replay through2026-11-06; no refresh/fits"
+    ],
+    [
+      "python artifacts/a6_checkpoint_restore.py",
+      0,
+      "288 files/2 private restores byte-identical; tampered source rejected"
+    ],
+    [
+      "pytest tests/test_pages_release_verification.py tests/test_release_candidate_gate.py tests/test_strategy_signal_checkpoint.py -q",
+      0,
+      "67 PASS"
+    ],
+    [
+      "python artifacts/artifact_audit.py",
+      0,
+      "all five exact formal-run artifacts inspected through authorized GH fallback"
+    ]
+  ],
+  "private_audit_script_sha256": {
+    "a1_reaudit.py": "bcdb273c3d7090add8e48c942376dac1368fb70ad78eb2bc5427f70c7635baab",
+    "a4_anonymous.py": "8e6fd65c63f560e18888f5476891d4ac76efcabecdb6324dc8d2833bd0e01e91",
+    "a6_checkpoint_restore.py": "49ff4e457a3ec6f3f0f03f06099cf5582ff86163b53e39fce415fd2bcdf16cb8",
+    "artifact_audit.py": "9a30bc5607ef24a723c1337df143c0d316f5decd28799f68f4ef1f4dd16b94b9",
+    "download_operating_captures.py": "8bea128a1e39dc3e2b2a84cf26a1d4f9b24856fa0e9333e50e517990ddee5091",
+    "finalize_launch_evidence.py": "aaf8fdf55a714a42bf024c69d2b0fe099554bf47c256e347bac2d05a58fd8e94",
+    "test_preview_rls.py": "be3ff6eb5ab6480ffb21d7da29e5d71caddd08087ff25688792a3fdaeb159ae9"
+  },
+  "initial_failures_retained": [
+    "missing dev pytest dependency (then installed declared dev extra)",
+    "Windows junction alias Vitest setup path (canonical path passed321)",
+    "old unconditional opening-context assertion in Python and3 static browser layouts (source-contract-aware tests fixed, no historical edits)",
+    "transient GH client EOF (same authorized endpoints read with curl/alternate Git TLS backend)"
+  ],
+  "rollback": "retain restrictive SQL floor; revert publisher code only if needed; restore static artifact/private checkpoint into fresh roots by SHA; never re-expose anonymous targets or rewind private Git history",
+  "remaining_actions": [
+    "Owner apply exact SQL migration first; no bulk db push or row deletion",
+    "Owner deploy existing Edge publisher",
+    "repeat real anonymous plus isolated entitled/denied/expired/revoked and cache-isolation tests",
+    "hash-bound A1 manual intervention/cadence review and actual missing sessions",
+    "reviewed current RC and Owner production exercise/A7 decision"
+  ],
+  "research_only": true,
+  "trade_ready": false,
+  "source_file_sha256": {
+    "uv.lock": "917d30ebfb3c9888e8db79aa125d62971cb699659816a78a0505509afa69df2b",
+    "configs/strategies/registry.json": "636b76803029fff5358c40ecb7f1572d9c4868399a606a0440f1d36f402a654c",
+    "data/research/formal_model_runs/catalog.json": "fcdd4588d987ab54f3686b321f061a45f05cd398f139fbe49f06a9dc40279979"
+  }
+}
