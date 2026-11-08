@@ -1,6 +1,8 @@
 from pathlib import Path
 import json
 import ast
+import hashlib
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -81,3 +83,37 @@ def test_owner_notebook_and_six_task_contract_pin_the_same_runner():
     for i, cell in enumerate(notebook["cells"]):
         if cell["cell_type"] == "code":
             ast.parse("".join(cell["source"]), filename=f"notebook-cell-{i}")
+
+
+def test_colab_bootstrap_restores_exact_frozen_lock_before_install(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    spec = json.loads(
+        (root / "configs/research_experiments/c0_us73_resources_20261108_v3.json").read_bytes()
+    )
+    notebook = json.loads((root / "notebooks/C0_resource_benchmark.ipynb").read_bytes())
+    source = next(
+        "".join(c["source"]) for c in notebook["cells"] if "git_lock =" in "".join(c["source"])
+    )
+    block = source[source.index("    # Preserve"):source.index("    command(['uv','python'")]
+    assert source.index("    # Preserve") < source.index("    command(['uv','sync'")
+    code, job = tmp_path / "code", tmp_path / "job"
+    code.mkdir()
+    job.mkdir()
+    for relative in spec["code_sha256"]:
+        target = code / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((root / relative).read_bytes())
+    git_lock = (root / "uv.lock").read_bytes().replace(b"\r\n", b"\n")
+    (code / "uv.lock").write_bytes(git_lock)  # Linux checkout representation
+    (job / "uv.lock.frozen").write_bytes(git_lock.replace(b"\n", b"\r\n"))
+    (job / "c0-spec-v3.json").write_text(json.dumps(spec))
+    scope = {
+        "CODE": code, "JOB": job, "RUNNER_SHA": spec["runner_git_sha"],
+        "hashlib": hashlib, "json": json, "sha": digest,
+        "subprocess": SimpleNamespace(check_output=lambda *a, **kw: git_lock),
+    }
+    exec("if True:\n" + block, scope)
+    assert digest(code / "uv.lock") == spec["code_sha256"]["uv.lock"]
+    (job / "uv.lock.frozen").write_bytes(b"changed dependency")
+    with pytest.raises(AssertionError):
+        exec("if True:\n" + block, scope)
