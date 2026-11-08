@@ -117,3 +117,40 @@ def test_colab_bootstrap_restores_exact_frozen_lock_before_install(tmp_path):
     (job / "uv.lock.frozen").write_bytes(b"changed dependency")
     with pytest.raises(AssertionError):
         exec("if True:\n" + block, scope)
+
+
+def test_notebook_completed_resume_preserves_logs_and_does_not_fit(tmp_path):
+    import subprocess
+    import uuid
+
+    root = Path(__file__).resolve().parents[1]
+    notebook = json.loads((root / "notebooks/C0_resource_benchmark.ipynb").read_bytes())
+    definitions = []
+    for cell in notebook["cells"]:
+        if cell["cell_type"] == "code":
+            definitions.extend(n for n in ast.parse("".join(cell["source"])).body
+                               if isinstance(n, ast.FunctionDef) and n.name in {"command", "measure"})
+    calls, checkpoints = [], []
+    scope = {
+        "Path": Path, "CODE": tmp_path, "OUTPUT": tmp_path, "IN_COLAB": True,
+        "json": json, "uuid": uuid, "os": __import__("os"),
+        "BASE_COMMAND": ["do-not-fit"], "PY": "python",
+        "checkpoint": checkpoints.append,
+    }
+
+    def run(args, **kwargs):
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0, stdout="{}")
+
+    scope["subprocess"] = SimpleNamespace(run=run, PIPE=subprocess.PIPE, STDOUT=subprocess.STDOUT)
+    (tmp_path / "completed-audit.json").write_text(json.dumps({"status": "PARTIAL"}))
+    (tmp_path / "cpu-and-gpu.log").write_text("original log")
+    (tmp_path / "cpu-and-gpu-execution-status.json").write_text("original status")
+    exec(compile(ast.Module(body=definitions, type_ignores=[]), "notebook-helpers", "exec"), scope)
+    scope["measure"]("cpu-and-gpu", ["--gpu"])
+    assert len(calls) == 1 and "verify" in calls[0] and "do-not-fit" not in calls[0]
+    assert (tmp_path / "cpu-and-gpu.log").read_text() == "original log"
+    assert (tmp_path / "cpu-and-gpu-execution-status.json").read_text() == "original status"
+    assert len(list(tmp_path.glob("cpu-and-gpu-attempt-*.log"))) == 1
+    assert len(list(tmp_path.glob("cpu-and-gpu-execution-status-attempt-*.json"))) == 1
+    assert checkpoints == ["cpu-and-gpu"]

@@ -48,7 +48,7 @@ R1阶段端到端58.5827秒/采样进程树峰值323.55MiB；R2含两遍12fit，
 R1完成后退出，再用同身份命令续跑R2；R1 stage SHA未变，没有重复计算其6fit。
 每阶段文件按SHA独立读取，硬件/环境变化拒绝拼接；阶段中途失败保留，不能覆盖旧目录。
 最终记录18fit、0新增独立金融样本。早期v1配置验证失败（未fit）与v2先导结果也保留，
-不混入v3指标。9个定向测试及Ruff通过；计算模块mypy通过。
+不混入v3指标。10个定向测试及Ruff通过；计算模块mypy通过。
 
 CPU2/4受本机可用RAM约0.53GiB阻断，冻结保守需求分别约1.63/2.26GiB，
 没有放宽预算或假装测得并行收益。容量不足只阻断该CPU arm，不阻断独立的可支持CUDA测量。
@@ -79,7 +79,7 @@ Colab配置由Owner手工运行，遵守[官方交互与资源边界](https://re
 没有外部worker、远控、常驻云服务或调度。
 
 Drive根目录入口为 `AlphaEngine/C0_resource_benchmark.ipynb`；任务文件放在
-`AlphaEngine/03_Data/Research_Exchange_P2/colab_jobs/c0-us73-resources-20261108-v3-r2`。
+`AlphaEngine/03_Data/Research_Exchange_P2/colab_jobs/c0-us73-resources-20261108-v3-r3`。
 新结果逐阶段保存到该项目 `incoming_unreviewed` 的独立session目录，打印ZIP SHA并回读CRC。
 按确切ZIP路径和SHA恢复，不自动选latest；若运行时硬件更换，新建run，保留旧检查点。
 CU记录Owner实际UI余额及采集方法，包含安装/暂存，初次Drive挂载前消耗不计；缺读数标NOT_MEASURED。
@@ -97,10 +97,12 @@ Git LF blob为 `2cdd7f86d2bbd73dd9975903399c088a910fc83f4772183108e7d3352ae7d040
 Git内JSON为语义镜像，其LF原SHA不同，不得冒充原文件SHA。
 排序紧凑JSON语义SHA为 `cacc2e8b3f2cfbd5bc48ace826d6270809a691cd44ef0c7504424fee071f46a0`。
 详见 [provenance](../evidence/c0_resources_2026-11-08/spec-provenance.json) 与
-[r2交付回读](../evidence/c0_resources_2026-11-08/delivery-r2.json)。
+[当前r3交付回读](../evidence/c0_resources_2026-11-08/delivery-r3.json)。
 旧v3 job、原本地结果ZIP（SHA `48ccb7737a24f5025cd406835acdeb8c778f856f51cecfb1efb0ff3a2c09a474`）均不变；
 根入口旧Notebook原字节备份在旧job下 `C0_resource_benchmark.r1.ipynb`。
-当前根Notebook SHA为 `8674674b699156aa0a90a27bd5e1f2c475baf58632053579053c63a234739df1`。
+当前根Notebook SHA为 `a1efb34dddffa7b3fb42cd34da8f0941409a192a2d27dd997516aaab2357f4e0`。
+部署r3另外修复恢复时日志/状态独占写入冲突：新尝试使用独立文件，已完成run只读复核、不追加GPU或覆盖completed audit；R1/R2仍经过原环境/阶段门禁。
+恢复路径合成测试通过，原日志/状态字节保持；逐阶段ZIP和CU记录独立命名。旧r2入口也已备份到其job目录。
 Drive Desktop本地9文件回读PASS；不等于已核实远端同步或私有ACL。
 
 ## C1预编制与停止条件

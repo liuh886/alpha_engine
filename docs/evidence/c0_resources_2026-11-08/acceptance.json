@@ -48,7 +48,7 @@
   "owner_internal_research_authorized": true,
   "vendor_document_review_required": false,
   "cloud_execution": "NOT_TESTED_OWNER_MANUAL_SESSION_REQUIRED",
-  "notebook_local_readback": "PASS_ALL_14_CELLS_R2_NO_FITS",
+  "notebook_local_readback": "PASS_ALL_14_CELLS_R3_NO_FITS",
   "originals": {
     "archives": [
       {
@@ -117,8 +117,9 @@
     }
   ],
   "r1_completed_stage_preserved_on_resume": true,
-  "deployment_revision": "v3-r2",
-  "targeted_tests": "9 PASS (5 C0 including Linux-checkout byte restoration/tamper rejection + 4 existing feature-cache)",
+  "deployment_revision": "v3-r3",
+  "targeted_tests": "10 PASS (6 C0 including cross-platform lock and completed-resume preservation + 4 existing feature-cache)",
   "cross_platform_lock_status": "EXACT_FROZEN_BYTES_RESTORED_AND_GIT_LF_CONTENT_MATCHED; actual Colab NOT_TESTED",
-  "deployment_evidence": "delivery-r2.json"
+  "deployment_evidence": "delivery-r3.json",
+  "real_cloud_interruption_resume": "NOT_TESTED; synthetic preservation/read-only completed-resume test PASS"
 }

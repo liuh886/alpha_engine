@@ -1,0 +1,41 @@
+{
+  "runtime_sha": "f7221d5c380f9dd9507540b65bdf4e4133392bcd",
+  "cwd": "D:/Documents/GitHub/alphaengine/.worktrees/research-c0-20261108",
+  "private_root": "D:/Documents/AlphaEnginePrivate/Launch-Research/2026-11-08/research",
+  "commands": [
+    {
+      "command": "python -m src.research.c0_resource_benchmark run --spec <private_root>/c0-spec-v3.json --data-root <private_root>/source-stage --output <private_root>/local-benchmark-v3 --stop-after r1",
+      "status": "PASS",
+      "actual_fits": 6
+    },
+    {
+      "command": "python -m src.research.c0_resource_benchmark run --spec <same-spec> --data-root <same-source> --output <same-output>",
+      "status": "PARTIAL_RESOURCE_CAPACITY_BLOCKED",
+      "new_fits": 12
+    },
+    {
+      "command": "uv run --frozen python -m src.research.c0_resource_benchmark verify --output <private_root>/local-benchmark-v3",
+      "status": "PASS_CPU_EXACT_R2_EXACT",
+      "new_fits": 0
+    },
+    {
+      "command": "uv run --frozen --extra dev pytest -q tests/test_c0_resource_benchmark.py tests/test_e2_feature_cache.py",
+      "status": "PASS_10"
+    },
+    {
+      "command": "uv run --frozen --extra dev ruff check src/research/c0_resource_benchmark.py tests/test_c0_resource_benchmark.py",
+      "status": "PASS"
+    },
+    {
+      "command": "uv run --frozen --extra dev mypy src/research/c0_resource_benchmark.py --follow-imports=silent",
+      "status": "PASS"
+    },
+    {
+      "command": "nbclient NotebookClient(..., timeout=120).execute() on all 14 C0 notebook cells in local read-only mode",
+      "status": "PASS",
+      "new_fits": 0
+    }
+  ],
+  "rollback": "Stop one-shot C0; preserve all source/results/checkpoints, revert C0-only code, restore backed-up root notebook if needed. Never modify E4-E7 or production permissions.",
+  "actual_colab": "NOT_TESTED_OWNER_MANUAL"
+}
