@@ -1,0 +1,237 @@
+{
+  "schema_version": "p2_e2_model_search_campaign_v1",
+  "batch_id": "us87_colab_model_search_v1",
+  "runner_git_sha": "REPLACE_WITH_REVIEWED_40_CHAR_SHA",
+  "v5_bundle_manifest_sha256": "d9f4fb2ef7aa2735cfb95436e7eabb744ffb8d6d387c4294626893fc262dab0c",
+  "history_archive_sha256": "93b2d42cebf3ebfac7b80298f6822fdc4305f7550b73ac1b2bb8d272d3fb3de8",
+  "purpose": "validation_search_only",
+  "study": {
+    "study_id": "cross_sectional_xgb_v1",
+    "hypothesis_name": "US Tech Multi-factor Non-linear Cross-Sectional XGBoost Ranking",
+    "hypothesis_description": "XGBoost rank:ndcg tree model ranking cross-section of US tech leaders using return, volatility, and volume features, evaluated out-of-sample against QQQ.",
+    "market": "us",
+    "pool_id": "us_selected_equities_v2",
+    "symbols": "$US87",
+    "benchmark": "QQQ",
+    "price_mode": "anchored_adjusted",
+    "train_start": "2025-06-05",
+    "train_end": "2025-12-22",
+    "test_start": "2026-01-02",
+    "test_end": "2026-02-27",
+    "as_of_cutoff": "2026-06-30",
+    "top_k": 5,
+    "cost_bps": 3.0,
+    "slippage_bps": 5.0,
+    "xgb_params": {
+      "n_gain_bins": 5,
+      "num_boost_round": 20,
+      "max_depth": 3,
+      "learning_rate": 0.05,
+      "seed": 42
+    },
+    "features": [
+      "return_5d",
+      "return_20d",
+      "volatility_20d",
+      "volume_ratio_20d"
+    ]
+  },
+  "validation_folds": [
+    {
+      "fold_id": "fold_a",
+      "train_start": "2025-06-05",
+      "train_end": "2025-12-22",
+      "test_start": "2026-01-02",
+      "test_end": "2026-02-27"
+    },
+    {
+      "fold_id": "fold_b",
+      "train_start": "2025-06-05",
+      "train_end": "2026-02-20",
+      "test_start": "2026-03-02",
+      "test_end": "2026-04-30"
+    },
+    {
+      "fold_id": "fold_c",
+      "train_start": "2025-06-05",
+      "train_end": "2026-04-23",
+      "test_start": "2026-05-04",
+      "test_end": "2026-06-30"
+    }
+  ],
+  "seeds": [
+    17,
+    42,
+    123
+  ],
+  "minimum_embargo_sessions": 5,
+  "final_holdout": {
+    "start_date": "2026-07-01",
+    "end_date": "2026-08-04",
+    "prior_consumption_status": "NOT_CERTIFIED"
+  },
+  "selection_metric": "median_validation_net_excess",
+  "optimization": {
+    "method": "seeded_random_without_replacement",
+    "seed": 20261106,
+    "max_configurations": 30
+  },
+  "max_trials": 300,
+  "feature_sets": {
+    "full": [
+      "return_5d",
+      "return_20d",
+      "volatility_20d",
+      "volume_ratio_20d"
+    ],
+    "momentum": [
+      "return_5d",
+      "return_20d"
+    ],
+    "risk_liquidity": [
+      "volatility_20d",
+      "volume_ratio_20d"
+    ],
+    "rule_momentum": [
+      "return_20d"
+    ]
+  },
+  "candidates": [
+    {
+      "candidate_id": "momentum_rule",
+      "model_family": "momentum_20d",
+      "feature_set": "rule_momentum",
+      "phase": "baseline",
+      "configuration_budget": 1,
+      "search_space": {},
+      "fixed_params": {},
+      "cost_bps": 3,
+      "slippage_bps": 5
+    },
+    {
+      "candidate_id": "xgb_search",
+      "model_family": "xgboost",
+      "feature_set": "full",
+      "phase": "search",
+      "configuration_budget": 12,
+      "search_space": {
+        "max_depth": [
+          2,
+          3,
+          4,
+          6
+        ],
+        "learning_rate": [
+          0.01,
+          0.03,
+          0.05,
+          0.1
+        ],
+        "num_boost_round": [
+          20,
+          60,
+          120,
+          200
+        ]
+      },
+      "fixed_params": {},
+      "cost_bps": 3,
+      "slippage_bps": 5
+    },
+    {
+      "candidate_id": "lgb_search",
+      "model_family": "lightgbm",
+      "feature_set": "full",
+      "phase": "search",
+      "configuration_budget": 12,
+      "search_space": {
+        "max_depth": [
+          3,
+          5
+        ],
+        "learning_rate": [
+          0.01,
+          0.03,
+          0.05
+        ],
+        "num_boost_round": [
+          40,
+          80,
+          160
+        ],
+        "num_leaves": [
+          7,
+          15,
+          31
+        ],
+        "min_data_in_leaf": [
+          10,
+          30
+        ]
+      },
+      "fixed_params": {},
+      "cost_bps": 3,
+      "slippage_bps": 5
+    },
+    {
+      "candidate_id": "xgb_control",
+      "model_family": "xgboost",
+      "feature_set": "full",
+      "phase": "ablation",
+      "configuration_budget": 1,
+      "search_space": {},
+      "fixed_params": {
+        "max_depth": 3,
+        "learning_rate": 0.05,
+        "num_boost_round": 80
+      },
+      "cost_bps": 3,
+      "slippage_bps": 5
+    },
+    {
+      "candidate_id": "xgb_momentum",
+      "model_family": "xgboost",
+      "feature_set": "momentum",
+      "phase": "ablation",
+      "configuration_budget": 1,
+      "search_space": {},
+      "fixed_params": {
+        "max_depth": 3,
+        "learning_rate": 0.05,
+        "num_boost_round": 80
+      },
+      "cost_bps": 3,
+      "slippage_bps": 5
+    },
+    {
+      "candidate_id": "xgb_risk",
+      "model_family": "xgboost",
+      "feature_set": "risk_liquidity",
+      "phase": "ablation",
+      "configuration_budget": 1,
+      "search_space": {},
+      "fixed_params": {
+        "max_depth": 3,
+        "learning_rate": 0.05,
+        "num_boost_round": 80
+      },
+      "cost_bps": 3,
+      "slippage_bps": 5
+    },
+    {
+      "candidate_id": "xgb_cost_stress",
+      "model_family": "xgboost",
+      "feature_set": "full",
+      "phase": "stress",
+      "configuration_budget": 1,
+      "search_space": {},
+      "fixed_params": {
+        "max_depth": 3,
+        "learning_rate": 0.05,
+        "num_boost_round": 80
+      },
+      "cost_bps": 10,
+      "slippage_bps": 15
+    }
+  ]
+}

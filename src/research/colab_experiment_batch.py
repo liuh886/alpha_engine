@@ -14,7 +14,9 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -208,6 +210,63 @@ def restore(*, batch_spec: Path, data_root: Path, checkpoint_root: Path,
             "index_sha256": expected_index_sha256, "trade_ready": False}
 
 
+def checkpoint_archive(*, batch_spec: Path, data_root: Path, output_root: Path, archive: Path) -> dict:
+    """Use the same sealed checkpoint in a single Drive transport file."""
+    _outside_checkout(archive)
+    if archive.exists() or archive.resolve().is_relative_to(output_root.resolve()):
+        raise ExchangeError("checkpoint archive must be new and outside outputs")
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="p2-checkpoint-") as temporary:
+        root = Path(temporary) / "sealed"
+        sealed = checkpoint(batch_spec=batch_spec, data_root=data_root, output_root=output_root, destination=root)
+        with zipfile.ZipFile(archive, "x", compression=zipfile.ZIP_DEFLATED) as pack:
+            for path in sorted(root.rglob("*")):
+                if path.is_file():
+                    pack.write(path, path.relative_to(root).as_posix())
+        with zipfile.ZipFile(archive) as pack:
+            if pack.testzip() is not None:
+                raise ExchangeError("checkpoint archive CRC mismatch")
+    return {**sealed, "checkpoint": str(archive), "archive_sha256": _digest(archive.read_bytes()),
+            "archive_size_bytes": archive.stat().st_size}
+
+
+def restore_archive(*, batch_spec: Path, data_root: Path, archive: Path,
+                    expected_archive_sha256: str, expected_index_sha256: str, output_root: Path) -> dict:
+    """Decode only bounded safe members, then reuse strict directory restore."""
+    _outside_checkout(output_root)
+    if (output_root.exists() or archive.is_symlink() or not archive.is_file() or
+            archive.stat().st_size > MAX_CHECKPOINT_BYTES + 1024 * 1024 or
+            not SHA.fullmatch(expected_archive_sha256) or
+            _digest(archive.read_bytes()) != expected_archive_sha256):
+        raise ExchangeError("checkpoint archive pin/size or fresh-output boundary mismatch")
+    with zipfile.ZipFile(archive) as pack, tempfile.TemporaryDirectory(prefix="p2-restore-") as temporary:
+        infos = pack.infolist()
+        names = [i.filename for i in infos]
+        if (len(infos) > 3002 or len(names) != len(set(names)) or
+                sum(i.file_size for i in infos) > MAX_CHECKPOINT_BYTES + 1024 * 1024):
+            raise ExchangeError("checkpoint archive member budget mismatch")
+        for info in infos:
+            if (info.is_dir() or "\\" in info.filename or ":" in info.filename or
+                    info.filename.startswith("/") or any(p in ("", ".", "..") for p in info.filename.split("/")) or
+                    (info.external_attr >> 16) & 0o170000 == 0o120000):
+                raise ExchangeError("unsafe checkpoint archive member")
+        if "checkpoint-index.json" not in names or pack.getinfo("checkpoint-index.json").file_size > 1024 * 1024:
+            raise ExchangeError("checkpoint archive index missing/too large")
+        content = pack.read("checkpoint-index.json")
+        if _digest(content) != expected_index_sha256:
+            raise ExchangeError("checkpoint inner index SHA mismatch")
+        root = Path(temporary)
+        for info in infos:
+            target = root / info.filename
+            if not target.resolve().is_relative_to(root.resolve()):
+                raise ExchangeError("checkpoint archive escapes scratch")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with target.open("xb") as out:
+                out.write(pack.read(info.filename))
+        return restore(batch_spec=batch_spec, data_root=data_root, checkpoint_root=root,
+                       expected_index_sha256=expected_index_sha256, output_root=output_root)
+
+
 def _retain_trial(td: Path, entry: dict, batch: dict, run_spec: dict,
                   elapsed: float | None, recovered=False) -> str:
     out = td / "study-receipt.json"
@@ -226,6 +285,9 @@ def _retain_trial(td: Path, entry: dict, batch: dict, run_spec: dict,
 
 def plan(spec: dict, data_root: Path | None = None) -> dict[str, Any]:
     """Validate a complete, bounded selection-only search without executing."""
+    from src.research.colab_research_campaign import SCHEMA as CAMPAIGN_SCHEMA, compile_campaign
+    if isinstance(spec, dict) and spec.get("schema_version") == CAMPAIGN_SCHEMA:
+        return compile_campaign(spec, data_root)
     if not isinstance(spec, dict) or spec.get("schema_version") != SCHEMA:
         raise ExchangeError("unsupported batch schema")
     if not isinstance(spec.get("batch_id"), str) or not NAME.fullmatch(spec["batch_id"]):
@@ -330,11 +392,15 @@ def plan(spec: dict, data_root: Path | None = None) -> dict[str, Any]:
 
 
 def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
-            resume: bool = False, max_new_trials: int | None = None) -> dict:
+            resume: bool = False, max_new_trials: int | None = None,
+            max_wall_seconds: int | None = None) -> dict:
     """Run existing Study Workspace specs, checkpoint one immutable receipt per trial."""
     if max_new_trials is not None and (not isinstance(max_new_trials, int)
                                        or not 1 <= max_new_trials <= 100):
         raise ExchangeError("max_new_trials must be within 1..100")
+    if max_wall_seconds is not None and (type(max_wall_seconds) is not int or not 1 <= max_wall_seconds <= 7200):
+        raise ExchangeError("wall-time start budget must be within 1..7200 seconds")
+    invocation_start = time.perf_counter()
     batch = plan(json.loads(batch_spec.read_text(encoding="utf-8")))
     if _git_head() != batch["runner_git_sha"]:
         raise ExchangeError("runner checkout revision mismatch")
@@ -362,6 +428,8 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
     new = 0
     blocked = 0
     recovered = 0
+    failed_in_sequence = 0
+    stop_reason = "complete"
     for entry in batch["trials"]:
         td = path / "trials" / entry["trial_id"]
         run_spec = {**entry["study"], "symbols": symbols}
@@ -380,6 +448,13 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
             blocked += status == "blocked"
             continue
         if max_new_trials is not None and new >= max_new_trials:
+            stop_reason = "chunk_trial_budget"
+            continue
+        if max_wall_seconds is not None and time.perf_counter() - invocation_start >= max_wall_seconds:
+            stop_reason = "wall_time_start_budget"
+            continue
+        if failed_in_sequence >= 3:
+            stop_reason = "consecutive_model_failure_budget"
             continue
         if cfg_path.exists():
             if json.loads(cfg_path.read_text(encoding="utf-8")) != run_spec:
@@ -388,7 +463,21 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
             _write_new(cfg_path, run_spec)
         load_study_spec(cfg_path)  # canonical Study Workspace validation
         started = time.perf_counter()
-        result = run_study(cfg_path, data_root, output=out)
+        try:
+            result = run_study(cfg_path, data_root, output=out)
+        except Exception as exc:
+            # Per-trial research failures remain immutable evidence. The source
+            # and configuration gates above still fail before any model starts.
+            if out.exists():
+                raise
+            failure = {"study_id": run_spec["study_id"], "status": "blocked",
+                "experiment_receipt": run_spec, "git_commit": batch["runner_git_sha"],
+                "model_fitted": False, "research_only": True, "trade_ready": False, "pit_certified": False,
+                "blocked_reasons": [{"code": "model_execution_failed", "exception_type": type(exc).__name__,
+                                     "detail": str(exc)[:500]}]}
+            failure["study_hash"] = _digest(_canonical(failure))
+            _write_new(out, failure)
+            result = {"status": "blocked"}
         elapsed = time.perf_counter() - started
         if result["status"] not in ("ready", "blocked"):
             raise ExchangeError("unexpected study receipt status")
@@ -396,12 +485,17 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
         new += 1
         if status == "blocked":
             blocked += 1
+            failed_in_sequence += 1
+        else:
+            failed_in_sequence = 0
     pending = len(batch["trials"]) - completed - new
     return {"status": ("BATCH_PARTIAL_CHECKPOINT_READY" if pending else
                        "BATCH_EXECUTED_RESEARCH_ONLY"), "batch_id": batch["batch_id"],
             "trials": len(batch["trials"]), "resumed_trials": completed,
             "new_trials": new, "pending_trials": pending, "blocked_trials": blocked,
             "recovered_completed_trials": recovered,
+            "stop_reason": stop_reason if pending else "complete",
+            "elapsed_seconds": time.perf_counter() - invocation_start,
             "review_status": "incoming_unreviewed",
             "trade_ready": False, "pit_certified": False}
 
@@ -409,7 +503,7 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest="action", required=True)
-    for cmd in ("plan", "run", "checkpoint", "restore"):
+    for cmd in ("plan", "run", "checkpoint", "restore", "report", "checkpoint-archive", "restore-archive"):
         subp = sub.add_parser(cmd)
         subp.add_argument("--batch-spec", required=True, type=Path)
         if cmd != "plan":
@@ -418,10 +512,16 @@ def main(argv: list[str] | None = None) -> int:
         if cmd == "run":
             subp.add_argument("--resume", action="store_true")
             subp.add_argument("--max-new-trials", type=int)
+            subp.add_argument("--max-wall-seconds", type=int)
         if cmd == "checkpoint":
             subp.add_argument("--destination", required=True, type=Path)
         if cmd == "restore":
             subp.add_argument("--checkpoint-root", required=True, type=Path)
+            subp.add_argument("--expected-index-sha256", required=True)
+        if cmd in ("checkpoint-archive", "restore-archive"):
+            subp.add_argument("--archive", required=True, type=Path)
+        if cmd == "restore-archive":
+            subp.add_argument("--expected-archive-sha256", required=True)
             subp.add_argument("--expected-index-sha256", required=True)
     args = p.parse_args(argv)
     try:
@@ -437,12 +537,24 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(restore(batch_spec=args.batch_spec, data_root=args.data_root,
                 output_root=args.output_root, checkpoint_root=args.checkpoint_root,
                 expected_index_sha256=args.expected_index_sha256), indent=2))
+        elif args.action == "report":
+            from src.research.colab_research_campaign import comparison_report
+            print(json.dumps(comparison_report(args.batch_spec, args.data_root, args.output_root), indent=2))
+        elif args.action == "checkpoint-archive":
+            print(json.dumps(checkpoint_archive(batch_spec=args.batch_spec, data_root=args.data_root,
+                output_root=args.output_root, archive=args.archive), indent=2))
+        elif args.action == "restore-archive":
+            print(json.dumps(restore_archive(batch_spec=args.batch_spec, data_root=args.data_root,
+                output_root=args.output_root, archive=args.archive,
+                expected_archive_sha256=args.expected_archive_sha256,
+                expected_index_sha256=args.expected_index_sha256), indent=2))
         else:
             print(json.dumps(execute(batch_spec=args.batch_spec, data_root=args.data_root,
                                      output_root=args.output_root, resume=args.resume,
-                                     max_new_trials=args.max_new_trials), indent=2))
+                                     max_new_trials=args.max_new_trials,
+                                     max_wall_seconds=args.max_wall_seconds), indent=2))
         return 0
-    except (ExchangeError, OSError, ValueError, KeyError, TypeError,
+    except (ExchangeError, OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile,
             subprocess.CalledProcessError) as exc:
         print(f"BLOCKED_COLAB_BATCH: {exc}", file=sys.stderr)
         return 10

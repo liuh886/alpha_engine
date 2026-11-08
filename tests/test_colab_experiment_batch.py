@@ -5,13 +5,16 @@ import json
 import hashlib
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from src.research.cloud_exchange import ExchangeError
-from src.research.colab_experiment_batch import SCHEMA, plan, execute, checkpoint, restore
+from src.research.colab_experiment_batch import (
+    SCHEMA, plan, execute, checkpoint, restore, checkpoint_archive, restore_archive,
+)
 from src.research.study_workspace import DEFAULT_XGB_CONFIG
 
 
@@ -191,6 +194,69 @@ def test_checkpoint_refuses_tampered_inner_file_before_copy(retained_trial, tmp_
         restore(batch_spec=batch_file, data_root=data, checkpoint_root=saved,
                 expected_index_sha256=pin["index_sha256"], output_root=tmp_path / "fresh")
     assert not (tmp_path / "fresh").exists()
+
+
+def test_failed_model_attempts_are_retained_and_stop_after_failure_budget(retained_trial):
+    batch_file, data, outputs = retained_trial
+    with patch("src.research.study_workspace.run_study", side_effect=ValueError("declared candidate fit failed")):
+        result = execute(batch_spec=batch_file, data_root=data, output_root=outputs,
+                         resume=True, max_new_trials=7)
+    assert result["resumed_trials"] == 1 and result["blocked_trials"] == 3
+    assert result["stop_reason"] == "consecutive_model_failure_budget"
+    assert len(list(outputs.rglob("trial-result.json"))) == 4
+    failed = [json.loads(p.read_text()) for p in outputs.rglob("study-receipt.json")
+              if json.loads(p.read_text())["status"] == "blocked"]
+    assert all(r["blocked_reasons"][0]["code"] == "model_execution_failed" for r in failed)
+
+
+def test_wall_time_budget_stops_starting_new_trials_and_preserves_prior_results(retained_trial):
+    batch_file, data, outputs = retained_trial
+    with patch("src.research.colab_experiment_batch.time.perf_counter", side_effect=[0, 2, 2, 2, 2, 2, 2, 2, 2]):
+        result = execute(batch_spec=batch_file, data_root=data, output_root=outputs,
+                         resume=True, max_new_trials=7, max_wall_seconds=1)
+    assert result["new_trials"] == 0 and result["resumed_trials"] == 1
+    assert result["stop_reason"] == "wall_time_start_budget"
+
+
+def test_archive_checkpoint_roundtrip_skips_retained_fit(retained_trial, tmp_path):
+    batch_file, data, outputs = retained_trial
+    archive = tmp_path / "transport.zip"
+    pin = checkpoint_archive(batch_spec=batch_file, data_root=data, output_root=outputs, archive=archive)
+    fresh = tmp_path / "fresh"
+    restored = restore_archive(batch_spec=batch_file, data_root=data, archive=archive,
+        expected_archive_sha256=pin["archive_sha256"], expected_index_sha256=pin["index_sha256"], output_root=fresh)
+    assert restored["files"] == pin["files"]
+    for path in outputs.rglob("*"):
+        if path.is_file():
+            assert path.read_bytes() == (fresh / path.relative_to(outputs)).read_bytes()
+    with patch("src.research.study_workspace.run_study", side_effect=fake_study) as fitter:
+        result = execute(batch_spec=batch_file, data_root=data, output_root=fresh, resume=True, max_new_trials=1)
+    assert result["resumed_trials"] == 1 and fitter.call_count == 1
+
+
+@pytest.mark.parametrize("mutation", ["archive_pin", "index_pin", "traversal", "inner_receipt", "extra_file"])
+def test_archive_checkpoint_rejects_tampering_before_restore(retained_trial, tmp_path, mutation):
+    batch_file, data, outputs = retained_trial
+    archive = tmp_path / "transport.zip"
+    pin = checkpoint_archive(batch_spec=batch_file, data_root=data, output_root=outputs, archive=archive)
+    if mutation in ("traversal", "extra_file"):
+        with zipfile.ZipFile(archive, "a") as pack:
+            pack.writestr("../escape.json" if mutation == "traversal" else "extra.json", "{}")
+    if mutation == "inner_receipt":
+        with zipfile.ZipFile(archive) as pack:
+            members = {i.filename: pack.read(i.filename) for i in pack.infolist()}
+        key = next(k for k in members if k.endswith("study-receipt.json"))
+        members[key] = b'{}'
+        with zipfile.ZipFile(archive, "w") as pack:
+            for name, data_bytes in members.items():
+                pack.writestr(name, data_bytes)
+    archive_pin = "f" * 64 if mutation == "archive_pin" else hashlib.sha256(archive.read_bytes()).hexdigest()
+    index_pin = "f" * 64 if mutation == "index_pin" else pin["index_sha256"]
+    fresh = tmp_path / "fresh"
+    with pytest.raises(ExchangeError):
+        restore_archive(batch_spec=batch_file, data_root=data, archive=archive,
+            expected_archive_sha256=archive_pin, expected_index_sha256=index_pin, output_root=fresh)
+    assert not fresh.exists() and not (tmp_path / "escape.json").exists()
 
 
 class BatchPlanningTests(unittest.TestCase):

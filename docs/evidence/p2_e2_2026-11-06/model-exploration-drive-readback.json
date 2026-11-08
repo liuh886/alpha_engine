@@ -1,0 +1,14 @@
+{
+  "status": "OWNER_RUN_FILES_DELIVERED_LOCAL_SYNC_DRIVE_READBACK_PASS",
+  "files": 8,
+  "total_bytes": 55447,
+  "deployment_manifest_sha256": "d73cf9ffb3d5491a626b58487055ba82a3b292e72c701a38a631e33cb65e11d7",
+  "all_file_sizes_and_sha256_equal": true,
+  "remote_google_drive_sync_verified": false,
+  "remote_private_sharing_permissions_verified": false,
+  "actual_colab_execution": "NOT_RUN",
+  "research_only": true,
+  "trade_ready": false,
+  "pit_certified": false,
+  "logical_exchange_directory": "colab_jobs/us87-exploration-b3764bab1a"
+}
