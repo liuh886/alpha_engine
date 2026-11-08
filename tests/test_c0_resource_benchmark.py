@@ -1,0 +1,68 @@
+from pathlib import Path
+import json
+
+import numpy as np
+import pytest
+
+from src.research.c0_resource_benchmark import digest, retained_stage, validate_spec, verify
+
+
+def test_c0_refuses_a_consumed_window_claimed_as_new_holdout():
+    with pytest.raises(ValueError, match="Owner-authorized"):
+        validate_spec(
+            {
+                "schema_version": "c0_resource_benchmark_v1",
+                "research_only": True,
+                "trade_ready": False,
+                "window_classification": "UNTOUCHED_HOLDOUT",
+            }
+        )
+
+
+def test_independent_audit_detects_numeric_difference_and_trace_tampering(tmp_path):
+    tasks = [{"id": f"t{i}"} for i in range(6)]
+    (tmp_path / "spec.json").write_text(json.dumps({"tasks": tasks}))
+    for name in ("r1-cache-off", "cpu-2"):
+        folder = tmp_path / name
+        measurements = []
+        for task in tasks:
+            part = folder / "worker-0" / "off" / task["id"]
+            part.mkdir(parents=True)
+            value = 1.01 if name == "cpu-2" and task["id"] == "t0" else 1.0
+            np.savez_compressed(part / "trace.npz", net=np.array([value]))
+            row = {
+                "task_id": task["id"],
+                "phase": "off",
+                "trace_identity": {"sessions": ["2025-01-02"]},
+            }
+            (part / "measurement.json").write_text(json.dumps(row))
+            measurements.append(row)
+        files = {
+            p.relative_to(folder).as_posix(): digest(p) for p in folder.rglob("*") if p.is_file()
+        }
+        (folder / "stage.json").write_text(
+            json.dumps(
+                {
+                    "files": files,
+                    "tasks": measurements,
+                    "wall_seconds": 1.0,
+                    "sampled_tree_peak_rss_bytes": 100,
+                }
+            )
+        )
+    result = verify(tmp_path)
+    assert result["cpu_exact"] is False
+    assert result["observed_completed_fits"] == 12
+    assert result["financial_independent_samples_added"] == 0
+    (tmp_path / "cpu-2/worker-0/off/t0/trace.npz").write_bytes(b"tampered")
+    with pytest.raises(ValueError, match="hash mismatch"):
+        retained_stage(tmp_path / "cpu-2")
+
+
+def test_no_incomplete_stage_is_accepted_as_six_paired_tasks(tmp_path):
+    (tmp_path / "spec.json").write_text(json.dumps({"tasks": [{"id": f"t{i}"} for i in range(6)]}))
+    folder = tmp_path / "r1-cache-off"
+    folder.mkdir()
+    (folder / "stage.json").write_text(json.dumps({"files": {}, "tasks": []}))
+    with pytest.raises(ValueError, match="logical task/phase coverage"):
+        verify(tmp_path)
