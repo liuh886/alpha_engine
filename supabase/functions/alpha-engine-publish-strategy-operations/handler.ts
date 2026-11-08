@@ -104,7 +104,7 @@ export function createPublishHandler(deps: PublishHandlerDeps = {}) {
 
       const { data: policies, error: policyError } = await admin
         .from("product_access_policies")
-        .select("resource_id")
+        .select("resource_id,required_tier")
         .eq("product_code", "alpha_engine")
         .eq("resource_type", "strategy")
         .in("resource_id", [...strategyIds]);
@@ -112,6 +112,10 @@ export function createPublishHandler(deps: PublishHandlerDeps = {}) {
       const declared = new Set((policies ?? []).map((row: any) => String(row.resource_id)));
       const missing = [...strategyIds].filter((strategyId) => !declared.has(strategyId));
       if (missing.length) throw new Error(`runtime access policy missing for: ${missing.join(", ")}`);
+      const unsafe = (policies ?? []).filter((row: any) => !["pro", "owner"].includes(row.required_tier));
+      if (unsafe.length) {
+        throw new Error(`current operations require protected tiers: ${unsafe.map((row: any) => row.resource_id).join(", ")}`);
+      }
 
       const { error: upsertError } = await admin
         .from("strategy_operation_snapshots")

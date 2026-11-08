@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'qlib-dashboard/**'
+      - 'supabase/**'
+      - 'tests/test_publish_strategy_operations_handler.test.ts'
       - 'src/research/ashare_rdi/**'
       - 'configs/research_experiments/ashare_rdi_phase2_*.yaml'
       - 'docs/evidence/ashare_rdi_phase2/**'
@@ -68,6 +70,8 @@ jobs:
       - name: Install dependencies
         working-directory: qlib-dashboard
         run: npm ci --no-audit --no-fund
+      - name: Protected current-operations publisher regressions
+        run: node --experimental-strip-types --test tests/test_publish_strategy_operations_handler.test.ts
       - name: Audit moderate-or-higher dependency risks
         working-directory: qlib-dashboard
         run: npm run audit:dependencies

@@ -7,7 +7,7 @@ import {
 } from "../supabase/functions/alpha-engine-publish-strategy-operations/handler.ts";
 
 function createMockAdmin(options: {
-  policies?: Array<{ resource_id: string }>;
+  policies?: Array<{ resource_id: string; required_tier?: string }>;
   policyError?: Error | null;
   upsertError?: Error | null;
   pruneError?: Error | null;
@@ -38,7 +38,7 @@ function createMockAdmin(options: {
                         if (options.policyError) {
                           return Promise.resolve({ data: null, error: options.policyError });
                         }
-                        const data = options.policies ?? ids.map((id) => ({ resource_id: id }));
+                        const data = options.policies ?? ids.map((id) => ({ resource_id: id, required_tier: "pro" }));
                         return Promise.resolve({ data, error: null });
                       },
                     };
@@ -98,6 +98,27 @@ function makeRequest(body: unknown, method = "POST"): Request {
     body: typeof body === "string" ? body : JSON.stringify(body),
   });
 }
+
+for (const tier of ["public", "authenticated", undefined, "unknown"]) {
+  test(`rejects unsafe current-operations tier ${tier} before ANY write`, async () => {
+    const admin = createMockAdmin({ policies: Object.keys(AUTHORIZED_ACTIVE_STRATEGIES)
+      .map((id) => ({ resource_id: id, required_tier: tier })) });
+    const handler = createPublishHandler({ verifyPublisher: async () => {}, getAdminClient: () => admin });
+    const response = await handler(makeRequest(makeValidPayload()));
+    assert.strictEqual(response.status, 400);
+    assert.match((await response.json()).error, /require protected tiers/);
+    assert.strictEqual(admin.calls.upsertRows.length, 0);
+    assert.strictEqual(admin.calls.deleteIn.length, 0);
+  });
+}
+
+test("preserves Owner-only publication policy", async () => {
+  const admin = createMockAdmin({ policies: Object.keys(AUTHORIZED_ACTIVE_STRATEGIES)
+    .map((id) => ({ resource_id: id, required_tier: "owner" })) });
+  const handler = createPublishHandler({ verifyPublisher: async () => {}, getAdminClient: () => admin });
+  assert.strictEqual((await handler(makeRequest(makeValidPayload()))).status, 200);
+  assert.strictEqual(admin.calls.upsertRows.length, 4);
+});
 
 test("rejects partial records (missing strategy) with HTTP 400 and performs ZERO DB writes", async () => {
   const admin = createMockAdmin();
