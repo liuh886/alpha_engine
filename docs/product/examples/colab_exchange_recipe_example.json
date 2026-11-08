@@ -1,0 +1,30 @@
+{
+  "$comment": "ILLUSTRATIVE ONLY. This file deliberately contains placeholders. Copy to a private untracked file, review provider licensing, verify byte hashes and manually approve before invoking pack.",
+  "schema_version": "alpha_research_exchange_v1",
+  "study_id": "us87_daily_condition_pilot",
+  "market": "us",
+  "pool_id": "us_selected_equities_v2",
+  "data_cutoff": "2026-11-03",
+  "repo_revision": "<ACTUAL_40_HEX_GIT_COMMIT>",
+  "source_manifest_path": "data/research/model_data_bundle_v1/sources/<ACTUAL_SOURCE_MANIFEST>.json",
+  "source_manifest_sha256": "<VERIFIED_SHA256>",
+  "owner_approved_private_cloud_copy": false,
+  "rights_class": "NOT_APPROVED_UNTIL_SOURCE_REVIEW",
+  "inputs": [
+    {
+      "path": "configs/research_universes/us_selected_equities_v2.yaml",
+      "sha256": "<VERIFIED_SHA256>",
+      "role": "pool_spec"
+    },
+    {
+      "path": "data/research/model_data_bundle_v1/sources/<ACTUAL_SOURCE_MANIFEST>.json",
+      "sha256": "<VERIFIED_SHA256>",
+      "role": "source_manifest"
+    },
+    {
+      "path": "data/csv_clean/<EXPLICIT_GOVERNED_SYMBOL>.csv",
+      "sha256": "<VERIFIED_SHA256>",
+      "role": "data"
+    }
+  ]
+}

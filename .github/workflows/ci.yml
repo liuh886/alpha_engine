@@ -65,6 +65,13 @@ jobs:
       - name: Validate active research mission without execution
         run: uv run python scripts/run_active_research_experiments.py --validate-only
 
+      - name: Audit complete US87 and CN130 market-history inputs (no Colab)
+        if: github.event_name == 'pull_request'
+        run: >-
+          uv run python -m src.research.comprehensive_dataset audit
+          --repo-root . --market all
+          --output artifacts/p2-comprehensive-dataset-audit.json
+
       - name: Ruff lint ratcheted production paths
         if: github.event_name == 'pull_request'
         run: >-
@@ -80,6 +87,20 @@ jobs:
           src/research/economics.py
           src/research/replay_comparison.py
           src/research/experiment_harness.py
+          src/research/cloud_exchange.py
+          src/research/comprehensive_dataset.py
+          src/research/source_archive_recovery.py
+          src/research/comprehensive_bundle.py
+          src/research/dataset_inventory.py
+          src/research/dataset_readiness.py
+          src/research/e1a_price_preflight.py
+          src/data/fundamentals/ashare_public_financials.py
+          tests/test_cloud_exchange.py
+          tests/test_comprehensive_dataset.py
+          tests/test_source_archive_recovery.py
+          tests/test_p2_dataset_bundle.py
+          tests/test_dataset_readiness.py
+          tests/test_e1a_price_preflight.py
           src/research/cross_sectional_experiment_runner.py
           src/research/ranker_execution.py
           src/research/ranker_training.py
@@ -203,6 +224,12 @@ jobs:
           tests/test_model_signal_identity.py
           tests/test_data_runtime_truth.py
           tests/test_experiment_harness.py
+          tests/test_cloud_exchange.py
+          tests/test_comprehensive_dataset.py
+          tests/test_source_archive_recovery.py
+          tests/test_p2_dataset_bundle.py
+          tests/test_dataset_readiness.py
+          tests/test_e1a_price_preflight.py
           tests/test_cross_sectional_experiment_runner.py
           tests/test_ranker_training.py
           tests/test_formal_baseline_onboarding.py

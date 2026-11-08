@@ -1,0 +1,70 @@
+{
+  "acceptance_script_sha256": "e112f88033300dfc85933d8537638446288dd00dc1d30c407d686b462a29128a",
+  "frozen_code_revision": "3f0f54f8730d5af189fb24da98735a53f31c6af0",
+  "frozen_verifier": {
+    "cloud_copy_approved": false,
+    "colab_executed": false,
+    "files": 198,
+    "integrity": "PASS",
+    "manifest_sha256": "ec753ad3af8a418e18e06ec39e0ee67f710d8bc3836a0ab00fa17f4c18ac2d61",
+    "offline_read": "PASS",
+    "original_archives_verified": 4,
+    "parquet_rows_read": 897383,
+    "status": "PARTIAL",
+    "total_bytes": 452754802
+  },
+  "inventory_reproduced": true,
+  "parity": {
+    "cn_alpha158": {
+      "factor_count": 158,
+      "status": "EXACT_INCLUDING_NANS",
+      "symbols": 130
+    },
+    "cn_corporate_actions": {
+      "rows": 2792,
+      "status": "EXACT"
+    },
+    "cn_fundamentals": {
+      "rows": 17202,
+      "status": "EXACT"
+    },
+    "cn_prices": {
+      "rows": 184434,
+      "status": "EXACT"
+    },
+    "cn_provider_source": {
+      "rows": 184434,
+      "status": "EXACT_INCLUDING_ADJUSTMENT_AND_AMOUNT_FIELDS",
+      "symbols": 137
+    },
+    "qqq_reference": {
+      "status": "EXACT",
+      "symbols": 3
+    },
+    "us_corporate_actions": {
+      "rows": 3579,
+      "status": "EXACT"
+    },
+    "us_fundamentals": {
+      "rows": 71433,
+      "status": "EXACT"
+    },
+    "us_prices": {
+      "rows": 122641,
+      "status": "EXACT"
+    },
+    "us_provider_source": {
+      "rows": 122641,
+      "status": "EXACT_INCLUDING_ADJUSTMENT_AND_AMOUNT_FIELDS",
+      "symbols": 92
+    }
+  },
+  "privacy": {
+    "model_weights_or_account_or_credential_signatures": 0,
+    "status": "PASS",
+    "text_payloads_scanned": 1117
+  },
+  "sha256": "ec753ad3af8a418e18e06ec39e0ee67f710d8bc3836a0ab00fa17f4c18ac2d61",
+  "socket_connections_denied": true,
+  "status": "PARTIAL"
+}

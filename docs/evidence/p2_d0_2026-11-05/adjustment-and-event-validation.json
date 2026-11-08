@@ -1,0 +1,938 @@
+{
+  "latest_provider_columns": {
+    "us": {
+      "symbols": 92,
+      "factor_all_one_symbols": [
+        "AAOI",
+        "AAPL",
+        "ABBNY",
+        "ADP",
+        "ADSK",
+        "AEHR",
+        "ALAB",
+        "AMAT",
+        "AMD",
+        "AMZN",
+        "ANET",
+        "APP",
+        "ARM",
+        "ASML",
+        "AVGO",
+        "AXON",
+        "BE",
+        "BKNG",
+        "BKR",
+        "CDNS",
+        "CEG",
+        "CGDV",
+        "COHR",
+        "COST",
+        "CPRT",
+        "CRCL",
+        "CRDO",
+        "CRWD",
+        "CSCO",
+        "CTAS",
+        "DASH",
+        "DDOG",
+        "EA",
+        "EME",
+        "ETN",
+        "FANG",
+        "FIX",
+        "FN",
+        "GEHC",
+        "GOOGL",
+        "HIMS",
+        "HIMX",
+        "HON",
+        "HOOD",
+        "INTC",
+        "INTU",
+        "IREN",
+        "ISRG",
+        "KLAC",
+        "LIN",
+        "LITE",
+        "LRCX",
+        "MELI",
+        "META",
+        "MPWR",
+        "MRVL",
+        "MSFT",
+        "MU",
+        "NBIS",
+        "NFLX",
+        "NOK",
+        "NVDA",
+        "ORCL",
+        "ORLY",
+        "PANW",
+        "PDD",
+        "PEP",
+        "PLTR",
+        "POET",
+        "PWR",
+        "QCOM",
+        "QQQ",
+        "QQQI",
+        "REGN",
+        "ROP",
+        "SBGSY",
+        "SGOV",
+        "SHOP",
+        "SNDK",
+        "SNPS",
+        "TEM",
+        "TIGO",
+        "TMUS",
+        "TQQQ",
+        "TSLA",
+        "TSM",
+        "TTWO",
+        "TYGO",
+        "VRT",
+        "VRTX",
+        "WDC",
+        "WMT"
+      ],
+      "factor_nonnull_rows": 122641,
+      "amount_nonnull_rows": 122641,
+      "amount_null_rows": 0,
+      "vwap_symbols": 0
+    },
+    "cn": {
+      "symbols": 137,
+      "factor_all_one_symbols": [
+        "000001",
+        "000063",
+        "000100",
+        "000300",
+        "000333",
+        "000338",
+        "000408",
+        "000425",
+        "000538",
+        "000568",
+        "000596",
+        "000651",
+        "000661",
+        "000725",
+        "000768",
+        "000858",
+        "000895",
+        "000938",
+        "000963",
+        "000977",
+        "000999",
+        "002001",
+        "002007",
+        "002027",
+        "002049",
+        "002050",
+        "002142",
+        "002156",
+        "002179",
+        "002202",
+        "002222",
+        "002230",
+        "002241",
+        "002281",
+        "002311",
+        "002352",
+        "002371",
+        "002410",
+        "002415",
+        "002456",
+        "002460",
+        "002463",
+        "002466",
+        "002475",
+        "002493",
+        "002518",
+        "002594",
+        "002600",
+        "002601",
+        "002602",
+        "002648",
+        "002709",
+        "002714",
+        "002837",
+        "300015",
+        "300017",
+        "300033",
+        "300059",
+        "300124",
+        "300133",
+        "300274",
+        "300408",
+        "300548",
+        "300750",
+        "300782",
+        "301291",
+        "301308",
+        "301309",
+        "301666",
+        "515180",
+        "600009",
+        "600019",
+        "600026",
+        "600030",
+        "600031",
+        "600036",
+        "600150",
+        "600184",
+        "600276",
+        "600309",
+        "600406",
+        "600426",
+        "600436",
+        "600438",
+        "600487",
+        "600519",
+        "600522",
+        "600547",
+        "600570",
+        "600588",
+        "600690",
+        "600760",
+        "600809",
+        "600845",
+        "600875",
+        "600887",
+        "600893",
+        "600900",
+        "600938",
+        "601012",
+        "601088",
+        "601138",
+        "601318",
+        "601600",
+        "601633",
+        "601698",
+        "601728",
+        "601766",
+        "601808",
+        "601838",
+        "601857",
+        "601872",
+        "601877",
+        "601888",
+        "601899",
+        "601919",
+        "601939",
+        "601985",
+        "603160",
+        "603259",
+        "603260",
+        "603288",
+        "603369",
+        "603392",
+        "603501",
+        "603629",
+        "603658",
+        "603799",
+        "603806",
+        "603899",
+        "603986",
+        "603993",
+        "688008",
+        "688183",
+        "688521",
+        "688525",
+        "688676"
+      ],
+      "factor_nonnull_rows": 184434,
+      "amount_nonnull_rows": 184341,
+      "amount_null_rows": 93,
+      "vwap_symbols": 0
+    }
+  },
+  "cn_alpha158_adjustment": {
+    "rows_compared": 175047,
+    "max_absolute_factor_ratio_error": 1.1102230246251565e-16,
+    "symbol_count": 130,
+    "status": "PASS",
+    "records": [
+      {
+        "symbol": "000001",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000063",
+        "rows_compared": 1375,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000100",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000333",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000338",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000408",
+        "rows_compared": 1370,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000425",
+        "rows_compared": 1353,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000538",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000568",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000596",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000651",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000661",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000725",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000768",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000858",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000895",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000938",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000963",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000977",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "000999",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002001",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002007",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002027",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002049",
+        "rows_compared": 1366,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002050",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002142",
+        "rows_compared": 1370,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002179",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002202",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002222",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002230",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002241",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002311",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002352",
+        "rows_compared": 1373,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002371",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002410",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002415",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002456",
+        "rows_compared": 1366,
+        "max_absolute_factor_ratio_error": 0.0
+      },
+      {
+        "symbol": "002460",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002463",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002466",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002475",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002493",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002518",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002594",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002600",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002601",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002602",
+        "rows_compared": 1374,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002648",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002709",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002714",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "002837",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 5.551115123125783e-17
+      },
+      {
+        "symbol": "300015",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "300017",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "300033",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "300059",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "300124",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "300133",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "300408",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "300548",
+        "rows_compared": 1372,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "300750",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "300782",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "301291",
+        "rows_compared": 774,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "301308",
+        "rows_compared": 991,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "301309",
+        "rows_compared": 951,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "301666",
+        "rows_compared": 95,
+        "max_absolute_factor_ratio_error": 0.0
+      },
+      {
+        "symbol": "600009",
+        "rows_compared": 1365,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600019",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600026",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600030",
+        "rows_compared": 1370,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600031",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600036",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600150",
+        "rows_compared": 1362,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600184",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600276",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600309",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600406",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600426",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 0.0
+      },
+      {
+        "symbol": "600436",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600438",
+        "rows_compared": 1366,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600487",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600519",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600522",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600547",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600570",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600588",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600690",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600760",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600809",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600845",
+        "rows_compared": 1375,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600875",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600887",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600893",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600900",
+        "rows_compared": 1365,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "600938",
+        "rows_compared": 1063,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601012",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601088",
+        "rows_compared": 1366,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601138",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601318",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601600",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601633",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601698",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601728",
+        "rows_compared": 1222,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601766",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601808",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601838",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601857",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601872",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601877",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601888",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601899",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601919",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "601985",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603160",
+        "rows_compared": 1366,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603259",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603260",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603288",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603369",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603392",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603501",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603629",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 5.551115123125783e-17
+      },
+      {
+        "symbol": "603658",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603799",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603806",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603899",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603986",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "603993",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "688008",
+        "rows_compared": 1376,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "688521",
+        "rows_compared": 1366,
+        "max_absolute_factor_ratio_error": 0.0
+      },
+      {
+        "symbol": "688525",
+        "rows_compared": 892,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      },
+      {
+        "symbol": "688676",
+        "rows_compared": 1335,
+        "max_absolute_factor_ratio_error": 1.1102230246251565e-16
+      }
+    ]
+  },
+  "corporate_action_time_semantics": {
+    "us": {
+      "events": 3579,
+      "types": {
+        "cash_dividend": 3371,
+        "split": 202,
+        "reverse_split": 6
+      },
+      "announced_date_equals_ex_date": 3579,
+      "missing_pay_date": 3579,
+      "reconciliation_statuses": {
+        "source_only": 3579
+      },
+      "pit_certified": false
+    },
+    "cn": {
+      "events": 2792,
+      "types": {
+        "cash_dividend": 2305,
+        "stock_dividend": 487
+      },
+      "announced_date_equals_ex_date": 1,
+      "missing_pay_date": 2792,
+      "reconciliation_statuses": {
+        "source_only": 2792
+      },
+      "pit_certified": false
+    }
+  }
+}

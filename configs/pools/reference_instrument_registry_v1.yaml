@@ -181,7 +181,7 @@ markets:
       CSI300:
         canonical_symbol: "000300.SH"
         instrument_type: "equity_index"
-        provider_aliases: ["000300.SH", "SH000300", "sh.000300"]
+        provider_aliases: ["000300.SH", "000300", "SH000300", "sh.000300"]
         roles: ["benchmark", "market_regime", "factor_reference"]
         executable: false
         candidate_eligible: false

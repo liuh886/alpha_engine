@@ -1,0 +1,14 @@
+{
+  "us": {
+    "original_sha256": "93b2d42cebf3ebfac7b80298f6822fdc4305f7550b73ac1b2bb8d272d3fb3de8",
+    "rebuilt_sha256": "93b2d42cebf3ebfac7b80298f6822fdc4305f7550b73ac1b2bb8d272d3fb3de8",
+    "identical": true,
+    "size_bytes": 15492777
+  },
+  "cn": {
+    "original_sha256": "252451348c97ae166a2df6accbccad137ac673c34c5e7fdb50d0227c2023670e",
+    "rebuilt_sha256": "252451348c97ae166a2df6accbccad137ac673c34c5e7fdb50d0227c2023670e",
+    "identical": true,
+    "size_bytes": 39286318
+  }
+}
