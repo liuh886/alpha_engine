@@ -12,6 +12,7 @@ from concurrent.futures import ProcessPoolExecutor
 from contextlib import nullcontext
 from dataclasses import asdict, dataclass
 import hashlib
+import importlib.metadata
 import json
 import multiprocessing
 import os
@@ -44,6 +45,20 @@ def code_identity() -> dict:
         "uv.lock",
     )
     return {p: digest(root / p) for p in paths}
+
+
+def environment_identity() -> dict:
+    return {
+        "python": platform.python_version(),
+        "os": platform.platform(),
+        "processor": platform.processor(),
+        "logical_cpus": psutil.cpu_count(),
+        "physical_cpus": psutil.cpu_count(logical=False),
+        "total_ram_bytes": psutil.virtual_memory().total,
+        "packages": {
+            p: importlib.metadata.version(p) for p in ("numpy", "pandas", "xgboost", "psutil")
+        },
+    }
 
 
 class RssSampler:
@@ -257,6 +272,7 @@ def execute_stage(
         rows = sum(list(pool.map(worker, args)), [])
     result = {
         "stage": name,
+        "environment": environment_identity(),
         "workers": workers,
         "worker_threads": 1,
         "wall_seconds": sampled.wall_seconds,
@@ -347,6 +363,9 @@ def verify(output: Path) -> dict:
         "schema_version": "c0_independent_numerical_audit_v1",
         "spec_sha256": digest(output / "spec.json"),
         "cpu_exact": cpu_exact,
+        "same_environment": all(
+            s.get("environment") == reference.get("environment") for s in stages.values()
+        ),
         "r2_cache_reproducible": r2_ready,
         "logical_tasks": len(cfg["tasks"]),
         "observed_completed_fits": sum(len(s["tasks"]) for s in stages.values()),
@@ -393,6 +412,11 @@ def run(spec: Path, data_root: Path, output: Path, stop_after: str | None, gpu: 
         with frozen.open("xb") as f:
             f.write(spec.read_bytes())
     cfg["spec_sha256"] = digest(spec)
+    for receipt in output.glob("*/stage.json"):
+        if retained_stage(receipt.parent)["environment"] != environment_identity():
+            raise ValueError(
+                "runtime environment changed; preserve checkpoint and start a NEW metrology run"
+            )
     execute_stage(cfg, data_root, output, "r1-cache-off", 1, False, ("off",))
     if stop_after == "r1":
         return {"status": "R1_CHECKPOINT_COMPLETE", "new_stage": "r1"}
@@ -404,8 +428,23 @@ def run(spec: Path, data_root: Path, output: Path, stop_after: str | None, gpu: 
         return audit
     peak = retained_stage(output / "r1-cache-off")["sampled_tree_peak_rss_bytes"]
     for n in (2, 4):
+        skip = output / "capacity-blocked" / f"cpu-{n}.json"
+        if skip.exists():
+            continue
         if psutil.cpu_count() < n or psutil.virtual_memory().available < n * peak + 1024**3:
-            raise ValueError(f"insufficient measured CPU/RAM budget for {n} workers")
+            save_receipt_exclusive(
+                skip,
+                {
+                    "status": "BLOCKED_CPU_OR_RAM_CAPACITY",
+                    "workers": n,
+                    "available_cpu_threads": psutil.cpu_count(),
+                    "available_ram_bytes": psutil.virtual_memory().available,
+                    "required_ram_bytes": n * peak + 1024**3,
+                    "research_only": True,
+                    "trade_ready": False,
+                },
+            )
+            continue
         execute_stage(cfg, data_root, output, f"cpu-{n}", n, False, ("off",))
         if not verify(output)["cpu_exact"]:
             raise ValueError("parallel numerical mismatch; stop expansion")
@@ -413,6 +452,14 @@ def run(spec: Path, data_root: Path, output: Path, stop_after: str | None, gpu: 
         execute_stage(cfg, data_root, output, "gpu-cuda", 1, False, ("off",), "cuda")
     final = verify(output)
     final["gpu_status"] = "MEASURED_SEE_NUMERICAL_PARITY" if gpu else "NOT_TESTED_NO_CUDA_REQUEST"
+    final["capacity_blockers"] = [
+        json.loads(p.read_bytes()) for p in (output / "capacity-blocked").glob("*.json")
+    ]
+    final["status"] = (
+        "PARTIAL_RESOURCE_CAPACITY_BLOCKED"
+        if final["capacity_blockers"]
+        else "LOCAL_RESOURCE_MEASUREMENTS_COMPLETE"
+    )
     final["environment"] = {
         "python": platform.python_version(),
         "os": platform.system(),
