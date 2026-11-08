@@ -36,6 +36,8 @@
 首轮前端CI为120 PASS/3 FAIL：两个测试将可选source-opening上下文误作必填。
 已按真实来源合同修正测试：缺声明时要求公开performance与原文SHA/内容一致，并明确observed-range且不显示未经认证的opening wealth；
 旧声明来源的严格正例/篡改拒绝仍保留。定向3布局和24项安全/来源测试通过；不改任何密封经济数值或放宽来源校验。
+最新提交 `ae34fb8d3f6f52a458081a199c0543c030e7d707` 的后端、完整前端构建、治理及安全CI均PASS，见 [ci.json](ci.json)。
+CI不代替生产权限修复及真实账号验收。
 
 回滚：停止新部署，静态包与私有checkpoint按 [哈希](a6-private-restore.json)恢复到新目录；
 必要时仅回滚publisher代码，**保持restrictive SQL floor**，不得把匿名目标重新暴露作为回滚。
