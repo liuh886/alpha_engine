@@ -1,11 +1,14 @@
 """Regression tests for the governed Yahoo raw-bar adjustment contract.
 
-The governed runtime requests ``auto_adjust=False`` with ``repair=True`` and
+The governed runtime requests ``auto_adjust=False`` with ``repair=False`` and
 applies one explicit uniform ``Adj Close / Close`` ratio to every OHLC field
 before the envelope gate runs. These tests pin that contract.
 """
 
 from __future__ import annotations
+
+import hashlib
+import json
 
 import pandas as pd
 import pytest
@@ -89,3 +92,47 @@ def test_empty_input_returns_empty_frame() -> None:
 
 def test_missing_required_column_returns_empty_frame() -> None:
     assert _process_yfinance_df(_raw_frame().drop(columns=["High"])).empty
+
+
+def test_exact_provider_capture_preserves_raw_actions_volume_and_normalization(tmp_path, monkeypatch):
+    import yfinance
+    from src.data.adapters.base import FetchRequest
+    from src.data.adapters.yfinance_adapter import YFinanceAdapter
+
+    raw = _raw_frame()
+    raw["Dividends"] = [0.0, 0.5]
+    raw["Stock Splits"] = [0.0, 4.0]
+    calls = []
+
+    def download(symbol, **kwargs):
+        calls.append((symbol, kwargs))
+        return raw.copy()
+
+    monkeypatch.setattr(yfinance, "download", download)
+    result = YFinanceAdapter(evidence_root=tmp_path).fetch_daily_bars(
+        FetchRequest("AAPL", "us", "2026-07-27", "2026-07-28"))
+    folder = next(tmp_path.glob("request-*"))
+    pd.testing.assert_frame_equal(pd.read_parquet(folder / "raw.parquet"), raw)
+    pd.testing.assert_frame_equal(pd.read_parquet(folder / "normalized.parquet"), result.df)
+    assert result.df["volume"].tolist() == raw["Volume"].tolist()
+    request = json.loads((folder / "request.json").read_text())
+    assert request["raw_sha256"] == hashlib.sha256((folder / "raw.parquet").read_bytes()).hexdigest()
+    assert calls[0][1]["repair"] is False and calls[0][1]["auto_adjust"] is False
+    assert calls[0][1]["actions"] is True and calls[0][1]["end"] == "2026-07-29"
+
+
+def test_bad_provider_return_is_retained_but_never_normalized(tmp_path, monkeypatch):
+    import yfinance
+    from src.data.adapters.base import DataFetchError, FetchRequest
+    from src.data.adapters.yfinance_adapter import YFinanceAdapter
+
+    raw = _raw_frame()
+    raw.loc[raw.index[0], "High"] = 1.0
+    monkeypatch.setattr(yfinance, "download", lambda *a, **kw: raw.copy())
+    with pytest.raises(DataFetchError, match="material Yahoo OHLC"):
+        YFinanceAdapter(evidence_root=tmp_path).fetch_daily_bars(
+            FetchRequest("AAPL", "us", "2026-07-27", "2026-07-28"))
+    folder = next(tmp_path.glob("request-*"))
+    pd.testing.assert_frame_equal(pd.read_parquet(folder / "raw.parquet"), raw)
+    assert (folder / "request.json").is_file()
+    assert not (folder / "normalized.parquet").exists()

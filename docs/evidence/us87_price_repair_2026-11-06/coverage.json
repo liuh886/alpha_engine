@@ -1,0 +1,661 @@
+{
+  "bundle": "us87-cn130-20261103-local-v6-us87-fullrefresh",
+  "manifest_sha256": "4f8225f3c68ee0886b9b707ca140e91dcb509b739b8548fdc10f258574d3da1a",
+  "us_history_zip_sha256": "b4745e46fc26b0328e22de50e579ebbf1d400996258ea6ebb43c1ff739ed5a1a",
+  "us_history_zip_bytes": 16035050,
+  "price_producer_git_sha": "0c8152496ebeeed559ceab9b095594501fca516b",
+  "us_candidates": 87,
+  "us_candidate_rows": 120401,
+  "us_history_rows": 126671,
+  "us_all_start": "2021-01-04",
+  "us_all_end": "2026-11-03",
+  "common_87_plus_qqq_first": "2025-06-05",
+  "common_87_plus_qqq_last": "2026-08-04",
+  "common_87_plus_qqq_sessions": 292,
+  "members": [
+    {
+      "symbol": "AAOI",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "AAPL",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "ABBNY",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "ADP",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "ADSK",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "AEHR",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "ALAB",
+      "candidate": true,
+      "first": "2024-03-20",
+      "last": "2026-11-03",
+      "sessions": 659
+    },
+    {
+      "symbol": "AMAT",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "AMD",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "AMZN",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "ANET",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "APP",
+      "candidate": true,
+      "first": "2021-04-15",
+      "last": "2026-11-03",
+      "sessions": 1396
+    },
+    {
+      "symbol": "ARM",
+      "candidate": true,
+      "first": "2023-09-14",
+      "last": "2026-11-03",
+      "sessions": 788
+    },
+    {
+      "symbol": "ASML",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "AVGO",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "AXON",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "BE",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "BKNG",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "BKR",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "CDNS",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "CEG",
+      "candidate": true,
+      "first": "2022-01-19",
+      "last": "2026-11-03",
+      "sessions": 1203
+    },
+    {
+      "symbol": "CGDV",
+      "candidate": false,
+      "first": "2022-02-24",
+      "last": "2026-11-03",
+      "sessions": 1178
+    },
+    {
+      "symbol": "COHR",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "COST",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "CPRT",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "CRCL",
+      "candidate": true,
+      "first": "2025-06-05",
+      "last": "2026-11-03",
+      "sessions": 356
+    },
+    {
+      "symbol": "CRDO",
+      "candidate": true,
+      "first": "2022-01-27",
+      "last": "2026-11-03",
+      "sessions": 1197
+    },
+    {
+      "symbol": "CRWD",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "CSCO",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "CTAS",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "DASH",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "DDOG",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "EA",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-08-04",
+      "sessions": 1402
+    },
+    {
+      "symbol": "EME",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "ETN",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "FANG",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "FIX",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "FN",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "GEHC",
+      "candidate": true,
+      "first": "2022-12-15",
+      "last": "2026-11-03",
+      "sessions": 974
+    },
+    {
+      "symbol": "GOOGL",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "HIMS",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "HIMX",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "HON",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "HOOD",
+      "candidate": true,
+      "first": "2021-07-29",
+      "last": "2026-11-03",
+      "sessions": 1323
+    },
+    {
+      "symbol": "INTC",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "INTU",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "IREN",
+      "candidate": true,
+      "first": "2021-11-17",
+      "last": "2026-11-03",
+      "sessions": 1245
+    },
+    {
+      "symbol": "ISRG",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "KLAC",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "LIN",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "LITE",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "LRCX",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "MELI",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "META",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "MPWR",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "MRVL",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "MSFT",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "MU",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "NBIS",
+      "candidate": true,
+      "first": "2024-10-21",
+      "last": "2026-11-03",
+      "sessions": 511
+    },
+    {
+      "symbol": "NFLX",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "NOK",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "NVDA",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "ORCL",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "ORLY",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "PANW",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "PDD",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "PEP",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "PLTR",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "POET",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "PWR",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "QCOM",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "QQQ",
+      "candidate": false,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "QQQI",
+      "candidate": false,
+      "first": "2024-01-30",
+      "last": "2026-11-03",
+      "sessions": 694
+    },
+    {
+      "symbol": "REGN",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "ROP",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "SBGSY",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "SGOV",
+      "candidate": false,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "SHOP",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "SNDK",
+      "candidate": true,
+      "first": "2025-02-13",
+      "last": "2026-11-03",
+      "sessions": 433
+    },
+    {
+      "symbol": "SNPS",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "TEM",
+      "candidate": true,
+      "first": "2024-06-14",
+      "last": "2026-11-03",
+      "sessions": 599
+    },
+    {
+      "symbol": "TIGO",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "TMUS",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "TQQQ",
+      "candidate": false,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "TSLA",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "TSM",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "TTWO",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "TYGO",
+      "candidate": true,
+      "first": "2021-09-03",
+      "last": "2026-11-03",
+      "sessions": 1297
+    },
+    {
+      "symbol": "VRT",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "VRTX",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "WDC",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    },
+    {
+      "symbol": "WMT",
+      "candidate": true,
+      "first": "2021-01-04",
+      "last": "2026-11-03",
+      "sessions": 1466
+    }
+  ]
+}

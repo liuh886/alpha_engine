@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import warnings
+import hashlib
+import json
+import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -227,6 +232,7 @@ def _clip_to_request(frame: pd.DataFrame, *, start: str, end: str | None) -> pd.
 @dataclass
 class YFinanceAdapter:
     _name: str = "yfinance"
+    evidence_root: Path | None = None
 
     @property
     def name(self) -> str:
@@ -255,20 +261,37 @@ class YFinanceAdapter:
             raise DataFetchError("end must be on or after start")
         provider_end = _exclusive_provider_end(req.end)
         yf_ticker = self.provider_symbol(req)
+        evidence = None
+        request_options = dict(start=start, end=provider_end, progress=False,
+                               auto_adjust=False, repair=False, threads=False)
+        if self.evidence_root is not None:
+            evidence_root = Path(self.evidence_root).resolve()
+            if evidence_root.is_relative_to(Path(__file__).resolve().parents[3]):
+                raise DataFetchError("provider evidence must remain outside the Git checkout")
+            request_options["actions"] = True
         try:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", message=".*Timestamp.utcnow is deprecated.*")
                 df = yf.download(
                     yf_ticker,
-                    start=start,
-                    end=provider_end,
-                    progress=False,
-                    auto_adjust=False,
-                    repair=False,
-                    threads=False,
+                    **request_options,
                 )
         except Exception as exc:
             raise DataFetchError(f"yfinance download failed for {yf_ticker}: {exc}") from exc
+        if self.evidence_root is not None and df is not None and not df.empty:
+            evidence = evidence_root / ("request-" + uuid.uuid4().hex)
+            evidence.mkdir(parents=True, exist_ok=False)
+            df.to_parquet(evidence / "raw.parquet", engine="pyarrow", compression="zstd")
+            import importlib.metadata
+            record = {"schema_version": "yfinance_exact_response_v1", "symbol": symbol,
+                      "provider_symbol": yf_ticker, "provider": self.name,
+                      "request": request_options,
+                      "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
+                      "client_version": importlib.metadata.version("yfinance"),
+                      "raw_sha256": hashlib.sha256((evidence / "raw.parquet").read_bytes()).hexdigest(),
+                      "adapter_code_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                      "raw_rows": len(df), "research_only": True, "trade_ready": False}
+            (evidence / "request.json").write_text(json.dumps(record, sort_keys=True, indent=2) + "\n", encoding="utf-8")
         out = _clip_to_request(
             _process_yfinance_df(
                 df,
@@ -286,6 +309,13 @@ class YFinanceAdapter:
             raise DataFetchError(
                 f"yfinance schema validation failed for {yf_ticker}: {'; '.join(errors)}"
             )
+        if evidence is not None:
+            out.to_parquet(evidence / "normalized.parquet", engine="pyarrow", compression="zstd")
+            proof = {"normalized_sha256": hashlib.sha256((evidence / "normalized.parquet").read_bytes()).hexdigest(),
+                     "normalization": "uniform_adj_close_ratio; provider Volume unchanged; factor=1 adjusted identity; amount=adjusted_close*volume",
+                     "reconciliation": out.attrs.get("ohlc_rounding_reconciliation"),
+                     "status": "NORMALIZED_PROVIDER_RETURN", "rows": len(out)}
+            (evidence / "normalization.json").write_text(json.dumps(proof, sort_keys=True, indent=2) + "\n", encoding="utf-8")
         return FetchResult(
             provider=self.name,
             symbol=symbol,

@@ -1,0 +1,19 @@
+{
+  "runner_git_sha": "0c8152496ebeeed559ceab9b095594501fca516b",
+  "manifest_sha256": "4f8225f3c68ee0886b9b707ca140e91dcb509b739b8548fdc10f258574d3da1a",
+  "history_archive_sha256": "b4745e46fc26b0328e22de50e579ebbf1d400996258ea6ebb43c1ff739ed5a1a",
+  "campaign_spec_sha256": "c68c58283b1dc7619e1da394801892a22e415777196339df5b9219452c519e1e",
+  "campaign_id": "us87_colab_model_search_v6_20261103",
+  "run_id": "c027ba478d4386d943ccdd8e960ce733b0744349acb4ed9190a1cf89e57d5f0b",
+  "trials": 261,
+  "configuration_count": 29,
+  "new_checkpoint_parent": "/content/drive/MyDrive/AlphaEngine/03_Data/Research_Exchange_P2/incoming_unreviewed/us87-v6-price-repair-0c8152496e",
+  "training_enabled": false,
+  "reproducible_us_history_bytes": true,
+  "staging_files": 106,
+  "old_search_design_unchanged": true,
+  "dataset_edition": "us87-cn130-20261103-local-v6-us87-fullrefresh",
+  "owner_job_directory": "AlphaEngine/03_Data/Research_Exchange_P2/colab_jobs/us87-v6-price-repair-0c8152496e",
+  "agent_accessed_colab": false,
+  "old_checkpoint_reuse_allowed": false
+}
