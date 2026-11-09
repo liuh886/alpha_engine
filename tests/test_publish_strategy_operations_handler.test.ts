@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert";
 import {
   AUTHORIZED_ACTIVE_STRATEGIES,
-  RETIRED_ALLOWLIST_STRATEGY_IDS,
   createPublishHandler,
 } from "../supabase/functions/alpha-engine-publish-strategy-operations/handler.ts";
 
@@ -10,7 +9,6 @@ function createMockAdmin(options: {
   policies?: Array<{ resource_id: string; required_tier?: string }>;
   policyError?: Error | null;
   upsertError?: Error | null;
-  pruneError?: Error | null;
 } = {}) {
   const calls: {
     selectPolicies: string[][];
@@ -62,9 +60,6 @@ function createMockAdmin(options: {
             return {
               in(_col: string, ids: string[]) {
                 calls.deleteIn.push(ids);
-                if (options.pruneError) {
-                  return Promise.resolve({ error: options.pruneError });
-                }
                 return Promise.resolve({ error: null });
               },
             };
@@ -218,7 +213,7 @@ test("rejects publisher verification failure with HTTP 401 and performs ZERO DB 
   assert.strictEqual(admin.calls.deleteIn.length, 0);
 });
 
-test("accepts valid 4-strategy payload, upserts 4 rows, and prunes ONLY allowlisted retired identities", async () => {
+test("accepts valid 4-strategy payload and does not delete retained retired evidence", async () => {
   const admin = createMockAdmin();
   const handler = createPublishHandler({
     verifyPublisher: async () => {},
@@ -237,13 +232,11 @@ test("accepts valid 4-strategy payload, upserts 4 rows, and prunes ONLY allowlis
   const upsertedIds = admin.calls.upsertRows.map((r) => r.strategy_id).sort();
   assert.deepStrictEqual(upsertedIds, ["byd", "cn_27", "qqq_rotation", "us_x"]);
 
-  // Verify prune called ONLY with allowlisted retired strategy IDs
-  assert.strictEqual(admin.calls.deleteIn.length, 1);
-  assert.deepStrictEqual(admin.calls.deleteIn[0], [...RETIRED_ALLOWLIST_STRATEGY_IDS]);
-  assert.deepStrictEqual(admin.calls.deleteIn[0], ["cn_x"]);
+  // Retired snapshot remains stored; RLS restricts reads independently.
+  assert.strictEqual(admin.calls.deleteIn.length, 0);
 });
 
-test("simulated upsert failure halts execution and NEVER calls delete prune", async () => {
+test("simulated upsert failure halts without any deletion", async () => {
   const admin = createMockAdmin({ upsertError: new Error("DB connection lost during upsert") });
   const handler = createPublishHandler({
     verifyPublisher: async () => {},
@@ -259,15 +252,3 @@ test("simulated upsert failure halts execution and NEVER calls delete prune", as
   assert.strictEqual(admin.calls.deleteIn.length, 0);
 });
 
-test("simulated prune failure returns HTTP 400", async () => {
-  const admin = createMockAdmin({ pruneError: new Error("DB lock timeout during prune") });
-  const handler = createPublishHandler({
-    verifyPublisher: async () => {},
-    getAdminClient: () => admin,
-  });
-
-  const res = await handler(makeRequest(makeValidPayload()));
-  assert.strictEqual(res.status, 400);
-  const data = await res.json();
-  assert.strictEqual(data.error, "DB lock timeout during prune");
-});
