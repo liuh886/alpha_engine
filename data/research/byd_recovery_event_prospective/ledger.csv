@@ -56,3 +56,6 @@ signal_date,observation_sha256,prelaunch_seed,prospective_eligible,common_open_e
 2026-11-02,461efe8376aed34b3e5988566b6c21ca65ad1bfd845eafc04d959fa525b46563,False,False,False,False,False,False,0,False,0,False,0.000000000000,bear,low,0.011108708136
 2026-11-03,db75c52d41d39a207f3da4300d45137151d3aee6eac3c330fb8ef2627fd4e441,False,False,False,False,False,False,0,False,0,False,0.000000000000,bear,low,0.012800856941
 2026-11-04,8c60b1bf5599f0730dac92d1d0f4a3793ad41094c274e2167f380913dd50a747,False,False,False,False,False,False,0,False,0,False,0.000000000000,bear,low,0.013200597050
+2026-11-05,87738fde1dc4c85bcddaddf9e1dc896ecbadc168c485472d94778da6fc7fae26,False,False,False,False,False,False,0,False,0,False,0.000000000000,bear,low,0.015232457189
+2026-11-06,29d9817d684c6808ab9b277666a7eb884879e948b7c73854ba833095bdf4bf14,False,False,False,False,False,False,0,False,0,False,0.000000000000,bear,low,0.013357882404
+2026-11-09,50e92aefaf63d6cde15cc5b63700d57a586a55cefda2c9a005e5fe7d7caa7941,False,False,True,False,False,False,0,False,0,False,0.000000000000,bear,low,0.012699476692
