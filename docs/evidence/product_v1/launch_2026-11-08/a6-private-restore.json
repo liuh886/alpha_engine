@@ -1,0 +1,14 @@
+{
+  "source_main": "1463156c4ad22757d10413a34ef91ca83266e830",
+  "private_revision": "a3ddb4482e801c9d6efcbc7bd5b931d0da2948f9",
+  "checkpoint_sha256": "d1108b1bd2c1931bcc593d1479f1fd420186e977acf95af9f65096671d160f12",
+  "checkpoint_bytes": 531415,
+  "restored_files": 288,
+  "fresh_root_restore_twice": "PASS_BYTE_IDENTICAL",
+  "tampered_checkpoint": "PASS_REJECTED",
+  "production_persistence_attempted": false,
+  "production_rollback": "NOT_TESTED_OWNER_EXERCISE_REQUIRED",
+  "status": "ISOLATED_RESTORE_PASS_FULL_A6_BLOCKED",
+  "research_only": true,
+  "trade_ready": false
+}

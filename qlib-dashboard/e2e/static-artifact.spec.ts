@@ -260,9 +260,24 @@ test('strategy detail separates source metrics from chart observations and keeps
   await expect(scope).toContainText('non-provisional through');
   await expect(scope).toContainText('provisional (unsettled marks)');
   await expect(page.getByTestId('chart-return-basis')).toContainText('not the published source return');
-  await expect(page.getByTestId('chart-return-basis')).toContainText('includes the first interval');
-  await expect(scope).toContainText('Source opening wealth');
-  await expect(scope).toContainText('excludes provisional marks');
+  const catalog = await (await page.request.get('/data/formal-model-runs/catalog.json')).json() as FormalCatalog;
+  const record = catalog.records?.find(row => row.model_version_id === 'us_x1_3');
+  expect(record?.manifest_path).toBeTruthy();
+  const base = '/data/formal-model-runs/' + String(record?.manifest_path).replace(/manifest\.json$/, '');
+  const manifest = await (await page.request.get(base + 'manifest.json')).json() as FormalManifest;
+  const performancePath = manifest.sections?.find(section => section.section_id === 'performance')?.path;
+  const response = await page.request.get(base + performancePath);
+  expect(response.ok()).toBeTruthy();
+  const performance = await response.json() as { public_evidence_context?: unknown };
+  if (performance.public_evidence_context) {
+    await expect(page.getByTestId('chart-return-basis')).toContainText('includes the first interval');
+    await expect(scope).toContainText('Source opening wealth');
+    await expect(scope).toContainText('excludes provisional marks');
+  } else {
+    await expect(page.getByTestId('chart-return-basis')).toContainText('excludes the interval ending at that observation');
+    await expect(scope).not.toContainText('Source opening wealth');
+    await expect(scope).toContainText('The declared run window does not identify every metric');
+  }
   await expect(page.getByTestId('chart-return-basis')).toContainText('provisional observation(s)');
   await expect(page.getByTestId('visible-period-dates')).toContainText('Chart comparison');
   await page.getByTestId('chart-return-basis').scrollIntoViewIfNeeded();

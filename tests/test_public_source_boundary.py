@@ -77,6 +77,15 @@ def test_us_wealth_context_binds_original_source_and_preserves_economics(synced_
     source_manifest = json.loads((source_directory / "manifest.json").read_text())
     source = json.loads((source_directory / "performance.json").read_text())
     public = json.loads((synced_public_assets / "formal-model-runs" / Path(source_record["manifest_path"]).parent / "performance.json").read_text())
+    if source.get("performance_semantics", {}).get("performance_date_field") != "holding_end_date":
+        # Newer native sources may omit the optional source-opening contract.
+        # They must stay byte-identical rather than inventing a projected basis.
+        section = next(s for s in source_manifest["sections"] if s["section_id"] == "performance")
+        public_path = synced_public_assets / "formal-model-runs" / Path(source_record["manifest_path"]).parent / "performance.json"
+        assert hashlib.sha256(public_path.read_bytes()).hexdigest() == section["sha256"]
+        assert public == source
+        assert "public_evidence_context" not in public
+        return
     context = public["public_evidence_context"]
     assert context["canonical_bundle_id"] == source_record["bundle_id"]
     assert context["canonical_manifest_sha256"] == source_record["manifest_sha256"]

@@ -1,0 +1,19 @@
+{
+  "schema_version": "launch_delivery_v1",
+  "archive": "launch-20261108-metadata-audits-v1.zip",
+  "sha256": "b654fb84c2854f0c04bb59ab45ebac131582516c4ace4b1bce7b1a1f0064f049",
+  "bytes": 40554,
+  "members": 22,
+  "evidence_commit_sha": "1ef9578d0e6fc22f8cb04bdf7b68880443207753",
+  "base_main_sha": "1463156c4ad22757d10413a34ef91ca83266e830",
+  "p0_code_sha": "c1c3c005759b6cdee37e36a9fbbacce111231a62",
+  "preview": "NO-GO",
+  "formal_v1": "NO-GO",
+  "remote_sync_verified": false,
+  "remote_ACL_verified": false,
+  "research_only": true,
+  "trade_ready": false,
+  "drive_folder": "G:\\My Drive\\AlphaEngine\\03_Data\\Research_Exchange_P2\\incoming_unreviewed\\launch-20261108-metadata-audits-v1",
+  "drive_desktop_readback": "PASS",
+  "private_source_and_screenshots_copied": false
+}

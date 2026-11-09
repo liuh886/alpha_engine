@@ -1,0 +1,9 @@
+{
+  "scope": "actual local production build, source frontend main1463156; isolated copies, not a production rollback",
+  "archive_sha256": "2a582159a474b68b7e72dec48645013a335b91a025a9f70617a7875b89eb19d2",
+  "archive_bytes": 12066832,
+  "files": 405,
+  "restore": "PASS_TWO_BYTE_IDENTICAL_FRESH_ROOTS",
+  "production_rollback": "NOT_TESTED_OWNER_APPROVAL_AND_OPERATION_REQUIRED",
+  "live_expected_sha": "1463156c4ad22757d10413a34ef91ca83266e830"
+}

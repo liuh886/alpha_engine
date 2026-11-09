@@ -5,8 +5,6 @@ export const AUTHORIZED_ACTIVE_STRATEGIES: Record<string, string> = {
   us_x: "us_x1_3",
 };
 
-export const RETIRED_ALLOWLIST_STRATEGY_IDS: readonly string[] = ["cn_x"];
-
 export interface StrategyOperationsDocument {
   schema_version?: unknown;
   research_only?: unknown;
@@ -104,7 +102,7 @@ export function createPublishHandler(deps: PublishHandlerDeps = {}) {
 
       const { data: policies, error: policyError } = await admin
         .from("product_access_policies")
-        .select("resource_id")
+        .select("resource_id,required_tier")
         .eq("product_code", "alpha_engine")
         .eq("resource_type", "strategy")
         .in("resource_id", [...strategyIds]);
@@ -112,19 +110,18 @@ export function createPublishHandler(deps: PublishHandlerDeps = {}) {
       const declared = new Set((policies ?? []).map((row: any) => String(row.resource_id)));
       const missing = [...strategyIds].filter((strategyId) => !declared.has(strategyId));
       if (missing.length) throw new Error(`runtime access policy missing for: ${missing.join(", ")}`);
+      const unsafe = (policies ?? []).filter((row: any) => !["pro", "owner"].includes(row.required_tier));
+      if (unsafe.length) {
+        throw new Error(`current operations require protected tiers: ${unsafe.map((row: any) => row.resource_id).join(", ")}`);
+      }
 
       const { error: upsertError } = await admin
         .from("strategy_operation_snapshots")
         .upsert(rows, { onConflict: "strategy_id" });
       if (upsertError) throw upsertError;
 
-      if (RETIRED_ALLOWLIST_STRATEGY_IDS.length > 0) {
-        const { error: pruneError } = await admin
-          .from("strategy_operation_snapshots")
-          .delete()
-          .in("strategy_id", [...RETIRED_ALLOWLIST_STRATEGY_IDS]);
-        if (pruneError) throw pruneError;
-      }
+      // Retired rows are denied by the restrictive RLS allowlist, not deleted.
+      // Production history must not be pruned as a side effect of publishing.
 
       return json({
         status: "published",
