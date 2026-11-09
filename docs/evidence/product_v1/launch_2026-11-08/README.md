@@ -28,7 +28,7 @@
 13个publisher测试及11项**临时本地PostgreSQL合成角色夹具**通过，测试服务已停止。
 这些不是生产账号实会话；没有新产品数据库、调度器、回测器或策略注册。
 
-1. Owner审阅并只应用 [确切新SQL](../../../../supabase/migrations/20261108000000_protect_current_operations_preview.sql)，先关闭匿名读。
+1. Owner审阅并只应用 [确切新SQL](../../../../supabase/migrations/20261109034213_protect_current_operations_preview_20261108.sql)，先关闭匿名读。
    不建议bulk `db push`，避免顺带执行未审旧迁移/删除退役行。
 2. 部署既有 `alpha-engine-publish-strategy-operations` Edge函数；再复测匿名与隔离授权/拒绝/过期/撤权/缓存隔离。
 3. 仅Preview范围的匿名/披露边界真实关闭后再裁定Preview；A1/A4完整实会话/A6/A7未闭合仍不能叫正式v1。
@@ -46,3 +46,10 @@ CI不代替生产权限修复及真实账号验收。
 原始命令/退出码、脚本SHA及门禁见 [acceptance.json](acceptance.json) 和 [commands.json](commands.json)。
 完整本机证据位于 `D:/Documents/AlphaEnginePrivate/Launch-Research/2026-11-08/launch`；
 公开材料仅含来源身份、哈希、数量、状态。未执行生产回滚、权限写入或A7发布。
+
+## 2026-11-09 production security follow-up (after the frozen 11/08 audit)
+
+- Owner explicitly authorized production access hardening. The exact audited migration SQL was applied to production Supabase project `blgwlycfcwvsupmqyqwn` through the connected Supabase migration interface; **actual applied migration version `20261109034213`**, name `protect_current_operations_preview_20261108`. Repository migration file was renamed to match this production version. Do **not** bulk-apply unrelated historic migrations.
+- Independent production Postgres readback: RLS enabled; `anon` has **no table SELECT grant**, `authenticated` retains SELECT subject to the restrictive policy; all four active policy resource IDs became `pro`; retired `cn_x` remains `public` in the policy registry but is **excluded by the new restrictive strategy-ID allowlist**. Five private rows retained, not erased. `SET LOCAL ROLE anon` SELECT raised `42501`, and `authenticated` with no JWT identity returned zero rows.
+- The PR publisher handler was adjusted to **never delete retained retired snapshots as a side effect of publishing**, aligning with the Owner-approved preserve-not-delete boundary. Only active-four records may be upserted and only after protected-tier checks. The production Edge version still requires an independently verified deployment and real OIDC publisher smoke; do not infer Edge rollout from SQL success.
+- **A4 remains PARTIAL / full Preview still NO-GO** pending actual HTTP anonymous read and Owner/Pro/denied/expired/revoked sessions, other API routes and client cache checks. A1 still reports 17 observed/0 qualified per market, A6 production recovery requires Owner exercise, and A7 not signed. Historical 11/08 failure evidence above is intentionally preserved as a pre-fix observation.
