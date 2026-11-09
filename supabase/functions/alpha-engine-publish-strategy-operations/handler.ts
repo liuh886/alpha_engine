@@ -5,8 +5,6 @@ export const AUTHORIZED_ACTIVE_STRATEGIES: Record<string, string> = {
   us_x: "us_x1_3",
 };
 
-export const RETIRED_ALLOWLIST_STRATEGY_IDS: readonly string[] = ["cn_x"];
-
 export interface StrategyOperationsDocument {
   schema_version?: unknown;
   research_only?: unknown;
@@ -122,13 +120,8 @@ export function createPublishHandler(deps: PublishHandlerDeps = {}) {
         .upsert(rows, { onConflict: "strategy_id" });
       if (upsertError) throw upsertError;
 
-      if (RETIRED_ALLOWLIST_STRATEGY_IDS.length > 0) {
-        const { error: pruneError } = await admin
-          .from("strategy_operation_snapshots")
-          .delete()
-          .in("strategy_id", [...RETIRED_ALLOWLIST_STRATEGY_IDS]);
-        if (pruneError) throw pruneError;
-      }
+      // Retired rows are denied by the restrictive RLS allowlist, not deleted.
+      // Production history must not be pruned as a side effect of publishing.
 
       return json({
         status: "published",
