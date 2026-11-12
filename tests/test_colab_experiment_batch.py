@@ -470,5 +470,6 @@ def test_shard_runner_fails_closed_on_shared_output_and_foreign_receipts(
         with pytest.raises(ExchangeError, match="foreign shard"):
             execute(
                 batch_spec=batch_file, data_root=data, output_root=outputs,
-                shard_manifest=path, shard_id="s01", max_new_trials=1
+                shard_manifest=path, shard_id="s01", max_new_trials=1,
+                resume=True
             )
