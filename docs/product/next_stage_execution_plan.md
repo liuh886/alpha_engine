@@ -1,6 +1,8 @@
 # Alpha Engine — 下一阶段产品架构与执行计划
 
-**当前裁决（2026-11-08）：Preview NO-GO；正式v1 NO-GO；RDI完整研究未验证。** 最新核对基线为 `main@1463156c4ad22757d10413a34ef91ca83266e830`，实际Pages同SHA；较早路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
+**当前裁决（2026-11-12 复核）：Preview NO-GO；正式 v1 NO-GO。** 最新核对基线为 `main@a7b4737`（2026-11-12；本地 checkout 已同步），正式证据 cutoff 远端 US/CN **2026-11-11**。最新门禁、研究与下一阶段执行顺序见 [§13](#13-2026-11-12-当前状态复核与下一阶段执行交接)；§0–§12 保留为历史证据与执行记录，门禁状态以 §13 为准。
+
+**2026-11-08 记录（历史）：Preview NO-GO；正式v1 NO-GO；RDI完整研究未验证。** 当时核对基线为 `main@1463156c4ad22757d10413a34ef91ca83266e830`，实际Pages同SHA；较早路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
 
 ## 2026-11-08 两条独立工作线与当前裁决
 
@@ -672,3 +674,112 @@ uv run --frozen --extra dev python scripts/release_gate.py --help
 后置的 #1307、factor-memory、旧模型认证、仓库 refs 维护等仍依 §11.4 归属，
 不是接手 H1 的隐含前置条件。整个交接保持 `research_only=true`、`trade_ready=false`；
 不恢复退役入口、不新增主导航、模型、分数、策略、执行器或常驻工作流。
+
+## 13. 2026-11-12 当前状态复核与下一阶段执行交接
+
+### 13.1 复核范围与裁决
+
+- 远端基线：`main@a7b4737`（2026-11-12），正式证据 cutoff US/CN **2026-11-11**；本地 checkout `328f24b` 落后 4 个提交，`git fetch` 经本机 `127.0.0.1` proxy 暂时失败，`gh` API 可用时先同步再执行。
+- 裁决：**Preview NO-GO；正式 v1 NO-GO。** 当前主要瓶颈不是功能代码，而是 A1 合格会话、A4 真实 HTTP/会话证据、A6 生产演练和 A7 Owner 签署。
+- 本段是 [2026-11-08 Launch 验收](../evidence/product_v1/launch_2026-11-08/README.md) 与 2026-11-09 生产安全跟进之后的复核记录；不重写旧证据、不替代 A7、不构成发布授权。
+
+### 13.2 门禁状态（2026-11-12）
+
+| Gate | 当前状态 | 证据与剩余阻断 |
+| --- | --- | --- |
+| A0 身份与权威 | **PASS** | 四正式身份、formal catalog、registry 与 Pages 分节一致 |
+| A1 持续运行 | **BLOCKED（待独立 review）** | 2026-11-12 滚动窗口重跑：US/CN 各 **20/20 observed / 0 qualified**，窗口 10/15–11/11；无 missing due-cycle；资格仍缺逐 session hash-bound 独立 review、人工干预声明与 final Actions 元数据；`twenty_session_evidence_complete=false` |
+| A2 数据完整性 | **Ops PASS / 训练 SCOPED_BLOCKED** | 四策略运行依赖已对账；训练面 5 ready / 3 partial / 0 blocked components；6 ready / 2 blocked profiles（`us_selected_alpha158_v1`、`us_small_pool_price_plus_fundamentals_v1`） |
+| A3 用户旅程 | **Baseline PASS / 真实会话 NOT_TESTED** | 实际部署 desktop/mobile/375px 公共旅程通过；受限/拒绝/过期/撤权会话无专用账号 |
+| A4 权限与披露 | **PARTIAL** | 11/08 匿名 API 返回 5 条 allocation；11/09 生产迁移 `20261109034213` + Edge v3 已应用；2026-11-12 真实匿名 HTTP 返回 **401 / 0 rows**，无敏感字段；Owner/Pro/denied/expired/revoked JWT、缓存隔离、Edge OIDC 端到端仍未验证；历史 Git 披露为残留风险 |
+| A5 本地研究 | **PASS (bounded)** | QQQ / CN27 exact replay 至 11/06；Owner 最终确认未完成 |
+| A6 发布与恢复 | **Rehearsal PASS / 生产 BLOCKED** | 405 static / 288 private checkpoint 字节一致恢复，tamper 拒绝，67 项发布/checkpoint 测试通过；当前 RC 与 Owner 生产演练未闭合 |
+| A7 发布决定 | **NOT_TESTED / NO-GO** | 无带日期 Owner GO/NO-GO；CI 与合并不代签 |
+
+### 13.3 运行、研究与数据状态
+
+- **正式运行**：四策略每日 formal refresh 与 Strategy Operations 发布在 11/11–11/12 继续成功；远端 catalog cutoff 11/11。该事实不自动等于 A1 合格会话。
+- **E7 真实时间纸面研究**：2026-11-07 部署，首信号日 2026-11-10。2026-11-09 22:00 UTC 因 `AXON` empty data 失败；2026-11-11 00:57 UTC 因 `AAOI` empty data 失败；2026-11-11 22:00 UTC 因缺少已到期预测进入 `HALTED`。当前 **0 predictions / 0 fills / 0 paper**；`episode-20261110-v1` 的 `HALTED.json` 与 failure 记录必须保留，修复路径是新建未来日期、独立 ID/目录并重新冻结，不能编辑旧 episode。
+- **BYD prospective**：65 observations、10 eligible、73 prospective days、0 completed defense episodes、1 market state（bear）；12 个月 / 1 次分红 / 2 个市场状态 / 6 次防御 episode 的复核门禁未满足。
+- **Racetrack**：US 仅 2 名 runner（US87 EW + low-vol challenger）；scoreboard `as_of 2026-11-02`，season `provisional`；低波 challenger 当前月度排名第 1，但累计积分与 1 年收益落后 pool（25.1 vs 123.2；1y +3.3% vs +23.7%），保留为诚实负结果。六人两赛道首季仍是提案，不是已登记赛事。
+- **RDI**：价格层至 2026-10-30；十类事件 **0/10 合格**、`not_validated`；M3 首家族仍待 Owner 选择。
+- **D0 / C0**：v5 数据包 200 files / 452,928,235 bytes，5 profile contracts READY、1 US Alpha158 BLOCKED；远端字节级 parity 与 provider rights 仍 PARTIAL。C0 本地 18 fits、数组完全一致；CPU 2/4 被 RAM 阻断，真实 Colab/GPU/CU NOT_TESTED，PR #1389 仍 Draft。
+- **数据面**：prices US87/CN130 ready 至 11/10；corporate actions CN 09/04、US 09/30；fundamentals CN 09/04（97.7%）、US 09/30（98.9%）；factors.qlib_alpha158.cn 09/04（129/130，`301666` not_yet_applicable）；references 10/14。价格之外的训练输入仍未追平价格 cutoff。
+
+### 13.4 本次复核发现的即时问题
+
+1. **E7 已 halted**：不能把两次单 symbol 数据失败当作可忽略噪声，也不能回填缺失预测；先做抓取可靠性修复与新 episode 冻结，再谈前瞻评估。
+2. **A1 滚动重跑已完成**：2026-11-12 以 72 个既有 selected observations 加 11/09–11/11 三个新 attempt 重跑 `alpha ops acceptance --through 2026-11-11`，US/CN 均为 **20/20 observed、0 qualified**，窗口 10/15–11/11，无 missing due-cycle。observed 不等于 qualified；下一步是逐 session review packet、独立 reviewer 声明与人工干预值，不能以本次计数关闭 A1。
+3. **A4 的真实证据缺口**：数据库 role 测试与本地 fixture 不能替代真实匿名 HTTP 与真实签发 JWT；历史 Git 披露不可逆，只能由 Owner 记录处置决定。
+4. **#1387 仍未关闭**：2026-11-12 在 `a7b4737` 的完整 weekly health run `43175440486` 为 backend + shard 0/1/2 + report PASS，**shard 3 FAIL**（1121 tests / 6 failures）。六个失败全部来自 `tests/test_strategy_operations_publish_guard.py`：守卫仍要求已移除的 `RETIRED_ALLOWLIST_STRATEGY_IDS` 与 retired prune，并把 node suite 固定为 `pass 8`，而 11/09 后的 handler 明确不删除 retained retired evidence、node suite 为 12 tests。守卫已改为断言“无 `.delete(`、无 retired allowlist、保留 `.upsert`”，并校验 node `tests == pass`、`fail == 0`、总数不低于 12；聚焦 7 pytest + Ruff + node 12 已通过。必须把该修复提交到 main 后重跑完整 health，才能关闭 #1387。
+5. **数据面与文档漂移**：价格已至 11/10，但 corporate actions/fundamentals/factors 仍停在 09/04–09/30；本地 checkout 已于 2026-11-12 同步到 `a7b4737`。已合并 PR 仍写成 Draft 的段落已在同日收敛：`AGENTS.md` 的 #1276/#1357、前端 handoff 的 #1357、E7 文档的 #1368–#1382；#1307 与 #1389 仍是真实 Draft，未改。
+
+### 13.5 下一阶段执行顺序
+
+#### Phase 0 — 真值与卫生（本周，Agent）
+
+| 工作 | 具体动作 | 验收 |
+| --- | --- | --- |
+| 同步当前 main | **完成 2026-11-12**：以 `-c http.proxy= -c https.proxy=` 绕过失效 proxy 后 fast-forward 到 `a7b4737`；保留工作树中的 §13 修改 | 干净 checkout 与远端一致 |
+| #1387 全仓健康 | 2026-11-12 run `43175440486`：backend + shard 0/1/2 PASS，shard 3 FAIL（6 个陈旧 publisher 守卫）；守卫已修复并通过聚焦测试 | 提交修复后在 main 重跑 4 shards；0 failures 后带 run/JUnit 收据关闭 #1387 |
+| 文档收敛 | **完成 2026-11-12**：更新 `AGENTS.md`（#1276 merged、#1357 merged 2026-11-03）、前端 handoff（#1357 merged）与 E7 依赖表（#1368–#1382 merged 2026-11-08）；保留 #1307/#1389 的 Draft 状态；`strategy_console.md` 原已写 merged，无需改 | 一个当前入口；历史段落明确标为历史 |
+
+#### Phase 1 — 关闭发布门禁（P0，1–2 周）
+
+| 工作 | 具体动作 | 验收 | Owner |
+| --- | --- | --- | --- |
+| A1 滚动 20-session 复核 | `alpha ops acceptance --input-root <private archive> --through 2026-11-11`；生成每 session review packet；独立 reviewer 声明 | 20/20 observed + reviewed；due-cycle / retained / recovery / manual intervention 明确；否则列出精确缺口 | Agent 执行；Owner/独立 reviewer 声明 |
+| A4 真实 HTTP/会话矩阵 | 匿名 REST 全公开路由；真实 Owner/Pro allowed、denied/expired/revoked；Edge OIDC；缓存隔离 | 匿名 0 行/401/403；allowed 仅 active-four；denied 0；记录 HTTP 状态、行数、route 类型、SHA | Owner 提供隔离身份；Agent 执行/记录 |
+| A6/A7 包 | 刷新 RC manifest、Pages 回滚目标、private checkpoint restore、release gate 输出；Owner 生产演练 | 可审阅 RC + 回滚步骤 + 带日期 A7 GO/NO-GO | Agent 准备；Owner 签署/执行 |
+| Preview 建议 | 仅当匿名 HTTP + 至少一组真实 allowed/denied 通过才 GO；否则维持 historical/static only | 不以 fixture 或 role SQL 替代 | Owner |
+
+#### Phase 2 — 正确重启前瞻研究（P1，1–2 周，并行）
+
+| 工作 | 具体动作 | 验收 |
+| --- | --- | --- |
+| E7 v2 episode | 增加 per-symbol retry/backoff、成功 raw response 缓存、收盘后重试窗口；新合同先冻结；新建未来日期 episode（建议 2026-11-16 或更晚）与新 runtime；保留 halted 证据 | 首个预测在下一开盘前封存；下一收盘产生首份纸面代理；连续 5 个 cycle；无伪造/补写 |
+| BYD prospective | 保持每日证据；门禁未满足前不做新评估 | 不提前重估、不改冻结机制 |
+| Racetrack | 刷新 projection 至当前 cutoff；保留 2 名 US runner；合同就绪才加 CN130 EW；不强行凑六人 | 当前 cutoff、同窗口/费用/基准可复现 |
+| RDI | Owner 选择首家族（推荐限售解禁公告）或明确搁置；选择后冻结 M3 窄合同 | 0/10 不变；无 score、无第五策略 |
+| C0 | Owner 运行 Notebook 并记录真实 GPU/CU/RAM；无云资源则保留本地 benchmark 并后置 | 真实云证据或明确 NOT_TESTED |
+
+#### Phase 3 — 补全 model-ready 数据面（P1/P2，2–6 周）
+
+1. 用既有增量 adapter 把 corporate actions、fundamentals 刷新到 2026-11-10，重建 readiness，解锁 price+fundamentals profile。
+2. 刷新 CN Alpha158 panel 至 11/10；`301666` 继续明确 `not_yet_applicable`。
+3. US Alpha158：取得 Alpaca SIP/OTC entitlement，或明确把 US profile 限定为 price-only/price+fundamentals；不得用 close-as-VWAP 替代。
+4. D0：完成 200 个 cloud file 的字节级校验或明确 scope-split；`cloud_copy_approved=false` 保持到 rights/ACL 复核完成。
+5. 以上门禁通过后，才开**一个**冻结训练实验；不得重跑已消费的 224 评估或按结果调阈值。
+
+### 13.6 明确不做
+
+- 不新增前端页面、主导航、第五策略、常驻 workflow、调度器或数据库；39 个 workflow 是上限。
+- 不重跑已消费窗口、不按回测胜者选 runner、不为凑六人赛季加 racer。
+- 不在 A4 匿名 HTTP/真实会话未验证时发布 Preview。
+- 不 bulk `supabase db push`、不重跑已应用迁移、不删除 halted/failed/retired 行。
+- 不把绿 CI、merge、文档更新或 E7 规则基准当作 A7 发布决定。
+
+### 13.7 首 48 小时与 Owner 决策
+
+1. 同步 `main@a7b4737`；确认工作树干净。
+2. 跑完整 weekly health，读四份 JUnit；关闭 #1387。
+3. 跑 A1 `--through 2026-11-11` 审计，生成 20-session review packet。
+4. 跑匿名 A4 HTTP 全路由检查；准备真实身份测试脚本。
+5. 准备 E7 retry patch 与新 episode 合同；Owner 确认日期后才注册。
+6. 收敛本计划/AGENTS/strategy_console 的过时段落。
+
+Owner 需明确：① A4 是否提供隔离真实身份，或 Preview 按 NOT_TESTED 残留风险评估；② E7 新 episode 起始日（建议 2026-11-16 或更晚）；③ RDI 首家族现在选还是搁置；④ 是否按本段顺序先关 Launch、再 E7、再数据面。
+
+### 13.8 回写与边界
+
+本段只记录复核与执行顺序，不改变任何数据、权限、模型或已封存证据；所有实现仍按 §12.9 回写父 Issue/PR、精确 SHA/cutoff、PASS/FAIL/BLOCKED/NOT_TESTED 与回滚。系统保持 `research_only=true`、`trade_ready=false`。
+
+### 13.9 2026-11-12 执行记录（本段追加）
+
+- **同步 main**：`git -c http.proxy= -c https.proxy= fetch --no-tags origin main` 成功，`main` fast-forward `328f24b768 → a7b473749b`；工作树仅保留本计划的 §13 修改。失效 proxy 为 `127.0.0.1:7900`，本次只在单命令绕过，未改 git 配置。
+- **A1 重跑**：输入为私有 11/08 审计的 72 个 `operating-selected-observations`，加 3 个新 attempt（`42757719999` US/CN 11/09、`42949278239` US/CN 11/10、`43152032545` US/CN 11/11），共 75 observations。命令 `uv run --frozen alpha ops acceptance --input-root D:/Documents/AlphaEnginePrivate/A1-2026-11-12/input --through 2026-11-11 --output D:/Documents/AlphaEnginePrivate/A1-2026-11-12/acceptance-2026-11-12.json`；报告 215,862 bytes，SHA256 `96f6a9652cc966ac875a25b0f591d5a435e88bc5dc3eb44f5811cfecfe5d4f21`。结果：US/CN 各 **20/20 observed、0 qualified**、`twenty_session_evidence_complete=false`；窗口 10/15–11/11；`missing_due_cycle_strategy_ids=[]`。三个新 observation 的 SHA256：`008ff0316dce7616874bd8e1210c18bcec67d9f47c6b240448436a54d660d982`、`2ef9fa6ab99fc573700c49ac2c877f3e14d09b37c2e3771b09180f63b7304a18`、`9a79f14ed655106bd1054093badbd39c8836efbdf70ba0da0e70405c386ecfce`。该结果只证明捕获覆盖，不证明决策新鲜度、cadence、delivery 或人工干预。
+- **Weekly health**：`gh workflow run ci.yml --ref main` 生成 run `43175440486`（head `a7b4737`）。backend、shard 0/1/2、report PASS；shard 3 FAIL（1121 tests / 6 failures，均来自 `tests/test_strategy_operations_publish_guard.py`）。根因是守卫未随 11/09 的 handler 变更更新：handler 已删除 `RETIRED_ALLOWLIST_STRATEGY_IDS` 与 prune，改为只 upsert active-four、保留 retired evidence；node suite 已从 8 增至 12 tests。
+- **守卫修复**：`tests/test_strategy_operations_publish_guard.py` 现验证 handler 无 `.delete(`、无 retired allowlist、保留 `.upsert`，并以 node 输出的 `tests == pass`、`fail == 0`、总数 ≥12 替代固定 `pass 8`。聚焦 `pytest` 7 passed、`ruff check` passed、node 12 passed。未改 handler、数据库、权限或任何生产状态。
+- **A4 匿名 HTTP 复核**：2026-11-12 从生产 Pages 的 `membership-config.js` 取公开 Supabase URL/key，匿名 GET `strategy_operation_snapshots` 返回 **HTTP 401、0 rows、无敏感键**；`product_access_policies` 返回 200；静态 shell 4 rows 无敏感键；signal-ledger 的 raw/Pages 探针均 404、私有 archive 403。证据 `D:/Documents/AlphaEnginePrivate/A4-2026-11-12/a4-anonymous-2026-11-12.json`，SHA256 `8441c428a3f6a8d8b7a83f63c0dcade5ce359ab995aba1b564c2defc15bf03c1`。这只关闭匿名读取路径，不替代真实 JWT、Edge OIDC 与缓存隔离，A4 仍 PARTIAL。
+- **文档收敛**：同日核对已合并 PR 后，修正 `AGENTS.md`（#1276 为 merged architecture PR，不构成 release；#1357 merged 2026-11-03）、前端 handoff（#1357 merged，剩余 UAT 仍非 release approval）与 E7 依赖表（#1368–#1382 均于 2026-11-08 合并）。#1307、#1389 经 `gh pr view` 确认仍为 Draft，保留原状。未改任何证据、合同或运行时。
+- **待办**：该修复已推送为 PR #1396（head `e8f96dac6f`），backend check 已随 run `43177724315` 通过，PR 触发时 `repository-health`/report 按设计 skipping；PR 尚未合并，因此 #1387 仍 OPEN。合并到 main 后必须重新 dispatch 完整 health，并用新的 run + 四份 JUnit 关闭 #1387。A1 仍需逐 session review packet 与独立声明；A4/A6/A7 未因本次执行改变。

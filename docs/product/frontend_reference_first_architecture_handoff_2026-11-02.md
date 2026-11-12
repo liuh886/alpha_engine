@@ -11,7 +11,7 @@ This file began as the handoff at commit 95e1fd2. **H0–H5 have since received 
 | H2 TradingView Lightweight Charts side-by-side POC | 090e7da | Implemented; default is still POC comparison, not signed-off final chart |
 | H3 Strategy period/risk sync + research view | b61e48f | Code implemented; exact-window parity and readability remain UAT gates |
 | H4 System failure/recovery presentation | 1fb0d51 | Code implemented; latest integrated check found duplicate status and overbroad recovery links; fixes applied in this PR |
-| H5 docs synchronization | c08d0cf | Initial authority updates in branch; merge into main not yet approved |
+| H5 docs synchronization | c08d0cf | Initial authority updates in branch; merged with PR #1357 on 2026-11-03 |
 
 **Observed integrated CI at c08d0cf:** Static PWA lint/build/bundle checks passed; static Playwright was 120 passed / 3 failed across desktop/tablet/mobile from one strict locator ambiguity in the System current observations. Fixed duplicate labels in af49b8c, and recovery workflow classification in 0f13490; follow-up CI results must be read at the newest HEAD before merging. The earlier proof cannot be reused as a fresh PASS.
 
@@ -22,7 +22,7 @@ This file began as the handoff at commit 95e1fd2. **H0–H5 have since received 
 ---
 
 **Owner decision:** 2026-11-02, A / Decision-first Investment Research Workspace.
-**PR:** #1357, Draft / implementation foundation; **not yet CI- or browser-validated**.
+**PR:** #1357, merged 2026-11-03 as the implementation foundation; CI-passing at merge, but the remaining UAT gates below are not release approval.
 **Scope:** page responsibility, route/nav, cross-page journeys, reuse of existing evidence readers; no new storage, computation, API, trading or permission change.
 
 ## 1. Implemented foundation on this PR branch
@@ -43,7 +43,7 @@ Existing /app?view=racetrack bookmarks remain accessible via the old query param
 ### Important limitations / intentionally unfinished
 
 - Routing and TSX files were authored through GitHub API. Neither npm build, unit tests nor Playwright were executed in this session; no visual screenshot exists yet.
-- In PR #1357 the route expansion (Today, Strategies, Research, System) is an **architectural review default** following A; Owner has not separately signed off final D2 navigation density. Do not deploy or claim final release from this Draft PR.
+- In PR #1357 the route expansion (Today, Strategies, Research, System) is an **architectural review default** following A; Owner has not separately signed off final D2 navigation density. Do not claim final release from this merged implementation PR.
 - The Today market cards currently show only formal strategy identity/count, not a new live US/CN market cutoff. Do **not** infer a common market date from different formal histories.
 - StrategyDetail still needs task-oriented subsection navigation and Evidence-first ordering. InstrumentDetail still uses existing Recharts candles; Lightweight Charts 5.2.1 is already installed, but adapter POC is not in this PR.
 - RDI stays not validated; only source-bound descriptive observations are available. Research Lab does not turn them into a forecast.
