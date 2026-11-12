@@ -1,6 +1,6 @@
 {
-  "built_at": "2026-11-12T11:22:48+00:00",
-  "bundle_id": "3212d02aad93e5c647f4928ec3f8c4d30f9f3fa6ffdc66651c84efb136569fbe",
+  "built_at": "2026-11-12T14:50:29+00:00",
+  "bundle_id": "e1bff480e9ffdd986ec0e40b6213f28fadc93a216d34caf7bfc5cdd83b356fdd",
   "components": [
     {
       "component_id": "corporate_actions.cn_selected_equities_v3",
@@ -89,29 +89,27 @@
     {
       "component_id": "factors.qlib_alpha158.panel.cn.v1",
       "component_kind": "factor_panel",
-      "coverage_ratio": 0.9923076923076923,
+      "coverage_ratio": 1.0,
       "details": {},
-      "evidence_cutoff": "2026-09-04",
+      "evidence_cutoff": "2026-11-10",
       "expected_symbol_count": 130,
       "first_date": "2021-01-01",
       "invalid_symbols": [],
-      "last_date": "2026-09-04",
+      "last_date": "2026-11-10",
       "manifest_path": "sources/cn_alpha158/alpha158/factor_panel_manifest.json",
-      "manifest_sha256": "ca2f316de12eb7ceb5be857863519c7bf7eb26f77076aab7444b4c687fa81bc7",
+      "manifest_sha256": "04edccb976153fdda485f81692841924166a280841e4dfae5286c1e569ef9f94",
       "market": "cn",
       "missing_symbols": [],
-      "not_yet_applicable_symbols": [
-        "301666"
-      ],
+      "not_yet_applicable_symbols": [],
       "pool_id": "cn_selected_equities_v3",
       "professional_source_ready": false,
       "providers": [
         "QLIB_PROVIDER"
       ],
       "quarantined_symbols": [],
-      "ready_symbol_count": 129,
+      "ready_symbol_count": 130,
       "research_only": true,
-      "status": "partial",
+      "status": "ready",
       "trade_ready": false
     },
     {
@@ -328,15 +326,15 @@
   "frontend_indexes": {
     "data_components": {
       "path": "data-components.json",
-      "sha256": "6420a27cfa061146e5b8a67060ab72b283f5c2cf0f963b4dc463d0e50c86affe"
+      "sha256": "520b1eb79ee40c6763a3760d4ada4cbc5b980a3875b29ff4e00fd9dc9e805334"
     },
     "model_data_readiness": {
       "path": "model-data-readiness.json",
-      "sha256": "b914b6d1d1a2dac5443edb90b1a6768bf1a344b67887df525d1c6641835574ac"
+      "sha256": "f9a454a855a4111fe0a3035e833d9fadf118903a9d143e500471132dd20da494"
     },
     "training_profiles": {
       "path": "training-profiles.json",
-      "sha256": "cf1d3195040cf35c8a8df3b8c3ca4d4ae3f07c52ccfdb188fb7c07c6f706794e"
+      "sha256": "be235a3bb8f54a72e92f68e501b4ef436085972bed0a857b74fda046afa889e4"
     }
   },
   "research_only": true,
@@ -344,7 +342,7 @@
   "source_receipts": [
     {
       "path": "sources/governed-source-receipt.json",
-      "sha256": "a294d593bd320332922720e25f7148ee2aa937438b6ba0c2df8efae9db749ebc",
+      "sha256": "66f2e3966f23d3b6e6e92dfec3f88104515a42c3b9dab5239bf677f51edee1b8",
       "source_ids": [
         "cn_alpha158",
         "cn_events",
@@ -360,8 +358,8 @@
       "us_small_pool_price_plus_fundamentals_v1"
     ],
     "component_count": 8,
-    "partial_component_count": 3,
-    "ready_component_count": 5,
+    "partial_component_count": 2,
+    "ready_component_count": 6,
     "ready_training_profiles": [
       "cn_selected_alpha158_v1",
       "cn_selected_price_only_v1",
@@ -449,29 +447,27 @@
           "observed": {
             "component_id": "factors.qlib_alpha158.panel.cn.v1",
             "component_kind": "factor_panel",
-            "coverage_ratio": 0.9923076923076923,
+            "coverage_ratio": 1.0,
             "details": {},
-            "evidence_cutoff": "2026-09-04",
+            "evidence_cutoff": "2026-11-10",
             "expected_symbol_count": 130,
             "first_date": "2021-01-01",
             "invalid_symbols": [],
-            "last_date": "2026-09-04",
+            "last_date": "2026-11-10",
             "manifest_path": "sources/cn_alpha158/alpha158/factor_panel_manifest.json",
-            "manifest_sha256": "ca2f316de12eb7ceb5be857863519c7bf7eb26f77076aab7444b4c687fa81bc7",
+            "manifest_sha256": "04edccb976153fdda485f81692841924166a280841e4dfae5286c1e569ef9f94",
             "market": "cn",
             "missing_symbols": [],
-            "not_yet_applicable_symbols": [
-              "301666"
-            ],
+            "not_yet_applicable_symbols": [],
             "pool_id": "cn_selected_equities_v3",
             "professional_source_ready": false,
             "providers": [
               "QLIB_PROVIDER"
             ],
             "quarantined_symbols": [],
-            "ready_symbol_count": 129,
+            "ready_symbol_count": 130,
             "research_only": true,
-            "status": "partial",
+            "status": "ready",
             "trade_ready": false
           }
         }

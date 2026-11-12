@@ -75,29 +75,27 @@
         "observed": {
           "component_id": "factors.qlib_alpha158.panel.cn.v1",
           "component_kind": "factor_panel",
-          "coverage_ratio": 0.9923076923076923,
+          "coverage_ratio": 1.0,
           "details": {},
-          "evidence_cutoff": "2026-09-04",
+          "evidence_cutoff": "2026-11-10",
           "expected_symbol_count": 130,
           "first_date": "2021-01-01",
           "invalid_symbols": [],
-          "last_date": "2026-09-04",
+          "last_date": "2026-11-10",
           "manifest_path": "sources/cn_alpha158/alpha158/factor_panel_manifest.json",
-          "manifest_sha256": "ca2f316de12eb7ceb5be857863519c7bf7eb26f77076aab7444b4c687fa81bc7",
+          "manifest_sha256": "04edccb976153fdda485f81692841924166a280841e4dfae5286c1e569ef9f94",
           "market": "cn",
           "missing_symbols": [],
-          "not_yet_applicable_symbols": [
-            "301666"
-          ],
+          "not_yet_applicable_symbols": [],
           "pool_id": "cn_selected_equities_v3",
           "professional_source_ready": false,
           "providers": [
             "QLIB_PROVIDER"
           ],
           "quarantined_symbols": [],
-          "ready_symbol_count": 129,
+          "ready_symbol_count": 130,
           "research_only": true,
-          "status": "partial",
+          "status": "ready",
           "trade_ready": false
         }
       }
