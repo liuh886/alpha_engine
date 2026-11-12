@@ -15,6 +15,7 @@ from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 
+from src.artifacts.append_only_store import records_equivalent
 from src.research.byd_prospective_shadow import file_sha256
 from src.research.byd_v1_2_trend_expansion import FINANCING_DAY_COUNT
 
@@ -234,7 +235,7 @@ def build_observations(
         }
         record["data_version"] = f"byd-v1-3-low-vol-{signal_date}-{source_row['source_sha256'][:8]}"
         if signal_date in existing:
-            if _json_bytes(existing[signal_date]) != _json_bytes(record):
+            if not records_equivalent(existing[signal_date], record):
                 raise RuntimeError(f"existing low-vol observation drifted: {signal_date}")
             continue
         output.append(record)

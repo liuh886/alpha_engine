@@ -7,6 +7,7 @@ import pytest
 
 from src.artifacts.append_only_store import (
     AppendOnlyStoreError,
+    records_equivalent,
     validate_append_only_store_prefix,
 )
 
@@ -65,6 +66,23 @@ def test_rejects_historical_record_rewrite(tmp_path: Path) -> None:
 
     with pytest.raises(AppendOnlyStoreError, match="record drifted"):
         validate_append_only_store_prefix(current, candidate)
+
+
+def test_records_equivalent_tolerates_one_ulp_float_noise() -> None:
+    accepted = {"derived": 0.003216819090220929, "count": 3, "flag": True}
+    candidate = {"derived": 0.0032168190902209285, "count": 3, "flag": True}
+
+    assert records_equivalent(accepted, candidate)
+
+
+def test_records_equivalent_rejects_material_or_structural_changes() -> None:
+    accepted = {"derived": 0.003216819090220929, "count": 3, "label": "a"}
+
+    assert not records_equivalent(accepted, {**accepted, "derived": 0.0032169})
+    assert not records_equivalent(accepted, {**accepted, "count": 4})
+    assert not records_equivalent(accepted, {**accepted, "label": "b"})
+    assert not records_equivalent(accepted, {**accepted, "extra": 1})
+    assert not records_equivalent(accepted, {**accepted, "count": 3.0})
 
 
 def test_rejects_ledger_prefix_rewrite(tmp_path: Path) -> None:

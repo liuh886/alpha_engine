@@ -3,12 +3,46 @@
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Mapping
 from pathlib import Path
 
 
 class AppendOnlyStoreError(ValueError):
     """Raised when a reproduced store rewrites accepted history."""
+
+
+def records_equivalent(
+    accepted: object,
+    candidate: object,
+    *,
+    rel_tol: float = 1e-12,
+    abs_tol: float = 1e-12,
+) -> bool:
+    """Compare a reproduced record while tolerating only last-bit float noise.
+
+    Accepted observations can be sealed on a different Python/BLAS micro-version
+    than the reproduction. A one-ulp difference in a derived float is not a
+    history revision, but an exact byte comparison turns it into a permanent
+    workflow failure. Every structural field, string, boolean and integer still
+    compares exactly; finite floats may differ only within the given tolerance.
+    """
+
+    if isinstance(accepted, Mapping) and isinstance(candidate, Mapping):
+        return accepted.keys() == candidate.keys() and all(
+            records_equivalent(accepted[key], candidate[key], rel_tol=rel_tol, abs_tol=abs_tol)
+            for key in accepted
+        )
+    if isinstance(accepted, list) and isinstance(candidate, list):
+        return len(accepted) == len(candidate) and all(
+            records_equivalent(left, right, rel_tol=rel_tol, abs_tol=abs_tol)
+            for left, right in zip(accepted, candidate, strict=True)
+        )
+    if isinstance(accepted, bool) or isinstance(candidate, bool):
+        return type(accepted) is type(candidate) and accepted == candidate
+    if isinstance(accepted, float) and isinstance(candidate, float):
+        return math.isclose(accepted, candidate, rel_tol=rel_tol, abs_tol=abs_tol)
+    return type(accepted) is type(candidate) and accepted == candidate
 
 
 def _object(path: Path) -> dict[str, object]:
