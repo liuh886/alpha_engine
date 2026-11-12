@@ -3,12 +3,12 @@
   "component_kind": "fundamental_coverage",
   "coverage_ratio": 0.9885057471264368,
   "details": {
-    "coverage_byte_size": 57753,
+    "coverage_byte_size": 57759,
     "coverage_path": "fundamentals/coverage.json",
-    "coverage_sha256": "53c29f3e828f224bfc28b1f0f8d6581f62657d974edc0d745cecbd4265f1d126",
-    "events_byte_size": 59266410,
+    "coverage_sha256": "b07cb6ef819fd80cb17efcafd2d20b1d51071e78852ef7badfebd0581598b12b",
+    "events_byte_size": 60172344,
     "events_path": "fundamentals/events.jsonl",
-    "events_sha256": "a8581c0f199e374816c4d5e1ca4a2f36f7b5d22365a8c41ac952403ba61dea74",
+    "events_sha256": "073aca0067674dacf8f421f13fe8c05425c875c88ba4c77aa05bc04a8592ac03",
     "explicit_status_count": 87,
     "status_counts": {
       "conflict": 0,
@@ -19,11 +19,11 @@
       "ready": 86
     }
   },
-  "evidence_cutoff": "2026-09-30",
+  "evidence_cutoff": "2026-11-10",
   "expected_symbol_count": 87,
   "first_date": "2009-06-04",
   "invalid_symbols": [],
-  "last_date": "2026-09-30",
+  "last_date": "2026-11-10",
   "market": "us",
   "missing_symbols": [
     "SBGSY"

@@ -4,46 +4,45 @@
   "schema_version": "1.0",
   "sources": [
     {
-      "artifact_digest": "sha256:23d192b96e3bf4f38e1937c2c6896e112b7d8962f8a45bed06e56fe8fc5f686e",
-      "artifact_id": 11167125512,
-      "artifact_name": "selected-pool-event-live-us-36869443810",
-      "artifact_size_bytes": 7012468,
+      "artifact_digest": "sha256:06f9811a33fbf9c5cd9e99039a6a9b1553dbb90bee8cbacfee3dd283f5e42016",
+      "artifact_id": 13933781320,
+      "artifact_name": "selected-pool-event-live-us-43196521715",
+      "artifact_size_bytes": 7114736,
       "component_manifests": [
         {
           "path": "event_population_manifest.json",
-          "sha256": "3a1b42a34ab4a325f36d435dd0593e5ec8bebf822a897e38b03d15743a26d0e6"
+          "sha256": "1c171304bfe8419ab8259288f2ec3975a306dccd37a65303a9d15ebafc28781b"
         },
         {
           "path": "fundamentals/component_manifest.json",
-          "sha256": "45a82feafdb2e5c55eea06cc179008c7427fa532f3dbdf450010b0c8f865cb1c"
+          "sha256": "4a3c0e92d33707faacf70a346c00213d7f25851fb8049e517ca790e559908c78"
         },
         {
           "path": "corporate_actions/component_manifest.json",
-          "sha256": "97bf40cd1c05eb8342a37a31dbee8150d57457bdcac4714bc531756275fc18c3"
+          "sha256": "5309f0c7fc9d688e3b638c14e4c47de16e459518a72b1f0f15d66cdc961c003a"
         }
       ],
-      "durable_git": {
-        "commit": "b1fa72450b5c00d1eb82748169c747846814acde",
-        "path": "archives/us-events-36869443810.zip",
-        "repository": "liuh886/alpha-engine-data-archive",
-        "sha256": "23d192b96e3bf4f38e1937c2c6896e112b7d8962f8a45bed06e56fe8fc5f686e",
-        "size_bytes": 7012468
+      "durable_git": null,
+      "durable_release": {
+        "asset_name": "us-events-43196521715.zip",
+        "sha256": "06f9811a33fbf9c5cd9e99039a6a9b1553dbb90bee8cbacfee3dd283f5e42016",
+        "size_bytes": 7114736,
+        "tag": "model-data-source-us-events-43196521715"
       },
-      "durable_release": null,
-      "evidence_cutoff": "2026-09-30",
-      "expires_at": "2026-12-30T13:32:36Z",
-      "head_sha": "b6578500bd993e1039465b0d0e1568398e043a6e",
+      "evidence_cutoff": "2026-11-10",
+      "expires_at": "2027-02-10T10:00:48Z",
+      "head_sha": "b2d9ee4909cd37308fa5b0701f49f5adb6011d12",
       "installed_payload": "verified_component_manifests_only",
       "market": "us",
       "pool_id": "us_selected_equities_v2",
       "research_only": true,
-      "retrieval_method": "durable_git",
+      "retrieval_method": "durable_release",
       "retrieval_note": null,
       "source_id": "us_events",
       "source_kind": "selected_pool_events",
       "trade_ready": false,
       "training_payload_retrieval": "exact_artifact_locator_required",
-      "workflow_run_id": 36869443810
+      "workflow_run_id": 43196521715
     },
     {
       "artifact_digest": "sha256:6da52ca8563264ec0fdaba50819bba828f9e1cd70e026bd85111297bb9bab9ad",
