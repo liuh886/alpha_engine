@@ -1256,6 +1256,12 @@ jobs:
             --jq '.workflow_run_id // empty')"
           test -n "$pages_run"
           echo "pages_run_id=$pages_run" >> "$GITHUB_OUTPUT"
+          # The dispatch response can name a run the runs API has not indexed
+          # yet; watch only after the run is readable instead of racing it.
+          for _ in $(seq 1 30); do
+            gh run view "$pages_run" --repo "$GITHUB_REPOSITORY" --json status >/dev/null 2>&1 && break
+            sleep 5
+          done
           gh run watch "$pages_run" --repo "$GITHUB_REPOSITORY" --exit-status --interval 10
           pages_conclusion="$(gh run view "$pages_run" --repo "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')"
           test "$pages_conclusion" = "success"
