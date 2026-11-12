@@ -191,6 +191,30 @@ def test_monthly_live_data_workflows_resolve_cutoffs_at_runtime() -> None:
     ).read_text(encoding="utf-8")
 
 
+def test_durable_cn_publish_resolves_one_newest_artifact_after_reruns() -> None:
+    # A rerun of the same workflow run leaves the superseded attempt's
+    # artifact in place under the identical name. Resolving by name alone
+    # yields two ids and breaks the identity check; the publish job must
+    # deterministically choose the newest artifact.
+    root = Path(".github/workflows")
+    for filename, artifact_name_prefix in (
+        ("selected-pool-event-population-ci.yml", "selected-pool-event-live-cn-"),
+        ("alpha158-canonical-vwap-ci.yml", "alpha158-canonical-vwap-cn-"),
+    ):
+        workflow = yaml.safe_load((root / filename).read_text(encoding="utf-8"))
+        steps = workflow["jobs"]["publish-durable-cn-source"]["steps"]
+        resolve = next(
+            step for step in steps if step.get("name") == "Resolve built artifact identity"
+        )
+        run = resolve["run"]
+        assert f'name="{artifact_name_prefix}${{GITHUB_RUN_ID}}"' in run
+        assert "artifacts?per_page=100" in run
+        assert "sort_by(.id)" in run
+        assert "last | .id // empty" in run
+        assert '--jq ".artifacts[] | select' not in run
+        assert 'test -n "$artifact_id"' in run
+
+
 def test_us_alpha158_live_panel_uses_only_approved_alpaca_sip_credentials() -> None:
     workflow = yaml.safe_load(
         Path(".github/workflows/alpha158-canonical-vwap-ci.yml").read_text(
