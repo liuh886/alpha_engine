@@ -67,28 +67,28 @@ sources:
   cn_alpha158:
     source_kind: "alpha158_panel"
     workflow_path: ".github/workflows/alpha158-canonical-vwap-ci.yml"
-    workflow_run_id: 36145403372
+    workflow_run_id: 43196530139
     head_branch: "main"
-    head_sha: "39f3d3471af9ee3a06eb2fdb9677baf74ee97720"
-    artifact_id: 10870061820
-    artifact_name: "alpha158-canonical-vwap-cn-36145403372"
-    artifact_digest: "sha256:a65e7d54e81dfedec54ca8b6ebb4734f58897135c06ff63809ee494fe99fcd3c"
-    artifact_size_bytes: 124842414
-    expires_at: "2026-12-24T14:07:41Z"
+    head_sha: "b2d9ee4909cd37308fa5b0701f49f5adb6011d12"
+    artifact_id: 13951525770
+    artifact_name: "alpha158-canonical-vwap-cn-43196530139"
+    artifact_digest: "sha256:a4c4fff44f36dfe0ede91231ee9ca6bdff1c7516618abefc2536338b95bec3be"
+    artifact_size_bytes: 128607233
+    expires_at: "2027-02-10T13:54:36Z"
     market: "cn"
     pool_id: "cn_selected_equities_v3"
-    evidence_cutoff: "2026-09-04"
+    evidence_cutoff: "2026-11-10"
     expected_symbol_count: 130
     max_uncompressed_bytes: 1073741824
     max_member_count: 5000
     component_manifests:
       - path: "alpha158/factor_panel_manifest.json"
-        sha256: "ca2f316de12eb7ceb5be857863519c7bf7eb26f77076aab7444b4c687fa81bc7"
+        sha256: "04edccb976153fdda485f81692841924166a280841e4dfae5286c1e569ef9f94"
     durable_release:
-      tag: "model-data-source-cn-alpha158-36145403372"
-      asset_name: "alpha158-canonical-vwap-cn-36145403372.zip"
-      sha256: "a65e7d54e81dfedec54ca8b6ebb4734f58897135c06ff63809ee494fe99fcd3c"
-      size_bytes: 124842414
+      tag: "model-data-source-cn-alpha158-43196530139"
+      asset_name: "alpha158-canonical-vwap-cn-43196530139.zip"
+      sha256: "a4c4fff44f36dfe0ede91231ee9ca6bdff1c7516618abefc2536338b95bec3be"
+      size_bytes: 128607233
 
   cn_events:
     source_kind: "selected_pool_events"
