@@ -1,4 +1,4 @@
-"""Tests for server-side publisher safety invariants and snapshot pruning guards."""
+"""Tests for server-side publisher safety invariants and retained-evidence guards."""
 
 from __future__ import annotations
 
@@ -14,7 +14,8 @@ EDGE_HANDLER_PATH = Path("supabase/functions/alpha-engine-publish-strategy-opera
 EDGE_INDEX_PATH = Path("supabase/functions/alpha-engine-publish-strategy-operations/index.ts")
 
 
-def _extract_edge_function_constants() -> tuple[dict[str, str], list[str]]:
+def _extract_edge_function_constants() -> dict[str, str]:
+    """Extract the active strategy allowlist from the Edge Function handler."""
     text = EDGE_HANDLER_PATH.read_text(encoding="utf-8")
 
     # Extract AUTHORIZED_ACTIVE_STRATEGIES
@@ -30,25 +31,12 @@ def _extract_edge_function_constants() -> tuple[dict[str, str], list[str]]:
         if ":" in line:
             k, v = line.split(":", 1)
             authorized[k.strip().strip('"').strip("'")] = v.strip().strip('"').strip("'")
-
-    # Extract RETIRED_ALLOWLIST_STRATEGY_IDS
-    retired_match = re.search(
-        r"export const RETIRED_ALLOWLIST_STRATEGY_IDS:\s*readonly\s*string\[\]\s*=\s*\[([^\]]+)\];",
-        text,
-    )
-    assert retired_match, "RETIRED_ALLOWLIST_STRATEGY_IDS not found in handler.ts"
-    retired_block = retired_match.group(1)
-    retired = [
-        item.strip().strip('"').strip("'")
-        for item in retired_block.split(",")
-        if item.strip()
-    ]
-    return authorized, retired
+    return authorized
 
 
 def _simulate_validator(records: list[dict[str, Any]]) -> tuple[bool, str]:
     """Pure Python simulation of the Edge Function pre-mutation validator."""
-    authorized, _ = _extract_edge_function_constants()
+    authorized = _extract_edge_function_constants()
     expected_count = len(authorized)
     if not records or len(records) == 0:
         return False, "strategy operations records are required"
@@ -88,19 +76,12 @@ def _simulate_validator(records: list[dict[str, Any]]) -> tuple[bool, str]:
 def test_edge_function_constants_match_active_catalog() -> None:
     registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
     catalog_active = {s["strategy_id"]: s["model_version_id"] for s in registry["strategies"]}
-    authorized, retired = _extract_edge_function_constants()
+    authorized = _extract_edge_function_constants()
 
     # Must exactly equal the active catalog
     assert authorized == catalog_active, (
         f"Edge Function authorized strategies mismatch: {authorized} vs {catalog_active}"
     )
-
-    # Retired allowlist must NOT intersect with any active strategy
-    intersection = set(retired) & set(authorized.keys())
-    assert not intersection, f"Retired allowlist intersects with active strategies: {intersection}"
-
-    # cn_x must be in retired allowlist
-    assert "cn_x" in retired, "cn_x must be declared in RETIRED_ALLOWLIST_STRATEGY_IDS"
 
 
 def test_edge_function_entrypoint_imports_handler() -> None:
@@ -111,7 +92,7 @@ def test_edge_function_entrypoint_imports_handler() -> None:
 
 
 def test_edge_function_rejects_partial_records_before_mutation() -> None:
-    authorized, _ = _extract_edge_function_constants()
+    authorized = _extract_edge_function_constants()
 
     # Full valid 4 records
     valid_records = [
@@ -135,7 +116,7 @@ def test_edge_function_rejects_partial_records_before_mutation() -> None:
 
 
 def test_edge_function_rejects_surplus_or_unknown_records() -> None:
-    authorized, _ = _extract_edge_function_constants()
+    authorized = _extract_edge_function_constants()
     valid_records = [
         {"strategy_id": sid, "model_version_id": mvid}
         for sid, mvid in authorized.items()
@@ -157,7 +138,7 @@ def test_edge_function_rejects_surplus_or_unknown_records() -> None:
 
 
 def test_edge_function_rejects_model_version_mismatch() -> None:
-    authorized, _ = _extract_edge_function_constants()
+    authorized = _extract_edge_function_constants()
     valid_records = [
         {"strategy_id": sid, "model_version_id": mvid}
         for sid, mvid in authorized.items()
@@ -173,18 +154,16 @@ def test_edge_function_rejects_model_version_mismatch() -> None:
     assert "model_version_id mismatch for cn_27" in msg
 
 
-def test_prune_logic_in_edge_function_only_targets_retired_allowlist() -> None:
+def test_edge_function_never_prunes_retained_retired_evidence() -> None:
     text = EDGE_HANDLER_PATH.read_text(encoding="utf-8")
 
-    # Must NOT contain unsafe blind prune: delete().not("strategy_id", "in", ...)
-    assert '.not("strategy_id", "in"' not in text, (
-        "Unsafe blind prune detected! delete().not('strategy_id', 'in', ...) can delete active strategies."
-    )
-
-    # Must use explicit allowlist prune: delete().in("strategy_id", [...RETIRED_ALLOWLIST_STRATEGY_IDS])
-    assert '.in("strategy_id", [...RETIRED_ALLOWLIST_STRATEGY_IDS])' in text, (
-        "Prune must strictly target allowlisted retired strategy IDs."
-    )
+    # Retained retired evidence is denied by the restrictive RLS allowlist and
+    # must never be deleted as a publisher side effect.
+    assert "RETIRED_ALLOWLIST_STRATEGY_IDS" not in text
+    assert ".delete(" not in text
+    assert '.not("strategy_id", "in"' not in text
+    assert ".upsert(rows" in text
+    assert 'onConflict: "strategy_id"' in text
 
 
 def test_native_node_handler_suite_passes() -> None:
@@ -193,4 +172,13 @@ def test_native_node_handler_suite_passes() -> None:
     cmd = [node_bin, "--test", "tests/test_publish_strategy_operations_handler.test.ts"]
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     assert proc.returncode == 0, f"Node test suite failed:\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
-    assert "pass 8" in proc.stdout, f"Expected 8 passing tests in node output:\n{proc.stdout}"
+    tests_match = re.search(r" tests (\d+)", proc.stdout)
+    pass_match = re.search(r" pass (\d+)", proc.stdout)
+    fail_match = re.search(r" fail (\d+)", proc.stdout)
+    assert tests_match and pass_match and fail_match, f"Missing node test summary:\n{proc.stdout}"
+    total = int(tests_match.group(1))
+    assert int(pass_match.group(1)) == total, f"Not all node tests passed:\n{proc.stdout}"
+    assert int(fail_match.group(1)) == 0, f"Node test failures:\n{proc.stdout}"
+    # Floor preserves current security coverage; adding tests is fine, but
+    # removing one requires an explicit review of this guard.
+    assert total >= 12, f"Node security suite shrank to {total} tests:\n{proc.stdout}"
