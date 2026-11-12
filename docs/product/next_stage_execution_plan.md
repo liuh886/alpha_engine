@@ -712,7 +712,7 @@ uv run --frozen --extra dev python scripts/release_gate.py --help
 2. **A1 滚动重跑已完成**：2026-11-12 以 72 个既有 selected observations 加 11/09–11/11 三个新 attempt 重跑 `alpha ops acceptance --through 2026-11-11`，US/CN 均为 **20/20 observed、0 qualified**，窗口 10/15–11/11，无 missing due-cycle。observed 不等于 qualified；下一步是逐 session review packet、独立 reviewer 声明与人工干预值，不能以本次计数关闭 A1。
 3. **A4 的真实证据缺口**：数据库 role 测试与本地 fixture 不能替代真实匿名 HTTP 与真实签发 JWT；历史 Git 披露不可逆，只能由 Owner 记录处置决定。
 4. **#1387 仍未关闭**：2026-11-12 在 `a7b4737` 的完整 weekly health run `43175440486` 为 backend + shard 0/1/2 + report PASS，**shard 3 FAIL**（1121 tests / 6 failures）。六个失败全部来自 `tests/test_strategy_operations_publish_guard.py`：守卫仍要求已移除的 `RETIRED_ALLOWLIST_STRATEGY_IDS` 与 retired prune，并把 node suite 固定为 `pass 8`，而 11/09 后的 handler 明确不删除 retained retired evidence、node suite 为 12 tests。守卫已改为断言“无 `.delete(`、无 retired allowlist、保留 `.upsert`”，并校验 node `tests == pass`、`fail == 0`、总数不低于 12；聚焦 7 pytest + Ruff + node 12 已通过。必须把该修复提交到 main 后重跑完整 health，才能关闭 #1387。
-5. **数据面与文档漂移**：价格已至 11/10，但 corporate actions/fundamentals/factors 仍停在 09/04–09/30；本计划与 `AGENTS.md` 中仍有把已合并 PR 写成 Draft 的段落；本地 checkout 已于 2026-11-12 同步到 `a7b4737`。
+5. **数据面与文档漂移**：价格已至 11/10，但 corporate actions/fundamentals/factors 仍停在 09/04–09/30；本地 checkout 已于 2026-11-12 同步到 `a7b4737`。已合并 PR 仍写成 Draft 的段落已在同日收敛：`AGENTS.md` 的 #1276/#1357、前端 handoff 的 #1357、E7 文档的 #1368–#1382；#1307 与 #1389 仍是真实 Draft，未改。
 
 ### 13.5 下一阶段执行顺序
 
@@ -722,7 +722,7 @@ uv run --frozen --extra dev python scripts/release_gate.py --help
 | --- | --- | --- |
 | 同步当前 main | **完成 2026-11-12**：以 `-c http.proxy= -c https.proxy=` 绕过失效 proxy 后 fast-forward 到 `a7b4737`；保留工作树中的 §13 修改 | 干净 checkout 与远端一致 |
 | #1387 全仓健康 | 2026-11-12 run `43175440486`：backend + shard 0/1/2 PASS，shard 3 FAIL（6 个陈旧 publisher 守卫）；守卫已修复并通过聚焦测试 | 提交修复后在 main 重跑 4 shards；0 failures 后带 run/JUnit 收据关闭 #1387 |
-| 文档收敛 | 更新本计划、`AGENTS.md`、`strategy_console.md` 中已合并但仍写 Draft 的段落；不重写旧证据 | 一个当前入口；历史段落明确标为历史 |
+| 文档收敛 | **完成 2026-11-12**：更新 `AGENTS.md`（#1276 merged、#1357 merged 2026-11-03）、前端 handoff（#1357 merged）与 E7 依赖表（#1368–#1382 merged 2026-11-08）；保留 #1307/#1389 的 Draft 状态；`strategy_console.md` 原已写 merged，无需改 | 一个当前入口；历史段落明确标为历史 |
 
 #### Phase 1 — 关闭发布门禁（P0，1–2 周）
 
@@ -781,4 +781,5 @@ Owner 需明确：① A4 是否提供隔离真实身份，或 Preview 按 NOT_TE
 - **Weekly health**：`gh workflow run ci.yml --ref main` 生成 run `43175440486`（head `a7b4737`）。backend、shard 0/1/2、report PASS；shard 3 FAIL（1121 tests / 6 failures，均来自 `tests/test_strategy_operations_publish_guard.py`）。根因是守卫未随 11/09 的 handler 变更更新：handler 已删除 `RETIRED_ALLOWLIST_STRATEGY_IDS` 与 prune，改为只 upsert active-four、保留 retired evidence；node suite 已从 8 增至 12 tests。
 - **守卫修复**：`tests/test_strategy_operations_publish_guard.py` 现验证 handler 无 `.delete(`、无 retired allowlist、保留 `.upsert`，并以 node 输出的 `tests == pass`、`fail == 0`、总数 ≥12 替代固定 `pass 8`。聚焦 `pytest` 7 passed、`ruff check` passed、node 12 passed。未改 handler、数据库、权限或任何生产状态。
 - **A4 匿名 HTTP 复核**：2026-11-12 从生产 Pages 的 `membership-config.js` 取公开 Supabase URL/key，匿名 GET `strategy_operation_snapshots` 返回 **HTTP 401、0 rows、无敏感键**；`product_access_policies` 返回 200；静态 shell 4 rows 无敏感键；signal-ledger 的 raw/Pages 探针均 404、私有 archive 403。证据 `D:/Documents/AlphaEnginePrivate/A4-2026-11-12/a4-anonymous-2026-11-12.json`，SHA256 `8441c428a3f6a8d8b7a83f63c0dcade5ce359ab995aba1b564c2defc15bf03c1`。这只关闭匿名读取路径，不替代真实 JWT、Edge OIDC 与缓存隔离，A4 仍 PARTIAL。
-- **待办**：该修复已推送为 PR #1396（尚未合并），因此 #1387 仍 OPEN；合并到 main 后必须重新 dispatch 完整 health，并用新的 run + 四份 JUnit 关闭 #1387。A1 仍需逐 session review packet 与独立声明；A4/A6/A7 未因本次执行改变。
+- **文档收敛**：同日核对已合并 PR 后，修正 `AGENTS.md`（#1276 为 merged architecture PR，不构成 release；#1357 merged 2026-11-03）、前端 handoff（#1357 merged，剩余 UAT 仍非 release approval）与 E7 依赖表（#1368–#1382 均于 2026-11-08 合并）。#1307、#1389 经 `gh pr view` 确认仍为 Draft，保留原状。未改任何证据、合同或运行时。
+- **待办**：该修复已推送为 PR #1396（head `e8f96dac6f`），backend check 已随 run `43177724315` 通过，PR 触发时 `repository-health`/report 按设计 skipping；PR 尚未合并，因此 #1387 仍 OPEN。合并到 main 后必须重新 dispatch 完整 health，并用新的 run + 四份 JUnit 关闭 #1387。A1 仍需逐 session review packet 与独立声明；A4/A6/A7 未因本次执行改变。

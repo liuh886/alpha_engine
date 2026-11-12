@@ -5,13 +5,15 @@ The maintained product combines governed local CLI research with the read-only
 four-strategy Console for one operator (accepted ADR-0003). Older task boards,
 Research Studio route lists and capability matrices are historical records;
 they do not authorize restoring retired runtime paths. Direction A release
-acceptance work is tracked in #1278, #1277, #1279, #1282 and #1281; draft
-architecture PR #1276 does not establish a completed release.
+acceptance work is tracked in #1278, #1277, #1279, #1282 and #1281; merged
+architecture PR #1276 defines the A0–A7 proposal but does not establish a
+completed release or A7 approval.
 
 ## 2026-11-02 frontend Owner decision (PR #1357)
 
 Owner selected **A: Decision-first Investment Research Workspace**.
-PR #1357 implements the concrete frontend architecture: Today default (`/app`),
+PR #1357 (merged 2026-11-03) implements the concrete frontend
+architecture: Today default (`/app`),
 Formal Strategies comparison (`/strategies`), independent Research Lab (`/research`
 for Racetrack + RDI), and operations-only System (`/system`). The older *two
 primary navigation destinations* guideline below records the prior product scope;
