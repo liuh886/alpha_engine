@@ -94,8 +94,12 @@ python -m src.research.colab_experiment_batch checkpoint-archive \
   可能重算，但已有完整 trial 不重算。不得自动挑选一个目录下最新 ZIP。
 - **独立归并门禁**：以唯一 `trial_id` 去重，校验所有分片原始 plan、
   SHA、研究来源、每个 fold/candidate/seed 的完成回执；缺失或重复
-  trial = BLOCKED，不允许做胜者排名。当前本 PR **尚未提供最终合并器
-  或真实长会话 Run All Notebook**，这些是下一个执行切片。
+  trial = BLOCKED，不允许做胜者排名。本 PR 已提供本地合并器
+  `merge_shards`（`create/verify/merge` CLI）：经 `restore_archive`
+  重新校验每个分片的 pin、索引、逐 trial 回执与完整文件集，要求并集
+  等于冻结批次，重复或外来 trial 一律拒绝；合并结果重新封存为
+  `incoming_unreviewed`，不覆盖原始分片包。真实长会话 Run All Notebook、
+  双窗口隔离与跨窗口数值一致性比对仍待 Owner 执行。
 - **时间窗口**：Colab 运行时存在动态限制。一般上限约12小时，
   Pro+ 在条件满足时可连续最多24小时；多个标签页不保证多个独立 VM。
   免费环境无正 CU 时不得将交互 Notebook 变成受限的 distributed workers；
