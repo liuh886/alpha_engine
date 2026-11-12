@@ -47,7 +47,7 @@ def test_retention_inspection_is_local_and_does_not_claim_verified_retrieval(mon
         == "model-data-source-us-events-43196521715"
     )
     assert rows["cn_events"]["retention_status"] == "durable_mirror_declared"
-    assert rows["cn_events"]["actions_expired"] is True
+    assert rows["cn_events"]["actions_expired"] is False
     assert all(row["retrieval_verified"] is False for row in rows.values())
     assert report["scope"] == "source_retention_only"
 
@@ -134,8 +134,8 @@ def test_checked_in_registry_freezes_exact_current_sources() -> None:
     }
     assert registry.sources["cn_alpha158"].artifact_id == 13951525770
     assert registry.sources["cn_alpha158"].evidence_cutoff == "2026-11-10"
-    assert registry.sources["cn_events"].artifact_id == 10869737672
-    assert registry.sources["cn_events"].evidence_cutoff == "2026-09-04"
+    assert registry.sources["cn_events"].artifact_id == 13964194420
+    assert registry.sources["cn_events"].evidence_cutoff == "2026-11-10"
     # Every pinned source carries a durable release mirror whose content digest
     # equals the original Actions artifact so fetch never depends on artifact
     # retention.

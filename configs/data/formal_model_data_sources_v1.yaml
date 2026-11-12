@@ -93,29 +93,29 @@ sources:
   cn_events:
     source_kind: "selected_pool_events"
     workflow_path: ".github/workflows/selected-pool-event-population-ci.yml"
-    workflow_run_id: 36145411810
+    workflow_run_id: 43196521715
     head_branch: "main"
-    head_sha: "39f3d3471af9ee3a06eb2fdb9677baf74ee97720"
-    artifact_id: 10869737672
-    artifact_name: "selected-pool-event-live-cn-36145411810"
-    artifact_digest: "sha256:546cebd6be53c4de4f514887b1ef0649d737ceb58c88395457c51dd7341dee32"
-    artifact_size_bytes: 2021932
-    expires_at: "2026-12-24T14:07:45Z"
+    head_sha: "b2d9ee4909cd37308fa5b0701f49f5adb6011d12"
+    artifact_id: 13964194420
+    artifact_name: "selected-pool-event-live-cn-43196521715"
+    artifact_digest: "sha256:68e2b9bf299b2043d1196ba0bb46648ef0abe4299b13d754b2dbc9c5da2030d7"
+    artifact_size_bytes: 2117263
+    expires_at: "2027-02-10T16:18:51Z"
     market: "cn"
     pool_id: "cn_selected_equities_v3"
-    evidence_cutoff: "2026-09-04"
+    evidence_cutoff: "2026-11-10"
     expected_symbol_count: 130
     max_uncompressed_bytes: 104857600
     max_member_count: 100
     component_manifests:
       - path: "event_population_manifest.json"
-        sha256: "7e0a6708c1f3df9315b141e6263e860e40257388057b167daea8fcf2ca9a155e"
+        sha256: "04af6d2b05b477892e626063f4f2a3abae50126aa462c1631e7865b7a733ffa0"
       - path: "fundamentals/component_manifest.json"
-        sha256: "3f31cc5e1968bd28810a9493cb51e95eec1598832f645b3ce425d557c1f6718b"
+        sha256: "b6af836a78738003b20d7749492ea4a1415ae7be54058e7883131c91a949a655"
       - path: "corporate_actions/component_manifest.json"
-        sha256: "3941c5da17211e7560bbf86037f8bfb0293b6aa61a53778060dac191562d2c8a"
+        sha256: "8efff0a173f0c3d495c25292185975a2753a10bf87a5a4322ae061d83b8a05bd"
     durable_release:
-      tag: "model-data-source-cn-events-36145411810"
-      asset_name: "selected-pool-event-live-cn-36145411810.zip"
-      sha256: "546cebd6be53c4de4f514887b1ef0649d737ceb58c88395457c51dd7341dee32"
-      size_bytes: 2021932
+      tag: "model-data-source-cn-events-43196521715"
+      asset_name: "selected-pool-event-live-cn-43196521715.zip"
+      sha256: "68e2b9bf299b2043d1196ba0bb46648ef0abe4299b13d754b2dbc9c5da2030d7"
+      size_bytes: 2117263
