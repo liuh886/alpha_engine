@@ -1,6 +1,6 @@
 # Alpha Engine — 下一阶段产品架构与执行计划
 
-**当前裁决（2026-11-12 复核）：Preview NO-GO；正式 v1 NO-GO。** 最新核对基线为 `main@a7b4737`（2026-11-12；本地 checkout 已同步），正式证据 cutoff 远端 US/CN **2026-11-11**。最新门禁、研究与下一阶段执行顺序见 [§13](#13-2026-11-12-当前状态复核与下一阶段执行交接)；§0–§12 保留为历史证据与执行记录，门禁状态以 §13 为准。
+**当前裁决（2026-11-12 复核）：Preview NO-GO；正式 v1 NO-GO。** 最新核对基线为 `main@b14dc21`（2026-11-12，合并 PR #1396；§13 复核时基线为 `a7b4737`），正式证据 cutoff 远端 US/CN **2026-11-11**，完整 weekly health run `43179745012` 已四 shard 全绿。最新门禁、研究与下一阶段执行顺序见 [§13](#13-2026-11-12-当前状态复核与下一阶段执行交接)；§0–§12 保留为历史证据与执行记录，门禁状态以 §13 为准。
 
 **2026-11-08 记录（历史）：Preview NO-GO；正式v1 NO-GO；RDI完整研究未验证。** 当时核对基线为 `main@1463156c4ad22757d10413a34ef91ca83266e830`，实际Pages同SHA；较早路线基线保留为历史。本文是**当前下一阶段执行顺序的唯一入口**；旧的 [2026-10-26 路线图](investment_research_infrastructure_roadmap_2026-10-26.md)仅作历史决策记录，[研究问题库](future_research_agenda_2026-10-28.md)仅作备选议题，[#1315](https://github.com/liuh886/alpha_engine/pull/1315)是 UI 具体缺陷清单，[#1307](https://github.com/liuh886/alpha_engine/pull/1307)是独立 BDCR 研究 RFC。下列每项只有通过**独立实现 PR + 证据验收**才算完成；路线合并不批准产品 GO。
 
@@ -679,7 +679,7 @@ uv run --frozen --extra dev python scripts/release_gate.py --help
 
 ### 13.1 复核范围与裁决
 
-- 远端基线：`main@a7b4737`（2026-11-12），正式证据 cutoff US/CN **2026-11-11**；本地 checkout `328f24b` 落后 4 个提交，`git fetch` 经本机 `127.0.0.1` proxy 暂时失败，`gh` API 可用时先同步再执行。
+- 远端基线：`main@b14dc21`（2026-11-12；复核始于 `a7b4737`，其守卫修复经 PR #1396 合并），正式证据 cutoff US/CN **2026-11-11**；复核开始时本地 checkout `328f24b` 落后 4 个提交，`git fetch` 经本机 `127.0.0.1` proxy 失败，后续单命令绕过 proxy 完成同步。
 - 裁决：**Preview NO-GO；正式 v1 NO-GO。** 当前主要瓶颈不是功能代码，而是 A1 合格会话、A4 真实 HTTP/会话证据、A6 生产演练和 A7 Owner 签署。
 - 本段是 [2026-11-08 Launch 验收](../evidence/product_v1/launch_2026-11-08/README.md) 与 2026-11-09 生产安全跟进之后的复核记录；不重写旧证据、不替代 A7、不构成发布授权。
 
@@ -688,7 +688,7 @@ uv run --frozen --extra dev python scripts/release_gate.py --help
 | Gate | 当前状态 | 证据与剩余阻断 |
 | --- | --- | --- |
 | A0 身份与权威 | **PASS** | 四正式身份、formal catalog、registry 与 Pages 分节一致 |
-| A1 持续运行 | **BLOCKED（待独立 review）** | 2026-11-12 滚动窗口重跑：US/CN 各 **20/20 observed / 0 qualified**，窗口 10/15–11/11；无 missing due-cycle；资格仍缺逐 session hash-bound 独立 review、人工干预声明与 final Actions 元数据；`twenty_session_evidence_complete=false` |
+| A1 持续运行 | **BLOCKED（身份/证据级，非仅缺签名）** | 2026-11-12 滚动窗口 US/CN 各 **20/20 observed / 0 qualified**，窗口 10/15–11/11，无 missing due-cycle；但对 11/09–11/11 三个新 attempt 用 post-publish ledger 重建 packet 时，`qqq_rotation`/`us_x` 的 observation `formal_identities`（如 11/11 bundle）与 sealed decision `source_identity`（11/10）不一致，触发 `formal identity mismatch`；`byd` 在 11/11 仍为 11/09 signal（due）。故 20/20 仅是捕获覆盖，`twenty_session_evidence_complete=false`；需先收敛 observation↔decision 身份语义并补齐 due 刷新，才谈独立 review |
 | A2 数据完整性 | **Ops PASS / 训练 SCOPED_BLOCKED** | 四策略运行依赖已对账；训练面 5 ready / 3 partial / 0 blocked components；6 ready / 2 blocked profiles（`us_selected_alpha158_v1`、`us_small_pool_price_plus_fundamentals_v1`） |
 | A3 用户旅程 | **Baseline PASS / 真实会话 NOT_TESTED** | 实际部署 desktop/mobile/375px 公共旅程通过；受限/拒绝/过期/撤权会话无专用账号 |
 | A4 权限与披露 | **PARTIAL** | 11/08 匿名 API 返回 5 条 allocation；11/09 生产迁移 `20261109034213` + Edge v3 已应用；2026-11-12 真实匿名 HTTP 返回 **401 / 0 rows**，无敏感字段；Owner/Pro/denied/expired/revoked JWT、缓存隔离、Edge OIDC 端到端仍未验证；历史 Git 披露为残留风险 |
@@ -713,6 +713,7 @@ uv run --frozen --extra dev python scripts/release_gate.py --help
 3. **A4 的真实证据缺口**：数据库 role 测试与本地 fixture 不能替代真实匿名 HTTP 与真实签发 JWT；历史 Git 披露不可逆，只能由 Owner 记录处置决定。
 4. **#1387 仍未关闭**：2026-11-12 在 `a7b4737` 的完整 weekly health run `43175440486` 为 backend + shard 0/1/2 + report PASS，**shard 3 FAIL**（1121 tests / 6 failures）。六个失败全部来自 `tests/test_strategy_operations_publish_guard.py`：守卫仍要求已移除的 `RETIRED_ALLOWLIST_STRATEGY_IDS` 与 retired prune，并把 node suite 固定为 `pass 8`，而 11/09 后的 handler 明确不删除 retained retired evidence、node suite 为 12 tests。守卫已改为断言“无 `.delete(`、无 retired allowlist、保留 `.upsert`”，并校验 node `tests == pass`、`fail == 0`、总数不低于 12；聚焦 7 pytest + Ruff + node 12 已通过。必须把该修复提交到 main 后重跑完整 health，才能关闭 #1387。
 5. **数据面与文档漂移**：价格已至 11/10，但 corporate actions/fundamentals/factors 仍停在 09/04–09/30；本地 checkout 已于 2026-11-12 同步到 `a7b4737`。已合并 PR 仍写成 Draft 的段落已在同日收敛：`AGENTS.md` 的 #1276/#1357、前端 handoff 的 #1357、E7 文档的 #1368–#1382；#1307 与 #1389 仍是真实 Draft，未改。
+6. **A1 packet 揭示的身份/时序问题**：11/09–11/11 的 post-publish packet 中，`cn_27` 可 retained-verify，`qqq_rotation`/`us_x` 在无新 rebalance 时 ledger decision 仍指向上一 formal bundle，而 observation 记录当日新 bundle，导致 `formal identity mismatch`；`byd` 11/11 仍停留在 11/09 signal。该问题不是独立 reviewer 能签字绕过的，需在 acceptance 契约层明确“retained decision 的 source identity 应与 observation 的哪一版 formal identity 对齐”，并补一次 due 刷新；在此之前 A1 保持 BLOCKED。
 
 ### 13.5 下一阶段执行顺序
 
@@ -721,7 +722,7 @@ uv run --frozen --extra dev python scripts/release_gate.py --help
 | 工作 | 具体动作 | 验收 |
 | --- | --- | --- |
 | 同步当前 main | **完成 2026-11-12**：以 `-c http.proxy= -c https.proxy=` 绕过失效 proxy 后 fast-forward 到 `a7b4737`；保留工作树中的 §13 修改 | 干净 checkout 与远端一致 |
-| #1387 全仓健康 | 2026-11-12 run `43175440486`：backend + shard 0/1/2 PASS，shard 3 FAIL（6 个陈旧 publisher 守卫）；守卫已修复并通过聚焦测试 | 提交修复后在 main 重跑 4 shards；0 failures 后带 run/JUnit 收据关闭 #1387 |
+| #1387 全仓健康 | **完成 2026-11-12**：守卫修复以 PR #1396 合并为 `b14dc21eab`；main 上 run `43179745012` 四 shard + backend + report 全绿；四份 JUnit 合计 **4447 tests / 0 failures / 0 errors**（shard 0 1080、shard 1 1047、shard 2 1212、shard 3 1108） | report job 已自动关闭 #1387；2026-11-12 补发 run/JUnit 收据评论（issuecomment-6818333609） |
 | 文档收敛 | **完成 2026-11-12**：更新 `AGENTS.md`（#1276 merged、#1357 merged 2026-11-03）、前端 handoff（#1357 merged）与 E7 依赖表（#1368–#1382 merged 2026-11-08）；保留 #1307/#1389 的 Draft 状态；`strategy_console.md` 原已写 merged，无需改 | 一个当前入口；历史段落明确标为历史 |
 
 #### Phase 1 — 关闭发布门禁（P0，1–2 周）
@@ -761,8 +762,8 @@ uv run --frozen --extra dev python scripts/release_gate.py --help
 
 ### 13.7 首 48 小时与 Owner 决策
 
-1. 同步 `main@a7b4737`；确认工作树干净。
-2. 跑完整 weekly health，读四份 JUnit；关闭 #1387。
+1. ~~同步 `main@a7b4737`；确认工作树干净。~~ 已于 2026-11-12 完成，当前基线 `b14dc21`。
+2. ~~跑完整 weekly health，读四份 JUnit；关闭 #1387。~~ 已完成：run `43179745012` 全绿，#1387 已关闭。
 3. 跑 A1 `--through 2026-11-11` 审计，生成 20-session review packet。
 4. 跑匿名 A4 HTTP 全路由检查；准备真实身份测试脚本。
 5. 准备 E7 retry patch 与新 episode 合同；Owner 确认日期后才注册。
@@ -782,4 +783,6 @@ Owner 需明确：① A4 是否提供隔离真实身份，或 Preview 按 NOT_TE
 - **守卫修复**：`tests/test_strategy_operations_publish_guard.py` 现验证 handler 无 `.delete(`、无 retired allowlist、保留 `.upsert`，并以 node 输出的 `tests == pass`、`fail == 0`、总数 ≥12 替代固定 `pass 8`。聚焦 `pytest` 7 passed、`ruff check` passed、node 12 passed。未改 handler、数据库、权限或任何生产状态。
 - **A4 匿名 HTTP 复核**：2026-11-12 从生产 Pages 的 `membership-config.js` 取公开 Supabase URL/key，匿名 GET `strategy_operation_snapshots` 返回 **HTTP 401、0 rows、无敏感键**；`product_access_policies` 返回 200；静态 shell 4 rows 无敏感键；signal-ledger 的 raw/Pages 探针均 404、私有 archive 403。证据 `D:/Documents/AlphaEnginePrivate/A4-2026-11-12/a4-anonymous-2026-11-12.json`，SHA256 `8441c428a3f6a8d8b7a83f63c0dcade5ce359ab995aba1b564c2defc15bf03c1`。这只关闭匿名读取路径，不替代真实 JWT、Edge OIDC 与缓存隔离，A4 仍 PARTIAL。
 - **文档收敛**：同日核对已合并 PR 后，修正 `AGENTS.md`（#1276 为 merged architecture PR，不构成 release；#1357 merged 2026-11-03）、前端 handoff（#1357 merged，剩余 UAT 仍非 release approval）与 E7 依赖表（#1368–#1382 均于 2026-11-08 合并）。#1307、#1389 经 `gh pr view` 确认仍为 Draft，保留原状。未改任何证据、合同或运行时。
-- **待办**：该修复已推送为 PR #1396（head `e8f96dac6f`），backend check 已随 run `43177724315` 通过，PR 触发时 `repository-health`/report 按设计 skipping；PR 尚未合并，因此 #1387 仍 OPEN。合并到 main 后必须重新 dispatch 完整 health，并用新的 run + 四份 JUnit 关闭 #1387。A1 仍需逐 session review packet 与独立声明；A4/A6/A7 未因本次执行改变。
+- **合并与 health 关闭**：PR #1396 于 2026-11-12 以 squash 合并为 `b14dc21eab`（含守卫修复、§13 执行记录与文档收敛）。main 上 Dispatch `ci.yml` 生成 run `43179745012`：backend、repository-health shard 0–3、report 全部 success。四份 JUnit（下载后逐份 SHA256 校验）：shard 0 1080 tests / 0 fail / 0 error，`c1146abf…`；shard 1 1047 / 0 / 0，`a90a2378…`；shard 2 1212 / 0 / 0，`f3da79b9…`；shard 3 1108 / 0 / 0，`ec4f3e12…`；合计 4447 tests、0 failures、0 errors。report job 自动关闭 #1387，并补发 run + JUnit 收据评论（issuecomment-6818333609）。
+- **A1 packet 重建**：从私有 archive 取 11/09–11/11 三个 attempt 的 post-publish checkpoint（`4aa8b9a5…`、`c7a11e3c…`、`65e8a8ce…`），在对应 head worktree（`923803f7…`、`c8ce7ce4…`、`84dad361…`）以 observation `observed_at` 重放 `prepare_operating_review`。结果：`cn_27` 能 retained-verify；`qqq_rotation`/`us_x` 因 decision `source_identity` 仍指向 11/10 bundle 而 observation 记录 11/11 bundle，`formal identity mismatch`；`byd` 11/11 signal 仍为 11/09，schedule 为 due。该结果只证明 packet 不能签，不改变已封存证据；私有重建物在 `A1-2026-11-12/packets-reconstructed/`。
+- **待办**：A1 需契约层决定 retained decision 与 observation 的 formal identity 对齐口径，并补 due 刷新；A4 仍需真实 Owner/Pro/denied/expired/revoked 会话与 Edge OIDC；A6/A7 未因本次执行改变。
