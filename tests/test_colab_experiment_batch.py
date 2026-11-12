@@ -374,3 +374,99 @@ class BatchPlanningTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# Campaign Sharding: independent Colab windows, not intra-VM multiprocessing.
+
+def test_shard_manifest_is_total_disjoint_and_deterministic():
+    from src.research.colab_campaign_shards import compile_shards, assigned_trial_ids
+
+    batch = plan(spec())
+    manifest = compile_shards(batch, 3)
+    assert manifest == compile_shards(batch, 3)
+    actual = [tid for s in manifest["shards"] for tid in s["trial_ids"]]
+    assert len(actual) == batch["trial_count"] == len(set(actual))
+    assert set(actual) == {t["trial_id"] for t in batch["trials"]}
+    for shard in manifest["shards"]:
+        got = assigned_trial_ids(manifest, batch, shard["shard_id"])
+        assert got == set(shard["trial_ids"])
+        assert shard["trial_count"] == len(got)
+    assert [s["trial_count"] for s in manifest["shards"]] == [3, 3, 2]
+
+
+def test_shard_rejects_changed_identity_duplicate_and_unknown_id():
+    from src.research.colab_campaign_shards import compile_shards, assigned_trial_ids
+
+    batch = plan(spec())
+    manifest = compile_shards(batch, 2)
+    with pytest.raises(ExchangeError, match="unknown shard"):
+        assigned_trial_ids(manifest, batch, "s03")
+    tampered = json.loads(json.dumps(manifest))
+    tampered["shards"][1]["trial_ids"][0] = tampered["shards"][0]["trial_ids"][0]
+    with pytest.raises(ExchangeError, match="frozen shard"):
+        assigned_trial_ids(tampered, batch, "s02")
+    modified_batch = json.loads(json.dumps(batch))
+    modified_batch["runner_git_sha"] = "2" * 40
+    with pytest.raises(ExchangeError, match="frozen shard"):
+        assigned_trial_ids(manifest, modified_batch, "s01")
+    with pytest.raises(ExchangeError, match="excessive shard"):
+        compile_shards(batch, batch["trial_count"] + 1)
+
+
+def test_shard_trial_runner_preserves_disjoint_outputs_and_resume(retained_trial, tmp_path):
+    from src.research.colab_campaign_shards import compile_shards
+
+    batch_file, data, _ = retained_trial
+    batch = plan(json.loads(batch_file.read_text()))
+    manifest = compile_shards(batch, 2)
+    path = tmp_path / "shards.json"
+    path.write_text(json.dumps(manifest))
+    written = []
+    for shard_id in ("s01", "s02"):
+        outputs = tmp_path / shard_id / "runs"
+        with patch("src.research.colab_experiment_batch.verify_stage", return_value={
+            "bundle_manifest_sha256": "a" * 64, "history_archive_sha256": "b" * 64
+        }), patch("src.research.colab_experiment_batch._git_head", return_value="1" * 40), patch(
+            "src.research.study_workspace.run_study", side_effect=fake_study
+        ) as fit:
+            first = execute(
+                batch_spec=batch_file, data_root=data, output_root=outputs,
+                shard_manifest=path, shard_id=shard_id, max_new_trials=1
+            )
+            assert first["new_trials"] == 1 and first["campaign_trials"] == 8
+            second = execute(
+                batch_spec=batch_file, data_root=data, output_root=outputs,
+                shard_manifest=path, shard_id=shard_id, max_new_trials=100,
+                resume=True
+            )
+            assert second["pending_trials"] == 0 and fit.call_count == 4
+            assert second["shard_id"] == shard_id and second["trials"] == 4
+        ids = {p.parent.name for p in outputs.rglob("trial-result.json")}
+        assert ids == set(manifest["shards"][int(shard_id[-2:])-1]["trial_ids"])
+        written.append(ids)
+    assert written[0].isdisjoint(written[1])
+
+
+def test_shard_runner_fails_closed_on_shared_output_and_foreign_receipts(
+    retained_trial, tmp_path
+):
+    from src.research.colab_campaign_shards import compile_shards
+
+    batch_file, data, _ = retained_trial
+    manifest = compile_shards(plan(json.loads(batch_file.read_text())), 2)
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(manifest))
+    with pytest.raises(ExchangeError, match="namespaced"):
+        execute(
+            batch_spec=batch_file, data_root=data, output_root=tmp_path / "shared",
+            shard_manifest=path, shard_id="s01", max_new_trials=1
+        )
+    outputs = tmp_path / "s01" / "runs"
+    alien = outputs / spec()["batch_id"] / "trials" / manifest["shards"][1]["trial_ids"][0]
+    alien.mkdir(parents=True)
+    with patch("src.research.colab_experiment_batch._git_head", return_value="1" * 40):
+        with pytest.raises(ExchangeError, match="foreign shard"):
+            execute(
+                batch_spec=batch_file, data_root=data, output_root=outputs,
+                shard_manifest=path, shard_id="s01", max_new_trials=1
+            )
