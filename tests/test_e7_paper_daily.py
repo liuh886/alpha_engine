@@ -141,3 +141,80 @@ def test_frozen_episode_rejects_late_initialization_and_contract_changes(tmp_pat
     (root / "contract.json").write_text(json.dumps(cfg))
     with pytest.raises(ValueError, match="identity changed"):
         load(root)
+
+
+def test_transient_fetch_error_is_retried_without_inflating_evidence():
+    from src.data.adapters.base import DataFetchError
+
+    calls = []
+    sleeps = []
+
+    def fetch():
+        calls.append(1)
+        if len(calls) < 3:
+            raise DataFetchError("empty data for AXON")
+        return "observed"
+
+    result = e7_source._fetch_with_retry(
+        fetch,
+        attempts=3,
+        backoff=(2.0, 8.0),
+        sleep=sleeps.append,
+    )
+
+    assert result == "observed"
+    assert len(calls) == 3
+    assert sleeps == [2.0, 8.0]
+
+
+def test_history_start_unreachable_is_not_retried():
+    from src.data.adapters.base import HistoryStartUnreachable
+
+    calls = []
+
+    def fetch():
+        calls.append(1)
+        raise HistoryStartUnreachable(
+            "history start unreachable",
+            provider_symbol="AXON",
+            requested_start="2026-05-15",
+            available_start="2026-06-01",
+        )
+
+    with pytest.raises(HistoryStartUnreachable):
+        e7_source._fetch_with_retry(
+            fetch,
+            attempts=3,
+            backoff=(2.0, 8.0),
+            sleep=lambda _: None,
+        )
+
+    assert len(calls) == 1
+
+
+def test_exhausted_retries_raise_the_provider_error():
+    from src.data.adapters.base import DataFetchError
+
+    calls = []
+
+    def fetch():
+        calls.append(1)
+        raise DataFetchError("empty data for AAOI")
+
+    with pytest.raises(DataFetchError, match="empty data for AAOI"):
+        e7_source._fetch_with_retry(
+            fetch,
+            attempts=3,
+            backoff=(2.0, 8.0),
+            sleep=lambda _: None,
+        )
+
+    assert len(calls) == 3
+
+
+def test_retry_contract_requires_a_backoff_for_every_retry():
+    with pytest.raises(ValueError, match="invalid E7 fetch retry contract"):
+        e7_source._retry_settings(
+            {"source": {"fetch_retry": {"attempts": 3, "backoff_seconds": [1.0]}}}
+        )
+    assert e7_source._retry_settings({"source": {}}) == (3, (2.0, 8.0))

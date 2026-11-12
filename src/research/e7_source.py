@@ -2,19 +2,74 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import time
+from typing import TypeVar
 import uuid
 
 import numpy as np
 import pandas as pd
 from exchange_calendars import get_calendar
 
-from src.data.adapters.base import FetchRequest
+from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult, HistoryStartUnreachable
 from src.data.adapters.yfinance_adapter import YFinanceAdapter
 from src.research.e5_score_reconstruction import sha
 from src.research.study_workspace import save_receipt_exclusive
+
+FETCH_ATTEMPTS = 3
+FETCH_BACKOFF_SECONDS = (2.0, 8.0)
+T = TypeVar("T")
+
+
+def _retry_settings(cfg: dict) -> tuple[int, tuple[float, ...]]:
+    retry = cfg["source"].get("fetch_retry", {})
+    if not isinstance(retry, dict):
+        raise ValueError("E7 fetch retry contract must be an object")
+    attempts = int(retry.get("attempts", FETCH_ATTEMPTS))
+    backoff = tuple(float(value) for value in retry.get("backoff_seconds", FETCH_BACKOFF_SECONDS))
+    if attempts < 1 or len(backoff) < attempts - 1:
+        raise ValueError("invalid E7 fetch retry contract")
+    return attempts, backoff
+
+
+def _fetch_with_retry(
+    fetch: Callable[[], T],
+    *,
+    attempts: int,
+    backoff: tuple[float, ...],
+    sleep: Callable[[float], None] = time.sleep,
+) -> T:
+    """Retry a transient provider fetch without changing its retained evidence.
+
+    Each attempt leaves its own canonical raw response in the evidence root, so
+    a retry cannot overwrite an earlier observation. A missing history start is
+    a deterministic provider boundary and is never retried.
+    """
+
+    for index in range(attempts):
+        try:
+            return fetch()
+        except HistoryStartUnreachable:
+            raise
+        except DataFetchError:
+            if index + 1 >= attempts:
+                raise
+            sleep(backoff[index])
+    raise AssertionError("unreachable retry state")
+
+
+def _fetch_once(
+    adapter: YFinanceAdapter, request: FetchRequest, raw_root: Path
+) -> tuple[FetchResult, Path]:
+    before = set(raw_root.glob("request-*"))
+    result = adapter.fetch_daily_bars(request)
+    created = set(raw_root.glob("request-*")) - before
+    if len(created) != 1:
+        raise ValueError("canonical adapter did not retain exactly one raw response")
+    return result, created.pop()
 
 
 def sessions(day: str, count: int) -> list[str]:
@@ -45,15 +100,16 @@ def collect(root: Path, cfg: dict, day: str) -> dict:
     attempt = root / "sources" / ("attempt-" + uuid.uuid4().hex)
     raw_root = attempt / "raw"
     adapter = YFinanceAdapter(evidence_root=raw_root)
+    attempts, backoff = _retry_settings(cfg)
     rows = []
     proof = []
     for symbol in [*cfg["symbols"], cfg["benchmark"]]:
-        before = set(raw_root.glob("request-*"))
-        result = adapter.fetch_daily_bars(FetchRequest(symbol, "us", expected[0], day))
-        created = set(raw_root.glob("request-*")) - before
-        if len(created) != 1:
-            raise ValueError("canonical adapter did not retain exactly one raw response")
-        folder = created.pop()
+        request = FetchRequest(symbol, "us", expected[0], day)
+        result, folder = _fetch_with_retry(
+            lambda: _fetch_once(adapter, request, raw_root),
+            attempts=attempts,
+            backoff=backoff,
+        )
         record = json.loads((folder / "request.json").read_bytes())
         if (
             record["symbol"] != symbol
