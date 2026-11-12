@@ -464,7 +464,9 @@ def test_shard_runner_fails_closed_on_shared_output_and_foreign_receipts(
     outputs = tmp_path / "s01" / "runs"
     alien = outputs / spec()["batch_id"] / "trials" / manifest["shards"][1]["trial_ids"][0]
     alien.mkdir(parents=True)
-    with patch("src.research.colab_experiment_batch._git_head", return_value="1" * 40):
+    with patch("src.research.colab_experiment_batch.verify_stage", return_value={
+        "bundle_manifest_sha256": "a" * 64, "history_archive_sha256": "b" * 64
+    }), patch("src.research.colab_experiment_batch._git_head", return_value="1" * 40):
         with pytest.raises(ExchangeError, match="foreign shard"):
             execute(
                 batch_spec=batch_file, data_root=data, output_root=outputs,
