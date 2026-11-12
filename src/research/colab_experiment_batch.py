@@ -407,6 +407,7 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
         raise ExchangeError("shard manifest and ID must be supplied together")
     selected_ids = None
     if shard_manifest is not None:
+        assert shard_id is not None  # Paired-option gate above; narrow for typing.
         from src.research.colab_campaign_shards import assigned_trial_ids
         selected_ids = assigned_trial_ids(
             json.loads(shard_manifest.read_text(encoding="utf-8")), batch, shard_id
