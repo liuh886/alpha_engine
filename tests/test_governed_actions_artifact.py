@@ -132,11 +132,10 @@ def test_checked_in_registry_freezes_exact_current_sources() -> None:
         "us_events",
         "qqq_reference",
     }
-    assert registry.sources["cn_alpha158"].artifact_id == 10870061820
+    assert registry.sources["cn_alpha158"].artifact_id == 13951525770
+    assert registry.sources["cn_alpha158"].evidence_cutoff == "2026-11-10"
     assert registry.sources["cn_events"].artifact_id == 10869737672
-    assert {registry.sources[key].evidence_cutoff for key in ("cn_alpha158", "cn_events")} == {
-        "2026-09-04"
-    }
+    assert registry.sources["cn_events"].evidence_cutoff == "2026-09-04"
     # Every pinned source carries a durable release mirror whose content digest
     # equals the original Actions artifact so fetch never depends on artifact
     # retention.
