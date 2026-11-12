@@ -393,7 +393,8 @@ def plan(spec: dict, data_root: Path | None = None) -> dict[str, Any]:
 
 def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
             resume: bool = False, max_new_trials: int | None = None,
-            max_wall_seconds: int | None = None) -> dict:
+            max_wall_seconds: int | None = None,
+            shard_manifest: Path | None = None, shard_id: str | None = None) -> dict:
     """Run existing Study Workspace specs, checkpoint one immutable receipt per trial."""
     if max_new_trials is not None and (not isinstance(max_new_trials, int)
                                        or not 1 <= max_new_trials <= 100):
@@ -402,6 +403,17 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
         raise ExchangeError("wall-time start budget must be within 1..7200 seconds")
     invocation_start = time.perf_counter()
     batch = plan(json.loads(batch_spec.read_text(encoding="utf-8")))
+    if (shard_manifest is None) != (shard_id is None):
+        raise ExchangeError("shard manifest and ID must be supplied together")
+    selected_ids = None
+    if shard_manifest is not None:
+        from src.research.colab_campaign_shards import assigned_trial_ids
+        selected_ids = assigned_trial_ids(
+            json.loads(shard_manifest.read_text(encoding="utf-8")), batch, shard_id
+        )
+        # Every notebook writes to its own namespace; never a shared output root.
+        if shard_id not in (output_root.name, output_root.parent.name):
+            raise ExchangeError("shard output root must be namespaced by its shard ID")
     if _git_head() != batch["runner_git_sha"]:
         raise ExchangeError("runner checkout revision mismatch")
     batch, symbols = _inputs(batch_spec, data_root)
@@ -416,6 +428,10 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
     if path.exists() and not resume:
         raise ExchangeError("immutable batch exists; use --resume after inspecting it")
     path.mkdir(parents=True, exist_ok=True)
+    if selected_ids is not None and (path / "trials").exists():
+        foreign = {p.name for p in (path / "trials").iterdir() if p.is_dir()} - selected_ids
+        if foreign:
+            raise ExchangeError("output root contains foreign shard trial receipts")
     frozen = path / "batch-plan.json"
     if frozen.exists():
         existing = json.loads(frozen.read_text(encoding="utf-8"))
@@ -430,7 +446,11 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
     recovered = 0
     failed_in_sequence = 0
     stop_reason = "complete"
-    for entry in batch["trials"]:
+    eligible_trials = (
+        [e for e in batch["trials"] if e["trial_id"] in selected_ids]
+        if selected_ids is not None else batch["trials"]
+    )
+    for entry in eligible_trials:
         td = path / "trials" / entry["trial_id"]
         run_spec = {**entry["study"], "symbols": symbols}
         cfg_path = td / "study-spec.json"
@@ -488,10 +508,11 @@ def execute(*, batch_spec: Path, data_root: Path, output_root: Path,
             failed_in_sequence += 1
         else:
             failed_in_sequence = 0
-    pending = len(batch["trials"]) - completed - new
+    pending = len(eligible_trials) - completed - new
     return {"status": ("BATCH_PARTIAL_CHECKPOINT_READY" if pending else
                        "BATCH_EXECUTED_RESEARCH_ONLY"), "batch_id": batch["batch_id"],
-            "trials": len(batch["trials"]), "resumed_trials": completed,
+            "trials": len(eligible_trials), "campaign_trials": len(batch["trials"]),
+            "shard_id": shard_id, "resumed_trials": completed,
             "new_trials": new, "pending_trials": pending, "blocked_trials": blocked,
             "recovered_completed_trials": recovered,
             "stop_reason": stop_reason if pending else "complete",
@@ -514,6 +535,8 @@ def main(argv: list[str] | None = None) -> int:
             subp.add_argument("--max-new-trials", type=int)
             subp.add_argument("--max-wall-seconds", type=int)
             subp.add_argument("--shared-feature-cache", action="store_true")
+            subp.add_argument("--shard-manifest", type=Path)
+            subp.add_argument("--shard-id", type=str)
         if cmd == "checkpoint":
             subp.add_argument("--destination", required=True, type=Path)
         if cmd == "restore":
@@ -553,7 +576,8 @@ def main(argv: list[str] | None = None) -> int:
             run_kwargs = dict(batch_spec=args.batch_spec, data_root=args.data_root,
                               output_root=args.output_root, resume=args.resume,
                               max_new_trials=args.max_new_trials,
-                              max_wall_seconds=args.max_wall_seconds)
+                              max_wall_seconds=args.max_wall_seconds,
+                              shard_manifest=args.shard_manifest, shard_id=args.shard_id)
             if args.shared_feature_cache:
                 from src.research.e2_feature_cache import feature_cache_scope
                 # The frozen private batch spec includes source and runner identities.
