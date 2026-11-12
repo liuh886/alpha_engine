@@ -409,7 +409,7 @@ def test_shard_rejects_changed_identity_duplicate_and_unknown_id():
     modified_batch["runner_git_sha"] = "2" * 40
     with pytest.raises(ExchangeError, match="frozen shard"):
         assigned_trial_ids(manifest, modified_batch, "s01")
-    with pytest.raises(ExchangeError, match="excessive shard"):
+    with pytest.raises(ExchangeError, match="shard count"):
         compile_shards(batch, batch["trial_count"] + 1)
 
 
