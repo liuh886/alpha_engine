@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from src.research.byd_v1_3_low_vol_prospective import (
     CANDIDATE_MODEL_ID,
@@ -173,3 +175,23 @@ def test_existing_observation_replays_exactly_without_schema_adaptation(tmp_path
     replay = build_observations(source_store=source_root, existing_records=first)
 
     assert replay == []
+
+
+def test_existing_observation_tolerates_cross_runner_float_noise(tmp_path: Path) -> None:
+    source_root = tmp_path / "source"
+    _write_source(
+        source_root,
+        _source_row("2026-08-10", edge=True, vol_state="high", prospective=False),
+    )
+    first = build_observations(source_store=source_root, existing_records=[])
+    noisy = json.loads(json.dumps(first[0]))
+    targets = noisy["targets"][CANDIDATE_MODEL_ID]
+    assert isinstance(targets, dict)
+    targets["byd_weight"] = math.nextafter(float(targets["byd_weight"]), math.inf)
+
+    replay = build_observations(source_store=source_root, existing_records=[noisy])
+
+    assert replay == []
+    targets["byd_weight"] = float(targets["byd_weight"]) + 1e-6
+    with pytest.raises(RuntimeError, match="existing low-vol observation drifted"):
+        build_observations(source_store=source_root, existing_records=[noisy])

@@ -15,6 +15,7 @@ from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 
+from src.artifacts.append_only_store import records_equivalent
 from src.research.byd_prospective_shadow import file_sha256
 from src.research.byd_v1_2_convex_momentum import (
     CANDIDATE as CHAMPION_MODEL_ID,
@@ -373,7 +374,7 @@ def build_observations(
             f"{source['source_sha256'][:8]}-{pair['source_sha256'][:8]}"
         )
         if signal_date in existing:
-            if _json_bytes(existing[signal_date]) != _json_bytes(record):
+            if not records_equivalent(existing[signal_date], record):
                 raise RuntimeError(
                     f"existing recovery event observation drifted: {signal_date}"
                 )
