@@ -3,12 +3,12 @@
   "component_kind": "corporate_action_coverage",
   "coverage_ratio": 1.0,
   "details": {
-    "coverage_byte_size": 72440,
+    "coverage_byte_size": 72442,
     "coverage_path": "corporate_actions/coverage.json",
-    "coverage_sha256": "e32a13c3ec0fe20dd24fab9d707e171fd4d6a333c6da0962cd88c56e29f8e6bc",
-    "events_byte_size": 2704686,
+    "coverage_sha256": "3d6dbe8908612d89fb4f41b3b2f27f5768c8b3e81b88985dbfd2fc21c714762b",
+    "events_byte_size": 2743103,
     "events_path": "corporate_actions/events.jsonl",
-    "events_sha256": "5602eca95056b8773cdff4463c1c9d51fa79ee116ca1aee3eaa42fbcd12c5a65",
+    "events_sha256": "0ad0ea795d975d3c60fe2b676e9871441a2b07b47023d3ab66e339ff957ab5e4",
     "explicit_status_count": 130,
     "status_counts": {
       "conflict": 0,
@@ -19,11 +19,11 @@
       "ready": 128
     }
   },
-  "evidence_cutoff": "2026-09-04",
+  "evidence_cutoff": "2026-11-10",
   "expected_symbol_count": 130,
   "first_date": "1991-03-03",
   "invalid_symbols": [],
-  "last_date": "2026-09-03",
+  "last_date": "2026-11-10",
   "market": "cn",
   "missing_symbols": [],
   "pool_id": "cn_selected_equities_v3",
