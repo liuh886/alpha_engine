@@ -1,16 +1,53 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ArrowUpRight, ClipboardList } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ClipboardList, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import type { GovernedRunSummary } from '@/lib/governed-run';
+import { buildDailyResearchSummary } from '@/lib/research-summary';
 import { describeStrategyObservation, type StrategyObservationBrief, type StrategyOperationsSnapshot } from '@/lib/strategy-operations';
 
 const WORKFLOWS = 'https://github.com/liuh886/alpha_engine/actions/workflows/';
 const DISPLAY_ORDER = { changed: 0, attention: 1, retained: 2, unchanged: 3, access: 4, pending: 5 };
+const COPY_SUCCESS = 'Copied research summary to clipboard.';
+const COPY_FAILURE = 'Copy failed. Clipboard unavailable — select the brief and copy manually.';
 const CHECKING_OBSERVATION: StrategyObservationBrief = {
   kind: 'pending', label: 'Checking observation', reason: 'Verifying access and current observations…',
   nextStep: 'Formal historical evidence remains available while verification completes.', recovery: null,
 };
+
+function copyWithTextarea(text: string): boolean {
+  if (typeof document === 'undefined' || typeof document.execCommand !== 'function') return false;
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.readOnly = true;
+  textarea.setAttribute('aria-hidden', 'true');
+  textarea.style.position = 'fixed';
+  textarea.style.top = '-1000px';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  try {
+    textarea.select();
+    textarea.setSelectionRange(0, text.length);
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    textarea.remove();
+  }
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall back to the legacy selection path when the Clipboard API is rejected.
+  }
+  return copyWithTextarea(text);
+}
 
 export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
   runs: GovernedRunSummary[];
@@ -34,10 +71,35 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
   const priorities = entries.slice(0, 3);
   const noNewChanges = !busy && entries.length > 0
     && entries.every(entry => entry.brief.kind === 'unchanged' || entry.brief.kind === 'retained');
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  useEffect(() => {
+    if (copyState !== 'copied') return;
+    const timer = window.setTimeout(() => setCopyState('idle'), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copyState]);
+  const copyBrief = async () => {
+    try {
+      const markdown = buildDailyResearchSummary(entries, { generatedAt: new Date() });
+      setCopyState(await copyToClipboard(markdown) ? 'copied' : 'failed');
+    } catch {
+      setCopyState('failed');
+    }
+  };
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm" aria-label="Daily research brief" aria-busy={busy}>
       <header className="border-b bg-muted/15 px-5 py-4">
-        <h2 className="flex items-center gap-2 font-semibold"><ClipboardList className="h-4 w-4 text-primary" />Daily research brief</h2>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-semibold"><ClipboardList className="h-4 w-4 text-primary" />Daily research brief</h2>
+          <div className="flex flex-col items-end gap-1">
+            <Button variant="outline" size="sm" className="min-h-[44px]" onClick={() => { void copyBrief(); }}
+              disabled={busy || !entries.length}>
+              <Copy className="mr-2 h-4 w-4" aria-hidden="true" />Copy today's research summary
+            </Button>
+            <span role="status" aria-live="polite" className="max-w-[18rem] text-right text-xs text-muted-foreground">
+              {copyState === 'copied' ? COPY_SUCCESS : copyState === 'failed' ? COPY_FAILURE : ''}
+            </span>
+          </div>
+        </div>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Latest verified observations by strategy. Each market keeps its own cutoff; retained targets are dated separately.</p>
         <p className="mt-2 text-xs" role="status">{busy ? 'Reading current observations…' : `${count('changed')} changed · ${count('unchanged')} unchanged · ${count('retained')} retained · ${count('attention')} need attention · ${count('access')} require access · ${count('pending')} awaiting verification`}</p>
         {noNewChanges && <p className="mt-2 text-sm">No new model changes. Retained targets keep their recorded dates.</p>}

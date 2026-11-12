@@ -1,13 +1,14 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DailyResearchBrief } from './DailyResearchBrief';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import { parseStrategyOperationsSnapshot } from '@/lib/strategy-operations';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 
 vi.mock('@/hooks/useAccessControl', () => ({ useAccessControl: vi.fn() }));
-const run = { key: 'qqq', title: 'QQQR v4.3', modelVersionId: 'qqq', market: 'us', evidenceCutoff: '2026-09-30' } as GovernedRunSummary;
+const run = { key: 'qqq', title: 'QQQR v4.3', modelVersionId: 'qqq', market: 'us', evidenceCutoff: '2026-09-30',
+  generatedAt: '2026-11-13T00:00:00Z' } as GovernedRunSummary;
 const record = { model_version_id: 'qqq', strategy_id: 'qqq_rotation', status: 'current_no_change',
   as_of: '2026-09-30', latest_completed_session: '2026-09-30', evaluation_changed: true,
   data_freshness: 'current', factor_freshness: 'unknown', decision_cadence: 'Every completed session',
@@ -134,4 +135,66 @@ describe('DailyResearchBrief', () => {
     expect(screen.getByRole('link', { name: 'Open delivery workflow' })).toHaveAttribute('href', expect.stringContaining('strategy-signal-delivery-outbox.yml'));
     expect(screen.getByText('A decision is retained, but notification delivery failed.')).toBeInTheDocument();
   });
+
+  it('copies only the access-filtered brief and reports success', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const privateSnapshot = parseStrategyOperationsSnapshot({ ...record,
+      factor_evidence: [{ factor_id: 'PRIVATE-FACTOR-ID', factor_version: 'v1', implementation_hash: 'a'.repeat(64),
+        display_name: 'Momentum 20D', information_family: 'price', value: 0.5, reference: 'PRIVATE-REFERENCE',
+        state: 'positive', effect: 'support', reason_code: 'PRIVATE-REASON', observed_at: '2026-09-30' }],
+      allocations: [{ asset: 'PRIVATE-ALLOC', current: 0.1, target: 0.2, delta: 0.1 }],
+      turnover: 0.25, estimated_cost: 12, note: 'PRIVATE-NOTE', source_href: 'https://example.test/PRIVATE-HREF',
+      state_label: 'PRIVATE-STATE', source_label: 'PRIVATE-SOURCE',
+      source_identity: { formal_evidence_cutoff: '2026-09-30', formal_run_id: 'PRIVATE-RUN' } });
+    render(<MemoryRouter><DailyResearchBrief runs={[run]} snapshots={new Map([['qqq', privateSnapshot]])} loading={false} reload={reload} /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole('button', { name: "Copy today's research summary" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    const payload = String(writeText.mock.calls[0]?.[0]);
+    expect(payload).toMatch(/# Daily research summary — \d{4}-\d{2}-\d{2} \(UTC\)/);
+    expect(payload).toContain('## QQQR v4.3 (US · formal evidence through 2026-09-30)');
+    expect(payload).toContain('- Observation: Changed at last evaluation');
+    expect(payload).toContain('- Why: Volatility eased');
+    expect(payload).toContain('- Evidence: Observed 2026-09-30 · target dated 2026-09-30 · formal evidence 2026-09-30');
+    expect(payload).toContain('  - Momentum 20D: positive · support · observed 2026-09-30');
+    expect(payload).not.toMatch(/PRIVATE/);
+    expect(await screen.findByText('Copied research summary to clipboard.')).toBeInTheDocument();
+  });
+
+  it('reports a copy failure when the Clipboard API rejects and no fallback exists', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('Clipboard denied'));
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    Object.defineProperty(document, 'execCommand', { value: undefined, configurable: true });
+    render(<MemoryRouter><DailyResearchBrief runs={[run]} snapshots={new Map([['qqq', parseStrategyOperationsSnapshot(record)]])} loading={false} reload={reload} /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole('button', { name: "Copy today's research summary" }));
+
+    expect(await screen.findByText('Copy failed. Clipboard unavailable — select the brief and copy manually.')).toBeInTheDocument();
+    expect(screen.queryByText('Copied research summary to clipboard.')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the hidden selection copy when the Clipboard API is unavailable', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', { value: execCommand, configurable: true });
+    render(<MemoryRouter><DailyResearchBrief runs={[run]} snapshots={new Map([['qqq', parseStrategyOperationsSnapshot(record)]])} loading={false} reload={reload} /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole('button', { name: "Copy today's research summary" }));
+
+    await waitFor(() => expect(execCommand).toHaveBeenCalledWith('copy'));
+    expect(await screen.findByText('Copied research summary to clipboard.')).toBeInTheDocument();
+    expect(document.querySelector('textarea')).toBeNull();
+  });
+
+  it('disables copying while observations are loading', () => {
+    render(<MemoryRouter><DailyResearchBrief runs={[run]} snapshots={new Map()} loading reload={reload} /></MemoryRouter>);
+    expect(screen.getByRole('button', { name: "Copy today's research summary" })).toBeDisabled();
+  });
+});
+
+afterEach(() => {
+  Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+  Object.defineProperty(document, 'execCommand', { value: undefined, configurable: true });
 });
