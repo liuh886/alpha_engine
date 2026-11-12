@@ -40,8 +40,12 @@ def test_retention_inspection_is_local_and_does_not_claim_verified_retrieval(mon
     report = inspect_source_retention(REGISTRY, as_of=datetime(2027, 1, 2, tzinfo=timezone.utc))
     rows = {row["source_id"]: row for row in report["sources"]}
     assert rows["us_events"]["retention_status"] == "durable_mirror_declared"
-    assert rows["us_events"]["next_action"] == "verify_pinned_durable_git"
-    assert rows["us_events"]["durable_git"]["commit"] == "b1fa72450b5c00d1eb82748169c747846814acde"
+    assert rows["us_events"]["next_action"] == "verify_pinned_durable_release"
+    assert rows["us_events"]["durable_git"] is None
+    assert (
+        rows["us_events"]["durable_release"]["tag"]
+        == "model-data-source-us-events-43196521715"
+    )
     assert rows["cn_events"]["retention_status"] == "durable_mirror_declared"
     assert rows["cn_events"]["actions_expired"] is True
     assert all(row["retrieval_verified"] is False for row in rows.values())
@@ -143,8 +147,14 @@ def test_checked_in_registry_freezes_exact_current_sources() -> None:
             "sha256:"
         )
         assert source.durable_release.size_bytes == source.artifact_size_bytes
+    assert registry.sources["us_events"].artifact_id == 13933781320
     assert registry.sources["us_events"].expected_symbol_count == 87
-    assert registry.sources["us_events"].evidence_cutoff == "2026-09-30"
+    assert registry.sources["us_events"].evidence_cutoff == "2026-11-10"
+    assert registry.sources["us_events"].durable_release is not None
+    assert (
+        registry.sources["us_events"].durable_release.sha256
+        == registry.sources["us_events"].artifact_digest.removeprefix("sha256:")
+    )
     assert registry.sources["qqq_reference"].expected_symbol_count == 3
     assert registry.sources["qqq_reference"].evidence_cutoff == "2026-10-14"
 
