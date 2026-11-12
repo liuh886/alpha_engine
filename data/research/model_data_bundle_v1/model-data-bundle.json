@@ -1,6 +1,6 @@
 {
-  "built_at": "2026-11-12T04:11:22+00:00",
-  "bundle_id": "c40aa5b17ffb67e78218135ddc8b7fc1eacc304096f39ef70ebc4f3815f9c4c4",
+  "built_at": "2026-11-12T11:22:48+00:00",
+  "bundle_id": "3212d02aad93e5c647f4928ec3f8c4d30f9f3fa6ffdc66651c84efb136569fbe",
   "components": [
     {
       "component_id": "corporate_actions.cn_selected_equities_v3",
@@ -49,12 +49,12 @@
       "component_kind": "corporate_action_coverage",
       "coverage_ratio": 1.0,
       "details": {
-        "coverage_byte_size": 44649,
+        "coverage_byte_size": 44651,
         "coverage_path": "corporate_actions/coverage.json",
-        "coverage_sha256": "b36a3d8fc267214dfaac331ef7c26aa08abc9004c3a3eea788915166a317b1f0",
-        "events_byte_size": 3248862,
+        "coverage_sha256": "ab9435557e4c1bdd65f30ecae2f11e33494336d16b04a3f8c0aa3e484d8a0b66",
+        "events_byte_size": 3261558,
         "events_path": "corporate_actions/events.jsonl",
-        "events_sha256": "c596b57491f9a0a18bbafb5ea850863ee7d9162699a8f9e8e42b4afd8aef3eb1",
+        "events_sha256": "acc2865604563bb4500f8427ba703c4a2900becb6b5027840df5bf096fa7f42e",
         "explicit_status_count": 87,
         "status_counts": {
           "conflict": 0,
@@ -65,13 +65,13 @@
           "ready": 65
         }
       },
-      "evidence_cutoff": "2026-09-30",
+      "evidence_cutoff": "2026-11-10",
       "expected_symbol_count": 87,
       "first_date": "1962-02-06",
       "invalid_symbols": [],
-      "last_date": "2026-09-30",
+      "last_date": "2026-11-10",
       "manifest_path": "sources/us_events/corporate_actions/component_manifest.json",
-      "manifest_sha256": "97bf40cd1c05eb8342a37a31dbee8150d57457bdcac4714bc531756275fc18c3",
+      "manifest_sha256": "5309f0c7fc9d688e3b638c14e4c47de16e459518a72b1f0f15d66cdc961c003a",
       "market": "us",
       "missing_symbols": [],
       "not_yet_applicable_symbols": [],
@@ -165,12 +165,12 @@
       "component_kind": "fundamental_coverage",
       "coverage_ratio": 0.9885057471264368,
       "details": {
-        "coverage_byte_size": 57753,
+        "coverage_byte_size": 57759,
         "coverage_path": "fundamentals/coverage.json",
-        "coverage_sha256": "53c29f3e828f224bfc28b1f0f8d6581f62657d974edc0d745cecbd4265f1d126",
-        "events_byte_size": 59266410,
+        "coverage_sha256": "b07cb6ef819fd80cb17efcafd2d20b1d51071e78852ef7badfebd0581598b12b",
+        "events_byte_size": 60172344,
         "events_path": "fundamentals/events.jsonl",
-        "events_sha256": "a8581c0f199e374816c4d5e1ca4a2f36f7b5d22365a8c41ac952403ba61dea74",
+        "events_sha256": "073aca0067674dacf8f421f13fe8c05425c875c88ba4c77aa05bc04a8592ac03",
         "explicit_status_count": 87,
         "status_counts": {
           "conflict": 0,
@@ -181,13 +181,13 @@
           "ready": 86
         }
       },
-      "evidence_cutoff": "2026-09-30",
+      "evidence_cutoff": "2026-11-10",
       "expected_symbol_count": 87,
       "first_date": "2009-06-04",
       "invalid_symbols": [],
-      "last_date": "2026-09-30",
+      "last_date": "2026-11-10",
       "manifest_path": "sources/us_events/fundamentals/component_manifest.json",
-      "manifest_sha256": "45a82feafdb2e5c55eea06cc179008c7427fa532f3dbdf450010b0c8f865cb1c",
+      "manifest_sha256": "4a3c0e92d33707faacf70a346c00213d7f25851fb8049e517ca790e559908c78",
       "market": "us",
       "missing_symbols": [
         "SBGSY"
@@ -210,23 +210,23 @@
       "coverage_ratio": 1.0,
       "details": {
         "benchmark": "000300",
-        "candidate_observation_cutoff": "2026-11-11",
+        "candidate_observation_cutoff": "2026-11-12",
         "candidate_observation_start": "2026-04-16",
         "promotion_blocker": null,
         "promotion_eligible": true,
-        "provider_identity_sha256": "47917d4b3faa540ffd665ee0b9d1d46605efde342b993ecd75f87ef68c4efe58",
-        "requested_cutoff": "2026-11-11",
-        "retained_common_history_end": "2026-11-11",
+        "provider_identity_sha256": "149375c6caf5829abfc867d3d687835d3227b6190c9ed3a31c95c4c364f33ee6",
+        "requested_cutoff": "2026-11-12",
+        "retained_common_history_end": "2026-11-12",
         "source_status": "selected_pool_price_refresh_ready",
         "terminal_history_symbols": []
       },
-      "evidence_cutoff": "2026-11-11",
+      "evidence_cutoff": "2026-11-12",
       "expected_symbol_count": 130,
       "first_date": "2026-04-16",
       "invalid_symbols": [],
-      "last_date": "2026-11-11",
+      "last_date": "2026-11-12",
       "manifest_path": "components/cn-selected-pool-prices.json",
-      "manifest_sha256": "86c05d9b5fae7b07c48e062b37022c822e1551eb646af7b5280db0bde43ed25e",
+      "manifest_sha256": "3eff588340319148a216ffa2846f18cc8d3dfba21411c67c8f41686b83e7e471",
       "market": "cn",
       "missing_symbols": [],
       "not_yet_applicable_symbols": [],
@@ -324,19 +324,19 @@
   "contract_id": "model_data_bundle_v1",
   "contract_path": "configs/data_contracts/model_data_bundle_v1.yaml",
   "contract_sha256": "a4f7d3e352adcd994e74e1152e27a9a241ea307c04578b6f1ca2258fa81b7ac5",
-  "evidence_cutoff": "2026-11-11",
+  "evidence_cutoff": "2026-11-12",
   "frontend_indexes": {
     "data_components": {
       "path": "data-components.json",
-      "sha256": "57499460086c5e91d05e5d2f0b5a33c8009feb5c8a0c5d4fcf2834eea060b11d"
+      "sha256": "6420a27cfa061146e5b8a67060ab72b283f5c2cf0f963b4dc463d0e50c86affe"
     },
     "model_data_readiness": {
       "path": "model-data-readiness.json",
-      "sha256": "ab500f2f81e2dce21ec128a4aa81a628bfa905f3d6da5320ffd97189d1412a33"
+      "sha256": "b914b6d1d1a2dac5443edb90b1a6768bf1a344b67887df525d1c6641835574ac"
     },
     "training_profiles": {
       "path": "training-profiles.json",
-      "sha256": "a45f754a3fbe56f89a1e89dc9e744fa410fb3605bd1e86ee4940d90fbef7d1f7"
+      "sha256": "cf1d3195040cf35c8a8df3b8c3ca4d4ae3f07c52ccfdb188fb7c07c6f706794e"
     }
   },
   "research_only": true,
@@ -344,7 +344,7 @@
   "source_receipts": [
     {
       "path": "sources/governed-source-receipt.json",
-      "sha256": "259239d70400c3942cee0b6e21021e3388631409c356decb85bb58ac06db5b14",
+      "sha256": "a294d593bd320332922720e25f7148ee2aa937438b6ba0c2df8efae9db749ebc",
       "source_ids": [
         "cn_alpha158",
         "cn_events",
@@ -400,23 +400,23 @@
             "coverage_ratio": 1.0,
             "details": {
               "benchmark": "000300",
-              "candidate_observation_cutoff": "2026-11-11",
+              "candidate_observation_cutoff": "2026-11-12",
               "candidate_observation_start": "2026-04-16",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "47917d4b3faa540ffd665ee0b9d1d46605efde342b993ecd75f87ef68c4efe58",
-              "requested_cutoff": "2026-11-11",
-              "retained_common_history_end": "2026-11-11",
+              "provider_identity_sha256": "149375c6caf5829abfc867d3d687835d3227b6190c9ed3a31c95c4c364f33ee6",
+              "requested_cutoff": "2026-11-12",
+              "retained_common_history_end": "2026-11-12",
               "source_status": "selected_pool_price_refresh_ready",
               "terminal_history_symbols": []
             },
-            "evidence_cutoff": "2026-11-11",
+            "evidence_cutoff": "2026-11-12",
             "expected_symbol_count": 130,
             "first_date": "2026-04-16",
             "invalid_symbols": [],
-            "last_date": "2026-11-11",
+            "last_date": "2026-11-12",
             "manifest_path": "components/cn-selected-pool-prices.json",
-            "manifest_sha256": "86c05d9b5fae7b07c48e062b37022c822e1551eb646af7b5280db0bde43ed25e",
+            "manifest_sha256": "3eff588340319148a216ffa2846f18cc8d3dfba21411c67c8f41686b83e7e471",
             "market": "cn",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -507,23 +507,23 @@
             "coverage_ratio": 1.0,
             "details": {
               "benchmark": "000300",
-              "candidate_observation_cutoff": "2026-11-11",
+              "candidate_observation_cutoff": "2026-11-12",
               "candidate_observation_start": "2026-04-16",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "47917d4b3faa540ffd665ee0b9d1d46605efde342b993ecd75f87ef68c4efe58",
-              "requested_cutoff": "2026-11-11",
-              "retained_common_history_end": "2026-11-11",
+              "provider_identity_sha256": "149375c6caf5829abfc867d3d687835d3227b6190c9ed3a31c95c4c364f33ee6",
+              "requested_cutoff": "2026-11-12",
+              "retained_common_history_end": "2026-11-12",
               "source_status": "selected_pool_price_refresh_ready",
               "terminal_history_symbols": []
             },
-            "evidence_cutoff": "2026-11-11",
+            "evidence_cutoff": "2026-11-12",
             "expected_symbol_count": 130,
             "first_date": "2026-04-16",
             "invalid_symbols": [],
-            "last_date": "2026-11-11",
+            "last_date": "2026-11-12",
             "manifest_path": "components/cn-selected-pool-prices.json",
-            "manifest_sha256": "86c05d9b5fae7b07c48e062b37022c822e1551eb646af7b5280db0bde43ed25e",
+            "manifest_sha256": "3eff588340319148a216ffa2846f18cc8d3dfba21411c67c8f41686b83e7e471",
             "market": "cn",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -573,23 +573,23 @@
             "coverage_ratio": 1.0,
             "details": {
               "benchmark": "000300",
-              "candidate_observation_cutoff": "2026-11-11",
+              "candidate_observation_cutoff": "2026-11-12",
               "candidate_observation_start": "2026-04-16",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "47917d4b3faa540ffd665ee0b9d1d46605efde342b993ecd75f87ef68c4efe58",
-              "requested_cutoff": "2026-11-11",
-              "retained_common_history_end": "2026-11-11",
+              "provider_identity_sha256": "149375c6caf5829abfc867d3d687835d3227b6190c9ed3a31c95c4c364f33ee6",
+              "requested_cutoff": "2026-11-12",
+              "retained_common_history_end": "2026-11-12",
               "source_status": "selected_pool_price_refresh_ready",
               "terminal_history_symbols": []
             },
-            "evidence_cutoff": "2026-11-11",
+            "evidence_cutoff": "2026-11-12",
             "expected_symbol_count": 130,
             "first_date": "2026-04-16",
             "invalid_symbols": [],
-            "last_date": "2026-11-11",
+            "last_date": "2026-11-12",
             "manifest_path": "components/cn-selected-pool-prices.json",
-            "manifest_sha256": "86c05d9b5fae7b07c48e062b37022c822e1551eb646af7b5280db0bde43ed25e",
+            "manifest_sha256": "3eff588340319148a216ffa2846f18cc8d3dfba21411c67c8f41686b83e7e471",
             "market": "cn",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -1019,12 +1019,12 @@
             "component_kind": "fundamental_coverage",
             "coverage_ratio": 0.9885057471264368,
             "details": {
-              "coverage_byte_size": 57753,
+              "coverage_byte_size": 57759,
               "coverage_path": "fundamentals/coverage.json",
-              "coverage_sha256": "53c29f3e828f224bfc28b1f0f8d6581f62657d974edc0d745cecbd4265f1d126",
-              "events_byte_size": 59266410,
+              "coverage_sha256": "b07cb6ef819fd80cb17efcafd2d20b1d51071e78852ef7badfebd0581598b12b",
+              "events_byte_size": 60172344,
               "events_path": "fundamentals/events.jsonl",
-              "events_sha256": "a8581c0f199e374816c4d5e1ca4a2f36f7b5d22365a8c41ac952403ba61dea74",
+              "events_sha256": "073aca0067674dacf8f421f13fe8c05425c875c88ba4c77aa05bc04a8592ac03",
               "explicit_status_count": 87,
               "status_counts": {
                 "conflict": 0,
@@ -1035,13 +1035,13 @@
                 "ready": 86
               }
             },
-            "evidence_cutoff": "2026-09-30",
+            "evidence_cutoff": "2026-11-10",
             "expected_symbol_count": 87,
             "first_date": "2009-06-04",
             "invalid_symbols": [],
-            "last_date": "2026-09-30",
+            "last_date": "2026-11-10",
             "manifest_path": "sources/us_events/fundamentals/component_manifest.json",
-            "manifest_sha256": "45a82feafdb2e5c55eea06cc179008c7427fa532f3dbdf450010b0c8f865cb1c",
+            "manifest_sha256": "4a3c0e92d33707faacf70a346c00213d7f25851fb8049e517ca790e559908c78",
             "market": "us",
             "missing_symbols": [
               "SBGSY"
@@ -1076,12 +1076,12 @@
             "component_kind": "corporate_action_coverage",
             "coverage_ratio": 1.0,
             "details": {
-              "coverage_byte_size": 44649,
+              "coverage_byte_size": 44651,
               "coverage_path": "corporate_actions/coverage.json",
-              "coverage_sha256": "b36a3d8fc267214dfaac331ef7c26aa08abc9004c3a3eea788915166a317b1f0",
-              "events_byte_size": 3248862,
+              "coverage_sha256": "ab9435557e4c1bdd65f30ecae2f11e33494336d16b04a3f8c0aa3e484d8a0b66",
+              "events_byte_size": 3261558,
               "events_path": "corporate_actions/events.jsonl",
-              "events_sha256": "c596b57491f9a0a18bbafb5ea850863ee7d9162699a8f9e8e42b4afd8aef3eb1",
+              "events_sha256": "acc2865604563bb4500f8427ba703c4a2900becb6b5027840df5bf096fa7f42e",
               "explicit_status_count": 87,
               "status_counts": {
                 "conflict": 0,
@@ -1092,13 +1092,13 @@
                 "ready": 65
               }
             },
-            "evidence_cutoff": "2026-09-30",
+            "evidence_cutoff": "2026-11-10",
             "expected_symbol_count": 87,
             "first_date": "1962-02-06",
             "invalid_symbols": [],
-            "last_date": "2026-09-30",
+            "last_date": "2026-11-10",
             "manifest_path": "sources/us_events/corporate_actions/component_manifest.json",
-            "manifest_sha256": "97bf40cd1c05eb8342a37a31dbee8150d57457bdcac4714bc531756275fc18c3",
+            "manifest_sha256": "5309f0c7fc9d688e3b638c14e4c47de16e459518a72b1f0f15d66cdc961c003a",
             "market": "us",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
