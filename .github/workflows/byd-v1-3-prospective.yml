@@ -86,6 +86,14 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/data/byd_canonical_v1
           tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
+          # Rebuild on top of the accepted store so sealed observations keep
+          # their exact bytes. Every date is still recomputed from immutable
+          # sources; a material drift raises before any new tail is appended.
+          mkdir -p artifacts/research
+          cp -R data/research/byd_recovery_event_prospective artifacts/research/
+          if [[ -d data/research/byd_v1_3_low_vol_prospective ]]; then
+            cp -R data/research/byd_v1_3_low_vol_prospective artifacts/research/
+          fi
           uv run python scripts/run_byd_recovery_event_prospective.py \
             --baseline-dir artifacts/data/byd_canonical_v1 \
             --byd-store data/research/byd_prospective_shadow \
