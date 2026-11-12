@@ -246,36 +246,34 @@
         "observed": {
           "component_id": "fundamentals.cn_selected_equities_v3",
           "component_kind": "fundamental_coverage",
-          "coverage_ratio": 0.9769230769230769,
+          "coverage_ratio": 0.9923076923076923,
           "details": {
-            "coverage_byte_size": 85622,
+            "coverage_byte_size": 85781,
             "coverage_path": "fundamentals/coverage.json",
-            "coverage_sha256": "cd4aa93b1413ba2f68a498103a91200859d00c92eaeb58b962d0a4abbb3d0bf2",
-            "events_byte_size": 17344963,
+            "coverage_sha256": "9c650b4184f32a01784fc17016069938a48797acbfeb542e815fb7aa7298c7bc",
+            "events_byte_size": 18270392,
             "events_path": "fundamentals/events.jsonl",
-            "events_sha256": "1cf3eaf872ff054d4910aec2ecb0d1dc19c55db0f0944f193c619d078daf7dbe",
+            "events_sha256": "6dacce72a33cce347a6e99c8a714bfbf5ee38a94c1b6791159b6d806b8028dd1",
             "explicit_status_count": 130,
             "status_counts": {
               "conflict": 0,
               "identity_missing": 0,
               "no_event_observed": 0,
               "partial": 0,
-              "provider_missing": 3,
-              "ready": 127
+              "provider_missing": 1,
+              "ready": 129
             }
           },
-          "evidence_cutoff": "2026-09-04",
+          "evidence_cutoff": "2026-11-10",
           "expected_symbol_count": 130,
           "first_date": "2021-02-03",
           "invalid_symbols": [],
-          "last_date": "2026-09-01",
+          "last_date": "2026-11-01",
           "manifest_path": "sources/cn_events/fundamentals/component_manifest.json",
-          "manifest_sha256": "3f31cc5e1968bd28810a9493cb51e95eec1598832f645b3ce425d557c1f6718b",
+          "manifest_sha256": "b6af836a78738003b20d7749492ea4a1415ae7be54058e7883131c91a949a655",
           "market": "cn",
           "missing_symbols": [
-            "301309",
-            "301666",
-            "600276"
+            "301309"
           ],
           "not_yet_applicable_symbols": [],
           "pool_id": "cn_selected_equities_v3",
@@ -284,7 +282,7 @@
             "AKSHARE_SINA_FINANCIAL_REPORT_CNINFO_TIME"
           ],
           "quarantined_symbols": [],
-          "ready_symbol_count": 127,
+          "ready_symbol_count": 129,
           "research_only": true,
           "status": "partial",
           "trade_ready": false
@@ -307,12 +305,12 @@
           "component_kind": "corporate_action_coverage",
           "coverage_ratio": 1.0,
           "details": {
-            "coverage_byte_size": 72440,
+            "coverage_byte_size": 72442,
             "coverage_path": "corporate_actions/coverage.json",
-            "coverage_sha256": "e32a13c3ec0fe20dd24fab9d707e171fd4d6a333c6da0962cd88c56e29f8e6bc",
-            "events_byte_size": 2704686,
+            "coverage_sha256": "3d6dbe8908612d89fb4f41b3b2f27f5768c8b3e81b88985dbfd2fc21c714762b",
+            "events_byte_size": 2743103,
             "events_path": "corporate_actions/events.jsonl",
-            "events_sha256": "5602eca95056b8773cdff4463c1c9d51fa79ee116ca1aee3eaa42fbcd12c5a65",
+            "events_sha256": "0ad0ea795d975d3c60fe2b676e9871441a2b07b47023d3ab66e339ff957ab5e4",
             "explicit_status_count": 130,
             "status_counts": {
               "conflict": 0,
@@ -323,13 +321,13 @@
               "ready": 128
             }
           },
-          "evidence_cutoff": "2026-09-04",
+          "evidence_cutoff": "2026-11-10",
           "expected_symbol_count": 130,
           "first_date": "1991-03-03",
           "invalid_symbols": [],
-          "last_date": "2026-09-03",
+          "last_date": "2026-11-10",
           "manifest_path": "sources/cn_events/corporate_actions/component_manifest.json",
-          "manifest_sha256": "3941c5da17211e7560bbf86037f8bfb0293b6aa61a53778060dac191562d2c8a",
+          "manifest_sha256": "8efff0a173f0c3d495c25292185975a2753a10bf87a5a4322ae061d83b8a05bd",
           "market": "cn",
           "missing_symbols": [],
           "not_yet_applicable_symbols": [],
