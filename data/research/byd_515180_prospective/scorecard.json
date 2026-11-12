@@ -22,7 +22,7 @@
   "market_states": [
     "bear"
   ],
-  "observation_count": 66,
+  "observation_count": 67,
   "prospective_days": 73,
   "prospective_eligible_observation_count": 10,
   "re_evaluation_gate": {
