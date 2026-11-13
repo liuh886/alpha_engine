@@ -114,6 +114,22 @@ describe('DailyResearchBrief', () => {
     expect(openAccount).toHaveBeenCalledOnce();
   });
 
+  it('says the review state is unverified when access is restricted without changing permitted reviews', () => {
+    vi.mocked(useAccessControl).mockReturnValue({ policyLoading: false, requiredTier: () => 'pro',
+      canAccess: () => false, openAccount } as unknown as ReturnType<typeof useAccessControl>);
+    const privateSnapshot = parseStrategyOperationsSnapshot({ ...record, as_of: '2026-10-15',
+      latest_completed_session: '2026-10-15', decision_reason: 'PRIVATE decision' });
+    const props = { runs: [run], snapshots: new Map([['qqq', privateSnapshot]]), loading: false, reload };
+    const { rerender } = render(<MemoryRouter><DailyResearchBrief {...props} /></MemoryRouter>);
+    const locked = screen.getByRole('article', { name: 'QQQR v4.3 daily observation' });
+    expect(within(locked).getByText('Review: Review state not verified')).toBeInTheDocument();
+    expect(within(locked).queryByText(/Scheduled cadence/)).not.toBeInTheDocument();
+    vi.mocked(useAccessControl).mockReturnValue({ policyLoading: false, requiredTier: () => 'public',
+      canAccess: () => true, openAccount } as unknown as ReturnType<typeof useAccessControl>);
+    rerender(<MemoryRouter><DailyResearchBrief {...props} /></MemoryRouter>);
+    expect(within(screen.getByRole('article', { name: 'QQQR v4.3 daily observation' })).getByText('Review: Scheduled cadence')).toBeInTheDocument();
+  });
+
   it('dates a locked periodic target separately from its daily observation', () => {
     const snapshot = parseStrategyOperationsSnapshot({ ...record, evaluation_changed: false,
       decision_schedule: { signal_date: '2026-09-17', completed_through: '2026-09-30',
