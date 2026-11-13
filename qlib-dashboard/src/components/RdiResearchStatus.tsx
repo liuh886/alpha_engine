@@ -34,12 +34,12 @@ export function RdiResearchStatus({ attempt }: { attempt: number }) {
   const retry = () => { if (current) setRetryAttempt(value => value + 1); };
   const readLabel = !current ? 'Reading RDI…' : !briefing || briefing.status === 'evidence_mismatch' ? 'Retry RDI' : 'Refresh RDI';
 
-  return <section className="min-w-0 overflow-hidden rounded-xl border bg-card" aria-labelledby="rdi-title" aria-busy={!current}>
-    <header className="border-b p-4 sm:px-6 sm:py-5">
+  return <section className="ae-surface min-w-0 overflow-hidden" aria-labelledby="rdi-title" aria-busy={!current}>
+    <header className="border-b border-border/70 p-4 sm:px-6 sm:py-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">A-share risk research</p><h2 id="rdi-title" tabIndex={-1} className="mt-1 scroll-mt-4 text-xl font-semibold tracking-tight">Risk density · RDI</h2></div>
+        <div><p className="ae-kicker">A-share risk research</p><h2 id="rdi-title" tabIndex={-1} className="mt-1 scroll-mt-4 text-xl font-semibold tracking-tight">Risk density · RDI</h2></div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">Not validated</span>
+          <span className="ae-chip border-warning/30 bg-warning/10 text-warning">Not validated</span>
           <Button variant="outline" aria-disabled={!current} onClick={retry} className="aria-disabled:cursor-wait aria-disabled:opacity-60">{readLabel}</Button>
         </div>
       </div>
@@ -51,15 +51,15 @@ export function RdiResearchStatus({ attempt }: { attempt: number }) {
       </div> : <>
         <div className="border-b bg-muted/20 px-4 py-3 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">Research Question</span>
+            <span className="ae-chip border-primary/25 bg-primary/10 text-primary">Research Question</span>
             <p className="text-xs font-semibold text-foreground">Can known event clusters explain systematic tail risk in A-shares without lookahead bias?</p>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">Evaluating whether historical event concentrations correlate with forward loss frequency over 7, 14, and 28 exchange sessions.</p>
         </div>
         <div className="grid gap-6 p-4 sm:p-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)]">
           <div className="min-w-0 space-y-5">
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-800 dark:text-amber-300">Current assessment</p>
+            <div className="rounded-lg border border-warning/30 bg-warning/5 p-4">
+              <p className="ae-kicker text-warning">Current assessment</p>
               <h3 className="mt-2 text-lg font-semibold tracking-tight">Risk assessment unavailable</h3>
               <p className="mt-2 text-sm text-muted-foreground">Event coverage and predictive usefulness need separate validation. Missing events cannot mean zero risk. No RDI score or forecast is published.</p>
             </div>
@@ -74,7 +74,7 @@ export function RdiResearchStatus({ attempt }: { attempt: number }) {
               <p className="mt-2 text-sm">Certify a narrow event history, verify prices and exchange sessions through the study period, then test across independent market episodes.</p>
             </div>
           </div>
-          {briefing.status === 'evidence_mismatch' ? <div className="min-w-0 rounded-lg border bg-muted/20 p-5">
+          {briefing.status === 'evidence_mismatch' ? <div className="ae-surface-muted min-w-0 p-5">
             <h3 className="font-semibold">Historical comparison withheld</h3>
             <p role="alert" className="mt-2 text-sm text-muted-foreground">Source evidence has changed or is inconsistent. Historical statistics are hidden until the review is renewed.</p>
           </div> : <RdiHistoricalComparison rows={briefing.historical_comparison} priceCutoff={briefing.reviewed_price_cutoff}
