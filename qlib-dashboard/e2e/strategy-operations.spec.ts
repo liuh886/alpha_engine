@@ -583,7 +583,7 @@ test('overview brief explains the last evaluation and retains its actual dates',
   const brief = page.getByRole('region', { name: 'Daily research brief' });
   const row = brief.getByRole('article', { name: 'QQQR v4.3 daily observation' });
   await expect(brief.getByRole('article')).toHaveCount(3);
-  await expect(page.getByRole('region', { name: 'Formal strategy snapshot' }).getByRole('link', { name: /Inspect evidence/ })).toHaveCount(4);
+  await expect(page.getByRole('region', { name: 'Model ranking' }).getByRole('link', { name: /Inspect evidence/ })).toHaveCount(4);
   await expect(row.getByText('Changed at last evaluation', { exact: true })).toBeVisible();
   await expect(row.getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
   await expect(row.getByText('Observed 2026-07-31 · target dated 2026-07-31', { exact: false })).toBeVisible();

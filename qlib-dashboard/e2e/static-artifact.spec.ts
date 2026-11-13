@@ -86,7 +86,7 @@ test('the homepage opens daily research and reads only the formal operating surf
   const errors: string[] = [], retiredRequests: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => {
-    if (/\/bundle\/|\/data\/model-runs\/|\/data\/market-evidence\//.test(request.url())) retiredRequests.push(request.url());
+    if (/\/bundle\/|\/data\/model-runs\//.test(request.url())) retiredRequests.push(request.url());
   });
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
   await page.goto('/');
@@ -95,9 +95,16 @@ test('the homepage opens daily research and reads only the formal operating surf
   const brief = page.getByRole('region', { name: 'Daily research brief' });
   const names = await loadFormalDisplayNames(page);
   await expect(brief.getByRole('article')).toHaveCount(Math.min(3, names.length));
-  const snapshot = page.getByRole('region', { name: 'Formal strategy snapshot' });
-  await expect(snapshot.getByRole('link', { name: /Inspect evidence/ })).toHaveCount(names.length);
-  for (const name of names) await expect(snapshot.getByText(name, { exact: true })).toBeVisible();
+  const ranking = page.getByRole('region', { name: 'Model ranking' });
+  await expect(ranking.getByRole('link', { name: /Inspect evidence/ })).toHaveCount(names.length);
+  for (const name of names) await expect(ranking.getByText(name, { exact: true })).toBeVisible();
+  const markets = page.getByRole('region', { name: 'Benchmark markets' });
+  await expect(markets.getByTestId('benchmark-card-us')).toContainText('QQQ');
+  await expect(markets.getByTestId('benchmark-card-cn')).toContainText('CSI 300');
+  const sp500 = markets.getByTestId('benchmark-card-sp500');
+  await expect(sp500).toContainText('Not governed');
+  await expect(sp500.locator('svg')).toHaveCount(0);
+  await expect(markets.locator('[data-testid="sparkline"]')).toHaveCount(2);
   if (testInfo.project.name === 'mobile') await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('tab')).toHaveCount(4);
   else await expect(page.getByRole('navigation', { name: 'Research workspace navigation' }).getByRole('link')).toHaveCount(4);
   expect(retiredRequests).toEqual([]);
@@ -138,56 +145,83 @@ test('pending catalog and operations reads show verification rather than empty o
   }
 });
 
-test('fleet periods retain visible evidence windows and do not promote expired returns', async ({ page }, testInfo) => {
+test('fleet horizons disclose retained coverage, per-row as-of dates and stale evidence', async ({ page }, testInfo) => {
   const errors: string[] = [];
+  const extraSections: string[] = [];
+  const retiredRequests: string[] = [];
+  const marketEvidence: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => {
+    const path = new URL(request.url()).pathname;
+    if (/\/bundle\//.test(path) || path.includes('/data/model-runs/')) retiredRequests.push(path);
+    if (path.includes('/data/market-evidence/')) marketEvidence.push(path);
+    if (path.includes('/data/formal-model-runs/')
+      && /\/(performance|risk|robustness|portfolio|trades|attribution|diagnostics|lineage)\.json$/.test(path)) extraSections.push(path);
+  });
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
   await page.goto('/#/strategies');
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
-  await expect(fleet.getByRole('article')).toHaveCount(4);
+  await expect(fleet.locator('tr[data-kind="strategy"]')).toHaveCount(4);
+  await expect(fleet.locator('tr[data-kind="index"]')).toHaveCount(2);
+
   const catalog = await (await page.request.get('/data/formal-model-runs/catalog.json')).json() as FormalCatalog;
   const sources = await Promise.all((catalog.records ?? []).map(async record => {
     const base = '/data/formal-model-runs/' + String(record.manifest_path).replace(/manifest\.json$/, '');
-    const manifest = await (await page.request.get(base + 'manifest.json')).json() as FormalManifest;
-    const summaryPath = manifest.sections?.find(section => section.section_id === 'summary')?.path;
-    const performancePath = manifest.sections?.find(section => section.section_id === 'performance')?.path;
-    const summary = await (await page.request.get(base + summaryPath)).json() as { metrics: Array<{ metric_id: string; availability_status: string; unavailable_reason?: string }> };
-    const performance = await (await page.request.get(base + performancePath)).json() as { report: Array<{ date: string; holding_end_date?: string }>; public_evidence_context?: { total_return_window: { start: string; end: string; sample_count: number } } };
-    const row = fleet.getByTestId('fleet-' + record.model_version_id);
-    const sourceWindow = performance.public_evidence_context?.total_return_window;
-    await expect(row.locator('[data-testid="fleet-window"]:visible')).toContainText(sourceWindow
-      ? `Source return window ${sourceWindow.start} – ${sourceWindow.end}`
-      : `Declared run window ${manifest.comparability_key?.start} – ${manifest.comparability_key?.end}`);
-    expect(await row.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(2);
-    const excess = summary.metrics.find(metric => metric.metric_id === 'excess_return');
-    if (excess?.availability_status !== 'available') {
-      await expect(row).toContainText('Excess unavailable:');
-      if (excess?.unavailable_reason) await expect(row).toContainText(excess.unavailable_reason);
-    }
-    return { record, performance };
+    const navResponse = await page.request.get(base + 'nav.json');
+    expect(navResponse.ok()).toBeTruthy();
+    const nav = await navResponse.json() as {
+      evidence_cutoff: string;
+      rows: Array<{ date: string; account: number }>;
+    };
+    const last = nav.rows[nav.rows.length - 1];
+    expect(last?.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const staleDays = Math.round((Date.parse(`${nav.evidence_cutoff}T00:00:00Z`) - Date.parse(`${last.date}T00:00:00Z`)) / 86_400_000);
+    return { record, last: last.date, staleDays };
   }));
-  await fleet.getByRole('button', { name: '1M', exact: true }).click();
-  await expect(fleet.getByRole('note')).toContainText('Drawdown uses retained wealth marks');
-  for (const { record, performance } of sources) {
-    const row = fleet.getByTestId('fleet-' + record.model_version_id);
-    const last = performance.report[performance.report.length - 1];
-    const end = last.holding_end_date ?? last.date;
-    const cutoff = new Date(String(record.evidence_cutoff) + 'T00:00:00Z');
-    const day = cutoff.getUTCDate();
-    cutoff.setUTCDate(1); cutoff.setUTCMonth(cutoff.getUTCMonth() - 1);
-    cutoff.setUTCDate(Math.min(day, new Date(Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth() + 1, 0)).getUTCDate()));
-    const expired = end <= cutoff.toISOString().slice(0, 10);
-    await expect(row.locator('[data-testid="fleet-window"]:visible')).toContainText(`– ${end}`);
-    expect(await row.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(2);
-    expect(await row.locator('[data-testid="fleet-window"]:visible').evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(2);
-    await expect(row).toHaveAttribute('data-window-status', expired ? 'expired' : 'observed');
-    if (expired) {
-      await expect(row).toContainText('Window expired');
-      await expect(row).toContainText('Period metrics unavailable:');
-      expect(await row.getByTestId('fleet-return').allTextContents()).toEqual(['—', '—']);
+
+  for (const { record, last, staleDays } of sources) {
+    const id = String(record.model_version_id);
+    const row = fleet.getByTestId('fleet-' + id);
+    await expect(row).toBeVisible();
+    await expect(row).toContainText(`As of ${last}`);
+    await expect(row).toHaveAttribute('data-stale', staleDays > 14 ? 'true' : 'false');
+    if (staleDays > 14) {
+      await expect(row.getByTestId('stale-' + id)).toContainText(`Stale · ${staleDays}d behind cutoff`);
     }
+    for (const period of ['1w', '1m', '3m', '1y', '2y', '3y']) {
+      const cell = row.getByTestId(`cell-${id}-${period}`);
+      await expect(cell).toBeVisible();
+      await expect(cell).toHaveText(/—|[+-]\d+\.\d%/);
+    }
+    expect(await row.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(2);
+  }
+
+  for (const label of ['1W', '1M', '3M', '1Y', '2Y', '3Y']) {
+    const button = fleet.getByRole('button', { name: label, exact: true });
+    await button.click();
+    await expect(fleet.getByRole('columnheader', { name: label, exact: true })).toHaveAttribute('aria-sort', 'descending');
   }
   await expect(fleet.getByText(/[-+]0\.0%/)).toHaveCount(0);
+
+  const cn = sources.find(source => String(source.record.model_version_id).startsWith('cn_27'));
+  expect(cn).toBeTruthy();
+  expect(cn!.staleDays).toBeGreaterThan(14);
+  await expect(fleet.getByTestId('fleet-' + cn!.record.model_version_id))
+    .toContainText(`Stale · ${cn!.staleDays}d behind cutoff`);
+  await expect(fleet.getByTestId('fleet-' + cn!.record.model_version_id)).toContainText(`As of ${cn!.last}`);
+
+  const us = sources.find(source => String(source.record.model_version_id).startsWith('us_x'));
+  expect(us).toBeTruthy();
+  const usWeek = fleet.getByTestId('fleet-' + us!.record.model_version_id).getByTestId(`cell-${us!.record.model_version_id}-1w`);
+  await expect(usWeek).toContainText('—');
+  await expect(usWeek).toHaveAttribute('title', /no measured return is shown|denser series/);
+
+  await expect(fleet.getByTestId('ranking-index-us-QQQ').getByRole('link', { name: /Price history/ }))
+    .toHaveAttribute('href', /\/securities\/us\/QQQ$/);
+  await expect(fleet.getByTestId('ranking-index-cn-000300')).toContainText('CSI 300');
+  expect(marketEvidence).not.toEqual([]);
+  expect(extraSections).toEqual([]);
+  expect(retiredRequests).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
   expect(errors).toEqual([]);
   await fleet.scrollIntoViewIfNeeded();
@@ -201,12 +235,12 @@ test('strategy navigation reuses verified formal sections without loading them o
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => {
     const path = new URL(request.url()).pathname;
-    if (path.includes('/data/market-evidence/')) retiredRequests.push(path);
+    if (/\/bundle\//.test(path) || path.includes('/data/model-runs/')) retiredRequests.push(path);
     if (path.includes('/data/formal-model-runs/') && /\/(performance|risk|robustness|portfolio|trades|attribution|diagnostics|lineage)\.json$/.test(path)) sections.push(path);
   });
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
   await page.goto('/#/strategies');
-  const strategy = page.getByRole('region', { name: 'Formal strategy fleet' }).getByRole('button', { name: 'Open QQQR v4.3 strategy detail', exact: true }).first();
+  const strategy = page.getByRole('region', { name: 'Formal strategy fleet' }).getByRole('link', { name: 'QQQR v4.3', exact: true }).first();
   await expect(strategy).toBeVisible();
   expect(sections).toHaveLength(0);
   await strategy.click();

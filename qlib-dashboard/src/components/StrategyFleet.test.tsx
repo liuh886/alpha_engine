@@ -1,375 +1,197 @@
-import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadRunSection } from '@/lib/governed-run';
+import { useModelRanking } from '@/hooks/useModelRanking';
 import { StrategyFleet } from './StrategyFleet';
 import type { GovernedRunSummary } from '@/lib/governed-run';
+import {
+  indexRowsFromBars,
+  strategyRowsFromNav,
+  type ModelRankingRow,
+} from '@/lib/model-ranking';
+import type { SecurityBar } from '@/lib/security-evidence';
 import type { StrategyOperationsSnapshot } from '@/lib/strategy-operations';
+import type { ReportRow } from '@/lib/types';
 
-vi.mock('@/lib/governed-run', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/governed-run')>(), loadRunSection: vi.fn() }));
+vi.mock('@/hooks/useModelRanking', () => ({ useModelRanking: vi.fn() }));
 
-vi.mock('@/hooks/useAccessControl', () => ({
-  useAccessControl: () => ({
-    requiredTier: () => 'public',
-    canAccess: () => true,
-    policyLoading: false,
-  }),
-}));
-
-const mockRuns: GovernedRunSummary[] = [
-  {
+function run(overrides: Partial<GovernedRunSummary> = {}): GovernedRunSummary {
+  return {
     key: 'us_x1_3',
-    modelFamilyId: 'us_ranker',
+    modelFamilyId: 'us_x',
     modelVersionId: 'us_x1_3',
     runId: 'us_x1_3-formal',
-    bundleId: 'bundle-us',
+    bundleId: 'b'.repeat(64),
     title: 'US x1.3',
     modelKind: 'cross_sectional_ranker',
     channel: 'formal',
     publicationStatus: 'accepted_formal_baseline',
     market: 'us',
     benchmark: 'QQQ',
-    generatedAt: '2026-09-09',
-    evidenceCutoff: '2026-09-09',
+    generatedAt: '2026-11-12',
+    evidenceCutoff: '2026-11-11',
     evidenceStatus: 'complete',
     decisionStatus: 'supported',
-    manifestPath: null,
-    manifestSha256: null,
-    summary: {
-      metrics: [
-        {
-          metric_id: 'total_return',
-          value: 0.25,
-          availability_status: 'available',
-        },
-        {
-          metric_id: 'excess_return',
-          value: 0.1,
-          availability_status: 'available',
-        },
-        {
-          metric_id: 'max_drawdown',
-          value: -0.15,
-          availability_status: 'available',
-        },
-        {
-          metric_id: 'sharpe_ratio',
-          value: 1.25,
-          availability_status: 'available',
-        },
-      ],
-    },
+    manifestPath: 'us_x/manifest.json',
+    manifestSha256: 'a'.repeat(64),
+    summary: { metrics: [] },
     manifest: null,
     loadWarnings: [],
-  },
-  {
-    key: 'byd_v1_3',
-    modelFamilyId: 'byd_allocation',
-    modelVersionId: 'byd_v1_3',
-    runId: 'byd_v1_3-formal',
-    bundleId: 'bundle-cn',
-    title: 'BYD v1.3',
-    modelKind: 'rules_based_allocation',
-    channel: 'formal',
-    publicationStatus: 'accepted_formal_baseline',
-    market: 'cn',
-    benchmark: 'BYD v1.2',
-    generatedAt: '2026-09-09',
-    evidenceCutoff: '2026-09-09',
-    evidenceStatus: 'complete',
-    decisionStatus: 'supported',
-    manifestPath: null,
-    manifestSha256: null,
-    summary: {
-      metrics: [
-        {
-          metric_id: 'total_return',
-          value: 0.45,
-          availability_status: 'available',
-        },
-        {
-          metric_id: 'excess_return',
-          value: 0.08,
-          availability_status: 'available',
-        },
-        {
-          metric_id: 'max_drawdown',
-          value: -0.2,
-          availability_status: 'available',
-        },
-        {
-          metric_id: 'sharpe_ratio',
-          value: 0.95,
-          availability_status: 'available',
-        },
-      ],
-    },
-    manifest: null,
-    loadWarnings: [],
-  },
+    ...overrides,
+  };
+}
+
+const US_RUN = run();
+const CN_RUN = run({
+  key: 'cn_27_v1_3',
+  modelFamilyId: 'cn_27',
+  modelVersionId: 'cn_27_v1_3',
+  runId: 'cn_27_v1_3-formal',
+  title: 'CN_27 V1.3',
+  market: 'cn',
+  benchmark: '000300',
+  evidenceCutoff: '2026-11-12',
+});
+
+function nav(points: Array<[string, number]>): ReportRow[] {
+  return points.map(([date, account]) => ({ date, account }));
+}
+
+function bar(time: string, close: number): SecurityBar {
+  return { time, open: close, high: close, low: close, close, volume: 1000 };
+}
+
+const ROWS: ModelRankingRow[] = [
+  strategyRowsFromNav(US_RUN, nav([['2026-10-11', 100], ['2026-11-11', 110]]), {
+    excess: { value: 0.25, source: 'retained', label: 'retained', basis: 'Retained formal excess metric.' },
+  })[0],
+  strategyRowsFromNav(CN_RUN, nav([['2023-09-01', 100], ['2026-09-04', 140]]), {
+    excess: { value: null, source: 'unavailable', label: 'Excess unavailable', basis: '', reason: 'Not retained.' },
+  })[0],
+  indexRowsFromBars('us', 'QQQ', 'QQQ', [
+    bar('2026-11-04', 110), bar('2026-11-06', 116), bar('2026-11-11', 121),
+  ], '2026-11-12')[0],
+  indexRowsFromBars('cn', '000300', 'CSI 300', [
+    bar('2026-11-04', 3980), bar('2026-11-06', 4010), bar('2026-11-11', 4043.93),
+  ], '2026-11-12')[0],
 ];
 
-const mockSnapshots = new Map<string, StrategyOperationsSnapshot>([
-  [
-    'us_x1_3',
-    {
-      strategyId: 'us_x',
-      modelVersionId: 'us_x1_3',
-      status: 'target_pending_execution',
-      asOf: '2026-09-09',
-      latestCompletedSession: '2026-09-09',
-      decisionCadence: 'Every 10 provider sessions',
-      nextDecision: 'Next rebalance',
-      stateLabel: 'Rebalance target',
-      decisionReason: 'New target exposure',
-      allocations: [
-        { asset: 'AAPL', current: 0.1, target: 0.2, delta: 0.1 },
-      ],
-      turnover: 0.1,
-      estimatedCost: 0.001,
-      dataFreshness: 'current',
-      factorFreshness: 'current',
-      deliveryStatus: 'published',
-      sourceLabel: 'Governed run',
-      sourceHref: null,
-      note: 'New target',
-      factorEvidence: [],
-      sourceIdentity: {
-        formalBundleId: null,
-        formalRunId: null,
-        formalEvidenceCutoff: null,
-        ledgerFingerprint: null,
-        signalSha256: null,
-        factorCatalogImplementationHash: null,
-        workflowRunId: null,
-        commitSha: null,
-        githubIssueNumber: null,
-      },
+function snapshot(overrides: Partial<StrategyOperationsSnapshot> = {}): StrategyOperationsSnapshot {
+  return {
+    strategyId: 'us_x',
+    modelVersionId: 'us_x1_3',
+    status: 'target_pending_execution',
+    asOf: '2026-11-11',
+    latestCompletedSession: '2026-11-11',
+    decisionCadence: 'Every 10 provider sessions',
+    nextDecision: 'Next rebalance',
+    stateLabel: 'Rebalance target',
+    decisionReason: 'New target exposure',
+    allocations: [{ asset: 'AAPL', current: 0.1, target: 0.2, delta: 0.1 }],
+    turnover: 0.1,
+    estimatedCost: 0.001,
+    dataFreshness: 'current',
+    factorFreshness: 'current',
+    deliveryStatus: 'published',
+    sourceLabel: 'Governed run',
+    sourceHref: null,
+    note: 'New target',
+    factorEvidence: [],
+    sourceIdentity: {
+      formalBundleId: null,
+      formalRunId: null,
+      formalEvidenceCutoff: null,
+      ledgerFingerprint: null,
+      signalSha256: null,
+      factorCatalogImplementationHash: null,
+      workflowRunId: null,
+      commitSha: null,
+      githubIssueNumber: null,
     },
-  ],
-  [
-    'byd_v1_3',
-    {
-      strategyId: 'byd',
-      modelVersionId: 'byd_v1_3',
-      status: 'current_no_change',
-      asOf: '2026-09-09',
-      latestCompletedSession: '2026-09-09',
-      decisionCadence: 'Every completed CN session',
-      nextDecision: 'Next eligible session',
-      stateLabel: 'Hold positions',
-      decisionReason: 'Position unchanged',
-      allocations: [
-        { asset: 'BYD', current: 0.75, target: 0.75, delta: 0.0 },
-      ],
-      turnover: 0.0,
-      estimatedCost: 0.0,
-      dataFreshness: 'current',
-      factorFreshness: 'current',
-      deliveryStatus: 'published',
-      sourceLabel: 'Governed run',
-      sourceHref: null,
-      note: 'Hold',
-      factorEvidence: [],
-      sourceIdentity: {
-        formalBundleId: null,
-        formalRunId: null,
-        formalEvidenceCutoff: null,
-        ledgerFingerprint: null,
-        signalSha256: null,
-        factorCatalogImplementationHash: null,
-        workflowRunId: null,
-        commitSha: null,
-        githubIssueNumber: null,
-      },
-    },
-  ],
+    ...overrides,
+  };
+}
+
+const SNAPSHOTS = new Map<string, StrategyOperationsSnapshot>([
+  ['us_x1_3', snapshot()],
+  ['cn_27_v1_3', snapshot({
+    strategyId: 'cn_27',
+    modelVersionId: 'cn_27_v1_3',
+    status: 'stale',
+    decisionReason: 'Observation delayed',
+  })],
 ]);
 
-function renderFleet(runs = mockRuns) {
+function renderFleet(rows = ROWS, issues: Array<{ id: string; kind: 'strategy' | 'index'; message: string }> = []) {
+  vi.mocked(useModelRanking).mockReturnValue({ rows, loading: false, issues });
   return render(
     <MemoryRouter>
-      <StrategyFleet runs={runs} snapshots={mockSnapshots} />
+      <StrategyFleet runs={[US_RUN, CN_RUN]} snapshots={SNAPSHOTS} />
     </MemoryRouter>,
   );
 }
 
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 describe('StrategyFleet', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
-
-  it.each(['2026-09-04', '2026-09-28'])('does not present a window ending %s as current 1M evidence', async end => {
-    vi.mocked(loadRunSection).mockResolvedValue({ report: [
-      { date: '2026-08-04', account: 1 }, { date: end, account: 2 },
-    ] });
-    renderFleet([{ ...mockRuns[0], evidenceCutoff: '2026-10-28' }]);
-    fireEvent.click(screen.getByRole('button', { name: '1M' }));
-    const row = screen.getByTestId('fleet-us_x1_3');
-    await waitFor(() => expect(row).toHaveAttribute('data-window-status', 'expired'));
-    expect(row).toHaveTextContent('Window expired');
-    expect(row).toHaveTextContent(end);
-    expect(row).toHaveTextContent('evidence cutoff 2026-10-28');
-    expect(row).toHaveTextContent('No measured wealth interval after 2026-09-28');
-    expect(row).not.toHaveTextContent('+100.0%');
-    expect(row).not.toHaveTextContent('0.0%');
+  it('renders the shared full-density ranking for strategies and governed indices', () => {
+    renderFleet();
+    expect(screen.getByRole('region', { name: 'Formal strategy fleet' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Excess' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Max DD' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Signal' })).toBeInTheDocument();
+    expect(screen.getAllByTestId(/^fleet-/)).toHaveLength(2);
+    expect(screen.getAllByTestId(/^ranking-index-/)).toHaveLength(2);
+    expect(screen.getByText('2 strategies · 2 governed indices')).toBeInTheDocument();
+    expect(screen.getByLabelText('Market')).toBeInTheDocument();
+    expect(screen.getByLabelText('Signal filter')).toBeInTheDocument();
+    for (const label of ['1W', '1M', '3M', '1Y', '2Y', '3Y']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
   });
 
-  it.each(['invalid', 'future', 'single'])('does not turn %s period evidence into a measured zero return', async damage => {
-    vi.mocked(loadRunSection).mockResolvedValue({ report: damage === 'single'
-      ? [{ date: '2026-10-27', account: 1 }]
-      : [{ date: '2026-09-28', account: 1 }, { date: damage === 'future' ? '2026-10-29' : '2026-10-27', account: 2 }] });
-    renderFleet([{ ...mockRuns[0], evidenceCutoff: damage === 'invalid' ? '2026-02-30' : '2026-10-28' }]);
-    fireEvent.click(screen.getByRole('button', { name: '1M' }));
-    const row = screen.getByTestId('fleet-us_x1_3');
-    await waitFor(() => expect(row).toHaveTextContent('Period metrics unavailable:'));
-    expect(row).toHaveTextContent(damage === 'invalid' ? 'cutoff is invalid' : damage === 'future' ? 'beyond the formal evidence cutoff' : 'Insufficient observations');
-    expect(row).not.toHaveTextContent('0.0%');
-    expect(row).not.toHaveTextContent('+100.0%');
+  it('filters by market without dropping the governed indices of that market', () => {
+    renderFleet();
+    fireEvent.change(screen.getByLabelText('Market'), { target: { value: 'us' } });
+    expect(screen.getByTestId('fleet-us_x1_3')).toBeInTheDocument();
+    expect(screen.getByTestId('ranking-index-us-QQQ')).toBeInTheDocument();
+    expect(screen.queryByTestId('fleet-cn_27_v1_3')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ranking-index-cn-000300')).not.toBeInTheDocument();
+    expect(screen.getByText('1 strategies · 1 governed indices')).toBeInTheDocument();
   });
 
-  it('retains a first measured interval with declared opening wealth but does not compare mismatched benchmark boundaries', async () => {
-    vi.mocked(loadRunSection).mockResolvedValue({ report: [
-      { date: '2026-10-27', account_before: 1, account: 1.1, bench_qqq: 1.2, provisional_mtm: true },
-    ] });
-    renderFleet([{ ...mockRuns[0], evidenceCutoff: '2026-10-28' }]);
-    fireEvent.click(screen.getByRole('button', { name: '1M' }));
-    const row = screen.getByTestId('fleet-us_x1_3');
-    await waitFor(() => expect(row).toHaveTextContent('+10.0%'));
-    expect(row).toHaveTextContent('1 provisional');
-    expect(row).toHaveTextContent('do not retain matching opening boundaries');
-    expect(row).not.toHaveTextContent('Window expired');
-  });
-
-  it('explains a missing source excess without manufacturing a value and removes only displayed signed zero', () => {
-    const reason = 'This source did not retain relative terminal wealth.';
-    renderFleet([{ ...mockRuns[0], summary: { metrics: [
-      { metric_id: 'total_return', value: -0.00001, availability_status: 'available' },
-      { metric_id: 'max_drawdown', value: -0.00001, availability_status: 'available' },
-      { metric_id: 'excess_return', value: null, availability_status: 'not_retained', unavailable_reason: reason },
-    ] } }]);
-    const row = screen.getByTestId('fleet-us_x1_3');
-    expect(row).toHaveTextContent('0.0%');
-    expect(row).not.toHaveTextContent(/[-+]0\.0%/);
-    expect(row).toHaveTextContent(`Excess unavailable: ${reason}`);
-  });
-
-  it('does not divide by zero benchmark wealth or substitute another available benchmark', async () => {
-    vi.mocked(loadRunSection).mockResolvedValue({ report: [
-      { date: '2026-09-28', account: 1, bench_qqq: 1, bench_hs300: 1 },
-      { date: '2026-10-27', account: 1.2, bench_qqq: 0, bench_hs300: 1.1 },
-    ] });
-    renderFleet([{ ...mockRuns[0], evidenceCutoff: '2026-10-28' }]);
-    fireEvent.click(screen.getByRole('button', { name: '1M' }));
-    const row = screen.getByTestId('fleet-us_x1_3');
-    await waitFor(() => expect(row).toHaveTextContent('benchmark QQQ has no valid values'));
-    expect(row).toHaveTextContent('+20.0%');
-    expect(row).not.toHaveTextContent('Infinity');
-  });
-
-  it('invalidates period evidence when the same run key is rebound to a new bundle', async () => {
-    const run = { ...mockRuns[0], evidenceCutoff: '2026-10-28' };
-    vi.mocked(loadRunSection).mockResolvedValue({ report: [
-      { date: '2026-09-28', account: 1 }, { date: '2026-10-27', account: 1.1 },
-    ] });
-    const { rerender } = renderFleet([run]);
-    fireEvent.click(screen.getByRole('button', { name: '1M' }));
-    await waitFor(() => expect(screen.getByTestId('fleet-us_x1_3')).toHaveTextContent('+10.0%'));
-    vi.mocked(loadRunSection).mockResolvedValue({ report: [
-      { date: '2026-09-28', account: 1 }, { date: '2026-10-27', account: 1.2 },
-    ] });
-    rerender(<MemoryRouter><StrategyFleet runs={[{ ...run, bundleId: 'new-bundle' }]} snapshots={mockSnapshots} /></MemoryRouter>);
-    await waitFor(() => expect(screen.getByTestId('fleet-us_x1_3')).toHaveTextContent('+20.0%'));
-    expect(loadRunSection).toHaveBeenCalledTimes(2);
-  });
-  it('presents verified periodic retention without hiding its old signal date', () => {
-    const original = mockSnapshots.get('us_x1_3')!;
-    const retained = { ...original, asOf: '2026-09-08', latestCompletedSession: '2026-09-08',
-      dataFreshness: 'stale' as const, factorFreshness: 'stale' as const,
-      observationState: 'retained_within_cadence' as const,
-      decisionSchedule: { signalDate: '2026-09-08', completedThrough: '2026-09-09', cadenceSessions: 10,
-        sessionsUntilDue: 9, state: 'within_cadence' as const, executionPending: true },
-      sourceIdentity: { ...original.sourceIdentity, formalEvidenceCutoff: '2026-09-09' } };
-    render(<MemoryRouter><StrategyFleet runs={mockRuns} snapshots={new Map(mockSnapshots).set('us_x1_3', retained)} /></MemoryRouter>);
-    const row = screen.getByTestId('fleet-us_x1_3');
-    expect(within(row).getByRole('button', { name: 'Inspect signal for US x1.3: Not due' })).toBeInTheDocument();
-    expect(within(row).getByText('2026-09-08', { exact: true })).toBeInTheDocument();
+  it('filters new and attention signals and explains an empty result', () => {
+    renderFleet();
     fireEvent.change(screen.getByLabelText('Signal filter'), { target: { value: 'attention' } });
+    expect(screen.getByTestId('fleet-cn_27_v1_3')).toBeInTheDocument();
     expect(screen.queryByTestId('fleet-us_x1_3')).not.toBeInTheDocument();
-  });
 
-  it('renders all strategies in stable watchlist order', () => {
-    renderFleet();
-    expect(screen.getByText('US x1.3')).toBeInTheDocument();
-    expect(screen.getByText('BYD v1.3')).toBeInTheDocument();
-    expect(screen.getByText(/2 strategies · Stable watchlist order/)).toBeInTheDocument();
-  });
-
-  it('filters strategies by market selection', () => {
-    renderFleet();
-    const marketSelect = screen.getByRole('combobox', { name: 'Market' });
-
-    fireEvent.change(marketSelect, { target: { value: 'us' } });
-    expect(screen.getByText('US x1.3')).toBeInTheDocument();
-    expect(screen.queryByText('BYD v1.3')).not.toBeInTheDocument();
-    expect(screen.getByText(/1 strategies · Stable watchlist order/)).toBeInTheDocument();
-
-    fireEvent.change(marketSelect, { target: { value: 'cn' } });
-    expect(screen.queryByText('US x1.3')).not.toBeInTheDocument();
-    expect(screen.getByText('BYD v1.3')).toBeInTheDocument();
-  });
-
-  it('filters strategies by signal state', () => {
-    renderFleet();
-    const signalSelect = screen.getByRole('combobox', { name: 'Signal filter' });
-
-    // Filter to new signals (US x1.3 has delta > 0, so isNew is true)
-    fireEvent.change(signalSelect, { target: { value: 'new' } });
-    expect(screen.getByText('US x1.3')).toBeInTheDocument();
-    expect(screen.queryByText('BYD v1.3')).not.toBeInTheDocument();
-
-    // Filter to attention (neither is attention in mock data)
-    fireEvent.change(signalSelect, { target: { value: 'attention' } });
-    expect(screen.queryByText('US x1.3')).not.toBeInTheDocument();
-    expect(screen.queryByText('BYD v1.3')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Market'), { target: { value: 'us' } });
     expect(screen.getByText('No strategies match these filters.')).toBeInTheDocument();
   });
 
-  it('opens StrategySignalDrawer when signal badge is clicked', () => {
+  it('opens the existing signal drawer from the shared signal cell', () => {
     renderFleet();
-    // Click inspect signal for US x1.3
-    const signalButton = screen.getByRole('button', { name: /inspect signal for us x1.3/i });
-    fireEvent.click(signalButton);
-
-    expect(screen.getByText('Operational Signal & Targets')).toBeInTheDocument();
-    expect(screen.getAllByText('New target exposure').length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect signal for US x1.3: Increase' }));
     expect(screen.getByRole('heading', { name: 'US x1.3' })).toBeInTheDocument();
-  });
-  it('updates verified period returns instead of retaining full-history figures', async () => {
-    vi.mocked(loadRunSection).mockResolvedValue({ report: [
-      { date: '2025-01-01', account_before: 1, account: 0.9 },
-      { date: '2026-01-01', account: 1 },
-      { date: '2026-06-01', account: 1.1 },
-      { date: '2026-08-01', account: 1.2 },
-      { date: '2026-08-31', account: 1.32 },
-    ] });
-    renderFleet();
-    const strategy = within(screen.getByTestId('fleet-us_x1_3'));
-    expect(strategy.getAllByText('+25.0%').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('button', { name: '1M' }));
-    await waitFor(() => expect(strategy.getAllByText('+10.0%').length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole('button', { name: '3M' }));
-    expect(strategy.getAllByText('+20.0%').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('button', { name: '1Y' }));
-    expect(strategy.getAllByText('+32.0%').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('button', { name: 'All' }));
-    expect(strategy.getAllByText('+25.0%').length).toBeGreaterThan(0);
-    expect(loadRunSection).toHaveBeenCalledTimes(2);
-  });
-  it('shows unavailable period evidence after integrity/load failure', async () => {
-    vi.mocked(loadRunSection).mockRejectedValue(new Error('Section integrity mismatch'));
-    renderFleet();
-    fireEvent.click(screen.getByRole('button', { name: '1M' }));
-    await waitFor(() => mockRuns.forEach(run => expect(screen.getByTestId(`fleet-${run.modelVersionId}`)).toHaveTextContent('Period evidence unavailable')));
-    expect(within(screen.getByTestId('fleet-us_x1_3')).queryByText('+25.0%')).not.toBeInTheDocument();
+    expect(screen.getAllByText('New target exposure').length).toBeGreaterThanOrEqual(1);
   });
 
+  it('passes scoped read issues through without hiding healthy rows', () => {
+    renderFleet(ROWS, [{ id: 'us_x1_3', kind: 'strategy', message: 'US x1.3: ranking evidence unavailable (missing).' }]);
+    expect(screen.getByRole('list', { name: 'Model ranking read issues' }))
+      .toHaveTextContent('US x1.3: ranking evidence unavailable (missing).');
+    expect(screen.getByTestId('fleet-cn_27_v1_3')).toBeInTheDocument();
+    expect(screen.getByTestId('ranking-index-us-QQQ')).toBeInTheDocument();
+  });
+
+  it('keeps stale evidence visible and does not use a shared as-of date', () => {
+    renderFleet();
+    const stale = screen.getByTestId('fleet-cn_27_v1_3');
+    expect(within(stale).getByTestId('stale-cn_27_v1_3')).toHaveTextContent('Stale · 69d behind cutoff');
+    expect(within(stale).getByText('As of 2026-09-04')).toBeInTheDocument();
+    expect(within(screen.getByTestId('fleet-us_x1_3')).getByText('As of 2026-11-11')).toBeInTheDocument();
+  });
 });
