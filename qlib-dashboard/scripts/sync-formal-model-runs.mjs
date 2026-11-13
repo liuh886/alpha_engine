@@ -4,6 +4,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildFormalNavProjection } from './formal-nav-projection.mjs';
 import { projectPerformanceContext } from './formal-performance-context.mjs';
+import { publishDerivedMetrics } from './public-derived-metrics.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const dashboardRoot = resolve(scriptDir, '..');
@@ -275,3 +276,8 @@ for (const market of ['us', 'cn']) {
   await writeFile(join(marketTarget, market, 'catalog.json'), JSON.stringify(projection) + '\n', 'utf8');
   console.log(`Published ${symbols.length} compact ${market.toUpperCase()} price histories with exact formal model bindings.`);
 }
+
+// Publish sealed derived metrics last: every validation binds against the final
+// public formal catalog and manifest bytes written above. When no derivations
+// exist this still writes a deterministic empty catalog.
+await publishDerivedMetrics({ repositoryRoot, dashboardRoot });
