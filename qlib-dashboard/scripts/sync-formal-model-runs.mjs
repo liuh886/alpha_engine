@@ -2,6 +2,7 @@ import { copyFile, lstat, mkdir, readFile, readdir, rm, writeFile } from 'node:f
 import { createHash } from 'node:crypto';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildFormalNavProjection } from './formal-nav-projection.mjs';
 import { projectPerformanceContext } from './formal-performance-context.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -187,6 +188,24 @@ for (const runDirectory of runDirectories) {
   } else {
     await copyFile(join(sourceRunDir, 'manifest.json'), join(targetRunDir, 'manifest.json'));
   }
+
+  // Compact NAV evidence beside the copied sections. Read the payload that was
+  // actually published: the performance-context projection may add validated
+  // opening fields (`account_before`, `bench_qqq_before`) to row 0. The final
+  // manifest/record bindings are already rewritten above, so the section hash
+  // still describes the published file. No return is derived here.
+  const navProjection = buildFormalNavProjection({
+    performance: performanceProjection ?? sourcePerformance.payload,
+    manifest,
+    record: catalogRecord,
+    evidenceCutoff: manifest.evidence_cutoff,
+  });
+  const navEncoded = `${JSON.stringify(navProjection)}\n`;
+  await writeFile(join(targetRunDir, 'nav.json'), navEncoded, 'utf8');
+  console.log(
+    `Projected NAV series for ${catalogRecord.model_version_id}/${catalogRecord.run_id}: `
+    + `${navProjection.rows.length} rows, ${Buffer.byteLength(navEncoded, 'utf8')} bytes.`,
+  );
 }
 
 // Publish the public catalog and every top-level policy read model.

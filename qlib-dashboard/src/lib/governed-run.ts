@@ -89,6 +89,17 @@ async function fetchText(path: string): Promise<string> {
   return response.text();
 }
 
+/** Resolve an extra public asset beside a run's manifest, reusing the catalog path rules. */
+export function formalRunAssetPath(manifestPath: string, assetName: string): string {
+  const base = manifestPath.includes('/') ? manifestPath.slice(0, manifestPath.lastIndexOf('/') + 1) : '';
+  return safeRelativeJsonPath(`${base}${assetName}`, 'formal run asset path');
+}
+
+/** Read one public formal-run asset by its already resolved relative path. */
+export async function fetchFormalAssetText(path: string): Promise<string> {
+  return fetchText(path);
+}
+
 function parseCatalog(value: unknown): ModelRunCatalog {
   if (!isRecord(value) || value.schema_version !== '2.0.0' || value.channel !== 'formal') {
     throw new Error('formal model-run catalog contract is invalid.');
@@ -276,8 +287,7 @@ export async function loadRunSection(run: GovernedRunSummary, sectionId: string)
   if (section.availability_status !== 'available' || !section.path || !section.sha256 || section.byte_size === null) {
     throw new Error(section.reason || `${sectionId} is ${section.availability_status}`);
   }
-  const base = run.manifestPath.includes('/') ? run.manifestPath.slice(0, run.manifestPath.lastIndexOf('/') + 1) : '';
-  const path = safeRelativeJsonPath(`${base}${section.path}`, `${sectionId} path`);
+  const path = formalRunAssetPath(run.manifestPath, section.path);
   const identity = JSON.stringify([
     run.key, run.bundleId, run.manifestSha256, run.manifestPath, run.evidenceCutoff,
     path, section.sha256, section.byte_size,
