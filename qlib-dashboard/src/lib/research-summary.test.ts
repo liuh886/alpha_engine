@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDailyResearchSummary, type DailyResearchSummaryEntry } from './research-summary';
+import { buildDailyResearchSummary, escapeMarkdownInline, type DailyResearchSummaryEntry } from './research-summary';
 import type { GovernedRunSummary } from './governed-run';
 import {
   describeStrategyObservation,
@@ -105,6 +105,35 @@ const permittedEntry: DailyResearchSummaryEntry = {
     recovery: null,
   },
 };
+
+describe('escapeMarkdownInline', () => {
+  it.each([
+    ['- x', '\\- x'],
+    ['# x', '\\# x'],
+    ['1. x', '1\\. x'],
+    ['1) x', '1\\) x'],
+    ['> x', '\\> x'],
+    ['`x`', '\\`x\\`'],
+    ['[x](y)', '\\[x\\](y)'],
+    ['+ x', '\\+ x'],
+    ['= x', '\\= x'],
+    ['~ x', '\\~ x'],
+    ['*emphasis*', '\\*emphasis*'],
+    ['_emphasis_', '\\_emphasis_'],
+  ])('escapes %s so it cannot open Markdown structure', (input, expected) => {
+    expect(escapeMarkdownInline(input)).toBe(expected);
+  });
+
+  it('keeps ordinary prose byte-identical', () => {
+    const prose = "QQQ's 3-day +12.5% target / rotation (a_b)";
+    expect(escapeMarkdownInline(prose)).toBe(prose);
+  });
+
+  it('leaves non-structural leading signs unchanged', () => {
+    expect(escapeMarkdownInline('-5.2% drawdown')).toBe('-5.2% drawdown');
+    expect(escapeMarkdownInline('+3 allocations')).toBe('+3 allocations');
+  });
+});
 
 describe('buildDailyResearchSummary', () => {
   it('builds the permitted and access-denied brief without unrendered private fields', () => {
@@ -212,5 +241,27 @@ describe('buildDailyResearchSummary', () => {
     expect(markdown).toContain('- Next review: Next review');
     expect(lines).not.toContain('## Injected');
     expect(lines).not.toContain('- Forged bullet');
+  });
+
+  it('keeps the copied brief structure when dynamic values begin with Markdown markers', () => {
+    const entry: DailyResearchSummaryEntry = {
+      run: makeRun({ key: 'escape', title: '- Injected heading' }),
+      brief: {
+        kind: 'changed',
+        label: '1. Injected label',
+        reason: '# Injected reason with `code` and [link](https://example.test)',
+        nextStep: '> Injected review',
+        recovery: null,
+      },
+    };
+    const markdown = buildDailyResearchSummary([entry], { generatedAt });
+    const lines = markdown.split('\n');
+
+    expect(markdown).toContain('## \\- Injected heading (US · formal evidence through 2026-10-31)');
+    expect(markdown).toContain('- Observation: 1\\. Injected label');
+    expect(markdown).toContain('- Why: \\# Injected reason with \\`code\\` and \\[link\\](https://example.test)');
+    expect(markdown).toContain('- Next review: \\> Injected review');
+    expect(lines.filter((line) => /^#{1,6}\s/.test(line))).toHaveLength(2);
+    expect(lines.filter((line) => line.startsWith('- '))).toHaveLength(5);
   });
 });
