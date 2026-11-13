@@ -274,8 +274,6 @@
     .research-sidebar-action { min-height: 44px; }
     .research-mobile-drawer button,
     .research-mobile-drawer a { min-height: 44px; }
-    .alpha-account-slot .hao-account-trigger,
-    .alpha-account-slot .hao-referral-trigger { min-height: 44px; min-width: 44px; }
     [data-slot="button"] { min-height: 44px; min-width: 44px; }
   }
 }
@@ -285,6 +283,10 @@
    their text height because `min-height` does not apply to inline boxes. */
 @media (pointer: coarse) {
   .research-touch { min-height: 44px; min-width: 44px; }
+  /* The membership widget ships an unlayered 32px class rule, so the floor
+     must match its specificity from the same unlayered context. */
+  .alpha-account-slot .hao-account-trigger,
+  .alpha-account-slot .hao-referral-trigger { min-height: 44px; min-width: 44px; }
   button,
   a,
   summary,

@@ -113,7 +113,7 @@ test('handset Strategies brings the first ranking card forward with one sort row
   const sortBox = await sortGroup.boundingBox();
   expect(sortBox!.height, 'sort controls stay on one vertically compact row').toBeLessThanOrEqual(60);
 
-  for (const control of await page.getByRole('main').locator('button, summary, select').all()) {
+  for (const control of await page.locator('header, main').locator('button, summary, select').all()) {
     if (!(await control.isVisible())) continue;
     const box = await control.boundingBox();
     if (!box) continue;
