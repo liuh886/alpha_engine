@@ -1,5 +1,6 @@
-import type { SecurityBar, SecurityEvent } from './security-evidence';
-import type { SecurityMarker } from '../components/SecurityHistoryChart';
+import type { NavPoint } from './nav-series';
+import type { SecurityBar } from './security-evidence';
+import type { SecurityMarker } from './security-markers';
 
 export interface LightweightCandleData {
   time: string;
@@ -15,17 +16,33 @@ export interface LightweightVolumeData {
   color: string;
 }
 
+/** A point on the indexed (100 = start) instrument/baseline line. */
+export interface LightweightLineData {
+  time: string;
+  value: number;
+}
+
 export interface LightweightMarkerData {
   time: string;
   position: 'belowBar' | 'aboveBar';
   color: string;
   shape: 'arrowUp' | 'arrowDown';
-  text: string;
   id: string;
-  events: SecurityEvent[];
+  size: number;
+  events: SecurityMarker['events'];
 }
 
-export function toLightweightCandleData(bars: SecurityBar[]): LightweightCandleData[] {
+export interface VolumeColors {
+  up: string;
+  down: string;
+}
+
+export interface MarkerColors {
+  buy: string;
+  sell: string;
+}
+
+export function toLightweightCandleData(bars: readonly SecurityBar[]): LightweightCandleData[] {
   return bars.map(bar => ({
     time: bar.time,
     open: bar.open,
@@ -35,88 +52,42 @@ export function toLightweightCandleData(bars: SecurityBar[]): LightweightCandleD
   }));
 }
 
-export function toLightweightVolumeData(bars: SecurityBar[]): LightweightVolumeData[] {
+export function toLightweightVolumeData(
+  bars: readonly SecurityBar[],
+  colors: VolumeColors,
+): LightweightVolumeData[] {
   return bars.map(bar => ({
     time: bar.time,
     value: bar.volume,
-    color: bar.close >= bar.open ? 'rgba(5, 150, 105, 0.4)' : 'rgba(225, 29, 72, 0.4)',
+    color: bar.close >= bar.open ? colors.up : colors.down,
   }));
 }
 
-export function toLightweightMarkers(markers: SecurityMarker[]): LightweightMarkerData[] {
+export function toLightweightLineData(points: readonly NavPoint[]): LightweightLineData[] {
+  return points
+    .filter(point => typeof point.date === 'string' && Number.isFinite(point.value))
+    .map(point => ({ time: point.date, value: point.value }));
+}
+
+/**
+ * Buy/increase is an upward triangle below the bar; sell/decrease is a downward
+ * triangle above it. One marker per exact date/side, with a stable id and the
+ * library default size of 1. Colors come from the caller's theme tokens.
+ */
+export function toLightweightMarkers(
+  markers: readonly SecurityMarker[],
+  colors: MarkerColors,
+): LightweightMarkerData[] {
   return markers
     .slice()
-    .sort((a, b) => a.time.localeCompare(b.time))
+    .sort((left, right) => left.time.localeCompare(right.time))
     .map(marker => ({
       time: marker.time,
       position: marker.positive ? ('belowBar' as const) : ('aboveBar' as const),
-      color: marker.positive ? '#059669' : '#e11d48',
+      color: marker.positive ? colors.buy : colors.sell,
       shape: marker.positive ? ('arrowUp' as const) : ('arrowDown' as const),
-      text: marker.positive ? 'B' : 'S',
-      id: `${marker.time}:${marker.positive}`,
+      id: `${marker.time}:${marker.positive ? 'buy' : 'sell'}`,
+      size: 1,
       events: marker.events,
     }));
-}
-
-export interface ParityCheckResult {
-  barsMatch: boolean;
-  barCount: number;
-  eventCount: number;
-  noMissingIntervals: boolean;
-  noInventedBars: boolean;
-  mismatches: string[];
-}
-
-export function assertLightweightParity(
-  bars: SecurityBar[],
-  rechartsData: Array<SecurityBar & { priceRange: [number, number] }>,
-  markers: SecurityMarker[],
-): ParityCheckResult {
-  const mismatches: string[] = [];
-  const lcCandles = toLightweightCandleData(bars);
-  const lcVolume = toLightweightVolumeData(bars);
-
-  if (lcCandles.length !== rechartsData.length) {
-    mismatches.push(`Bar count mismatch: Lightweight (${lcCandles.length}) vs Recharts (${rechartsData.length})`);
-  }
-
-  for (let i = 0; i < bars.length; i++) {
-    const b = bars[i];
-    const r = rechartsData[i];
-    const c = lcCandles[i];
-    const v = lcVolume[i];
-
-    if (!r || !c || !v) {
-      mismatches.push(`Missing bar at index ${i}`);
-      continue;
-    }
-
-    if (c.time !== r.time || b.time !== r.time) {
-      mismatches.push(`Time mismatch at index ${i}: ${b.time} vs ${r.time}`);
-    }
-    if (c.open !== r.open || c.high !== r.high || c.low !== r.low || c.close !== r.close) {
-      mismatches.push(`OHLC mismatch at ${b.time}: [${c.open},${c.high},${c.low},${c.close}] vs [${r.open},${r.high},${r.low},${r.close}]`);
-    }
-    if (v.value !== r.volume) {
-      mismatches.push(`Volume mismatch at ${b.time}: ${v.value} vs ${r.volume}`);
-    }
-  }
-
-  // Verify timestamps are strictly increasing and valid dates (no non-trading days invented)
-  let noMissingIntervals = true;
-  for (let i = 1; i < bars.length; i++) {
-    if (bars[i].time <= bars[i - 1].time) {
-      noMissingIntervals = false;
-      mismatches.push(`Non-chronological bar order at ${bars[i].time}`);
-    }
-  }
-
-  return {
-    barsMatch: mismatches.length === 0,
-    barCount: bars.length,
-    eventCount: markers.length,
-    noMissingIntervals,
-    noInventedBars: true, // Only exact verified bars are used
-    mismatches,
-  };
 }
