@@ -269,6 +269,28 @@ describe('deterministic ordering', () => {
     ]);
   });
 
+  it('orders explicit metric sorts while leaving every displayed cell untouched', () => {
+    const alpha = strategyRowsFromNav(run({ modelVersionId: 'alpha', title: 'Alpha' }), navRows([
+      ['2026-10-11', 100], ['2026-11-11', 110],
+    ]), { excess: { value: 0.2, source: 'retained', label: 'retained', basis: 'Alpha basis.' } })[0];
+    const beta = {
+      ...alpha,
+      id: 'beta',
+      modelVersionId: 'beta',
+      title: 'Beta',
+      asOf: '2026-10-11',
+      excess: { value: 0.05, source: 'retained' as const, label: 'retained', basis: 'Beta basis.' },
+      maxDrawdown: -0.02,
+      signal: { label: 'Attention', direction: 'attention', note: 'Review', attention: true, isNew: false, isHold: false },
+    };
+    const cells = new Map([alpha, beta].map(row => [row.id, row.cells]));
+    expect(sortRankingRows([beta, alpha], 'excess').map(row => row.id)).toEqual(['alpha', 'beta']);
+    expect(sortRankingRows([alpha, beta], 'maxDrawdown').map(row => row.id)).toEqual(['beta', 'alpha']);
+    expect(sortRankingRows([alpha, beta], 'signal').map(row => row.id)).toEqual(['beta', 'alpha']);
+    expect(sortRankingRows([beta, alpha], 'asOf').map(row => row.id)).toEqual(['alpha', 'beta']);
+    for (const row of [alpha, beta]) expect(row.cells).toBe(cells.get(row.id));
+  });
+
   it('places missing horizon cells after measured cells and breaks ties by title', () => {
     const missing = strategyRowsFromNav(run({ modelVersionId: 'missing', title: 'Missing' }), navRows([
       ['2026-11-11', 100],
