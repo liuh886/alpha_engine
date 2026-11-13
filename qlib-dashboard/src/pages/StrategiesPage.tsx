@@ -16,7 +16,8 @@ export function StrategiesPage() {
       <Link to="/app" className="mt-3 inline-block text-sm text-primary underline">Back to today's brief</Link>
     </header>
     <OperationsReadStatus loading={operations.loading} issues={operations.issues}
-      reload={operations.reload} previousRead={operations.previousRead} />
+      reload={operations.reload} previousRead={operations.previousRead}
+      checkedAt={operations.checkedAt} runs={operations.formalRuns} />
     <StrategyFleet runs={operations.formalRuns} snapshots={operations.snapshots} />
   </div>;
 }

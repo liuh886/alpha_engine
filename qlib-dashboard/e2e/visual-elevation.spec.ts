@@ -29,6 +29,28 @@ test('Today keeps the verified-change summary above benchmark cards, ranking and
   expect(rankingBox!.y).toBeLessThan(briefBox!.y);
 });
 
+test('Today reports a completed read and keeps the access-gated brief compact and disclosed', async ({ page }) => {
+  await page.goto('/#/app');
+
+  const reader = page.getByRole('region', { name: 'Current operations reader' });
+  const status = reader.getByRole('status');
+  await expect(status).toContainText(/Checked \d{2}:\d{2} UTC · \d+ of \d+ observation reads succeeded/);
+  await expect(status).not.toContainText('observations verified');
+
+  const brief = page.getByRole('region', { name: 'Daily research brief' });
+  await expect(brief.getByText(/Showing 3 of 4 priority observations/)).toBeVisible();
+  await expect(brief.getByText(/Every strategy stays in the model ranking above with its own as-of date/)).toBeVisible();
+  await expect(brief.getByRole('button', { name: 'Check strategy access' })).toHaveCount(1);
+
+  const accessRows = brief.getByRole('article').filter({ has: page.getByText('Access required', { exact: true }) });
+  await expect(accessRows).toHaveCount(3);
+  const firstAccess = accessRows.first();
+  await expect(firstAccess.getByText('Access required', { exact: true })).toBeVisible();
+  await expect(firstAccess).toContainText(/Formal evidence as of \d{4}-\d{2}-\d{2}/);
+  await expect(firstAccess).toContainText('Review: Review state not verified');
+  await expect(firstAccess).not.toContainText('Current observations require strategy access.');
+});
+
 test('the full ranking exposes metric sorts, row details and value-basis disclosures', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile', 'Mobile uses the card layout covered by the handset test.');
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
@@ -86,7 +108,7 @@ test('the security ledger uses readable actions and reasons while retaining raw 
   const raw = await reason.getAttribute('title');
   expect(raw).toMatch(/_/);
   await expect(reason).not.toContainText('_');
-  await expect(ledger).not.toContainText('No reason retained');
+  await expect(firstRow).not.toContainText('No reason retained');
 
   await page.goto('/#/system');
   await expect(page.getByRole('heading', { name: 'Operating Status', exact: true })).toBeVisible();

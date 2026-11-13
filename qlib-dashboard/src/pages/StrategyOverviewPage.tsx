@@ -75,6 +75,8 @@ function TodayWorkspace({ onOpenRacetrack }: { onOpenRacetrack: () => void }) {
       issues={operations.issues}
       reload={operations.reload}
       previousRead={operations.previousRead}
+      checkedAt={operations.checkedAt}
+      runs={operations.formalRuns}
     />
 
     <nav aria-label="Research destinations" className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border bg-muted/20 px-4 py-3">

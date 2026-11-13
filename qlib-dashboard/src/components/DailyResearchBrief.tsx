@@ -106,7 +106,22 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
           <Button variant="outline" size="sm" className="min-h-[44px]" onClick={access.openAccount}>Check strategy access</Button>
         </div>
       )}
-      <div className="divide-y">{priorities.map(({ run, snapshot, brief }) => (
+      <div className="divide-y">{priorities.map(({ run, snapshot, brief }) => {
+        if (brief.kind === 'access') {
+          return (
+            <article key={run.key} className="px-5 py-2.5" aria-label={`${run.title} daily observation`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Link to={`/strategies/${encodeURIComponent(run.modelVersionId)}`} className="text-sm font-semibold hover:text-primary">{run.title}</Link>
+                <span className="rounded border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{brief.label}</span>
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                <p>{run.market.toUpperCase()} · Formal evidence as of {run.evidenceCutoff}</p>
+                <p>Review: {reviewLabel(brief)}</p>
+              </div>
+            </article>
+          );
+        }
+        return (
         <article key={run.key} className="px-5 py-3" aria-label={`${run.title} daily observation`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Link to={`/strategies/${encodeURIComponent(run.modelVersionId)}`} className="text-sm font-semibold hover:text-primary">{run.title}</Link>
@@ -149,7 +164,13 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
             </Link>
           </div>
         </article>
-      ))}</div>
+        );
+      })}</div>
+      {entries.length > priorities.length && (
+        <p className="border-t px-5 py-3 text-xs text-muted-foreground">
+          Showing {priorities.length} of {entries.length} priority observations (highest review state first). Every strategy stays in the model ranking above with its own as-of date.
+        </p>
+      )}
     </section>
   );
 }

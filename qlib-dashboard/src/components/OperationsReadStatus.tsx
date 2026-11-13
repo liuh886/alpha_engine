@@ -13,8 +13,8 @@ function checkedLabel(checkedAt: string | null): string | null {
 
 /**
  * The single operations reader status used by every page. It reports the
- * verified read time and outcome, the markets affected by read issues, and the
- * one refresh affordance for the page that renders it.
+ * read time and outcome, the markets affected by read issues, and the one
+ * refresh affordance for the page that renders it.
  */
 export function OperationsReadStatus({ loading, issues, reload, previousRead = false, checkedAt = null, runs = [], showRefresh = true }: {
   loading: boolean;
@@ -27,7 +27,7 @@ export function OperationsReadStatus({ loading, issues, reload, previousRead = f
 }) {
   const checked = checkedLabel(checkedAt);
   const failedIds = new Set(issues.map(issue => issue.modelVersionId).filter((id): id is string => Boolean(id)));
-  const verified = runs.filter(run => !failedIds.has(run.modelVersionId)).length;
+  const succeeded = runs.filter(run => !failedIds.has(run.modelVersionId)).length;
   const marketLabel = (market: string) => market === 'us'
     ? RANKING_MARKET_LABELS.us
     : market === 'cn' ? RANKING_MARKET_LABELS.cn : market.toUpperCase();
@@ -35,9 +35,11 @@ export function OperationsReadStatus({ loading, issues, reload, previousRead = f
     .map(run => marketLabel(run.market))));
   const affectsAll = issues.some(issue => !issue.modelVersionId);
   const affected = affectsAll ? 'all markets' : affectedMarkets.join(' / ');
+  // A completed read is not the same as verified observations: access-gated
+  // records can be read successfully while their observations stay hidden.
   const outcome = issues.length
     ? `${issues.length} ${issues.length === 1 ? 'record needs' : 'records need'} attention`
-    : runs.length ? `${verified} of ${runs.length} observations verified` : 'records verified';
+    : runs.length ? `${succeeded} of ${runs.length} observation reads succeeded` : 'records read';
   return (
     <div className="ae-surface flex flex-wrap items-start justify-between gap-3 p-4" role="region" aria-label="Current operations reader">
       <div className="min-w-0 flex-1 text-xs text-muted-foreground" role="status" aria-live="polite">

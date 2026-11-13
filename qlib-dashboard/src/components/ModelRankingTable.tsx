@@ -214,7 +214,7 @@ function RowDetails({ row }: { row: ModelRankingRow }) {
           <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">As of</dt><dd>{formatDate(row.asOf)}</dd></div>
         </>
       )}
-      <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Retained window</dt><dd>{first && last ? `${first.date} → ${last.date}` : 'No retained observations'}</dd></div>
+      <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Retained window</dt><dd>{first && last ? `${formatDate(first.date)} → ${formatDate(last.date)}` : 'No retained observations'}</dd></div>
       {row.signal?.note && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Signal note</dt><dd className="text-muted-foreground">{row.signal.note}</dd></div>}
       {row.excess?.basis && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Excess basis</dt><dd className="text-muted-foreground">{row.excess.basis}</dd></div>}
       {row.maxDrawdownBasis && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Max drawdown basis</dt><dd className="text-muted-foreground">{row.maxDrawdownBasis}</dd></div>}

@@ -25,7 +25,7 @@ describe('DailyResearchBrief', () => {
       canAccess: () => true, openAccount } as unknown as ReturnType<typeof useAccessControl>);
   });
 
-  it('keeps three priorities while counting every observation and preserving stable order', () => {
+  it('keeps three priorities while counting every observation and disclosing truncation', () => {
     const runs = [0, 1, 2, 3].map(i => ({ ...run, key: `run-${i}`, title: `Strategy ${i}`, modelVersionId: `model-${i}` }));
     const snapshots = new Map(runs.map((item, i) => [item.modelVersionId,
       parseStrategyOperationsSnapshot({ ...record, model_version_id: item.modelVersionId, evaluation_changed: i !== 0 })]));
@@ -34,7 +34,8 @@ describe('DailyResearchBrief', () => {
       'Strategy 1 daily observation', 'Strategy 2 daily observation', 'Strategy 3 daily observation',
     ]);
     expect(screen.getByText(/3 changed · 1 unchanged/)).toBeInTheDocument();
-    expect(screen.queryByText(/Showing \d+ of \d+ priority observations/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Showing 3 of 4 priority observations/)).toBeInTheDocument();
+    expect(screen.getByText(/Every strategy stays in the model ranking above with its own as-of date/)).toBeInTheDocument();
     expect(screen.queryByText(/No new model changes/)).not.toBeInTheDocument();
   });
 
@@ -62,7 +63,9 @@ describe('DailyResearchBrief', () => {
     vi.mocked(useAccessControl).mockReturnValue({ loading: false, policyLoading: false,
       requiredTier: () => 'pro', canAccess: () => false, openAccount } as unknown as ReturnType<typeof useAccessControl>);
     rerender(<MemoryRouter><DailyResearchBrief {...props} loading={false} /></MemoryRouter>);
-    expect(screen.getByText('Current observations require strategy access.')).toBeInTheDocument();
+    expect(screen.getByText('Access required')).toBeInTheDocument();
+    expect(screen.getByText('US · Formal evidence as of 2026-09-30')).toBeInTheDocument();
+    expect(screen.queryByText('Current observations require strategy access.')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Check strategy access' })).toBeInTheDocument();
     expect(screen.queryByText(/PRIVATE/)).not.toBeInTheDocument();
   });
