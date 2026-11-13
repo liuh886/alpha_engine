@@ -43,10 +43,10 @@ function Layout(props: ReturnType<typeof useAppBootstrap>) {
         <div className="research-topbar-actions">
           <MobileNavigation />
           <div className="alpha-account-slot" data-account-slot aria-label="AlphaEngine account" />
-          <Button variant="ghost" size="icon" className="h-8 w-8"
+          <Button variant="ghost" size="icon"
             aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'}
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {theme === 'dark' ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
           </Button>
         </div>
       </header>

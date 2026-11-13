@@ -9,7 +9,7 @@ export function MobileTabBar() {
     (route): route is NonNullable<typeof route> => Boolean(route),
   );
   return <nav aria-label="Primary"
-    className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur md:hidden"
+    className="research-mobile-tabbar fixed inset-x-0 bottom-0 z-30 border-t bg-card md:hidden"
     style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
     <div className="grid grid-cols-4" role="tablist" aria-orientation="horizontal">
       {tabs.map(tab => {
@@ -18,10 +18,10 @@ export function MobileTabBar() {
         const Icon = tab.icon;
         return <NavLink key={tab.path} to={target} role="tab" aria-selected={active}
           aria-label={tab.title}
-          className={cn('flex min-h-[56px] flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors',
-            active ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}>
-          <span className={cn('flex h-8 w-12 items-center justify-center rounded-full transition-colors',
-            active && 'bg-primary/10')}><Icon className="h-5 w-5" aria-hidden="true" /></span>
+          className={cn('research-tab flex min-h-[56px] flex-col items-center justify-center gap-1 text-[10px] font-semibold tracking-[0.02em] transition-colors duration-150',
+            active ? 'research-tab-active text-primary' : 'text-muted-foreground hover:text-foreground')}>
+          <span className={cn('flex h-7 w-12 items-center justify-center rounded-md transition-colors duration-150',
+            active ? 'bg-primary/10' : 'bg-transparent')}><Icon className="h-[18px] w-[18px]" aria-hidden="true" /></span>
           <span className="leading-none">{tab.label}</span>
         </NavLink>;
       })}
