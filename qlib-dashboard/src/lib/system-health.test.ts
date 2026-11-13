@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSystemHealth } from './system-health';
+import { parseSystemHealth, systemStateLabel } from './system-health';
 
 const sample = {
   schema_version: '1.0.0',
@@ -87,6 +87,14 @@ describe('system health contract', () => {
       ...sample,
       strategies: [{ ...sample.strategies[0], delivery_state: 'maybe' }],
     })).toThrow(/Invalid system-health state/);
+  });
+
+  it('names source states with the operator vocabulary, never a second degraded label', () => {
+    expect(systemStateLabel('delayed')).toBe('Delayed');
+    expect(systemStateLabel('blocked')).toBe('Blocked');
+    expect(systemStateLabel('inconsistent')).toBe('Inconsistent');
+    expect(systemStateLabel('current')).toBe('Current');
+    expect(systemStateLabel('unknown')).toBe('unknown');
   });
 
   it('fails closed when research readiness is presented as another scope', () => {

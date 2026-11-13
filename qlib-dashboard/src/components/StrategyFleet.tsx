@@ -73,7 +73,7 @@ export function StrategyFleet({
   return (
     <section className="space-y-4" aria-label="Formal strategy fleet">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <select
             id="market"
             aria-label="Market"
@@ -97,7 +97,7 @@ export function StrategyFleet({
             <option value="attention">Needs attention</option>
           </select>
         </div>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
+        <p className="hidden text-[11px] leading-relaxed text-muted-foreground sm:block">
           Sort by any horizon. Each row keeps its own observed window and evidence cutoff.
         </p>
       </div>

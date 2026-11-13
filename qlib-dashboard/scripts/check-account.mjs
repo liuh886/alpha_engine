@@ -6,7 +6,8 @@ const paths = {
   html: 'index.html', config: 'public/membership-config.js', app: 'src/App.tsx',
   membership: 'src/hooks/useAlphaMembership.ts', access: 'src/hooks/useAccessControl.tsx',
   rules: 'src/lib/model-access.ts', reader: 'src/hooks/useStrategyOperations.ts',
-  operations: 'src/lib/strategy-operations.ts', brief: 'src/components/DailyResearchBrief.tsx',
+  operations: 'src/lib/strategy-operations.ts', brief: 'src/lib/research-brief.ts',
+  briefView: 'src/components/DailyResearchBrief.tsx',
   detail: 'src/pages/StrategyDetailPage.tsx', registry: '../configs/strategies/registry.json',
   migration: '../supabase/migrations/20260812022634_alpha_engine_strategy_access_policies.sql',
   splitRls: '../supabase/migrations/20260812031512_split_alpha_engine_strategy_access_rls.sql',
@@ -23,6 +24,7 @@ requireText('access', ["from('product_access_policies')", 'mergeAccessPolicies',
 requireText('rules', ["resourceType === 'strategy' ? 'owner' : 'public'"]);
 requireText('reader', ['access.canAccess', "access.requiredTier('strategy', snapshot.strategyId)", 'assertStrategyOperationRun', 'loadRuntimeStrategyOperations', 'controller.signal']);
 requireText('brief', ['access.canAccess', "access.requiredTier('strategy', snapshot.strategyId)"]);
+requireText('briefView', ['buildBriefEntries', 'summarizeBrief']);
 requireText('detail', ['access.canAccess', "access.requiredTier('strategy', snapshot.strategyId)", 'liveLocked', 'FormalBacktestReview']);
 for (const [key, source] of Object.entries(content)) {
   if (['migration', 'splitRls'].includes(key)) continue;

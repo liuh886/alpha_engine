@@ -364,6 +364,9 @@ function RankingCard({ row, density, selected, sort, expanded, onToggle, onInspe
 }) {
   const evidenceLabel = row.kind === 'strategy' ? 'Inspect evidence' : 'Price history';
   const detailsId = `card-details-${row.id}`;
+  // Governed index rows have no signal and no strategy excess; keeping empty
+  // metric wells would push the first strategy card below the handset fold.
+  const showMetrics = density === 'full' && row.kind === 'strategy';
   return (
     <li
       data-testid={rowTestId(row)}
@@ -414,7 +417,7 @@ function RankingCard({ row, density, selected, sort, expanded, onToggle, onInspe
           </div>
         ))}
       </dl>
-      {density === 'full' && (
+      {showMetrics && (
         <dl className="mt-1.5 grid grid-cols-2 gap-1.5">
           <div className="min-w-0 rounded border bg-background/60 px-2 py-1">
             <dt className="break-words text-[9px] uppercase tracking-[0.08em] text-muted-foreground">Excess · {row.excess?.window ?? 'run window'}</dt>
@@ -457,7 +460,7 @@ function RankingCard({ row, density, selected, sort, expanded, onToggle, onInspe
           </div>
         </dl>
       )}
-      {density === 'full' && (
+      {showMetrics && (
         <div className="mt-1.5 flex items-center justify-between gap-2">
           <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Signal</span>
           <SignalCell row={row} onInspectSignal={onInspectSignal} />
