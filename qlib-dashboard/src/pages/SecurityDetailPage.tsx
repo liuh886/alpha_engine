@@ -260,7 +260,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
       )}
 
       {mode === 'baseline' && baseline.status === 'error' && (
-        <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+        <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/5 p-3 text-xs">
           <p className="max-w-2xl">
             <strong>{baselineIdentity.label} baseline unavailable.</strong> {baseline.error} Price history remains
             readable in Price mode; the ledger below is unaffected.
@@ -378,7 +378,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
       )}
 
       {excludedModels.length > 0 && (
-        <p role="status" className="mt-3 rounded-lg border border-amber-500/30 p-3 text-sm">
+        <p role="status" className="mt-3 rounded-lg border border-warning/30 p-3 text-sm">
           Model markers unavailable for {excludedModels.map(run => run.title).join(', ')}: price publication does
           not bind the current formal run. Price history remains readable.
         </p>
