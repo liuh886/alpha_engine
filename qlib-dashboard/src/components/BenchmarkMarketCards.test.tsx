@@ -112,4 +112,20 @@ describe('BenchmarkMarketCards', () => {
     expect(screen.getByText(/Index cards use governed close-to-close price returns, not total return\./)).toBeInTheDocument();
     expect(screen.getByText(/neither is used as a cross-market substitute/)).toBeInTheDocument();
   });
+
+  it('renders a displayed 1W coverage reason in the card instead of a hover title', () => {
+    const row = usRow();
+    const reason = 'First retained observation 2026-11-06; the requested window starts 2026-11-01.';
+    renderCards([{
+      ...row,
+      cells: { ...row.cells, '1w': { ...row.cells['1w'], value: 0.012, display: true, reason } },
+    }, cnRow()]);
+    const us = screen.getByTestId('benchmark-card-us');
+    const note = within(us).getByTestId('benchmark-reason-us');
+    expect(note).toHaveTextContent(reason);
+    expect(note).not.toHaveAttribute('title');
+    const weekLine = within(us).getByText('1W').parentElement;
+    expect(weekLine).not.toHaveAttribute('title');
+    expect(weekLine).toHaveTextContent('+1.2%');
+  });
 });

@@ -283,4 +283,37 @@ describe('ModelRankingTable', () => {
     const { container: full } = renderTable([usStrategy()], 'full');
     expect(full.querySelector('table')).toHaveClass('min-w-[1040px]');
   });
+
+  it('keeps the as-of sort in an inline cluster beside the Model label', () => {
+    renderTable([usStrategy()]);
+    const header = screen.getByRole('columnheader', { name: /Model/ });
+    expect(header).toHaveAttribute('aria-sort', 'none');
+    const button = within(header).getByRole('button', { name: 'Sort by as-of freshness' });
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    const cluster = button.parentElement;
+    expect(cluster).not.toBeNull();
+    expect(cluster).not.toHaveClass('justify-between');
+    expect(cluster!.children).toHaveLength(2);
+    expect(cluster!.firstElementChild).toHaveTextContent('Model');
+    expect(cluster!.lastElementChild).toBe(button);
+    // The Model header is the only header that carries the as-of control.
+    expect(screen.getAllByRole('columnheader', { name: /as of/i })).toHaveLength(1);
+  });
+
+  it('discloses a displayed return basis without a hover-only title', () => {
+    const row = usStrategy();
+    const reason = 'First retained observation 2026-11-06; the requested window starts 2026-11-01.';
+    renderTable([{
+      ...row,
+      cells: { ...row.cells, '1m': { ...row.cells['1m'], value: 0.05, display: true, reason } },
+    }]);
+    const cell = screen.getByTestId('cell-us_x1_3-1m');
+    expect(cell).not.toHaveAttribute('title');
+    expect(cell.querySelector('[title]')).toBeNull();
+    const summary = cell.closest('summary');
+    expect(summary).not.toBeNull();
+    fireEvent.click(summary!);
+    expect(summary!.closest('details')).toHaveAttribute('open');
+    expect(screen.getByText(reason)).toBeInTheDocument();
+  });
 });

@@ -79,7 +79,7 @@ export function StrategyFleet({
             aria-label="Market"
             value={marketFilter}
             onChange={(event) => setMarketFilter(event.target.value as MarketFilter)}
-            className="research-touch min-h-9 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="ae-select research-touch min-h-9 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="all">All markets</option>
             <option value="us">US</option>
@@ -90,7 +90,7 @@ export function StrategyFleet({
             aria-label="Signal filter"
             value={signalFilter}
             onChange={(event) => setSignalFilter(event.target.value as SignalFilter)}
-            className="research-touch min-h-9 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="ae-select research-touch min-h-9 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="all">All signals</option>
             <option value="new">New signals</option>

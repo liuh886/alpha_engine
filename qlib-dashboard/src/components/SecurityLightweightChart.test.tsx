@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SecurityBar, SecurityEvent } from '@/lib/security-evidence';
 import type { SecurityMarker } from '@/lib/security-markers';
@@ -267,5 +267,43 @@ describe('SecurityLightweightChart lifecycle', () => {
     expect(chart.unsubscribeCrosshairMove).toHaveBeenCalledTimes(1);
     expect(chart.remove).toHaveBeenCalledTimes(1);
     disconnect.mockRestore();
+  });
+
+  it('announces a chart-shaped skeleton while the comparison evidence loads', () => {
+    renderChart({
+      mode: 'baseline',
+      baselineSeries: null,
+      loading: true,
+      emptyMessage: 'Loading QQQ baseline evidence…',
+    });
+    const status = screen.getByTestId('security-chart-loading');
+    expect(status).toHaveAttribute('role', 'status');
+    expect(status).toHaveAttribute('aria-busy', 'true');
+    expect(status).toHaveTextContent('Loading QQQ baseline evidence…');
+    expect(status.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('security-chart-empty')).not.toBeInTheDocument();
+  });
+
+  it('bounds the price data table to the most recent 120 visible sessions and states the bound', () => {
+    const many: SecurityBar[] = Array.from({ length: 130 }, (_, index) => {
+      const time = new Date(Date.UTC(2025, 0, 1 + index)).toISOString().slice(0, 10);
+      return {
+        time,
+        open: 100 + index,
+        high: 102 + index,
+        low: 99 + index,
+        close: 101 + index,
+        volume: 1000 + index,
+      };
+    });
+    renderChart({ bars: many, markers: [] });
+    const details = screen.getByTestId('price-data');
+    expect(within(details).getByText('View price data table')).toBeInTheDocument();
+    const rows = details.querySelectorAll('tbody tr');
+    expect(rows).toHaveLength(120);
+    expect(rows[0]).toHaveTextContent(many[10].time);
+    expect(rows[119]).toHaveTextContent(many[129].time);
+    expect(details).toHaveTextContent('Showing the most recent 120 of 130 visible-range sessions');
+    expect(details).toHaveTextContent('Raw OHLCV, not split or dividend adjusted.');
   });
 });

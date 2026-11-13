@@ -69,7 +69,7 @@ export function RacetrackWorkspace() {
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-xs text-muted-foreground">Market
-          <select aria-label="Racetrack market" value={market} onChange={e => updateParams({ raceMarket: e.target.value, raceRunner: null, raceDetail: null })} className="research-touch min-h-10 rounded-md border bg-background px-3 text-sm text-foreground">
+          <select aria-label="Racetrack market" value={market} onChange={e => updateParams({ raceMarket: e.target.value, raceRunner: null, raceDetail: null })} className="ae-select research-touch min-h-10 text-sm">
             <option value="us">US · US87 / QQQ</option><option value="cn">CN · CN130 / CSI 300</option>
           </select>
         </label>

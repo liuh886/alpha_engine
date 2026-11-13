@@ -73,15 +73,23 @@ function IndexCard({
           <span className="block text-[22px] font-semibold leading-none tabular-nums">
             {formatPrice(last?.value)}
           </span>
-          <span
-            className="mt-1 block text-[11px] tabular-nums"
-            title={cell?.reason}
-          >
+          <span className="mt-1 block text-[11px] tabular-nums">
             <span className="font-medium text-muted-foreground">1W </span>
             <span className={cn('font-medium', signedTone(weekPct))}>{formatPriceChange(weekChange)}</span>
             <span className="text-muted-foreground"> · </span>
             <span className={cn('font-medium', signedTone(weekPct))}>{formatReturn(weekPct)}</span>
           </span>
+          {/* A displayed 1W return can still carry a coverage basis. Render it
+              in the card instead of a hover-only title so touch and keyboard
+              readers reach the same reason. */}
+          {cell?.reason && (
+            <span
+              data-testid={`benchmark-reason-${market}`}
+              className="mt-0.5 block max-w-full break-words text-[10px] leading-4 text-muted-foreground"
+            >
+              {cell.reason}
+            </span>
+          )}
         </div>
         {row && (
           <span className="flex shrink-0 flex-col items-end gap-0.5">
