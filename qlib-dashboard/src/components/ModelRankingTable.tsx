@@ -442,7 +442,7 @@ function RankingCard({ row, density, selected, sort, expanded, onToggle, onInspe
           </div>
           <div className="min-w-0 rounded border bg-background/60 px-2 py-1">
             <dt className="break-words text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
-              {row.kind === 'index' ? 'Max DD · close window' : 'Max DD · run window'}
+              Max DD · run window
             </dt>
             <dd className="mt-0.5 text-right text-[12px]">
               {row.maxDrawdown !== null && row.maxDrawdown !== undefined ? (
