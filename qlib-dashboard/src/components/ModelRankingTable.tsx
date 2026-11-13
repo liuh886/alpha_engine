@@ -206,9 +206,15 @@ function RowDetails({ row }: { row: ModelRankingRow }) {
   return (
     <dl className="grid gap-x-6 gap-y-2 text-xs sm:grid-cols-2">
       <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Benchmark</dt><dd>{row.benchmark}</dd></div>
-      <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Evidence cutoff</dt><dd>{formatDate(row.evidenceCutoff)}</dd></div>
+      {row.asOf === row.evidenceCutoff ? (
+        <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">As of · Evidence cutoff</dt><dd>{formatDate(row.asOf)}</dd></div>
+      ) : (
+        <>
+          <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Evidence cutoff</dt><dd>{formatDate(row.evidenceCutoff)}</dd></div>
+          <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">As of</dt><dd>{formatDate(row.asOf)}</dd></div>
+        </>
+      )}
       <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Retained window</dt><dd>{first && last ? `${first.date} → ${last.date}` : 'No retained observations'}</dd></div>
-      <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">As of</dt><dd>{formatDate(row.asOf)}</dd></div>
       {row.signal?.note && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Signal note</dt><dd className="text-muted-foreground">{row.signal.note}</dd></div>}
       {row.excess?.basis && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Excess basis</dt><dd className="text-muted-foreground">{row.excess.basis}</dd></div>}
       {row.maxDrawdownBasis && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Max drawdown basis</dt><dd className="text-muted-foreground">{row.maxDrawdownBasis}</dd></div>}
@@ -503,8 +509,12 @@ export function ModelRankingTable({
         </p>
       ) : narrow ? (
         <div className="space-y-3 p-3">
-          <div role="group" aria-label="Sort ranking by horizon" className="flex flex-wrap items-center gap-1.5">
-            <span className="px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <div
+            role="group"
+            aria-label="Sort ranking by horizon"
+            className="flex items-center gap-1.5 overflow-x-auto pb-1"
+          >
+            <span className="shrink-0 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Sort
             </span>
             {HORIZON_PERIODS.map((period) => (
@@ -514,7 +524,7 @@ export function ModelRankingTable({
                 onClick={() => setSort(period)}
                 aria-pressed={sort === period}
                 className={cn(
-                  'min-h-11 min-w-11 rounded-lg border px-3 text-xs font-semibold uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'min-h-11 min-w-11 shrink-0 rounded-lg border px-3 text-xs font-semibold uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   sort === period
                     ? 'border-primary/40 bg-primary/10 text-foreground'
                     : 'bg-card text-muted-foreground hover:text-foreground',
@@ -530,7 +540,7 @@ export function ModelRankingTable({
                 onClick={() => setSort(key)}
                 aria-pressed={sort === key}
                 className={cn(
-                  'min-h-11 min-w-11 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'min-h-11 min-w-11 shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   sort === key
                     ? 'border-primary/40 bg-primary/10 text-foreground'
                     : 'bg-card text-muted-foreground hover:text-foreground',

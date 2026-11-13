@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { SecurityBar } from './security-evidence';
 import {
+  formatEventAction,
   formatIndexedReturn,
   formatSecurityPercent,
   formatSecurityPrice,
+  humanizeEventReason,
   visibleCloseSummary,
 } from './security-format';
 
@@ -47,6 +49,17 @@ describe('security formatting', () => {
     ]);
     expect(summary.oneWeekChange).toBeCloseTo(0.05, 10);
     expect(summary.oneWeekReason).toBeNull();
+  });
+
+  it('humanizes retained event codes while keeping the raw id available to callers', () => {
+    expect(humanizeEventReason('enter_qqq_early_repair_vix_easing'))
+      .toBe('Enter QQQ early repair VIX easing');
+    expect(humanizeEventReason('defensive_price_or_vix_stress'))
+      .toBe('Defensive price or VIX stress');
+    expect(humanizeEventReason(null)).toBe('No reason retained');
+    expect(formatEventAction('BUY')).toBe('Buy');
+    expect(formatEventAction('DECREASE')).toBe('Decrease');
+    expect(formatEventAction(null)).toBe('—');
   });
 
   it('returns a dash and a reason instead of 0.0% when the window is unavailable', () => {

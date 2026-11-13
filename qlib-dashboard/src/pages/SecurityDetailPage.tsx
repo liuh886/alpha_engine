@@ -10,7 +10,13 @@ import {
   type SecurityEvent,
 } from '@/lib/security-evidence';
 import { securityMarkers, unmatchedMarkerEvents } from '@/lib/security-markers';
-import { formatSecurityPercent, formatSecurityPrice, visibleCloseSummary } from '@/lib/security-format';
+import {
+  formatEventAction,
+  formatSecurityPercent,
+  formatSecurityPrice,
+  humanizeEventReason,
+  visibleCloseSummary,
+} from '@/lib/security-format';
 import {
   indexedBaselineSeries,
   isMarketBaselineInstrument,
@@ -344,7 +350,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
                       {marker.positive ? 'Buy / increase' : 'Sell / decrease'}
                     </span>
                     <span className="min-w-0 text-muted-foreground">
-                      {marker.events.map(event => `${name(event.model_id)} · ${event.action}`).join('; ')}
+                      {marker.events.map(event => `${name(event.model_id)} · ${formatEventAction(event.action)}`).join('; ')}
                     </span>
                     <span className="ml-auto font-mono text-[10px] text-muted-foreground">
                       {marker.events.length} event{marker.events.length === 1 ? '' : 's'}
@@ -370,8 +376,9 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
         >
           {activeSelection.map((event, index) => (
             <p key={`${event.model_id}:${event.time}:${index}`}>
-              <strong>{name(event.model_id)} · {event.time} · {event.action}</strong><br />
-              Weight {weight(event.previous_weight)} → {weight(event.target_weight)} · {event.reason || 'No reason retained'}
+              <strong>{name(event.model_id)} · {event.time} · {formatEventAction(event.action)}</strong><br />
+              Weight {weight(event.previous_weight)} → {weight(event.target_weight)} ·{' '}
+              <span title={event.reason || undefined}>{humanizeEventReason(event.reason)}</span>
             </p>
           ))}
         </div>
@@ -425,12 +432,12 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
                     {name(event.model_id)}
                   </Link>
                 </td>
-                <td className="font-semibold">{event.action}</td>
+                <td className="font-semibold" title={event.action}>{formatEventAction(event.action)}</td>
                 <td className="whitespace-nowrap font-mono text-[11px]">
                   {weight(event.previous_weight)} → {weight(event.target_weight)}
                 </td>
                 <td className="max-w-sm min-w-56 break-words">
-                  {event.reason || 'No reason retained'}
+                  <span title={event.reason || undefined}>{humanizeEventReason(event.reason)}</span>
                   <span className="mt-1 block text-[10px] text-muted-foreground">{event.run_id}</span>
                 </td>
               </tr>

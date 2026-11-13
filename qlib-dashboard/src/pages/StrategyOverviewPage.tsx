@@ -23,8 +23,8 @@ function TodayWorkspace({ onOpenRacetrack }: { onOpenRacetrack: () => void }) {
 
   return <div className="mx-auto max-w-[1500px] space-y-5 pb-16">
     <header className="border-b pb-5">
-      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Decision-first research workspace</p>
-      <h1 className="mt-2 text-xl font-bold tracking-tight md:text-2xl">What are the strategies doing now?</h1>
+      <p className="ae-kicker">Decision-first research workspace</p>
+      <h1 className="ae-page-title mt-2">What are the strategies doing now?</h1>
       <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
         Start with verified changes, the reason behind each observation and the next allowed review.
         This is research evidence, not an order or live market feed.

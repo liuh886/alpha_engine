@@ -12,6 +12,19 @@ const WORKFLOWS = 'https://github.com/liuh886/alpha_engine/actions/workflows/';
 
 type ObservationBadgeVariant = 'positive' | 'warning' | 'negative' | 'info' | 'muted';
 
+/**
+ * One severity vocabulary for source health. The retained payload still uses
+ * `delayed` / `blocked` / `inconsistent`; operators see the same words the
+ * strategy observation rows use instead of a second "degraded" label.
+ */
+const SOURCE_STATE_LABEL: Record<string, string> = {
+  current: 'Current',
+  delayed: 'Delayed',
+  blocked: 'Blocked',
+  inconsistent: 'Inconsistent',
+  not_applicable: 'Not applicable',
+};
+
 function observationVariant(observation: StrategyObservationBrief): ObservationBadgeVariant {
   if (observation.kind === 'attention') return observation.label === 'Delivery failed' ? 'negative' : 'warning';
   if (observation.kind === 'changed') return 'info';
@@ -112,8 +125,12 @@ export function SystemHubPage() {
       {health?.health?.markets.length ? <div className="mt-3 divide-y divide-border/70 rounded-lg border border-border/70">
         {health.health.markets.map(market => <div key={market.market} className="px-3 py-2.5 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">{market.market.toUpperCase()} · {market.state}</h3>
-            {market.state !== 'current' && <Badge variant="warning">Source degraded</Badge>}
+            <h3 className="text-sm font-semibold">{market.market.toUpperCase()} · {SOURCE_STATE_LABEL[market.state] ?? market.state}</h3>
+            {market.state !== 'current' && (
+              <Badge variant={market.state === 'blocked' ? 'negative' : 'warning'}>
+                {SOURCE_STATE_LABEL[market.state] ?? market.state}
+              </Badge>
+            )}
           </div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">Provider cutoff {market.provider_cutoff || 'unknown'} · expected {market.market_expected_cutoff || 'unknown'}</p>
         </div>)}
