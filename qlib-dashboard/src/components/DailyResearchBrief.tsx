@@ -11,6 +11,7 @@ const WORKFLOWS = 'https://github.com/liuh886/alpha_engine/actions/workflows/';
 const DISPLAY_ORDER = { changed: 0, attention: 1, retained: 2, unchanged: 3, access: 4, pending: 5 };
 const COPY_SUCCESS = 'Copied research summary to clipboard.';
 const COPY_FAILURE = 'Copy failed. Clipboard unavailable — select the brief and copy manually.';
+const REVIEW_NOT_VERIFIED = 'Review state not verified';
 const CHECKING_OBSERVATION: StrategyObservationBrief = {
   kind: 'pending', label: 'Checking observation', reason: 'Verifying access and current observations…',
   nextStep: 'Formal historical evidence remains available while verification completes.', recovery: null,
@@ -47,6 +48,12 @@ async function copyToClipboard(text: string): Promise<boolean> {
     // Fall back to the legacy selection path when the Clipboard API is rejected.
   }
   return copyWithTextarea(text);
+}
+
+/** An access-restricted brief never verified its cadence, so the page matches the copied summary there. */
+function reviewLabel(brief: StrategyObservationBrief): string {
+  if (brief.kind === 'access') return REVIEW_NOT_VERIFIED;
+  return brief.recovery ? 'Action required' : 'Scheduled cadence';
 }
 
 export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
@@ -139,7 +146,7 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
           </details>}
           <div className="mt-3 flex items-center justify-between border-t pt-2">
             <span className="text-[11px] text-muted-foreground">
-              Review: {brief.recovery ? 'Action required' : 'Scheduled cadence'}
+              Review: {reviewLabel(brief)}
             </span>
             <Link
               to={`/strategies/${encodeURIComponent(run.modelVersionId)}`}
