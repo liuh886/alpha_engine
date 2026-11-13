@@ -216,7 +216,7 @@ export function StrategyDetailPage() {
               <Badge variant="secondary">Formal baseline</Badge>
               {requiredTier !== 'public' && <Badge variant="outline"><Crown className="mr-1 h-3 w-3" />{requiredTierLabel} live</Badge>}
             </div>
-            <h1 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">{run.title}</h1>
+            <h1 className="mt-3 text-[26px] font-semibold leading-tight tracking-[-0.025em] md:text-[32px]">{run.title}</h1>
             <p className="mt-3 text-sm text-muted-foreground">{run.modelKind.replace(/_/g, ' ')}</p>
           </div>
           <div className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">

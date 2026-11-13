@@ -317,7 +317,7 @@ export function SecurityLightweightChart({
         {canvasSupported && mode === 'price' && !showEmpty && (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute bottom-1 left-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
+            className="pointer-events-none absolute bottom-6 left-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
           >
             Volume
           </span>
