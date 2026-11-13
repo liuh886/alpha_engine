@@ -17,9 +17,43 @@ const FOOTER = 'Research evidence only — not an order or live market feed.';
 const UNVERIFIED_REVIEW_RISK = 'Review state not verified';
 const UNVERIFIED_REVIEW_SCHEDULE = 'Review schedule not verified';
 
-/** Collapse line breaks and control whitespace so dynamic copy cannot break Markdown structure. */
+/** Collapse line breaks and control whitespace before the Markdown escape step. */
 function sanitize(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
+}
+
+// Line-start constructs and inline delimiters that would change the copied
+// brief's structure. Adapted from mdast-util-to-markdown lib/unsafe.js (MIT)
+// without adding the dependency; only the markers this brief can emit are escaped.
+const INLINE_MARKDOWN = /[`[\]]/g;
+const LEADING_ORDERED_LIST = /^(\d+)([.)])(?=\s|$)/;
+const LEADING_HEADING = /^(#{1,6})(?=\s|$)/;
+const LEADING_BULLET = /^-(?=[\s-]|$)|^\+(?=\s|$)/;
+const LEADING_BLOCK_QUOTE = /^>/;
+const LEADING_SETEXT = /^=/;
+const LEADING_TILDE = /^~/;
+const LEADING_EMPHASIS = /^[_*]/;
+
+/**
+ * Escape a dynamic value so a strategy title or reason cannot open a heading,
+ * list, block quote, code span or link in the copied Markdown brief. Normal
+ * prose (apostrophes, mid-sentence hyphens, percentages, slashes) is unchanged.
+ */
+export function escapeMarkdownInline(value: string): string {
+  return value
+    .replace(INLINE_MARKDOWN, '\\$&')
+    .replace(LEADING_ORDERED_LIST, '$1\\$2')
+    .replace(LEADING_HEADING, '\\$1')
+    .replace(LEADING_BULLET, '\\$&')
+    .replace(LEADING_BLOCK_QUOTE, '\\$&')
+    .replace(LEADING_SETEXT, '\\$&')
+    .replace(LEADING_TILDE, '\\$&')
+    .replace(LEADING_EMPHASIS, '\\$&');
+}
+
+/** Collapse whitespace, then escape only the dynamic values interpolated into Markdown. */
+function dynamicText(value: string): string {
+  return escapeMarkdownInline(sanitize(value));
 }
 
 function summaryDate(generatedAt: Date): string {
@@ -31,20 +65,20 @@ function summaryDate(generatedAt: Date): string {
 function evidenceLines(entry: DailyResearchSummaryEntry): string[] {
   const { run, snapshot } = entry;
   if (!snapshot) {
-    return [`- Evidence: Formal evidence through ${sanitize(run.evidenceCutoff)}; current observation not verified`];
+    return [`- Evidence: Formal evidence through ${dynamicText(run.evidenceCutoff)}; current observation not verified`];
   }
   const observations = [
-    `Observed ${sanitize(snapshot.latestCompletedSession ?? 'unknown')}`,
-    `target dated ${sanitize(snapshot.decisionSchedule?.signalDate ?? snapshot.asOf ?? 'unknown')}`,
+    `Observed ${dynamicText(snapshot.latestCompletedSession ?? 'unknown')}`,
+    `target dated ${dynamicText(snapshot.decisionSchedule?.signalDate ?? snapshot.asOf ?? 'unknown')}`,
     ...(snapshot.decisionSchedule?.completedThrough
-      ? [`completed market through ${sanitize(snapshot.decisionSchedule.completedThrough)}`]
+      ? [`completed market through ${dynamicText(snapshot.decisionSchedule.completedThrough)}`]
       : []),
-    `formal evidence ${sanitize(run.evidenceCutoff)}`,
+    `formal evidence ${dynamicText(run.evidenceCutoff)}`,
   ].join(' · ');
   return [
     `- Evidence: ${observations}`,
     ...snapshot.factorEvidence.slice(0, FACTOR_LINE_COUNT).map((factor) =>
-      `  - ${sanitize(factor.displayName)}: ${sanitize(factor.state)} · ${sanitize(factor.effect)} · observed ${sanitize(factor.observedAt)}`),
+      `  - ${dynamicText(factor.displayName)}: ${dynamicText(factor.state)} · ${dynamicText(factor.effect)} · observed ${dynamicText(factor.observedAt)}`),
   ];
 }
 
@@ -55,7 +89,7 @@ function riskLabel(brief: StrategyObservationBrief): string {
 
 function nextReview(brief: StrategyObservationBrief): string {
   if (brief.kind === 'access' || brief.kind === 'pending') return UNVERIFIED_REVIEW_SCHEDULE;
-  return sanitize(brief.nextStep);
+  return dynamicText(brief.nextStep);
 }
 
 function fleetCounts(entries: DailyResearchSummaryEntry[]): string {
@@ -67,9 +101,9 @@ function fleetCounts(entries: DailyResearchSummaryEntry[]): string {
 function prioritySection(entry: DailyResearchSummaryEntry): string {
   const { run, brief } = entry;
   return [
-    `## ${sanitize(run.title)} (${sanitize(run.market.toUpperCase())} · formal evidence through ${sanitize(run.evidenceCutoff)})`,
-    `- Observation: ${sanitize(brief.label)}`,
-    `- Why: ${sanitize(brief.reason)}`,
+    `## ${dynamicText(run.title)} (${dynamicText(run.market.toUpperCase())} · formal evidence through ${dynamicText(run.evidenceCutoff)})`,
+    `- Observation: ${dynamicText(brief.label)}`,
+    `- Why: ${dynamicText(brief.reason)}`,
     ...evidenceLines(entry),
     `- Risk: ${riskLabel(brief)}`,
     `- Next review: ${nextReview(brief)}`,
@@ -93,8 +127,8 @@ export function buildDailyResearchSummary(
   if (remaining.length) {
     sections.push([
       '## Other formal strategies',
-      ...remaining.map((entry) => `- ${sanitize(entry.run.title)}: ${sanitize(entry.brief.label)} `
-        + `(formal evidence through ${sanitize(entry.run.evidenceCutoff)})`),
+      ...remaining.map((entry) => `- ${dynamicText(entry.run.title)}: ${dynamicText(entry.brief.label)} `
+        + `(formal evidence through ${dynamicText(entry.run.evidenceCutoff)})`),
     ].join('\n'));
   }
   sections.push(FOOTER);
