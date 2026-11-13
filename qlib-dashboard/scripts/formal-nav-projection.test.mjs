@@ -168,6 +168,35 @@ describe('buildFormalNavProjection', () => {
     expect(Object.keys(projection.rows[0])).not.toContain('drawdown');
   });
 
+  it('matches the projected opening row and final published section binding', () => {
+    const projectedSha = 'd'.repeat(64);
+    const manifest = manifestFixture();
+    manifest.sections[0].sha256 = projectedSha;
+    manifest.sections[0].byte_size = 6543;
+    // projectPerformanceContext publishes validated opening values on row 0.
+    const published = performanceFixture();
+    published.report[0].account_before = 0.9312300000000001;
+    published.report[0].bench_qqq_before = 1.02;
+    published.public_evidence_context = { opening_basis: 'validated_retained_net_wealth_compounding' };
+
+    const projection = build({ performance: published, manifest });
+
+    expect(projection.rows).toHaveLength(published.report.length);
+    expect(projection.rows[0]).toMatchObject({
+      date: '2024-01-02',
+      account: 0.9275820066928864,
+      account_before: 0.9312300000000001,
+      bench_qqq_before: 1.02,
+    });
+    expect(projection.rows[0]).not.toHaveProperty('public_evidence_context');
+    expect(projection).not.toHaveProperty('public_evidence_context');
+    expect(projection.performance).toEqual({
+      section_id: 'performance',
+      sha256: projectedSha,
+      byte_size: 6543,
+    });
+  });
+
   it('serializes deterministically for the same sealed input', () => {
     const first = `${JSON.stringify(build())}\n`;
     const second = `${JSON.stringify(build({

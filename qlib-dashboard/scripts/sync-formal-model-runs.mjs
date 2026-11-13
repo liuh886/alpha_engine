@@ -189,11 +189,13 @@ for (const runDirectory of runDirectories) {
     await copyFile(join(sourceRunDir, 'manifest.json'), join(targetRunDir, 'manifest.json'));
   }
 
-  // Compact NAV evidence beside the copied sections. The sealed payload and
-  // the final public manifest/record are the bindings; no return is derived
-  // here and the browser never needs the full performance section.
+  // Compact NAV evidence beside the copied sections. Read the payload that was
+  // actually published: the performance-context projection may add validated
+  // opening fields (`account_before`, `bench_qqq_before`) to row 0. The final
+  // manifest/record bindings are already rewritten above, so the section hash
+  // still describes the published file. No return is derived here.
   const navProjection = buildFormalNavProjection({
-    performance: sourcePerformance.payload,
+    performance: performanceProjection ?? sourcePerformance.payload,
     manifest,
     record: catalogRecord,
     evidenceCutoff: manifest.evidence_cutoff,
