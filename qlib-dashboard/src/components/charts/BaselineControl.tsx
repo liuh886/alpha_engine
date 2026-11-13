@@ -88,7 +88,7 @@ export function BaselineControl({ options, value, onChange, marketLabel, disable
             aria-expanded={open}
             aria-describedby={disabled ? reasonId : undefined}
             className={cn(
-              'inline-flex min-h-8 min-w-0 items-center gap-2 rounded-md border bg-background px-2.5 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-muted/50',
+              'research-touch inline-flex min-h-8 min-w-0 items-center gap-2 rounded-md border bg-background px-2.5 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-muted/50',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               disabled && 'cursor-not-allowed opacity-60',
             )}
@@ -123,7 +123,7 @@ export function BaselineControl({ options, value, onChange, marketLabel, disable
                     data-unavailable={option.available ? undefined : 'true'}
                     onClick={() => select(option)}
                     className={cn(
-                      'flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+                      'research-touch flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       option.available ? 'hover:bg-accent' : 'cursor-not-allowed opacity-70',
                       isSelected && 'bg-primary/10',

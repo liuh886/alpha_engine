@@ -47,7 +47,7 @@ export function MobileNavigation() {
         <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Strategy navigation">
           <button
             type="button"
-            className="absolute inset-0 bg-slate-950/60"
+            className="absolute inset-0 bg-black/60"
             onClick={() => setOpen(false)}
             aria-label="Dismiss strategy navigation"
           />
@@ -66,7 +66,6 @@ export function MobileNavigation() {
                 <span className="research-brand-mark"><Orbit className="h-4 w-4" aria-hidden="true" /></span>
                 <span>
                   <span className="block text-[13px] font-semibold leading-5">Alpha Engine</span>
-                  <span className="research-brand-subtitle block">Research Workspace</span>
                 </span>
               </Link>
               <Button type="button" variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close strategy navigation">

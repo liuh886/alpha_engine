@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { loadDerivedExcess } from '@/lib/derived-excess';
 import { loadFormalNav } from '@/lib/formal-nav';
 import type { GovernedRunSummary } from '@/lib/governed-run';
+import { readMarketEvidence } from '@/lib/market-evidence-cache';
 import {
   RANKING_INDEX_SYMBOLS,
   RANKING_INDEX_TITLES,
@@ -13,7 +14,6 @@ import {
   type RankingExcess,
   type RankingMarket,
 } from '@/lib/model-ranking';
-import { loadSecurityEvidence, type SecurityEvidence } from '@/lib/security-evidence';
 
 export interface ModelRankingIssue {
   id: string;
@@ -41,23 +41,6 @@ function errorMessage(error: unknown): string {
   return error instanceof Error && error.message ? error.message : String(error);
 }
 
-// `loadSecurityEvidence` verifies the catalog and digest on every call. Share
-// one promise per governed market/symbol so Today and Strategies cannot
-// duplicate the same read; failures are evicted so an explicit remount retries.
-const marketEvidenceReads = new Map<string, Promise<SecurityEvidence>>();
-
-function readMarketEvidence(market: RankingMarket, symbol: string): Promise<SecurityEvidence> {
-  const key = `${market}:${symbol}`;
-  const cached = marketEvidenceReads.get(key);
-  if (cached) return cached;
-  const read = loadSecurityEvidence(market, symbol);
-  marketEvidenceReads.set(key, read);
-  read.catch(() => {
-    if (marketEvidenceReads.get(key) === read) marketEvidenceReads.delete(key);
-  });
-  return read;
-}
-
 /** Retained metric first; a derived artifact only fills a genuinely absent value. */
 async function excessForRun(run: GovernedRunSummary): Promise<RankingExcess | undefined> {
   const retained = retainedExcess(run);
@@ -78,8 +61,10 @@ async function readStrategyRun(
   includeExcess: boolean,
 ): Promise<ReadResult> {
   try {
-    const nav = await loadFormalNav(run);
-    const excess = includeExcess ? await excessForRun(run) : undefined;
+    const [nav, excess] = await Promise.all([
+      loadFormalNav(run),
+      includeExcess ? excessForRun(run) : Promise.resolve(undefined),
+    ]);
     return { rows: strategyRowsFromNav(run, nav.rows, { excess }), issues: [] };
   } catch (error) {
     return {
@@ -97,7 +82,7 @@ async function readIndex(market: RankingMarket): Promise<ReadResult> {
   const symbol = RANKING_INDEX_SYMBOLS[market];
   const title = RANKING_INDEX_TITLES[market];
   try {
-    const evidence = await readMarketEvidence(market, symbol);
+    const evidence = await readMarketEvidence(market);
     return {
       rows: indexRowsFromBars(market, symbol, title, evidence.bars, evidence.cutoff),
       issues: [],

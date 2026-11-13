@@ -89,7 +89,7 @@ function MetricCard({ metricId, metrics, dateRange, sourceWindow }: { metricId: 
 function EmptyEvidence({ title, reason }: { title: string; reason: string }) {
   return (
     <div className="rounded-xl border-2 border-dashed bg-muted/10 p-8 text-center">
-      <AlertTriangle className="mx-auto h-7 w-7 text-amber-500" />
+      <AlertTriangle className="mx-auto h-7 w-7 text-warning" />
       <h3 className="mt-3 font-semibold">{title} unavailable</h3>
       <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">{reason}</p>
     </div>
@@ -279,7 +279,7 @@ function RiskPanel({
             </div>
             <div>
               <span className="text-xs text-muted-foreground">Period maximum drawdown</span>
-              <p className="font-mono text-xl font-bold tabular-nums text-rose-600 dark:text-rose-400">
+              <p className="font-mono text-xl font-bold tabular-nums text-negative">
                 {periodSummary.drawdown === null ? '—' : `${(periodSummary.drawdown * 100).toFixed(2)}%`}
               </p>
             </div>
@@ -303,7 +303,7 @@ function RiskPanel({
         </CardContent>
       </Card>
       {(evidence.risk.interpretationLimit || evidence.robustness.interpretationLimit) && (
-        <Card className="border-amber-500/20 bg-amber-500/5">
+        <Card className="border-warning/20 bg-warning/5">
           <CardContent className="space-y-2 pt-5 text-sm text-muted-foreground">
             {evidence.risk.interpretationLimit && <p><strong className="text-foreground">Risk limit:</strong> {evidence.risk.interpretationLimit}</p>}
             {evidence.robustness.interpretationLimit && <p><strong className="text-foreground">Robustness limit:</strong> {evidence.robustness.interpretationLimit}</p>}
@@ -377,7 +377,7 @@ function TradesPanel({ evidence }: { evidence: FormalRunEvidence }) {
         </div>
       )}
       {(evidence.tradeSemantics.price || evidence.tradeSemantics.amount) && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-relaxed text-muted-foreground">
+        <div className="rounded-lg border border-warning/20 bg-warning/5 p-3 text-xs leading-relaxed text-muted-foreground">
           <p><strong className="text-foreground">Price:</strong> {evidence.tradeSemantics.price}</p>
           <p className="mt-1"><strong className="text-foreground">Amount:</strong> {evidence.tradeSemantics.amount}</p>
         </div>
@@ -453,7 +453,7 @@ function EvidencePanel({ evidence }: { evidence: FormalRunEvidence }) {
             {declarations.map((section) => (
               <div key={section.section_id} className="flex items-start justify-between gap-4 py-2.5 text-xs">
                 <div><div className="font-medium">{formatEvidenceLabel(section.section_id)}</div>{section.reason && <div className="mt-1 max-w-md text-muted-foreground">{section.reason}</div>}</div>
-                <Badge variant="outline" className={section.availability_status === 'available' ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>{formatEvidenceLabel(section.availability_status)}</Badge>
+                <Badge variant="outline" className={section.availability_status === 'available' ? 'text-positive' : 'text-warning'}>{formatEvidenceLabel(section.availability_status)}</Badge>
               </div>
             ))}
           </CardContent>
@@ -481,7 +481,7 @@ function EvidencePanel({ evidence }: { evidence: FormalRunEvidence }) {
         <CardHeader className="border-b pb-3"><CardTitle className="flex items-center gap-2 text-sm"><ReceiptText className="h-4 w-4 text-primary" />Interpretation and evidence boundary</CardTitle></CardHeader>
         <CardContent className="space-y-3 pt-4 text-sm text-muted-foreground">
           {evidence.diagnostics.interpretationNotes.map((note) => <p key={note}>• {note}</p>)}
-          {missing.length > 0 && <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3"><strong className="text-foreground">Missing retained evidence:</strong> {missing.map(formatEvidenceLabel).join(', ')}</div>}
+          {missing.length > 0 && <div className="rounded-lg border border-warning/20 bg-warning/5 p-3"><strong className="text-foreground">Missing retained evidence:</strong> {missing.map(formatEvidenceLabel).join(', ')}</div>}
           {notApplicable.length > 0 && <div className="rounded-lg border bg-muted/20 p-3"><strong className="text-foreground">Not applicable:</strong> {notApplicable.map(formatEvidenceLabel).join(', ')}</div>}
         </CardContent>
       </Card>

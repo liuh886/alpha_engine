@@ -15,10 +15,10 @@ export default {
       },
       fontFamily: {
         sans: [
-          'Inter',
           'Segoe UI',
           'system-ui',
           '-apple-system',
+          'BlinkMacSystemFont',
           'sans-serif'
         ],
         mono: [

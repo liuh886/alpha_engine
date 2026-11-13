@@ -33,7 +33,7 @@ export function RdiHistoricalComparison({ rows, priceCutoff, horizon, onHorizonC
           ] as const).map(([name, value, focal]) => <div key={name} className="mt-2">
             <div className="mb-1 flex justify-between gap-3 text-[11px]"><span className="text-muted-foreground">{name}</span><span className="shrink-0 font-medium tabular-nums">{percent(value)}</span></div>
             <div role="meter" aria-label={`${row.horizon_sessions} sessions, ${name}, historical loss frequency`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Number((value * 100).toFixed(4))} aria-valuetext={percent(value, 2)} className="h-2 overflow-hidden rounded-sm bg-muted">
-              <div className={'h-full rounded-sm ' + (focal ? 'bg-primary' : 'bg-slate-400 dark:bg-slate-500')} style={{ width: `${value * 100}%` }} />
+              <div className={'h-full rounded-sm ' + (focal ? 'bg-primary' : 'bg-muted-foreground/45')} style={{ width: `${value * 100}%` }} />
             </div>
           </div>)}
         </div>)}

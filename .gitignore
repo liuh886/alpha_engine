@@ -150,3 +150,8 @@ qlib_cache/
 
 # PM2 logs
 logs/
+
+# Local TypeScript build artifacts
+qlib-dashboard/*.tsbuildinfo
+qlib-dashboard/vite.config.js
+qlib-dashboard/vite.config.d.ts

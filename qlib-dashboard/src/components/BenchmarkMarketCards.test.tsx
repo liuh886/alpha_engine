@@ -91,7 +91,8 @@ describe('BenchmarkMarketCards', () => {
     expect(screen.getByRole('region', { name: 'Benchmark markets' })).toHaveAttribute('aria-busy', 'true');
     const us = screen.getByTestId('benchmark-card-us');
     expect(us).toHaveTextContent('—');
-    expect(within(us).getByText('Reading governed market evidence…')).toHaveClass('sr-only');
+    expect(within(us).getByRole('status')).toHaveTextContent('Reading governed market evidence…');
+    expect(within(us).getByRole('status')).not.toHaveClass('sr-only');
   });
 
   it('discloses a stale index feed in text and in the card accessible name', () => {

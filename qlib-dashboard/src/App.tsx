@@ -39,7 +39,7 @@ function Layout(props: ReturnType<typeof useAppBootstrap>) {
     <Sidebar />
     <div className="research-workspace">
       <header className="research-topbar">
-        <div className="min-w-0"><p className="research-topbar-eyebrow">Alpha Engine / Research only</p><h1 className="truncate">{title}</h1></div>
+        <div className="min-w-0"><p className="research-topbar-eyebrow">Alpha Engine / Research only</p><p className="research-app-title truncate">{title}</p></div>
         <div className="research-topbar-actions">
           <MobileNavigation />
           <div className="alpha-account-slot" data-account-slot aria-label="AlphaEngine account" />
@@ -56,7 +56,7 @@ function Layout(props: ReturnType<typeof useAppBootstrap>) {
       <main ref={mainRef} className="research-main">
         {formalPage && props.loading ? <div className="space-y-6" role="status" aria-label="Loading formal strategy evidence"><p className="text-sm text-muted-foreground">Reading formal strategy evidence…</p><Skeleton className="h-28 rounded-xl" /><Skeleton className="h-96 rounded-xl" /></div>
           : formalPage && props.loadError ? <div className="research-empty-state">
-            <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
+            <AlertTriangle className="mx-auto h-8 w-8 text-warning" />
             <h2 className="mt-4 text-lg font-semibold">Strategy evidence unavailable</h2>
             <p className="mt-2 text-sm text-muted-foreground">{props.loadError}</p>
             <Button variant="outline" className="mt-5" onClick={() => void props.reload()}>Retry evidence reading</Button>

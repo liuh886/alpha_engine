@@ -17,6 +17,7 @@ import { STRATEGY_STATUS_LABEL, summarizeStrategySignal } from '@/lib/strategy-o
 import type { StrategyFactorEvidence } from '@/lib/strategy-operations';
 import { formatRefValue } from '@/lib/evidence-availability';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
+import { cn } from '@/lib/utils';
 
 const ACCESS_TIER_LABEL: Record<AccessTier, string> = {
   public: 'Public',
@@ -81,6 +82,69 @@ function contributionSummary(factor: StrategyFactorEvidence): string | null {
     .join(' · ');
   const role = rows.some((row) => row.decisionRole === 'ranker_reference_vetoed_by_regime') ? 'ranker reference · regime vetoed' : 'selected holdings';
   return `XGBoost pred_contribs · ${role} · ${strongest}`;
+}
+
+const WORKSPACE_SECTIONS = [
+  { id: 'summary', label: 'Summary' },
+  { id: 'decisions', label: 'Decisions' },
+  { id: 'risk', label: 'Risk' },
+  { id: 'evidence', label: 'Evidence' },
+] as const;
+
+type WorkspaceSectionId = (typeof WORKSPACE_SECTIONS)[number]['id'];
+
+/**
+ * In-page section navigation. Buttons scroll and move focus inside the current
+ * route; a plain `href="#id"` would replace the HashRouter route entirely.
+ */
+function StrategySectionNav() {
+  const [active, setActive] = useState<WorkspaceSectionId>('summary');
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((left, right) => left.boundingClientRect.top - right.boundingClientRect.top);
+      if (visible[0]) setActive(visible[0].target.id as WorkspaceSectionId);
+    }, { rootMargin: '-35% 0px -55% 0px', threshold: [0, 1] });
+    for (const section of WORKSPACE_SECTIONS) {
+      const element = document.getElementById(section.id);
+      if (element) observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, []);
+
+  const go = (id: WorkspaceSectionId) => {
+    const target = document.getElementById(id);
+    if (!target) return;
+    setActive(id);
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    target.focus({ preventScroll: true });
+  };
+
+  return (
+    <nav aria-label="Strategy workspace sections" className="sticky top-14 z-20 -mx-4 border-b bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 md:top-[60px]">
+      <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+        {WORKSPACE_SECTIONS.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            onClick={() => go(section.id)}
+            aria-current={active === section.id ? 'true' : undefined}
+            className={cn(
+              'research-touch min-h-11 rounded-md px-3 text-xs font-medium transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              active === section.id
+                ? 'bg-primary/10 text-foreground underline decoration-primary decoration-2 underline-offset-[10px]'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
+          >
+            {section.label}
+          </button>
+        ))}
+      </div>
+    </nav>
+  );
 }
 
 export function StrategyDetailPage() {
@@ -152,7 +216,7 @@ export function StrategyDetailPage() {
               <Badge variant="secondary">Formal baseline</Badge>
               {requiredTier !== 'public' && <Badge variant="outline"><Crown className="mr-1 h-3 w-3" />{requiredTierLabel} live</Badge>}
             </div>
-            <h1 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">{run.title}</h1>
+            <h1 className="mt-3 text-[26px] font-semibold leading-tight tracking-[-0.025em] md:text-[32px]">{run.title}</h1>
             <p className="mt-3 text-sm text-muted-foreground">{run.modelKind.replace(/_/g, ' ')}</p>
           </div>
           <div className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
@@ -163,22 +227,15 @@ export function StrategyDetailPage() {
         </div>
       </section>
 
-      <nav aria-label="Strategy workspace sections" className="sticky top-0 z-20 -mx-4 border-b bg-background/95 px-4 py-2.5 backdrop-blur sm:-mx-6 sm:px-6">
-        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-          <a href="#summary" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Summary</a>
-          <a href="#decisions" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Decisions</a>
-          <a href="#risk" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Risk</a>
-          <a href="#evidence" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Evidence</a>
-        </div>
-      </nav>
+      <StrategySectionNav />
 
-      <div id="summary" className="scroll-mt-14 space-y-7">
+      <div id="summary" tabIndex={-1} className="scroll-mt-28 space-y-7 focus:outline-none">
         <StrategyChartHero key={run.key} run={run} />
         <OperationsReadStatus loading={loading} issues={issues} reload={reload} previousRead={snapshot?.readState === 'retained'} />
         <ResearchTrackingAssessment state={decisionState} evidenceCutoff={run.evidenceCutoff} primaryCounterevidence={primaryCounterevidence?.statement} />
       </div>
 
-      <div id="decisions" className="scroll-mt-14">
+      <div id="decisions" tabIndex={-1} className="scroll-mt-28 focus:outline-none">
         <section aria-labelledby="strategy-now-heading" className="space-y-4">
         <div className="flex items-end justify-between gap-4">
           <div>
@@ -291,7 +348,7 @@ export function StrategyDetailPage() {
         </section>
       </div>
 
-      <div id="risk" className="scroll-mt-14">
+      <div id="risk" tabIndex={-1} className="scroll-mt-28 focus:outline-none">
         <section aria-label="Latest retained change and risk" className="rounded-xl border bg-card p-5 text-sm">
           <h2 className="font-semibold">Latest retained change and risk</h2>
           {observation ? <>
@@ -306,7 +363,7 @@ export function StrategyDetailPage() {
         </section>
       </div>
 
-      <div id="evidence" className="scroll-mt-14">
+      <div id="evidence" tabIndex={-1} className="scroll-mt-28 focus:outline-none">
         <section className="space-y-4 border-t pt-7">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Evidence</p>

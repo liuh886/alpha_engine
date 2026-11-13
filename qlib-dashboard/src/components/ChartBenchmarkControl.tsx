@@ -84,7 +84,7 @@ export function ChartBenchmarkControl({
                     aria-label={`Use ${option.label} as primary benchmark`}
                     aria-pressed={isPrimary}
                     onClick={() => onPrimaryChange(option.key)}
-                    className={cn('rounded p-1.5 transition-colors hover:bg-background', isPrimary ? 'text-amber-500' : 'text-muted-foreground/35 hover:text-muted-foreground')}
+                    className={cn('rounded p-1.5 transition-colors hover:bg-background', isPrimary ? 'text-warning' : 'text-muted-foreground/35 hover:text-muted-foreground')}
                   >
                     <Star className={cn('h-3.5 w-3.5', isPrimary && 'fill-current')} />
                   </button>

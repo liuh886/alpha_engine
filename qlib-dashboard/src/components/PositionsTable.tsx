@@ -295,7 +295,7 @@ export function PositionsTable({ positions, report, market, model }: { positions
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <SecurityLink market={market} model={model} instrument={position.instrument}>{position.instrument_label || position.name || position.instrument}</SecurityLink>
-                            {position.changeKind === 'new' && <Badge variant="outline" className="h-4 px-1 text-[8px] text-emerald-700 dark:text-emerald-300">New</Badge>}
+                            {position.changeKind === 'new' && <Badge variant="outline" className="h-4 px-1 text-[8px] text-info">New</Badge>}
                           </div>
                           <span className="block truncate font-mono text-[9px] text-muted-foreground">{position.instrument}</span>
                         </div>
@@ -308,8 +308,8 @@ export function PositionsTable({ positions, report, market, model }: { positions
                       </td>
                       <td className={cn(
                         'flex flex-1 items-center justify-end px-4 py-2 font-mono text-xs tabular-nums',
-                        delta !== null && delta > EPSILON && 'text-emerald-600 dark:text-emerald-400',
-                        delta !== null && delta < -EPSILON && 'text-rose-600 dark:text-rose-400',
+                        delta !== null && delta > EPSILON && 'text-positive',
+                        delta !== null && delta < -EPSILON && 'text-negative',
                         (delta === null || Math.abs(delta) <= EPSILON) && 'text-muted-foreground',
                       )}>
                         {delta === null ? '—' : `${delta > 0 ? '+' : ''}${(delta * 100).toFixed(2)}%`}

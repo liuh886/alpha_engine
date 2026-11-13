@@ -81,12 +81,12 @@ export function RacetrackChart({ data, selected, onSelect, onHover }: {
     <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
       <span>Display NAV · 1.00 at {data.dates[0]}</span>
       <span>{data.shortHistory === undefined ? `${data.availableMonths} / ${data.requestedMonths} month buckets available` : data.shortHistory ? 'Available replay · insufficient history for the selected window' : `Full ${data.requestedMonths}M window available`}</span>
-      <button className="min-h-9 rounded-md border px-3 hover:bg-muted focus-visible:ring-2" onClick={() => chartRef.current?.timeScale().fitContent()}>Reset zoom</button>
+      <button className="research-touch min-h-9 rounded-md border px-3 hover:bg-muted focus-visible:ring-2" onClick={() => chartRef.current?.timeScale().fitContent()}>Reset zoom</button>
     </div>
     <div ref={host} role="img" aria-label="Racetrack normalized NAV comparison" className="h-[370px] w-full" />
     {chartError && <p role="alert" className="text-sm">{chartError}</p>}
     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs" aria-label="NAV legend">
-      {data.series.map((s, index) => <button key={s.id} className="flex min-h-9 items-center gap-2 rounded-md px-1 text-left focus-visible:ring-2"
+      {data.series.map((s, index) => <button key={s.id} className="research-touch flex min-h-9 items-center gap-2 rounded-md px-1 text-left focus-visible:ring-2"
         disabled={!s.runnerId} aria-pressed={selected === s.runnerId} onClick={() => s.runnerId && onSelect(s.runnerId)}>
         <span aria-hidden="true" className="h-0.5 w-5 shrink-0" style={{ background: seriesColor(index), borderTop: index < 2 ? '1px dashed' : undefined }} />
         <span className={selected === s.runnerId ? 'font-bold text-foreground' : 'text-muted-foreground'}>{s.label}</span>

@@ -46,6 +46,8 @@ export interface NavChartProps {
   coverage?: HorizonCoverage;
   emptyReason?: string;
   onMarkerSelect?: (marker: NavMarker) => void;
+  /** Date of the marker currently announced by the surrounding panel. */
+  selectedMarkerDate?: string | null;
   /** Optional spoken summary of window and headline returns for the figure. */
   summaryLabel?: string;
 }
@@ -327,6 +329,7 @@ export function NavChart({
   coverage,
   emptyReason,
   onMarkerSelect,
+  selectedMarkerDate = null,
   summaryLabel,
 }: NavChartProps) {
   const model = useMemo(() => buildNavChartModel(series), [series]);
@@ -347,8 +350,33 @@ export function NavChart({
     [chartDates, markers],
   );
   const hiddenMarkerCount = Math.max(0, (Array.isArray(markers) ? markers : []).length - visibleMarkers.length);
+  const markerByDate = useMemo(
+    () => new Map(visibleMarkers.map(marker => [marker.date, marker])),
+    [visibleMarkers],
+  );
   const hasData = model.rows.length >= 2 && primarySeries !== null;
   const resolvedHeight = Number.isFinite(height) && height > 0 ? height : 320;
+  // Padded data-driven domain: a zero-based axis would spend most of the plot
+  // on empty space when a retained series lives, for example, between 68 and
+  // 120. The 100 reference line stays inside the domain.
+  const yDomain = useMemo((): [number, number] => {
+    let low = Infinity;
+    let high = -Infinity;
+    for (const row of model.rows) {
+      for (const candidate of activeSeries) {
+        const value = row[candidate.key];
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          low = Math.min(low, value);
+          high = Math.max(high, value);
+        }
+      }
+    }
+    if (!Number.isFinite(low) || !Number.isFinite(high)) return [0, 100];
+    low = Math.min(low, 100);
+    high = Math.max(high, 100);
+    const pad = Math.max((high - low) * 0.08, 1.5);
+    return [Math.floor(low - pad), Math.ceil(high + pad)];
+  }, [activeSeries, model.rows]);
   const hiddenMarkerText = hiddenMarkerCount === 1
     ? '1 activity marker falls outside the aligned window or does not match a retained observation date and is not drawn.'
     : `${hiddenMarkerCount} activity markers fall outside the aligned window or do not match retained observation dates and are not drawn.`;
@@ -372,6 +400,7 @@ export function NavChart({
                 tickLine={false}
               />
               <YAxis
+                domain={yDomain}
                 tickFormatter={value => AXIS_INDEX_FORMAT.format(Number(value))}
                 tick={{ fontSize: 10, fill: 'hsl(var(--chart-axis))' }}
                 axisLine={false}
@@ -501,17 +530,81 @@ export function NavChart({
       )}
 
       {visibleMarkers.length > 0 && (
-        <ul className="sr-only" aria-label="Activity marker details">
-          {visibleMarkers.map(marker => (
-            <li key={`marker-detail-${marker.date}`}>
-              {onMarkerSelect ? (
-                <button type="button" onClick={() => onMarkerSelect(marker)}>{markerSummary(marker)}</button>
-              ) : (
-                <span>{markerSummary(marker)}</span>
-              )}
-            </li>
-          ))}
-        </ul>
+        <div className="mt-2 rounded-lg border bg-card/60">
+          <p className="border-b px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Activity markers in this window
+          </p>
+          <ul aria-label="Activity marker details" className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto p-2">
+            {visibleMarkers.map(marker => {
+              const selected = selectedMarkerDate === marker.date;
+              return (
+                <li key={`marker-detail-${marker.date}`}>
+                  {onMarkerSelect ? (
+                    <button
+                      type="button"
+                      data-testid="nav-marker-button"
+                      aria-pressed={selected}
+                      onClick={() => onMarkerSelect(marker)}
+                      className={cn(
+                        'research-touch min-h-8 rounded border px-2 py-1 text-left text-[11px] tabular-nums transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                        selected
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'bg-card text-muted-foreground hover:text-foreground',
+                      )}
+                    >{markerSummary(marker)}</button>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">{markerSummary(marker)}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {hasData && (
+        <details data-testid="nav-chart-data" className="mt-2 rounded-lg border bg-card/60">
+          <summary className="research-touch min-h-8 cursor-pointer px-3 py-2 text-[11px] font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1">
+            View chart data table
+          </summary>
+          <div className="max-h-72 overflow-auto border-t">
+            <table className="w-full border-collapse text-[11px]">
+              <caption className="sr-only">
+                {periodLabel} plot data indexed to 100 at {model.startDate}; exact observed dates only.
+              </caption>
+              <thead className="sticky top-0 bg-card">
+                <tr className="border-b">
+                  <th scope="col" className="px-2 py-1 text-left font-semibold text-muted-foreground">Date</th>
+                  {activeSeries.map(candidate => (
+                    <th key={candidate.key} scope="col" className="px-2 py-1 text-right font-semibold text-muted-foreground">
+                      {candidate.label}
+                    </th>
+                  ))}
+                  <th scope="col" className="px-2 py-1 text-left font-semibold text-muted-foreground">Marker</th>
+                </tr>
+              </thead>
+              <tbody>
+                {model.rows.map(row => {
+                  const marker = markerByDate.get(row.date);
+                  return (
+                    <tr key={`chart-row-${row.date}`} className="border-b last:border-b-0">
+                      <th scope="row" className="px-2 py-1 text-left font-normal tabular-nums">{row.date}</th>
+                      {activeSeries.map(candidate => (
+                        <td key={candidate.key} className="px-2 py-1 text-right font-mono tabular-nums">
+                          {INDEX_FORMAT.format(Number(row[candidate.key]))}
+                        </td>
+                      ))}
+                      <td className="px-2 py-1 text-left">
+                        {marker ? `${markerSideLabel(marker.side)} · ${marker.count}` : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </details>
       )}
     </figure>
   );

@@ -3,7 +3,6 @@ import { BaselineControl } from '@/components/charts/BaselineControl';
 import { NavChart, type NavChartSeries } from '@/components/charts/NavChart';
 import { useBaselinePreference } from '@/hooks/useBaselinePreference';
 import {
-  MARKET_BASELINES,
   marketNavFromBars,
   navFromBenchmarkField,
   type BaselineKind,
@@ -12,9 +11,9 @@ import {
 } from '@/lib/baseline';
 import { loadFormalNav } from '@/lib/formal-nav';
 import { loadRunSection, type GovernedRunSummary } from '@/lib/governed-run';
+import { readMarketEvidence } from '@/lib/market-evidence-cache';
 import { alignNavSeries, joinNavMarkers, navFromReport, type NavMarker, type NavPoint } from '@/lib/nav-series';
 import { navHorizonCoverage, navSeriesForPeriod } from '@/lib/nav-returns';
-import { loadSecurityEvidence } from '@/lib/security-evidence';
 import type { ReportRow } from '@/lib/types';
 import {
   CHART_HORIZONS,
@@ -37,22 +36,6 @@ import {
   type NavMarkerMode,
 } from '@/lib/strategy-chart';
 import { cn } from '@/lib/utils';
-
-/** One governed market read per market/symbol for the life of this module. */
-const marketBaselineReads = new Map<string, Promise<NavPoint[]>>();
-
-function readMarketBaseline(market: BaselineMarket): Promise<NavPoint[]> {
-  const key = marketBaselineKey(market);
-  const cached = marketBaselineReads.get(key);
-  if (cached) return cached;
-  const read = loadSecurityEvidence(market, MARKET_BASELINES[market].symbol)
-    .then(evidence => marketNavFromBars(evidence.bars));
-  marketBaselineReads.set(key, read);
-  void read.catch(() => {
-    if (marketBaselineReads.get(key) === read) marketBaselineReads.delete(key);
-  });
-  return read;
-}
 
 function useChartHeight(): number {
   const [height, setHeight] = useState(380);
@@ -194,7 +177,8 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
     let active = true;
     setMarketLoading(true);
     setBaselineError(null);
-    void readMarketBaseline(market)
+    void readMarketEvidence(market)
+      .then(evidence => marketNavFromBars(evidence.bars))
       .then(points => {
         if (!active) return;
         setMarketSeries({ key, points });
@@ -286,7 +270,7 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
     if (windowPoints.length > 0) {
       series.push({ key: 'strategy', label: 'Strategy', nav: windowPoints, emphasis: 'primary' });
     }
-    if (baselineSelected && baselineWindow.length > 0) {
+    if (baselineSelected && baselineWindow.length >= 2) {
       series.push({
         key: 'baseline',
         label: baselineName,
@@ -331,8 +315,7 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
     >
       <header className="flex flex-col gap-3 border-b p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Formal strategy evidence</p>
-          <h2 id="strategy-chart-hero-heading" className="mt-1 text-lg font-semibold">Performance path</h2>
+          <h2 id="strategy-chart-hero-heading" className="text-lg font-semibold">Performance path</h2>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
             Governed NAV indexed to 100 at the first exact-date observation. No interpolation, forward fill or
             cross-market baseline. All values remain research evidence, not live trading results.
@@ -347,7 +330,7 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
                 aria-pressed={period === horizon.period}
                 onClick={() => setPeriod(horizon.period)}
                 className={cn(
-                  'min-h-8 rounded px-2.5 text-[11px] font-semibold tabular-nums transition-colors',
+                  'research-touch min-h-8 rounded px-2.5 text-[11px] font-semibold tabular-nums transition-colors',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   period === horizon.period
                     ? 'bg-primary text-primary-foreground shadow-sm'
@@ -455,6 +438,7 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
               coverage={coverage}
               emptyReason={emptyReason}
               onMarkerSelect={setSelectedMarker}
+              selectedMarkerDate={selectedMarker?.date ?? null}
               summaryLabel={summaryLabel}
             />
 

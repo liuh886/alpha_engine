@@ -59,6 +59,21 @@ function normalizeBenchmarkIdentity(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
+/**
+ * Display form of a raw benchmark identity. The manifest value remains the
+ * option key and evidence identity; this only makes a short ticker or a
+ * versioned benchmark name readable (`qqq` -> `QQQ`, `byd_v1.2` -> `BYD v1.2`).
+ */
+export function baselineDisplayLabel(raw: string): string {
+  return raw
+    .trim()
+    .split(/[_]+/)
+    .filter(Boolean)
+    .map((token) => /^[a-z]{1,5}$/.test(token) ? token.toUpperCase() : token)
+    .join(' ')
+    .replace(/\s+/g, ' ');
+}
+
 function retainedBenchmarkFields(rows: ReportRow[]): string[] {
   const fields: string[] = [];
   for (const row of rows) {
@@ -196,7 +211,7 @@ export function discoverBaselineOptions(
     const available = field !== null && navFromBenchmarkField(rows, field).length >= 2;
     options.push({
       key: field === null ? `declared:${normalizeBenchmarkIdentity(benchmark) || 'unresolved'}` : `declared:${field}`,
-      label: benchmark,
+      label: baselineDisplayLabel(benchmark),
       kind: 'declared',
       market,
       source: 'formal_report',

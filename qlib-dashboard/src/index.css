@@ -36,7 +36,9 @@
     --positive-foreground: 0 0% 100%;
     --negative: 0 68% 43%;
     --negative-foreground: 0 0% 100%;
-    --warning: 30 90% 34%;
+    /* 30 90% 30% keeps 10–11px warning labels above 4.5:1 on card and
+       warning/10 surfaces (measured 5.4:1 at 10px). */
+    --warning: 30 90% 30%;
     --warning-foreground: 0 0% 100%;
     --info: 255 62% 48%;
     --info-foreground: 0 0% 100%;
@@ -163,13 +165,6 @@
     @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary;
   }
   .research-brand-name { @apply text-[13px] font-semibold leading-5 tracking-[-0.01em]; }
-  .research-brand-subtitle {
-    @apply text-[9px] font-semibold uppercase leading-4 tracking-[0.16em] text-muted-foreground;
-  }
-  .research-bundle-card { @apply mx-3 mt-3 rounded-lg border bg-card/70 p-3; }
-  .research-bundle-label { @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground; }
-  .research-bundle-title { @apply mt-1 truncate text-xs font-semibold; }
-  .research-bundle-meta { @apply mt-1 text-[11px] text-muted-foreground; }
   .research-nav { @apply min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-3; }
   .research-nav-group { @apply space-y-1; }
   .research-nav-group-label,
@@ -194,9 +189,9 @@
     @apply relative z-30 flex min-h-[60px] shrink-0 items-center justify-between gap-4 border-b bg-card px-4 md:px-6 lg:px-8;
   }
   .research-topbar-eyebrow {
-    @apply text-[10px] font-semibold uppercase leading-4 tracking-[0.14em] text-muted-foreground;
+    @apply whitespace-nowrap text-[10px] font-semibold uppercase leading-4 tracking-[0.14em] text-muted-foreground;
   }
-  .research-topbar h1 { @apply mt-0.5 truncate text-[17px] font-semibold leading-6 tracking-[-0.02em] md:text-lg; }
+  .research-app-title { @apply mt-0.5 truncate text-[15px] font-semibold leading-5 tracking-[-0.01em] md:text-base; }
   .research-topbar-actions { @apply flex shrink-0 items-center gap-1; }
   .research-context-bar {
     @apply flex min-h-9 shrink-0 items-center gap-3 overflow-x-auto whitespace-nowrap border-b bg-muted/30 px-4 text-[11px] leading-4 text-muted-foreground md:gap-4 md:px-6 lg:px-8;
@@ -257,8 +252,13 @@
     .research-app-shell { @apply block overflow-auto; }
     .research-workspace { @apply min-h-screen; }
     .research-topbar { @apply sticky top-0 min-h-14; }
-    .research-topbar h1 { @apply text-base; }
-    .research-context-bar { @apply min-h-8 gap-3; }
+    .research-app-title { @apply text-sm; }
+    .research-context-bar {
+      @apply min-h-8 gap-x-3 gap-y-0.5 whitespace-normal py-1;
+      flex-wrap: wrap;
+    }
+    .research-context-item { @apply whitespace-normal; }
+    .research-context-item + .research-context-item { @apply border-l-0 pl-0; }
     .research-main { @apply overflow-visible pb-[calc(6.5rem+env(safe-area-inset-bottom))]; }
     .research-nav-link { @apply text-sm; }
   }
@@ -275,6 +275,12 @@
     .alpha-account-slot .hao-referral-trigger { min-height: 44px; min-width: 44px; }
     [data-slot="button"] { min-height: 44px; min-width: 44px; }
   }
+}
+
+/* Coarse-pointer floor. Kept unlayered so it outranks utility min-height
+   values such as `min-h-8` on compact controls. */
+@media (pointer: coarse) {
+  .research-touch { min-height: 44px; min-width: 44px; }
 }
 
 /* Active mobile destination: tinted icon well plus a non-color cue. */

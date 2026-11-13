@@ -10,7 +10,7 @@ test('formal instrument link opens one chart-first price history with model mark
   await link.click();
   await expect(page).toHaveURL(/#\/securities\/us\/QQQ/);
   await expect(page).toHaveTitle('Instrument Evidence — Alpha Engine');
-  await expect(page.getByRole('heading', { name: 'QQQ · QQQ' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'QQQ', exact: true })).toBeVisible();
 
   const chart = page.getByTestId('security-history-chart');
   await expect(chart).toBeVisible();

@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { baselineDisplayLabel } from '../src/lib/baseline';
+import { performancePeriodStart } from '../src/lib/performancePeriods';
 import { parseRdiResearch } from '../src/lib/rdi-research';
 import { rdiInteractionFixture } from './rdi-fixture';
 
@@ -14,6 +16,34 @@ const rdiSeven = rdiInteractionFixture.historical_comparison.find(row => row.hor
 const rdiTwentyEight = rdiInteractionFixture.historical_comparison.find(row => row.horizon_sessions === 28)!;
 const frequency = (value: number) => (value * 100).toFixed(2) + '%';
 const fixtureCount = (value: number) => 'n=' + value.toLocaleString('en-US');
+
+/**
+ * Derive the chart hero's one-year window facts from the published compact NAV
+ * at test time. The chart counts positive observations at or after the
+ * calendar one-year start of the strategy's own last observed date.
+ */
+async function loadOneYearNavFact(page: Page, modelVersionId: string) {
+  const catalog = await (await page.request.get('/data/formal-model-runs/catalog.json')).json() as {
+    records?: Array<{ manifest_path?: string; model_version_id?: string }>;
+  };
+  const record = catalog.records?.find(row => row.model_version_id === modelVersionId);
+  expect(record?.manifest_path).toBeTruthy();
+  const base = '/data/formal-model-runs/' + String(record!.manifest_path).replace(/manifest\.json$/, '');
+  const response = await page.request.get(base + 'nav.json');
+  expect(response.ok()).toBeTruthy();
+  const nav = await response.json() as { benchmark?: string; rows: Array<{ date: string; account?: number }> };
+  const observed = nav.rows.filter(row => /^\d{4}-\d{2}-\d{2}$/.test(row.date)
+    && typeof row.account === 'number' && Number.isFinite(row.account) && row.account > 0);
+  expect(observed.length).toBeGreaterThan(1);
+  const asOf = observed[observed.length - 1].date;
+  const start = performancePeriodStart(asOf, '1y');
+  expect(start).toBeTruthy();
+  return {
+    benchmarkLabel: baselineDisplayLabel(String(nav.benchmark ?? '')),
+    observations: observed.filter(row => row.date >= String(start)).length,
+    asOf,
+  };
+}
 
 test('RDI workspace compares horizons, filters sources and retries independently', async ({ page }, testInfo) => {
   let reads = 0, snapshotReads = 0, healthReads = 0;
@@ -630,8 +660,9 @@ test('strategy current operations are authorized by runtime policy and hydrated 
   await expect(horizons.getByRole('button')).toHaveCount(7);
   await expect(horizons.getByRole('button', { name: '1Y', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(hero.getByTestId('strategy-nav-chart').getByTestId('nav-chart')).toBeVisible();
-  await expect(hero.getByRole('button', { name: 'US baseline: qqq', exact: true })).toBeVisible();
-  await expect(hero).toContainText('252 observations · As of 2026-11-10');
+  const navFact = await loadOneYearNavFact(page, 'qqqi_qqq_tqqq_v4_3');
+  await expect(hero.getByRole('button', { name: `US baseline: ${navFact.benchmarkLabel}`, exact: true })).toBeVisible();
+  await expect(hero).toContainText(`${navFact.observations} observations · As of ${navFact.asOf}`);
   await expect(hero.getByTestId('hero-window-stale')).toHaveCount(0);
   await expect(hero.getByTestId('hero-excess-return')).toContainText('browser-derived, not a sealed metric');
 
@@ -672,6 +703,25 @@ test('strategy current operations are authorized by runtime policy and hydrated 
     path: testInfo.outputPath('strategy-operations.png'),
     fullPage: true,
   });
+});
+
+test('strategy section controls scroll in page without leaving the hash route', async ({ page }) => {
+  await mockOperations(page);
+  await installProMembership(page);
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+  const sectionNav = page.getByRole('navigation', { name: 'Strategy workspace sections' });
+  await expect(sectionNav).toBeVisible();
+  for (const [label, id] of [['Summary', 'summary'], ['Decisions', 'decisions'], ['Risk', 'risk'], ['Evidence', 'evidence']] as const) {
+    const control = sectionNav.getByRole('button', { name: label, exact: true });
+    await control.click();
+    await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_3$/);
+    await expect(page.getByRole('heading', { name: 'View unavailable', exact: true })).toHaveCount(0);
+    const section = page.locator(`#${id}`);
+    await expect(section).toBeInViewport();
+    await expect(section).toBeFocused();
+    await expect(control).toHaveAttribute('aria-current', 'true');
+  }
+  await assertNoHorizontalOverflow(page);
 });
 
 test('current operations recover from a failed read without reloading formal evidence', async ({ page }) => {
