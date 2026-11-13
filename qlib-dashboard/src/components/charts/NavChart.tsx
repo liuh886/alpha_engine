@@ -46,6 +46,8 @@ export interface NavChartProps {
   coverage?: HorizonCoverage;
   emptyReason?: string;
   onMarkerSelect?: (marker: NavMarker) => void;
+  /** Optional spoken summary of window and headline returns for the figure. */
+  summaryLabel?: string;
 }
 
 const INDEX_FORMAT = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -163,6 +165,84 @@ function markerSummary(marker: NavMarker): string {
   return parts.join('; ');
 }
 
+const MARKER_KEY: ReadonlyArray<{ side: NavMarker['side']; label: string }> = [
+  { side: 'buy', label: 'Buy / increase' },
+  { side: 'sell', label: 'Sell / decrease' },
+  { side: 'mixed', label: 'Buy and sell' },
+];
+
+function markerColor(side: NavMarker['side']): string {
+  if (side === 'buy') return 'hsl(var(--positive))';
+  if (side === 'sell') return 'hsl(var(--negative))';
+  return 'hsl(var(--warning))';
+}
+
+/** Small static glyph for the legend; the chart uses the same geometry. */
+export function MarkerGlyph({ side }: { side: NavMarker['side'] }) {
+  const points = side === 'buy'
+    ? '5,1 10,10 0,10'
+    : side === 'sell'
+      ? '0,0 10,0 5,9'
+      : '5,0 10,5 5,10 0,5';
+  return (
+    <svg aria-hidden="true" viewBox="0 0 10 10" className="h-2.5 w-2.5" fill={markerColor(side)}>
+      <polygon points={points} />
+    </svg>
+  );
+}
+
+interface ActivityMarkerShapeProps {
+  cx?: number;
+  cy?: number;
+  side?: NavMarker['side'];
+  onClick?: () => void;
+}
+
+/**
+ * Side-coded activity marker anchored to the primary line: buys point up below
+ * the line, sells point down above it, and a mixed date is a split diamond.
+ * Shape and position carry identity, so color is never the only encoding.
+ */
+export function ActivityMarkerShape({ cx, cy, side = 'buy', onClick }: ActivityMarkerShapeProps) {
+  if (typeof cx !== 'number' || typeof cy !== 'number' || !Number.isFinite(cx) || !Number.isFinite(cy)) return null;
+  const color = markerColor(side);
+  const stroke = 'hsl(var(--card))';
+  return (
+    <g
+      data-testid="activity-marker-shape"
+      data-side={side}
+      onClick={onClick}
+      style={onClick ? { cursor: 'pointer' } : undefined}
+    >
+      {side === 'mixed' ? (
+        <>
+          <path
+            d={`M ${cx},${cy - 6} L ${cx + 6},${cy} L ${cx},${cy + 6} L ${cx - 6},${cy} Z`}
+            fill={color}
+            stroke={stroke}
+            strokeWidth={1}
+          />
+          <path d={`M ${cx},${cy - 6} L ${cx},${cy + 6}`} stroke={stroke} strokeWidth={1.4} fill="none" />
+        </>
+      ) : side === 'buy' ? (
+        <polygon
+          points={`${cx},${cy + 3} ${cx - 5},${cy + 9} ${cx + 5},${cy + 9}`}
+          fill={color}
+          stroke={stroke}
+          strokeWidth={1}
+        />
+      ) : (
+        <polygon
+          points={`${cx - 5},${cy - 9} ${cx + 5},${cy - 9} ${cx},${cy - 3}`}
+          fill={color}
+          stroke={stroke}
+          strokeWidth={1}
+        />
+      )}
+    </g>
+  );
+}
+
 function coverageDisclosure(coverage: HorizonCoverage): string {
   const first = coverage.firstObservation ?? 'unavailable';
   const prefix = coverage.state === 'partial' ? 'Partial coverage' : 'Coverage unavailable';
@@ -247,6 +327,7 @@ export function NavChart({
   coverage,
   emptyReason,
   onMarkerSelect,
+  summaryLabel,
 }: NavChartProps) {
   const model = useMemo(() => buildNavChartModel(series), [series]);
   const activeSeries = Array.isArray(series) ? series : [];
@@ -273,7 +354,10 @@ export function NavChart({
     : `${hiddenMarkerCount} activity markers fall outside the aligned window or do not match retained observation dates and are not drawn.`;
 
   return (
-    <figure className="min-w-0" aria-label={`${periodLabel} NAV chart indexed to 100`}>
+    <figure
+      className="min-w-0"
+      aria-label={`${periodLabel} NAV chart indexed to 100${summaryLabel ? ` · ${summaryLabel}` : ''}`}
+    >
       {hasData ? (
         <div data-testid="nav-chart" className="w-full" style={{ height: resolvedHeight }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -338,12 +422,13 @@ export function NavChart({
                     key={`marker-dot-${marker.date}`}
                     x={marker.date}
                     y={value}
-                    r={3}
-                    fill="hsl(var(--warning))"
+                    r={6}
+                    fill={markerColor(marker.side)}
                     stroke="hsl(var(--card))"
                     strokeWidth={1}
                     onClick={onMarkerSelect ? () => onMarkerSelect(marker) : undefined}
                     style={onMarkerSelect ? { cursor: 'pointer' } : undefined}
+                    shape={<ActivityMarkerShape side={marker.side} />}
                   />
                 );
               })}
@@ -405,10 +490,12 @@ export function NavChart({
 
       {visibleMarkers.length > 0 && (
         <ul aria-label="Activity marker key" className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
-          <li className="inline-flex items-center gap-1.5">
-            <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-warning" />
-            Activity marker
-          </li>
+          {MARKER_KEY.map(item => (
+            <li key={item.side} className="inline-flex items-center gap-1.5">
+              <MarkerGlyph side={item.side} />
+              {item.label}
+            </li>
+          ))}
           <li>Markers appear only on retained observation dates.</li>
         </ul>
       )}
