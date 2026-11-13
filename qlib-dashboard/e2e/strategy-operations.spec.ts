@@ -624,6 +624,30 @@ test('strategy current operations are authorized by runtime policy and hydrated 
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
   await expect(page.getByRole('main').getByRole('heading', { name: 'QQQR v4.3', exact: true, level: 1 })).toBeVisible();
 
+  const hero = page.getByTestId('strategy-chart-hero');
+  await expect(hero).toBeVisible();
+  const horizons = hero.getByRole('group', { name: 'Chart horizon' });
+  await expect(horizons.getByRole('button')).toHaveCount(7);
+  await expect(horizons.getByRole('button', { name: '1Y', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(hero.getByTestId('strategy-nav-chart').getByTestId('nav-chart')).toBeVisible();
+  await expect(hero.getByRole('button', { name: 'US baseline: qqq', exact: true })).toBeVisible();
+  await expect(hero).toContainText('252 observations · As of 2026-11-10');
+  await expect(hero.getByTestId('hero-window-stale')).toHaveCount(0);
+  await expect(hero.getByTestId('hero-excess-return')).toContainText('browser-derived, not a sealed metric');
+
+  const markers = hero.getByRole('list', { name: 'Activity marker details' });
+  const firstMarker = markers.getByRole('button').first();
+  await expect(firstMarker).toBeVisible();
+  const markerText = (await firstMarker.textContent()) ?? '';
+  const markerDate = /date (\d{4}-\d{2}-\d{2})/.exec(markerText)?.[1] ?? '';
+  expect(markerDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  await firstMarker.evaluate(button => (button as HTMLButtonElement).click());
+  const selectedMarker = page.getByTestId('strategy-selected-marker');
+  await expect(selectedMarker).toContainText(markerDate);
+  await expect(selectedMarker).toContainText(/Buy|Sell|Mixed/);
+  await selectedMarker.getByRole('button', { name: 'Clear marker' }).click();
+  await expect(selectedMarker).toHaveCount(0);
+
   const now = page.getByRole('region', { name: 'Current decision state' });
   await expect(now).toBeVisible();
   await expect(now.getByText('Defensive → Transition', { exact: true })).toBeVisible();

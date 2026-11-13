@@ -4,13 +4,14 @@ import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { ResearchTrackingAssessment } from '@/components/ResearchTrackingAssessment';
 import { FormalBacktestReview } from '@/components/FormalBacktestReview';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
+import { StrategyChartHero } from '@/components/StrategyChartHero';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import type { AccessTier } from '@/lib/model-access';
 import { loadDecisionForRun, type DecisionLoadState } from '@/lib/model-run-decision';
 import { loadRunSection } from '@/lib/governed-run';
-import { latestPerformanceObservation, type PerformancePeriod } from '@/lib/performancePeriods';
+import { latestPerformanceObservation } from '@/lib/performancePeriods';
 import type { ReportRow } from '@/lib/types';
 import { STRATEGY_STATUS_LABEL, summarizeStrategySignal } from '@/lib/strategy-operations';
 import type { StrategyFactorEvidence } from '@/lib/strategy-operations';
@@ -105,7 +106,6 @@ export function StrategyDetailPage() {
     if (run && run.key !== workspace.activeRunKey) workspace.selectRun(run);
   }, [run, workspace.activeRunKey, workspace.selectRun]);
 
-  const [selectedPeriod, setSelectedPeriod] = useState<PerformancePeriod>('all');
   const [decisionState, setDecisionState] = useState<DecisionLoadState | null>(null);
   const primaryCounterevidence = decisionState?.decision?.contradictory_evidence.find(row => row.outcome === 'failed')
     ?? decisionState?.decision?.gates.find(row => row.outcome === 'failed')
@@ -164,36 +164,16 @@ export function StrategyDetailPage() {
       </section>
 
       <nav aria-label="Strategy workspace sections" className="sticky top-0 z-20 -mx-4 border-b bg-background/95 px-4 py-2.5 backdrop-blur sm:-mx-6 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-            <a href="#summary" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Summary</a>
-            <a href="#decisions" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Decisions</a>
-            <a href="#risk" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Risk</a>
-            <a href="#evidence" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Evidence</a>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Period:</span>
-            <div className="flex items-center gap-1">
-              {(['all', '1y', '6m', '3m', '1m'] as PerformancePeriod[]).map((period) => (
-                <button
-                  key={period}
-                  type="button"
-                  onClick={() => setSelectedPeriod(period)}
-                  className={`min-h-7 rounded px-2 py-0.5 font-mono text-[11px] uppercase transition-colors ${
-                    selectedPeriod === period
-                      ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
-                      : 'bg-muted/70 text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {period}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+          <a href="#summary" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Summary</a>
+          <a href="#decisions" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Decisions</a>
+          <a href="#risk" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Risk</a>
+          <a href="#evidence" className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Evidence</a>
         </div>
       </nav>
 
       <div id="summary" className="scroll-mt-14 space-y-7">
+        <StrategyChartHero key={run.key} run={run} />
         <OperationsReadStatus loading={loading} issues={issues} reload={reload} previousRead={snapshot?.readState === 'retained'} />
         <ResearchTrackingAssessment state={decisionState} evidenceCutoff={run.evidenceCutoff} primaryCounterevidence={primaryCounterevidence?.statement} />
       </div>
@@ -333,7 +313,7 @@ export function StrategyDetailPage() {
             <h2 className="mt-1 text-2xl font-bold">Performance, risk, holdings and attribution</h2>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Hash-verified Model Run Bundle v2 remains the analytical record beneath the current operating state.</p>
           </div>
-          <FormalBacktestReview run={run} selectedPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
+          <FormalBacktestReview run={run} />
         </section>
       </div>
     </div>

@@ -4,7 +4,6 @@ import {
   BarChart3,
   BookOpenCheck,
   Boxes,
-  CalendarDays,
   CheckCircle2,
   FileSearch,
   Loader2,
@@ -160,6 +159,11 @@ function PerformancePanel({
   onPeriodChange?: (period: PerformancePeriod) => void;
 }) {
   const semantics = evidence.performance.semantics;
+  const nonProvisional = evidence.performance.report.filter(row => row.provisional_mtm !== true && row.settlement_status !== 'provisional_mtm');
+  const provisionalCount = evidence.performance.report.length - nonProvisional.length;
+  const returnCount = metricById(evidence.metrics, 'total_return')?.sample_count;
+  const sourceContext = evidence.performance.sourceContext;
+  const sourceWindow = sourceContext?.total_return_window;
   const cost = typeof semantics.cost === 'object' && semantics.cost !== null && !Array.isArray(semantics.cost)
     ? semantics.cost as Record<string, unknown>
     : {};
@@ -175,6 +179,20 @@ function PerformancePanel({
   ];
   return (
     <div className="space-y-4">
+      <section className="space-y-1 text-xs text-muted-foreground" aria-label="Published metric scope">
+        <h3 className="font-semibold text-foreground">Published source metrics · {sourceWindow?.start ?? evidence.performance.dateRange.start} → {sourceWindow?.end ?? evidence.performance.dateRange.end} · {returnCount == null ? 'source return count undeclared' : `${returnCount} source return observations`}</h3>
+        {sourceContext && <p>Source opening wealth {sourceContext.opening_account.toFixed(4)} at {sourceContext.opening_date}; first settlement {sourceContext.first_observation_date}. Total-return source window {sourceWindow?.includes_provisional ? 'includes' : 'excludes'} provisional marks. Source cutoff {sourceContext.evidence_cutoff}.</p>}
+        <p>The declared run window does not identify every metric's observation set. Each source metric retains its own sample count and scope; the chart below compares selected wealth observations with its own anchor.</p>
+        <p>Retained chart trace: {evidence.performance.report.length} wealth observations · {nonProvisional.length} non-provisional{nonProvisional.length ? ` through ${effectivePerformanceDate(nonProvisional[nonProvisional.length - 1])}` : ''} · {provisionalCount} provisional (unsettled marks). Inclusion in a source metric follows that metric's declared scope; the run cutoff alone does not establish its last completed interval.</p>
+      </section>
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" aria-label="Formal backtest headline metrics">
+        {SUMMARY_METRICS.map((metricId) => {
+          const metric = metricById(evidence.metrics, metricId);
+          const matchesSourceWindow = Boolean(sourceWindow && metric?.sample_count === sourceWindow.sample_count && metric.scope === sourceWindow.scope);
+          return <MetricCard key={metricId} metricId={metricId} metrics={evidence.metrics}
+            dateRange={matchesSourceWindow ? sourceWindow : evidence.performance.dateRange} sourceWindow={matchesSourceWindow} />;
+        })}
+      </section>
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4 border-b pb-3">
           <div>
@@ -398,8 +416,36 @@ function EvidencePanel({ evidence }: { evidence: FormalRunEvidence }) {
   const notApplicable = Array.isArray(evidence.diagnostics.completeness.not_applicable)
     ? evidence.diagnostics.completeness.not_applicable.map(String)
     : [];
+  const identityRows: Array<[string, string]> = [
+    ['Model version', evidence.run.modelVersionId],
+    ['Run', evidence.run.runId],
+    ['Bundle', evidence.run.bundleId ?? '—'],
+    ['Manifest SHA-256', evidence.run.manifestSha256 ?? '—'],
+    ['Evidence cutoff', evidence.run.evidenceCutoff],
+    ['Market / benchmark', `${evidence.run.market.toUpperCase()} · ${evidence.performance.benchmark}`],
+  ];
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 border-b pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm"><FileSearch className="h-4 w-4 text-primary" />Run and bundle identity</CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="positive">Bundle identity verified</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="divide-y pt-2">
+          {identityRows.map(([label, value]) => (
+            <div key={label} className="flex items-start justify-between gap-4 py-2 text-xs">
+              <span className="shrink-0 text-muted-foreground">{label}</span>
+              <span className="max-w-[68%] break-all text-right font-mono">{value}</span>
+            </div>
+          ))}
+          <p className="py-2 text-[11px] leading-relaxed text-muted-foreground">
+            The catalog and manifest identity were verified before this review rendered. Retained section hashes
+            remain the authority for each evidence view; this page does not publish, seal or recompute them.
+          </p>
+        </CardContent>
+      </Card>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="border-b pb-3"><CardTitle className="flex items-center gap-2 text-sm"><BookOpenCheck className="h-4 w-4 text-primary" />Section availability</CardTitle></CardHeader>
@@ -443,21 +489,8 @@ function EvidencePanel({ evidence }: { evidence: FormalRunEvidence }) {
   );
 }
 
-export function FormalBacktestReview({
-  run,
-  selectedPeriod: externalPeriod,
-  onPeriodChange,
-}: {
-  run: GovernedRunSummary;
-  selectedPeriod?: PerformancePeriod;
-  onPeriodChange?: (period: PerformancePeriod) => void;
-}) {
-  const [internalPeriod, setInternalPeriod] = useState<PerformancePeriod>('all');
-  const selectedPeriod = externalPeriod ?? internalPeriod;
-  const handlePeriodChange = (period: PerformancePeriod) => {
-    setInternalPeriod(period);
-    onPeriodChange?.(period);
-  };
+export function FormalBacktestReview({ run }: { run: GovernedRunSummary }) {
+  const [selectedPeriod, setSelectedPeriod] = useState<PerformancePeriod>('all');
   const [state, setState] = useState<{ loading: boolean; value: FormalRunEvidence | null; error: string | null }>({ loading: true, value: null, error: null });
 
   useEffect(() => {
@@ -478,51 +511,8 @@ export function FormalBacktestReview({
   }
 
   const evidence = state.value;
-  const complete = String(evidence.diagnostics.completeness.status) === 'complete';
-  const nonProvisional = evidence.performance.report.filter(row => row.provisional_mtm !== true && row.settlement_status !== 'provisional_mtm');
-  const provisionalCount = evidence.performance.report.length - nonProvisional.length;
-  const returnCount = metricById(evidence.metrics, 'total_return')?.sample_count;
-  const sourceContext = evidence.performance.sourceContext;
-  const sourceWindow = sourceContext?.total_return_window;
   return (
     <div className="space-y-5" data-testid="formal-backtest-review">
-      <section className="flex flex-col gap-4 border-b pb-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Accepted formal baseline</Badge>
-            <Badge variant="outline" className={complete ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>{complete ? 'Complete retained evidence' : 'Partial retained evidence'}</Badge>
-            <Badge variant="outline" className="text-amber-700 dark:text-amber-300">Research only · read only</Badge>
-          </div>
-          <h2 className="mt-3 text-2xl font-black tracking-tight">{run.title}</h2>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />{evidence.performance.dateRange.start} → {evidence.performance.dateRange.end}</span>
-            <span>{run.market.toUpperCase()} · benchmark {evidence.performance.benchmark}</span>
-            <span>Cutoff {run.evidenceCutoff}</span>
-            <span className="font-mono">{run.runId}</span>
-          </div>
-        </div>
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          <div className="rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-            Bundle identity verified · {run.bundleId?.slice(0, 12)}…
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-1 text-xs text-muted-foreground" aria-label="Published metric scope">
-        <h3 className="font-semibold text-foreground">Published source metrics · {sourceWindow?.start ?? evidence.performance.dateRange.start} → {sourceWindow?.end ?? evidence.performance.dateRange.end} · {returnCount == null ? 'source return count undeclared' : `${returnCount} source return observations`}</h3>
-        {sourceContext && <p>Source opening wealth {sourceContext.opening_account.toFixed(4)} at {sourceContext.opening_date}; first settlement {sourceContext.first_observation_date}. Total-return source window {sourceWindow?.includes_provisional ? 'includes' : 'excludes'} provisional marks. Source cutoff {sourceContext.evidence_cutoff}.</p>}
-        <p>The declared run window does not identify every metric's observation set. Each source metric retains its own sample count and scope; the chart below compares selected wealth observations with its own anchor.</p>
-        <p>Retained chart trace: {evidence.performance.report.length} wealth observations · {nonProvisional.length} non-provisional{nonProvisional.length ? ` through ${effectivePerformanceDate(nonProvisional[nonProvisional.length - 1])}` : ''} · {provisionalCount} provisional (unsettled marks). Inclusion in a source metric follows that metric's declared scope; the run cutoff alone does not establish its last completed interval.</p>
-      </section>
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" aria-label="Formal backtest headline metrics">
-        {SUMMARY_METRICS.map((metricId) => {
-          const metric = metricById(evidence.metrics, metricId);
-          const matchesSourceWindow = Boolean(sourceWindow && metric?.sample_count === sourceWindow.sample_count && metric.scope === sourceWindow.scope);
-          return <MetricCard key={metricId} metricId={metricId} metrics={evidence.metrics}
-            dateRange={matchesSourceWindow ? sourceWindow : evidence.performance.dateRange} sourceWindow={matchesSourceWindow} />;
-        })}
-      </section>
-
       <Tabs defaultValue="performance" className="w-full">
         <TabsList className="mb-4 flex h-auto w-full max-w-full justify-start gap-1 overflow-x-auto p-1" aria-label="Formal backtest evidence views">
           <TabsTrigger value="performance" className="shrink-0 gap-1.5"><BarChart3 className="h-3.5 w-3.5" />Performance</TabsTrigger>
@@ -533,7 +523,7 @@ export function FormalBacktestReview({
           <TabsTrigger value="evidence" className="shrink-0 gap-1.5"><FileSearch className="h-3.5 w-3.5" />Evidence boundary</TabsTrigger>
         </TabsList>
         <TabsContent value="performance">
-          <PerformancePanel evidence={evidence} selectedPeriod={selectedPeriod} onPeriodChange={handlePeriodChange} />
+          <PerformancePanel evidence={evidence} selectedPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
         </TabsContent>
         <TabsContent value="risk">
           <RiskPanel evidence={evidence} selectedPeriod={selectedPeriod} />
