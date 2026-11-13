@@ -69,6 +69,74 @@ def test_public_formal_runs_have_zero_operational_leakage(synced_public_assets: 
             assert '"target_weights"' not in text, f"Forbidden 'target_weights' found in {path}"
 
 
+DERIVED_FORBIDDEN_KEYS = {
+    "operating_state",
+    "current_weights",
+    "target_weights",
+    "trades",
+    "decision_reason",
+    "decision_state",
+    "positions",
+}
+
+
+def _walk_json_keys(value):
+    if isinstance(value, dict):
+        for key, child in value.items():
+            yield key
+            yield from _walk_json_keys(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _walk_json_keys(child)
+
+
+def test_public_derived_metrics_have_zero_operational_leakage(synced_public_assets: Path) -> None:
+    """Published derived metrics must preserve the formal-run zero-leakage boundary."""
+    derived_dir = synced_public_assets / "derived-metrics"
+    assert derived_dir.is_dir(), "Derived metric publication directory is missing"
+
+    json_paths = sorted(derived_dir.rglob("*.json"))
+    assert json_paths, "Derived metric publication must at least contain catalog.json"
+    for path in json_paths:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        for key in _walk_json_keys(payload):
+            assert key not in DERIVED_FORBIDDEN_KEYS, f"Forbidden derived-metric field '{key}' found in {path}"
+            assert not key.startswith("weight_"), f"Forbidden derived-metric weight field '{key}' found in {path}"
+            assert not key.endswith("_weight"), f"Forbidden derived-metric weight field '{key}' found in {path}"
+
+    catalog = json.loads((derived_dir / "catalog.json").read_text(encoding="utf-8"))
+    assert catalog["schema_version"] == "derived_metric_catalog_v1"
+    assert catalog["research_only"] is True
+    assert catalog["trade_ready"] is False
+    formal_catalog = json.loads(
+        (synced_public_assets / "formal-model-runs" / "catalog.json").read_text(encoding="utf-8")
+    )
+    for entry in catalog["entries"]:
+        assert entry["evidence_type"] == "derived_formal_benchmark_excess"
+        record = next(
+            r for r in formal_catalog["records"]
+            if r["model_version_id"] == entry["model_version_id"] and r["run_id"] == entry["run_id"]
+        )
+        assert record["manifest_sha256"] == entry["manifest_sha256"]
+
+        artifact_path = synced_public_assets / entry["path"]
+        assert artifact_path.is_file(), f"Derived metric artifact missing: {artifact_path}"
+        payload = artifact_path.read_bytes()
+        assert len(payload) == entry["byte_size"]
+        assert hashlib.sha256(payload).hexdigest() == entry["sha256"]
+
+        artifact = json.loads(payload)
+        boundaries = artifact["boundaries"]
+        assert boundaries["research_only"] is True
+        assert boundaries["trade_ready"] is False
+        assert boundaries["descriptive_historical_metric"] is True
+        assert boundaries["live_signal"] is False
+        assert artifact["derivation_id"] == entry["derivation_id"]
+        assert artifact["strategy"]["model_version_id"] == entry["model_version_id"]
+        assert artifact["strategy"]["run_id"] == entry["run_id"]
+        assert artifact["strategy"]["manifest_sha256"] == entry["manifest_sha256"]
+
+
 def test_us_wealth_context_binds_original_source_and_preserves_economics(synced_public_assets: Path) -> None:
     canonical_root = REPO_ROOT / "data/research/formal_model_runs"
     catalog = json.loads((canonical_root / "catalog.json").read_text())
