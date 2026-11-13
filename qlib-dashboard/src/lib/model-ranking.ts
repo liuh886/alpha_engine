@@ -1,6 +1,7 @@
 import { MARKET_BASELINES, type BaselineMarket } from './baseline';
 import type { DerivedExcess } from './derived-excess';
 import type { GovernedRunSummary } from './governed-run';
+import { STALE_AFTER_DAYS, calendarDaysBetween } from './metrics';
 import { alignNavSeries, navFromReport, type NavPoint } from './nav-series';
 import {
   HORIZON_PERIODS,
@@ -39,6 +40,8 @@ export interface RankingExcess {
   label: string;
   /** Tooltip/basis shown beside a displayed value. */
   basis: string;
+  /** Window actually measured, when the artifact records one. */
+  window?: string;
   reason?: string;
 }
 
@@ -91,8 +94,14 @@ export interface StrategyRankingOptions {
   excess?: RankingExcess | null;
 }
 
-/** Days after the evidence cutoff at which a row is stale. Strictly greater than. */
-export const STALE_AFTER_DAYS = 14;
+export {
+  STALE_AFTER_DAYS,
+  calendarDaysBetween,
+  formatDate,
+  formatPrice,
+  formatPriceChange,
+  formatReturn,
+} from './metrics';
 
 export const RANKING_MARKET_LABELS: Readonly<Record<RankingMarket, string>> = {
   us: 'US',
@@ -110,57 +119,8 @@ export const RANKING_INDEX_SYMBOLS: Readonly<Record<RankingMarket, string>> = {
   cn: MARKET_BASELINES.cn.symbol,
 };
 
-const DAY_MS = 86_400_000;
-
-const RETURN_FORMAT = new Intl.NumberFormat('en-US', {
-  style: 'percent',
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-  signDisplay: 'exceptZero',
-});
-
-const PRICE_FORMAT = new Intl.NumberFormat('en-US', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-/** Calendar-day distance; both dates are validated ISO dates. */
-export function calendarDaysBetween(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS);
-}
-
 export function formatPeriodLabel(period: HorizonPeriod): string {
   return period.toUpperCase();
-}
-
-/**
- * Percent display with exactly one fractional digit and an explicit sign for
- * every nonzero value. A value that rounds to zero is formatted as `0.0%`
- * without a signed zero.
- */
-export function formatReturn(value: number | null | undefined): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
-  const rounded = Math.round(value * 1000) / 1000;
-  return RETURN_FORMAT.format(Object.is(rounded, -0) ? 0 : rounded);
-}
-
-/** Price level with comma grouping and exactly two decimals. */
-export function formatPrice(value: number | null | undefined): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
-  return PRICE_FORMAT.format(value);
-}
-
-/** Signed two-decimal price change; zero never renders as a signed zero. */
-export function formatPriceChange(value: number | null | undefined): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
-  const rounded = Math.round(value * 100) / 100;
-  if (Object.is(rounded, -0) || rounded === 0) return PRICE_FORMAT.format(0);
-  return `${rounded > 0 ? '+' : ''}${PRICE_FORMAT.format(rounded)}`;
-}
-
-/** ISO display for a verified date; anything else is a missing value. */
-export function formatDate(value: string | null | undefined): string {
-  return typeof value === 'string' && isPerformanceDate(value) ? value : '—';
 }
 
 function coverageReason(period: HorizonPeriod, coverage: HorizonCoverage): string {
@@ -253,13 +213,16 @@ export function retainedExcess(run: GovernedRunSummary): RankingExcess {
   const value = availableNumber(metric);
   if (value !== null) {
     const scope = typeof metric?.scope === 'string' && metric.scope.trim() !== ''
-      ? ` (${metric.scope})`
-      : '';
+      ? metric.scope.trim()
+      : null;
     return {
       value,
       source: 'retained',
       label: 'retained',
-      basis: `Retained formal excess-return metric${scope} vs ${run.benchmark}.`,
+      // The raw metric scope stays in the disclosure; the visible window label
+      // is a short, human-readable run-window description.
+      basis: `Retained run-summary excess vs ${run.benchmark} over the run's own retained window${scope ? ` (recorded scope: ${scope})` : ''}; not the sorted horizon.`,
+      window: 'run window',
     };
   }
   return {
@@ -276,11 +239,14 @@ export function retainedExcess(run: GovernedRunSummary): RankingExcess {
 
 /** Sealed derived excess, labelled distinct from a retained summary metric. */
 export function rankingExcessFromDerived(excess: DerivedExcess): RankingExcess {
+  const start = excess.window?.observed_start;
+  const end = excess.window?.observed_end;
   return {
     value: excess.result.excess_return,
     source: 'derived',
     label: 'derived',
-    basis: `${excess.label}. Compounded relative excess; descriptive historical metric, not a live signal.`,
+    basis: `${excess.label}. Compounded relative excess${start && end ? ` over ${start} → ${end}` : ''}; not the sorted horizon. Descriptive historical metric, not a live signal.`,
+    window: start && end ? `${start} → ${end}` : undefined,
   };
 }
 
@@ -333,7 +299,7 @@ export function strategyRowsFromNav(
     maxDrawdownReason: maxDrawdown === null
       ? unavailableReason(drawdownMetric, 'The formal summary does not retain a max-drawdown metric.')
       : undefined,
-    maxDrawdownBasis: maxDrawdown === null ? undefined : 'Retained formal max-drawdown metric.',
+    maxDrawdownBasis: maxDrawdown === null ? undefined : 'Retained max-drawdown summary over the run\'s own window; not the sorted horizon.',
   };
   if (options.excess) row.excess = options.excess;
   return [row];
@@ -387,7 +353,7 @@ export function indexRowsFromBars(
     },
     maxDrawdown,
     maxDrawdownReason: maxDrawdown === null ? 'Fewer than two governed close observations.' : undefined,
-    maxDrawdownBasis: maxDrawdown === null ? undefined : 'Close-to-close price drawdown, not total return.',
+    maxDrawdownBasis: maxDrawdown === null ? undefined : 'Close-to-close price drawdown over the governed index history; not the sorted horizon.',
   }];
 }
 

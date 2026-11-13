@@ -182,7 +182,8 @@ describe('index rows', () => {
     expect(row.href).toBe('/securities/us/QQQ');
     expect(row.excess?.value).toBeNull();
     expect(row.excess?.source).toBe('unavailable');
-    expect(row.maxDrawdownBasis).toContain('not total return');
+    expect(row.maxDrawdownBasis).toContain('not the sorted horizon');
+    expect(row.maxDrawdownBasis).toContain('Close-to-close');
   });
 
   it('keeps an index drawdown on close-to-close price levels', () => {
@@ -239,7 +240,8 @@ describe('model ranking excess', () => {
       { metric_id: 'max_drawdown', value: -0.25, availability_status: 'available' },
     ] } }), navRows([['2026-11-10', 100], ['2026-11-11', 110]]))[0];
     expect(row.maxDrawdown).toBe(-0.25);
-    expect(row.maxDrawdownBasis).toContain('Retained formal');
+    expect(row.maxDrawdownBasis).toContain('Retained max-drawdown summary');
+    expect(row.maxDrawdownBasis).toContain('not the sorted horizon');
   });
 });
 

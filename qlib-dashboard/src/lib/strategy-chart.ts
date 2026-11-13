@@ -7,6 +7,10 @@ import {
   type BaselineRunIdentity,
 } from './baseline';
 import { alignNavSeries, type NavPoint, type NavTrade } from './nav-series';
+import {
+  MAX_DISPLAYABLE_SHORTFALL_DAYS,
+  formatReturn,
+} from './metrics';
 import { effectivePerformanceDate } from './performanceBenchmarks';
 import {
   isPerformanceDate,
@@ -34,28 +38,13 @@ export const CHART_HORIZONS: readonly ChartHorizon[] = [
 
 export const DEFAULT_CHART_HORIZON: PerformancePeriod = '1y';
 
-/** `evidenceCutoff - asOf` above this many calendar days marks a stale window. */
-export const STALE_AFTER_DAYS = 14;
-
-/** A short-history partial window is still readable within one week of the request. */
-export const MAX_DISPLAYABLE_SHORTFALL_DAYS = 7;
-
-const DAY_MS = 86_400_000;
-
-const RETURN_FORMAT = new Intl.NumberFormat('en-US', {
-  style: 'percent',
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-  signDisplay: 'exceptZero',
-});
-
-/** One-decimal signed return, or an em dash. Never `0.0%` for a missing value. */
-export function formatReturn(value: number | null | undefined): string {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-  // Round to the displayed precision first so tiny negatives cannot surface as -0.0%.
-  const rounded = Math.round(value * 1000) / 1000;
-  return RETURN_FORMAT.format(rounded === 0 ? 0 : rounded);
-}
+export {
+  MAX_DISPLAYABLE_SHORTFALL_DAYS,
+  STALE_AFTER_DAYS,
+  formatReturn,
+  isStale,
+  staleDays,
+} from './metrics';
 
 /** Foundation semantic token for a signed value; zero stays neutral. */
 export function returnTone(value: number | null | undefined): string {
@@ -285,19 +274,6 @@ export function navMarkerMode(rows: ReportRow[]): NavMarkerMode {
   return Array.isArray(rows) && rows.some(row => isPerformanceDate(row.holding_end_date))
     ? 'holding-end'
     : 'trade-date';
-}
-
-/** Calendar days between the evidence cutoff and the last observation. */
-export function staleDays(evidenceCutoff: string, asOf: string | null): number | null {
-  if (!isPerformanceDate(evidenceCutoff) || !isPerformanceDate(asOf)) return null;
-  return Math.round(
-    (Date.parse(`${evidenceCutoff}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`)) / DAY_MS,
-  );
-}
-
-export function isStale(evidenceCutoff: string, asOf: string | null): boolean {
-  const days = staleDays(evidenceCutoff, asOf);
-  return days !== null && days > STALE_AFTER_DAYS;
 }
 
 /** Provisional marks inside the displayed exact-date window, never elsewhere. */

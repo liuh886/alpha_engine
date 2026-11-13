@@ -60,14 +60,14 @@ export function AttributionInterpretation({
       <CardContent className="space-y-4 pt-4">
         {positive.length > 0 && (
           <div>
-            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">
+            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase text-positive">
               <ArrowUpRight className="h-3 w-3" /> Positive retained contribution
             </p>
             <div className="space-y-2">
               {positive.map((row) => (
                 <div key={`${row.instrument}-positive`} className="flex items-center justify-between gap-3 text-xs">
                   <span className="min-w-0 truncate text-muted-foreground" title={row.name}>{row.name}</span>
-                  <span className="shrink-0 font-mono text-emerald-600 dark:text-emerald-400">{(row.value * 100).toFixed(3)}%</span>
+                  <span className="shrink-0 font-mono text-positive">{(row.value * 100).toFixed(3)}%</span>
                 </div>
               ))}
             </div>
@@ -75,14 +75,14 @@ export function AttributionInterpretation({
         )}
         {negative.length > 0 && (
           <div>
-            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">
+            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase text-negative">
               <ArrowDownRight className="h-3 w-3" /> Negative retained contribution
             </p>
             <div className="space-y-2">
               {negative.map((row) => (
                 <div key={`${row.instrument}-negative`} className="flex items-center justify-between gap-3 text-xs">
                   <span className="min-w-0 truncate text-muted-foreground" title={row.name}>{row.name}</span>
-                  <span className="shrink-0 font-mono text-rose-600 dark:text-rose-400">{(row.value * 100).toFixed(3)}%</span>
+                  <span className="shrink-0 font-mono text-negative">{(row.value * 100).toFixed(3)}%</span>
                 </div>
               ))}
             </div>

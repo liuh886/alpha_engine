@@ -169,7 +169,10 @@ describe('StrategyFleet', () => {
     expect(screen.queryByTestId('fleet-us_x1_3')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Market'), { target: { value: 'us' } });
-    expect(screen.getByText('No strategies match these filters.')).toBeInTheDocument();
+    expect(screen.getByTestId('strategy-filter-empty'))
+      .toHaveTextContent('No strategies match these filters. Governed index rows remain for market context.');
+    expect(screen.getByTestId('ranking-index-us-QQQ')).toBeInTheDocument();
+    expect(screen.queryByTestId('fleet-us_x1_3')).not.toBeInTheDocument();
   });
 
   it('opens the existing signal drawer from the shared signal cell', () => {

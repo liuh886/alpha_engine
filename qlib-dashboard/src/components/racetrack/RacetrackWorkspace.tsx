@@ -26,9 +26,10 @@ export function RacetrackWorkspace() {
   const [result, setResult] = useState<{ market: RaceMarket; projection?: RaceProjection; error?: string } | null>(null);
   const [client] = useState(() => new ProjectionClient());
   const table = useRef<HTMLTableElement>(null);
+  const hosted = !['localhost', '127.0.0.1', '[::1]'].includes(globalThis.location.hostname);
   useEffect(() => {
     const controller = new AbortController(); setResult(null);
-    if (!['localhost', '127.0.0.1', '[::1]'].includes(globalThis.location.hostname)) {
+    if (hosted) {
       setResult({ market, error: 'Open this Dashboard on localhost to read local research projections. Hosted Console pages do not publish this evidence.' });
       return () => controller.abort();
     }
@@ -37,7 +38,7 @@ export function RacetrackWorkspace() {
       error => { if (!controller.signal.aborted) setResult({ market, error: error instanceof Error ? error.message : 'Projection unavailable.' }); },
     );
     return () => controller.abort();
-  }, [market, attempt, client]);
+  }, [market, attempt, client, hosted]);
   useEffect(() => () => client.clear(), [client]);
   const current = result?.market === market ? result : null;
   const projection = current?.projection;
@@ -57,22 +58,23 @@ export function RacetrackWorkspace() {
     <div className="flex flex-wrap items-end justify-between gap-4 rounded-xl border bg-card px-5 py-4">
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-muted-foreground">Racetrack · research only</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-muted-foreground">Racetrack</p>
           <span className="rounded-full border bg-muted/40 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            {['localhost', '127.0.0.1', '[::1]'].includes(globalThis.location.hostname) ? 'Local loopback reader' : 'Hosted boundary'}
+            {hosted ? 'Hosted boundary' : 'Local loopback reader'}
           </span>
         </div>
-        <h2 className="mt-1 text-2xl font-semibold tracking-tight">{phase ? 'The first season.' : 'The long race.'}</h2>
+        <h2 className="mt-1 text-lg font-semibold tracking-tight">{phase ? 'The first season.' : 'The long race.'}</h2>
         <p className="mt-2 text-sm text-muted-foreground">Compare published NAV, consistency and risk. Keep the thesis in view.</p>
         {projection && <p className="mt-2 max-w-3xl break-words text-[11px] text-muted-foreground">Qualification: {projection.manifest.data_qualification.replace(/_/g, ' ')}.</p>}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-xs text-muted-foreground">Market
-          <select aria-label="Racetrack market" value={market} onChange={e => updateParams({ raceMarket: e.target.value, raceRunner: null, raceDetail: null })} className="min-h-10 rounded-md border bg-background px-3 text-sm text-foreground">
+          <select aria-label="Racetrack market" value={market} onChange={e => updateParams({ raceMarket: e.target.value, raceRunner: null, raceDetail: null })} className="research-touch min-h-10 rounded-md border bg-background px-3 text-sm text-foreground">
             <option value="us">US · US87 / QQQ</option><option value="cn">CN · CN130 / CSI 300</option>
           </select>
         </label>
-        <button className="flex min-h-10 items-center gap-2 rounded-md border px-3 text-xs disabled:opacity-50" disabled={!current} onClick={() => setAttempt(n => n + 1)}><RefreshCw className="h-3.5 w-3.5" />{current?.error ? 'Retry projection' : 'Refresh projection'}</button>
+        {/* Hosted pages cannot read the loopback projection, so retrying can never succeed there. */}
+        {!hosted && <button className="research-touch flex min-h-10 items-center gap-2 rounded-md border px-3 text-xs disabled:opacity-50" disabled={!current} onClick={() => setAttempt(n => n + 1)}><RefreshCw className="h-3.5 w-3.5" />{current?.error ? 'Retry projection' : 'Refresh projection'}</button>}
       </div>
     </div>
     {!current && <div role="status" className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">Reading and verifying the local projection…</div>}
@@ -101,13 +103,13 @@ export function RacetrackWorkspace() {
         <p>Totals sum monthly points arithmetically; they are not compounded NAV returns. Window ranks award no extra points. Calendar completeness is not settlement: every month remains provisional and not reviewed.</p>
         <p>Daily Brief explains the four formal strategies. This Racetrack compares separately admitted research runners; its window Top 10 does not replace the Brief.</p>
       </aside>}
-      {!!phase?.source_gaps.length && <aside aria-label="Research data limitations" className="rounded-xl border border-amber-500/40 bg-amber-500/5 px-5 py-4 text-xs leading-relaxed">
+      {!!phase?.source_gaps.length && <aside aria-label="Research data limitations" className="rounded-xl border border-warning/40 bg-warning/5 px-5 py-4 text-xs leading-relaxed">
         <p className="font-medium">Price-history limitations: {phase.source_gaps.slice(0, 8).map(gap => `${gap.symbol} (${gap.missing_sessions} ${gap.missing_sessions === 1 ? 'session' : 'sessions'} without observations)`).join(', ')}{phase.source_gaps.length > 8 ? ` and ${phase.source_gaps.length - 8} more` : ''}.</p>
         <p className="mt-1 text-muted-foreground">The replay retains the declared last-known valuation and rebalance cash-slot policy. Unobserved sessions can include governed listing boundaries; this count does not diagnose provider failure, certify halts or verify terminal settlement. Retained valuations are not freshly tradable prices. No candidate is silently dropped.</p>
       </aside>}
       <div className="rounded-xl border bg-card p-4 sm:p-5">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3"><h3 className="flex items-center gap-2 font-semibold"><BarChart3 className="h-4 w-4 text-indigo-500" />NAV comparison</h3>
-          <div className="flex gap-1 rounded-lg bg-muted p-1" aria-label="Chart window">{WINDOWS.map(w => <button key={w.value} aria-pressed={window === w.value} onClick={() => updateParams({ raceWindow: String(w.value) })} className={`min-h-9 rounded-md px-3 text-xs ${window === w.value ? 'bg-background font-semibold shadow-sm' : 'text-muted-foreground'}`}>{w.label}</button>)}</div>
+          <div className="flex gap-1 rounded-lg bg-muted p-1" aria-label="Chart window">{WINDOWS.map(w => <button key={w.value} aria-pressed={window === w.value} onClick={() => updateParams({ raceWindow: String(w.value) })} className={`research-touch min-h-9 rounded-md px-3 text-xs ${window === w.value ? 'bg-background font-semibold shadow-sm' : 'text-muted-foreground'}`}>{w.label}</button>)}</div>
         </header>
         <Suspense fallback={<div className="h-[370px] animate-pulse rounded-lg bg-muted" role="status">Loading chart…</div>}><Chart data={display} selected={selected} onSelect={select} onHover={hover} /></Suspense>
         <p className="mt-4 border-t pt-3 text-[11px] leading-relaxed text-muted-foreground">{phase ? 'Published trailing returns use the prior-close anchor and actual event friction. A short-history selection shows available benchmark history, without a window rank.' : 'Chart rebasing is for display only; published returns include inception costs and may differ from the rebased curve. Windows include partial calendar months.'} The x-axis uses trading sessions; weekends and exchange holidays are omitted. Gaps remain gaps. Points are provisional until complete-window review.</p>

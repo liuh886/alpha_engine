@@ -49,6 +49,7 @@ function IndexCard({
     : undefined;
   const weekChange = first && last && cell?.display ? last.value - first.value : null;
   const weekPct = cell?.display ? cell.value : null;
+  const weekTone = weekPct === null || weekPct === 0 ? 'neutral' : weekPct > 0 ? 'positive' : 'negative';
   const unavailable = issue?.message ?? (loading && !row ? 'Reading governed market evidence…' : cell?.reason);
 
   return (
@@ -73,23 +74,26 @@ function IndexCard({
             {formatPrice(last?.value)}
           </span>
           <span
-            className="mt-1 block truncate text-[11px] tabular-nums"
+            className="mt-1 block text-[11px] tabular-nums"
             title={cell?.reason}
           >
+            <span className="font-medium text-muted-foreground">1W </span>
             <span className={cn('font-medium', signedTone(weekPct))}>{formatPriceChange(weekChange)}</span>
             <span className="text-muted-foreground"> · </span>
             <span className={cn('font-medium', signedTone(weekPct))}>{formatReturn(weekPct)}</span>
-            <span className="text-muted-foreground"> 1W</span>
           </span>
         </div>
         {row && (
-          <Sparkline
-            nav={lastSessions(row.nav, 6)}
-            width={64}
-            height={24}
-            showEndpoint
-            className="shrink-0"
-          />
+          <span className="flex shrink-0 flex-col items-end gap-0.5">
+            <Sparkline
+              nav={lastSessions(row.nav, 6)}
+              width={64}
+              height={24}
+              showEndpoint
+              tone={weekTone}
+            />
+            <span className="text-[9px] uppercase tracking-[0.08em] text-muted-foreground">6 sessions</span>
+          </span>
         )}
       </div>
       <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
@@ -107,7 +111,18 @@ function IndexCard({
         <span>Cutoff {formatDate(row?.evidenceCutoff)}</span>
       </div>
       {unavailable && !row && (
-        <span className="sr-only">{unavailable}</span>
+        <span
+          data-testid={`benchmark-status-${market}`}
+          role="status"
+          title={unavailable}
+          className={cn(
+            'mt-1 block text-[11px] leading-snug',
+            issue ? 'text-warning' : 'text-muted-foreground',
+          )}
+        >
+          {issue ? 'Governed market evidence unavailable.' : unavailable}
+          {issue && <span className="sr-only"> {unavailable}</span>}
+        </span>
       )}
     </Link>
   );
@@ -117,6 +132,7 @@ function SP500Card() {
   return (
     <div
       data-testid="benchmark-card-sp500"
+      role="group"
       aria-label="S&P 500 not governed"
       className="flex min-h-[104px] flex-col justify-between rounded-lg border border-dashed bg-muted/20 px-4 py-3"
     >

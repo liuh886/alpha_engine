@@ -210,10 +210,11 @@ describe('ModelRankingTable', () => {
       reason: 'The governed formal source does not retain a finite excess-return metric.',
     }), qqqIndex()], 'full');
     const strategy = screen.getByTestId('fleet-us_x1_3');
-    expect(strategy).toHaveTextContent('Excess unavailable: The governed formal source does not retain a finite excess-return metric.');
+    expect(within(strategy).getByText('Unavailable')).toBeInTheDocument();
+    expect(strategy).toHaveTextContent('The governed formal source does not retain a finite excess-return metric.');
     expect(strategy).not.toHaveTextContent('+25.0%');
     const index = screen.getByTestId('ranking-index-us-QQQ');
-    expect(index).toHaveTextContent('Excess unavailable: Index rows are close-to-close price returns; excess is not computed.');
+    expect(index).toHaveTextContent('Index rows are close-to-close price returns; excess is not computed.');
   });
 
   it('hides the sorting table from the compact view when empty and reports issues', () => {
@@ -225,10 +226,11 @@ describe('ModelRankingTable', () => {
     expect(screen.getByRole('list', { name: 'Model ranking read issues' })).toHaveTextContent('US x1.3: ranking evidence unavailable.');
   });
 
-  it('keeps the wide table inside its own horizontal scroller', () => {
+  it('keeps the wide table inside its own scroller with a sticky header', () => {
     const { container } = renderTable([usStrategy()]);
     const wrapper = container.querySelector('table')?.parentElement;
-    expect(wrapper).toHaveClass('overflow-x-auto');
+    expect(wrapper).toHaveClass('overflow-auto');
+    expect(container.querySelector('thead')).toHaveClass('sticky');
     expect(container.querySelector('table')).toHaveClass('min-w-[820px]');
     const { container: full } = renderTable([usStrategy()], 'full');
     expect(full.querySelector('table')).toHaveClass('min-w-[1040px]');

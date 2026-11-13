@@ -10,11 +10,11 @@ import type { RunWorkspaceContext } from '@/lib/run-workspace';
 
 const WORKFLOWS = 'https://github.com/liuh886/alpha_engine/actions/workflows/';
 
-type ObservationBadgeVariant = 'positive' | 'warning' | 'negative' | 'muted';
+type ObservationBadgeVariant = 'positive' | 'warning' | 'negative' | 'info' | 'muted';
 
 function observationVariant(observation: StrategyObservationBrief): ObservationBadgeVariant {
   if (observation.kind === 'attention') return observation.label === 'Delivery failed' ? 'negative' : 'warning';
-  if (observation.kind === 'changed') return 'positive';
+  if (observation.kind === 'changed') return 'info';
   if (observation.kind === 'pending') return 'warning';
   return 'muted';
 }

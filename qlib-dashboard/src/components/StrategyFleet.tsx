@@ -47,6 +47,9 @@ export function StrategyFleet({
 
   const filteredRows = useMemo(() => rows.filter((row) => {
     if (marketFilter !== 'all' && row.market !== marketFilter) return false;
+    // Governed index rows are market context, not strategies. A signal filter
+    // narrows strategy rows only and must not erase the benchmark reference.
+    if (row.kind === 'index') return true;
     if (signalFilter === 'new' && !row.signal?.isNew) return false;
     if (signalFilter === 'attention' && !row.signal?.attention) return false;
     return true;
@@ -76,7 +79,7 @@ export function StrategyFleet({
             aria-label="Market"
             value={marketFilter}
             onChange={(event) => setMarketFilter(event.target.value as MarketFilter)}
-            className="rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="research-touch min-h-9 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="all">All markets</option>
             <option value="us">US</option>
@@ -87,7 +90,7 @@ export function StrategyFleet({
             aria-label="Signal filter"
             value={signalFilter}
             onChange={(event) => setSignalFilter(event.target.value as SignalFilter)}
-            className="rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="research-touch min-h-9 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="all">All signals</option>
             <option value="new">New signals</option>
@@ -104,6 +107,23 @@ export function StrategyFleet({
         covered shows — rather than an interpolated or one-point return. Current signals are read
         separately and are never inferred from a position delta.
       </p>
+
+      <p className="text-xs leading-relaxed text-muted-foreground" role="note">
+        Excess and max drawdown describe each run's own retained or derived window; they are not aligned
+        to the sorted horizon. Governed index rows use close-to-close price observations.
+      </p>
+
+      {signalFilter !== 'all' && (
+        <p data-testid="signal-filter-scope" className="text-xs leading-relaxed text-muted-foreground" role="note">
+          Signal filters apply to strategies only; governed index rows remain visible for market context.
+        </p>
+      )}
+
+      {!ranking.loading && strategyCount === 0 && (
+        <p data-testid="strategy-filter-empty" className="text-xs leading-relaxed text-muted-foreground" role="status">
+          No strategies match these filters. Governed index rows remain for market context.
+        </p>
+      )}
 
       <ModelRankingTable
         rows={filteredRows}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   fetchStudyReviews,
@@ -7,17 +8,17 @@ import {
   type StudyReview,
 } from '@/lib/study-review';
 
-const stateLabels: Record<ReviewLifecycleState, { label: string; badgeClass: string }> = {
+const stateLabels: Record<ReviewLifecycleState, { label: string; badgeClass: string; icon?: boolean }> = {
   formulated: { label: 'Formulated', badgeClass: 'border-border bg-muted/60 text-muted-foreground' },
   observing: { label: 'Observing', badgeClass: 'border-info/25 bg-info/10 text-info' },
   supported: { label: 'Supported', badgeClass: 'border-positive/25 bg-positive/10 text-positive' },
   challenged: { label: 'Challenged', badgeClass: 'border-warning/25 bg-warning/10 text-warning' },
   refuted: { label: 'Refuted', badgeClass: 'border-negative/25 bg-negative/10 text-negative' },
-  graduated: { label: 'Graduated', badgeClass: 'border-positive/25 bg-positive/10 text-positive' },
+  graduated: { label: 'Graduated', badgeClass: 'border-info/25 bg-info/10 text-info', icon: true },
 };
 
 function formatPct(val: number | undefined | null): string {
-  if (val === undefined || val === null || Number.isNaN(val)) return 'n/a';
+  if (val === undefined || val === null || Number.isNaN(val)) return '—';
   const pct = val * 100;
   return `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
 }
@@ -28,7 +29,7 @@ interface ReviewModalProps {
 }
 
 function ReviewModal({ review, onClose }: ReviewModalProps) {
-  const stateInfo = stateLabels[review.lifecycle_state] ?? { label: review.lifecycle_state, badgeClass: 'bg-muted text-muted-foreground' };
+  const stateInfo = stateLabels[review.lifecycle_state] ?? { label: review.lifecycle_state, badgeClass: 'bg-muted text-muted-foreground', icon: false };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -50,6 +51,7 @@ function ReviewModal({ review, onClose }: ReviewModalProps) {
           <div>
             <div className="flex items-center gap-2">
               <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${stateInfo.badgeClass}`}>
+                {stateInfo.icon && <GraduationCap className="mr-1 h-3 w-3" aria-hidden="true" />}
                 {stateInfo.label}
               </span>
               <span className="text-xs text-muted-foreground font-mono">{review.review_id}</span>
@@ -341,6 +343,7 @@ export function StudyReviewDesk({ attempt = 0 }: { attempt?: number }) {
             const stateInfo = stateLabels[rev.lifecycle_state] ?? {
               label: rev.lifecycle_state,
               badgeClass: 'bg-muted text-muted-foreground',
+              icon: false,
             };
             const primaryObs = rev.observations.full_sample_2024_2026 ?? Object.values(rev.observations)[0];
             const warningCount = rev.counter_evidence.filter((c) => c.severity === 'warning' || c.severity === 'falsifying').length;
@@ -353,6 +356,7 @@ export function StudyReviewDesk({ attempt = 0 }: { attempt?: number }) {
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${stateInfo.badgeClass}`}>
+                      {stateInfo.icon && <GraduationCap className="mr-1 h-3 w-3" aria-hidden="true" />}
                       {stateInfo.label}
                     </span>
                     <span className="text-[11px] font-mono text-muted-foreground">{rev.frozen_conditions.runner_id}</span>

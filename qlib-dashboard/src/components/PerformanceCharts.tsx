@@ -314,7 +314,7 @@ export function PerformanceCharts({
 
   const colorReturn = (value: number | null) => {
     if (value === null) return "text-muted-foreground/40";
-    return value >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400";
+    return value >= 0 ? "text-positive" : "text-negative";
   };
 
   const bgReturn = (value: number | null) => {
@@ -373,7 +373,7 @@ export function PerformanceCharts({
                     aria-pressed={!selectedRange && rangeKey === option.key}
                     onClick={() => { setRangeKey(option.key); setCustomRange(null); }}
                     className={cn(
-                      "min-h-9 rounded px-2 py-1 text-xs font-medium transition-colors",
+                      "research-touch min-h-9 rounded px-2 py-1 text-xs font-medium transition-colors",
                       !selectedRange && rangeKey === option.key
                         ? "bg-background text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground",
@@ -401,7 +401,7 @@ export function PerformanceCharts({
           </div>}
           {visibleChartData.length === 1 && startIndex > 0 && <p className="mt-1 text-xs text-muted-foreground">Only one observation in this interval.</p>}
           {chartData.length > 0 && <details className="mt-2 text-xs text-muted-foreground">
-            <summary className="min-h-9 cursor-pointer py-2">Custom dates</summary>
+            <summary className="research-touch min-h-9 cursor-pointer py-2">Custom dates</summary>
             <div className="grid grid-cols-1 gap-3 py-2 sm:grid-cols-2">
               <label className="min-w-0">From
                 <input type="date" aria-label="Performance start date" value={firstDate}
@@ -436,7 +436,7 @@ export function PerformanceCharts({
               <p
                 data-testid="max-drawdown-stat"
                 title="Computed from the displayed equity series over the selected range: equity/peak − 1. The sealed Bundle v2 max-drawdown metric may differ."
-                className="mt-1 font-mono text-sm font-semibold tabular-nums text-rose-600 dark:text-rose-400"
+                className="mt-1 font-mono text-sm font-semibold tabular-nums text-negative"
               >{hasDrawdown ? formatPercent(visibleMaxDrawdown?.value ?? 0) : '—'}</p>
             </div>
           </div>
@@ -444,7 +444,7 @@ export function PerformanceCharts({
             Benchmark and relative excess unavailable: {activeBenchmark?.label ?? declaredBenchmark?.label ?? 'the declared benchmark'} has no valid wealth series at both selected boundaries. Published source metrics are retained separately; another comparison is not substituted automatically.
           </p>}
           <details className="mt-2 text-xs text-muted-foreground">
-            <summary className="min-h-9 cursor-pointer py-2">How to read this chart</summary>
+            <summary className="research-touch min-h-9 cursor-pointer py-2">How to read this chart</summary>
             <p className="mb-2 leading-relaxed">Curves are rebased to the selected observations. Initial gains or losses are included only where opening wealth is explicitly declared; otherwise the interval ending at the first observation is excluded. Missing data stays unavailable.</p>
             <p data-testid="drawdown-provenance" className="mb-2 leading-relaxed">
               Chart drawdown uses equity/peak − 1 within the selected range. The sealed Bundle v2 metric may differ. Sparse settlements do not imply daily coverage; provisional MTM is not settled performance.
@@ -501,7 +501,7 @@ export function PerformanceCharts({
                   <span
                     data-testid="drawdown-card-max"
                     title="Chart-derived (equity/peak − 1) over the selected range; the sealed Bundle v2 metric may differ."
-                    className="text-rose-600 dark:text-rose-400"
+                    className="text-negative"
                   >Max {formatPercent(visibleMaxDrawdown.value)} · {visibleMaxDrawdown.date}</span>
                 )}
               </div>

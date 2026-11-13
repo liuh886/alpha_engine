@@ -116,7 +116,7 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
         <article key={run.key} className="px-5 py-4" aria-label={`${run.title} daily observation`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Link to={`/strategies/${encodeURIComponent(run.modelVersionId)}`} className="font-semibold text-sm hover:text-primary">{run.title}</Link>
-            <span className={brief.kind === 'attention' ? 'text-xs font-medium text-amber-700 dark:text-amber-300' : 'text-xs font-medium text-muted-foreground'}>{loading && !snapshot ? 'Checking observation' : brief.label}</span>
+            <span className={brief.kind === 'attention' ? 'text-xs font-medium text-warning' : 'text-xs font-medium text-muted-foreground'}>{loading && !snapshot ? 'Checking observation' : brief.label}</span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">{run.market.toUpperCase()} · {snapshot
             ? `Observed ${snapshot.latestCompletedSession ?? 'unknown'} · target dated ${snapshot.decisionSchedule?.signalDate ?? snapshot.asOf ?? 'unknown'} · formal evidence ${run.evidenceCutoff}`
@@ -157,7 +157,7 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
           </div>
         </article>
       ))}</div>
-      {entries.length > priorities.length && <p className="border-t px-5 py-3 text-xs text-muted-foreground">Showing {priorities.length} of {entries.length} priority observations. All {entries.length} strategies remain in the fleet below.</p>}
+      {entries.length > priorities.length && <p className="border-t px-5 py-3 text-xs text-muted-foreground">Showing {priorities.length} of {entries.length} priority observations (highest review state first). The model ranking above lists every strategy with its own as-of date.</p>}
     </section>
   );
 }

@@ -1,62 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
+import { installMembershipFixture } from './membership-fixture';
 
 type FormalCatalog = { records?: Array<{ manifest_path?: string; model_version_id?: string; evidence_cutoff?: string }> };
 type FormalManifest = { comparability_key?: { start: string; end: string }; sections?: Array<{ section_id?: string; availability_status?: string; path?: string }> };
 type FormalSummary = { display_name?: string; model_version_id?: string };
-
-interface MembershipFixture {
-  loading: boolean;
-  isPro: boolean;
-  user: { id: string; app_metadata?: { alpha_engine_role?: string } } | null;
-}
-
-async function installMembershipFixture(page: Page, initial: MembershipFixture): Promise<void> {
-  await page.route('**/admin/shared/account-shell.js*', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
-  await page.addInitScript((snapshot) => {
-    let current = snapshot;
-    const listeners = new Set<(value: MembershipFixture) => void>();
-    const policies = [
-      { product_code: 'alpha_engine', resource_type: 'module', resource_id: 'securities', required_tier: 'authenticated', updated_at: '2026-08-12T00:00:00Z' },
-      { product_code: 'alpha_engine', resource_type: 'strategy', resource_id: 'qqq_rotation', required_tier: 'pro', updated_at: '2026-08-12T00:00:00Z' },
-      { product_code: 'alpha_engine', resource_type: 'strategy', resource_id: 'us_x', required_tier: 'public', updated_at: '2026-08-12T00:00:00Z' },
-      { product_code: 'alpha_engine', resource_type: 'strategy', resource_id: 'cn_x', required_tier: 'public', updated_at: '2026-08-12T00:00:00Z' },
-      { product_code: 'alpha_engine', resource_type: 'strategy', resource_id: 'byd', required_tier: 'public', updated_at: '2026-08-12T00:00:00Z' },
-    ];
-    (window as any).HaoAccount = {
-      getState: () => current,
-      open: () => undefined,
-      subscribe: (listener: (value: MembershipFixture) => void) => {
-        listeners.add(listener);
-        return () => listeners.delete(listener);
-      },
-      getClient: async () => ({
-        from: (table: string) => {
-          if (table === 'product_access_policies') {
-            return {
-              select: () => ({
-                eq: async () => ({ data: policies, error: null }),
-              }),
-            };
-          }
-          return {
-            select: () => {
-              const query: any = {
-                eq: () => query,
-                maybeSingle: async () => ({ data: null, error: null }),
-              };
-              return query;
-            },
-            upsert: async () => ({ error: null }),
-          };
-        },
-      }),
-    };
-    (window as any).__setAlphaMembership = (next: MembershipFixture) => {
-      current = next;
-      listeners.forEach((listener) => listener(current));
-    };
-  }, initial);
-}
 
 async function loadFormalDisplayNames(page: Page): Promise<string[]> {
   const catalogResponse = await page.request.get('/data/formal-model-runs/catalog.json');
@@ -161,8 +108,8 @@ test('fleet horizons disclose retained coverage, per-row as-of dates and stale e
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
   await page.goto('/#/strategies');
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
-  await expect(fleet.locator('tr[data-kind="strategy"]')).toHaveCount(4);
-  await expect(fleet.locator('tr[data-kind="index"]')).toHaveCount(2);
+  await expect(fleet.locator('[data-kind="strategy"]')).toHaveCount(4);
+  await expect(fleet.locator('[data-kind="index"]')).toHaveCount(2);
 
   const catalog = await (await page.request.get('/data/formal-model-runs/catalog.json')).json() as FormalCatalog;
   const sources = await Promise.all((catalog.records ?? []).map(async record => {
@@ -196,10 +143,15 @@ test('fleet horizons disclose retained coverage, per-row as-of dates and stale e
     expect(await row.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(2);
   }
 
+  const narrow = (page.viewportSize()?.width ?? 1280) < 768;
   for (const label of ['1W', '1M', '3M', '1Y', '2Y', '3Y']) {
-    const button = fleet.getByRole('button', { name: label, exact: true });
-    await button.click();
-    await expect(fleet.getByRole('columnheader', { name: label, exact: true })).toHaveAttribute('aria-sort', 'descending');
+    await fleet.getByRole('button', { name: label, exact: true }).click();
+    if (narrow) {
+      await expect(fleet.getByRole('group', { name: 'Sort ranking by horizon' })
+        .getByRole('button', { name: label, exact: true })).toHaveAttribute('aria-pressed', 'true');
+    } else {
+      await expect(fleet.getByRole('columnheader', { name: label, exact: true })).toHaveAttribute('aria-sort', 'descending');
+    }
   }
   await expect(fleet.getByText(/[-+]0\.0%/)).toHaveCount(0);
 

@@ -15,7 +15,6 @@ export function Sidebar() {
       <div className="research-brand-mark"><Orbit className="h-4 w-4" aria-hidden="true" /></div>
       {!collapsed && <div className="min-w-0">
         <div className="research-brand-name">Alpha Engine</div>
-        <div className="research-brand-subtitle">Research Workspace</div>
       </div>}
     </Link>
     <nav className="research-nav" aria-label="Research workspace navigation">

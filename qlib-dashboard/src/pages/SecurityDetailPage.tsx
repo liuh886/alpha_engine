@@ -108,7 +108,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
       <div className="min-w-0">
         <p className="research-kicker">{evidence.market.toUpperCase()} · Historical research evidence</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <h1>{evidence.name} · {evidence.symbol}</h1>
+          <h1>{evidence.name === evidence.symbol ? evidence.name : `${evidence.name} · ${evidence.symbol}`}</h1>
           <span className="ae-chip">{evidence.market.toUpperCase()}</span>
           <span className="ae-chip">Research only · Not trade ready</span>
         </div>
@@ -174,7 +174,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
                 type="button"
                 aria-pressed={range === period.key}
                 className={cn(
-                  'min-h-8 rounded-md px-2.5 text-[11px] font-medium transition-colors',
+                  'research-touch min-h-8 rounded-md px-2.5 text-[11px] font-medium transition-colors',
                   range === period.key
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-muted',
@@ -194,7 +194,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
               type="button"
               aria-pressed={mode === 'price'}
               className={cn(
-                'min-h-8 rounded-md px-2.5 text-[11px] font-medium transition-colors',
+                'research-touch min-h-8 rounded-md px-2.5 text-[11px] font-medium transition-colors',
                 mode === 'price' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted',
               )}
               onClick={() => setMode('price')}
@@ -207,7 +207,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
               aria-describedby={baselineIsSelf ? baselineReasonId : undefined}
               disabled={baselineIsSelf}
               className={cn(
-                'min-h-8 rounded-md px-2.5 text-[11px] font-medium transition-colors',
+                'research-touch min-h-8 rounded-md px-2.5 text-[11px] font-medium transition-colors',
                 mode === 'baseline' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted',
                 baselineIsSelf && 'cursor-not-allowed opacity-50',
               )}
@@ -267,7 +267,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
           </p>
           <button
             type="button"
-            className="min-h-9 rounded border px-3 text-xs font-medium"
+            className="research-touch min-h-9 rounded border px-3 text-xs font-medium"
             onClick={() => setBaselineAttempt(value => value + 1)}
           >
             Retry baseline
@@ -282,9 +282,9 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
         {models.map(run => {
           const inRange = visibleEvents.filter(event => event.model_id === run.modelVersionId).length;
           return (
-            <label key={run.modelVersionId} className="flex min-h-8 cursor-pointer items-center gap-2 text-xs">
+            <label key={run.modelVersionId} className="research-touch flex min-h-8 cursor-pointer items-center gap-2 text-xs">
               <input
-                type="checkbox"
+                type="checkbox" className="h-4 w-4 accent-primary"
                 checked={!hidden.includes(run.modelVersionId)}
                 onChange={() => setHidden(values => values.includes(run.modelVersionId)
                   ? values.filter(id => id !== run.modelVersionId)
@@ -335,7 +335,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
                     aria-pressed={markerPressed(marker)}
                     onClick={() => setSelected(marker.events)}
                     className={cn(
-                      'flex w-full flex-wrap items-baseline gap-x-3 gap-y-0.5 px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50',
+                      'research-touch flex w-full flex-wrap items-baseline gap-x-3 gap-y-0.5 px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50',
                       markerPressed(marker) && 'bg-primary/5',
                     )}
                   >
@@ -392,9 +392,9 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
     <section className="research-surface p-4 sm:p-5" aria-label="Historical model event ledger">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="ae-section-title">Historical model event ledger</h2>
-        <label className="flex min-h-9 items-center gap-2 text-sm">
+        <label className="research-touch flex min-h-9 items-center gap-2 text-sm">
           <input
-            type="checkbox"
+            type="checkbox" className="h-4 w-4 accent-primary"
             checked={completeLedger}
             onChange={event => { setCompleteLedger(event.target.checked); setLimit(100); }}
           />

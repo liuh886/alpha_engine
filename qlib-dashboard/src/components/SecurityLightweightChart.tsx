@@ -256,6 +256,10 @@ export function SecurityLightweightChart({
     if (mode === 'baseline') {
       handles.candle.applyOptions({ visible: false });
       handles.volume.applyOptions({ visible: false });
+      // Clear the hidden price/volume data so only the indexed series drive
+      // the shared right price scale.
+      handles.candle.setData([]);
+      handles.volume.setData([]);
       handles.instrument.applyOptions({ visible: true, priceFormat: INDEXED_FORMAT });
       handles.baseline.applyOptions({ visible: true, priceFormat: INDEXED_FORMAT });
       handles.instrument.setData(baselineSeries ? toLightweightLineData(baselineSeries.instrument) : []);
@@ -309,6 +313,14 @@ export function SecurityLightweightChart({
             Canvas 2D rendering is not supported in this environment. Price evidence remains available in the
             event ledger and provenance sections below.
           </div>
+        )}
+        {canvasSupported && mode === 'price' && !showEmpty && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-1 left-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
+          >
+            Volume
+          </span>
         )}
         {canvasSupported && showEmpty && (
           <div

@@ -132,6 +132,13 @@ describe('discoverBaselineOptions', () => {
     });
   });
 
+  it('keeps the raw manifest identity in the key but shows a readable label', () => {
+    const options = discoverBaselineOptions({ benchmark: 'byd_v1.2', market: 'us' }, report, { us: usBars });
+    expect(options[0]).toMatchObject({ key: 'declared:bench_byd_v1_2', label: 'BYD v1.2' });
+    const unresolved = discoverBaselineOptions({ benchmark: 'qqq', market: 'us' }, report, { us: usBars });
+    expect(unresolved[0]).toMatchObject({ key: 'declared:qqq', label: 'QQQ', available: false });
+  });
+
   it('offers only the governed market baseline with its real symbol', () => {
     const us = discoverBaselineOptions({ benchmark: 'BYD v1.2', market: 'us' }, report, { us: usBars, cn: cnBars });
     expect(us.find(option => option.kind === 'market')).toMatchObject({
