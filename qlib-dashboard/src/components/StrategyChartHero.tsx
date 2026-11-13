@@ -76,7 +76,7 @@ function HeroTile({ label, testId, value, valueClassName, children }: HeroTilePr
   return (
     <div className="min-w-0 bg-card px-3 py-3 sm:px-4">
       <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
-      <p data-testid={testId} className={cn('mt-1 break-words font-mono text-lg tabular-nums', valueClassName)}>
+      <p data-testid={testId} className={cn('mt-1 break-words font-mono text-xl font-semibold tabular-nums sm:text-2xl', valueClassName)}>
         {value}
       </p>
       {children}
@@ -268,7 +268,7 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
   const chartSeries = useMemo<NavChartSeries[]>(() => {
     const series: NavChartSeries[] = [];
     if (windowPoints.length > 0) {
-      series.push({ key: 'strategy', label: 'Strategy', nav: windowPoints, emphasis: 'primary' });
+      series.push({ key: 'strategy', label: run.title, nav: windowPoints, emphasis: 'primary' });
     }
     if (baselineSelected && baselineWindow.length >= 2) {
       series.push({
@@ -280,7 +280,7 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
       });
     }
     return series;
-  }, [baselineName, baselineSelected, baselineWindow, windowPoints]);
+  }, [baselineName, baselineSelected, baselineWindow, run.title, windowPoints]);
 
   const baselineNote = (() => {
     if (!baselineSelected) return 'Select a baseline to compare on exact common dates.';
