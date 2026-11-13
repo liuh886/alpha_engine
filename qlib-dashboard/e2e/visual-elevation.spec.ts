@@ -115,6 +115,119 @@ test('the security ledger uses readable actions and reasons while retaining raw 
   await expect(page.getByText('Source degraded', { exact: true })).toHaveCount(0);
 });
 
+test('the as-of sort sits inline beside the Model label instead of reading as an empty column', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'The ranking table is replaced by cards on handsets.');
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
+  for (const path of ['/#/app', '/#/strategies']) {
+    await page.goto(path);
+    const header = page.getByRole('columnheader', { name: /Model/ }).first();
+    const button = header.getByRole('button', { name: 'Sort by as-of freshness' });
+    await expect(header).toBeVisible();
+    await expect(button).toBeVisible();
+
+    // There is no second, phantom AS OF column: exactly one header owns the control.
+    await expect(page.getByRole('columnheader', { name: /^As of/ })).toHaveCount(0);
+    await expect(page.getByRole('columnheader').filter({ has: page.getByRole('button', { name: 'Sort by as-of freshness' }) })).toHaveCount(1);
+
+    const [labelBox, buttonBox, headerBox] = await Promise.all([
+      header.getByText('Model', { exact: true }).boundingBox(),
+      button.boundingBox(),
+      header.boundingBox(),
+    ]);
+    expect(labelBox && buttonBox && headerBox).toBeTruthy();
+    const inlineGap = buttonBox!.x - (labelBox!.x + labelBox!.width);
+    expect(inlineGap, 'the control follows the Model label in one inline cluster').toBeGreaterThanOrEqual(-1);
+    expect(inlineGap, 'the control is not separated from its label').toBeLessThanOrEqual(16);
+    const trailingGap = headerBox!.x + headerBox!.width - (buttonBox!.x + buttonBox!.width);
+    expect(trailingGap, 'the control is not pushed to the far edge of the wide Model column').toBeGreaterThan(80);
+
+    await button.click();
+    await expect(header).toHaveAttribute('aria-sort', 'descending');
+    await expect(button).toHaveAttribute('aria-pressed', 'true');
+    await expect(button).toHaveClass(/underline/);
+  }
+});
+
+test('the visible-range price data disclosure is keyboard reachable and bounded', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'The handset chart is covered by the handset layout test.');
+  await page.goto('/#/securities/us/QQQ');
+  await expect(page.getByRole('heading', { name: 'QQQ', exact: true })).toBeVisible();
+  const details = page.getByTestId('price-data');
+  await expect(details).toBeVisible();
+  await expect(details).not.toHaveAttribute('open', '');
+  const summary = details.locator('summary');
+  await expect(summary).toHaveText('View price data table');
+  await summary.press('Enter');
+  await expect(details).toHaveAttribute('open', '');
+
+  await expect(details.locator('thead th')).toHaveText(['Date', 'Open', 'High', 'Low', 'Close', 'Volume']);
+  const rows = details.locator('tbody tr');
+  const rowCount = await rows.count();
+  expect(rowCount, 'the DOM is bounded to the most recent 120 sessions').toBeGreaterThan(0);
+  expect(rowCount).toBeLessThanOrEqual(120);
+  await expect(rows.first().locator('th')).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
+  await expect(details.locator('p')).toContainText(/Showing (the most recent 120 of \d+|all \d+) visible-range session/);
+  await expect(details.locator('p')).toContainText('Raw OHLCV, not split or dividend adjusted.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+});
+
+test('the baseline comparison announces loading through a chart-shaped status, not a bare sentence', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'One deterministic loading check is enough for the consent-free static artifact.');
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/data/market-evidence/cn/symbols/000300.json', async route => {
+    await gate;
+    await route.continue();
+  });
+  try {
+    await page.goto('/#/securities/cn/002594');
+    await expect(page.getByRole('heading', { name: 'BYD · 002594' })).toBeVisible();
+    await expect(page.getByTestId('security-lightweight-chart-container')).toBeVisible();
+    const mode = page.getByRole('group', { name: 'Security chart mode' });
+    await mode.getByRole('button', { name: 'vs baseline', exact: true }).click();
+
+    const skeleton = page.getByTestId('security-chart-loading');
+    await expect(skeleton).toBeVisible();
+    await expect(skeleton).toHaveAttribute('role', 'status');
+    await expect(skeleton).toHaveAttribute('aria-busy', 'true');
+    await expect(skeleton).toContainText('Loading CSI 300');
+    await expect(skeleton).toContainText('baseline evidence');
+    // The loaded chart remains the same single instance; the skeleton is only an overlay.
+    await expect(page.getByTestId('security-lightweight-chart-container')).toHaveCount(1);
+    await expect(page.getByTestId('security-chart-empty')).toHaveCount(0);
+  } finally {
+    release();
+  }
+  await expect(page.getByTestId('security-chart-loading')).toHaveCount(0);
+  await expect(page.getByTestId('security-chart-baseline')).toContainText('CSI 300 (000300.SH)');
+});
+
+test('a handset context bar wraps without clipping and every destination keeps its width', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'Handset-specific width.');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
+
+  for (const path of ['/#/app', '/#/strategies', '/#/securities/us/QQQ', '/#/system', '/#/research']) {
+    await page.goto(path);
+    await expect(page.getByRole('main')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+      `${path} keeps the page inside the 390px viewport`).toBeLessThanOrEqual(2);
+  }
+
+  await page.goto('/#/app');
+  const bar = page.getByRole('status', { name: 'Strategy fleet context' });
+  await expect(bar).toContainText('Formal strategy fleet · 4 strategies');
+  await expect(bar).toContainText('Evidence cutoffs shown per strategy');
+  const metrics = await bar.evaluate(element => ({
+    hiddenWidth: element.scrollWidth - element.clientWidth,
+    clippedHeight: element.scrollHeight - element.clientHeight,
+    height: element.getBoundingClientRect().height,
+  }));
+  expect(metrics.hiddenWidth, 'no clipped facts behind a hidden scrollbar').toBeLessThanOrEqual(2);
+  expect(metrics.clippedHeight).toBeLessThanOrEqual(2);
+  expect(metrics.height, 'at most two compact lines').toBeLessThanOrEqual(48);
+});
+
 test('handset Strategies brings the first ranking card forward with one sort row and 44px controls', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'Handset layout is asserted only in the mobile project.');
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });

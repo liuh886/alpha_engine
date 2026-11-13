@@ -590,7 +590,10 @@ export function ModelRankingTable({
             <thead className="sticky top-0 z-10 bg-card shadow-[0_1px_0_hsl(var(--border))]">
               <tr className="border-b bg-muted/20">
                 <th scope="col" aria-sort={sort === 'asOf' ? 'descending' : 'none'} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  <span className="flex items-center justify-between gap-2">
+                  {/* The as-of control sits immediately after the Model label.
+                      Stretching it to the far edge of this wide column read as a
+                      separate, empty AS OF column at desktop widths. */}
+                  <span className="flex items-center gap-2">
                     <span>Model</span>
                     <button
                       type="button"
@@ -598,7 +601,7 @@ export function ModelRankingTable({
                       aria-pressed={sort === 'asOf'}
                       aria-label="Sort by as-of freshness"
                       className={cn(
-                        '-mx-2 -my-2 flex min-h-11 min-w-11 items-center justify-end gap-1 rounded px-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors',
+                        '-my-2 flex min-h-11 min-w-11 items-center gap-1 rounded px-1 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors',
                         sort === 'asOf'
                           ? 'text-foreground underline decoration-primary decoration-2 underline-offset-4'
                           : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',

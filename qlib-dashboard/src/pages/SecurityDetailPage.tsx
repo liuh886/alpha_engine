@@ -41,6 +41,35 @@ type BaselineState =
   | { status: 'ready'; evidence: SecurityEvidence }
   | { status: 'error'; error: string };
 
+/**
+ * As-of and evidence-cutoff identities are one fact when the dates match and
+ * two labelled metrics only when they genuinely differ. Display only.
+ */
+export function SecurityAsOfMetrics({ asOf, cutoff }: { asOf: string | null; cutoff: string }) {
+  if (asOf !== null && asOf === cutoff) {
+    return (
+      <div>
+        <dt className="ae-metric-label">As of · evidence cutoff</dt>
+        <dd data-testid="security-as-of-cutoff" className="mt-1 font-mono text-sm font-semibold tabular-nums">
+          {cutoff}
+        </dd>
+      </div>
+    );
+  }
+  return (
+    <>
+      <div>
+        <dt className="ae-metric-label">As of</dt>
+        <dd data-testid="security-as-of" className="mt-1 font-mono text-sm font-semibold tabular-nums">{asOf ?? '—'}</dd>
+      </div>
+      <div>
+        <dt className="ae-metric-label">Evidence cutoff</dt>
+        <dd data-testid="security-evidence-cutoff" className="mt-1 font-mono text-sm font-semibold tabular-nums">{cutoff}</dd>
+      </div>
+    </>
+  );
+}
+
 function History({ evidence, runs }: { evidence: SecurityEvidence; runs: GovernedRunSummary[] }) {
   const [params, setParams] = useSearchParams();
   const range = PERIODS.find(period => period.key === params.get('range'))?.key ?? '1y';
@@ -148,14 +177,9 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
             <p className="mt-0.5 max-w-[16rem] text-[10px] leading-4 text-muted-foreground">{summary.oneWeekReason}</p>
           )}
         </div>
-        <div>
-          <dt className="ae-metric-label">As of</dt>
-          <dd className="mt-1 font-mono text-sm font-semibold tabular-nums">{summary.asOf ?? '—'}</dd>
-        </div>
-        <div>
-          <dt className="ae-metric-label">Evidence cutoff</dt>
-          <dd className="mt-1 font-mono text-sm font-semibold tabular-nums">{evidence.cutoff}</dd>
-        </div>
+        {/* One metric when the observation date and evidence cutoff coincide;
+            two labelled metrics only when they actually differ. */}
+        <SecurityAsOfMetrics asOf={summary.asOf} cutoff={evidence.cutoff} />
       </dl>
     </header>
 
@@ -311,6 +335,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
         fitKey={fitKey}
         onSelect={setSelected}
         emptyMessage={emptyMessage}
+        loading={mode === 'baseline' && (baseline.status === 'loading' || baseline.status === 'idle')}
       />
 
       {skippedMarkers > 0 && (
