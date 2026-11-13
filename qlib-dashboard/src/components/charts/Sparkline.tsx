@@ -12,6 +12,8 @@ export interface SparklineProps {
   /** Provide a label when the sparkline is the only carrier of the value. */
   label?: string;
   tone?: SparklineTone;
+  /** Mark the final observation with an 8px endpoint dot and surface ring. */
+  showEndpoint?: boolean;
 }
 
 const MAX_POINTS = 60;
@@ -77,7 +79,15 @@ function resolvedTone(points: NavPoint[], tone: SparklineTone): Exclude<Sparklin
  * instead of bridging missing data, uses LTTB downsampling, and derives its
  * color from semantic tokens rather than hard-coded colors.
  */
-export function Sparkline({ nav, width = 120, height = 32, className, label, tone = 'auto' }: SparklineProps) {
+export function Sparkline({
+  nav,
+  width = 120,
+  height = 32,
+  className,
+  label,
+  tone = 'auto',
+  showEndpoint = false,
+}: SparklineProps) {
   const resolvedWidth = Number.isFinite(width) && width > 0 ? width : 120;
   const resolvedHeight = Number.isFinite(height) && height > 0 ? height : 32;
   const segments = downsampleSegments(validSegments(nav));
@@ -90,6 +100,7 @@ export function Sparkline({ nav, width = 120, height = 32, className, label, ton
       : 'text-muted-foreground';
 
   let path = '';
+  let endpoint: { x: number; y: number } | null = null;
   if (points.length > 0) {
     const padding = Math.min(PADDING, Math.max(0, Math.min(resolvedWidth, resolvedHeight) / 4));
     const times = points.map(point => Date.parse(`${point.date}T00:00:00Z`));
@@ -115,6 +126,7 @@ export function Sparkline({ nav, width = 120, height = 32, className, label, ton
         ? `${segmentPath(segment, x, y)} L${coordinate(x(segment[0]) + 0.01)} ${coordinate(y(segment[0]))}`
         : segmentPath(segment, x, y))
       .join(' ');
+    endpoint = { x: x(points[points.length - 1]), y: y(points[points.length - 1]) };
   }
 
   const accessibleLabel = typeof label === 'string' && label.trim() !== '' ? label : undefined;
@@ -144,6 +156,17 @@ export function Sparkline({ nav, width = 120, height = 32, className, label, ton
           strokeLinecap="round"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
+        />
+      )}
+      {showEndpoint && endpoint !== null && (
+        <circle
+          data-testid="sparkline-endpoint"
+          cx={coordinate(endpoint.x)}
+          cy={coordinate(endpoint.y)}
+          r={4}
+          fill="currentColor"
+          stroke="hsl(var(--card))"
+          strokeWidth={2}
         />
       )}
     </svg>

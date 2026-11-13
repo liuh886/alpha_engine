@@ -211,9 +211,9 @@ test('live Pages renders or explicitly policy-gates every catalog-governed forma
   expect(new Set(formalModels.map((model) => model.version)).size).toBe(formalModels.length);
   expect(new Set(formalModels.map((model) => model.displayName)).size).toBe(formalModels.length);
 
-  const snapshot = page.getByRole('region', { name: 'Formal strategy snapshot' });
+  const ranking = page.getByRole('region', { name: 'Model ranking' });
   for (const model of formalModels) {
-    await expect(snapshot.getByText(model.displayName, { exact: true })).toBeVisible();
+    await expect(ranking.getByText(model.displayName, { exact: true })).toBeVisible();
   }
 
   await page.goto(`?live_acceptance=${Date.now()}#/strategies`, { waitUntil: 'networkidle' });
