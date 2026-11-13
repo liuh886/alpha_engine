@@ -34,7 +34,7 @@ describe('DailyResearchBrief', () => {
       'Strategy 1 daily observation', 'Strategy 2 daily observation', 'Strategy 3 daily observation',
     ]);
     expect(screen.getByText(/3 changed · 1 unchanged/)).toBeInTheDocument();
-    expect(screen.getByText('Showing 3 of 4 priority observations (highest review state first). The model ranking above lists every strategy with its own as-of date.')).toBeInTheDocument();
+    expect(screen.queryByText(/Showing \d+ of \d+ priority observations/)).not.toBeInTheDocument();
     expect(screen.queryByText(/No new model changes/)).not.toBeInTheDocument();
   });
 

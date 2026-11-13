@@ -102,16 +102,18 @@ export function StrategyFleet({
         </p>
       </div>
 
-      <p className="text-xs leading-relaxed text-muted-foreground" role="note">
-        Returns are browser-derived from each run's compact NAV projection. A horizon that is not fully
-        covered shows — rather than an interpolated or one-point return. Current signals are read
-        separately and are never inferred from a position delta.
-      </p>
-
-      <p className="text-xs leading-relaxed text-muted-foreground" role="note">
-        Excess and max drawdown describe each run's own retained or derived window; they are not aligned
-        to the sorted horizon. Governed index rows use close-to-close price observations.
-      </p>
+      <details className="rounded-lg border border-border/70 bg-muted/15 px-3 py-2 text-xs text-muted-foreground" data-testid="strategy-method">
+        <summary className="cursor-pointer font-medium text-foreground">How these numbers are built</summary>
+        <p className="mt-2 leading-relaxed" role="note">
+          Returns are browser-derived from each run's compact NAV projection. A horizon that is not fully
+          covered shows — rather than an interpolated or one-point return. Current signals are read
+          separately and are never inferred from a position delta.
+        </p>
+        <p className="mt-2 leading-relaxed" role="note">
+          Excess and max drawdown describe each run's own retained or derived window; they are not aligned
+          to the sorted horizon. Governed index rows use close-to-close price observations.
+        </p>
+      </details>
 
       {signalFilter !== 'all' && (
         <p data-testid="signal-filter-scope" className="text-xs leading-relaxed text-muted-foreground" role="note">

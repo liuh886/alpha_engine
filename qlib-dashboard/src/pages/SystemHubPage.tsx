@@ -42,7 +42,7 @@ export function SystemHubPage() {
         setAttempt(value => value + 1);
       }}>Refresh status</Button>
     </header>
-    <OperationsReadStatus {...operations} />
+    <OperationsReadStatus {...operations} runs={operations.formalRuns} showRefresh={false} />
     <section className="ae-surface overflow-hidden" aria-label="Current strategy observations">
       <header className="border-b border-border/70 px-4 py-3 sm:px-5">
         <h2 className="ae-section-title">Current strategy observations</h2>

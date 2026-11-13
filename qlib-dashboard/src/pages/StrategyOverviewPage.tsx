@@ -5,7 +5,9 @@ import { BenchmarkMarketCards } from '@/components/BenchmarkMarketCards';
 import { DailyResearchBrief } from '@/components/DailyResearchBrief';
 import { ModelRankingTable } from '@/components/ModelRankingTable';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
+import { useAccessControl } from '@/hooks/useAccessControl';
 import { useModelRanking } from '@/hooks/useModelRanking';
+import { briefHeadline, buildBriefEntries, nextReviewLabel, summarizeBrief } from '@/lib/research-brief';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 
 const Racetrack = lazy(() => import('@/components/racetrack/RacetrackWorkspace')
@@ -14,6 +16,10 @@ const Racetrack = lazy(() => import('@/components/racetrack/RacetrackWorkspace')
 function TodayWorkspace({ onOpenRacetrack }: { onOpenRacetrack: () => void }) {
   const { operations } = useOutletContext<RunWorkspaceContext>();
   const ranking = useModelRanking(operations.formalRuns, { includeIndices: true, includeExcess: false });
+  const access = useAccessControl();
+  const entries = buildBriefEntries(operations.formalRuns, operations.snapshots, operations.loading, access);
+  const summary = summarizeBrief(entries, operations.loading, Boolean(access.loading || access.policyLoading));
+  const nextReview = nextReviewLabel(summary);
 
   return <div className="mx-auto max-w-[1500px] space-y-5 pb-16">
     <header className="border-b pb-5">
@@ -22,6 +28,10 @@ function TodayWorkspace({ onOpenRacetrack }: { onOpenRacetrack: () => void }) {
       <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
         Start with verified changes, the reason behind each observation and the next allowed review.
         This is research evidence, not an order or live market feed.
+      </p>
+      <p data-testid="today-decision-summary" role="status" className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-l-2 border-primary/50 pl-2.5 text-sm">
+        <span className="font-medium">{briefHeadline(summary, entries.length)}</span>
+        {nextReview && <span className="text-muted-foreground">· {nextReview}</span>}
       </p>
     </header>
 

@@ -47,6 +47,7 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
     snapshots: Map<string, StrategyOperationsSnapshot>;
     issues: StrategyOperationsReadIssue[];
     loading: boolean;
+    checkedAt: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -58,6 +59,7 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
     setResult(previous => ({ request,
       snapshots: previous?.request.identity === identity ? previousObservations(previous.snapshots) : EMPTY_SNAPSHOTS,
       issues: [], loading: true,
+      checkedAt: previous?.request.identity === identity ? previous?.checkedAt ?? null : null,
     }));
     const deadline = window.setTimeout(() => {
       active = false;
@@ -72,6 +74,7 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
           snapshots: new Map(Array.from(snapshots, ([id, snapshot]) =>
             [id, pendingModels?.has(id) ? markUnread(snapshot) : snapshot])),
           issues: [...(current?.request.identity === identity ? current.issues : []), ...timedOut], loading: false,
+          checkedAt: new Date().toISOString(),
         };
       });
     }, 15_000);
@@ -100,7 +103,11 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
                 && (!replacement?.sourceIdentity.formalBundleId || replacement.readState === 'protected')) snapshots.set(id, snapshot);
             }
           }
-          return { request, snapshots, issues: [...issues], loading };
+          return { request, snapshots, issues: [...issues], loading,
+            checkedAt: loading
+              ? previous?.request.identity === identity ? previous?.checkedAt ?? null : null
+              : new Date().toISOString(),
+          };
         });
       };
       publish(true);
@@ -150,5 +157,5 @@ export function useStrategyOperations(runs: GovernedRunSummary[]) {
     ?? (result?.request.identity === identity ? previousObservations(result.snapshots) : EMPTY_SNAPSHOTS),
   [current, result, identity]);
   return { formalRuns, snapshots, previousRead: Array.from(snapshots.values()).some(snapshot => snapshot.readState === 'retained'),
-    loading: current?.loading ?? true, issues: current?.issues ?? [], reload };
+    loading: current?.loading ?? true, issues: current?.issues ?? [], checkedAt: current?.checkedAt ?? null, reload };
 }
