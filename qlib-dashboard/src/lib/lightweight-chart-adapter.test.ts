@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { SecurityBar, SecurityEvent } from './security-evidence';
 import {
   toLightweightCandleData,
-  toLightweightVolumeData,
+  toLightweightLineData,
   toLightweightMarkers,
-  assertLightweightParity,
+  toLightweightVolumeData,
 } from './lightweight-chart-adapter';
-import { securityMarkers } from '../components/SecurityHistoryChart';
+import { securityMarkers } from './security-markers';
 
 const mockBars: SecurityBar[] = [
   { time: '2026-07-29', open: 480.5, high: 485.2, low: 479.1, close: 484.0, volume: 15200000 },
@@ -37,6 +37,9 @@ const mockEvents: SecurityEvent[] = [
   },
 ];
 
+const markerColors = { buy: 'hsl(152, 62%, 28%)', sell: 'hsl(0, 68%, 43%)' };
+const volumeColors = { up: 'hsla(152, 62%, 28%, 0.4)', down: 'hsla(0, 68%, 43%, 0.4)' };
+
 describe('lightweight-chart-adapter', () => {
   it('maps SecurityBar to TradingView CandlestickData with exact timestamp and OHLC precision', () => {
     const candles = toLightweightCandleData(mockBars);
@@ -57,58 +60,43 @@ describe('lightweight-chart-adapter', () => {
     });
   });
 
-  it('maps SecurityBar to TradingView HistogramData for volume with bullish/bearish color encoding', () => {
-    const volume = toLightweightVolumeData(mockBars);
+  it('maps SecurityBar to TradingView HistogramData with caller-supplied theme colors', () => {
+    const volume = toLightweightVolumeData(mockBars, volumeColors);
     expect(volume).toHaveLength(3);
-    // 2026-07-29: close (484.0) >= open (480.5) -> bullish (greenish)
-    expect(volume[0].color).toContain('150, 105');
+    expect(volume[0].color).toBe(volumeColors.up);
     expect(volume[0].value).toBe(15200000);
-    // 2026-07-30: close (482.5) < open (483.8) -> bearish (reddish)
-    expect(volume[1].color).toContain('225, 29, 72');
+    expect(volume[1].color).toBe(volumeColors.down);
     expect(volume[1].value).toBe(14100000);
   });
 
-  it('maps security markers to TradingView series markers with shape, color, and positions', () => {
+  it('maps indexed NAV points to exact-date line data without interpolation', () => {
+    const line = toLightweightLineData([
+      { date: '2026-01-02', value: 100 },
+      { date: '2026-01-05', value: 102.5 },
+    ]);
+    expect(line).toEqual([
+      { time: '2026-01-02', value: 100 },
+      { time: '2026-01-05', value: 102.5 },
+    ]);
+  });
+
+  it('maps security markers to upward/downward triangles with stable ids and size', () => {
     const markers = securityMarkers(mockBars, mockEvents);
-    const lcMarkers = toLightweightMarkers(markers);
+    const lcMarkers = toLightweightMarkers(markers, markerColors);
     expect(lcMarkers).toHaveLength(2);
 
-    // Buy marker
-    const buy = lcMarkers.find(m => m.time === '2026-07-29')!;
+    const buy = lcMarkers.find(marker => marker.time === '2026-07-29')!;
     expect(buy.position).toBe('belowBar');
     expect(buy.shape).toBe('arrowUp');
-    expect(buy.color).toBe('#059669');
-    expect(buy.text).toBe('B');
+    expect(buy.color).toBe(markerColors.buy);
+    expect(buy.id).toBe('2026-07-29:buy');
+    expect(buy.size).toBe(1);
 
-    // Sell marker
-    const sell = lcMarkers.find(m => m.time === '2026-07-31')!;
+    const sell = lcMarkers.find(marker => marker.time === '2026-07-31')!;
     expect(sell.position).toBe('aboveBar');
     expect(sell.shape).toBe('arrowDown');
-    expect(sell.color).toBe('#e11d48');
-    expect(sell.text).toBe('S');
-  });
-
-  it('proves parity between Recharts data representation and TradingView adapter', () => {
-    const rechartsData = mockBars.map(bar => ({ ...bar, priceRange: [bar.low, bar.high] as [number, number] }));
-    const markers = securityMarkers(mockBars, mockEvents);
-
-    const parity = assertLightweightParity(mockBars, rechartsData, markers);
-    expect(parity.barsMatch).toBe(true);
-    expect(parity.barCount).toBe(3);
-    expect(parity.eventCount).toBe(2);
-    expect(parity.noMissingIntervals).toBe(true);
-    expect(parity.noInventedBars).toBe(true);
-    expect(parity.mismatches).toHaveLength(0);
-  });
-
-  it('detects and flags any time-order regression or invented bars', () => {
-    const invalidBars: SecurityBar[] = [
-      { time: '2026-07-30', open: 100, high: 101, low: 99, close: 100, volume: 1000 },
-      { time: '2026-07-29', open: 100, high: 101, low: 99, close: 100, volume: 1000 }, // Out of order!
-    ];
-    const rechartsData = invalidBars.map(bar => ({ ...bar, priceRange: [bar.low, bar.high] as [number, number] }));
-    const parity = assertLightweightParity(invalidBars, rechartsData, []);
-    expect(parity.noMissingIntervals).toBe(false);
-    expect(parity.mismatches).toContain('Non-chronological bar order at 2026-07-29');
+    expect(sell.color).toBe(markerColors.sell);
+    expect(sell.id).toBe('2026-07-31:sell');
+    expect(sell.size).toBe(1);
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { boundSecurityEvents, parseSecurityCatalog, parseSecurityEvidence, resolveSecurity, securityBarsForPeriod, securityHref } from './security-evidence';
 import type { GovernedRunSummary } from './governed-run';
-import { securityMarkers } from '@/components/SecurityHistoryChart';
+import { securityMarkers } from './security-markers';
 
 const sha = 'a'.repeat(64);
 const boundary = { view: 'security_detail_v1', research_only: true, trade_ready: false };
