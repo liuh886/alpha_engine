@@ -371,6 +371,9 @@ describe('NavChartTooltip', () => {
     renderTooltip();
     const tooltip = screen.getByTestId('nav-chart-tooltip');
     expect(tooltip).toHaveTextContent('Jan 3, 2026');
+    expect(screen.getByTestId('nav-chart-tooltip-date')).toHaveTextContent('Jan 3, 2026');
+    expect(screen.getByTestId('nav-chart-tooltip-date')).toHaveClass('font-semibold');
+    expect(tooltip).toHaveTextContent('Observation date');
     expect(tooltip).toHaveTextContent('Strategy (primary)');
     expect(tooltip).toHaveTextContent('112.50 · +12.50%');
     expect(tooltip).toHaveTextContent('QQQ');

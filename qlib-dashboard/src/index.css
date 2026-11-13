@@ -226,7 +226,10 @@
   .ae-kicker { @apply text-[10px] font-semibold uppercase leading-4 tracking-[0.14em] text-muted-foreground; }
   .ae-page-title { @apply text-[26px] font-semibold leading-tight tracking-[-0.025em] md:text-[30px]; }
   .ae-section-title { @apply text-base font-semibold leading-6 tracking-[-0.015em]; }
-  .ae-metric { @apply text-2xl font-semibold leading-none tracking-[-0.02em] tabular-nums; }
+  /* Hero numerics outrank chart headings: larger and heavier than the
+     surrounding 16px semibold section title. */
+  .ae-hero-value { @apply text-[26px] font-bold leading-none tracking-[-0.02em] tabular-nums sm:text-[30px]; }
+  .ae-metric { @apply text-xl font-semibold leading-none tracking-[-0.02em] tabular-nums; }
   .ae-metric-label { @apply text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground; }
   .ae-delta { @apply inline-flex items-center gap-1 text-xs font-semibold tabular-nums; }
   .ae-delta-up { @apply text-positive; }
@@ -271,16 +274,31 @@
     .research-sidebar-action { min-height: 44px; }
     .research-mobile-drawer button,
     .research-mobile-drawer a { min-height: 44px; }
-    .alpha-account-slot .hao-account-trigger,
-    .alpha-account-slot .hao-referral-trigger { min-height: 44px; min-width: 44px; }
     [data-slot="button"] { min-height: 44px; min-width: 44px; }
   }
 }
 
 /* Coarse-pointer floor. Kept unlayered so it outranks utility min-height
-   values such as `min-h-8` on compact controls. */
+   values such as `min-h-8` on compact controls. Inline prose links keep
+   their text height because `min-height` does not apply to inline boxes. */
 @media (pointer: coarse) {
   .research-touch { min-height: 44px; min-width: 44px; }
+  /* The membership widget ships an unlayered 32px class rule, so the floor
+     must match its specificity from the same unlayered context. */
+  .alpha-account-slot .hao-account-trigger,
+  .alpha-account-slot .hao-referral-trigger { min-height: 44px; min-width: 44px; }
+  button,
+  a,
+  summary,
+  select,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"] { min-height: 44px; }
+  button,
+  summary,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"] { min-width: 44px; }
 }
 
 /* Active mobile destination: tinted icon well plus a non-color cue. */

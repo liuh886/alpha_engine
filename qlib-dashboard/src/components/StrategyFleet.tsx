@@ -73,7 +73,7 @@ export function StrategyFleet({
   return (
     <section className="space-y-4" aria-label="Formal strategy fleet">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <select
             id="market"
             aria-label="Market"
@@ -97,21 +97,23 @@ export function StrategyFleet({
             <option value="attention">Needs attention</option>
           </select>
         </div>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
+        <p className="hidden text-[11px] leading-relaxed text-muted-foreground sm:block">
           Sort by any horizon. Each row keeps its own observed window and evidence cutoff.
         </p>
       </div>
 
-      <p className="text-xs leading-relaxed text-muted-foreground" role="note">
-        Returns are browser-derived from each run's compact NAV projection. A horizon that is not fully
-        covered shows — rather than an interpolated or one-point return. Current signals are read
-        separately and are never inferred from a position delta.
-      </p>
-
-      <p className="text-xs leading-relaxed text-muted-foreground" role="note">
-        Excess and max drawdown describe each run's own retained or derived window; they are not aligned
-        to the sorted horizon. Governed index rows use close-to-close price observations.
-      </p>
+      <details className="rounded-lg border border-border/70 bg-muted/15 px-3 py-2 text-xs text-muted-foreground" data-testid="strategy-method">
+        <summary className="cursor-pointer font-medium text-foreground">How these numbers are built</summary>
+        <p className="mt-2 leading-relaxed" role="note">
+          Returns are browser-derived from each run's compact NAV projection. A horizon that is not fully
+          covered shows — rather than an interpolated or one-point return. Current signals are read
+          separately and are never inferred from a position delta.
+        </p>
+        <p className="mt-2 leading-relaxed" role="note">
+          Excess and max drawdown describe each run's own retained or derived window; they are not aligned
+          to the sorted horizon. Governed index rows use close-to-close price observations.
+        </p>
+      </details>
 
       {signalFilter !== 'all' && (
         <p data-testid="signal-filter-scope" className="text-xs leading-relaxed text-muted-foreground" role="note">

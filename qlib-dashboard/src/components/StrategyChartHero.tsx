@@ -76,7 +76,7 @@ function HeroTile({ label, testId, value, valueClassName, children }: HeroTilePr
   return (
     <div className="min-w-0 bg-card px-3 py-3 sm:px-4">
       <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
-      <p data-testid={testId} className={cn('mt-1 break-words font-mono text-lg tabular-nums', valueClassName)}>
+      <p data-testid={testId} className={cn('ae-hero-value mt-1 break-words font-mono', valueClassName)}>
         {value}
       </p>
       {children}
@@ -268,7 +268,7 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
   const chartSeries = useMemo<NavChartSeries[]>(() => {
     const series: NavChartSeries[] = [];
     if (windowPoints.length > 0) {
-      series.push({ key: 'strategy', label: 'Strategy', nav: windowPoints, emphasis: 'primary' });
+      series.push({ key: 'strategy', label: run.title, nav: windowPoints, emphasis: 'primary' });
     }
     if (baselineSelected && baselineWindow.length >= 2) {
       series.push({
@@ -280,7 +280,7 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
       });
     }
     return series;
-  }, [baselineName, baselineSelected, baselineWindow, windowPoints]);
+  }, [baselineName, baselineSelected, baselineWindow, run.title, windowPoints]);
 
   const baselineNote = (() => {
     if (!baselineSelected) return 'Select a baseline to compare on exact common dates.';
@@ -311,9 +311,9 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
     <section
       data-testid="strategy-chart-hero"
       aria-labelledby="strategy-chart-hero-heading"
-      className="overflow-hidden rounded-xl border bg-card shadow-card"
+      className="flex flex-col overflow-hidden rounded-xl border bg-card shadow-card"
     >
-      <header className="flex flex-col gap-3 border-b p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between">
+      <header className="order-1 flex flex-col gap-3 border-b p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <h2 id="strategy-chart-hero-heading" className="text-lg font-semibold">Performance path</h2>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
@@ -356,7 +356,7 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
         <p role="status" className="p-6 text-sm text-muted-foreground">Loading verified NAV projection…</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-px border-b bg-border lg:grid-cols-4">
+          <div className="order-3 grid grid-cols-2 gap-px border-y bg-border lg:order-2 lg:grid-cols-4">
             <HeroTile
               label="Period return"
               testId="hero-period-return"
@@ -415,7 +415,7 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
             </HeroTile>
           </div>
 
-          <div data-testid="strategy-nav-chart" className="p-4 sm:p-5">
+          <div data-testid="strategy-nav-chart" className="order-2 p-4 sm:p-5 lg:order-3">
             {navError && (
               <p role="alert" className="mb-3 rounded-lg border border-warning/30 p-3 text-xs text-muted-foreground">
                 {navError}

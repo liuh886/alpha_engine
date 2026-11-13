@@ -152,7 +152,7 @@ export function StrategyDetailPage() {
   const access = useAccessControl();
   const { strategyId } = useParams();
   const run = workspace.runs.find((candidate) => candidate.channel === 'formal' && candidate.modelVersionId === strategyId) ?? null;
-  const { snapshots, loading, reload } = workspace.operations;
+  const { snapshots, loading, reload, checkedAt } = workspace.operations;
   const issues = workspace.operations.issues.filter(issue => !issue.modelVersionId || issue.modelVersionId === run?.modelVersionId);
   const snapshot = run ? snapshots.get(run.modelVersionId) : undefined;
   const signalSummary = summarizeStrategySignal(snapshot);
@@ -216,7 +216,7 @@ export function StrategyDetailPage() {
               <Badge variant="secondary">Formal baseline</Badge>
               {requiredTier !== 'public' && <Badge variant="outline"><Crown className="mr-1 h-3 w-3" />{requiredTierLabel} live</Badge>}
             </div>
-            <h1 className="mt-3 text-[26px] font-semibold leading-tight tracking-[-0.025em] md:text-[32px]">{run.title}</h1>
+            <h1 className="ae-page-title mt-3">{run.title}</h1>
             <p className="mt-3 text-sm text-muted-foreground">{run.modelKind.replace(/_/g, ' ')}</p>
           </div>
           <div className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
@@ -231,7 +231,8 @@ export function StrategyDetailPage() {
 
       <div id="summary" tabIndex={-1} className="scroll-mt-28 space-y-7 focus:outline-none">
         <StrategyChartHero key={run.key} run={run} />
-        <OperationsReadStatus loading={loading} issues={issues} reload={reload} previousRead={snapshot?.readState === 'retained'} />
+        <OperationsReadStatus loading={loading} issues={issues} reload={reload}
+          previousRead={snapshot?.readState === 'retained'} checkedAt={checkedAt} />
         <ResearchTrackingAssessment state={decisionState} evidenceCutoff={run.evidenceCutoff} primaryCounterevidence={primaryCounterevidence?.statement} />
       </div>
 

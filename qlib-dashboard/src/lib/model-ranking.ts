@@ -359,6 +359,18 @@ export function indexRowsFromBars(
 
 const MARKET_ORDER: Readonly<Record<RankingMarket, number>> = { us: 0, cn: 1 };
 
+export type RankingSort = HorizonPeriod | 'excess' | 'maxDrawdown' | 'signal' | 'asOf';
+
+export const RANKING_METRIC_SORTS = ['asOf', 'excess', 'maxDrawdown', 'signal'] as const;
+
+export function isHorizonSort(sort: RankingSort): sort is HorizonPeriod {
+  return (HORIZON_PERIODS as readonly string[]).includes(sort);
+}
+
+const SIGNAL_ORDER: Readonly<Record<string, number>> = {
+  attention: 4, increase: 3, reduce: 2, hold: 1,
+};
+
 function rankValue(row: ModelRankingRow, period: HorizonPeriod): number {
   const cell = row.cells[period];
   return cell.display && cell.value !== null && Number.isFinite(cell.value)
@@ -366,21 +378,44 @@ function rankValue(row: ModelRankingRow, period: HorizonPeriod): number {
     : Number.NEGATIVE_INFINITY;
 }
 
+/** Higher values sort first; unavailable observations always sort last. */
+function metricValue(row: ModelRankingRow, sort: RankingSort): number {
+  if (isHorizonSort(sort)) return rankValue(row, sort);
+  switch (sort) {
+    case 'excess':
+      return row.excess?.value !== null && row.excess?.value !== undefined
+        && Number.isFinite(row.excess.value)
+        ? row.excess.value
+        : Number.NEGATIVE_INFINITY;
+    case 'maxDrawdown':
+      return typeof row.maxDrawdown === 'number' && Number.isFinite(row.maxDrawdown)
+        ? row.maxDrawdown
+        : Number.NEGATIVE_INFINITY;
+    case 'signal':
+      return row.signal ? SIGNAL_ORDER[row.signal.direction] ?? 0 : Number.NEGATIVE_INFINITY;
+    case 'asOf': {
+      const timestamp = Date.parse(`${row.asOf}T00:00:00Z`);
+      return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
+    }
+  }
+}
+
 /**
  * Deterministic ordering: US before China, fresh before stale, the selected
- * horizon descending with missing cells last, then title and row identity.
+ * metric descending with missing values last, then title and row identity.
+ * Sort keys never change a displayed value; they only reorder existing rows.
  */
 export function sortRankingRows(
   rows: readonly ModelRankingRow[],
-  period: HorizonPeriod,
+  sort: RankingSort,
 ): ModelRankingRow[] {
   return [...rows].sort((left, right) => {
     const marketOrder = MARKET_ORDER[left.market] - MARKET_ORDER[right.market];
     if (marketOrder !== 0) return marketOrder;
     const freshness = Number(left.stale) - Number(right.stale);
     if (freshness !== 0) return freshness;
-    const leftValue = rankValue(left, period);
-    const rightValue = rankValue(right, period);
+    const leftValue = metricValue(left, sort);
+    const rightValue = metricValue(right, sort);
     if (leftValue !== rightValue) {
       if (leftValue === Number.NEGATIVE_INFINITY) return 1;
       if (rightValue === Number.NEGATIVE_INFINITY) return -1;

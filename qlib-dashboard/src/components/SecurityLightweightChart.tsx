@@ -8,6 +8,7 @@ import {
   LineStyle,
   createChart,
   createSeriesMarkers,
+  type AutoscaleInfo,
   type IChartApi,
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
@@ -40,6 +41,21 @@ interface ChartHandles {
 
 const PRICE_FORMAT = { type: 'price' as const, precision: 2, minMove: 0.01 };
 const INDEXED_FORMAT = { type: 'custom' as const, formatter: formatIndexedReturn, minMove: 0.1 };
+
+/**
+ * Padded, data-driven price axis. Price and indexed lines keep their actual
+ * range instead of snapping to zero; the volume histogram never uses this
+ * provider and therefore always keeps a zero-based bar axis.
+ */
+function paddedPriceAutoscale(original: () => AutoscaleInfo | null): AutoscaleInfo | null {
+  const info = original();
+  if (!info?.priceRange) return info;
+  const { minValue, maxValue } = info.priceRange;
+  if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) return info;
+  const span = maxValue - minValue;
+  const pad = Math.max(span * 0.08, Math.abs(maxValue) * 0.002, 0.01);
+  return { ...info, priceRange: { minValue: minValue - pad, maxValue: maxValue + pad } };
+}
 
 function markerTimeKey(time: Time | undefined): string | null {
   if (typeof time === 'string') return time;
@@ -154,6 +170,7 @@ export function SecurityLightweightChart({
       wickUpColor: theme.candleUp,
       wickDownColor: theme.candleDown,
       priceFormat: PRICE_FORMAT,
+      autoscaleInfoProvider: paddedPriceAutoscale,
     });
     const volume = chart.addSeries(HistogramSeries, {
       priceScaleId: '',
@@ -169,6 +186,7 @@ export function SecurityLightweightChart({
       priceLineVisible: false,
       lastValueVisible: false,
       visible: false,
+      autoscaleInfoProvider: paddedPriceAutoscale,
     });
     const baseline = chart.addSeries(LineSeries, {
       color: theme.baseline,
@@ -177,6 +195,7 @@ export function SecurityLightweightChart({
       priceLineVisible: false,
       lastValueVisible: false,
       visible: false,
+      autoscaleInfoProvider: paddedPriceAutoscale,
     });
     const candleMarkers = createSeriesMarkers(candle, []);
     const lineMarkers = createSeriesMarkers(instrument, []);
@@ -315,12 +334,19 @@ export function SecurityLightweightChart({
           </div>
         )}
         {canvasSupported && mode === 'price' && !showEmpty && (
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute bottom-6 left-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
-          >
-            Volume
-          </span>
+          <>
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 border-t border-border/70"
+              style={{ bottom: '20%' }}
+            />
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute bottom-6 left-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
+            >
+              Volume · zero-based, lower 20%
+            </span>
+          </>
         )}
         {canvasSupported && showEmpty && (
           <div

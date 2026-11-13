@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowDown,
   ArrowRight,
+  ChevronDown,
   CircleSlash2,
   Info,
   PauseCircle,
@@ -14,17 +15,20 @@ import { Sparkline } from '@/components/charts/Sparkline';
 import type { ModelRankingIssue } from '@/hooks/useModelRanking';
 import {
   RANKING_MARKET_LABELS,
+  RANKING_METRIC_SORTS,
   formatDate,
   formatPeriodLabel,
   formatPrice,
   formatReturn,
+  isHorizonSort,
   sortRankingRows,
   type ModelRankingRow,
   type RankingCell,
   type RankingMarket,
   type RankingSignal,
+  type RankingSort,
 } from '@/lib/model-ranking';
-import { HORIZON_PERIODS, type HorizonPeriod } from '@/lib/performancePeriods';
+import { HORIZON_PERIODS } from '@/lib/performancePeriods';
 import { cn } from '@/lib/utils';
 
 export interface ModelRankingTableProps {
@@ -92,14 +96,39 @@ function MissingCell({ testId, reason, shortLabel }: { testId?: string; reason: 
   );
 }
 
+/**
+ * One disclosure pattern for a displayed value's basis. The summary is a real
+ * keyboard- and touch-reachable control; nothing depends on hover.
+ */
+function BasisDisclosure({ summary, children, testId }: {
+  summary: ReactNode;
+  children: ReactNode;
+  testId?: string;
+}) {
+  return (
+    <details className="inline-block max-w-full text-right">
+      <summary
+        data-testid={testId}
+        className="inline-flex cursor-pointer list-none items-center justify-end gap-1 rounded [&::-webkit-details-marker]:hidden"
+      >
+        {summary}
+        <Info className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+      </summary>
+      <p className="mt-1 max-w-[240px] text-left text-[10px] leading-4 text-muted-foreground">{children}</p>
+    </details>
+  );
+}
+
 function ReturnCell({ cell, testId }: { cell: RankingCell; testId: string }) {
   if (!cell.display || cell.value === null) {
     return <MissingCell testId={testId} reason={cell.reason ?? 'No measured return is available.'} />;
   }
+  const value = <span className={cn('font-medium tabular-nums', signedTone(cell.value))}>{formatReturn(cell.value)}</span>;
+  if (!cell.reason) return <span data-testid={testId}>{value}</span>;
   return (
-    <span data-testid={testId} title={cell.reason} className={cn('font-medium tabular-nums', signedTone(cell.value))}>
-      {formatReturn(cell.value)}
-    </span>
+    <BasisDisclosure testId={testId} summary={value}>
+      {cell.reason}
+    </BasisDisclosure>
   );
 }
 
@@ -136,24 +165,30 @@ function signalTone(direction: string): string {
 function SignalCell({ row, onInspectSignal }: { row: ModelRankingRow; onInspectSignal?: (row: ModelRankingRow) => void }) {
   const signal: RankingSignal | undefined = row.signal;
   if (!signal) return <MissingCell reason="Current signal is unavailable for this row." />;
-  if (!onInspectSignal) {
-    return <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium', signalTone(signal.direction))}>
-      <SignalIcon direction={signal.direction} />{signal.label}
-    </span>;
-  }
+  const chip = <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium', signalTone(signal.direction))}>
+    <SignalIcon direction={signal.direction} />{signal.label}
+  </span>;
   return (
-    <button
-      type="button"
-      onClick={() => onInspectSignal(row)}
-      aria-label={`Inspect signal for ${row.title}: ${signal.label}`}
-      title={signal.note}
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
-        signalTone(signal.direction),
+    <span className="inline-flex flex-wrap items-center justify-end gap-1">
+      {onInspectSignal ? (
+        <button
+          type="button"
+          onClick={() => onInspectSignal(row)}
+          aria-label={`Inspect signal for ${row.title}: ${signal.label}`}
+          className={cn(
+            'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
+            signalTone(signal.direction),
+          )}
+        >
+          <SignalIcon direction={signal.direction} />{signal.label}
+        </button>
+      ) : chip}
+      {signal.note && (
+        <BasisDisclosure summary={<span className="sr-only">Signal basis for {row.title}</span>}>
+          {signal.note}
+        </BasisDisclosure>
       )}
-    >
-      <SignalIcon direction={signal.direction} />{signal.label}
-    </button>
+    </span>
   );
 }
 
@@ -165,15 +200,41 @@ function sparklineTitle(row: ModelRankingRow): string {
   return `${row.title}: ${start.date} ${formatPrice(start.value)} → ${end.date} ${formatPrice(end.value)} (${formatReturn(change)}). Retained observations, not a forecast.`;
 }
 
-function Row({ row, density, selected, sort, onInspectSignal }: {
+function RowDetails({ row }: { row: ModelRankingRow }) {
+  const first = row.nav[0];
+  const last = row.nav[row.nav.length - 1];
+  return (
+    <dl className="grid gap-x-6 gap-y-2 text-xs sm:grid-cols-2">
+      <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Benchmark</dt><dd>{row.benchmark}</dd></div>
+      {row.asOf === row.evidenceCutoff ? (
+        <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">As of · Evidence cutoff</dt><dd>{formatDate(row.asOf)}</dd></div>
+      ) : (
+        <>
+          <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Evidence cutoff</dt><dd>{formatDate(row.evidenceCutoff)}</dd></div>
+          <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">As of</dt><dd>{formatDate(row.asOf)}</dd></div>
+        </>
+      )}
+      <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Retained window</dt><dd>{first && last ? `${formatDate(first.date)} → ${formatDate(last.date)}` : 'No retained observations'}</dd></div>
+      {row.signal?.note && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Signal note</dt><dd className="text-muted-foreground">{row.signal.note}</dd></div>}
+      {row.excess?.basis && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Excess basis</dt><dd className="text-muted-foreground">{row.excess.basis}</dd></div>}
+      {row.maxDrawdownBasis && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Max drawdown basis</dt><dd className="text-muted-foreground">{row.maxDrawdownBasis}</dd></div>}
+    </dl>
+  );
+}
+
+function Row({ row, density, selected, sort, expanded, onToggle, onInspectSignal }: {
   row: ModelRankingRow;
   density: 'compact' | 'full';
   selected: boolean;
-  sort: HorizonPeriod;
+  sort: RankingSort;
+  expanded: boolean;
+  onToggle: () => void;
   onInspectSignal?: (row: ModelRankingRow) => void;
 }) {
   const evidenceLabel = row.kind === 'strategy' ? 'Inspect evidence' : 'Price history';
-  return (
+  const sparklinePeriod = isHorizonSort(sort) ? sort : '1m';
+  const detailsId = `row-details-${row.id}`;
+  return (<Fragment>
     <tr
       data-testid={rowTestId(row)}
       data-kind={row.kind}
@@ -210,6 +271,11 @@ function Row({ row, density, selected, sort, onInspectSignal }: {
           <Link to={row.href} className="inline-flex items-center gap-0.5 text-primary hover:underline">
             {evidenceLabel}<ArrowRight className="h-3 w-3" aria-hidden="true" />
           </Link>
+          <span aria-hidden="true">·</span>
+          <button type="button" aria-expanded={expanded} aria-controls={detailsId} onClick={onToggle}
+            className="inline-flex items-center gap-0.5 text-primary hover:underline">
+            Row details<ChevronDown className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')} aria-hidden="true" />
+          </button>
         </div>
       </th>
       {HORIZON_PERIODS.map((period) => (
@@ -219,23 +285,27 @@ function Row({ row, density, selected, sort, onInspectSignal }: {
       ))}
       <td className="px-2 py-1.5 text-right align-middle">
         <span title={sparklineTitle(row)}>
-          <Sparkline nav={row.nav} width={72} height={24} showEndpoint tone={sparklineTone(row.cells[sort])} className="ml-auto" />
+          <Sparkline nav={row.nav} width={72} height={24} showEndpoint tone={sparklineTone(row.cells[sparklinePeriod])} className="ml-auto" />
         </span>
       </td>
       {density === 'full' && (
         <td className="px-2 py-1.5 text-right align-middle">
           {row.excess && row.excess.value !== null ? (
-            <span title={row.excess.basis} className="inline-flex flex-col items-end gap-0.5">
-              <span className="inline-flex items-center gap-1">
-                <span className={cn('font-medium tabular-nums', signedTone(row.excess.value))}>
-                  {formatReturn(row.excess.value)}
+            <BasisDisclosure summary={
+              <span className="inline-flex flex-col items-end gap-0.5">
+                <span className="inline-flex items-center gap-1">
+                  <span className={cn('font-medium tabular-nums', signedTone(row.excess.value))}>
+                    {formatReturn(row.excess.value)}
+                  </span>
+                  <span className="rounded border bg-muted/40 px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
+                    {row.excess.label}
+                  </span>
                 </span>
-                <span className="rounded border bg-muted/40 px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
-                  {row.excess.label}
-                </span>
+                <span className="text-[9px] text-muted-foreground">{row.excess.window ?? 'run window'}</span>
               </span>
-              <span className="text-[9px] text-muted-foreground">{row.excess.window ?? 'run window'}</span>
-            </span>
+            }>
+              {row.excess.basis}
+            </BasisDisclosure>
           ) : (
             <MissingCell
               testId={`excess-${row.id}`}
@@ -248,12 +318,16 @@ function Row({ row, density, selected, sort, onInspectSignal }: {
       {density === 'full' && (
         <td className="px-2 py-1.5 text-right align-middle">
           {row.maxDrawdown !== null && row.maxDrawdown !== undefined ? (
-            <span title={row.maxDrawdownBasis} className="inline-flex flex-col items-end gap-0.5">
-              <span className={cn('font-medium tabular-nums', signedTone(row.maxDrawdown))}>
-                {formatReturn(row.maxDrawdown)}
+            <BasisDisclosure summary={
+              <span className="inline-flex flex-col items-end gap-0.5">
+                <span className={cn('font-medium tabular-nums', signedTone(row.maxDrawdown))}>
+                  {formatReturn(row.maxDrawdown)}
+                </span>
+                <span className="text-[9px] text-muted-foreground">{row.kind === 'index' ? 'close window' : 'run window'}</span>
               </span>
-              <span className="text-[9px] text-muted-foreground">{row.kind === 'index' ? 'close window' : 'run window'}</span>
-            </span>
+            }>
+              {row.maxDrawdownBasis ?? 'Run-window maximum drawdown from retained observations.'}
+            </BasisDisclosure>
           ) : (
             <MissingCell reason={row.maxDrawdownReason ?? 'Max drawdown is unavailable for this row.'} />
           )}
@@ -265,21 +339,34 @@ function Row({ row, density, selected, sort, onInspectSignal }: {
         </td>
       )}
     </tr>
-  );
+    {expanded && (
+      <tr id={detailsId} className="border-b bg-muted/20 last:border-b-0">
+        <td colSpan={1 + HORIZON_PERIODS.length + 1 + (density === 'full' ? 3 : 0)} className="px-3 py-3">
+          <RowDetails row={row} />
+        </td>
+      </tr>
+    )}
+  </Fragment>);
 }
 
 /**
  * Narrow-screen row card. Every decision horizon stays visible with its own
  * label, and the sorted horizon is highlighted instead of losing columns.
  */
-function RankingCard({ row, density, selected, sort, onInspectSignal }: {
+function RankingCard({ row, density, selected, sort, expanded, onToggle, onInspectSignal }: {
   row: ModelRankingRow;
   density: 'compact' | 'full';
   selected: boolean;
-  sort: HorizonPeriod;
+  sort: RankingSort;
+  expanded: boolean;
+  onToggle: () => void;
   onInspectSignal?: (row: ModelRankingRow) => void;
 }) {
   const evidenceLabel = row.kind === 'strategy' ? 'Inspect evidence' : 'Price history';
+  const detailsId = `card-details-${row.id}`;
+  // Governed index rows have no signal and no strategy excess; keeping empty
+  // metric wells would push the first strategy card below the handset fold.
+  const showMetrics = density === 'full' && row.kind === 'strategy';
   return (
     <li
       data-testid={rowTestId(row)}
@@ -298,9 +385,15 @@ function RankingCard({ row, density, selected, sort, onInspectSignal }: {
             {RANKING_MARKET_LABELS[row.market]} · {row.benchmark} · As of {formatDate(row.asOf)}
           </p>
         </div>
-        <Link to={row.href} className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline">
-          {evidenceLabel}<ArrowRight className="h-3 w-3" aria-hidden="true" />
-        </Link>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <Link to={row.href} className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline">
+            {evidenceLabel}<ArrowRight className="h-3 w-3" aria-hidden="true" />
+          </Link>
+          <button type="button" aria-expanded={expanded} aria-controls={detailsId} onClick={onToggle}
+            className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline">
+            Row details<ChevronDown className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')} aria-hidden="true" />
+          </button>
+        </div>
       </div>
       {row.stale && (
         <span
@@ -324,16 +417,20 @@ function RankingCard({ row, density, selected, sort, onInspectSignal }: {
           </div>
         ))}
       </dl>
-      {density === 'full' && (
+      {showMetrics && (
         <dl className="mt-1.5 grid grid-cols-2 gap-1.5">
           <div className="min-w-0 rounded border bg-background/60 px-2 py-1">
             <dt className="break-words text-[9px] uppercase tracking-[0.08em] text-muted-foreground">Excess · {row.excess?.window ?? 'run window'}</dt>
-            <dd className="mt-0.5 text-right text-[12px]" title={row.excess?.basis ?? row.excess?.reason}>
+            <dd className="mt-0.5 text-right text-[12px]">
               {row.excess && row.excess.value !== null ? (
-                <span className={cn('font-medium tabular-nums', signedTone(row.excess.value))}>
-                  {formatReturn(row.excess.value)}
-                  <span className="ml-1 text-[9px] font-normal text-muted-foreground">{row.excess.label}</span>
-                </span>
+                <BasisDisclosure summary={
+                  <span className={cn('font-medium tabular-nums', signedTone(row.excess.value))}>
+                    {formatReturn(row.excess.value)}
+                    <span className="ml-1 text-[9px] font-normal text-muted-foreground">{row.excess.label}</span>
+                  </span>
+                }>
+                  {row.excess.basis}
+                </BasisDisclosure>
               ) : (
                 <MissingCell
                   testId={`excess-${row.id}`}
@@ -345,13 +442,17 @@ function RankingCard({ row, density, selected, sort, onInspectSignal }: {
           </div>
           <div className="min-w-0 rounded border bg-background/60 px-2 py-1">
             <dt className="break-words text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
-              {row.kind === 'index' ? 'Max DD · close window' : 'Max DD · run window'}
+              Max DD · run window
             </dt>
-            <dd className="mt-0.5 text-right text-[12px]" title={row.maxDrawdownBasis ?? row.maxDrawdownReason}>
+            <dd className="mt-0.5 text-right text-[12px]">
               {row.maxDrawdown !== null && row.maxDrawdown !== undefined ? (
-                <span className={cn('font-medium tabular-nums', signedTone(row.maxDrawdown))}>
-                  {formatReturn(row.maxDrawdown)}
-                </span>
+                <BasisDisclosure summary={
+                  <span className={cn('font-medium tabular-nums', signedTone(row.maxDrawdown))}>
+                    {formatReturn(row.maxDrawdown)}
+                  </span>
+                }>
+                  {row.maxDrawdownBasis ?? 'Run-window maximum drawdown from retained observations.'}
+                </BasisDisclosure>
               ) : (
                 <MissingCell reason={row.maxDrawdownReason ?? 'Max drawdown is unavailable for this row.'} />
               )}
@@ -359,10 +460,15 @@ function RankingCard({ row, density, selected, sort, onInspectSignal }: {
           </div>
         </dl>
       )}
-      {density === 'full' && (
+      {showMetrics && (
         <div className="mt-1.5 flex items-center justify-between gap-2">
           <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Signal</span>
           <SignalCell row={row} onInspectSignal={onInspectSignal} />
+        </div>
+      )}
+      {expanded && (
+        <div id={detailsId} className="mt-2 rounded-lg border bg-muted/20 p-3">
+          <RowDetails row={row} />
         </div>
       )}
     </li>
@@ -384,11 +490,19 @@ export function ModelRankingTable({
   emptyMessage = 'No model ranking rows are available.',
   caption = 'Model ranking by market and horizon',
 }: ModelRankingTableProps) {
-  const [sort, setSort] = useState<HorizonPeriod>('1m');
+  const [sort, setSort] = useState<RankingSort>('1m');
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
   const narrow = useNarrowViewport();
   const sorted = useMemo(() => sortRankingRows(rows, sort), [rows, sort]);
   const columns = 1 + HORIZON_PERIODS.length + 1 + (density === 'full' ? 3 : 0);
   const markets: RankingMarket[] = ['us', 'cn'];
+  const toggleRow = (id: string) => setExpandedIds(previous => {
+    const next = new Set(previous);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const metricSorts = density === 'full' ? RANKING_METRIC_SORTS : (['asOf'] as const);
+  const metricLabel = (key: string) => key === 'asOf' ? 'As of' : key === 'maxDrawdown' ? 'Max DD' : key === 'excess' ? 'Excess' : 'Signal';
 
   return (
     <div className="relative overflow-hidden rounded-xl border bg-card shadow-card" aria-busy={loading}>
@@ -398,8 +512,12 @@ export function ModelRankingTable({
         </p>
       ) : narrow ? (
         <div className="space-y-3 p-3">
-          <div role="group" aria-label="Sort ranking by horizon" className="flex flex-wrap items-center gap-1.5">
-            <span className="px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <div
+            role="group"
+            aria-label="Sort ranking by horizon"
+            className="flex items-center gap-1.5 overflow-x-auto pb-1"
+          >
+            <span className="shrink-0 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Sort
             </span>
             {HORIZON_PERIODS.map((period) => (
@@ -409,13 +527,29 @@ export function ModelRankingTable({
                 onClick={() => setSort(period)}
                 aria-pressed={sort === period}
                 className={cn(
-                  'min-h-11 min-w-11 rounded-lg border px-3 text-xs font-semibold uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'min-h-11 min-w-11 shrink-0 rounded-lg border px-3 text-xs font-semibold uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   sort === period
                     ? 'border-primary/40 bg-primary/10 text-foreground'
                     : 'bg-card text-muted-foreground hover:text-foreground',
                 )}
               >
                 {formatPeriodLabel(period)}
+              </button>
+            ))}
+            {metricSorts.map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSort(key)}
+                aria-pressed={sort === key}
+                className={cn(
+                  'min-h-11 min-w-11 shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  sort === key
+                    ? 'border-primary/40 bg-primary/10 text-foreground'
+                    : 'bg-card text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {metricLabel(key)}
               </button>
             ))}
           </div>
@@ -439,6 +573,8 @@ export function ModelRankingTable({
                       density={density}
                       selected={selectedId === row.id}
                       sort={sort}
+                      expanded={expandedIds.has(row.id)}
+                      onToggle={() => toggleRow(row.id)}
                       onInspectSignal={onInspectSignal}
                     />
                   ))}
@@ -453,8 +589,25 @@ export function ModelRankingTable({
             <caption className="sr-only">{caption}</caption>
             <thead className="sticky top-0 z-10 bg-card shadow-[0_1px_0_hsl(var(--border))]">
               <tr className="border-b bg-muted/20">
-                <th scope="col" className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Model
+                <th scope="col" aria-sort={sort === 'asOf' ? 'descending' : 'none'} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <span className="flex items-center justify-between gap-2">
+                    <span>Model</span>
+                    <button
+                      type="button"
+                      onClick={() => setSort('asOf')}
+                      aria-pressed={sort === 'asOf'}
+                      aria-label="Sort by as-of freshness"
+                      className={cn(
+                        '-mx-2 -my-2 flex min-h-11 min-w-11 items-center justify-end gap-1 rounded px-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors',
+                        sort === 'asOf'
+                          ? 'text-foreground underline decoration-primary decoration-2 underline-offset-4'
+                          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                      )}
+                    >
+                      As of
+                      <ArrowDown className={cn('h-3 w-3 shrink-0', sort === 'asOf' ? 'opacity-100' : 'opacity-0')} aria-hidden="true" />
+                    </button>
+                  </span>
                 </th>
                 {HORIZON_PERIODS.map((period) => (
                   <th
@@ -485,15 +638,30 @@ export function ModelRankingTable({
                 </th>
                 {density === 'full' && (
                   <>
-                    <th scope="col" title="Run-window excess, not aligned to the sorted horizon" className="px-2 py-2 text-right text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                      Excess
-                    </th>
-                    <th scope="col" title="Run-window max drawdown, not aligned to the sorted horizon" className="px-2 py-2 text-right text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                      Max DD
-                    </th>
-                    <th scope="col" className="px-2 py-2 text-right text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                      Signal
-                    </th>
+                    {RANKING_METRIC_SORTS.filter(key => key !== 'asOf').map((key) => (
+                      <th key={key} scope="col" aria-sort={sort === key ? 'descending' : 'none'}
+                        title={key === 'excess'
+                          ? 'Run-window excess, not aligned to the sorted horizon'
+                          : key === 'maxDrawdown'
+                            ? 'Run-window max drawdown, not aligned to the sorted horizon'
+                            : 'Current verified signal state'}
+                        className="px-2 py-2 text-right text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        <button
+                          type="button"
+                          onClick={() => setSort(key)}
+                          aria-pressed={sort === key}
+                          className={cn(
+                            '-mx-2 -my-2 flex min-h-11 min-w-11 items-center justify-end gap-1 rounded px-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors',
+                            sort === key
+                              ? 'text-foreground underline decoration-primary decoration-2 underline-offset-4'
+                              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                          )}
+                        >
+                          {metricLabel(key)}
+                          <ArrowDown className={cn('h-3 w-3 shrink-0', sort === key ? 'opacity-100' : 'opacity-0')} aria-hidden="true" />
+                        </button>
+                      </th>
+                    ))}
                   </>
                 )}
               </tr>
@@ -520,6 +688,8 @@ export function ModelRankingTable({
                         density={density}
                         selected={selectedId === row.id}
                         sort={sort}
+                        expanded={expandedIds.has(row.id)}
+                        onToggle={() => toggleRow(row.id)}
                         onInspectSignal={onInspectSignal}
                       />
                     ))}

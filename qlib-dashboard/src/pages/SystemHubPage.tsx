@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import { describeStrategyObservation, type StrategyObservationBrief } from '@/lib/strategy-operations';
-import { fetchSystemHealth, type LiveSystemHealth } from '@/lib/system-health';
+import { fetchSystemHealth, systemStateLabel, type LiveSystemHealth } from '@/lib/system-health';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 
 const WORKFLOWS = 'https://github.com/liuh886/alpha_engine/actions/workflows/';
@@ -42,7 +42,7 @@ export function SystemHubPage() {
         setAttempt(value => value + 1);
       }}>Refresh status</Button>
     </header>
-    <OperationsReadStatus {...operations} />
+    <OperationsReadStatus {...operations} runs={operations.formalRuns} showRefresh={false} />
     <section className="ae-surface overflow-hidden" aria-label="Current strategy observations">
       <header className="border-b border-border/70 px-4 py-3 sm:px-5">
         <h2 className="ae-section-title">Current strategy observations</h2>
@@ -112,8 +112,12 @@ export function SystemHubPage() {
       {health?.health?.markets.length ? <div className="mt-3 divide-y divide-border/70 rounded-lg border border-border/70">
         {health.health.markets.map(market => <div key={market.market} className="px-3 py-2.5 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">{market.market.toUpperCase()} · {market.state}</h3>
-            {market.state !== 'current' && <Badge variant="warning">Source degraded</Badge>}
+            <h3 className="text-sm font-semibold">{market.market.toUpperCase()} · {systemStateLabel(market.state)}</h3>
+            {market.state !== 'current' && (
+              <Badge variant={market.state === 'blocked' ? 'negative' : 'warning'}>
+                {systemStateLabel(market.state)}
+              </Badge>
+            )}
           </div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">Provider cutoff {market.provider_cutoff || 'unknown'} · expected {market.market_expected_cutoff || 'unknown'}</p>
         </div>)}

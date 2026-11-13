@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -276,7 +276,12 @@ export function NavChartTooltip({ active, payload, label, labels, markers }: Nav
       data-testid="nav-chart-tooltip"
       className="min-w-[190px] rounded-md border bg-popover p-2.5 text-[11px] text-popover-foreground shadow-card"
     >
-      <p className="mb-1 border-b pb-1 font-semibold tabular-nums">{formatChartDate(date)}</p>
+      <p className="mb-1.5 flex flex-wrap items-center gap-1.5 border-b pb-1.5">
+        <span data-testid="nav-chart-tooltip-date" className="rounded bg-primary/10 px-1.5 py-0.5 font-semibold tabular-nums text-primary">
+          {formatChartDate(date)}
+        </span>
+        <span className="text-[9px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Observation date</span>
+      </p>
       <ul className="space-y-0.5">
         {payload.map(item => {
           const key = String(item.dataKey ?? item.name ?? '');
@@ -354,6 +359,7 @@ export function NavChart({
     () => new Map(visibleMarkers.map(marker => [marker.date, marker])),
     [visibleMarkers],
   );
+  const [hoverValue, setHoverValue] = useState<number | null>(null);
   const hasData = model.rows.length >= 2 && primarySeries !== null;
   const resolvedHeight = Number.isFinite(height) && height > 0 ? height : 320;
   // Padded data-driven domain: a zero-based axis would spend most of the plot
@@ -389,7 +395,17 @@ export function NavChart({
       {hasData ? (
         <div data-testid="nav-chart" className="w-full" style={{ height: resolvedHeight }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={model.rows} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+            <LineChart
+              data={model.rows}
+              margin={{ top: 8, right: 16, bottom: 4, left: 8 }}
+              onMouseMove={(state) => {
+                const label = state?.activeLabel;
+                const row = typeof label === 'string' ? rowByDate.get(label) : undefined;
+                const value = row && primaryKey !== null ? row[primaryKey] : undefined;
+                setHoverValue(typeof value === 'number' && Number.isFinite(value) ? value : null);
+              }}
+              onMouseLeave={() => setHoverValue(null)}
+            >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--chart-grid))" />
               <XAxis
                 dataKey="date"
@@ -418,6 +434,15 @@ export function NavChart({
                 content={<NavChartTooltip labels={labels} markers={markers} />}
               />
               <ReferenceLine y={100} stroke="hsl(var(--chart-grid))" strokeDasharray="3 3" />
+              {hoverValue !== null && (
+                <ReferenceLine
+                  y={hoverValue}
+                  className="nav-chart-hover-line"
+                  stroke="hsl(var(--chart-axis))"
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.75}
+                />
+              )}
               {activeSeries.map((candidate, index) => (
                 <Line
                   key={candidate.key}

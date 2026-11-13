@@ -4,18 +4,14 @@ import { ArrowRight, ArrowUpRight, ClipboardList, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import type { GovernedRunSummary } from '@/lib/governed-run';
+import { buildBriefEntries, summarizeBrief } from '@/lib/research-brief';
 import { buildDailyResearchSummary } from '@/lib/research-summary';
-import { describeStrategyObservation, type StrategyObservationBrief, type StrategyOperationsSnapshot } from '@/lib/strategy-operations';
+import type { StrategyObservationBrief, StrategyOperationsSnapshot } from '@/lib/strategy-operations';
 
 const WORKFLOWS = 'https://github.com/liuh886/alpha_engine/actions/workflows/';
-const DISPLAY_ORDER = { changed: 0, attention: 1, retained: 2, unchanged: 3, access: 4, pending: 5 };
 const COPY_SUCCESS = 'Copied research summary to clipboard.';
 const COPY_FAILURE = 'Copy failed. Clipboard unavailable — select the brief and copy manually.';
 const REVIEW_NOT_VERIFIED = 'Review state not verified';
-const CHECKING_OBSERVATION: StrategyObservationBrief = {
-  kind: 'pending', label: 'Checking observation', reason: 'Verifying access and current observations…',
-  nextStep: 'Formal historical evidence remains available while verification completes.', recovery: null,
-};
 
 function copyWithTextarea(text: string): boolean {
   if (typeof document === 'undefined' || typeof document.execCommand !== 'function') return false;
@@ -63,21 +59,10 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
   reload: () => void;
 }) {
   const access = useAccessControl();
-  const accessPending = access.loading || access.policyLoading;
-  const busy = loading || accessPending;
-  const entries = runs.map(run => {
-    const snapshot = snapshots.get(run.modelVersionId);
-    const accessible = snapshot ? Boolean(snapshot.strategyId) && !accessPending
-      && access.canAccess(access.requiredTier('strategy', snapshot.strategyId)) : true;
-    const visibleSnapshot = accessible && (!snapshot?.readState || snapshot.readState === 'retained') ? snapshot : undefined;
-    const checking = accessPending || (loading && !visibleSnapshot);
-    return { run, snapshot: visibleSnapshot,
-      brief: checking ? CHECKING_OBSERVATION : snapshot && !snapshot.strategyId ? describeStrategyObservation() : describeStrategyObservation(snapshot, accessible) };
-  }).sort((a, b) => DISPLAY_ORDER[a.brief.kind] - DISPLAY_ORDER[b.brief.kind]);
-  const count = (kind: string) => entries.filter(entry => entry.brief.kind === kind).length;
+  const entries = buildBriefEntries(runs, snapshots, loading, access);
+  const summary = summarizeBrief(entries, loading, Boolean(access.loading || access.policyLoading));
+  const busy = summary.busy;
   const priorities = entries.slice(0, 3);
-  const noNewChanges = !busy && entries.length > 0
-    && entries.every(entry => entry.brief.kind === 'unchanged' || entry.brief.kind === 'retained');
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   useEffect(() => {
     if (copyState !== 'copied') return;
@@ -94,9 +79,9 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
   };
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm" aria-label="Daily research brief" aria-busy={busy}>
-      <header className="border-b bg-muted/15 px-5 py-4">
+      <header className="border-b bg-muted/15 px-5 py-3.5">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <h2 className="flex items-center gap-2 font-semibold"><ClipboardList className="h-4 w-4 text-primary" />Daily research brief</h2>
+          <h2 className="flex items-center gap-2 text-sm font-semibold"><ClipboardList className="h-4 w-4 text-primary" />Daily research brief</h2>
           <div className="flex flex-col items-end gap-1">
             <Button variant="outline" size="sm" className="min-h-[44px]" onClick={() => { void copyBrief(); }}
               disabled={busy || !entries.length}>
@@ -107,33 +92,56 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
             </span>
           </div>
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Latest verified observations by strategy. Each market keeps its own cutoff; retained targets are dated separately.</p>
-        <p className="mt-2 text-xs" role="status">{busy ? 'Reading current observations…' : `${count('changed')} changed · ${count('unchanged')} unchanged · ${count('retained')} retained · ${count('attention')} need attention · ${count('access')} require access · ${count('pending')} awaiting verification`}</p>
-        {noNewChanges && <p className="mt-2 text-sm">No new model changes. Retained targets keep their recorded dates.</p>}
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Latest verified observations by strategy. Each market keeps its own cutoff; retained targets are dated separately.</p>
+        <p className="mt-1 text-xs" role="status">{busy ? 'Reading current observations…' : `${summary.changed} changed · ${summary.unchanged} unchanged · ${summary.retained} retained · ${summary.attention} need attention · ${summary.access} require access · ${summary.pending} awaiting verification`}</p>
+        {summary.noNewChanges && <p className="mt-1 text-sm">No new model changes. Retained targets keep their recorded dates.</p>}
       </header>
       {!runs.length && <p className="p-5 text-sm text-muted-foreground">{busy ? 'Reading formal strategies…' : 'No formal strategies are available for this brief.'}</p>}
-      <div className="divide-y">{priorities.map(({ run, snapshot, brief }) => (
-        <article key={run.key} className="px-5 py-4" aria-label={`${run.title} daily observation`}>
+      {!busy && summary.access > 0 && (
+        <div role="note" className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/20 px-5 py-2 text-xs">
+          <p>
+            <span className="font-semibold">{summary.access} {summary.access === 1 ? 'strategy requires' : 'strategies require'} protected access.</span>{' '}
+            <span className="text-muted-foreground">Formal history stays readable; current observations remain hidden.</span>
+          </p>
+          <Button variant="outline" size="sm" className="min-h-[44px]" onClick={access.openAccount}>Check strategy access</Button>
+        </div>
+      )}
+      <div className="divide-y">{priorities.map(({ run, snapshot, brief }) => {
+        if (brief.kind === 'access') {
+          return (
+            <article key={run.key} className="px-5 py-2.5" aria-label={`${run.title} daily observation`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Link to={`/strategies/${encodeURIComponent(run.modelVersionId)}`} className="text-sm font-semibold hover:text-primary">{run.title}</Link>
+                <span className="rounded border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{brief.label}</span>
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                <p>{run.market.toUpperCase()} · Formal evidence as of {run.evidenceCutoff}</p>
+                <p>Review: {reviewLabel(brief)}</p>
+              </div>
+            </article>
+          );
+        }
+        return (
+        <article key={run.key} className="px-5 py-3" aria-label={`${run.title} daily observation`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Link to={`/strategies/${encodeURIComponent(run.modelVersionId)}`} className="font-semibold text-sm hover:text-primary">{run.title}</Link>
+            <Link to={`/strategies/${encodeURIComponent(run.modelVersionId)}`} className="text-sm font-semibold hover:text-primary">{run.title}</Link>
             <span className={brief.kind === 'attention' ? 'text-xs font-medium text-warning' : 'text-xs font-medium text-muted-foreground'}>{loading && !snapshot ? 'Checking observation' : brief.label}</span>
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">{run.market.toUpperCase()} · {snapshot
+          <p className="mt-0.5 text-[11px] text-muted-foreground">{run.market.toUpperCase()} · {snapshot
             ? `Observed ${snapshot.latestCompletedSession ?? 'unknown'} · target dated ${snapshot.decisionSchedule?.signalDate ?? snapshot.asOf ?? 'unknown'} · formal evidence ${run.evidenceCutoff}`
             : `Formal evidence ${run.evidenceCutoff}; current observation not verified`}</p>
-          {snapshot?.decisionSchedule?.completedThrough && <p className="mt-1 text-[11px] text-muted-foreground">Completed market through {snapshot.decisionSchedule.completedThrough}</p>}
-          <p className="mt-2 break-words text-sm">{brief.reason}</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{brief.nextStep}</p>
-          {snapshot?.factorEvidence.length ? <details className="mt-2 text-xs">
+          {snapshot?.decisionSchedule?.completedThrough && <p className="mt-0.5 text-[11px] text-muted-foreground">Completed market through {snapshot.decisionSchedule.completedThrough}</p>}
+          <p className="mt-1.5 break-words text-sm">{brief.reason}</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{brief.nextStep}</p>
+          {snapshot?.factorEvidence.length ? <details className="mt-1.5 text-xs">
             <summary className="cursor-pointer font-medium">Decision evidence</summary>
             <ul className="mt-2 space-y-1 text-muted-foreground">{snapshot.factorEvidence.slice(0, 3).map(factor => (
               <li key={`${factor.factorId}:${factor.factorVersion}`}>{factor.displayName}: {factor.state} · {factor.effect} · observed {factor.observedAt}</li>
             ))}</ul>
             <Link className="mt-2 inline-block text-primary underline" to={`/strategies/${encodeURIComponent(run.modelVersionId)}`}>Inspect all evidence</Link>
           </details> : null}
-          {!busy && brief.kind === 'access' && <Button variant="outline" size="sm" className="mt-3 min-h-[44px]" onClick={access.openAccount}>Check strategy access</Button>}
-          {!busy && brief.recovery === 'read' && <Button variant="outline" size="sm" className="mt-3 min-h-[44px]" onClick={reload}>Retry reading observations</Button>}
-          {brief.recovery && brief.recovery !== 'read' && <details className="mt-3 rounded-lg border bg-muted/15 p-3 text-xs">
+          {!busy && brief.recovery === 'read' && <Button variant="outline" size="sm" className="mt-2 min-h-[44px]" onClick={reload}>Retry reading observations</Button>}
+          {brief.recovery && brief.recovery !== 'read' && <details className="mt-2 rounded-lg border bg-muted/15 p-3 text-xs">
             <summary className="cursor-pointer font-medium">Recovery steps</summary>
             <p className="mt-2 leading-relaxed text-muted-foreground">{brief.recovery === 'delivery'
               ? 'Review the delivery history. The existing outbox skips completed deliveries and retains ambiguous failures for review.'
@@ -144,7 +152,7 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
             </div>
             <p className="mt-2 text-muted-foreground">An authorized operator can use Run workflow on main. This page reads records; it does not start jobs or send orders.</p>
           </details>}
-          <div className="mt-3 flex items-center justify-between border-t pt-2">
+          <div className="mt-2 flex items-center justify-between border-t pt-1.5">
             <span className="text-[11px] text-muted-foreground">
               Review: {reviewLabel(brief)}
             </span>
@@ -156,8 +164,13 @@ export function DailyResearchBrief({ runs, snapshots, loading, reload }: {
             </Link>
           </div>
         </article>
-      ))}</div>
-      {entries.length > priorities.length && <p className="border-t px-5 py-3 text-xs text-muted-foreground">Showing {priorities.length} of {entries.length} priority observations (highest review state first). The model ranking above lists every strategy with its own as-of date.</p>}
+        );
+      })}</div>
+      {entries.length > priorities.length && (
+        <p className="border-t px-5 py-3 text-xs text-muted-foreground">
+          Showing {priorities.length} of {entries.length} priority observations (highest review state first). Every strategy stays in the model ranking above with its own as-of date.
+        </p>
+      )}
     </section>
   );
 }

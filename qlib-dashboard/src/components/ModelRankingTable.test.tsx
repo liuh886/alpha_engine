@@ -226,6 +226,54 @@ describe('ModelRankingTable', () => {
     expect(screen.getByRole('list', { name: 'Model ranking read issues' })).toHaveTextContent('US x1.3: ranking evidence unavailable.');
   });
 
+  it('sorts by excess, drawdown, signal and as-of without changing displayed values', () => {
+    const alpha = { ...usStrategy(), id: 'alpha', modelVersionId: 'alpha', title: 'Alpha', asOf: '2026-11-11' } as ModelRankingRow;
+    const beta = {
+      ...usStrategy({ value: 0.05, source: 'retained', label: 'retained', basis: 'Beta basis.' }),
+      id: 'beta', modelVersionId: 'beta', title: 'Beta', asOf: '2026-10-11',
+      maxDrawdown: -0.02,
+      signal: { ...SIGNAL, label: 'Attention', direction: 'attention', note: 'Needs review' },
+    } as ModelRankingRow;
+    renderTable([alpha, beta], 'full');
+    const orderedIds = () => screen.getAllByTestId(/^fleet-/).map(row => row.getAttribute('data-testid'));
+    const excessValues = () => screen.getAllByTestId(/^fleet-/).map(row => row.textContent);
+    const before = excessValues();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Excess' }));
+    expect(screen.getByRole('columnheader', { name: 'Excess' })).toHaveAttribute('aria-sort', 'descending');
+    expect(orderedIds()).toEqual(['fleet-alpha', 'fleet-beta']);
+    expect(excessValues()).toEqual(before);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Max DD' }));
+    expect(orderedIds()).toEqual(['fleet-beta', 'fleet-alpha']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Signal' }));
+    expect(orderedIds()).toEqual(['fleet-beta', 'fleet-alpha']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by as-of freshness' }));
+    expect(screen.getByRole('columnheader', { name: /Model/ })).toHaveAttribute('aria-sort', 'descending');
+    expect(orderedIds()).toEqual(['fleet-alpha', 'fleet-beta']);
+  });
+
+  it('opens row details and value basis from keyboard-reachable disclosures', () => {
+    renderTable([{ ...usStrategy(), signal: SIGNAL }], 'full');
+    const row = screen.getByTestId('fleet-us_x1_3');
+    const details = within(row).getByRole('button', { name: /Row details/ });
+    expect(details).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(details);
+    expect(details).toHaveAttribute('aria-expanded', 'true');
+    const panel = document.getElementById('row-details-us_x1_3');
+    expect(panel).toHaveTextContent('Evidence cutoff');
+    expect(panel).toHaveTextContent('2026-11-11');
+    expect(panel).toHaveTextContent('New target exposure');
+
+    const basis = within(row).getByText('retained').closest('summary');
+    expect(basis).not.toBeNull();
+    fireEvent.click(basis!);
+    expect(basis!.closest('details')).toHaveAttribute('open');
+    expect(within(row).getByText('Retained formal excess-return metric (full_history) vs QQQ.')).toBeInTheDocument();
+  });
+
   it('keeps the wide table inside its own scroller with a sticky header', () => {
     const { container } = renderTable([usStrategy()]);
     const wrapper = container.querySelector('table')?.parentElement;

@@ -73,6 +73,23 @@ export interface LiveSystemHealth {
 
 const STATES = new Set<SystemHealthState>(['current', 'delayed', 'blocked', 'inconsistent', 'not_applicable']);
 
+const STATE_LABELS: Record<SystemHealthState, string> = {
+  current: 'Current',
+  delayed: 'Delayed',
+  blocked: 'Blocked',
+  inconsistent: 'Inconsistent',
+  not_applicable: 'Not applicable',
+};
+
+/**
+ * One severity vocabulary for source health. Retained payloads keep their
+ * lower-case state ids; operators see the same words as strategy observations
+ * instead of a second "degraded" label.
+ */
+export function systemStateLabel(state: string): string {
+  return STATE_LABELS[state as SystemHealthState] ?? state;
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

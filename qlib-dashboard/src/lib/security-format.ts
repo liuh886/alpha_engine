@@ -35,6 +35,37 @@ export function formatSecurityPercent(value: number | null | undefined): string 
   return typeof value === 'number' && Number.isFinite(value) ? PERCENT_FORMAT.format(value) : '—';
 }
 
+const REASON_ACRONYMS: Readonly<Record<string, string>> = {
+  qqq: 'QQQ', tqqq: 'TQQQ', vix: 'VIX', vxn: 'VXN', ma20: 'MA20', csi: 'CSI', etf: 'ETF', us: 'US', cn: 'CN',
+};
+
+/**
+ * Retained event reasons are stable snake_case ids, not sentences. Display the
+ * words with known acronyms preserved; the untouched id stays available as a
+ * `title` so the evidence remains traceable.
+ */
+export function humanizeEventReason(reason: string | null | undefined): string {
+  if (!reason) return 'No reason retained';
+  const words = reason.split(/[_\s]+/).filter(Boolean);
+  if (words.length === 0) return reason;
+  return words.map((word, index) => {
+    const acronym = REASON_ACRONYMS[word.toLowerCase()];
+    if (acronym) return acronym;
+    return index === 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+  }).join(' ');
+}
+
+/** Ledger actions are upper-case codes; render the readable verb. */
+export function formatEventAction(action: string | null | undefined): string {
+  if (!action) return '—';
+  const normalized = action.trim().toUpperCase();
+  if (normalized === 'BUY') return 'Buy';
+  if (normalized === 'SELL') return 'Sell';
+  if (normalized === 'INCREASE') return 'Increase';
+  if (normalized === 'DECREASE') return 'Decrease';
+  return action;
+}
+
 /** Indexed price (100 = start) as a signed percent return for chart labels. */
 export function formatIndexedReturn(value: number): string {
   if (!Number.isFinite(value)) return '—';
