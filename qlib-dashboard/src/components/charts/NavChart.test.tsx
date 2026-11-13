@@ -34,13 +34,22 @@ vi.mock('recharts', () => ({
   ReferenceLine: ({ x, y }: { x?: string | number; y?: string | number }) => (
     <div data-testid={x === undefined ? 'index-line' : 'activity-line'} data-x={x} data-y={y} />
   ),
-  ReferenceDot: ({ x, y, fill, onClick }: {
+  ReferenceDot: ({ x, y, fill, onClick, shape }: {
     x?: string | number;
     y?: string | number;
     fill?: string;
     onClick?: () => void;
+    shape?: { props?: { side?: string } };
   }) => (
-    <button type="button" data-testid="activity-dot" data-x={x} data-y={y} data-fill={fill} onClick={onClick} />
+    <button
+      type="button"
+      data-testid="activity-dot"
+      data-x={x}
+      data-y={y}
+      data-fill={fill}
+      data-side={shape?.props?.side}
+      onClick={onClick}
+    />
   ),
   Line: ({ dataKey, name, stroke, strokeDasharray, strokeWidth, dot, connectNulls }: {
     dataKey?: string;
@@ -220,7 +229,8 @@ describe('NavChart', () => {
     expect(dots).toHaveLength(1);
     expect(dots[0].getAttribute('data-x')).toBe('2026-01-02');
     expect(dots[0].getAttribute('data-y')).toBe('100');
-    expect(dots[0].getAttribute('data-fill')).toBe('hsl(var(--warning))');
+    expect(dots[0].getAttribute('data-fill')).toBe('hsl(var(--positive))');
+    expect(dots[0].getAttribute('data-side')).toBe('buy');
     expect(screen.getAllByTestId('activity-line')).toHaveLength(1);
     expect(screen.queryByTestId('activity-line')?.getAttribute('data-x')).toBe('2026-01-02');
 
@@ -235,6 +245,47 @@ describe('NavChart', () => {
     expect(within(details).getByText(/Buy, 2 trades/)).toBeInTheDocument();
     fireEvent.click(within(details).getByRole('button', { name: /Buy, 2 trades/ }));
     expect(onMarkerSelect).toHaveBeenCalledTimes(2);
+  });
+
+  it('encodes buy, sell and mixed activity with shapes, not color alone', () => {
+    const sideMarkers: NavMarker[] = [
+      { ...marker, date: '2026-01-01', side: 'buy' },
+      { ...marker, date: '2026-01-02', side: 'sell' },
+      { ...marker, date: '2026-01-03', side: 'mixed' },
+    ];
+    render(
+      <NavChart
+        series={[series[0]]}
+        markers={sideMarkers}
+        periodLabel="1M"
+      />,
+    );
+
+    const dots = screen.getAllByTestId('activity-dot');
+    expect(dots.map(dot => dot.getAttribute('data-side'))).toEqual(['buy', 'sell', 'mixed']);
+    expect(dots.map(dot => dot.getAttribute('data-fill'))).toEqual([
+      'hsl(var(--positive))',
+      'hsl(var(--negative))',
+      'hsl(var(--warning))',
+    ]);
+
+    const key = screen.getByRole('list', { name: 'Activity marker key' });
+    expect(within(key).getByText('Buy / increase')).toBeInTheDocument();
+    expect(within(key).getByText('Sell / decrease')).toBeInTheDocument();
+    expect(within(key).getByText('Buy and sell')).toBeInTheDocument();
+  });
+
+  it('adds a spoken window and return summary when one is supplied', () => {
+    render(
+      <NavChart
+        series={series}
+        periodLabel="1Y"
+        summaryLabel="1Y window 2026-01-02 – 2026-01-03 · Strategy +10.0% · QQQ +5.0%"
+      />,
+    );
+    expect(screen.getByRole('figure')).toHaveAccessibleName(
+      '1Y NAV chart indexed to 100 · 1Y window 2026-01-02 – 2026-01-03 · Strategy +10.0% · QQQ +5.0%',
+    );
   });
 
   it('describes the indexed window and the exact-date comparison basis', () => {
