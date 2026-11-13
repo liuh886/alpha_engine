@@ -8,12 +8,12 @@ import {
 } from '@/lib/study-review';
 
 const stateLabels: Record<ReviewLifecycleState, { label: string; badgeClass: string }> = {
-  formulated: { label: 'Formulated', badgeClass: 'bg-muted text-muted-foreground' },
-  observing: { label: 'Observing', badgeClass: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30' },
-  supported: { label: 'Supported', badgeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30' },
-  challenged: { label: 'Challenged', badgeClass: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30' },
-  refuted: { label: 'Refuted', badgeClass: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30' },
-  graduated: { label: 'Graduated', badgeClass: 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30' },
+  formulated: { label: 'Formulated', badgeClass: 'border-border bg-muted/60 text-muted-foreground' },
+  observing: { label: 'Observing', badgeClass: 'border-info/25 bg-info/10 text-info' },
+  supported: { label: 'Supported', badgeClass: 'border-positive/25 bg-positive/10 text-positive' },
+  challenged: { label: 'Challenged', badgeClass: 'border-warning/25 bg-warning/10 text-warning' },
+  refuted: { label: 'Refuted', badgeClass: 'border-negative/25 bg-negative/10 text-negative' },
+  graduated: { label: 'Graduated', badgeClass: 'border-positive/25 bg-positive/10 text-positive' },
 };
 
 function formatPct(val: number | undefined | null): string {
@@ -45,7 +45,7 @@ function ReviewModal({ review, onClose }: ReviewModalProps) {
       aria-labelledby="review-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 overflow-y-auto"
     >
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl border bg-card p-6 shadow-xl space-y-6">
+      <div className="ae-surface shadow-popover relative max-h-[90vh] w-full max-w-4xl space-y-6 overflow-y-auto p-6">
         <div className="flex items-start justify-between border-b pb-4">
           <div>
             <div className="flex items-center gap-2">
@@ -82,7 +82,7 @@ function ReviewModal({ review, onClose }: ReviewModalProps) {
             </div>
             {review.hypothesis.falsification_criteria.length > 0 && (
               <div className="pt-2 text-xs">
-                <span className="font-semibold text-rose-600 dark:text-rose-400">Falsification Criteria:</span>
+                <span className="font-semibold text-negative">Falsification Criteria:</span>
                 <ul className="list-disc list-inside mt-1 space-y-0.5 text-muted-foreground">
                   {review.hypothesis.falsification_criteria.map((c, idx) => (
                     <li key={idx}>{c}</li>
@@ -143,7 +143,7 @@ function ReviewModal({ review, onClose }: ReviewModalProps) {
                     <td className="p-3">{obs.as_of_session}</td>
                     <td className="p-3">{formatPct(obs.cumulative_return)}</td>
                     <td className="p-3">{obs.sharpe_ratio.toFixed(2)}</td>
-                    <td className="p-3 text-rose-600 dark:text-rose-400">{formatPct(obs.max_drawdown)}</td>
+                    <td className="p-3 text-negative">{formatPct(obs.max_drawdown)}</td>
                     <td className="p-3">{formatPct(obs.vs_benchmark_returns.us87_ew_pool_runner_v1)}</td>
                     <td className="p-3">{formatPct(obs.vs_benchmark_returns.QQQ)}</td>
                   </tr>
@@ -178,9 +178,9 @@ function ReviewModal({ review, onClose }: ReviewModalProps) {
                     <span
                       className={`font-semibold uppercase text-[10px] ${
                         ce.severity === 'falsifying'
-                          ? 'text-rose-600 dark:text-rose-400'
+                          ? 'text-negative'
                           : ce.severity === 'warning'
-                          ? 'text-amber-600 dark:text-amber-400'
+                          ? 'text-warning'
                           : 'text-muted-foreground'
                       }`}
                     >
@@ -207,7 +207,7 @@ function ReviewModal({ review, onClose }: ReviewModalProps) {
             <p className="text-muted-foreground">{review.conclusion.summary}</p>
             {review.conclusion.supported_points.length > 0 && (
               <div className="pt-2">
-                <span className="font-medium text-emerald-600 dark:text-emerald-400">Supported Points:</span>
+                <span className="font-medium text-positive">Supported Points:</span>
                 <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-muted-foreground">
                   {review.conclusion.supported_points.map((p, i) => (
                     <li key={i}>{p}</li>
@@ -217,7 +217,7 @@ function ReviewModal({ review, onClose }: ReviewModalProps) {
             )}
             {review.conclusion.unresolved_risks.length > 0 && (
               <div className="pt-2">
-                <span className="font-medium text-amber-600 dark:text-amber-400">Unresolved Risks:</span>
+                <span className="font-medium text-warning">Unresolved Risks:</span>
                 <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-muted-foreground">
                   {review.conclusion.unresolved_risks.map((r, i) => (
                     <li key={i}>{r}</li>
@@ -295,9 +295,9 @@ export function StudyReviewDesk({ attempt = 0 }: { attempt?: number }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-4">
         <div>
-          <h2 className="text-lg font-bold tracking-tight">Hypothesis Review Desk</h2>
+          <h2 className="ae-section-title text-lg">Hypothesis Review Desk</h2>
           <p className="text-xs text-muted-foreground mt-1">
             Empirical lifecycle of frozen quantitative hypotheses: tracking out-of-sample edge, cataloging counter-evidence, and scheduling review checkpoints.
           </p>
@@ -330,7 +330,7 @@ export function StudyReviewDesk({ attempt = 0 }: { attempt?: number }) {
       )}
 
       {!loading && !error && filteredReviews.length === 0 && (
-        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+        <div className="ae-empty">
           No investment hypotheses currently in {filterState === 'all' ? 'any' : filterState} state.
         </div>
       )}
@@ -348,7 +348,7 @@ export function StudyReviewDesk({ attempt = 0 }: { attempt?: number }) {
             return (
               <div
                 key={rev.review_id}
-                className="flex flex-col justify-between rounded-xl border bg-card p-5 shadow-sm space-y-4 hover:border-primary/50 transition-colors"
+                className="ae-surface flex flex-col justify-between space-y-4 p-5 transition-colors hover:border-primary/50"
               >
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
@@ -372,7 +372,7 @@ export function StudyReviewDesk({ attempt = 0 }: { attempt?: number }) {
                       </div>
                       <div>
                         <span className="text-[10px] text-muted-foreground block">Max DD</span>
-                        <span className="font-mono font-medium text-rose-600 dark:text-rose-400">
+                        <span className="font-mono font-medium text-negative">
                           {formatPct(primaryObs.max_drawdown)}
                         </span>
                       </div>
@@ -386,7 +386,7 @@ export function StudyReviewDesk({ attempt = 0 }: { attempt?: number }) {
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
                     <span>
                       Counter-evidence:{' '}
-                      <strong className={warningCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}>
+                      <strong className={warningCount > 0 ? 'text-warning' : 'text-foreground'}>
                         {rev.counter_evidence.length}
                       </strong>
                     </span>
