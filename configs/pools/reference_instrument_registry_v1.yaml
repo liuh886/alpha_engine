@@ -51,6 +51,19 @@ markets:
         fundamental_data_applicable: false
         corporate_actions_applicable: true
         adjusted_open_close_required: true
+      SPX:
+        # Canonical S&P 500 index identity (Owner-authorized 2026-11-14).
+        # The real index only: it is never substituted by SPY/VOO/IVV or any
+        # tracking ETF.
+        canonical_symbol: "SPX"
+        instrument_type: "equity_index"
+        provider_aliases: ["^GSPC", "SPX"]
+        roles: ["broad_market_context", "market_regime"]
+        executable: false
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: false
       QQQ:
         canonical_symbol: "QQQ"
         instrument_type: "equity_etf"

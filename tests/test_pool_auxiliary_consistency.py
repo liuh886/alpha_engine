@@ -73,6 +73,21 @@ def test_derived_auxiliaries_are_covered_by_hardcoded_tuples():
         assert combined_report[market]["undeclared_extras"] == [], market
 
 
+def test_sp500_is_a_declared_extra_without_strategy_drift():
+    from src.governance.auxiliary_derivation import DECLARED_EXTRAS
+
+    assert "SPX" in DEFAULT_AUXILIARIES["us"]
+    assert "SPX" not in DEFAULT_AUXILIARIES["cn"]
+    assert "SPX" in DECLARED_EXTRAS["us"]
+    derived = derive_required_auxiliaries(REPOSITORY_ROOT)
+    assert "SPX" not in derived["us"].required
+    assert "SPX" not in derived["us"].excluded
+    report = verify_against_hardcoded(DEFAULT_AUXILIARIES, REPOSITORY_ROOT)
+    for market in ("us", "cn"):
+        assert report[market]["missing"] == [], market
+        assert report[market]["undeclared_extras"] == [], market
+
+
 def test_derived_cn_auxiliaries_have_strategy_provenance():
     derived = derive_required_auxiliaries(REPOSITORY_ROOT)["cn"]
     assert sorted(derived.required) == [

@@ -249,6 +249,58 @@ def test_provider_cache_contract_binds_market_code_pool_and_cutoff() -> None:
     assert cache_key(contract).startswith("formal-provider-1.1.0-us-2026-08-07-")
 
 
+def test_governed_sp500_index_changes_us_provider_cache_identity() -> None:
+    from src.artifacts.formal_provider_cache import DEFAULT_AUXILIARIES
+
+    us = build_provider_cache_contract(
+        repository_root=Path.cwd(),
+        market="us",
+        start="2021-01-01",
+        requested_cutoff="2026-08-14",
+    )
+    assert "SPX" in us["auxiliary_symbols"]
+    assert list(us["auxiliary_symbols"]) == list(DEFAULT_AUXILIARIES["us"])
+    assert cache_key(us) == (
+        f"formal-provider-1.1.0-us-2026-08-14-{us['contract_sha256']}"
+    )
+
+    # Model the pre-change contract identity (same inputs, no SPX) and prove
+    # the content-addressed cache key can no longer address the new contract.
+    previous = copy.deepcopy(us)
+    previous["auxiliary_symbols"] = [
+        symbol for symbol in previous["auxiliary_symbols"] if symbol != "SPX"
+    ]
+    previous.pop("contract_sha256")
+    encoded = (
+        json.dumps(
+            previous,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        + "\n"
+    ).encode("utf-8")
+    previous["contract_sha256"] = hashlib.sha256(encoded).hexdigest()
+    assert previous["contract_sha256"] != us["contract_sha256"]
+    assert cache_key(previous) != cache_key(us)
+
+    cn = build_provider_cache_contract(
+        repository_root=Path.cwd(),
+        market="cn",
+        start="2021-01-01",
+        requested_cutoff="2026-08-14",
+    )
+    assert list(cn["auxiliary_symbols"]) == [
+        "515180",
+        "002156",
+        "002281",
+        "300274",
+        "601939",
+        "688183",
+    ]
+    assert "SPX" not in cn["auxiliary_symbols"]
+
+
 def test_governed_terminal_history_uses_stable_line_endings() -> None:
     attributes = (Path.cwd() / ".gitattributes").read_text(encoding="utf-8")
     assert "data/csv_clean/EA.csv text eol=lf" in attributes
