@@ -332,6 +332,83 @@ describe('deterministic ordering', () => {
   });
 });
 
+describe('row-kind ordering', () => {
+  function strategyRow(id: string, market: 'us' | 'cn', points: Array<[string, number]>) {
+    return strategyRowsFromNav(run({
+      key: id,
+      modelVersionId: id,
+      title: id,
+      market,
+      evidenceCutoff: '2026-11-11',
+    }), navRows(points))[0];
+  }
+
+  function indexRow(market: 'us' | 'cn', symbol: string, title: string, points: Array<[string, number]>) {
+    return indexRowsFromBars(
+      market,
+      symbol,
+      title,
+      points.map(([time, close]) => bar(time, close, close)),
+      '2026-11-11',
+    )[0];
+  }
+
+  const rows = [
+    // US strategies: beta leads on 1M, alpha leads on 3M.
+    strategyRow('us_alpha', 'us', [['2026-08-11', 100], ['2026-10-11', 110], ['2026-11-11', 120]]),
+    strategyRow('us_beta', 'us', [['2026-08-11', 100], ['2026-10-11', 100], ['2026-11-11', 110]]),
+    // US indices: QQQ leads on 1M, S&P 500 leads on 3M.
+    indexRow('us', 'QQQ', 'QQQ', [['2026-08-11', 110], ['2026-10-11', 100], ['2026-11-11', 120]]),
+    indexRow('us', 'SPX', 'S&P 500', [['2026-08-11', 100], ['2026-10-11', 120], ['2026-11-11', 138]]),
+    // China: the index outreturns the strategy on every horizon.
+    strategyRow('cn_27', 'cn', [['2026-08-11', 100], ['2026-10-11', 100], ['2026-11-11', 103]]),
+    indexRow('cn', '000300', 'CSI 300', [['2026-08-11', 100], ['2026-10-11', 100], ['2026-11-11', 112]]),
+  ];
+
+  const ids = (sorted: ReturnType<typeof sortRankingRows>) => sorted.map((row) => row.id);
+
+  it('keeps the mixed order as the default, ranking strategies and indices together', () => {
+    const expected = [
+      'index:us:QQQ', 'index:us:SPX', 'us_beta', 'us_alpha',
+      'index:cn:000300', 'cn_27',
+    ];
+    expect(ids(sortRankingRows(rows, '1m'))).toEqual(expected);
+    expect(ids(sortRankingRows(rows, '1m', { kindOrder: 'mixed' }))).toEqual(expected);
+    expect(ids(sortRankingRows(rows, '3m'))).toEqual([
+      'index:us:SPX', 'us_alpha', 'us_beta', 'index:us:QQQ',
+      'index:cn:000300', 'cn_27',
+    ]);
+  });
+
+  it('places every strategy row before the index rows in both markets while keeping the horizon order', () => {
+    expect(ids(sortRankingRows(rows, '1m', { kindOrder: 'strategies-first' }))).toEqual([
+      'us_beta', 'us_alpha', 'index:us:QQQ', 'index:us:SPX',
+      'cn_27', 'index:cn:000300',
+    ]);
+    // The same kind precedence with another horizon: strategies and then
+    // indices each follow the 3M order rather than the 1M order.
+    expect(ids(sortRankingRows(rows, '3m', { kindOrder: 'strategies-first' }))).toEqual([
+      'us_alpha', 'us_beta', 'index:us:SPX', 'index:us:QQQ',
+      'cn_27', 'index:cn:000300',
+    ]);
+  });
+
+  it('is deterministic, leaves the input untouched and never computes index excess', () => {
+    const ordered = sortRankingRows(rows, '1m', { kindOrder: 'strategies-first' });
+    expect(ids(sortRankingRows(rows, '1m', { kindOrder: 'strategies-first' }))).toEqual(ids(ordered));
+    expect(ids(rows)).toEqual([
+      'us_alpha', 'us_beta', 'index:us:QQQ', 'index:us:SPX', 'cn_27', 'index:cn:000300',
+    ]);
+    for (const spy of ordered.filter((row) => row.kind === 'index' && row.symbol === 'SPX')) {
+      expect(spy.title).toBe('S&P 500');
+      expect(spy.excess?.value).toBeNull();
+      expect(spy.excess?.reason).toContain('excess is not computed');
+    }
+    expect(ordered.filter((row) => row.kind === 'index').map((row) => row.symbol))
+      .toContain('SPX');
+  });
+});
+
 describe('formatting', () => {
   it('formats percentages with one decimal and an explicit sign', () => {
     expect(formatReturn(0.1234)).toBe('+12.3%');

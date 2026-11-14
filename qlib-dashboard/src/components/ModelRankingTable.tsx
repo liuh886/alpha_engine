@@ -24,6 +24,7 @@ import {
   sortRankingRows,
   type ModelRankingRow,
   type RankingCell,
+  type RankingKindOrder,
   type RankingMarket,
   type RankingSignal,
   type RankingSort,
@@ -40,6 +41,11 @@ export interface ModelRankingTableProps {
   onInspectSignal?: (row: ModelRankingRow) => void;
   emptyMessage?: string;
   caption?: string;
+  /**
+   * Row-kind precedence inside each market group. Defaults to `'mixed'`, which
+   * ranks strategies and governed indices together by the selected sort.
+   */
+  kindOrder?: RankingKindOrder;
 }
 
 function signedTone(value: number | null): string {
@@ -489,11 +495,15 @@ export function ModelRankingTable({
   onInspectSignal,
   emptyMessage = 'No model ranking rows are available.',
   caption = 'Model ranking by market and horizon',
+  kindOrder = 'mixed',
 }: ModelRankingTableProps) {
   const [sort, setSort] = useState<RankingSort>('1m');
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
   const narrow = useNarrowViewport();
-  const sorted = useMemo(() => sortRankingRows(rows, sort), [rows, sort]);
+  const sorted = useMemo(
+    () => sortRankingRows(rows, sort, { kindOrder }),
+    [rows, sort, kindOrder],
+  );
   const columns = 1 + HORIZON_PERIODS.length + 1 + (density === 'full' ? 3 : 0);
   const markets: RankingMarket[] = ['us', 'cn'];
   const toggleRow = (id: string) => setExpandedIds(previous => {

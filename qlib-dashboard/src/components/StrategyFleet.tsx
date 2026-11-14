@@ -136,6 +136,7 @@ export function StrategyFleet({
         onInspectSignal={(row) => handleInspectSignal(row)}
         emptyMessage="No strategies match these filters."
         caption="Formal strategy and governed index ranking by market and horizon"
+        kindOrder="strategies-first"
       />
 
       <div className="flex flex-col gap-2 px-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">

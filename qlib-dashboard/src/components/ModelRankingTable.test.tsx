@@ -155,6 +155,82 @@ describe('ModelRankingTable', () => {
     expect(screen.queryByRole('columnheader', { name: 'Excess' })).not.toBeInTheDocument();
   });
 
+  describe('row-kind ordering', () => {
+    function strategyRow(id: string, market: 'us' | 'cn', points: Array<[string, number]>): ModelRankingRow {
+      return strategyRowsFromNav(run({
+        key: id,
+        modelVersionId: id,
+        title: id,
+        market,
+        evidenceCutoff: '2026-11-11',
+      }), nav(points))[0];
+    }
+
+    function indexRow(market: 'us' | 'cn', symbol: string, title: string, points: Array<[string, number]>): ModelRankingRow {
+      return indexRowsFromBars(
+        market,
+        symbol,
+        title,
+        points.map(([time, close]) => bar(time, close)),
+        '2026-11-11',
+      )[0];
+    }
+
+    const rows: ModelRankingRow[] = [
+      // US strategies: beta leads on 1M, alpha leads on 3M.
+      strategyRow('us_alpha', 'us', [['2026-08-11', 100], ['2026-10-11', 110], ['2026-11-11', 120]]),
+      strategyRow('us_beta', 'us', [['2026-08-11', 100], ['2026-10-11', 100], ['2026-11-11', 110]]),
+      // US indices: QQQ leads on 1M, S&P 500 leads on 3M.
+      indexRow('us', 'QQQ', 'QQQ', [['2026-08-11', 110], ['2026-10-11', 100], ['2026-11-11', 120]]),
+      indexRow('us', 'SPX', 'S&P 500', [['2026-08-11', 100], ['2026-10-11', 120], ['2026-11-11', 138]]),
+      // China: the index outreturns the strategy on every horizon.
+      strategyRow('cn_27', 'cn', [['2026-08-11', 100], ['2026-10-11', 100], ['2026-11-11', 103]]),
+      indexRow('cn', '000300', 'CSI 300', [['2026-08-11', 100], ['2026-10-11', 100], ['2026-11-11', 112]]),
+    ];
+
+    const orderedIds = () => screen
+      .getAllByTestId(/^(fleet-|ranking-index-)/)
+      .map((row) => row.getAttribute('data-testid'));
+
+    it('ranks strategies and indices together by the selected horizon by default', () => {
+      renderTable(rows, 'full');
+      expect(orderedIds()).toEqual([
+        'ranking-index-us-QQQ', 'ranking-index-us-SPX', 'fleet-us_beta', 'fleet-us_alpha',
+        'ranking-index-cn-000300', 'fleet-cn_27',
+      ]);
+      expect(screen.getByTestId('ranking-index-us-SPX')).toHaveTextContent('S&P 500');
+    });
+
+    it('leads with strategy rows in both markets when kindOrder is strategies-first', () => {
+      renderTable(rows, 'full', { kindOrder: 'strategies-first' });
+      expect(orderedIds()).toEqual([
+        'fleet-us_beta', 'fleet-us_alpha', 'ranking-index-us-QQQ', 'ranking-index-us-SPX',
+        'fleet-cn_27', 'ranking-index-cn-000300',
+      ]);
+      // The S&P 500 row is retained as trailing market context without excess.
+      const spx = screen.getByTestId('ranking-index-us-SPX');
+      expect(spx).toHaveTextContent('S&P 500');
+      expect(spx).toHaveTextContent('Index rows are close-to-close price returns; excess is not computed.');
+      expect(spx).not.toHaveTextContent('+25.0%');
+
+      // Another horizon keeps the kind precedence and re-sorts within each kind.
+      fireEvent.click(screen.getByRole('button', { name: '3M' }));
+      expect(orderedIds()).toEqual([
+        'fleet-us_alpha', 'fleet-us_beta', 'ranking-index-us-SPX', 'ranking-index-us-QQQ',
+        'fleet-cn_27', 'ranking-index-cn-000300',
+      ]);
+    });
+
+    it('keeps the mixed kind order in the compact Today table', () => {
+      renderTable(rows, 'compact');
+      expect(orderedIds()).toEqual([
+        'ranking-index-us-QQQ', 'ranking-index-us-SPX', 'fleet-us_beta', 'fleet-us_alpha',
+        'ranking-index-cn-000300', 'fleet-cn_27',
+      ]);
+      expect(screen.getByTestId('ranking-index-us-SPX')).toHaveTextContent('S&P 500');
+    });
+  });
+
   it('sorts by 1M by default and changes order when another horizon is chosen', () => {
     const alpha = strategyRowsFromNav(run({ modelVersionId: 'alpha', title: 'Alpha' }), nav([
       ['2024-11-11', 50],
