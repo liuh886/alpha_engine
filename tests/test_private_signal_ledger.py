@@ -116,6 +116,65 @@ def test_race_at_push_fails_without_force_or_rebase(store, tmp_path, monkeypatch
     assert git(remote, "rev-parse", "main") == advanced[0]
 
 
+@pytest.mark.parametrize("stderr,expected,detail", [
+    (b"To /tmp/private.git\n"
+     b" ! [rejected]        main -> main (fetch first)\n"
+     b"error: failed to push some refs to '/tmp/private.git'\n"
+     b"hint: Updates were rejected because the remote contains work that you do\n"
+     b"hint: have locally. This is usually caused by another repository pushing\n",
+     private.PrivateLedgerConflictError, "! [rejected] main -> main (fetch first)"),
+    (b"git@ssh.github.com: Permission denied (publickey).\n"
+     b"fatal: Could not read from remote repository.\n",
+     private.PrivateLedgerAuthError, "Permission denied (publickey)"),
+    (b"fatal: transport stream ended\x00 unexpectedly\r\n",
+     private.PrivateLedgerError, "transport stream ended unexpectedly"),
+])
+def test_git_failure_reports_sanitized_class_and_line_without_retry(
+        monkeypatch, tmp_path, stderr, expected, detail):
+    calls = []
+
+    def failed(command, **kwargs):
+        calls.append(command)
+        raise subprocess.CalledProcessError(128, command, stderr=stderr)
+
+    monkeypatch.setattr(private.subprocess, "run", failed)
+    with pytest.raises(expected) as error:
+        private._git(tmp_path, {}, "push", "--quiet", "origin", f"{'a' * 40}:refs/heads/main")
+    assert type(error.value) is expected
+    message = str(error.value)
+    assert "restore authoritative" in message
+    assert "git push" in message
+    assert detail in message
+    assert not any(character in message for character in ("\x00", "\r", "\n"))
+    assert len(calls) == 1
+    assert "--force" not in calls[0] and "-f" not in calls[0]
+
+
+def test_git_failure_without_output_keeps_generic_fail_closed_message(monkeypatch, tmp_path):
+    calls = []
+
+    def failed(command, **kwargs):
+        calls.append(command)
+        raise subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(private.subprocess, "run", failed)
+    with pytest.raises(private.PrivateLedgerError, match="restore authoritative") as error:
+        private._git(tmp_path, {}, "fetch", "--quiet", "origin", "main")
+    assert type(error.value) is private.PrivateLedgerError
+    assert "git fetch" in str(error.value)
+    assert len(calls) == 1
+
+
+def test_git_timeout_keeps_private_ledger_error(monkeypatch, tmp_path):
+    def timed_out(command, **kwargs):
+        raise subprocess.TimeoutExpired(command, 180)
+
+    monkeypatch.setattr(private.subprocess, "run", timed_out)
+    with pytest.raises(private.PrivateLedgerError, match="restore authoritative") as error:
+        private._git(tmp_path, {}, "push", "origin", "main")
+    assert type(error.value) is private.PrivateLedgerError
+
+
 def test_missing_checkpoint_has_no_public_fallback_and_keeps_local_evidence(store, tmp_path):
     _, _, remote = store
     writer = tmp_path / "remove"

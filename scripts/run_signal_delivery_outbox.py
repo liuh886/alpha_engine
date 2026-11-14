@@ -8,6 +8,7 @@ import json
 import os
 import re
 import subprocess
+import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -27,6 +28,37 @@ AMBIGUOUS_ERRORS = {
     "ambiguous_external_delivery_state",
     "telegram_transport_ambiguous",
 }
+
+_SECRET_ENVIRONMENT = (
+    "GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY",
+    "GOVERNED_SOURCE_ARCHIVE_SSH_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
+)
+_CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f]+")
+_ABSOLUTE_PATH = re.compile(r"(?<![\w:/])(?:/(?:[\w.+-]+/)*[\w.+-]+|[A-Za-z]:[\\/][^\s'\"]+)")
+_FAILURE_MESSAGE_LIMIT = 500
+
+
+def _sanitized_failure_message(exc: BaseException) -> str:
+    """Keep the diagnostic class and line without secrets or absolute paths."""
+    message = _CONTROL_CHARACTERS.sub(" ", str(exc))
+    for name in _SECRET_ENVIRONMENT:
+        secret = os.environ.get(name)
+        if secret and len(secret) >= 8:
+            message = message.replace(secret, "<redacted>")
+    message = _ABSOLUTE_PATH.sub("<path>", message)
+    return " ".join(message.split())[:_FAILURE_MESSAGE_LIMIT]
+
+
+def _write_receipt(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 @dataclass(frozen=True)
@@ -438,26 +470,38 @@ def main() -> int:
             updated["any_changed"] = bool(receipt.get("any_changed", False) or updated.get("changed", False))
             save_receipt(args.private_ledger_receipt, updated)
 
-    results = drain_outbox(
-        repository=args.repository,
-        workflow_run_id=args.workflow_run_id,
-        commit_sha=args.commit_sha,
-        created_at_utc=args.created_at_utc,
-        telegram_token=os.getenv("TELEGRAM_BOT_TOKEN") or None,
-        telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID") or None,
-        persist=persist,
-    )
+    try:
+        results = drain_outbox(
+            repository=args.repository,
+            workflow_run_id=args.workflow_run_id,
+            commit_sha=args.commit_sha,
+            created_at_utc=args.created_at_utc,
+            telegram_token=os.getenv("TELEGRAM_BOT_TOKEN") or None,
+            telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID") or None,
+            persist=persist,
+        )
+    except Exception as exc:
+        # A private persistence failure must still leave uploadable evidence.
+        # Fail closed: no retry, rebase, force-push or external delivery here.
+        traceback.print_exc()
+        payload = {
+            "schema_version": "strategy_delivery_outbox_v1",
+            "results": [],
+            "status": "failed",
+            "error": {"type": type(exc).__name__, "message": _sanitized_failure_message(exc)},
+            "research_only": True,
+            "trade_ready": False,
+        }
+        _write_receipt(args.output, payload)
+        print(json.dumps(payload, sort_keys=True))
+        return 1
     payload = {
         "schema_version": "strategy_delivery_outbox_v1",
         "results": [result.to_dict() for result in results],
         "research_only": True,
         "trade_ready": False,
     }
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    _write_receipt(args.output, payload)
     print(json.dumps(payload, sort_keys=True))
     return 1 if any(result.status == "failed" for result in results) else 0
 

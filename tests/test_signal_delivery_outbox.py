@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -389,3 +390,95 @@ def test_one_second_retry_claim_wins_over_prior_rejection_and_prevents_replay(ca
     (context.ledger / "deliveries" / "2026-08-12" / "delivery-2.json").unlink()
     assert context.drain().error == "ambiguous_external_delivery_state"
     assert len(context.messages) == 1
+
+
+def _main_args(*extra):
+    return [
+        "run_signal_delivery_outbox.py",
+        "--repository", "owner/repo",
+        "--workflow-run-id", "43568290783",
+        "--commit-sha", "c" * 40,
+        "--created-at-utc", "2026-11-14T00:00:00Z",
+        *extra,
+    ]
+
+
+def test_main_writes_sanitized_failure_receipt_when_private_persist_conflicts(
+        tmp_path, monkeypatch, capsys):
+    from src.artifacts import private_signal_ledger
+
+    secret = "scoped-write-key-1234567890"
+    monkeypatch.setenv("GOVERNED_SOURCE_ARCHIVE_WRITE_SSH_KEY", secret)
+    receipt = tmp_path / "private-ledgers.json"
+    receipt.write_text(json.dumps({"any_changed": False}), encoding="utf-8")
+    output = tmp_path / "artifacts" / "signal-delivery-outbox" / "result.json"
+    private_worktree = tmp_path / "private-worktree"
+
+    def conflict(**kwargs):
+        raise private_signal_ledger.PrivateLedgerConflictError(
+            "private ledger Git operation failed; restore authoritative state before retry "
+            f"(git push: ! [rejected] main -> main (fetch first)) at {private_worktree} key={secret}"
+        )
+
+    monkeypatch.setattr(private_signal_ledger, "persist_private_ledgers", conflict)
+
+    def drain(**kwargs):
+        assert kwargs["persist"] is not None
+        kwargs["persist"]()
+        raise AssertionError("persist must fail before delivery")
+
+    monkeypatch.setattr(outbox, "drain_outbox", drain)
+    monkeypatch.setattr(
+        "sys.argv",
+        _main_args("--private-ledger-receipt", str(receipt), "--output", str(output)),
+    )
+
+    assert outbox.main() == 1
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "strategy_delivery_outbox_v1"
+    assert payload["results"] == []
+    assert payload["status"] == "failed"
+    assert payload["error"]["type"] == "PrivateLedgerConflictError"
+    assert "fetch first" in payload["error"]["message"]
+    assert secret not in payload["error"]["message"]
+    assert str(tmp_path) not in payload["error"]["message"]
+    assert "<redacted>" in payload["error"]["message"]
+    assert "<path>" in payload["error"]["message"]
+    assert payload["research_only"] is True and payload["trade_ready"] is False
+    assert "sent" not in output.read_text(encoding="utf-8")
+    assert "Traceback (most recent call last)" in capsys.readouterr().err
+
+
+def test_main_success_receipt_shape_is_unchanged(tmp_path, monkeypatch):
+    output = tmp_path / "result.json"
+
+    def drain(**kwargs):
+        return [
+            outbox.DeliveryResult(
+                strategy_id="strategy",
+                model_version_id="test_model",
+                signal_date="2026-11-14",
+                status="not_required",
+            )
+        ]
+
+    monkeypatch.setattr(outbox, "drain_outbox", drain)
+    monkeypatch.setattr("sys.argv", _main_args("--output", str(output)))
+
+    assert outbox.main() == 0
+    assert json.loads(output.read_text(encoding="utf-8")) == {
+        "schema_version": "strategy_delivery_outbox_v1",
+        "results": [
+            {
+                "strategy_id": "strategy",
+                "model_version_id": "test_model",
+                "signal_date": "2026-11-14",
+                "status": "not_required",
+                "github_issue_number": None,
+                "telegram_message_id": None,
+                "error": None,
+            }
+        ],
+        "research_only": True,
+        "trade_ready": False,
+    }
