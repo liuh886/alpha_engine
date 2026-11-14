@@ -1022,6 +1022,10 @@ jobs:
           cp -a "$CANDIDATE_PREVIEW_ROOT" data/research/model_runs
           cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" data/research/market_evidence
           cp -a "$CANDIDATE_MODEL_DATA_ROOT" data/research/model_data_bundle_v1
+          # The derived benchmark-excess projection binds the newly installed QQQ
+          # run. Regenerate it before the frontend sync that validates it against
+          # the public formal catalog.
+          uv run python -m scripts.derive_formal_benchmark_excess --repository-root .
           uv run alpha ops build \
             --formal-catalog data/research/formal_model_runs/catalog.json \
             --generated-at "$GENERATED_AT"

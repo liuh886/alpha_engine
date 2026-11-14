@@ -915,28 +915,52 @@ def test_publish_reconciles_candidate_against_latest_main_before_pr() -> None:
     assert "publication-delta-latest-main-receipt.json" in publish
 
 
-def test_publish_regenerates_derived_excess_from_the_newly_published_run() -> None:
+def test_publish_regenerates_derived_excess_at_each_candidate_install_point() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
     )
     publish = workflow[workflow.index("\n  publish:\n") :]
+
+    # The frontend validation runs the derived-metric sync against the installed
+    # candidate, so the install step must re-derive before that validation.
+    install = publish.index(
+        "      - name: Install complete candidate and materialize read models"
+    )
+    setup_node = publish.index("      - uses: actions/setup-node@v6", install)
+    install_block = publish[install:setup_node]
+    install_copy = install_block.index(
+        'cp -a "$CANDIDATE_MODEL_DATA_ROOT" data/research/model_data_bundle_v1'
+    )
+    install_derivation = install_block.index(
+        "uv run python -m scripts.derive_formal_benchmark_excess --repository-root ."
+    )
+    ops_build = install_block.index("uv run alpha ops build")
+    assert install_copy < install_derivation < ops_build
+    assert "python scripts/derive_formal_benchmark_excess" not in install_block
+    assert install + install_derivation < publish.index(
+        "      - name: Validate complete candidate publication"
+    )
+
+    # The reviewed-PR step resets to origin/main and re-installs the candidate,
+    # so it must re-derive before staging the publication commit.
     pull_request = publish.index("      - name: Open or update reviewed refresh PR")
     effective = publish.index(
         "      - name: Resolve effective publication delta", pull_request
     )
-    block = publish[pull_request:effective]
-
-    candidate_install = block.index(
+    publication_block = publish[pull_request:effective]
+    candidate_install = publication_block.index(
         'cp -a "$CANDIDATE_V2_ROOT" data/research/formal_model_runs'
     )
-    derivation = block.index(
+    publication_derivation = publication_block.index(
         "uv run python -m scripts.derive_formal_benchmark_excess --repository-root ."
     )
-    staging = block.index("git add \\")
-    assert candidate_install < derivation < staging
-    assert "python scripts/derive_formal_benchmark_excess" not in block
+    staging = publication_block.index("git add \\")
+    assert candidate_install < publication_derivation < staging
+    assert "python scripts/derive_formal_benchmark_excess" not in publication_block
 
-    add_list = block[staging : block.index("if git diff --cached --quiet")]
+    add_list = publication_block[
+        staging : publication_block.index("if git diff --cached --quiet")
+    ]
     assert "data/research/formal_model_runs" in add_list
     assert "data/research/derived_metrics" in add_list
 
