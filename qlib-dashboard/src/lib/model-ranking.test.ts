@@ -8,8 +8,10 @@ import {
   formatPriceChange,
   formatReturn,
   indexRowsFromBars,
+  periodAlignedExcess,
   rankingCell,
   rankingExcessFromDerived,
+  rankingWindowPeriod,
   retainedExcess,
   sortRankingRows,
   strategyRowsFromNav,
@@ -267,6 +269,167 @@ describe('model ranking excess', () => {
     expect(row.maxDrawdown).toBe(-0.25);
     expect(row.maxDrawdownBasis).toContain('Retained max-drawdown summary');
     expect(row.maxDrawdownBasis).toContain('not the sorted horizon');
+  });
+});
+
+describe('declared benchmark wealth', () => {
+  it('resolves the declared wealth column for the real run shapes', () => {
+    const byd = strategyRowsFromNav(run({ benchmark: 'BYD v1.2' }), [
+      { date: '2026-01-02', account: 100, bench_byd_v1_2: 10 },
+      { date: '2026-11-11', account: 120, bench_byd_v1_2: 12 },
+    ])[0];
+    expect(byd.benchmarkField).toBe('bench_byd_v1_2');
+    expect(byd.benchmarkNav).toEqual([
+      { date: '2026-01-02', value: 10 },
+      { date: '2026-11-11', value: 12 },
+    ]);
+
+    const qqqi = strategyRowsFromNav(run({ modelVersionId: 'qqqi', benchmark: 'QQQ' }), [
+      { date: '2026-01-02', account: 100, bench: -0.0146, bench_qqq: 0.9854 },
+      { date: '2026-11-11', account: 120, bench: 0.0312, bench_qqq: 1.021 },
+    ])[0];
+    expect(qqqi.benchmarkField).toBe('bench_qqq');
+    expect(qqqi.benchmarkNav.map((point) => point.value)).toEqual([0.9854, 1.021]);
+
+    const usX = strategyRowsFromNav(run({ benchmark: 'QQQ' }), [
+      { date: '2026-01-02', account: 100, bench_qqq: 1.0115, bench_qqq_before: 0.99 },
+      { date: '2026-11-11', account: 120, bench_qqq: 1.05, bench_qqq_before: 0.99 },
+    ])[0];
+    expect(usX.benchmarkField).toBe('bench_qqq');
+    // The `_before` opening anchor is never a wealth observation.
+    expect(usX.benchmarkNav.map((point) => point.value)).toEqual([1.0115, 1.05]);
+  });
+
+  it('exposes no benchmark wealth when the run retains only an account identity', () => {
+    const row = strategyRowsFromNav(run({
+      modelVersionId: 'cn_27_v1_3',
+      market: 'cn',
+      benchmark: '000300',
+    }), [
+      { date: '2026-01-02', account: 100, benchmark_account: 200 },
+      { date: '2026-11-11', account: 120, benchmark_account: 210 },
+    ])[0];
+    expect(row.benchmarkField).toBeNull();
+    expect(row.benchmarkNav).toEqual([]);
+  });
+
+  it('never treats the plain bench return column as wealth, even when it is positive', () => {
+    const row = strategyRowsFromNav(run({ benchmark: 'QQQ' }), [
+      { date: '2026-01-02', account: 100, bench: 0.01 },
+      { date: '2026-11-11', account: 120, bench: 0.02 },
+    ])[0];
+    expect(row.benchmarkField).toBeNull();
+    expect(row.benchmarkNav).toEqual([]);
+  });
+});
+
+describe('period-aligned excess', () => {
+  function rowFrom(points: Array<{ date: string; account?: number; bench_qqq?: number }>) {
+    return strategyRowsFromNav(run(), points.map((point) => ({
+      date: point.date,
+      account: point.account ?? 0,
+      ...(point.bench_qqq === undefined ? {} : { bench_qqq: point.bench_qqq }),
+    })))[0];
+  }
+
+  it('matches (1 + strategy) / (1 + benchmark) - 1 over the exact common dates for 1M and 1Y', () => {
+    const row = rowFrom([
+      { date: '2025-11-11', account: 100, bench_qqq: 200 },
+      { date: '2026-10-11', account: 130, bench_qqq: 250 },
+      { date: '2026-11-11', account: 140, bench_qqq: 260 },
+    ]);
+
+    const oneMonth = periodAlignedExcess(row, '1m');
+    expect(oneMonth.source).toBe('aligned');
+    expect(oneMonth.label).toBe('aligned');
+    expect(oneMonth.value).toBeCloseTo((140 / 130) / (260 / 250) - 1, 12);
+    expect(oneMonth.window).toBe('2026-10-11 → 2026-11-11');
+    expect(oneMonth.basis).toContain('1M aligned excess');
+    expect(oneMonth.basis).toContain('bench_qqq');
+    expect(oneMonth.basis).toContain('Browser-derived, not a sealed metric');
+
+    const oneYear = periodAlignedExcess(row, '1y');
+    expect(oneYear.value).toBeCloseTo((140 / 100) / (260 / 200) - 1, 12);
+    expect(oneYear.window).toBe('2025-11-11 → 2026-11-11');
+  });
+
+  it('uses only exact common dates and never a synthetic window start', () => {
+    const row = rowFrom([
+      { date: '2026-09-11', account: 100, bench_qqq: 230 },
+      { date: '2026-10-11', account: 120 },
+      { date: '2026-10-20', account: 125, bench_qqq: 245 },
+      { date: '2026-11-11', account: 150, bench_qqq: 270 },
+    ]);
+    const aligned = periodAlignedExcess(row, '1m');
+    // The requested 1M start is 2026-10-11, but the benchmark has no
+    // observation there; the measurement starts at the exact common date.
+    expect(aligned.value).toBeCloseTo((150 / 125) / (270 / 245) - 1, 12);
+    expect(aligned.window).toBe('2026-10-20 → 2026-11-11');
+    expect(aligned.window).not.toContain('2026-10-11');
+    expect(aligned.basis).not.toContain('2026-10-11');
+  });
+
+  it('shows no aligned excess when the horizon cell is not displayed', () => {
+    const row = rowFrom([
+      { date: '2026-11-11', account: 100, bench_qqq: 200 },
+      { date: '2026-11-12', account: 101, bench_qqq: 201 },
+    ]);
+    expect(row.cells['1m'].display).toBe(false);
+    const aligned = periodAlignedExcess(row, '1m');
+    expect(aligned.value).toBeNull();
+    expect(aligned.source).toBe('unavailable');
+    expect(aligned.reason).toContain('not displayed');
+  });
+
+  it('names the missing benchmark wealth column instead of inventing an excess', () => {
+    const row = strategyRowsFromNav(run({
+      modelVersionId: 'cn_27_v1_3',
+      market: 'cn',
+      benchmark: '000300',
+    }), [
+      { date: '2023-09-01', account: 100 },
+      { date: '2026-08-05', account: 136 },
+      { date: '2026-09-04', account: 140 },
+    ])[0];
+    expect(row.cells['1m'].display).toBe(true);
+    const aligned = periodAlignedExcess(row, '1m');
+    expect(aligned.value).toBeNull();
+    expect(aligned.reason).toContain('No retained benchmark wealth column is available for 000300');
+  });
+
+  it('reports a missing exact-date overlap rather than snapping the benchmark', () => {
+    const row = rowFrom([
+      { date: '2026-10-11', account: 100 },
+      { date: '2026-10-20', bench_qqq: 210 },
+      { date: '2026-10-25', account: 105 },
+      { date: '2026-11-05', bench_qqq: 215 },
+      { date: '2026-11-11', account: 120 },
+    ]);
+    expect(row.cells['1m'].display).toBe(true);
+    const aligned = periodAlignedExcess(row, '1m');
+    expect(aligned.value).toBeNull();
+    expect(aligned.reason).toContain('fewer than two exact common dates');
+  });
+
+  it('never carries benchmark wealth or excess on governed index rows', () => {
+    const index = indexRowsFromBars('us', 'QQQ', 'QQQ', [
+      bar('2026-10-11', 100, 100),
+      bar('2026-11-11', 100, 110),
+    ], '2026-11-11')[0];
+    expect(index.benchmarkNav).toEqual([]);
+    expect(index.benchmarkField).toBeNull();
+    expect(index.excess?.value).toBeNull();
+    expect(index.excess?.source).toBe('unavailable');
+    expect(periodAlignedExcess(index, '1m').value).toBeNull();
+  });
+
+  it('keeps the 1M trend window for metric sorts', () => {
+    expect(rankingWindowPeriod('1m')).toBe('1m');
+    expect(rankingWindowPeriod('3y')).toBe('3y');
+    expect(rankingWindowPeriod('excess')).toBe('1m');
+    expect(rankingWindowPeriod('maxDrawdown')).toBe('1m');
+    expect(rankingWindowPeriod('signal')).toBe('1m');
+    expect(rankingWindowPeriod('asOf')).toBe('1m');
   });
 });
 

@@ -54,6 +54,14 @@ const RETAINED: RankingExcess = {
   basis: 'Retained formal excess-return metric (full_history) vs QQQ.',
 };
 
+const DERIVED: RankingExcess = {
+  value: 0.16979,
+  source: 'derived',
+  label: 'derived',
+  basis: 'Derived · vs QQQ · 2024-01-30 → 2026-11-10 · 699 observations.',
+  window: '2024-01-30 → 2026-11-10',
+};
+
 const SIGNAL: RankingSignal = {
   label: 'Increase',
   direction: 'increase',
@@ -102,6 +110,33 @@ function spxIndex(): ModelRankingRow {
     bar('2026-11-06', 6815.1),
     bar('2026-11-11', 6899.62),
   ], '2026-11-12')[0];
+}
+
+function periodStrategy(excess?: RankingExcess): ModelRankingRow {
+  return strategyRowsFromNav(run(), [
+    { date: '2025-11-11', account: 100, bench_qqq: 200 },
+    { date: '2026-08-12', account: 110, bench_qqq: 210 },
+    { date: '2026-09-11', account: 120, bench_qqq: 220 },
+    { date: '2026-10-11', account: 130, bench_qqq: 250 },
+    { date: '2026-11-11', account: 140, bench_qqq: 260 },
+  ], excess === undefined ? {} : { excess })[0];
+}
+
+function cnWithoutBenchmarkWealth(): ModelRankingRow {
+  return strategyRowsFromNav(run({
+    key: 'cn_27_v1_3',
+    modelFamilyId: 'cn_27',
+    modelVersionId: 'cn_27_v1_3',
+    runId: 'cn_27_v1_3-formal',
+    title: 'CN_27 V1.3',
+    market: 'cn',
+    benchmark: '000300',
+    evidenceCutoff: '2026-09-04',
+  }), [
+    { date: '2023-09-01', account: 100 },
+    { date: '2026-08-05', account: 136 },
+    { date: '2026-09-04', account: 140 },
+  ])[0];
 }
 
 function renderTable(rows: ModelRankingRow[], density: 'compact' | 'full' = 'compact', extra: Partial<Parameters<typeof ModelRankingTable>[0]> = {}) {
@@ -425,5 +460,78 @@ describe('ModelRankingTable', () => {
     fireEvent.click(summary!);
     expect(summary!.closest('details')).toHaveAttribute('open');
     expect(screen.getByText(reason)).toBeInTheDocument();
+  });
+
+  it('follows the default 1M horizon in the trend header, sparkline window and excess headline', () => {
+    renderTable([periodStrategy(DERIVED)], 'full');
+
+    expect(screen.getByRole('columnheader', { name: /1M trend/ })).toHaveTextContent('1M trend');
+    const row = screen.getByTestId('fleet-us_x1_3');
+    const trend = within(row).getByTestId('trend-us_x1_3');
+    expect(trend).toHaveAttribute('title', expect.stringContaining('1M trend window 2026-10-11 → 2026-11-11 (+7.7%)'));
+    expect(trend).toHaveAttribute('title', expect.stringContaining('retained observation data, not a forecast'));
+    expect(trend.querySelector('svg')).toHaveAttribute('data-point-count', '2');
+
+    // Aligned excess is the headline; the sealed derived value stays beneath it.
+    expect(within(row).getByText('+3.6%')).toBeInTheDocument();
+    expect(within(row).getByText('aligned')).toBeInTheDocument();
+    expect(within(row).getByText('+17.0%')).toBeInTheDocument();
+    expect(within(row).getByText('derived')).toBeInTheDocument();
+    expect(row).toHaveTextContent('2024-01-30 → 2026-11-10');
+
+    expect(screen.getByRole('columnheader', { name: '1M' })).toHaveAttribute('aria-sort', 'descending');
+    expect(screen.getByRole('button', { name: '1M' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('re-windows the sparkline and excess headline when 3M is selected', () => {
+    renderTable([periodStrategy(DERIVED)], 'full');
+    fireEvent.click(screen.getByRole('button', { name: '3M' }));
+
+    expect(screen.getByRole('columnheader', { name: /3M trend/ })).toHaveTextContent('3M trend');
+    const row = screen.getByTestId('fleet-us_x1_3');
+    const trend = within(row).getByTestId('trend-us_x1_3');
+    expect(trend).toHaveAttribute('title', expect.stringContaining('3M trend window 2026-08-12 → 2026-11-11 (+27.3%)'));
+    expect(trend).toHaveAttribute('title', expect.stringContaining('at or after the requested start 2026-08-11'));
+    expect(trend.querySelector('svg')).toHaveAttribute('data-point-count', '4');
+
+    expect(within(row).getByText('+2.8%')).toBeInTheDocument();
+    expect(within(row).queryByText('+3.6%')).not.toBeInTheDocument();
+    // The sealed derived excess keeps its own run window beneath the aligned headline.
+    expect(within(row).getByText('+17.0%')).toBeInTheDocument();
+    expect(within(row).getByText('derived')).toBeInTheDocument();
+    expect(row).toHaveTextContent('2024-01-30 → 2026-11-10');
+
+    expect(screen.getByRole('columnheader', { name: '3M' })).toHaveAttribute('aria-sort', 'descending');
+    expect(screen.getByRole('columnheader', { name: '1M' })).toHaveAttribute('aria-sort', 'none');
+    expect(screen.getByRole('button', { name: '3M' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '1M' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('keeps visible reasons for a missing trend and aligned excess', () => {
+    const onePoint = strategyRowsFromNav(run({ modelVersionId: 'one_point', title: 'One point' }), nav([
+      ['2026-11-11', 100],
+    ]))[0];
+    renderTable([onePoint, cnWithoutBenchmarkWealth()], 'full');
+
+    const one = screen.getByTestId('fleet-one_point');
+    const trend = within(one).getByTestId('trend-one_point');
+    expect(trend).toHaveAttribute('aria-label', expect.stringContaining('Only 1 observation in the 1M window'));
+    expect(one).toHaveTextContent('Only 1 observation in the 1M window; no measured return is shown.');
+    const aligned = within(one).getByTestId('excess-one_point');
+    expect(aligned).toHaveAttribute('aria-label', expect.stringContaining('Only 1 observation in the 1M window'));
+
+    const china = screen.getByTestId('fleet-cn_27_v1_3');
+    expect(within(china).getByTestId('excess-cn_27_v1_3'))
+      .toHaveAttribute('aria-label', expect.stringContaining('No retained benchmark wealth column is available for 000300'));
+    expect(china).toHaveTextContent('No retained benchmark wealth column is available for 000300');
+  });
+
+  it('never computes excess for governed index rows', () => {
+    renderTable([qqqIndex()], 'full');
+    const index = screen.getByTestId('ranking-index-us-QQQ');
+    expect(within(index).getByTestId('excess-index:us:QQQ'))
+      .toHaveAttribute('aria-label', expect.stringContaining('Index rows are close-to-close price returns; excess is not computed.'));
+    expect(within(index).queryByText('aligned')).not.toBeInTheDocument();
+    expect(within(index).queryByText('derived')).not.toBeInTheDocument();
   });
 });
