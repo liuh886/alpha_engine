@@ -32,12 +32,72 @@ class PrivateLedgerError(ValueError):
     """Missing, stale or unconfirmed protected ledger state; no public fallback."""
 
 
+class PrivateLedgerConflictError(PrivateLedgerError):
+    """A concurrent private 'main' writer won the fast-forward CAS race."""
+
+
+class PrivateLedgerAuthError(PrivateLedgerError):
+    """The scoped Git credential cannot authenticate to the private archive."""
+
+
+_GIT_FAILURE = "private ledger Git operation failed; restore authoritative state before retry"
+_GIT_CONFLICT_MARKERS = ("non-fast-forward", "fetch first", "rejected", "stale info")
+_GIT_AUTH_MARKERS = (
+    "permission denied",
+    "publickey",
+    "could not read from remote repository",
+    "repository not found",
+    "host key verification failed",
+)
+_CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f]")
+_GIT_DETAIL_LIMIT = 200
+
+
+def _git_subcommand(args: tuple[str, ...]) -> str:
+    """Return the git subcommand, skipping global options and their values."""
+    skip_value = False
+    for arg in args:
+        if skip_value:
+            skip_value = False
+        elif arg == "-c":
+            skip_value = True
+        elif not arg.startswith("-"):
+            return arg
+    return "git"
+
+
+def _git_failure(error: subprocess.CalledProcessError) -> tuple[str, str]:
+    """Sanitize captured Git output: no control characters or environment data."""
+    lines: list[str] = []
+    for stream in (error.stderr, error.stdout):
+        if stream is None:
+            continue
+        text = stream.decode("utf-8", errors="replace") if isinstance(stream, bytes) else str(stream)
+        for raw in text.splitlines():
+            line = " ".join(_CONTROL_CHARACTERS.sub(" ", raw).split())
+            if line:
+                lines.append(line)
+    classified = "\n".join(lines).lower()
+    markers = _GIT_CONFLICT_MARKERS + _GIT_AUTH_MARKERS
+    diagnostic = [line for line in lines if any(marker in line.lower() for marker in markers)]
+    return classified, " | ".join((diagnostic or lines)[-2:])[:_GIT_DETAIL_LIMIT]
+
+
 def _git(worktree: Path, env: dict[str, str], *args: str, data: bytes | None = None) -> bytes:
     try:
         return subprocess.run(["git", "-c", f"core.hooksPath={worktree / 'no-hooks'}", *args],
             cwd=worktree, env=env, input=data, check=True, capture_output=True, timeout=180).stdout
+    except subprocess.CalledProcessError as error:
+        classified, detail = _git_failure(error)
+        context = f"git {_git_subcommand(args)}" + (f": {detail}" if detail else "")
+        message = f"{_GIT_FAILURE} ({context})"
+        if any(marker in classified for marker in _GIT_CONFLICT_MARKERS):
+            raise PrivateLedgerConflictError(message) from None
+        if any(marker in classified for marker in _GIT_AUTH_MARKERS):
+            raise PrivateLedgerAuthError(message) from None
+        raise PrivateLedgerError(message) from None
     except (subprocess.SubprocessError, OSError):
-        raise PrivateLedgerError("private ledger Git operation failed; restore authoritative state before retry") from None
+        raise PrivateLedgerError(_GIT_FAILURE) from None
 
 
 def _fetch(worktree: Path, env: dict[str, str], revision: str | None = None) -> str:
