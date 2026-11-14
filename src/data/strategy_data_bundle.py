@@ -25,6 +25,8 @@ STRATEGY_SGOV_DATA_SYMBOLS = (
 )
 STRATEGY_MANIFEST_NAME = "strategy_data_manifest.json"
 ALLOWED_STRATEGY_ROLES = {"tradable", "signal_reference"}
+SIGNAL_REFERENCE_SESSION_AUTHORITY = "QQQ"
+SIGNAL_REFERENCE_SESSION_FILTER_POLICY = "us_equity_session_only_v1"
 
 
 class StrategyDataBundleError(ValueError):
@@ -159,6 +161,57 @@ def _fetch_yahoo_signal_reference(
     return frame, "yfinance", symbol
 
 
+def _equity_session_calendar(
+    frames: Mapping[str, pd.DataFrame],
+    roles: Mapping[str, str],
+) -> set[pd.Timestamp]:
+    """Return the bundle's own US equity sessions from its primary tradable ETF."""
+
+    authority = SIGNAL_REFERENCE_SESSION_AUTHORITY
+    if roles.get(authority) != "tradable":
+        raise StrategyDataBundleError(
+            f"signal-reference session authority is not a declared tradable: {authority}"
+        )
+    frame = frames.get(authority)
+    if frame is None or "date" not in frame.columns:
+        raise StrategyDataBundleError(
+            f"signal-reference session authority calendar is absent: {authority}"
+        )
+    dates = pd.to_datetime(frame["date"], errors="coerce").dropna().dt.normalize()
+    sessions = {pd.Timestamp(value) for value in dates}
+    if not sessions:
+        raise StrategyDataBundleError(
+            f"signal-reference session authority calendar is empty: {authority}"
+        )
+    return sessions
+
+
+def _filter_signal_reference_sessions(
+    frame: pd.DataFrame,
+    *,
+    symbol: str,
+    sessions: set[pd.Timestamp],
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Keep only signal-reference rows on the bundle's equity session calendar."""
+
+    dates = pd.to_datetime(frame["date"], errors="coerce").dt.normalize()
+    keep = dates.isin(sessions)
+    removed_dates = sorted(
+        {pd.Timestamp(value).date().isoformat() for value in dates.loc[~keep].dropna()}
+    )
+    filtered = frame.loc[keep].reset_index(drop=True)
+    if filtered.empty:
+        raise StrategyDataBundleError(
+            f"signal reference {symbol} has no rows on the governed equity session calendar"
+        )
+    return filtered, {
+        "input_rows": int(len(frame)),
+        "retained_rows": int(len(filtered)),
+        "removed_count": len(removed_dates),
+        "removed_dates": removed_dates,
+    }
+
+
 def build_strategy_data_bundle(
     *,
     etf_bundle_root: str | Path,
@@ -172,7 +225,18 @@ def build_strategy_data_bundle(
     supplemental_roles: Mapping[str, str] | None = None,
     bundle_id: str = "qqqi_qqq_tqqq_vix_vxn_strategy_data_v1",
 ) -> dict[str, Any]:
-    """Build one immutable strategy data identity for declared tradables/signals."""
+    """Build one immutable strategy data identity for declared tradables/signals.
+
+    Signal-reference rows (``^VIX``/``^VXN``) are restricted to the US equity
+    sessions present for the bundle's primary tradable reference (``QQQ``)
+    before sealing, so future builds are reproducible even when a provider
+    returns non-session stub rows. The applied rule is recorded under
+    ``details.signal_reference_session_filter``.
+
+    Loading an existing bundle does not re-filter or rewrite it. The frozen QQQ
+    v4.3 baseline labels were derived from an unfiltered provider vintage and
+    remain unchanged pending an Owner re-freeze decision.
+    """
 
     etf_root = Path(etf_bundle_root).resolve()
     output = Path(output_root).resolve()
@@ -204,6 +268,7 @@ def build_strategy_data_bundle(
         **{symbol: "tradable" for symbol in ETF_REFERENCE_SYMBOLS},
         **supplemental_role_map,
     }
+    authority_sessions = _equity_session_calendar(frames, roles)
 
     missing: list[str] = []
     supplemental_attempts: dict[str, dict[str, Any]] = {}
@@ -240,6 +305,39 @@ def build_strategy_data_bundle(
                 "role": roles[symbol],
                 "error": f"{type(exc).__name__}: {exc}",
             }
+
+    # Providers occasionally emit non-session stub rows for signal references.
+    # Apply one rule at assembly time so live and cached/adapter-backed frames
+    # are both bound to the bundle's own tradable-session calendar.
+    signal_reference_session_filter: dict[str, dict[str, Any]] = {}
+    for symbol, role in roles.items():
+        if role != "signal_reference":
+            continue
+        frame = frames.get(symbol)
+        if frame is None:
+            continue
+        try:
+            filtered, filter_evidence = _filter_signal_reference_sessions(
+                frame,
+                symbol=symbol,
+                sessions=authority_sessions,
+            )
+        except StrategyDataBundleError as exc:
+            frames.pop(symbol, None)
+            missing.append(symbol)
+            supplemental_attempts[symbol] = {
+                "ok": False,
+                "role": role,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+            continue
+        frames[symbol] = filtered
+        signal_reference_session_filter[symbol] = filter_evidence
+        attempt = supplemental_attempts.get(symbol)
+        if isinstance(attempt, dict) and attempt.get("ok"):
+            attempt["rows"] = int(len(filtered))
+            attempt["first_date"] = filtered["date"].min().date().isoformat()
+            attempt["last_date"] = filtered["date"].max().date().isoformat()
 
     file_hashes: dict[str, str] = {}
     coverage_rows: list[dict[str, Any]] = []
@@ -328,6 +426,12 @@ def build_strategy_data_bundle(
             "source_etf_manifest_sha256": _sha256(etf_manifest_path),
             "selected_providers": providers,
             "supplemental_attempts": supplemental_attempts,
+            "signal_reference_session_filter": {
+                "policy_id": SIGNAL_REFERENCE_SESSION_FILTER_POLICY,
+                "authority_symbol": SIGNAL_REFERENCE_SESSION_AUTHORITY,
+                "authority_session_count": int(len(authority_sessions)),
+                "symbols": signal_reference_session_filter,
+            },
             "etf_coverage_rows": int(len(etf_coverage)),
             "signal_references_are_non_tradable": True,
             "role_contract_version": "1.1",
