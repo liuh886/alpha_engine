@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import json
 import hashlib
+import shutil
 import tempfile
 import unittest
 import zipfile
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -374,3 +376,444 @@ class BatchPlanningTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# Campaign Sharding: independent Colab windows, not intra-VM multiprocessing.
+
+def test_shard_manifest_is_total_disjoint_and_deterministic():
+    from src.research.colab_campaign_shards import compile_shards, assigned_trial_ids
+
+    batch = plan(spec())
+    manifest = compile_shards(batch, 3)
+    assert manifest == compile_shards(batch, 3)
+    actual = [tid for s in manifest["shards"] for tid in s["trial_ids"]]
+    assert len(actual) == batch["trial_count"] == len(set(actual))
+    assert set(actual) == {t["trial_id"] for t in batch["trials"]}
+    for shard in manifest["shards"]:
+        got = assigned_trial_ids(manifest, batch, shard["shard_id"])
+        assert got == set(shard["trial_ids"])
+        assert shard["trial_count"] == len(got)
+    assert [s["trial_count"] for s in manifest["shards"]] == [3, 3, 2]
+
+
+def test_shard_rejects_changed_identity_duplicate_and_unknown_id():
+    from src.research.colab_campaign_shards import compile_shards, assigned_trial_ids
+
+    batch = plan(spec())
+    manifest = compile_shards(batch, 2)
+    with pytest.raises(ExchangeError, match="unknown shard"):
+        assigned_trial_ids(manifest, batch, "s03")
+    tampered = json.loads(json.dumps(manifest))
+    tampered["shards"][1]["trial_ids"][0] = tampered["shards"][0]["trial_ids"][0]
+    with pytest.raises(ExchangeError, match="frozen shard"):
+        assigned_trial_ids(tampered, batch, "s02")
+    modified_batch = json.loads(json.dumps(batch))
+    modified_batch["runner_git_sha"] = "2" * 40
+    with pytest.raises(ExchangeError, match="frozen shard"):
+        assigned_trial_ids(manifest, modified_batch, "s01")
+    with pytest.raises(ExchangeError, match="shard count"):
+        compile_shards(batch, batch["trial_count"] + 1)
+
+
+def test_shard_trial_runner_preserves_disjoint_outputs_and_resume(retained_trial, tmp_path):
+    from src.research.colab_campaign_shards import compile_shards
+
+    batch_file, data, _ = retained_trial
+    batch = plan(json.loads(batch_file.read_text()))
+    manifest = compile_shards(batch, 2)
+    path = tmp_path / "shards.json"
+    path.write_text(json.dumps(manifest))
+    written = []
+    for shard_id in ("s01", "s02"):
+        outputs = tmp_path / shard_id / "runs"
+        with patch("src.research.colab_experiment_batch.verify_stage", return_value={
+            "bundle_manifest_sha256": "a" * 64, "history_archive_sha256": "b" * 64
+        }), patch("src.research.colab_experiment_batch._git_head", return_value="1" * 40), patch(
+            "src.research.study_workspace.run_study", side_effect=fake_study
+        ) as fit:
+            first = execute(
+                batch_spec=batch_file, data_root=data, output_root=outputs,
+                shard_manifest=path, shard_id=shard_id, max_new_trials=1
+            )
+            assert first["new_trials"] == 1 and first["campaign_trials"] == 8
+            second = execute(
+                batch_spec=batch_file, data_root=data, output_root=outputs,
+                shard_manifest=path, shard_id=shard_id, max_new_trials=100,
+                resume=True
+            )
+            assert second["pending_trials"] == 0 and fit.call_count == 4
+            assert second["shard_id"] == shard_id and second["trials"] == 4
+        ids = {p.parent.name for p in outputs.rglob("trial-result.json")}
+        assert ids == set(manifest["shards"][int(shard_id[-2:])-1]["trial_ids"])
+        written.append(ids)
+    assert written[0].isdisjoint(written[1])
+
+
+def test_shard_runner_fails_closed_on_shared_output_and_foreign_receipts(
+    retained_trial, tmp_path
+):
+    from src.research.colab_campaign_shards import compile_shards
+
+    batch_file, data, _ = retained_trial
+    manifest = compile_shards(plan(json.loads(batch_file.read_text())), 2)
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(manifest))
+    with pytest.raises(ExchangeError, match="namespaced"):
+        execute(
+            batch_spec=batch_file, data_root=data, output_root=tmp_path / "shared",
+            shard_manifest=path, shard_id="s01", max_new_trials=1
+        )
+    outputs = tmp_path / "s01" / "runs"
+    alien = outputs / spec()["batch_id"] / "trials" / manifest["shards"][1]["trial_ids"][0]
+    alien.mkdir(parents=True)
+    with patch("src.research.colab_experiment_batch.verify_stage", return_value={
+        "bundle_manifest_sha256": "a" * 64, "history_archive_sha256": "b" * 64
+    }), patch("src.research.colab_experiment_batch._git_head", return_value="1" * 40):
+        with pytest.raises(ExchangeError, match="foreign shard"):
+            execute(
+                batch_spec=batch_file, data_root=data, output_root=outputs,
+                shard_manifest=path, shard_id="s01", max_new_trials=1,
+                resume=True
+            )
+
+
+# Cross-window merge of independently transported shard ZIPs. The merger must
+# accept only complete, assigned, pinned shard payloads and seal one unreviewed
+# evidence set without ranking winners or touching the input ZIPs.
+
+@contextmanager
+def _merge_stage(data, run=fake_study):
+    with patch("src.research.colab_experiment_batch.verify_stage", return_value={
+            "bundle_manifest_sha256": "a" * 64,
+            "history_archive_sha256": "b" * 64}), patch(
+            "src.research.colab_experiment_batch._git_head", return_value="1" * 40), patch(
+            "src.research.study_workspace.run_study", side_effect=run):
+        yield
+
+
+def _merge_batch(tmp_path):
+    from src.research.colab_campaign_shards import compile_shards
+
+    data = tmp_path / "data"
+    pool = data / "configs/research_universes/us_selected_equities_v2.yaml"
+    pool.parent.mkdir(parents=True)
+    pool.write_text("symbols:\n" + "".join(f"  - S{i:03}\n" for i in range(87)))
+    batch_file = tmp_path / "batch.json"
+    batch_file.write_text(json.dumps(spec()))
+    batch = plan(json.loads(batch_file.read_text()))
+    manifest = compile_shards(batch, 2)
+    manifest_file = tmp_path / "shards.json"
+    manifest_file.write_text(json.dumps(manifest))
+    return batch_file, data, batch, manifest, manifest_file
+
+
+def _run_shard(batch_file, data, outputs, manifest_file, shard_id,
+               *, run=fake_study, limit=100):
+    with _merge_stage(data, run):
+        return execute(batch_spec=batch_file, data_root=data, output_root=outputs,
+                       shard_manifest=manifest_file, shard_id=shard_id,
+                       max_new_trials=limit)
+
+
+def _seal_shard(batch_file, data, outputs, archive):
+    with _merge_stage(data):
+        saved = checkpoint_archive(
+            batch_spec=batch_file, data_root=data, output_root=outputs, archive=archive)
+    return {"archive": str(archive), "archive_sha256": saved["archive_sha256"],
+            "index_sha256": saved["index_sha256"]}
+
+
+def _build_shard_pins(batch_file, data, manifest_file, root, *, run=fake_study,
+                      limits=None):
+    pins, outputs = {}, {}
+    for shard_id in ("s01", "s02"):
+        out = root / shard_id / "runs"
+        _run_shard(batch_file, data, out, manifest_file, shard_id, run=run,
+                   limit=(limits or {}).get(shard_id, 100))
+        pins[shard_id] = _seal_shard(batch_file, data, out, root / f"{shard_id}.zip")
+        outputs[shard_id] = out
+    return pins, outputs
+
+
+def _tree_bytes(root: Path) -> dict[str, bytes]:
+    return {p.relative_to(root).as_posix(): p.read_bytes()
+            for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+def test_merge_complete_shards_matches_single_window_evidence(tmp_path):
+    from src.research.colab_campaign_shards import merge_shards
+
+    batch_file, data, batch, manifest, manifest_file = _merge_batch(tmp_path)
+    single = tmp_path / "single"
+    with _merge_stage(data):
+        execute(batch_spec=batch_file, data_root=data, output_root=single, max_new_trials=100)
+    pins, _outputs = _build_shard_pins(batch_file, data, manifest_file, tmp_path)
+
+    merged_root = tmp_path / "merged"
+    merged_archive = tmp_path / "merged.zip"
+    with _merge_stage(data):
+        result = merge_shards(
+            batch_spec=batch_file, data_root=data, manifest=manifest,
+            shard_pins=pins, output_root=merged_root, archive=merged_archive)
+
+    assert result["status"] == "SHARD_MERGE_SEALED_UNREVIEWED"
+    assert result["shard_count"] == 2 and result["trial_count"] == 8
+    assert result["ready"] == 8 and result["blocked"] == 0
+    assert result["research_only"] is True and result["trade_ready"] is False
+    assert result["pit_certified"] is False
+    assert result["review_status"] == "incoming_unreviewed"
+    assert result["ranking_performed"] is False and result["winner_claimed"] is False
+    assert result["archive_sha256"] == hashlib.sha256(merged_archive.read_bytes()).hexdigest()
+
+    expected, actual = _tree_bytes(single), _tree_bytes(merged_root)
+    assert set(actual) == set(expected)
+    for name in sorted(expected):
+        if name.endswith("trial-result.json"):
+            left, right = json.loads(expected[name]), json.loads(actual[name])
+            left.pop("elapsed_seconds")
+            right.pop("elapsed_seconds")
+            assert left == right
+        else:
+            assert actual[name] == expected[name]
+
+    restored = tmp_path / "restored"
+    with _merge_stage(data):
+        got = restore_archive(
+            batch_spec=batch_file, data_root=data, archive=merged_archive,
+            expected_archive_sha256=result["archive_sha256"],
+            expected_index_sha256=result["index_sha256"], output_root=restored)
+    assert got["files"] == result["index_files"] == len(expected)
+    assert _tree_bytes(restored) == actual
+
+
+def test_merge_refuses_missing_pin_and_incomplete_shard(tmp_path):
+    from src.research.colab_campaign_shards import ShardMergeError, merge_shards
+
+    batch_file, data, batch, manifest, manifest_file = _merge_batch(tmp_path)
+    pins, _outputs = _build_shard_pins(batch_file, data, manifest_file, tmp_path)
+
+    tampered_manifest = json.loads(json.dumps(manifest))
+    tampered_manifest["shards"][0]["trial_ids"][0] = tampered_manifest["shards"][1]["trial_ids"][0]
+    with _merge_stage(data):
+        with pytest.raises(ShardMergeError, match="canonical batch plan"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=tampered_manifest,
+                shard_pins=pins, output_root=tmp_path / "manifest-merged",
+                archive=tmp_path / "manifest-merged.zip")
+    assert not (tmp_path / "manifest-merged").exists()
+
+    with _merge_stage(data):
+        with pytest.raises(ShardMergeError, match="pins must exactly cover"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=manifest,
+                shard_pins={"s01": pins["s01"]}, output_root=tmp_path / "missing-pin",
+                archive=tmp_path / "missing-pin.zip")
+    assert not (tmp_path / "missing-pin").exists()
+    assert not (tmp_path / "missing-pin.zip").exists()
+
+    chunk = tmp_path / "chunk" / "s01" / "runs"
+    _run_shard(batch_file, data, chunk, manifest_file, "s01", limit=1)
+    chunk_pin = _seal_shard(batch_file, data, chunk, tmp_path / "chunk-s01.zip")
+    with _merge_stage(data):
+        with pytest.raises(ShardMergeError, match="assignment mismatch"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=manifest,
+                shard_pins={"s01": chunk_pin, "s02": pins["s02"]},
+                output_root=tmp_path / "chunk-merged",
+                archive=tmp_path / "chunk-merged.zip")
+    assert not (tmp_path / "chunk-merged").exists()
+
+    partial = tmp_path / "partial" / "s01" / "runs"
+    _run_shard(batch_file, data, partial, manifest_file, "s01")
+    trial_id = manifest["shards"][0]["trial_ids"][0]
+    (partial / batch["batch_id"] / "trials" / trial_id / "trial-result.json").unlink()
+    partial_pin = _seal_shard(batch_file, data, partial, tmp_path / "partial-s01.zip")
+    with _merge_stage(data):
+        with pytest.raises(ShardMergeError, match="incomplete shard trial evidence"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=manifest,
+                shard_pins={"s01": partial_pin, "s02": pins["s02"]},
+                output_root=tmp_path / "partial-merged",
+                archive=tmp_path / "partial-merged.zip")
+    assert not (tmp_path / "partial-merged").exists()
+
+
+def test_merge_refuses_foreign_and_duplicate_trials(tmp_path):
+    from src.research.colab_campaign_shards import ShardMergeError, merge_shards
+
+    batch_file, data, batch, manifest, manifest_file = _merge_batch(tmp_path)
+    pins, outputs = _build_shard_pins(batch_file, data, manifest_file, tmp_path)
+
+    foreign_root = tmp_path / "foreign" / "s01" / "runs"
+    _run_shard(batch_file, data, foreign_root, manifest_file, "s01")
+    foreign_trial = manifest["shards"][1]["trial_ids"][0]
+    shutil.copytree(
+        outputs["s02"] / batch["batch_id"] / "trials" / foreign_trial,
+        foreign_root / batch["batch_id"] / "trials" / foreign_trial)
+    foreign_pin = _seal_shard(batch_file, data, foreign_root, tmp_path / "foreign-s01.zip")
+    with _merge_stage(data):
+        with pytest.raises(ShardMergeError, match="assignment mismatch"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=manifest,
+                shard_pins={"s01": foreign_pin, "s02": pins["s02"]},
+                output_root=tmp_path / "foreign-merged",
+                archive=tmp_path / "foreign-merged.zip")
+    assert not (tmp_path / "foreign-merged").exists()
+
+    duplicate = tmp_path / "duplicate-s01.zip"
+    with zipfile.ZipFile(tmp_path / "s01.zip") as pack:
+        entries = [(info.filename, pack.read(info.filename)) for info in pack.infolist()]
+    with zipfile.ZipFile(duplicate, "w", compression=zipfile.ZIP_DEFLATED) as pack:
+        for name, body in entries:
+            pack.writestr(name, body)
+        name, body = next(entry for entry in entries
+                          if entry[0].endswith("study-receipt.json"))
+        with pytest.warns(UserWarning, match="Duplicate name"):
+            pack.writestr(name, body)
+    duplicate_pin = {"archive": str(duplicate),
+                     "archive_sha256": hashlib.sha256(duplicate.read_bytes()).hexdigest(),
+                     "index_sha256": pins["s01"]["index_sha256"]}
+    with _merge_stage(data):
+        with pytest.raises(ExchangeError, match="member budget"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=manifest,
+                shard_pins={"s01": duplicate_pin, "s02": pins["s02"]},
+                output_root=tmp_path / "duplicate-merged",
+                archive=tmp_path / "duplicate-merged.zip")
+
+    with _merge_stage(data):
+        with pytest.raises(ShardMergeError, match="assignment mismatch"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=manifest,
+                shard_pins={"s01": pins["s01"], "s02": pins["s01"]},
+                output_root=tmp_path / "reused-merged",
+                archive=tmp_path / "reused-merged.zip")
+    assert not (tmp_path / "reused-merged").exists()
+
+
+def test_merge_refuses_tampered_transport_and_preserves_inputs(tmp_path):
+    from src.research.colab_campaign_shards import merge_shards
+
+    batch_file, data, batch, manifest, manifest_file = _merge_batch(tmp_path)
+    pins, _outputs = _build_shard_pins(batch_file, data, manifest_file, tmp_path)
+    originals = {shard_id: (tmp_path / f"{shard_id}.zip").read_bytes() for shard_id in pins}
+
+    tampered = tmp_path / "tampered-s01.zip"
+    shutil.copyfile(tmp_path / "s01.zip", tampered)
+    tampered.write_bytes(tampered.read_bytes() + b"tampered")
+    tampered_pins = {"s01": {**pins["s01"], "archive": str(tampered)}, "s02": pins["s02"]}
+    with _merge_stage(data):
+        with pytest.raises(ExchangeError, match="pin/size"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=manifest,
+                shard_pins=tampered_pins, output_root=tmp_path / "tampered-merged",
+                archive=tmp_path / "tampered-merged.zip")
+    assert not (tmp_path / "tampered-merged").exists()
+
+    wrong_pins = {"s01": pins["s01"],
+                  "s02": {**pins["s02"], "index_sha256": "f" * 64}}
+    with _merge_stage(data):
+        with pytest.raises(ExchangeError, match="index SHA"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=manifest,
+                shard_pins=wrong_pins, output_root=tmp_path / "wrong-index-merged",
+                archive=tmp_path / "wrong-index-merged.zip")
+    assert not (tmp_path / "wrong-index-merged").exists()
+
+    for shard_id, content in originals.items():
+        assert (tmp_path / f"{shard_id}.zip").read_bytes() == content
+    assert not (tmp_path / "tampered-merged.zip").exists()
+    assert not (tmp_path / "wrong-index-merged.zip").exists()
+
+
+def test_merge_refuses_existing_outputs_and_reports_flags(tmp_path):
+    from src.research.colab_campaign_shards import ShardMergeError, merge_shards
+
+    batch_file, data, batch, manifest, manifest_file = _merge_batch(tmp_path)
+
+    def blocked_first(trial_id):
+        def run(spec_path, source_root, output):
+            status = "blocked" if spec_path.parent.name == trial_id else "ready"
+            return fake_study(spec_path, source_root, output, status)
+        return run
+
+    blocked_trial = manifest["shards"][0]["trial_ids"][0]
+    pins, _outputs = _build_shard_pins(
+        batch_file, data, manifest_file, tmp_path / "blocked",
+        run=blocked_first(blocked_trial))
+
+    existing_root = tmp_path / "existing-root"
+    existing_root.mkdir()
+    with _merge_stage(data):
+        with pytest.raises(ShardMergeError, match="fresh"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=manifest,
+                shard_pins=pins, output_root=existing_root,
+                archive=tmp_path / "existing.zip")
+    existing_archive = tmp_path / "existing.zip"
+    existing_archive.write_bytes(b"occupied")
+    with _merge_stage(data):
+        with pytest.raises(ShardMergeError, match="fresh"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=manifest,
+                shard_pins=pins, output_root=tmp_path / "fresh-root",
+                archive=existing_archive)
+    assert not (tmp_path / "fresh-root").exists()
+    with _merge_stage(data):
+        with pytest.raises(ShardMergeError, match="outside"):
+            merge_shards(
+                batch_spec=batch_file, data_root=data, manifest=manifest,
+                shard_pins=pins, output_root=tmp_path / "nested",
+                archive=tmp_path / "nested" / "merged.zip")
+    assert not (tmp_path / "nested").exists()
+
+    merged_root = tmp_path / "merged"
+    merged_archive = tmp_path / "merged.zip"
+    with _merge_stage(data):
+        result = merge_shards(
+            batch_spec=batch_file, data_root=data, manifest=manifest,
+            shard_pins=pins, output_root=merged_root, archive=merged_archive)
+    assert result["ready"] == 7 and result["blocked"] == 1
+    assert result["trial_count"] == 8
+    assert result["review_status"] == "incoming_unreviewed"
+    assert result["research_only"] is True and result["trade_ready"] is False
+    assert result["pit_certified"] is False
+    assert result["ranking_performed"] is False and result["winner_claimed"] is False
+
+
+def test_merge_cli_exit_zero_and_blocked_exit_ten(tmp_path, capsys):
+    from src.research.colab_campaign_shards import main as shard_main
+
+    batch_file, data, batch, manifest, manifest_file = _merge_batch(tmp_path)
+    pins, _outputs = _build_shard_pins(batch_file, data, manifest_file, tmp_path)
+    pins_file = tmp_path / "pins.json"
+    pins_file.write_text(json.dumps(pins))
+
+    with _merge_stage(data):
+        code = shard_main([
+            "merge", "--batch-spec", str(batch_file), "--manifest", str(manifest_file),
+            "--data-root", str(data), "--shard-pins", str(pins_file),
+            "--output-root", str(tmp_path / "cli-merged"),
+            "--archive", str(tmp_path / "cli-merged.zip")])
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "SHARD_MERGE_SEALED_UNREVIEWED"
+    assert payload["ready"] == 8 and payload["blocked"] == 0
+    assert payload["trade_ready"] is False
+
+    blocked_pins = tmp_path / "blocked-pins.json"
+    blocked_pins.write_text(json.dumps({"s01": pins["s01"]}))
+    with _merge_stage(data):
+        code = shard_main([
+            "merge", "--batch-spec", str(batch_file), "--manifest", str(manifest_file),
+            "--data-root", str(data), "--shard-pins", str(blocked_pins),
+            "--output-root", str(tmp_path / "cli-blocked"),
+            "--archive", str(tmp_path / "cli-blocked.zip")])
+    assert code == 10
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "BLOCKED_SHARD_CONTRACT: " in captured.err
+    assert "pins must exactly cover" in captured.err
+    assert not (tmp_path / "cli-blocked").exists()
+    assert not (tmp_path / "cli-blocked.zip").exists()
+
