@@ -25,6 +25,19 @@ export interface SecurityEvidence {
   bars: SecurityBar[]; events: SecurityEvent[]; bindings: FormalBinding[];
 }
 
+/**
+ * A governed publication gap rather than corrupt evidence: the catalog or the
+ * instrument's price bytes have not been published yet. Callers can render an
+ * honest "awaiting publication" state without inventing or substituting a
+ * series, while genuine parse/identity failures stay ordinary errors.
+ */
+export class SecurityEvidenceUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SecurityEvidenceUnavailableError';
+  }
+}
+
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid security evidence object.');
   return value as Record<string, unknown>;
@@ -60,7 +73,7 @@ function array(value: unknown): unknown[] {
 const root = () => `${import.meta.env.BASE_URL}data/market-evidence/`;
 async function read(path: string): Promise<string> {
   const response = await fetch(`${root()}${path}`, { cache: 'no-cache' });
-  if (!response.ok) throw new Error(`Security history unavailable (${response.status}).`);
+  if (!response.ok) throw new SecurityEvidenceUnavailableError(`Security history unavailable (${response.status}).`);
   return response.text();
 }
 
@@ -92,7 +105,8 @@ export function parseSecurityCatalog(value: unknown, market: 'us' | 'cn'): Secur
 export function resolveSecurity(catalog: SecurityCatalog, requested: string): SecuritySymbol {
   const matches = catalog.symbols.filter(row => row.symbol === requested || row.instrument_id === requested
     || row.source_instruments.includes(requested));
-  if (matches.length !== 1) throw new Error('This instrument has no unambiguous published price history in this market.');
+  if (matches.length === 0) throw new SecurityEvidenceUnavailableError('This instrument has no published price history in this market.');
+  if (matches.length > 1) throw new Error('This instrument has no unambiguous published price history in this market.');
   return matches[0];
 }
 

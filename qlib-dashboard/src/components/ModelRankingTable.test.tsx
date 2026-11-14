@@ -96,6 +96,14 @@ function qqqIndex(): ModelRankingRow {
   ], '2026-11-12')[0];
 }
 
+function spxIndex(): ModelRankingRow {
+  return indexRowsFromBars('us', 'SPX', 'S&P 500', [
+    bar('2026-11-04', 6792.3),
+    bar('2026-11-06', 6815.1),
+    bar('2026-11-11', 6899.62),
+  ], '2026-11-12')[0];
+}
+
 function renderTable(rows: ModelRankingRow[], density: 'compact' | 'full' = 'compact', extra: Partial<Parameters<typeof ModelRankingTable>[0]> = {}) {
   return render(
     <MemoryRouter>
@@ -119,6 +127,32 @@ describe('ModelRankingTable', () => {
     }
     expect(within(screen.getByTestId('ranking-index-us-QQQ')).getByRole('link', { name: /Price history/ }))
       .toHaveAttribute('href', '/securities/us/QQQ');
+  });
+
+  it('places the governed S&P 500 row in the US group with its own benchmark and no excess', () => {
+    renderTable([usStrategy(), cnStrategy(), qqqIndex(), spxIndex()], 'full');
+    const group = screen.getByTestId('ranking-group-us');
+    const spx = screen.getByTestId('ranking-index-us-SPX');
+    const cnGroup = screen.getByTestId('ranking-group-cn');
+    expect(group.compareDocumentPosition(spx) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(spx.compareDocumentPosition(cnGroup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(spx).toHaveTextContent('S&P 500');
+    expect(within(spx).getByTestId('cell-index:us:SPX-1w')).toHaveTextContent('+1.6%');
+    expect(spx).toHaveTextContent('Index rows are close-to-close price returns; excess is not computed.');
+    expect(spx).not.toHaveTextContent('Not governed');
+    expect(within(spx).getByRole('link', { name: /Price history/ }))
+      .toHaveAttribute('href', '/securities/us/SPX');
+  });
+
+  it('keeps the S&P 500 index row in the compact US group without strategy metrics', () => {
+    renderTable([usStrategy(), cnStrategy(), qqqIndex(), spxIndex()], 'compact');
+    const spx = screen.getByTestId('ranking-index-us-SPX');
+    const cnGroup = screen.getByTestId('ranking-group-cn');
+    expect(spx.compareDocumentPosition(cnGroup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(spx).toHaveTextContent('S&P 500');
+    expect(within(spx).getByTestId('cell-index:us:SPX-1w')).toHaveTextContent('+1.6%');
+    expect(spx).not.toHaveTextContent('Excess');
+    expect(screen.queryByRole('columnheader', { name: 'Excess' })).not.toBeInTheDocument();
   });
 
   it('sorts by 1M by default and changes order when another horizon is chosen', () => {

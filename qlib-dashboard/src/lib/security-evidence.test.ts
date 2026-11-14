@@ -1,5 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { boundSecurityEvents, parseSecurityCatalog, parseSecurityEvidence, resolveSecurity, securityBarsForPeriod, securityHref } from './security-evidence';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  SecurityEvidenceUnavailableError,
+  boundSecurityEvents,
+  loadSecurityEvidence,
+  parseSecurityCatalog,
+  parseSecurityEvidence,
+  resolveSecurity,
+  securityBarsForPeriod,
+  securityHref,
+} from './security-evidence';
+import { sha256Text } from './model-run-bundle-v2';
 import type { GovernedRunSummary } from './governed-run';
 import { securityMarkers } from './security-markers';
 
@@ -21,7 +31,7 @@ describe('instrument history evidence', () => {
   it('resolves governed aliases within their market and rejects unsafe paths', () => {
     expect(resolveSecurity(catalog(), 'BYD').symbol).toBe('002594');
     expect(resolveSecurity(catalog(), 'cn:002594').symbol).toBe('002594');
-    expect(() => resolveSecurity(catalog(), 'us:002594')).toThrow(/unambiguous/);
+    expect(() => resolveSecurity(catalog(), 'us:002594')).toThrow(/no published price history/);
     expect(() => parseSecurityCatalog({ ...catalog(), ...boundary, evidence_type: 'market_evidence_catalog', symbols: [{ ...symbol, path: '../other.json' }] }, 'cn')).toThrow(/identity/);
   });
   it('rejects conflicting aliases instead of substituting an instrument', () => {
@@ -59,5 +69,84 @@ describe('instrument history evidence', () => {
     expect(securityHref('cn', 'BYD', 'byd')).toBe('#/securities/cn/BYD?model=byd');
     expect(securityHref('hk', 'BYD')).toBeNull();
     expect(securityHref('us', '../QQQ')).toContain('..%2FQQQ');
+  });
+});
+
+const US_PROVIDER = 'd'.repeat(64);
+
+function response(body: string, status = 200): Response {
+  return { ok: status >= 200 && status < 300, status, text: async () => body } as Response;
+}
+
+function spxSymbol(digest: string) {
+  return {
+    symbol: 'SPX', name: 'S&P 500', instrument_id: 'us:SPX', path: 'symbols/SPX.json',
+    sha256: digest, source_sha256: sha, source_instruments: ['SPX'],
+  };
+}
+
+function usCatalog(symbols: unknown[]) {
+  return {
+    ...boundary, market: 'us', evidence_type: 'market_evidence_catalog', cutoff: '2026-11-12',
+    provider_manifest_sha256: US_PROVIDER, symbols, formal_bindings: [],
+  };
+}
+
+function spxPayload() {
+  return {
+    ...boundary, market: 'us', symbol: 'SPX', instrument_id: 'us:SPX', cutoff: '2026-11-12',
+    source_sha256: sha, provider_manifest_sha256: US_PROVIDER,
+    bars: [
+      { time: '2026-11-10', open: 6800, high: 6850, low: 6750, close: 6820, volume: 0 },
+      { time: '2026-11-12', open: 6820, high: 6900, low: 6810, close: 6880, volume: 0 },
+    ],
+    formal_model_events: [],
+  };
+}
+
+describe('governed S&P 500 reference publication', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('resolves /securities/us/SPX once its governed series is published', async () => {
+    const body = JSON.stringify(spxPayload());
+    const digest = await sha256Text(body);
+    const catalog = JSON.stringify(usCatalog([spxSymbol(digest)]));
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/us/catalog.json')) return response(catalog);
+      if (url.endsWith('/us/symbols/SPX.json')) return response(body);
+      return response('', 404);
+    }));
+
+    const evidence = await loadSecurityEvidence('us', 'SPX');
+    expect(evidence).toMatchObject({ market: 'us', symbol: 'SPX', name: 'S&P 500' });
+    expect(evidence.bars.map((bar) => bar.close)).toEqual([6820, 6880]);
+    expect(evidence.events).toEqual([]);
+  });
+
+  it('reports an SPX identity absent from the catalog as awaiting publication', async () => {
+    const catalog = JSON.stringify(usCatalog([]));
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/us/catalog.json')) return response(catalog);
+      return response('', 404);
+    }));
+
+    await expect(loadSecurityEvidence('us', 'SPX')).rejects.toBeInstanceOf(SecurityEvidenceUnavailableError);
+    await expect(loadSecurityEvidence('us', 'SPX')).rejects.toThrow(/no published price history/);
+  });
+
+  it('reports a 404 SPX symbols file as awaiting publication, not corrupt evidence', async () => {
+    const body = JSON.stringify(spxPayload());
+    const digest = await sha256Text(body);
+    const catalog = JSON.stringify(usCatalog([spxSymbol(digest)]));
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/us/catalog.json')) return response(catalog);
+      return response('', 404);
+    }));
+
+    await expect(loadSecurityEvidence('us', 'SPX')).rejects.toBeInstanceOf(SecurityEvidenceUnavailableError);
+    await expect(loadSecurityEvidence('us', 'SPX')).rejects.toThrow(/Security history unavailable \(404\)/);
   });
 });

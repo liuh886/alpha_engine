@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DerivedExcess } from './derived-excess';
 import type { GovernedRunSummary } from './governed-run';
 import {
+  RANKING_INDEXES,
   formatDate,
   formatPrice,
   formatPriceChange,
@@ -170,6 +171,14 @@ describe('model ranking staleness', () => {
 });
 
 describe('index rows', () => {
+  it('declares the ordered governed index identities', () => {
+    expect(RANKING_INDEXES).toEqual([
+      { market: 'us', symbol: 'QQQ', title: 'QQQ' },
+      { market: 'us', symbol: 'SPX', title: 'S&P 500' },
+      { market: 'cn', symbol: '000300', title: 'CSI 300' },
+    ]);
+  });
+
   it('uses governed close levels rather than opens or a baseline overlay', () => {
     const row = indexRowsFromBars('us', 'QQQ', 'QQQ', [
       bar('2026-11-04', 100, 110),
@@ -184,6 +193,22 @@ describe('index rows', () => {
     expect(row.excess?.source).toBe('unavailable');
     expect(row.maxDrawdownBasis).toContain('not the sorted horizon');
     expect(row.maxDrawdownBasis).toContain('Close-to-close');
+  });
+
+  it('keeps each governed index own title as its benchmark, never another market baseline', () => {
+    const bars = [bar('2026-11-04', 100, 110), bar('2026-11-11', 119, 121)];
+    const qqq = indexRowsFromBars('us', 'QQQ', 'QQQ', bars, '2026-11-11')[0];
+    const spx = indexRowsFromBars('us', 'SPX', 'S&P 500', bars, '2026-11-11')[0];
+    const csi = indexRowsFromBars('cn', '000300', 'CSI 300', bars, '2026-11-11')[0];
+    expect(qqq.benchmark).toBe('QQQ');
+    expect(spx.benchmark).toBe('S&P 500');
+    expect(csi.benchmark).toBe('CSI 300');
+    expect(spx.id).toBe('index:us:SPX');
+    expect(spx.market).toBe('us');
+    expect(spx.href).toBe('/securities/us/SPX');
+    expect(spx.excess?.value).toBeNull();
+    expect(spx.excess?.reason).toContain('excess is not computed');
+    expect(spx.signal).toBeUndefined();
   });
 
   it('keeps an index drawdown on close-to-close price levels', () => {

@@ -4,6 +4,15 @@ import { installMembershipFixture } from './membership-fixture';
 type FormalCatalog = { records?: Array<{ manifest_path?: string; model_version_id?: string; evidence_cutoff?: string }> };
 type FormalManifest = { comparability_key?: { start: string; end: string }; sections?: Array<{ section_id?: string; availability_status?: string; path?: string }> };
 type FormalSummary = { display_name?: string; model_version_id?: string };
+type MarketEvidenceCatalog = { symbols?: Array<{ symbol?: string }> };
+
+/** The governed S&P 500 series is optional in checked-in data until its refresh lands. */
+async function isSpxPublished(page: Page): Promise<boolean> {
+  const response = await page.request.get('/data/market-evidence/us/catalog.json');
+  if (!response.ok()) return false;
+  const catalog = await response.json() as MarketEvidenceCatalog;
+  return (catalog.symbols ?? []).some((symbol) => symbol.symbol === 'SPX');
+}
 
 async function loadFormalDisplayNames(page: Page): Promise<string[]> {
   const catalogResponse = await page.request.get('/data/formal-model-runs/catalog.json');
@@ -48,10 +57,19 @@ test('the homepage opens daily research and reads only the formal operating surf
   const markets = page.getByRole('region', { name: 'Benchmark markets' });
   await expect(markets.getByTestId('benchmark-card-us')).toContainText('QQQ');
   await expect(markets.getByTestId('benchmark-card-cn')).toContainText('CSI 300');
+  const spxPublished = await isSpxPublished(page);
   const sp500 = markets.getByTestId('benchmark-card-sp500');
-  await expect(sp500).toContainText('Not governed');
-  await expect(sp500.locator('svg')).toHaveCount(0);
-  await expect(markets.locator('[data-testid="sparkline"]')).toHaveCount(2);
+  await expect(sp500).toContainText('S&P 500');
+  await expect(sp500).toHaveAttribute('href', /\/securities\/us\/SPX$/);
+  await expect(sp500).not.toContainText('Not governed');
+  if (spxPublished) {
+    await expect(sp500).toContainText('As of');
+    await expect(sp500.locator('svg')).toHaveCount(1);
+  } else {
+    await expect(sp500).toContainText('Awaiting governed series');
+    await expect(sp500.locator('svg')).toHaveCount(0);
+  }
+  await expect(markets.locator('[data-testid="sparkline"]')).toHaveCount(spxPublished ? 3 : 2);
   if (testInfo.project.name === 'mobile') await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('tab')).toHaveCount(4);
   else await expect(page.getByRole('navigation', { name: 'Research workspace navigation' }).getByRole('link')).toHaveCount(4);
   expect(retiredRequests).toEqual([]);
@@ -108,8 +126,9 @@ test('fleet horizons disclose retained coverage, per-row as-of dates and stale e
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
   await page.goto('/#/strategies');
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
+  const spxPublished = await isSpxPublished(page);
   await expect(fleet.locator('[data-kind="strategy"]')).toHaveCount(4);
-  await expect(fleet.locator('[data-kind="index"]')).toHaveCount(2);
+  await expect(fleet.locator('[data-kind="index"]')).toHaveCount(spxPublished ? 3 : 2);
 
   const catalog = await (await page.request.get('/data/formal-model-runs/catalog.json')).json() as FormalCatalog;
   const sources = await Promise.all((catalog.records ?? []).map(async record => {
@@ -171,6 +190,15 @@ test('fleet horizons disclose retained coverage, per-row as-of dates and stale e
   await expect(fleet.getByTestId('ranking-index-us-QQQ').getByRole('link', { name: /Price history/ }))
     .toHaveAttribute('href', /\/securities\/us\/QQQ$/);
   await expect(fleet.getByTestId('ranking-index-cn-000300')).toContainText('CSI 300');
+  if (spxPublished) {
+    const spxRow = fleet.getByTestId('ranking-index-us-SPX');
+    await expect(spxRow).toContainText('S&P 500');
+    await expect(spxRow.getByRole('link', { name: /Price history/ }))
+      .toHaveAttribute('href', /\/securities\/us\/SPX$/);
+    await expect(spxRow.getByTestId('excess-index:us:SPX')).toContainText('Index rows are close-to-close price returns');
+  } else {
+    await expect(fleet.getByTestId('ranking-index-us-SPX')).toHaveCount(0);
+  }
   expect(marketEvidence).not.toEqual([]);
   expect(extraSections).toEqual([]);
   expect(retiredRequests).toEqual([]);
