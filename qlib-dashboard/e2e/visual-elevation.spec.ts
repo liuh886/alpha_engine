@@ -60,8 +60,8 @@ test('the full ranking exposes metric sorts, row details and value-basis disclos
     await expect(page.getByRole('button', { name: header, exact: true })).toBeVisible();
   }
   await page.getByRole('button', { name: 'Excess', exact: true }).click();
-  await expect(page.getByRole('columnheader', { name: 'Excess' })).toHaveAttribute('aria-sort', 'descending');
-  await expect(page.getByRole('columnheader', { name: '1M' })).toHaveAttribute('aria-sort', 'none');
+  await expect(page.getByRole('columnheader', { name: 'Excess', exact: true })).toHaveAttribute('aria-sort', 'descending');
+  await expect(page.getByRole('columnheader', { name: '1M', exact: true })).toHaveAttribute('aria-sort', 'none');
 
   const firstRow = page.getByTestId(/^fleet-/).first();
   const details = firstRow.getByRole('button', { name: /Row details/ });

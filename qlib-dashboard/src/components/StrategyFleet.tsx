@@ -110,8 +110,12 @@ export function StrategyFleet({
           separately and are never inferred from a position delta.
         </p>
         <p className="mt-2 leading-relaxed" role="note">
-          Excess and max drawdown describe each run's own retained or derived window; they are not aligned
-          to the sorted horizon. Governed index rows use close-to-close price observations.
+          The trend sparkline and the excess headline follow the selected horizon. Aligned excess is
+          browser-derived from each run's retained benchmark wealth column on exact common dates; when
+          no column overlaps, the cell shows — while any sealed run-window excess stays visible beneath
+          it, labelled retained or derived. Max drawdown describes each run's own retained window and is
+          not aligned to the sorted horizon. Governed index rows use close-to-close price observations
+          and never compute excess.
         </p>
       </details>
 

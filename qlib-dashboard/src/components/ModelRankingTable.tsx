@@ -18,9 +18,9 @@ import {
   RANKING_METRIC_SORTS,
   formatDate,
   formatPeriodLabel,
-  formatPrice,
   formatReturn,
-  isHorizonSort,
+  periodAlignedExcess,
+  rankingWindowPeriod,
   sortRankingRows,
   type ModelRankingRow,
   type RankingCell,
@@ -29,7 +29,9 @@ import {
   type RankingSignal,
   type RankingSort,
 } from '@/lib/model-ranking';
-import { HORIZON_PERIODS } from '@/lib/performancePeriods';
+import { navSeriesForPeriod } from '@/lib/nav-returns';
+import type { NavPoint } from '@/lib/nav-series';
+import { HORIZON_PERIODS, type HorizonPeriod } from '@/lib/performancePeriods';
 import { cn } from '@/lib/utils';
 
 export interface ModelRankingTableProps {
@@ -198,12 +200,44 @@ function SignalCell({ row, onInspectSignal }: { row: ModelRankingRow; onInspectS
   );
 }
 
-function sparklineTitle(row: ModelRankingRow): string {
-  const start = row.nav[0];
-  const end = row.nav[row.nav.length - 1];
-  if (!start || !end) return `${row.title}: no retained observations.`;
+interface TrendWindow {
+  series: NavPoint[];
+  available: boolean;
+  title: string;
+  reason: string;
+}
+
+/**
+ * The sparkline's selected window. It reuses the exact horizon helper the
+ * numeric cells use, so the curve starts at the first retained observation at
+ * or after the requested start (never a synthetic point) and stops at the
+ * row's own last observation. A window whose numeric cell is not displayed is
+ * not drawn as a misleading line.
+ */
+function trendWindow(row: ModelRankingRow, period: HorizonPeriod): TrendWindow {
+  const label = formatPeriodLabel(period);
+  const series = navSeriesForPeriod(row.nav, period);
+  const cell = row.cells[period];
+  const start = series[0];
+  const end = series[series.length - 1];
+  if (!start || !end || series.length < 2 || !cell.display) {
+    const reason = cell.reason
+      ?? `Fewer than two retained observations fall in the ${label} window; no trend is drawn.`;
+    return {
+      series,
+      available: false,
+      reason,
+      title: `${row.title}: ${label} trend unavailable. ${reason} Retained observation data, not a forecast.`,
+    };
+  }
   const change = start.value > 0 ? end.value / start.value - 1 : null;
-  return `${row.title}: ${start.date} ${formatPrice(start.value)} → ${end.date} ${formatPrice(end.value)} (${formatReturn(change)}). Retained observations, not a forecast.`;
+  const requested = cell.coverage.requestedStart;
+  return {
+    series,
+    available: true,
+    reason: '',
+    title: `${row.title}: ${label} trend window ${start.date} → ${end.date} (${formatReturn(change)}). Starts at the first retained observation${requested && requested !== start.date ? ` at or after the requested start ${requested}` : ''}; retained observation data, not a forecast.`,
+  };
 }
 
 function RowDetails({ row }: { row: ModelRankingRow }) {
@@ -222,7 +256,7 @@ function RowDetails({ row }: { row: ModelRankingRow }) {
       )}
       <div><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Retained window</dt><dd>{first && last ? `${formatDate(first.date)} → ${formatDate(last.date)}` : 'No retained observations'}</dd></div>
       {row.signal?.note && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Signal note</dt><dd className="text-muted-foreground">{row.signal.note}</dd></div>}
-      {row.excess?.basis && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Excess basis</dt><dd className="text-muted-foreground">{row.excess.basis}</dd></div>}
+      {row.excess?.basis && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Sealed excess basis · run window</dt><dd className="text-muted-foreground">{row.excess.basis}</dd></div>}
       {row.maxDrawdownBasis && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Max drawdown basis</dt><dd className="text-muted-foreground">{row.maxDrawdownBasis}</dd></div>}
     </dl>
   );
@@ -238,7 +272,9 @@ function Row({ row, density, selected, sort, expanded, onToggle, onInspectSignal
   onInspectSignal?: (row: ModelRankingRow) => void;
 }) {
   const evidenceLabel = row.kind === 'strategy' ? 'Inspect evidence' : 'Price history';
-  const sparklinePeriod = isHorizonSort(sort) ? sort : '1m';
+  const windowPeriod = rankingWindowPeriod(sort);
+  const trend = trendWindow(row, windowPeriod);
+  const alignedExcess = row.kind === 'strategy' ? periodAlignedExcess(row, windowPeriod) : null;
   const detailsId = `row-details-${row.id}`;
   return (<Fragment>
     <tr
@@ -290,34 +326,76 @@ function Row({ row, density, selected, sort, expanded, onToggle, onInspectSignal
         </td>
       ))}
       <td className="px-2 py-1.5 text-right align-middle">
-        <span title={sparklineTitle(row)}>
-          <Sparkline nav={row.nav} width={72} height={24} showEndpoint tone={sparklineTone(row.cells[sparklinePeriod])} className="ml-auto" />
-        </span>
+        {trend.available ? (
+          <span data-testid={`trend-${row.id}`} title={trend.title}>
+            <Sparkline
+              nav={trend.series}
+              width={72}
+              height={24}
+              showEndpoint
+              tone={sparklineTone(row.cells[windowPeriod])}
+              className="ml-auto"
+            />
+          </span>
+        ) : (
+          <MissingCell
+            testId={`trend-${row.id}`}
+            reason={trend.reason}
+            shortLabel={`${formatPeriodLabel(windowPeriod)} trend`}
+          />
+        )}
       </td>
       {density === 'full' && (
         <td className="px-2 py-1.5 text-right align-middle">
-          {row.excess && row.excess.value !== null ? (
-            <BasisDisclosure summary={
-              <span className="inline-flex flex-col items-end gap-0.5">
-                <span className="inline-flex items-center gap-1">
-                  <span className={cn('font-medium tabular-nums', signedTone(row.excess.value))}>
-                    {formatReturn(row.excess.value)}
-                  </span>
-                  <span className="rounded border bg-muted/40 px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
-                    {row.excess.label}
-                  </span>
-                </span>
-                <span className="text-[9px] text-muted-foreground">{row.excess.window ?? 'run window'}</span>
-              </span>
-            }>
-              {row.excess.basis}
-            </BasisDisclosure>
-          ) : (
+          {row.kind === 'index' ? (
             <MissingCell
               testId={`excess-${row.id}`}
               reason={row.excess?.reason ?? 'Excess is unavailable for this row.'}
               shortLabel="Unavailable"
             />
+          ) : (
+            <div className="flex flex-col items-end gap-0.5">
+              {alignedExcess && alignedExcess.value !== null ? (
+                <BasisDisclosure testId={`aligned-excess-${row.id}`} summary={
+                  <span className="inline-flex flex-col items-end gap-0.5">
+                    <span className="inline-flex items-center gap-1">
+                      <span className={cn('font-medium tabular-nums', signedTone(alignedExcess.value))}>
+                        {formatReturn(alignedExcess.value)}
+                      </span>
+                      <span className="rounded border bg-muted/40 px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
+                        {alignedExcess.label}
+                      </span>
+                    </span>
+                    <span className="text-[9px] text-muted-foreground">{alignedExcess.window}</span>
+                  </span>
+                }>
+                  {alignedExcess.basis}
+                </BasisDisclosure>
+              ) : (
+                <MissingCell
+                  testId={`excess-${row.id}`}
+                  reason={alignedExcess?.reason ?? 'Aligned excess is unavailable for this row.'}
+                  shortLabel="Unavailable"
+                />
+              )}
+              {row.excess && (row.excess.value !== null ? (
+                <BasisDisclosure testId={`sealed-excess-${row.id}`} summary={
+                  <span className="inline-flex flex-wrap items-center justify-end gap-1 text-[9px] text-muted-foreground">
+                    <span>{row.excess.label}</span>
+                    <span className="tabular-nums">{formatReturn(row.excess.value)}</span>
+                    <span>{row.excess.window ?? 'run window'}</span>
+                  </span>
+                }>
+                  {row.excess.basis}
+                </BasisDisclosure>
+              ) : (
+                <BasisDisclosure testId={`sealed-excess-${row.id}`} summary={
+                  <span className="text-[9px] text-muted-foreground">{row.excess.label}</span>
+                }>
+                  {row.excess.reason ?? 'The sealed run-window excess is unavailable.'}
+                </BasisDisclosure>
+              ))}
+            </div>
           )}
         </td>
       )}
@@ -370,6 +448,8 @@ function RankingCard({ row, density, selected, sort, expanded, onToggle, onInspe
 }) {
   const evidenceLabel = row.kind === 'strategy' ? 'Inspect evidence' : 'Price history';
   const detailsId = `card-details-${row.id}`;
+  const windowPeriod = rankingWindowPeriod(sort);
+  const alignedExcess = row.kind === 'strategy' ? periodAlignedExcess(row, windowPeriod) : null;
   // Governed index rows have no signal and no strategy excess; keeping empty
   // metric wells would push the first strategy card below the handset fold.
   const showMetrics = density === 'full' && row.kind === 'strategy';
@@ -426,23 +506,34 @@ function RankingCard({ row, density, selected, sort, expanded, onToggle, onInspe
       {showMetrics && (
         <dl className="mt-1.5 grid grid-cols-2 gap-1.5">
           <div className="min-w-0 rounded border bg-background/60 px-2 py-1">
-            <dt className="break-words text-[9px] uppercase tracking-[0.08em] text-muted-foreground">Excess · {row.excess?.window ?? 'run window'}</dt>
+            <dt className="break-words text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
+              Excess · {formatPeriodLabel(windowPeriod)} aligned
+            </dt>
             <dd className="mt-0.5 text-right text-[12px]">
-              {row.excess && row.excess.value !== null ? (
+              {alignedExcess && alignedExcess.value !== null ? (
                 <BasisDisclosure summary={
-                  <span className={cn('font-medium tabular-nums', signedTone(row.excess.value))}>
-                    {formatReturn(row.excess.value)}
-                    <span className="ml-1 text-[9px] font-normal text-muted-foreground">{row.excess.label}</span>
+                  <span className={cn('font-medium tabular-nums', signedTone(alignedExcess.value))}>
+                    {formatReturn(alignedExcess.value)}
+                    <span className="ml-1 text-[9px] font-normal text-muted-foreground">{alignedExcess.label}</span>
                   </span>
                 }>
-                  {row.excess.basis}
+                  {alignedExcess.basis}
                 </BasisDisclosure>
               ) : (
                 <MissingCell
                   testId={`excess-${row.id}`}
-                  reason={row.excess?.reason ?? 'Excess is unavailable for this row.'}
+                  reason={alignedExcess?.reason ?? 'Aligned excess is unavailable for this row.'}
                   shortLabel="Unavailable"
                 />
+              )}
+              {row.excess && row.excess.value !== null && (
+                <BasisDisclosure summary={
+                  <span className="mt-0.5 block text-[9px] text-muted-foreground">
+                    {row.excess.label} {formatReturn(row.excess.value)} · {row.excess.window ?? 'run window'}
+                  </span>
+                }>
+                  {row.excess.basis}
+                </BasisDisclosure>
               )}
             </dd>
           </div>
@@ -484,7 +575,8 @@ function RankingCard({ row, density, selected, sort, expanded, onToggle, onInspe
 /**
  * Shared model-ranking table. Compact density keeps the same horizon matrix as
  * full density; full density adds excess, max drawdown and the current signal.
- * Sparklines are aria-hidden beside the numeric cells and never the only value.
+ * The trend sparkline and the excess headline both follow the selected horizon;
+ * the sealed run-window excess stays visible as a secondary disclosure.
  */
 export function ModelRankingTable({
   rows,
@@ -500,6 +592,8 @@ export function ModelRankingTable({
   const [sort, setSort] = useState<RankingSort>('1m');
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
   const narrow = useNarrowViewport();
+  const windowPeriod = rankingWindowPeriod(sort);
+  const windowLabel = formatPeriodLabel(windowPeriod);
   const sorted = useMemo(
     () => sortRankingRows(rows, sort, { kindOrder }),
     [rows, sort, kindOrder],
@@ -536,6 +630,7 @@ export function ModelRankingTable({
                 type="button"
                 onClick={() => setSort(period)}
                 aria-pressed={sort === period}
+                title={`Sort by ${formatPeriodLabel(period)} and set the trend and aligned excess to the ${formatPeriodLabel(period)} window`}
                 className={cn(
                   'min-h-11 min-w-11 shrink-0 rounded-lg border px-3 text-xs font-semibold uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   sort === period
@@ -633,6 +728,7 @@ export function ModelRankingTable({
                       type="button"
                       onClick={() => setSort(period)}
                       aria-pressed={sort === period}
+                      title={`Sort by ${formatPeriodLabel(period)} and set the trend and aligned excess to the ${formatPeriodLabel(period)} window`}
                       className={cn(
                         '-mx-2 -my-2 flex min-h-11 min-w-11 items-center justify-end gap-1 rounded px-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors',
                         sort === period
@@ -645,16 +741,20 @@ export function ModelRankingTable({
                     </button>
                   </th>
                 ))}
-                <th scope="col" className="px-2 py-2 text-right text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Trend
-                  <span className="block text-[9px] font-normal normal-case tracking-normal">retained history</span>
+                <th
+                  scope="col"
+                  title={`Retained NAV sparkline for the selected ${windowLabel} window`}
+                  className="px-2 py-2 text-right text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+                >
+                  {windowLabel} trend
+                  <span className="block text-[9px] font-normal normal-case tracking-normal">{windowLabel} window</span>
                 </th>
                 {density === 'full' && (
                   <>
                     {RANKING_METRIC_SORTS.filter(key => key !== 'asOf').map((key) => (
                       <th key={key} scope="col" aria-sort={sort === key ? 'descending' : 'none'}
                         title={key === 'excess'
-                          ? 'Run-window excess, not aligned to the sorted horizon'
+                          ? 'Excess aligned to the selected horizon; the sealed run-window value is shown beneath it'
                           : key === 'maxDrawdown'
                             ? 'Run-window max drawdown, not aligned to the sorted horizon'
                             : 'Current verified signal state'}

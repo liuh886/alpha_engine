@@ -1,4 +1,9 @@
-import { MARKET_BASELINES, type BaselineMarket } from './baseline';
+import {
+  MARKET_BASELINES,
+  discoverBaselineOptions,
+  navFromBenchmarkField,
+  type BaselineMarket,
+} from './baseline';
 import type { DerivedExcess } from './derived-excess';
 import type { GovernedRunSummary } from './governed-run';
 import { STALE_AFTER_DAYS, calendarDaysBetween } from './metrics';
@@ -9,8 +14,9 @@ import {
   type HorizonCoverage,
   type HorizonPeriod,
 } from './performancePeriods';
-import { navHorizonCoverage, navReturn } from './nav-returns';
+import { navHorizonCoverage, navReturn, navSeriesForPeriod } from './nav-returns';
 import type { SecurityBar } from './security-evidence';
+import { navBetween, windowReturns } from './strategy-chart';
 import type { ReportRow } from './types';
 
 /**
@@ -61,7 +67,15 @@ interface RankingRowBase {
   market: RankingMarket;
   /** Declared benchmark identity for strategies; governed index label for indices. */
   benchmark: string;
-  /** Full retained observation curve used only for the compact sparkline. */
+  /**
+   * Declared benchmark wealth observations retained beside the run. Empty for
+   * indices and for runs without a usable benchmark wealth column. Never
+   * derived from a per-row return column such as `bench`.
+   */
+  benchmarkNav: NavPoint[];
+  /** Resolved declared wealth column (for example `bench_qqq`), or null. */
+  benchmarkField: string | null;
+  /** Full retained observation curve; the sparkline slices its selected window. */
   nav: NavPoint[];
   href: string;
   /** Last retained NAV/close observation; always the row's own date. */
@@ -257,6 +271,96 @@ export function rankingExcessFromDerived(excess: DerivedExcess): RankingExcess {
   };
 }
 
+/** The browser-derived excess over the horizon the trend and excess follow. */
+export interface PeriodAlignedExcess {
+  value: number | null;
+  source: 'aligned' | 'unavailable';
+  /** Short in-row badge: `aligned` or `Excess unavailable`. */
+  label: 'aligned' | 'Excess unavailable';
+  /** Exact aligned window actually measured, when available. */
+  window?: string;
+  /** Disclosure naming the window, benchmark and derivation. */
+  basis: string;
+  reason?: string;
+}
+
+export interface PeriodAlignedExcessInput {
+  nav: NavPoint[];
+  benchmarkNav: NavPoint[];
+  benchmarkField: string | null;
+  benchmark: string;
+  cells: Record<HorizonPeriod, RankingCell>;
+}
+
+function alignedExcessUnavailable(reason: string): PeriodAlignedExcess {
+  return {
+    value: null,
+    source: 'unavailable',
+    label: 'Excess unavailable',
+    basis: '',
+    reason,
+  };
+}
+
+/**
+ * Browser-derived excess aligned to one horizon. The strategy window is the
+ * same `navSeriesForPeriod` window the sparkline draws: it starts at the first
+ * retained observation at or after the requested start, never a synthetic
+ * point. The benchmark is sliced to that exact window with `navBetween`, and
+ * `windowReturns` intersects the two series on exact common dates (no
+ * interpolation, no forward fill). The value renders only when the horizon's
+ * numeric cell is displayed and at least two exact common dates remain.
+ */
+export function periodAlignedExcess(
+  row: PeriodAlignedExcessInput,
+  period: HorizonPeriod,
+): PeriodAlignedExcess {
+  const label = formatPeriodLabel(period);
+  const cell = row.cells[period];
+  const windowNav = navSeriesForPeriod(row.nav, period);
+  if (windowNav.length < 2) {
+    return alignedExcessUnavailable(
+      cell.reason
+        ?? `Fewer than two retained observations fall in the ${label} window; no aligned excess is shown.`,
+    );
+  }
+  if (!cell.display) {
+    return alignedExcessUnavailable(
+      `The ${label} horizon is not displayed for this row, so aligned excess is not shown.${cell.reason ? ` ${cell.reason}` : ''}`,
+    );
+  }
+  if (!row.benchmarkField || row.benchmarkNav.length < 2) {
+    return alignedExcessUnavailable(
+      `No retained benchmark wealth column is available for ${row.benchmark}; aligned excess is not computed.`,
+    );
+  }
+  const start = windowNav[0].date;
+  const end = windowNav[windowNav.length - 1].date;
+  const benchmarkWindow = navBetween(row.benchmarkNav, start, end);
+  if (benchmarkWindow.length < 2) {
+    return alignedExcessUnavailable(
+      `The retained ${row.benchmarkField} wealth column has fewer than two observations between ${start} and ${end}; aligned excess is not computed.`,
+    );
+  }
+  const aligned = windowReturns(windowNav, benchmarkWindow);
+  if (!aligned.aligned
+      || aligned.alignedObservations < 2
+      || aligned.excess === null
+      || !Number.isFinite(aligned.excess)) {
+    return alignedExcessUnavailable(
+      `The strategy and ${row.benchmark} retain fewer than two exact common dates between ${start} and ${end}; aligned excess is not computed.`,
+    );
+  }
+  const window = `${aligned.startDate} → ${aligned.endDate}`;
+  return {
+    value: aligned.excess,
+    source: 'aligned',
+    label: 'aligned',
+    window,
+    basis: `${label} aligned excess over ${window} vs ${row.benchmark} from the retained ${row.benchmarkField} wealth column; browser-derived from exact common observation dates, no interpolation. Browser-derived, not a sealed metric.`,
+  };
+}
+
 function maxDrawdownFromNav(nav: NavPoint[]): number | null {
   if (nav.length < 2) return null;
   let peak = nav[0].value;
@@ -273,21 +377,47 @@ function marketOf(run: GovernedRunSummary): RankingMarket {
 }
 
 /**
+ * Declared benchmark wealth for one run, resolved through the existing
+ * baseline helpers. Only a `bench_<slug>` wealth column that passes the
+ * positive-series and two-observation checks is accepted. A plain `bench`
+ * column is a per-row return in the real qqqi run, so it is never treated as
+ * wealth here even when a short slice happens to be positive.
+ */
+function declaredBenchmarkWealth(
+  run: GovernedRunSummary,
+  rows: ReportRow[],
+): { benchmarkNav: NavPoint[]; benchmarkField: string | null } {
+  const declared = discoverBaselineOptions(
+    { benchmark: run.benchmark, market: marketOf(run) },
+    rows,
+  ).find((option) => option.kind === 'declared' && option.available && option.field);
+  const field = declared?.field ?? null;
+  if (!field || field === 'bench') return { benchmarkNav: [], benchmarkField: null };
+  const benchmarkNav = navFromBenchmarkField(rows, field);
+  return benchmarkNav.length >= 2
+    ? { benchmarkNav, benchmarkField: field }
+    : { benchmarkNav: [], benchmarkField: null };
+}
+
+/**
  * Build the strategy row from the compact `nav.json` projection. The full
- * retained curve drives the sparkline; excess is accepted only when the caller
- * has prepared a retained or derived observation.
+ * retained curve drives the horizon-sliced sparkline; the declared benchmark
+ * wealth column drives the period-aligned excess; the sealed retained or
+ * derived excess is accepted only when the caller has prepared one.
  */
 export function strategyRowsFromNav(
   run: GovernedRunSummary,
   navRows: ReportRow[],
   options: StrategyRankingOptions = {},
 ): StrategyRankingRow[] {
-  const nav = navFromReport(navRows);
+  const rows = Array.isArray(navRows) ? navRows : [];
+  const nav = navFromReport(rows);
   const last = nav[nav.length - 1];
   const asOf = last?.date ?? '';
   const staleDays = last ? Math.max(0, calendarDaysBetween(last.date, run.evidenceCutoff)) : 0;
   const drawdownMetric = summaryMetric(run, 'max_drawdown');
   const maxDrawdown = availableNumber(drawdownMetric);
+  const { benchmarkNav, benchmarkField } = declaredBenchmarkWealth(run, rows);
   const row: StrategyRankingRow = {
     id: run.modelVersionId,
     kind: 'strategy',
@@ -295,6 +425,8 @@ export function strategyRowsFromNav(
     title: run.title,
     market: marketOf(run),
     benchmark: run.benchmark,
+    benchmarkNav,
+    benchmarkField,
     nav,
     href: `/strategies/${encodeURIComponent(run.modelVersionId)}`,
     asOf,
@@ -346,6 +478,9 @@ export function indexRowsFromBars(
     title: name,
     market,
     benchmark: name,
+    // Index rows never carry a declared benchmark wealth overlay or excess.
+    benchmarkNav: [],
+    benchmarkField: null,
     nav,
     href: `/securities/${market}/${encodeURIComponent(symbol)}`,
     asOf,
@@ -387,6 +522,15 @@ export const RANKING_METRIC_SORTS = ['asOf', 'excess', 'maxDrawdown', 'signal'] 
 
 export function isHorizonSort(sort: RankingSort): sort is HorizonPeriod {
   return (HORIZON_PERIODS as readonly string[]).includes(sort);
+}
+
+/**
+ * The horizon whose window the trend sparkline and aligned excess follow.
+ * Metric sorts (excess, max drawdown, signal, as-of) leave the default 1M
+ * window in place rather than inventing a new one.
+ */
+export function rankingWindowPeriod(sort: RankingSort): HorizonPeriod {
+  return isHorizonSort(sort) ? sort : '1m';
 }
 
 const SIGNAL_ORDER: Readonly<Record<string, number>> = {
