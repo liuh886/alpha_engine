@@ -1123,12 +1123,17 @@ jobs:
           cp -a "$CANDIDATE_PREVIEW_ROOT" data/research/model_runs
           cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" data/research/market_evidence
           cp -a "$CANDIDATE_MODEL_DATA_ROOT" data/research/model_data_bundle_v1
+          # The derived benchmark-excess projection is a consumer artifact bound to
+          # the newly published QQQ formal run. Regenerate it from that run inside
+          # this publication commit so the projection never binds to a stale run.
+          uv run python -m scripts.derive_formal_benchmark_excess --repository-root .
           git add \
             data/research/model_decisions \
             data/research/formal_model_runs \
             data/research/model_runs \
             data/research/market_evidence \
-            data/research/model_data_bundle_v1
+            data/research/model_data_bundle_v1 \
+            data/research/derived_metrics
           if git diff --cached --quiet; then
             echo "Latest-main delta requires publication but no canonical evidence bytes changed." >&2
             exit 1

@@ -915,6 +915,32 @@ def test_publish_reconciles_candidate_against_latest_main_before_pr() -> None:
     assert "publication-delta-latest-main-receipt.json" in publish
 
 
+def test_publish_regenerates_derived_excess_from_the_newly_published_run() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    publish = workflow[workflow.index("\n  publish:\n") :]
+    pull_request = publish.index("      - name: Open or update reviewed refresh PR")
+    effective = publish.index(
+        "      - name: Resolve effective publication delta", pull_request
+    )
+    block = publish[pull_request:effective]
+
+    candidate_install = block.index(
+        'cp -a "$CANDIDATE_V2_ROOT" data/research/formal_model_runs'
+    )
+    derivation = block.index(
+        "uv run python -m scripts.derive_formal_benchmark_excess --repository-root ."
+    )
+    staging = block.index("git add \\")
+    assert candidate_install < derivation < staging
+    assert "python scripts/derive_formal_benchmark_excess" not in block
+
+    add_list = block[staging : block.index("if git diff --cached --quiet")]
+    assert "data/research/formal_model_runs" in add_list
+    assert "data/research/derived_metrics" in add_list
+
+
 def test_publish_status_uses_the_transaction_outcome() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
