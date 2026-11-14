@@ -67,6 +67,31 @@ def test_refresh_comparison_references_are_governed() -> None:
         _roles_for(symbol, instruments)
 
 
+def test_sp500_is_the_real_index_and_never_a_tracking_etf() -> None:
+    instruments = _us_instruments()
+    entry = instruments.get("SPX")
+    assert isinstance(entry, dict), "SPX must be a governed reference instrument"
+    assert entry["canonical_symbol"] == "SPX"
+    assert entry["instrument_type"] == "equity_index"
+    assert "^GSPC" in entry["provider_aliases"]
+    assert "SPX" in entry["provider_aliases"]
+    assert entry["executable"] is False
+    assert entry["candidate_eligible"] is False
+    assert entry["portfolio_eligible_by_default"] is False
+    assert entry["fundamental_data_applicable"] is False
+    assert entry["corporate_actions_applicable"] is False
+    # Broad US market context, not the US strategy benchmark: QQQ keeps that
+    # role, and no tracking ETF may stand in for the index.
+    assert entry["roles"]
+    assert "benchmark" not in entry["roles"]
+    assert "benchmark" in instruments["QQQ"]["roles"]
+    for tracking_etf in ("SPY", "VOO", "IVV"):
+        assert tracking_etf not in instruments
+    policy = _registry()["policy"]
+    assert policy["index_and_tracking_etf_are_distinct_instruments"] is True
+    assert policy["cross_market_reference_use_allowed"] is False
+
+
 def test_provider_cache_auxiliaries_are_governed() -> None:
     source = (
         PROJECT_ROOT / "src/artifacts/formal_provider_cache.py"

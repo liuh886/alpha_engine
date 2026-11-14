@@ -40,6 +40,10 @@ def _get_yahoo_ticker(ticker: str, region: str) -> str:
         if len(clean) == 5 and clean.startswith("0"):
             clean = clean[1:]
         return f"{clean}.HK"
+    if region == "us" and ticker == "SPX":
+        # Canonical S&P 500 index identity: Yahoo publishes it as ^GSPC.
+        # Never substitute a tracking ETF (SPY/VOO/IVV) for the index.
+        return "^GSPC"
     return ticker
 
 

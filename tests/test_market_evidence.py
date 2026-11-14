@@ -4,6 +4,8 @@ import copy
 import hashlib
 import json
 import math
+import re
+from dataclasses import replace
 from pathlib import Path
 
 import pandas as pd
@@ -26,8 +28,10 @@ from src.dashboard.market_evidence import (
     _provider_symbol_for_formal_instrument,
     _reuse_market_evidence_tree,
     _trade_events,
+    build_market_evidence,
 )
 from src.data.selected_pool_price_publication import (
+    PUBLICATION_MANIFEST_NAME,
     write_selected_pool_price_publication_manifest,
 )
 from src.factors.library import load_factor_library
@@ -392,3 +396,147 @@ def test_repository_formal_bundle_v2_projects_current_market_models() -> None:
     events, _ = _trade_events(us, "us")
     assert "BE" in events
     assert any(row["model_id"] == "us_x1_3" for row in events["BE"])
+
+
+def _us_provider_root_with_sp500(tmp_path: Path) -> Path:
+    source = selected_pool_price_source("us")
+    source["candidate_symbols"] = ["QQQ"]
+    source["candidate_count"] = 1
+    source["benchmark"] = "QQQ"
+    source["selected_providers"] = {"QQQ": "yfinance", "SPX": "yfinance"}
+    source["targets"] = ["QQQ", "SPX"]
+    source["target_count"] = 2
+    source["auxiliary_symbols"] = ["SPX"]
+    source["stale_symbols"] = []
+    source["unresolved_stale_symbols"] = []
+    source["lifecycle_declared_terminal_symbols"] = []
+    source["terminal_history_symbols"] = []
+    source["terminal_listing_evidence"] = {}
+    source["all_sources_current"] = True
+
+    provider_root = tmp_path / "provider-us"
+    records: list[dict[str, object]] = []
+    for symbol, provider_symbol in (("QQQ", "QQQ"), ("SPX", "^GSPC")):
+        csv_path = provider_root / "data/csv_source" / f"{symbol}.csv"
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        _price_frame().to_csv(csv_path, index=False, lineterminator="\n")
+        record = copy.deepcopy(source["records"][0])
+        record["symbol"] = symbol
+        record["provider_symbol"] = provider_symbol
+        record["output_sha256"] = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+        record["attempts"][0]["provider_symbol"] = provider_symbol
+        records.append(record)
+    source["records"] = records
+    write_selected_pool_price_publication_manifest(
+        provider_root / "artifacts" / PUBLICATION_MANIFEST_NAME, source
+    )
+    return provider_root
+
+
+def _formal_root_without_trades(tmp_path: Path) -> Path:
+    plan = _formal_fixture_plan()
+    plan = replace(
+        plan,
+        sections=(
+            plan.sections[0],
+            SectionPlan(
+                section_id="portfolio",
+                availability_status="available",
+                required_for_model_kind=True,
+                payload={
+                    "positions": [],
+                    "research_only": True,
+                    "trade_ready": False,
+                },
+            ),
+            SectionPlan(
+                section_id="trades",
+                availability_status="available",
+                required_for_model_kind=True,
+                payload=[],
+            ),
+        ),
+    )
+    root = tmp_path / "formal-v2"
+    manifest = export_model_run(plan, output_root=root)
+    update_catalog([manifest], catalog_path=root / "catalog.json", channel="formal")
+    return root
+
+
+class _StubFactorEvaluator:
+    def __init__(self, *, provider_uri: Path, market: str) -> None:
+        self.provider_uri = provider_uri
+        self.market = market
+
+    def evaluate(
+        self,
+        *,
+        symbols: list[str],
+        expressions: list[str],
+        start: str,
+        end: str,
+    ) -> pd.DataFrame:
+        dates = pd.to_datetime(["2026-01-02", "2026-01-05"])
+        index = pd.MultiIndex.from_product(
+            [dates, list(symbols)], names=["datetime", "instrument"]
+        )
+        return pd.DataFrame(
+            0.0,
+            index=index,
+            columns=list(range(len(expressions))),
+        )
+
+
+def test_market_evidence_publishes_governed_sp500_auxiliary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider_root = _us_provider_root_with_sp500(tmp_path)
+    formal_root = _formal_root_without_trades(tmp_path)
+    monkeypatch.setattr(
+        "src.dashboard.market_evidence.QlibFactorEvaluator",
+        _StubFactorEvaluator,
+    )
+
+    result = build_market_evidence(
+        market="us",
+        provider_root=provider_root,
+        formal_root=formal_root,
+        output_root=tmp_path / "market-evidence",
+    )
+    assert result["reused"] is False
+
+    market_root = tmp_path / "market-evidence" / "us"
+    catalog = json.loads((market_root / "catalog.json").read_text(encoding="utf-8"))
+    rows = {row["symbol"]: row for row in catalog["symbols"]}
+
+    spx = rows["SPX"]
+    assert spx["provider_symbol"] == "SPX"
+    assert spx["symbol"] == "SPX"
+    assert spx["instrument_id"] == "us:SPX"
+    assert spx["path"] == "symbols/SPX.json"
+    assert spx["roles"] == ["formal_auxiliary"]
+    # Dashboard loader identity contract:
+    # qlib-dashboard/src/lib/security-evidence.ts.
+    assert re.fullmatch(r"[A-Za-z0-9._-]+", str(spx["symbol"]))
+    assert spx["path"] == f"symbols/{spx['symbol']}.json"
+    assert spx["instrument_id"] == f"us:{spx['symbol']}"
+    assert catalog["auxiliary_symbols"] == ["SPX"]
+
+    payload = json.loads(
+        (market_root / "symbols/SPX.json").read_text(encoding="utf-8")
+    )
+    assert payload["symbol"] == "SPX"
+    assert payload["provider_symbol"] == "SPX"
+    assert payload["instrument_id"] == "us:SPX"
+    assert payload["roles"] == ["formal_auxiliary"]
+    assert payload["research_only"] is True
+    assert payload["trade_ready"] is False
+    assert payload["bars"]
+
+    # The QQQ benchmark identity is unchanged by adding the index auxiliary.
+    qqq = rows["QQQ"]
+    assert qqq["instrument_id"] == "us:QQQ"
+    assert qqq["path"] == "symbols/QQQ.json"
+    assert qqq["roles"] == ["selected_pool_candidate", "benchmark"]
+    assert catalog["benchmark"] == "QQQ"

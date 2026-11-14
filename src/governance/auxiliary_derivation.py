@@ -83,6 +83,9 @@ DECLARED_EXTRAS: dict[str, dict[str, str]] = {
         "candidate so the build filters it out of auxiliaries "
         "(reference registry comment; test_formal_auxiliary_universe_"
         "preserves_legacy_tygo_without_substitution)",
+        "SPX": "Owner authorization 2026-11-14 adding the real S&P 500 "
+        "index to the data base; configs/pools/"
+        "reference_instrument_registry_v1.yaml markets.us.instruments.SPX",
     },
     "cn": {},
 }
