@@ -195,7 +195,18 @@ test('fleet horizons disclose retained coverage, per-row as-of dates and stale e
     await expect(spxRow).toContainText('S&P 500');
     await expect(spxRow.getByRole('link', { name: /Price history/ }))
       .toHaveAttribute('href', /\/securities\/us\/SPX$/);
-    await expect(spxRow.getByTestId('excess-index:us:SPX')).toContainText('Index rows are close-to-close price returns');
+    // The close-to-close explanation is rendered inside the cell's disclosure,
+    // not in the summary's own text, so assert it on the row that contains it.
+    // The handset card omits index metric wells, so its explanation lives in
+    // the fleet method note instead.
+    const excessCell = spxRow.getByTestId('excess-index:us:SPX');
+    if (await excessCell.count() > 0) {
+      await expect(excessCell).toBeVisible();
+      await expect(spxRow).toContainText('Index rows are close-to-close price returns');
+    } else {
+      await expect(fleet.getByTestId('strategy-method'))
+        .toContainText('Governed index rows use close-to-close price observations');
+    }
   } else {
     await expect(fleet.getByTestId('ranking-index-us-SPX')).toHaveCount(0);
   }

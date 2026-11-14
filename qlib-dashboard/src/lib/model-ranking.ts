@@ -370,6 +370,19 @@ const MARKET_ORDER: Readonly<Record<RankingMarket, number>> = { us: 0, cn: 1 };
 
 export type RankingSort = HorizonPeriod | 'excess' | 'maxDrawdown' | 'signal' | 'asOf';
 
+/**
+ * Row-kind precedence inside each market group. `'mixed'` leaves strategies and
+ * governed indices interleaved by the selected sort; `'strategies-first'`
+ * places every strategy row before the index rows and then applies the same
+ * sort within each kind.
+ */
+export type RankingKindOrder = 'mixed' | 'strategies-first';
+
+export interface RankingSortOptions {
+  /** Defaults to `'mixed'`, which is the Today ranking's existing order. */
+  kindOrder?: RankingKindOrder;
+}
+
 export const RANKING_METRIC_SORTS = ['asOf', 'excess', 'maxDrawdown', 'signal'] as const;
 
 export function isHorizonSort(sort: RankingSort): sort is HorizonPeriod {
@@ -410,17 +423,24 @@ function metricValue(row: ModelRankingRow, sort: RankingSort): number {
 }
 
 /**
- * Deterministic ordering: US before China, fresh before stale, the selected
- * metric descending with missing values last, then title and row identity.
- * Sort keys never change a displayed value; they only reorder existing rows.
+ * Deterministic ordering: US before China, optionally every strategy row
+ * before the governed index rows, fresh before stale, the selected metric
+ * descending with missing values last, then title and row identity. Sort keys
+ * never change a displayed value; they only reorder existing rows.
  */
 export function sortRankingRows(
   rows: readonly ModelRankingRow[],
   sort: RankingSort,
+  options: RankingSortOptions = {},
 ): ModelRankingRow[] {
+  const strategiesFirst = (options.kindOrder ?? 'mixed') === 'strategies-first';
   return [...rows].sort((left, right) => {
     const marketOrder = MARKET_ORDER[left.market] - MARKET_ORDER[right.market];
     if (marketOrder !== 0) return marketOrder;
+    if (strategiesFirst) {
+      const kindOrder = Number(left.kind === 'index') - Number(right.kind === 'index');
+      if (kindOrder !== 0) return kindOrder;
+    }
     const freshness = Number(left.stale) - Number(right.stale);
     if (freshness !== 0) return freshness;
     const leftValue = metricValue(left, sort);

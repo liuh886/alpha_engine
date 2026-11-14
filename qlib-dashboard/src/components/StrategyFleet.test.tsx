@@ -152,6 +152,30 @@ describe('StrategyFleet', () => {
     }
   });
 
+  it('leads with formal strategy rows and trails governed indices as market context', () => {
+    // Both indices outreturn the formal strategies on the sorted 1M horizon, so
+    // only the Strategies page's strategies-first ordering can lead with a
+    // formal strategy row.
+    const rows: ModelRankingRow[] = [
+      ROWS[0],
+      ROWS[1],
+      indexRowsFromBars('us', 'QQQ', 'QQQ', [
+        bar('2026-10-11', 100), bar('2026-11-11', 140),
+      ], '2026-11-12')[0],
+      indexRowsFromBars('cn', '000300', 'CSI 300', [
+        bar('2026-10-11', 100), bar('2026-11-11', 120),
+      ], '2026-11-12')[0],
+    ];
+    renderFleet(rows);
+    const ordered = screen
+      .getAllByTestId(/^(fleet-|ranking-index-)/)
+      .map((row) => row.getAttribute('data-testid'));
+    expect(ordered).toEqual([
+      'fleet-us_x1_3', 'ranking-index-us-QQQ',
+      'fleet-cn_27_v1_3', 'ranking-index-cn-000300',
+    ]);
+  });
+
   it('filters by market without dropping the governed indices of that market', () => {
     renderFleet();
     fireEvent.change(screen.getByLabelText('Market'), { target: { value: 'us' } });
