@@ -17,6 +17,14 @@ function usRow(): IndexRankingRow {
   ], '2026-11-12')[0];
 }
 
+function spxRow(): IndexRankingRow {
+  return indexRowsFromBars('us', 'SPX', 'S&P 500', [
+    bar('2026-11-04', 6792.3),
+    bar('2026-11-06', 6815.1),
+    bar('2026-11-11', 6899.62),
+  ], '2026-11-12')[0];
+}
+
 function cnRow(): IndexRankingRow {
   return indexRowsFromBars('cn', '000300', 'CSI 300', [
     bar('2026-11-04', 3980),
@@ -25,7 +33,10 @@ function cnRow(): IndexRankingRow {
   ], '2026-11-12')[0];
 }
 
-function renderCards(rows = [usRow(), cnRow()], issues: Parameters<typeof BenchmarkMarketCards>[0]['issues'] = []) {
+function renderCards(
+  rows = [usRow(), spxRow(), cnRow()],
+  issues: Parameters<typeof BenchmarkMarketCards>[0]['issues'] = [],
+) {
   return render(
     <MemoryRouter>
       <BenchmarkMarketCards rows={rows} issues={issues} />
@@ -60,25 +71,87 @@ describe('BenchmarkMarketCards', () => {
     expect(cn).toHaveTextContent('+63.93');
   });
 
-  it('renders SP500 as dashed, not governed and without a series or substitute request', () => {
+  it('renders S&P 500 as a governed index card linked to its own identity', () => {
     renderCards();
     const sp500 = screen.getByTestId('benchmark-card-sp500');
-    expect(sp500).toHaveClass('border-dashed');
+    expect(sp500).toHaveAccessibleName('S&P 500 governed market evidence');
+    expect(sp500).toHaveAttribute('href', '/securities/us/SPX');
     expect(sp500).toHaveTextContent('S&P 500');
-    expect(sp500).toHaveTextContent('Not governed');
-    expect(within(sp500).getByRole('link', { name: 'Review governance' })).toHaveAttribute('href', '/system');
+    expect(sp500).toHaveTextContent('US');
+    expect(sp500).toHaveTextContent('6,899.62');
+    expect(sp500).toHaveTextContent('+107.32');
+    expect(sp500).toHaveTextContent('+1.6%');
+    expect(sp500).toHaveTextContent('As of 2026-11-11');
+    expect(sp500).toHaveTextContent('Cutoff 2026-11-12');
+    expect(within(sp500).getByTestId('sparkline')).toBeInTheDocument();
+    expect(sp500).not.toHaveTextContent('Not governed');
+  });
+
+  it('renders exactly three cards in the existing responsive three-column grid', () => {
+    const { container } = renderCards();
+    const cards = screen.getAllByTestId(/^benchmark-card-/);
+    expect(cards.map((card) => card.getAttribute('data-testid'))).toEqual([
+      'benchmark-card-us',
+      'benchmark-card-sp500',
+      'benchmark-card-cn',
+    ]);
+    expect(cards).toHaveLength(3);
+    for (const card of cards) {
+      expect(card).toHaveAttribute('data-instrument');
+      expect(card.className).not.toMatch(/\b(w|min-w)-\[/);
+    }
+    const grid = container.querySelector('.grid');
+    expect(grid).toHaveClass('sm:grid-cols-3');
+    expect(grid?.children).toHaveLength(3);
+  });
+
+  it('shows S&P 500 as awaiting its governed series without inventing a value', () => {
+    renderCards([usRow(), cnRow()], [{
+      id: 'index:us:SPX',
+      kind: 'index',
+      state: 'awaiting_publication',
+      message: 'S&P 500: governed market evidence unavailable (Security history unavailable (404)).',
+    }]);
+    const sp500 = screen.getByTestId('benchmark-card-sp500');
+    expect(sp500).toHaveTextContent('S&P 500');
+    expect(sp500).toHaveTextContent('—');
+    expect(sp500).not.toHaveTextContent('%');
+    expect(sp500).not.toHaveTextContent('As of');
+    expect(sp500).not.toHaveTextContent('Not governed');
+    const status = within(sp500).getByRole('status');
+    expect(status).toHaveTextContent('Awaiting governed series');
+    // The propagated read failure remains available to assistive technology.
+    expect(status).toHaveTextContent('Security history unavailable (404)');
     expect(within(sp500).queryByTestId('sparkline')).not.toBeInTheDocument();
-    expect(within(sp500).queryByTestId('sparkline-endpoint')).not.toBeInTheDocument();
     expect(sp500.querySelector('svg')).toBeNull();
-    expect(screen.queryByText(/SPY|VOO|IVV|GSPC/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('benchmark-card-us')).toHaveTextContent('690.38');
+    expect(screen.getByTestId('benchmark-card-cn')).toHaveTextContent('4,043.93');
+  });
+
+  it('distinguishes a genuine S&P 500 parse failure from an unpublished series', () => {
+    renderCards([usRow(), cnRow()], [{
+      id: 'index:us:SPX',
+      kind: 'index',
+      state: 'unavailable',
+      message: 'S&P 500: governed market evidence unavailable (Security history checksum mismatch).',
+    }]);
+    const sp500 = screen.getByTestId('benchmark-card-sp500');
+    const status = within(sp500).getByRole('status');
+    expect(status).toHaveTextContent('Security history checksum mismatch');
+    expect(status).not.toHaveTextContent('Awaiting governed series');
+    expect(status).toHaveClass('text-warning');
+    expect(sp500).not.toHaveTextContent('Not governed');
+    expect(within(sp500).queryByTestId('sparkline')).not.toBeInTheDocument();
+    expect(sp500.querySelector('svg')).toBeNull();
   });
 
   it('keeps a failed index read scoped to its own card', () => {
     const message = 'QQQ: governed market evidence unavailable (governed closes unavailable).';
-    renderCards([cnRow()], [{ id: 'index:us:QQQ', kind: 'index', message }]);
+    renderCards([spxRow(), cnRow()], [{ id: 'index:us:QQQ', kind: 'index', message }]);
     const us = screen.getByTestId('benchmark-card-us');
     expect(us).toHaveTextContent('—');
-    expect(within(us).getByText(message)).toHaveClass('sr-only');
+    expect(within(us).getByRole('status')).toHaveTextContent(message);
+    expect(screen.getByTestId('benchmark-card-sp500')).toHaveTextContent('6,899.62');
     expect(screen.getByTestId('benchmark-card-cn')).toHaveTextContent('4,043.93');
   });
 
@@ -93,6 +166,8 @@ describe('BenchmarkMarketCards', () => {
     expect(us).toHaveTextContent('—');
     expect(within(us).getByRole('status')).toHaveTextContent('Reading governed market evidence…');
     expect(within(us).getByRole('status')).not.toHaveClass('sr-only');
+    expect(within(screen.getByTestId('benchmark-card-sp500')).getByRole('status'))
+      .toHaveTextContent('Reading governed market evidence…');
   });
 
   it('discloses a stale index feed in text and in the card accessible name', () => {
@@ -109,8 +184,11 @@ describe('BenchmarkMarketCards', () => {
 
   it('discloses that index returns are price returns, not total return', () => {
     renderCards();
-    expect(screen.getByText(/Index cards use governed close-to-close price returns, not total return\./)).toBeInTheDocument();
-    expect(screen.getByText(/neither is used as a cross-market substitute/)).toBeInTheDocument();
+    expect(screen.getByText(/Index cards use governed close-to-close price returns, not total return/)).toBeInTheDocument();
+    expect(screen.getByText(/research evidence only — not trade-ready/)).toBeInTheDocument();
+    expect(screen.getByText(/QQQ is the US strategy benchmark and CSI 300 the China strategy benchmark/)).toBeInTheDocument();
+    expect(screen.getByText(/S&P 500 is a broad US market index reference, not a strategy benchmark/)).toBeInTheDocument();
+    expect(screen.getByText(/No index is used as a cross-market substitute/)).toBeInTheDocument();
   });
 
   it('renders a displayed 1W coverage reason in the card instead of a hover title', () => {
@@ -119,7 +197,7 @@ describe('BenchmarkMarketCards', () => {
     renderCards([{
       ...row,
       cells: { ...row.cells, '1w': { ...row.cells['1w'], value: 0.012, display: true, reason } },
-    }, cnRow()]);
+    }, spxRow(), cnRow()]);
     const us = screen.getByTestId('benchmark-card-us');
     const note = within(us).getByTestId('benchmark-reason-us');
     expect(note).toHaveTextContent(reason);

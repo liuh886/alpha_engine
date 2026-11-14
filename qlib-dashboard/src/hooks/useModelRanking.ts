@@ -4,21 +4,26 @@ import { loadFormalNav } from '@/lib/formal-nav';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import { readMarketEvidence } from '@/lib/market-evidence-cache';
 import {
-  RANKING_INDEX_SYMBOLS,
-  RANKING_INDEX_TITLES,
+  RANKING_INDEXES,
   indexRowsFromBars,
   rankingExcessFromDerived,
   retainedExcess,
   strategyRowsFromNav,
   type ModelRankingRow,
   type RankingExcess,
-  type RankingMarket,
+  type RankingIndexIdentity,
 } from '@/lib/model-ranking';
+import { SecurityEvidenceUnavailableError } from '@/lib/security-evidence';
+
+/** Why an index card has no row: simply unpublished, or unreadable evidence. */
+export type ModelRankingIssueState = 'awaiting_publication' | 'unavailable';
 
 export interface ModelRankingIssue {
   id: string;
   kind: 'strategy' | 'index';
   message: string;
+  /** Index reads only: distinguishes a publication gap from a genuine failure. */
+  state?: ModelRankingIssueState;
 }
 
 export interface ModelRankingState {
@@ -39,6 +44,12 @@ interface ReadResult {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error && error.message ? error.message : String(error);
+}
+
+/** A missing governed publication keeps its distinct, non-alarming state. */
+function isUnavailablePublication(error: unknown): boolean {
+  return error instanceof SecurityEvidenceUnavailableError
+    || (error instanceof Error && error.name === 'SecurityEvidenceUnavailableError');
 }
 
 /** Retained metric first; a derived artifact only fills a genuinely absent value. */
@@ -78,11 +89,10 @@ async function readStrategyRun(
   }
 }
 
-async function readIndex(market: RankingMarket): Promise<ReadResult> {
-  const symbol = RANKING_INDEX_SYMBOLS[market];
-  const title = RANKING_INDEX_TITLES[market];
+async function readIndex(index: RankingIndexIdentity): Promise<ReadResult> {
+  const { market, symbol, title } = index;
   try {
-    const evidence = await readMarketEvidence(market);
+    const evidence = await readMarketEvidence(market, symbol);
     return {
       rows: indexRowsFromBars(market, symbol, title, evidence.bars, evidence.cutoff),
       issues: [],
@@ -94,6 +104,7 @@ async function readIndex(market: RankingMarket): Promise<ReadResult> {
         id: `index:${market}:${symbol}`,
         kind: 'index',
         message: `${title}: governed market evidence unavailable (${errorMessage(error)}).`,
+        state: isUnavailablePublication(error) ? 'awaiting_publication' : 'unavailable',
       }],
     };
   }
@@ -101,8 +112,9 @@ async function readIndex(market: RankingMarket): Promise<ReadResult> {
 
 /**
  * Load ranking rows from governed bytes only: one compact `nav.json` per formal
- * run plus governed market evidence for the two declared baseline indices.
- * SP500 is not governed and is never requested here.
+ * run plus governed market evidence for every declared index identity (QQQ,
+ * S&P 500 and CSI 300). A declared index whose series has not been published
+ * yields a scoped issue and no row; it is never substituted or synthesised.
  */
 export function useModelRanking(
   runs: GovernedRunSummary[],
@@ -126,7 +138,7 @@ export function useModelRanking(
     setState((previous) => ({ rows: previous.rows, loading: true, issues: [] }));
     const reads: Array<Promise<ReadResult>> = runs.map((run) => readStrategyRun(run, includeExcess));
     if (includeIndices) {
-      reads.push(readIndex('us'), readIndex('cn'));
+      reads.push(...RANKING_INDEXES.map((index) => readIndex(index)));
     }
     void Promise.all(reads).then((results) => {
       if (!active) return;

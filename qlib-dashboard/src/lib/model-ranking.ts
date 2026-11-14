@@ -108,16 +108,23 @@ export const RANKING_MARKET_LABELS: Readonly<Record<RankingMarket, string>> = {
   cn: 'China',
 };
 
-/** Governed index display names. Never substitute another instrument. */
-export const RANKING_INDEX_TITLES: Readonly<Record<RankingMarket, string>> = {
-  us: 'QQQ',
-  cn: 'CSI 300',
-};
+/** One governed index identity: its market, canonical symbol and display title. */
+export interface RankingIndexIdentity {
+  market: RankingMarket;
+  symbol: string;
+  title: string;
+}
 
-export const RANKING_INDEX_SYMBOLS: Readonly<Record<RankingMarket, string>> = {
-  us: MARKET_BASELINES.us.symbol,
-  cn: MARKET_BASELINES.cn.symbol,
-};
+/**
+ * Ordered governed index identities. Each one is read from its own published
+ * market evidence; a missing series is reported as unpublished, never replaced
+ * by another index, ETF, synthetic or interpolated series.
+ */
+export const RANKING_INDEXES: readonly RankingIndexIdentity[] = [
+  { market: 'us', symbol: MARKET_BASELINES.us.symbol, title: 'QQQ' },
+  { market: 'us', symbol: 'SPX', title: 'S&P 500' },
+  { market: 'cn', symbol: MARKET_BASELINES.cn.symbol, title: 'CSI 300' },
+];
 
 export function formatPeriodLabel(period: HorizonPeriod): string {
   return period.toUpperCase();
@@ -315,7 +322,9 @@ function closeNav(bars: readonly SecurityBar[]): NavPoint[] {
 /**
  * Build an index row from governed market-evidence closes. This is a
  * close-to-close price measure, not a total-return or baseline overlay, and its
- * excess is never combined with a strategy's wealth return.
+ * excess is never combined with a strategy's wealth return. The row's declared
+ * benchmark is its own governed title (QQQ, S&P 500 or CSI 300), never another
+ * market's baseline label.
  */
 export function indexRowsFromBars(
   market: RankingMarket,
@@ -336,7 +345,7 @@ export function indexRowsFromBars(
     symbol,
     title: name,
     market,
-    benchmark: MARKET_BASELINES[market].label,
+    benchmark: name,
     nav,
     href: `/securities/${market}/${encodeURIComponent(symbol)}`,
     asOf,

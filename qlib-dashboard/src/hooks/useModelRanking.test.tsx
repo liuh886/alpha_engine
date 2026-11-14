@@ -5,7 +5,10 @@ import type { GovernedRunSummary } from '@/lib/governed-run';
 import type { SecurityBar, SecurityEvidence } from '@/lib/security-evidence';
 
 vi.mock('@/lib/formal-nav', () => ({ loadFormalNav: vi.fn() }));
-vi.mock('@/lib/security-evidence', () => ({ loadSecurityEvidence: vi.fn() }));
+vi.mock('@/lib/security-evidence', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/security-evidence')>();
+  return { ...actual, loadSecurityEvidence: vi.fn() };
+});
 vi.mock('@/lib/derived-excess', () => ({ loadDerivedExcess: vi.fn() }));
 
 function run(overrides: Partial<GovernedRunSummary> = {}): GovernedRunSummary {
@@ -142,7 +145,7 @@ beforeEach(() => {
 });
 
 describe('useModelRanking', () => {
-  it('reads one compact NAV projection per run and only the two governed indices', async () => {
+  it('reads one compact NAV projection per run and every governed index identity', async () => {
     const { useModelRanking, renderHook, waitFor, loadFormalNav, loadSecurityEvidence, loadDerivedExcess } = await harness();
     loadFormalNav.mockImplementation(async (owner) => navSeries(owner, [
       ['2026-10-11', 100],
@@ -157,26 +160,30 @@ describe('useModelRanking', () => {
 
     expect(result.current.issues).toEqual([]);
     expect(result.current.rows.map((row) => row.id).sort()).toEqual([
-      'cn_27_v1_3', 'index:cn:000300', 'index:us:QQQ', 'us_x1_3',
+      'cn_27_v1_3', 'index:cn:000300', 'index:us:QQQ', 'index:us:SPX', 'us_x1_3',
     ]);
     expect(loadFormalNav).toHaveBeenCalledTimes(2);
-    expect(loadSecurityEvidence).toHaveBeenCalledTimes(2);
+    expect(loadSecurityEvidence).toHaveBeenCalledTimes(3);
     expect(loadSecurityEvidence).toHaveBeenCalledWith('us', 'QQQ');
+    expect(loadSecurityEvidence).toHaveBeenCalledWith('us', 'SPX');
     expect(loadSecurityEvidence).toHaveBeenCalledWith('cn', '000300');
     for (const [market, symbol] of loadSecurityEvidence.mock.calls) {
       expect(`${market}:${symbol}`).not.toMatch(/spy|voo|ivv|gspc|\^/i);
     }
+    const spx = result.current.rows.find((row) => row.id === 'index:us:SPX');
+    expect(spx).toMatchObject({ kind: 'index', market: 'us', symbol: 'SPX', title: 'S&P 500', benchmark: 'S&P 500' });
+    expect(spx?.excess?.value).toBeNull();
     expect(loadDerivedExcess).not.toHaveBeenCalled();
   });
 
-  it('scopes a governed index failure to that market without dropping strategies', async () => {
+  it('scopes a governed S&P 500 read failure to its own index id without dropping other rows', async () => {
     const { useModelRanking, renderHook, waitFor, loadFormalNav, loadSecurityEvidence } = await harness();
     loadFormalNav.mockImplementation(async (owner) => navSeries(owner, [
       ['2026-10-11', 100],
       ['2026-11-11', 110],
     ]));
     loadSecurityEvidence.mockImplementation(async (market, symbol) => {
-      if (market === 'us') throw new Error('governed closes unavailable');
+      if (market === 'us' && symbol === 'SPX') throw new Error('governed closes unavailable');
       return evidence(market, symbol);
     });
     const runs = [US_RUN, CN_RUN];
@@ -184,13 +191,43 @@ describe('useModelRanking', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.rows.map((row) => row.id).sort()).toEqual([
-      'cn_27_v1_3', 'index:cn:000300', 'us_x1_3',
+      'cn_27_v1_3', 'index:cn:000300', 'index:us:QQQ', 'us_x1_3',
     ]);
     expect(result.current.issues).toHaveLength(1);
     expect(result.current.issues[0]).toMatchObject({
-      id: 'index:us:QQQ',
+      id: 'index:us:SPX',
       kind: 'index',
-      message: expect.stringContaining('QQQ: governed market evidence unavailable'),
+      state: 'unavailable',
+      message: expect.stringContaining('S&P 500: governed market evidence unavailable'),
+    });
+  });
+
+  it('marks an unpublished governed S&P 500 series as awaiting publication, not corrupt', async () => {
+    const { useModelRanking, renderHook, waitFor, loadFormalNav, loadSecurityEvidence } = await harness();
+    const security = await import('@/lib/security-evidence');
+    loadFormalNav.mockImplementation(async (owner) => navSeries(owner, [
+      ['2026-10-11', 100],
+      ['2026-11-11', 110],
+    ]));
+    loadSecurityEvidence.mockImplementation(async (market, symbol) => {
+      if (market === 'us' && symbol === 'SPX') {
+        throw new security.SecurityEvidenceUnavailableError('Security history unavailable (404).');
+      }
+      return evidence(market, symbol);
+    });
+    const runs = [US_RUN];
+    const { result } = renderHook(() => useModelRanking(runs, { includeIndices: true, includeExcess: false }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.rows.map((row) => row.id).sort()).toEqual([
+      'index:cn:000300', 'index:us:QQQ', 'us_x1_3',
+    ]);
+    expect(result.current.issues).toHaveLength(1);
+    expect(result.current.issues[0]).toMatchObject({
+      id: 'index:us:SPX',
+      kind: 'index',
+      state: 'awaiting_publication',
+      message: expect.stringContaining('Security history unavailable (404)'),
     });
   });
 
@@ -263,18 +300,19 @@ describe('useModelRanking', () => {
     expect(result.current.issues).toEqual([]);
   });
 
-  it('reuses each governed market-evidence read across mounts', async () => {
+  it('reuses each governed market-evidence read per market and symbol across mounts', async () => {
     const { useModelRanking, renderHook, waitFor, loadSecurityEvidence } = await harness();
     loadSecurityEvidence.mockImplementation(async (market, symbol) => evidence(market, symbol));
     const runs: GovernedRunSummary[] = [];
     const first = renderHook(() => useModelRanking(runs, { includeIndices: true, includeExcess: false }));
-    await waitFor(() => expect(first.result.current.rows).toHaveLength(2));
+    await waitFor(() => expect(first.result.current.rows).toHaveLength(3));
     first.unmount();
 
     const second = renderHook(() => useModelRanking(runs, { includeIndices: true, includeExcess: false }));
-    await waitFor(() => expect(second.result.current.rows).toHaveLength(2));
+    await waitFor(() => expect(second.result.current.rows).toHaveLength(3));
 
-    expect(loadSecurityEvidence).toHaveBeenCalledTimes(2);
+    expect(loadSecurityEvidence).toHaveBeenCalledTimes(3);
+    expect(loadSecurityEvidence).toHaveBeenCalledWith('us', 'SPX');
   });
 
   it('stays idle when there are no runs and indices are excluded', async () => {
