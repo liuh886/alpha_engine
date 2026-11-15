@@ -320,6 +320,13 @@ test('strategy detail separates source metrics from chart observations and keeps
   await page.getByRole('button', { name: 'Benchmark comparisons', exact: true }).click();
   await page.getByTestId('chart-return-basis').scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+  // Long declared contract identifiers must wrap inside the evidence card rather
+  // than widening the clipped app shell beyond the handset viewport.
+  const clippedWidth = await page.evaluate(() => {
+    const main = document.querySelector('main');
+    return main ? main.scrollWidth - main.clientWidth : 0;
+  });
+  expect(clippedWidth, 'declared methodology values stay inside the shell').toBeLessThanOrEqual(2);
   await page.screenshot({ path: testInfo.outputPath('byd-declared-benchmark.png'), fullPage: false });
   expect(errors).toEqual([]);
 });
