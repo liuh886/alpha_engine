@@ -16,10 +16,10 @@ from src.artifacts.derived_formal_excess import (
 from src.artifacts.formal_bundle_reader import FormalBundleReadError, load_formal_run
 
 MODEL_VERSION_ID = "qqqi_qqq_tqqq_v4_3"
-EXPECTED_OBSERVATIONS = 699
-EXPECTED_STRATEGY_RETURN = 0.9094666652401326
-EXPECTED_BENCHMARK_RETURN = 0.6323106782547736
-EXPECTED_EXCESS = 0.16979364938155483
+EXPECTED_OBSERVATIONS = 701
+EXPECTED_STRATEGY_RETURN = 0.9118724165605459
+EXPECTED_BENCHMARK_RETURN = 0.6353030942702684
+EXPECTED_EXCESS = 0.16912419676775126
 
 
 def _artifact() -> dict:
@@ -38,9 +38,9 @@ def test_excess_value_and_window_are_the_declared_same_basis_metrics() -> None:
     assert artifact["benchmark"]["declared_identity"] == "QQQ"
     assert artifact["benchmark"]["comparability_id"] == "qqq"
     assert artifact["window"]["declared_start"] == "2024-01-30"
-    assert artifact["window"]["declared_end"] == "2026-11-10"
+    assert artifact["window"]["declared_end"] == "2026-11-12"
     assert artifact["window"]["observed_start"] == "2024-01-30"
-    assert artifact["window"]["observed_end"] == "2026-11-10"
+    assert artifact["window"]["observed_end"] == "2026-11-12"
     assert artifact["window"]["observation_count"] == EXPECTED_OBSERVATIONS
     assert artifact["result"] == {
         "strategy_cumulative_return": EXPECTED_STRATEGY_RETURN,
