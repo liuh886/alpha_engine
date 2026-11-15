@@ -4,6 +4,18 @@
 **Repository:** Alpha Engine; not an active strategy. **Never** present prototype
 scores as a validated prediction or place orders from this module.
 
+## 2026-11-15 Owner direction: measure events first, test forward risk second
+
+**Product objective:** investigate whether *as-of-known event density* adds useful information about the **conditional risk of a future CSI300 downside event**, beyond price-regime-only controls. This is a research objective, **not an observed predictive result or an approved risk score**. Distinguish two quantities:
+
+1. **E(t), descriptive event density:** number of distinct verified adverse-risk stories known by completed XSHG close `t` whose declared exposure windows overlap the session; report denominator/universe, coverage by session and family, stages and missingness. When PIT coverage is missing, E(t) is `unknown` (not zero). Never collapse unlock *potential* into executed insider sales, and never count revised or duplicated claims as additional stories.
+2. **Y_h(t), future realized downside labels:** predeclare a study outcome such as CSI300 close-to-close loss of at least 5% over **h = 7/14/28 distinct completed XSHG sessions**, alongside forward return and worst intrahorizon excursion as *separate* outcomes. Candidate thresholds belong in the frozen experiment contract, not in UI copy or a validated RDI score. `Y_h` may be inspected only after `t+h` is mature and must never enter E(t) or B(t).
+3. **Predictive experiment:** benchmark B (price-only drawdown/regime), E (one certified event family), and E+B on identical eligible windows. Freeze source vintages, event available-at rules, population, baseline/outcome definitions and splits *before* looking at outcomes; use purged rolling OOS evaluation, episode-block uncertainty and calibration tests. Publish negative/null incremental value too. Do not claim risk probabilities without calibration.
+
+**First narrowly scoped candidate:** `restricted_unlock` (disclosed scheduled share unlocks), reusing `src/data/company_events/ashare_primary_announcements.py`. It is selected as the **initial source-qualification work package**, **not declared PIT-ready or an economic signal**. First deliverable is a coverage/feasibility receipt: original announcement and first public availability time, source/evidence hash, story/event identity, effective unlock session and any amendments, as-of-known future schedule, declared universe/era and PIT membership, per-session completeness/explicit absence. Scope must be frozen prior to producing any numeric E-series. If records or historical first-availability/absence evidence are missing, return `BLOCKED` with exact gaps; do not switch silently to another family or fill missing with zero. All 9 other event families remain unverified.
+
+**Release discipline:** M1 CSI300 price reconstruction is already complete through 2026-10-30; this does not qualify event history. Current event families remain **0/10 PIT-qualified**, no event-density production series, no calibrated 0–100 score, no forecast or fifth strategy. Initial work modifies the existing research/study evidence path only. No new navigation, database, scheduler, alerts or automated trading. Keep `research_only=true`, `trade_ready=false`. Track execution in #1272 and the existing `docs/product/next_stage_execution_plan.md`, rather than a parallel roadmap.
+
 ## Objective and hypothesis
 
 Test whether a **concentration of contemporaneously *known* adverse events**,
