@@ -1,0 +1,519 @@
+{
+  "issue": 1282,
+  "baseline_main_sha": "c6530f019de010de887cda52863d63763f943227",
+  "audit_started_main_sha": "2b262fd2571c9316481080dbf1b72fe7ee92681a",
+  "fix_commit": "c6530f019de010de887cda52863d63763f943227",
+  "fix_pull_request": 1446,
+  "audit_kind": "current_lock_source_evaluator_reaudit",
+  "status": "REPRODUCED_EXACTLY_CN27_AND_QQQ_WITHIN_DECLARED_CONTRACT",
+  "owner_A5_acceptance": "PENDING",
+  "research_only": true,
+  "trade_ready": false,
+  "promotion_authorized": false,
+  "pinned_environment": {
+    "main_sha": "c6530f019de010de887cda52863d63763f943227",
+    "branch": "docs/reproduce-local-reference-1282-20261115",
+    "worktree": "C:/Users/ZOZN109/.codex/project-monitors/alphaengine/worktrees/reproduce-1282",
+    "governed_data_root": "C:/Users/ZOZN109/.codex/project-monitors/alphaengine/worktrees/reproduce-1282",
+    "uv_lock_sha256": "fbb69c233c66ddb820afb2ea134a73eec1b79e97d20ce50f789ed9b2eeee1cc3",
+    "pyproject_sha256": "bfe1d2449bd50680279b8b1e31a0802a4a82a64dc8809f772815939592f61ea6",
+    "python_version": "3.12.12",
+    "pinned_interpreter": "D:/Documents/GitHub/alpha_engine/.venv/Scripts/python.exe",
+    "yfinance_version": "1.2.0",
+    "yfinance_locked_version": "1.2.0",
+    "uv_version": "0.9.10",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "locks_modified": false,
+    "environment_sequence_note": "The first US attempt was run with the workstation conda interpreter D:/miniforge3/python.exe, which carries yfinance 1.0 rather than the uv-locked 1.2.0. That mismatch contributed to the transient empty ^VIX/^VXN response. Every later attempt and all final repetitions used the project venv (yfinance 1.2.0, matching uv.lock). All attempts are recorded below in order; none is hidden or reordered."
+  },
+  "implementation_sha256": {
+    "src/research/formal_model_replay.py": "f4dab727f4a12918dc5f56df35351c0360c4b81974886dbfe5b42aa212eb24a5",
+    "src/research/cn27_v1_3_replay.py": "f3eea916ca8ddc877aac866f4fd7faeb4f5d3d629dbf1a9c4d7bc383cbf76c1c",
+    "src/research/qqq_authoritative_replay.py": "16c33c5dd04b68f8bf7ba5cd7706600f633501c043582baf1117bff5e68444a7",
+    "src/research/replay_comparison.py": "737a00a9a2771b339eac65f1bb681067fd5646e0daaff3c9f7b7cdf6fe122e22",
+    "scripts/cn27_v1_3_formal_common.py": "0b731470adc466f035701d908a4eba4d66515e84ca45fa511cc7e96907fd4612",
+    "scripts/correct_formal_baseline_prefix.py": "26ea95a3b29fb9b7e8056560d6be7e959583e3ec3f14184219d6c7e58b01b393",
+    "src/cli/main.py": "07b95f60e35306226f1231af3392b0d4d3eafd103b3a698322b2540de223f9d5"
+  },
+  "entrypoint": "python -m src.cli.main --root . research replay <model>",
+  "commands": {
+    "working_directory": "C:/Users/ZOZN109/.codex/project-monitors/alphaengine/worktrees/reproduce-1282",
+    "final_cn_27": "D:/Documents/GitHub/alpha_engine/.venv/Scripts/python.exe -m src.cli.main --root . research replay cn_27_v1_3",
+    "final_qqq": "D:/Documents/GitHub/alpha_engine/.venv/Scripts/python.exe -m src.cli.main --root . research replay qqq_v4_3",
+    "initial_qqq_attempt": "D:/miniforge3/python.exe -m src.cli.main --root . research replay qqq_v4_3",
+    "note": "No refresh flag, no provider substitution and no model retraining in any run."
+  },
+  "local_source_staging": {
+    "why": "The worktree is a blob:none partial clone and artifacts/ is gitignored, so the hash-pinned CN source CSV is not present in the worktree checkout.",
+    "action": "Byte-identical copy of the pinned CN source CSV from the main checkout into the worktree root path the replay resolves.",
+    "source_original_path": "D:/Documents/GitHub/alpha_engine/artifacts/evidence/cn_all_weather_alpha_rotation_v1/source_ohlcv.csv",
+    "staged_path": "artifacts/evidence/cn_all_weather_alpha_rotation_v1/source_ohlcv.csv",
+    "sha256": "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35",
+    "matches_accepted_lineage_sha256": true,
+    "substitution": false
+  },
+  "execution_sequence": [
+    {
+      "order": 1,
+      "market": "US",
+      "stage": "initial_attempt",
+      "timestamp_local": "2026-11-15T19:32:45+08:00",
+      "interpreter": "D:/miniforge3/python.exe",
+      "yfinance_version": "1.0",
+      "repetitions": 3,
+      "exit_codes": [2, 2, 2],
+      "stdout_sha256": "f110274c1a816bc589b744f849760cdc6c2f2d4c7fa6e499292117e03a8452db",
+      "byte_identical": true,
+      "decision": "data_blocked",
+      "reason_verbatim": "strategy data bundle is blocked: missing=['^VIX', '^VXN']",
+      "interpretation": "Transient/environment-sensitive provider failure under an interpreter whose yfinance (1.0) did not match the lock (1.2.0); not retained as the final conclusion."
+    },
+    {
+      "order": 2,
+      "market": "US",
+      "stage": "provider_recovery_probe",
+      "timestamp_local": "2026-11-15T19:43:00+08:00",
+      "interpreter": "D:/Documents/GitHub/alpha_engine/.venv/Scripts/python.exe",
+      "yfinance_version": "1.2.0",
+      "result": {
+        "^VIX": {"rows": 717, "first": "2024-01-30", "last": "2026-11-13"},
+        "^VXN": {"rows": 702, "first": "2024-01-30", "last": "2026-11-13"}
+      },
+      "interpretation": "Provider recovered under the uv-locked interpreter; the frozen source row-count filter then matched the accepted lineage."
+    },
+    {
+      "order": 3,
+      "market": "US",
+      "stage": "retry_before_fix",
+      "timestamp_local": "2026-11-15T19:44:12+08:00",
+      "interpreter": "D:/Documents/GitHub/alpha_engine/.venv/Scripts/python.exe",
+      "yfinance_version": "1.2.0",
+      "repetitions": 3,
+      "exit_codes": [2, 2, 2],
+      "stdout_sha256": "3df0906a67c41fcf871cf4c9335d3b9594a33f9c10c98d7ed0f3e890d6df647d",
+      "byte_identical": true,
+      "decision": "invalid_evidence",
+      "observed_defect": "portfolio.json positions retained the pre-correction executed_reason on 2026-01-21 and 2026-03-03 while performance.json report carried the corrected labels; the maintained gate compares both and failed at positions[705] (2026-01-21: accepted 'hold', recomputed 'defensive_price_or_vix_stress').",
+      "resolution": "Fixed and merged as PR #1446 (commit c6530f019d)."
+    },
+    {
+      "order": 4,
+      "market": "US",
+      "stage": "fix_landed",
+      "timestamp_local": "2026-11-15T22:20:00+08:00",
+      "fix_commit": "c6530f019de010de887cda52863d63763f943227",
+      "fix_description": "The correction tool now applies each executed_reason correction to the same-date portfolio.json positions under the same policy, re-seals both roots, and records positions_corrections in lineage. The accepted bundle is re-sealed and internally consistent.",
+      "reseaned_accepted_bundle": {
+        "bundle_id": "2ad7a25aa529ad072f08f2608d2294fef7e476d1ea994259917b742e0c7ef8f2",
+        "manifest_sha256": "a6435828b9d4fa6a0bb5e7b0b12e233d5d3435d13b95ece5918353930e6cea33",
+        "positions_corrections": [
+          {"after": "defensive_price_or_vix_stress", "before": "hold", "date": "2026-01-21", "field": "executed_reason", "row_count": 1},
+          {"after": "hold", "before": "defensive_price_or_vix_stress", "date": "2026-03-03", "field": "executed_reason", "row_count": 1}
+        ],
+        "report_positions_consistent": true
+      }
+    },
+    {
+      "order": 5,
+      "market": "CN",
+      "stage": "final_replay",
+      "timestamp_local": "2026-11-15T22:23:20+08:00",
+      "interpreter": "D:/Documents/GitHub/alpha_engine/.venv/Scripts/python.exe",
+      "repetitions": 3,
+      "exit_codes": [0, 0, 0],
+      "stdout_sha256": "ed63040d40ccfac0a73c5b7fa49f15738369d94f2562af4c6bad7cdce9e5a43f",
+      "byte_identical": true,
+      "decision": "exact_replay"
+    },
+    {
+      "order": 6,
+      "market": "US",
+      "stage": "final_replay",
+      "timestamp_local": "2026-11-15T22:23:44+08:00",
+      "interpreter": "D:/Documents/GitHub/alpha_engine/.venv/Scripts/python.exe",
+      "repetitions": 3,
+      "exit_codes": [0, 0, 0],
+      "stdout_sha256": "5270d94cac5a3a3c925a7128032cfd78dca04797f961e56c9649a19a97b25866",
+      "byte_identical": true,
+      "decision": "exact_replay"
+    }
+  ],
+  "repetitions": {
+    "cn_27_final": {
+      "repetitions": 3,
+      "exit_codes": [0, 0, 0],
+      "stdout_sha256": "ed63040d40ccfac0a73c5b7fa49f15738369d94f2562af4c6bad7cdce9e5a43f",
+      "byte_identical": true,
+      "stderr_bytes": [0, 0, 0]
+    },
+    "qqq_final": {
+      "repetitions": 3,
+      "exit_codes": [0, 0, 0],
+      "stdout_sha256": "5270d94cac5a3a3c925a7128032cfd78dca04797f961e56c9649a19a97b25866",
+      "byte_identical": true,
+      "stderr_bytes": [0, 0, 0]
+    },
+    "qqq_initial_attempt": {
+      "repetitions": 3,
+      "interpreter": "D:/miniforge3/python.exe",
+      "yfinance_version": "1.0",
+      "exit_codes": [2, 2, 2],
+      "stdout_sha256": "f110274c1a816bc589b744f849760cdc6c2f2d4c7fa6e499292117e03a8452db",
+      "byte_identical": true,
+      "stderr_bytes": [0, 0, 0]
+    },
+    "qqq_retry_before_fix": {
+      "repetitions": 3,
+      "interpreter": "D:/Documents/GitHub/alpha_engine/.venv/Scripts/python.exe",
+      "yfinance_version": "1.2.0",
+      "exit_codes": [2, 2, 2],
+      "stdout_sha256": "3df0906a67c41fcf871cf4c9335d3b9594a33f9c10c98d7ed0f3e890d6df647d",
+      "byte_identical": true,
+      "stderr_bytes": [0, 0, 0]
+    }
+  },
+  "actual_result": {
+    "cn_27_v1_3": {
+      "decision": "exact_replay",
+      "status": "completed",
+      "promotion_authorized": false,
+      "requested_replay": "cn_27_v1_3",
+      "research_only": true,
+      "results": [
+        {
+          "baseline": {
+            "bundle_id": "4e01ca1f644c41a44848fd84f30d092894f07235b67e21fe3a6c3d384f008528",
+            "evidence_cutoff": "2026-11-13",
+            "manifest_path": "data/research/formal_model_runs/cn_27_rotation/cn_27_v1_3/cn_27_v1_3-through-2026_11_13/manifest.json",
+            "manifest_sha256": "5e5b05986d37e9a5698c4b977b5cfe29ecb189835380fc28c784cf9e5645f737",
+            "model_family_id": "cn_27_rotation",
+            "model_kind": "rules_based_allocation",
+            "model_version_id": "cn_27_v1_3",
+            "run_id": "cn_27_v1_3-through-2026_11_13"
+          },
+          "decision": "exact_replay",
+          "model_id": "cn_27_v1_3",
+          "reason": "ok",
+          "replay_id": "cn_27_v1_3_formal_replay_v1",
+          "research_only": true,
+          "trade_ready": false
+        }
+      ],
+      "runner": "formal_model_replay_v2",
+      "schema_version": "2.0",
+      "trade_ready": false
+    },
+    "qqq_v4_3": {
+      "decision": "exact_replay",
+      "status": "completed",
+      "promotion_authorized": false,
+      "requested_replay": "qqq_v4_3",
+      "research_only": true,
+      "results": [
+        {
+          "baseline": {
+            "bundle_id": "2ad7a25aa529ad072f08f2608d2294fef7e476d1ea994259917b742e0c7ef8f2",
+            "evidence_cutoff": "2026-11-13",
+            "manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_13/manifest.json",
+            "manifest_sha256": "a6435828b9d4fa6a0bb5e7b0b12e233d5d3435d13b95ece5918353930e6cea33",
+            "model_family_id": "qqq_rotation",
+            "model_kind": "rules_based_allocation",
+            "model_version_id": "qqqi_qqq_tqqq_v4_3",
+            "run_id": "qqqi_qqq_tqqq_v4_3-through-2026_11_13"
+          },
+          "data_identity": {
+            "bundle_id": "qqqi_qqq_tqqq_sgov_vix_vxn_strategy_data_v1",
+            "common_history_start": "2024-01-30",
+            "common_history_end": "2026-11-13",
+            "component_id": "strategy.qqqi_qqq_tqqq_sgov_vix_vxn_v1",
+            "mode": "governed_strategy_data_bundle",
+            "strategy_data_ready": true,
+            "professional_source_ready": false,
+            "strategy_manifest_sha256": "48cc3bb3377a653058357c9d9aa99fd4fbd0d30f08ace8be85e975e6bc164acd",
+            "strategy_data_manifest_sha256": "8631ed20f53a96f0729106876c64b16f5366e8bde71042fe47d3f6a3ea080001",
+            "source_evidence": {
+              "bundle_manifest_sha256": "5647603ef0d4672aec3ce9bdaab37bf782e74e3d1b787b2701fa5317359eac07",
+              "coverage_sha256": "7dec81038264377ef50775386bea0bff7d8509c1f2bcc45715f18b9d46527673",
+              "reconciliation_sha256": "b91c7040d8a5543b1fbfd64817412ac1d8afceaa48ef56338ce410d96afef935",
+              "professional_source_ready": false
+            },
+            "selected_providers": {
+              "QQQ": "yfinance", "QQQI": "yfinance", "SGOV": "yfinance",
+              "TQQQ": "yfinance", "^VIX": "yfinance", "^VXN": "yfinance"
+            },
+            "roles": {
+              "QQQ": "tradable", "QQQI": "tradable", "SGOV": "tradable",
+              "TQQQ": "tradable", "^VIX": "signal_reference", "^VXN": "signal_reference"
+            },
+            "frozen_economic_identity": {
+              "accepted_manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_13/manifest.json",
+              "accepted_manifest_sha256": "a6435828b9d4fa6a0bb5e7b0b12e233d5d3435d13b95ece5918353930e6cea33",
+              "historical_economics_recomputed_from_current_provider": false,
+              "mode": "accepted_formal_bundle_v2_prefix_retained_exact"
+            }
+          },
+          "decision": "exact_replay",
+          "model_version_id": "qqqi_qqq_tqqq_v4_3",
+          "promotion_authorized": false,
+          "replay_id": "qqq_v4_3",
+          "research_only": true,
+          "runner": "formal_model_replay_v2",
+          "schema_version": "2.0",
+          "status": "completed",
+          "trace_reproduction": {
+            "exact": true,
+            "frozen_economic_prefix": {
+              "exact": true,
+              "portfolio_contract_exact": true,
+              "sections": {
+                "positions": {"exact": true, "expected_rows": 1042, "observed_rows": 1042, "first_mismatch": null, "max_absolute_difference": {"position_state": 0.0, "price": 0.0, "weight": 0.0}},
+                "report": {"exact": true, "expected_rows": 701, "observed_rows": 701, "first_mismatch": null, "max_absolute_difference": {"account": 0.0, "bench": 0.0, "bench_qqq": 0.0, "decision_state": 0.0, "drawdown": 0.0, "gross_return": 0.0, "period_return": 0.0, "position_state": 0.0, "transaction_cost": 0.0, "turnover": 0.0, "weight_QQQ": 0.0, "weight_QQQI": 0.0, "weight_SGOV": 0.0, "weight_TQQQ": 0.0}},
+                "trades": {"exact": true, "expected_rows": 134, "observed_rows": 134, "first_mismatch": null, "max_absolute_difference": {"position_state": 0.0, "previous_weight": 0.0, "target_weight": 0.0, "transaction_cost": 0.0, "vix_close": 0.0, "vxn_close": 0.0, "weight_delta": 0.0}}
+              }
+            },
+            "current_source_decision_path": {
+              "exact": true,
+              "sections": {
+                "positions": {"exact": true, "expected_rows": 1042, "observed_rows": 1042, "first_mismatch": null, "max_absolute_difference": {"position_state": 0.0, "weight": 0.0}},
+                "report": {"exact": true, "expected_rows": 701, "observed_rows": 701, "first_mismatch": null, "max_absolute_difference": {"decision_state": 0.0, "position_state": 0.0, "transaction_cost": 0.0, "turnover": 0.0, "weight_QQQ": 0.0, "weight_QQQI": 0.0, "weight_SGOV": 0.0, "weight_TQQQ": 0.0}},
+                "trades": {"exact": true, "expected_rows": 134, "observed_rows": 134, "first_mismatch": null, "max_absolute_difference": {"position_state": 0.0, "previous_weight": 0.0, "target_weight": 0.0, "transaction_cost": 0.0, "weight_delta": 0.0}}
+              }
+            },
+            "appended_economics": {"boundary": "2026-11-12", "exact": true, "rows": 0, "status": "not_applicable_no_appended_rows"},
+            "cumulative_continuity": {"boundary": "2026-11-12", "exact": true, "rows": 0, "status": "not_applicable_no_appended_rows"}
+          },
+          "trade_ready": false
+        }
+      ],
+      "runner": "formal_model_replay_v2",
+      "schema_version": "2.0",
+      "trade_ready": false
+    }
+  },
+  "cutoffs": {
+    "cn_27_v1_3": {
+      "record_evidence_cutoff": "2026-11-13",
+      "frozen_source_and_trace_boundary": "2026-09-04",
+      "trace_start": "2023-09-01",
+      "source_prices_path": "artifacts/evidence/cn_all_weather_alpha_rotation_v1/source_ohlcv.csv",
+      "source_prices_sha256": "1e7713e8c2387ac70d4ff9346fc0f553453318dd2fd0fd8ee76e25c52fb26e35",
+      "source_prices_rows": 23524,
+      "source_prices_date_range": ["2023-05-04", "2026-09-04"],
+      "append_only_lineage_refresh": {
+        "refresh_of_evidence_cutoff": "2026-11-12",
+        "refresh_new_sessions": 1,
+        "refresh_extended_bar_rows": 24800,
+        "historical_evidence_recomputed": true,
+        "exact_historical_reproduction": true
+      },
+      "note": "The append-only lineage refresh advanced the record cutoff to 2026-11-13 while the frozen source CSV and retained trace stay at 2026-09-04. The replay reproduces the frozen trace; it does not extend it."
+    },
+    "qqq_v4_3": {
+      "record_evidence_cutoff": "2026-11-13",
+      "accepted_trace_boundary": "2026-11-12",
+      "comparability_start": "2024-01-30",
+      "comparability_end": "2026-11-12",
+      "note": "The replay assembled the full six-symbol source and reproduced the decision path at cutoff 2026-11-13; there are no appended rows beyond the 2026-11-12 trace boundary."
+    }
+  },
+  "identities": {
+    "cn_27_v1_3": {
+      "bundle_id": "4e01ca1f644c41a44848fd84f30d092894f07235b67e21fe3a6c3d384f008528",
+      "manifest_sha256": "5e5b05986d37e9a5698c4b977b5cfe29ecb189835380fc28c784cf9e5645f737",
+      "model_contract": "configs/models/cn_27_v1_3.yaml",
+      "model_contract_sha256": "3c36d6ccb7b62fd3455c07705f237d8021d11c428b06e1ca8ed81208f78c450b",
+      "discovery_contract": "configs/research_experiments/cn_27_v1_3_projected_concentration_discovery_v1.yaml",
+      "discovery_contract_sha256": "4381ac0562b05a1209aac7fa7bba782607fa26742802ff9d19ded6a94ada98a6",
+      "pool": "configs/pools/cn_all_weather_alpha_rotation_v1.yaml",
+      "pool_sha256": "31078f64d50b9f00ff8a60579ed74378235d18de33f142d81795fab5a33b9458",
+      "benchmark_id": "000300",
+      "cost_contract_id": "cost_10_bps",
+      "portfolio_cost_contract": "asymmetric_stock_5_10bps_etf_2_2bps",
+      "cost_bps": 10,
+      "rebalance_contract_id": "rebalance_30_sessions",
+      "execution_delay_sessions": 1,
+      "horizon_sessions": 1,
+      "universe_id": "cn_all_weather_alpha_rotation_v1",
+      "price_adjustment_role": "frozen lineage-pinned research OHLCV (adjusted research representation, not raw execution prices)",
+      "market_calendar": "frozen source CSV sessions; recomputed bars must end exactly at the published trace boundary 2026-09-04"
+    },
+    "qqq_v4_3": {
+      "bundle_id": "2ad7a25aa529ad072f08f2608d2294fef7e476d1ea994259917b742e0c7ef8f2",
+      "manifest_sha256": "a6435828b9d4fa6a0bb5e7b0b12e233d5d3435d13b95ece5918353930e6cea33",
+      "model_contract": "configs/research_paradigms/qqqi_qqq_tqqq_current_baseline.yaml",
+      "model_contract_sha256": "588a38fc16876573da65ad2732345bc6b7ee1de6932c8e60a798d87ef4371ca9",
+      "data_recipe": "configs/data_recipes/qqq_rotation_sgov_v1.yaml",
+      "data_recipe_sha256": "f25516c682c9e30b6e8d851637738afc83508dd4cb72350506f4af8d94e2678a",
+      "strategy_product_manifest_sha256": "48cc3bb3377a653058357c9d9aa99fd4fbd0d30f08ace8be85e975e6bc164acd",
+      "strategy_data_manifest_sha256": "8631ed20f53a96f0729106876c64b16f5366e8bde71042fe47d3f6a3ea080001",
+      "retry_etf_bundle_manifest_sha256": "5647603ef0d4672aec3ce9bdaab37bf782e74e3d1b787b2701fa5317359eac07",
+      "retry_coverage_sha256": "7dec81038264377ef50775386bea0bff7d8509c1f2bcc45715f18b9d46527673",
+      "retry_reconciliation_sha256": "b91c7040d8a5543b1fbfd64817412ac1d8afceaa48ef56338ce410d96afef935",
+      "retry_session_filter_matches_accepted": true,
+      "retry_session_filter": {
+        "authority_session_count": 4243,
+        "^VIX": {"input_rows": 4258, "removed_count": 15, "retained_rows": 4243},
+        "^VXN": {"input_rows": 4243, "removed_count": 0, "retained_rows": 4243}
+      },
+      "correction_policy": "qqq_v4_3_vix_session_correction_v1",
+      "report_corrections": [
+        {"date": "2026-01-20", "field": "decision_reason", "before": "hold", "after": "defensive_price_or_vix_stress"},
+        {"date": "2026-01-21", "field": "executed_reason", "before": "hold", "after": "defensive_price_or_vix_stress"},
+        {"date": "2026-03-02", "field": "decision_reason", "before": "defensive_price_or_vix_stress", "after": "hold"},
+        {"date": "2026-03-03", "field": "executed_reason", "before": "defensive_price_or_vix_stress", "after": "hold"}
+      ],
+      "positions_corrections": [
+        {"date": "2026-01-21", "field": "executed_reason", "before": "hold", "after": "defensive_price_or_vix_stress", "row_count": 1},
+        {"date": "2026-03-03", "field": "executed_reason", "before": "defensive_price_or_vix_stress", "after": "hold", "row_count": 1}
+      ],
+      "report_positions_consistent": true,
+      "benchmark_id": "qqq",
+      "cost_contract_id": "cost_10_bps",
+      "rebalance_contract_id": "daily_open_to_open",
+      "trace_frequency": "daily_open_to_open",
+      "universe_id": "qqqi_qqq_tqqq_v4_3_universe"
+    }
+  },
+  "comparison": {
+    "tolerance_predeclared_before_comparison": true,
+    "predeclared_rules": {
+      "cn_27_v1_3": "Numeric fields in report/positions/trades/attribution use abs_tol=1e-6, rel_tol=0.0 (src/research/cn27_v1_3_replay.py FLOAT_TOLERANCE). Non-numeric fields must be exactly equal. Row counts must be equal. Recomputed bars must end exactly at the published trace boundary. The replay gate is the authority.",
+      "qqq_v4_3": "Report/positions/trades numeric fields use abs_tol=1e-12, rel_tol=0.0 (src/research/replay_comparison.py FLOAT_TOLERANCE); non-numeric fields exactly equal; portfolio_contract exactly equal; frozen economic prefix, appended economics and cumulative continuity exact. Text fields (decision_reason/executed_reason) require exact equality."
+    },
+    "cn_27_v1_3": {
+      "outcome": "exact_replay",
+      "sections": {
+        "report": {
+          "expected_rows": 729, "observed_rows": 729,
+          "close_within_1e-6": true, "byte_equal_at_1e-12": false,
+          "first_value_mismatch_at_1e-12": {"index": 421, "field": "one_way_turnover"},
+          "max_absolute_difference": {
+            "account": 2.8986768541017227e-10, "benchmark_account": 0.0, "benchmark_return": 0.0,
+            "cash_weight": 0.0, "drawdown": 1.1200285143786459e-10,
+            "equity_exposure": 3.015754312940544e-11, "etf_weight": 3.0157321084800515e-11,
+            "gross_return": 5.555235264853575e-11, "holding_count": 0.0,
+            "net_return": 5.555235264853575e-11, "one_way_turnover": 7.353058162351545e-10,
+            "target_drift_due_to_trade_lock": 0.0, "transaction_cost": 1.1111356518038462e-12
+          }
+        },
+        "positions": {
+          "expected_rows": 8745, "observed_rows": 8745,
+          "close_within_1e-6": true, "byte_equal_at_1e-12": false,
+          "first_value_mismatch_at_1e-12": {"index": 4741, "field": "weight"},
+          "max_absolute_difference": {"weight": 4.815372128819106e-10}
+        },
+        "trades": {
+          "expected_rows": 326, "observed_rows": 326,
+          "close_within_1e-6": true, "byte_equal_at_1e-12": false,
+          "first_value_mismatch_at_1e-12": {"index": 167, "field": "target_weight"},
+          "max_absolute_difference": {
+            "previous_weight": 4.5703869855362456e-10, "target_weight": 4.354253485550075e-10,
+            "transaction_cost": 3.417172957358855e-13, "weight_delta": 4.5703876447311664e-10
+          }
+        },
+        "attribution": {
+          "expected_rows": 8759, "observed_rows": 8759,
+          "close_within_1e-6": true, "byte_equal_at_1e-12": false,
+          "first_value_mismatch_at_1e-12": {"index": 4741, "field": "return_weight"},
+          "max_absolute_difference": {
+            "gross_contribution": 5.727097962537897e-11, "open_return": 0.0,
+            "return_weight": 4.815372128819106e-10
+          }
+        }
+      },
+      "bars_boundary_exact": true,
+      "recomputed_bars_max_date": "2026-09-04",
+      "published_trace_end": "2026-09-04",
+      "interpretation": "Decision path and row-level evidence match the retained CN_27 formal bundle within the predeclared 1e-6 replay tolerance. The rows are not byte-equal at 1e-12 because of BLAS reduction-order float noise; the maximum observed drift is 7.353e-10."
+    },
+    "qqq_v4_3": {
+      "outcome": "exact_replay",
+      "evaluation_reached": true,
+      "sections": {
+        "frozen_economic_prefix": {
+          "exact": true,
+          "portfolio_contract_exact": true,
+          "positions": {"exact": true, "expected_rows": 1042, "observed_rows": 1042, "first_mismatch": null},
+          "report": {"exact": true, "expected_rows": 701, "observed_rows": 701, "first_mismatch": null},
+          "trades": {"exact": true, "expected_rows": 134, "observed_rows": 134, "first_mismatch": null}
+        },
+        "current_source_decision_path": {
+          "exact": true,
+          "positions": {"exact": true, "expected_rows": 1042, "observed_rows": 1042, "first_mismatch": null},
+          "report": {"exact": true, "expected_rows": 701, "observed_rows": 701, "first_mismatch": null},
+          "trades": {"exact": true, "expected_rows": 134, "observed_rows": 134, "first_mismatch": null}
+        },
+        "appended_economics": {"boundary": "2026-11-12", "exact": true, "rows": 0, "status": "not_applicable_no_appended_rows"},
+        "cumulative_continuity": {"boundary": "2026-11-12", "exact": true, "rows": 0, "status": "not_applicable_no_appended_rows"}
+      },
+      "max_absolute_difference_all_fields": 0.0,
+      "interpretation": "After PR #1446 re-sealed the accepted bundle with matching report and positions corrections, the maintained replay reproduces the frozen economic prefix, the current-source decision path, and the (zero-row) appended/continuity stages exactly at the predeclared 1e-12 tolerance. Historical economics remain the accepted prefix and are not restated from current provider prices."
+    },
+    "frozen_economic_prefix_separation": {
+      "cn_27_v1_3": "The accepted formal trace and lineage-pinned source CSV are the frozen authority. The replay recomputes report/positions/trades/attribution from that pinned source and compares; it does not restate freeze-time economics or append rows beyond the 2026-09-04 frozen boundary.",
+      "qqq_v4_3": "The gate keeps frozen_economic_prefix (accepted formal prefix, historical economics never recomputed from restated current-provider prices) separate from current_source_decision_path (recomputed decisions) and appended_economics/cumulative_continuity. All stages are exact; there are no appended rows."
+    }
+  },
+  "historical_blockers_and_defects": [
+    {
+      "market": "US",
+      "stage": "initial_attempt",
+      "model_version_id": "qqqi_qqq_tqqq_v4_3",
+      "decision": "data_blocked",
+      "reason_verbatim": "strategy data bundle is blocked: missing=['^VIX', '^VXN']",
+      "classification": "BLOCKED_BY_TRANSIENT_PROVIDER_FAILURE",
+      "interpreter": "D:/miniforge3/python.exe (yfinance 1.0, not the uv-locked 1.2.0)",
+      "provider_errors": {
+        "^VIX": "StrategyDataBundleError: Yahoo signal reference is empty: ^VIX",
+        "^VXN": "StrategyDataBundleError: Yahoo signal reference is empty: ^VXN"
+      },
+      "resolution": "Retry under the project venv (yfinance 1.2.0) after the provider recovered; source assembly then succeeded. Retained as order 1 of the sequence.",
+      "no_substitution_performed": true
+    },
+    {
+      "market": "US",
+      "stage": "retry_before_fix",
+      "model_version_id": "qqqi_qqq_tqqq_v4_3",
+      "decision": "invalid_evidence",
+      "reason_verbatim": "QQQ Rotation v4.3 decision replay mismatch: positions[705] (2026-01-21) executed_reason accepted 'hold' vs recomputed 'defensive_price_or_vix_stress'",
+      "classification": "BLOCKED_BY_ACCEPTED_EVIDENCE_INCONSISTENCY",
+      "exact_gaps": {
+        "accepted_report_2026_01_21": "defensive_price_or_vix_stress",
+        "accepted_positions_2026_01_21": "hold",
+        "accepted_report_2026_03_03": "hold",
+        "accepted_positions_2026_03_03": "defensive_price_or_vix_stress",
+        "correction_policy": "qqq_v4_3_vix_session_correction_v1",
+        "correction_script_before_fix": "scripts/correct_formal_baseline_prefix.py rewrote performance.json report only"
+      },
+      "resolution": "Fixed and merged as PR #1446 (commit c6530f019d): the tool now applies the same executed_reason corrections to portfolio.json positions, re-seals both roots and records positions_corrections. The final replay is exact_replay.",
+      "no_substitution_performed": true
+    }
+  ],
+  "provider_caveat": "The US retry's source assembly depends on live yfinance availability; the initial block was environment-sensitive (conda yfinance 1.0 vs the locked 1.2.0). The frozen accepted bundle is now internally consistent and replays exactly, but no claim is made that the Yahoo/yfinance provider vintage is reproducible or pinned.",
+  "does_not_claim": [
+    "prospective or out-of-sample validation",
+    "a new model, factor, parameter or training run",
+    "owner A5 acceptance",
+    "A7 approval or release acceptance",
+    "promotion or trade readiness",
+    "that the Yahoo/yfinance provider vintage is reproducible or pinned",
+    "that CN_27 row values are byte-identical at machine precision"
+  ],
+  "scope": "Fresh bounded current-lock/source/evaluator re-audit of the accepted CN_27 V1.3 and QQQ v4.3 formal references, finalized on main c6530f019d, using only the maintained formal_model_replay runner and pinned local evidence. The full sequence is retained: initial transient US provider block, provider recovery, the retry defect, the #1446 fix, and final exact replays for both markets. Frozen trace integrity is reported separately from recomputed decisions; no model was substituted, trained or promoted.",
+  "validation": {
+    "tests": {
+      "tests/test_formal_model_replay.py + tests/test_cn27_v1_3_refresh.py": "29 passed",
+      "tests/test_rules_formal_replay_gate.py + tests/test_cn27_v1_3_projected.py": "22 passed",
+      "total_passed": 51
+    },
+    "ruff": "no Python files changed in this deliverable; ruff check on changed paths is not applicable",
+    "replay_outputs_byte_identical_across_3_repetitions": true
+  },
+  "unchanged": [
+    "accepted model/pool/benchmark/cost contracts",
+    "sealed source/formal evidence",
+    "research_only=true and trade_ready=false",
+    "promotion_authorized=false",
+    "No lockfile edits"
+  ]
+}
