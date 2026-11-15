@@ -217,9 +217,9 @@ function PerformancePanel({
         </CardHeader>
         <CardContent className="grid gap-x-6 pt-2 sm:grid-cols-2 lg:grid-cols-3">
           {methodologyRows.map(([label, value]) => (
-            <div key={String(label)} className="flex items-start justify-between gap-4 border-b py-2 text-xs">
-              <span className="text-muted-foreground">{label}</span>
-              <span className="max-w-[60%] break-words text-right font-mono">{formatDeclaredValue(value)}</span>
+            <div key={String(label)} className="flex min-w-0 items-start justify-between gap-4 border-b py-2 text-xs">
+              <span className="shrink-0 text-muted-foreground">{label}</span>
+              <span className="min-w-0 max-w-[60%] text-right font-mono [overflow-wrap:anywhere]">{formatDeclaredValue(value)}</span>
             </div>
           ))}
         </CardContent>
