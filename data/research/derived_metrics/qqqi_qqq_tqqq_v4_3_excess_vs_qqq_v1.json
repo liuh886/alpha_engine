@@ -38,7 +38,7 @@
       "manifest_section": null,
       "path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_13/manifest.json",
       "role": "formal_manifest",
-      "sha256": "89579e94275e7eafd7b9c6a092cf822764b2c91837f317a81c93833d8bb1152b"
+      "sha256": "a6435828b9d4fa6a0bb5e7b0b12e233d5d3435d13b95ece5918353930e6cea33"
     },
     {
       "bytes": 5043,
@@ -55,11 +55,11 @@
       "sha256": "431484685b46aca42a81fda5f0bb38b50a79903be5b3aa2e7f0faa06beb173ea"
     },
     {
-      "bytes": 8375,
+      "bytes": 8637,
       "manifest_section": "lineage",
       "path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_13/lineage.json",
       "role": "formal_lineage",
-      "sha256": "dc3bf187ba4ae9b03951edb92c4058e5241bf61ea790d05a7df750cf843fbcce"
+      "sha256": "467f26b3f13e34ffcff464af3e2fcb76d4b3c866657f2b602a78dcfb18ea1292"
     }
   ],
   "method": {
@@ -91,10 +91,10 @@
   },
   "schema_version": "1.0",
   "strategy": {
-    "bundle_id": "599893a6942e508552c0171f485c734f9692d51efba05851bbddeadb974c9cb6",
+    "bundle_id": "2ad7a25aa529ad072f08f2608d2294fef7e476d1ea994259917b742e0c7ef8f2",
     "generated_at": "2026-11-14T10:06:06Z",
     "manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_13/manifest.json",
-    "manifest_sha256": "89579e94275e7eafd7b9c6a092cf822764b2c91837f317a81c93833d8bb1152b",
+    "manifest_sha256": "a6435828b9d4fa6a0bb5e7b0b12e233d5d3435d13b95ece5918353930e6cea33",
     "model_family_id": "qqq_rotation",
     "model_kind": "rules_based_allocation",
     "model_version_id": "qqqi_qqq_tqqq_v4_3",

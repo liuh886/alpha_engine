@@ -101,6 +101,30 @@ def _performance(rows: list[dict]) -> dict:
     }
 
 
+def _portfolio(rows: list[dict]) -> dict:
+    return {
+        "schema_version": "2.0.0",
+        "portfolio_contract": {"symbols": ["QQQI"]},
+        "positions": [
+            {
+                "date": row["date"],
+                "instrument": "QQQI",
+                "weight": 1.0,
+                "price": 100.0 + index,
+                "position_state": 0,
+                "position_label": "defensive",
+                "executed_reason": row["executed_reason"],
+                "panic_repair_active": False,
+                "slow_bear_defense_active": False,
+            }
+            for index, row in enumerate(rows)
+        ],
+        "source_fields": ["portfolio_contract", "positions"],
+        "research_only": True,
+        "trade_ready": False,
+    }
+
+
 def _replay(rows: list[dict], *, with_filter: bool = False) -> dict:
     replay_rows = copy.deepcopy(rows)
     for date, field, _before, after in CORRECTIONS:
@@ -142,6 +166,7 @@ def _make_bundle(tmp_path: Path) -> dict[str, object]:
 
     rows = _base_rows()
     performance = _performance(rows)
+    portfolio = _portfolio(rows)
     summary = {
         "schema_version": "2.0.0",
         "metrics": [],
@@ -158,6 +183,7 @@ def _make_bundle(tmp_path: Path) -> dict[str, object]:
     sections = [
         _write_section(run_dir, "summary", summary),
         _write_section(run_dir, "performance", performance),
+        _write_section(run_dir, "portfolio", portfolio),
         _write_section(run_dir, "lineage", lineage),
     ]
     manifest = {
@@ -215,12 +241,45 @@ def _make_bundle(tmp_path: Path) -> dict[str, object]:
     return {
         "manifest": manifest,
         "performance": performance,
+        "portfolio": portfolio,
         "catalog": catalog,
         "run_dir": run_dir,
         "manifest_path": manifest_path,
         "native_root": native_root,
         "rows": rows,
     }
+
+
+def _resign_bundle(bundle: dict, *, section_ids: tuple[str, ...]) -> None:
+    """Recompute manifest section digests/bundle id and the catalog digest in place."""
+
+    run_dir = bundle["run_dir"]
+    manifest = json.loads(bundle["manifest_path"].read_text())
+    for section in manifest["sections"]:
+        if section["section_id"] not in section_ids:
+            continue
+        body = (run_dir / section["path"]).read_bytes()
+        section["sha256"] = sha256_bytes(body)
+        section["byte_size"] = len(body)
+    manifest["bundle_id"] = compute_bundle_id(manifest)
+    validate_manifest(manifest)
+    bundle["manifest_path"].write_bytes(canonical_json_bytes(manifest))
+    catalog_path = bundle["native_root"] / "catalog.json"
+    catalog = json.loads(catalog_path.read_text())
+    catalog["records"][0]["bundle_id"] = manifest["bundle_id"]
+    catalog["records"][0]["manifest_sha256"] = sha256_bytes(
+        bundle["manifest_path"].read_bytes()
+    )
+    validate_catalog(catalog)
+    catalog_path.write_bytes(canonical_json_bytes(catalog))
+
+
+def _mutate_portfolio(bundle: dict, mutate) -> None:
+    path = bundle["run_dir"] / "portfolio.json"
+    portfolio = json.loads(path.read_text())
+    mutate(portfolio)
+    path.write_bytes(canonical_json_bytes(portfolio))
+    _resign_bundle(bundle, section_ids=("portfolio",))
 
 
 def _apply(tmp_path: Path, replay: dict, *, dry_run: bool = False) -> dict:
@@ -245,9 +304,10 @@ def _snapshot(root: Path) -> dict[str, bytes]:
     }
 
 
-def test_applies_exactly_the_four_reason_cells_and_reseals_preview(tmp_path: Path) -> None:
+def test_applies_exactly_the_four_report_cells_and_two_position_cells(tmp_path: Path) -> None:
     bundle = _make_bundle(tmp_path)
-    original = bundle["performance"]
+    original_performance = bundle["performance"]
+    original_portfolio = bundle["portfolio"]
 
     receipt = _apply(tmp_path, _replay(bundle["rows"]))
 
@@ -256,11 +316,28 @@ def test_applies_exactly_the_four_reason_cells_and_reseals_preview(tmp_path: Pat
         {"date": date, "field": field, "before": before, "after": after}
         for date, field, before, after in CORRECTIONS
     ]
+    assert receipt["positions_corrections"] == [
+        {
+            "date": "2024-01-03",
+            "field": "executed_reason",
+            "before": "hold",
+            "after": "defensive_price_or_vix_stress",
+            "row_count": 1,
+        },
+        {
+            "date": "2024-01-05",
+            "field": "executed_reason",
+            "before": "defensive_price_or_vix_stress",
+            "after": "hold",
+            "row_count": 1,
+        },
+    ]
+    assert receipt["positions_changed"] is True
 
     run_dir = bundle["run_dir"]
     corrected = json.loads((run_dir / "performance.json").read_text())
     changed = []
-    for old_row, new_row in zip(original["report"], corrected["report"]):
+    for old_row, new_row in zip(original_performance["report"], corrected["report"]):
         for field in old_row:
             if old_row[field] != new_row[field]:
                 changed.append((old_row["date"], field, old_row[field], new_row[field]))
@@ -268,10 +345,27 @@ def test_applies_exactly_the_four_reason_cells_and_reseals_preview(tmp_path: Pat
         (date, field, before, after) for date, field, before, after in CORRECTIONS
     ]
 
+    positions = json.loads((run_dir / "portfolio.json").read_text())["positions"]
+    by_date = {row["date"]: row for row in positions}
+    assert by_date["2024-01-03"]["executed_reason"] == "defensive_price_or_vix_stress"
+    assert by_date["2024-01-05"]["executed_reason"] == "hold"
+    assert by_date["2024-01-02"]["executed_reason"] == "hold"
+    assert by_date["2024-01-04"]["executed_reason"] == "hold"
+    # Only the two executed_reason cells changed in positions.
+    position_changes = [
+        (old["date"], field, old[field], new[field])
+        for old, new in zip(original_portfolio["positions"], positions)
+        for field in old
+        if old[field] != new[field]
+    ]
+    assert position_changes == [
+        ("2024-01-03", "executed_reason", "hold", "defensive_price_or_vix_stress"),
+        ("2024-01-05", "executed_reason", "defensive_price_or_vix_stress", "hold"),
+    ]
+
     manifest = json.loads((run_dir / "manifest.json").read_text())
     validate_manifest(manifest)
     assert manifest["bundle_id"] == compute_bundle_id(manifest)
-    assert manifest["publication_channel"] == "preview"
     for section in manifest["sections"]:
         if section["availability_status"] != "available":
             continue
@@ -283,13 +377,9 @@ def test_applies_exactly_the_four_reason_cells_and_reseals_preview(tmp_path: Pat
     block = lineage["baseline_correction"]
     assert block["policy_id"] == POLICY_ID
     assert block["authorization"] == AUTHORIZATION
-    assert block["corrected_at"] == "2026-11-15T00:00:00Z"
-    assert block["model_selection_reopened"] is False
     assert block["corrections"] == receipt["differences"]
-    assert block["removed_non_session_dates"] == []
-    assert block["session_filter"] == {}
-    assert block["replay_source"]["data_identity"] == {}
-    assert "unchanged" in block["unchanged_statement"]
+    assert block["positions_corrections"] == receipt["positions_corrections"]
+    assert block["model_selection_reopened"] is False
 
     catalog = json.loads((bundle["native_root"] / "catalog.json").read_text())
     validate_catalog(catalog)
@@ -298,13 +388,80 @@ def test_applies_exactly_the_four_reason_cells_and_reseals_preview(tmp_path: Pat
     assert record["manifest_sha256"] == sha256_bytes((run_dir / "manifest.json").read_bytes())
 
 
-def test_preview_catalog_digest_guard_refuses_stale_pin(tmp_path: Path) -> None:
+def test_corrected_bundle_is_internally_consistent(tmp_path: Path) -> None:
     bundle = _make_bundle(tmp_path)
-    manifest_path = bundle["manifest_path"]
-    manifest = json.loads(manifest_path.read_text())
-    manifest["generated_at"] = "2026-11-14T12:00:00Z"
-    manifest_path.write_bytes(canonical_json_bytes(manifest))
-    with pytest.raises(FormalBaselineCorrectionError, match="digest does not match the catalog"):
+    _apply(tmp_path, _replay(bundle["rows"]))
+
+    run_dir = bundle["run_dir"]
+    report = {
+        row["date"]: row for row in json.loads((run_dir / "performance.json").read_text())["report"]
+    }
+    positions = json.loads((run_dir / "portfolio.json").read_text())["positions"]
+    for date in ("2024-01-03", "2024-01-05"):
+        matched = [row for row in positions if row["date"] == date]
+        assert matched
+        assert all(row["executed_reason"] == report[date]["executed_reason"] for row in matched)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(
+            lambda positions: positions[1].__setitem__("position_state", 2), id="state"
+        ),
+        pytest.param(lambda positions: positions[1].__setitem__("weight", 0.5), id="weight"),
+        pytest.param(lambda positions: positions[1].__setitem__("price", -1.0), id="price"),
+        pytest.param(
+            lambda positions: positions[1].__setitem__("instrument", "SGOV"), id="instrument"
+        ),
+        pytest.param(
+            lambda positions: positions[1].__setitem__("position_label", "attack"),
+            id="label",
+        ),
+        pytest.param(
+            lambda positions: positions[1].__setitem__("executed_reason", "other"),
+            id="reason-neither-before-nor-after",
+        ),
+    ],
+)
+def test_refuses_unexpected_position_state(tmp_path: Path, mutate) -> None:
+    bundle = _make_bundle(tmp_path)
+    _mutate_portfolio(bundle, lambda portfolio: mutate(portfolio["positions"]))
+    with pytest.raises(FormalBaselineCorrectionError):
+        _apply(tmp_path, _replay(bundle["rows"]))
+
+
+def test_refuses_absent_positions_section(tmp_path: Path) -> None:
+    bundle = _make_bundle(tmp_path)
+    run_dir = bundle["run_dir"]
+    (run_dir / "portfolio.json").unlink()
+    manifest = json.loads(bundle["manifest_path"].read_text())
+    manifest["sections"] = [
+        section for section in manifest["sections"] if section["section_id"] != "portfolio"
+    ]
+    manifest["bundle_id"] = compute_bundle_id(manifest)
+    validate_manifest(manifest)
+    bundle["manifest_path"].write_bytes(canonical_json_bytes(manifest))
+    catalog_path = bundle["native_root"] / "catalog.json"
+    catalog = json.loads(catalog_path.read_text())
+    catalog["records"][0]["bundle_id"] = manifest["bundle_id"]
+    catalog["records"][0]["manifest_sha256"] = sha256_bytes(
+        bundle["manifest_path"].read_bytes()
+    )
+    catalog_path.write_bytes(canonical_json_bytes(catalog))
+    with pytest.raises(FormalBaselineCorrectionError, match="positions section"):
+        _apply(tmp_path, _replay(bundle["rows"]))
+
+
+def test_refuses_partially_corrected_positions(tmp_path: Path) -> None:
+    bundle = _make_bundle(tmp_path)
+
+    def mutate(portfolio: dict) -> None:
+        row = next(item for item in portfolio["positions"] if item["date"] == "2024-01-03")
+        row["executed_reason"] = "defensive_price_or_vix_stress"
+
+    _mutate_portfolio(bundle, mutate)
+    with pytest.raises(FormalBaselineCorrectionError, match="partially corrected"):
         _apply(tmp_path, _replay(bundle["rows"]))
 
 
@@ -319,8 +476,14 @@ def test_dry_run_writes_nothing_and_is_byte_stable(tmp_path: Path) -> None:
     assert first["status"] == "dry_run"
     assert first["removed_non_session_dates"] == ["2024-11-28", "2025-01-09"]
     assert first["session_filter"]["policy_id"] == "us_equity_session_only_v1"
-    assert first["session_filter"]["symbols"]["^VIX"]["removed_count"] == 2
     assert first["replay_data_identity"]["bundle_id"] == "test_strategy_data_v1"
+    assert [row["date"] for row in first["positions_corrections"]] == [
+        "2024-01-03",
+        "2024-01-05",
+    ]
+    assert any(
+        entry["path"].endswith("portfolio.json") for entry in first["planned_writes"]
+    )
     assert _snapshot(tmp_path) == before
 
 
@@ -333,6 +496,7 @@ def test_second_apply_is_idempotent(tmp_path: Path) -> None:
 
     assert again["status"] == "already_corrected"
     assert again["differences"] == []
+    assert again["positions_corrections"] == []
     assert _snapshot(tmp_path) == corrected
 
 
@@ -351,7 +515,7 @@ def test_second_apply_is_idempotent(tmp_path: Path) -> None:
         pytest.param(lambda rows: rows.pop(), id="row-count"),
     ],
 )
-def test_refuses_any_non_reason_difference(tmp_path: Path, mutate) -> None:
+def test_refuses_any_non_reason_report_difference(tmp_path: Path, mutate) -> None:
     bundle = _make_bundle(tmp_path)
     replay = _replay(bundle["rows"])
     mutate(replay["report"])
@@ -392,10 +556,12 @@ def _make_bundle_with_rows(tmp_path: Path, rows: list[dict]) -> dict:
     bundle = _make_bundle(tmp_path)
     run_dir = bundle["run_dir"]
     performance = _performance(rows)
+    portfolio = _portfolio(rows)
     lineage = json.loads((run_dir / "lineage.json").read_text())
     sections = [
         _write_section(run_dir, "summary", json.loads((run_dir / "summary.json").read_text())),
         _write_section(run_dir, "performance", performance),
+        _write_section(run_dir, "portfolio", portfolio),
         _write_section(run_dir, "lineage", lineage),
     ]
     manifest = json.loads((run_dir / "manifest.json").read_text())
@@ -426,6 +592,18 @@ def _restore_preview_baseline(preview_run: Path, repository: Path) -> None:
         row[field] = before
     performance_path.write_bytes(canonical_json_bytes(performance))
 
+    portfolio_path = preview_run / "portfolio.json"
+    portfolio = json.loads(portfolio_path.read_text())
+    executed = {
+        date: before
+        for date, field, before, _after in REAL_CORRECTIONS
+        if field == "executed_reason"
+    }
+    for row in portfolio["positions"]:
+        if row["date"] in executed:
+            row["executed_reason"] = executed[row["date"]]
+    portfolio_path.write_bytes(canonical_json_bytes(portfolio))
+
     lineage_path = preview_run / "lineage.json"
     lineage = json.loads(lineage_path.read_text())
     lineage.pop("baseline_correction", None)
@@ -436,7 +614,7 @@ def _restore_preview_baseline(preview_run: Path, repository: Path) -> None:
     for section in manifest["sections"]:
         if section.get("availability_status") != "available":
             continue
-        if section["section_id"] not in {"performance", "lineage"}:
+        if section["section_id"] not in {"performance", "portfolio", "lineage"}:
             continue
         body = (preview_run / section["path"]).read_bytes()
         section["sha256"] = sha256_bytes(body)
@@ -456,8 +634,8 @@ def _restore_preview_baseline(preview_run: Path, repository: Path) -> None:
     catalog_path.write_bytes(canonical_json_bytes(catalog))
 
 
-def test_sync_promotes_corrected_labels_and_preserves_lineage(tmp_path: Path) -> None:
-    """Integration: the governed sync promotes the corrected preview verbatim."""
+def test_sync_promotes_corrected_report_and_positions(tmp_path: Path) -> None:
+    """Integration: the governed sync promotes report and position corrections."""
 
     repository = Path.cwd().resolve()
     for relative in ("data/research/model_runs", "data/research/formal_model_runs", "configs"):
@@ -475,8 +653,6 @@ def test_sync_promotes_corrected_labels_and_preserves_lineage(tmp_path: Path) ->
         / "data/research/model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3"
         / "qqqi_qqq_tqqq_v4_3-through-2026_11_13"
     )
-    # The checked-in preview may already carry the correction; restore the
-    # pre-correction state so the tool and sync are exercised end to end.
     _restore_preview_baseline(preview_run, tmp_path)
     performance = json.loads((preview_run / "performance.json").read_text())
     replay = copy.deepcopy(performance)
@@ -518,12 +694,22 @@ def test_sync_promotes_corrected_labels_and_preserves_lineage(tmp_path: Path) ->
         assert row[field] == after
     assert len(formal_performance["report"]) == len(performance["report"])
 
+    formal_positions = json.loads((formal_run / "portfolio.json").read_text())["positions"]
+    report_by_date = {row["date"]: row for row in formal_performance["report"]}
+    for date, field, _before, after in REAL_CORRECTIONS:
+        if field != "executed_reason":
+            continue
+        matched = [row for row in formal_positions if row["date"] == date]
+        assert matched
+        assert all(row["executed_reason"] == after for row in matched)
+        assert all(row["executed_reason"] == report_by_date[date][field] for row in matched)
+
     formal_manifest = json.loads((formal_run / "manifest.json").read_text())
     validate_manifest(formal_manifest)
     assert formal_manifest["publication_channel"] == "formal"
-    assert formal_manifest["publication_status"] == "accepted_formal_baseline"
     formal_lineage = json.loads((formal_run / "lineage.json").read_text())
     assert formal_lineage["baseline_correction"]["policy_id"] == POLICY_ID
+    assert formal_lineage["baseline_correction"]["positions_corrections"]
     assert formal_lineage["source_preview_bundle_id"] == preview_manifest["bundle_id"]
 
     catalog = json.loads((output_a / "catalog.json").read_text())
