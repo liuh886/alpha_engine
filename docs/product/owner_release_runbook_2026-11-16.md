@@ -407,7 +407,7 @@ Preconditions:
 
 Expected result: `deploy-pages.yml` rebuilds `_site` from the target tree, validates the formal catalog/manifests/operations, deploys, then runs the verifier and the live Playwright suite.
 
-**Known observer caveat [NOT_VERIFIED at runtime].** `pages-release-receipt.yml` verifies expecting `github.event.workflow_run.head_sha` (`pages-release-receipt.yml:69-87`). For a `workflow_dispatch` on `main`, that is the current `main` HEAD, not `inputs.target_sha`. If the target is older than `main`, the rolling comment may report “failed live-origin verification” even when the rollback deployed correctly. Record the Owner-run verifier receipt from section 8.4 as the authoritative acceptance, and do not infer rollback failure from the comment alone.
+**Rollback observer caveat [FIXED 2026-11-16, not runtime-exercised].** `pages-release-receipt.yml` originally verified against `github.event.workflow_run.head_sha`. For a `workflow_dispatch` on `main`, that is the current `main` HEAD, not `inputs.target_sha`, so a correct rollback to an older SHA could be reported as “failed live-origin verification”. The observer now resolves the deployed commit from the live `deployment.json` manifest, fails closed on a malformed SHA, checks out that commit and verifies it; the published receipt reports the resolved SHA, using the dispatched head only as the skipped-deploy fallback. The fix has text-test coverage but has not been exercised by an actual rollback (Appendix B), so until one rehearsal is run, treat the Owner-run verifier receipt from section 8.4 as authoritative and do not infer rollback failure from the rolling comment alone.
 
 ### 8.2 Restore the formal root from Git without mutating sealed evidence
 
@@ -678,7 +678,7 @@ A release candidate is frozen only when every field in 10.1 is filled from an ac
 ## Appendix B. NOT_VERIFIED items
 
 1. **Any actual rollback or rehearsal.** No deployment, dispatch, rollback or restore was executed. Section 9 is a plan.
-2. **Observer behavior when `target_sha` differs from `main` HEAD.** The expectation in section 8.1 is derived from `pages-release-receipt.yml:69-87`; it was not run.
+2. **Observer behavior when `target_sha` differs from `main` HEAD.** The observer now resolves the deployed SHA from `deployment.json` (fixed 2026-11-16; text tests only). A real rollback has not been run, so the runtime behavior remains unverified.
 3. **Secret configuration.** Only secret names were verified from workflow references. Whether each secret currently holds a valid value, and whether the Owner holds the archive key, is not verified.
 4. **Clean-machine dependency install.** `uv sync --frozen --extra dev` and `npm ci` were not run in this task; the version and lockfile claims are from configuration, not an install test.
 5. **uv 0.12.7.** CI pins it; the local tool available here is 0.9.10. Release reproduction under 0.12.7 was not tested.
