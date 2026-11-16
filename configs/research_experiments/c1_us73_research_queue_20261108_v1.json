@@ -1,0 +1,176 @@
+{
+  "schema_version": "c1_research_queue_v1",
+  "campaign_id": "c1_us73_nextclose_low_turnover_20261108_v1",
+  "status": "FROZEN_RESEARCH_QUEUE_NOT_AN_EXECUTABLE_BATCH",
+  "execution_authorized_now": false,
+  "prerequisites": [
+    "C0 actual Colab measurements reviewed",
+    "new feature/model adapters reviewed where required",
+    "source dataset and evaluator code SHA frozen in separate implementation PR"
+  ],
+  "candidate_count": 12,
+  "pilot_fold_count": 2,
+  "max_pilot_configuration_folds": 24,
+  "pilot_fold_selection": "first two E4 chronological folds, not return-selected",
+  "pilot_folds": [
+    {
+      "id": "2023H1",
+      "train_start": "2021-01-04",
+      "train_end": "2022-12-16",
+      "test_start": "2023-01-03",
+      "test_end": "2023-06-30"
+    },
+    {
+      "id": "2023H2",
+      "train_start": "2021-07-01",
+      "train_end": "2023-06-16",
+      "test_start": "2023-07-03",
+      "test_end": "2023-12-29"
+    }
+  ],
+  "purge_embargo_minimum_sessions": 10,
+  "max_expanded_configuration_folds": 192,
+  "expansion_requires_separate_owner_review": true,
+  "window_classification": "RETROSPECTIVE_ALREADY_CONSUMED",
+  "independent_holdout_available": false,
+  "symbols_authority": "configs/research_experiments/e7_rules_paper_20261110_v1.json",
+  "candidates": [
+    {
+      "candidate_id": "rule_momentum60",
+      "family": "momentum",
+      "target": "return_60d",
+      "implementation_status": "existing_E6_scores_no_fit"
+    },
+    {
+      "candidate_id": "rule_momentum120",
+      "family": "momentum",
+      "target": "return_120d",
+      "implementation_status": "existing_E6_scores_no_fit"
+    },
+    {
+      "candidate_id": "ridge_5d",
+      "family": "ridge",
+      "target": "five_day_return",
+      "implementation_status": "new_adapter_required"
+    },
+    {
+      "candidate_id": "elasticnet_5d",
+      "family": "elasticnet",
+      "target": "five_day_return",
+      "implementation_status": "new_adapter_required"
+    },
+    {
+      "candidate_id": "ridge_volscaled_5d",
+      "family": "ridge",
+      "target": "past_vol_scaled_five_day_return",
+      "implementation_status": "new_adapter_required"
+    },
+    {
+      "candidate_id": "elasticnet_volscaled_5d",
+      "family": "elasticnet",
+      "target": "past_vol_scaled_five_day_return",
+      "implementation_status": "new_adapter_required"
+    },
+    {
+      "candidate_id": "xgb_longlookback_5d",
+      "family": "xgboost",
+      "target": "five_day_return",
+      "implementation_status": "new_feature_contract_required"
+    },
+    {
+      "candidate_id": "lgb_longlookback_5d",
+      "family": "lightgbm",
+      "target": "five_day_return",
+      "implementation_status": "new_feature_contract_required"
+    },
+    {
+      "candidate_id": "xgb_longlookback_10d",
+      "family": "xgboost",
+      "target": "ten_day_return",
+      "implementation_status": "new_feature_and_label_contract_required"
+    },
+    {
+      "candidate_id": "lgb_longlookback_10d",
+      "family": "lightgbm",
+      "target": "ten_day_return",
+      "implementation_status": "new_feature_and_label_contract_required"
+    },
+    {
+      "candidate_id": "ridge_10d",
+      "family": "ridge",
+      "target": "ten_day_return",
+      "implementation_status": "new_adapter_required"
+    },
+    {
+      "candidate_id": "elasticnet_10d",
+      "family": "elasticnet",
+      "target": "ten_day_return",
+      "implementation_status": "new_adapter_required"
+    }
+  ],
+  "frozen_parameters": {
+    "ridge": {
+      "alpha": 1.0
+    },
+    "elasticnet": {
+      "alpha": 0.001,
+      "l1_ratio": 0.1
+    },
+    "xgboost": {
+      "max_depth": 2,
+      "learning_rate": 0.03,
+      "num_boost_round": 60,
+      "seed": 67431
+    },
+    "lightgbm": "freeze E4 lgb_p05 recipe before implementation; no new HPO"
+  },
+  "features": [
+    "causal_return_5d",
+    "causal_return_20d",
+    "causal_return_60d",
+    "causal_return_120d",
+    "causal_volatility_20d",
+    "causal_volume_ratio_20d"
+  ],
+  "execution": {
+    "evaluator": "existing portfolio_ledger/_simulate_portfolio only",
+    "policy_id": "weekly_min5_buffer10_asc",
+    "delay_sessions": 1,
+    "fill_reference": "next_session_observed_close_proxy_not_actual_fill",
+    "cost_bps": [
+      8,
+      25,
+      50
+    ],
+    "cost_repricing_requires_refit": false,
+    "terminal_liquidation": "same fixed fold-end convention for every candidate"
+  },
+  "same_fold_controls": [
+    "rule_momentum60",
+    "rule_momentum120"
+  ],
+  "outputs": [
+    "net_return",
+    "QQQ_excess",
+    "max_drawdown",
+    "turnover",
+    "cost_break_even_bps",
+    "single_name_contribution",
+    "concentration",
+    "Rank_IC_1d",
+    "Rank_IC_5d",
+    "source_available_at_and_adjustment_limitations"
+  ],
+  "pilot_screen": {
+    "paired_net_advantage_vs_both_controls_positive_in_each_fold_at_8bps": true,
+    "positive_paired_median_at_25bps": true,
+    "total_turnover_ratio_vs_each_control_max": 1.5,
+    "screen_is_promotion": false,
+    "fail_behavior": "retain negative result; stop expansion; no post-hoc window or parameter substitution"
+  },
+  "pit_certified": false,
+  "capacity_certified": false,
+  "research_only": true,
+  "trade_ready": false,
+  "E7_future_predictions_may_not_be_rebuilt_from_consumed_history": true
+}

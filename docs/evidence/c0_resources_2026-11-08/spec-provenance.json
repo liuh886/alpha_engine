@@ -1,0 +1,62 @@
+{
+  "schema_version": "c0_spec_provenance_v2",
+  "authoritative_spec_raw_sha256": "f234421d1a1fdc5eec848465f2400abce384ca451c7a405f5f16ced13b025a42",
+  "git_semantic_mirror_raw_sha256": "a340f6a973f940c6641ffeed933ee574de691ed41d432bb088169303efa8d552",
+  "canonical_spec_semantic_sha256": "cacc2e8b3f2cfbd5bc48ace826d6270809a691cd44ef0c7504424fee071f46a0",
+  "semantics_equal": true,
+  "source_files": {
+    "src/research/c0_resource_benchmark.py": {
+      "frozen_raw_sha256": "2ba8828af75916c0107408a90391b08036850b763770dd0fe3f0b7e868b5f93b",
+      "git_blob_sha256": "2ba8828af75916c0107408a90391b08036850b763770dd0fe3f0b7e868b5f93b",
+      "raw_matches": true,
+      "git_content_equal_after_lf_normalization": true
+    },
+    "src/research/study_workspace.py": {
+      "frozen_raw_sha256": "b9ea575a1d66f1d8e8a7e0febfc0bf08629090b45d40b5a7e5130218ffe2bb3d",
+      "git_blob_sha256": "b9ea575a1d66f1d8e8a7e0febfc0bf08629090b45d40b5a7e5130218ffe2bb3d",
+      "raw_matches": true,
+      "git_content_equal_after_lf_normalization": true
+    },
+    "src/research/studies/xgb_study.py": {
+      "frozen_raw_sha256": "5d984b53cb26d04525a504cfb4004cec887179f7602811c500a0b9c731242c4f",
+      "git_blob_sha256": "5d984b53cb26d04525a504cfb4004cec887179f7602811c500a0b9c731242c4f",
+      "raw_matches": true,
+      "git_content_equal_after_lf_normalization": true
+    },
+    "src/research/xgb_native_calibration.py": {
+      "frozen_raw_sha256": "9b177c5e6877d77ed52ca7da4a25690d5a24eee879f7147e2f3b0a11827243d8",
+      "git_blob_sha256": "9b177c5e6877d77ed52ca7da4a25690d5a24eee879f7147e2f3b0a11827243d8",
+      "raw_matches": true,
+      "git_content_equal_after_lf_normalization": true
+    },
+    "src/research/walkforward/pipeline.py": {
+      "frozen_raw_sha256": "d5d24cc41182437d0a25ee8c49d29f212e5a50dbb54d99da5a4329c8f41c9dab",
+      "git_blob_sha256": "d5d24cc41182437d0a25ee8c49d29f212e5a50dbb54d99da5a4329c8f41c9dab",
+      "raw_matches": true,
+      "git_content_equal_after_lf_normalization": true
+    },
+    "src/research/e2_feature_cache.py": {
+      "frozen_raw_sha256": "65e7f8c28848400b8ce1168279455a21b6b42826ce346b9294ccd177a07a4091",
+      "git_blob_sha256": "65e7f8c28848400b8ce1168279455a21b6b42826ce346b9294ccd177a07a4091",
+      "raw_matches": true,
+      "git_content_equal_after_lf_normalization": true
+    },
+    "src/data/research_slice.py": {
+      "frozen_raw_sha256": "ae3c93cb57bf2f69f8ef0daee21746a5fddd8428c2311aa4046a97aaf67123ba",
+      "git_blob_sha256": "ae3c93cb57bf2f69f8ef0daee21746a5fddd8428c2311aa4046a97aaf67123ba",
+      "raw_matches": true,
+      "git_content_equal_after_lf_normalization": true
+    },
+    "uv.lock": {
+      "frozen_raw_sha256": "917d30ebfb3c9888e8db79aa125d62971cb699659816a78a0505509afa69df2b",
+      "git_blob_sha256": "2cdd7f86d2bbd73dd9975903399c088a910fc83f4772183108e7d3352ae7d040",
+      "raw_matches": true,
+      "git_content_equal_after_lf_normalization": true
+    }
+  },
+  "deployment_revision": "v3-r2",
+  "repair": "Restore SHA-bound frozen lock bytes before uv sync; require LF-normalized equality to pinned Git blob; strict raw-byte code gate retained",
+  "runtime_and_original_results_modified": false,
+  "cross_platform_bootstrap_test": "SYNTHETIC_LINUX_CHECKOUT_PASS",
+  "actual_colab_execution": "NOT_TESTED"
+}

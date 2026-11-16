@@ -1,0 +1,125 @@
+{
+  "status": "PARTIAL_RESOURCE_CAPACITY_BLOCKED",
+  "spec_sha256": "f234421d1a1fdc5eec848465f2400abce384ca451c7a405f5f16ced13b025a42",
+  "cpu_exact": true,
+  "r2_cache_reproducible": true,
+  "same_environment": true,
+  "logical_tasks": 6,
+  "observed_completed_fits": 18,
+  "stages": {
+    "r1-cache-off": {
+      "sampled_tree_peak_rss_bytes": 339263488,
+      "wall_seconds": 58.58265029999893
+    },
+    "r2-cache-cold-warm": {
+      "sampled_tree_peak_rss_bytes": 350961664,
+      "wall_seconds": 40.725934399990365
+    }
+  },
+  "capacity_blockers": [
+    {
+      "available_cpu_threads": 16,
+      "available_ram_bytes": 566550528,
+      "required_ram_bytes": 1752268800,
+      "research_only": true,
+      "status": "BLOCKED_CPU_OR_RAM_CAPACITY",
+      "trade_ready": false,
+      "workers": 2
+    },
+    {
+      "available_cpu_threads": 16,
+      "available_ram_bytes": 565993472,
+      "required_ram_bytes": 2430795776,
+      "research_only": true,
+      "status": "BLOCKED_CPU_OR_RAM_CAPACITY",
+      "trade_ready": false,
+      "workers": 4
+    }
+  ],
+  "gpu_status": "NOT_TESTED_NO_CUDA_REQUEST",
+  "compute_units_status": "NOT_MEASURED_OWNER_COLAB_UI_REQUIRED",
+  "window_classification": "RETROSPECTIVE_ALREADY_CONSUMED",
+  "financial_independent_samples_added": 0,
+  "source_after": "b4745e46fc26b0328e22de50e579ebbf1d400996258ea6ebb43c1ff739ed5a1a",
+  "source_base_sha": "1463156c4ad22757d10413a34ef91ca83266e830",
+  "runtime_sha": "f7221d5c380f9dd9507540b65bdf4e4133392bcd",
+  "full_array_comparison_count": 18,
+  "max_cpu_absolute_error": 0.0,
+  "owner_internal_research_authorized": true,
+  "vendor_document_review_required": false,
+  "cloud_execution": "NOT_TESTED_OWNER_MANUAL_SESSION_REQUIRED",
+  "notebook_local_readback": "PASS_ALL_14_CELLS_R3_NO_FITS",
+  "originals": {
+    "archives": [
+      {
+        "name": "E4_288",
+        "sha256": "f689d5494dcec4022218acadc94768e3e669ed308dadc331d660ba60091551d4",
+        "bytes": 1644518,
+        "status": "PASS_UNCHANGED"
+      },
+      {
+        "name": "v6_261",
+        "sha256": "0b209944f3fa3219ce4bad03f7ed2b5b2e203fb097697d46bca608c9852bb5a9",
+        "bytes": 1170120,
+        "status": "PASS_UNCHANGED"
+      },
+      {
+        "name": "E5",
+        "sha256": "e4856a9b5260b612a92038e1d27b9d3be293ffa6da85d6f8213055a59934abda",
+        "bytes": 15873353,
+        "status": "PASS_UNCHANGED"
+      },
+      {
+        "name": "E6",
+        "sha256": "2f09756d3eb14142c9a047dd48072d4bfd76eb24df13f08aaad07b57beab350e",
+        "bytes": 49124929,
+        "status": "PASS_UNCHANGED"
+      },
+      {
+        "name": "E7_bootstrap",
+        "sha256": "61c2908f1371ebbce8a8816aa22517852f34746e5e42327381536be9ec335ce7",
+        "bytes": 2588803,
+        "status": "PASS_UNCHANGED"
+      }
+    ],
+    "E7_active_runtime_bytes": "PASS_UNCHANGED",
+    "E7_first_signal": "2026-11-10",
+    "E7_not_counted_as_A1": true,
+    "completed_261_288_rerun": false
+  },
+  "phases": [
+    {
+      "stage": "r1-cache-off",
+      "phase": "off",
+      "fits": 6,
+      "task_wall_sum_seconds": 56.67137339996407,
+      "fit_seconds_sum": 1.7415108999121003,
+      "cache_hits": 0,
+      "cache_misses": 0
+    },
+    {
+      "stage": "r2-cache-cold-warm",
+      "phase": "cold",
+      "fits": 6,
+      "task_wall_sum_seconds": 27.433798299985938,
+      "fit_seconds_sum": 1.9937260000733659,
+      "cache_hits": 20,
+      "cache_misses": 10
+    },
+    {
+      "stage": "r2-cache-cold-warm",
+      "phase": "warm",
+      "fits": 6,
+      "task_wall_sum_seconds": 11.092028399987612,
+      "fit_seconds_sum": 1.6705260000308044,
+      "cache_hits": 30,
+      "cache_misses": 0
+    }
+  ],
+  "r1_completed_stage_preserved_on_resume": true,
+  "deployment_revision": "v3-r3",
+  "targeted_tests": "10 PASS (6 C0 including cross-platform lock and completed-resume preservation + 4 existing feature-cache)",
+  "cross_platform_lock_status": "EXACT_FROZEN_BYTES_RESTORED_AND_GIT_LF_CONTENT_MATCHED; actual Colab NOT_TESTED",
+  "deployment_evidence": "delivery-r3.json",
+  "real_cloud_interruption_resume": "NOT_TESTED; synthetic preservation/read-only completed-resume test PASS"
+}

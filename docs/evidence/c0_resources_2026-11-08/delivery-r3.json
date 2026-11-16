@@ -1,0 +1,63 @@
+{
+  "deployment_revision": "v3-r3",
+  "runtime_sha": "f7221d5c380f9dd9507540b65bdf4e4133392bcd",
+  "authoritative_spec_sha256": "f234421d1a1fdc5eec848465f2400abce384ca451c7a405f5f16ced13b025a42",
+  "drive_files": [
+    {
+      "path": "G:\\My Drive\\AlphaEngine\\03_Data\\Research_Exchange_P2\\colab_jobs\\c0-us73-resources-20261108-v3-r3\\bundle-manifest.json",
+      "bytes": 580113,
+      "sha256": "4f8225f3c68ee0886b9b707ca140e91dcb509b739b8548fdc10f258574d3da1a"
+    },
+    {
+      "path": "G:\\My Drive\\AlphaEngine\\03_Data\\Research_Exchange_P2\\colab_jobs\\c0-us73-resources-20261108-v3-r3\\c0-dataset.json",
+      "bytes": 1897,
+      "sha256": "9471f1f2792dee535adb4a567484e5973fbbfa72d3c2297b91b3dd898298533e"
+    },
+    {
+      "path": "G:\\My Drive\\AlphaEngine\\03_Data\\Research_Exchange_P2\\colab_jobs\\c0-us73-resources-20261108-v3-r3\\c0-spec-v3.json",
+      "bytes": 16564,
+      "sha256": "f234421d1a1fdc5eec848465f2400abce384ca451c7a405f5f16ced13b025a42"
+    },
+    {
+      "path": "G:\\My Drive\\AlphaEngine\\03_Data\\Research_Exchange_P2\\colab_jobs\\c0-us73-resources-20261108-v3-r3\\C0_resource_benchmark.ipynb",
+      "bytes": 19636,
+      "sha256": "a1efb34dddffa7b3fb42cd34da8f0941409a192a2d27dd997516aaab2357f4e0"
+    },
+    {
+      "path": "G:\\My Drive\\AlphaEngine\\03_Data\\Research_Exchange_P2\\colab_jobs\\c0-us73-resources-20261108-v3-r3\\delivery-manifest.json",
+      "bytes": 1537,
+      "sha256": "7582b06ede6532a4346c9063ddb1457a31c36de8ebf9c0bbcaa10cc4eefcc59e"
+    },
+    {
+      "path": "G:\\My Drive\\AlphaEngine\\03_Data\\Research_Exchange_P2\\colab_jobs\\c0-us73-resources-20261108-v3-r3\\README.md",
+      "bytes": 2350,
+      "sha256": "c1367c6027886139393e1064226774c0c6cce63efd0b7eff1505c394223aedda"
+    },
+    {
+      "path": "G:\\My Drive\\AlphaEngine\\03_Data\\Research_Exchange_P2\\colab_jobs\\c0-us73-resources-20261108-v3-r3\\us_market_history.zip",
+      "bytes": 16035050,
+      "sha256": "b4745e46fc26b0328e22de50e579ebbf1d400996258ea6ebb43c1ff739ed5a1a"
+    },
+    {
+      "path": "G:\\My Drive\\AlphaEngine\\03_Data\\Research_Exchange_P2\\colab_jobs\\c0-us73-resources-20261108-v3-r3\\uv.lock.frozen",
+      "bytes": 1156975,
+      "sha256": "917d30ebfb3c9888e8db79aa125d62971cb699659816a78a0505509afa69df2b"
+    },
+    {
+      "path": "G:\\My Drive\\AlphaEngine\\C0_resource_benchmark.ipynb",
+      "bytes": 19636,
+      "sha256": "a1efb34dddffa7b3fb42cd34da8f0941409a192a2d27dd997516aaab2357f4e0"
+    }
+  ],
+  "old_notebook_preserved": {
+    "path": "G:\\My Drive\\AlphaEngine\\03_Data\\Research_Exchange_P2\\colab_jobs\\c0-us73-resources-20261108-v3-r2\\C0_resource_benchmark.r2.ipynb",
+    "sha256": "8674674b699156aa0a90a27bd5e1f2c475baf58632053579053c63a234739df1"
+  },
+  "original_local_result_zip_unchanged": {
+    "sha256": "48ccb7737a24f5025cd406835acdeb8c778f856f51cecfb1efb0ff3a2c09a474"
+  },
+  "drive_desktop_readback": "PASS",
+  "remote_sync_verified": false,
+  "remote_ACL_verified": false,
+  "cloud_execution": "NOT_TESTED"
+}
