@@ -1,0 +1,2553 @@
+{
+  "schema_version": "direction_a_uat_v1",
+  "main_sha": "f20f3e7a0301c1542ce93c91d7530c1e12b54fd5",
+  "live_deployment_sha": "c6530f019de010de887cda52863d63763f943227",
+  "status": "PARTIAL",
+  "status_reason": "Public/anonymous journeys and static privacy passed; owner/member/Pro and RLS expired/revoked negative paths are NOT_TESTED, so the issue cannot be closed from this receipt alone.",
+  "browser_path": "Existing Playwright install at qlib-dashboard/node_modules; scoped Node journey script; Chromium 153.0.8010.12 headless",
+  "environment": {
+    "base_url": "https://liuh886.github.io/alpha_engine/",
+    "audit_main_sha": "f20f3e7a0301c1542ce93c91d7530c1e12b54fd5",
+    "live_deployment_sha": "c6530f019de010de887cda52863d63763f943227",
+    "viewports": {
+      "desktop": "1600x1000",
+      "mobile": "390x844"
+    },
+    "browser": "Chromium 153.0.8010.12",
+    "node_path": "D:/Documents/GitHub/alpha_engine/qlib-dashboard/node_modules",
+    "raw_artifact_root": "C:/Users/ZOZN109/AppData/Local/Temp/uat1279",
+    "audit_started_at_utc": "2026-11-16T01:57:00Z",
+    "journeys_captured_at_utc": "2026-11-16T02:06:28.089Z"
+  },
+  "real_journeys": {
+    "url": "https://liuh886.github.io/alpha_engine/",
+    "captured_at_utc": "2026-11-16T02:06:28.089Z",
+    "scope": "real anonymous published journeys only; owner/member/Pro current-operation states not claimed",
+    "rows": [
+      {
+        "device": "desktop",
+        "strategy_id": "qqq_rotation",
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "identity": "anonymous live session (fresh browser context, no Supabase credentials)",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app",
+            "page_title": "Today — Alpha Engine",
+            "horizontal_overflow_px": 0,
+            "latest_state_date_row": "QQQR v4.3 US · qqq · As of 2026-11-12 · Inspect evidence · Row details +4.1% -9.3% -14.4% +32.0% +85.7% —",
+            "fleet_context": "0 changed · 0 need attention · 4 require access",
+            "protected_notice": "4 strategies require protected access. Formal history stays readable; current observations remain hidden.",
+            "next_decision_or_due_rendered": null,
+            "next_decision_or_due_note": "Not rendered anonymously; current next-decision state is protected.",
+            "link_clicked_url": "https://liuh886.github.io/alpha_engine/#/strategies/qqqi_qqq_tqqq_v4_3",
+            "link_opened_exact_detail": true,
+            "stale_badge_rendered": false
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/qqqi_qqq_tqqq_v4_3",
+            "page_title": "Strategy Evidence — Alpha Engine",
+            "heading_h1": "QQQR v4.3",
+            "historical_vs_current_status": {
+              "operating_status": "OPERATING STATUS\nProtected current operations\nFormal historical evidence remains public below.\nSummary\nDecisions\nRisk\nEvidence\nPerformance path\nGoverned NAV indexed to 100 at the first exact-date obse",
+              "protected_current_operations": "Pro current operations\nCurrent holdings and live signals are protected\nPro access is required for the current holdings, target allocations, signal drivers and next-decision state of this strategy. Historical formal perfo"
+            },
+            "benchmark_snippet": "Baseline\nQQQ\nPERIOD RETURN\n+32.0%\n1Y wi",
+            "relative_return_snippet": "Excess vs QQQ +17.8% · browser-derived, not a sealed metric\n252 aligned observations\nMAX DRAWDOWN\n-25.7%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-12 – 2026-11-12\n252 observations ·",
+            "drawdown_snippet": "MAX DRAWDOWN\n-25.7%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-12 – 2026-11-12\n252 observations · As of 2026-11-12\nNov 12\nDec 2\nDec 19\nJan 9\nJan 29\nFeb",
+            "holdings_provenance": {
+              "first_instrument_link": {
+                "text": "QQQI",
+                "href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3"
+              },
+              "snapshot": "Holdings snapshot\n2026-11-12 · vs 2026-11-11\n1 assets\nNET EXPOSURE\n100.0%\nGROSS EXPOSURE\n100.0%\nTOP 5 CONCENTRATION\n100.0%\nTURNOVER\n0.0%\nTRANSACTION COST\n0.000%\nSince previous snapshot: 0 added · 0 resized · 0 exited. Transaction costs are retained source values; the browser does"
+            },
+            "unchanged_or_not_due_evidence": {
+              "date_basis": "Holdings snapshot 2026-11-12 · vs 2026-11-11",
+              "observed": "Since previous snapshot: 0 added · 0 resized · 0 exited.",
+              "classification": "unchanged_with_date_basis"
+            },
+            "latest_changed_decision_evidence": {
+              "latest_public_decision": "2026-10-19 Increase 50.0% -> 100.0% (Defensive price or VIX stress)",
+              "prior_public_decision": "2026-10-16 Buy 0.0% -> 50.0% (Exit partial TQQQ VIX VXN or MA20)",
+              "source": "Historical model event ledger, QQQI instrument page"
+            },
+            "trades_provenance": {
+              "link_count": 10,
+              "first_links": [
+                {
+                  "text": "QQQI",
+                  "href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3"
+                },
+                {
+                  "text": "QQQ",
+                  "href": "#/securities/us/QQQ?model=qqqi_qqq_tqqq_v4_3"
+                },
+                {
+                  "text": "QQQI",
+                  "href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3"
+                }
+              ]
+            },
+            "attribution_provenance": {
+              "link_count": 4,
+              "first_links": [
+                {
+                  "text": "TQQQ",
+                  "href": "#/securities/us/TQQQ?model=qqqi_qqq_tqqq_v4_3"
+                },
+                {
+                  "text": "QQQI",
+                  "href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3"
+                },
+                {
+                  "text": "QQQ",
+                  "href": "#/securities/us/QQQ?model=qqqi_qqq_tqqq_v4_3"
+                },
+                {
+                  "text": "SGOV",
+                  "href": "#/securities/us/SGOV?model=qqqi_qqq_tqqq_v4_3"
+                }
+              ]
+            },
+            "evidence_cutoff": {
+              "model_version": "Model version\nqqqi_qqq_tqqq_v4_3",
+              "run": "Run\nqqqi_qqq_tqqq_v4_3-through-2026_11_13",
+              "evidence_cutoff": "Evidence cutoff\n2026-11-13",
+              "market_benchmark": "Market / benchmark\nUS · QQQ",
+              "bundle_identity_verified": true
+            },
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "followed_href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3",
+            "page_title": "Instrument Evidence — Alpha Engine",
+            "headings": [
+              "QQQI",
+              "Price and model events",
+              "Event markers in range",
+              "Historical model event ledger"
+            ],
+            "marker_note": "2025-11-13 – 2026-11-13 · 252 observed sessions · 17 marker clusters",
+            "historical_ledger_heading_present": true,
+            "price_data_table_present": true,
+            "live_fill_disclosure": "B = buy / increase · S = sell / decrease. Markers use historical ledger dates and do not establish live fills or execution prices.\nHistorical model event ledger\nShow complete ledger\nSelected chart interval. Weight changes describe historica",
+            "ledger_rows": [
+              [
+                "2026-10-19",
+                "QQQR v4.3",
+                "Increase",
+                "50.0% → 100.0%",
+                "Defensive price or VIX stress\nqqqi_qqq_tqqq_v4_3-through-2026_11_13"
+              ],
+              [
+                "2026-10-16",
+                "QQQR v4.3",
+                "Buy",
+                "0.0% → 50.0%",
+                "Exit partial TQQQ VIX VXN or MA20\nqqqi_qqq_tqqq_v4_3-through-2026_11_13"
+              ],
+              [
+                "2026-09-21",
+                "QQQR v4.3",
+                "Sell",
+                "50.0% → 0.0%",
+                "Enter partial TQQQ VIX normalized VXN not stressed\nqqqi_qqq_tqqq_v4_3-through-2026_11_13"
+              ],
+              [
+                "2026-09-01",
+                "QQQR v4.3",
+                "Buy",
+                "0.0% → 50.0%",
+                "Exit partial TQQQ VIX VXN or MA20\nqqqi_qqq_tqqq_v4_3-through-2026_11_13"
+              ]
+            ],
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system",
+            "page_title": "Operating Status — Alpha Engine",
+            "current_observations": "Current strategy observations\nSTRATEGY\nLATEST OBSERVATION\nSTATUS\nBYD v1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nCN_27 V1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nQQQR v4.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence ",
+            "published_snapshot": "Published data snapshot\nGenerated 2026-11-15T14:23:29Z · Deployment current. Strategy decisions may advance independently of this source snapshot.\nCN · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nUS · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nSeparate research input coverage\nRecovery and workflows\nReview the affected source or delivery run. Authorized operators use existing workflows; a br",
+            "access_required_lines": [
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access."
+            ],
+            "blocked_delayed_not_due_evidence": [],
+            "blocked_delayed_not_due_note": "Anonymous view exposes no per-strategy current-operation blocked/delayed/not-due rows; only 'Access required'. Public source cutoffs render as Current.",
+            "recovery_links": [
+              {
+                "text": "Data refresh workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/formal-backtest-refresh.yml"
+              },
+              {
+                "text": "Decision delivery workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/strategy-signal-delivery-outbox.yml"
+              }
+            ],
+            "horizontal_overflow_px": 0,
+            "source_cutoff": "CN/US provider cutoff 2026-11-13 · expected 2026-11-13",
+            "formal_evidence_cutoff": "2026-11-13 (all four models; rendered on Strategy Detail Evidence boundary)",
+            "current_operation_cutoff": "Not available anonymously: all four rows render Access required"
+          }
+        ],
+        "screenshots": [
+          "desktop-qqq_rotation-overview.png",
+          "desktop-qqq_rotation-detail-performance.png",
+          "desktop-qqq_rotation-detail-portfolio.png",
+          "desktop-qqq_rotation-detail-evidence.png",
+          "desktop-qqq_rotation-instrument.png",
+          "desktop-qqq_rotation-status.png",
+          "desktop-qqq_rotation-overview-ranking.png",
+          "desktop-qqq_rotation-detail-top.png"
+        ],
+        "console_errors": [],
+        "page_errors": [],
+        "failed_requests": [],
+        "status": "PASS"
+      },
+      {
+        "device": "desktop",
+        "strategy_id": "us_x",
+        "model_version_id": "us_x1_3",
+        "identity": "anonymous live session (fresh browser context, no Supabase credentials)",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app",
+            "page_title": "Today — Alpha Engine",
+            "horizontal_overflow_px": 0,
+            "latest_state_date_row": "US x1.3 US · qqq · As of 2026-11-13 · Inspect evidence · Row details — — -26.1% +31.6% +130.5% — — 1M trend",
+            "fleet_context": "0 changed · 0 need attention · 4 require access",
+            "protected_notice": "4 strategies require protected access. Formal history stays readable; current observations remain hidden.",
+            "next_decision_or_due_rendered": null,
+            "next_decision_or_due_note": "Not rendered anonymously; current next-decision state is protected.",
+            "link_clicked_url": "https://liuh886.github.io/alpha_engine/#/strategies/us_x1_3",
+            "link_opened_exact_detail": true,
+            "stale_badge_rendered": false
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/us_x1_3",
+            "page_title": "Strategy Evidence — Alpha Engine",
+            "heading_h1": "US x1.3",
+            "historical_vs_current_status": {
+              "operating_status": "OPERATING STATUS\nProtected current operations\nFormal historical evidence remains public below.\nSummary\nDecisions\nRisk\nEvidence\nPerformance path\nGoverned NAV indexed to 100 at the first exact-date obse",
+              "protected_current_operations": "Pro current operations\nCurrent holdings and live signals are protected\nPro access is required for the current holdings, target allocations, signal drivers and next-decision state of this strategy. Historical formal perfo"
+            },
+            "benchmark_snippet": "Baseline\nQQQ\nPERIOD RETURN\n+31.6%\n1Y wi",
+            "relative_return_snippet": "Excess vs QQQ +15.5% · browser-derived, not a sealed metric\n25 aligned observations\nMAX DRAWDOWN\n-29.3%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-20 – 2026-11-13\n25 observations · As",
+            "drawdown_snippet": "MAX DRAWDOWN\n-29.3%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-20 – 2026-11-13\n25 observations · As of 2026-11-13\nNov 20\nDec 19\nFeb 2\nMar 3\nMar 31\nApr ",
+            "holdings_provenance": {
+              "first_instrument_link": {
+                "text": "BE",
+                "href": "#/securities/us/BE?model=us_x1_3"
+              },
+              "snapshot": "Holdings snapshot\n2026-11-06 · vs 2026-10-23\n15 assets\nNET EXPOSURE\n100.0%\nGROSS EXPOSURE\n100.0%\nTOP 5 CONCENTRATION\n33.3%\nTURNOVER\n53.3%\nTRANSACTION COST\n—\nSince previous snapshot: 8 added · 0 resized · 8 exited. Transaction costs are retained source values; the browser does not"
+            },
+            "unchanged_or_not_due_evidence": {
+              "date_basis": "MTM 2026-11-13; source signal 2026-11-06; holdings snapshot 2026-11-06 · vs 2026-10-23",
+              "observed": "MTM 2026-11-13 / No rebalance. / Source signal: 2026-11-06. Snapshot: 8 added · 0 resized · 8 exited.",
+              "classification": "not_due_no_rebalance_with_date_basis"
+            },
+            "latest_changed_decision_evidence": {
+              "latest_public_decision": "Holdings snapshot 2026-11-06 vs 2026-10-23: 8 added, 8 exited, turnover 53.3%",
+              "prior_public_decision": "Prior holdings snapshot 2026-10-23",
+              "source": "Formal Portfolio tab (public Model Run Bundle v2 evidence)"
+            },
+            "trades_provenance": {
+              "link_count": 10,
+              "first_links": [
+                {
+                  "text": "AAOI",
+                  "href": "#/securities/us/AAOI?model=us_x1_3"
+                },
+                {
+                  "text": "AEHR",
+                  "href": "#/securities/us/AEHR?model=us_x1_3"
+                },
+                {
+                  "text": "BE",
+                  "href": "#/securities/us/BE?model=us_x1_3"
+                }
+              ]
+            },
+            "attribution_provenance": {
+              "link_count": 10,
+              "first_links": [
+                {
+                  "text": "IREN",
+                  "href": "#/securities/us/IREN?model=us_x1_3"
+                },
+                {
+                  "text": "BE",
+                  "href": "#/securities/us/BE?model=us_x1_3"
+                },
+                {
+                  "text": "HIMS",
+                  "href": "#/securities/us/HIMS?model=us_x1_3"
+                },
+                {
+                  "text": "POET",
+                  "href": "#/securities/us/POET?model=us_x1_3"
+                }
+              ]
+            },
+            "evidence_cutoff": {
+              "model_version": "Model version\nus_x1_3",
+              "run": "Run\nus_x1_3-through-2026_11_13",
+              "evidence_cutoff": "Evidence cutoff\n2026-11-13",
+              "market_benchmark": "Market / benchmark\nUS · QQQ",
+              "bundle_identity_verified": true
+            },
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "followed_href": "#/securities/us/BE?model=us_x1_3",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/us/BE?model=us_x1_3",
+            "page_title": "Instrument Evidence — Alpha Engine",
+            "headings": [
+              "BE",
+              "Price and model events",
+              "Event markers in range",
+              "Historical model event ledger"
+            ],
+            "marker_note": "2025-11-13 – 2026-11-13 · 252 observed sessions · 2 marker clusters",
+            "historical_ledger_heading_present": true,
+            "price_data_table_present": true,
+            "live_fill_disclosure": "B = buy / increase · S = sell / decrease. Markers use historical ledger dates and do not establish live fills or execution prices.\nHistorical model event ledger\nShow complete ledger\nSelected chart interval. Weight changes describe historica",
+            "ledger_rows": [
+              [
+                "2026-04-15",
+                "US x1.3",
+                "Buy",
+                "0.0% → 6.7%",
+                "No reason retained\nus_x1_3-through-2026_11_13"
+              ],
+              [
+                "2026-03-31",
+                "US x1.3",
+                "Sell",
+                "6.7% → 0.0%",
+                "No reason retained\nus_x1_3-through-2026_11_13"
+              ]
+            ],
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system",
+            "page_title": "Operating Status — Alpha Engine",
+            "current_observations": "Current strategy observations\nSTRATEGY\nLATEST OBSERVATION\nSTATUS\nBYD v1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nCN_27 V1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nQQQR v4.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence ",
+            "published_snapshot": "Published data snapshot\nGenerated 2026-11-15T14:23:29Z · Deployment current. Strategy decisions may advance independently of this source snapshot.\nCN · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nUS · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nSeparate research input coverage\nRecovery and workflows\nReview the affected source or delivery run. Authorized operators use existing workflows; a br",
+            "access_required_lines": [
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access."
+            ],
+            "blocked_delayed_not_due_evidence": [],
+            "blocked_delayed_not_due_note": "Anonymous view exposes no per-strategy current-operation blocked/delayed/not-due rows; only 'Access required'. Public source cutoffs render as Current.",
+            "recovery_links": [
+              {
+                "text": "Data refresh workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/formal-backtest-refresh.yml"
+              },
+              {
+                "text": "Decision delivery workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/strategy-signal-delivery-outbox.yml"
+              }
+            ],
+            "horizontal_overflow_px": 0,
+            "source_cutoff": "CN/US provider cutoff 2026-11-13 · expected 2026-11-13",
+            "formal_evidence_cutoff": "2026-11-13 (all four models; rendered on Strategy Detail Evidence boundary)",
+            "current_operation_cutoff": "Not available anonymously: all four rows render Access required"
+          }
+        ],
+        "screenshots": [
+          "desktop-us_x-overview.png",
+          "desktop-us_x-detail-performance.png",
+          "desktop-us_x-detail-portfolio.png",
+          "desktop-us_x-detail-evidence.png",
+          "desktop-us_x-instrument.png",
+          "desktop-us_x-status.png",
+          "desktop-us_x-overview-ranking.png",
+          "desktop-us_x-detail-top.png"
+        ],
+        "console_errors": [],
+        "page_errors": [],
+        "failed_requests": [],
+        "status": "PASS"
+      },
+      {
+        "device": "desktop",
+        "strategy_id": "cn_27",
+        "model_version_id": "cn_27_v1_3",
+        "identity": "anonymous live session (fresh browser context, no Supabase credentials)",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app",
+            "page_title": "Today — Alpha Engine",
+            "horizontal_overflow_px": 0,
+            "latest_state_date_row": "CN_27 V1.3 Stale · 70d behind cutoff China · 000300 · As of 2026-09-04 · Inspect evidence · Row details -1.1% +7.4% -4.8% +54.3% +97.6% +124.4%",
+            "fleet_context": "0 changed · 0 need attention · 4 require access",
+            "protected_notice": "4 strategies require protected access. Formal history stays readable; current observations remain hidden.",
+            "next_decision_or_due_rendered": null,
+            "next_decision_or_due_note": "Not rendered anonymously; current next-decision state is protected.",
+            "link_clicked_url": "https://liuh886.github.io/alpha_engine/#/strategies/cn_27_v1_3",
+            "link_opened_exact_detail": true,
+            "stale_badge_rendered": true,
+            "stale_badge_text": "Stale · 70d behind cutoff"
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/cn_27_v1_3",
+            "page_title": "Strategy Evidence — Alpha Engine",
+            "heading_h1": "CN_27 V1.3",
+            "historical_vs_current_status": {
+              "operating_status": "OPERATING STATUS\nProtected current operations\nFormal historical evidence remains public below.\nSummary\nDecisions\nRisk\nEvidence\nPerformance path\nGoverned NAV indexed to 100 at the first exact-date obse",
+              "protected_current_operations": "Pro current operations\nCurrent holdings and live signals are protected\nPro access is required for the current holdings, target allocations, signal drivers and next-decision state of this strategy. Historical formal perfo"
+            },
+            "benchmark_snippet": "Baseline\nNo baseline\nPERIOD RETURN\n+54.3%\n1Y wi",
+            "relative_return_snippet": "RELATIVE EXCESS\n—\nMAX DRAWDOWN (CHART)\n-19.50%\nBenchmark and relative excess unavailable: 000300 has no valid wealth series at both selected boundaries. Published source m",
+            "drawdown_snippet": "MAX DRAWDOWN\n-19.5%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-09-04 – 2026-09-04\n243 observations · As of 2026-09-04\nStale by 70 days\nSep 22\nOct 17\nNov 5",
+            "holdings_provenance": {
+              "first_instrument_link": {
+                "text": "Dividend ETF 515180",
+                "href": "#/securities/cn/515180?model=cn_27_v1_3"
+              },
+              "snapshot": "Holdings snapshot\n2026-09-04 · vs 2026-09-03\n13 assets\nNET EXPOSURE\n100.0%\nGROSS EXPOSURE\n100.0%\nTOP 5 CONCENTRATION\n62.2%\nTURNOVER\n0.9%\nTRANSACTION COST\n0.000%\nSince previous snapshot: 0 added · 11 resized · 0 exited. Transaction costs are retained source values; the browser doe"
+            },
+            "unchanged_or_not_due_evidence": {
+              "date_basis": "Holdings snapshot 2026-09-04 · vs 2026-09-03",
+              "observed": "Since previous snapshot: 0 added · 11 resized · 0 exited; evidence trace as of 2026-09-04, 70 days behind 2026-11-13 cutoff.",
+              "classification": "changed_and_stale_no_unchanged_state"
+            },
+            "latest_changed_decision_evidence": {
+              "latest_public_decision": "2026-08-26 Decrease 27.3% -> 26.4% (Scheduled rank and project or locked target retry)",
+              "prior_public_decision": "2026-07-15 Increase 23.9% -> 25.0% (same reason)",
+              "source": "Historical model event ledger, CN 515180 instrument page"
+            },
+            "trades_provenance": {
+              "link_count": 10,
+              "first_links": [
+                {
+                  "text": "002156",
+                  "href": "#/securities/cn/002156?model=cn_27_v1_3"
+                },
+                {
+                  "text": "002281",
+                  "href": "#/securities/cn/002281?model=cn_27_v1_3"
+                },
+                {
+                  "text": "002709",
+                  "href": "#/securities/cn/002709?model=cn_27_v1_3"
+                }
+              ]
+            },
+            "attribution_provenance": {
+              "link_count": 0,
+              "first_links": []
+            },
+            "evidence_cutoff": {
+              "model_version": "Model version\ncn_27_v1_3",
+              "run": "Run\ncn_27_v1_3-through-2026_11_13",
+              "evidence_cutoff": "Evidence cutoff\n2026-11-13",
+              "market_benchmark": "Market / benchmark\nCN · 000300",
+              "bundle_identity_verified": true
+            },
+            "horizontal_overflow_px": 0,
+            "stale_by_70_days_rendered": true,
+            "stale_by_70_days_text": "Stale by 70 days"
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "followed_href": "#/securities/cn/515180?model=cn_27_v1_3",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/cn/515180?model=cn_27_v1_3",
+            "page_title": "Instrument Evidence — Alpha Engine",
+            "headings": [
+              "515180.SH · 515180",
+              "Price and model events",
+              "Event markers in range",
+              "Historical model event ledger"
+            ],
+            "marker_note": "2025-11-13 – 2026-11-13 · 243 observed sessions · 11 marker clusters",
+            "historical_ledger_heading_present": true,
+            "price_data_table_present": true,
+            "live_fill_disclosure": "B = buy / increase · S = sell / decrease. Markers use historical ledger dates and do not establish live fills or execution prices.\nHistorical model event ledger\nShow complete ledger\nSelected chart interval. Weight changes describe historica",
+            "ledger_rows": [
+              [
+                "2026-08-26",
+                "CN_27 V1.3",
+                "Decrease",
+                "27.3% → 26.4%",
+                "Scheduled rank and project or locked target retry\ncn_27_v1_3-through-2026_11_13"
+              ],
+              [
+                "2026-08-04",
+                "BYD v1.3",
+                "Buy",
+                "0.0% → 25.0%",
+                "V1 2 core or convex momentum\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ],
+              [
+                "2026-07-31",
+                "BYD v1.3",
+                "Sell",
+                "25.0% → 0.0%",
+                "V1 2 core or convex momentum\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ],
+              [
+                "2026-07-15",
+                "CN_27 V1.3",
+                "Increase",
+                "23.9% → 25.0%",
+                "Scheduled rank and project or locked target retry\ncn_27_v1_3-through-2026_11_13"
+              ]
+            ],
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system",
+            "page_title": "Operating Status — Alpha Engine",
+            "current_observations": "Current strategy observations\nSTRATEGY\nLATEST OBSERVATION\nSTATUS\nBYD v1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nCN_27 V1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nQQQR v4.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence ",
+            "published_snapshot": "Published data snapshot\nGenerated 2026-11-15T14:23:29Z · Deployment current. Strategy decisions may advance independently of this source snapshot.\nCN · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nUS · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nSeparate research input coverage\nRecovery and workflows\nReview the affected source or delivery run. Authorized operators use existing workflows; a br",
+            "access_required_lines": [
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access."
+            ],
+            "blocked_delayed_not_due_evidence": [],
+            "blocked_delayed_not_due_note": "Anonymous view exposes no per-strategy current-operation blocked/delayed/not-due rows; only 'Access required'. Public source cutoffs render as Current.",
+            "recovery_links": [
+              {
+                "text": "Data refresh workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/formal-backtest-refresh.yml"
+              },
+              {
+                "text": "Decision delivery workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/strategy-signal-delivery-outbox.yml"
+              }
+            ],
+            "horizontal_overflow_px": 0,
+            "source_cutoff": "CN/US provider cutoff 2026-11-13 · expected 2026-11-13",
+            "formal_evidence_cutoff": "2026-11-13 (all four models; rendered on Strategy Detail Evidence boundary)",
+            "current_operation_cutoff": "Not available anonymously: all four rows render Access required"
+          }
+        ],
+        "screenshots": [
+          "desktop-cn_27-overview.png",
+          "desktop-cn_27-detail-performance.png",
+          "desktop-cn_27-detail-portfolio.png",
+          "desktop-cn_27-detail-evidence.png",
+          "desktop-cn_27-instrument.png",
+          "desktop-cn_27-status.png",
+          "desktop-cn_27-overview-ranking.png",
+          "desktop-cn_27-detail-top.png"
+        ],
+        "console_errors": [],
+        "page_errors": [],
+        "failed_requests": [],
+        "status": "PASS"
+      },
+      {
+        "device": "desktop",
+        "strategy_id": "byd",
+        "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "identity": "anonymous live session (fresh browser context, no Supabase credentials)",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app",
+            "page_title": "Today — Alpha Engine",
+            "horizontal_overflow_px": 0,
+            "latest_state_date_row": "BYD v1.3 China · byd_v1.2 · As of 2026-11-12 · Inspect evidence · Row details +4.8% +2.9% -4.3% -7.7% -4.2% +33.8%",
+            "fleet_context": "0 changed · 0 need attention · 4 require access",
+            "protected_notice": "4 strategies require protected access. Formal history stays readable; current observations remain hidden.",
+            "next_decision_or_due_rendered": null,
+            "next_decision_or_due_note": "Not rendered anonymously; current next-decision state is protected.",
+            "link_clicked_url": "https://liuh886.github.io/alpha_engine/#/strategies/byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "link_opened_exact_detail": true,
+            "stale_badge_rendered": false
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "page_title": "Strategy Evidence — Alpha Engine",
+            "heading_h1": "BYD v1.3",
+            "historical_vs_current_status": {
+              "operating_status": "OPERATING STATUS\nProtected current operations\nFormal historical evidence remains public below.\nSummary\nDecisions\nRisk\nEvidence\nPerformance path\nGoverned NAV indexed to 100 at the first exact-date obse",
+              "protected_current_operations": "Pro current operations\nCurrent holdings and live signals are protected\nPro access is required for the current holdings, target allocations, signal drivers and next-decision state of this strategy. Historical formal perfo"
+            },
+            "benchmark_snippet": "Baseline\nBYD v1.2\nPERIOD RETURN\n-7.7%\n1Y win",
+            "relative_return_snippet": "Excess vs BYD v1.2 +0.7% · browser-derived, not a sealed metric\n243 aligned observations\nMAX DRAWDOWN\n-25.6%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-12 – 2026-11-12\n243 observations ·",
+            "drawdown_snippet": "MAX DRAWDOWN\n-25.6%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-12 – 2026-11-12\n243 observations · As of 2026-11-12\nNov 28\nDec 17\nJan 7\nJan 23\nFeb 11\nMa",
+            "holdings_provenance": {
+              "first_instrument_link": {
+                "text": "BYD",
+                "href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+              },
+              "snapshot": "Holdings snapshot\n2026-11-12 · vs 2026-11-11\n2 assets\nNET EXPOSURE\n100.0%\nGROSS EXPOSURE\n100.0%\nTOP 5 CONCENTRATION\n100.0%\nTURNOVER\n0.0%\nTRANSACTION COST\n0.000%\nSince previous snapshot: 0 added · 0 resized · 0 exited. Transaction costs are retained source values; the browser does"
+            },
+            "unchanged_or_not_due_evidence": {
+              "date_basis": "Holdings snapshot 2026-11-12 · vs 2026-11-11",
+              "observed": "Since previous snapshot: 0 added · 0 resized · 0 exited.",
+              "classification": "unchanged_with_date_basis"
+            },
+            "latest_changed_decision_evidence": {
+              "latest_public_decision": "2026-08-04 Sell 100.0% -> 75.0% (V1 2 core or convex momentum)",
+              "prior_public_decision": "2026-07-31 Buy 75.0% -> 100.0% (V1 2 core or convex momentum)",
+              "source": "Historical model event ledger, BYD instrument page"
+            },
+            "trades_provenance": {
+              "link_count": 10,
+              "first_links": [
+                {
+                  "text": "BYD",
+                  "href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                },
+                {
+                  "text": "515180.SH",
+                  "href": "#/securities/cn/515180.SH?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                },
+                {
+                  "text": "BYD",
+                  "href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                }
+              ]
+            },
+            "attribution_provenance": {
+              "link_count": 3,
+              "first_links": [
+                {
+                  "text": "BYD",
+                  "href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                },
+                {
+                  "text": "515180.SH",
+                  "href": "#/securities/cn/515180.SH?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                },
+                {
+                  "text": "CASH",
+                  "href": "#/securities/cn/CASH?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                }
+              ]
+            },
+            "evidence_cutoff": {
+              "model_version": "Model version\nbyd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "run": "Run\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13",
+              "evidence_cutoff": "Evidence cutoff\n2026-11-13",
+              "market_benchmark": "Market / benchmark\nCN · BYD v1.2",
+              "bundle_identity_verified": true
+            },
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "followed_href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "page_title": "Instrument Evidence — Alpha Engine",
+            "headings": [
+              "BYD · 002594",
+              "Price and model events",
+              "Event markers in range",
+              "Historical model event ledger"
+            ],
+            "marker_note": "2025-11-13 – 2026-11-13 · 243 observed sessions · 4 marker clusters",
+            "historical_ledger_heading_present": true,
+            "price_data_table_present": true,
+            "live_fill_disclosure": "B = buy / increase · S = sell / decrease. Markers use historical ledger dates and do not establish live fills or execution prices.\nHistorical model event ledger\nShow complete ledger\nSelected chart interval. Weight changes describe historica",
+            "ledger_rows": [
+              [
+                "2026-08-04",
+                "BYD v1.3",
+                "Sell",
+                "100.0% → 75.0%",
+                "V1 2 core or convex momentum\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ],
+              [
+                "2026-07-31",
+                "BYD v1.3",
+                "Buy",
+                "75.0% → 100.0%",
+                "V1 2 core or convex momentum\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ],
+              [
+                "2026-06-01",
+                "BYD v1.3",
+                "Sell",
+                "100.0% → 75.0%",
+                "V1 2 core or convex momentum\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ],
+              [
+                "2026-03-03",
+                "BYD v1.3",
+                "Buy",
+                "75.0% → 100.0%",
+                "Low vol recovery lifecycle\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ]
+            ],
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system",
+            "page_title": "Operating Status — Alpha Engine",
+            "current_observations": "Current strategy observations\nSTRATEGY\nLATEST OBSERVATION\nSTATUS\nBYD v1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nCN_27 V1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nQQQR v4.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence ",
+            "published_snapshot": "Published data snapshot\nGenerated 2026-11-15T14:23:29Z · Deployment current. Strategy decisions may advance independently of this source snapshot.\nCN · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nUS · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nSeparate research input coverage\nRecovery and workflows\nReview the affected source or delivery run. Authorized operators use existing workflows; a br",
+            "access_required_lines": [
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access."
+            ],
+            "blocked_delayed_not_due_evidence": [],
+            "blocked_delayed_not_due_note": "Anonymous view exposes no per-strategy current-operation blocked/delayed/not-due rows; only 'Access required'. Public source cutoffs render as Current.",
+            "recovery_links": [
+              {
+                "text": "Data refresh workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/formal-backtest-refresh.yml"
+              },
+              {
+                "text": "Decision delivery workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/strategy-signal-delivery-outbox.yml"
+              }
+            ],
+            "horizontal_overflow_px": 0,
+            "source_cutoff": "CN/US provider cutoff 2026-11-13 · expected 2026-11-13",
+            "formal_evidence_cutoff": "2026-11-13 (all four models; rendered on Strategy Detail Evidence boundary)",
+            "current_operation_cutoff": "Not available anonymously: all four rows render Access required"
+          }
+        ],
+        "screenshots": [
+          "desktop-byd-overview.png",
+          "desktop-byd-detail-performance.png",
+          "desktop-byd-detail-portfolio.png",
+          "desktop-byd-detail-evidence.png",
+          "desktop-byd-instrument.png",
+          "desktop-byd-status.png",
+          "desktop-byd-overview-ranking.png",
+          "desktop-byd-detail-top.png"
+        ],
+        "console_errors": [],
+        "page_errors": [],
+        "failed_requests": [],
+        "status": "PASS"
+      },
+      {
+        "device": "mobile",
+        "strategy_id": "qqq_rotation",
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "identity": "anonymous live session (fresh browser context, no Supabase credentials)",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app",
+            "page_title": "Today — Alpha Engine",
+            "horizontal_overflow_px": 0,
+            "latest_state_date_row": "QQQR v4.3 US · qqq · As of 2026-11-12",
+            "fleet_context": "0 changed · 0 need attention · 4 require access",
+            "protected_notice": "4 strategies require protected access. Formal history stays readable; current observations remain hidden.",
+            "next_decision_or_due_rendered": null,
+            "next_decision_or_due_note": "Not rendered anonymously; current next-decision state is protected.",
+            "link_clicked_url": "https://liuh886.github.io/alpha_engine/#/strategies/qqqi_qqq_tqqq_v4_3",
+            "link_opened_exact_detail": true,
+            "stale_badge_rendered": false
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/qqqi_qqq_tqqq_v4_3",
+            "page_title": "Strategy Evidence — Alpha Engine",
+            "heading_h1": "QQQR v4.3",
+            "historical_vs_current_status": {
+              "operating_status": "OPERATING STATUS\nProtected current operations\nFormal historical evidence remains public below.\nSummary\nDecisions\nRisk\nEvidence\nPerformance path\nGoverned NAV indexed to 100 at the first exact-date obse",
+              "protected_current_operations": "Pro current operations\nCurrent holdings and live signals are protected\nPro access is required for the current holdings, target allocations, signal drivers and next-decision state of this strategy. Historical formal perfo"
+            },
+            "benchmark_snippet": "Baseline\nQQQ\nPERIOD RETURN\n+32.0%\n1Y wi",
+            "relative_return_snippet": "Excess vs QQQ +17.8% · browser-derived, not a sealed metric\n252 aligned observations\nMAX DRAWDOWN\n-25.7%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-12 – 2026-11-12\n252 observations ·",
+            "drawdown_snippet": "MAX DRAWDOWN\n-25.7%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-12 – 2026-11-12\n252 observations · As of 2026-11-12\nFeb 9\nMay 8\nAug 12\nNov 12\n85\n110\n135",
+            "holdings_provenance": {
+              "first_instrument_link": {
+                "text": "QQQI",
+                "href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3"
+              },
+              "snapshot": "Holdings snapshot\n2026-11-12 · vs 2026-11-11\n1 assets\nNET EXPOSURE\n100.0%\nGROSS EXPOSURE\n100.0%\nTOP 5 CONCENTRATION\n100.0%\nTURNOVER\n0.0%\nTRANSACTION COST\n0.000%\nSince previous snapshot: 0 added · 0 resized · 0 exited. Transaction costs are retained source values; the browser does"
+            },
+            "unchanged_or_not_due_evidence": {
+              "date_basis": "Holdings snapshot 2026-11-12 · vs 2026-11-11",
+              "observed": "Since previous snapshot: 0 added · 0 resized · 0 exited.",
+              "classification": "unchanged_with_date_basis"
+            },
+            "latest_changed_decision_evidence": {
+              "latest_public_decision": "2026-10-19 Increase 50.0% -> 100.0% (Defensive price or VIX stress)",
+              "prior_public_decision": "2026-10-16 Buy 0.0% -> 50.0% (Exit partial TQQQ VIX VXN or MA20)",
+              "source": "Historical model event ledger, QQQI instrument page"
+            },
+            "trades_provenance": {
+              "link_count": 10,
+              "first_links": [
+                {
+                  "text": "QQQI",
+                  "href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3"
+                },
+                {
+                  "text": "QQQ",
+                  "href": "#/securities/us/QQQ?model=qqqi_qqq_tqqq_v4_3"
+                },
+                {
+                  "text": "QQQI",
+                  "href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3"
+                }
+              ]
+            },
+            "attribution_provenance": {
+              "link_count": 4,
+              "first_links": [
+                {
+                  "text": "TQQQ",
+                  "href": "#/securities/us/TQQQ?model=qqqi_qqq_tqqq_v4_3"
+                },
+                {
+                  "text": "QQQI",
+                  "href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3"
+                },
+                {
+                  "text": "QQQ",
+                  "href": "#/securities/us/QQQ?model=qqqi_qqq_tqqq_v4_3"
+                },
+                {
+                  "text": "SGOV",
+                  "href": "#/securities/us/SGOV?model=qqqi_qqq_tqqq_v4_3"
+                }
+              ]
+            },
+            "evidence_cutoff": {
+              "model_version": "Model version\nqqqi_qqq_tqqq_v4_3",
+              "run": "Run\nqqqi_qqq_tqqq_v4_3-through-2026_11_13",
+              "evidence_cutoff": "Evidence cutoff\n2026-11-13",
+              "market_benchmark": "Market / benchmark\nUS · QQQ",
+              "bundle_identity_verified": true
+            },
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "followed_href": "#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/us/QQQI?model=qqqi_qqq_tqqq_v4_3",
+            "page_title": "Instrument Evidence — Alpha Engine",
+            "headings": [
+              "QQQI",
+              "Price and model events",
+              "Event markers in range",
+              "Historical model event ledger"
+            ],
+            "marker_note": "2025-11-13 – 2026-11-13 · 252 observed sessions · 17 marker clusters",
+            "historical_ledger_heading_present": true,
+            "price_data_table_present": true,
+            "live_fill_disclosure": "B = buy / increase · S = sell / decrease. Markers use historical ledger dates and do not establish live fills or execution prices.\nHistorical model event ledger\nShow complete ledger\nSelected chart interval. Weight changes describe historica",
+            "ledger_rows": [
+              [
+                "2026-10-19",
+                "QQQR v4.3",
+                "Increase",
+                "50.0% → 100.0%",
+                "Defensive price or VIX stress\nqqqi_qqq_tqqq_v4_3-through-2026_11_13"
+              ],
+              [
+                "2026-10-16",
+                "QQQR v4.3",
+                "Buy",
+                "0.0% → 50.0%",
+                "Exit partial TQQQ VIX VXN or MA20\nqqqi_qqq_tqqq_v4_3-through-2026_11_13"
+              ],
+              [
+                "2026-09-21",
+                "QQQR v4.3",
+                "Sell",
+                "50.0% → 0.0%",
+                "Enter partial TQQQ VIX normalized VXN not stressed\nqqqi_qqq_tqqq_v4_3-through-2026_11_13"
+              ],
+              [
+                "2026-09-01",
+                "QQQR v4.3",
+                "Buy",
+                "0.0% → 50.0%",
+                "Exit partial TQQQ VIX VXN or MA20\nqqqi_qqq_tqqq_v4_3-through-2026_11_13"
+              ]
+            ],
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system",
+            "page_title": "Operating Status — Alpha Engine",
+            "current_observations": "Current strategy observations\nBYD v1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nCN_27 V1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nQQQR v4.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nUS ",
+            "published_snapshot": "Published data snapshot\nGenerated 2026-11-15T14:23:29Z · Deployment current. Strategy decisions may advance independently of this source snapshot.\nCN · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nUS · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nSeparate research input coverage\nRecovery and workflows\nReview the affected source or delivery run. Authorized operators use existing workflows; a br",
+            "access_required_lines": [
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access."
+            ],
+            "blocked_delayed_not_due_evidence": [],
+            "blocked_delayed_not_due_note": "Anonymous view exposes no per-strategy current-operation blocked/delayed/not-due rows; only 'Access required'. Public source cutoffs render as Current.",
+            "recovery_links": [
+              {
+                "text": "Data refresh workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/formal-backtest-refresh.yml"
+              },
+              {
+                "text": "Decision delivery workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/strategy-signal-delivery-outbox.yml"
+              }
+            ],
+            "horizontal_overflow_px": 0,
+            "source_cutoff": "CN/US provider cutoff 2026-11-13 · expected 2026-11-13",
+            "formal_evidence_cutoff": "2026-11-13 (all four models; rendered on Strategy Detail Evidence boundary)",
+            "current_operation_cutoff": "Not available anonymously: all four rows render Access required"
+          }
+        ],
+        "screenshots": [
+          "mobile-qqq_rotation-overview.png",
+          "mobile-qqq_rotation-detail-performance.png",
+          "mobile-qqq_rotation-detail-portfolio.png",
+          "mobile-qqq_rotation-detail-evidence.png",
+          "mobile-qqq_rotation-instrument.png",
+          "mobile-qqq_rotation-status.png",
+          "mobile-qqq_rotation-overview-ranking.png",
+          "mobile-qqq_rotation-detail-top.png"
+        ],
+        "console_errors": [],
+        "page_errors": [],
+        "failed_requests": [],
+        "status": "PASS"
+      },
+      {
+        "device": "mobile",
+        "strategy_id": "us_x",
+        "model_version_id": "us_x1_3",
+        "identity": "anonymous live session (fresh browser context, no Supabase credentials)",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app",
+            "page_title": "Today — Alpha Engine",
+            "horizontal_overflow_px": 0,
+            "latest_state_date_row": "US x1.3 US · qqq · As of 2026-11-13",
+            "fleet_context": "0 changed · 0 need attention · 4 require access",
+            "protected_notice": "4 strategies require protected access. Formal history stays readable; current observations remain hidden.",
+            "next_decision_or_due_rendered": null,
+            "next_decision_or_due_note": "Not rendered anonymously; current next-decision state is protected.",
+            "link_clicked_url": "https://liuh886.github.io/alpha_engine/#/strategies/us_x1_3",
+            "link_opened_exact_detail": true,
+            "stale_badge_rendered": false
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/us_x1_3",
+            "page_title": "Strategy Evidence — Alpha Engine",
+            "heading_h1": "US x1.3",
+            "historical_vs_current_status": {
+              "operating_status": "OPERATING STATUS\nProtected current operations\nFormal historical evidence remains public below.\nSummary\nDecisions\nRisk\nEvidence\nPerformance path\nGoverned NAV indexed to 100 at the first exact-date obse",
+              "protected_current_operations": "Pro current operations\nCurrent holdings and live signals are protected\nPro access is required for the current holdings, target allocations, signal drivers and next-decision state of this strategy. Historical formal perfo"
+            },
+            "benchmark_snippet": "Baseline\nQQQ\nPERIOD RETURN\n+31.6%\n1Y wi",
+            "relative_return_snippet": "Excess vs QQQ +15.5% · browser-derived, not a sealed metric\n25 aligned observations\nMAX DRAWDOWN\n-29.3%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-20 – 2026-11-13\n25 observations · As",
+            "drawdown_snippet": "MAX DRAWDOWN\n-29.3%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-20 – 2026-11-13\n25 observations · As of 2026-11-13\nFeb 2\nApr 29\nAug 13\nNov 13\n92\n117\n142",
+            "holdings_provenance": {
+              "first_instrument_link": {
+                "text": "BE",
+                "href": "#/securities/us/BE?model=us_x1_3"
+              },
+              "snapshot": "Holdings snapshot\n2026-11-06 · vs 2026-10-23\n15 assets\nNET EXPOSURE\n100.0%\nGROSS EXPOSURE\n100.0%\nTOP 5 CONCENTRATION\n33.3%\nTURNOVER\n53.3%\nTRANSACTION COST\n—\nSince previous snapshot: 8 added · 0 resized · 8 exited. Transaction costs are retained source values; the browser does not"
+            },
+            "unchanged_or_not_due_evidence": {
+              "date_basis": "MTM 2026-11-13; source signal 2026-11-06; holdings snapshot 2026-11-06 · vs 2026-10-23",
+              "observed": "MTM 2026-11-13 / No rebalance. / Source signal: 2026-11-06. Snapshot: 8 added · 0 resized · 8 exited.",
+              "classification": "not_due_no_rebalance_with_date_basis"
+            },
+            "latest_changed_decision_evidence": {
+              "latest_public_decision": "Holdings snapshot 2026-11-06 vs 2026-10-23: 8 added, 8 exited, turnover 53.3%",
+              "prior_public_decision": "Prior holdings snapshot 2026-10-23",
+              "source": "Formal Portfolio tab (public Model Run Bundle v2 evidence)"
+            },
+            "trades_provenance": {
+              "link_count": 10,
+              "first_links": [
+                {
+                  "text": "AAOI",
+                  "href": "#/securities/us/AAOI?model=us_x1_3"
+                },
+                {
+                  "text": "AEHR",
+                  "href": "#/securities/us/AEHR?model=us_x1_3"
+                },
+                {
+                  "text": "BE",
+                  "href": "#/securities/us/BE?model=us_x1_3"
+                }
+              ]
+            },
+            "attribution_provenance": {
+              "link_count": 10,
+              "first_links": [
+                {
+                  "text": "IREN",
+                  "href": "#/securities/us/IREN?model=us_x1_3"
+                },
+                {
+                  "text": "BE",
+                  "href": "#/securities/us/BE?model=us_x1_3"
+                },
+                {
+                  "text": "HIMS",
+                  "href": "#/securities/us/HIMS?model=us_x1_3"
+                },
+                {
+                  "text": "POET",
+                  "href": "#/securities/us/POET?model=us_x1_3"
+                }
+              ]
+            },
+            "evidence_cutoff": {
+              "model_version": "Model version\nus_x1_3",
+              "run": "Run\nus_x1_3-through-2026_11_13",
+              "evidence_cutoff": "Evidence cutoff\n2026-11-13",
+              "market_benchmark": "Market / benchmark\nUS · QQQ",
+              "bundle_identity_verified": true
+            },
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "followed_href": "#/securities/us/BE?model=us_x1_3",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/us/BE?model=us_x1_3",
+            "page_title": "Instrument Evidence — Alpha Engine",
+            "headings": [
+              "BE",
+              "Price and model events",
+              "Event markers in range",
+              "Historical model event ledger"
+            ],
+            "marker_note": "2025-11-13 – 2026-11-13 · 252 observed sessions · 2 marker clusters",
+            "historical_ledger_heading_present": true,
+            "price_data_table_present": true,
+            "live_fill_disclosure": "B = buy / increase · S = sell / decrease. Markers use historical ledger dates and do not establish live fills or execution prices.\nHistorical model event ledger\nShow complete ledger\nSelected chart interval. Weight changes describe historica",
+            "ledger_rows": [
+              [
+                "2026-04-15",
+                "US x1.3",
+                "Buy",
+                "0.0% → 6.7%",
+                "No reason retained\nus_x1_3-through-2026_11_13"
+              ],
+              [
+                "2026-03-31",
+                "US x1.3",
+                "Sell",
+                "6.7% → 0.0%",
+                "No reason retained\nus_x1_3-through-2026_11_13"
+              ]
+            ],
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system",
+            "page_title": "Operating Status — Alpha Engine",
+            "current_observations": "Current strategy observations\nBYD v1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nCN_27 V1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nQQQR v4.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nUS ",
+            "published_snapshot": "Published data snapshot\nGenerated 2026-11-15T14:23:29Z · Deployment current. Strategy decisions may advance independently of this source snapshot.\nCN · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nUS · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nSeparate research input coverage\nRecovery and workflows\nReview the affected source or delivery run. Authorized operators use existing workflows; a br",
+            "access_required_lines": [
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access."
+            ],
+            "blocked_delayed_not_due_evidence": [],
+            "blocked_delayed_not_due_note": "Anonymous view exposes no per-strategy current-operation blocked/delayed/not-due rows; only 'Access required'. Public source cutoffs render as Current.",
+            "recovery_links": [
+              {
+                "text": "Data refresh workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/formal-backtest-refresh.yml"
+              },
+              {
+                "text": "Decision delivery workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/strategy-signal-delivery-outbox.yml"
+              }
+            ],
+            "horizontal_overflow_px": 0,
+            "source_cutoff": "CN/US provider cutoff 2026-11-13 · expected 2026-11-13",
+            "formal_evidence_cutoff": "2026-11-13 (all four models; rendered on Strategy Detail Evidence boundary)",
+            "current_operation_cutoff": "Not available anonymously: all four rows render Access required"
+          }
+        ],
+        "screenshots": [
+          "mobile-us_x-overview.png",
+          "mobile-us_x-detail-performance.png",
+          "mobile-us_x-detail-portfolio.png",
+          "mobile-us_x-detail-evidence.png",
+          "mobile-us_x-instrument.png",
+          "mobile-us_x-status.png",
+          "mobile-us_x-overview-ranking.png",
+          "mobile-us_x-detail-top.png"
+        ],
+        "console_errors": [],
+        "page_errors": [],
+        "failed_requests": [],
+        "status": "PASS"
+      },
+      {
+        "device": "mobile",
+        "strategy_id": "cn_27",
+        "model_version_id": "cn_27_v1_3",
+        "identity": "anonymous live session (fresh browser context, no Supabase credentials)",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app",
+            "page_title": "Today — Alpha Engine",
+            "horizontal_overflow_px": 0,
+            "latest_state_date_row": "CN_27 V1.3 · Stale · 70d behind cutoff · China · 000300 · As of 2026-09-04",
+            "fleet_context": "0 changed · 0 need attention · 4 require access",
+            "protected_notice": "4 strategies require protected access. Formal history stays readable; current observations remain hidden.",
+            "next_decision_or_due_rendered": null,
+            "next_decision_or_due_note": "Not rendered anonymously; current next-decision state is protected.",
+            "link_clicked_url": "https://liuh886.github.io/alpha_engine/#/strategies/cn_27_v1_3",
+            "link_opened_exact_detail": true,
+            "stale_badge_rendered": true,
+            "stale_badge_text": "Stale · 70d behind cutoff"
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/cn_27_v1_3",
+            "page_title": "Strategy Evidence — Alpha Engine",
+            "heading_h1": "CN_27 V1.3",
+            "historical_vs_current_status": {
+              "operating_status": "OPERATING STATUS\nProtected current operations\nFormal historical evidence remains public below.\nSummary\nDecisions\nRisk\nEvidence\nPerformance path\nGoverned NAV indexed to 100 at the first exact-date obse",
+              "protected_current_operations": "Pro current operations\nCurrent holdings and live signals are protected\nPro access is required for the current holdings, target allocations, signal drivers and next-decision state of this strategy. Historical formal perfo"
+            },
+            "benchmark_snippet": "Baseline\nNo baseline\nPERIOD RETURN\n+54.3%\n1Y wi",
+            "relative_return_snippet": "RELATIVE EXCESS\n—\nMAX DRAWDOWN (CHART)\n-19.50%\nBenchmark and relative excess unavailable: 000300 has no valid wealth series at both selected boundaries. Published source m",
+            "drawdown_snippet": "MAX DRAWDOWN\n-19.5%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-09-04 – 2026-09-04\n243 observations · As of 2026-09-04\nStale by 70 days\nSep 9\nDec 9\nMar 16\n",
+            "holdings_provenance": {
+              "first_instrument_link": {
+                "text": "Dividend ETF 515180",
+                "href": "#/securities/cn/515180?model=cn_27_v1_3"
+              },
+              "snapshot": "Holdings snapshot\n2026-09-04 · vs 2026-09-03\n13 assets\nNET EXPOSURE\n100.0%\nGROSS EXPOSURE\n100.0%\nTOP 5 CONCENTRATION\n62.2%\nTURNOVER\n0.9%\nTRANSACTION COST\n0.000%\nSince previous snapshot: 0 added · 11 resized · 0 exited. Transaction costs are retained source values; the browser doe"
+            },
+            "unchanged_or_not_due_evidence": {
+              "date_basis": "Holdings snapshot 2026-09-04 · vs 2026-09-03",
+              "observed": "Since previous snapshot: 0 added · 11 resized · 0 exited; evidence trace as of 2026-09-04, 70 days behind 2026-11-13 cutoff.",
+              "classification": "changed_and_stale_no_unchanged_state"
+            },
+            "latest_changed_decision_evidence": {
+              "latest_public_decision": "2026-08-26 Decrease 27.3% -> 26.4% (Scheduled rank and project or locked target retry)",
+              "prior_public_decision": "2026-07-15 Increase 23.9% -> 25.0% (same reason)",
+              "source": "Historical model event ledger, CN 515180 instrument page"
+            },
+            "trades_provenance": {
+              "link_count": 10,
+              "first_links": [
+                {
+                  "text": "002156",
+                  "href": "#/securities/cn/002156?model=cn_27_v1_3"
+                },
+                {
+                  "text": "002281",
+                  "href": "#/securities/cn/002281?model=cn_27_v1_3"
+                },
+                {
+                  "text": "002709",
+                  "href": "#/securities/cn/002709?model=cn_27_v1_3"
+                }
+              ]
+            },
+            "attribution_provenance": {
+              "link_count": 0,
+              "first_links": []
+            },
+            "evidence_cutoff": {
+              "model_version": "Model version\ncn_27_v1_3",
+              "run": "Run\ncn_27_v1_3-through-2026_11_13",
+              "evidence_cutoff": "Evidence cutoff\n2026-11-13",
+              "market_benchmark": "Market / benchmark\nCN · 000300",
+              "bundle_identity_verified": true
+            },
+            "horizontal_overflow_px": 0,
+            "stale_by_70_days_rendered": true,
+            "stale_by_70_days_text": "Stale by 70 days"
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "followed_href": "#/securities/cn/515180?model=cn_27_v1_3",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/cn/515180?model=cn_27_v1_3",
+            "page_title": "Instrument Evidence — Alpha Engine",
+            "headings": [
+              "515180.SH · 515180",
+              "Price and model events",
+              "Event markers in range",
+              "Historical model event ledger"
+            ],
+            "marker_note": "2025-11-13 – 2026-11-13 · 243 observed sessions · 11 marker clusters",
+            "historical_ledger_heading_present": true,
+            "price_data_table_present": true,
+            "live_fill_disclosure": "B = buy / increase · S = sell / decrease. Markers use historical ledger dates and do not establish live fills or execution prices.\nHistorical model event ledger\nShow complete ledger\nSelected chart interval. Weight changes describe historica",
+            "ledger_rows": [
+              [
+                "2026-08-26",
+                "CN_27 V1.3",
+                "Decrease",
+                "27.3% → 26.4%",
+                "Scheduled rank and project or locked target retry\ncn_27_v1_3-through-2026_11_13"
+              ],
+              [
+                "2026-08-04",
+                "BYD v1.3",
+                "Buy",
+                "0.0% → 25.0%",
+                "V1 2 core or convex momentum\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ],
+              [
+                "2026-07-31",
+                "BYD v1.3",
+                "Sell",
+                "25.0% → 0.0%",
+                "V1 2 core or convex momentum\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ],
+              [
+                "2026-07-15",
+                "CN_27 V1.3",
+                "Increase",
+                "23.9% → 25.0%",
+                "Scheduled rank and project or locked target retry\ncn_27_v1_3-through-2026_11_13"
+              ]
+            ],
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system",
+            "page_title": "Operating Status — Alpha Engine",
+            "current_observations": "Current strategy observations\nBYD v1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nCN_27 V1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nQQQR v4.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nUS ",
+            "published_snapshot": "Published data snapshot\nGenerated 2026-11-15T14:23:29Z · Deployment current. Strategy decisions may advance independently of this source snapshot.\nCN · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nUS · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nSeparate research input coverage\nRecovery and workflows\nReview the affected source or delivery run. Authorized operators use existing workflows; a br",
+            "access_required_lines": [
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access."
+            ],
+            "blocked_delayed_not_due_evidence": [],
+            "blocked_delayed_not_due_note": "Anonymous view exposes no per-strategy current-operation blocked/delayed/not-due rows; only 'Access required'. Public source cutoffs render as Current.",
+            "recovery_links": [
+              {
+                "text": "Data refresh workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/formal-backtest-refresh.yml"
+              },
+              {
+                "text": "Decision delivery workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/strategy-signal-delivery-outbox.yml"
+              }
+            ],
+            "horizontal_overflow_px": 0,
+            "source_cutoff": "CN/US provider cutoff 2026-11-13 · expected 2026-11-13",
+            "formal_evidence_cutoff": "2026-11-13 (all four models; rendered on Strategy Detail Evidence boundary)",
+            "current_operation_cutoff": "Not available anonymously: all four rows render Access required"
+          }
+        ],
+        "screenshots": [
+          "mobile-cn_27-overview.png",
+          "mobile-cn_27-detail-performance.png",
+          "mobile-cn_27-detail-portfolio.png",
+          "mobile-cn_27-detail-evidence.png",
+          "mobile-cn_27-instrument.png",
+          "mobile-cn_27-status.png",
+          "mobile-cn_27-overview-ranking.png",
+          "mobile-cn_27-detail-top.png"
+        ],
+        "console_errors": [],
+        "page_errors": [],
+        "failed_requests": [],
+        "status": "PASS"
+      },
+      {
+        "device": "mobile",
+        "strategy_id": "byd",
+        "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "identity": "anonymous live session (fresh browser context, no Supabase credentials)",
+        "steps": [
+          {
+            "stage": "overview",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/app",
+            "page_title": "Today — Alpha Engine",
+            "horizontal_overflow_px": 0,
+            "latest_state_date_row": "BYD v1.3 China · byd_v1.2 · As of 2026-11-12",
+            "fleet_context": "0 changed · 0 need attention · 4 require access",
+            "protected_notice": "4 strategies require protected access. Formal history stays readable; current observations remain hidden.",
+            "next_decision_or_due_rendered": null,
+            "next_decision_or_due_note": "Not rendered anonymously; current next-decision state is protected.",
+            "link_clicked_url": "https://liuh886.github.io/alpha_engine/#/strategies/byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "link_opened_exact_detail": true,
+            "stale_badge_rendered": false
+          },
+          {
+            "stage": "detail",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/strategies/byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "page_title": "Strategy Evidence — Alpha Engine",
+            "heading_h1": "BYD v1.3",
+            "historical_vs_current_status": {
+              "operating_status": "OPERATING STATUS\nProtected current operations\nFormal historical evidence remains public below.\nSummary\nDecisions\nRisk\nEvidence\nPerformance path\nGoverned NAV indexed to 100 at the first exact-date obse",
+              "protected_current_operations": "Pro current operations\nCurrent holdings and live signals are protected\nPro access is required for the current holdings, target allocations, signal drivers and next-decision state of this strategy. Historical formal perfo"
+            },
+            "benchmark_snippet": "Baseline\nBYD v1.2\nPERIOD RETURN\n-7.7%\n1Y win",
+            "relative_return_snippet": "Excess vs BYD v1.2 +0.7% · browser-derived, not a sealed metric\n243 aligned observations\nMAX DRAWDOWN\n-25.6%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-12 – 2026-11-12\n243 observations ·",
+            "drawdown_snippet": "MAX DRAWDOWN\n-25.6%\nChart-derived from retained wealth marks in this window.\nWINDOW\n2025-11-12 – 2026-11-12\n243 observations · As of 2026-11-12\nNov 13\nFeb 6\nMay 14\nAug 7\nNov 12\n80\n",
+            "holdings_provenance": {
+              "first_instrument_link": {
+                "text": "BYD",
+                "href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+              },
+              "snapshot": "Holdings snapshot\n2026-11-12 · vs 2026-11-11\n2 assets\nNET EXPOSURE\n100.0%\nGROSS EXPOSURE\n100.0%\nTOP 5 CONCENTRATION\n100.0%\nTURNOVER\n0.0%\nTRANSACTION COST\n0.000%\nSince previous snapshot: 0 added · 0 resized · 0 exited. Transaction costs are retained source values; the browser does"
+            },
+            "unchanged_or_not_due_evidence": {
+              "date_basis": "Holdings snapshot 2026-11-12 · vs 2026-11-11",
+              "observed": "Since previous snapshot: 0 added · 0 resized · 0 exited.",
+              "classification": "unchanged_with_date_basis"
+            },
+            "latest_changed_decision_evidence": {
+              "latest_public_decision": "2026-08-04 Sell 100.0% -> 75.0% (V1 2 core or convex momentum)",
+              "prior_public_decision": "2026-07-31 Buy 75.0% -> 100.0% (V1 2 core or convex momentum)",
+              "source": "Historical model event ledger, BYD instrument page"
+            },
+            "trades_provenance": {
+              "link_count": 10,
+              "first_links": [
+                {
+                  "text": "BYD",
+                  "href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                },
+                {
+                  "text": "515180.SH",
+                  "href": "#/securities/cn/515180.SH?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                },
+                {
+                  "text": "BYD",
+                  "href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                }
+              ]
+            },
+            "attribution_provenance": {
+              "link_count": 3,
+              "first_links": [
+                {
+                  "text": "BYD",
+                  "href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                },
+                {
+                  "text": "515180.SH",
+                  "href": "#/securities/cn/515180.SH?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                },
+                {
+                  "text": "CASH",
+                  "href": "#/securities/cn/CASH?model=byd_v1_3_recovery_event_low_vol_confirmation_v1"
+                }
+              ]
+            },
+            "evidence_cutoff": {
+              "model_version": "Model version\nbyd_v1_3_recovery_event_low_vol_confirmation_v1",
+              "run": "Run\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13",
+              "evidence_cutoff": "Evidence cutoff\n2026-11-13",
+              "market_benchmark": "Market / benchmark\nCN · BYD v1.2",
+              "bundle_identity_verified": true
+            },
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "instrument",
+            "status": "PASS",
+            "followed_href": "#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "url": "https://liuh886.github.io/alpha_engine/#/securities/cn/BYD?model=byd_v1_3_recovery_event_low_vol_confirmation_v1",
+            "page_title": "Instrument Evidence — Alpha Engine",
+            "headings": [
+              "BYD · 002594",
+              "Price and model events",
+              "Event markers in range",
+              "Historical model event ledger"
+            ],
+            "marker_note": "2025-11-13 – 2026-11-13 · 243 observed sessions · 4 marker clusters",
+            "historical_ledger_heading_present": true,
+            "price_data_table_present": true,
+            "live_fill_disclosure": "B = buy / increase · S = sell / decrease. Markers use historical ledger dates and do not establish live fills or execution prices.\nHistorical model event ledger\nShow complete ledger\nSelected chart interval. Weight changes describe historica",
+            "ledger_rows": [
+              [
+                "2026-08-04",
+                "BYD v1.3",
+                "Sell",
+                "100.0% → 75.0%",
+                "V1 2 core or convex momentum\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ],
+              [
+                "2026-07-31",
+                "BYD v1.3",
+                "Buy",
+                "75.0% → 100.0%",
+                "V1 2 core or convex momentum\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ],
+              [
+                "2026-06-01",
+                "BYD v1.3",
+                "Sell",
+                "100.0% → 75.0%",
+                "V1 2 core or convex momentum\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ],
+              [
+                "2026-03-03",
+                "BYD v1.3",
+                "Buy",
+                "75.0% → 100.0%",
+                "Low vol recovery lifecycle\nbyd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13"
+              ]
+            ],
+            "horizontal_overflow_px": 0
+          },
+          {
+            "stage": "status",
+            "status": "PASS",
+            "url": "https://liuh886.github.io/alpha_engine/#/system",
+            "page_title": "Operating Status — Alpha Engine",
+            "current_observations": "Current strategy observations\nBYD v1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nCN_27 V1.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nQQQR v4.3\nCurrent observations require strategy access.\nSign in or check access. Formal evidence remains public.\nAccess required\nUS ",
+            "published_snapshot": "Published data snapshot\nGenerated 2026-11-15T14:23:29Z · Deployment current. Strategy decisions may advance independently of this source snapshot.\nCN · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nUS · Current\nProvider cutoff 2026-11-13 · expected 2026-11-13\nSeparate research input coverage\nRecovery and workflows\nReview the affected source or delivery run. Authorized operators use existing workflows; a br",
+            "access_required_lines": [
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access.",
+              "Current observations require strategy access."
+            ],
+            "blocked_delayed_not_due_evidence": [],
+            "blocked_delayed_not_due_note": "Anonymous view exposes no per-strategy current-operation blocked/delayed/not-due rows; only 'Access required'. Public source cutoffs render as Current.",
+            "recovery_links": [
+              {
+                "text": "Data refresh workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/formal-backtest-refresh.yml"
+              },
+              {
+                "text": "Decision delivery workflow",
+                "href": "https://github.com/liuh886/alpha_engine/actions/workflows/strategy-signal-delivery-outbox.yml"
+              }
+            ],
+            "horizontal_overflow_px": 0,
+            "source_cutoff": "CN/US provider cutoff 2026-11-13 · expected 2026-11-13",
+            "formal_evidence_cutoff": "2026-11-13 (all four models; rendered on Strategy Detail Evidence boundary)",
+            "current_operation_cutoff": "Not available anonymously: all four rows render Access required"
+          }
+        ],
+        "screenshots": [
+          "mobile-byd-overview.png",
+          "mobile-byd-detail-performance.png",
+          "mobile-byd-detail-portfolio.png",
+          "mobile-byd-detail-evidence.png",
+          "mobile-byd-instrument.png",
+          "mobile-byd-status.png",
+          "mobile-byd-overview-ranking.png",
+          "mobile-byd-detail-top.png"
+        ],
+        "console_errors": [],
+        "page_errors": [],
+        "failed_requests": [],
+        "status": "PASS"
+      }
+    ]
+  },
+  "privacy": {
+    "captured_at_utc": "2026-11-16T02:12:02.369432+00:00",
+    "deployment": {
+      "commit_sha": "c6530f019de010de887cda52863d63763f943227",
+      "workflow_run_id": "43723971939"
+    },
+    "static_asset_scan_command": "python -m scripts.verify_pages_release --base-url https://liuh886.github.io/alpha_engine/ --expected-commit c6530f019de010de887cda52863d63763f943227 --attempts 3 --delay-seconds 5 --timeout-seconds 90",
+    "published_release_verification": {
+      "base_url": "https://liuh886.github.io/alpha_engine/",
+      "commit_sha": "c6530f019de010de887cda52863d63763f943227",
+      "formal_models": [
+        "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "cn_27_v1_3",
+        "qqqi_qqq_tqqq_v4_3",
+        "us_x1_3"
+      ],
+      "formal_sections_verified": 36,
+      "public_operations_verified": true,
+      "research_only": true,
+      "status": "verified",
+      "trade_ready": false
+    },
+    "protected_current_holdings_or_targets_exposed": false,
+    "strategy_operations_probe": {
+      "all_allocations_empty": true,
+      "all_as_of_null": true,
+      "all_read_state_protected": true,
+      "any_forbidden_lineage_key": false,
+      "any_forbidden_operational_key": false,
+      "byte_size": 4790,
+      "generated_at": "2026-11-15T14:23:29Z",
+      "path": "data/strategy-operations/snapshots.json",
+      "research_only": true,
+      "rows": [
+        {
+          "allocations": [],
+          "as_of": null,
+          "decision_reason": "Current holdings and signals are delivered from the runtime access plane.",
+          "forbidden_lineage_key_anywhere": null,
+          "forbidden_operational_key": null,
+          "latest_completed_session": null,
+          "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+          "note": "Current holdings, targets, drivers and decision-ledger provenance are never included in the public static bundle.",
+          "read_state": "protected",
+          "source_identity_keys": [
+            "commit_sha",
+            "factor_catalog_implementation_hash",
+            "formal_bundle_id",
+            "formal_evidence_cutoff",
+            "formal_run_id",
+            "github_issue_number",
+            "ledger_fingerprint",
+            "signal_sha256",
+            "workflow_run_id"
+          ],
+          "status": "blocked",
+          "strategy_id": "byd",
+          "turnover": null
+        },
+        {
+          "allocations": [],
+          "as_of": null,
+          "decision_reason": "Current holdings and signals are delivered from the runtime access plane.",
+          "forbidden_lineage_key_anywhere": null,
+          "forbidden_operational_key": null,
+          "latest_completed_session": null,
+          "model_version_id": "cn_27_v1_3",
+          "note": "Current holdings, targets, drivers and decision-ledger provenance are never included in the public static bundle.",
+          "read_state": "protected",
+          "source_identity_keys": [
+            "commit_sha",
+            "factor_catalog_implementation_hash",
+            "formal_bundle_id",
+            "formal_evidence_cutoff",
+            "formal_run_id",
+            "github_issue_number",
+            "ledger_fingerprint",
+            "signal_sha256",
+            "workflow_run_id"
+          ],
+          "status": "blocked",
+          "strategy_id": "cn_27",
+          "turnover": null
+        },
+        {
+          "allocations": [],
+          "as_of": null,
+          "decision_reason": "Current holdings and signals are delivered from the runtime access plane.",
+          "forbidden_lineage_key_anywhere": null,
+          "forbidden_operational_key": null,
+          "latest_completed_session": null,
+          "model_version_id": "qqqi_qqq_tqqq_v4_3",
+          "note": "Current holdings, targets, drivers and decision-ledger provenance are never included in the public static bundle.",
+          "read_state": "protected",
+          "source_identity_keys": [
+            "commit_sha",
+            "factor_catalog_implementation_hash",
+            "formal_bundle_id",
+            "formal_evidence_cutoff",
+            "formal_run_id",
+            "github_issue_number",
+            "ledger_fingerprint",
+            "signal_sha256",
+            "workflow_run_id"
+          ],
+          "status": "blocked",
+          "strategy_id": "qqq_rotation",
+          "turnover": null
+        },
+        {
+          "allocations": [],
+          "as_of": null,
+          "decision_reason": "Current holdings and signals are delivered from the runtime access plane.",
+          "forbidden_lineage_key_anywhere": null,
+          "forbidden_operational_key": null,
+          "latest_completed_session": null,
+          "model_version_id": "us_x1_3",
+          "note": "Current holdings, targets, drivers and decision-ledger provenance are never included in the public static bundle.",
+          "read_state": "protected",
+          "source_identity_keys": [
+            "commit_sha",
+            "factor_catalog_implementation_hash",
+            "formal_bundle_id",
+            "formal_evidence_cutoff",
+            "formal_run_id",
+            "github_issue_number",
+            "ledger_fingerprint",
+            "signal_sha256",
+            "workflow_run_id"
+          ],
+          "status": "blocked",
+          "strategy_id": "us_x",
+          "turnover": null
+        }
+      ],
+      "schema_keys": [
+        "generated_at",
+        "records",
+        "research_only",
+        "schema_version",
+        "trade_ready"
+      ],
+      "sha256": "8eef9de19e62b2c3e2b091f1e228446d760485f3287d7bab19001036d8644ca5",
+      "trade_ready": false
+    },
+    "formal_model_lineage_probe": [
+      {
+        "current_weights_present": false,
+        "lineage_available": true,
+        "lineage_forbidden_key": null,
+        "lineage_key_summary": [
+          "evidence_source_sha256",
+          "historical_evidence_recomputed",
+          "model_contract",
+          "model_selection_reopened",
+          "publication_contract",
+          "publication_origin",
+          "research_only",
+          "schema_version",
+          "source_backtest_id",
+          "source_evidence",
+          "source_evidence_completeness",
+          "source_freshness",
+          "source_preview_bundle_id",
+          "trade_ready"
+        ],
+        "lineage_path": "data/formal-model-runs/byd_allocation/byd_v1_3_recovery_event_low_vol_confirmation_v1/byd_v1_3_recovery_event_low_vol_confirmation_v1-through-2026_11_13/lineage.json",
+        "lineage_sha256": "6be8426aeb3a61d174b5213b3efe1c1c0752a339cda0a7bf3a861afff36da89b",
+        "manifest_sha256": "877c8976334ae85f669f18222e1ac2f58a24d69a2b9a363e80b07c6ac55b6bce",
+        "model_version_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+        "operational_state_present": false,
+        "target_weights_present": false
+      },
+      {
+        "current_weights_present": false,
+        "lineage_available": true,
+        "lineage_forbidden_key": null,
+        "lineage_key_summary": [
+          "evidence_source_sha256",
+          "historical_evidence_recomputed",
+          "model_contract",
+          "model_selection_reopened",
+          "publication_contract",
+          "publication_origin",
+          "research_only",
+          "schema_version",
+          "source_backtest_id",
+          "source_evidence",
+          "source_evidence_completeness",
+          "source_freshness",
+          "source_preview_bundle_id",
+          "trade_ready"
+        ],
+        "lineage_path": "data/formal-model-runs/cn_27_rotation/cn_27_v1_3/cn_27_v1_3-through-2026_11_13/lineage.json",
+        "lineage_sha256": "55a756639b18cb52393ea2cbef90a99a55e959194cbc31b84efc995f38e6b5df",
+        "manifest_sha256": "5e5b05986d37e9a5698c4b977b5cfe29ecb189835380fc28c784cf9e5645f737",
+        "model_version_id": "cn_27_v1_3",
+        "operational_state_present": false,
+        "target_weights_present": false
+      },
+      {
+        "current_weights_present": false,
+        "lineage_available": true,
+        "lineage_forbidden_key": null,
+        "lineage_key_summary": [
+          "baseline_correction",
+          "evidence_source_sha256",
+          "historical_evidence_recomputed",
+          "model_contract",
+          "model_selection_reopened",
+          "publication_contract",
+          "publication_origin",
+          "research_only",
+          "schema_version",
+          "source_backtest_id",
+          "source_evidence",
+          "source_evidence_completeness",
+          "source_freshness",
+          "source_preview_bundle_id",
+          "trade_ready"
+        ],
+        "lineage_path": "data/formal-model-runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_13/lineage.json",
+        "lineage_sha256": "467f26b3f13e34ffcff464af3e2fcb76d4b3c866657f2b602a78dcfb18ea1292",
+        "manifest_sha256": "a6435828b9d4fa6a0bb5e7b0b12e233d5d3435d13b95ece5918353930e6cea33",
+        "model_version_id": "qqqi_qqq_tqqq_v4_3",
+        "operational_state_present": false,
+        "target_weights_present": false
+      },
+      {
+        "current_weights_present": false,
+        "lineage_available": true,
+        "lineage_forbidden_key": null,
+        "lineage_key_summary": [
+          "calibration_identity",
+          "certification_workflow_run_id",
+          "classification_config_sha256",
+          "evidence_builder_source_sha256",
+          "formal_acceptance_basis",
+          "formal_baseline_superseded",
+          "formal_promotion_authority",
+          "historical_evidence_recomputed",
+          "model_selection_reopened",
+          "prospective_gate_scope",
+          "prospective_gate_status",
+          "provider_identity_sha256",
+          "research_only",
+          "schema_version",
+          "selected_candidate",
+          "source_model_config",
+          "source_model_config_sha256",
+          "source_preview_bundle_id",
+          "trade_ready",
+          "universe_config_sha256"
+        ],
+        "lineage_path": "data/formal-model-runs/us_ranker/us_x1_3/us_x1_3-through-2026_11_13/lineage.json",
+        "lineage_sha256": "b5852014a9c83d0b9586f8ca519309917006cb7d5d04b62e9f79677e58242c3a",
+        "manifest_sha256": "2a364104d8ee1f1bbf4315ee027cc3bd407f21d8b8eecff3c729e43a9bc876d2",
+        "model_version_id": "us_x1_3",
+        "operational_state_present": false,
+        "target_weights_present": false
+      }
+    ],
+    "catalog_channel": "formal",
+    "catalog_research_only": true,
+    "catalog_trade_ready": false,
+    "account_policy_tests": "NOT_TESTED: no Supabase owner/member session supplied; no policy mutation performed. Prior 2026-10-25 evidence is not reused as current proof.",
+    "anonymous_ui_gate": {
+      "observed": "All four strategies render 'Access required'; Strategy Detail renders 'Pro current operations / Current holdings and live signals are protected'; no holdings, targets, drivers or ledger-provenance values render.",
+      "public_formal_evidence": "Historical formal performance, risk, portfolio, trades and attribution remain readable for all four models."
+    },
+    "revoked_or_expired_entitlement": "NOT_TESTED",
+    "rls_unauthorized_expired_revoked": "NOT_TESTED",
+    "limitation": "All tested public policies permitted the formal historical evidence that rendered. No Pro-protected resource was exercised with an authenticated identity, so Pro/owner denial, expiry and revocation cannot be certified from this receipt.",
+    "research_only": true,
+    "trade_ready": false
+  },
+  "checks": {
+    "page_identity": "PASS: expected titles Today / Strategy Evidence / Instrument Evidence / Operating Status",
+    "not_blank": "PASS: every screenshot non-empty and core headings visible",
+    "framework_overlay": "PASS: zero framework error overlays observed",
+    "page_errors": "PASS: zero page errors across eight journeys",
+    "console_errors": "PASS: zero console errors across eight journeys",
+    "failed_requests": "PASS: zero HTTP >= 400 or failed requests across eight journeys",
+    "horizontal_overflow": "PASS: 0 px documented-width overflow at every stage on both viewports",
+    "screenshots": "PASS: 64 screenshots captured with sha256 and byte size",
+    "interaction": "PASS: ranking link opened exact Strategy Detail; tabs, holdings/trades/attribution links, instrument navigation and Status navigation worked",
+    "static_release_scan": "PASS: verify_pages_release returned status=verified, 36 formal sections, public_operations_verified=true",
+    "static_privacy_probe": "PASS: no forbidden operating/current/target keys in operations or lineage assets",
+    "public_formal_readability": "PASS: formal historical performance, risk, holdings, trades and attribution readable anonymously",
+    "protected_current_operations": "PASS: owner/Pro current operations gated with 'Current holdings and live signals are protected' and no values rendered",
+    "account_entitlement_expiry_revocation": "NOT_TESTED: no authorized or expired account session",
+    "supabase_rls_negative_paths": "NOT_TESTED: no authenticated/expired/revoked JWT supplied",
+    "existing_live_acceptance": "NOT_RE_RUN: this audit used a scoped journey script, not the project live-pages spec",
+    "cn_27_stale_disclosure": "PASS: 'Stale · 70d behind cutoff' rendered on Overview and Strategies on desktop and mobile; Strategy Detail renders 'Stale by 70 days' with window 2025-09-04 – 2026-09-04."
+  },
+  "scenario_matrix": [
+    {
+      "strategy_id": "qqq_rotation",
+      "device": "desktop",
+      "ordinary_live_journey": "PASS",
+      "ordinary_live_journey_basis": "Anonymous public journey completed Overview -> exact Strategy Detail -> linked Instrument -> Operating Status with zero console/page errors and zero failed requests.",
+      "real_changed": "PASS",
+      "real_changed_basis": "Public formal evidence: 2026-10-19 Increase 50.0% -> 100.0% (Defensive price or VIX stress) differs from 2026-10-16 Buy 0.0% -> 50.0% (Exit partial TQQQ VIX VXN or MA20).",
+      "real_not_due_or_unchanged": "PASS",
+      "real_not_due_or_unchanged_basis": "Since previous snapshot: 0 added · 0 resized · 0 exited. (Holdings snapshot 2026-11-12 · vs 2026-11-11)",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_blocked_or_stale_basis": "No blocked/stale state observed for this strategy on the anonymous published journey.",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "real_expired_or_revoked_account_basis": "NOT_TESTED: requires an authorized Supabase member/Pro/Owner session with an expired or revoked entitlement; no credentials supplied and none created.",
+      "rls_unauthorized_expired_revoked": "NOT_TESTED",
+      "rls_unauthorized_expired_revoked_basis": "NOT_TESTED: requires Supabase authenticated/expired/revoked JWT tests against the runtime access plane; no account session and no policy mutation performed.",
+      "owner_authenticated_journey": "NOT_TESTED",
+      "owner_authenticated_journey_basis": "NOT_TESTED: current-operation changed/not-due/blocked states are gated behind the runtime access plane.",
+      "fixture_mechanisms": "NOT USED for any PASS in this receipt."
+    },
+    {
+      "strategy_id": "us_x",
+      "device": "desktop",
+      "ordinary_live_journey": "PASS",
+      "ordinary_live_journey_basis": "Anonymous public journey completed Overview -> exact Strategy Detail -> linked Instrument -> Operating Status with zero console/page errors and zero failed requests.",
+      "real_changed": "PASS",
+      "real_changed_basis": "Public formal evidence: Holdings snapshot 2026-11-06 vs 2026-10-23: 8 added, 8 exited, turnover 53.3% differs from Prior holdings snapshot 2026-10-23.",
+      "real_not_due_or_unchanged": "PASS",
+      "real_not_due_or_unchanged_basis": "MTM 2026-11-13 / No rebalance. / Source signal: 2026-11-06. Snapshot: 8 added · 0 resized · 8 exited. (MTM 2026-11-13; source signal 2026-11-06; holdings snapshot 2026-11-06 · vs 2026-10-23)",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_blocked_or_stale_basis": "No blocked/stale state observed for this strategy on the anonymous published journey.",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "real_expired_or_revoked_account_basis": "NOT_TESTED: requires an authorized Supabase member/Pro/Owner session with an expired or revoked entitlement; no credentials supplied and none created.",
+      "rls_unauthorized_expired_revoked": "NOT_TESTED",
+      "rls_unauthorized_expired_revoked_basis": "NOT_TESTED: requires Supabase authenticated/expired/revoked JWT tests against the runtime access plane; no account session and no policy mutation performed.",
+      "owner_authenticated_journey": "NOT_TESTED",
+      "owner_authenticated_journey_basis": "NOT_TESTED: current-operation changed/not-due/blocked states are gated behind the runtime access plane.",
+      "fixture_mechanisms": "NOT USED for any PASS in this receipt."
+    },
+    {
+      "strategy_id": "cn_27",
+      "device": "desktop",
+      "ordinary_live_journey": "PASS",
+      "ordinary_live_journey_basis": "Anonymous public journey completed Overview -> exact Strategy Detail -> linked Instrument -> Operating Status with zero console/page errors and zero failed requests.",
+      "real_changed": "PASS",
+      "real_changed_basis": "Public formal evidence: 2026-08-26 Decrease 27.3% -> 26.4% (Scheduled rank and project or locked target retry) differs from 2026-07-15 Increase 23.9% -> 25.0% (same reason).",
+      "real_not_due_or_unchanged": "NOT_TESTED",
+      "real_not_due_or_unchanged_basis": "No not-due/unchanged statement rendered; the public snapshot shows changes (11 resized) and stale evidence.",
+      "real_blocked_or_stale": "PASS",
+      "real_blocked_or_stale_basis": "CN_27 shows 'Stale · 70d behind cutoff' on Overview/Strategies and 'Stale by 70 days' with window 2025-09-04 – 2026-09-04 vs evidence cutoff 2026-11-13; baseline/relative excess disclosed unavailable.",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "real_expired_or_revoked_account_basis": "NOT_TESTED: requires an authorized Supabase member/Pro/Owner session with an expired or revoked entitlement; no credentials supplied and none created.",
+      "rls_unauthorized_expired_revoked": "NOT_TESTED",
+      "rls_unauthorized_expired_revoked_basis": "NOT_TESTED: requires Supabase authenticated/expired/revoked JWT tests against the runtime access plane; no account session and no policy mutation performed.",
+      "owner_authenticated_journey": "NOT_TESTED",
+      "owner_authenticated_journey_basis": "NOT_TESTED: current-operation changed/not-due/blocked states are gated behind the runtime access plane.",
+      "fixture_mechanisms": "NOT USED for any PASS in this receipt."
+    },
+    {
+      "strategy_id": "byd",
+      "device": "desktop",
+      "ordinary_live_journey": "PASS",
+      "ordinary_live_journey_basis": "Anonymous public journey completed Overview -> exact Strategy Detail -> linked Instrument -> Operating Status with zero console/page errors and zero failed requests.",
+      "real_changed": "PASS",
+      "real_changed_basis": "Public formal evidence: 2026-08-04 Sell 100.0% -> 75.0% (V1 2 core or convex momentum) differs from 2026-07-31 Buy 75.0% -> 100.0% (V1 2 core or convex momentum).",
+      "real_not_due_or_unchanged": "PASS",
+      "real_not_due_or_unchanged_basis": "Since previous snapshot: 0 added · 0 resized · 0 exited. (Holdings snapshot 2026-11-12 · vs 2026-11-11)",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_blocked_or_stale_basis": "No blocked/stale state observed for this strategy on the anonymous published journey.",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "real_expired_or_revoked_account_basis": "NOT_TESTED: requires an authorized Supabase member/Pro/Owner session with an expired or revoked entitlement; no credentials supplied and none created.",
+      "rls_unauthorized_expired_revoked": "NOT_TESTED",
+      "rls_unauthorized_expired_revoked_basis": "NOT_TESTED: requires Supabase authenticated/expired/revoked JWT tests against the runtime access plane; no account session and no policy mutation performed.",
+      "owner_authenticated_journey": "NOT_TESTED",
+      "owner_authenticated_journey_basis": "NOT_TESTED: current-operation changed/not-due/blocked states are gated behind the runtime access plane.",
+      "fixture_mechanisms": "NOT USED for any PASS in this receipt."
+    },
+    {
+      "strategy_id": "qqq_rotation",
+      "device": "mobile",
+      "ordinary_live_journey": "PASS",
+      "ordinary_live_journey_basis": "Anonymous public journey completed Overview -> exact Strategy Detail -> linked Instrument -> Operating Status with zero console/page errors and zero failed requests.",
+      "real_changed": "PASS",
+      "real_changed_basis": "Public formal evidence: 2026-10-19 Increase 50.0% -> 100.0% (Defensive price or VIX stress) differs from 2026-10-16 Buy 0.0% -> 50.0% (Exit partial TQQQ VIX VXN or MA20).",
+      "real_not_due_or_unchanged": "PASS",
+      "real_not_due_or_unchanged_basis": "Since previous snapshot: 0 added · 0 resized · 0 exited. (Holdings snapshot 2026-11-12 · vs 2026-11-11)",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_blocked_or_stale_basis": "No blocked/stale state observed for this strategy on the anonymous published journey.",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "real_expired_or_revoked_account_basis": "NOT_TESTED: requires an authorized Supabase member/Pro/Owner session with an expired or revoked entitlement; no credentials supplied and none created.",
+      "rls_unauthorized_expired_revoked": "NOT_TESTED",
+      "rls_unauthorized_expired_revoked_basis": "NOT_TESTED: requires Supabase authenticated/expired/revoked JWT tests against the runtime access plane; no account session and no policy mutation performed.",
+      "owner_authenticated_journey": "NOT_TESTED",
+      "owner_authenticated_journey_basis": "NOT_TESTED: current-operation changed/not-due/blocked states are gated behind the runtime access plane.",
+      "fixture_mechanisms": "NOT USED for any PASS in this receipt."
+    },
+    {
+      "strategy_id": "us_x",
+      "device": "mobile",
+      "ordinary_live_journey": "PASS",
+      "ordinary_live_journey_basis": "Anonymous public journey completed Overview -> exact Strategy Detail -> linked Instrument -> Operating Status with zero console/page errors and zero failed requests.",
+      "real_changed": "PASS",
+      "real_changed_basis": "Public formal evidence: Holdings snapshot 2026-11-06 vs 2026-10-23: 8 added, 8 exited, turnover 53.3% differs from Prior holdings snapshot 2026-10-23.",
+      "real_not_due_or_unchanged": "PASS",
+      "real_not_due_or_unchanged_basis": "MTM 2026-11-13 / No rebalance. / Source signal: 2026-11-06. Snapshot: 8 added · 0 resized · 8 exited. (MTM 2026-11-13; source signal 2026-11-06; holdings snapshot 2026-11-06 · vs 2026-10-23)",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_blocked_or_stale_basis": "No blocked/stale state observed for this strategy on the anonymous published journey.",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "real_expired_or_revoked_account_basis": "NOT_TESTED: requires an authorized Supabase member/Pro/Owner session with an expired or revoked entitlement; no credentials supplied and none created.",
+      "rls_unauthorized_expired_revoked": "NOT_TESTED",
+      "rls_unauthorized_expired_revoked_basis": "NOT_TESTED: requires Supabase authenticated/expired/revoked JWT tests against the runtime access plane; no account session and no policy mutation performed.",
+      "owner_authenticated_journey": "NOT_TESTED",
+      "owner_authenticated_journey_basis": "NOT_TESTED: current-operation changed/not-due/blocked states are gated behind the runtime access plane.",
+      "fixture_mechanisms": "NOT USED for any PASS in this receipt."
+    },
+    {
+      "strategy_id": "cn_27",
+      "device": "mobile",
+      "ordinary_live_journey": "PASS",
+      "ordinary_live_journey_basis": "Anonymous public journey completed Overview -> exact Strategy Detail -> linked Instrument -> Operating Status with zero console/page errors and zero failed requests.",
+      "real_changed": "PASS",
+      "real_changed_basis": "Public formal evidence: 2026-08-26 Decrease 27.3% -> 26.4% (Scheduled rank and project or locked target retry) differs from 2026-07-15 Increase 23.9% -> 25.0% (same reason).",
+      "real_not_due_or_unchanged": "NOT_TESTED",
+      "real_not_due_or_unchanged_basis": "No not-due/unchanged statement rendered; the public snapshot shows changes (11 resized) and stale evidence.",
+      "real_blocked_or_stale": "PASS",
+      "real_blocked_or_stale_basis": "CN_27 shows 'Stale · 70d behind cutoff' on Overview/Strategies and 'Stale by 70 days' with window 2025-09-04 – 2026-09-04 vs evidence cutoff 2026-11-13; baseline/relative excess disclosed unavailable.",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "real_expired_or_revoked_account_basis": "NOT_TESTED: requires an authorized Supabase member/Pro/Owner session with an expired or revoked entitlement; no credentials supplied and none created.",
+      "rls_unauthorized_expired_revoked": "NOT_TESTED",
+      "rls_unauthorized_expired_revoked_basis": "NOT_TESTED: requires Supabase authenticated/expired/revoked JWT tests against the runtime access plane; no account session and no policy mutation performed.",
+      "owner_authenticated_journey": "NOT_TESTED",
+      "owner_authenticated_journey_basis": "NOT_TESTED: current-operation changed/not-due/blocked states are gated behind the runtime access plane.",
+      "fixture_mechanisms": "NOT USED for any PASS in this receipt."
+    },
+    {
+      "strategy_id": "byd",
+      "device": "mobile",
+      "ordinary_live_journey": "PASS",
+      "ordinary_live_journey_basis": "Anonymous public journey completed Overview -> exact Strategy Detail -> linked Instrument -> Operating Status with zero console/page errors and zero failed requests.",
+      "real_changed": "PASS",
+      "real_changed_basis": "Public formal evidence: 2026-08-04 Sell 100.0% -> 75.0% (V1 2 core or convex momentum) differs from 2026-07-31 Buy 75.0% -> 100.0% (V1 2 core or convex momentum).",
+      "real_not_due_or_unchanged": "PASS",
+      "real_not_due_or_unchanged_basis": "Since previous snapshot: 0 added · 0 resized · 0 exited. (Holdings snapshot 2026-11-12 · vs 2026-11-11)",
+      "real_blocked_or_stale": "NOT_TESTED",
+      "real_blocked_or_stale_basis": "No blocked/stale state observed for this strategy on the anonymous published journey.",
+      "real_expired_or_revoked_account": "NOT_TESTED",
+      "real_expired_or_revoked_account_basis": "NOT_TESTED: requires an authorized Supabase member/Pro/Owner session with an expired or revoked entitlement; no credentials supplied and none created.",
+      "rls_unauthorized_expired_revoked": "NOT_TESTED",
+      "rls_unauthorized_expired_revoked_basis": "NOT_TESTED: requires Supabase authenticated/expired/revoked JWT tests against the runtime access plane; no account session and no policy mutation performed.",
+      "owner_authenticated_journey": "NOT_TESTED",
+      "owner_authenticated_journey_basis": "NOT_TESTED: current-operation changed/not-due/blocked states are gated behind the runtime access plane.",
+      "fixture_mechanisms": "NOT USED for any PASS in this receipt."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-byd-detail-evidence.png",
+      "file": "desktop-byd-detail-evidence.png",
+      "sha256": "34854bd51df2389e899f3e994a061658113864dda1b54c1ad98efe86589a93ae",
+      "byte_size": 106969,
+      "device": "desktop",
+      "strategy_id": "byd",
+      "stage": "detail-evidence"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-byd-detail-performance.png",
+      "file": "desktop-byd-detail-performance.png",
+      "sha256": "bcfcc76c23d7eb3b8657a1729e9a257a9b4d88d7041aa04936c938d713ece6b5",
+      "byte_size": 120444,
+      "device": "desktop",
+      "strategy_id": "byd",
+      "stage": "detail-performance"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-byd-detail-portfolio.png",
+      "file": "desktop-byd-detail-portfolio.png",
+      "sha256": "28be15ea4709cdd9b5f00d63b1ccfd3232698f5490ac33a1116c9f2b4e17cc8c",
+      "byte_size": 99844,
+      "device": "desktop",
+      "strategy_id": "byd",
+      "stage": "detail-portfolio"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-byd-detail-top.png",
+      "file": "desktop-byd-detail-top.png",
+      "sha256": "e27b86ff48c3d298e6a85dfa77c47d0e8f93727609e9da20b9b3869773e26938",
+      "byte_size": 120559,
+      "device": "desktop",
+      "strategy_id": "byd",
+      "stage": "detail-top"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-byd-instrument.png",
+      "file": "desktop-byd-instrument.png",
+      "sha256": "c23baf91753e7fb66635499c7771e05db062cc79c994826ca2fc152039286801",
+      "byte_size": 86662,
+      "device": "desktop",
+      "strategy_id": "byd",
+      "stage": "instrument"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-byd-overview-ranking.png",
+      "file": "desktop-byd-overview-ranking.png",
+      "sha256": "341e76f8599096d5f8a917842e2c258dbee23cd9fa1e2167f9991bf9e4b7c8a8",
+      "byte_size": 145253,
+      "device": "desktop",
+      "strategy_id": "byd",
+      "stage": "overview-ranking"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-byd-overview.png",
+      "file": "desktop-byd-overview.png",
+      "sha256": "341e76f8599096d5f8a917842e2c258dbee23cd9fa1e2167f9991bf9e4b7c8a8",
+      "byte_size": 145253,
+      "device": "desktop",
+      "strategy_id": "byd",
+      "stage": "overview"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-byd-status.png",
+      "file": "desktop-byd-status.png",
+      "sha256": "19a545845acb704397a208d0312993fd1d1c407da5c6159c111263a8b5ba5d74",
+      "byte_size": 86212,
+      "device": "desktop",
+      "strategy_id": "byd",
+      "stage": "status"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-cn_27-detail-evidence.png",
+      "file": "desktop-cn_27-detail-evidence.png",
+      "sha256": "64b07478683ae2ee1578b2eb7e054d5e0db5fd0104f7e92f85ab1a5dd32960f4",
+      "byte_size": 105275,
+      "device": "desktop",
+      "strategy_id": "cn_27",
+      "stage": "detail-evidence"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-cn_27-detail-performance.png",
+      "file": "desktop-cn_27-detail-performance.png",
+      "sha256": "59d0c5717e28d8a78a6ed8711d23cc337df691f0709218ca7626282969d8dda0",
+      "byte_size": 107123,
+      "device": "desktop",
+      "strategy_id": "cn_27",
+      "stage": "detail-performance"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-cn_27-detail-portfolio.png",
+      "file": "desktop-cn_27-detail-portfolio.png",
+      "sha256": "4e4a3522ae791671b045d8b70843d0e9ae2eb6a6edcfa67307ed6b1afa043055",
+      "byte_size": 106113,
+      "device": "desktop",
+      "strategy_id": "cn_27",
+      "stage": "detail-portfolio"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-cn_27-detail-top.png",
+      "file": "desktop-cn_27-detail-top.png",
+      "sha256": "59d0c5717e28d8a78a6ed8711d23cc337df691f0709218ca7626282969d8dda0",
+      "byte_size": 107123,
+      "device": "desktop",
+      "strategy_id": "cn_27",
+      "stage": "detail-top"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-cn_27-instrument.png",
+      "file": "desktop-cn_27-instrument.png",
+      "sha256": "66f4dbdae4afcbfffb49eb53cd3c51e8f2691e81edf464816a06f55926c84336",
+      "byte_size": 85388,
+      "device": "desktop",
+      "strategy_id": "cn_27",
+      "stage": "instrument"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-cn_27-overview-ranking.png",
+      "file": "desktop-cn_27-overview-ranking.png",
+      "sha256": "341e76f8599096d5f8a917842e2c258dbee23cd9fa1e2167f9991bf9e4b7c8a8",
+      "byte_size": 145253,
+      "device": "desktop",
+      "strategy_id": "cn_27",
+      "stage": "overview-ranking"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-cn_27-overview.png",
+      "file": "desktop-cn_27-overview.png",
+      "sha256": "341e76f8599096d5f8a917842e2c258dbee23cd9fa1e2167f9991bf9e4b7c8a8",
+      "byte_size": 145253,
+      "device": "desktop",
+      "strategy_id": "cn_27",
+      "stage": "overview"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-cn_27-status.png",
+      "file": "desktop-cn_27-status.png",
+      "sha256": "7a1698aa729bf2951f96388bde8b0a548b9b4026036168442d2046ea757086e6",
+      "byte_size": 86190,
+      "device": "desktop",
+      "strategy_id": "cn_27",
+      "stage": "status"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-qqq_rotation-detail-evidence.png",
+      "file": "desktop-qqq_rotation-detail-evidence.png",
+      "sha256": "79f618857c2772d3d8dfdf3ca18983ad21c90a522450386d6df475065521f11d",
+      "byte_size": 106675,
+      "device": "desktop",
+      "strategy_id": "qqq_rotation",
+      "stage": "detail-evidence"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-qqq_rotation-detail-performance.png",
+      "file": "desktop-qqq_rotation-detail-performance.png",
+      "sha256": "f0c607ed6150bba768a315ff03fa681b0627d57a5f8e1d354d946bebd6c1f1d3",
+      "byte_size": 119384,
+      "device": "desktop",
+      "strategy_id": "qqq_rotation",
+      "stage": "detail-performance"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-qqq_rotation-detail-portfolio.png",
+      "file": "desktop-qqq_rotation-detail-portfolio.png",
+      "sha256": "675420712cfacd9b7ea8aae49606ac8a34bda1af0206e5ea8987df2c5477dd48",
+      "byte_size": 100302,
+      "device": "desktop",
+      "strategy_id": "qqq_rotation",
+      "stage": "detail-portfolio"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-qqq_rotation-detail-top.png",
+      "file": "desktop-qqq_rotation-detail-top.png",
+      "sha256": "f0c607ed6150bba768a315ff03fa681b0627d57a5f8e1d354d946bebd6c1f1d3",
+      "byte_size": 119384,
+      "device": "desktop",
+      "strategy_id": "qqq_rotation",
+      "stage": "detail-top"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-qqq_rotation-instrument.png",
+      "file": "desktop-qqq_rotation-instrument.png",
+      "sha256": "73dfef25eb092b76e372400ce4cef57ec1aabb8243a4ffb12fc706cdcc96a2e4",
+      "byte_size": 87142,
+      "device": "desktop",
+      "strategy_id": "qqq_rotation",
+      "stage": "instrument"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-qqq_rotation-overview-ranking.png",
+      "file": "desktop-qqq_rotation-overview-ranking.png",
+      "sha256": "341e76f8599096d5f8a917842e2c258dbee23cd9fa1e2167f9991bf9e4b7c8a8",
+      "byte_size": 145253,
+      "device": "desktop",
+      "strategy_id": "qqq_rotation",
+      "stage": "overview-ranking"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-qqq_rotation-overview.png",
+      "file": "desktop-qqq_rotation-overview.png",
+      "sha256": "341e76f8599096d5f8a917842e2c258dbee23cd9fa1e2167f9991bf9e4b7c8a8",
+      "byte_size": 145253,
+      "device": "desktop",
+      "strategy_id": "qqq_rotation",
+      "stage": "overview"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-qqq_rotation-status.png",
+      "file": "desktop-qqq_rotation-status.png",
+      "sha256": "7a1698aa729bf2951f96388bde8b0a548b9b4026036168442d2046ea757086e6",
+      "byte_size": 86190,
+      "device": "desktop",
+      "strategy_id": "qqq_rotation",
+      "stage": "status"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-us_x-detail-evidence.png",
+      "file": "desktop-us_x-detail-evidence.png",
+      "sha256": "7ab9ab442e90179cd0a4c386cd99e013fbcb7b85a1997a47352277c409e85612",
+      "byte_size": 101033,
+      "device": "desktop",
+      "strategy_id": "us_x",
+      "stage": "detail-evidence"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-us_x-detail-performance.png",
+      "file": "desktop-us_x-detail-performance.png",
+      "sha256": "598ee678495fd9a7edabfce8effe4508aeaf953da4a67062a694e0e822eda0db",
+      "byte_size": 112806,
+      "device": "desktop",
+      "strategy_id": "us_x",
+      "stage": "detail-performance"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-us_x-detail-portfolio.png",
+      "file": "desktop-us_x-detail-portfolio.png",
+      "sha256": "109bb29f5600376ebc1ae9578ad3d86af17849d94efbec255754f69392a312bc",
+      "byte_size": 100415,
+      "device": "desktop",
+      "strategy_id": "us_x",
+      "stage": "detail-portfolio"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-us_x-detail-top.png",
+      "file": "desktop-us_x-detail-top.png",
+      "sha256": "598ee678495fd9a7edabfce8effe4508aeaf953da4a67062a694e0e822eda0db",
+      "byte_size": 112806,
+      "device": "desktop",
+      "strategy_id": "us_x",
+      "stage": "detail-top"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-us_x-instrument.png",
+      "file": "desktop-us_x-instrument.png",
+      "sha256": "2cc82c1123f8793d094974001815353859c3b3f2261625e239905a16e1c5fa71",
+      "byte_size": 85084,
+      "device": "desktop",
+      "strategy_id": "us_x",
+      "stage": "instrument"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-us_x-overview-ranking.png",
+      "file": "desktop-us_x-overview-ranking.png",
+      "sha256": "341e76f8599096d5f8a917842e2c258dbee23cd9fa1e2167f9991bf9e4b7c8a8",
+      "byte_size": 145253,
+      "device": "desktop",
+      "strategy_id": "us_x",
+      "stage": "overview-ranking"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-us_x-overview.png",
+      "file": "desktop-us_x-overview.png",
+      "sha256": "341e76f8599096d5f8a917842e2c258dbee23cd9fa1e2167f9991bf9e4b7c8a8",
+      "byte_size": 145253,
+      "device": "desktop",
+      "strategy_id": "us_x",
+      "stage": "overview"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\desktop-us_x-status.png",
+      "file": "desktop-us_x-status.png",
+      "sha256": "7a1698aa729bf2951f96388bde8b0a548b9b4026036168442d2046ea757086e6",
+      "byte_size": 86190,
+      "device": "desktop",
+      "strategy_id": "us_x",
+      "stage": "status"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-byd-detail-evidence.png",
+      "file": "mobile-byd-detail-evidence.png",
+      "sha256": "ffe16162585bb84bebaf5781274863389ffba3f0faa3286bda2f455e685c3581",
+      "byte_size": 57275,
+      "device": "mobile",
+      "strategy_id": "byd",
+      "stage": "detail-evidence"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-byd-detail-performance.png",
+      "file": "mobile-byd-detail-performance.png",
+      "sha256": "a090dcad24f965171712d84efead03c83568e8382d74fba141334785062a7f44",
+      "byte_size": 57127,
+      "device": "mobile",
+      "strategy_id": "byd",
+      "stage": "detail-performance"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-byd-detail-portfolio.png",
+      "file": "mobile-byd-detail-portfolio.png",
+      "sha256": "99d9175e572a2fe784a274e98c35f1dd0741564de23e78b228a0767dac03eb76",
+      "byte_size": 47160,
+      "device": "mobile",
+      "strategy_id": "byd",
+      "stage": "detail-portfolio"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-byd-detail-top.png",
+      "file": "mobile-byd-detail-top.png",
+      "sha256": "a5cc63524db664e1e440062c2e1d1b51a5be7fad32af033a461a72efa3a87ae9",
+      "byte_size": 42475,
+      "device": "mobile",
+      "strategy_id": "byd",
+      "stage": "detail-top"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-byd-instrument.png",
+      "file": "mobile-byd-instrument.png",
+      "sha256": "5534da81410a6b3c8534e5f57fdf7f5932f611b056f0c8275fc624a1a5c6e8fb",
+      "byte_size": 48325,
+      "device": "mobile",
+      "strategy_id": "byd",
+      "stage": "instrument"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-byd-overview-ranking.png",
+      "file": "mobile-byd-overview-ranking.png",
+      "sha256": "781ff005b5cbf4f01d91a51631b1e0ad682151177cb0d7b3440be815ccff4298",
+      "byte_size": 35579,
+      "device": "mobile",
+      "strategy_id": "byd",
+      "stage": "overview-ranking"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-byd-overview.png",
+      "file": "mobile-byd-overview.png",
+      "sha256": "ddf1bae952078f5e2fd7c390b35d79b47462d19b040d341288ad0525d87f4564",
+      "byte_size": 58738,
+      "device": "mobile",
+      "strategy_id": "byd",
+      "stage": "overview"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-byd-status.png",
+      "file": "mobile-byd-status.png",
+      "sha256": "83b348077abef13023c32ce3ad126b18f216019cc0eb6d9412a9b35b868c093e",
+      "byte_size": 43508,
+      "device": "mobile",
+      "strategy_id": "byd",
+      "stage": "status"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-cn_27-detail-evidence.png",
+      "file": "mobile-cn_27-detail-evidence.png",
+      "sha256": "2aa2add2af149aca5bf630892a4732652247a8e81da2ed84246fa662d818fbcf",
+      "byte_size": 54983,
+      "device": "mobile",
+      "strategy_id": "cn_27",
+      "stage": "detail-evidence"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-cn_27-detail-performance.png",
+      "file": "mobile-cn_27-detail-performance.png",
+      "sha256": "44bfbe6bee36313af4c2512860f3057558613543304a1cb10c4f9081d97259c0",
+      "byte_size": 57229,
+      "device": "mobile",
+      "strategy_id": "cn_27",
+      "stage": "detail-performance"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-cn_27-detail-portfolio.png",
+      "file": "mobile-cn_27-detail-portfolio.png",
+      "sha256": "f9007fd59af72b17d392c043734c6999d56f6bfd097788b9b7dae3511611594e",
+      "byte_size": 47114,
+      "device": "mobile",
+      "strategy_id": "cn_27",
+      "stage": "detail-portfolio"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-cn_27-detail-top.png",
+      "file": "mobile-cn_27-detail-top.png",
+      "sha256": "98dfd9f34d86ecf56feee6fc3fa58300272b268fc683478995c56fc4f472d95d",
+      "byte_size": 43066,
+      "device": "mobile",
+      "strategy_id": "cn_27",
+      "stage": "detail-top"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-cn_27-instrument.png",
+      "file": "mobile-cn_27-instrument.png",
+      "sha256": "369f57cc298b3e3670be96ef194f35b88c989df8d8ea8ed9a22359f912938017",
+      "byte_size": 48182,
+      "device": "mobile",
+      "strategy_id": "cn_27",
+      "stage": "instrument"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-cn_27-overview-ranking.png",
+      "file": "mobile-cn_27-overview-ranking.png",
+      "sha256": "32db69e5a0b5fdbe8e08e69fd5eda0d18cce1c22e56e39e0681026e34aa3c919",
+      "byte_size": 43789,
+      "device": "mobile",
+      "strategy_id": "cn_27",
+      "stage": "overview-ranking"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-cn_27-overview.png",
+      "file": "mobile-cn_27-overview.png",
+      "sha256": "ddf1bae952078f5e2fd7c390b35d79b47462d19b040d341288ad0525d87f4564",
+      "byte_size": 58738,
+      "device": "mobile",
+      "strategy_id": "cn_27",
+      "stage": "overview"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-cn_27-status.png",
+      "file": "mobile-cn_27-status.png",
+      "sha256": "dcd23e10703aeb70879ddfc84c31a3b9b57e56e0edac237b78306c21ce7e18da",
+      "byte_size": 43470,
+      "device": "mobile",
+      "strategy_id": "cn_27",
+      "stage": "status"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-qqq_rotation-detail-evidence.png",
+      "file": "mobile-qqq_rotation-detail-evidence.png",
+      "sha256": "f0136f681f5e8f174c8d31d7b493b195381d15ddc0d60d424590ea24b7130e4a",
+      "byte_size": 58539,
+      "device": "mobile",
+      "strategy_id": "qqq_rotation",
+      "stage": "detail-evidence"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-qqq_rotation-detail-performance.png",
+      "file": "mobile-qqq_rotation-detail-performance.png",
+      "sha256": "c48cbddba2a1be768074981ee72941a0430d47da8563f6fb25786767c1899e64",
+      "byte_size": 51358,
+      "device": "mobile",
+      "strategy_id": "qqq_rotation",
+      "stage": "detail-performance"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-qqq_rotation-detail-portfolio.png",
+      "file": "mobile-qqq_rotation-detail-portfolio.png",
+      "sha256": "af9e8f2a3e9f338687eee412238d2f7f74f9ec07e9b60d072f0030c9ab0c2af8",
+      "byte_size": 45089,
+      "device": "mobile",
+      "strategy_id": "qqq_rotation",
+      "stage": "detail-portfolio"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-qqq_rotation-detail-top.png",
+      "file": "mobile-qqq_rotation-detail-top.png",
+      "sha256": "5aaf5e258d9a6c3970fd8ce9fe6f81abbb9b63c26e8c060ecc447e114769241c",
+      "byte_size": 42788,
+      "device": "mobile",
+      "strategy_id": "qqq_rotation",
+      "stage": "detail-top"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-qqq_rotation-instrument.png",
+      "file": "mobile-qqq_rotation-instrument.png",
+      "sha256": "be3d48b77fe17fe1a2a087492e94240576d6ac2e3097134f2c93071b7cad667f",
+      "byte_size": 44827,
+      "device": "mobile",
+      "strategy_id": "qqq_rotation",
+      "stage": "instrument"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-qqq_rotation-overview-ranking.png",
+      "file": "mobile-qqq_rotation-overview-ranking.png",
+      "sha256": "55638dd6e801f276053539f62fa63ba8926884ff9d3bc0d5cdc37e1b76165d0b",
+      "byte_size": 39071,
+      "device": "mobile",
+      "strategy_id": "qqq_rotation",
+      "stage": "overview-ranking"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-qqq_rotation-overview.png",
+      "file": "mobile-qqq_rotation-overview.png",
+      "sha256": "ddf1bae952078f5e2fd7c390b35d79b47462d19b040d341288ad0525d87f4564",
+      "byte_size": 58738,
+      "device": "mobile",
+      "strategy_id": "qqq_rotation",
+      "stage": "overview"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-qqq_rotation-status.png",
+      "file": "mobile-qqq_rotation-status.png",
+      "sha256": "dcd23e10703aeb70879ddfc84c31a3b9b57e56e0edac237b78306c21ce7e18da",
+      "byte_size": 43470,
+      "device": "mobile",
+      "strategy_id": "qqq_rotation",
+      "stage": "status"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-us_x-detail-evidence.png",
+      "file": "mobile-us_x-detail-evidence.png",
+      "sha256": "3303f31ee2c374e6829f8cebd35106ed94d196ea54f42f743c8250b33a3023be",
+      "byte_size": 57682,
+      "device": "mobile",
+      "strategy_id": "us_x",
+      "stage": "detail-evidence"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-us_x-detail-performance.png",
+      "file": "mobile-us_x-detail-performance.png",
+      "sha256": "69793b0b91d7cd8528ba5709d25da2b2ade3c75663e78a4e3398745d13fd3e7c",
+      "byte_size": 47520,
+      "device": "mobile",
+      "strategy_id": "us_x",
+      "stage": "detail-performance"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-us_x-detail-portfolio.png",
+      "file": "mobile-us_x-detail-portfolio.png",
+      "sha256": "be1c388ef6c24bc4b6318b82be59095a9953a074e5c97a08c92822a34b8048de",
+      "byte_size": 47504,
+      "device": "mobile",
+      "strategy_id": "us_x",
+      "stage": "detail-portfolio"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-us_x-detail-top.png",
+      "file": "mobile-us_x-detail-top.png",
+      "sha256": "c181dd8a27420c744a2ae780b86c75ed6c817f34c9d047bb92ced253c20030c3",
+      "byte_size": 41742,
+      "device": "mobile",
+      "strategy_id": "us_x",
+      "stage": "detail-top"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-us_x-instrument.png",
+      "file": "mobile-us_x-instrument.png",
+      "sha256": "4168b87fd891301f46d497a385bd961895930c6e1a3e20e6fc17c95f311bec2c",
+      "byte_size": 44058,
+      "device": "mobile",
+      "strategy_id": "us_x",
+      "stage": "instrument"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-us_x-overview-ranking.png",
+      "file": "mobile-us_x-overview-ranking.png",
+      "sha256": "0c56724dbd99614feb5f94a39c7e6f6f57bc1c64885106789953337563f6b5f9",
+      "byte_size": 37450,
+      "device": "mobile",
+      "strategy_id": "us_x",
+      "stage": "overview-ranking"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-us_x-overview.png",
+      "file": "mobile-us_x-overview.png",
+      "sha256": "ddf1bae952078f5e2fd7c390b35d79b47462d19b040d341288ad0525d87f4564",
+      "byte_size": 58738,
+      "device": "mobile",
+      "strategy_id": "us_x",
+      "stage": "overview"
+    },
+    {
+      "path": "C:\\Users\\ZOZN109\\AppData\\Local\\Temp\\uat1279\\assets\\mobile-us_x-status.png",
+      "file": "mobile-us_x-status.png",
+      "sha256": "dcd23e10703aeb70879ddfc84c31a3b9b57e56e0edac237b78306c21ce7e18da",
+      "byte_size": 43470,
+      "device": "mobile",
+      "strategy_id": "us_x",
+      "stage": "status"
+    }
+  ],
+  "initial_attempts": [
+    "The static release verifier returned status=verified on its first attempt with all four formal models and 36 sections; no retry was needed.",
+    "The first scoped Playwright exploration confirmed selectors for ranking, tabs, holdings links and the event ledger. No product defect was inferred from exploration.",
+    "The initial desktop screenshot set captured the Overview above the model ranking and the mobile Strategy Detail at the retained scroll offset; supplementary scrolled screenshots (overview-ranking, detail-top) were added so the CN_27 stale badge and the protected-current-operations header are visible. No product defect inferred.",
+    "An initial regex capture of the US x1.3 'No rebalance' line was truncated; a targeted re-read captured the exact lines 'MTM 2026-11-13', 'No rebalance.' and 'Source signal: 2026-11-06.' No product defect inferred."
+  ],
+  "limitations": [
+    "Owner, member and Pro authenticated journeys were not tested; current-operation changed, not-due, blocked/delayed and next-decision states are gated and NOT_TESTED.",
+    "Expired/revoked account entitlement and Supabase RLS unauthorized/expired/revoked negative paths were not tested; no credentials were used or created.",
+    "Operating Status renders only 'Access required' for current observations anonymously; per-strategy current-operation blocked/delayed/not-due evidence requires an authorized session.",
+    "The anonymous UI does not render next decision/due for any strategy. The public static snapshot JSON carries decision_cadence and next_decision_policy, but the gated UI does not surface per-strategy next-decision state.",
+    "CN_27's stale state is disclosed (70 days behind the 2026-11-13 cutoff); its benchmark/relative excess is disclosed unavailable because 000300 has no valid wealth series at both selected boundaries.",
+    "BYD's declared benchmark identity is 'BYD v1.2' rather than a market index; this is the declared formal identity and not treated as a defect.",
+    "Screenshots are retained under the temp artifact root with hashes; they are not a durable shared CI artifact.",
+    "Read-only audit: no application, runtime or policy changes were made."
+  ],
+  "owner_session_checklist": [
+    "1. Sign in as Owner and open /#/app on desktop and mobile: record each of the four strategies' current state, latest decision date, changed vs prior decision, and next decision/due date; save screenshots and the exact observed text.",
+    "2. Prove a legitimate unchanged/not-due state with a date basis for at least one strategy (for example CN_27's 30-session cadence or US x1.3's no-rebalance signal date) and capture the rendered unchanged/not-due wording.",
+    "3. Open Operating Status as Owner and capture each strategy's blocked/delayed/not-due evidence plus the recovery workflow link; explicitly confirm CN_27's stale 2026-09-04 trace against the 2026-11-13 cutoff.",
+    "4. Use a test member whose entitlement is expired and another whose entitlement is revoked: confirm protected current operations are gated with the clear message and that no holdings, targets, drivers or ledger provenance leak; capture each denial and console/network state.",
+    "5. With the Owner session and a non-owner/expired/revoked JWT, query the runtime strategy_operation_snapshots and other protected tables directly: record HTTP status and returned row counts, proving zero unauthorized protected rows; do not modify policies."
+  ],
+  "research_only": true,
+  "trade_ready": false
+}
