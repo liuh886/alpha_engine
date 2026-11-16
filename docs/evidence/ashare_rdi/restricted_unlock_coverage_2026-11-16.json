@@ -1,0 +1,278 @@
+{
+  "adapter_capability_audit": {
+    "module": "src/data/company_events/ashare_primary_announcements.py",
+    "observations": [
+      {
+        "claim": "Adapter emits \"effective_date\": \"\" so the effective unlock session is absent.",
+        "detected": true,
+        "detection_rule": "present",
+        "evidence_token": "\"effective_date\": \"\",",
+        "id": "effective_unlock_session_not_parsed"
+      },
+      {
+        "claim": "Adapter emits \"revision_sequence\": 0 and \"supersedes_event_id\": \"\" for every record.",
+        "detected": true,
+        "detection_rule": "present",
+        "evidence_token": "\"revision_sequence\": 0,",
+        "id": "amendment_chain_not_represented"
+      },
+      {
+        "claim": "Adapter derives announced_at at date-only midnight CST and never emits available_at.",
+        "detected": true,
+        "detection_rule": "present",
+        "evidence_token": "def _timestamp(date_text: str) -> str:",
+        "id": "first_public_availability_not_captured"
+      },
+      {
+        "claim": "Adapter emits no real-world story_id, so revisions and syndicated stories cannot be grouped.",
+        "detected": true,
+        "detection_rule": "absent",
+        "evidence_token": "story_id",
+        "id": "story_identity_not_represented"
+      },
+      {
+        "claim": "Adapter classifies titles only; it does not parse the unlock date or share quantity from the filing body.",
+        "detected": true,
+        "detection_rule": "absent",
+        "evidence_token": "announcement_body",
+        "id": "announcement_body_not_parsed_for_schedule"
+      },
+      {
+        "claim": "Adapter hardcodes \"reconciliation_status\": \"reconciled\", \"availability_status\": \"usable\" and confidence 1.0.",
+        "detected": true,
+        "detection_rule": "present",
+        "evidence_token": "\"reconciliation_status\": \"reconciled\",",
+        "id": "reconciliation_is_asserted_not_corroborated"
+      },
+      {
+        "claim": "Adapter emits a row-level source_hash but no provider response bytes or response digest.",
+        "detected": true,
+        "detection_rule": "absent",
+        "evidence_token": "provider_response",
+        "id": "provider_response_bytes_not_archived"
+      }
+    ],
+    "sha256": "4c583a2fc4860ec6643477ef8b9f468c16727f1a67125c39788da59ca6214901"
+  },
+  "audit_commands": [
+    "git rev-parse HEAD",
+    "git ls-files | grep -Ei 'cninfo|events\\.jsonl|restricted.*unlock'",
+    "git log --all --oneline -- scripts/data/build_cn130_pit_event_families_phase2.py",
+    "gh api 'repos/liuh886/alpha_engine/branches?per_page=100' --jq '.[].name'",
+    "python -m src.research.ashare_rdi.phase2_audit --restricted-unlock-coverage --period-start 2022-01-01 --cutoff 2026-08-03 --receipt-date 2026-11-16 --output docs/evidence/ashare_rdi/restricted_unlock_coverage_2026-11-16.json",
+    "pytest tests/test_ashare_rdi_restricted_unlock_audit.py -q",
+    "ruff check src/research/ashare_rdi/restricted_unlock_audit.py src/research/ashare_rdi/phase2_audit.py tests/test_ashare_rdi_restricted_unlock_audit.py"
+  ],
+  "declared_scope": {
+    "current_governed_price_cutoff": "2026-11-13",
+    "era": {
+      "basis": "phase-2 CN130 primary event-family generation defaults",
+      "cutoff": "2026-08-03",
+      "start": "2022-01-01"
+    },
+    "universe": {
+      "candidate_count": 130,
+      "pool_id": "cn_selected_equities_v3",
+      "pool_sha256": "4ce5b95e60d38a13e4852fb6f7a3a6437b55d6da0fb317ad553d114e85158529",
+      "pool_spec": "configs/research_universes/cn_selected_equities_v3.yaml"
+    }
+  },
+  "does_not_claim": [
+    "no E(t) event-density series",
+    "no per-session event count, frequency or rate",
+    "no calibrated score, probability, threshold or weight",
+    "no forecast or predictive power",
+    "no strategy registration or change to active strategies",
+    "no prospective as-of clock",
+    "no claim that a missing event is zero",
+    "no claim that unlock potential equals executed selling",
+    "no qualification of the other nine RDI event families"
+  ],
+  "event_family": "restricted_unlock",
+  "gaps": [
+    {
+      "detail": "No governed restricted_unlock event records are present in the audited repository revision.",
+      "era": "2022-01-01..2026-08-03",
+      "field": "event_archive"
+    },
+    {
+      "detail": "Original CNINFO document identity plus announcement id or primary link",
+      "era": "2022-01-01..2026-08-03",
+      "field": "original_announcement_identity"
+    },
+    {
+      "detail": "Timezone-aware first public availability timestamp (not merely retrieval)",
+      "era": "2022-01-01..2026-08-03",
+      "field": "first_public_availability"
+    },
+    {
+      "detail": "SHA-256 digest of the source evidence",
+      "era": "2022-01-01..2026-08-03",
+      "field": "source_evidence_hash"
+    },
+    {
+      "detail": "Distinct real-world story identity and unique canonical event identity",
+      "era": "2022-01-01..2026-08-03",
+      "field": "story_identity_and_dedup"
+    },
+    {
+      "detail": "Effective unlock session parsed from the announcement",
+      "era": "2022-01-01..2026-08-03",
+      "field": "effective_unlock_session"
+    },
+    {
+      "detail": "Revision/amendment chain or an explicit audited absence declaration",
+      "era": "2022-01-01..2026-08-03",
+      "field": "amendment_chain"
+    },
+    {
+      "detail": "Unlock schedule known before the effective session, using verified availability",
+      "era": "2022-01-01..2026-08-03",
+      "field": "as_of_known_future_schedule"
+    },
+    {
+      "detail": "archive_manifest_or_records_absent",
+      "era": "2022-01-01..2026-08-03",
+      "field": "declared_universe_era_pit_membership"
+    },
+    {
+      "detail": "0 of 1109 expected restricted_unlock session cells are verified PIT coverage.",
+      "era": "2022-01-01..2026-08-03",
+      "field": "per_session_completeness_or_absence"
+    },
+    {
+      "detail": "Adapter emits \"effective_date\": \"\" so the effective unlock session is absent.",
+      "era": "2022-01-01..2026-08-03",
+      "field": "effective_unlock_session_not_parsed"
+    },
+    {
+      "detail": "Adapter emits \"revision_sequence\": 0 and \"supersedes_event_id\": \"\" for every record.",
+      "era": "2022-01-01..2026-08-03",
+      "field": "amendment_chain_not_represented"
+    },
+    {
+      "detail": "Adapter derives announced_at at date-only midnight CST and never emits available_at.",
+      "era": "2022-01-01..2026-08-03",
+      "field": "first_public_availability_not_captured"
+    },
+    {
+      "detail": "Adapter emits no real-world story_id, so revisions and syndicated stories cannot be grouped.",
+      "era": "2022-01-01..2026-08-03",
+      "field": "story_identity_not_represented"
+    },
+    {
+      "detail": "Adapter classifies titles only; it does not parse the unlock date or share quantity from the filing body.",
+      "era": "2022-01-01..2026-08-03",
+      "field": "announcement_body_not_parsed_for_schedule"
+    },
+    {
+      "detail": "Adapter hardcodes \"reconciliation_status\": \"reconciled\", \"availability_status\": \"usable\" and confidence 1.0.",
+      "era": "2022-01-01..2026-08-03",
+      "field": "reconciliation_is_asserted_not_corroborated"
+    },
+    {
+      "detail": "Adapter emits a row-level source_hash but no provider response bytes or response digest.",
+      "era": "2022-01-01..2026-08-03",
+      "field": "provider_response_bytes_not_archived"
+    },
+    {
+      "detail": "The selected-pool registry is a static current contract, not a point-in-time membership history. No historical membership evidence is archived with the event record.",
+      "era": "2022-01-01..2026-08-03",
+      "field": "pit_membership_history_not_evidenced"
+    }
+  ],
+  "issue": 1272,
+  "per_session_coverage": {
+    "expected_cells": 1109,
+    "invalid_rows": [],
+    "missing_cells": 1109,
+    "status": "missing",
+    "unverified_cells": 0,
+    "usable_cells": 0
+  },
+  "receipt_date": "2026-11-16",
+  "record_inventory": {
+    "archive_present": false,
+    "duplicate_event_ids": [],
+    "ignored_records": [],
+    "record_count": 0,
+    "valid_restricted_unlock_records": 0
+  },
+  "repository_commit": "54a35266368cb0a0d44359094683c8db978a2bc6",
+  "required_fields": {
+    "amendment_chain": {
+      "evidenced_records": 0,
+      "requirement": "Revision/amendment chain or an explicit audited absence declaration",
+      "status": "missing",
+      "total_records": 0
+    },
+    "as_of_known_future_schedule": {
+      "evidenced_records": 0,
+      "requirement": "Unlock schedule known before the effective session, using verified availability",
+      "status": "missing",
+      "total_records": 0
+    },
+    "declared_universe_era_pit_membership": {
+      "evidenced_records": 0,
+      "failures": [
+        "archive_manifest_or_records_absent"
+      ],
+      "requirement": "Declared universe/era hash with PIT membership evidence",
+      "status": "missing",
+      "total_records": 1
+    },
+    "effective_unlock_session": {
+      "evidenced_records": 0,
+      "requirement": "Effective unlock session parsed from the announcement",
+      "status": "missing",
+      "total_records": 0
+    },
+    "first_public_availability": {
+      "evidenced_records": 0,
+      "requirement": "Timezone-aware first public availability timestamp (not merely retrieval)",
+      "status": "missing",
+      "total_records": 0
+    },
+    "original_announcement_identity": {
+      "evidenced_records": 0,
+      "requirement": "Original CNINFO document identity plus announcement id or primary link",
+      "status": "missing",
+      "total_records": 0
+    },
+    "per_session_completeness_or_absence": {
+      "evidenced_records": 0,
+      "expected_cells": 1109,
+      "requirement": "Verified per-session completeness or explicit absence matrix",
+      "status": "missing",
+      "total_records": 1,
+      "usable_cells": 0
+    },
+    "source_evidence_hash": {
+      "evidenced_records": 0,
+      "requirement": "SHA-256 digest of the source evidence",
+      "status": "missing",
+      "total_records": 0
+    },
+    "story_identity_and_dedup": {
+      "evidenced_records": 0,
+      "requirement": "Distinct real-world story identity and unique canonical event identity",
+      "status": "missing",
+      "total_records": 0
+    }
+  },
+  "research_only": true,
+  "schema_version": "ashare_rdi_restricted_unlock_coverage_v1",
+  "source_hashes": {
+    "configs/data_contracts/company_information_event_phase2_v1.yaml": "809e541ccfc92bca99a7fd241074d539493b9139510e333ecec4015da0259793",
+    "configs/pools/selected_pool_registry_v1.yaml": "a7641f312b2f974fc06ea87f86eec0919f39fbfafe4837ab9677680f018eabe1",
+    "configs/research_experiments/ashare_rdi_phase2_sources.yaml": "d10c28af717d4bc13d602e13c96db20418b2c8fbec82ff9730cc453166878421",
+    "configs/research_universes/cn_selected_equities_v3.yaml": "4ce5b95e60d38a13e4852fb6f7a3a6437b55d6da0fb317ad553d114e85158529",
+    "src/data/company_events/ashare_primary_announcements.py": "4c583a2fc4860ec6643477ef8b9f468c16727f1a67125c39788da59ca6214901",
+    "src/data/company_events/event_store.py": "aefb8d0208782658e9107aba14eb5f2fcd9133610852b2de0e393b31b730d9f8",
+    "src/research/ashare_rdi/coverage.py": "4876cde50e1f91c805320b4fdb67c0d4c1be0d27ef3d39bbcd1840aff4e18063",
+    "src/research/ashare_rdi/phase2_audit.py": "b158435f4f01e67750a3d435f8d8dc6a39e4f530567ed8a95342301cbc06df45"
+  },
+  "status": "BLOCKED",
+  "trade_ready": false,
+  "work_package": "restricted_unlock_pit_coverage_feasibility"
+}
