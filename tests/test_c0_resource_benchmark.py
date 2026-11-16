@@ -99,21 +99,33 @@ def test_colab_bootstrap_restores_exact_frozen_lock_before_install(tmp_path):
     code, job = tmp_path / "code", tmp_path / "job"
     code.mkdir()
     job.mkdir()
+    # The bootstrap contract restores the frozen lock bytes; it must not depend
+    # on the current repository lock. A legitimate dependency bump would
+    # otherwise invalidate this logic test. Pin a synthetic spec to the current
+    # lock's Windows representation; the real spec's pin remains the frozen
+    # experiment evidence for the recorded runner commit.
+    frozen_lock = (root / "uv.lock").read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+    git_lock = frozen_lock.replace(b"\r\n", b"\n")
+    synthetic_spec = {"runner_git_sha": spec["runner_git_sha"], "code_sha256": {}}
     for relative in spec["code_sha256"]:
+        if relative == "uv.lock":
+            continue
         target = code / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes((root / relative).read_bytes())
-    git_lock = (root / "uv.lock").read_bytes().replace(b"\r\n", b"\n")
+        payload = (root / relative).read_bytes()
+        target.write_bytes(payload)
+        synthetic_spec["code_sha256"][relative] = hashlib.sha256(payload).hexdigest()
+    synthetic_spec["code_sha256"]["uv.lock"] = hashlib.sha256(frozen_lock).hexdigest()
     (code / "uv.lock").write_bytes(git_lock)  # Linux checkout representation
-    (job / "uv.lock.frozen").write_bytes(git_lock.replace(b"\n", b"\r\n"))
-    (job / "c0-spec-v3.json").write_text(json.dumps(spec))
+    (job / "uv.lock.frozen").write_bytes(frozen_lock)
+    (job / "c0-spec-v3.json").write_text(json.dumps(synthetic_spec))
     scope = {
-        "CODE": code, "JOB": job, "RUNNER_SHA": spec["runner_git_sha"],
+        "CODE": code, "JOB": job, "RUNNER_SHA": synthetic_spec["runner_git_sha"],
         "hashlib": hashlib, "json": json, "sha": digest,
         "subprocess": SimpleNamespace(check_output=lambda *a, **kw: git_lock),
     }
     exec("if True:\n" + block, scope)
-    assert digest(code / "uv.lock") == spec["code_sha256"]["uv.lock"]
+    assert digest(code / "uv.lock") == synthetic_spec["code_sha256"]["uv.lock"]
     (job / "uv.lock.frozen").write_bytes(b"changed dependency")
     with pytest.raises(AssertionError):
         exec("if True:\n" + block, scope)
