@@ -229,7 +229,10 @@ def test_pages_release_receipt_workflow_skips_operations_only_workflow_run() -> 
         "cancel-in-progress": True,
     }
     steps = {step["name"]: step for step in job["steps"]}
-    assert steps["Checkout deployed revision"]["uses"] == "actions/checkout@v7"
+    assert steps["Checkout dispatched revision"]["uses"] == "actions/checkout@v7"
+    deployed_resolution = steps["Resolve and check out the deployed revision"]["run"]
+    assert "deployment.json" in deployed_resolution
+    assert 'git checkout --detach "$sha"' in deployed_resolution
 
     # Contract behavior: skips for operations-only upstream workflow_run runs,
     # isolates them from real receipts before the job condition is evaluated,
