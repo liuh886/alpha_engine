@@ -50,8 +50,53 @@ def main() -> None:
     parser.add_argument("--as-of", help="completed CN cutoff for renewal preflight")
     parser.add_argument("--price-reconstruction-contract", help="frozen versioned price-only repair contract")
     parser.add_argument("--write-reconstructed-prices", help="optional disposable CSV under artifacts/")
+    parser.add_argument(
+        "--restricted-unlock-coverage",
+        action="store_true",
+        help="read-only restricted_unlock PIT coverage/feasibility receipt",
+    )
+    parser.add_argument("--records", default="", help="optional restricted_unlock events.jsonl")
+    parser.add_argument("--coverage", default="", help="optional verified per-session coverage JSON")
+    parser.add_argument("--archive-manifest", default="", help="optional event archive manifest JSON")
+    parser.add_argument("--period-start", default="2022-01-01")
+    parser.add_argument("--cutoff", default="2026-08-03")
+    parser.add_argument("--receipt-date", default="", help="required deterministic audit date")
     args = parser.parse_args()
-    if args.price_reconstruction_contract:
+    if args.restricted_unlock_coverage:
+        from .restricted_unlock_audit import build_receipt
+
+        if (
+            args.product_briefing
+            or args.price_renewal_audit
+            or args.price_reconstruction_contract
+            or args.write_reconstructed_prices
+        ):
+            parser.error(
+                "restricted-unlock coverage excludes other audit modes"
+            )
+        if not args.receipt_date:
+            parser.error("restricted-unlock coverage requires --receipt-date")
+        root = Path(__file__).resolve().parents[3]
+
+        def _optional(value: str) -> Path | None:
+            if not value:
+                return None
+            path = Path(value)
+            return path if path.is_absolute() else root / path
+
+        result = build_receipt(
+            root,
+            records_path=_optional(args.records),
+            coverage_path=_optional(args.coverage),
+            archive_manifest_path=_optional(args.archive_manifest),
+            period_start=args.period_start,
+            cutoff=args.cutoff,
+            receipt_date=args.receipt_date,
+            repository_commit=subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=root, text=True
+            ).strip(),
+        )
+    elif args.price_reconstruction_contract:
         from src.research.market_session_clock import completed_market_date
 
         from .price_reconstruction import recompute, repo_file
