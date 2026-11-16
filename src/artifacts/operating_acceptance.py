@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from src.artifacts.operating_review_declarations import verify_declaration_bindings
 from src.research.market_session_clock import completed_market_date, exchange_sessions
 
 
@@ -409,20 +410,18 @@ def build_acceptance_report(input_root: Path, *, declarations: Path | None = Non
         digest = hashlib.sha256(raw).hexdigest()
         review = reviews.get(identity, {})
         manual = review.get("manual_interventions")
+        reviewer = review.get("reviewed_by")
         review_valid = (
             review.get("observation_sha256") == digest
             and type(manual) is int and manual >= 0
-            and bool(review.get("reviewed_by"))
+            and isinstance(reviewer, str) and bool(reviewer.strip())
             and bool(review.get("decision_delivery_evidence"))
             and review.get("cadence_and_freshness_verified") is True
             and isinstance(review.get("final_actions_metadata"), dict)
             and isinstance(review.get("operations_snapshot"), dict)
         )
         if review_valid:
-            for evidence in [review["final_actions_metadata"]]:
-                member = (declarations.parent / evidence["path"]).resolve()  # type: ignore[union-attr]
-                if not member.is_file() or hashlib.sha256(member.read_bytes()).hexdigest() != evidence["sha256"]:
-                    raise ValueError(f"review evidence hash mismatch: {identity}")
+            verify_declaration_bindings(review, declarations.parent, identity=identity)  # type: ignore[union-attr]
             metadata = json.loads((declarations.parent / review["final_actions_metadata"]["path"]).read_text())  # type: ignore[union-attr]
             validate_final_actions_metadata(row, metadata)
             row["verified_due_cycle_strategy_ids"] = _review_strategies(row, review, declarations.parent)  # type: ignore[union-attr]
