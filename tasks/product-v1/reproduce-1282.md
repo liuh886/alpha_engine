@@ -109,4 +109,8 @@ byte-equal CN values at machine precision.
 - Total: 51 passed. No Python files changed; Ruff is not applicable to the
   JSON/Markdown deliverable.
 
-Owner A5 acceptance remains pending, so Issue #1282 stays open.
+Owner A5 acceptance: **ACCEPTED on 2026-11-16** — the Owner confirmed the
+reproduction evidence and authorised closing #1282. The recorded caveats
+remain in force (CN frozen trace boundary; US provider-availability
+dependency; no prospective/promotion/trade claim). #1277 (A1 20-session
+operating acceptance) and #1281 (release/rollback) remain separate open gates.

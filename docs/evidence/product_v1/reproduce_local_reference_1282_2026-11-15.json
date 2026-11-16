@@ -6,7 +6,21 @@
   "fix_pull_request": 1446,
   "audit_kind": "current_lock_source_evaluator_reaudit",
   "status": "REPRODUCED_EXACTLY_CN27_AND_QQQ_WITHIN_DECLARED_CONTRACT",
-  "owner_A5_acceptance": "PENDING",
+  "owner_A5_acceptance": "ACCEPTED",
+  "owner_acceptance": {
+    "accepted_at": "2026-11-16",
+    "authority": "Owner confirmed in the 2026-11-16 session: accept the #1282 A5 reproduction evidence and close the issue.",
+    "scope": "The two exact replays of the accepted QQQ v4.3 and CN_27 v1.3 references within the declared contract, including the fix to the internally inconsistent position labels (#1446).",
+    "caveats_remain_in_force": [
+      "CN_27 reproduces the frozen trace boundary 2026-09-04; appended economics are not part of this audit.",
+      "The US replay depends on live provider availability; provider-vintage reproducibility is not claimed.",
+      "No prospective validation, new model, training, promotion or trade readiness is implied."
+    ],
+    "separate_open_gates": [
+      "#1277 A1 20-session operating acceptance remains BLOCKED and separate.",
+      "#1281 release candidate, rollback rehearsal and Owner decision remain separate."
+    ]
+  },
   "research_only": true,
   "trade_ready": false,
   "promotion_authorized": false,
