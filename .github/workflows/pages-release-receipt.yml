@@ -66,11 +66,33 @@ jobs:
               )
           PY
 
-      - name: Checkout deployed revision
+      - name: Checkout dispatched revision
         if: ${{ github.event.workflow_run.conclusion == 'success' && steps.impact.outputs.available == 'true' && steps.impact.outputs.deploy == 'true' }}
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 1
+
+      - name: Resolve and check out the deployed revision
+        id: deployed
+        if: ${{ github.event.workflow_run.conclusion == 'success' && steps.impact.outputs.available == 'true' && steps.impact.outputs.deploy == 'true' }}
+        env:
+          PAGE_URL: "https://liuh886.github.io/alpha_engine/"
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          curl -fsS --max-time 60 "$PAGE_URL/deployment.json" -o artifacts/live-deployment.json
+          sha="$(python -c "import json; print(json.load(open('artifacts/live-deployment.json')).get('commit_sha',''))")"
+          case "$sha" in
+            (*[!0-9a-f]*|"") echo "invalid live deployment commit_sha: $sha" >&2; exit 1 ;;
+          esac
+          test "${#sha}" -eq 40
+          if ! git cat-file -e "${sha}^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth 1 origin "$sha"
+          fi
+          git checkout --detach "$sha"
+          test "$(git rev-parse HEAD)" = "$sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Verify live Pages release
         id: live_verify
@@ -82,7 +104,7 @@ jobs:
           mkdir -p artifacts
           python scripts/verify_pages_release.py \
             --base-url "https://liuh886.github.io/alpha_engine/" \
-            --expected-commit "${{ github.event.workflow_run.head_sha }}" \
+            --expected-commit "${{ steps.deployed.outputs.sha }}" \
             > artifacts/pages-release-receipt.json \
             2> artifacts/pages-release-error.log
 
@@ -97,7 +119,7 @@ jobs:
           MATCHED_PATHS_JSON: ${{ steps.impact.outputs.matched_paths_json }}
           UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           VERIFY_OUTCOME: ${{ steps.live_verify.outcome }}
-          DEPLOYED_SHA: ${{ github.event.workflow_run.head_sha }}
+          DEPLOYED_SHA: ${{ steps.deployed.outputs.sha || github.event.workflow_run.head_sha }}
           DEPLOY_RUN_ID: ${{ github.event.workflow_run.id }}
           DEPLOY_RUN_URL: ${{ github.event.workflow_run.html_url }}
           PAGE_URL: "https://liuh886.github.io/alpha_engine/"
