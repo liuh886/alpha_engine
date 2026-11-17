@@ -1,7 +1,25 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { SecurityLightweightChart, type SecurityChartMode } from '@/components/SecurityLightweightChart';
+import { BaselineControl } from '@/components/charts/BaselineControl';
+import { MarkerDetailPanel } from '@/components/charts/MarkerDetailPanel';
+import { MarkerLegend } from '@/components/charts/MarkerLegend';
+import { useBaselinePreference } from '@/hooks/useBaselinePreference';
+import {
+  BASELINE_EXACT_DATE_DISCLOSURE,
+  MARKET_BASELINE_RETURN_DISCLOSURE,
+  type BaselineKind,
+} from '@/lib/baseline';
+import { baselineOptionsFor, defaultBaselineKindFor, type BaselineOptionSource } from '@/lib/baseline-options';
+import {
+  MARKER_DETAIL_DISCLOSURE,
+  formatMarkerWeight,
+  modelColorAssignments,
+  modelColorFor,
+  modelColorIndexMap,
+  securityMarkerDetail,
+} from '@/lib/chart-markers';
 import {
   boundSecurityEvents,
   loadSecurityEvidence,
@@ -9,7 +27,7 @@ import {
   type SecurityEvidence,
   type SecurityEvent,
 } from '@/lib/security-evidence';
-import { securityMarkers, unmatchedMarkerEvents } from '@/lib/security-markers';
+import { securityMarkers, unmatchedMarkerEvents, type SecurityMarker } from '@/lib/security-markers';
 import {
   formatEventAction,
   formatSecurityPercent,
@@ -33,7 +51,7 @@ const PERIODS: Array<{ key: PerformancePeriod; label: string }> = [
   { key: '1y', label: '1Y' }, { key: '3y', label: '3Y' }, { key: 'all', label: 'ALL' },
 ];
 
-const weight = (value: number | null) => value === null ? '—' : `${(value * 100).toFixed(1)}%`;
+const weight = formatMarkerWeight;
 
 type BaselineState =
   | { status: 'idle' }
@@ -70,21 +88,27 @@ export function SecurityAsOfMetrics({ asOf, cutoff }: { asOf: string | null; cut
   );
 }
 
-function History({ evidence, runs }: { evidence: SecurityEvidence; runs: GovernedRunSummary[] }) {
+export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence; runs: GovernedRunSummary[] }) {
   const [params, setParams] = useSearchParams();
   const range = PERIODS.find(period => period.key === params.get('range'))?.key ?? '1y';
   const [hidden, setHidden] = useState<string[]>([]);
   const [selected, setSelected] = useState<SecurityEvent[]>([]);
   const [completeLedger, setCompleteLedger] = useState(false);
   const [limit, setLimit] = useState(100);
-  const [mode, setMode] = useState<SecurityChartMode>('price');
+  const [kind, setKind] = useState<BaselineKind | null>(null);
   const [baseline, setBaseline] = useState<BaselineState>({ status: 'idle' });
   const [baselineAttempt, setBaselineAttempt] = useState(0);
-  const baselineReasonId = useId();
+  const { preference, setPreference } = useBaselinePreference();
 
-  const models = runs.filter(run => run.market === evidence.market);
-  const names = new Map(models.map(run => [run.modelVersionId, run.title]));
-  const name = (id: string) => names.get(id) ?? id;
+  const models = useMemo(
+    () => runs
+      .filter(run => run.market === evidence.market)
+      .slice()
+      .sort((left, right) => left.modelVersionId.localeCompare(right.modelVersionId)),
+    [runs, evidence.market],
+  );
+  const names = useMemo(() => new Map(models.map(run => [run.modelVersionId, run.title])), [models]);
+  const labelFor = useCallback((id: string) => names.get(id) ?? id, [names]);
   const allEvents = useMemo(() => boundSecurityEvents(evidence, runs), [evidence, runs]);
   const events = useMemo(() => allEvents.filter(event => !hidden.includes(event.model_id)), [allEvents, hidden]);
   const bars = useMemo(() => securityBarsForPeriod(evidence.bars, range), [evidence, range]);
@@ -106,9 +130,46 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
 
   const baselineIdentity = marketBaseline(evidence.market);
   const baselineIsSelf = isMarketBaselineInstrument(evidence.market, evidence.symbol);
+  const baselineSource = useMemo<BaselineOptionSource>(
+    () => ({ view: 'security', market: evidence.market, isSelf: baselineIsSelf }),
+    [evidence.market, baselineIsSelf],
+  );
+  const baselineOptions = useMemo(() => baselineOptionsFor(baselineSource), [baselineSource]);
+  const activeKind: BaselineKind = kind
+    ?? defaultBaselineKindFor(baselineSource, baselineOptions, preference[evidence.market]);
+  const mode: SecurityChartMode = activeKind === 'market' ? 'baseline' : 'price';
+  const changeBaseline = (next: BaselineKind) => {
+    setKind(next);
+    setPreference(evidence.market, next);
+  };
+
+  const modelColorList = useMemo(
+    () => modelColorAssignments(models.map(run => run.modelVersionId)),
+    [models],
+  );
+  const modelColorIndex = useMemo(() => modelColorIndexMap(modelColorList), [modelColorList]);
+  const colorFor = useCallback(
+    (modelId: string) => modelColorFor(modelId, modelColorList),
+    [modelColorList],
+  );
+  const selectedDetail = useMemo(
+    () => securityMarkerDetail(activeSelection, { labelFor, colorFor }),
+    [activeSelection, labelFor, colorFor],
+  );
+  const sideKeyVisible = visibleEvents.length > 0;
+  const modelLegend = modelColorList.map(assignment => ({
+    modelId: assignment.modelId,
+    label: names.get(assignment.modelId) ?? assignment.modelId,
+    color: assignment.color,
+    count: visibleEvents.filter(event => event.model_id === assignment.modelId).length,
+    visible: !hidden.includes(assignment.modelId),
+    onToggle: () => setHidden(values => values.includes(assignment.modelId)
+      ? values.filter(id => id !== assignment.modelId)
+      : [...values, assignment.modelId]),
+  }));
 
   useEffect(() => {
-    if (mode !== 'baseline' || baselineIsSelf) return;
+    if (activeKind !== 'market' || baselineIsSelf) return;
     let active = true;
     setBaseline(current => current.status === 'ready' ? current : { status: 'loading' });
     void loadMarketBaseline(evidence.market, evidence.cutoff)
@@ -117,12 +178,12 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
         if (active) setBaseline({ status: 'error', error: error instanceof Error ? error.message : String(error) });
       });
     return () => { active = false; };
-  }, [mode, baselineIsSelf, evidence.market, evidence.cutoff, baselineAttempt]);
+  }, [activeKind, baselineIsSelf, evidence.market, evidence.cutoff, baselineAttempt]);
 
   const baselineSeries = useMemo(() => {
-    if (mode !== 'baseline' || baseline.status !== 'ready') return null;
+    if (activeKind !== 'market' || baseline.status !== 'ready') return null;
     return indexedBaselineSeries(bars, baseline.evidence.bars);
-  }, [mode, baseline, bars]);
+  }, [activeKind, baseline, bars]);
 
   let emptyMessage = 'No observed price sessions fall inside this selected range.';
   if (mode === 'baseline') {
@@ -136,7 +197,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
   }
   const fitKey = `${range}:${mode}:${baselineSeries?.startDate ?? 'pending'}`;
   const change = summary.oneWeekChange;
-  const markerPressed = (marker: typeof markers[number]) => marker.events.every(event => activeSelection.includes(event));
+  const markerPressed = (marker: SecurityMarker) => marker.events.every(event => activeSelection.includes(event));
 
   return <>
     <header className="research-page-header">
@@ -219,47 +280,31 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
               </button>
             ))}
           </div>
-          <div role="group" aria-label="Security chart mode" className="inline-flex rounded-lg border bg-muted/30 p-0.5">
-            <button
-              type="button"
-              aria-pressed={mode === 'price'}
-              className={cn(
-                'research-touch min-h-8 rounded-md px-2.5 text-[11px] font-medium transition-colors',
-                mode === 'price' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted',
-              )}
-              onClick={() => setMode('price')}
-            >
-              Price
-            </button>
-            <button
-              type="button"
-              aria-pressed={mode === 'baseline'}
-              aria-describedby={baselineIsSelf ? baselineReasonId : undefined}
-              disabled={baselineIsSelf}
-              className={cn(
-                'research-touch min-h-8 rounded-md px-2.5 text-[11px] font-medium transition-colors',
-                mode === 'baseline' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted',
-                baselineIsSelf && 'cursor-not-allowed opacity-50',
-              )}
-              onClick={() => setMode('baseline')}
-            >
-              vs baseline
-            </button>
-          </div>
+          <BaselineControl
+            options={baselineOptions}
+            value={activeKind}
+            onChange={changeBaseline}
+            marketLabel={evidence.market === 'us' ? 'US' : 'CN'}
+          />
         </div>
       </div>
 
       {baselineIsSelf && (
         <p
-          id={baselineReasonId}
           role="note"
           data-testid="security-baseline-disabled"
           className="mt-2 rounded-md border border-dashed p-2 text-[11px] leading-5 text-muted-foreground"
         >
-          vs baseline is disabled: {evidence.symbol} is the governed {evidence.market.toUpperCase()} market
-          baseline ({baselineIdentity.label}). Comparing it with itself would add no information.
+          No self-comparison baseline: {evidence.symbol} is the governed {evidence.market.toUpperCase()} market
+          baseline ({baselineIdentity.label}). Price history remains readable.
         </p>
       )}
+
+      <p data-testid="security-baseline-scope" className="mt-2 text-[11px] leading-4 text-muted-foreground">
+        Only the governed {evidence.market.toUpperCase()} market index is selectable for one instrument. A model's
+        declared benchmark is not treated as instrument evidence, so no separate model-benchmark series is fabricated
+        as a baseline.
+      </p>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-y py-2 text-[11px] leading-4 text-muted-foreground">
         <p data-testid="security-chart-baseline">
@@ -269,8 +314,8 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
         <p data-testid="security-chart-basis">
           {mode === 'baseline'
             ? baselineSeries
-              ? `Open-to-open price return, indexed to 100 at ${baselineSeries.startDate} · not total return`
-              : 'Open-to-open price return, indexed to 100 at the first exact common date'
+              ? `Open-to-open price return, indexed to 100 at ${baselineSeries.startDate} – ${baselineSeries.endDate} · not total return`
+              : `Open-to-open price return, indexed to 100 at the first exact common date · ${MARKET_BASELINE_RETURN_DISCLOSURE}`
             : 'Raw OHLC price candles · not split or dividend adjusted'}
         </p>
       </div>
@@ -285,7 +330,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
             <span aria-hidden="true" className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: 'hsl(var(--chart-2))' }} />
             {baselineIdentity.label} · indexed price
           </li>
-          <li>Exact-date observations only · not total return</li>
+          <li>{BASELINE_EXACT_DATE_DISCLOSURE} {MARKET_BASELINE_RETURN_DISCLOSURE}</li>
         </ul>
       )}
 
@@ -305,27 +350,13 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
         </div>
       )}
 
-      <fieldset className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
-        <legend className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Model markers
-        </legend>
-        {models.map(run => {
-          const inRange = visibleEvents.filter(event => event.model_id === run.modelVersionId).length;
-          return (
-            <label key={run.modelVersionId} className="research-touch flex min-h-8 cursor-pointer items-center gap-2 text-xs">
-              <input
-                type="checkbox" className="h-4 w-4 accent-primary"
-                checked={!hidden.includes(run.modelVersionId)}
-                onChange={() => setHidden(values => values.includes(run.modelVersionId)
-                  ? values.filter(id => id !== run.modelVersionId)
-                  : [...values, run.modelVersionId])}
-              />
-              {run.title}
-              <span className="font-mono text-[10px] text-muted-foreground">{inRange} in range</span>
-            </label>
-          );
-        })}
-      </fieldset>
+      <MarkerLegend
+        showSides={sideKeyVisible}
+        models={modelLegend}
+        sideAriaLabel="Marker direction key"
+        modelAriaLabel="Model marker key"
+        className="mt-3"
+      />
 
       <SecurityLightweightChart
         bars={bars}
@@ -336,6 +367,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
         onSelect={setSelected}
         emptyMessage={emptyMessage}
         loading={mode === 'baseline' && (baseline.status === 'loading' || baseline.status === 'idle')}
+        modelColorIndex={modelColorIndex}
       />
 
       {skippedMarkers > 0 && (
@@ -344,6 +376,12 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
           {skippedEvents === 1 ? '' : 's'} fall outside the visible range and are not plotted
           {outsideCoverage > 0 ? `, including ${outsideCoverage} without a matching price session` : ''}. They remain
           in the historical ledger below.
+        </p>
+      )}
+      {outsideCoverage > 0 && (
+        <p role="note" data-testid="security-unmatched-events" className="mt-2 text-[11px] leading-4 text-muted-foreground">
+          {outsideCoverage} model event{outsideCoverage === 1 ? '' : 's'} fall on a date without a published price
+          session and are not plotted. They remain in the historical ledger below.
         </p>
       )}
 
@@ -375,7 +413,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
                       {marker.positive ? 'Buy / increase' : 'Sell / decrease'}
                     </span>
                     <span className="min-w-0 text-muted-foreground">
-                      {marker.events.map(event => `${name(event.model_id)} · ${formatEventAction(event.action)}`).join('; ')}
+                      {marker.models.map(model => `${labelFor(model.modelId)} · ${model.events.map(event => formatEventAction(event.action)).join(', ')}`).join('; ')}
                     </span>
                     <span className="ml-auto font-mono text-[10px] text-muted-foreground">
                       {marker.events.length} event{marker.events.length === 1 ? '' : 's'}
@@ -392,21 +430,15 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
         )}
       </div>
 
-      {activeSelection.length > 0 && (
-        <div
-          data-testid="security-selected-event"
+      {selectedDetail && (
+        <MarkerDetailPanel
+          detail={selectedDetail}
+          testId="security-selected-event"
+          ariaLabel="Selected model markers"
           role="status"
-          aria-live="polite"
-          className="mt-3 space-y-2 rounded-lg border bg-muted/30 p-3 text-sm"
-        >
-          {activeSelection.map((event, index) => (
-            <p key={`${event.model_id}:${event.time}:${index}`}>
-              <strong>{name(event.model_id)} · {event.time} · {formatEventAction(event.action)}</strong><br />
-              Weight {weight(event.previous_weight)} → {weight(event.target_weight)} ·{' '}
-              <span title={event.reason || undefined}>{humanizeEventReason(event.reason)}</span>
-            </p>
-          ))}
-        </div>
+          live
+          onClear={() => setSelected([])}
+        />
       )}
 
       {excludedModels.length > 0 && (
@@ -416,8 +448,8 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
         </p>
       )}
       <p className="mt-3 text-[11px] leading-4 text-muted-foreground">
-        B = buy / increase · S = sell / decrease. Markers use historical ledger dates and do not establish live
-        fills or execution prices.
+        B = buy / increase · S = sell / decrease. Markers are colored by model identity and shaped by direction.
+        {' '}{MARKER_DETAIL_DISCLOSURE}
       </p>
     </section>
 
@@ -454,7 +486,7 @@ function History({ evidence, runs }: { evidence: SecurityEvidence; runs: Governe
                 <td className="whitespace-nowrap font-mono text-[11px]">{event.time}</td>
                 <td className="whitespace-nowrap">
                   <Link className="text-primary underline" to={`/strategies/${encodeURIComponent(event.model_id)}`}>
-                    {name(event.model_id)}
+                    {labelFor(event.model_id)}
                   </Link>
                 </td>
                 <td className="font-semibold" title={event.action}>{formatEventAction(event.action)}</td>
@@ -537,7 +569,7 @@ export function SecurityDetailPage() {
         )}
       </div>
     ) : current?.evidence ? (
-      <History key={`${key}:${current.evidence.source_sha256}`} evidence={current.evidence} runs={workspace.runs} />
+      <SecurityHistory key={`${key}:${current.evidence.source_sha256}`} evidence={current.evidence} runs={workspace.runs} />
     ) : (
       <p className="flex items-center gap-2 p-6 text-sm">
         <Loader2 className="h-4 w-4 animate-spin" />Loading verified price history…

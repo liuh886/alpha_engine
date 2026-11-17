@@ -27,16 +27,17 @@ test('formal instrument link opens one chart-first price history with model mark
   await expect(page.getByRole('button', { name: 'TradingView', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Recharts Classic', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Side-by-side POC', exact: true })).toHaveCount(0);
-  const priceMode = page.getByRole('group', { name: 'Security chart mode' }).getByRole('button', { name: 'Price', exact: true });
-  const baselineMode = page.getByRole('group', { name: 'Security chart mode' }).getByRole('button', { name: 'vs baseline', exact: true });
-  await expect(priceMode).toHaveAttribute('aria-pressed', 'true');
-  await expect(baselineMode).toBeDisabled();
+  const baselineControl = page.getByRole('button', { name: 'US baseline: No baseline', exact: true });
+  await expect(baselineControl).toBeVisible();
   const disabledReason = page.getByTestId('security-baseline-disabled');
   await expect(disabledReason).toBeVisible();
   await expect(disabledReason).toContainText('QQQ is the governed US market baseline');
-  const describedBy = await baselineMode.getAttribute('aria-describedby');
-  expect(describedBy).toBeTruthy();
-  await expect(page.locator(`[id="${describedBy}"]`)).toContainText('Comparing it with itself would add no information');
+  await baselineControl.click();
+  const selfOption = page.getByRole('option', { name: /QQQ/ });
+  await expect(selfOption).toHaveAttribute('aria-disabled', 'true');
+  await expect(selfOption).toContainText('comparing it with itself would add no information');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('security-lightweight-chart-container')).toHaveCount(1);
 
   // The marker list is the keyboard-accessible equivalent of the canvas markers.
   await expect(page.getByRole('list', { name: 'Event markers in range' })).toBeVisible();
@@ -71,7 +72,7 @@ test('formal instrument link opens one chart-first price history with model mark
   expect(errors).toEqual([]);
 });
 
-test('vs baseline indexes the instrument and the governed market index on exact common dates', async ({ page }) => {
+test('the shared baseline control indexes the instrument and the governed market index on exact common dates', async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/#/securities/cn/002594');
@@ -80,30 +81,47 @@ test('vs baseline indexes the instrument and the governed market index on exact 
   await expect(chart).toBeVisible();
   await expect(page.getByTestId('security-lightweight-chart-container')).toHaveCount(1);
 
-  const baselineMode = page.getByRole('group', { name: 'Security chart mode' }).getByRole('button', { name: 'vs baseline', exact: true });
-  await expect(baselineMode).toBeEnabled();
-  await baselineMode.click();
-  await expect(baselineMode).toHaveAttribute('aria-pressed', 'true');
+  const baselineControl = page.getByRole('button', { name: 'CN baseline: No baseline', exact: true });
+  await expect(baselineControl).toBeVisible();
+  await baselineControl.click();
+  await page.getByRole('option', { name: /CSI 300/ }).click();
+  await expect(page.getByRole('button', { name: 'CN baseline: CSI 300 (000300.SH)', exact: true })).toBeVisible();
   await expect(page.getByTestId('security-chart-baseline')).toContainText('CSI 300 (000300.SH)');
   await expect(page.getByTestId('security-chart-baseline')).toContainText('governed CN market index');
   await expect(page.getByTestId('security-chart-basis')).toContainText('Open-to-open price return');
-  await expect(page.getByTestId('security-chart-basis')).toContainText(/indexed to 100 at \d{4}-\d{2}-\d{2}/);
+  await expect(page.getByTestId('security-chart-basis')).toContainText(/indexed to 100 at \d{4}-\d{2}-\d{2} – \d{4}-\d{2}-\d{2}/);
   await expect(page.getByRole('list', { name: 'Chart series' })).toContainText('000300');
   await expect(page.getByRole('list', { name: 'Chart series' })).toContainText('not total return');
   await expect(page.getByTestId('security-lightweight-chart-container')).toHaveCount(1);
   await expect(page.getByTestId('security-chart-basis')).not.toContainText('raw OHLC');
+
+  // Model identity survives the marker grouping and the shared legend.
+  const modelKey = page.getByRole('list', { name: 'Model marker key' });
+  await expect(modelKey).toBeVisible();
+  await expect(modelKey.getByTestId('model-marker-swatch').first()).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Marker direction key' })).toContainText('Buy / increase');
 
   // Markers stay selectable in baseline mode, and a range change keeps the mode.
   const marker = page.getByTestId('security-trade-marker').first();
   await expect(marker).toBeVisible();
   await marker.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('security-selected-event')).toBeVisible();
+  const detail = page.getByTestId('security-selected-event');
+  await expect(detail).toBeVisible();
+  await expect(detail).toContainText('Model');
+  await expect(detail).toContainText('Weight');
+  await expect(detail).toContainText('Historical ledger dates only');
+  await page.screenshot({ path: testInfo.outputPath(`security-marker-detail-${testInfo.project.name}.png`), fullPage: false });
+
   await page.getByRole('button', { name: '3M', exact: true }).click();
   await expect(page).toHaveURL(/[?&]range=3m/);
-  await expect(baselineMode).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'CN baseline: CSI 300 (000300.SH)', exact: true })).toBeVisible();
   await expect(page.getByTestId('security-history-chart')).toHaveAttribute('data-marker-count', /\d+/);
   await expect(page.getByTestId('security-chart-basis')).toContainText('Open-to-open price return');
+
+  await page.getByRole('button', { name: 'Use dark theme', exact: true }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.screenshot({ path: testInfo.outputPath(`security-marker-detail-dark-${testInfo.project.name}.png`), fullPage: false });
 
   await expect(page.locator('vite-error-overlay')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);

@@ -35,6 +35,29 @@ describe('security markers', () => {
     expect(markers[1].events).toHaveLength(1);
   });
 
+  it('retains model identity inside a shared session and direction', () => {
+    const markers = securityMarkers(bars, [
+      event({ model_id: 'model_b', run_id: 'run_b' }),
+      event({ model_id: 'model_a', run_id: 'run_a' }),
+      event({ model_id: 'model_a', run_id: 'run_a', action: 'INCREASE' }),
+    ]);
+    expect(markers).toHaveLength(1);
+    expect(markers[0].models.map(model => model.modelId)).toEqual(['model_a', 'model_b']);
+    expect(markers[0].models[0].events.map(row => row.action)).toEqual(['BUY', 'INCREASE']);
+    expect(markers[0].models[1].events).toHaveLength(1);
+    expect(markers[0].events).toHaveLength(3);
+  });
+
+  it('keeps buy and sell markers for the same model separately attributable', () => {
+    const markers = securityMarkers(bars, [
+      event({ model_id: 'model_a', action: 'BUY' }),
+      event({ model_id: 'model_a', action: 'SELL' }),
+    ]);
+    expect(markers).toHaveLength(2);
+    expect(markers.map(marker => marker.positive)).toEqual([true, false]);
+    expect(markers.every(marker => marker.models[0]?.modelId === 'model_a')).toBe(true);
+  });
+
   it('never moves or invents dates for events without a matching bar', () => {
     const events = [event({ time: '2026-01-03' }), event({ time: '2026-01-05' })];
     const markers = securityMarkers(bars, events);

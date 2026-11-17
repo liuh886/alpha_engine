@@ -10,8 +10,14 @@ const harness = vi.hoisted(() => {
     applyOptions: ReturnType<typeof vi.fn>;
     priceScale: () => { applyOptions: ReturnType<typeof vi.fn> };
   }
+  interface MockPane {
+    paneIndex: () => number;
+  }
   interface MockChart {
     addSeries: ReturnType<typeof vi.fn>;
+    addPane: ReturnType<typeof vi.fn>;
+    removeSeries: ReturnType<typeof vi.fn>;
+    removePane: ReturnType<typeof vi.fn>;
     applyOptions: ReturnType<typeof vi.fn>;
     subscribeClick: ReturnType<typeof vi.fn>;
     subscribeCrosshairMove: ReturnType<typeof vi.fn>;
@@ -26,6 +32,10 @@ const harness = vi.hoisted(() => {
   const charts: MockChart[] = [];
   const plugins: MockPlugin[] = [];
   const series: MockSeries[] = [];
+  const addSeriesCalls: Array<{ definition: unknown; options: unknown; paneIndex: number | undefined }> = [];
+  const removedSeries: MockSeries[] = [];
+  const removedPanes: number[] = [];
+  let paneCount = 1;
 
   const makeSeries = (): MockSeries => {
     const item: MockSeries = {
@@ -39,7 +49,17 @@ const harness = vi.hoisted(() => {
   const createChart = vi.fn((_container: HTMLElement, _options: unknown): MockChart => {
     const timeScale = { fitContent: vi.fn() };
     const chart: MockChart = {
-      addSeries: vi.fn(() => makeSeries()),
+      addSeries: vi.fn((definition: unknown, options: unknown, paneIndex?: number) => {
+        addSeriesCalls.push({ definition, options, paneIndex });
+        return makeSeries();
+      }),
+      addPane: vi.fn((): MockPane => {
+        const index = paneCount;
+        paneCount += 1;
+        return { paneIndex: () => index };
+      }),
+      removeSeries: vi.fn((item: MockSeries) => { removedSeries.push(item); }),
+      removePane: vi.fn((index: number) => { removedPanes.push(index); }),
       applyOptions: vi.fn(),
       subscribeClick: vi.fn(),
       subscribeCrosshairMove: vi.fn(),
@@ -56,7 +76,17 @@ const harness = vi.hoisted(() => {
     plugins.push(plugin);
     return plugin;
   });
-  return { charts, plugins, series, createChart, createSeriesMarkers };
+  return {
+    charts,
+    plugins,
+    series,
+    addSeriesCalls,
+    removedSeries,
+    removedPanes,
+    createChart,
+    createSeriesMarkers,
+    resetPaneCount: () => { paneCount = 1; },
+  };
 });
 
 vi.mock('lightweight-charts', () => ({
@@ -71,6 +101,7 @@ vi.mock('lightweight-charts', () => ({
 }));
 
 import { SecurityLightweightChart } from './SecurityLightweightChart';
+import { chartTheme } from '@/lib/chart-theme';
 
 const bars: SecurityBar[] = [
   { time: '2026-01-05', open: 100, high: 102, low: 99, close: 101, volume: 1000 },
@@ -93,7 +124,12 @@ const event: SecurityEvent = {
   reason: 'frozen rule',
 };
 
-const marker: SecurityMarker = { time: '2026-01-05', positive: true, events: [event] };
+const marker: SecurityMarker = {
+  time: '2026-01-05',
+  positive: true,
+  events: [event],
+  models: [{ modelId: 'model_a', events: [event] }],
+};
 
 const baselineSeries: IndexedBaselineSeries = {
   startDate: '2026-01-05',
@@ -128,6 +164,10 @@ beforeEach(() => {
   harness.charts.length = 0;
   harness.plugins.length = 0;
   harness.series.length = 0;
+  harness.addSeriesCalls.length = 0;
+  harness.removedSeries.length = 0;
+  harness.removedPanes.length = 0;
+  harness.resetPaneCount();
   harness.createChart.mockClear();
   harness.createSeriesMarkers.mockClear();
   document.documentElement.classList.remove('dark');
@@ -195,7 +235,7 @@ describe('SecurityLightweightChart lifecycle', () => {
     const { props, rerender } = renderChart();
     const [candleMarkers, lineMarkers] = harness.plugins;
     expect(candleMarkers.setMarkers).toHaveBeenLastCalledWith([
-      expect.objectContaining({ time: '2026-01-05', position: 'belowBar', shape: 'arrowUp', id: '2026-01-05:buy', size: 1 }),
+      expect.objectContaining({ time: '2026-01-05', position: 'belowBar', shape: 'arrowUp', id: '2026-01-05:buy:model_a', size: 1, modelId: 'model_a' }),
     ]);
     expect(lineMarkers.setMarkers).toHaveBeenLastCalledWith([]);
 
@@ -205,7 +245,7 @@ describe('SecurityLightweightChart lifecycle', () => {
 
     rerender(<SecurityLightweightChart {...props} markers={[marker]} mode="baseline" baselineSeries={baselineSeries} />);
     expect(lineMarkers.setMarkers).toHaveBeenLastCalledWith([
-      expect.objectContaining({ time: '2026-01-05', id: '2026-01-05:buy' }),
+      expect.objectContaining({ time: '2026-01-05', id: '2026-01-05:buy:model_a' }),
     ]);
     expect(candleMarkers.setMarkers).toHaveBeenLastCalledWith([]);
   });
@@ -305,5 +345,67 @@ describe('SecurityLightweightChart lifecycle', () => {
     expect(rows[119]).toHaveTextContent(many[129].time);
     expect(details).toHaveTextContent('Showing the most recent 120 of 130 visible-range sessions');
     expect(details).toHaveTextContent('Raw OHLCV, not split or dividend adjusted.');
+  });
+
+  it('colors model markers from the fixed categorical order', () => {
+    renderChart({ modelColorIndex: new Map([['model_a', 0]]) });
+    const [candleMarkers] = harness.plugins;
+    expect(candleMarkers.setMarkers).toHaveBeenLastCalledWith([
+      expect.objectContaining({ modelId: 'model_a', color: chartTheme(false).modelSeries[0] }),
+    ]);
+  });
+
+  it('adds line and histogram overlays on the price and volume panes without rebuilding', () => {
+    const overlays = [
+      {
+        id: 'sma20',
+        label: 'SMA 20',
+        kind: 'line' as const,
+        pane: 'price' as const,
+        data: [{ time: '2026-01-05', value: 101 }],
+        color: '#123456',
+      },
+      {
+        id: 'volume-ma',
+        label: 'Volume MA',
+        kind: 'histogram' as const,
+        pane: 'volume' as const,
+        data: [{ time: '2026-01-05', value: 1000 }],
+        color: '#654321',
+      },
+    ];
+    const { props, rerender } = renderChart({ overlays });
+    expect(harness.createChart).toHaveBeenCalledTimes(1);
+    expect(harness.addSeriesCalls).toHaveLength(6);
+    expect(harness.addSeriesCalls[4]).toMatchObject({ definition: 'LineSeries', paneIndex: 0 });
+    expect(harness.addSeriesCalls[5]).toMatchObject({ definition: 'HistogramSeries', paneIndex: 0 });
+    expect(harness.addSeriesCalls[5].options).toMatchObject({ priceScaleId: '' });
+    expect(harness.series[4].setData).toHaveBeenLastCalledWith([{ time: '2026-01-05', value: 101 }]);
+    expect(harness.series[5].setData).toHaveBeenLastCalledWith([{ time: '2026-01-05', value: 1000 }]);
+
+    rerender(<SecurityLightweightChart {...props} overlays={[]} />);
+    expect(harness.createChart).toHaveBeenCalledTimes(1);
+    expect(harness.removedSeries).toContain(harness.series[4]);
+    expect(harness.removedSeries).toContain(harness.series[5]);
+  });
+
+  it('creates and removes a dedicated indicator pane for task C overlays', () => {
+    const overlays = [{
+      id: 'rsi',
+      label: 'RSI',
+      kind: 'line' as const,
+      pane: 'indicator' as const,
+      paneId: 'oscillator',
+      data: [{ time: '2026-01-05', value: 55 }],
+      color: '#abcdef',
+    }];
+    const { props, rerender } = renderChart({ overlays });
+    expect(harness.charts[0].addPane).toHaveBeenCalledTimes(1);
+    expect(harness.addSeriesCalls[4]).toMatchObject({ definition: 'LineSeries', paneIndex: 1 });
+    expect(harness.series[4].setData).toHaveBeenLastCalledWith([{ time: '2026-01-05', value: 55 }]);
+
+    rerender(<SecurityLightweightChart {...props} overlays={[]} />);
+    expect(harness.removedSeries).toContain(harness.series[4]);
+    expect(harness.removedPanes).toEqual([1]);
   });
 });

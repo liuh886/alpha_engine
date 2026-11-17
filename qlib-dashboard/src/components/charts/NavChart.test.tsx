@@ -95,6 +95,10 @@ const marker: NavMarker = {
   instruments: ['AAPL', 'MSFT'],
   netWeightDelta: 0.04,
   reasons: ['rebalance'],
+  trades: [
+    { action: 'BUY', instrument: 'AAPL', previousWeight: 0, targetWeight: 0.02, reason: 'rebalance' },
+    { action: 'BUY', instrument: 'MSFT', previousWeight: 0, targetWeight: 0.02, reason: 'rebalance' },
+  ],
 };
 
 const hiddenMarker: NavMarker = {
@@ -104,6 +108,7 @@ const hiddenMarker: NavMarker = {
   instruments: [],
   netWeightDelta: null,
   reasons: [],
+  trades: [],
 };
 
 function chartRows(): Array<Record<string, number | string>> {
@@ -242,8 +247,8 @@ describe('NavChart', () => {
     );
 
     const details = screen.getByRole('list', { name: 'Activity marker details' });
-    expect(within(details).getByText(/Buy, 2 trades/)).toBeInTheDocument();
-    fireEvent.click(within(details).getByRole('button', { name: /Buy, 2 trades/ }));
+    expect(within(details).getByText(/Buy \/ increase, 2 trades/)).toBeInTheDocument();
+    fireEvent.click(within(details).getByRole('button', { name: /Buy \/ increase, 2 trades/ }));
     expect(onMarkerSelect).toHaveBeenCalledTimes(2);
   });
 
@@ -383,7 +388,7 @@ describe('NavChartTooltip', () => {
   it('shows marker context when the hovered date has activity', () => {
     renderTooltip({ markers: [marker], label: '2026-01-02' });
     const block = screen.getByTestId('nav-chart-tooltip-marker');
-    expect(block).toHaveTextContent('Buy · 2 trades');
+    expect(block).toHaveTextContent('Buy / increase · 2 trades');
     expect(block).toHaveTextContent('Instruments: AAPL, MSFT');
     expect(block).toHaveTextContent('Reasons: rebalance');
     expect(block).toHaveTextContent('Net weight change: +4.00%');

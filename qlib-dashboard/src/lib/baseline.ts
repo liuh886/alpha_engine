@@ -29,6 +29,18 @@ export const MARKET_BASELINES: Readonly<Record<BaselineMarket, { symbol: string;
   cn: { symbol: '000300', label: 'CSI 300 (000300.SH)' },
 };
 
+/**
+ * Shared baseline language for every chart page. Both surfaces align on exact
+ * common dates and rebase to 100; only the observation source differs (a formal
+ * report wealth column or governed market bars).
+ */
+export const BASELINE_EXACT_DATE_DISCLOSURE =
+  'Exact common dates only; both series are rebased to 100 at the first common observation.';
+export const MARKET_BASELINE_RETURN_DISCLOSURE =
+  'Open-to-open price return, not total return.';
+export const DECLARED_BENCHMARK_DISCLOSURE =
+  'Formal report benchmark wealth, rebased to 100 at the first common observation; not a tradeable index.';
+
 export interface MarketBar {
   time?: string;
   date?: string;

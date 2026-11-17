@@ -23,6 +23,15 @@ export interface NavTrade {
   reason?: string | null;
 }
 
+/** One retained ledger row behind a marker, kept for the shared detail panel. */
+export interface NavMarkerTrade {
+  action: string;
+  instrument: string | null;
+  previousWeight: number | null;
+  targetWeight: number | null;
+  reason: string | null;
+}
+
 export interface NavMarker {
   date: string;
   side: 'buy' | 'sell' | 'mixed';
@@ -30,6 +39,8 @@ export interface NavMarker {
   instruments: string[];
   netWeightDelta: number | null;
   reasons: string[];
+  /** Exact retained rows aggregated into this marker. */
+  trades: NavMarkerTrade[];
 }
 
 type MarkerMode = 'trade-date' | 'holding-end';
@@ -189,6 +200,7 @@ interface MarkerAggregate {
   instruments: Set<string>;
   reasons: Set<string>;
   netWeightDelta: number | null;
+  trades: NavMarkerTrade[];
 }
 
 /**
@@ -221,6 +233,7 @@ export function joinNavMarkers(
         instruments: new Set<string>(),
         reasons: new Set<string>(),
         netWeightDelta: null,
+        trades: [],
       };
       aggregates.set(date, aggregate);
     }
@@ -240,6 +253,13 @@ export function joinNavMarkers(
     if (previous !== null && target !== null) {
       aggregate.netWeightDelta = (aggregate.netWeightDelta ?? 0) + (target - previous);
     }
+    aggregate.trades.push({
+      action: trade.action,
+      instrument,
+      previousWeight: previous,
+      targetWeight: target,
+      reason,
+    });
   }
 
   return [...aggregates.entries()]
@@ -252,5 +272,6 @@ export function joinNavMarkers(
       instruments: [...aggregate.instruments],
       netWeightDelta: aggregate.netWeightDelta,
       reasons: [...aggregate.reasons],
+      trades: aggregate.trades,
     }));
 }

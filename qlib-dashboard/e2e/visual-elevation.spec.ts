@@ -183,8 +183,8 @@ test('the baseline comparison announces loading through a chart-shaped status, n
     await page.goto('/#/securities/cn/002594');
     await expect(page.getByRole('heading', { name: 'BYD · 002594' })).toBeVisible();
     await expect(page.getByTestId('security-lightweight-chart-container')).toBeVisible();
-    const mode = page.getByRole('group', { name: 'Security chart mode' });
-    await mode.getByRole('button', { name: 'vs baseline', exact: true }).click();
+    await page.getByRole('button', { name: 'CN baseline: No baseline', exact: true }).click();
+    await page.getByRole('option', { name: /CSI 300/ }).click();
 
     const skeleton = page.getByTestId('security-chart-loading');
     await expect(skeleton).toBeVisible();

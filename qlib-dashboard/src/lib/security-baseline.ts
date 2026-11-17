@@ -1,4 +1,10 @@
-import { MARKET_BASELINES, marketNavFromBars, type BaselineMarket } from './baseline';
+import {
+  MARKET_BASELINES,
+  marketNavFromBars,
+  type BaselineKind,
+  type BaselineMarket,
+  type BaselineOption,
+} from './baseline';
 import { alignNavSeries, rebaseNav, type NavPoint } from './nav-series';
 import {
   loadSecurityEvidence,
@@ -19,6 +25,47 @@ export function marketBaseline(market: SecurityMarket): { symbol: string; label:
 
 export function isMarketBaselineInstrument(market: SecurityMarket, symbol: string): boolean {
   return symbol.trim().toUpperCase() === MARKET_BASELINES[market].symbol.toUpperCase();
+}
+
+/**
+ * The security page offers only the governed market index. A bound model's
+ * declared benchmark is not a published market-evidence instrument series, so
+ * no model-benchmark option is fabricated here. When the security itself is the
+ * governed baseline, self-comparison stays visible but unavailable.
+ */
+export function securityBaselineOptions(
+  market: SecurityMarket,
+  { isSelf }: { isSelf: boolean },
+): BaselineOption[] {
+  const identity = MARKET_BASELINES[market];
+  return [
+    {
+      key: `market:${identity.symbol}`,
+      label: identity.label,
+      kind: 'market',
+      market,
+      source: 'market_bars',
+      available: !isSelf,
+      ...(isSelf
+        ? { reason: `This instrument is the governed ${market.toUpperCase()} market baseline; comparing it with itself would add no information.` }
+        : {}),
+    },
+    { key: 'none', label: 'No baseline', kind: 'none', market, available: true },
+  ];
+}
+
+/**
+ * Security pages open in price mode by default. Only an explicit `market`
+ * preference (the only series a single security can compare with) selects the
+ * baseline view; `declared` is not a security baseline and maps to `none`.
+ */
+export function defaultSecurityBaselineKind(
+  options: readonly BaselineOption[],
+  preferred: BaselineKind,
+): BaselineKind {
+  return preferred === 'market' && options.some(option => option.kind === 'market' && option.available)
+    ? 'market'
+    : 'none';
 }
 
 export interface IndexedBaselineSeries {

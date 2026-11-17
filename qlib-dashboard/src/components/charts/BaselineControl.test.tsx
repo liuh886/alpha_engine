@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { BaselineOption } from '@/lib/baseline';
+import { securityBaselineOptions } from '@/lib/security-baseline';
 import { BaselineControl } from './BaselineControl';
 
 // Radix positioning/focus scopes are costly under jsdom and are not the
@@ -173,5 +174,39 @@ describe('BaselineControl', () => {
     fireEvent.click(screen.getByRole('button', { name: 'US baseline: No baseline' }));
     expect(screen.getByRole('status')).toHaveTextContent('No baseline options are available.');
     expect(screen.queryByRole('option')).not.toBeInTheDocument();
+  });
+
+  it('uses the same control with the security option source', () => {
+    const onChange = vi.fn();
+    render(
+      <BaselineControl
+        options={securityBaselineOptions('cn', { isSelf: false })}
+        value="none"
+        onChange={onChange}
+        marketLabel="CN"
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'CN baseline: No baseline' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'CN baseline: No baseline' }));
+    expect(screen.getAllByRole('option')).toHaveLength(2);
+    const market = screen.getByRole('option', { name: /CSI 300/ });
+    expect(market).toHaveTextContent('Market bars');
+    fireEvent.click(market);
+    expect(onChange).toHaveBeenCalledWith('market');
+  });
+
+  it('keeps the governed self-comparison unavailable in the shared control', () => {
+    render(
+      <BaselineControl
+        options={securityBaselineOptions('us', { isSelf: true })}
+        value="none"
+        onChange={vi.fn()}
+        marketLabel="US"
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'US baseline: No baseline' }));
+    const market = screen.getByRole('option', { name: /QQQ/ });
+    expect(market).toHaveAttribute('aria-disabled', 'true');
+    expect(market).toHaveTextContent('governed US market baseline');
   });
 });

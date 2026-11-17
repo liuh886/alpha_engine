@@ -9,15 +9,18 @@ import {
   createChart,
   createSeriesMarkers,
   type AutoscaleInfo,
+  type HistogramSeriesPartialOptions,
   type IChartApi,
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
+  type LineSeriesPartialOptions,
   type MouseEventParams,
   type Time,
 } from 'lightweight-charts';
 import type { SecurityBar, SecurityEvent } from '@/lib/security-evidence';
 import type { SecurityMarker } from '@/lib/security-markers';
 import type { IndexedBaselineSeries } from '@/lib/security-baseline';
+import { overlayPaneKey, toLightweightOverlayData, type SecurityChartOverlay } from '@/lib/security-chart-extensions';
 import { chartTheme, type ChartTheme } from '@/lib/chart-theme';
 import { formatIndexedReturn, formatSecurityPrice } from '@/lib/security-format';
 import { cn } from '@/lib/utils';
@@ -26,6 +29,7 @@ import {
   toLightweightLineData,
   toLightweightMarkers,
   toLightweightVolumeData,
+  type MarkerColorResolver,
 } from '@/lib/lightweight-chart-adapter';
 
 export type SecurityChartMode = 'price' | 'baseline';
@@ -78,6 +82,53 @@ function eventsBySession(markers: readonly SecurityMarker[]): Map<string, Securi
     groups.set(marker.time, events);
   }
   return groups;
+}
+
+type OverlaySeries = ISeriesApi<'Line'> | ISeriesApi<'Histogram'>;
+
+interface OverlayHandle {
+  series: OverlaySeries;
+  kind: SecurityChartOverlay['kind'];
+  paneKey: string;
+}
+
+/** Canvas-safe marker colors: model identity resolves through the theme. */
+function markerColorsFor(
+  theme: ChartTheme,
+  modelColorIndex: ReadonlyMap<string, number> | undefined,
+): MarkerColorResolver {
+  return {
+    modelColor: (modelId: string) => {
+      const index = modelColorIndex?.get(modelId);
+      return typeof index === 'number' && index >= 0
+        ? theme.modelSeries[index] ?? theme.text
+        : theme.text;
+    },
+    fallbackColor: theme.text,
+  };
+}
+
+function overlaySeriesOptions(
+  overlay: SecurityChartOverlay,
+  theme: ChartTheme,
+  visible: boolean,
+): LineSeriesPartialOptions | HistogramSeriesPartialOptions {
+  const common = {
+    color: overlay.color ?? theme.primary,
+    priceLineVisible: false,
+    lastValueVisible: false,
+    crosshairMarkerVisible: false,
+    visible,
+    ...(overlay.priceFormat ? { priceFormat: overlay.priceFormat } : {}),
+  };
+  if (overlay.kind === 'line') {
+    return {
+      ...common,
+      lineWidth: overlay.lineWidth ?? 2,
+      lineStyle: overlay.lineStyle === 'dashed' ? LineStyle.Dashed : LineStyle.Solid,
+    } as LineSeriesPartialOptions;
+  }
+  return common as HistogramSeriesPartialOptions;
 }
 
 function isDarkTheme(): boolean {
@@ -190,6 +241,8 @@ export function SecurityLightweightChart({
   onSelect,
   emptyMessage,
   loading = false,
+  modelColorIndex,
+  overlays = [],
 }: {
   bars: SecurityBar[];
   markers: SecurityMarker[];
@@ -201,6 +254,13 @@ export function SecurityLightweightChart({
   emptyMessage: string;
   /** True while the comparison series is still being read. */
   loading?: boolean;
+  /** Model id -> index in the fixed validated categorical order. */
+  modelColorIndex?: ReadonlyMap<string, number>;
+  /**
+   * Typed extension point for task C: browser-derived indicator lines and
+   * histograms on the price pane, volume pane or a dedicated pane.
+   */
+  overlays?: readonly SecurityChartOverlay[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const handlesRef = useRef<ChartHandles | null>(null);
@@ -209,12 +269,19 @@ export function SecurityLightweightChart({
   const markersRef = useRef<SecurityMarker[]>(markers);
   const modeRef = useRef<SecurityChartMode>(mode);
   const onSelectRef = useRef(onSelect);
+  const modelColorIndexRef = useRef(modelColorIndex);
+  const overlayHandlesRef = useRef<Map<string, OverlayHandle>>(new Map());
+  const overlayPanesRef = useRef<Map<string, number>>(new Map());
   const sessionEventsRef = useRef<Map<string, SecurityEvent[]>>(eventsBySession(markers));
   const [canvasSupported, setCanvasSupported] = useState(true);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  useEffect(() => {
+    modelColorIndexRef.current = modelColorIndex;
+  }, [modelColorIndex]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -338,7 +405,10 @@ export function SecurityLightweightChart({
       instrument.applyOptions({ color: next.primary });
       baseline.applyOptions({ color: next.baseline });
       volume.setData(toLightweightVolumeData(barsRef.current, { up: next.volumeUp, down: next.volumeDown }));
-      const markerData = toLightweightMarkers(markersRef.current, { buy: next.positive, sell: next.negative });
+      const markerData = toLightweightMarkers(
+        markersRef.current,
+        markerColorsFor(next, modelColorIndexRef.current),
+      );
       if (modeRef.current === 'baseline') {
         lineMarkers.setMarkers(markerData);
         candleMarkers.setMarkers([]);
@@ -357,6 +427,8 @@ export function SecurityLightweightChart({
       chart.unsubscribeCrosshairMove(handleCrosshair);
       chart.remove();
       handlesRef.current = null;
+      overlayHandlesRef.current.clear();
+      overlayPanesRef.current.clear();
     };
   }, []);
 
@@ -397,7 +469,7 @@ export function SecurityLightweightChart({
     markersRef.current = markers;
     sessionEventsRef.current = eventsBySession(markers);
     const theme = themeRef.current ?? chartTheme(isDarkTheme());
-    const markerData = toLightweightMarkers(markers, { buy: theme.positive, sell: theme.negative });
+    const markerData = toLightweightMarkers(markers, markerColorsFor(theme, modelColorIndex));
     if (mode === 'baseline') {
       handles.lineMarkers.setMarkers(markerData);
       handles.candleMarkers.setMarkers([]);
@@ -405,7 +477,71 @@ export function SecurityLightweightChart({
       handles.candleMarkers.setMarkers(markerData);
       handles.lineMarkers.setMarkers([]);
     }
-  }, [markers, mode]);
+  }, [markers, mode, modelColorIndex]);
+
+  /**
+   * Indicator/overlay extension point. Series are added and removed in place;
+   * the chart instance is never rebuilt. Panes are append-only per stable
+   * `paneId`, and an indicator pane is removed once none of its overlays remain.
+   */
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles) return;
+    const chart = handles.chart;
+    const theme = themeRef.current ?? chartTheme(isDarkTheme());
+    const live = overlayHandlesRef.current;
+    const wanted = new Map((overlays ?? []).map(overlay => [overlay.id, overlay]));
+
+    for (const [id, handle] of [...live.entries()]) {
+      const next = wanted.get(id);
+      if (!next || next.kind !== handle.kind || overlayPaneKey(next) !== handle.paneKey) {
+        chart.removeSeries(handle.series);
+        live.delete(id);
+      }
+    }
+
+    const ensureIndicatorPane = (paneKey: string): number => {
+      const existing = overlayPanesRef.current.get(paneKey);
+      if (existing !== undefined) return existing;
+      const pane = chart.addPane();
+      const index = pane.paneIndex();
+      overlayPanesRef.current.set(paneKey, index);
+      return index;
+    };
+
+    for (const overlay of overlays ?? []) {
+      const paneKey = overlayPaneKey(overlay);
+      const visible = overlay.visible !== false && (mode === 'price' || overlay.pane === 'indicator');
+      let handle = live.get(overlay.id);
+      if (!handle) {
+        const paneIndex = paneKey === '__main__' ? 0 : ensureIndicatorPane(paneKey);
+        const options = overlaySeriesOptions(overlay, theme, visible);
+        const creationOptions = overlay.pane === 'volume' ? { ...options, priceScaleId: '' } : options;
+        const series = overlay.kind === 'histogram'
+          ? chart.addSeries(HistogramSeries, creationOptions as HistogramSeriesPartialOptions, paneIndex)
+          : chart.addSeries(LineSeries, creationOptions as LineSeriesPartialOptions, paneIndex);
+        if (overlay.pane === 'volume') {
+          series.priceScale().applyOptions({ scaleMargins: overlay.scaleMargins ?? { top: 0.8, bottom: 0 } });
+        } else if (overlay.scaleMargins) {
+          series.priceScale().applyOptions({ scaleMargins: overlay.scaleMargins });
+        }
+        handle = { series, kind: overlay.kind, paneKey };
+        live.set(overlay.id, handle);
+      } else {
+        handle.series.applyOptions(overlaySeriesOptions(overlay, theme, visible));
+      }
+      handle.series.setData(toLightweightOverlayData(overlay));
+    }
+
+    for (const [paneKey, index] of [...overlayPanesRef.current.entries()]) {
+      if ((overlays ?? []).some(overlay => overlayPaneKey(overlay) === paneKey)) continue;
+      chart.removePane(index);
+      overlayPanesRef.current.delete(paneKey);
+      for (const [key, value] of overlayPanesRef.current.entries()) {
+        if (value > index) overlayPanesRef.current.set(key, value - 1);
+      }
+    }
+  }, [overlays, mode]);
 
   useEffect(() => {
     handlesRef.current?.chart.timeScale().fitContent();
