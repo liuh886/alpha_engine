@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { BaselineControl } from '@/components/charts/BaselineControl';
+import { MarkerDetailPanel } from '@/components/charts/MarkerDetailPanel';
 import { NavChart, type NavChartSeries } from '@/components/charts/NavChart';
 import { useBaselinePreference } from '@/hooks/useBaselinePreference';
 import {
+  BASELINE_EXACT_DATE_DISCLOSURE,
+  DECLARED_BENCHMARK_DISCLOSURE,
+  MARKET_BASELINE_RETURN_DISCLOSURE,
   marketNavFromBars,
   navFromBenchmarkField,
   type BaselineKind,
   type BaselineMarket,
   type BaselineOption,
 } from '@/lib/baseline';
+import { baselineOptionsFor, defaultBaselineKindFor, type BaselineOptionSource } from '@/lib/baseline-options';
+import { navMarkerDetail } from '@/lib/chart-markers';
 import { loadFormalNav } from '@/lib/formal-nav';
 import { loadRunSection, type GovernedRunSummary } from '@/lib/governed-run';
 import { readMarketEvidence } from '@/lib/market-evidence-cache';
@@ -19,7 +25,6 @@ import {
   CHART_HORIZONS,
   DEFAULT_CHART_HORIZON,
   coverageReasonText,
-  defaultBaselineKind,
   formatReturn,
   isStale,
   marketBaselineKey,
@@ -31,7 +36,6 @@ import {
   provisionalObservationCount,
   returnTone,
   staleDays,
-  strategyBaselineOptions,
   windowReturns,
   type NavMarkerMode,
 } from '@/lib/strategy-chart';
@@ -48,12 +52,6 @@ function useChartHeight(): number {
     return () => query.removeEventListener?.('change', update);
   }, []);
   return height;
-}
-
-function markerSideLabel(side: NavMarker['side']): string {
-  if (side === 'buy') return 'Buy / increase';
-  if (side === 'sell') return 'Sell / decrease';
-  return 'Buy and sell';
 }
 
 function markerModeLabel(mode: NavMarkerMode): string {
@@ -149,11 +147,16 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
   const nav = useMemo(() => navFromReport(rows), [rows]);
   const windowPoints = useMemo(() => navSeriesForPeriod(nav, period), [nav, period]);
   const coverage = useMemo(() => navHorizonCoverage(nav, period), [nav, period]);
-  const options = useMemo(
-    () => (market ? strategyBaselineOptions({ benchmark: run.benchmark, market }, rows) : []),
+  const baselineSource = useMemo<BaselineOptionSource | null>(
+    () => (market ? { view: 'strategy', run: { benchmark: run.benchmark, market }, rows } : null),
     [market, rows, run.benchmark],
   );
-  const activeKind: BaselineKind = kind ?? (market ? defaultBaselineKind(options, preference[market]) : 'none');
+  const options = useMemo(
+    () => (baselineSource ? baselineOptionsFor(baselineSource) : []),
+    [baselineSource],
+  );
+  const activeKind: BaselineKind = kind
+    ?? (market && baselineSource ? defaultBaselineKindFor(baselineSource, options, preference[market]) : 'none');
   const activeOption = options.find(option => option.kind === activeKind) ?? null;
   const fallbackKind = (): BaselineKind => {
     const previous = previousKind.current;
@@ -236,6 +239,10 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
 
   const markerMode = useMemo(() => navMarkerMode(rows), [rows]);
   const markers = useMemo(() => joinNavMarkers(nav, trades, markerMode), [nav, trades, markerMode]);
+  const selectedMarkerDetail = useMemo(
+    () => (selectedMarker ? navMarkerDetail(selectedMarker, { modelId: run.modelVersionId, label: run.title }) : null),
+    [selectedMarker, run.modelVersionId, run.title],
+  );
   useEffect(() => {
     if (selectedMarker && !markers.some(marker => marker.date === selectedMarker.date)) setSelectedMarker(null);
   }, [markers, selectedMarker]);
@@ -442,51 +449,13 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
               summaryLabel={summaryLabel}
             />
 
-            {selectedMarker && (
-              <div
-                data-testid="strategy-selected-marker"
-                role="status"
-                aria-label="Selected rotation marker"
-                className="mt-3 rounded-lg border bg-muted/20 p-3 text-xs"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-semibold">
-                    {selectedMarker.date} · {markerSideLabel(selectedMarker.side)} · {selectedMarker.count}{' '}
-                    {selectedMarker.count === 1 ? 'trade' : 'trades'}
-                  </p>
-                  <button
-                    type="button"
-                    className="min-h-8 rounded border bg-card px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                    onClick={() => setSelectedMarker(null)}
-                  >
-                    Clear marker
-                  </button>
-                </div>
-                <dl className="mt-2 divide-y rounded-md border bg-card">
-                  <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-2 px-2 py-1.5">
-                    <dt className="text-muted-foreground">Instruments</dt>
-                    <dd className="break-words font-mono">
-                      {selectedMarker.instruments.length > 0 ? selectedMarker.instruments.join(', ') : 'Not retained'}
-                    </dd>
-                  </div>
-                  <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-2 px-2 py-1.5">
-                    <dt className="text-muted-foreground">Net weight change</dt>
-                    <dd className="font-mono">
-                      {selectedMarker.netWeightDelta === null ? 'Not retained' : formatReturn(selectedMarker.netWeightDelta)}
-                    </dd>
-                  </div>
-                  <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-2 px-2 py-1.5">
-                    <dt className="text-muted-foreground">Reasons</dt>
-                    <dd className="break-words">
-                      {selectedMarker.reasons.length > 0 ? selectedMarker.reasons.join('; ') : 'No reason retained'}
-                    </dd>
-                  </div>
-                </dl>
-                <p className="mt-2 text-[10px] leading-4 text-muted-foreground">
-                  Retained research trade marker. It does not establish an execution price, live fill or order
-                  instruction.
-                </p>
-              </div>
+            {selectedMarkerDetail && (
+              <MarkerDetailPanel
+                detail={selectedMarkerDetail}
+                testId="strategy-selected-marker"
+                ariaLabel="Selected rotation marker"
+                onClear={() => setSelectedMarker(null)}
+              />
             )}
 
             <div className="mt-3 space-y-1 text-[11px] leading-4 text-muted-foreground">
@@ -512,8 +481,13 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
               )}
               {activeKind === 'market' && (
                 <p>
-                  {baselineName} uses governed open-to-open price bars; it is a price comparison, not a total-return
-                  index.
+                  {baselineName} · governed market bars · {MARKET_BASELINE_RETURN_DISCLOSURE}{' '}
+                  {BASELINE_EXACT_DATE_DISCLOSURE}
+                </p>
+              )}
+              {activeKind === 'declared' && (
+                <p>
+                  {baselineName} · {DECLARED_BENCHMARK_DISCLOSURE}
                 </p>
               )}
             </div>

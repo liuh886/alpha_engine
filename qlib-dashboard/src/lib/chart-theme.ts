@@ -4,6 +4,34 @@
  * Fallbacks mirror the light/dark token values in `index.css`; they exist only
  * for environments (canvas, jsdom) where computed style tokens are unavailable.
  */
+/**
+ * Fixed categorical order for model-attributed series (markers and future
+ * overlays). The order is validated with the data-viz palette method against
+ * the project's own `--chart-*` tokens: adjacent CVD separation >= 8 and
+ * normal-vision separation >= 15 in both modes. `chart-2` is deliberately not
+ * in the first five slots because its light token sits below the chroma floor;
+ * `chart-1` is last so a model hue rarely collides with the instrument line.
+ * Assign by model identity, never by list position or rank.
+ */
+export const MODEL_SERIES_TOKENS = ['chart-4', 'chart-6', 'chart-3', 'chart-5', 'chart-1'] as const;
+
+const MODEL_SERIES_FALLBACKS: Readonly<Record<'light' | 'dark', readonly string[]>> = {
+  light: [
+    'hsl(22, 88%, 46%)',
+    'hsl(199, 75%, 38%)',
+    'hsl(38, 95%, 37%)',
+    'hsl(329, 55%, 48%)',
+    'hsl(210, 90%, 40%)',
+  ],
+  dark: [
+    'hsl(24, 92%, 65%)',
+    'hsl(199, 82%, 64%)',
+    'hsl(42, 92%, 60%)',
+    'hsl(330, 66%, 70%)',
+    'hsl(207, 88%, 66%)',
+  ],
+};
+
 export interface ChartTheme {
   text: string;
   grid: string;
@@ -21,6 +49,11 @@ export interface ChartTheme {
   positive: string;
   /** Sell/decrease marker. */
   negative: string;
+  /**
+   * Concrete model-series colors in `MODEL_SERIES_TOKENS` order. Canvas cannot
+   * resolve CSS custom properties, so these are read and converted per theme.
+   */
+  modelSeries: readonly string[];
 }
 
 function token(name: string): string {
@@ -47,6 +80,8 @@ function hsla(raw: string, alpha: number, fallback: string): string {
 }
 
 export function chartTheme(isDark: boolean): ChartTheme {
+  const mode = isDark ? 'dark' : 'light';
+  const modelFallbacks = MODEL_SERIES_FALLBACKS[mode];
   return {
     text: hsl(token('chart-axis'), isDark ? '#94a3b8' : '#64748b'),
     grid: hsl(token('chart-grid'), isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.07)'),
@@ -60,5 +95,6 @@ export function chartTheme(isDark: boolean): ChartTheme {
     volumeDown: hsla(token('negative'), 0.4, isDark ? 'rgba(242, 128, 128, 0.4)' : 'rgba(225, 29, 72, 0.4)'),
     positive: hsl(token('positive'), isDark ? 'hsl(152, 52%, 58%)' : 'hsl(152, 62%, 28%)'),
     negative: hsl(token('negative'), isDark ? 'hsl(0, 78%, 68%)' : 'hsl(0, 68%, 43%)'),
+    modelSeries: MODEL_SERIES_TOKENS.map((name, index) => hsl(token(name), modelFallbacks[index] ?? modelFallbacks[0])),
   };
 }

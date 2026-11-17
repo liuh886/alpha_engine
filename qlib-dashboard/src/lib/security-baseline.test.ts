@@ -10,11 +10,13 @@ vi.mock('./security-evidence', async importOriginal => {
 
 import {
   clearMarketBaselineCache,
+  defaultSecurityBaselineKind,
   indexedBaselineSeries,
   isMarketBaselineInstrument,
   loadMarketBaseline,
   marketBaseline,
   securityBaselineCacheKey,
+  securityBaselineOptions,
 } from './security-baseline';
 
 const bar = (time: string, open: number): SecurityBar => ({
@@ -47,6 +49,30 @@ describe('security baseline identity', () => {
     expect(isMarketBaselineInstrument('us', 'SPY')).toBe(false);
     expect(isMarketBaselineInstrument('cn', '000300')).toBe(true);
     expect(isMarketBaselineInstrument('cn', 'QQQ')).toBe(false);
+  });
+
+  it('offers only the governed market baseline plus none, with no fabricated model benchmark', () => {
+    expect(securityBaselineOptions('cn', { isSelf: false })).toMatchObject([
+      { key: 'market:000300', label: 'CSI 300 (000300.SH)', kind: 'market', source: 'market_bars', available: true },
+      { key: 'none', kind: 'none', available: true },
+    ]);
+    expect(securityBaselineOptions('us', { isSelf: false })).toHaveLength(2);
+  });
+
+  it('keeps self-comparison visible but unavailable', () => {
+    const options = securityBaselineOptions('us', { isSelf: true });
+    const market = options.find(option => option.kind === 'market');
+    expect(market).toMatchObject({ available: false });
+    expect(market?.reason).toContain('governed US market baseline');
+    expect(defaultSecurityBaselineKind(options, 'market')).toBe('none');
+    expect(defaultSecurityBaselineKind(options, 'declared')).toBe('none');
+  });
+
+  it('opens in price mode unless the market baseline was explicitly preferred', () => {
+    const options = securityBaselineOptions('cn', { isSelf: false });
+    expect(defaultSecurityBaselineKind(options, 'declared')).toBe('none');
+    expect(defaultSecurityBaselineKind(options, 'none')).toBe('none');
+    expect(defaultSecurityBaselineKind(options, 'market')).toBe('market');
   });
 
   it('intersects exact dates and rebases both series to 100 at the first common date', () => {

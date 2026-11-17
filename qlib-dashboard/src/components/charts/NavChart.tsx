@@ -12,6 +12,11 @@ import {
 } from 'recharts';
 import { alignNavSeries, type NavMarker, type NavPoint } from '@/lib/nav-series';
 import {
+  markerSideColor,
+  markerSideLabel,
+} from '@/lib/chart-markers';
+import { MarkerLegend } from '@/components/charts/MarkerLegend';
+import {
   isPerformanceDate,
   type HorizonCoverage,
   type HorizonCoverageReason,
@@ -152,12 +157,6 @@ function formatAxisDate(date: string): string {
   return AXIS_DATE_FORMAT.format(new Date(`${date}T00:00:00Z`));
 }
 
-function markerSideLabel(side: NavMarker['side']): string {
-  if (side === 'buy') return 'Buy';
-  if (side === 'sell') return 'Sell';
-  return 'Mixed';
-}
-
 function markerSummary(marker: NavMarker): string {
   const tradeLabel = marker.count === 1 ? 'trade' : 'trades';
   const parts = [`${markerSideLabel(marker.side)}, ${marker.count} ${tradeLabel}`, `date ${marker.date}`];
@@ -165,32 +164,6 @@ function markerSummary(marker: NavMarker): string {
   if (marker.reasons.length > 0) parts.push(`reasons ${marker.reasons.join('; ')}`);
   if (marker.netWeightDelta !== null) parts.push(`net weight change ${PERCENT_FORMAT.format(marker.netWeightDelta)}`);
   return parts.join('; ');
-}
-
-const MARKER_KEY: ReadonlyArray<{ side: NavMarker['side']; label: string }> = [
-  { side: 'buy', label: 'Buy / increase' },
-  { side: 'sell', label: 'Sell / decrease' },
-  { side: 'mixed', label: 'Buy and sell' },
-];
-
-function markerColor(side: NavMarker['side']): string {
-  if (side === 'buy') return 'hsl(var(--positive))';
-  if (side === 'sell') return 'hsl(var(--negative))';
-  return 'hsl(var(--warning))';
-}
-
-/** Small static glyph for the legend; the chart uses the same geometry. */
-export function MarkerGlyph({ side }: { side: NavMarker['side'] }) {
-  const points = side === 'buy'
-    ? '5,1 10,10 0,10'
-    : side === 'sell'
-      ? '0,0 10,0 5,9'
-      : '5,0 10,5 5,10 0,5';
-  return (
-    <svg aria-hidden="true" viewBox="0 0 10 10" className="h-2.5 w-2.5" fill={markerColor(side)}>
-      <polygon points={points} />
-    </svg>
-  );
 }
 
 interface ActivityMarkerShapeProps {
@@ -207,7 +180,7 @@ interface ActivityMarkerShapeProps {
  */
 export function ActivityMarkerShape({ cx, cy, side = 'buy', onClick }: ActivityMarkerShapeProps) {
   if (typeof cx !== 'number' || typeof cy !== 'number' || !Number.isFinite(cx) || !Number.isFinite(cy)) return null;
-  const color = markerColor(side);
+  const color = markerSideColor(side);
   const stroke = 'hsl(var(--card))';
   return (
     <g
@@ -477,7 +450,7 @@ export function NavChart({
                     x={marker.date}
                     y={value}
                     r={6}
-                    fill={markerColor(marker.side)}
+                    fill={markerSideColor(marker.side)}
                     stroke="hsl(var(--card))"
                     strokeWidth={1}
                     onClick={onMarkerSelect ? () => onMarkerSelect(marker) : undefined}
@@ -543,15 +516,7 @@ export function NavChart({
       </figcaption>
 
       {visibleMarkers.length > 0 && (
-        <ul aria-label="Activity marker key" className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
-          {MARKER_KEY.map(item => (
-            <li key={item.side} className="inline-flex items-center gap-1.5">
-              <MarkerGlyph side={item.side} />
-              {item.label}
-            </li>
-          ))}
-          <li>Markers appear only on retained observation dates.</li>
-        </ul>
+        <MarkerLegend showSides sideAriaLabel="Activity marker key" className="mt-1" />
       )}
 
       {visibleMarkers.length > 0 && (

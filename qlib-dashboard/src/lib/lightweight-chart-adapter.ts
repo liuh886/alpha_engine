@@ -30,6 +30,8 @@ export interface LightweightMarkerData {
   id: string;
   size: number;
   events: SecurityMarker['events'];
+  /** Model identity retained so the legend and detail can attribute the mark. */
+  modelId?: string;
 }
 
 export interface VolumeColors {
@@ -37,9 +39,10 @@ export interface VolumeColors {
   down: string;
 }
 
-export interface MarkerColors {
-  buy: string;
-  sell: string;
+/** Resolve a marker color by model identity, with an ink fallback. */
+export interface MarkerColorResolver {
+  modelColor: (modelId: string) => string;
+  fallbackColor: string;
 }
 
 export function toLightweightCandleData(bars: readonly SecurityBar[]): LightweightCandleData[] {
@@ -71,23 +74,46 @@ export function toLightweightLineData(points: readonly NavPoint[]): LightweightL
 
 /**
  * Buy/increase is an upward triangle below the bar; sell/decrease is a downward
- * triangle above it. One marker per exact date/side, with a stable id and the
- * library default size of 1. Colors come from the caller's theme tokens.
+ * triangle above it. Multiple models on the same session and direction each get
+ * their own marker (the chart stacks same-time markers) colored by model
+ * identity, so they are never collapsed into one unnamed mark. Direction stays
+ * in the shape and position, not in color.
  */
 export function toLightweightMarkers(
   markers: readonly SecurityMarker[],
-  colors: MarkerColors,
+  colors: MarkerColorResolver,
 ): LightweightMarkerData[] {
-  return markers
-    .slice()
-    .sort((left, right) => left.time.localeCompare(right.time))
-    .map(marker => ({
-      time: marker.time,
-      position: marker.positive ? ('belowBar' as const) : ('aboveBar' as const),
-      color: marker.positive ? colors.buy : colors.sell,
-      shape: marker.positive ? ('arrowUp' as const) : ('arrowDown' as const),
-      id: `${marker.time}:${marker.positive ? 'buy' : 'sell'}`,
-      size: 1,
-      events: marker.events,
-    }));
+  const output: LightweightMarkerData[] = [];
+  for (const marker of markers) {
+    const direction = marker.positive ? 'buy' : 'sell';
+    if (marker.models.length === 0) {
+      output.push({
+        time: marker.time,
+        position: marker.positive ? ('belowBar' as const) : ('aboveBar' as const),
+        color: colors.fallbackColor,
+        shape: marker.positive ? ('arrowUp' as const) : ('arrowDown' as const),
+        id: `${marker.time}:${direction}:unattributed`,
+        size: 1,
+        events: marker.events,
+      });
+      continue;
+    }
+    for (const model of marker.models) {
+      output.push({
+        time: marker.time,
+        position: marker.positive ? ('belowBar' as const) : ('aboveBar' as const),
+        color: colors.modelColor(model.modelId),
+        shape: marker.positive ? ('arrowUp' as const) : ('arrowDown' as const),
+        id: `${marker.time}:${direction}:${model.modelId}`,
+        size: 1,
+        events: model.events,
+        modelId: model.modelId,
+      });
+    }
+  }
+  return output.sort((left, right) =>
+    left.time.localeCompare(right.time)
+    || Number(left.position === 'aboveBar') - Number(right.position === 'aboveBar')
+    || (left.modelId ?? '').localeCompare(right.modelId ?? ''),
+  );
 }

@@ -46,11 +46,35 @@ describe('chart theme', () => {
     tokens({});
     const light = chartTheme(false);
     const dark = chartTheme(true);
-    for (const value of Object.values(light)) expect(value).toMatch(/^(hsl|rgba|#)/);
-    for (const value of Object.values(dark)) expect(value).toMatch(/^(hsl|rgba|#)/);
+    for (const value of Object.values(light)) {
+      if (typeof value === 'string') expect(value).toMatch(/^(hsl|rgba|#)/);
+    }
+    for (const value of Object.values(dark)) {
+      if (typeof value === 'string') expect(value).toMatch(/^(hsl|rgba|#)/);
+    }
     expect(dark.text).not.toBe(light.text);
     expect(dark.primary).not.toBe(light.primary);
     expect(dark.candleUp).not.toBe(light.candleUp);
+  });
+
+  it('resolves the fixed model-series order in both modes', () => {
+    tokens({
+      '--chart-4': '22 88% 46%',
+      '--chart-6': '199 75% 38%',
+      '--chart-3': '38 95% 37%',
+      '--chart-5': '329 55% 48%',
+      '--chart-1': '210 90% 40%',
+    });
+    expect(chartTheme(false).modelSeries).toEqual([
+      'hsl(22, 88%, 46%)',
+      'hsl(199, 75%, 38%)',
+      'hsl(38, 95%, 37%)',
+      'hsl(329, 55%, 48%)',
+      'hsl(210, 90%, 40%)',
+    ]);
+    tokens({});
+    expect(chartTheme(true).modelSeries).toHaveLength(5);
+    expect(chartTheme(false).modelSeries).toHaveLength(5);
   });
 
   it('uses a translucent fallback for volume when the token is missing', () => {

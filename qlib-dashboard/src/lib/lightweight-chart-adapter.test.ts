@@ -37,7 +37,10 @@ const mockEvents: SecurityEvent[] = [
   },
 ];
 
-const markerColors = { buy: 'hsl(152, 62%, 28%)', sell: 'hsl(0, 68%, 43%)' };
+const markerColors = {
+  modelColor: (modelId: string) => modelId === 'qqq_model' ? 'hsl(210, 90%, 40%)' : 'hsl(0, 0%, 40%)',
+  fallbackColor: 'hsl(0, 0%, 40%)',
+};
 const volumeColors = { up: 'hsla(152, 62%, 28%, 0.4)', down: 'hsla(0, 68%, 43%, 0.4)' };
 
 describe('lightweight-chart-adapter', () => {
@@ -80,7 +83,7 @@ describe('lightweight-chart-adapter', () => {
     ]);
   });
 
-  it('maps security markers to upward/downward triangles with stable ids and size', () => {
+  it('maps security markers to one model-attributed triangle per model with stable ids and size', () => {
     const markers = securityMarkers(mockBars, mockEvents);
     const lcMarkers = toLightweightMarkers(markers, markerColors);
     expect(lcMarkers).toHaveLength(2);
@@ -88,15 +91,36 @@ describe('lightweight-chart-adapter', () => {
     const buy = lcMarkers.find(marker => marker.time === '2026-07-29')!;
     expect(buy.position).toBe('belowBar');
     expect(buy.shape).toBe('arrowUp');
-    expect(buy.color).toBe(markerColors.buy);
-    expect(buy.id).toBe('2026-07-29:buy');
+    expect(buy.color).toBe('hsl(210, 90%, 40%)');
+    expect(buy.id).toBe('2026-07-29:buy:qqq_model');
+    expect(buy.modelId).toBe('qqq_model');
     expect(buy.size).toBe(1);
 
     const sell = lcMarkers.find(marker => marker.time === '2026-07-31')!;
     expect(sell.position).toBe('aboveBar');
     expect(sell.shape).toBe('arrowDown');
-    expect(sell.color).toBe(markerColors.sell);
-    expect(sell.id).toBe('2026-07-31:sell');
+    expect(sell.color).toBe('hsl(210, 90%, 40%)');
+    expect(sell.id).toBe('2026-07-31:sell:qqq_model');
+    expect(sell.modelId).toBe('qqq_model');
     expect(sell.size).toBe(1);
+  });
+
+  it('keeps two models on the same session and direction as separate colored marks', () => {
+    const markers = securityMarkers(mockBars, [
+      mockEvents[0],
+      { ...mockEvents[0], model_id: 'second_model', run_id: 'run_2' },
+    ]);
+    const colors = {
+      modelColor: (modelId: string) => modelId === 'qqq_model' ? '#111111' : '#222222',
+      fallbackColor: '#333333',
+    };
+    const lcMarkers = toLightweightMarkers(markers, colors);
+    expect(lcMarkers).toHaveLength(2);
+    expect(lcMarkers.map(marker => marker.modelId)).toEqual(['qqq_model', 'second_model']);
+    expect(lcMarkers.map(marker => marker.id)).toEqual([
+      '2026-07-29:buy:qqq_model',
+      '2026-07-29:buy:second_model',
+    ]);
+    expect(lcMarkers.map(marker => marker.color)).toEqual(['#111111', '#222222']);
   });
 });

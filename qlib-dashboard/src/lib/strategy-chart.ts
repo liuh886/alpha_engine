@@ -211,7 +211,7 @@ export function strategyBaselineOptions(run: BaselineRunIdentity, rows: ReportRo
 }
 
 /** Persisted preference when usable, otherwise declared when usable, else none. */
-export function defaultBaselineKind(options: BaselineOption[], preferred: BaselineKind): BaselineKind {
+export function defaultBaselineKind(options: readonly BaselineOption[], preferred: BaselineKind): BaselineKind {
   const usable = (kind: BaselineKind) => options.some(option => option.kind === kind && option.available);
   if (usable(preferred)) return preferred;
   if (usable('declared')) return 'declared';
