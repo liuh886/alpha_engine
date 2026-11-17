@@ -18,6 +18,22 @@ export interface SecurityChartOverlayPriceFormat {
   formatter?: (value: number) => string;
 }
 
+/**
+ * Theme-resolved categorical roles for governed indicators. The renderer maps
+ * these to concrete canvas colors from `chart-theme`, so a dark-mode switch
+ * repaints the overlays without the caller re-reading CSS custom properties.
+ * `positive`/`negative` are reserved polarity cues, and `muted` is annotation
+ * ink for the volume moving average.
+ */
+export type OverlayColorRole =
+  | 'indicator-1'
+  | 'indicator-2'
+  | 'indicator-3'
+  | 'indicator-4'
+  | 'positive'
+  | 'negative'
+  | 'muted';
+
 export interface SecurityChartOverlay {
   /** Stable identity; the chart updates this series in place. */
   id: string;
@@ -33,6 +49,8 @@ export interface SecurityChartOverlay {
   paneId?: string;
   /** Concrete canvas color (CSS custom properties cannot resolve in canvas). */
   color?: string;
+  /** Theme-resolved role; takes precedence over `color` when provided. */
+  colorRole?: OverlayColorRole;
   lineWidth?: 1 | 2 | 3 | 4;
   lineStyle?: 'solid' | 'dashed';
   priceFormat?: SecurityChartOverlayPriceFormat;

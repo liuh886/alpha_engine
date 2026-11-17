@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GovernedRunSummary } from '@/lib/governed-run';
@@ -49,24 +49,32 @@ vi.mock('@radix-ui/react-popover', () => {
   };
 });
 
-const mocks = vi.hoisted(() => ({ loadMarketBaseline: vi.fn() }));
+const mocks = vi.hoisted(() => ({ loadMarketBaseline: vi.fn(), readMarketEvidence: vi.fn() }));
 
 vi.mock('@/lib/security-baseline', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/security-baseline')>();
   return { ...actual, loadMarketBaseline: mocks.loadMarketBaseline };
 });
 
+vi.mock('@/lib/market-evidence-cache', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/market-evidence-cache')>();
+  return { ...actual, readMarketEvidence: mocks.readMarketEvidence };
+});
+
 vi.mock('@/components/SecurityLightweightChart', () => ({
-  SecurityLightweightChart: ({ mode, markers, modelColorIndex }: {
+  SecurityLightweightChart: ({ mode, markers, modelColorIndex, overlays }: {
     mode: string;
     markers: unknown[];
     modelColorIndex?: Map<string, number>;
+    overlays?: readonly { id: string }[];
   }) => (
     <div
       data-testid="security-chart-stub"
       data-mode={mode}
       data-markers={markers.length}
       data-model-colors={modelColorIndex ? [...modelColorIndex.keys()].join(',') : ''}
+      data-overlays={(overlays ?? []).map(overlay => overlay.id).join(',')}
+      data-overlay-count={(overlays ?? []).length}
     />
   ),
 }));
@@ -90,6 +98,12 @@ const baselineBars = [
   { time: '2026-01-05', open: 201, high: 204, low: 200, close: 203, volume: 2200 },
   { time: '2026-01-06', open: 203, high: 205, low: 202, close: 204, volume: 1900 },
 ];
+
+const longBars = Array.from({ length: 40 }, (_, index) => {
+  const time = new Date(Date.UTC(2025, 10, 1 + index)).toISOString().slice(0, 10);
+  const close = 100 + Math.sin(index / 3) * 10;
+  return { time, open: close, high: close + 1, low: close - 1, close, volume: 1000 + index };
+});
 
 const evidence = (overrides: Partial<SecurityEvidence> = {}): SecurityEvidence => ({
   market: 'us',
@@ -151,6 +165,10 @@ function renderHistory(runs: GovernedRunSummary[] = [run], value: SecurityEviden
 beforeEach(() => {
   window.localStorage.clear();
   mocks.loadMarketBaseline.mockReset();
+  mocks.readMarketEvidence.mockReset();
+  mocks.readMarketEvidence.mockRejectedValue(
+    new Error('This instrument has no published price history in this market.'),
+  );
 });
 
 describe('SecurityAsOfMetrics', () => {
@@ -210,5 +228,71 @@ describe('security baseline control', () => {
     fireEvent.click(screen.getByRole('button', { name: 'US baseline: No baseline' }));
     expect(screen.getByRole('option', { name: /QQQ/ })).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-mode', 'price');
+  });
+});
+
+describe('governed indicators', () => {
+  it('offers the instrument entries and defaults to one SMA 20 price overlay', async () => {
+    renderHistory([run], evidence({ bars: longBars }));
+    const chart = screen.getByTestId('security-chart-stub');
+    await waitFor(() => expect(chart).toHaveAttribute('data-overlays', 'instrument_sma_20:value'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'US indicators: 1 active' }));
+    const group = screen.getByRole('group', { name: 'US chart indicators' });
+    for (const label of [
+      'SMA 20', 'SMA 50', 'SMA 200', 'EMA 12', 'EMA 26', 'RSI 14',
+      'MACD 12/26/9', 'Bollinger 20/2', 'Volume SMA 20', 'VIX', 'VIX SMA 20',
+    ]) {
+      expect(within(group).getByText(label, { exact: true })).toBeInTheDocument();
+    }
+    expect(within(group).getByRole('button', { name: /^SMA 20 Price pane/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('indicator-legend')).toHaveTextContent('SMA 20');
+    expect(screen.getByTestId('indicator-disclosure')).toHaveTextContent('not a signal');
+  });
+
+  it('adds a dedicated indicator pane series on toggle without remounting the chart', async () => {
+    renderHistory([run], evidence({ bars: longBars }));
+    const chart = screen.getByTestId('security-chart-stub');
+    fireEvent.click(screen.getByRole('button', { name: 'US indicators: 1 active' }));
+    fireEvent.click(screen.getByRole('button', { name: /RSI 14/ }));
+
+    await waitFor(() => expect(chart).toHaveAttribute(
+      'data-overlays',
+      'instrument_sma_20:value,instrument_rsi_14:value',
+    ));
+    expect(screen.getByTestId('security-chart-stub')).toBe(chart);
+    expect(screen.getByTestId('indicator-legend')).toHaveTextContent('RSI 14');
+  });
+
+  it('reports insufficient history as an omitted series with the exact reason', async () => {
+    renderHistory();
+    await waitFor(() => expect(screen.getByTestId('indicator-unavailable')).toBeInTheDocument());
+    const note = screen.getByTestId('indicator-unavailable');
+    expect(note).toHaveTextContent('SMA 20 omitted.');
+    expect(note).toHaveTextContent('Indicator needs 20 observations but received 3.');
+    expect(screen.queryByTestId('indicator-legend')).not.toBeInTheDocument();
+  });
+
+  it('offers VIX on a US chart and states the withdrawn data plane rather than fabricating a series', async () => {
+    renderHistory([run], evidence({ bars: longBars }));
+    await waitFor(() => expect(screen.getByTestId('indicator-vix-unavailable')).toBeInTheDocument());
+    expect(mocks.readMarketEvidence).toHaveBeenCalledWith('us', 'VIX');
+    const note = screen.getByTestId('indicator-vix-unavailable');
+    expect(note).toHaveTextContent('VIX unavailable.');
+    expect(note).toHaveTextContent('no published price history');
+    expect(note).toHaveTextContent('No substitute series is shown.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'US indicators: 1 active' }));
+    const group = screen.getByRole('group', { name: 'US chart indicators' });
+    expect(within(group).getByRole('button', { name: /^VIX Unavailable/ })).toHaveTextContent('Unavailable');
+  });
+
+  it('never offers VIX or reads a cross-market series on a CN chart', async () => {
+    renderHistory([run], evidence({ market: 'cn', symbol: '002594', name: 'BYD', bars: longBars }));
+    expect(mocks.readMarketEvidence).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'CN indicators: 1 active' }));
+    expect(screen.queryByText('VIX', { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText('VIX SMA 20', { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('indicator-vix-unavailable')).not.toBeInTheDocument();
   });
 });

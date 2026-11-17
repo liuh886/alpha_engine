@@ -77,6 +77,27 @@ describe('chart theme', () => {
     expect(chartTheme(false).modelSeries).toHaveLength(5);
   });
 
+  it('resolves the indicator order separately from model identity in both modes', () => {
+    tokens({
+      '--indicator-1': '248 62% 58%',
+      '--indicator-2': '159 73% 40%',
+      '--indicator-3': '23 67% 31%',
+      '--indicator-4': '334 80% 40%',
+    });
+    expect(chartTheme(false).indicatorSeries).toEqual([
+      'hsl(248, 62%, 58%)',
+      'hsl(159, 73%, 40%)',
+      'hsl(23, 67%, 31%)',
+      'hsl(334, 80%, 40%)',
+    ]);
+    tokens({});
+    const dark = chartTheme(true);
+    expect(dark.indicatorSeries).toHaveLength(4);
+    expect(dark.indicatorSeries).not.toEqual(chartTheme(false).indicatorSeries);
+    // Indicators never borrow a model-series identity hue.
+    for (const color of dark.indicatorSeries) expect(chartTheme(true).modelSeries).not.toContain(color);
+  });
+
   it('uses a translucent fallback for volume when the token is missing', () => {
     tokens({});
     expect(chartTheme(false).volumeUp).toMatch(/^rgba\(/);

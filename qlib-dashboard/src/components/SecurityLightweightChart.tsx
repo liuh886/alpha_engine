@@ -20,7 +20,7 @@ import {
 import type { SecurityBar, SecurityEvent } from '@/lib/security-evidence';
 import type { SecurityMarker } from '@/lib/security-markers';
 import type { IndexedBaselineSeries } from '@/lib/security-baseline';
-import { overlayPaneKey, toLightweightOverlayData, type SecurityChartOverlay } from '@/lib/security-chart-extensions';
+import { overlayPaneKey, toLightweightOverlayData, type OverlayColorRole, type SecurityChartOverlay } from '@/lib/security-chart-extensions';
 import { chartTheme, type ChartTheme } from '@/lib/chart-theme';
 import { formatIndexedReturn, formatSecurityPrice } from '@/lib/security-format';
 import { cn } from '@/lib/utils';
@@ -108,13 +108,22 @@ function markerColorsFor(
   };
 }
 
+/** Canvas-safe indicator role colors; resolved per theme, never from CSS vars. */
+function overlayRoleColor(role: OverlayColorRole, theme: ChartTheme): string {
+  if (role === 'positive') return theme.positive;
+  if (role === 'negative') return theme.negative;
+  if (role === 'muted') return theme.text;
+  const index = Number(role.slice('indicator-'.length)) - 1;
+  return theme.indicatorSeries[index] ?? theme.primary;
+}
+
 function overlaySeriesOptions(
   overlay: SecurityChartOverlay,
   theme: ChartTheme,
   visible: boolean,
 ): LineSeriesPartialOptions | HistogramSeriesPartialOptions {
   const common = {
-    color: overlay.color ?? theme.primary,
+    color: overlay.colorRole ? overlayRoleColor(overlay.colorRole, theme) : overlay.color ?? theme.primary,
     priceLineVisible: false,
     lastValueVisible: false,
     crosshairMarkerVisible: false,
@@ -274,6 +283,8 @@ export function SecurityLightweightChart({
   const overlayPanesRef = useRef<Map<string, number>>(new Map());
   const sessionEventsRef = useRef<Map<string, SecurityEvent[]>>(eventsBySession(markers));
   const [canvasSupported, setCanvasSupported] = useState(true);
+  /** Bumped on every theme change so overlays repaint their role colors. */
+  const [themeTick, setThemeTick] = useState(0);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -416,6 +427,7 @@ export function SecurityLightweightChart({
         candleMarkers.setMarkers(markerData);
         lineMarkers.setMarkers([]);
       }
+      setThemeTick(tick => tick + 1);
     };
 
     const observer = new MutationObserver(() => applyTheme(chartTheme(isDarkTheme())));
@@ -541,7 +553,7 @@ export function SecurityLightweightChart({
         if (value > index) overlayPanesRef.current.set(key, value - 1);
       }
     }
-  }, [overlays, mode]);
+  }, [overlays, mode, themeTick]);
 
   useEffect(() => {
     handlesRef.current?.chart.timeScale().fitContent();

@@ -50,6 +50,13 @@
     --chart-4: 22 88% 46%;
     --chart-5: 329 55% 48%;
     --chart-6: 199 75% 38%;
+    /* Governed chart indicators. A distinct fixed categorical order, validated
+       against the light card surface with the data-viz palette method and kept
+       apart from the model-series identity tokens above. */
+    --indicator-1: 248 62% 58%;
+    --indicator-2: 159 73% 40%;
+    --indicator-3: 23 67% 31%;
+    --indicator-4: 334 80% 40%;
     --chart-grid: 220 16% 90%;
     --chart-axis: 220 9% 42%;
 
@@ -104,6 +111,11 @@
     --chart-4: 24 92% 65%;
     --chart-5: 330 66% 70%;
     --chart-6: 199 82% 64%;
+    /* Indicator hues are selected for the dark card surface, not auto-flipped. */
+    --indicator-1: 247 69% 72%;
+    --indicator-2: 159 73% 36%;
+    --indicator-3: 24 59% 45%;
+    --indicator-4: 335 62% 61%;
     --chart-grid: 220 14% 17%;
     --chart-axis: 217 12% 66%;
 
