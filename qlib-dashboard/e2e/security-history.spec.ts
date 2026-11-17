@@ -72,6 +72,54 @@ test('formal instrument link opens one chart-first price history with model mark
   expect(errors).toEqual([]);
 });
 
+test('governed indicators toggle on the security chart and VIX is disclosed unavailable', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/securities/us/QQQ');
+  await expect(page.getByRole('heading', { name: 'QQQ', exact: true })).toBeVisible();
+
+  // Default: one governed SMA 20 line, browser-derived and disclosed.
+  await expect(page.getByTestId('indicator-legend')).toContainText('SMA 20');
+  await expect(page.getByTestId('indicator-disclosure')).toContainText('not a signal');
+  await expect(page.getByTestId('security-lightweight-chart-container')).toHaveCount(1);
+
+  const control = page.getByRole('button', { name: 'US indicators: 1 active', exact: true });
+  await control.focus();
+  await expect(control).toBeFocused();
+  await page.keyboard.press('Enter');
+  const group = page.getByRole('group', { name: 'US chart indicators' });
+  await expect(group).toBeVisible();
+
+  // Registry-driven picks, including the unavailable US VIX market indicator.
+  await expect(group.getByText('SMA 200', { exact: true })).toBeVisible();
+  await expect(group.getByText('MACD 12/26/9', { exact: true })).toBeVisible();
+  await expect(group.getByText('Volume SMA 20', { exact: true })).toBeVisible();
+  await expect(group.getByText('VIX SMA 20', { exact: true })).toBeVisible();
+  await expect(group.getByRole('button', { name: /^VIX Unavailable/ })).toBeVisible();
+  await expect(page.getByTestId('indicator-vix-unavailable')).toContainText('VIX unavailable.');
+  await expect(page.getByTestId('indicator-vix-unavailable')).toContainText('no published price history');
+
+  const rsiToggle = group.getByRole('button', { name: /^RSI 14/ });
+  await expect(rsiToggle).toHaveAttribute('aria-pressed', 'false');
+  await rsiToggle.click();
+  await expect(rsiToggle).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Escape');
+
+  await expect(page.getByTestId('indicator-legend')).toContainText('RSI 14');
+  await expect(page.getByTestId('security-lightweight-chart-container')).toHaveCount(1);
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+
+  await page.getByTestId('security-lightweight-chart-container').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath(`indicator-overlays-${testInfo.project.name}.png`), fullPage: false });
+
+  await page.getByRole('button', { name: 'Use dark theme', exact: true }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.getByTestId('security-lightweight-chart-container').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath(`indicator-overlays-dark-${testInfo.project.name}.png`), fullPage: false });
+  expect(errors).toEqual([]);
+});
+
 test('the shared baseline control indexes the instrument and the governed market index on exact common dates', async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));

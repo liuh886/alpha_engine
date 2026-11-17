@@ -408,4 +408,38 @@ describe('SecurityLightweightChart lifecycle', () => {
     expect(harness.removedSeries).toContain(harness.series[4]);
     expect(harness.removedPanes).toEqual([1]);
   });
+
+  it('resolves indicator colour roles from the theme and repaints on theme change', async () => {
+    const overlays = [
+      {
+        id: 'sma',
+        label: 'SMA 20',
+        kind: 'line' as const,
+        pane: 'price' as const,
+        colorRole: 'indicator-1' as const,
+        data: [{ time: '2026-01-05', value: 101 }],
+      },
+      {
+        id: 'macd-hist',
+        label: 'MACD histogram +',
+        kind: 'histogram' as const,
+        pane: 'indicator' as const,
+        paneId: 'macd',
+        colorRole: 'positive' as const,
+        data: [{ time: '2026-01-05', value: 2 }],
+      },
+    ];
+    renderChart({ overlays });
+    const light = chartTheme(false);
+    expect(harness.addSeriesCalls[4].options).toMatchObject({ color: light.indicatorSeries[0] });
+    expect(harness.addSeriesCalls[5].options).toMatchObject({ color: light.positive });
+
+    act(() => document.documentElement.classList.add('dark'));
+    await waitFor(() => {
+      expect(harness.series[4].applyOptions).toHaveBeenCalledWith(
+        expect.objectContaining({ color: chartTheme(true).indicatorSeries[0] }),
+      );
+    });
+    expect(harness.createChart).toHaveBeenCalledTimes(1);
+  });
 });

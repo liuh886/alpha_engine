@@ -3,6 +3,8 @@ import { Link, useOutletContext, useParams, useSearchParams } from 'react-router
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { SecurityLightweightChart, type SecurityChartMode } from '@/components/SecurityLightweightChart';
 import { BaselineControl } from '@/components/charts/BaselineControl';
+import { IndicatorControl } from '@/components/charts/IndicatorControl';
+import { IndicatorNotes } from '@/components/charts/IndicatorNotes';
 import { MarkerDetailPanel } from '@/components/charts/MarkerDetailPanel';
 import { MarkerLegend } from '@/components/charts/MarkerLegend';
 import { useBaselinePreference } from '@/hooks/useBaselinePreference';
@@ -20,6 +22,16 @@ import {
   modelColorIndexMap,
   securityMarkerDetail,
 } from '@/lib/chart-markers';
+import {
+  DEFAULT_INSTRUMENT_INDICATORS,
+  buildInstrumentIndicatorOverlays,
+  buildMarketIndicatorOverlays,
+  instrumentIndicatorOptions,
+  marketIndicatorOptions,
+  type MarketSeriesStatus,
+} from '@/lib/indicator-overlays';
+import type { IndicatorPoint } from '@/lib/indicators';
+import { readMarketEvidence } from '@/lib/market-evidence-cache';
 import {
   boundSecurityEvents,
   loadSecurityEvidence,
@@ -98,6 +110,12 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
   const [kind, setKind] = useState<BaselineKind | null>(null);
   const [baseline, setBaseline] = useState<BaselineState>({ status: 'idle' });
   const [baselineAttempt, setBaselineAttempt] = useState(0);
+  const [indicators, setIndicators] = useState<string[]>([...DEFAULT_INSTRUMENT_INDICATORS]);
+  const [vix, setVix] = useState<{
+    status: MarketSeriesStatus;
+    points?: readonly IndicatorPoint[];
+    reason?: string;
+  }>({ status: 'idle' });
   const { preference, setPreference } = useBaselinePreference();
 
   const models = useMemo(
@@ -168,6 +186,55 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
       : [...values, assignment.modelId]),
   }));
 
+  const indicatorOptions = useMemo(() => {
+    const instrumentOptions = instrumentIndicatorOptions().map(option => ({ ...option, available: true }));
+    const marketOptions = marketIndicatorOptions(evidence.market).map(option => ({
+      ...option,
+      available: vix.status === 'ready',
+      ...(vix.status === 'unavailable' && vix.reason ? { reason: vix.reason } : {}),
+    }));
+    return [...instrumentOptions, ...marketOptions];
+  }, [evidence.market, vix]);
+
+  const instrumentOverlays = useMemo(
+    () => buildInstrumentIndicatorOverlays({
+      market: evidence.market,
+      bars: evidence.bars,
+      visibleBars: bars,
+      enabled: indicators,
+    }),
+    [evidence.bars, evidence.market, bars, indicators],
+  );
+  const marketOverlays = useMemo(
+    () => buildMarketIndicatorOverlays({
+      market: evidence.market,
+      status: vix.status,
+      series: vix.status === 'ready' ? vix.points : undefined,
+      unavailableReason: vix.reason,
+      visibleBars: bars,
+      enabled: indicators,
+    }),
+    [evidence.market, vix, bars, indicators],
+  );
+  const indicatorOverlays = useMemo(
+    () => [...instrumentOverlays.overlays, ...marketOverlays.overlays],
+    [instrumentOverlays.overlays, marketOverlays.overlays],
+  );
+  const indicatorLegend = useMemo(
+    () => [...instrumentOverlays.legend, ...marketOverlays.legend],
+    [instrumentOverlays.legend, marketOverlays.legend],
+  );
+  const unavailableIndicators = useMemo(
+    () => [...instrumentOverlays.unavailable, ...marketOverlays.unavailable],
+    [instrumentOverlays.unavailable, marketOverlays.unavailable],
+  );
+  const marketIndicatorNote = evidence.market === 'us' && vix.status === 'unavailable'
+    ? `VIX unavailable. ${vix.reason ?? 'The governed US VIX series has not been published.'} No substitute series is shown.`
+    : undefined;
+  const toggleIndicator = (id: string) => setIndicators(current => current.includes(id)
+    ? current.filter(value => value !== id)
+    : [...current, id]);
+
   useEffect(() => {
     if (activeKind !== 'market' || baselineIsSelf) return;
     let active = true;
@@ -179,6 +246,37 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
       });
     return () => { active = false; };
   }, [activeKind, baselineIsSelf, evidence.market, evidence.cutoff, baselineAttempt]);
+
+  /**
+   * The governed VIX market series belongs to the US market only. The data
+   * plane is currently withdrawn, so the read resolves to `unavailable` and the
+   * UI states the reason; nothing is substituted, interpolated or fetched from
+   * another provider. A CN chart never requests it.
+   */
+  useEffect(() => {
+    if (evidence.market !== 'us') {
+      setVix({ status: 'unavailable', reason: 'VIX is a US market indicator; CN charts never offer a cross-market overlay.' });
+      return;
+    }
+    let active = true;
+    setVix({ status: 'loading' });
+    void readMarketEvidence('us', 'VIX')
+      .then(vixEvidence => {
+        if (!active) return;
+        setVix({
+          status: 'ready',
+          points: vixEvidence.bars.map(bar => ({ time: bar.time, value: bar.close })),
+        });
+      })
+      .catch(error => {
+        if (!active) return;
+        setVix({
+          status: 'unavailable',
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      });
+    return () => { active = false; };
+  }, [evidence.market]);
 
   const baselineSeries = useMemo(() => {
     if (activeKind !== 'market' || baseline.status !== 'ready') return null;
@@ -286,6 +384,12 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
             onChange={changeBaseline}
             marketLabel={evidence.market === 'us' ? 'US' : 'CN'}
           />
+          <IndicatorControl
+            options={indicatorOptions}
+            selected={indicators}
+            onToggle={toggleIndicator}
+            marketLabel={evidence.market === 'us' ? 'US' : 'CN'}
+          />
         </div>
       </div>
 
@@ -368,6 +472,13 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
         emptyMessage={emptyMessage}
         loading={mode === 'baseline' && (baseline.status === 'loading' || baseline.status === 'idle')}
         modelColorIndex={modelColorIndex}
+        overlays={indicatorOverlays}
+      />
+
+      <IndicatorNotes
+        legend={indicatorLegend}
+        unavailable={unavailableIndicators}
+        marketNote={marketIndicatorNote}
       />
 
       {skippedMarkers > 0 && (
