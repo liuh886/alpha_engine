@@ -6,6 +6,41 @@ type FormalManifest = { comparability_key?: { start: string; end: string }; sect
 type FormalSummary = { display_name?: string; model_version_id?: string };
 type MarketEvidenceCatalog = { symbols?: Array<{ symbol?: string }> };
 
+type StockRankingCatalog = { cutoff?: string; symbols?: Array<{ symbol?: string; roles?: string[] }> };
+type StockRankingProjection = {
+  market?: string;
+  cutoff?: string;
+  rows?: Array<{
+    symbol?: string;
+    as_of?: string;
+    cutoff?: string;
+    returns?: Record<string, { value?: number | null; reason?: string | null }>;
+  }>;
+};
+
+const STOCK_RANKING_PERIODS = ['1w', '1m', '3m', '1y'] as const;
+type StockRankingPeriod = (typeof STOCK_RANKING_PERIODS)[number];
+
+async function loadStockRankingProjection(page: Page, market: 'us' | 'cn'): Promise<StockRankingProjection> {
+  const response = await page.request.get(`/data/stock-rankings/${market}.json`);
+  expect(response.ok()).toBeTruthy();
+  return response.json() as Promise<StockRankingProjection>;
+}
+
+/** Mirrors the browser ranking: selected return descending, missing last, then symbol. */
+function rankedStockSymbols(projection: StockRankingProjection, period: StockRankingPeriod): string[] {
+  const order = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0);
+  return [...(projection.rows ?? [])].sort((left, right) => {
+    const leftValue = left.returns?.[period]?.value ?? null;
+    const rightValue = right.returns?.[period]?.value ?? null;
+    if (leftValue === null && rightValue === null) return order(String(left.symbol), String(right.symbol));
+    if (leftValue === null) return 1;
+    if (rightValue === null) return -1;
+    if (rightValue !== leftValue) return rightValue - leftValue;
+    return order(String(left.symbol), String(right.symbol));
+  }).slice(0, 20).map((row) => String(row.symbol));
+}
+
 /** The governed S&P 500 series is optional in checked-in data until its refresh lands. */
 async function isSpxPublished(page: Page): Promise<boolean> {
   const response = await page.request.get('/data/market-evidence/us/catalog.json');
@@ -76,6 +111,103 @@ test('the homepage opens daily research and reads only the formal operating surf
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
   await page.screenshot({ path: testInfo.outputPath('focused-daily-overview.png'), fullPage: false });
+});
+
+test('Today ranks US and China candidates separately with security click-through', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
+  await page.goto('/#/app');
+
+  const region = page.getByRole('region', { name: 'Stock rankings' });
+  await expect(region).toBeVisible();
+  await expect(region.getByTestId('stock-rankings-caption')).toHaveText(
+    'Close-to-close price return, not total return. Ranked within each market; not a recommendation.',
+  );
+  const usPanel = region.getByTestId('stock-ranking-us');
+  const cnPanel = region.getByTestId('stock-ranking-cn');
+  await expect(usPanel.getByRole('heading', { name: 'US stocks · Top 20' })).toBeVisible();
+  await expect(cnPanel.getByRole('heading', { name: 'China stocks · Top 20' })).toBeVisible();
+
+  const [usProjection, cnProjection, usCatalog, cnCatalog] = await Promise.all([
+    loadStockRankingProjection(page, 'us'),
+    loadStockRankingProjection(page, 'cn'),
+    page.request.get('/data/market-evidence/us/catalog.json').then(response => response.json() as Promise<StockRankingCatalog>),
+    page.request.get('/data/market-evidence/cn/catalog.json').then(response => response.json() as Promise<StockRankingCatalog>),
+  ]);
+
+  for (const [market, projection, catalog] of [
+    ['us', usProjection, usCatalog],
+    ['cn', cnProjection, cnCatalog],
+  ] as const) {
+    const candidates = (catalog.symbols ?? [])
+      .filter(row => (row.roles ?? []).includes('selected_pool_candidate'))
+      .map(row => String(row.symbol)).sort();
+    const projected = (projection.rows ?? []).map(row => String(row.symbol)).sort();
+    // Candidate filtering: only the governed candidate cross-section is ranked.
+    expect(projected).toEqual(candidates);
+    expect(projection.market).toBe(market);
+    expect(projection.cutoff).toBe(catalog.cutoff);
+    const nonCandidates = (catalog.symbols ?? [])
+      .filter(row => !(row.roles ?? []).includes('selected_pool_candidate'))
+      .map(row => String(row.symbol));
+    expect((projection.rows ?? []).some(row => nonCandidates.includes(String(row.symbol)))).toBe(false);
+    for (const row of projection.rows ?? []) {
+      for (const period of STOCK_RANKING_PERIODS) {
+        const cell = row.returns?.[period];
+        expect(cell).toBeTruthy();
+        if (cell?.value === null) expect(cell.reason).toBeTruthy();
+        if (typeof cell?.value === 'number') expect(Number.isFinite(cell.value)).toBe(true);
+      }
+      expect(row.as_of).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  }
+
+  // Default 1M ordering in each panel.
+  await expect(usPanel.getByRole('link')).toHaveCount(20);
+  await expect(cnPanel.getByRole('link')).toHaveCount(20);
+  const firstUsMonth = rankedStockSymbols(usProjection, '1m')[0];
+  const firstCnMonth = rankedStockSymbols(cnProjection, '1m')[0];
+  await expect(usPanel.getByRole('link').first()).toHaveAttribute('data-testid', `stock-row-us-${firstUsMonth}`);
+  await expect(cnPanel.getByRole('link').first()).toHaveAttribute('data-testid', `stock-row-cn-${firstCnMonth}`);
+
+  // Every row links within its own market and only to its own projected symbols.
+  for (const [market, panel, projection] of [
+    ['us', usPanel, usProjection],
+    ['cn', cnPanel, cnProjection],
+  ] as const) {
+    const symbols = new Set((projection.rows ?? []).map(row => String(row.symbol)));
+    const links = panel.getByRole('link');
+    const count = await links.count();
+    for (let index = 0; index < count; index += 1) {
+      const link = links.nth(index);
+      const testId = String(await link.getAttribute('data-testid'));
+      const symbol = testId.slice(`stock-row-${market}-`.length);
+      expect(symbols.has(symbol)).toBe(true);
+      expect(await link.getAttribute('href')).toBe(`#/securities/${market}/${encodeURIComponent(symbol)}`);
+    }
+  }
+
+  // The selector is shared and re-ranks both panels.
+  await region.getByRole('button', { name: '1Y', exact: true }).click();
+  await expect(region.getByRole('button', { name: '1Y', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const firstUsYear = rankedStockSymbols(usProjection, '1y')[0];
+  const firstCnYear = rankedStockSymbols(cnProjection, '1y')[0];
+  await expect(usPanel.getByRole('link').first()).toHaveAttribute('data-testid', `stock-row-us-${firstUsYear}`);
+  await expect(cnPanel.getByRole('link').first()).toHaveAttribute('data-testid', `stock-row-cn-${firstCnYear}`);
+
+  // A row opens the instrument page for its own market.
+  await usPanel.getByRole('link').first().click();
+  await expect.poll(() => new URL(page.url()).hash).toBe(`#/securities/us/${firstUsYear}`);
+  await expect(page.getByRole('main')).toContainText(firstUsYear);
+
+  await page.goto('/#/app');
+  await expect(page.getByRole('region', { name: 'Stock rankings' })).toBeVisible();
+  const revisited = page.getByRole('region', { name: 'Stock rankings' });
+  await revisited.getByRole('heading', { name: 'Stock rankings' }).scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+  expect(errors).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath('stock-rankings.png'), fullPage: false });
 });
 
 test('pending catalog and operations reads show verification rather than empty or denied states', async ({ page }, testInfo) => {

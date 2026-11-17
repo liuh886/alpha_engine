@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { buildFormalNavProjection } from './formal-nav-projection.mjs';
 import { projectPerformanceContext } from './formal-performance-context.mjs';
 import { publishDerivedMetrics } from './public-derived-metrics.mjs';
+import { SELECTED_POOL_CANDIDATE_ROLE, buildStockRankingsProjection } from './stock-rankings-projection.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const dashboardRoot = resolve(scriptDir, '..');
@@ -225,6 +226,10 @@ console.log(`Published ${runDirectories.length} catalog-active formal Model Run 
 // create another data source/evaluator for an instrument drill-down.
 const marketSource = join(repositoryRoot, 'data', 'research', 'market_evidence');
 const marketTarget = join(dashboardRoot, 'public', 'data', 'market-evidence');
+// Compact per-market candidate rankings. Prices stay in the security evidence
+// projection; this file carries observed returns only and is regenerated from
+// the same verified bytes on every sync.
+const stockRankingsTarget = join(dashboardRoot, 'public', 'data', 'stock-rankings');
 const bindings = await Promise.all(publicCatalog.records.map(async (record) => {
   const body = await readFile(join(targetRoot, record.manifest_path));
   if (digest(body) !== record.manifest_sha256) throw new Error('Formal manifest digest changed during security projection');
@@ -237,12 +242,15 @@ const bindings = await Promise.all(publicCatalog.records.map(async (record) => {
   };
 }));
 await rm(marketTarget, { recursive: true, force: true });
+await rm(stockRankingsTarget, { recursive: true, force: true });
+await mkdir(stockRankingsTarget, { recursive: true });
 for (const market of ['us', 'cn']) {
   const body = await readFile(join(marketSource, market, 'catalog.json'));
   const source = JSON.parse(body);
   if (source.market !== market || source.research_only !== true || source.trade_ready !== false) throw new Error('Invalid market price source boundary');
   const formalBindings = bindings.filter((binding) => binding.market === market);
   const symbols = [];
+  const candidateEvidence = [];
   await mkdir(join(marketTarget, market, 'symbols'), { recursive: true });
   for (const row of source.symbols) {
     if (!/^[A-Za-z0-9._-]+$/.test(row.symbol) || row.path !== `symbols/${row.symbol}.json`) throw new Error('Unsafe security source path');
@@ -267,6 +275,10 @@ for (const market of ['us', 'cn']) {
       ...row, sha256: digest(encoded), source_sha256: row.sha256,
       formal_event_count: events.length, factor_series_available: false,
     });
+    // Use the already verified and parsed payload; never re-read the source.
+    if (Array.isArray(row.roles) && row.roles.includes(SELECTED_POOL_CANDIDATE_ROLE)) {
+      candidateEvidence.push({ symbol: row.symbol, name: row.name, roles: row.roles, bars: value.bars });
+    }
   }
   const projection = {
     schema_version: source.schema_version, view: 'security_detail_v1', evidence_type: source.evidence_type,
@@ -275,6 +287,11 @@ for (const market of ['us', 'cn']) {
   };
   await writeFile(join(marketTarget, market, 'catalog.json'), JSON.stringify(projection) + '\n', 'utf8');
   console.log(`Published ${symbols.length} compact ${market.toUpperCase()} price histories with exact formal model bindings.`);
+
+  const rankings = buildStockRankingsProjection({ market, cutoff: source.cutoff, symbols: candidateEvidence });
+  const rankingsEncoded = JSON.stringify(rankings) + '\n';
+  await writeFile(join(stockRankingsTarget, `${market}.json`), rankingsEncoded, 'utf8');
+  console.log(`Projected ${rankings.rows.length} ${market.toUpperCase()} candidate stock rankings (${Buffer.byteLength(rankingsEncoded, 'utf8')} bytes).`);
 }
 
 // Publish sealed derived metrics last: every validation binds against the final

@@ -5,8 +5,10 @@ import { BenchmarkMarketCards } from '@/components/BenchmarkMarketCards';
 import { DailyResearchBrief } from '@/components/DailyResearchBrief';
 import { ModelRankingTable } from '@/components/ModelRankingTable';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
+import { StockRankingsSection } from '@/components/StockRankingsSection';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import { useModelRanking } from '@/hooks/useModelRanking';
+import { useStockRankings } from '@/hooks/useStockRankings';
 import { briefHeadline, buildBriefEntries, nextReviewLabel, summarizeBrief } from '@/lib/research-brief';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 
@@ -16,6 +18,7 @@ const Racetrack = lazy(() => import('@/components/racetrack/RacetrackWorkspace')
 function TodayWorkspace({ onOpenRacetrack }: { onOpenRacetrack: () => void }) {
   const { operations } = useOutletContext<RunWorkspaceContext>();
   const ranking = useModelRanking(operations.formalRuns, { includeIndices: true, includeExcess: false });
+  const stockRankings = useStockRankings();
   const access = useAccessControl();
   const entries = buildBriefEntries(operations.formalRuns, operations.snapshots, operations.loading, access);
   const summary = summarizeBrief(entries, operations.loading, Boolean(access.loading || access.policyLoading));
@@ -62,6 +65,12 @@ function TodayWorkspace({ onOpenRacetrack }: { onOpenRacetrack: () => void }) {
         caption="Model ranking by market and horizon"
       />
     </section>
+
+    <StockRankingsSection
+      projections={stockRankings.projections}
+      loading={stockRankings.loading}
+      issues={stockRankings.issues}
+    />
 
     <DailyResearchBrief
       runs={operations.formalRuns}
