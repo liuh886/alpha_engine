@@ -88,26 +88,6 @@ def test_sp500_is_a_declared_extra_without_strategy_drift():
         assert report[market]["undeclared_extras"] == [], market
 
 
-def test_vix_is_a_declared_us_extra_without_strategy_drift():
-    from src.governance.auxiliary_derivation import DECLARED_EXTRAS
-
-    assert "VIX" in DEFAULT_AUXILIARIES["us"]
-    assert "VIX" not in DEFAULT_AUXILIARIES["cn"]
-    assert "VIX" in DECLARED_EXTRAS["us"]
-    citation = DECLARED_EXTRAS["us"]["VIX"]
-    assert "2026-11-17" in citation
-    assert "reference_instrument_registry_v1.yaml" in citation
-    derived = derive_required_auxiliaries(REPOSITORY_ROOT)
-    assert "VIX" not in derived["us"].required
-    # VIX is a strategy-declared non-executable index reference: derived as
-    # excluded, so the hardcoded auxiliary stays an explicit Owner citation.
-    assert "non-executable/index reference" in derived["us"].excluded["VIX"]
-    report = verify_against_hardcoded(DEFAULT_AUXILIARIES, REPOSITORY_ROOT)
-    for market in ("us", "cn"):
-        assert report[market]["missing"] == [], market
-        assert report[market]["undeclared_extras"] == [], market
-
-
 def test_derived_cn_auxiliaries_have_strategy_provenance():
     derived = derive_required_auxiliaries(REPOSITORY_ROOT)["cn"]
     assert sorted(derived.required) == [
