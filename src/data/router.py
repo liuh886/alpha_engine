@@ -25,12 +25,15 @@ class RouterAttempt:
     independent_group: str | None = None
     circuit_breaker_open: bool = False
     requested_end_present: bool | None = None
+    source_provenance: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
         payload["schema_errors"] = list(self.schema_errors)
         if self.requested_end_present is None:
             payload.pop("requested_end_present")
+        if self.source_provenance is None:
+            payload.pop("source_provenance")
         return payload
 
 
@@ -275,6 +278,7 @@ class MarketDataRouter:
                         first_date=first_date,
                         last_date=last_date,
                         requested_end_present=True if target is not None else None,
+                        source_provenance=result.provenance,
                         **context,
                     )
                 )

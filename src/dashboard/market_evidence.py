@@ -518,6 +518,11 @@ def build_market_evidence(
         raise MarketEvidenceError(f"selected-pool provider is not publication eligible: {market}")
     if str(manifest.get("market", "")) != market:
         raise MarketEvidenceError("provider manifest market mismatch")
+    optional_auxiliary_gaps = [
+        row
+        for row in (manifest.get("optional_auxiliary_gaps") or [])
+        if isinstance(row, dict)
+    ]
 
     records = [row for row in manifest.get("records", []) if isinstance(row, dict)]
     symbols = [str(row.get("symbol", "")).strip().upper() for row in records if row.get("symbol")]
@@ -589,6 +594,9 @@ def build_market_evidence(
                 ),
                 "catalog_sha256": _sha256_file(output_root / "catalog.json"),
                 "input_identity_sha256": input_identity,
+                "optional_auxiliary_gaps": reusable_catalog.get(
+                    "optional_auxiliary_gaps", []
+                ),
                 "reused": True,
             }
     market_factor_ids = [
@@ -733,6 +741,7 @@ def build_market_evidence(
         "factor_diagnostics_path": "factor-diagnostics.json",
         "factor_diagnostics_sha256": factor_stats_sha,
         "factor_library_sha256": library.source_sha256,
+        "optional_auxiliary_gaps": optional_auxiliary_gaps,
         "series_factor_group": SERIES_FACTOR_GROUP[market],
         "input_identity_sha256": input_identity,
         "symbol_count": len(catalog_rows),
@@ -748,5 +757,6 @@ def build_market_evidence(
         "factor_count": len(market_factor_ids),
         "catalog_sha256": catalog_sha,
         "input_identity_sha256": input_identity,
+        "optional_auxiliary_gaps": optional_auxiliary_gaps,
         "reused": False,
     }
