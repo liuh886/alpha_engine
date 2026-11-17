@@ -398,15 +398,20 @@ def test_repository_formal_bundle_v2_projects_current_market_models() -> None:
     assert any(row["model_id"] == "us_x1_3" for row in events["BE"])
 
 
-def _us_provider_root_with_sp500(tmp_path: Path) -> Path:
+def _us_provider_root_with_auxiliary(
+    tmp_path: Path,
+    *,
+    symbol: str = "SPX",
+    vendor_symbol: str = "^GSPC",
+) -> Path:
     source = selected_pool_price_source("us")
     source["candidate_symbols"] = ["QQQ"]
     source["candidate_count"] = 1
     source["benchmark"] = "QQQ"
-    source["selected_providers"] = {"QQQ": "yfinance", "SPX": "yfinance"}
-    source["targets"] = ["QQQ", "SPX"]
+    source["selected_providers"] = {"QQQ": "yfinance", symbol: "yfinance"}
+    source["targets"] = ["QQQ", symbol]
     source["target_count"] = 2
-    source["auxiliary_symbols"] = ["SPX"]
+    source["auxiliary_symbols"] = [symbol]
     source["stale_symbols"] = []
     source["unresolved_stale_symbols"] = []
     source["lifecycle_declared_terminal_symbols"] = []
@@ -414,17 +419,20 @@ def _us_provider_root_with_sp500(tmp_path: Path) -> Path:
     source["terminal_listing_evidence"] = {}
     source["all_sources_current"] = True
 
-    provider_root = tmp_path / "provider-us"
+    provider_root = tmp_path / f"provider-us-{symbol.lower()}"
     records: list[dict[str, object]] = []
-    for symbol, provider_symbol in (("QQQ", "QQQ"), ("SPX", "^GSPC")):
-        csv_path = provider_root / "data/csv_source" / f"{symbol}.csv"
+    for record_symbol, record_provider_symbol in (
+        ("QQQ", "QQQ"),
+        (symbol, vendor_symbol),
+    ):
+        csv_path = provider_root / "data/csv_source" / f"{record_symbol}.csv"
         csv_path.parent.mkdir(parents=True, exist_ok=True)
         _price_frame().to_csv(csv_path, index=False, lineterminator="\n")
         record = copy.deepcopy(source["records"][0])
-        record["symbol"] = symbol
-        record["provider_symbol"] = provider_symbol
+        record["symbol"] = record_symbol
+        record["provider_symbol"] = record_provider_symbol
         record["output_sha256"] = hashlib.sha256(csv_path.read_bytes()).hexdigest()
-        record["attempts"][0]["provider_symbol"] = provider_symbol
+        record["attempts"][0]["provider_symbol"] = record_provider_symbol
         records.append(record)
     source["records"] = records
     write_selected_pool_price_publication_manifest(
@@ -433,8 +441,19 @@ def _us_provider_root_with_sp500(tmp_path: Path) -> Path:
     return provider_root
 
 
-def _formal_root_without_trades(tmp_path: Path) -> Path:
+def _formal_root_without_trades(tmp_path: Path, market: str = "us") -> Path:
     plan = _formal_fixture_plan()
+    if market != "us":
+        plan = replace(
+            plan,
+            model_version_id=f"{market}_x9",
+            run_id=f"{market}_x9-through-2026_08_11",
+            comparability_key={
+                **plan.comparability_key,
+                "market": market,
+                "universe_id": f"{market}_selected",
+            },
+        )
     plan = replace(
         plan,
         sections=(
@@ -491,7 +510,7 @@ def test_market_evidence_publishes_governed_sp500_auxiliary(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    provider_root = _us_provider_root_with_sp500(tmp_path)
+    provider_root = _us_provider_root_with_auxiliary(tmp_path)
     formal_root = _formal_root_without_trades(tmp_path)
     monkeypatch.setattr(
         "src.dashboard.market_evidence.QlibFactorEvaluator",
@@ -540,3 +559,110 @@ def test_market_evidence_publishes_governed_sp500_auxiliary(
     assert qqq["path"] == "symbols/QQQ.json"
     assert qqq["roles"] == ["selected_pool_candidate", "benchmark"]
     assert catalog["benchmark"] == "QQQ"
+
+
+def test_market_evidence_publishes_governed_us_vix_auxiliary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider_root = _us_provider_root_with_auxiliary(
+        tmp_path, symbol="VIX", vendor_symbol="^VIX"
+    )
+    formal_root = _formal_root_without_trades(tmp_path)
+    monkeypatch.setattr(
+        "src.dashboard.market_evidence.QlibFactorEvaluator",
+        _StubFactorEvaluator,
+    )
+
+    result = build_market_evidence(
+        market="us",
+        provider_root=provider_root,
+        formal_root=formal_root,
+        output_root=tmp_path / "market-evidence",
+    )
+    assert result["reused"] is False
+
+    # The governed provider records the real index vendor spelling while
+    # publishing the governed VIX identity.
+    manifest = json.loads(
+        (
+            provider_root / "artifacts" / PUBLICATION_MANIFEST_NAME
+        ).read_text(encoding="utf-8")
+    )
+    vendor_symbols = {row["symbol"]: row["provider_symbol"] for row in manifest["records"]}
+    assert vendor_symbols["VIX"] == "^VIX"
+
+    market_root = tmp_path / "market-evidence" / "us"
+    catalog = json.loads((market_root / "catalog.json").read_text(encoding="utf-8"))
+    rows = {row["symbol"]: row for row in catalog["symbols"]}
+
+    vix = rows["VIX"]
+    # Governed provider identity, exactly like SPX; the Yahoo vendor ticker
+    # (^VIX) is applied by the adapter and never replaces the index identity.
+    assert vix["provider_symbol"] == "VIX"
+    assert vix["symbol"] == "VIX"
+    assert vix["instrument_id"] == "us:VIX"
+    assert vix["path"] == "symbols/VIX.json"
+    assert vix["roles"] == ["formal_auxiliary"]
+    assert catalog["auxiliary_symbols"] == ["VIX"]
+    assert re.fullmatch(r"[A-Za-z0-9._-]+", str(vix["symbol"]))
+    assert vix["path"] == f"symbols/{vix['symbol']}.json"
+    assert vix["instrument_id"] == f"us:{vix['symbol']}"
+
+    payload = json.loads(
+        (market_root / "symbols/VIX.json").read_text(encoding="utf-8")
+    )
+    assert payload["symbol"] == "VIX"
+    assert payload["provider_symbol"] == "VIX"
+    assert payload["instrument_id"] == "us:VIX"
+    assert payload["roles"] == ["formal_auxiliary"]
+    assert payload["research_only"] is True
+    assert payload["trade_ready"] is False
+    assert payload["bars"]
+
+
+def _cn_provider_root_without_vix(tmp_path: Path) -> Path:
+    source = selected_pool_price_source("cn")
+    provider_root = tmp_path / "provider-cn"
+    records: list[dict[str, object]] = []
+    for template in source["records"]:
+        record = copy.deepcopy(template)
+        symbol = str(record["symbol"])
+        csv_path = provider_root / "data/csv_source" / f"{symbol}.csv"
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        _price_frame().to_csv(csv_path, index=False, lineterminator="\n")
+        record["output_sha256"] = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+        records.append(record)
+    source["records"] = records
+    source["targets"] = [str(record["symbol"]) for record in records]
+    source["target_count"] = len(records)
+    write_selected_pool_price_publication_manifest(
+        provider_root / "artifacts" / PUBLICATION_MANIFEST_NAME, source
+    )
+    return provider_root
+
+
+def test_market_evidence_never_publishes_cn_vix(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider_root = _cn_provider_root_without_vix(tmp_path)
+    formal_root = _formal_root_without_trades(tmp_path, market="cn")
+    monkeypatch.setattr(
+        "src.dashboard.market_evidence.QlibFactorEvaluator",
+        _StubFactorEvaluator,
+    )
+
+    build_market_evidence(
+        market="cn",
+        provider_root=provider_root,
+        formal_root=formal_root,
+        output_root=tmp_path / "market-evidence",
+    )
+
+    market_root = tmp_path / "market-evidence" / "cn"
+    catalog = json.loads((market_root / "catalog.json").read_text(encoding="utf-8"))
+    assert "VIX" not in catalog["auxiliary_symbols"]
+    assert all(row["symbol"] != "VIX" for row in catalog["symbols"])
+    assert all(row["instrument_id"] != "cn:VIX" for row in catalog["symbols"])
+    assert not (market_root / "symbols/VIX.json").exists()

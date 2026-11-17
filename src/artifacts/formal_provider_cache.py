@@ -52,10 +52,11 @@ MARKET_UNIVERSE_PATHS = {
     "cn": "configs/research_universes/cn_selected_equities_v3.yaml",
 }
 DEFAULT_AUXILIARIES = {
-    # SPX is the Owner-authorized (2026-11-14) broad US market index
-    # reference. It is materialized as an auxiliary so the next governed
-    # refresh publishes symbols/SPX.json; it is never a tracking ETF.
-    "us": ("QQQI", "TQQQ", "CGDV", "SGOV", "TYGO", "SPX"),
+    # SPX (Owner-authorized 2026-11-14) and VIX (Owner-requested 2026-11-17)
+    # are governed non-executable US index references. They are materialized
+    # as auxiliaries so the next governed refresh publishes symbols/SPX.json
+    # and symbols/VIX.json; neither is ever a tracking or volatility ETF.
+    "us": ("QQQI", "TQQQ", "CGDV", "SGOV", "TYGO", "SPX", "VIX"),
     # 515180 is the defensive sleeve; the five strategy-specific names are the
     # CN_27 candidates outside the selected pool. Without them the CN_27 formal
     # refresh fails closed at provider-key resolution because the shared

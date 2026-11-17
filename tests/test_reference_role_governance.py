@@ -92,6 +92,33 @@ def test_sp500_is_the_real_index_and_never_a_tracking_etf() -> None:
     assert policy["cross_market_reference_use_allowed"] is False
 
 
+def test_vix_is_the_real_volatility_index_and_never_an_etf() -> None:
+    instruments = _us_instruments()
+    entry = instruments.get("VIX")
+    assert isinstance(entry, dict), "VIX must be a governed reference instrument"
+    assert entry["canonical_symbol"] == "VIX"
+    assert entry["instrument_type"] == "volatility_index"
+    assert "^VIX" in entry["provider_aliases"]
+    assert "VIX" in entry["provider_aliases"]
+    assert entry["executable"] is False
+    assert entry["candidate_eligible"] is False
+    assert entry["portfolio_eligible_by_default"] is False
+    assert entry["fundamental_data_applicable"] is False
+    assert entry["corporate_actions_applicable"] is False
+    # Volatility context only: VIX is never a benchmark and provides no
+    # cross-market reference (the registry keeps markets isolated).
+    assert set(entry["roles"]) == {
+        "volatility_context",
+        "market_regime",
+        "risk_budget_context",
+    }
+    assert "benchmark" not in entry["roles"]
+    for volatility_etf in ("VXX", "VIXY", "UVXY", "SVXY"):
+        assert volatility_etf not in instruments
+    # VIX is a US volatility reference and is not registered for CN.
+    assert "VIX" not in _registry()["markets"]["cn"]["instruments"]
+
+
 def test_provider_cache_auxiliaries_are_governed() -> None:
     source = (
         PROJECT_ROOT / "src/artifacts/formal_provider_cache.py"
