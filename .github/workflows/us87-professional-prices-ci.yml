@@ -79,7 +79,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      TIINGO_API_TOKEN: "" # No paid entitlement; active research uses the versioned Yahoo source.
+      # Public/professional price validation stays on the entitled source; the
+      # free Tiingo tier is internal-use only and is not wired here.
+      TIINGO_API_TOKEN: ""
       POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
     steps:
       - uses: actions/checkout@v7
