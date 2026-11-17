@@ -8,11 +8,19 @@ const mocks = vi.hoisted(() => ({
   loadFormalNav: vi.fn(),
   loadRunSection: vi.fn(),
   loadSecurityEvidence: vi.fn(),
+  loadSecurityCatalog: vi.fn(),
 }));
 
 vi.mock('@/lib/formal-nav', () => ({ loadFormalNav: mocks.loadFormalNav }));
 vi.mock('@/lib/governed-run', () => ({ loadRunSection: mocks.loadRunSection }));
-vi.mock('@/lib/security-evidence', () => ({ loadSecurityEvidence: mocks.loadSecurityEvidence }));
+vi.mock('@/lib/security-evidence', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/security-evidence')>();
+  return {
+    ...actual,
+    loadSecurityEvidence: mocks.loadSecurityEvidence,
+    loadSecurityCatalog: mocks.loadSecurityCatalog,
+  };
+});
 
 vi.mock('@/components/charts/BaselineControl', () => ({
   BaselineControl: ({ options, value, onChange, marketLabel }: {
@@ -116,6 +124,17 @@ beforeEach(() => {
   mocks.loadFormalNav.mockReset().mockResolvedValue({ rows });
   mocks.loadRunSection.mockReset().mockResolvedValue([]);
   mocks.loadSecurityEvidence.mockReset();
+  mocks.loadSecurityCatalog.mockReset().mockResolvedValue({
+    market: 'us',
+    cutoff: '2026-01-31',
+    provider_manifest_sha256: 'a'.repeat(64),
+    symbols: [{
+      symbol: 'AAPL', name: 'Apple', instrument_id: 'us:AAPL', path: 'symbols/AAPL.json',
+      sha256: 'a'.repeat(64), source_sha256: 'a'.repeat(64), source_instruments: ['AAPL'], roles: [],
+    }],
+    formal_bindings: [],
+    benchmark: 'QQQ',
+  });
 });
 
 describe('StrategyChartHero', () => {

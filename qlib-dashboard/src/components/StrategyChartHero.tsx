@@ -452,6 +452,8 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
                 detail={selectedMarkerDetail}
                 testId="strategy-selected-marker"
                 ariaLabel="Selected rotation marker"
+                market={run.market}
+                model={run.modelVersionId}
                 onClear={() => setSelectedMarker(null)}
               />
             )}
