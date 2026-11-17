@@ -516,6 +516,57 @@ def _log_stale_diagnostics(
         )
 
 
+def _identity_contracts_for(
+    market: str,
+    candidates: list[str],
+    benchmark: str,
+    auxiliaries: list[str],
+) -> dict[str, dict[str, str]]:
+    return {
+        symbol: contract
+        for symbol in [*candidates, benchmark, *auxiliaries]
+        if (contract := _identity_contract(market, symbol)) is not None
+    }
+
+
+def _optional_auxiliary_gap(
+    failure: dict[str, Any],
+    *,
+    market: str,
+    default_reason: str = "unavailable",
+) -> dict[str, Any]:
+    """Project one optional-reference failure into a scoped, reasoned gap."""
+
+    symbol = str(failure.get("symbol") or "").strip().upper()
+    attempts = failure.get("attempts")
+    rows = [row for row in attempts if isinstance(row, dict)] if isinstance(attempts, list) else []
+    attempted_providers = sorted(
+        {
+            str(row.get("provider")).strip().lower()
+            for row in rows
+            if str(row.get("provider") or "").strip()
+        }
+    )
+    errors = [
+        str(row.get("error") or "").strip()
+        for row in rows
+        if row.get("ok") is not True and str(row.get("error") or "").strip()
+    ]
+    reason = str(failure.get("error") or "").strip()
+    if not reason and errors:
+        reason = errors[-1]
+    if not reason:
+        reason = str(failure.get("action") or default_reason).strip() or default_reason
+    return {
+        "symbol": symbol,
+        "role": "optional_reference",
+        "market": market,
+        "status": "missing",
+        "reason": reason[:500],
+        "attempted_providers": attempted_providers,
+    }
+
+
 def _base_manifest(
     *,
     market: str,
@@ -546,11 +597,10 @@ def _base_manifest(
         "targets": targets,
         "before": before,
         "records": records,
-        "identity_contracts": {
-            symbol: contract
-            for symbol in [*candidates, benchmark, *auxiliary_symbols]
-            if (contract := _identity_contract(market, symbol)) is not None
-        },
+        "optional_auxiliary_gaps": [],
+        "identity_contracts": _identity_contracts_for(
+            market, candidates, benchmark, auxiliary_symbols
+        ),
         "research_only": True,
         "trade_ready": False,
     }
@@ -568,6 +618,7 @@ def refresh_selected_pool_prices(
     max_rounds: int = 2,
     full_refresh: bool = False,
     auxiliary_symbols: list[str] | tuple[str, ...] | None = None,
+    optional_auxiliary_symbols: tuple[str, ...] = (),
     full_history_fallback_symbols: tuple[str, ...] = (),
     allow_partial: bool = False,
     provider_evidence_root: Path | None = None,
@@ -579,6 +630,12 @@ def refresh_selected_pool_prices(
     manifest) instead of melting the whole market build. A quarantined
     benchmark is never degradable: without the market clock the provider
     cannot watermark any strategy, so it still fails closed.
+
+    ``optional_auxiliary_symbols`` names declared optional reference
+    auxiliaries (for example a non-executable index or volatility reference).
+    A missing, stale or quarantined optional reference is recorded as a scoped
+    gap and never blocks publication of the candidate pool, benchmark or
+    required formal holdings.
     """
 
     _requested_window_bounds(start, cutoff)
@@ -598,6 +655,17 @@ def refresh_selected_pool_prices(
         candidates=candidates,
         benchmark=benchmark,
     )
+    optional_scope = {
+        str(symbol).strip().upper()
+        for symbol in optional_auxiliary_symbols
+        if str(symbol).strip()
+    }
+    unscoped_optional = optional_scope - set(auxiliaries)
+    if unscoped_optional:
+        raise ValueError(
+            "optional references must be requested auxiliaries: "
+            + ", ".join(sorted(unscoped_optional))
+        )
     if not set(full_history_fallback_symbols).issubset(auxiliaries):
         raise ValueError("full-history fallback must be scoped to requested auxiliaries")
     required = [*candidates, benchmark, *auxiliaries]
@@ -887,28 +955,29 @@ def refresh_selected_pool_prices(
                 failures.append(failure)
                 continue
 
-            records.append(
-                {
-                    "symbol": symbol,
-                    "action": (
-                        "fetched_full_refresh"
-                        if full_refresh or full_history_fallback
-                        else (
-                            "fetched_incremental_update"
-                            if incremental
-                            else "fetched_replacement"
-                        )
-                    ),
-                    "provider": response.result.provider,
-                    "provider_symbol": response.result.provider_symbol,
-                    "identity_contract": identity,
-                    "output_sha256": _sha256(output_path),
-                    "rows": int(len(frame)),
-                    "first_date": frame["date"].min().date().isoformat(),
-                    "last_date": frame["date"].max().date().isoformat(),
-                    "attempts": attempt_rows,
-                }
-            )
+            success_record = {
+                "symbol": symbol,
+                "action": (
+                    "fetched_full_refresh"
+                    if full_refresh or full_history_fallback
+                    else (
+                        "fetched_incremental_update"
+                        if incremental
+                        else "fetched_replacement"
+                    )
+                ),
+                "provider": response.result.provider,
+                "provider_symbol": response.result.provider_symbol,
+                "identity_contract": identity,
+                "output_sha256": _sha256(output_path),
+                "rows": int(len(frame)),
+                "first_date": frame["date"].min().date().isoformat(),
+                "last_date": frame["date"].max().date().isoformat(),
+                "attempts": attempt_rows,
+            }
+            if response.result.provenance is not None:
+                success_record["source_provenance"] = response.result.provenance
+            records.append(success_record)
 
         manifest = _base_manifest(
             market=market_key,
@@ -923,19 +992,63 @@ def refresh_selected_pool_prices(
             records=records,
             full_refresh=full_refresh,
         )
+        scoped_optional_failed: set[str] = set()
+        optional_gaps: list[dict[str, Any]] = []
         if failures:
             _log_stale_diagnostics(records=records, cutoff=cutoff, audits=before)
             quarantined = [str(row["symbol"]) for row in failures]
+            failed_set = {str(row["symbol"]).strip().upper() for row in failures}
+            optional_failed = sorted(failed_set & optional_scope)
+            required_failed = sorted(failed_set - optional_scope)
             materialized = [
                 symbol
                 for symbol in required
-                if symbol not in set(quarantined)
+                if symbol not in failed_set
                 and (csv_out / f"{symbol}.csv").is_file()
             ]
             if (
+                materialized
+                and benchmark not in failed_set
+                and optional_failed
+                and not required_failed
+            ):
+                # Declared optional references never block publication of the
+                # candidate pool, benchmark or required formal holdings. The
+                # absence is recorded with its reason and no series is
+                # fabricated or substituted.
+                scoped_optional_failed = set(optional_failed)
+                failure_by_symbol = {
+                    str(row["symbol"]).strip().upper(): row for row in failures
+                }
+                optional_gaps = sorted(
+                    (
+                        _optional_auxiliary_gap(
+                            failure_by_symbol[symbol],
+                            market=market_key,
+                        )
+                        for symbol in optional_failed
+                    ),
+                    key=lambda gap: str(gap["symbol"]),
+                )
+                records = [
+                    row
+                    for row in records
+                    if str(row.get("symbol", "")).strip().upper()
+                    not in scoped_optional_failed
+                ]
+                auxiliaries = [
+                    symbol for symbol in auxiliaries if symbol not in scoped_optional_failed
+                ]
+                manifest["records"] = records
+                manifest["auxiliary_symbols"] = auxiliaries
+                manifest["optional_auxiliary_gaps"] = optional_gaps
+                manifest["identity_contracts"] = _identity_contracts_for(
+                    market_key, candidates, benchmark, auxiliaries
+                )
+            elif (
                 allow_partial
                 and materialized
-                and benchmark not in set(quarantined)
+                and benchmark not in failed_set
             ):
                 manifest.update(
                     {
@@ -975,7 +1088,10 @@ def refresh_selected_pool_prices(
             if str(value).strip()
         ]
         covered = [
-            symbol for symbol in required if symbol not in set(quarantined_symbols)
+            symbol
+            for symbol in required
+            if symbol not in set(quarantined_symbols)
+            and symbol not in scoped_optional_failed
         ]
         after = {
             symbol: _audit_source(csv_out / f"{symbol}.csv", symbol, market=market_key)
@@ -986,8 +1102,67 @@ def refresh_selected_pool_prices(
         ]
         if blocked:
             raise RuntimeError(
-                f"isolated selected-pool build remains blocked: {blocked}"
+                f"isolated selected-pool build remains blocked: {blocked}; "
+                + "; ".join(
+                    f"{symbol}={after[symbol].get('errors')}" for symbol in blocked
+                )
             )
+
+        cutoff_ts = pd.Timestamp(cutoff)
+        stale_symbols = sorted(
+            symbol
+            for symbol, audit in after.items()
+            if pd.Timestamp(str(audit["last_date"])) < cutoff_ts
+        )
+        optional_stale = sorted(
+            symbol for symbol in stale_symbols if symbol in optional_scope
+        )
+        if optional_stale:
+            # An optional reference that cannot reach the cutoff is absent,
+            # not stale evidence to republish. Exclude it at the provider
+            # boundary and record the scoped gap.
+            optional_stale_set = set(optional_stale)
+            record_by_symbol = {
+                str(row.get("symbol", "")).strip().upper(): row
+                for row in records
+                if isinstance(row, dict)
+            }
+            for symbol in optional_stale:
+                (csv_out / f"{symbol}.csv").unlink(missing_ok=True)
+                gap = _optional_auxiliary_gap(
+                    record_by_symbol.get(symbol, {"symbol": symbol}),
+                    market=market_key,
+                    default_reason="stale_before_cutoff",
+                )
+                # A failed fetch that retained a stale seed is still a stale
+                # series, not a provider-contract reason.
+                gap["reason"] = "stale_before_cutoff"
+                optional_gaps.append(gap)
+            optional_gaps = sorted(optional_gaps, key=lambda gap: str(gap["symbol"]))
+            records = [
+                row
+                for row in records
+                if str(row.get("symbol", "")).strip().upper() not in optional_stale_set
+            ]
+            after = {
+                symbol: audit
+                for symbol, audit in after.items()
+                if symbol not in optional_stale_set
+            }
+            stale_symbols = [
+                symbol for symbol in stale_symbols if symbol not in optional_stale_set
+            ]
+            auxiliaries = [
+                symbol for symbol in auxiliaries if symbol not in optional_stale_set
+            ]
+            manifest["records"] = records
+            manifest["auxiliary_symbols"] = auxiliaries
+            manifest["optional_auxiliary_gaps"] = optional_gaps
+            manifest["identity_contracts"] = _identity_contracts_for(
+                market_key, candidates, benchmark, auxiliaries
+            )
+        if stale_symbols:
+            _log_stale_diagnostics(records=records, cutoff=cutoff, audits=after)
 
         provider_dir = stage / "data" / "providers" / market_key
         provider_manifest = build_market_provider(
@@ -996,14 +1171,6 @@ def refresh_selected_pool_prices(
             market=market_key,
             include_fields=DEFAULT_FIELDS,
         )
-        cutoff_ts = pd.Timestamp(cutoff)
-        stale_symbols = sorted(
-            symbol
-            for symbol, audit in after.items()
-            if pd.Timestamp(str(audit["last_date"])) < cutoff_ts
-        )
-        if stale_symbols:
-            _log_stale_diagnostics(records=records, cutoff=cutoff, audits=after)
         manifest.update(
             {
                 "stale_symbols": stale_symbols,

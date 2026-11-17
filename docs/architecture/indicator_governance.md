@@ -107,8 +107,14 @@ Market scope, US only in this set:
 | `market_us_vix` | `series` | `us:VIX` | Raw governed VIX close reference; no derived value claimed. |
 | `market_us_vix_sma_20` | `derived` | `us:VIX` | 20-session SMA of the governed VIX close. |
 
-`us:VIX` publication belongs to the separate VIX data plane work package. Until
-that plane publishes the series, the module returns
+`us:VIX` publication belongs to the separate VIX data plane work package. The
+maintained source is the CBOE public `VIX_History.csv` fetched through the
+governed `cboe_public` adapter: index levels only, explicit zero volume/amount,
+strict parse and OHLC-envelope validation, and exact response-hash provenance.
+The selected-pool publication treats VIX as an optional reference auxiliary, so
+a missing or quarantined VIX is recorded as a scoped gap and never blocks the
+candidate pool, benchmark or required formal holdings. Until that plane
+publishes `symbols/VIX.json` in market evidence, the module returns
 `market_series_unavailable`. No ETF, index proxy or CN substitute is permitted.
 
 **2026-11-17 status:** the first VIX data-plane attempt (Yahoo `^VIX` as a

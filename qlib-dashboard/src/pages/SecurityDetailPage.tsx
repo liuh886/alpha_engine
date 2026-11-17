@@ -291,10 +291,10 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
   }, [activeKind, baselineIsSelf, evidence.market, evidence.cutoff, baselineAttempt]);
 
   /**
-   * The governed VIX market series belongs to the US market only. The data
-   * plane is currently withdrawn, so the read resolves to `unavailable` and the
-   * UI states the reason; nothing is substituted, interpolated or fetched from
-   * another provider. A CN chart never requests it.
+   * The governed VIX market series belongs to the US market only. When the US
+   * data plane has not published symbols/VIX.json, the read resolves to
+   * `unavailable`, the UI states the reason, and nothing is substituted,
+   * interpolated or fetched from another provider. A CN chart never requests it.
    */
   useEffect(() => {
     if (evidence.market !== 'us') {

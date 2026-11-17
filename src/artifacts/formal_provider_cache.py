@@ -8,11 +8,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from src.data.auxiliary_scope import (
+    all_governed_auxiliaries,
+    optional_reference_symbols,
+)
 from src.data.market_provider import (
     load_provider_manifest,
     verify_provider_manifest_file_identities,
 )
 from src.data.selected_pool_price_publication import (
+    OPTIONAL_AUXILIARY_GAPS_KEY,
     PUBLICATION_MANIFEST_NAME,
     SelectedPoolPricePublicationError,
     partial_eligible_symbols,
@@ -52,15 +57,11 @@ MARKET_UNIVERSE_PATHS = {
     "cn": "configs/research_universes/cn_selected_equities_v3.yaml",
 }
 DEFAULT_AUXILIARIES = {
-    # SPX is the Owner-authorized (2026-11-14) broad US market index
-    # reference. It is materialized as an auxiliary so the next governed
-    # refresh publishes symbols/SPX.json; it is never a tracking ETF.
-    "us": ("QQQI", "TQQQ", "CGDV", "SGOV", "TYGO", "SPX"),
-    # 515180 is the defensive sleeve; the five strategy-specific names are the
-    # CN_27 candidates outside the selected pool. Without them the CN_27 formal
-    # refresh fails closed at provider-key resolution because the shared
-    # selected-pool provider never materializes their bars.
-    "cn": ("515180", "002156", "002281", "300274", "601939", "688183"),
+    # Required formal holdings first, then optional context references. SPX
+    # (Owner-authorized 2026-11-14) and VIX (Owner-requested 2026-11-17) are
+    # governed non-executable US index references, sourced from the real index
+    # (VIX from CBOE public history) and never from a tracking/volatility ETF.
+    market: all_governed_auxiliaries(market) for market in ("us", "cn")
 }
 # Publication-only serializers cannot change provider source bytes.
 PROVIDER_CACHE_EXCLUDED_PATHS = frozenset({"src/data/model_data_bundle.py"})
@@ -258,18 +259,24 @@ def _validate_manifest(
     }
     # A contract auxiliary that is also a selected-pool candidate (or the
     # benchmark) is materialized as a candidate, which is a stronger
-    # guarantee than auxiliary coverage: TYGO is the live case. Only
-    # auxiliaries materialized nowhere may fail the seal.
+    # guarantee than auxiliary coverage: TYGO is the live case. Required
+    # formal auxiliaries must be materialized; a declared optional reference
+    # may be absent only when the publication records a scoped gap for it.
     materialized = set(manifest_auxiliaries) | set(candidate_symbols)
     benchmark = str(manifest.get("benchmark", "")).strip().upper()
     if benchmark:
         materialized.add(benchmark)
-    missing_auxiliaries = sorted(contract_auxiliaries - materialized)
-    if missing_auxiliaries:
+    optional_references = optional_reference_symbols(market)
+    required_auxiliaries = contract_auxiliaries - optional_references
+    missing_required = sorted(required_auxiliaries - materialized)
+    if missing_required:
         raise FormalProviderCacheError(
             "cached provider auxiliaries do not match contract: "
-            + ", ".join(missing_auxiliaries)
+            + ", ".join(missing_required)
         )
+    missing_optional = sorted(
+        (contract_auxiliaries & optional_references) - materialized
+    )
     for record in records:
         symbol = str(record.get("symbol", "")).strip().upper()
         expected = str(record.get("output_sha256", ""))
@@ -295,6 +302,30 @@ def _validate_manifest(
             )
     except (SelectedPoolPricePublicationError, FileNotFoundError, ValueError) as exc:
         raise FormalProviderCacheError(f"cached provider evidence is invalid: {exc}") from exc
+    gap_rows = publication.get(OPTIONAL_AUXILIARY_GAPS_KEY) or []
+    gap_symbols = {
+        str(row.get("symbol", "")).strip().upper()
+        for row in gap_rows
+        if isinstance(row, dict) and str(row.get("symbol", "")).strip()
+    }
+    undeclared_optional = sorted(set(missing_optional) - gap_symbols)
+    if undeclared_optional:
+        raise FormalProviderCacheError(
+            "cached optional auxiliaries are missing without a recorded gap: "
+            + ", ".join(undeclared_optional)
+        )
+    undeclared_gaps = sorted(gap_symbols - (contract_auxiliaries & optional_references))
+    if undeclared_gaps:
+        raise FormalProviderCacheError(
+            "cached optional auxiliary gaps are outside the declared contract: "
+            + ", ".join(undeclared_gaps)
+        )
+    materialized_gaps = sorted(gap_symbols & materialized)
+    if materialized_gaps:
+        raise FormalProviderCacheError(
+            "cached optional auxiliary gap is also materialized: "
+            + ", ".join(materialized_gaps)
+        )
     if not isinstance(qlib_manifest, dict):
         raise FormalProviderCacheError("cached Qlib provider manifest is missing")
     provider_identity = str(manifest.get("provider_identity_sha256", ""))
@@ -352,6 +383,11 @@ def seal_provider_cache(
         "provider_cutoff": str(manifest.get("cutoff", "")),
         "candidate_count": int(manifest.get("candidate_count", 0)),
         "symbol_count": len(manifest.get("records", [])),
+        "optional_auxiliary_gaps": sorted(
+            str(row.get("symbol", "")).strip().upper()
+            for row in (publication.get(OPTIONAL_AUXILIARY_GAPS_KEY) or [])
+            if isinstance(row, dict) and str(row.get("symbol", "")).strip()
+        ),
         "csv_tree_sha256": csv_index.identity_sha256,
         "csv_file_count": csv_index.file_count,
         "qlib_tree_sha256": qlib_index.identity_sha256,
@@ -408,6 +444,11 @@ def verify_provider_cache(
         "csv_file_count": csv_index.file_count,
         "qlib_tree_sha256": qlib_index.identity_sha256,
         "qlib_file_count": qlib_index.file_count,
+        "optional_auxiliary_gaps": sorted(
+            str(row.get("symbol", "")).strip().upper()
+            for row in (publication.get(OPTIONAL_AUXILIARY_GAPS_KEY) or [])
+            if isinstance(row, dict) and str(row.get("symbol", "")).strip()
+        ),
     }
     for key, value in expected.items():
         if receipt.get(key) != value:

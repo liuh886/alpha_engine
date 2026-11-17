@@ -414,3 +414,142 @@ def test_publication_manifest_is_smaller_self_verified_evidence(tmp_path: Path) 
     target.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(SelectedPoolPricePublicationError, match="identity mismatch"):
         load_selected_pool_price_publication_manifest(target)
+
+
+def _vix_gap(**overrides: object) -> dict[str, object]:
+    gap: dict[str, object] = {
+        "attempted_providers": ["cboe_public"],
+        "market": "us",
+        "reason": "CBOE source unavailable in the fixture",
+        "role": "optional_reference",
+        "status": "missing",
+        "symbol": "VIX",
+    }
+    gap.update(overrides)
+    return gap
+
+
+def test_optional_auxiliary_gap_is_scoped_and_self_verified(tmp_path: Path) -> None:
+    source = _source("us")
+    source["optional_auxiliary_gaps"] = [_vix_gap()]
+
+    projected = build_selected_pool_price_publication_manifest(source)
+    assert projected["optional_auxiliary_gaps"] == [_vix_gap()]
+    assert "VIX" not in {record["symbol"] for record in projected["records"]}
+
+    target = tmp_path / "publication.json"
+    write_selected_pool_price_publication_manifest(target, source)
+    assert load_selected_pool_price_publication_manifest(target) == projected
+
+    without_gap = _source("us")
+    assert build_selected_pool_price_publication_manifest(without_gap)[
+        "publication_identity_sha256"
+    ] != projected["publication_identity_sha256"]
+
+
+def test_optional_auxiliary_gap_only_accepts_declared_optional_references() -> None:
+    source = _source("us")
+    source["optional_auxiliary_gaps"] = [_vix_gap(symbol="QQQI")]
+    with pytest.raises(SelectedPoolPricePublicationError, match="gap is invalid"):
+        build_selected_pool_price_publication_manifest(source)
+
+    source = _source("us")
+    source["optional_auxiliary_gaps"] = [_vix_gap(symbol="AAA")]
+    with pytest.raises(SelectedPoolPricePublicationError, match="gap is invalid"):
+        build_selected_pool_price_publication_manifest(source)
+
+
+def test_optional_auxiliary_gap_rejects_malformed_or_noncanonical_rows() -> None:
+    source = _source("us")
+    source["optional_auxiliary_gaps"] = [_vix_gap(reason="")]
+    with pytest.raises(SelectedPoolPricePublicationError, match="gap is invalid"):
+        build_selected_pool_price_publication_manifest(source)
+
+    source = _source("us")
+    source["optional_auxiliary_gaps"] = [
+        _vix_gap(attempted_providers=["yfinance", "cboe_public"])
+    ]
+    with pytest.raises(SelectedPoolPricePublicationError, match="not canonical"):
+        build_selected_pool_price_publication_manifest(source)
+
+    source = _source("us")
+    source["optional_auxiliary_gaps"] = [_vix_gap(), _vix_gap()]
+    with pytest.raises(SelectedPoolPricePublicationError, match="gap is invalid"):
+        build_selected_pool_price_publication_manifest(source)
+
+
+def test_rehashed_publication_cannot_invent_an_optional_gap(tmp_path: Path) -> None:
+    path = tmp_path / "publication.json"
+    write_selected_pool_price_publication_manifest(path, _source("us"))
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["optional_auxiliary_gaps"] = [_vix_gap(symbol="QQQI")]
+    _rewrite_publication(path, payload)
+    with pytest.raises(SelectedPoolPricePublicationError, match="gap is invalid"):
+        load_selected_pool_price_publication_manifest(path)
+
+
+def _source_provenance() -> dict[str, object]:
+    return {
+        "provider": "cboe_public",
+        "provider_symbol": "VIX",
+        "source_url": (
+            "https://cdn-api.cboe.com/api/global/us_indices/daily_prices/"
+            "VIX_History.csv"
+        ),
+        "response_sha256": "a" * 64,
+        "response_bytes": 1234,
+        "fetched_at_utc": "2026-11-17T12:30:00+00:00",
+        "source_schema": "cboe_vix_history_csv_v1",
+        "source_date_format": "%m/%d/%Y",
+        "price_basis": "index_level_unadjusted",
+        "volume_basis": "not_applicable_index",
+        "amount_basis": "not_applicable_index",
+        "requested_start": "2021-01-01",
+        "requested_end": "2026-11-16",
+        "first_date": "2021-01-04",
+        "last_date": "2026-11-16",
+        "rows": 1508,
+        "terms_caveat": "CBOE compiled-for-convenience caveat",
+        "research_only": True,
+        "trade_ready": False,
+    }
+
+
+def test_source_provenance_is_retained_and_bound_into_publication_identity() -> None:
+    source = _source("us")
+    record = source["records"][0]
+    assert isinstance(record, dict)
+    record["source_provenance"] = _source_provenance()
+
+    publication = build_selected_pool_price_publication_manifest(source)
+    published = next(
+        row for row in publication["records"] if row["symbol"] == record["symbol"]
+    )
+    assert published["source_provenance"] == _source_provenance()
+
+    baseline = build_selected_pool_price_publication_manifest(_source("us"))
+    assert publication["publication_identity_sha256"] != baseline[
+        "publication_identity_sha256"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("response_sha256", "not-a-hash"),
+        ("source_url", "file:///local/vix.csv"),
+        ("fetched_at_utc", ""),
+        ("provider", ""),
+        ("trade_ready", True),
+    ),
+)
+def test_source_provenance_must_be_complete_and_research_bound(field: str, value: object) -> None:
+    source = _source("us")
+    record = source["records"][0]
+    assert isinstance(record, dict)
+    provenance = _source_provenance()
+    provenance[field] = value
+    record["source_provenance"] = provenance
+
+    with pytest.raises(SelectedPoolPricePublicationError, match="provenance"):
+        build_selected_pool_price_publication_manifest(source)

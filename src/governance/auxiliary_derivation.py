@@ -86,6 +86,10 @@ DECLARED_EXTRAS: dict[str, dict[str, str]] = {
         "SPX": "Owner authorization 2026-11-14 adding the real S&P 500 "
         "index to the data base; configs/pools/"
         "reference_instrument_registry_v1.yaml markets.us.instruments.SPX",
+        "VIX": "Owner request 2026-11-17 for VIX as a US chart indicator; "
+        "configs/pools/reference_instrument_registry_v1.yaml "
+        "markets.us.instruments.VIX (non-executable volatility context sourced "
+        "from governed CBOE public history, never a volatility ETF)",
     },
     "cn": {},
 }

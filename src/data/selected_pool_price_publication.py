@@ -10,6 +10,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from src.data.auxiliary_scope import is_optional_reference_auxiliary
 from src.data.symbol_identity import (
     selected_pool_provider_identity_contract,
     validate_selected_pool_provider_identity,
@@ -21,6 +22,7 @@ PUBLICATION_SCHEMA = "1.0.0"
 PUBLICATION_EVIDENCE_TYPE = "selected_pool_price_publication_v1"
 PUBLICATION_MANIFEST_NAME = "selected_pool_price_publication_manifest.json"
 MANIFEST_RELATIVE_PATH = Path("artifacts/selected_pool_price_refresh_manifest.json")
+OPTIONAL_AUXILIARY_GAPS_KEY = "optional_auxiliary_gaps"
 
 _SOURCE_KEYS = {
     "after", "all_sources_current", "all_sources_ready", "auxiliary_symbols",
@@ -44,14 +46,27 @@ _LIST_SOURCE_KEYS = {
 _RECORD_KEYS = {
     "action", "attempts", "first_date", "identity_contract", "last_date", "output_sha256",
     "promotion_status", "provider", "provider_contract", "provider_symbol", "rows",
-    "source_path", "source_sha256", "stale_reason", "symbol", "terminal_lifecycle",
+    "source_path", "source_provenance", "source_sha256", "stale_reason", "symbol",
+    "terminal_lifecycle",
 }
 _PUBLICATION_RECORD_FIELDS = _RECORD_KEYS - {"action", "attempts", "provider_contract"}
 _ATTEMPT_KEYS = {
     "circuit_breaker_open", "cutoff_complete", "error", "first_date", "independent_group",
     "last_date", "observed_last_date", "ok", "provider", "provider_contract",
     "provider_symbol", "requested_cutoff", "requested_end_present", "round", "rows",
-    "schema_errors", "source_family",
+    "schema_errors", "source_family", "source_provenance",
+}
+_OPTIONAL_GAP_KEYS = {
+    "attempted_providers", "market", "reason", "role", "status", "symbol",
+}
+_SOURCE_PROVENANCE_KEYS = {
+    "amount_basis", "fetched_at_utc", "first_date", "last_date", "price_basis",
+    "provider", "provider_symbol", "requested_end", "requested_start",
+    "research_only", "response_bytes", "response_sha256", "rows", "source_date_format",
+    "source_schema", "source_url", "terms_caveat", "trade_ready", "volume_basis",
+}
+_SOURCE_PROVENANCE_REQUIRED_KEYS = {
+    "fetched_at_utc", "provider", "response_sha256", "source_url",
 }
 _ARCHITECTURE_KEYS = {
     "formal_auxiliary_boundary", "health", "independent_provider_order", "provider_order",
@@ -116,6 +131,16 @@ def _assert_known_keys(value: Mapping[str, Any], expected: set[str], label: str)
     unknown = set(value) - expected
     if unknown:
         raise SelectedPoolPricePublicationError(f"unsupported {label} fields: {sorted(unknown)}")
+
+
+def _assert_required_keys(
+    value: Mapping[str, Any], required: set[str], label: str
+) -> None:
+    missing = required - set(value)
+    if missing:
+        raise SelectedPoolPricePublicationError(
+            f"missing {label} fields: {sorted(missing)}"
+        )
 
 
 def _is_sha256(value: object) -> bool:
@@ -215,6 +240,81 @@ def _project_terminal_lifecycle(value: Mapping[str, Any]) -> dict[str, Any]:
     return projected
 
 
+def _project_source_provenance(value: object) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise SelectedPoolPricePublicationError("source provenance must be an object")
+    _assert_known_keys(value, _SOURCE_PROVENANCE_KEYS, "source provenance")
+    _assert_required_keys(value, _SOURCE_PROVENANCE_REQUIRED_KEYS, "source provenance")
+    if not _is_sha256(value.get("response_sha256")):
+        raise SelectedPoolPricePublicationError("source provenance response hash is invalid")
+    url = str(value.get("source_url", "")).strip()
+    if not url.startswith("https://") and not url.startswith("http://"):
+        raise SelectedPoolPricePublicationError("source provenance URL is invalid")
+    if not str(value.get("provider", "")).strip():
+        raise SelectedPoolPricePublicationError("source provenance provider is empty")
+    if not str(value.get("fetched_at_utc", "")).strip():
+        raise SelectedPoolPricePublicationError("source provenance timestamp is empty")
+    if value.get("research_only") not in (None, True) or value.get("trade_ready") not in (
+        None,
+        False,
+    ):
+        raise SelectedPoolPricePublicationError("source provenance crossed research boundary")
+    return copy.deepcopy(dict(value))
+
+
+def _project_optional_auxiliary_gaps(
+    value: object, *, market: str
+) -> list[dict[str, Any]]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise SelectedPoolPricePublicationError(
+            "optional auxiliary gaps must be a list"
+        )
+    projected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for gap in value:
+        if not isinstance(gap, Mapping):
+            raise SelectedPoolPricePublicationError("optional auxiliary gap must be an object")
+        _assert_exact_keys(gap, _OPTIONAL_GAP_KEYS, "optional auxiliary gap")
+        symbol = str(gap.get("symbol", "")).strip().upper()
+        role = str(gap.get("role", "")).strip()
+        status = str(gap.get("status", "")).strip()
+        gap_market = str(gap.get("market", "")).strip().lower()
+        reason = str(gap.get("reason", "")).strip()
+        providers = gap.get("attempted_providers")
+        if (
+            not symbol
+            or symbol in seen
+            or not is_optional_reference_auxiliary(market, symbol)
+            or role != "optional_reference"
+            or status != "missing"
+            or gap_market != market
+            or not reason
+            or not isinstance(providers, list)
+        ):
+            raise SelectedPoolPricePublicationError("optional auxiliary gap is invalid")
+        normalized_providers = [
+            str(provider).strip().lower() for provider in providers if str(provider).strip()
+        ]
+        if normalized_providers != sorted(set(normalized_providers)):
+            raise SelectedPoolPricePublicationError(
+                "optional auxiliary gap providers are not canonical"
+            )
+        seen.add(symbol)
+        projected.append(
+            {
+                "attempted_providers": normalized_providers,
+                "market": market,
+                "reason": reason,
+                "role": role,
+                "status": status,
+                "symbol": symbol,
+            }
+        )
+    return sorted(projected, key=lambda gap: str(gap["symbol"]))
+
+
 def _project_record(value: Mapping[str, Any]) -> dict[str, Any]:
     _assert_known_keys(value, _RECORD_KEYS, "provider record")
     symbol = str(value.get("symbol", "")).strip().upper()
@@ -242,6 +342,10 @@ def _project_record(value: Mapping[str, Any]) -> dict[str, Any]:
         if key in value
     }
     projected["symbol"] = symbol
+    if "source_provenance" in projected:
+        projected["source_provenance"] = _project_source_provenance(
+            projected["source_provenance"]
+        )
     lifecycle = projected.get("terminal_lifecycle")
     if lifecycle is not None:
         if not isinstance(lifecycle, Mapping):
@@ -347,7 +451,10 @@ def _fallback_authorization(
 def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) -> dict[str, Any]:
     """Return stable, self-identifying provider publication evidence."""
 
-    _assert_exact_keys(source, _SOURCE_KEYS, "source manifest")
+    _assert_known_keys(
+        source, _SOURCE_KEYS | {OPTIONAL_AUXILIARY_GAPS_KEY}, "source manifest"
+    )
+    _assert_required_keys(source, _SOURCE_KEYS, "source manifest")
     lists = _validate_source_boundaries(source)
     records = source.get("records")
     architecture = source.get("provider_architecture")
@@ -385,6 +492,13 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
     benchmark = str(source.get("benchmark", "")).strip().upper()
     if benchmark:
         expected_symbols.add(benchmark)
+    optional_gaps = _project_optional_auxiliary_gaps(
+        source.get(OPTIONAL_AUXILIARY_GAPS_KEY), market=market
+    )
+    if {gap["symbol"] for gap in optional_gaps} & expected_symbols:
+        raise SelectedPoolPricePublicationError(
+            "optional auxiliary gap cannot also be a materialized publication symbol"
+        )
     if set(record_by_symbol) != expected_symbols:
         raise SelectedPoolPricePublicationError("provider records do not match declared symbols")
     identity_contracts = source.get("identity_contracts")
@@ -520,6 +634,7 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
         "selection_mode": str(architecture.get("selection_mode", "")),
     }
     projected["diagnostics_policy"] = copy.deepcopy(_DIAGNOSTICS_POLICY)
+    projected[OPTIONAL_AUXILIARY_GAPS_KEY] = optional_gaps
     _validate_publication_shape(projected | {"publication_identity_sha256": "0" * 64})
     _validate_publication_invariants(projected)
     projected["publication_identity_sha256"] = _sha256(_canonical_json(projected))
@@ -527,7 +642,10 @@ def build_selected_pool_price_publication_manifest(source: Mapping[str, Any]) ->
 
 
 def _validate_publication_shape(value: Mapping[str, Any]) -> None:
-    _assert_exact_keys(value, _PUBLICATION_KEYS, "publication manifest")
+    _assert_known_keys(
+        value, _PUBLICATION_KEYS | {OPTIONAL_AUXILIARY_GAPS_KEY}, "publication manifest"
+    )
+    _assert_required_keys(value, _PUBLICATION_KEYS, "publication manifest")
     if (
         value.get("source_schema_version") != SOURCE_SCHEMA
         or value.get("source_evidence_type") != SOURCE_EVIDENCE_TYPE
@@ -535,6 +653,10 @@ def _validate_publication_shape(value: Mapping[str, Any]) -> None:
         or not _is_sha256(value.get("provider_identity_sha256"))
     ):
         raise SelectedPoolPricePublicationError("publication manifest identity is invalid")
+    market = str(value.get("market", "")).strip().lower()
+    _project_optional_auxiliary_gaps(
+        value.get(OPTIONAL_AUXILIARY_GAPS_KEY), market=market
+    )
     architecture = value.get("provider_architecture")
     records = value.get("records")
     if not isinstance(architecture, Mapping) or not isinstance(records, list):
@@ -563,6 +685,8 @@ def _validate_publication_shape(value: Mapping[str, Any]) -> None:
             or not isinstance(record.get("rows"), int) or int(record["rows"]) <= 0
         ):
             raise SelectedPoolPricePublicationError("publication record identity is invalid")
+        if "source_provenance" in record:
+            _project_source_provenance(record["source_provenance"])
         symbols.append(symbol)
     if symbols != sorted(symbols) or len(symbols) != len(set(symbols)):
         raise SelectedPoolPricePublicationError("publication symbols are invalid")
@@ -633,6 +757,19 @@ def _validate_publication_invariants(value: Mapping[str, Any]) -> None:
     benchmark = str(value.get("benchmark", "")).strip().upper()
     if benchmark:
         expected_symbols.add(benchmark)
+    optional_gaps = _project_optional_auxiliary_gaps(
+        value.get(OPTIONAL_AUXILIARY_GAPS_KEY), market=market
+    )
+    if OPTIONAL_AUXILIARY_GAPS_KEY in value and value[OPTIONAL_AUXILIARY_GAPS_KEY] != (
+        optional_gaps
+    ):
+        raise SelectedPoolPricePublicationError(
+            "publication optional auxiliary gaps are not canonical"
+        )
+    if {gap["symbol"] for gap in optional_gaps} & expected_symbols:
+        raise SelectedPoolPricePublicationError(
+            "publication optional auxiliary gap is also a materialized symbol"
+        )
     if len(records) != len(records_raw) or set(records) != expected_symbols:
         raise SelectedPoolPricePublicationError(
             "publication records do not match declared symbols"

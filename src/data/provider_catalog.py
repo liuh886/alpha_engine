@@ -158,6 +158,24 @@ _PROVIDER_CATALOG: dict[str, ProviderCapability] = {
             "Plan history and recency limits apply."
         ),
     ),
+    "cboe_public": ProviderCapability(
+        name="cboe_public",
+        source_family="cboe_public",
+        independent_group="cboe_public",
+        markets=("us",),
+        price_mode="index_level_unadjusted",
+        volume_unit="not_applicable_index",
+        amount_unit="not_applicable_index",
+        corporate_actions=False,
+        trade_calendar=False,
+        research_only=True,
+        usage_note=(
+            "CBOE public VIX historical CSV (no key). Index levels only: volume "
+            "and amount are explicitly not applicable. CBOE states the data is "
+            "compiled for convenience without an explicit redistribution grant; "
+            "retain attribution, keep it local and make no licence claim."
+        ),
+    ),
     "yfinance": ProviderCapability(
         name="yfinance",
         source_family="yahoo_finance",

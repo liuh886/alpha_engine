@@ -13,8 +13,8 @@ from pathlib import Path
 import yaml
 
 from scripts.data.refresh_selected_pool_prices_v2 import (
-    COMPARISON_REFERENCE_AUXILIARIES,
     FORMAL_MARKET_AUXILIARIES,
+    OPTIONAL_REFERENCE_AUXILIARIES,
 )
 from src.artifacts.formal_provider_cache import DEFAULT_AUXILIARIES
 from src.governance.auxiliary_derivation import (
@@ -60,7 +60,7 @@ def test_derived_auxiliaries_are_covered_by_hardcoded_tuples():
     combined = {
         market: tuple(
             list(FORMAL_MARKET_AUXILIARIES[market])
-            + list(COMPARISON_REFERENCE_AUXILIARIES.get(market, ()))
+            + list(OPTIONAL_REFERENCE_AUXILIARIES.get(market, ()))
         )
         for market in FORMAL_MARKET_AUXILIARIES
     }
@@ -86,6 +86,45 @@ def test_sp500_is_a_declared_extra_without_strategy_drift():
     for market in ("us", "cn"):
         assert report[market]["missing"] == [], market
         assert report[market]["undeclared_extras"] == [], market
+
+
+def test_vix_is_a_declared_us_extra_without_strategy_drift():
+    from src.governance.auxiliary_derivation import DECLARED_EXTRAS
+
+    assert "VIX" in DEFAULT_AUXILIARIES["us"]
+    assert "VIX" not in DEFAULT_AUXILIARIES["cn"]
+    assert "VIX" in DECLARED_EXTRAS["us"]
+    citation = DECLARED_EXTRAS["us"]["VIX"]
+    assert "2026-11-17" in citation
+    assert "reference_instrument_registry_v1.yaml" in citation
+    derived = derive_required_auxiliaries(REPOSITORY_ROOT)
+    assert "VIX" not in derived["us"].required
+    # VIX is a strategy-declared non-executable index reference: derived as
+    # excluded, so the hardcoded auxiliary stays an explicit Owner citation.
+    assert "non-executable/index reference" in derived["us"].excluded["VIX"]
+    report = verify_against_hardcoded(DEFAULT_AUXILIARIES, REPOSITORY_ROOT)
+    for market in ("us", "cn"):
+        assert report[market]["missing"] == [], market
+        assert report[market]["undeclared_extras"] == [], market
+
+
+def test_optional_reference_class_is_explicit_and_disjoint():
+    from src.data.auxiliary_scope import (
+        all_governed_auxiliaries,
+        optional_reference_auxiliaries,
+        required_formal_auxiliaries,
+    )
+
+    assert optional_reference_auxiliaries("us") == ("CGDV", "SPX", "VIX")
+    assert optional_reference_auxiliaries("cn") == ()
+    assert set(required_formal_auxiliaries("us")) == {
+        "QQQI", "TQQQ", "SGOV", "TYGO"
+    }
+    assert not set(required_formal_auxiliaries("us")) & set(
+        optional_reference_auxiliaries("us")
+    )
+    for market in ("us", "cn"):
+        assert DEFAULT_AUXILIARIES[market] == all_governed_auxiliaries(market)
 
 
 def test_derived_cn_auxiliaries_have_strategy_provenance():

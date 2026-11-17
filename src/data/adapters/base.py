@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 import pandas as pd
 
@@ -50,6 +50,9 @@ class FetchResult:
     end: str | None
     df: pd.DataFrame
     provider_symbol: str | None = None
+    # Optional immutable provider provenance (source URL, exact response hash,
+    # fetch timestamp). Publication manifests retain it when present.
+    provenance: dict[str, Any] | None = None
 
 
 class MarketDataAdapter(Protocol):

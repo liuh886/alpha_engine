@@ -487,6 +487,158 @@ class _StubFactorEvaluator:
         )
 
 
+def _us_provider_root_with_auxiliary(
+    tmp_path: Path,
+    *,
+    symbol: str,
+    provider_symbol: str,
+    frame: pd.DataFrame,
+    optional_gaps: list[dict[str, object]] | None = None,
+) -> Path:
+    """Build one US provider with QQQ plus a single auxiliary or scoped gap."""
+
+    source = selected_pool_price_source("us")
+    source["candidate_symbols"] = ["QQQ"]
+    source["candidate_count"] = 1
+    source["benchmark"] = "QQQ"
+    source["stale_symbols"] = []
+    source["unresolved_stale_symbols"] = []
+    source["lifecycle_declared_terminal_symbols"] = []
+    source["terminal_history_symbols"] = []
+    source["terminal_listing_evidence"] = {}
+    source["all_sources_current"] = True
+    source["optional_auxiliary_gaps"] = list(optional_gaps or [])
+
+    records: list[dict[str, object]] = []
+    symbols = [("QQQ", "QQQ")]
+    if not optional_gaps:
+        symbols.append((symbol, provider_symbol))
+        source["auxiliary_symbols"] = [symbol]
+    else:
+        source["auxiliary_symbols"] = []
+    source["selected_providers"] = {row[0]: "yfinance" for row in symbols}
+    source["targets"] = [row[0] for row in symbols]
+    source["target_count"] = len(symbols)
+
+    provider_root = tmp_path / "provider-us"
+    for symbol_name, symbol_provider in symbols:
+        csv_path = provider_root / "data/csv_source" / f"{symbol_name}.csv"
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        frame.to_csv(csv_path, index=False, lineterminator="\n")
+        record = copy.deepcopy(source["records"][0])
+        record["symbol"] = symbol_name
+        record["provider_symbol"] = symbol_provider
+        record["output_sha256"] = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+        record["attempts"][0]["provider_symbol"] = symbol_provider
+        records.append(record)
+    source["records"] = records
+    write_selected_pool_price_publication_manifest(
+        provider_root / "artifacts" / PUBLICATION_MANIFEST_NAME, source
+    )
+    return provider_root
+
+
+def _vix_gap() -> dict[str, object]:
+    return {
+        "attempted_providers": ["cboe_public"],
+        "market": "us",
+        "reason": "CBOE source unavailable in the fixture",
+        "role": "optional_reference",
+        "status": "missing",
+        "symbol": "VIX",
+    }
+
+
+def test_market_evidence_publishes_governed_us_vix(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    vix_frame = _price_frame()
+    vix_frame["volume"] = 0.0
+    provider_root = _us_provider_root_with_auxiliary(
+        tmp_path,
+        symbol="VIX",
+        provider_symbol="VIX",
+        frame=vix_frame,
+    )
+    formal_root = _formal_root_without_trades(tmp_path)
+    monkeypatch.setattr(
+        "src.dashboard.market_evidence.QlibFactorEvaluator",
+        _StubFactorEvaluator,
+    )
+
+    result = build_market_evidence(
+        market="us",
+        provider_root=provider_root,
+        formal_root=formal_root,
+        output_root=tmp_path / "market-evidence",
+    )
+    assert result["optional_auxiliary_gaps"] == []
+
+    market_root = tmp_path / "market-evidence" / "us"
+    catalog = json.loads((market_root / "catalog.json").read_text(encoding="utf-8"))
+    rows = {row["symbol"]: row for row in catalog["symbols"]}
+    assert "VIX" in rows
+    assert rows["VIX"]["instrument_id"] == "us:VIX"
+    assert rows["VIX"]["roles"] == ["formal_auxiliary"]
+    assert rows["VIX"]["path"] == "symbols/VIX.json"
+    assert catalog["auxiliary_symbols"] == ["VIX"]
+    assert catalog["optional_auxiliary_gaps"] == []
+
+    payload = json.loads(
+        (market_root / "symbols/VIX.json").read_text(encoding="utf-8")
+    )
+    assert payload["instrument_id"] == "us:VIX"
+    assert payload["research_only"] is True
+    assert payload["trade_ready"] is False
+    assert payload["bars"]
+    assert all(bar["volume"] == 0.0 for bar in payload["bars"])
+
+    # The published series is the exact input identity the governed indicator
+    # registry expects, with enough observations for the 20-session SMA.
+    from src.governance.indicator_registry import load_indicator_registry
+
+    document = load_indicator_registry(Path.cwd())
+    entries = {entry["indicator_id"]: entry for entry in document["indicators"]}
+    assert entries["market_us_vix"]["inputs"]["series_id"] == "us:VIX"
+    assert entries["market_us_vix_sma_20"]["inputs"]["series_id"] == "us:VIX"
+    assert len(payload["bars"]) >= 20
+
+
+def test_market_evidence_records_scoped_vix_gap_without_fabricating_a_series(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider_root = _us_provider_root_with_auxiliary(
+        tmp_path,
+        symbol="VIX",
+        provider_symbol="VIX",
+        frame=_price_frame(),
+        optional_gaps=[_vix_gap()],
+    )
+    formal_root = _formal_root_without_trades(tmp_path)
+    monkeypatch.setattr(
+        "src.dashboard.market_evidence.QlibFactorEvaluator",
+        _StubFactorEvaluator,
+    )
+
+    result = build_market_evidence(
+        market="us",
+        provider_root=provider_root,
+        formal_root=formal_root,
+        output_root=tmp_path / "market-evidence",
+    )
+    assert result["optional_auxiliary_gaps"] == [_vix_gap()]
+
+    market_root = tmp_path / "market-evidence" / "us"
+    catalog = json.loads((market_root / "catalog.json").read_text(encoding="utf-8"))
+    assert catalog["optional_auxiliary_gaps"] == [_vix_gap()]
+    assert catalog["auxiliary_symbols"] == []
+    assert "VIX" not in {row["symbol"] for row in catalog["symbols"]}
+    assert not (market_root / "symbols/VIX.json").exists()
+    assert {row["symbol"] for row in catalog["symbols"]} == {"QQQ"}
+
+
 def test_market_evidence_publishes_governed_sp500_auxiliary(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

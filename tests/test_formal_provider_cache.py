@@ -60,7 +60,7 @@ def _provider_identity(payload: dict[str, object]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _contract() -> dict[str, object]:
+def _contract(auxiliary_symbols: list[str] | None = None) -> dict[str, object]:
     payload: dict[str, object] = {
         "schema_version": "1.1.0",
         "evidence_type": "formal_provider_cache_contract",
@@ -69,7 +69,7 @@ def _contract() -> dict[str, object]:
         "requested_cutoff": "2026-08-07",
         "refresh_mode": "incremental_from_governed_seed",
         "max_rounds": 3,
-        "auxiliary_symbols": [],
+        "auxiliary_symbols": list(auxiliary_symbols or []),
         "inputs": {"contract.py": "a" * 64},
         "research_only": True,
         "trade_ready": False,
@@ -98,7 +98,11 @@ def _provider_contract() -> dict[str, object]:
     }
 
 
-def _provider_tree(tmp_path: Path) -> Path:
+def _provider_tree(
+    tmp_path: Path,
+    *,
+    optional_auxiliary_gaps: list[dict[str, object]] | None = None,
+) -> Path:
     root = tmp_path / "provider-us"
     csv_path = root / "data/csv_source/AAA.csv"
     mixed_case_csv_paths = (
@@ -212,6 +216,8 @@ def _provider_tree(tmp_path: Path) -> Path:
         "trade_ready": False,
         "unresolved_stale_symbols": [],
     }
+    if optional_auxiliary_gaps is not None:
+        manifest["optional_auxiliary_gaps"] = optional_auxiliary_gaps
     manifest_path = root / "artifacts/selected_pool_price_refresh_manifest.json"
     manifest_path.parent.mkdir(parents=True)
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
@@ -507,3 +513,66 @@ def test_provider_cache_accepts_auxiliary_covered_as_candidate(
     covered["auxiliary_symbols"] = ["AAA"]
     receipt = root / "artifacts/formal-provider-cache-receipt.json"
     seal_provider_cache(provider_root=root, contract=covered, receipt_path=receipt)
+
+
+def _vix_gap() -> dict[str, object]:
+    return {
+        "attempted_providers": ["cboe_public"],
+        "market": "us",
+        "reason": "CBOE source unavailable in the fixture",
+        "role": "optional_reference",
+        "status": "missing",
+        "symbol": "VIX",
+    }
+
+
+def test_provider_cache_accepts_a_scoped_optional_reference_gap(
+    tmp_path: Path,
+) -> None:
+    root = _provider_tree(tmp_path, optional_auxiliary_gaps=[_vix_gap()])
+    contract = _contract(["VIX"])
+    receipt_path = root / "artifacts/formal-provider-cache-receipt.json"
+
+    receipt = seal_provider_cache(
+        provider_root=root, contract=contract, receipt_path=receipt_path
+    )
+    assert receipt["optional_auxiliary_gaps"] == ["VIX"]
+    assert verify_provider_cache(
+        provider_root=root, contract=contract, receipt_path=receipt_path
+    ) == receipt
+
+
+def test_provider_cache_requires_a_recorded_gap_for_a_missing_optional_reference(
+    tmp_path: Path,
+) -> None:
+    root = _provider_tree(tmp_path)
+    contract = _contract(["VIX"])
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    with pytest.raises(
+        FormalProviderCacheError, match="missing without a recorded gap"
+    ):
+        seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+
+def test_provider_cache_keeps_required_formal_auxiliaries_required(
+    tmp_path: Path,
+) -> None:
+    root = _provider_tree(tmp_path, optional_auxiliary_gaps=[])
+    contract = _contract(["QQQI"])
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    with pytest.raises(
+        FormalProviderCacheError, match="auxiliaries do not match contract"
+    ):
+        seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)
+
+
+def test_provider_cache_rejects_a_gap_outside_the_optional_contract(
+    tmp_path: Path,
+) -> None:
+    root = _provider_tree(tmp_path, optional_auxiliary_gaps=[_vix_gap()])
+    contract = _contract([])
+    receipt = root / "artifacts/formal-provider-cache-receipt.json"
+    with pytest.raises(
+        FormalProviderCacheError, match="gaps are outside the declared contract"
+    ):
+        seal_provider_cache(provider_root=root, contract=contract, receipt_path=receipt)

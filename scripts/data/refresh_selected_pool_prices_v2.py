@@ -28,10 +28,17 @@ from src.data.adapters.akshare_adapter import AkShareAdapter
 from src.data.adapters.akshare_sina_adapter import AkShareSinaAdapter
 from src.data.adapters.baostock_adapter import BaoStockAdapter
 from src.data.adapters.base import MarketDataAdapter
+from src.data.adapters.cboe_vix_adapter import CboeVixAdapter
 from src.data.adapters.efinance_adapter import EFinanceAdapter
 from src.data.adapters.tushare_adapter import TushareAdapter
 from src.data.adapters.tencent_fqkline_adapter import TencentQfqHistoryAdapter
 from src.data.adapters.yfinance_adapter import YFinanceAdapter
+from src.data.auxiliary_scope import (
+    OPTIONAL_REFERENCE_AUXILIARIES as GOVERNED_OPTIONAL_REFERENCE_AUXILIARIES,
+)
+from src.data.auxiliary_scope import (
+    REQUIRED_FORMAL_AUXILIARIES as GOVERNED_REQUIRED_FORMAL_AUXILIARIES,
+)
 from src.data.provider_catalog import (
     independent_provider_names,
     provider_manifest_entry,
@@ -43,16 +50,10 @@ from src.data.selected_pool_price_publication import (
     write_selected_pool_price_publication_manifest,
 )
 
-FORMAL_MARKET_AUXILIARIES: dict[str, tuple[str, ...]] = {
-    # TIGO is the current governed US87 identity. TYGO is a distinct security
-    # retained only because accepted US x1.1 history actually traded it; it is
-    # published separately rather than being rewritten or substituted as TIGO.
-    "us": ("QQQI", "TQQQ", "SGOV", "TYGO"),
-    # 515180 plus the five CN_27 strategy-specific names outside the selected
-    # pool. All are accepted holdings of a formal baseline, so the proven
-    # last-resort Yahoo fallback below applies to them exactly as to 515180.
-    "cn": ("515180", "002156", "002281", "300274", "601939", "688183"),
-}
+FORMAL_MARKET_AUXILIARIES: dict[str, tuple[str, ...]] = GOVERNED_REQUIRED_FORMAL_AUXILIARIES
+OPTIONAL_REFERENCE_AUXILIARIES: dict[str, tuple[str, ...]] = (
+    GOVERNED_OPTIONAL_REFERENCE_AUXILIARIES
+)
 _FORMAL_AUXILIARY_FETCH_ACTIONS = {
     "fetched_full_refresh",
     "fetched_incremental_update",
@@ -161,11 +162,18 @@ def build_hardened_router(market: str) -> MarketDataRouter:
         # Tiingo quota is intentionally reserved for the separate governed
         # QQQ/QQQI/TQQQ executable-ETF reference bundle, where professional
         # dual-source reconciliation is a hard contract.
+        #
+        # VIX is pinned to the governed CBOE public history source. Yahoo is
+        # never tried for VIX: its adjusted OHLC envelope failed the governed
+        # check, and no volatility ETF may substitute for the index.
         adapters.append(YFinanceAdapter())
+        adapters.append(CboeVixAdapter())
         providers.append("yfinance")
     else:
         raise ValueError(f"unsupported market: {market}")
     policy: dict[str, list[str]] = {market_key: providers}
+    if market_key == "us":
+        policy["us:VIX"] = ["cboe_public"]
     try:
         from src.governance.auxiliary_derivation import (
             strategy_symbol_vendor_overrides,
@@ -363,8 +371,12 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
         "selection_mode": "credential_aware_fallback",
         "provider_order": provider_order,
         "independent_provider_order": independent_provider_names(provider_order),
+        # Symbol-pinned sources (e.g. cboe_public for us:VIX) may not appear in
+        # the market-wide order, but their semantic contract must still be
+        # published for every selected record.
         "providers": {
-            provider: provider_manifest_entry(provider) for provider in provider_order
+            provider: provider_manifest_entry(provider)
+            for provider in sorted(set(provider_order) | set(selected_providers.values()))
         },
         "same_source_warning": (
             "akshare and efinance share source_family=eastmoney and do not count "
@@ -377,7 +389,9 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
             else (
                 "The US selected pool is bulk research evidence from Yahoo; "
                 "credentialed Tiingo is reserved for the separately governed "
-                "QQQ/QQQI/TQQQ professional reference bundle."
+                "QQQ/QQQI/TQQQ professional reference bundle. The real VIX index "
+                "is sourced only from the governed CBOE public history CSV; no "
+                "volatility ETF is a substitute."
             )
         ),
         "formal_auxiliary_boundary": (
@@ -456,12 +470,22 @@ def refresh_selected_pool_prices_v2(
     publication_path.unlink(missing_ok=True)
     data_router = router or build_hardened_router(market)
     requested_auxiliaries = auxiliary_symbols
+    market_key = str(market).lower()
     if requested_auxiliaries is None and full_refresh:
-        market_key = str(market).lower()
         requested_auxiliaries = (
             *FORMAL_MARKET_AUXILIARIES.get(market_key, ()),
-            *COMPARISON_REFERENCE_AUXILIARIES.get(market_key, ()),
+            *OPTIONAL_REFERENCE_AUXILIARIES.get(market_key, ()),
         )
+    requested_set = {
+        str(symbol).strip().upper()
+        for symbol in (requested_auxiliaries or ())
+        if str(symbol).strip()
+    }
+    optional_requested = tuple(
+        symbol
+        for symbol in OPTIONAL_REFERENCE_AUXILIARIES.get(market_key, ())
+        if symbol in requested_set
+    )
     try:
         refresh_selected_pool_prices(
             root=root,
@@ -474,6 +498,7 @@ def refresh_selected_pool_prices_v2(
             max_rounds=max_rounds,
             full_refresh=full_refresh,
             auxiliary_symbols=requested_auxiliaries,
+            optional_auxiliary_symbols=optional_requested,
             full_history_fallback_symbols=tuple(
                 symbol for symbol in FORMAL_MARKET_AUXILIARIES.get("cn", ())
                 if str(market).lower() == "cn" and symbol in (requested_auxiliaries or ())
