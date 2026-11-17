@@ -62,6 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      # CI exercises the CLI without vendor API calls.
       TIINGO_API_TOKEN: ""
       TUSHARE_TOKEN: ""
     steps:
