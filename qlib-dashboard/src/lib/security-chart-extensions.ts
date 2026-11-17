@@ -19,11 +19,13 @@ export interface SecurityChartOverlayPriceFormat {
 }
 
 /**
- * Theme-resolved categorical roles for governed indicators. The renderer maps
- * these to concrete canvas colors from `chart-theme`, so a dark-mode switch
- * repaints the overlays without the caller re-reading CSS custom properties.
- * `positive`/`negative` are reserved polarity cues, and `muted` is annotation
- * ink for the volume moving average.
+ * Theme-resolved categorical roles. The renderer maps these to concrete canvas
+ * colors from `chart-theme`, so a dark-mode switch repaints the overlays without
+ * the caller re-reading CSS custom properties. `positive`/`negative` are
+ * reserved polarity cues, and `muted` is annotation ink for the volume moving
+ * average. `primary`/`baseline` are the instrument and market-baseline lines;
+ * `model-*` reuse the fixed model identity order and `entity-*` the validated
+ * instrument comparison order, so compare overlays follow the active theme.
  */
 export type OverlayColorRole =
   | 'indicator-1'
@@ -32,7 +34,18 @@ export type OverlayColorRole =
   | 'indicator-4'
   | 'positive'
   | 'negative'
-  | 'muted';
+  | 'muted'
+  | 'primary'
+  | 'baseline'
+  | 'model-1'
+  | 'model-2'
+  | 'model-3'
+  | 'model-4'
+  | 'model-5'
+  | 'entity-1'
+  | 'entity-2'
+  | 'entity-3'
+  | 'entity-4';
 
 export interface SecurityChartOverlay {
   /** Stable identity; the chart updates this series in place. */

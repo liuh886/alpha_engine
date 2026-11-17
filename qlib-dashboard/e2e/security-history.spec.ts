@@ -175,3 +175,80 @@ test('the shared baseline control indexes the instrument and the governed market
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
   expect(errors).toEqual([]);
 });
+
+test('compare mode indexes any same-market entity on one exact common window', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/securities/us/QQQ');
+  await expect(page.getByRole('heading', { name: 'QQQ', exact: true })).toBeVisible();
+
+  // Enter compare through the keyboard-operable toggle.
+  const toggle = page.getByTestId('security-compare-toggle');
+  await toggle.focus();
+  await expect(toggle).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('compare-scope')).toContainText('Same-market comparison only');
+  await expect(page.getByTestId('security-chart-basis')).toContainText('exact common start');
+  await expect(page.getByTestId('security-lightweight-chart-container')).toHaveCount(1);
+
+  // Search and add a same-market instrument.
+  const control = page.getByTestId('compare-control-trigger');
+  await expect(control).toHaveAccessibleName(/US compare: 0 of 4 overlays/);
+  await control.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('compare-search')).toBeFocused();
+  await page.getByTestId('compare-search').fill('MSFT');
+  const msft = page.getByTestId('compare-option-instrument:us:MSFT');
+  await expect(msft).toBeVisible();
+  await msft.click();
+  const msftLegend = page.getByTestId('compare-legend-instrument:us:MSFT');
+  await expect(msftLegend).toContainText('MSFT');
+  await expect(page.getByTestId('compare-loading-instrument:us:MSFT')).toHaveCount(0);
+
+  // Add a formal model NAV overlay from the same market.
+  await page.getByTestId('compare-search').fill('QQQR');
+  await page.getByTestId('compare-option-model:us:qqqi_qqq_tqqq_v4_3').click();
+  const modelLegend = page.getByTestId('compare-legend-model:us:qqqi_qqq_tqqq_v4_3');
+  await expect(modelLegend).toContainText('QQQR');
+  await expect(page.getByTestId('compare-loading-model:us:qqqi_qqq_tqqq_v4_3')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  // One indexed axis and one global exact common start across every entity.
+  await expect(page.getByTestId('security-chart-basis')).toContainText(
+    /Indexed to 100 at the exact common start \d{4}-\d{2}-\d{2} – \d{4}-\d{2}-\d{2} · 3 series/,
+  );
+  await expect(page.getByTestId('security-lightweight-chart-container')).toHaveCount(1);
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+
+  await page.getByTestId('security-lightweight-chart-container').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath(`entity-compare-${testInfo.project.name}.png`), fullPage: false });
+
+  // The cap is four overlays and the extra options state it plainly. Reopen the
+  // picker at the current scroll position so the portalled list stays in view.
+  await page.keyboard.press('Escape');
+  await control.scrollIntoViewIfNeeded();
+  await control.click();
+  await expect(page.getByTestId('compare-search')).toBeFocused();
+  for (const symbol of ['AAPL', 'NVDA']) {
+    await page.getByTestId('compare-search').fill(symbol);
+    await page.getByTestId(`compare-option-instrument:us:${symbol}`).click();
+  }
+  await expect(page.getByTestId('compare-max-message')).toContainText('Compare is limited to 4 overlays');
+  await page.getByTestId('compare-search').fill('');
+  await expect(page.getByTestId('compare-option-instrument:us:ADP')).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('Escape');
+
+  // Remove one entity; the survivors keep their identity and the chart stays mounted.
+  await page.getByRole('button', { name: 'Remove MSFT from comparison' }).click();
+  await expect(page.getByTestId('compare-legend-instrument:us:MSFT')).toHaveCount(0);
+  await expect(page.getByTestId('compare-legend-model:us:qqqi_qqq_tqqq_v4_3')).toBeVisible();
+  await expect(page.getByTestId('security-lightweight-chart-container')).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Use dark theme', exact: true }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.getByTestId('security-lightweight-chart-container').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath(`entity-compare-dark-${testInfo.project.name}.png`), fullPage: false });
+  expect(errors).toEqual([]);
+});

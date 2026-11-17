@@ -409,6 +409,55 @@ describe('SecurityLightweightChart lifecycle', () => {
     expect(harness.removedPanes).toEqual([1]);
   });
 
+  it('plots comparison overlays on one indexed axis without rebuilding the chart', () => {
+    const overlays = [
+      {
+        id: 'base:instrument',
+        label: 'AAPL',
+        kind: 'line' as const,
+        pane: 'price' as const,
+        colorRole: 'primary' as const,
+        data: [{ time: '2026-01-05', value: 100 }],
+      },
+      {
+        id: 'entity:us:MSFT',
+        label: 'MSFT',
+        kind: 'line' as const,
+        pane: 'price' as const,
+        colorRole: 'entity-1' as const,
+        lineStyle: 'dashed' as const,
+        data: [{ time: '2026-01-05', value: 101 }],
+      },
+    ];
+    const { props, rerender, candle, volume, instrument, baseline } = renderChart({ mode: 'compare', overlays });
+    expect(harness.createChart).toHaveBeenCalledTimes(1);
+    // Candles, volume and the dedicated baseline series stay hidden so only the
+    // indexed overlay lines drive the shared right axis.
+    expect(candle.applyOptions).toHaveBeenLastCalledWith({ visible: false });
+    expect(volume.applyOptions).toHaveBeenLastCalledWith({ visible: false });
+    expect(instrument.applyOptions).toHaveBeenLastCalledWith({ visible: false });
+    expect(baseline.applyOptions).toHaveBeenLastCalledWith({ visible: false });
+    expect(harness.addSeriesCalls).toHaveLength(6);
+    expect(harness.addSeriesCalls[4]).toMatchObject({ definition: 'LineSeries', paneIndex: 0 });
+    expect(harness.addSeriesCalls[4].options).toMatchObject({
+      color: chartTheme(false).primary,
+      visible: true,
+    });
+    expect(harness.addSeriesCalls[5].options).toMatchObject({
+      color: chartTheme(false).entitySeries[0],
+      visible: true,
+      lineStyle: 2,
+    });
+    expect(harness.plugins[0].setMarkers).toHaveBeenLastCalledWith([]);
+    expect(harness.plugins[1].setMarkers).toHaveBeenLastCalledWith([]);
+
+    // Removing one entity updates the live series in place.
+    rerender(<SecurityLightweightChart {...props} mode="compare" overlays={[overlays[0]]} />);
+    expect(harness.createChart).toHaveBeenCalledTimes(1);
+    expect(harness.removedSeries).toContain(harness.series[5]);
+    expect(harness.series[4].setData).toHaveBeenLastCalledWith([{ time: '2026-01-05', value: 100 }]);
+  });
+
   it('resolves indicator colour roles from the theme and repaints on theme change', async () => {
     const overlays = [
       {

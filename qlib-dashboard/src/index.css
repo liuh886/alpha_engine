@@ -57,6 +57,13 @@
     --indicator-2: 159 73% 40%;
     --indicator-3: 23 67% 31%;
     --indicator-4: 334 80% 40%;
+    /* Same-market comparison instruments. A third fixed categorical order,
+       validated separately against the light card surface and kept apart from
+       model, indicator and positive/negative tokens. */
+    --entity-1: 275 95% 52%;
+    --entity-2: 205 95% 52%;
+    --entity-3: 325 95% 64%;
+    --entity-4: 75 95% 32%;
     --chart-grid: 220 16% 90%;
     --chart-axis: 220 9% 42%;
 
@@ -116,6 +123,11 @@
     --indicator-2: 159 73% 36%;
     --indicator-3: 24 59% 45%;
     --indicator-4: 335 62% 61%;
+    /* Comparison-instrument hues selected for the dark card surface. */
+    --entity-1: 275 95% 50%;
+    --entity-2: 205 95% 38%;
+    --entity-3: 325 80% 42%;
+    --entity-4: 75 70% 26%;
     --chart-grid: 220 14% 17%;
     --chart-axis: 217 12% 66%;
 

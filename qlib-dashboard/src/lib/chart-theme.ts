@@ -31,6 +31,25 @@ export const INDICATOR_SERIES_TOKENS = [
   'indicator-4',
 ] as const;
 
+/**
+ * Fixed categorical order for same-market comparison instruments, deliberately
+ * distinct from the model and indicator orders and from the positive/negative
+ * status cues. Validated with the data-viz palette method against the project's
+ * light card `#ffffff` and dark card `#141820` surfaces: both modes pass the
+ * lightness band, chroma floor, adjacent CVD separation (all-pairs >= 8),
+ * normal-vision floor (all-pairs >= 15) and 3:1 contrast. Dark is a separately
+ * selected set, not an automatic flip. Compared instruments also render dashed
+ * while model overlays stay solid, so the two families never rely on hue alone.
+ * Assignment is by the stable slot captured when an entity is added; removing a
+ * neighbour never repaints the survivors.
+ */
+export const ENTITY_SERIES_TOKENS = [
+  'entity-1',
+  'entity-2',
+  'entity-3',
+  'entity-4',
+] as const;
+
 const MODEL_SERIES_FALLBACKS: Readonly<Record<'light' | 'dark', readonly string[]>> = {
   light: [
     'hsl(22, 88%, 46%)',
@@ -63,6 +82,21 @@ const INDICATOR_SERIES_FALLBACKS: Readonly<Record<'light' | 'dark', readonly str
   ],
 };
 
+const ENTITY_SERIES_FALLBACKS: Readonly<Record<'light' | 'dark', readonly string[]>> = {
+  light: [
+    'hsl(275, 95%, 52%)',
+    'hsl(205, 95%, 52%)',
+    'hsl(325, 95%, 64%)',
+    'hsl(75, 95%, 32%)',
+  ],
+  dark: [
+    'hsl(275, 95%, 50%)',
+    'hsl(205, 95%, 38%)',
+    'hsl(325, 80%, 42%)',
+    'hsl(75, 70%, 26%)',
+  ],
+};
+
 export interface ChartTheme {
   text: string;
   grid: string;
@@ -90,6 +124,11 @@ export interface ChartTheme {
    * from model identity and from positive/negative polarity.
    */
   indicatorSeries: readonly string[];
+  /**
+   * Concrete comparison-instrument colors in `ENTITY_SERIES_TOKENS` order.
+   * Selected and validated per mode, never auto-flipped.
+   */
+  entitySeries: readonly string[];
 }
 
 function token(name: string): string {
@@ -119,6 +158,7 @@ export function chartTheme(isDark: boolean): ChartTheme {
   const mode = isDark ? 'dark' : 'light';
   const modelFallbacks = MODEL_SERIES_FALLBACKS[mode];
   const indicatorFallbacks = INDICATOR_SERIES_FALLBACKS[mode];
+  const entityFallbacks = ENTITY_SERIES_FALLBACKS[mode];
   return {
     text: hsl(token('chart-axis'), isDark ? '#94a3b8' : '#64748b'),
     grid: hsl(token('chart-grid'), isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.07)'),
@@ -135,6 +175,9 @@ export function chartTheme(isDark: boolean): ChartTheme {
     modelSeries: MODEL_SERIES_TOKENS.map((name, index) => hsl(token(name), modelFallbacks[index] ?? modelFallbacks[0])),
     indicatorSeries: INDICATOR_SERIES_TOKENS.map(
       (name, index) => hsl(token(name), indicatorFallbacks[index] ?? indicatorFallbacks[0]),
+    ),
+    entitySeries: ENTITY_SERIES_TOKENS.map(
+      (name, index) => hsl(token(name), entityFallbacks[index] ?? entityFallbacks[0]),
     ),
   };
 }

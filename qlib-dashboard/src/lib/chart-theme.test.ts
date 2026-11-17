@@ -98,6 +98,36 @@ describe('chart theme', () => {
     for (const color of dark.indicatorSeries) expect(chartTheme(true).modelSeries).not.toContain(color);
   });
 
+  it('resolves the entity comparison order separately in both modes', () => {
+    tokens({
+      '--entity-1': '275 95% 52%',
+      '--entity-2': '205 95% 52%',
+      '--entity-3': '325 95% 64%',
+      '--entity-4': '75 95% 32%',
+    });
+    expect(chartTheme(false).entitySeries).toEqual([
+      'hsl(275, 95%, 52%)',
+      'hsl(205, 95%, 52%)',
+      'hsl(325, 95%, 64%)',
+      'hsl(75, 95%, 32%)',
+    ]);
+    tokens({});
+    const light = chartTheme(false);
+    const dark = chartTheme(true);
+    expect(light.entitySeries).toHaveLength(4);
+    expect(dark.entitySeries).toHaveLength(4);
+    // Dark is selected separately, never an automatic flip of the light set.
+    expect(dark.entitySeries).not.toEqual(light.entitySeries);
+    // Entity hues never reuse a model, indicator or polarity identity.
+    for (const color of [...light.entitySeries, ...dark.entitySeries]) {
+      expect(light.modelSeries).not.toContain(color);
+      expect(dark.modelSeries).not.toContain(color);
+      expect(light.indicatorSeries).not.toContain(color);
+      expect(dark.indicatorSeries).not.toContain(color);
+      expect([light.positive, light.negative, dark.positive, dark.negative]).not.toContain(color);
+    }
+  });
+
   it('uses a translucent fallback for volume when the token is missing', () => {
     tokens({});
     expect(chartTheme(false).volumeUp).toMatch(/^rgba\(/);
