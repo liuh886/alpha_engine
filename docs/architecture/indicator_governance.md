@@ -111,6 +111,14 @@ Market scope, US only in this set:
 that plane publishes the series, the module returns
 `market_series_unavailable`. No ETF, index proxy or CN substitute is permitted.
 
+**2026-11-17 status:** the first VIX data-plane attempt (Yahoo `^VIX` as a
+governed provider auxiliary) was withdrawn. Yahoo's VIX OHLC failed the governed
+OHLC envelope check (max absolute drift 22.91), the symbol was quarantined, and
+the partial US provider refresh blocked market-evidence publication. Re-enabling
+VIX requires a close-only or CBOE `VIX_History.csv` source with explicit
+provenance; until then these entries stay unavailable rather than publishing a
+repaired or synthetic OHLC series.
+
 The first set also registers one non-executable placeholder:
 `market_cn_rdi_reserved` (scope `market`, market `cn`, kind `reserved`, status
 `research_only`, input `cn:RDI`, no formula, no params). It claims no values and

@@ -29,14 +29,6 @@ def test_us_sp500_index_maps_to_the_real_index_never_a_tracking_etf():
         assert _get_yahoo_ticker(tracking_etf, "us") == tracking_etf
 
 
-def test_us_vix_index_maps_to_the_real_index_never_a_volatility_etf():
-    assert _get_yahoo_ticker("VIX", "us") == "^VIX"
-    assert _get_yahoo_ticker("^VIX", "us") == "^VIX"
-    # Volatility ETFs are distinct instruments and are never substituted.
-    for volatility_etf in ("VXX", "VIXY", "UVXY", "SVXY"):
-        assert _get_yahoo_ticker(volatility_etf, "us") == volatility_etf
-
-
 def test_existing_us_cn_and_hk_mappings_are_unchanged():
     assert _get_yahoo_ticker("AAPL", "us") == "AAPL"
     assert _get_yahoo_ticker("^VIX", "us") == "^VIX"

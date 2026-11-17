@@ -104,9 +104,6 @@ markets:
         cash_distribution_required: true
         pre_inception_fill_allowed: false
       VIX:
-        # Owner-requested 2026-11-17 as a US chart indicator. US volatility
-        # context only: the real index is never substituted by VXX/VIXY/UVXY
-        # or any volatility ETF, and it is never a cross-market overlay.
         canonical_symbol: "VIX"
         instrument_type: "volatility_index"
         provider_aliases: ["^VIX", "VIX"]
