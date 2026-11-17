@@ -257,3 +257,16 @@ test('a strategy chart adds one same-market model and keeps markers on the base 
   await capture(page, testInfo, 'strategy-model-comparison');
   expect(errors).toEqual([]);
 });
+
+test('the strategy chart plot stays above the 390x844 handset fold', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+
+  const chart = page.getByTestId('strategy-nav-chart');
+  await expect(chart).toBeVisible();
+  const chartBox = await chart.boundingBox();
+  const tileBox = await page.getByTestId('hero-period-return').boundingBox();
+  expect(chartBox && tileBox).toBeTruthy();
+  expect(chartBox!.y, 'chart top reaches the 390x844 first screen').toBeLessThan(844);
+  expect(chartBox!.y, 'chart precedes the numeric tiles on a handset').toBeLessThan(tileBox!.y);
+});

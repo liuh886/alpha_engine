@@ -68,6 +68,28 @@ function useChartHeight(): number {
   return height;
 }
 
+/**
+ * The comparison picker joins the control row on larger screens. On a handset
+ * it moves below the plot so its control row cannot push the chart-first hero
+ * below the fold; the picker remains the same controlled component.
+ */
+function useHandsetLayout(): boolean {
+  const [handset, setHandset] = useState(() => (
+    typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(max-width: 639px)').matches
+  ));
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia('(max-width: 639px)');
+    const update = () => setHandset(query.matches);
+    update();
+    query.addEventListener?.('change', update);
+    return () => query.removeEventListener?.('change', update);
+  }, []);
+  return handset;
+}
+
 function markerModeLabel(mode: NavMarkerMode): string {
   return mode === 'holding-end' ? 'holding-end settlement dates' : 'trade dates';
 }
@@ -151,6 +173,7 @@ export function StrategyChartHero({
   selectedIdsRef.current = selectedModels.map(item => item.id);
   const { preference, setPreference } = useBaselinePreference();
   const chartHeight = useChartHeight();
+  const handset = useHandsetLayout();
 
   const catalogRuns = useMemo(() => {
     const list = runs.length > 0 ? runs : [run];
@@ -513,6 +536,17 @@ export function StrategyChartHero({
     [selectedModels],
   );
 
+  const compareControl = market && compareOptions.length > 0 ? (
+    <CompareControl
+      options={compareOptions}
+      selected={selectedCompare}
+      onToggle={toggleModel}
+      marketLabel={market === 'us' ? 'US' : 'CN'}
+      displayed={EMPTY_DISPLAYED}
+      max={MAX_MODEL_OVERLAYS}
+    />
+  ) : null;
+
   const legendItems = useMemo<CompareLegendItem[]>(() => {
     if (!multiModel) return [];
     const items: CompareLegendItem[] = [{
@@ -646,58 +680,57 @@ export function StrategyChartHero({
     if (market) setPreference(market, next);
   };
 
+  const horizonControl = (
+    <div role="group" aria-label="Chart horizon" className="flex flex-wrap items-center gap-0.5 rounded-md border bg-muted/30 p-0.5">
+      {CHART_HORIZONS.map(horizon => (
+        <button
+          key={horizon.period}
+          type="button"
+          aria-pressed={period === horizon.period}
+          onClick={() => setPeriod(horizon.period)}
+          className={cn(
+            'research-touch min-h-8 rounded px-2.5 text-[11px] font-semibold tabular-nums transition-colors',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            period === horizon.period
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+          )}
+        >
+          {horizon.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const baselineControl = market ? (
+    <BaselineControl
+      options={options}
+      value={activeKind}
+      onChange={changeBaseline}
+      marketLabel={market === 'us' ? 'US' : 'CN'}
+    />
+  ) : null;
+
+  const headerControls = handset ? undefined : (
+    <>
+      {horizonControl}
+      {compareControl}
+      {baselineControl}
+    </>
+  );
+
   return (
     <EntityChartPanel
       testId="strategy-chart-hero"
       title="Performance path"
-      description={
+      description={handset ? undefined : (
         <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
           {multiModel
             ? 'Governed NAV for same-market formal models indexed to 100 at one exact common start. One axis; no interpolation, forward fill or cross-market comparison.'
             : 'Governed NAV indexed to 100 at the first exact-date observation. No interpolation, forward fill or cross-market baseline.'}
         </p>
-      }
-      controls={
-        <>
-          <div role="group" aria-label="Chart horizon" className="flex flex-wrap items-center gap-0.5 rounded-md border bg-muted/30 p-0.5">
-            {CHART_HORIZONS.map(horizon => (
-              <button
-                key={horizon.period}
-                type="button"
-                aria-pressed={period === horizon.period}
-                onClick={() => setPeriod(horizon.period)}
-                className={cn(
-                  'research-touch min-h-8 rounded px-2.5 text-[11px] font-semibold tabular-nums transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  period === horizon.period
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )}
-              >
-                {horizon.label}
-              </button>
-            ))}
-          </div>
-          {market && compareOptions.length > 0 && (
-            <CompareControl
-              options={compareOptions}
-              selected={selectedCompare}
-              onToggle={toggleModel}
-              marketLabel={market === 'us' ? 'US' : 'CN'}
-              displayed={EMPTY_DISPLAYED}
-              max={MAX_MODEL_OVERLAYS}
-            />
-          )}
-          {market && (
-            <BaselineControl
-              options={options}
-              value={activeKind}
-              onChange={changeBaseline}
-              marketLabel={market === 'us' ? 'US' : 'CN'}
-            />
-          )}
-        </>
-      }
+      )}
+      controls={headerControls}
     >
       {!navLoaded ? (
         <p role="status" className="p-6 text-sm text-muted-foreground">Loading verified NAV projection…</p>
@@ -790,6 +823,24 @@ export function StrategyChartHero({
               seriesLegend={!multiModel}
               markerScope={multiModel ? `base model (${run.title})` : undefined}
             />
+
+            {handset && (
+              <div
+                data-testid="strategy-model-mobile-controls"
+                className="mt-3 flex flex-col gap-2"
+              >
+                {horizonControl}
+                <div className="flex flex-wrap items-center gap-2">
+                  {compareControl && (
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      Compare models
+                    </span>
+                  )}
+                  {compareControl}
+                  {baselineControl}
+                </div>
+              </div>
+            )}
 
             {multiModel && <CompareLegend items={legendItems} />}
 
