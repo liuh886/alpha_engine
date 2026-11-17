@@ -237,7 +237,7 @@ export function StrategyDetailPage() {
       <StrategySectionNav />
 
       <div id="summary" tabIndex={-1} className="scroll-mt-28 space-y-7 focus:outline-none">
-        <StrategyChartHero key={run.key} run={run} />
+        <StrategyChartHero key={run.key} run={run} runs={workspace.runs} />
         <OperationsReadStatus loading={loading} issues={issues} reload={reload}
           previousRead={snapshot?.readState === 'retained'} checkedAt={checkedAt} />
         <ResearchTrackingAssessment state={decisionState} evidenceCutoff={run.evidenceCutoff} primaryCounterevidence={primaryCounterevidence?.statement} />

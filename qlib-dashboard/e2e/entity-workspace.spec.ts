@@ -213,3 +213,47 @@ test('a model page exposes retained-trade instrument links before any evidence t
   await expect(page.getByTestId('related-models')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('a strategy chart adds one same-market model and keeps markers on the base only', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+
+  const panel = page.getByTestId('strategy-chart-hero');
+  await panel.scrollIntoViewIfNeeded();
+  await expect(page.getByTestId('strategy-nav-chart')).toBeVisible();
+
+  // The picker lists accepted same-market formal models only; the base model
+  // never appears as its own overlay.
+  const trigger = page.getByTestId('compare-control-trigger');
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toHaveAccessibleName('US compare: 0 of 3 overlays');
+  await trigger.click();
+  await expect(page.getByTestId('compare-option-model:us:us_x1_3')).toBeVisible();
+  await expect(page.getByTestId('compare-option-model:us:qqqi_qqq_tqqq_v4_3')).toHaveCount(0);
+
+  await page.getByTestId('compare-option-model:us:us_x1_3').click();
+  await page.keyboard.press('Escape');
+
+  const overlay = page.getByTestId('compare-legend-model:us:us_x1_3');
+  await expect(overlay).toBeVisible();
+  await expect(overlay.getByRole('link', { name: 'US x1.3', exact: true }))
+    .toHaveAttribute('href', '#/strategies/us_x1_3');
+  await expect(page.getByTestId('compare-loading-model:us:us_x1_3')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByTestId('compare-legend-base')).toContainText('base · indexed NAV');
+  await expect(page.getByTestId('compare-legend-baseline')).toBeVisible();
+
+  const disclosure = page.getByTestId('strategy-model-comparison-disclosure');
+  await expect(disclosure).toContainText('2 same-market formal models');
+  await expect(disclosure).toContainText('exact common window');
+  await expect(disclosure).toContainText('historical research evidence, not a signal');
+  await expect(disclosure).toContainText('base model (QQQR v4.3) only');
+  await expect(page.getByTestId('nav-chart-marker-scope')).toContainText('base model (QQQR v4.3) only');
+
+  // The overlay never breaks the one-axis / no-overflow contract.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+
+  await panel.scrollIntoViewIfNeeded();
+  await capture(page, testInfo, 'strategy-model-comparison');
+  expect(errors).toEqual([]);
+});

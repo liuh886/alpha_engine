@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { CompareLegend, type CompareLegendItem } from './CompareLegend';
 
@@ -67,5 +68,26 @@ describe('CompareLegend', () => {
     expect(items[2].onRemove).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: /Remove AAPL/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Remove QQQ$/ })).not.toBeInTheDocument();
+  });
+
+  it('links a compared model to its canonical strategy route', () => {
+    render(
+      <MemoryRouter>
+        <CompareLegend
+          items={[{
+            id: 'model:us:us_x1_3',
+            label: 'US x1.3',
+            detail: 'model NAV',
+            colorRole: 'model-2',
+            dashed: false,
+            kind: 'model',
+            href: '/strategies/us_x1_3',
+          }]}
+        />
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole('link', { name: 'US x1.3' });
+    expect(link).toHaveAttribute('href', '/strategies/us_x1_3');
+    expect(link).toHaveClass('text-primary');
   });
 });

@@ -293,6 +293,41 @@ describe('NavChart', () => {
     );
   });
 
+  it('keeps model overlays solid with fixed identity tokens and labels the role', () => {
+    render(
+      <NavChart
+        series={[
+          series[0],
+          { key: 'model-us-x1', label: 'US x1.3', nav: benchmark, emphasis: 'model', dashed: false, colorToken: 'chart-6' },
+          { ...series[1], colorToken: 'chart-2' },
+        ]}
+        periodLabel="1M"
+      />,
+    );
+    const lines = screen.getAllByTestId('series-line');
+    expect(lines[1].getAttribute('data-stroke')).toBe('hsl(var(--chart-6))');
+    expect(lines[1].getAttribute('data-dash')).toBe('');
+    expect(lines[2].getAttribute('data-stroke')).toBe('hsl(var(--chart-2))');
+    expect(lines[2].getAttribute('data-dash')).toBe('5 4');
+    const legend = screen.getByRole('list', { name: 'Chart series' });
+    expect(within(legend).getByText('Model')).toBeInTheDocument();
+    expect(within(legend).getByText('Baseline')).toBeInTheDocument();
+  });
+
+  it('accepts the documented muted overflow token without emitting a raw color', () => {
+    render(
+      <NavChart
+        series={[
+          series[0],
+          { key: 'overflow', label: 'Overflow', nav: benchmark, emphasis: 'model', dashed: false, colorToken: 'muted-foreground' },
+        ]}
+        periodLabel="1M"
+      />,
+    );
+    expect(screen.getAllByTestId('series-line')[1].getAttribute('data-stroke'))
+      .toBe('hsl(var(--muted-foreground))');
+  });
+
   it('describes the indexed window and the exact-date comparison basis', () => {
     render(<NavChart series={series} periodLabel="1M" />);
     expect(screen.getByTestId('nav-chart-window')).toHaveTextContent(
