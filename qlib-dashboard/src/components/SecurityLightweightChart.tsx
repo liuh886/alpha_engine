@@ -32,7 +32,7 @@ import {
   type MarkerColorResolver,
 } from '@/lib/lightweight-chart-adapter';
 
-export type SecurityChartMode = 'price' | 'baseline';
+export type SecurityChartMode = 'price' | 'baseline' | 'compare';
 
 interface ChartHandles {
   chart: IChartApi;
@@ -108,11 +108,21 @@ function markerColorsFor(
   };
 }
 
-/** Canvas-safe indicator role colors; resolved per theme, never from CSS vars. */
+/** Canvas-safe indicator/entity role colors; resolved per theme, never from CSS vars. */
 function overlayRoleColor(role: OverlayColorRole, theme: ChartTheme): string {
   if (role === 'positive') return theme.positive;
   if (role === 'negative') return theme.negative;
   if (role === 'muted') return theme.text;
+  if (role === 'primary') return theme.primary;
+  if (role === 'baseline') return theme.baseline;
+  if (role.startsWith('model-')) {
+    const index = Number(role.slice('model-'.length)) - 1;
+    return theme.modelSeries[index] ?? theme.text;
+  }
+  if (role.startsWith('entity-')) {
+    const index = Number(role.slice('entity-'.length)) - 1;
+    return theme.entitySeries[index] ?? theme.primary;
+  }
   const index = Number(role.slice('indicator-'.length)) - 1;
   return theme.indicatorSeries[index] ?? theme.primary;
 }
@@ -420,7 +430,10 @@ export function SecurityLightweightChart({
         markersRef.current,
         markerColorsFor(next, modelColorIndexRef.current),
       );
-      if (modeRef.current === 'baseline') {
+      if (modeRef.current === 'compare') {
+        lineMarkers.setMarkers([]);
+        candleMarkers.setMarkers([]);
+      } else if (modeRef.current === 'baseline') {
         lineMarkers.setMarkers(markerData);
         candleMarkers.setMarkers([]);
       } else {
@@ -462,6 +475,19 @@ export function SecurityLightweightChart({
       handles.instrument.setData(baselineSeries ? toLightweightLineData(baselineSeries.instrument) : []);
       handles.baseline.setData(baselineSeries ? toLightweightLineData(baselineSeries.baseline) : []);
       handles.chart.applyOptions({ rightPriceScale: { scaleMargins: { top: 0.12, bottom: 0.08 } } });
+    } else if (mode === 'compare') {
+      // Compare mode plots every displayed entity as an indexed overlay line on
+      // the shared right scale; candles and the dedicated baseline series are
+      // hidden so no price-scale series can compete with the indexed axis.
+      handles.candle.applyOptions({ visible: false });
+      handles.volume.applyOptions({ visible: false });
+      handles.candle.setData([]);
+      handles.volume.setData([]);
+      handles.instrument.applyOptions({ visible: false });
+      handles.baseline.applyOptions({ visible: false });
+      handles.instrument.setData([]);
+      handles.baseline.setData([]);
+      handles.chart.applyOptions({ rightPriceScale: { scaleMargins: { top: 0.12, bottom: 0.08 } } });
     } else {
       handles.instrument.applyOptions({ visible: false });
       handles.baseline.applyOptions({ visible: false });
@@ -482,7 +508,10 @@ export function SecurityLightweightChart({
     sessionEventsRef.current = eventsBySession(markers);
     const theme = themeRef.current ?? chartTheme(isDarkTheme());
     const markerData = toLightweightMarkers(markers, markerColorsFor(theme, modelColorIndex));
-    if (mode === 'baseline') {
+    if (mode === 'compare') {
+      handles.lineMarkers.setMarkers([]);
+      handles.candleMarkers.setMarkers([]);
+    } else if (mode === 'baseline') {
       handles.lineMarkers.setMarkers(markerData);
       handles.candleMarkers.setMarkers([]);
     } else {
@@ -523,7 +552,9 @@ export function SecurityLightweightChart({
 
     for (const overlay of overlays ?? []) {
       const paneKey = overlayPaneKey(overlay);
-      const visible = overlay.visible !== false && (mode === 'price' || overlay.pane === 'indicator');
+      const visible = overlay.visible !== false && (
+        overlay.pane === 'indicator' ? true : mode === 'price' || mode === 'compare'
+      );
       let handle = live.get(overlay.id);
       if (!handle) {
         const paneIndex = paneKey === '__main__' ? 0 : ensureIndicatorPane(paneKey);
@@ -559,7 +590,11 @@ export function SecurityLightweightChart({
     handlesRef.current?.chart.timeScale().fitContent();
   }, [fitKey]);
 
-  const showEmpty = mode === 'baseline' ? !baselineSeries : bars.length === 0;
+  const showEmpty = mode === 'baseline'
+    ? !baselineSeries
+    : mode === 'compare'
+      ? overlays.length === 0
+      : bars.length === 0;
 
   return (
     <div className="space-y-1.5">

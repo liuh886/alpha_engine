@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GovernedRunSummary } from '@/lib/governed-run';
-import type { SecurityEvidence } from '@/lib/security-evidence';
+import type { SecurityEvidence, SecuritySymbol } from '@/lib/security-evidence';
 import { SecurityAsOfMetrics, SecurityHistory } from './SecurityDetailPage';
 
 // Radix focus/positioning scopes are costly under jsdom; this mirrors the
@@ -49,11 +49,26 @@ vi.mock('@radix-ui/react-popover', () => {
   };
 });
 
-const mocks = vi.hoisted(() => ({ loadMarketBaseline: vi.fn(), readMarketEvidence: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  loadMarketBaseline: vi.fn(),
+  readMarketEvidence: vi.fn(),
+  loadSecurityCatalog: vi.fn(),
+  loadFormalNav: vi.fn(),
+}));
 
 vi.mock('@/lib/security-baseline', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/security-baseline')>();
   return { ...actual, loadMarketBaseline: mocks.loadMarketBaseline };
+});
+
+vi.mock('@/lib/security-evidence', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/security-evidence')>();
+  return { ...actual, loadSecurityCatalog: mocks.loadSecurityCatalog };
+});
+
+vi.mock('@/lib/formal-nav', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/formal-nav')>();
+  return { ...actual, loadFormalNav: mocks.loadFormalNav };
 });
 
 vi.mock('@/lib/market-evidence-cache', async importOriginal => {
@@ -162,13 +177,50 @@ function renderHistory(runs: GovernedRunSummary[] = [run], value: SecurityEviden
   );
 }
 
+const symbolRecord = (market: 'us' | 'cn', symbol: string, name: string): SecuritySymbol => ({
+  symbol,
+  name,
+  instrument_id: `${market}:${symbol}`,
+  path: `symbols/${symbol}.json`,
+  sha256: 'd'.repeat(64),
+  source_sha256: 'd'.repeat(64),
+  source_instruments: [symbol],
+});
+
+const usSymbols = [
+  symbolRecord('us', 'AAPL', 'Apple'),
+  symbolRecord('us', 'MSFT', 'Microsoft'),
+  symbolRecord('us', 'NVDA', 'NVIDIA'),
+  symbolRecord('us', 'AMD', 'Advanced Micro Devices'),
+  symbolRecord('us', 'GOOG', 'Alphabet'),
+  symbolRecord('us', 'QQQ', 'Invesco QQQ Trust'),
+];
+const cnSymbols = [
+  symbolRecord('cn', '002594', 'BYD'),
+  symbolRecord('cn', '000001', 'Ping An Bank'),
+];
+
+const catalogFor = (market: 'us' | 'cn') => ({
+  market,
+  cutoff: '2026-01-31',
+  provider_manifest_sha256: 'b'.repeat(64),
+  symbols: market === 'us' ? usSymbols : cnSymbols,
+  formal_bindings: [],
+});
+
+const modelRows = longBars.slice(10).map((bar, index) => ({ date: bar.time, account: 100 + index }));
+
 beforeEach(() => {
   window.localStorage.clear();
   mocks.loadMarketBaseline.mockReset();
   mocks.readMarketEvidence.mockReset();
+  mocks.loadSecurityCatalog.mockReset();
+  mocks.loadFormalNav.mockReset();
   mocks.readMarketEvidence.mockRejectedValue(
     new Error('This instrument has no published price history in this market.'),
   );
+  mocks.loadSecurityCatalog.mockImplementation(async (market: 'us' | 'cn') => catalogFor(market));
+  mocks.loadFormalNav.mockResolvedValue({ rows: modelRows, key: 'formal:model' });
 });
 
 describe('SecurityAsOfMetrics', () => {
@@ -294,5 +346,113 @@ describe('governed indicators', () => {
     expect(screen.queryByText('VIX', { exact: true })).not.toBeInTheDocument();
     expect(screen.queryByText('VIX SMA 20', { exact: true })).not.toBeInTheDocument();
     expect(screen.queryByTestId('indicator-vix-unavailable')).not.toBeInTheDocument();
+  });
+});
+
+describe('any-entity compare mode', () => {
+  const compareEvidence = (symbol: string, name: string, market: 'us' | 'cn' = 'us') => evidence({
+    market,
+    symbol,
+    name,
+    bars: longBars,
+    events: [],
+    bindings: [],
+  });
+
+  it('indexes the page instrument and adds same-market model and instrument overlays', async () => {
+    mocks.readMarketEvidence.mockImplementation(async (market: 'us' | 'cn', symbol: string) => (
+      compareEvidence(symbol, symbol, market)
+    ));
+    renderHistory([run], evidence({ bars: longBars }));
+
+    fireEvent.click(screen.getByTestId('security-compare-toggle'));
+    expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-mode', 'compare');
+    expect(screen.getByTestId('compare-scope')).toHaveTextContent('Same-market comparison only');
+    await waitFor(() => expect(mocks.loadSecurityCatalog).toHaveBeenCalledWith('us'));
+
+    fireEvent.click(screen.getByTestId('compare-control-trigger'));
+    expect(screen.getByTestId('compare-search')).toHaveAttribute('placeholder', 'Search symbol, name or model');
+    expect(screen.getByTestId('compare-option-model:us:qqq_v1')).toBeInTheDocument();
+    // The page's own instrument is never offered again.
+    expect(screen.queryByTestId('compare-option-instrument:us:AAPL')).not.toBeInTheDocument();
+    expect(screen.getByTestId('compare-option-instrument:us:MSFT')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('compare-option-instrument:us:MSFT'));
+    await waitFor(() => expect(screen.getByTestId('security-chart-stub')).toHaveAttribute(
+      'data-overlays',
+      expect.stringContaining('instrument:us:MSFT'),
+    ));
+    expect(screen.getByTestId('compare-legend')).toHaveTextContent('MSFT');
+    expect(screen.getByTestId('security-chart-basis')).toHaveTextContent(/Indexed to 100 at the exact common start \d{4}-\d{2}-\d{2}/);
+    // The base instrument is part of the same indexed window.
+    expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-overlays', expect.stringContaining('base:instrument'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove MSFT from comparison' }));
+    await waitFor(() => expect(screen.queryByTestId('compare-legend-instrument:us:MSFT')).not.toBeInTheDocument());
+    expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-overlay-count', '1');
+    expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-mode', 'compare');
+  });
+
+  it('enforces the four-overlay cap with a visible message and disabled extras', async () => {
+    mocks.readMarketEvidence.mockImplementation(async (market: 'us' | 'cn', symbol: string) => (
+      compareEvidence(symbol, symbol, market)
+    ));
+    renderHistory([run], evidence({ bars: longBars }));
+    fireEvent.click(screen.getByTestId('security-compare-toggle'));
+    fireEvent.click(screen.getByTestId('compare-control-trigger'));
+    await waitFor(() => expect(screen.getByTestId('compare-option-instrument:us:AMD')).toBeInTheDocument());
+    for (const symbol of ['AMD', 'GOOG', 'MSFT', 'NVDA']) {
+      fireEvent.click(screen.getByTestId(`compare-option-instrument:us:${symbol}`));
+    }
+    await waitFor(() => expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-overlay-count', '5'));
+    expect(screen.getByTestId('compare-max-message')).toHaveTextContent('Compare is limited to 4 overlays');
+    expect(screen.getByTestId('compare-option-instrument:us:QQQ')).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('deduplicates the active market baseline by entity identity', async () => {
+    mocks.loadMarketBaseline.mockResolvedValue(evidence({ symbol: 'QQQ', name: 'Invesco QQQ Trust', bars: baselineBars, events: [], bindings: [] }));
+    renderHistory();
+    fireEvent.click(screen.getByRole('button', { name: 'US baseline: No baseline' }));
+    fireEvent.click(screen.getByRole('option', { name: /QQQ/ }));
+    await waitFor(() => expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-mode', 'baseline'));
+
+    fireEvent.click(screen.getByTestId('security-compare-toggle'));
+    fireEvent.click(screen.getByTestId('compare-control-trigger'));
+    await waitFor(() => expect(screen.getByTestId('compare-option-instrument:us:QQQ')).toBeInTheDocument());
+    const qqq = screen.getByTestId('compare-option-instrument:us:QQQ');
+    expect(qqq).toHaveAttribute('aria-disabled', 'true');
+    expect(qqq).toHaveTextContent('Already displayed as the QQQ baseline.');
+    // The baseline is already part of the indexed legend, not a duplicate line.
+    expect(screen.getByTestId('compare-legend-baseline:market')).toHaveTextContent('QQQ');
+  });
+
+  it('shows an unavailable entity reason and never plots its series', async () => {
+    mocks.loadFormalNav.mockRejectedValue(new Error('Formal NAV projection is unavailable for this run.'));
+    renderHistory([run], evidence({ bars: longBars }));
+    fireEvent.click(screen.getByTestId('security-compare-toggle'));
+    fireEvent.click(screen.getByTestId('compare-control-trigger'));
+    fireEvent.click(screen.getByTestId('compare-option-model:us:qqq_v1'));
+    await waitFor(() => expect(screen.getByTestId('compare-unavailable-model:us:qqq_v1')).toBeInTheDocument());
+    expect(screen.getByTestId('compare-unavailable-model:us:qqq_v1')).toHaveTextContent(
+      'Not plotted: Formal NAV projection is unavailable for this run.',
+    );
+    expect(screen.getByTestId('security-chart-stub')).not.toHaveAttribute(
+      'data-overlays',
+      expect.stringContaining('model:us:qqq_v1'),
+    );
+    expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-overlays', 'base:instrument');
+  });
+
+  it('never offers a model or instrument from another market', async () => {
+    renderHistory([run], evidence({ market: 'cn', symbol: '002594', name: 'BYD', bars: longBars }));
+    expect(screen.queryByTestId('compare-control-trigger')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('security-compare-toggle'));
+    await waitFor(() => expect(mocks.loadSecurityCatalog).toHaveBeenCalledWith('cn'));
+    fireEvent.click(screen.getByTestId('compare-control-trigger'));
+    expect(screen.getByTestId('compare-option-instrument:cn:000001')).toBeInTheDocument();
+    expect(screen.queryByTestId('compare-option-instrument:us:MSFT')).not.toBeInTheDocument();
+    // The only formal run in this fixture is US, so no CN model is offered.
+    expect(screen.queryByTestId('compare-option-model:us:qqq_v1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('compare-option-model:cn:qqq_v1')).not.toBeInTheDocument();
   });
 });

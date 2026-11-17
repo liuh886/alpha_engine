@@ -3,6 +3,8 @@ import { Link, useOutletContext, useParams, useSearchParams } from 'react-router
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { SecurityLightweightChart, type SecurityChartMode } from '@/components/SecurityLightweightChart';
 import { BaselineControl } from '@/components/charts/BaselineControl';
+import { CompareControl } from '@/components/charts/CompareControl';
+import { CompareLegend, type CompareLegendItem } from '@/components/charts/CompareLegend';
 import { IndicatorControl } from '@/components/charts/IndicatorControl';
 import { IndicatorNotes } from '@/components/charts/IndicatorNotes';
 import { MarkerDetailPanel } from '@/components/charts/MarkerDetailPanel';
@@ -11,6 +13,7 @@ import { useBaselinePreference } from '@/hooks/useBaselinePreference';
 import {
   BASELINE_EXACT_DATE_DISCLOSURE,
   MARKET_BASELINE_RETURN_DISCLOSURE,
+  marketNavFromBars,
   type BaselineKind,
 } from '@/lib/baseline';
 import { baselineOptionsFor, defaultBaselineKindFor, type BaselineOptionSource } from '@/lib/baseline-options';
@@ -33,15 +36,30 @@ import {
 import type { IndicatorPoint } from '@/lib/indicators';
 import { readMarketEvidence } from '@/lib/market-evidence-cache';
 import {
+  MAX_COMPARE_OVERLAYS,
+  commonExactDates,
+  firstFreeEntitySlot,
+  instrumentEntityId,
+  instrumentEntityOptions,
+  modelEntityId,
+  rebaseEntityWindow,
+  type CompareEntityOption,
+  type CompareEntitySelection,
+  type EntitySeriesInput,
+} from '@/lib/entity-overlays';
+import {
   boundSecurityEvents,
+  loadSecurityCatalog,
   loadSecurityEvidence,
   securityBarsForPeriod,
   type SecurityEvidence,
   type SecurityEvent,
+  type SecuritySymbol,
 } from '@/lib/security-evidence';
 import { securityMarkers, unmatchedMarkerEvents, type SecurityMarker } from '@/lib/security-markers';
 import {
   formatEventAction,
+  formatIndexedReturn,
   formatSecurityPercent,
   formatSecurityPrice,
   humanizeEventReason,
@@ -53,9 +71,12 @@ import {
   loadMarketBaseline,
   marketBaseline,
 } from '@/lib/security-baseline';
+import { loadFormalNav } from '@/lib/formal-nav';
+import { navFromReport, type NavPoint } from '@/lib/nav-series';
 import type { PerformancePeriod } from '@/lib/performancePeriods';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 import type { GovernedRunSummary } from '@/lib/governed-run';
+import type { OverlayColorRole, SecurityChartOverlay } from '@/lib/security-chart-extensions';
 import { cn } from '@/lib/utils';
 
 const PERIODS: Array<{ key: PerformancePeriod; label: string }> = [
@@ -70,6 +91,25 @@ type BaselineState =
   | { status: 'loading' }
   | { status: 'ready'; evidence: SecurityEvidence }
   | { status: 'error'; error: string };
+
+type CatalogState =
+  | { status: 'idle' | 'loading' }
+  | { status: 'ready'; symbols: SecuritySymbol[] }
+  | { status: 'error'; reason: string };
+
+type EntitySeriesState =
+  | { status: 'loading' }
+  | { status: 'ready'; points: NavPoint[] }
+  | { status: 'unavailable'; reason: string };
+
+interface SelectedCompareEntity extends CompareEntitySelection {
+  symbol?: string;
+  run?: GovernedRunSummary;
+}
+
+const INDEXED_OVERLAY_FORMAT = { type: 'custom' as const, formatter: formatIndexedReturn, minMove: 0.1 };
+const BASE_ENTITY_ID = 'base:instrument';
+const BASELINE_ENTITY_ID = 'baseline:market';
 
 /**
  * As-of and evidence-cutoff identities are one fact when the dates match and
@@ -116,6 +156,10 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
     points?: readonly IndicatorPoint[];
     reason?: string;
   }>({ status: 'idle' });
+  const [compare, setCompare] = useState(false);
+  const [entities, setEntities] = useState<SelectedCompareEntity[]>([]);
+  const [catalog, setCatalog] = useState<CatalogState>({ status: 'idle' });
+  const [entitySeries, setEntitySeries] = useState<Record<string, EntitySeriesState>>({});
   const { preference, setPreference } = useBaselinePreference();
 
   const models = useMemo(
@@ -155,7 +199,6 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
   const baselineOptions = useMemo(() => baselineOptionsFor(baselineSource), [baselineSource]);
   const activeKind: BaselineKind = kind
     ?? defaultBaselineKindFor(baselineSource, baselineOptions, preference[evidence.market]);
-  const mode: SecurityChartMode = activeKind === 'market' ? 'baseline' : 'price';
   const changeBaseline = (next: BaselineKind) => {
     setKind(next);
     setPreference(evidence.market, next);
@@ -283,8 +326,291 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
     return indexedBaselineSeries(bars, baseline.evidence.bars);
   }, [activeKind, baseline, bars]);
 
+  /** Same-market catalog for the comparison picker. Never reads another market. */
+  useEffect(() => {
+    let active = true;
+    setCatalog({ status: 'loading' });
+    void loadSecurityCatalog(evidence.market)
+      .then(result => { if (active) setCatalog({ status: 'ready', symbols: result.symbols }); })
+      .catch(error => {
+        if (active) {
+          setCatalog({ status: 'error', reason: error instanceof Error ? error.message : String(error) });
+        }
+      });
+    return () => { active = false; };
+  }, [evidence.market]);
+
+  type CompareOptionRecord = { option: CompareEntityOption; run?: GovernedRunSummary; symbol?: string };
+  const compareOptionRecords = useMemo<CompareOptionRecord[]>(() => {
+    const modelOptions: CompareOptionRecord[] = models.map(run => ({
+      option: {
+        id: modelEntityId(evidence.market, run.modelVersionId),
+        kind: 'model',
+        label: run.title,
+        detail: `${run.modelVersionId} · formal NAV`,
+        available: true,
+      },
+      run,
+    }));
+    if (catalog.status === 'ready') {
+      const byId = new Map(catalog.symbols.map(symbol => [instrumentEntityId(evidence.market, symbol.symbol), symbol]));
+      return [
+        ...modelOptions,
+        ...instrumentEntityOptions(evidence.market, catalog.symbols, evidence.symbol).map(option => ({
+          option,
+          symbol: byId.get(option.id)?.symbol,
+        })),
+      ];
+    }
+    if (catalog.status === 'error') {
+      modelOptions.push({
+        option: {
+          id: 'catalog:unavailable',
+          kind: 'instrument',
+          label: 'Same-market instruments',
+          detail: 'Market evidence catalog',
+          available: false,
+          reason: `Instrument catalog unavailable. ${catalog.reason} No substitute series is offered.`,
+        },
+      });
+    }
+    return modelOptions;
+  }, [models, evidence.market, evidence.symbol, catalog]);
+  const compareOptions = useMemo(
+    () => compareOptionRecords.map(record => record.option),
+    [compareOptionRecords],
+  );
+
+  const toggleCompareEntity = useCallback((id: string) => {
+    setEntities(current => {
+      if (current.some(entity => entity.id === id)) return current.filter(entity => entity.id !== id);
+      if (current.length >= MAX_COMPARE_OVERLAYS) return current;
+      const record = compareOptionRecords.find(candidate => candidate.option.id === id);
+      if (!record || !record.option.available) return current;
+      if (record.option.kind === 'instrument' && !record.symbol) return current;
+      const colorSlot = record.option.kind === 'instrument'
+        ? firstFreeEntitySlot(current.flatMap(entity => (
+          typeof entity.colorSlot === 'number' ? [entity.colorSlot] : []
+        ))) ?? undefined
+        : undefined;
+      return [...current, {
+        id,
+        kind: record.option.kind,
+        label: record.option.label,
+        ...(record.symbol ? { symbol: record.symbol } : {}),
+        ...(record.run ? { run: record.run } : {}),
+        ...(colorSlot !== undefined ? { colorSlot } : {}),
+      }];
+    });
+  }, [compareOptionRecords]);
+
+  /**
+   * Load each selected entity's own observed series. Models read the compact
+   * verified `nav.json` projection; instruments read the same-market evidence
+   * catalog. Nothing is fabricated when a read fails.
+   */
+  useEffect(() => {
+    if (!compare) return;
+    const ids = new Set(entities.map(entity => entity.id));
+    setEntitySeries(previous => {
+      const next: Record<string, EntitySeriesState> = {};
+      for (const entity of entities) next[entity.id] = previous[entity.id] ?? { status: 'loading' };
+      return next;
+    });
+    let active = true;
+    for (const entity of entities) {
+      const settle = (state: EntitySeriesState) => {
+        if (!active || !ids.has(entity.id)) return;
+        setEntitySeries(previous => ({ ...previous, [entity.id]: state }));
+      };
+      if (entity.kind === 'model' && entity.run) {
+        void loadFormalNav(entity.run)
+          .then(series => settle({ status: 'ready', points: navFromReport(series.rows) }))
+          .catch(error => settle({
+            status: 'unavailable',
+            reason: error instanceof Error ? error.message : String(error),
+          }));
+      } else if (entity.symbol) {
+        void readMarketEvidence(evidence.market, entity.symbol)
+          .then(series => settle({ status: 'ready', points: marketNavFromBars(series.bars) }))
+          .catch(error => settle({
+            status: 'unavailable',
+            reason: error instanceof Error ? error.message : String(error),
+          }));
+      }
+    }
+    return () => { active = false; };
+  }, [compare, entities, evidence.market]);
+
+  /** Deduplicate the governed baseline against an identical instrument overlay. */
+  useEffect(() => {
+    if (!compare || activeKind !== 'market' || baselineIsSelf) return;
+    const baselineEntity = instrumentEntityId(evidence.market, baselineIdentity.symbol);
+    setEntities(current => current.some(entity => entity.id === baselineEntity)
+      ? current.filter(entity => entity.id !== baselineEntity)
+      : current);
+  }, [compare, activeKind, baselineIsSelf, evidence.market, baselineIdentity.symbol]);
+
+  const displayedIdentities = useMemo(() => {
+    const map = new Map<string, string>();
+    map.set(
+      instrumentEntityId(evidence.market, evidence.symbol),
+      'This is the chart’s own instrument and is already indexed.',
+    );
+    if (activeKind === 'market' && !baselineIsSelf) {
+      map.set(
+        instrumentEntityId(evidence.market, baselineIdentity.symbol),
+        `Already displayed as the ${baselineIdentity.label} baseline.`,
+      );
+    }
+    return map;
+  }, [evidence.market, evidence.symbol, activeKind, baselineIsSelf, baselineIdentity.symbol, baselineIdentity.label]);
+
+  /**
+   * One global exact common window across the base instrument, the active
+   * baseline and every ready overlay. An overlay with fewer than two exact
+   * common dates is reported unavailable and excluded, never rebased alone.
+   */
+  const compareModel = useMemo(() => {
+    if (!compare) return null;
+    const baseInput: EntitySeriesInput = {
+      id: BASE_ENTITY_ID,
+      label: evidence.symbol,
+      points: marketNavFromBars(bars),
+    };
+    const baselineInput: EntitySeriesInput | null = activeKind === 'market'
+      && baseline.status === 'ready' && !baselineIsSelf
+      ? {
+        id: BASELINE_ENTITY_ID,
+        label: baselineIdentity.label,
+        points: marketNavFromBars(baseline.evidence.bars),
+      }
+      : null;
+    const accepted: EntitySeriesInput[] = baselineInput ? [baseInput, baselineInput] : [baseInput];
+    const rejected = new Map<string, string>();
+    for (const entity of entities) {
+      const state = entitySeries[entity.id];
+      if (!state || state.status === 'loading') continue;
+      if (state.status === 'unavailable') {
+        rejected.set(entity.id, state.reason);
+        continue;
+      }
+      const candidate = { id: entity.id, label: entity.label, points: state.points };
+      if (commonExactDates([...accepted, candidate]).length >= 2) {
+        accepted.push(candidate);
+      } else {
+        rejected.set(entity.id, 'No exact common dates with the other displayed series in this range.');
+      }
+    }
+    return {
+      window: rebaseEntityWindow(accepted),
+      baseInput,
+      baselineInput,
+      rejected,
+    };
+  }, [
+    compare, bars, evidence.symbol, activeKind, baseline, baselineIsSelf,
+    baselineIdentity.label, entities, entitySeries,
+  ]);
+
+  const compareOverlays = useMemo<SecurityChartOverlay[]>(() => {
+    if (!compare || !compareModel?.window) return [];
+    return compareModel.window.series.map(series => {
+      const entity = entities.find(candidate => candidate.id === series.id);
+      let colorRole: OverlayColorRole = 'primary';
+      let lineStyle: 'solid' | 'dashed' = 'solid';
+      if (series.id === BASELINE_ENTITY_ID) {
+        colorRole = 'baseline';
+        lineStyle = 'dashed';
+      } else if (entity?.kind === 'model') {
+        const index = modelColorIndex.get(entity.run?.modelVersionId ?? '') ?? 0;
+        colorRole = `model-${Math.min(index, 4) + 1}` as OverlayColorRole;
+      } else if (entity?.kind === 'instrument') {
+        colorRole = `entity-${(entity.colorSlot ?? 0) + 1}` as OverlayColorRole;
+        // Compared instruments stay dashed; model overlays stay solid, so the
+        // two families never rely on hue alone.
+        lineStyle = 'dashed';
+      }
+      return {
+        id: series.id,
+        label: series.label,
+        kind: 'line',
+        pane: 'price',
+        data: series.points.map(point => ({ time: point.date, value: point.value })),
+        colorRole,
+        lineWidth: 2,
+        lineStyle,
+        priceFormat: INDEXED_OVERLAY_FORMAT,
+      };
+    });
+  }, [compare, compareModel, entities, modelColorIndex]);
+
+  const compareLegendItems = useMemo<CompareLegendItem[]>(() => {
+    if (!compare) return [];
+    const items: CompareLegendItem[] = [{
+      id: BASE_ENTITY_ID,
+      label: `${evidence.symbol} · indexed price`,
+      colorRole: 'primary',
+      dashed: false,
+      kind: 'instrument',
+    }];
+    if (compareModel?.baselineInput) {
+      items.push({
+        id: BASELINE_ENTITY_ID,
+        label: baselineIdentity.label,
+        detail: 'indexed price',
+        colorRole: 'baseline',
+        dashed: true,
+        kind: 'baseline',
+      });
+    }
+    for (const entity of entities) {
+      const state = entitySeries[entity.id];
+      let colorRole: OverlayColorRole;
+      let dashed = entity.kind === 'instrument';
+      if (entity.kind === 'model') {
+        const index = modelColorIndex.get(entity.run?.modelVersionId ?? '') ?? 0;
+        colorRole = `model-${Math.min(index, 4) + 1}` as OverlayColorRole;
+        dashed = false;
+      } else {
+        colorRole = `entity-${(entity.colorSlot ?? 0) + 1}` as OverlayColorRole;
+      }
+      const reason = state?.status === 'unavailable'
+        ? state.reason
+        : compareModel?.rejected.get(entity.id);
+      items.push({
+        id: entity.id,
+        label: entity.label,
+        detail: entity.kind === 'model' ? 'model NAV' : 'indexed price',
+        colorRole,
+        dashed,
+        kind: entity.kind,
+        loading: !state || state.status === 'loading',
+        onRemove: () => setEntities(current => current.filter(candidate => candidate.id !== entity.id)),
+        ...(reason ? { unavailableReason: reason } : {}),
+      });
+    }
+    return items;
+  }, [compare, compareModel, entities, entitySeries, evidence.symbol, baselineIdentity.label, modelColorIndex]);
+
+  const compareBasis = compare
+    ? compareModel?.window
+      ? `Indexed to 100 at the exact common start ${compareModel.window.startDate} – ${compareModel.window.endDate} · ${compareModel.window.series.length} series · ${compareModel.window.observations} exact observations · not total return`
+      : 'Exact common dates only; no overlapping window across the displayed entities in this range.'
+    : null;
+
+  const mode: SecurityChartMode = compare ? 'compare' : activeKind === 'market' ? 'baseline' : 'price';
+  const chartBaselineSeries = compare ? null : baselineSeries;
+  const chartOverlays = compare ? compareOverlays : indicatorOverlays;
+
   let emptyMessage = 'No observed price sessions fall inside this selected range.';
-  if (mode === 'baseline') {
+  if (compare) {
+    if (entities.length > 0 && compareLegendItems.some(item => item.loading)) {
+      emptyMessage = 'Loading the selected comparison entities…';
+    } else if (!compareModel?.window) {
+      emptyMessage = 'No exact common dates across the displayed comparison entities in this range.';
+    }
+  } else if (mode === 'baseline') {
     if (baseline.status === 'loading' || baseline.status === 'idle') {
       emptyMessage = `Loading ${baselineIdentity.label} baseline evidence…`;
     } else if (baseline.status === 'error') {
@@ -293,7 +619,9 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
       emptyMessage = `No exact-date overlap between ${evidence.symbol} and ${baselineIdentity.label} in this range.`;
     }
   }
-  const fitKey = `${range}:${mode}:${baselineSeries?.startDate ?? 'pending'}`;
+  const fitKey = compare
+    ? `${range}:compare:${compareModel?.window?.startDate ?? 'pending'}`
+    : `${range}:${mode}:${baselineSeries?.startDate ?? 'pending'}`;
   const change = summary.oneWeekChange;
   const markerPressed = (marker: SecurityMarker) => marker.events.every(event => activeSelection.includes(event));
 
@@ -378,6 +706,30 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            data-testid="security-compare-toggle"
+            aria-pressed={compare}
+            onClick={() => setCompare(value => !value)}
+            className={cn(
+              'research-touch min-h-8 rounded-md border px-2.5 text-[11px] font-medium transition-colors',
+              compare
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'bg-background text-muted-foreground hover:bg-muted',
+            )}
+          >
+            Compare
+          </button>
+          {compare && (
+            <CompareControl
+              options={compareOptions}
+              selected={entities}
+              onToggle={toggleCompareEntity}
+              marketLabel={evidence.market === 'us' ? 'US' : 'CN'}
+              displayed={displayedIdentities}
+              max={MAX_COMPARE_OVERLAYS}
+            />
+          )}
           <BaselineControl
             options={baselineOptions}
             value={activeKind}
@@ -392,6 +744,14 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
           />
         </div>
       </div>
+
+      {compare && (
+        <p role="note" data-testid="compare-scope" className="mt-2 text-[11px] leading-4 text-muted-foreground">
+          Same-market comparison only: models use the verified formal NAV projection and instruments use this
+          market's evidence catalog. Another market's entity is never offered or read. Up to {MAX_COMPARE_OVERLAYS}
+          overlays share one exact common start; price indicators and event markers are hidden while comparing.
+        </p>
+      )}
 
       {baselineIsSelf && (
         <p
@@ -416,15 +776,19 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
           {evidence.market.toUpperCase()} market index
         </p>
         <p data-testid="security-chart-basis">
-          {mode === 'baseline'
-            ? baselineSeries
-              ? `Open-to-open price return, indexed to 100 at ${baselineSeries.startDate} – ${baselineSeries.endDate} · not total return`
-              : `Open-to-open price return, indexed to 100 at the first exact common date · ${MARKET_BASELINE_RETURN_DISCLOSURE}`
-            : 'Raw OHLC price candles · not split or dividend adjusted'}
+          {compare
+            ? compareBasis
+            : mode === 'baseline'
+              ? baselineSeries
+                ? `Open-to-open price return, indexed to 100 at ${baselineSeries.startDate} – ${baselineSeries.endDate} · not total return`
+                : `Open-to-open price return, indexed to 100 at the first exact common date · ${MARKET_BASELINE_RETURN_DISCLOSURE}`
+              : 'Raw OHLC price candles · not split or dividend adjusted'}
         </p>
       </div>
 
-      {mode === 'baseline' && baselineSeries && (
+      {compare && <CompareLegend items={compareLegendItems} />}
+
+      {!compare && mode === 'baseline' && baselineSeries && (
         <ul aria-label="Chart series" className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
           <li className="inline-flex items-center gap-1.5">
             <span aria-hidden="true" className="inline-block h-0.5 w-4 rounded-full" style={{ backgroundColor: 'hsl(var(--chart-1))' }} />
@@ -438,7 +802,7 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
         </ul>
       )}
 
-      {mode === 'baseline' && baseline.status === 'error' && (
+      {(mode === 'baseline' || (compare && activeKind === 'market')) && baseline.status === 'error' && (
         <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/5 p-3 text-xs">
           <p className="max-w-2xl">
             <strong>{baselineIdentity.label} baseline unavailable.</strong> {baseline.error} Price history remains
@@ -454,32 +818,38 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
         </div>
       )}
 
-      <MarkerLegend
-        showSides={sideKeyVisible}
-        models={modelLegend}
-        sideAriaLabel="Marker direction key"
-        modelAriaLabel="Model marker key"
-        className="mt-3"
-      />
+      {!compare && (
+        <MarkerLegend
+          showSides={sideKeyVisible}
+          models={modelLegend}
+          sideAriaLabel="Marker direction key"
+          modelAriaLabel="Model marker key"
+          className="mt-3"
+        />
+      )}
 
       <SecurityLightweightChart
         bars={bars}
         markers={markers}
         mode={mode}
-        baselineSeries={baselineSeries}
+        baselineSeries={chartBaselineSeries}
         fitKey={fitKey}
         onSelect={setSelected}
         emptyMessage={emptyMessage}
-        loading={mode === 'baseline' && (baseline.status === 'loading' || baseline.status === 'idle')}
+        loading={compare
+          ? entities.length > 0 && compareLegendItems.some(item => item.loading)
+          : mode === 'baseline' && (baseline.status === 'loading' || baseline.status === 'idle')}
         modelColorIndex={modelColorIndex}
-        overlays={indicatorOverlays}
+        overlays={chartOverlays}
       />
 
-      <IndicatorNotes
-        legend={indicatorLegend}
-        unavailable={unavailableIndicators}
-        marketNote={marketIndicatorNote}
-      />
+      {!compare && (
+        <IndicatorNotes
+          legend={indicatorLegend}
+          unavailable={unavailableIndicators}
+          marketNote={marketIndicatorNote}
+        />
+      )}
 
       {skippedMarkers > 0 && (
         <p role="note" data-testid="security-skipped-markers" className="mt-2 text-[11px] leading-4 text-muted-foreground">

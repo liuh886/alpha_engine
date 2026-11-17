@@ -147,6 +147,24 @@ export function parseSecurityEvidence(value: unknown, catalog: SecurityCatalog, 
     source_sha256: symbol.source_sha256, provider_manifest_sha256: catalog.provider_manifest_sha256, bindings: catalog.formal_bindings };
 }
 
+/**
+ * One verified catalog read per market for the life of the module. The compare
+ * picker lists same-market candidates from this catalog; it never reads another
+ * market's evidence. A rejected read is evicted so an explicit remount retries.
+ */
+const catalogReads = new Map<'us' | 'cn', Promise<SecurityCatalog>>();
+
+export function loadSecurityCatalog(market: 'us' | 'cn'): Promise<SecurityCatalog> {
+  const cached = catalogReads.get(market);
+  if (cached) return cached;
+  const request = read(`${market}/catalog.json`).then(body => parseSecurityCatalog(JSON.parse(body), market));
+  catalogReads.set(market, request);
+  void request.catch(() => {
+    if (catalogReads.get(market) === request) catalogReads.delete(market);
+  });
+  return request;
+}
+
 export async function loadSecurityEvidence(market: 'us' | 'cn', requested: string): Promise<SecurityEvidence> {
   const catalog = parseSecurityCatalog(JSON.parse(await read(`${market}/catalog.json`)), market);
   const symbol = resolveSecurity(catalog, requested);

@@ -21,6 +21,10 @@ import {
   type IndicatorEntry,
   type IndicatorPoint,
 } from './indicators';
+import {
+  ENTITY_SERIES_TOKENS,
+  MODEL_SERIES_TOKENS,
+} from './chart-theme';
 import type { OverlayColorRole, SecurityChartOverlay } from './security-chart-extensions';
 import type { SecurityBar } from './security-evidence';
 
@@ -152,6 +156,25 @@ export function overlayRoleCssColor(role: OverlayColorRole): string {
       return 'hsl(var(--negative))';
     case 'muted':
       return 'hsl(var(--muted-foreground))';
+    case 'primary':
+      return 'hsl(var(--chart-1))';
+    case 'baseline':
+      return 'hsl(var(--chart-2))';
+    case 'model-1':
+    case 'model-2':
+    case 'model-3':
+    case 'model-4':
+    case 'model-5': {
+      const token = MODEL_SERIES_TOKENS[Number(role.slice('model-'.length)) - 1];
+      return token ? `hsl(var(--${token}))` : 'hsl(var(--muted-foreground))';
+    }
+    case 'entity-1':
+    case 'entity-2':
+    case 'entity-3':
+    case 'entity-4': {
+      const token = ENTITY_SERIES_TOKENS[Number(role.slice('entity-'.length)) - 1];
+      return token ? `hsl(var(--${token}))` : 'hsl(var(--muted-foreground))';
+    }
   }
 }
 
