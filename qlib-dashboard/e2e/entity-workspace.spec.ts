@@ -79,6 +79,8 @@ test('index and reference pages take their badge from the governed catalog roles
   await expect(page.getByTestId('entity-role-kind')).toHaveText('Index');
   // QQQ is formally traded, so its real bound events stay on the ledger.
   await expect(page.getByRole('region', { name: 'Historical model event ledger' })).toBeVisible();
+  // A traded benchmark may list the models that traded/hold it.
+  await expect(page.getByTestId('related-models')).toBeVisible();
 
   const catalogResponse = await page.request.get('/data/market-evidence/us/catalog.json');
   expect(catalogResponse.ok()).toBeTruthy();
@@ -94,6 +96,76 @@ test('index and reference pages take their badge from the governed catalog roles
     // No model evidence is attached when the catalog binds none.
     await expect(page.getByRole('region', { name: 'Historical model event ledger' })).toHaveCount(0);
     await expect(page.getByText('No retained model events for this instrument and selection.')).toHaveCount(0);
+    await expect(page.getByTestId('related-models')).toHaveCount(0);
     await expect(page.getByTestId('security-lightweight-chart-container')).toHaveCount(1);
   }
+});
+
+test('an instrument lists the bound models that traded or held it and opens one', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/securities/cn/002594');
+  await expect(page.getByRole('heading', { name: 'BYD · 002594', exact: true })).toBeVisible();
+
+  const panel = page.getByTestId('related-models');
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText('never inferred from event weights');
+  await expect(panel.getByTestId('related-model')).toHaveCount(2);
+
+  const byd = panel.locator('[data-model-id="byd_v1_3_recovery_event_low_vol_confirmation_v1"]');
+  await expect(byd.getByTestId('related-model-events')).toContainText('106 retained events');
+  await expect(byd.getByTestId('related-model-events')).toContainText('last Sell on 2026-08-04');
+  const bydHolding = byd.getByTestId('related-model-holding');
+  await expect(bydHolding).toContainText('Held at last publication · 75.0%');
+  await expect(bydHolding).toContainText('as of 2026-11-13');
+  await expect(bydHolding).toContainText('cutoff 2026-11-16');
+
+  const cn27 = panel.locator('[data-model-id="cn_27_v1_3"]');
+  await expect(cn27.getByTestId('related-model-events')).toContainText('9 retained events');
+  await expect(cn27.getByTestId('related-model-events')).toContainText('last Sell on 2025-08-28');
+  await expect(cn27.getByTestId('related-model-holding')).toContainText('Not held at last publication');
+
+  // Each row is a keyboard-reachable 44px model route.
+  const bydLink = byd.getByRole('link', { name: 'BYD v1.3', exact: true });
+  await bydLink.focus();
+  await expect(bydLink).toBeFocused();
+
+  await panel.scrollIntoViewIfNeeded();
+  await capture(page, testInfo, 'entity-workspace-related-models');
+
+  await bydLink.click();
+  await expect(page).toHaveURL(/#\/strategies\/byd_v1_3_recovery_event_low_vol_confirmation_v1$/);
+  await expectOneShell(page, 'model');
+  await expect(page.getByTestId('entity-title')).toHaveText('BYD v1.3');
+  expect(errors).toEqual([]);
+});
+
+test('a model trade row links to its resolved instrument and keeps unresolved symbols plain text', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/strategies/byd_v1_3_recovery_event_low_vol_confirmation_v1');
+  await page.getByRole('tab', { name: 'Trades', exact: true }).click();
+
+  const link = page.getByRole('link', { name: 'View BYD price and model events', exact: true }).first();
+  await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute(
+    'href',
+    '#/securities/cn/002594?model=byd_v1_3_recovery_event_low_vol_confirmation_v1',
+  );
+
+  // An unpublished trade symbol stays plain text with a short reason.
+  const cash = page.getByTestId('security-link-unresolved').filter({ hasText: 'CASH' }).first();
+  await expect(cash).toBeVisible();
+  await expect(cash).toContainText('No published price history');
+  await expect(page.getByRole('link', { name: 'View CASH price and model events' })).toHaveCount(0);
+  // A CN model never links a US instrument.
+  await expect(page.locator('a[href*="/securities/us/"]')).toHaveCount(0);
+
+  await link.click();
+  await expect(page).toHaveURL(/#\/securities\/cn\/002594/);
+  await expect(page.getByRole('heading', { name: 'BYD · 002594', exact: true })).toBeVisible();
+  await expect(page.getByTestId('related-models')).toBeVisible();
+  await page.getByTestId('related-models').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath(`model-to-instrument-${testInfo.project.name}.png`), fullPage: false });
+  expect(errors).toEqual([]);
 });

@@ -54,6 +54,7 @@ const mocks = vi.hoisted(() => ({
   readMarketEvidence: vi.fn(),
   loadSecurityCatalog: vi.fn(),
   loadFormalNav: vi.fn(),
+  readLatestPublishedHolding: vi.fn(),
 }));
 
 vi.mock('@/lib/security-baseline', async importOriginal => {
@@ -74,6 +75,11 @@ vi.mock('@/lib/formal-nav', async importOriginal => {
 vi.mock('@/lib/market-evidence-cache', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/market-evidence-cache')>();
   return { ...actual, readMarketEvidence: mocks.readMarketEvidence };
+});
+
+vi.mock('@/lib/related-entities', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/related-entities')>();
+  return { ...actual, readLatestPublishedHolding: mocks.readLatestPublishedHolding };
 });
 
 vi.mock('@/components/SecurityLightweightChart', () => ({
@@ -167,6 +173,15 @@ const run: GovernedRunSummary = {
   loadWarnings: [],
 };
 
+const runTwo: GovernedRunSummary = {
+  ...run,
+  key: 'us:qqq_v2',
+  modelVersionId: 'qqq_v2',
+  runId: 'run-2',
+  bundleId: 'e'.repeat(64),
+  title: 'QQQ Rotation Two',
+};
+
 function renderHistory(runs: GovernedRunSummary[] = [run], value: SecurityEvidence = evidence()) {
   return render(
     <MemoryRouter initialEntries={['/']}>
@@ -220,6 +235,12 @@ beforeEach(() => {
   mocks.readMarketEvidence.mockReset();
   mocks.loadSecurityCatalog.mockReset();
   mocks.loadFormalNav.mockReset();
+  mocks.readLatestPublishedHolding.mockReset();
+  mocks.readLatestPublishedHolding.mockResolvedValue({
+    status: 'not_held',
+    asOf: '2026-01-30',
+    cutoff: '2026-01-31',
+  });
   mocks.readMarketEvidence.mockRejectedValue(
     new Error('This instrument has no published price history in this market.'),
   );
@@ -391,6 +412,7 @@ describe('entity workspace kinds', () => {
     expect(screen.getByTestId('entity-role-context')).toHaveTextContent('Formal auxiliary');
     expect(screen.queryByRole('region', { name: 'Historical model event ledger' })).not.toBeInTheDocument();
     expect(screen.queryByText('No retained model events for this instrument and selection.')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('related-models')).not.toBeInTheDocument();
   });
 
   it('keeps a traded index on the real bound event ledger', () => {
@@ -409,6 +431,73 @@ describe('entity workspace kinds', () => {
     expect(screen.getByTestId('entity-chart-disclosure')).toHaveTextContent(
       'Historical research evidence, not a live signal or fill.',
     );
+  });
+});
+
+describe('related models panel', () => {
+  const multiModelEvidence = () => evidence({
+    events: [
+      { time: '2026-01-05', model_id: 'qqq_v1', run_id: 'run-1', instrument_id: 'us:AAPL', action: 'BUY', previous_weight: 0, target_weight: 0.5, reason: 'frozen_rule' },
+      { time: '2026-01-06', model_id: 'qqq_v2', run_id: 'run-2', instrument_id: 'us:AAPL', action: 'SELL', previous_weight: 0.5, target_weight: 0, reason: 'frozen_rule' },
+      { time: '2026-01-08', model_id: 'qqq_v2', run_id: 'run-2', instrument_id: 'us:AAPL', action: 'BUY', previous_weight: 0, target_weight: 0.5, reason: 'frozen_rule' },
+    ],
+    bindings: [
+      { model_version_id: 'qqq_v1', run_id: 'run-1', bundle_id: 'c'.repeat(64) },
+      { model_version_id: 'qqq_v2', run_id: 'run-2', bundle_id: 'e'.repeat(64) },
+    ],
+  });
+
+  it('lists each bound model with event count, last action and a model route', async () => {
+    mocks.readLatestPublishedHolding.mockImplementation(async (candidate: GovernedRunSummary) => (
+      candidate.modelVersionId === 'qqq_v2'
+        ? { status: 'held', weight: 0.25, asOf: '2026-01-30', cutoff: '2026-01-31', instrument: 'AAPL' }
+        : { status: 'not_held', asOf: '2026-01-30', cutoff: '2026-01-31' }
+    ));
+    renderHistory([run, runTwo], multiModelEvidence());
+
+    await waitFor(() => expect(screen.getAllByTestId('related-model')).toHaveLength(2));
+    const rows = screen.getAllByTestId('related-model');
+    expect(rows[0]).toHaveAttribute('data-model-id', 'qqq_v2');
+    expect(rows[0]).toHaveTextContent('2 retained events · last Buy on 2026-01-08');
+    expect(rows[0]).toHaveTextContent('Held at last publication · 25.0% · as of 2026-01-30 · cutoff 2026-01-31');
+    expect(rows[1]).toHaveAttribute('data-model-id', 'qqq_v1');
+    expect(rows[1]).toHaveTextContent('1 retained event · last Buy on 2026-01-05');
+    const panel = within(screen.getByTestId('related-models'));
+    expect(panel.getByRole('link', { name: 'QQQ Rotation Two' })).toHaveAttribute('href', '/strategies/qqq_v2');
+    expect(panel.getByRole('link', { name: 'QQQ Rotation' })).toHaveAttribute('href', '/strategies/qqq_v1');
+  });
+
+  it('states the reason when a bound run has no available portfolio section', async () => {
+    mocks.readLatestPublishedHolding.mockResolvedValue({
+      status: 'unavailable',
+      reason: 'Run section is not Bundle v2-backed: formal:family:qqq_v1:run-1',
+    });
+    renderHistory([run], evidence());
+    await waitFor(() => expect(screen.getByTestId('related-model-holding')).toHaveAttribute('data-holding-status', 'unavailable'));
+    expect(screen.getByTestId('related-model-holding')).toHaveTextContent(
+      'Latest holdings unavailable · Run section is not Bundle v2-backed',
+    );
+  });
+
+  it('includes a model held at last publication even without retained events', async () => {
+    mocks.readLatestPublishedHolding.mockResolvedValue({
+      status: 'held',
+      weight: 0.75,
+      asOf: '2026-01-30',
+      cutoff: '2026-01-31',
+      instrument: 'AAPL',
+    });
+    renderHistory([run], evidence({ events: [] }));
+    await waitFor(() => expect(screen.getByTestId('related-model')).toHaveAttribute('data-model-id', 'qqq_v1'));
+    expect(screen.getByTestId('related-model-events')).toHaveTextContent('No retained trade events');
+    expect(screen.getByTestId('related-model-holding')).toHaveTextContent('Held at last publication · 75.0%');
+  });
+
+  it('renders nothing when no bound model traded or held the instrument', async () => {
+    renderHistory([run], evidence({ events: [], bindings: [] }));
+    expect(screen.queryByTestId('related-models')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('related-model')).not.toBeInTheDocument();
+    expect(mocks.readLatestPublishedHolding).not.toHaveBeenCalled();
   });
 });
 

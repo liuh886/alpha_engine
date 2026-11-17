@@ -151,4 +151,33 @@ describe('EntityEvidenceSections and related-entity slot', () => {
     expect(section).toHaveTextContent('Instrument · US · us:AAPL');
     expect(screen.getByRole('link', { name: 'Apple' })).toHaveAttribute('href', '#/securities/us/AAPL');
   });
+
+  it('renders a rich related-content panel in the same slot and keeps typed links below it', () => {
+    render(
+      <MemoryRouter initialEntries={['/app']}>
+        <EntityWorkspace
+          identity={identity()}
+          back={{ to: '/app', label: 'Overview' }}
+          relatedContent={<div data-testid="rich-related">models</div>}
+          related={[{
+            relation: 'holds',
+            kind: 'instrument',
+            market: 'us',
+            entityId: 'us:AAPL',
+            label: 'Apple',
+            href: '#/securities/us/AAPL',
+          }]}
+        >
+          <p>Body</p>
+        </EntityWorkspace>
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('rich-related')).toBeInTheDocument();
+    const workspace = screen.getByTestId('entity-workspace');
+    const rich = screen.getByTestId('rich-related');
+    const typed = screen.getByTestId('entity-related');
+    expect(workspace).toContainElement(rich);
+    expect(workspace).toContainElement(typed);
+    expect(rich.compareDocumentPosition(typed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

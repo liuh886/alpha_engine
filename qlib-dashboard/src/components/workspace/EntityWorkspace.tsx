@@ -305,8 +305,10 @@ export function EntityRelatedEntities({
 
 export interface EntityWorkspaceProps extends EntityHeaderProps {
   children: ReactNode;
-  /** Phase 3 links; empty by default in Phase 2. */
+  /** Typed Phase 3 links; empty by default in Phase 2. */
   related?: readonly RelatedEntityLink[];
+  /** Rich Phase 3 relation panel; renders in the same related-entity slot. */
+  relatedContent?: ReactNode;
 }
 
 /**
@@ -314,7 +316,7 @@ export interface EntityWorkspaceProps extends EntityHeaderProps {
  * Pages provide their chart panel and evidence sections; the shell owns the
  * header, page width/spacing and the reserved related-entity slot.
  */
-export function EntityWorkspace({ children, related, ...header }: EntityWorkspaceProps) {
+export function EntityWorkspace({ children, related, relatedContent, ...header }: EntityWorkspaceProps) {
   return (
     <div
       className="research-page space-y-5 pb-16"
@@ -323,6 +325,7 @@ export function EntityWorkspace({ children, related, ...header }: EntityWorkspac
     >
       <EntityHeader {...header} />
       {children}
+      {relatedContent}
       <EntityRelatedEntities links={related} />
     </div>
   );
