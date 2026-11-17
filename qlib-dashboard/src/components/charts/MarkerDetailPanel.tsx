@@ -5,6 +5,7 @@ import {
   markerSideLabel,
   type MarkerDetailView,
 } from '@/lib/chart-markers';
+import { SecurityLink } from '@/components/SecurityLink';
 import { cn } from '@/lib/utils';
 
 export interface MarkerDetailPanelProps {
@@ -16,6 +17,10 @@ export interface MarkerDetailPanelProps {
   role?: 'status' | 'region';
   live?: boolean;
   className?: string;
+  /** Market evidence catalog for an instrument link on model markers. */
+  market?: string;
+  /** Exact formal model identity used to build the instrument route. */
+  model?: string;
 }
 
 function modelLabel(entry: MarkerDetailView['entries'][number]): string | null {
@@ -37,6 +42,8 @@ export function MarkerDetailPanel({
   role = 'status',
   live = false,
   className,
+  market,
+  model,
 }: MarkerDetailPanelProps) {
   const unit = detail.count === 1 ? detail.unit : `${detail.unit}s`;
   return (
@@ -114,7 +121,13 @@ export function MarkerDetailPanel({
                 {entry.instrument && (
                   <>
                     <dt className="text-muted-foreground">Instrument</dt>
-                    <dd className="break-words font-mono">{entry.instrument}</dd>
+                    <dd className="break-words font-mono">
+                      {market ? (
+                        <SecurityLink market={market} model={model} instrument={entry.instrument}>
+                          {entry.instrument}
+                        </SecurityLink>
+                      ) : entry.instrument}
+                    </dd>
                   </>
                 )}
                 {hasWeight && (

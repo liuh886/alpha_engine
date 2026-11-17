@@ -6,6 +6,7 @@ import { FormalBacktestReview } from '@/components/FormalBacktestReview';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
 import { StrategyChartHero } from '@/components/StrategyChartHero';
 import { EntityEvidenceSections, EntityWorkspace } from '@/components/workspace/EntityWorkspace';
+import { RelatedInstrumentsPanel } from '@/components/workspace/RelatedInstrumentsPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
@@ -221,6 +222,7 @@ export function StrategyDetailPage() {
       }}
       back={{ to: '/app', label: 'Overview' }}
       description={run.modelKind.replace(/_/g, ' ')}
+      relatedContent={<RelatedInstrumentsPanel run={run} />}
       chips={requiredTier !== 'public' ? (
         <Badge variant="outline"><Crown className="mr-1 h-3 w-3" />{requiredTierLabel} live</Badge>
       ) : undefined}

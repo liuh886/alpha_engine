@@ -169,3 +169,47 @@ test('a model trade row links to its resolved instrument and keeps unresolved sy
   await page.screenshot({ path: testInfo.outputPath(`model-to-instrument-${testInfo.project.name}.png`), fullPage: false });
   expect(errors).toEqual([]);
 });
+
+test('a model page exposes retained-trade instrument links before any evidence tab is opened', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/strategies/byd_v1_3_recovery_event_low_vol_confirmation_v1');
+
+  // The default view keeps the Performance tab mounted and no trade table.
+  await expect(page.getByTestId('formal-backtest-review')).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Trades', exact: true })).toHaveAttribute('aria-selected', 'false');
+
+  // The shell's related section is the always-visible model → instrument entry point.
+  const panel = page.getByTestId('related-instruments');
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText('not inferred holdings');
+
+  const linker = panel.getByRole('link', { name: 'View BYD price and model events', exact: true });
+  await expect(linker).toBeVisible();
+  await expect(linker).toHaveAttribute(
+    'href',
+    '#/securities/cn/002594?model=byd_v1_3_recovery_event_low_vol_confirmation_v1',
+  );
+  await expect(panel.getByTestId('related-instrument').filter({ hasText: 'BYD' })).toContainText('retained trades');
+
+  // CASH is retained in the ledger but unpublished: plain text with a reason.
+  await expect(panel.getByTestId('security-link-unresolved').filter({ hasText: 'CASH' })).toContainText('No published price history');
+  await expect(panel.getByRole('link', { name: 'View CASH price and model events' })).toHaveCount(0);
+
+  // Every instrument anchor on the default page is a well-formed, same-market route.
+  const hrefs = await page.evaluate(() => [...document.querySelectorAll('a[href*="/securities/"]')]
+    .map(anchor => anchor.getAttribute('href') ?? ''));
+  expect(hrefs.length).toBeGreaterThan(0);
+  for (const href of hrefs) {
+    expect(href).toMatch(/^#\/securities\/cn\/[^/?#]+(?:\?model=[^#]+)?$/);
+  }
+
+  await panel.scrollIntoViewIfNeeded();
+  await capture(page, testInfo, 'model-related-instruments');
+
+  await linker.click();
+  await expect(page).toHaveURL(/#\/securities\/cn\/002594/);
+  await expect(page.getByRole('heading', { name: 'BYD · 002594', exact: true })).toBeVisible();
+  await expect(page.getByTestId('related-models')).toBeVisible();
+  expect(errors).toEqual([]);
+});

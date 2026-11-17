@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SecurityEvent } from './security-evidence';
 import type { GovernedRunSummary } from './governed-run';
 import {
@@ -6,8 +6,21 @@ import {
   holdingAliases,
   holdingForSnapshot,
   parseLatestPortfolioSnapshot,
+  readRelatedTradeInstruments,
   summarizeModelEvents,
+  summarizeTradeInstruments,
 } from './related-entities';
+
+const mocks = vi.hoisted(() => ({ loadRunSection: vi.fn() }));
+
+vi.mock('./governed-run', async importOriginal => {
+  const actual = await importOriginal<typeof import('./governed-run')>();
+  return { ...actual, loadRunSection: mocks.loadRunSection };
+});
+
+beforeEach(() => {
+  mocks.loadRunSection.mockReset();
+});
 
 function event(overrides: Partial<SecurityEvent> = {}): SecurityEvent {
   return {
@@ -132,5 +145,46 @@ describe('buildRelatedModelEntries', () => {
       [],
       { model_a: { status: 'not_held', asOf: '2026-01-09', cutoff: '2026-01-31' } },
     )).toEqual([]);
+  });
+});
+
+describe('trade instrument summaries', () => {
+  it('groups the retained ledger by instrument with count and latest action', () => {
+    const rows = summarizeTradeInstruments([
+      { date: '2026-08-04', action: 'SELL', instrument: 'BYD' },
+      { date: '2026-08-04', action: 'BUY', instrument: '515180.SH' },
+      { date: '2026-07-31', action: 'BUY', instrument: 'BYD' },
+      { date: '2026-07-31', action: 'SELL', instrument: '515180.SH' },
+      { date: '2026-01-01', action: 'BUY', instrument: 'CASH' },
+    ]);
+    expect(rows.map(row => row.instrument)).toEqual(['515180.SH', 'BYD', 'CASH']);
+    expect(rows.find(row => row.instrument === 'BYD')).toEqual({
+      instrument: 'BYD', tradeCount: 2, lastAction: 'SELL', lastDate: '2026-08-04',
+    });
+    expect(rows.find(row => row.instrument === '515180.SH')).toEqual({
+      instrument: '515180.SH', tradeCount: 2, lastAction: 'BUY', lastDate: '2026-08-04',
+    });
+  });
+
+  it('ignores rows without an instrument or a valid trade date', () => {
+    expect(summarizeTradeInstruments([
+      { date: '2026-08-04', action: 'SELL', instrument: null },
+      { date: '', action: 'BUY', instrument: 'BYD' },
+      { date: '2026-08-05', action: 'BUY', instrument: '515180.SH' },
+    ])).toEqual([{ instrument: '515180.SH', tradeCount: 1, lastAction: 'BUY', lastDate: '2026-08-05' }]);
+  });
+
+  it('reads the retained trade ledger and states an unavailable section instead of inventing rows', async () => {
+    mocks.loadRunSection.mockResolvedValueOnce([{ date: '2026-08-04', action: 'SELL', instrument: 'BYD' }]);
+    await expect(readRelatedTradeInstruments(run())).resolves.toEqual({
+      status: 'ready',
+      instruments: [{ instrument: 'BYD', tradeCount: 1, lastAction: 'SELL', lastDate: '2026-08-04' }],
+    });
+    expect(mocks.loadRunSection).toHaveBeenCalledWith(expect.objectContaining({ modelVersionId: 'model_a' }), 'trades');
+
+    mocks.loadRunSection.mockRejectedValueOnce(new Error('trades is not_retained'));
+    await expect(readRelatedTradeInstruments(run())).resolves.toEqual({
+      status: 'unavailable', reason: 'trades is not_retained',
+    });
   });
 });

@@ -1,5 +1,7 @@
 import { loadRunSection, type GovernedRunSummary } from './governed-run';
+import type { NavTrade } from './nav-series';
 import type { SecurityEvent, SecurityEvidence } from './security-evidence';
+import { parseNavTrades } from './strategy-chart';
 
 /**
  * Phase 3 cross-entity investigation derives instrument→model relations from
@@ -182,4 +184,62 @@ export function buildRelatedModelEntries(
     if (date !== 0) return date;
     return left.title.localeCompare(right.title) || left.modelVersionId.localeCompare(right.modelVersionId);
   });
+}
+
+export interface RelatedInstrumentSummary {
+  /** Published ledger identity as retained; never normalized into a route. */
+  instrument: string;
+  tradeCount: number;
+  lastAction: string;
+  lastDate: string;
+}
+
+/**
+ * Compact model→instrument relation from the retained trade ledger: one row per
+ * published instrument identity with its trade count and latest action/date.
+ * This is a trade summary, not a holdings claim; the caller links each identity
+ * through its own market catalog.
+ */
+export function summarizeTradeInstruments(trades: readonly NavTrade[]): RelatedInstrumentSummary[] {
+  const summaries = new Map<string, RelatedInstrumentSummary>();
+  for (const trade of trades) {
+    const instrument = trade.instrument?.trim();
+    if (!instrument || !trade.date) continue;
+    const key = instrument.toLowerCase();
+    const current = summaries.get(key);
+    if (!current) {
+      summaries.set(key, { instrument, tradeCount: 1, lastAction: trade.action, lastDate: trade.date });
+      continue;
+    }
+    current.tradeCount += 1;
+    if (trade.date >= current.lastDate) {
+      current.lastAction = trade.action;
+      current.lastDate = trade.date;
+    }
+  }
+  return [...summaries.values()].sort((left, right) => (
+    right.lastDate.localeCompare(left.lastDate)
+    || right.tradeCount - left.tradeCount
+    || left.instrument.localeCompare(right.instrument)
+  ));
+}
+
+export type RelatedTradeInstrumentsRead =
+  | { status: 'ready'; instruments: RelatedInstrumentSummary[] }
+  | { status: 'unavailable'; reason: string };
+
+/**
+ * Read one formal run's retained trades ledger for the model's related-
+ * instruments panel. The section read is identity-bound and cached by
+ * `loadRunSection`; a failure is stated rather than turned into an empty list.
+ */
+export async function readRelatedTradeInstruments(
+  run: GovernedRunSummary,
+): Promise<RelatedTradeInstrumentsRead> {
+  try {
+    const payload = await loadRunSection(run, 'trades');
+    return { status: 'ready', instruments: summarizeTradeInstruments(parseNavTrades(payload)) };
+  } catch (error) {
+    return { status: 'unavailable', reason: error instanceof Error ? error.message : String(error) };
+  }
 }

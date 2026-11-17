@@ -9,8 +9,8 @@ const LINK_CLASS = 'font-medium text-primary underline decoration-primary/30 und
  * accessible reason instead of a dead route. The link is always built from the
  * run's own market, so a US model can never link a CN instrument.
  */
-export function SecurityLink({ market, instrument, model, children }: {
-  market?: string; instrument: string; model?: string; children?: ReactNode;
+export function SecurityLink({ market, instrument, model, children, linkClassName }: {
+  market?: string; instrument: string; model?: string; children?: ReactNode; linkClassName?: string;
 }) {
   const resolution = useSecurityLink(market, instrument, model);
   const label = children ?? instrument;
@@ -19,7 +19,7 @@ export function SecurityLink({ market, instrument, model, children }: {
     return (
       <a
         href={resolution.href}
-        className={LINK_CLASS}
+        className={`${LINK_CLASS} ${linkClassName ?? ''}`.trim()}
         aria-label={`View ${instrument} price and model events`}
       >
         {label}
