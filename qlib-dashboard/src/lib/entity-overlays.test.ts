@@ -75,8 +75,8 @@ describe('entity comparison window', () => {
 
 describe('comparison entity pickers', () => {
   const symbols: SecuritySymbol[] = [
-    { symbol: 'AAPL', name: 'Apple', instrument_id: 'us:AAPL', path: 'symbols/AAPL.json', sha256: 'a'.repeat(64), source_sha256: 'a'.repeat(64), source_instruments: ['AAPL'] },
-    { symbol: 'MSFT', name: 'Microsoft', instrument_id: 'us:MSFT', path: 'symbols/MSFT.json', sha256: 'b'.repeat(64), source_sha256: 'b'.repeat(64), source_instruments: ['MSFT'] },
+    { symbol: 'AAPL', name: 'Apple', instrument_id: 'us:AAPL', path: 'symbols/AAPL.json', sha256: 'a'.repeat(64), source_sha256: 'a'.repeat(64), source_instruments: ['AAPL'], roles: [] },
+    { symbol: 'MSFT', name: 'Microsoft', instrument_id: 'us:MSFT', path: 'symbols/MSFT.json', sha256: 'b'.repeat(64), source_sha256: 'b'.repeat(64), source_instruments: ['MSFT'], roles: [] },
   ];
 
   it('never offers the page instrument or another market', () => {

@@ -15,7 +15,7 @@ import { securityMarkers } from './security-markers';
 
 const sha = 'a'.repeat(64);
 const boundary = { view: 'security_detail_v1', research_only: true, trade_ready: false };
-const symbol = { symbol: '002594', name: 'BYD', instrument_id: 'cn:002594', path: 'symbols/002594.json', sha256: sha, source_sha256: sha, source_instruments: ['BYD', '002594'] };
+const symbol = { symbol: '002594', name: 'BYD', instrument_id: 'cn:002594', path: 'symbols/002594.json', sha256: sha, source_sha256: sha, source_instruments: ['BYD', '002594'], roles: [] };
 const binding = { model_version_id: 'byd', run_id: 'formal-run', bundle_id: sha };
 const catalog = () => parseSecurityCatalog({ ...boundary, market: 'cn', evidence_type: 'market_evidence_catalog', cutoff: '2026-03-01', provider_manifest_sha256: sha, symbols: [symbol], formal_bindings: [binding] }, 'cn');
 const bars = [
@@ -81,7 +81,7 @@ function response(body: string, status = 200): Response {
 function spxSymbol(digest: string) {
   return {
     symbol: 'SPX', name: 'S&P 500', instrument_id: 'us:SPX', path: 'symbols/SPX.json',
-    sha256: digest, source_sha256: sha, source_instruments: ['SPX'],
+    sha256: digest, source_sha256: sha, source_instruments: ['SPX'], roles: ['formal_auxiliary'],
   };
 }
 

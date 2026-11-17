@@ -1,16 +1,18 @@
-import { ArrowLeft, ArrowUpRight, CalendarClock, Crown, Database, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { ArrowUpRight, CalendarClock, Crown, Database, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { ResearchTrackingAssessment } from '@/components/ResearchTrackingAssessment';
 import { FormalBacktestReview } from '@/components/FormalBacktestReview';
 import { OperationsReadStatus } from '@/components/OperationsReadStatus';
 import { StrategyChartHero } from '@/components/StrategyChartHero';
+import { EntityEvidenceSections, EntityWorkspace } from '@/components/workspace/EntityWorkspace';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import type { AccessTier } from '@/lib/model-access';
 import { loadDecisionForRun, type DecisionLoadState } from '@/lib/model-run-decision';
 import { loadRunSection } from '@/lib/governed-run';
+import { staleDays } from '@/lib/metrics';
 import { latestPerformanceObservation } from '@/lib/performancePeriods';
 import type { ReportRow } from '@/lib/types';
 import { STRATEGY_STATUS_LABEL, summarizeStrategySignal } from '@/lib/strategy-operations';
@@ -205,28 +207,31 @@ export function StrategyDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-7 pb-16">
-      <section className="space-y-5 border-b pb-6">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 gap-2"><Link to="/app"><ArrowLeft className="h-4 w-4" />Overview</Link></Button>
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-4xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline">{run.market.toUpperCase()}</Badge>
-              <Badge variant="outline">Benchmark {run.benchmark}</Badge>
-              <Badge variant="secondary">Formal baseline</Badge>
-              {requiredTier !== 'public' && <Badge variant="outline"><Crown className="mr-1 h-3 w-3" />{requiredTierLabel} live</Badge>}
-            </div>
-            <h1 className="ae-page-title mt-3">{run.title}</h1>
-            <p className="mt-3 text-sm text-muted-foreground">{run.modelKind.replace(/_/g, ' ')}</p>
-          </div>
-          <div className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Operating status</p>
-            <p className="mt-1 font-semibold">{liveLocked ? 'Protected current operations' : snapshot ? snapshot.readState || snapshot.observationState === 'retained_within_cadence' ? signalSummary.badgeLabel : signalSummary.isAttention ? `${signalSummary.badgeLabel} observation` : STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading current operations' : 'Operating status unavailable'}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{liveLocked ? 'Formal historical evidence remains public below.' : snapshot?.stateLabel || 'Canonical operations state is unavailable.'}</p>
-          </div>
+    <EntityWorkspace
+      identity={{
+        kind: 'model',
+        name: run.title,
+        entityId: run.modelVersionId,
+        market: run.market === 'cn' ? 'cn' : 'us',
+        asOf: observation?.date ?? null,
+        evidenceCutoff: run.evidenceCutoff,
+        staleDays: observation ? staleDays(run.evidenceCutoff, observation.date) : null,
+        benchmark: run.benchmark,
+        role: 'Formal model evidence',
+      }}
+      back={{ to: '/app', label: 'Overview' }}
+      description={run.modelKind.replace(/_/g, ' ')}
+      chips={requiredTier !== 'public' ? (
+        <Badge variant="outline"><Crown className="mr-1 h-3 w-3" />{requiredTierLabel} live</Badge>
+      ) : undefined}
+      metrics={(
+        <div className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Operating status</p>
+          <p className="mt-1 font-semibold">{liveLocked ? 'Protected current operations' : snapshot ? snapshot.readState || snapshot.observationState === 'retained_within_cadence' ? signalSummary.badgeLabel : signalSummary.isAttention ? `${signalSummary.badgeLabel} observation` : STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading current operations' : 'Operating status unavailable'}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{liveLocked ? 'Formal historical evidence remains public below.' : snapshot?.stateLabel || 'Canonical operations state is unavailable.'}</p>
         </div>
-      </section>
-
+      )}
+    >
       <StrategySectionNav />
 
       <div id="summary" tabIndex={-1} className="scroll-mt-28 space-y-7 focus:outline-none">
@@ -365,15 +370,15 @@ export function StrategyDetailPage() {
       </div>
 
       <div id="evidence" tabIndex={-1} className="scroll-mt-28 focus:outline-none">
-        <section className="space-y-4 border-t pt-7">
+        <EntityEvidenceSections label="Performance, risk, holdings and attribution">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Evidence</p>
             <h2 className="mt-1 text-2xl font-bold">Performance, risk, holdings and attribution</h2>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Hash-verified Model Run Bundle v2 remains the analytical record beneath the current operating state.</p>
           </div>
           <FormalBacktestReview run={run} />
-        </section>
+        </EntityEvidenceSections>
       </div>
-    </div>
+    </EntityWorkspace>
   );
 }

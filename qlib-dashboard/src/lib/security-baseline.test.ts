@@ -30,6 +30,8 @@ const evidence = (symbol: string): SecurityEvidence => ({
   cutoff: '2026-03-01',
   source_sha256: 'a'.repeat(64),
   provider_manifest_sha256: 'b'.repeat(64),
+  roles: [],
+  benchmark: null,
   bars: [bar('2026-01-02', 100)],
   events: [],
   bindings: [],

@@ -88,6 +88,8 @@ function evidence(market: 'us' | 'cn', symbol: string): SecurityEvidence {
     bars: bars(market === 'us' ? 690 : 4000),
     events: [],
     bindings: [],
+    roles: [],
+    benchmark: null,
   };
 }
 

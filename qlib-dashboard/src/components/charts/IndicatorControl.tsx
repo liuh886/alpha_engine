@@ -109,7 +109,7 @@ export function IndicatorControl({ options, selected, onToggle, marketLabel }: I
             onOpenAutoFocus={handleOpenAutoFocus}
             className="z-50 w-[320px] rounded-[10px] border bg-popover p-1.5 text-popover-foreground shadow-popover"
           >
-            <div role="group" aria-label={`${marketLabel} chart indicators`} ref={listRef} onKeyDown={handleKeyDown}>
+            <div role="group" aria-label={`${marketLabel} chart indicators`} ref={listRef} onKeyDown={handleKeyDown} className="max-h-[min(60vh,360px)] overflow-y-auto">
               {groups.map(group => (
                 <div key={group.label} className="pb-1">
                   <p className="px-2 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">

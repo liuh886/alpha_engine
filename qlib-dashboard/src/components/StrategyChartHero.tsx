@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { EntityChartPanel } from '@/components/workspace/EntityWorkspace';
 import { BaselineControl } from '@/components/charts/BaselineControl';
 import { MarkerDetailPanel } from '@/components/charts/MarkerDetailPanel';
 import { NavChart, type NavChartSeries } from '@/components/charts/NavChart';
@@ -315,20 +316,17 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
   };
 
   return (
-    <section
-      data-testid="strategy-chart-hero"
-      aria-labelledby="strategy-chart-hero-heading"
-      className="flex flex-col overflow-hidden rounded-xl border bg-card shadow-card"
-    >
-      <header className="order-1 flex flex-col gap-3 border-b p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <h2 id="strategy-chart-hero-heading" className="text-lg font-semibold">Performance path</h2>
-          <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
-            Governed NAV indexed to 100 at the first exact-date observation. No interpolation, forward fill or
-            cross-market baseline. All values remain research evidence, not live trading results.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <EntityChartPanel
+      testId="strategy-chart-hero"
+      title="Performance path"
+      description={
+        <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+          Governed NAV indexed to 100 at the first exact-date observation. No interpolation, forward fill or
+          cross-market baseline.
+        </p>
+      }
+      controls={
+        <>
           <div role="group" aria-label="Chart horizon" className="flex flex-wrap items-center gap-0.5 rounded-md border bg-muted/30 p-0.5">
             {CHART_HORIZONS.map(horizon => (
               <button
@@ -356,9 +354,9 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
               marketLabel={market === 'us' ? 'US' : 'CN'}
             />
           )}
-        </div>
-      </header>
-
+        </>
+      }
+    >
       {!navLoaded ? (
         <p role="status" className="p-6 text-sm text-muted-foreground">Loading verified NAV projection…</p>
       ) : (
@@ -494,6 +492,6 @@ export function StrategyChartHero({ run }: { run: GovernedRunSummary }) {
           </div>
         </>
       )}
-    </section>
+    </EntityChartPanel>
   );
 }
