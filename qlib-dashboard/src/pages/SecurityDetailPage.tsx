@@ -2,6 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { SecurityLightweightChart, type SecurityChartMode } from '@/components/SecurityLightweightChart';
+import {
+  EntityChartPanel,
+  EntityDateFacts,
+  EntityEvidenceSections,
+  EntityWorkspace,
+  type EntityBackLink,
+} from '@/components/workspace/EntityWorkspace';
 import { BaselineControl } from '@/components/charts/BaselineControl';
 import { CompareControl } from '@/components/charts/CompareControl';
 import { CompareLegend, type CompareLegendItem } from '@/components/charts/CompareLegend';
@@ -34,6 +41,8 @@ import {
   type MarketSeriesStatus,
 } from '@/lib/indicator-overlays';
 import type { IndicatorPoint } from '@/lib/indicators';
+import { ENTITY_KIND_LABEL, entityKindFromRoles, formatEntityRoles } from '@/lib/entity-kind';
+import { staleDays } from '@/lib/metrics';
 import { readMarketEvidence } from '@/lib/market-evidence-cache';
 import {
   MAX_COMPARE_OVERLAYS,
@@ -113,34 +122,66 @@ const BASELINE_ENTITY_ID = 'baseline:market';
 
 /**
  * As-of and evidence-cutoff identities are one fact when the dates match and
- * two labelled metrics only when they genuinely differ. Display only.
+ * two labelled metrics only when they genuinely differ. Kept as an exported
+ * page helper so the shared entity facts own the rendering.
  */
 export function SecurityAsOfMetrics({ asOf, cutoff }: { asOf: string | null; cutoff: string }) {
-  if (asOf !== null && asOf === cutoff) {
-    return (
-      <div>
-        <dt className="ae-metric-label">As of · evidence cutoff</dt>
-        <dd data-testid="security-as-of-cutoff" className="mt-1 font-mono text-sm font-semibold tabular-nums">
-          {cutoff}
-        </dd>
-      </div>
-    );
-  }
+  return <EntityDateFacts asOf={asOf} cutoff={cutoff} testIdPrefix="security" />;
+}
+
+/**
+ * Index/reference role context. The kind and roles come only from the
+ * published market-evidence catalog; no benchmark identity is inferred from a
+ * symbol name and no model evidence is attached that the catalog does not bind.
+ */
+export function EntityRoleContext({ evidence }: { evidence: SecurityEvidence }) {
+  const kind = entityKindFromRoles(evidence.roles);
+  const first = evidence.bars[0];
+  const last = evidence.bars[evidence.bars.length - 1];
   return (
-    <>
-      <div>
-        <dt className="ae-metric-label">As of</dt>
-        <dd data-testid="security-as-of" className="mt-1 font-mono text-sm font-semibold tabular-nums">{asOf ?? '—'}</dd>
-      </div>
-      <div>
-        <dt className="ae-metric-label">Evidence cutoff</dt>
-        <dd data-testid="security-evidence-cutoff" className="mt-1 font-mono text-sm font-semibold tabular-nums">{cutoff}</dd>
-      </div>
-    </>
+    <section
+      className="research-surface p-4 sm:p-5"
+      aria-label="Reference role and context"
+      data-testid="entity-role-context"
+    >
+      <h2 className="ae-section-title">Role and context</h2>
+      <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt className="ae-metric-label">Entity kind</dt>
+          <dd data-testid="entity-role-kind" className="mt-1 text-sm font-semibold">{ENTITY_KIND_LABEL[kind]}</dd>
+        </div>
+        <div>
+          <dt className="ae-metric-label">Governed roles</dt>
+          <dd className="mt-1 text-sm font-semibold">{formatEntityRoles(evidence.roles)}</dd>
+        </div>
+        <div>
+          <dt className="ae-metric-label">Market benchmark</dt>
+          <dd className="mt-1 font-mono text-sm font-semibold">{evidence.benchmark ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="ae-metric-label">Close history</dt>
+          <dd className="mt-1 font-mono text-sm font-semibold">
+            {first?.time ?? '—'} – {last?.time ?? '—'} · {evidence.bars.length} sessions
+          </dd>
+        </div>
+      </dl>
+      <p className="mt-3 text-[11px] leading-4 text-muted-foreground">
+        Index and reference identities are published market context. The catalog classes them; this page does not
+        infer a benchmark role from a name and does not attach model evidence the catalog does not bind.
+      </p>
+    </section>
   );
 }
 
-export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence; runs: GovernedRunSummary[] }) {
+export function SecurityHistory({
+  evidence,
+  runs,
+  back,
+}: {
+  evidence: SecurityEvidence;
+  runs: GovernedRunSummary[];
+  back?: EntityBackLink;
+}) {
   const [params, setParams] = useSearchParams();
   const range = PERIODS.find(period => period.key === params.get('range'))?.key ?? '1y';
   const [hidden, setHidden] = useState<string[]>([]);
@@ -624,126 +665,128 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
     : `${range}:${mode}:${baselineSeries?.startDate ?? 'pending'}`;
   const change = summary.oneWeekChange;
   const markerPressed = (marker: SecurityMarker) => marker.events.every(event => activeSelection.includes(event));
+  const entityKind = entityKindFromRoles(evidence.roles);
+  const showRoleContext = entityKind === 'index' || entityKind === 'reference';
+  const showModelLedger = entityKind === 'instrument' || allEvents.length > 0;
 
-  return <>
-    <header className="research-page-header">
-      <div className="min-w-0">
-        <p className="research-kicker">{evidence.market.toUpperCase()} · Historical research evidence</p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <h1>{evidence.name === evidence.symbol ? evidence.name : `${evidence.name} · ${evidence.symbol}`}</h1>
-          <span className="ae-chip">{evidence.market.toUpperCase()}</span>
-          <span className="ae-chip">Research only · Not trade ready</span>
-        </div>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Exact governed price sessions and historical formal model events. Research evidence only — no live
-          signal, execution price or order entry.
-        </p>
-      </div>
-      <dl className="grid shrink-0 grid-cols-2 gap-x-5 gap-y-2 sm:grid-cols-4">
-        <div>
-          <dt className="ae-metric-label">Last close</dt>
-          <dd data-testid="security-last-close" className="mt-1 font-mono text-lg font-semibold tabular-nums">
-            {formatSecurityPrice(summary.lastClose)}
-          </dd>
-        </div>
-        <div>
-          <dt className="ae-metric-label">1W change</dt>
-          <dd
-            data-testid="security-one-week-change"
-            title={summary.oneWeekReason ?? undefined}
-            aria-label={summary.oneWeekReason ? `One-week change unavailable: ${summary.oneWeekReason}` : undefined}
-            className={cn(
-              'mt-1 font-mono text-lg font-semibold tabular-nums',
-              change !== null && change > 0 && 'text-positive',
-              change !== null && change < 0 && 'text-negative',
+  return (
+    <EntityWorkspace
+      identity={{
+        kind: entityKind,
+        name: evidence.name === evidence.symbol ? evidence.name : `${evidence.name} · ${evidence.symbol}`,
+        entityId: `${evidence.market}:${evidence.symbol}`,
+        market: evidence.market,
+        asOf: summary.asOf,
+        evidenceCutoff: evidence.cutoff,
+        staleDays: staleDays(evidence.cutoff, summary.asOf),
+        benchmark: evidence.benchmark ?? baselineIdentity.symbol,
+        role: formatEntityRoles(evidence.roles),
+      }}
+      back={back ?? { to: '/app', label: 'Overview' }}
+      description="Exact governed price sessions and historical formal model events."
+      metrics={(
+        <dl className="grid shrink-0 grid-cols-2 gap-x-5 gap-y-2 sm:grid-cols-4">
+          <div>
+            <dt className="ae-metric-label">Last close</dt>
+            <dd data-testid="security-last-close" className="mt-1 font-mono text-lg font-semibold tabular-nums">
+              {formatSecurityPrice(summary.lastClose)}
+            </dd>
+          </div>
+          <div>
+            <dt className="ae-metric-label">1W change</dt>
+            <dd
+              data-testid="security-one-week-change"
+              title={summary.oneWeekReason ?? undefined}
+              aria-label={summary.oneWeekReason ? `One-week change unavailable: ${summary.oneWeekReason}` : undefined}
+              className={cn(
+                'mt-1 font-mono text-lg font-semibold tabular-nums',
+                change !== null && change > 0 && 'text-positive',
+                change !== null && change < 0 && 'text-negative',
+              )}
+            >
+              {formatSecurityPercent(change)}
+            </dd>
+            {summary.oneWeekReason && (
+              <p className="mt-0.5 max-w-[16rem] text-[10px] leading-4 text-muted-foreground">{summary.oneWeekReason}</p>
             )}
-          >
-            {formatSecurityPercent(change)}
-          </dd>
-          {summary.oneWeekReason && (
-            <p className="mt-0.5 max-w-[16rem] text-[10px] leading-4 text-muted-foreground">{summary.oneWeekReason}</p>
-          )}
-        </div>
-        {/* One metric when the observation date and evidence cutoff coincide;
-            two labelled metrics only when they actually differ. */}
-        <SecurityAsOfMetrics asOf={summary.asOf} cutoff={evidence.cutoff} />
-      </dl>
-    </header>
-
-    <section
-      data-testid="security-history-chart"
-      data-marker-count={markers.length}
-      aria-label="Price and model events"
-      className="research-surface p-4 sm:p-5"
+          </div>
+        </dl>
+      )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="ae-section-title">Price and model events</h2>
+      <EntityChartPanel
+        testId="security-history-chart"
+        title="Price and model events"
+        ariaLabel="Price and model events"
+        dataMarkerCount={markers.length}
+        bodyClassName="p-4 sm:p-5"
+        description={(
           <p data-testid="security-visible-dates" className="mt-1 text-[11px] leading-4 text-muted-foreground">
             {first?.time ?? '—'} – {last?.time ?? '—'} · {bars.length} observed sessions · {markers.length} marker clusters
           </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div role="group" aria-label="Security chart range" className="inline-flex rounded-lg border bg-muted/30 p-0.5">
-            {PERIODS.map(period => (
-              <button
-                key={period.key}
-                type="button"
-                aria-pressed={range === period.key}
-                className={cn(
-                  'research-touch min-h-8 rounded-md px-2.5 text-[11px] font-medium transition-colors',
-                  range === period.key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted',
-                )}
-                onClick={() => {
-                  const next = new URLSearchParams(params);
-                  next.set('range', period.key);
-                  setParams(next, { replace: true });
-                }}
-              >
-                {period.label}
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            data-testid="security-compare-toggle"
-            aria-pressed={compare}
-            onClick={() => setCompare(value => !value)}
-            className={cn(
-              'research-touch min-h-8 rounded-md border px-2.5 text-[11px] font-medium transition-colors',
-              compare
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'bg-background text-muted-foreground hover:bg-muted',
+        )}
+        controls={(
+          <>
+            <div role="group" aria-label="Security chart range" className="inline-flex rounded-lg border bg-muted/30 p-0.5">
+              {PERIODS.map(period => (
+                <button
+                  key={period.key}
+                  type="button"
+                  aria-pressed={range === period.key}
+                  className={cn(
+                    'research-touch min-h-8 rounded-md px-2.5 text-[11px] font-medium transition-colors',
+                    range === period.key
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted',
+                  )}
+                  onClick={() => {
+                    const next = new URLSearchParams(params);
+                    next.set('range', period.key);
+                    setParams(next, { replace: true });
+                  }}
+                >
+                  {period.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              data-testid="security-compare-toggle"
+              aria-pressed={compare}
+              onClick={() => setCompare(value => !value)}
+              className={cn(
+                'research-touch min-h-8 rounded-md border px-2.5 text-[11px] font-medium transition-colors',
+                compare
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'bg-background text-muted-foreground hover:bg-muted',
+              )}
+            >
+              Compare
+            </button>
+            {compare && (
+              <CompareControl
+                options={compareOptions}
+                selected={entities}
+                onToggle={toggleCompareEntity}
+                marketLabel={evidence.market === 'us' ? 'US' : 'CN'}
+                displayed={displayedIdentities}
+                max={MAX_COMPARE_OVERLAYS}
+              />
             )}
-          >
-            Compare
-          </button>
-          {compare && (
-            <CompareControl
-              options={compareOptions}
-              selected={entities}
-              onToggle={toggleCompareEntity}
+            <BaselineControl
+              options={baselineOptions}
+              value={activeKind}
+              onChange={changeBaseline}
               marketLabel={evidence.market === 'us' ? 'US' : 'CN'}
-              displayed={displayedIdentities}
-              max={MAX_COMPARE_OVERLAYS}
             />
-          )}
-          <BaselineControl
-            options={baselineOptions}
-            value={activeKind}
-            onChange={changeBaseline}
-            marketLabel={evidence.market === 'us' ? 'US' : 'CN'}
-          />
-          <IndicatorControl
-            options={indicatorOptions}
-            selected={indicators}
-            onToggle={toggleIndicator}
-            marketLabel={evidence.market === 'us' ? 'US' : 'CN'}
-          />
-        </div>
-      </div>
+            <IndicatorControl
+              options={indicatorOptions}
+              selected={indicators}
+              onToggle={toggleIndicator}
+              marketLabel={evidence.market === 'us' ? 'US' : 'CN'}
+            />
+          </>
+        )}
+      >
 
       {compare && (
         <p role="note" data-testid="compare-scope" className="mt-2 text-[11px] leading-4 text-muted-foreground">
@@ -932,82 +975,89 @@ export function SecurityHistory({ evidence, runs }: { evidence: SecurityEvidence
         B = buy / increase · S = sell / decrease. Markers are colored by model identity and shaped by direction.
         {' '}{MARKER_DETAIL_DISCLOSURE}
       </p>
-    </section>
+    </EntityChartPanel>
 
-    <section className="research-surface p-4 sm:p-5" aria-label="Historical model event ledger">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="ae-section-title">Historical model event ledger</h2>
-        <label className="research-touch flex min-h-9 items-center gap-2 text-sm">
-          <input
-            type="checkbox" className="h-4 w-4 accent-primary"
-            checked={completeLedger}
-            onChange={event => { setCompleteLedger(event.target.checked); setLimit(100); }}
-          />
-          Show complete ledger
-        </label>
-      </div>
-      <p className="mb-3 text-[11px] leading-4 text-muted-foreground">
-        {completeLedger
-          ? 'Full retained ledger, including events outside price coverage.'
-          : 'Selected chart interval.'} Weight changes describe historical model targets. The chart price is a
-        governed reference, not the event execution price.
-      </p>
-      <div className="overflow-x-auto">
-        <table className="ae-data-table min-w-full text-left">
-          <thead>
-            <tr>
-              {['Ledger date', 'Model', 'Action', 'Previous → target', 'Reason / evidence'].map(label => (
-                <th key={label} className="whitespace-nowrap">{label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.slice(0, limit).map((event, index) => (
-              <tr key={`${event.model_id}:${event.time}:${index}`} className="align-top">
-                <td className="whitespace-nowrap font-mono text-[11px]">{event.time}</td>
-                <td className="whitespace-nowrap">
-                  <Link className="text-primary underline" to={`/strategies/${encodeURIComponent(event.model_id)}`}>
-                    {labelFor(event.model_id)}
-                  </Link>
-                </td>
-                <td className="font-semibold" title={event.action}>{formatEventAction(event.action)}</td>
-                <td className="whitespace-nowrap font-mono text-[11px]">
-                  {weight(event.previous_weight)} → {weight(event.target_weight)}
-                </td>
-                <td className="max-w-sm min-w-56 break-words">
-                  <span title={event.reason || undefined}>{humanizeEventReason(event.reason)}</span>
-                  <span className="mt-1 block text-[10px] text-muted-foreground">{event.run_id}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {!rows.length && <p className="py-6 text-sm text-muted-foreground">No retained model events for this instrument and selection.</p>}
-      {rows.length > limit && (
-        <button
-          type="button"
-          className="mt-4 min-h-9 rounded border px-4 text-sm"
-          onClick={() => setLimit(value => value + 100)}
-        >
-          Show more events ({limit} of {rows.length})
-        </button>
-      )}
-    </section>
+      <EntityEvidenceSections label="Instrument evidence">
+        {showRoleContext && <EntityRoleContext evidence={evidence} />}
 
-    <details className="research-surface p-4 text-xs text-muted-foreground">
-      <summary className="cursor-pointer font-medium">Price and event provenance</summary>
-      <p className="mt-3 break-all">Published price source SHA-256: {evidence.source_sha256}</p>
-      <p className="mt-2 break-all">Provider manifest SHA-256: {evidence.provider_manifest_sha256}</p>
-      <p className="mt-2">
-        OHLCV is retained governed provider evidence. Price mode plots raw OHLC and is not adjusted for splits or
-        dividends. vs baseline aligns exact session dates open-to-open and indexes both series to 100 at the first
-        common date; that is a price return, not total return. Adjustment and execution semantics remain those of
-        the source contracts; price return is not strategy return. Only exact active formal model/run/bundle
-        identities qualify for markers.
-      </p>
-    </details>
-  </>;
+        {showModelLedger && (
+          <section className="research-surface p-4 sm:p-5" aria-label="Historical model event ledger">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="ae-section-title">Historical model event ledger</h2>
+              <label className="research-touch flex min-h-9 items-center gap-2 text-sm">
+                <input
+                  type="checkbox" className="h-4 w-4 accent-primary"
+                  checked={completeLedger}
+                  onChange={event => { setCompleteLedger(event.target.checked); setLimit(100); }}
+                />
+                Show complete ledger
+              </label>
+            </div>
+            <p className="mb-3 text-[11px] leading-4 text-muted-foreground">
+              {completeLedger
+                ? 'Full retained ledger, including events outside price coverage.'
+                : 'Selected chart interval.'} Weight changes describe historical model targets. The chart price is a
+              governed reference, not the event execution price.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="ae-data-table min-w-full text-left">
+                <thead>
+                  <tr>
+                    {['Ledger date', 'Model', 'Action', 'Previous → target', 'Reason / evidence'].map(label => (
+                      <th key={label} className="whitespace-nowrap">{label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.slice(0, limit).map((event, index) => (
+                    <tr key={`${event.model_id}:${event.time}:${index}`} className="align-top">
+                      <td className="whitespace-nowrap font-mono text-[11px]">{event.time}</td>
+                      <td className="whitespace-nowrap">
+                        <Link className="text-primary underline" to={`/strategies/${encodeURIComponent(event.model_id)}`}>
+                          {labelFor(event.model_id)}
+                        </Link>
+                      </td>
+                      <td className="font-semibold" title={event.action}>{formatEventAction(event.action)}</td>
+                      <td className="whitespace-nowrap font-mono text-[11px]">
+                        {weight(event.previous_weight)} → {weight(event.target_weight)}
+                      </td>
+                      <td className="max-w-sm min-w-56 break-words">
+                        <span title={event.reason || undefined}>{humanizeEventReason(event.reason)}</span>
+                        <span className="mt-1 block text-[10px] text-muted-foreground">{event.run_id}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {!rows.length && <p className="py-6 text-sm text-muted-foreground">No retained model events for this instrument and selection.</p>}
+            {rows.length > limit && (
+              <button
+                type="button"
+                className="mt-4 min-h-9 rounded border px-4 text-sm"
+                onClick={() => setLimit(value => value + 100)}
+              >
+                Show more events ({limit} of {rows.length})
+              </button>
+            )}
+          </section>
+        )}
+
+        <details className="research-surface p-4 text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-medium">Price and event provenance</summary>
+          <p className="mt-3 break-all">Published price source SHA-256: {evidence.source_sha256}</p>
+          <p className="mt-2 break-all">Provider manifest SHA-256: {evidence.provider_manifest_sha256}</p>
+          <p className="mt-2">
+            OHLCV is retained governed provider evidence. Price mode plots raw OHLC and is not adjusted for splits or
+            dividends. vs baseline aligns exact session dates open-to-open and indexes both series to 100 at the first
+            common date; that is a price return, not total return. Adjustment and execution semantics remain those of
+            the source contracts; price return is not strategy return. Only exact active formal model/run/bundle
+            identities qualify for markers.
+          </p>
+        </details>
+      </EntityEvidenceSections>
+    </EntityWorkspace>
+  );
 }
 
 export function SecurityDetailPage() {
@@ -1027,13 +1077,22 @@ export function SecurityDetailPage() {
     return () => { active = false; };
   }, [key, market, retry, symbol]);
   const valid = market === 'us' || market === 'cn';
+  const back: EntityBackLink = {
+    to: parent ? `/strategies/${encodeURIComponent(parent.modelVersionId)}` : '/app',
+    label: parent ? parent.title : 'Overview',
+  };
+  if (current?.evidence) {
+    return <SecurityHistory
+      key={`${key}:${current.evidence.source_sha256}`}
+      evidence={current.evidence}
+      runs={workspace.runs}
+      back={back}
+    />;
+  }
   return <div className="research-page space-y-5 pb-16">
-    <Link
-      to={parent ? `/strategies/${encodeURIComponent(parent.modelVersionId)}` : '/app'}
-      className="inline-flex min-h-10 items-center gap-2 text-sm text-primary"
-    >
+    <Link to={back.to} className="inline-flex min-h-10 items-center gap-2 text-sm text-primary">
       <ArrowLeft className="h-4 w-4" />
-      {parent ? parent.title : 'Overview'}
+      {back.label}
     </Link>
     {!valid || current?.error ? (
       <div className="research-surface p-6" role="alert">
@@ -1049,8 +1108,6 @@ export function SecurityDetailPage() {
           </button>
         )}
       </div>
-    ) : current?.evidence ? (
-      <SecurityHistory key={`${key}:${current.evidence.source_sha256}`} evidence={current.evidence} runs={workspace.runs} />
     ) : (
       <p className="flex items-center gap-2 p-6 text-sm">
         <Loader2 className="h-4 w-4 animate-spin" />Loading verified price history…

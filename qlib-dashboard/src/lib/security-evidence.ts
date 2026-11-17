@@ -13,16 +13,21 @@ export interface SecurityEvent {
 export interface SecuritySymbol {
   symbol: string; name: string; instrument_id: string; path: string; sha256: string;
   source_sha256: string; source_instruments: string[];
+  /** Governed catalog roles; the only source of index/reference classification. */
+  roles: string[];
 }
 interface FormalBinding { model_version_id: string; run_id: string; bundle_id: string }
 export interface SecurityCatalog {
   market: 'us' | 'cn'; cutoff: string; provider_manifest_sha256: string;
   symbols: SecuritySymbol[]; formal_bindings: FormalBinding[];
+  /** Declared market benchmark symbol, when the catalog publishes one. */
+  benchmark: string | null;
 }
 export interface SecurityEvidence {
   market: 'us' | 'cn'; symbol: string; name: string; cutoff: string;
   source_sha256: string; provider_manifest_sha256: string;
   bars: SecurityBar[]; events: SecurityEvent[]; bindings: FormalBinding[];
+  roles: string[]; benchmark: string | null;
 }
 
 /**
@@ -91,6 +96,7 @@ export function parseSecurityCatalog(value: unknown, market: 'us' | 'cn'): Secur
       symbol, path, name: text(row.name), instrument_id: text(row.instrument_id),
       sha256: hash(row.sha256), source_sha256: hash(row.source_sha256),
       source_instruments: array(row.source_instruments).map(text),
+      roles: Array.isArray(row.roles) ? row.roles.map(text) : [],
     };
   });
   if (new Set(symbols.map(row => row.symbol)).size !== symbols.length) throw new Error('Duplicate security identity.');
@@ -99,7 +105,11 @@ export function parseSecurityCatalog(value: unknown, market: 'us' | 'cn'): Secur
     return { model_version_id: text(row.model_version_id), run_id: text(row.run_id), bundle_id: hash(row.bundle_id) };
   });
   if (new Set(formal_bindings.map(row => row.model_version_id)).size !== formal_bindings.length) throw new Error('Duplicate model binding.');
-  return { market, cutoff: date(raw.cutoff), symbols, formal_bindings, provider_manifest_sha256: hash(raw.provider_manifest_sha256) };
+  return {
+    market, cutoff: date(raw.cutoff), symbols, formal_bindings,
+    provider_manifest_sha256: hash(raw.provider_manifest_sha256),
+    benchmark: typeof raw.benchmark === 'string' && raw.benchmark ? raw.benchmark : null,
+  };
 }
 
 export function resolveSecurity(catalog: SecurityCatalog, requested: string): SecuritySymbol {
@@ -144,7 +154,8 @@ export function parseSecurityEvidence(value: unknown, catalog: SecurityCatalog, 
     };
   });
   return { market: catalog.market, symbol: symbol.symbol, name: symbol.name, cutoff, bars, events,
-    source_sha256: symbol.source_sha256, provider_manifest_sha256: catalog.provider_manifest_sha256, bindings: catalog.formal_bindings };
+    source_sha256: symbol.source_sha256, provider_manifest_sha256: catalog.provider_manifest_sha256, bindings: catalog.formal_bindings,
+    roles: symbol.roles, benchmark: catalog.benchmark };
 }
 
 /**

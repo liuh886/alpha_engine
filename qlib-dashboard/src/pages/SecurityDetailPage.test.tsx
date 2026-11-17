@@ -139,6 +139,8 @@ const evidence = (overrides: Partial<SecurityEvidence> = {}): SecurityEvidence =
     reason: 'frozen_rule',
   }],
   bindings: [{ model_version_id: 'qqq_v1', run_id: 'run-1', bundle_id: 'c'.repeat(64) }],
+  roles: [],
+  benchmark: null,
   ...overrides,
 });
 
@@ -177,7 +179,7 @@ function renderHistory(runs: GovernedRunSummary[] = [run], value: SecurityEviden
   );
 }
 
-const symbolRecord = (market: 'us' | 'cn', symbol: string, name: string): SecuritySymbol => ({
+const symbolRecord = (market: 'us' | 'cn', symbol: string, name: string, roles: string[] = []): SecuritySymbol => ({
   symbol,
   name,
   instrument_id: `${market}:${symbol}`,
@@ -185,6 +187,7 @@ const symbolRecord = (market: 'us' | 'cn', symbol: string, name: string): Securi
   sha256: 'd'.repeat(64),
   source_sha256: 'd'.repeat(64),
   source_instruments: [symbol],
+  roles,
 });
 
 const usSymbols = [
@@ -193,7 +196,8 @@ const usSymbols = [
   symbolRecord('us', 'NVDA', 'NVIDIA'),
   symbolRecord('us', 'AMD', 'Advanced Micro Devices'),
   symbolRecord('us', 'GOOG', 'Alphabet'),
-  symbolRecord('us', 'QQQ', 'Invesco QQQ Trust'),
+  symbolRecord('us', 'QQQ', 'Invesco QQQ Trust', ['benchmark', 'formal_traded']),
+  symbolRecord('us', 'SPX', 'S&P 500', ['formal_auxiliary']),
 ];
 const cnSymbols = [
   symbolRecord('cn', '002594', 'BYD'),
@@ -346,6 +350,65 @@ describe('governed indicators', () => {
     expect(screen.queryByText('VIX', { exact: true })).not.toBeInTheDocument();
     expect(screen.queryByText('VIX SMA 20', { exact: true })).not.toBeInTheDocument();
     expect(screen.queryByTestId('indicator-vix-unavailable')).not.toBeInTheDocument();
+  });
+});
+
+describe('entity workspace kinds', () => {
+  it('renders the instrument shell for a selected-pool candidate', () => {
+    renderHistory([run], evidence({ roles: ['selected_pool_candidate'], benchmark: 'QQQ' }));
+    expect(screen.getByTestId('entity-workspace')).toHaveAttribute('data-entity-kind', 'instrument');
+    expect(screen.getByTestId('entity-kind-badge')).toHaveTextContent('Instrument');
+    expect(screen.getByTestId('entity-facts')).toHaveTextContent('Selected pool candidate');
+    expect(screen.queryByTestId('entity-role-context')).not.toBeInTheDocument();
+  });
+
+  it('derives the index badge from the governed benchmark role', () => {
+    renderHistory([run], evidence({
+      symbol: 'QQQ',
+      name: 'QQQ',
+      roles: ['benchmark', 'formal_traded'],
+      benchmark: 'QQQ',
+    }));
+    expect(screen.getByTestId('entity-workspace')).toHaveAttribute('data-entity-kind', 'index');
+    expect(screen.getByTestId('entity-kind-badge')).toHaveTextContent('Index');
+    expect(screen.getByTestId('entity-facts')).toHaveTextContent('Market benchmark');
+    expect(screen.getByTestId('entity-role-context')).toBeInTheDocument();
+    expect(screen.getByTestId('entity-role-kind')).toHaveTextContent('Index');
+  });
+
+  it('derives the reference badge from a governed auxiliary role and omits unbound model evidence', () => {
+    renderHistory([run], evidence({
+      symbol: 'SPX',
+      name: 'S&P 500',
+      roles: ['formal_auxiliary'],
+      benchmark: 'QQQ',
+      events: [],
+      bindings: [],
+    }));
+    expect(screen.getByTestId('entity-workspace')).toHaveAttribute('data-entity-kind', 'reference');
+    expect(screen.getByTestId('entity-kind-badge')).toHaveTextContent('Reference');
+    expect(screen.getByTestId('entity-facts')).toHaveTextContent('Formal auxiliary');
+    expect(screen.getByTestId('entity-role-context')).toHaveTextContent('Formal auxiliary');
+    expect(screen.queryByRole('region', { name: 'Historical model event ledger' })).not.toBeInTheDocument();
+    expect(screen.queryByText('No retained model events for this instrument and selection.')).not.toBeInTheDocument();
+  });
+
+  it('keeps a traded index on the real bound event ledger', () => {
+    renderHistory([run], evidence({
+      symbol: 'QQQ',
+      name: 'QQQ',
+      roles: ['benchmark', 'formal_traded'],
+      benchmark: 'QQQ',
+    }));
+    expect(screen.getByRole('region', { name: 'Historical model event ledger' })).toBeInTheDocument();
+    expect(screen.getByTestId('entity-workspace')).toHaveAttribute('data-entity-kind', 'index');
+  });
+
+  it('uses one shared chart disclosure on instrument and index pages', () => {
+    renderHistory([run], evidence({ roles: ['selected_pool_candidate'] }));
+    expect(screen.getByTestId('entity-chart-disclosure')).toHaveTextContent(
+      'Historical research evidence, not a live signal or fill.',
+    );
   });
 });
 
