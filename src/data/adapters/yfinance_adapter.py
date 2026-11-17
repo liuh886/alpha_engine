@@ -44,6 +44,10 @@ def _get_yahoo_ticker(ticker: str, region: str) -> str:
         # Canonical S&P 500 index identity: Yahoo publishes it as ^GSPC.
         # Never substitute a tracking ETF (SPY/VOO/IVV) for the index.
         return "^GSPC"
+    if region == "us" and ticker == "VIX":
+        # Canonical CBOE volatility index identity: Yahoo publishes it as ^VIX.
+        # Never substitute a volatility ETF (VXX/VIXY/UVXY) for the index.
+        return "^VIX"
     return ticker
 
 
