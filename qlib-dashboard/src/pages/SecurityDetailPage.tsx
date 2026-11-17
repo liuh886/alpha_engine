@@ -65,6 +65,13 @@ import {
   type SecurityEvent,
   type SecuritySymbol,
 } from '@/lib/security-evidence';
+import {
+  buildRelatedModelEntries,
+  holdingAliases,
+  readLatestPublishedHolding,
+  type RelatedHoldingState,
+} from '@/lib/related-entities';
+import { RelatedModelsPanel } from '@/components/workspace/RelatedModelsPanel';
 import { securityMarkers, unmatchedMarkerEvents, type SecurityMarker } from '@/lib/security-markers';
 import {
   formatEventAction,
@@ -230,6 +237,41 @@ export function SecurityHistory({
   const activeSelection = selected.filter(event => visibleEvents.includes(event));
   const excludedModels = models.filter(run => !evidence.bindings.some(binding => binding.model_version_id === run.modelVersionId
     && binding.run_id === run.runId && binding.bundle_id === run.bundleId));
+  /**
+   * Only accepted formal runs whose exact run/bundle is bound by this market's
+   * published evidence may contribute a related-model row. The bounding is the
+   * same identity rule used for markers; no model is borrowed from elsewhere.
+   */
+  const boundModels = useMemo(
+    () => models.filter(run => evidence.bindings.some(binding => binding.model_version_id === run.modelVersionId
+      && binding.run_id === run.runId && binding.bundle_id === run.bundleId)),
+    [models, evidence.bindings],
+  );
+
+  /**
+   * Latest published portfolio per bound model. This is a bounded read (at
+   * most the market's accepted formal runs) and every failure is retained as a
+   * visible reason; holdings are never derived from event target weights.
+   */
+  const [holdingReads, setHoldingReads] = useState<Record<string, RelatedHoldingState>>({});
+  useEffect(() => {
+    let active = true;
+    const aliases = holdingAliases(evidence);
+    const pending: Record<string, RelatedHoldingState> = {};
+    for (const run of boundModels) pending[run.modelVersionId] = { status: 'loading' };
+    setHoldingReads(pending);
+    for (const run of boundModels) {
+      void readLatestPublishedHolding(run, aliases).then(result => {
+        if (!active) return;
+        setHoldingReads(current => ({ ...current, [run.modelVersionId]: result }));
+      });
+    }
+    return () => { active = false; };
+  }, [boundModels, evidence]);
+  const relatedModels = useMemo(
+    () => buildRelatedModelEntries(boundModels, allEvents, holdingReads),
+    [boundModels, allEvents, holdingReads],
+  );
 
   const baselineIdentity = marketBaseline(evidence.market);
   const baselineIsSelf = isMarketBaselineInstrument(evidence.market, evidence.symbol);
@@ -684,6 +726,7 @@ export function SecurityHistory({
       }}
       back={back ?? { to: '/app', label: 'Overview' }}
       description="Exact governed price sessions and historical formal model events."
+      relatedContent={<RelatedModelsPanel entries={relatedModels} />}
       metrics={(
         <dl className="grid shrink-0 grid-cols-2 gap-x-5 gap-y-2 sm:grid-cols-4">
           <div>

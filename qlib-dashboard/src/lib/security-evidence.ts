@@ -28,6 +28,8 @@ export interface SecurityEvidence {
   source_sha256: string; provider_manifest_sha256: string;
   bars: SecurityBar[]; events: SecurityEvent[]; bindings: FormalBinding[];
   roles: string[]; benchmark: string | null;
+  /** Every governed catalog alias for this instrument, in catalog order. */
+  source_instruments?: string[];
 }
 
 /**
@@ -155,7 +157,7 @@ export function parseSecurityEvidence(value: unknown, catalog: SecurityCatalog, 
   });
   return { market: catalog.market, symbol: symbol.symbol, name: symbol.name, cutoff, bars, events,
     source_sha256: symbol.source_sha256, provider_manifest_sha256: catalog.provider_manifest_sha256, bindings: catalog.formal_bindings,
-    roles: symbol.roles, benchmark: catalog.benchmark };
+    roles: symbol.roles, benchmark: catalog.benchmark, source_instruments: [...symbol.source_instruments] };
 }
 
 /**
