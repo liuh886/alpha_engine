@@ -10,6 +10,37 @@ from src.data.adapters.akshare_adapter import AkShareAdapter
 from src.data.adapters.base import DataFetchError, FetchRequest
 
 
+def _fund_etf_frame() -> pd.DataFrame:
+    """Eastmoney fund fixture: out-of-order, duplicate, and outside the window."""
+
+    return pd.DataFrame(
+        {
+            "日期": [
+                "2026-11-19",
+                "2026-11-17",
+                "2026-11-18",
+                "2026-11-18",
+                "2026-11-10",
+                "2026-11-20",
+            ],
+            "开盘": [1.360, 1.350, 1.355, 1.355, 1.340, 1.380],
+            "收盘": [1.373, 1.352, 1.358, 1.358, 1.341, 1.390],
+            "最高": [1.380, 1.360, 1.360, 1.360, 1.350, 1.400],
+            "最低": [1.350, 1.340, 1.350, 1.350, 1.330, 1.370],
+            "成交量": [1000.0, 900.0, 950.0, 950.0, 800.0, 1100.0],
+            "成交额": [
+                1373000.0,
+                1216800.0,
+                1288700.0,
+                1288700.0,
+                1072800.0,
+                1529000.0,
+            ],
+        }
+    )
+
+
+
 def test_csi300_uses_index_endpoint_and_preserves_missing_amount(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -92,12 +123,16 @@ def test_regular_cn_stock_keeps_adjusted_stock_endpoint(
     def stock_zh_index_daily(*, symbol: str) -> pd.DataFrame:
         raise AssertionError(f"regular stock unexpectedly used index endpoint: {symbol}")
 
+    def fund_etf_hist_em(**kwargs: object) -> pd.DataFrame:
+        raise AssertionError(f"regular stock unexpectedly used fund endpoint: {kwargs}")
+
     monkeypatch.setitem(
         sys.modules,
         "akshare",
         SimpleNamespace(
             stock_zh_index_daily=stock_zh_index_daily,
             stock_zh_a_hist=stock_zh_a_hist,
+            fund_etf_hist_em=fund_etf_hist_em,
         ),
     )
 
@@ -151,3 +186,196 @@ def test_csi300_index_payload_requires_real_volume(
                 start="2021-01-01",
             )
         )
+
+
+def test_cn_etf_515180_routes_to_fund_endpoint_with_qfq_and_normalization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    def fund_etf_hist_em(**kwargs: object) -> pd.DataFrame:
+        calls.append(kwargs)
+        return _fund_etf_frame()
+
+    def stock_zh_a_hist(**kwargs: object) -> pd.DataFrame:
+        raise AssertionError(f"ETF 515180 unexpectedly used stock endpoint: {kwargs}")
+
+    def stock_zh_index_daily(*, symbol: str) -> pd.DataFrame:
+        raise AssertionError(f"ETF 515180 unexpectedly used index endpoint: {symbol}")
+
+    monkeypatch.setitem(
+        sys.modules,
+        "akshare",
+        SimpleNamespace(
+            stock_zh_index_daily=stock_zh_index_daily,
+            stock_zh_a_hist=stock_zh_a_hist,
+            fund_etf_hist_em=fund_etf_hist_em,
+        ),
+    )
+
+    result = AkShareAdapter().fetch_daily_bars(
+        FetchRequest(
+            symbol="515180",
+            market="cn",
+            start="2026-11-10",
+            end="2026-11-19",
+        )
+    )
+
+    assert calls == [
+        {
+            "symbol": "515180",
+            "period": "daily",
+            "start_date": "20261110",
+            "end_date": "20261119",
+            "adjust": "qfq",
+        }
+    ]
+    # Provider provenance is the same identity contract as the stock path.
+    assert result.provider == "akshare"
+    assert result.symbol == "515180"
+    assert result.provider_symbol == "515180"
+    assert result.market == "cn"
+    # In-window, ascending, unique session dates only.
+    assert result.df["date"].dt.strftime("%Y-%m-%d").tolist() == [
+        "2026-11-10",
+        "2026-11-17",
+        "2026-11-18",
+        "2026-11-19",
+    ]
+    assert result.df["date"].is_monotonic_increasing
+    assert result.df["date"].is_unique
+    assert result.df.columns.tolist() == [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "amount",
+        "factor",
+    ]
+    # Duplicate 2026-11-18 keeps the last row; names map and lots become shares.
+    cutoff_row = result.df.loc[result.df["date"] == pd.Timestamp("2026-11-19")].iloc[0]
+    assert cutoff_row["close"] == 1.373
+    assert cutoff_row["open"] == 1.360
+    assert cutoff_row["high"] == 1.380
+    assert cutoff_row["low"] == 1.350
+    assert cutoff_row["volume"] == 100000.0
+    assert cutoff_row["amount"] == 1373000.0
+    assert result.df["factor"].eq(1.0).all()
+
+
+@pytest.mark.parametrize("symbol", ["515180", "159915", "161725", "510300", "560010", "588000"])
+def test_cn_fund_prefixes_route_to_the_fund_endpoint(
+    monkeypatch: pytest.MonkeyPatch, symbol: str
+) -> None:
+    endpoints: list[str] = []
+
+    def fund_etf_hist_em(**_: object) -> pd.DataFrame:
+        endpoints.append("fund")
+        return _fund_etf_frame()
+
+    def stock_zh_a_hist(**_: object) -> pd.DataFrame:
+        endpoints.append("stock")
+        return _fund_etf_frame()
+
+    monkeypatch.setitem(
+        sys.modules,
+        "akshare",
+        SimpleNamespace(
+            stock_zh_index_daily=lambda **_: pd.DataFrame(),
+            stock_zh_a_hist=stock_zh_a_hist,
+            fund_etf_hist_em=fund_etf_hist_em,
+        ),
+    )
+
+    result = AkShareAdapter().fetch_daily_bars(
+        FetchRequest(
+            symbol=symbol,
+            market="cn",
+            start="2026-11-10",
+            end="2026-11-19",
+        )
+    )
+
+    assert endpoints == ["fund"]
+    assert result.provider_symbol == symbol
+
+
+def test_cn_etf_rejects_non_positive_ohlc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frame = _fund_etf_frame()
+    frame.loc[frame.index[0], "收盘"] = 0.0
+
+    monkeypatch.setitem(
+        sys.modules,
+        "akshare",
+        SimpleNamespace(
+            stock_zh_index_daily=lambda **_: pd.DataFrame(),
+            stock_zh_a_hist=lambda **_: pd.DataFrame(),
+            fund_etf_hist_em=lambda **_: frame,
+        ),
+    )
+
+    with pytest.raises(DataFetchError, match="non-finite or non-positive OHLC"):
+        AkShareAdapter().fetch_daily_bars(
+            FetchRequest(
+                symbol="515180",
+                market="cn",
+                start="2026-11-10",
+                end="2026-11-19",
+            )
+        )
+
+
+def test_cn_etf_missing_amount_column_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frame = _fund_etf_frame().drop(columns=["成交额"])
+
+    monkeypatch.setitem(
+        sys.modules,
+        "akshare",
+        SimpleNamespace(
+            stock_zh_index_daily=lambda **_: pd.DataFrame(),
+            stock_zh_a_hist=lambda **_: pd.DataFrame(),
+            fund_etf_hist_em=lambda **_: frame,
+        ),
+    )
+
+    with pytest.raises(DataFetchError, match="fund payload missing columns.*成交额"):
+        AkShareAdapter().fetch_daily_bars(
+            FetchRequest(
+                symbol="515180",
+                market="cn",
+                start="2026-11-10",
+                end="2026-11-19",
+            )
+        )
+
+
+def test_cn_etf_empty_payload_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(
+        sys.modules,
+        "akshare",
+        SimpleNamespace(
+            stock_zh_index_daily=lambda **_: pd.DataFrame(),
+            stock_zh_a_hist=lambda **_: pd.DataFrame(),
+            fund_etf_hist_em=lambda **_: pd.DataFrame(),
+        ),
+    )
+
+    with pytest.raises(DataFetchError, match="empty fund data for 515180"):
+        AkShareAdapter().fetch_daily_bars(
+            FetchRequest(
+                symbol="515180",
+                market="cn",
+                start="2026-11-10",
+                end="2026-11-19",
+            )
+        )
+
