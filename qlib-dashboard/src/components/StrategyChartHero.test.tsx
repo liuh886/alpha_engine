@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import type { ReportRow } from '@/lib/types';
@@ -45,6 +46,42 @@ vi.mock('@/components/charts/BaselineControl', () => ({
   ),
 }));
 
+vi.mock('@/components/charts/CompareControl', () => ({
+  CompareControl: ({ options, selected, onToggle, max, displayed }: {
+    options: Array<{ id: string; label: string; available: boolean; reason?: string }>;
+    selected: Array<{ id: string }>;
+    onToggle: (id: string) => void;
+    max: number;
+    displayed: ReadonlyMap<string, string>;
+  }) => {
+    const atLimit = selected.length >= max;
+    return (
+      <div data-testid="model-compare-control" data-max={max}>
+        {options.map(option => {
+          const alreadySelected = selected.some(item => item.id === option.id);
+          const duplicateReason = displayed.get(option.id);
+          const blocked = !option.available || (atLimit && !alreadySelected);
+          return (
+            <button
+              key={option.id}
+              type="button"
+              data-testid={`model-option-${option.id}`}
+              aria-disabled={blocked || undefined}
+              onClick={() => { if (!blocked || alreadySelected) onToggle(option.id); }}
+            >
+              {option.label}
+              {option.reason ? ` — ${option.reason}` : ''}
+              {duplicateReason ? ` — ${duplicateReason}` : ''}
+            </button>
+          );
+        })}
+        <span data-testid="model-compare-count">{selected.length}</span>
+        {atLimit && <span data-testid="model-compare-max">Compare is limited to {max} overlays.</span>}
+      </div>
+    );
+  },
+}));
+
 vi.mock('@/components/charts/NavChart', () => ({
   NavChart: (props: {
     series: unknown[];
@@ -52,6 +89,7 @@ vi.mock('@/components/charts/NavChart', () => ({
     periodLabel: string;
     summaryLabel?: string;
     coverage?: { state: string };
+    markerScope?: string;
     onMarkerSelect?: (marker: { date: string }) => void;
   }) => (
     <div
@@ -60,6 +98,8 @@ vi.mock('@/components/charts/NavChart', () => ({
       data-summary={props.summaryLabel ?? ''}
       data-series={JSON.stringify(props.series)}
       data-series-count={props.series.length}
+      data-marker-count={props.markers.length}
+      data-marker-scope={props.markerScope ?? ''}
       data-coverage-state={props.coverage?.state ?? ''}
     >
       <button
@@ -114,9 +154,34 @@ function makeRows(start = '2025-01-01', count = 76, stepDays = 5): ReportRow[] {
 
 const rows = makeRows();
 const run = makeRun();
+const overlayRun = makeRun({
+  key: 'us:us_x1_3',
+  modelFamilyId: 'us_ranker',
+  modelVersionId: 'us_x1_3',
+  runId: 'run-us-x1',
+  title: 'US x1.3',
+});
+const cnRun = makeRun({
+  key: 'cn:cn_27_v1_3',
+  modelFamilyId: 'cn_27_rotation',
+  modelVersionId: 'cn_27_v1_3',
+  runId: 'run-cn',
+  title: 'CN_27 V1.3',
+  market: 'cn',
+  benchmark: '000300',
+});
+const overlayRows = makeRows('2025-02-10', 68, 5);
 
-function renderHero(value: GovernedRunSummary = run) {
-  return render(<StrategyChartHero run={value} />);
+function renderHero(value: GovernedRunSummary = run, catalog: GovernedRunSummary[] = [value]) {
+  return render(
+    <MemoryRouter>
+      <StrategyChartHero run={value} runs={catalog} />
+    </MemoryRouter>,
+  );
+}
+
+function loadedSeries(): Array<{ key: string; label: string; nav: Array<{ date: string; value: number }> }> {
+  return JSON.parse(screen.getByTestId('nav-chart-stub').getAttribute('data-series') ?? '[]');
 }
 
 beforeEach(() => {
@@ -285,5 +350,129 @@ describe('StrategyChartHero', () => {
 
     fireEvent.click(within(panel).getByRole('button', { name: 'Clear marker' }));
     expect(screen.queryByTestId('strategy-selected-marker')).not.toBeInTheDocument();
+  });
+
+  it('offers only other same-market formal models and never the base or a cross-market run', async () => {
+    renderHero(run, [run, overlayRun, cnRun]);
+    await screen.findByTestId('strategy-nav-chart');
+
+    expect(screen.getByTestId('model-compare-control')).toHaveAttribute('data-max', '3');
+    expect(screen.getByTestId('model-option-model:us:us_x1_3')).toBeInTheDocument();
+    expect(screen.queryByTestId('model-option-model:us:qqq_v1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('model-option-model:cn:cn_27_v1_3')).not.toBeInTheDocument();
+  });
+
+  it('adds one same-market model on one indexed axis, links its legend and removes it', async () => {
+    mocks.loadFormalNav.mockImplementation(async (target: GovernedRunSummary) => ({
+      rows: target.modelVersionId === 'us_x1_3' ? overlayRows : rows,
+    }));
+    mocks.loadRunSection.mockResolvedValue([
+      { date: '2026-01-11', action: 'BUY', instrument: 'AAPL', previous_weight: 0, target_weight: 0.5, reason: 'momentum' },
+    ]);
+    renderHero(run, [run, overlayRun]);
+    await screen.findByTestId('strategy-nav-chart');
+
+    fireEvent.click(screen.getByTestId('model-option-model:us:us_x1_3'));
+
+    await waitFor(() => expect(screen.getByTestId('nav-chart-stub')).toHaveAttribute('data-series-count', '3'));
+    const series = loadedSeries();
+    expect(series.map(item => item.key)).toEqual(['base', 'baseline', 'model:us:us_x1_3']);
+    // The overlay starts on 2025-02-10; the base and baseline are rebased there,
+    // never on their own 2025-01-11 period start.
+    expect(series.find(item => item.key === 'base')?.nav[0]).toEqual({ date: '2025-02-10', value: 100 });
+    expect(series.find(item => item.key === 'model:us:us_x1_3')?.nav[0]).toEqual({ date: '2025-02-10', value: 100 });
+    expect(screen.getByTestId('nav-chart-stub')).toHaveAttribute('data-marker-count', '1');
+    expect(screen.getByTestId('nav-chart-stub')).toHaveAttribute('data-marker-scope', 'base model (QQQ Rotation)');
+
+    const legend = screen.getByTestId('compare-legend');
+    const link = within(legend).getByRole('link', { name: 'US x1.3' });
+    expect(link).toHaveAttribute('href', '/strategies/us_x1_3');
+    expect(screen.getByTestId('compare-legend-model:us:us_x1_3').querySelector('[aria-hidden="true"]'))
+      .toHaveStyle({ borderTop: '2px solid hsl(var(--chart-6))' });
+
+    const disclosure = screen.getByTestId('strategy-model-comparison-disclosure');
+    expect(disclosure).toHaveTextContent('exact common window');
+    expect(disclosure).toHaveTextContent('base model (QQQ Rotation) only');
+    expect(screen.getByTestId('nav-chart-stub').getAttribute('data-summary')).toContain('1Y exact common window');
+
+    fireEvent.click(within(legend).getByRole('button', { name: 'Remove US x1.3 from comparison' }));
+    await waitFor(() => expect(screen.getByTestId('nav-chart-stub')).toHaveAttribute('data-series-count', '2'));
+    expect(screen.queryByTestId('compare-legend-model:us:us_x1_3')).not.toBeInTheDocument();
+  });
+
+  it('enforces the three-overlay cap and says why another model cannot be added', async () => {
+    const extras = ['us_a', 'us_b', 'us_c'].map(id => makeRun({
+      key: `us:${id}`,
+      modelFamilyId: id,
+      modelVersionId: id,
+      runId: `run-${id}`,
+      title: id.toUpperCase(),
+    }));
+    renderHero(run, [run, overlayRun, ...extras]);
+    await screen.findByTestId('strategy-nav-chart');
+
+    for (const id of ['model:us:us_a', 'model:us:us_b', 'model:us:us_c']) {
+      fireEvent.click(screen.getByTestId(`model-option-${id}`));
+    }
+    expect(screen.getByTestId('model-compare-count')).toHaveTextContent('3');
+    expect(screen.getByTestId('model-compare-max')).toHaveTextContent('Compare is limited to 3 overlays.');
+
+    const fourth = screen.getByTestId('model-option-model:us:us_x1_3');
+    expect(fourth).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(fourth);
+    expect(screen.getByTestId('model-compare-count')).toHaveTextContent('3');
+  });
+
+  it('never offers a model that is already displayed as the active baseline', async () => {
+    const benchmark = 'US x1.3';
+    const baselineRows = makeRows().map((row, index) => ({
+      date: row.date,
+      account: row.account,
+      bench_us_x1_3: 200 + index * 0.5,
+    }));
+    mocks.loadFormalNav.mockResolvedValue({ rows: baselineRows });
+    const baselineRun = makeRun({ benchmark });
+    renderHero(baselineRun, [baselineRun, overlayRun]);
+    await screen.findByTestId('strategy-nav-chart');
+
+    expect(screen.getByTestId('baseline-control')).toHaveAttribute('data-value', 'declared');
+    const duplicate = screen.getByTestId('model-option-model:us:us_x1_3');
+    expect(duplicate).toHaveAttribute('aria-disabled', 'true');
+    expect(duplicate).toHaveTextContent('Already displayed as the active baseline.');
+  });
+
+  it('excludes a model whose verified NAV cannot be read and never plots it partially', async () => {
+    mocks.loadFormalNav.mockImplementation(async (target: GovernedRunSummary) => {
+      if (target.modelVersionId === 'us_x1_3') throw new Error('overlay offline');
+      return { rows };
+    });
+    renderHero(run, [run, overlayRun]);
+    await screen.findByTestId('strategy-nav-chart');
+
+    fireEvent.click(screen.getByTestId('model-option-model:us:us_x1_3'));
+
+    await waitFor(() => expect(screen.getByTestId('compare-unavailable-model:us:us_x1_3'))
+      .toHaveTextContent('Verified NAV projection unavailable: overlay offline'));
+    expect(screen.getByTestId('nav-chart-stub')).toHaveAttribute('data-series-count', '2');
+    expect(loadedSeries().some(item => item.key === 'model:us:us_x1_3')).toBe(false);
+  });
+
+  it('re-windows the exact common window when the period changes', async () => {
+    mocks.loadFormalNav.mockImplementation(async (target: GovernedRunSummary) => ({
+      rows: target.modelVersionId === 'us_x1_3' ? overlayRows : rows,
+    }));
+    renderHero(run, [run, overlayRun]);
+    await screen.findByTestId('strategy-nav-chart');
+
+    fireEvent.click(screen.getByTestId('model-option-model:us:us_x1_3'));
+    await waitFor(() => expect(screen.getByTestId('nav-chart-stub')).toHaveAttribute('data-series-count', '3'));
+    const yearlyStart = loadedSeries().find(item => item.key === 'base')?.nav[0]?.date;
+
+    fireEvent.click(screen.getByRole('button', { name: '1M' }));
+    await waitFor(() => expect(screen.getByTestId('nav-chart-stub').getAttribute('data-summary'))
+      .toContain('1M exact common window'));
+    const monthlyStart = loadedSeries().find(item => item.key === 'base')?.nav[0]?.date;
+    expect(monthlyStart).not.toBe(yearlyStart);
+    expect(monthlyStart && yearlyStart && monthlyStart > yearlyStart).toBe(true);
   });
 });

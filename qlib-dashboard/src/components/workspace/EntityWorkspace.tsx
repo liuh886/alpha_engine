@@ -211,7 +211,7 @@ export function EntityChartPanel({
       {...(typeof dataMarkerCount === 'number' ? { 'data-marker-count': dataMarkerCount } : {})}
       className={cn('research-surface flex flex-col overflow-hidden', className)}
     >
-      <header className="order-1 flex flex-col gap-3 border-b p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between">
+      <header className="flex flex-col gap-3 border-b p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <h2 id={headingId} className="ae-section-title">{title}</h2>
           {description}
@@ -219,7 +219,11 @@ export function EntityChartPanel({
             {disclosure}
           </p>
         </div>
-        {controls ? <div className="flex flex-wrap items-center gap-2">{controls}</div> : null}
+        {controls ? (
+          <div className="flex min-w-0 items-center gap-2 overflow-x-auto lg:flex-wrap lg:overflow-visible [&>*]:shrink-0">
+            {controls}
+          </div>
+        ) : null}
       </header>
       <div className={cn('flex min-h-0 flex-1 flex-col', bodyClassName)}>{children}</div>
     </section>

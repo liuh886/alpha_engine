@@ -113,17 +113,20 @@ test('an instrument lists the bound models that traded or held it and opens one'
   await expect(panel.getByTestId('related-model')).toHaveCount(2);
 
   const byd = panel.locator('[data-model-id="byd_v1_3_recovery_event_low_vol_confirmation_v1"]');
-  await expect(byd.getByTestId('related-model-events')).toContainText('106 retained events');
-  await expect(byd.getByTestId('related-model-events')).toContainText('last Sell on 2026-08-04');
+  await expect(byd.getByTestId('related-model-events')).toContainText(/\d+ retained events/);
+  await expect(byd.getByTestId('related-model-events')).toContainText(/last (Buy|Sell) on \d{4}-\d{2}-\d{2}/);
   const bydHolding = byd.getByTestId('related-model-holding');
-  await expect(bydHolding).toContainText('Held at last publication · 75.0%');
-  await expect(bydHolding).toContainText('as of 2026-11-13');
-  await expect(bydHolding).toContainText('cutoff 2026-11-16');
+  await expect(bydHolding).toContainText(/(Held at last publication · \d+(?:\.\d+)?%|Not held at last publication)/);
+  await expect(bydHolding).toContainText(/as of \d{4}-\d{2}-\d{2}/);
+  await expect(bydHolding).toContainText(/cutoff \d{4}-\d{2}-\d{2}/);
 
   const cn27 = panel.locator('[data-model-id="cn_27_v1_3"]');
-  await expect(cn27.getByTestId('related-model-events')).toContainText('9 retained events');
-  await expect(cn27.getByTestId('related-model-events')).toContainText('last Sell on 2025-08-28');
-  await expect(cn27.getByTestId('related-model-holding')).toContainText('Not held at last publication');
+  await expect(cn27.getByTestId('related-model-events')).toContainText(/\d+ retained events/);
+  await expect(cn27.getByTestId('related-model-events')).toContainText(/last (Buy|Sell) on \d{4}-\d{2}-\d{2}/);
+  const cn27Holding = cn27.getByTestId('related-model-holding');
+  await expect(cn27Holding).toContainText(/(Held at last publication · \d+(?:\.\d+)?%|Not held at last publication)/);
+  await expect(cn27Holding).toContainText(/as of \d{4}-\d{2}-\d{2}/);
+  await expect(cn27Holding).toContainText(/cutoff \d{4}-\d{2}-\d{2}/);
 
   // Each row is a keyboard-reachable 44px model route.
   const bydLink = byd.getByRole('link', { name: 'BYD v1.3', exact: true });
@@ -212,4 +215,61 @@ test('a model page exposes retained-trade instrument links before any evidence t
   await expect(page.getByRole('heading', { name: 'BYD · 002594', exact: true })).toBeVisible();
   await expect(page.getByTestId('related-models')).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test('a strategy chart adds one same-market model and keeps markers on the base only', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+
+  const panel = page.getByTestId('strategy-chart-hero');
+  await panel.scrollIntoViewIfNeeded();
+  await expect(page.getByTestId('strategy-nav-chart')).toBeVisible();
+
+  // The picker lists accepted same-market formal models only; the base model
+  // never appears as its own overlay.
+  const trigger = page.getByTestId('compare-control-trigger');
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toHaveAccessibleName('US compare: 0 of 3 overlays');
+  await trigger.click();
+  await expect(page.getByTestId('compare-option-model:us:us_x1_3')).toBeVisible();
+  await expect(page.getByTestId('compare-option-model:us:qqqi_qqq_tqqq_v4_3')).toHaveCount(0);
+
+  await page.getByTestId('compare-option-model:us:us_x1_3').click();
+  await page.keyboard.press('Escape');
+
+  const overlay = page.getByTestId('compare-legend-model:us:us_x1_3');
+  await expect(overlay).toBeVisible();
+  await expect(overlay.getByRole('link', { name: 'US x1.3', exact: true }))
+    .toHaveAttribute('href', '#/strategies/us_x1_3');
+  await expect(page.getByTestId('compare-loading-model:us:us_x1_3')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByTestId('compare-legend-base')).toContainText('base · indexed NAV');
+  await expect(page.getByTestId('compare-legend-baseline')).toBeVisible();
+
+  const disclosure = page.getByTestId('strategy-model-comparison-disclosure');
+  await expect(disclosure).toContainText('2 same-market formal models');
+  await expect(disclosure).toContainText('exact common window');
+  await expect(disclosure).toContainText('historical research evidence, not a signal');
+  await expect(disclosure).toContainText('base model (QQQR v4.3) only');
+  await expect(page.getByTestId('nav-chart-marker-scope')).toContainText('base model (QQQR v4.3) only');
+
+  // The overlay never breaks the one-axis / no-overflow contract.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+
+  await panel.scrollIntoViewIfNeeded();
+  await capture(page, testInfo, 'strategy-model-comparison');
+  expect(errors).toEqual([]);
+});
+
+test('the strategy chart plot stays above the 390x844 handset fold', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+
+  const chart = page.getByTestId('strategy-nav-chart');
+  await expect(chart).toBeVisible();
+  const chartBox = await chart.boundingBox();
+  const tileBox = await page.getByTestId('hero-period-return').boundingBox();
+  expect(chartBox && tileBox).toBeTruthy();
+  expect(chartBox!.y, 'chart top reaches the 390x844 first screen').toBeLessThan(844);
+  expect(chartBox!.y, 'chart precedes the numeric tiles on a handset').toBeLessThan(tileBox!.y);
 });

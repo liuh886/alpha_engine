@@ -27,8 +27,16 @@ export interface NavChartSeries {
   key: string;
   label: string;
   nav: NavPoint[];
-  emphasis?: 'primary' | 'baseline';
-  /** Allowed foundation token, for example `chart-2` or `positive`. */
+  emphasis?: 'primary' | 'baseline' | 'model';
+  /**
+   * Allows a non-primary series to stay solid. Model overlays use this so the
+   * dashed style remains a baseline cue rather than a generic comparison cue.
+   */
+  dashed?: boolean;
+  /**
+   * Allowed foundation token, for example `chart-2`, `positive` or the
+   * identity-overflow `muted-foreground`.
+   */
   colorToken?: string;
 }
 
@@ -55,6 +63,10 @@ export interface NavChartProps {
   selectedMarkerDate?: string | null;
   /** Optional spoken summary of window and headline returns for the figure. */
   summaryLabel?: string;
+  /** Hide the built-in swatch legend when a richer legend is rendered above. */
+  seriesLegend?: boolean;
+  /** When set, discloses which entity the activity markers describe. */
+  markerScope?: string;
 }
 
 const INDEX_FORMAT = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -80,7 +92,7 @@ const AXIS_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
 const BASELINE_TOKENS = ['chart-2', 'chart-3', 'chart-4', 'chart-5', 'chart-6'] as const;
 const ALLOWED_TOKENS: ReadonlySet<string> = new Set<string>([
   'chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5', 'chart-6',
-  'primary', 'positive', 'negative', 'warning',
+  'primary', 'positive', 'negative', 'warning', 'muted-foreground',
 ]);
 
 const COVERAGE_REASON_TEXT: Record<HorizonCoverageReason, string> = {
@@ -138,6 +150,7 @@ export function buildNavChartModel(series: NavChartSeries[]): NavChartModel {
 }
 
 function colorFor(series: NavChartSeries, index: number, primaryIndex: number): string {
+  if (series.colorToken === 'muted-foreground') return 'hsl(var(--muted-foreground))';
   if (series.colorToken && ALLOWED_TOKENS.has(series.colorToken)) return `hsl(var(--${series.colorToken}))`;
   if (index === primaryIndex) return 'hsl(var(--chart-1))';
   let rank = 0;
@@ -145,6 +158,13 @@ function colorFor(series: NavChartSeries, index: number, primaryIndex: number): 
     if (candidate !== primaryIndex) rank += 1;
   }
   return `hsl(var(--${BASELINE_TOKENS[rank % BASELINE_TOKENS.length]}))`;
+}
+
+function seriesRoleLabel(series: NavChartSeries, index: number, primaryIndex: number): string {
+  if (index === primaryIndex) return 'Primary';
+  if (series.emphasis === 'baseline') return 'Baseline';
+  if (series.emphasis === 'model') return 'Model';
+  return 'Comparison';
 }
 
 function formatChartDate(date: string): string {
@@ -309,6 +329,8 @@ export function NavChart({
   onMarkerSelect,
   selectedMarkerDate = null,
   summaryLabel,
+  seriesLegend = true,
+  markerScope,
 }: NavChartProps) {
   const model = useMemo(() => buildNavChartModel(series), [series]);
   const activeSeries = Array.isArray(series) ? series : [];
@@ -424,7 +446,7 @@ export function NavChart({
                   name={candidate.label}
                   stroke={colors[index]}
                   strokeWidth={index === primaryIndex ? 2.2 : candidate.emphasis === 'baseline' ? 1.5 : 1.8}
-                  strokeDasharray={index === primaryIndex ? undefined : '5 4'}
+                  strokeDasharray={index === primaryIndex || candidate.dashed === false ? undefined : '5 4'}
                   dot={false}
                   activeDot={false}
                   isAnimationActive={false}
@@ -473,14 +495,14 @@ export function NavChart({
         </div>
       )}
 
-      {activeSeries.length > 0 && (
+      {seriesLegend && activeSeries.length > 0 && (
         <ul aria-label="Chart series" className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
           {activeSeries.map((candidate, index) => (
             <li key={candidate.key} className="inline-flex items-center gap-1.5">
               <span aria-hidden="true" className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: colors[index] }} />
               <span>{candidate.label}</span>
               <span className="text-[10px] uppercase tracking-[0.08em]">
-                {index === primaryIndex ? 'Primary' : 'Baseline'}
+                {seriesRoleLabel(candidate, index, primaryIndex)}
               </span>
             </li>
           ))}
@@ -498,6 +520,11 @@ export function NavChart({
           <p>
             Exact-date observations only, rebased to the first common date. Compare within one market;
             baselines are not cross-market substitutes.
+          </p>
+        )}
+        {hasData && markerScope && (
+          <p data-testid="nav-chart-marker-scope">
+            Activity markers show the {markerScope} only.
           </p>
         )}
         {coverage && coverage.state !== 'full' && (

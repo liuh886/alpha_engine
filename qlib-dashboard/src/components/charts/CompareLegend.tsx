@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import type { OverlayColorRole } from '@/lib/security-chart-extensions';
 import { overlayRoleCssColor } from '@/lib/indicator-overlays';
@@ -9,6 +10,8 @@ export interface CompareLegendItem {
   colorRole: OverlayColorRole;
   dashed: boolean;
   kind: 'instrument' | 'model' | 'baseline';
+  /** Canonical entity route for a model or instrument name. */
+  href?: string;
   /** Present only for overlay entities the viewer can remove. */
   onRemove?: () => void;
   /** True while the entity's own series is still being read. */
@@ -41,7 +44,16 @@ export function CompareLegend({ items }: { items: readonly CompareLegendItem[] }
                 ? { borderTop: `2px dashed ${overlayRoleCssColor(item.colorRole)}` }
                 : { borderTop: `2px solid ${overlayRoleCssColor(item.colorRole)}` }}
           />
-          <span className="font-medium text-foreground">{item.label}</span>
+          {item.href ? (
+            <Link
+              to={item.href}
+              className="font-medium text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {item.label}
+            </Link>
+          ) : (
+            <span className="font-medium text-foreground">{item.label}</span>
+          )}
           {item.detail && <span className="text-muted-foreground">{item.detail}</span>}
           {item.unavailableReason ? (
             <span data-testid={`compare-unavailable-${item.id}`} className="text-warning">
