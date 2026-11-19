@@ -125,6 +125,14 @@ VIX requires a close-only or CBOE `VIX_History.csv` source with explicit
 provenance; until then these entries stay unavailable rather than publishing a
 repaired or synthetic OHLC series.
 
+**2026-11-19 status:** the governed CBOE close-only `us:VIX` series is now
+published with exact observed dates and zero volume. US strategy charts read it
+through the shared market-evidence cache and draw a **separate** VIX context pane
+below the NAV chart (one VIX axis, never a dual axis). The pane's optional
+`VIX SMA 20` line is computed by this registry's `market_us_vix_sma_20` entry.
+CN strategy charts are offered nothing, and an absent or 404 unpublished VIX
+series renders its reason without a substitute or a retry as another symbol.
+
 The first set also registers one non-executable placeholder:
 `market_cn_rdi_reserved` (scope `market`, market `cn`, kind `reserved`, status
 `research_only`, input `cn:RDI`, no formula, no params). It claims no values and

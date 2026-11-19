@@ -79,16 +79,16 @@ describe('chart theme', () => {
 
   it('resolves the indicator order separately from model identity in both modes', () => {
     tokens({
-      '--indicator-1': '248 62% 58%',
-      '--indicator-2': '159 73% 40%',
-      '--indicator-3': '23 67% 31%',
-      '--indicator-4': '334 80% 40%',
+      '--indicator-1': '171 60% 40%',
+      '--indicator-2': '238 80% 51%',
+      '--indicator-3': '295 55% 36%',
+      '--indicator-4': '290 61% 61%',
     });
     expect(chartTheme(false).indicatorSeries).toEqual([
-      'hsl(248, 62%, 58%)',
-      'hsl(159, 73%, 40%)',
-      'hsl(23, 67%, 31%)',
-      'hsl(334, 80%, 40%)',
+      'hsl(171, 60%, 40%)',
+      'hsl(238, 80%, 51%)',
+      'hsl(295, 55%, 36%)',
+      'hsl(290, 61%, 61%)',
     ]);
     tokens({});
     const dark = chartTheme(true);
