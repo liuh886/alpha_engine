@@ -625,3 +625,102 @@ def test_full_history_fallback_cannot_target_a_selected_candidate(tmp_path, monk
         refresh_selected_pool_prices(root=tmp_path, market="cn", source_csv_dir=tmp_path / "unused",
             output_root=tmp_path / "out", start="2021-01-01", cutoff="2021-01-06",
             full_history_fallback_symbols=("000001",))
+
+
+def test_cn_auxiliary_515180_materializes_from_fund_etf_fixture(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import sys
+    from types import SimpleNamespace
+
+    import pandas as pd
+
+    from src.data.adapters.akshare_adapter import AkShareAdapter
+    from src.data.router import MarketDataRouter
+    from test_refresh_selected_pool_prices import _prepare_contract
+
+    _prepare_contract(tmp_path, monkeypatch)
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+
+    def eastmoney_frame(closes: tuple[float, ...]) -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                "日期": ["2021-01-04", "2021-01-05", "2021-01-06"],
+                "开盘": [value - 0.01 for value in closes],
+                "收盘": list(closes),
+                "最高": [value + 0.02 for value in closes],
+                "最低": [value - 0.02 for value in closes],
+                "成交量": [1000.0, 1100.0, 1200.0],
+                "成交额": [100000.0, 110000.0, 120000.0],
+            }
+        )
+
+    index_frame = pd.DataFrame(
+        {
+            "date": ["2021-01-04", "2021-01-05", "2021-01-06"],
+            "open": [5200.0, 5210.0, 5220.0],
+            "high": [5210.0, 5220.0, 5230.0],
+            "low": [5190.0, 5200.0, 5210.0],
+            "close": [5205.0, 5215.0, 5225.0],
+            "volume": [100.0, 110.0, 120.0],
+        }
+    )
+
+    calls: list[tuple[str, str]] = []
+
+    def stock_zh_a_hist(**kwargs: object) -> pd.DataFrame:
+        calls.append(("stock", str(kwargs["symbol"])))
+        return eastmoney_frame((10.0, 10.5, 11.0))
+
+    def fund_etf_hist_em(**kwargs: object) -> pd.DataFrame:
+        calls.append(("fund", str(kwargs["symbol"])))
+        return eastmoney_frame((1.340, 1.352, 1.373))
+
+    def stock_zh_index_daily(*, symbol: str) -> pd.DataFrame:
+        calls.append(("index", symbol))
+        return index_frame
+
+    monkeypatch.setitem(
+        sys.modules,
+        "akshare",
+        SimpleNamespace(
+            stock_zh_a_hist=stock_zh_a_hist,
+            fund_etf_hist_em=fund_etf_hist_em,
+            stock_zh_index_daily=stock_zh_index_daily,
+        ),
+    )
+
+    router = MarketDataRouter(
+        adapters=[AkShareAdapter()],
+        policy={"cn": ["akshare"]},
+    )
+    output = tmp_path / "provider"
+
+    result = refresh_selected_pool_prices_v2(
+        root=tmp_path,
+        market="cn",
+        source_csv_dir=tmp_path / "unused",
+        output_root=output,
+        start="2021-01-01",
+        cutoff="2021-01-06",
+        max_rounds=1,
+        full_refresh=True,
+        auxiliary_symbols=["515180"],
+        router=router,
+    )
+
+    record = next(record for record in result["records"] if record["symbol"] == "515180")
+    assert record["action"] == "fetched_full_refresh"
+    assert record["provider"] == "akshare"
+
+    assert ("fund", "515180") in calls
+    assert ("stock", "515180") not in calls
+    assert {symbol for kind, symbol in calls if kind == "stock"} == {"000001", "000002"}
+
+    materialized = pd.read_csv(output / "data" / "csv_source" / "515180.csv")
+    assert materialized["date"].tolist() == ["2021-01-04", "2021-01-05", "2021-01-06"]
+    assert materialized["close"].tolist() == [1.340, 1.352, 1.373]
+    # Eastmoney lots become canonical shares, matching the stock path.
+    assert materialized["volume"].tolist() == [100000.0, 110000.0, 120000.0]
+    assert materialized["factor"].eq(1.0).all()
+
