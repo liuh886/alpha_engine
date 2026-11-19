@@ -72,7 +72,7 @@ test('formal instrument link opens one chart-first price history with model mark
   expect(errors).toEqual([]);
 });
 
-test('governed indicators toggle on the security chart and VIX is disclosed unavailable', async ({ page }, testInfo) => {
+test('governed indicators toggle on the security chart and VIX is available', async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/#/securities/us/QQQ');
@@ -90,14 +90,22 @@ test('governed indicators toggle on the security chart and VIX is disclosed unav
   const group = page.getByRole('group', { name: 'US chart indicators' });
   await expect(group).toBeVisible();
 
-  // Registry-driven picks, including the unavailable US VIX market indicator.
+  // Registry-driven picks, including the governed US VIX market indicator.
   await expect(group.getByText('SMA 200', { exact: true })).toBeVisible();
   await expect(group.getByText('MACD 12/26/9', { exact: true })).toBeVisible();
   await expect(group.getByText('Volume SMA 20', { exact: true })).toBeVisible();
   await expect(group.getByText('VIX SMA 20', { exact: true })).toBeVisible();
-  await expect(group.getByRole('button', { name: /^VIX Unavailable/ })).toBeVisible();
-  await expect(page.getByTestId('indicator-vix-unavailable')).toContainText('VIX unavailable.');
-  await expect(page.getByTestId('indicator-vix-unavailable')).toContainText('no published price history');
+
+  // The VIX series is published, so the market option is selectable and no
+  // unavailable disclosure is rendered. This asserts the real catalog, not a
+  // stale "data is absent" assumption.
+  const vixToggle = group.getByRole('button', { name: /^VIX SMA 20/ });
+  await expect(vixToggle).toBeVisible();
+  await expect(vixToggle).not.toContainText('Unavailable');
+  await expect(page.getByTestId('indicator-vix-unavailable')).toHaveCount(0);
+  await expect(vixToggle).toHaveAttribute('aria-pressed', 'false');
+  await vixToggle.click();
+  await expect(vixToggle).toHaveAttribute('aria-pressed', 'true');
 
   const rsiToggle = group.getByRole('button', { name: /^RSI 14/ });
   await expect(rsiToggle).toHaveAttribute('aria-pressed', 'false');
@@ -105,6 +113,8 @@ test('governed indicators toggle on the security chart and VIX is disclosed unav
   await expect(rsiToggle).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
 
+  await expect(page.getByRole('button', { name: 'US indicators: 3 active', exact: true })).toBeVisible();
+  await expect(page.getByTestId('indicator-legend')).toContainText('VIX SMA 20');
   await expect(page.getByTestId('indicator-legend')).toContainText('RSI 14');
   await expect(page.getByTestId('security-lightweight-chart-container')).toHaveCount(1);
   await expect(page.locator('vite-error-overlay')).toHaveCount(0);
@@ -117,6 +127,25 @@ test('governed indicators toggle on the security chart and VIX is disclosed unav
   await expect(page.locator('html')).toHaveClass(/dark/);
   await page.getByTestId('security-lightweight-chart-container').scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath(`indicator-overlays-dark-${testInfo.project.name}.png`), fullPage: false });
+  expect(errors).toEqual([]);
+});
+
+test('an unpublished VIX series is disclosed without substituting a series', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.route('**/data/market-evidence/us/symbols/VIX.json', route => route.fulfill({ status: 404, body: 'not published' }));
+  await page.goto('/#/securities/us/QQQ');
+  await expect(page.getByRole('heading', { name: 'QQQ', exact: true })).toBeVisible();
+
+  const note = page.getByTestId('indicator-vix-unavailable');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText('VIX unavailable.');
+  await expect(note).toContainText('no substitute series is shown', { ignoreCase: true });
+
+  await page.getByRole('button', { name: /US indicators:/ }).click();
+  const group = page.getByRole('group', { name: 'US chart indicators' });
+  await expect(group.getByRole('button', { name: /^VIX Unavailable/ })).toBeVisible();
+  await expect(page.getByTestId('indicator-legend')).not.toContainText('VIX');
   expect(errors).toEqual([]);
 });
 
