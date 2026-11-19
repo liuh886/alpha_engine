@@ -141,6 +141,24 @@ _PROVIDER_CATALOG: dict[str, ProviderCapability] = {
             "cash-distribution and split-factor fields. Subscription terms apply."
         ),
     ),
+    "twelve_data": ProviderCapability(
+        name="twelve_data",
+        source_family="twelve_data",
+        independent_group="twelve_data",
+        markets=("us",),
+        price_mode="adjusted_ohlcv",
+        volume_unit="shares",
+        amount_unit="synthetic_adjusted_close_times_volume",
+        corporate_actions=True,
+        trade_calendar=False,
+        credential_env="TWELVE_DATA_API_TOKEN",
+        research_only=True,
+        usage_note=(
+            "Independent free-tier US daily source using adjust=all. Outputs are "
+            "internal-use only: the free tier is personal, non-commercial and "
+            "prohibits redistribution, and it never sets professional_source_ready."
+        ),
+    ),
     "polygon": ProviderCapability(
         name="polygon",
         source_family="polygon_sip",

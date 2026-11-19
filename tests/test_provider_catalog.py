@@ -63,3 +63,21 @@ def test_yahoo_declares_synthetic_amount_and_research_boundary():
     assert yahoo.amount_unit == "synthetic_close_times_volume"
     assert yahoo.research_only is True
     assert yahoo.source_family == "yahoo_finance"
+
+
+def test_twelve_data_is_an_independent_internal_only_provider(monkeypatch):
+    monkeypatch.delenv("TWELVE_DATA_API_TOKEN", raising=False)
+    twelve = provider_capability("twelve_data")
+    tiingo = provider_capability("tiingo")
+    yahoo = provider_capability("yfinance")
+    assert twelve.available is False
+    assert twelve.source_family == "twelve_data"
+    assert twelve.independent_group not in {
+        tiingo.independent_group,
+        yahoo.independent_group,
+    }
+    assert twelve.price_mode == "adjusted_ohlcv"
+    assert twelve.credential_env == "TWELVE_DATA_API_TOKEN"
+    assert twelve.research_only is True
+    monkeypatch.setenv("TWELVE_DATA_API_TOKEN", "test-token")
+    assert provider_capability("twelve_data").available is True

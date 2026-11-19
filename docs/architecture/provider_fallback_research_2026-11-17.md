@@ -7,6 +7,24 @@ fallback" from its implementation scope; this note evaluates whether a later,
 separately scoped change is worth proposing. `research_only=true`,
 `trade_ready=false` remain in force.
 
+## Implementation note (2026-11-19)
+
+A separately scoped slice now implements the Twelve Data adapter and bounded
+retry/backoff pieces only:
+`src/data/adapters/twelve_data_adapter.py` (adjusted daily OHLCV with strict
+validation and request/response provenance) and bounded retry/backoff with
+typed transient failures in `src/data/provider_retry.py`. Twelve Data is wired
+as an internal-only fallback in the ETF/reference chain used by the formal
+refresh strategy job and the QQQ signal job: Tiingo (when configured) → Yahoo →
+Twelve Data, or Yahoo → Twelve Data for the `yahoo_research_v2` contract. The
+free tier is **not** wired into the public provider rebuild/reseed or the
+professional price validation, and it never sets `professional_source_ready`.
+The existing provider preferences, historical-prefix gate and QQQ exact-source
+replay gate are unchanged, so a fallback-sourced bundle is still refused where
+the frozen source identity is required. No CN provider, dependency or data change
+is included.
+
+
 ## Why this exists
 
 The QQQ v4.3 formal refresh on 2026-11-17 fetched QQQ, QQQI, TQQQ, SGOV, `^VIX`

@@ -12,8 +12,10 @@ import yaml
 
 from src.data.adapters.base import DataFetchError, FetchRequest, MarketDataAdapter
 from src.data.adapters.tiingo_adapter import TiingoAdapter
+from src.data.adapters.twelve_data_adapter import TwelveDataAdapter
 from src.data.adapters.yfinance_adapter import YFinanceAdapter
 from src.data.provider_catalog import provider_manifest_entry
+from src.data.provider_retry import RetryPolicy, call_with_retry
 from src.data.validation.schema import validate_market_data
 
 ETF_REFERENCE_SYMBOLS = ("QQQ", "QQQI", "TQQQ")
@@ -311,6 +313,7 @@ def _fetch_source(
     symbol: str,
     start: str,
     end: str | None,
+    retry_policy: RetryPolicy | None = None,
 ) -> tuple[pd.DataFrame | None, dict[str, Any]]:
     if adapter is None:
         return None, {
@@ -318,26 +321,40 @@ def _fetch_source(
             "error_class": "provider_not_configured",
             "error": "provider is not configured",
         }
+    evidence: dict[str, Any] = {"provider": adapter.name}
     try:
-        result = adapter.fetch_daily_bars(
-            FetchRequest(symbol=symbol, market="us", start=start, end=end)
+        outcome = call_with_retry(
+            lambda: adapter.fetch_daily_bars(
+                FetchRequest(symbol=symbol, market="us", start=start, end=end)
+            ),
+            policy=retry_policy,
+            evidence=evidence,
+            label=adapter.name,
         )
+        result = outcome.value
         frame = _normalise_frame(result.df, symbol)
-        return frame, {
-            "ok": True,
-            "provider": result.provider,
-            "provider_symbol": result.provider_symbol or symbol,
-            "rows": int(len(frame)),
-            "first_date": frame["date"].min().date().isoformat(),
-            "last_date": frame["date"].max().date().isoformat(),
-            "metadata": dict(result.df.attrs.get("provider_metadata", {})),
-        }
+        evidence.update(
+            {
+                "ok": True,
+                "provider": result.provider,
+                "provider_symbol": result.provider_symbol or symbol,
+                "rows": int(len(frame)),
+                "first_date": frame["date"].min().date().isoformat(),
+                "last_date": frame["date"].max().date().isoformat(),
+                "metadata": dict(result.df.attrs.get("provider_metadata", {})),
+            }
+        )
+        if result.provenance:
+            evidence["provenance"] = dict(result.provenance)
+        return frame, evidence
     except (DataFetchError, ETFReferenceBundleError, ValueError) as exc:
-        evidence: dict[str, Any] = {
-            "ok": False,
-            "error_class": _error_class(exc),
-            "error": f"{type(exc).__name__}: {exc}",
-        }
+        evidence.update(
+            {
+                "ok": False,
+                "error_class": _error_class(exc),
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        )
         for attribute in (
             "status_code",
             "attempts",
@@ -350,13 +367,7 @@ def _fetch_source(
         return None, evidence
 
 
-def _provider_health_summary(
-    coverage: pd.DataFrame,
-    *,
-    provider: str,
-    attempt_column: str,
-) -> dict[str, Any]:
-    attempts = [json.loads(str(value)) for value in coverage[attempt_column].tolist()]
+def _health_summary(attempts: list[dict[str, Any]], *, provider: str) -> dict[str, Any]:
     failures = [attempt for attempt in attempts if not attempt.get("ok")]
     error_counts = Counter(str(attempt.get("error_class", "unknown")) for attempt in failures)
     latencies = [
@@ -374,12 +385,43 @@ def _provider_health_summary(
         ),
         "error_class_counts": dict(sorted(error_counts.items())),
         "rate_limited_symbols": sorted(
-            str(row.symbol)
-            for row in coverage.itertuples()
-            if json.loads(str(getattr(row, attempt_column))).get("error_class") == "rate_limited"
+            str(attempt.get("symbol", "unknown"))
+            for attempt in failures
+            if attempt.get("error_class") == "rate_limited"
         ),
         "mean_elapsed_seconds": (float(sum(latencies) / len(latencies)) if latencies else None),
     }
+
+
+def _provider_health_summary(
+    coverage: pd.DataFrame,
+    *,
+    provider: str,
+    attempt_column: str,
+) -> dict[str, Any]:
+    attempts = [json.loads(str(value)) for value in coverage[attempt_column].tolist()]
+    for attempt, symbol in zip(attempts, coverage["symbol"].tolist(), strict=False):
+        attempt.setdefault("symbol", str(symbol))
+    return _health_summary(attempts, provider=provider)
+
+
+def _provider_attempt_health(
+    coverage: pd.DataFrame,
+    *,
+    provider: str,
+) -> dict[str, Any]:
+    attempts: list[dict[str, Any]] = []
+    for symbol, value in zip(
+        coverage["symbol"].tolist(),
+        coverage["provider_attempts"].tolist(),
+        strict=False,
+    ):
+        mapping = json.loads(str(value))
+        attempt = mapping.get(provider)
+        if attempt is not None:
+            attempt.setdefault("symbol", str(symbol))
+            attempts.append(attempt)
+    return _health_summary(attempts, provider=provider)
 
 
 def build_etf_reference_bundle(
@@ -389,6 +431,8 @@ def build_etf_reference_bundle(
     end: str | None = None,
     primary_adapter: MarketDataAdapter | None = None,
     fallback_adapter: MarketDataAdapter | None = None,
+    twelve_data_adapter: MarketDataAdapter | None = None,
+    retry_policy: RetryPolicy | None = None,
 ) -> dict[str, Any]:
     contract_file = Path(contract_path).resolve()
     contract = _load_contract(contract_file)
@@ -410,6 +454,20 @@ def build_etf_reference_bundle(
         fallback_adapter = YFinanceAdapter()
     if yahoo_research and fallback_adapter.name != "yfinance":
         raise ETFReferenceBundleError("Yahoo research contract requires the declared Yahoo provider")
+    if twelve_data_adapter is None and os.getenv("TWELVE_DATA_API_TOKEN", "").strip():
+        twelve_data_adapter = TwelveDataAdapter()
+
+    # Declared primary first, then the governed Yahoo fallback, then Twelve Data
+    # as the last independent fallback. Two successes are enough for
+    # corroboration; the rest of the chain is not called.
+    provider_chain: list[MarketDataAdapter] = []
+    for candidate in (primary_adapter, fallback_adapter, twelve_data_adapter):
+        if candidate is None:
+            continue
+        if any(existing.name == candidate.name for existing in provider_chain):
+            continue
+        provider_chain.append(candidate)
+    provider_order = [adapter.name for adapter in provider_chain]
 
     source_frames: dict[str, dict[str, pd.DataFrame | None]] = {}
     coverage_rows: list[dict[str, Any]] = []
@@ -418,17 +476,31 @@ def build_etf_reference_bundle(
     file_hashes: dict[str, str] = {}
 
     for symbol in ETF_REFERENCE_SYMBOLS:
-        primary, primary_attempt = _fetch_source(
-            primary_adapter, symbol=symbol, start=start, end=end
-        )
-        fallback, fallback_attempt = _fetch_source(
-            fallback_adapter, symbol=symbol, start=start, end=end
-        )
-        source_frames[symbol] = {"tiingo": primary, "yfinance": fallback}
+        successes: list[tuple[str, pd.DataFrame, dict[str, Any]]] = []
+        attempts_by_provider: dict[str, dict[str, Any]] = {}
+        for adapter in provider_chain:
+            if len(successes) >= 2:
+                break
+            frame, attempt = _fetch_source(
+                adapter,
+                symbol=symbol,
+                start=start,
+                end=end,
+                retry_policy=retry_policy,
+            )
+            attempts_by_provider[adapter.name] = attempt
+            if frame is not None:
+                successes.append((adapter.name, frame, attempt))
 
-        for provider, frame in (("tiingo", primary), ("yfinance", fallback)):
-            if frame is None:
-                continue
+        primary = successes[0][1] if successes else None
+        primary_provider = successes[0][0] if successes else None
+        fallback = successes[1][1] if len(successes) > 1 else None
+        fallback_provider = successes[1][0] if len(successes) > 1 else None
+        source_frames[symbol] = {
+            name: frame for name, frame, _attempt in successes
+        }
+
+        for provider, frame, _attempt in successes:
             source_path = root / "sources" / provider / f"{symbol}.csv"
             source_path.parent.mkdir(parents=True, exist_ok=True)
             frame.to_csv(source_path, index=False)
@@ -447,13 +519,32 @@ def build_etf_reference_bundle(
         }
         if primary is not None and (permitted_primary or fallback is None):
             canonical = primary
-            selected_provider = "tiingo"
+            selected_provider = primary_provider
         elif fallback is not None:
             canonical = fallback
-            selected_provider = "yfinance"
+            selected_provider = fallback_provider
         else:
             canonical = None
             selected_provider = None
+
+        primary_attempt = (
+            attempts_by_provider.get(primary_adapter.name)
+            if primary_adapter is not None
+            else {
+                "ok": False,
+                "error_class": "provider_not_configured",
+                "error": "provider is not configured",
+            }
+        )
+        fallback_attempt = (
+            attempts_by_provider.get(fallback_adapter.name)
+            if fallback_adapter is not None
+            else {
+                "ok": False,
+                "error_class": "provider_not_configured",
+                "error": "provider is not configured",
+            }
+        )
 
         canonical_status = "missing"
         if canonical is not None:
@@ -463,6 +554,8 @@ def build_etf_reference_bundle(
             file_hashes[str(canonical_path.relative_to(root))] = _sha256(canonical_path)
             canonical_status = "ready"
 
+        # Corporate actions stay bound to the best available professional
+        # source; a free fallback does not invent distribution or split fields.
         actions = _corporate_actions(primary, symbol)
         action_frames.append(actions)
         action_path = root / "corporate_actions" / f"{symbol}.csv"
@@ -488,6 +581,7 @@ def build_etf_reference_bundle(
                 "corporate_action_rows": int(len(actions)),
                 "primary_attempt": json.dumps(primary_attempt, sort_keys=True),
                 "fallback_attempt": json.dumps(fallback_attempt, sort_keys=True),
+                "provider_attempts": json.dumps(attempts_by_provider, sort_keys=True),
             }
         )
 
@@ -540,6 +634,18 @@ def build_etf_reference_bundle(
             attempt_column="fallback_attempt",
         ),
     }
+    for provider in provider_order:
+        if provider not in provider_health:
+            provider_health[provider] = _provider_attempt_health(
+                coverage,
+                provider=provider,
+            )
+    provider_contracts = {
+        "tiingo": provider_manifest_entry("tiingo"),
+        "yfinance": provider_manifest_entry("yfinance"),
+    }
+    if twelve_data_adapter is not None:
+        provider_contracts["twelve_data"] = provider_manifest_entry("twelve_data")
     manifest = {
         "schema_version": "1.1",
         "bundle_id": str(contract["bundle_id"]),
@@ -551,6 +657,7 @@ def build_etf_reference_bundle(
         "symbols": list(ETF_REFERENCE_SYMBOLS),
         "requested_start": start,
         "requested_end": end,
+        "provider_order": provider_order,
         "common_history_start": common_start,
         "common_history_end": common_end,
         "strategy_data_ready": strategy_data_ready,
@@ -562,10 +669,7 @@ def build_etf_reference_bundle(
             str(row.symbol): row.status for row in reconciliations.itertuples()
         },
         "provider_health": provider_health,
-        "provider_contracts": {
-            "tiingo": provider_manifest_entry("tiingo"),
-            "yfinance": provider_manifest_entry("yfinance"),
-        },
+        "provider_contracts": provider_contracts,
         "files": dict(sorted(file_hashes.items())),
         "limitations": [
             "Yahoo-only bundles are research-usable but not professionally corroborated.",
@@ -573,6 +677,8 @@ def build_etf_reference_bundle(
             "Synthetic amount is diagnostic only and is not reported turnover.",
             "Open-price reconciliation uses a separate distribution and compounded-drift gate because vendor opening prints are noisier than closing total returns.",
             "Credential, rate-limit, upstream and validation failures remain distinct provider-health states.",
+            "Transient fetches retry a bounded number of times; schema, identity and adjustment failures never retry or fall over.",
+            "The Twelve Data free fallback is internal-use only and never sets professional_source_ready.",
             "This bundle does not change or promote any strategy rule.",
         ],
     }

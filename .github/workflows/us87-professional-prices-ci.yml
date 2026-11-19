@@ -80,8 +80,10 @@ jobs:
     timeout-minutes: 60
     env:
       # Public/professional price validation stays on the entitled source; the
-      # free Tiingo tier is internal-use only and is not wired here.
+      # free Tiingo and Twelve Data tiers are internal-use only and are not
+      # wired here.
       TIINGO_API_TOKEN: ""
+      TWELVE_DATA_API_TOKEN: ""
       POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
     steps:
       - uses: actions/checkout@v7

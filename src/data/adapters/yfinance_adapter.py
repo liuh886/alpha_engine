@@ -3,6 +3,8 @@ from __future__ import annotations
 import warnings
 import hashlib
 import json
+import socket
+import urllib.error
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -12,7 +14,14 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
+from src.data.adapters.base import (
+    DataFetchError,
+    FetchRequest,
+    FetchResult,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
+    ProviderUnavailableError,
+)
 
 # Small provider rounding drift is tolerated only inside this narrow envelope.
 # Material raw OHLC inconsistencies still fail closed.
@@ -281,6 +290,36 @@ class YFinanceAdapter:
                     **request_options,
                 )
         except Exception as exc:
+            # Classify only transport-shaped failures as transient so the
+            # bundle retry layer can back off without ever retrying a schema or
+            # identity defect.
+            message = str(exc)
+            lowered = message.lower()
+            class_name = type(exc).__name__.lower()
+            if (
+                isinstance(exc, urllib.error.HTTPError)
+                and exc.code == 429
+            ) or "ratelimit" in class_name or "rate limit" in lowered or "too many requests" in lowered:
+                raise ProviderRateLimitError(
+                    f"yfinance rate limited for {yf_ticker}: {exc}"
+                ) from exc
+            if isinstance(exc, (TimeoutError, socket.timeout)) or "timeout" in class_name or "timed out" in lowered:
+                raise ProviderTimeoutError(
+                    f"yfinance timed out for {yf_ticker}: {exc}"
+                ) from exc
+            if isinstance(exc, urllib.error.HTTPError) and not (
+                exc.code == 429 or 500 <= int(exc.code) < 600
+            ):
+                raise DataFetchError(
+                    f"yfinance download failed for {yf_ticker}: HTTP {exc.code}"
+                ) from exc
+            if isinstance(exc, (ConnectionError, urllib.error.URLError)) or any(
+                token in class_name
+                for token in ("connection", "readtimeout", "chunkedencoding")
+            ):
+                raise ProviderUnavailableError(
+                    f"yfinance network failure for {yf_ticker}: {exc}"
+                ) from exc
             raise DataFetchError(f"yfinance download failed for {yf_ticker}: {exc}") from exc
         if self.evidence_root is not None and df is not None and not df.empty:
             evidence = evidence_root / ("request-" + uuid.uuid4().hex)
