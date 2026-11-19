@@ -273,3 +273,60 @@ test('the strategy chart plot stays above the 390x844 handset fold', async ({ pa
   expect(chartBox!.y, 'chart top reaches the 390x844 first screen').toBeLessThan(844);
   expect(chartBox!.y, 'chart precedes the numeric tiles on a handset').toBeLessThan(tileBox!.y);
 });
+
+test('a US strategy chart adds a separate governed VIX context pane', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+
+  const pane = page.getByTestId('strategy-vix-pane');
+  await expect(pane).toBeVisible();
+  await expect(pane.getByRole('heading', { name: 'VIX · US market context', exact: true })).toBeVisible();
+  await expect(pane).toContainText('Separate pane · one VIX axis · never a dual axis with NAV');
+  await expect(page.getByTestId('strategy-vix-chart')).toBeVisible();
+  await expect(page.getByTestId('strategy-vix-window')).toContainText(/exact VIX observation/);
+  await expect(page.getByTestId('strategy-vix-window')).toContainText(/\d{4}-\d{2}-\d{2} – \d{4}-\d{2}-\d{2}/);
+
+  // The optional average is registry-backed and keyboard-operable.
+  const toggle = page.getByTestId('strategy-vix-sma-toggle');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await toggle.focus();
+  await expect(toggle).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('list', { name: 'VIX series' })).toContainText('VIX SMA 20');
+  await expect(page.getByTestId('strategy-vix-data')).toBeVisible();
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+  await pane.scrollIntoViewIfNeeded();
+  await capture(page, testInfo, 'strategy-vix-context');
+  expect(errors).toEqual([]);
+});
+
+test('a CN strategy chart never offers or reads the US VIX pane', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/strategies/cn_27_v1_3');
+  await expect(page.getByTestId('strategy-chart-hero')).toBeVisible();
+  await expect(page.getByTestId('strategy-nav-chart')).toBeVisible();
+  await expect(page.getByTestId('strategy-vix-pane')).toHaveCount(0);
+  await expect(page.getByText('VIX · US market context', { exact: true })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('an unpublished VIX series keeps the strategy pane unavailable without a substitute', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.route('**/data/market-evidence/us/symbols/VIX.json', route => (
+    route.fulfill({ status: 404, body: 'not published' })
+  ));
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+
+  const note = page.getByTestId('strategy-vix-unavailable');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText('404');
+  await expect(note).toContainText('No substitute series is shown');
+  await expect(page.getByTestId('strategy-vix-chart')).toHaveCount(0);
+  await expect(page.getByTestId('strategy-vix-sma-toggle')).toBeDisabled();
+  expect(errors).toEqual([]);
+});

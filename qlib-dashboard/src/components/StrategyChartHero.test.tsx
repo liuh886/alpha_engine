@@ -14,6 +14,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/formal-nav', () => ({ loadFormalNav: mocks.loadFormalNav }));
 vi.mock('@/lib/governed-run', () => ({ loadRunSection: mocks.loadRunSection }));
+vi.mock('@/lib/market-evidence-cache', () => ({
+  readMarketEvidence: (market: string, symbol?: string) => mocks.loadSecurityEvidence(
+    market,
+    symbol ?? (market === 'cn' ? '000300' : 'QQQ'),
+  ),
+}));
 vi.mock('@/lib/security-evidence', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/security-evidence')>();
   return {
@@ -153,6 +159,12 @@ function makeRows(start = '2025-01-01', count = 76, stepDays = 5): ReportRow[] {
 }
 
 const rows = makeRows();
+/** Weekly VIX observations cover the 1Y test window and exceed the SMA 20 warm-up. */
+const vixBars = Array.from({ length: 60 }, (_, index) => {
+  const time = new Date(Date.UTC(2025, 0, 1 + index * 7)).toISOString().slice(0, 10);
+  const close = 14 + Math.sin(index / 4) * 3;
+  return { time, open: close, high: close + 0.5, low: close - 0.5, close, volume: 0 };
+});
 const run = makeRun();
 const overlayRun = makeRun({
   key: 'us:us_x1_3',
@@ -188,7 +200,10 @@ beforeEach(() => {
   window.localStorage.clear();
   mocks.loadFormalNav.mockReset().mockResolvedValue({ rows });
   mocks.loadRunSection.mockReset().mockResolvedValue([]);
-  mocks.loadSecurityEvidence.mockReset();
+  mocks.loadSecurityEvidence.mockReset().mockImplementation(async (_market: string, symbol: string) => {
+    if (symbol === 'VIX') return { bars: vixBars };
+    throw new Error('Unexpected market evidence read.');
+  });
   mocks.loadSecurityCatalog.mockReset().mockResolvedValue({
     market: 'us',
     cutoff: '2026-01-31',
@@ -209,7 +224,8 @@ describe('StrategyChartHero', () => {
 
     expect(mocks.loadFormalNav).toHaveBeenCalledTimes(1);
     expect(mocks.loadRunSection).toHaveBeenCalledWith(run, 'trades');
-    expect(mocks.loadSecurityEvidence).not.toHaveBeenCalled();
+    expect(mocks.loadSecurityEvidence).toHaveBeenCalledTimes(1);
+    expect(mocks.loadSecurityEvidence).toHaveBeenCalledWith('us', 'VIX');
 
     const horizons = within(screen.getByRole('group', { name: 'Chart horizon' }));
     expect(horizons.getAllByRole('button').map(button => button.textContent)).toEqual([
@@ -241,7 +257,8 @@ describe('StrategyChartHero', () => {
     expect(screen.getByTestId('hero-period-return')).toHaveTextContent('+3.6%');
     expect(screen.getByTestId('hero-period-return')).not.toHaveTextContent('0.0%');
     expect(mocks.loadFormalNav).toHaveBeenCalledTimes(1);
-    expect(mocks.loadSecurityEvidence).not.toHaveBeenCalled();
+    expect(mocks.loadSecurityEvidence).toHaveBeenCalledTimes(1);
+    expect(mocks.loadSecurityEvidence).toHaveBeenCalledWith('us', 'VIX');
   });
 
   it('reports a too-short weekly window as unavailable instead of a zero return', async () => {
@@ -265,7 +282,10 @@ describe('StrategyChartHero', () => {
   });
 
   it('scopes a market baseline failure and reverts to the declared baseline', async () => {
-    mocks.loadSecurityEvidence.mockRejectedValueOnce(new Error('market evidence offline'));
+    mocks.loadSecurityEvidence.mockImplementation(async (_market: string, symbol: string) => {
+      if (symbol === 'VIX') return { bars: vixBars };
+      throw new Error('market evidence offline');
+    });
     renderHero();
     await screen.findByTestId('strategy-nav-chart');
 
@@ -276,7 +296,7 @@ describe('StrategyChartHero', () => {
     expect(screen.getByTestId('strategy-baseline-error')).toHaveTextContent('Reverted to the declared baseline (QQQ)');
     expect(screen.getByTestId('baseline-control')).toHaveAttribute('data-value', 'declared');
     expect(screen.getByTestId('hero-period-return')).toHaveTextContent('+71.6%');
-    expect(mocks.loadSecurityEvidence).toHaveBeenCalledTimes(1);
+    expect(mocks.loadSecurityEvidence).toHaveBeenCalledTimes(2);
   });
 
   it('loads the governed market baseline only after selection and reuses it', async () => {
@@ -285,7 +305,8 @@ describe('StrategyChartHero', () => {
     });
     renderHero();
     await screen.findByTestId('strategy-nav-chart');
-    expect(mocks.loadSecurityEvidence).not.toHaveBeenCalled();
+    expect(mocks.loadSecurityEvidence).toHaveBeenCalledTimes(1);
+    expect(mocks.loadSecurityEvidence).toHaveBeenCalledWith('us', 'VIX');
 
     fireEvent.click(screen.getByRole('button', { name: 'QQQ market' }));
 
@@ -297,7 +318,7 @@ describe('StrategyChartHero', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'QQQ market' }));
     await waitFor(() => expect(screen.getByTestId('baseline-control')).toHaveAttribute('data-value', 'market'));
-    expect(mocks.loadSecurityEvidence).toHaveBeenCalledTimes(1);
+    expect(mocks.loadSecurityEvidence).toHaveBeenCalledTimes(2);
   });
 
   it('shows the stale window chip when the evidence cutoff leads the last observation', async () => {
@@ -474,5 +495,54 @@ describe('StrategyChartHero', () => {
     const monthlyStart = loadedSeries().find(item => item.key === 'base')?.nav[0]?.date;
     expect(monthlyStart).not.toBe(yearlyStart);
     expect(monthlyStart && yearlyStart && monthlyStart > yearlyStart).toBe(true);
+  });
+
+  it('renders a separate US VIX context pane with exact observed dates and the governed SMA', async () => {
+    renderHero();
+    await screen.findByTestId('strategy-nav-chart');
+
+    const pane = await screen.findByTestId('strategy-vix-pane');
+    expect(pane).toHaveTextContent('VIX · US market context');
+    expect(pane).toHaveTextContent('Separate pane · one VIX axis · never a dual axis with NAV');
+    await screen.findByTestId('strategy-vix-chart');
+    expect(screen.getByTestId('strategy-vix-window')).toHaveTextContent('exact VIX observation');
+    expect(screen.getByTestId('strategy-vix-window')).toHaveTextContent('2025-01-15');
+    expect(screen.getByTestId('strategy-vix-data')).toBeInTheDocument();
+    expect(mocks.loadSecurityEvidence).toHaveBeenCalledWith('us', 'VIX');
+
+    const toggle = screen.getByTestId('strategy-vix-sma-toggle');
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(toggle).not.toBeDisabled();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('list', { name: 'VIX series' })).toHaveTextContent('VIX SMA 20');
+  });
+
+  it('shows an absent VIX series with the route-404 reason and no substitute', async () => {
+    mocks.loadSecurityEvidence.mockImplementation(async (_market: string, symbol: string) => {
+      if (symbol === 'VIX') throw new Error('Security history unavailable (404).');
+      throw new Error('Unexpected market evidence read.');
+    });
+    renderHero();
+    await screen.findByTestId('strategy-nav-chart');
+
+    const note = await screen.findByTestId('strategy-vix-unavailable');
+    expect(note).toHaveTextContent('404');
+    expect(note).toHaveTextContent('No substitute series is shown');
+    expect(screen.queryByTestId('strategy-vix-chart')).not.toBeInTheDocument();
+  });
+
+  it('never renders or reads VIX for a CN strategy chart', async () => {
+    const cnRows: ReportRow[] = rows.map((row, index) => ({
+      date: row.date,
+      account: row.account,
+      benchmark_account: 100 + index,
+    }));
+    mocks.loadFormalNav.mockResolvedValueOnce({ rows: cnRows });
+    renderHero(cnRun);
+    await screen.findByTestId('strategy-nav-chart');
+
+    expect(screen.queryByTestId('strategy-vix-pane')).not.toBeInTheDocument();
+    expect(mocks.loadSecurityEvidence).not.toHaveBeenCalledWith('us', 'VIX');
   });
 });

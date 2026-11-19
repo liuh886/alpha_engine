@@ -281,3 +281,42 @@ test('compare mode indexes any same-market entity on one exact common window', a
   await page.screenshot({ path: testInfo.outputPath(`entity-compare-dark-${testInfo.project.name}.png`), fullPage: false });
   expect(errors).toEqual([]);
 });
+
+test('compare mode states the indexed-strength trade-off and offers an obvious exit', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/#/securities/us/QQQ');
+  await expect(page.getByRole('heading', { name: 'QQQ', exact: true })).toBeVisible();
+
+  const toggle = page.getByTestId('security-compare-toggle');
+  await toggle.focus();
+  await expect(toggle).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+  const note = page.getByTestId('compare-scope');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText('Compare shows indexed strength only');
+  await expect(note).toContainText('Model buy/sell markers, price indicators and volume are hidden');
+  await expect(note).toContainText('Same-market comparison only');
+
+  const exit = page.getByTestId('compare-exit');
+  await expect(exit).toHaveText('Exit compare to show markers and indicators');
+  await exit.focus();
+  await expect(exit).toBeFocused();
+
+  await note.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath(`compare-note-light-${testInfo.project.name}.png`), fullPage: false });
+  await page.getByRole('button', { name: 'Use dark theme', exact: true }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.screenshot({ path: testInfo.outputPath(`compare-note-dark-${testInfo.project.name}.png`), fullPage: false });
+
+  // The note's own exit restores price mode, markers and indicators.
+  await exit.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('compare-scope')).toHaveCount(0);
+  await expect(page.getByRole('list', { name: 'Marker direction key' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /US indicators:/ })).toBeVisible();
+  await expect(page.getByTestId('security-chart-basis')).toContainText('Raw OHLC price candles');
+  expect(errors).toEqual([]);
+});

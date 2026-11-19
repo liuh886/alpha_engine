@@ -5,6 +5,7 @@ import { CompareControl } from '@/components/charts/CompareControl';
 import { CompareLegend, type CompareLegendItem } from '@/components/charts/CompareLegend';
 import { MarkerDetailPanel } from '@/components/charts/MarkerDetailPanel';
 import { NavChart, type NavChartSeries } from '@/components/charts/NavChart';
+import { VixContextPane, type VixPaneState } from '@/components/charts/VixContextPane';
 import { useBaselinePreference } from '@/hooks/useBaselinePreference';
 import {
   BASELINE_EXACT_DATE_DISCLOSURE,
@@ -35,6 +36,7 @@ import {
 import { alignNavSeries, joinNavMarkers, navFromReport, type NavMarker, type NavPoint } from '@/lib/nav-series';
 import { navHorizonCoverage, navSeriesForPeriod } from '@/lib/nav-returns';
 import type { ReportRow } from '@/lib/types';
+import { vixUnavailableReason } from '@/lib/vix-context';
 import {
   CHART_HORIZONS,
   DEFAULT_CHART_HORIZON,
@@ -161,6 +163,7 @@ export function StrategyChartHero({
   const [marketSeries, setMarketSeries] = useState<{ key: string; points: NavPoint[] } | null>(null);
   const [marketLoading, setMarketLoading] = useState(false);
   const [baselineError, setBaselineError] = useState<string | null>(null);
+  const [vixState, setVixState] = useState<VixPaneState>({ status: 'loading' });
   const [selectedMarker, setSelectedMarker] = useState<NavMarker | null>(null);
   const [selectedModels, setSelectedModels] = useState<SelectedModelOverlay[]>([]);
   const [overlaySeries, setOverlaySeries] = useState<Record<string, OverlaySeriesState>>({});
@@ -341,6 +344,34 @@ export function StrategyChartHero({
     return () => { active = false; };
     // fallbackKind reads the latest options/refs and is intentionally not a dependency.
   }, [activeKind, market, marketSeries, run.benchmark, setPreference]);
+
+  /**
+   * US-only governed VIX context. It reads the published `us:VIX` market
+   * evidence through the shared cache; CN charts never request or render it.
+   * An absent series keeps an explicit reason and no substitute is drawn.
+   */
+  useEffect(() => {
+    if (market !== 'us') return;
+    let active = true;
+    setVixState({ status: 'loading' });
+    void readMarketEvidence('us', 'VIX')
+      .then(evidence => {
+        if (!active) return;
+        if (!evidence || !Array.isArray(evidence.bars) || evidence.bars.length === 0) {
+          setVixState({
+            status: 'unavailable',
+            reason: 'Governed US VIX series unavailable: the published series has no observations. No substitute series is shown.',
+          });
+          return;
+        }
+        setVixState({ status: 'ready', bars: evidence.bars });
+      })
+      .catch(error => {
+        if (!active) return;
+        setVixState({ status: 'unavailable', reason: vixUnavailableReason(error) });
+      });
+    return () => { active = false; };
+  }, [market]);
 
   const baselineFull = useMemo(() => {
     if (activeKind === 'declared' && activeOption?.field) return navFromBenchmarkField(rows, activeOption.field);
@@ -840,6 +871,14 @@ export function StrategyChartHero({
                   {baselineControl}
                 </div>
               </div>
+            )}
+
+            {market === 'us' && (
+              <VixContextPane
+                state={vixState}
+                start={effectiveWindowStart}
+                end={effectiveWindowEnd}
+              />
             )}
 
             {multiModel && <CompareLegend items={legendItems} />}

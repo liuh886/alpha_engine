@@ -19,10 +19,11 @@ export const MODEL_SERIES_TOKENS = ['chart-4', 'chart-6', 'chart-3', 'chart-5', 
  * Fixed categorical order for governed chart indicators, deliberately distinct
  * from `MODEL_SERIES_TOKENS` and from the `positive`/`negative` polarity cues.
  * Validated with the data-viz palette method against the project's own
- * light card `#ffffff` and dark card `#141820` surfaces; adjacent CVD Delta E
- * 7.8-15.2 and normal-vision Delta E >= 15 in both modes. Dark is a separately
- * selected set, not an automatic flip. Assignment follows the indicator family,
- * never list position or rank.
+ * light card `#ffffff` and dark card `#141820` surfaces: light adjacent CVD
+ * Delta E 14.5 and normal-vision Delta E 19.1; dark adjacent CVD Delta E 8.2
+ * and normal-vision Delta E 16.5. Every slot clears the 3:1 contrast floor in
+ * both modes. Dark is a separately selected set, not an automatic flip.
+ * Assignment follows the indicator family, never list position or rank.
  */
 export const INDICATOR_SERIES_TOKENS = [
   'indicator-1',
@@ -59,26 +60,26 @@ const MODEL_SERIES_FALLBACKS: Readonly<Record<'light' | 'dark', readonly string[
     'hsl(210, 90%, 40%)',
   ],
   dark: [
-    'hsl(24, 92%, 65%)',
-    'hsl(199, 82%, 64%)',
-    'hsl(42, 92%, 60%)',
-    'hsl(330, 66%, 70%)',
-    'hsl(207, 88%, 66%)',
+    'hsl(15, 89%, 41%)',
+    'hsl(194, 74%, 43%)',
+    'hsl(66, 75%, 35%)',
+    'hsl(329, 86%, 60%)',
+    'hsl(236, 74%, 67%)',
   ],
 };
 
 const INDICATOR_SERIES_FALLBACKS: Readonly<Record<'light' | 'dark', readonly string[]>> = {
   light: [
-    'hsl(248, 62%, 58%)',
-    'hsl(159, 73%, 40%)',
-    'hsl(23, 67%, 31%)',
-    'hsl(334, 80%, 40%)',
+    'hsl(171, 60%, 40%)',
+    'hsl(238, 80%, 51%)',
+    'hsl(295, 55%, 36%)',
+    'hsl(290, 61%, 61%)',
   ],
   dark: [
-    'hsl(247, 69%, 72%)',
-    'hsl(159, 73%, 36%)',
-    'hsl(24, 59%, 45%)',
-    'hsl(335, 62%, 61%)',
+    'hsl(307, 86%, 53%)',
+    'hsl(146, 59%, 43%)',
+    'hsl(39, 69%, 38%)',
+    'hsl(341, 52%, 56%)',
   ],
 };
 
@@ -164,7 +165,7 @@ export function chartTheme(isDark: boolean): ChartTheme {
     grid: hsl(token('chart-grid'), isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.07)'),
     border: hsl(token('border'), isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(15, 23, 42, 0.14)'),
     crosshair: hsl(token('chart-axis'), isDark ? '#94a3b8' : '#64748b'),
-    primary: hsl(token('chart-1'), isDark ? 'hsl(207, 88%, 66%)' : 'hsl(210, 90%, 40%)'),
+    primary: hsl(token('chart-1'), isDark ? 'hsl(236, 74%, 67%)' : 'hsl(210, 90%, 40%)'),
     baseline: hsl(token('chart-2'), isDark ? 'hsl(172, 55%, 50%)' : 'hsl(173, 85%, 27%)'),
     candleUp: hsl(token('positive'), isDark ? 'hsl(152, 52%, 58%)' : 'hsl(152, 62%, 28%)'),
     candleDown: hsl(token('negative'), isDark ? 'hsl(0, 78%, 68%)' : 'hsl(0, 68%, 43%)'),

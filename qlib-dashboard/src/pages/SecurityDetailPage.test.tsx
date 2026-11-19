@@ -520,6 +520,13 @@ describe('any-entity compare mode', () => {
     fireEvent.click(screen.getByTestId('security-compare-toggle'));
     expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-mode', 'compare');
     expect(screen.getByTestId('compare-scope')).toHaveTextContent('Same-market comparison only');
+    expect(screen.getByTestId('compare-scope')).toHaveTextContent('Compare shows indexed strength only');
+    expect(screen.getByTestId('compare-scope')).toHaveTextContent(
+      'Model buy/sell markers, price indicators and volume are hidden',
+    );
+    expect(screen.getByTestId('compare-exit')).toHaveTextContent(
+      'Exit compare to show markers and indicators',
+    );
     await waitFor(() => expect(mocks.loadSecurityCatalog).toHaveBeenCalledWith('us'));
 
     fireEvent.click(screen.getByTestId('compare-control-trigger'));
@@ -543,6 +550,14 @@ describe('any-entity compare mode', () => {
     await waitFor(() => expect(screen.queryByTestId('compare-legend-instrument:us:MSFT')).not.toBeInTheDocument());
     expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-overlay-count', '1');
     expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-mode', 'compare');
+
+    // The compare note names the trade-off and offers an obvious keyboard exit.
+    const exit = screen.getByTestId('compare-exit');
+    exit.focus();
+    expect(exit).toHaveFocus();
+    fireEvent.click(exit);
+    expect(screen.getByTestId('security-chart-stub')).toHaveAttribute('data-mode', 'price');
+    expect(screen.queryByTestId('compare-scope')).not.toBeInTheDocument();
   });
 
   it('enforces the four-overlay cap with a visible message and disabled extras', async () => {

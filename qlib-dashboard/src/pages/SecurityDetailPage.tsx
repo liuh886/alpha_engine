@@ -795,6 +795,9 @@ export function SecurityHistory({
               type="button"
               data-testid="security-compare-toggle"
               aria-pressed={compare}
+              aria-label={compare
+                ? 'Exit compare and show price, indicators and model markers'
+                : 'Compare same-market entities on one indexed axis'}
               onClick={() => setCompare(value => !value)}
               className={cn(
                 'research-touch min-h-8 rounded-md border px-2.5 text-[11px] font-medium transition-colors',
@@ -832,11 +835,27 @@ export function SecurityHistory({
       >
 
       {compare && (
-        <p role="note" data-testid="compare-scope" className="mt-2 text-[11px] leading-4 text-muted-foreground">
-          Same-market comparison only: models use the verified formal NAV projection and instruments use this
-          market's evidence catalog. Another market's entity is never offered or read. Up to {MAX_COMPARE_OVERLAYS}
-          overlays share one exact common start; price indicators and event markers are hidden while comparing.
-        </p>
+        <div
+          role="note"
+          data-testid="compare-scope"
+          className="mt-2 flex flex-wrap items-start justify-between gap-2 rounded-md border border-dashed p-2 text-[11px] leading-4 text-muted-foreground"
+        >
+          <p className="max-w-3xl">
+            <span className="font-semibold text-foreground">Compare shows indexed strength only.</span>{' '}
+            Model buy/sell markers, price indicators and volume are hidden, so every entity shares one indexed
+            axis. Same-market comparison only: models use the verified formal NAV projection and instruments use
+            this market&apos;s evidence catalog. Another market&apos;s entity is never offered or read. Up to{' '}
+            {MAX_COMPARE_OVERLAYS} overlays share one exact common start.
+          </p>
+          <button
+            type="button"
+            data-testid="compare-exit"
+            onClick={() => setCompare(false)}
+            className="research-touch inline-flex min-h-8 items-center rounded border border-primary/40 bg-background px-2.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+          >
+            Exit compare to show markers and indicators
+          </button>
+        </div>
       )}
 
       {baselineIsSelf && (

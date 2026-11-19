@@ -51,12 +51,13 @@
     --chart-5: 329 55% 48%;
     --chart-6: 199 75% 38%;
     /* Governed chart indicators. A distinct fixed categorical order, validated
-       against the light card surface with the data-viz palette method and kept
-       apart from the model-series identity tokens above. */
-    --indicator-1: 248 62% 58%;
-    --indicator-2: 159 73% 40%;
-    --indicator-3: 23 67% 31%;
-    --indicator-4: 334 80% 40%;
+       against the light card surface (#ffffff) with the data-viz palette method:
+       adjacent CVD Delta E 14.5, normal-vision Delta E 19.1, every slot >= 3:1
+       contrast, and kept apart from the model, entity and status tokens. */
+    --indicator-1: 171 60% 40%;
+    --indicator-2: 238 80% 51%;
+    --indicator-3: 295 55% 36%;
+    --indicator-4: 290 61% 61%;
     /* Same-market comparison instruments. A third fixed categorical order,
        validated separately against the light card surface and kept apart from
        model, indicator and positive/negative tokens. */
@@ -112,17 +113,22 @@
     --info: 255 78% 76%;
     --info-foreground: 255 45% 9%;
 
-    --chart-1: 207 88% 66%;
+    /* Dark chart series are selected for the dark card surface (#141820), not
+       auto-flipped from light. Every model, indicator and entity slot sits in
+       the data-viz dark lightness band (OKLCH L 0.48-0.67); model adjacent CVD
+       Delta E 12.2 and normal-vision Delta E 21.3, indicator adjacent CVD
+       Delta E 8.2 and normal-vision Delta E 16.5, entity adjacent CVD 9.0 and
+       normal-vision 23.1. */
+    --chart-1: 236 74% 67%;
     --chart-2: 172 55% 50%;
-    --chart-3: 42 92% 60%;
-    --chart-4: 24 92% 65%;
-    --chart-5: 330 66% 70%;
-    --chart-6: 199 82% 64%;
-    /* Indicator hues are selected for the dark card surface, not auto-flipped. */
-    --indicator-1: 247 69% 72%;
-    --indicator-2: 159 73% 36%;
-    --indicator-3: 24 59% 45%;
-    --indicator-4: 335 62% 61%;
+    --chart-3: 66 75% 35%;
+    --chart-4: 15 89% 41%;
+    --chart-5: 329 86% 60%;
+    --chart-6: 194 74% 43%;
+    --indicator-1: 307 86% 53%;
+    --indicator-2: 146 59% 43%;
+    --indicator-3: 39 69% 38%;
+    --indicator-4: 341 52% 56%;
     /* Comparison-instrument hues selected for the dark card surface. */
     --entity-1: 275 95% 50%;
     --entity-2: 205 95% 38%;
