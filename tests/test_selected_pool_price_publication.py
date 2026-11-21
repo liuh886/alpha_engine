@@ -553,3 +553,123 @@ def test_source_provenance_must_be_complete_and_research_bound(field: str, value
 
     with pytest.raises(SelectedPoolPricePublicationError, match="provenance"):
         build_selected_pool_price_publication_manifest(source)
+
+
+def _fund_provenance(provider: str = "akshare_sina_fund") -> dict[str, object]:
+    return {
+        "provider": provider,
+        "provider_symbol": "sh515180",
+        "source_url": (
+            "https://finance.sina.com.cn/realstock/company/sh515180/"
+            "hisdata_klc2/klc_kl.js"
+        ),
+        "response_sha256": "a" * 64,
+        "response_bytes": 4321,
+        "fetched_at_utc": "2026-11-21T08:00:00+00:00",
+        "source_schema": "date,open,high,low,close,volume,amount,postVol,postAmt",
+        "source_date_format": "date",
+        "price_basis": "provider_reported_raw",
+        "volume_basis": "withheld_sina_reported_shares",
+        "amount_basis": "withheld_vendor_reported_cny_not_mixed",
+        "requested_start": "2026-11-20",
+        "requested_end": "2026-11-21",
+        "first_date": "2026-11-20",
+        "last_date": "2026-11-21",
+        "rows": 2,
+        "terms_caveat": "Volume and amount withheld: Sina shares/CNY do not match the governed lot basis.",
+        "research_only": True,
+        "trade_ready": False,
+    }
+
+
+def _with_sina_fund_record(source: dict[str, object]) -> dict[str, object]:
+    from src.data.provider_catalog import provider_manifest_entry
+
+    record = _last_record(source)
+    record["provider"] = "akshare_sina_fund"
+    record["provider_symbol"] = "sh515180"
+    record["provider_contract"] = provider_manifest_entry("akshare_sina_fund")
+    record["source_provenance"] = _fund_provenance()
+    records = source["records"]
+    assert isinstance(records, list)
+    for attempt in record["attempts"]:
+        attempt["provider"] = "akshare_sina_fund"
+        attempt["ok"] = True
+        attempt["provider_symbol"] = "sh515180"
+    selected = source["selected_providers"]
+    assert isinstance(selected, dict)
+    selected["515180"] = "akshare_sina_fund"
+    architecture = source["provider_architecture"]
+    assert isinstance(architecture, dict)
+    architecture["provider_order"].append("akshare_sina_fund")
+    architecture["providers"]["akshare_sina_fund"] = provider_manifest_entry(
+        "akshare_sina_fund"
+    )
+    return source
+
+
+def test_sina_fund_fallback_is_publication_ready_with_withheld_volume_basis() -> None:
+    source = _with_sina_fund_record(_source("cn"))
+
+    publication = build_selected_pool_price_publication_manifest(source)
+
+    assert publication["selected_providers"]["515180"] == "akshare_sina_fund"
+    record = next(
+        row for row in publication["records"] if row["symbol"] == "515180"
+    )
+    assert record["source_provenance"]["volume_basis"] == (
+        "withheld_sina_reported_shares"
+    )
+    assert record["source_provenance"]["price_basis"] == "provider_reported_raw"
+    # The withheld basis is a declared provider contract, not an unknown side channel.
+    contract = publication["provider_architecture"]["selected_provider_contracts"][
+        "akshare_sina_fund"
+    ]
+    assert contract["volume_unit"] == "withheld_vendor_basis_conflict"
+    assert contract["price_mode"] == "raw_unadjusted"
+
+
+def test_source_provenance_accepts_bounded_retry_evidence() -> None:
+    from src.data.provider_catalog import provider_manifest_entry
+
+    source = _source("cn")
+    record = _last_record(source)
+    contract = provider_manifest_entry("akshare")
+    record["provider"] = "akshare"
+    record["provider_contract"] = contract
+    architecture = source["provider_architecture"]
+    assert isinstance(architecture, dict)
+    architecture["providers"]["akshare"] = contract
+    provenance = _fund_provenance("akshare")
+    provenance["retry_attempts"] = 3
+    provenance["retry_outcome"] = "succeeded_after_retry"
+    provenance["retry_history"] = [
+        {"attempt": 1, "error_class": "provider_unavailable", "retryable": True},
+        {"attempt": 2, "error_class": "provider_unavailable", "retryable": True},
+    ]
+    provenance["retry_policy"] = {"max_attempts": 3, "max_honored_retry_after_seconds": 30.0}
+    record["source_provenance"] = provenance
+    selected = source["selected_providers"]
+    assert isinstance(selected, dict)
+    # The fixture already declares akshare in the provider architecture.
+    selected["515180"] = "akshare"
+
+    publication = build_selected_pool_price_publication_manifest(source)
+
+    published = next(
+        row for row in publication["records"] if row["symbol"] == "515180"
+    )
+    assert published["source_provenance"]["retry_attempts"] == 3
+    assert published["source_provenance"]["retry_outcome"] == "succeeded_after_retry"
+
+
+def test_source_provenance_still_rejects_unknown_keys() -> None:
+    source = _source("us")
+    record = source["records"][0]
+    assert isinstance(record, dict)
+    provenance = _source_provenance()
+    provenance["fabricated_basis"] = "unknown"
+    record["source_provenance"] = provenance
+
+    with pytest.raises(SelectedPoolPricePublicationError, match="provenance"):
+        build_selected_pool_price_publication_manifest(source)

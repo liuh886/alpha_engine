@@ -62,8 +62,10 @@ _OPTIONAL_GAP_KEYS = {
 _SOURCE_PROVENANCE_KEYS = {
     "amount_basis", "fetched_at_utc", "first_date", "last_date", "price_basis",
     "provider", "provider_symbol", "requested_end", "requested_start",
-    "research_only", "response_bytes", "response_sha256", "rows", "source_date_format",
-    "source_schema", "source_url", "terms_caveat", "trade_ready", "volume_basis",
+    "research_only", "response_bytes", "response_sha256", "retry_attempts",
+    "retry_history", "retry_outcome", "retry_policy", "rows",
+    "source_date_format", "source_schema", "source_url", "terms_caveat",
+    "trade_ready", "volume_basis",
 }
 _SOURCE_PROVENANCE_REQUIRED_KEYS = {
     "fetched_at_utc", "provider", "response_sha256", "source_url",

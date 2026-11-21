@@ -55,6 +55,11 @@ CANONICAL_COLUMNS = (
     "factor",
 )
 INCOMPLETE_CUTOFF_RETRY_SECONDS = 2.0
+# Providers that report raw (unadjusted) prices and withhold volume/amount.
+# They may only extend an existing governed seed: the overlap is checked
+# exactly against the governed rows and only strictly newer sessions are
+# appended. A full replacement would silently swap the adjusted basis.
+_RAW_PRICE_TAIL_FALLBACK_PROVIDERS = frozenset({"akshare_sina_fund"})
 
 
 def _sha256(path: Path) -> str:
@@ -840,6 +845,14 @@ def refresh_selected_pool_prices(
                 continue
 
             try:
+                selected_provider = str(response.result.provider or "").strip().lower()
+                raw_tail_fallback = selected_provider in _RAW_PRICE_TAIL_FALLBACK_PROVIDERS
+                if raw_tail_fallback and not incremental:
+                    raise ValueError(
+                        f"{selected_provider} is a raw-price incremental tail fallback "
+                        "and cannot replace governed adjusted history without a sealed "
+                        "incremental seed"
+                    )
                 identity = _validate_provider_identity(
                     market=market_key,
                     symbol=symbol,
@@ -872,7 +885,7 @@ def refresh_selected_pool_prices(
                     governed = _normalize_frame(
                         pd.read_csv(source_path), symbol=symbol
                     )
-                    cutoff_fallback = any(
+                    cutoff_fallback = raw_tail_fallback or any(
                         attempt.requested_end_present is False
                         and attempt.provider != response.result.provider
                         for attempt in response.attempts
