@@ -173,6 +173,8 @@ def test_regular_cn_stock_keeps_adjusted_stock_endpoint(
     ]
     assert result.provider_symbol == "600519"
     assert result.df.loc[0, "amount"] == 100500.0
+    # The A-share stock path still converts provider lots to canonical shares.
+    assert result.df.loc[0, "volume"] == 100000.0
 
 
 def test_csi300_index_payload_requires_real_volume(
@@ -248,7 +250,8 @@ def test_cn_etf_515180_routes_to_fund_endpoint_with_qfq_and_normalization(
             "adjust": "qfq",
         }
     ]
-    # Provider provenance is the same identity contract as the stock path.
+    # Provider identity matches the stock path, but the ETF/fund endpoint keeps
+    # the governed provider lot basis instead of converting to shares.
     assert result.provider == "akshare"
     assert result.symbol == "515180"
     assert result.provider_symbol == "515180"
@@ -272,13 +275,14 @@ def test_cn_etf_515180_routes_to_fund_endpoint_with_qfq_and_normalization(
         "amount",
         "factor",
     ]
-    # Duplicate 2026-11-18 keeps the last row; names map and lots become shares.
+    # Duplicate 2026-11-18 keeps the last row; names map, and the fund path
+    # retains provider lots (no lot-to-share conversion).
     cutoff_row = result.df.loc[result.df["date"] == pd.Timestamp("2026-11-19")].iloc[0]
     assert cutoff_row["close"] == 1.373
     assert cutoff_row["open"] == 1.360
     assert cutoff_row["high"] == 1.380
     assert cutoff_row["low"] == 1.350
-    assert cutoff_row["volume"] == 100000.0
+    assert cutoff_row["volume"] == 1000.0
     assert cutoff_row["amount"] == 1373000.0
     assert result.df["factor"].eq(1.0).all()
 
@@ -444,7 +448,8 @@ def test_cn_etf_fund_endpoint_retries_transient_then_succeeds(
         record["retryable"] is True for record in result.provenance["retry_history"]
     )
     assert result.provenance["retry_policy"]["max_honored_retry_after_seconds"] == 30.0
-    assert result.provenance["volume_basis"] == "shares"
+    assert result.provenance["volume_basis"] == "lots"
+    assert result.provenance["amount_basis"] == "CNY"
     assert result.provenance["price_basis"] == "qfq_adjusted"
 
 

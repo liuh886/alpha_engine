@@ -912,7 +912,22 @@ def refresh_selected_pool_prices(
                                 new_vol = float(new.iloc[0]["volume"])
                                 if old_vol > 0 and new_vol > 0:
                                     vol_ratio = new_vol / old_vol
-                                    if math.isclose(vol_ratio, 1.0, rel_tol=1e-3):
+                                    if raw_tail_fallback:
+                                        # akshare_sina_fund normalizes reported
+                                        # Sina shares to the governed lot basis
+                                        # in the adapter. Over the sealed
+                                        # overlap the normalized lots must
+                                        # reproduce the governed lots, i.e.
+                                        # raw Sina shares / governed lots is
+                                        # exactly 100. Only a 1.0 ratio within
+                                        # 0.001 relative is admissible; never
+                                        # absorb a 100x/0.01x drift, because
+                                        # that would mean an already-lot series
+                                        # was divided again (or the 100:1
+                                        # relation does not hold).
+                                        if not math.isclose(vol_ratio, 1.0, rel_tol=1e-3):
+                                            mismatched.append("volume")
+                                    elif math.isclose(vol_ratio, 1.0, rel_tol=1e-3):
                                         vol_scale = 1.0
                                     elif math.isclose(vol_ratio, 100.0, rel_tol=1e-3):
                                         vol_scale = 0.01  # fallback in shares, governed in lots
@@ -922,10 +937,17 @@ def refresh_selected_pool_prices(
                                         mismatched.append("volume")
                             detail = f"mismatched_fields={','.join(mismatched)}" if mismatched else ""
                         if detail:
+                            relation = (
+                                " (Sina shares-to-lots normalization must reproduce "
+                                "governed lots at 100:1, relative tolerance 0.001)"
+                                if raw_tail_fallback
+                                else ""
+                            )
                             raise ValueError(
                                 "cutoff fallback differs from governed overlap price, "
                                 "adjustment or volume basis: "
                                 f"provider={response.result.provider}; overlap={fetch_start}; {detail}"
+                                f"{relation}"
                             )
                         if vol_scale != 1.0 and "volume" in fetched.columns:
                             fetched["volume"] = fetched["volume"] * vol_scale
