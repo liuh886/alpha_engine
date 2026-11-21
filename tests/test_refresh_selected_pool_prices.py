@@ -617,6 +617,99 @@ def test_cutoff_fallback_preserves_historical_overlap_volume_and_bytes(
     assert (source / "000001.csv").read_bytes() == original_bytes
 
 
+def test_cutoff_fallback_accepts_sina_fund_lot_normalized_overlap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A normalized Sina fund tail reproduces governed lots at 100:1 and appends."""
+
+    _prepare_contract(tmp_path, monkeypatch)
+    source = tmp_path / "source"
+    governed = _frame(dates=("2021-01-04", "2021-01-05"))
+    for symbol in ("000001", "000002", "000300"):
+        _write_csv(source / f"{symbol}.csv", governed)
+
+    # The Sina adapter already divided reported shares by 100, so the overlap
+    # volume equals the governed lot volume.
+    current = pd.concat([governed.tail(1), _frame(dates=("2021-01-06",))], ignore_index=True)
+    monkeypatch.setattr(module.time, "sleep", lambda _: None)
+
+    def fetch(provider, frame):
+        def run(req):
+            bars = frame.copy()
+            bars["date"] = pd.to_datetime(bars["date"])
+            return FetchResult(provider, req.symbol, req.market, req.start, req.end, bars, req.symbol)
+        return SimpleNamespace(name=provider, fetch_daily_bars=run)
+
+    router = MarketDataRouter(
+        adapters=[
+            fetch("tencent_qfq_history", governed.tail(1)),
+            fetch("akshare_sina_fund", current),
+        ],
+        policy={"cn": ["tencent_qfq_history", "akshare_sina_fund"]},
+    )
+
+    output = tmp_path / "output"
+    payload = module.refresh_selected_pool_prices(
+        root=tmp_path, market="cn", source_csv_dir=source, output_root=output,
+        start="2021-01-01", cutoff="2021-01-06", router=router,
+        max_rounds=1,
+    )
+
+    assert payload["status"] == "selected_pool_price_refresh_ready"
+    merged = pd.read_csv(output / "data/csv_source/000001.csv")
+    assert merged["date"].tolist() == ["2021-01-04", "2021-01-05", "2021-01-06"]
+    assert merged["volume"].tolist() == [100.0, 120.0, 100.0]
+
+
+def test_cutoff_fallback_rejects_sina_fund_unnormalized_share_overlap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Raw Sina shares (100x governed lots) must fail closed, not be absorbed."""
+
+    _prepare_contract(tmp_path, monkeypatch)
+    source = tmp_path / "source"
+    governed = _frame(dates=("2021-01-04", "2021-01-05"))
+    for symbol in ("000001", "000002", "000300"):
+        _write_csv(source / f"{symbol}.csv", governed)
+
+    current = pd.concat([governed.tail(1), _frame(dates=("2021-01-06",))], ignore_index=True)
+    # An unnormalized payload still reports shares: governed lots x 100.
+    current["volume"] *= 100.0
+    monkeypatch.setattr(module.time, "sleep", lambda _: None)
+
+    def fetch(provider, frame):
+        def run(req):
+            bars = frame.copy()
+            bars["date"] = pd.to_datetime(bars["date"])
+            return FetchResult(provider, req.symbol, req.market, req.start, req.end, bars, req.symbol)
+        return SimpleNamespace(name=provider, fetch_daily_bars=run)
+
+    router = MarketDataRouter(
+        adapters=[
+            fetch("tencent_qfq_history", governed.tail(1)),
+            fetch("akshare_sina_fund", current),
+        ],
+        policy={"cn": ["tencent_qfq_history", "akshare_sina_fund"]},
+    )
+
+    output = tmp_path / "output"
+    with pytest.raises(RuntimeError, match="refresh failed for symbols"):
+        module.refresh_selected_pool_prices(
+            root=tmp_path, market="cn", source_csv_dir=source, output_root=output,
+            start="2021-01-01", cutoff="2021-01-06", router=router,
+            max_rounds=1,
+        )
+    manifest = json.loads(
+        (output / "artifacts/selected_pool_price_refresh_manifest.json").read_text()
+    )
+    error = manifest["failures"][0]["error"]
+    assert "mismatched_fields=volume" in error
+    assert "100:1" in error
+    assert not (output / "data/csv_source/000001.csv").exists()
+
+
 
 def test_incremental_refresh_clips_repository_bootstrap_to_declared_window(
     tmp_path: Path,

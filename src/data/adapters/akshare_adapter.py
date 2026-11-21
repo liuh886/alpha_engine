@@ -143,13 +143,22 @@ def _normalize_eastmoney_frame(
     start: str,
     end: str,
     label: str,
+    convert_lots_to_shares: bool = True,
 ) -> pd.DataFrame:
     """Normalize an Eastmoney daily payload with the governed QFQ contract.
 
     Both the stock and fund endpoints expose the same Chinese schema and report
-    volume in lots (手). The canonical Alpha Engine unit is shares and turnover
-    is already CNY. Bars are sorted, deduplicated, windowed, and rejected when
-    OHLC is non-finite or non-positive; no fill or interpolation is applied.
+    volume in lots (手). CN **stocks** keep the canonical share unit, so their
+    lots are multiplied by 100. CN **ETFs/funds** keep provider lots because the
+    governed 515180 series is provider-reported lots (1 lot = 100 shares) and
+    mixing a share row into that series corrupts every volume-derived factor.
+    Turnover is already CNY on both endpoints. Bars are sorted, deduplicated,
+    windowed, and rejected when OHLC is non-finite or non-positive; no fill or
+    interpolation is applied.
+
+    ``convert_lots_to_shares`` selects the canonical unit: ``True`` for the
+    A-share stock path (default, unchanged) and ``False`` for the CN ETF/fund
+    path (governed lot basis).
     """
 
     if frame is None or frame.empty:
@@ -165,8 +174,10 @@ def _normalize_eastmoney_frame(
     out["date"] = pd.to_datetime(out["date"], errors="coerce")
     for column in ("open", "high", "low", "close", "volume", "amount"):
         out[column] = pd.to_numeric(out[column], errors="coerce")
-    # AKShare/Eastmoney reports volume in lots (手); the canonical unit is shares.
-    out["volume"] = out["volume"] * 100.0
+    # AKShare/Eastmoney reports volume in lots (手). CN stocks are normalized
+    # to the canonical share unit; CN ETFs/funds retain the governed lot basis.
+    if convert_lots_to_shares:
+        out["volume"] = out["volume"] * 100.0
 
     start_ts = pd.Timestamp(start)
     end_ts = pd.Timestamp(end)
@@ -321,11 +332,12 @@ def _fund_provenance(
         "source_schema": source_schema,
         "source_url": _FUND_SOURCE_URL,
         "terms_caveat": (
-            "Eastmoney fund endpoint reports volume in lots; the adapter converts "
-            "lots to canonical shares. Amount is provider-reported CNY."
+            "Eastmoney fund endpoint reports volume in lots (手); the adapter "
+            "retains the governed CN ETF lot basis (1 lot = 100 shares) without "
+            "a lot-to-share conversion. Amount is provider-reported CNY."
         ),
         "trade_ready": False,
-        "volume_basis": "shares",
+        "volume_basis": "lots",
     }
 
 
@@ -419,6 +431,7 @@ class AkShareAdapter:
                     start=beg,
                     end=end,
                     label="fund",
+                    convert_lots_to_shares=False,
                 )
                 content_hash, content_bytes = _frame_content_hash(out)
                 provenance = _fund_provenance(

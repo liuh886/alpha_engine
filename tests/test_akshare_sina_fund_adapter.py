@@ -84,8 +84,18 @@ def test_sina_fund_parses_date_objects_and_clips_window(
     # No fill: the 2026-11-20 gap is not invented.
     assert "2026-11-20" not in result.df["date"].dt.strftime("%Y-%m-%d").tolist()
     assert result.df["factor"].eq(1.0).all()
-    assert result.df["amount"].isna().all()
-    assert result.df["volume"].isna().all()
+    # Sina shares are normalized to the governed lot basis (divide by 100);
+    # provider-reported CNY amount is retained and not rescaled.
+    assert result.df["volume"].tolist() == pytest.approx(
+        [2175006.62, 2155006.62, 2185006.62]
+    )
+    assert result.df["amount"].tolist() == pytest.approx(
+        [
+            217_500_662.0 * 1.352,
+            215_500_662.0 * 1.358,
+            218_500_662.0 * 1.373,
+        ]
+    )
     assert result.df.columns.tolist() == [
         "date",
         "open",
@@ -98,7 +108,7 @@ def test_sina_fund_parses_date_objects_and_clips_window(
     ]
 
 
-def test_sina_fund_records_provider_provenance_and_withheld_basis(
+def test_sina_fund_records_provider_provenance_and_normalized_lot_basis(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[str] = []
@@ -116,8 +126,16 @@ def test_sina_fund_records_provider_provenance_and_withheld_basis(
     assert provenance["source_date_format"] == "date"
     assert "postVol" in provenance["source_schema"]
     assert provenance["price_basis"] == "provider_reported_raw"
-    assert provenance["volume_basis"] == "withheld_sina_reported_shares"
-    assert provenance["amount_basis"].startswith("withheld_")
+    assert (
+        provenance["volume_basis"]
+        == "lots_normalized_from_sina_shares_100_to_1"
+    )
+    assert provenance["amount_basis"] == "CNY_vendor_reported"
+    assert provenance["volume_normalization_factor"] == pytest.approx(0.01)
+    assert provenance["sina_shares_per_lot"] == pytest.approx(100.0)
+    assert provenance["sina_volume_unit"] == "shares_cny"
+    assert provenance["median_amount_over_volume_times_close"] == pytest.approx(1.0)
+    assert provenance["reconciled_rows"] == 3
     assert provenance["research_only"] is True
     assert provenance["trade_ready"] is False
     assert len(provenance["response_sha256"]) == 64
@@ -125,20 +143,20 @@ def test_sina_fund_records_provider_provenance_and_withheld_basis(
     assert provenance["first_date"] == "2026-11-17"
     assert provenance["last_date"] == "2026-11-19"
     assert "median" in provenance["terms_caveat"]
-    assert "withheld" in provenance["terms_caveat"]
+    assert "normalized" in provenance["terms_caveat"]
+    assert "100:1" in provenance["terms_caveat"]
 
 
-def test_sina_fund_classifies_lot_basis_without_fabricating_shares(
+def test_sina_fund_rejects_an_already_lot_basis_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[str] = []
+    # Reconcile to lots/CNY instead of shares/CNY: the adapter must fail closed
+    # rather than divide an already-lot series by 100 again.
     _install(monkeypatch, _sina_frame(volume_scale=0.01), calls)
 
-    result = AkShareSinaFundAdapter(min_interval_seconds=0.0).fetch_daily_bars(_request())
-
-    assert result.provenance is not None
-    assert result.provenance["volume_basis"] == "withheld_sina_reported_lots_cny"
-    assert result.df["volume"].isna().all()
+    with pytest.raises(DataFetchError, match="not on a reconcilable shares/CNY basis"):
+        AkShareSinaFundAdapter(min_interval_seconds=0.0).fetch_daily_bars(_request())
 
 
 def test_sina_fund_rejects_unreconcilable_units(
@@ -147,7 +165,7 @@ def test_sina_fund_rejects_unreconcilable_units(
     calls: list[str] = []
     _install(monkeypatch, _sina_frame(volume_scale=1000.0), calls)
 
-    with pytest.raises(DataFetchError, match="unrecognized volume/amount unit basis"):
+    with pytest.raises(DataFetchError, match="not on a reconcilable shares/CNY basis"):
         AkShareSinaFundAdapter(min_interval_seconds=0.0).fetch_daily_bars(_request())
 
 

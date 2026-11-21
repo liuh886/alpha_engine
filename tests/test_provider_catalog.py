@@ -39,6 +39,18 @@ def test_sina_is_independent_from_eastmoney():
     assert sina.amount_unit == "CNY"
 
 
+def test_cn_etf_fund_transports_declare_the_governed_lot_basis():
+    eastmoney = provider_capability("akshare")
+    sina_fund = provider_capability("akshare_sina_fund")
+    # The stock endpoint still emits canonical shares; the fund endpoint keeps
+    # provider lots, so the coarse provider contract must say so explicitly.
+    assert eastmoney.volume_unit == "shares_stock_lots_fund"
+    assert eastmoney.amount_unit == "CNY"
+    assert sina_fund.volume_unit == "lots"
+    assert sina_fund.amount_unit == "CNY"
+    assert sina_fund.price_mode == "raw_unadjusted"
+
+
 def test_tushare_availability_depends_on_explicit_token(monkeypatch):
     monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
     assert provider_capability("tushare").available is False

@@ -60,12 +60,14 @@ _OPTIONAL_GAP_KEYS = {
     "attempted_providers", "market", "reason", "role", "status", "symbol",
 }
 _SOURCE_PROVENANCE_KEYS = {
-    "amount_basis", "fetched_at_utc", "first_date", "last_date", "price_basis",
-    "provider", "provider_symbol", "requested_end", "requested_start",
-    "research_only", "response_bytes", "response_sha256", "retry_attempts",
-    "retry_history", "retry_outcome", "retry_policy", "rows",
+    "amount_basis", "fetched_at_utc", "first_date", "last_date",
+    "median_amount_over_volume_times_close", "price_basis",
+    "provider", "provider_symbol", "reconciled_rows", "requested_end",
+    "requested_start", "research_only", "response_bytes", "response_sha256",
+    "retry_attempts", "retry_history", "retry_outcome", "retry_policy", "rows",
+    "sina_shares_per_lot", "sina_volume_unit",
     "source_date_format", "source_schema", "source_url", "terms_caveat",
-    "trade_ready", "volume_basis",
+    "trade_ready", "volume_basis", "volume_normalization_factor",
 }
 _SOURCE_PROVENANCE_REQUIRED_KEYS = {
     "fetched_at_utc", "provider", "response_sha256", "source_url",
