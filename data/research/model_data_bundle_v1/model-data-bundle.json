@@ -1,6 +1,6 @@
 {
-  "built_at": "2026-11-21T12:35:26+00:00",
-  "bundle_id": "65eeb108db6c5f7afe34e4b36da5fb314cb426843a1c688cd66293894a8f4da8",
+  "built_at": "2026-11-21T12:53:44+00:00",
+  "bundle_id": "5a9f68182cf57f736afa5af6e2ed3ca3c5187d53f1826a8a22e01fab71cb2412",
   "components": [
     {
       "component_id": "corporate_actions.cn_selected_equities_v3",
@@ -263,7 +263,7 @@
       "invalid_symbols": [],
       "last_date": "2026-11-19",
       "manifest_path": "components/us-selected-pool-prices.json",
-      "manifest_sha256": "43f8eef7c616453e8506b765129545bce7a2bf250e3804f9ddbe86621450c948",
+      "manifest_sha256": "7d88ca9bd1471a96fdae166f5a938062b0cccce0920b0703cdef91379f24b571",
       "market": "us",
       "missing_symbols": [],
       "not_yet_applicable_symbols": [],
@@ -325,15 +325,15 @@
   "frontend_indexes": {
     "data_components": {
       "path": "data-components.json",
-      "sha256": "67dd605f76e354937e9ad053e9f02f6b9cec1ba282842bebd1ba8b030adc728e"
+      "sha256": "b8abe8963553cebd84bcc5774c4d11cc96d744e0cf3a353d0f6f316baafd6308"
     },
     "model_data_readiness": {
       "path": "model-data-readiness.json",
-      "sha256": "093f5758f8f9c7068accd30dc4b1f0e780c10dcbdd3209dff9aafd029b4f290e"
+      "sha256": "fc1cd48e6367269e0d473deb1854e31ba8db3c5c14fb0d52a45d09bb2cea0517"
     },
     "training_profiles": {
       "path": "training-profiles.json",
-      "sha256": "5ee327b9cc4fdc9709fe965fe4e015836e6109ff1b231b8aa189926d51e11774"
+      "sha256": "0376b9cdd2fd06f72f7e59888b9182860819ab66d5b8279e00651bd56025cbd5"
     }
   },
   "research_only": true,
@@ -832,7 +832,7 @@
             "invalid_symbols": [],
             "last_date": "2026-11-19",
             "manifest_path": "components/us-selected-pool-prices.json",
-            "manifest_sha256": "43f8eef7c616453e8506b765129545bce7a2bf250e3804f9ddbe86621450c948",
+            "manifest_sha256": "7d88ca9bd1471a96fdae166f5a938062b0cccce0920b0703cdef91379f24b571",
             "market": "us",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -914,7 +914,7 @@
             "invalid_symbols": [],
             "last_date": "2026-11-19",
             "manifest_path": "components/us-selected-pool-prices.json",
-            "manifest_sha256": "43f8eef7c616453e8506b765129545bce7a2bf250e3804f9ddbe86621450c948",
+            "manifest_sha256": "7d88ca9bd1471a96fdae166f5a938062b0cccce0920b0703cdef91379f24b571",
             "market": "us",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -981,7 +981,7 @@
             "invalid_symbols": [],
             "last_date": "2026-11-19",
             "manifest_path": "components/us-selected-pool-prices.json",
-            "manifest_sha256": "43f8eef7c616453e8506b765129545bce7a2bf250e3804f9ddbe86621450c948",
+            "manifest_sha256": "7d88ca9bd1471a96fdae166f5a938062b0cccce0920b0703cdef91379f24b571",
             "market": "us",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
