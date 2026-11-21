@@ -1,0 +1,59 @@
+{
+  "allowlist": {
+    "515180": {
+      "2026-11-17": {
+        "before_volume": 249556800.0,
+        "shares_per_lot": 100.0
+      }
+    }
+  },
+  "applied": true,
+  "catalog": {
+    "after": {
+      "catalog_sha256": "23d9f4a8b403f734c0e1ae5ab682ed47d55e38835d48f73d29deaf552bd9ecd1",
+      "symbol_count": 137,
+      "symbols": {
+        "515180": "8daf639244621267a5ac625e99bd6d100f96c9a64082de526faecd0c6a6d9429"
+      }
+    },
+    "before": {
+      "catalog_sha256": "551b7e13cf49de75f6f98bff38e297c226fbc6aaab46575e949c172fb209715b",
+      "symbol_count": 137,
+      "symbols": {
+        "515180": "478e846e77714266c90348e381328b5d707d452409f6a37a71aae568034899a8"
+      }
+    }
+  },
+  "corrections": [
+    {
+      "after_volume": 2495568.0,
+      "before_volume": 249556800.0,
+      "local_neighbour_median": 2844526.0,
+      "local_neighbour_ratio_after": 0.877322970505455,
+      "reason": "Published from the #1472 Eastmoney fund path, which converted provider lots to shares (x100). The governed CN ETF series is provider-reported lots, so the row must be divided by 100.",
+      "session": "2026-11-17",
+      "shares_per_lot": 100.0,
+      "symbol": "515180",
+      "symbol_sha256_after": "8daf639244621267a5ac625e99bd6d100f96c9a64082de526faecd0c6a6d9429",
+      "symbol_sha256_before": "478e846e77714266c90348e381328b5d707d452409f6a37a71aae568034899a8"
+    }
+  ],
+  "derived_series_note": "Only bars[].volume is corrected. Volume-derived factor_series rows for 2026-11-17 and their rolling windows are not recomputed here; they remain as published until the next governed market-evidence rebuild.",
+  "generated_at_utc": "2026-11-21T12:51:42+00:00",
+  "market": "cn",
+  "provider_evidence": {
+    "cross_vendor_check": "Sina fund_etf_hist_sina volume / governed volume == 100.0000 over 1,403 overlap rows; Sina shares map 100:1 to governed lots",
+    "eastmoney_check": "fund_etf_hist_em reports volume in \u624b (lots) and \u6210\u4ea4\u989d in CNY; #1472's lot-to-share conversion produced the 100x row",
+    "governed_series_basis": "provider_reported_lots",
+    "governed_source_transport": "tencent_qfq_history",
+    "offending_path": "akshare fund_etf_hist_em (#1472) multiplied lots by 100",
+    "post_correction_neighbour_example": {
+      "2026-11-19": 2185007.0,
+      "2026-11-20": 3051139.0
+    }
+  },
+  "receipt_path": "docs\\evidence\\cn_etf_volume_basis_2026-11-21\\correction-receipt.json",
+  "research_only": true,
+  "schema_version": "cn_etf_volume_basis_correction_v1",
+  "trade_ready": false
+}
