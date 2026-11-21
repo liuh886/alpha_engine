@@ -8,14 +8,14 @@
     "source_identity": {
       "bundle_id": "qqqi_qqq_tqqq_sgov_vix_vxn_strategy_data_v1",
       "component_id": "strategy.qqqi_qqq_tqqq_sgov_vix_vxn_v1",
-      "component_manifest_sha256": "1bd43375d22c4b938f9aead0c7920cb0b7501c3ca67beb3082fed9d86c3166cf",
+      "component_manifest_sha256": "6572eca95ad4e14032fa23ba570495b41cc3e90ea8f39df10a55406199464d4d",
       "data_mode": "governed_strategy_data_bundle",
       "first_date": "2010-01-04",
-      "last_date": "2026-11-18",
+      "last_date": "2026-11-19",
       "path": "canonical/QQQ.csv",
       "provider": "yfinance",
-      "rows": 4246,
-      "sha256": "ae91d2c9a523607084237958033e592fd5b7f79a93b9661c99b5bf249014f6ce",
+      "rows": 4247,
+      "sha256": "521df22a8d6b65fb59eda6213dfba3fa7ffb7ce18b1982e3cfabb4630f09d03f",
       "source_role": "tradable"
     }
   },
@@ -36,30 +36,30 @@
     {
       "bytes": 3331,
       "manifest_section": null,
-      "path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_18/manifest.json",
+      "path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_19/manifest.json",
       "role": "formal_manifest",
-      "sha256": "22110eae6f432d73f0e08fb37ecc9f917503dab20f1e77847784333ba99fe42d"
+      "sha256": "a69b18c6fc3fb8319d80ebec450f52593e548c402327b5d9585941ffa2300f53"
     },
     {
       "bytes": 5042,
       "manifest_section": "summary",
-      "path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_18/summary.json",
+      "path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_19/summary.json",
       "role": "formal_summary",
-      "sha256": "8f5c4526bbc40b7771068c6a2c9048ce7741bcde4558679d8e047a7f5a680292"
+      "sha256": "57f5a9cb38686e62abf6ef9893e318e129a5bb21321640f940c8a8b5faadd00a"
     },
     {
-      "bytes": 392102,
+      "bytes": 392693,
       "manifest_section": "performance",
-      "path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_18/performance.json",
+      "path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_19/performance.json",
       "role": "formal_performance",
-      "sha256": "a1f60839a91366c4d3c85b1ab79288319bcd7d5abc3f686ca47629032bc1473d"
+      "sha256": "389165a6e6bb81fc11cfca13b213c8fdb57f269b8b98bc053f7a6a2b3d1d4607"
     },
     {
       "bytes": 5516,
       "manifest_section": "lineage",
-      "path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_18/lineage.json",
+      "path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_19/lineage.json",
       "role": "formal_lineage",
-      "sha256": "9472e90c69994974011bc8ec27a579eaa92b3fa86e43273291a69dc1e531508f"
+      "sha256": "d3ac700783d05aeb8acc8209fef8b353af9e0e4a9dc67bee0c531d684556e052"
     }
   ],
   "method": {
@@ -77,37 +77,37 @@
   "reconciliation": {
     "benchmark_return_absolute_difference": 0.0,
     "sealed_summary_modified": false,
-    "summary_benchmark_return": 0.5699661411262558,
+    "summary_benchmark_return": 0.5938589369854765,
     "summary_excess_return_availability": "not_retained",
-    "summary_sample_count": 704,
-    "summary_total_return": 0.8453474353471957,
+    "summary_sample_count": 705,
+    "summary_total_return": 0.8719395802113634,
     "tolerance": 1e-12,
     "total_return_absolute_difference": 0.0
   },
   "result": {
-    "benchmark_cumulative_return": 0.5699661411262558,
-    "excess_return": 0.17540588106147825,
-    "strategy_cumulative_return": 0.8453474353471957
+    "benchmark_cumulative_return": 0.5938589369854765,
+    "excess_return": 0.17447004673564837,
+    "strategy_cumulative_return": 0.8719395802113634
   },
   "schema_version": "1.0",
   "strategy": {
-    "bundle_id": "269a93618920af101c22c63d5f84411a650a8360be12dc9b874d50334edcadca",
-    "generated_at": "2026-11-19T05:23:26Z",
-    "manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_18/manifest.json",
-    "manifest_sha256": "22110eae6f432d73f0e08fb37ecc9f917503dab20f1e77847784333ba99fe42d",
+    "bundle_id": "20c14bb895ae5ee4af447055bae2701cdc45e4eafa1a5fcc02f50c8407bb7046",
+    "generated_at": "2026-11-21T07:49:35Z",
+    "manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_19/manifest.json",
+    "manifest_sha256": "a69b18c6fc3fb8319d80ebec450f52593e548c402327b5d9585941ffa2300f53",
     "model_family_id": "qqq_rotation",
     "model_kind": "rules_based_allocation",
     "model_version_id": "qqqi_qqq_tqqq_v4_3",
     "publication_status": "accepted_formal_baseline",
-    "run_id": "qqqi_qqq_tqqq_v4_3-through-2026_11_18"
+    "run_id": "qqqi_qqq_tqqq_v4_3-through-2026_11_19"
   },
   "window": {
-    "declared_end": "2026-11-17",
+    "declared_end": "2026-11-18",
     "declared_start": "2024-01-30",
-    "evidence_cutoff": "2026-11-18",
+    "evidence_cutoff": "2026-11-19",
     "holding_end_offset_sessions": 1,
-    "observation_count": 704,
-    "observed_end": "2026-11-17",
+    "observation_count": 705,
+    "observed_end": "2026-11-18",
     "observed_start": "2024-01-30",
     "price_basis": "governed_adjusted_open",
     "trace_frequency": "daily_open_to_open"
