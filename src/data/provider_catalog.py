@@ -85,6 +85,24 @@ _PROVIDER_CATALOG: dict[str, ProviderCapability] = {
         trade_calendar=False,
         usage_note="Public Eastmoney transport through AKShare; endpoint stability is not guaranteed.",
     ),
+    "akshare_sina_fund": ProviderCapability(
+        name="akshare_sina_fund",
+        source_family="sina_finance",
+        independent_group="sina_finance",
+        markets=("cn",),
+        price_mode="raw_unadjusted",
+        volume_unit="withheld_vendor_basis_conflict",
+        amount_unit="withheld_vendor_basis_conflict",
+        corporate_actions=False,
+        trade_calendar=False,
+        usage_note=(
+            "Independent Sina ETF/fund history transport used only after the "
+            "Eastmoney fund endpoint exhausts bounded retries. Prices are "
+            "provider-reported raw (no adjustment parameter); volume/amount are "
+            "withheld because the Sina share/CNY basis cannot be mixed with the "
+            "governed provider-reported lot/synthetic-amount basis."
+        ),
+    ),
     "efinance": ProviderCapability(
         name="efinance",
         source_family="eastmoney",

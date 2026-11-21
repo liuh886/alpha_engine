@@ -6,8 +6,25 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from src.data.adapters.akshare_adapter import AkShareAdapter
-from src.data.adapters.base import DataFetchError, FetchRequest
+from src.data.adapters.akshare_adapter import (
+    AkShareAdapter,
+    _translate_fund_transport_error,
+)
+from src.data.adapters.base import (
+    DataFetchError,
+    FetchRequest,
+    ProviderRateLimitError,
+    ProviderUnavailableError,
+)
+from src.data.provider_retry import RetryPolicy
+
+NO_DELAY = RetryPolicy(
+    max_attempts=3,
+    base_delay_seconds=0.0,
+    max_delay_seconds=0.0,
+    max_honored_retry_after_seconds=30.0,
+    jitter_ratio=0.0,
+)
 
 
 def _fund_etf_frame() -> pd.DataFrame:
@@ -379,3 +396,141 @@ def test_cn_etf_empty_payload_fails_closed(
             )
         )
 
+
+
+def _fund_akshare(monkeypatch: pytest.MonkeyPatch, endpoint) -> None:
+    monkeypatch.setitem(
+        sys.modules,
+        "akshare",
+        SimpleNamespace(
+            stock_zh_index_daily=lambda **_: pd.DataFrame(),
+            stock_zh_a_hist=lambda **_: pd.DataFrame(),
+            fund_etf_hist_em=endpoint,
+        ),
+    )
+
+
+def _fund_request() -> FetchRequest:
+    return FetchRequest(
+        symbol="515180",
+        market="cn",
+        start="2026-11-10",
+        end="2026-11-19",
+    )
+
+
+def test_cn_etf_fund_endpoint_retries_transient_then_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[int] = []
+
+    def fund_etf_hist_em(**_: object) -> pd.DataFrame:
+        calls.append(len(calls) + 1)
+        if len(calls) < 3:
+            raise ConnectionResetError("Remote end closed connection without response")
+        return _fund_etf_frame()
+
+    _fund_akshare(monkeypatch, fund_etf_hist_em)
+
+    result = AkShareAdapter(fund_retry_policy=NO_DELAY).fetch_daily_bars(_fund_request())
+
+    assert len(calls) == 3
+    assert result.provider == "akshare"
+    assert result.provenance is not None
+    assert result.provenance["retry_attempts"] == 3
+    assert result.provenance["retry_outcome"] == "succeeded_after_retry"
+    assert len(result.provenance["retry_history"]) == 2
+    assert all(
+        record["retryable"] is True for record in result.provenance["retry_history"]
+    )
+    assert result.provenance["retry_policy"]["max_honored_retry_after_seconds"] == 30.0
+    assert result.provenance["volume_basis"] == "shares"
+    assert result.provenance["price_basis"] == "qfq_adjusted"
+
+
+def test_cn_etf_fund_endpoint_exhausts_bounded_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[int] = []
+
+    def fund_etf_hist_em(**_: object) -> pd.DataFrame:
+        calls.append(len(calls) + 1)
+        raise ConnectionResetError("Remote end closed connection without response")
+
+    _fund_akshare(monkeypatch, fund_etf_hist_em)
+
+    with pytest.raises(DataFetchError, match=r"after 3 attempt\(s\) \(exhausted\)"):
+        AkShareAdapter(fund_retry_policy=NO_DELAY).fetch_daily_bars(_fund_request())
+    assert len(calls) == 3
+
+
+def test_cn_etf_fund_endpoint_does_not_retry_non_transient(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[int] = []
+
+    def fund_etf_hist_em(**_: object) -> pd.DataFrame:
+        calls.append(len(calls) + 1)
+        raise KeyError("unexpected provider schema")
+
+    _fund_akshare(monkeypatch, fund_etf_hist_em)
+
+    with pytest.raises(DataFetchError, match=r"after 1 attempt\(s\) \(not_retried\)"):
+        AkShareAdapter(fund_retry_policy=NO_DELAY).fetch_daily_bars(_fund_request())
+    assert len(calls) == 1
+
+
+def test_cn_etf_fund_endpoint_honours_retry_after_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[int] = []
+
+    def fund_etf_hist_em(**_: object) -> pd.DataFrame:
+        calls.append(len(calls) + 1)
+        raise ProviderRateLimitError("quota window", retry_after_seconds=3600.0)
+
+    _fund_akshare(monkeypatch, fund_etf_hist_em)
+
+    with pytest.raises(DataFetchError, match=r"after 1 attempt\(s\) \(not_retried\)"):
+        AkShareAdapter(fund_retry_policy=NO_DELAY).fetch_daily_bars(_fund_request())
+    assert len(calls) == 1
+
+
+def _requests_http_error(status: int, retry_after: str | None) -> Exception:
+    class Response:
+        status_code = status
+        headers = {} if retry_after is None else {"Retry-After": retry_after}
+
+    class HTTPError(Exception):
+        response = Response()
+
+    HTTPError.__module__ = "requests.exceptions"
+    return HTTPError("synthetic")
+
+
+def test_fund_transport_error_translation_classifies_http_status() -> None:
+    rate_limited = _translate_fund_transport_error(_requests_http_error(429, "12"))
+    assert isinstance(rate_limited, ProviderRateLimitError)
+    assert rate_limited.retry_after_seconds == 12.0
+
+    unavailable = _translate_fund_transport_error(_requests_http_error(503, None))
+    assert isinstance(unavailable, ProviderUnavailableError)
+
+    not_found = _requests_http_error(404, None)
+    assert _translate_fund_transport_error(not_found) is not_found
+
+    class ConnectionError(Exception):
+        pass
+
+    ConnectionError.__module__ = "requests.exceptions"
+    assert isinstance(
+        _translate_fund_transport_error(ConnectionError("connection aborted")),
+        ProviderUnavailableError,
+    )
+
+    class JSONDecodeError(ValueError):
+        pass
+
+    JSONDecodeError.__module__ = "requests.exceptions"
+    decode_error = JSONDecodeError("not json")
+    assert _translate_fund_transport_error(decode_error) is decode_error

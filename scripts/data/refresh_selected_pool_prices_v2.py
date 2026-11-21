@@ -26,6 +26,7 @@ from scripts.data.refresh_selected_pool_prices import (
 )
 from src.data.adapters.akshare_adapter import AkShareAdapter
 from src.data.adapters.akshare_sina_adapter import AkShareSinaAdapter
+from src.data.adapters.akshare_sina_fund_adapter import AkShareSinaFundAdapter
 from src.data.adapters.baostock_adapter import BaoStockAdapter
 from src.data.adapters.base import MarketDataAdapter
 from src.data.adapters.cboe_vix_adapter import CboeVixAdapter
@@ -146,6 +147,14 @@ def build_hardened_router(market: str) -> MarketDataRouter:
                 BaoStockAdapter(),
                 EFinanceAdapter(),
                 YFinanceAdapter(),
+                # The Sina ETF/fund transport is an explicit, volume-withholding
+                # last resort. It runs only after the Eastmoney fund endpoint
+                # (akshare) exhausts its bounded transport retry AND after the
+                # governed Yahoo formal-auxiliary fallback. Keeping it last
+                # preserves the existing Yahoo fallback authorization, which
+                # requires every preferred provider ahead of Yahoo to fail.
+                # It rejects non-ETF symbols without a network call.
+                AkShareSinaFundAdapter(),
             ]
         )
         providers.extend(
@@ -155,6 +164,7 @@ def build_hardened_router(market: str) -> MarketDataRouter:
                 "baostock",
                 "efinance",
                 "yfinance",
+                "akshare_sina_fund",
             ]
         )
     elif market_key == "us":

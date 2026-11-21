@@ -30,6 +30,7 @@ def test_hardened_cn_router_uses_independent_sources_before_yahoo(monkeypatch):
         "baostock",
         "efinance",
         "yfinance",
+        "akshare_sina_fund",
     ]
 
 
@@ -51,7 +52,12 @@ def test_cn_readiness_cannot_select_quarantined_yahoo_for_candidates_or_benchmar
     assert router.providers_for_request("cn", "300017")[0] == "tencent_qfq_history"
     assert router.providers_for_request("cn", "000300")[0] == "akshare"
     for symbol in FORMAL_MARKET_AUXILIARIES["cn"]:
-        assert router.providers_for_request("cn", symbol)[-1] == "yfinance"
+        chain = router.providers_for_request("cn", symbol)
+        # The governed Yahoo formal-auxiliary fallback stays reachable and is
+        # considered before the raw Sina last resort.
+        assert "yfinance" in chain
+        assert chain[-1] == "akshare_sina_fund"
+        assert chain.index("yfinance") < chain.index("akshare_sina_fund")
 
 
 def test_formal_refresh_bounds_provider_process_without_threads_or_global_patches():
@@ -74,6 +80,7 @@ def test_hardened_cn_router_enables_tushare_only_with_token(monkeypatch):
         "baostock",
         "efinance",
         "yfinance",
+        "akshare_sina_fund",
     ]
 
 
@@ -220,6 +227,7 @@ def test_cn_formal_auxiliary_allows_proven_last_resort_yahoo_fallback(
                         "attempts": [
                             {"provider": "akshare_sina", "ok": False},
                             {"provider": "akshare", "ok": False},
+                            {"provider": "akshare_sina_fund", "ok": False},
                             {"provider": "baostock", "ok": False},
                             {"provider": "efinance", "ok": False},
                             {"provider": "tencent_qfq_history", "ok": False},
@@ -723,4 +731,273 @@ def test_cn_auxiliary_515180_materializes_from_fund_etf_fixture(
     # Eastmoney lots become canonical shares, matching the stock path.
     assert materialized["volume"].tolist() == [100000.0, 110000.0, 120000.0]
     assert materialized["factor"].eq(1.0).all()
+
+
+class _SyntheticBaoStockAdapter:
+    """Synthetic working provider for non-515180 symbols in fallback tests."""
+
+    name = "baostock"
+
+    def fetch_daily_bars(self, req):
+        import pandas as pd
+
+        from src.data.adapters.base import FetchResult
+        from test_refresh_selected_pool_prices import _frame
+
+        frame = _frame(2.0, dates=("2021-01-05", "2021-01-06"))
+        frame["date"] = pd.to_datetime(frame["date"])
+        return FetchResult(
+            provider="baostock",
+            symbol=req.symbol,
+            market=req.market,
+            start=req.start,
+            end=req.end,
+            df=frame,
+            provider_symbol=req.symbol,
+        )
+
+
+def _install_515180_fallback_akshare(
+    monkeypatch,
+    *,
+    fund_error: Exception,
+    sina_frame,
+    fund_calls: list[dict[str, object]] | None = None,
+    sina_calls: list[str] | None = None,
+) -> None:
+    import sys
+    from types import SimpleNamespace
+
+    import pandas as pd
+
+    calls = fund_calls if fund_calls is not None else []
+    sina = sina_calls if sina_calls is not None else []
+
+    def fund_etf_hist_em(**kwargs: object) -> pd.DataFrame:
+        calls.append(kwargs)
+        raise fund_error
+
+    def fund_etf_hist_sina(*, symbol: str) -> pd.DataFrame:
+        sina.append(symbol)
+        return sina_frame
+
+    monkeypatch.setitem(
+        sys.modules,
+        "akshare",
+        SimpleNamespace(
+            fund_etf_hist_em=fund_etf_hist_em,
+            fund_etf_hist_sina=fund_etf_hist_sina,
+            stock_zh_a_hist=lambda **_: pd.DataFrame(),
+            stock_zh_index_daily=lambda **_: pd.DataFrame(),
+        ),
+    )
+
+
+def _no_delay_retry(max_attempts: int = 3):
+    from src.data.provider_retry import RetryPolicy
+
+    return RetryPolicy(
+        max_attempts=max_attempts,
+        base_delay_seconds=0.0,
+        max_delay_seconds=0.0,
+        max_honored_retry_after_seconds=30.0,
+        jitter_ratio=0.0,
+    )
+
+
+def test_cn_515180_retry_exhaustion_falls_back_to_sina_with_withheld_volume(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import datetime as dt
+
+    import pandas as pd
+
+    from src.data.adapters.akshare_adapter import AkShareAdapter
+    from src.data.adapters.akshare_sina_fund_adapter import AkShareSinaFundAdapter
+    from src.data.router import MarketDataRouter
+    from test_refresh_selected_pool_prices import _prepare_contract, _write_csv
+
+    _prepare_contract(tmp_path, monkeypatch)
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+
+    source = tmp_path / "seed"
+    from test_refresh_selected_pool_prices import _frame
+
+    # The pool and benchmark are stale and refreshed by the synthetic provider
+    # so every required symbol reaches the cutoff.
+    for symbol in ("000001", "000002", "000300"):
+        _write_csv(source / f"{symbol}.csv", _frame())
+    # Governed 515180 seed: provider-reported lots and synthetic amount.
+    _write_csv(
+        source / "515180.csv",
+        pd.DataFrame(
+            {
+                "date": ["2021-01-04", "2021-01-05"],
+                "open": [1.330, 1.342],
+                "high": [1.350, 1.362],
+                "low": [1.320, 1.332],
+                "close": [1.340, 1.352],
+                "volume": [1000.0, 1100.0],
+                "amount": [1340.0, 1487.2],
+                "factor": [1.0, 1.0],
+            }
+        ),
+    )
+
+    fund_calls: list[dict[str, object]] = []
+    sina_calls: list[str] = []
+    _install_515180_fallback_akshare(
+        monkeypatch,
+        fund_error=ConnectionResetError("Remote end closed connection without response"),
+        sina_frame=pd.DataFrame(
+            {
+                "date": [dt.date(2021, 1, 5), dt.date(2021, 1, 6)],
+                "open": [1.342, 1.360],
+                "high": [1.362, 1.380],
+                "low": [1.332, 1.350],
+                "close": [1.352, 1.373],
+                "volume": [110000.0, 120000.0],
+                "amount": [148720.0, 164760.0],
+                "postVol": [0.0, 0.0],
+                "postAmt": [0.0, 0.0],
+            }
+        ),
+        fund_calls=fund_calls,
+        sina_calls=sina_calls,
+    )
+
+    router = MarketDataRouter(
+        adapters=[
+            _SyntheticBaoStockAdapter(),
+            AkShareAdapter(fund_retry_policy=_no_delay_retry(3)),
+            AkShareSinaFundAdapter(min_interval_seconds=0.0),
+        ],
+        policy={
+            "cn": ["baostock", "akshare", "akshare_sina_fund"],
+            "cn:515180": ["akshare", "akshare_sina_fund"],
+        },
+    )
+    output = tmp_path / "provider"
+
+    result = refresh_selected_pool_prices_v2(
+        root=tmp_path,
+        market="cn",
+        source_csv_dir=source,
+        output_root=output,
+        start="2021-01-01",
+        cutoff="2021-01-06",
+        max_rounds=1,
+        auxiliary_symbols=["515180"],
+        router=router,
+    )
+
+    assert result["status"] == "selected_pool_price_refresh_ready"
+    assert result["promotion_eligible"] is True
+    assert result["unresolved_stale_symbols"] == []
+    # The Eastmoney fund endpoint is retried three times before the fallback.
+    assert len(fund_calls) == 3
+    record = next(record for record in result["records"] if record["symbol"] == "515180")
+    akshare_attempt = next(
+        attempt for attempt in record["attempts"] if attempt["provider"] == "akshare"
+    )
+    assert "after 3 attempt(s) (exhausted)" in akshare_attempt["error"]
+    assert sina_calls == ["sh515180"]
+
+    assert record["action"] == "fetched_incremental_update"
+    assert record["provider"] == "akshare_sina_fund"
+    assert record["provider_symbol"] == "sh515180"
+    provenance = record["source_provenance"]
+    assert provenance["provider"] == "akshare_sina_fund"
+    assert provenance["price_basis"] == "provider_reported_raw"
+    assert provenance["volume_basis"] == "withheld_sina_reported_shares"
+    assert provenance["amount_basis"].startswith("withheld_")
+    assert provenance["research_only"] is True
+    assert provenance["trade_ready"] is False
+
+    publication = load_selected_pool_price_publication_manifest(
+        output / "artifacts" / PUBLICATION_MANIFEST_NAME
+    )
+    assert publication["selected_providers"]["515180"] == "akshare_sina_fund"
+    published_record = next(
+        row for row in publication["records"] if row["symbol"] == "515180"
+    )
+    assert published_record["source_provenance"]["volume_basis"] == (
+        "withheld_sina_reported_shares"
+    )
+
+    materialized = pd.read_csv(output / "data" / "csv_source" / "515180.csv")
+    assert materialized["date"].tolist() == ["2021-01-04", "2021-01-05", "2021-01-06"]
+    assert materialized["close"].tolist() == [1.340, 1.352, 1.373]
+    # The governed overlap is preserved exactly; only the new session is appended.
+    assert materialized["volume"].iloc[:2].tolist() == [1000.0, 1100.0]
+    assert pd.isna(materialized["volume"].iloc[2])
+    assert materialized["amount"].iloc[:2].tolist() == [1340.0, 1487.2]
+    assert pd.isna(materialized["amount"].iloc[2])
+
+
+def test_cn_515180_sina_fallback_cannot_replace_governed_history(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import pandas as pd
+
+    from src.data.adapters.akshare_adapter import AkShareAdapter
+    from src.data.adapters.akshare_sina_fund_adapter import AkShareSinaFundAdapter
+    from src.data.router import MarketDataRouter
+    from test_refresh_selected_pool_prices import _frame, _prepare_contract, _write_csv
+
+    _prepare_contract(tmp_path, monkeypatch)
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+
+    source = tmp_path / "seed"
+    for symbol in ("000001", "000002", "000300", "515180"):
+        _write_csv(source / f"{symbol}.csv", _frame())
+
+    _install_515180_fallback_akshare(
+        monkeypatch,
+        fund_error=ConnectionResetError("closed"),
+        sina_frame=pd.DataFrame(
+            {
+                "date": ["2021-01-04", "2021-01-05"],
+                "open": [1.0, 1.1],
+                "high": [1.2, 1.3],
+                "low": [0.9, 1.0],
+                "close": [1.1, 1.2],
+                "volume": [1000.0, 1100.0],
+                "amount": [1100.0, 1320.0],
+                "postVol": [0.0, 0.0],
+                "postAmt": [0.0, 0.0],
+            }
+        ),
+    )
+
+    router = MarketDataRouter(
+        adapters=[
+            _SyntheticBaoStockAdapter(),
+            AkShareAdapter(fund_retry_policy=_no_delay_retry(1)),
+            AkShareSinaFundAdapter(min_interval_seconds=0.0),
+        ],
+        policy={
+            "cn": ["baostock", "akshare", "akshare_sina_fund"],
+            "cn:515180": ["akshare", "akshare_sina_fund"],
+        },
+    )
+    output = tmp_path / "provider"
+
+    with pytest.raises(RuntimeError, match="selected-pool refresh failed for symbols"):
+        refresh_selected_pool_prices_v2(
+            root=tmp_path,
+            market="cn",
+            source_csv_dir=source,
+            output_root=output,
+            start="2021-01-01",
+            cutoff="2021-01-06",
+            max_rounds=1,
+            full_refresh=True,
+            auxiliary_symbols=["515180"],
+            router=router,
+        )
+    manifest = json.loads((output / MANIFEST_RELATIVE_PATH).read_text(encoding="utf-8"))
+    failure = next(row for row in manifest["failures"] if row["symbol"] == "515180")
+    assert "raw-price incremental tail fallback" in failure["error"]
+    assert not (output / "artifacts" / PUBLICATION_MANIFEST_NAME).exists()
 
