@@ -27,10 +27,10 @@ def test_hardened_cn_router_uses_independent_sources_before_yahoo(monkeypatch):
         "tencent_qfq_history",
         "akshare_sina",
         "akshare",
-        "akshare_sina_fund",
         "baostock",
         "efinance",
         "yfinance",
+        "akshare_sina_fund",
     ]
 
 
@@ -52,7 +52,12 @@ def test_cn_readiness_cannot_select_quarantined_yahoo_for_candidates_or_benchmar
     assert router.providers_for_request("cn", "300017")[0] == "tencent_qfq_history"
     assert router.providers_for_request("cn", "000300")[0] == "akshare"
     for symbol in FORMAL_MARKET_AUXILIARIES["cn"]:
-        assert router.providers_for_request("cn", symbol)[-1] == "yfinance"
+        chain = router.providers_for_request("cn", symbol)
+        # The governed Yahoo formal-auxiliary fallback stays reachable and is
+        # considered before the raw Sina last resort.
+        assert "yfinance" in chain
+        assert chain[-1] == "akshare_sina_fund"
+        assert chain.index("yfinance") < chain.index("akshare_sina_fund")
 
 
 def test_formal_refresh_bounds_provider_process_without_threads_or_global_patches():
@@ -72,10 +77,10 @@ def test_hardened_cn_router_enables_tushare_only_with_token(monkeypatch):
         "tushare",
         "akshare_sina",
         "akshare",
-        "akshare_sina_fund",
         "baostock",
         "efinance",
         "yfinance",
+        "akshare_sina_fund",
     ]
 
 
