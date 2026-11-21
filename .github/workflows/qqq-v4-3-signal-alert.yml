@@ -80,8 +80,10 @@ jobs:
     env:
       # Signal evaluation produces a derived alert/ledger entry, not a
       # republication of raw vendor bars; the internal-use Tiingo free tier is
-      # primary here with Yahoo as the governed fallback.
+      # primary here with Yahoo as the governed fallback and Twelve Data as the
+      # last internal-only fallback.
       TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+      TWELVE_DATA_API_TOKEN: ${{ secrets.TWELVE_DATA_API_TOKEN }}
     steps:
       - uses: actions/checkout@v6
         with:

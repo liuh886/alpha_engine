@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -111,6 +112,21 @@ class RateLimitedAdapter:
             retry_after_seconds=3600.0,
             rate_limit_reset="next-hour",
         )
+
+
+@dataclass
+class FailingAdapter:
+    _name: str
+    error: Exception
+    calls: int = 0
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def fetch_daily_bars(self, req: FetchRequest) -> FetchResult:
+        self.calls += 1
+        raise self.error
 
 
 def _fallback_frames() -> dict[str, pd.DataFrame]:
@@ -429,3 +445,71 @@ def test_reconciliation_can_explain_action_window_difference() -> None:
         settings=_reconciliation_settings(),
     )
     assert result["status"] == "explainable_corporate_action_difference"
+
+
+def test_twelve_data_is_last_fallback_after_tiingo_and_yahoo(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.delenv("TWELVE_DATA_API_TOKEN", raising=False)
+    yahoo = FailingAdapter("yfinance", DataFetchError("yahoo unavailable"))
+    manifest = build_etf_reference_bundle(
+        contract_path=CONTRACT,
+        output_root=tmp_path,
+        primary_adapter=FakeAdapter("tiingo", _primary_frames()),
+        fallback_adapter=yahoo,
+        twelve_data_adapter=FakeAdapter("twelve_data", _fallback_frames()),
+    )
+
+    assert manifest["provider_order"] == ["tiingo", "yfinance", "twelve_data"]
+    assert manifest["selected_providers"] == {
+        "QQQ": "tiingo",
+        "QQQI": "tiingo",
+        "TQQQ": "tiingo",
+    }
+    assert manifest["strategy_data_ready"] is True
+    assert manifest["professional_source_ready"] is False
+    assert manifest["provider_contracts"]["twelve_data"]["independent_group"] == "twelve_data"
+    coverage = pd.read_csv(tmp_path / "coverage.csv")
+    attempts = coverage["provider_attempts"].map(json.loads)
+    assert {record["twelve_data"]["ok"] for record in attempts} == {True}
+    assert {record["yfinance"]["error_class"] for record in attempts} == {"data_fetch_error"}
+    assert any("twelve_data" in path for path in manifest["files"])
+
+
+def test_yahoo_research_chain_uses_twelve_data_only_when_yahoo_fails(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.delenv("TIINGO_API_TOKEN", raising=False)
+    monkeypatch.delenv("TWELVE_DATA_API_TOKEN", raising=False)
+    manifest = build_etf_reference_bundle(
+        contract_path=RESEARCH_CONTRACT,
+        output_root=tmp_path,
+        end="2024-03-15",
+        fallback_adapter=FailingAdapter("yfinance", DataFetchError("yahoo rate limited")),
+        twelve_data_adapter=FakeAdapter("twelve_data", _fallback_frames()),
+    )
+
+    assert manifest["provider_order"] == ["yfinance", "twelve_data"]
+    assert set(manifest["selected_providers"].values()) == {"twelve_data"}
+    assert manifest["strategy_data_ready"] is True
+    assert manifest["professional_source_ready"] is False
+    assert not any("tiingo" in path for path in manifest["files"])
+
+
+def test_twelve_data_is_not_called_when_primary_and_yahoo_succeed(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.delenv("TWELVE_DATA_API_TOKEN", raising=False)
+    twelve = FailingAdapter("twelve_data", DataFetchError("must not be called"))
+    manifest = build_etf_reference_bundle(
+        contract_path=CONTRACT,
+        output_root=tmp_path,
+        primary_adapter=FakeAdapter("tiingo", _primary_frames()),
+        fallback_adapter=FakeAdapter("yfinance", _fallback_frames()),
+        twelve_data_adapter=twelve,
+    )
+
+    assert twelve.calls == 0
+    assert manifest["provider_order"] == ["tiingo", "yfinance", "twelve_data"]
+    assert set(manifest["selected_providers"].values()) == {"tiingo"}
+    assert manifest["professional_source_ready"] is True

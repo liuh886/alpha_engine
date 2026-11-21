@@ -32,9 +32,11 @@ jobs:
     timeout-minutes: 120
     env:
       # This job rebuilds the provider cache that feeds public market evidence.
-      # Free Tiingo terms are internal-use only, so raw vendor bars must not be
-      # republished from this source; the entitled/Yahoo path stays in force.
+      # Free Tiingo/Twelve Data terms are internal-use only, so raw vendor bars
+      # must not be republished from these sources; the entitled/Yahoo path
+      # stays in force.
       TIINGO_API_TOKEN: ""
+      TWELVE_DATA_API_TOKEN: ""
       TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
     steps:
       - name: Check out triggering revision
