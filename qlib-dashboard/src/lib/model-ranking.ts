@@ -28,6 +28,25 @@ import type { ReportRow } from './types';
 
 export type RankingMarket = BaselineMarket;
 
+/**
+ * Declared lifecycle states whose retained trace is sealed at its historical
+ * window. Such a row is not stale when its evidence cutoff advances; the
+ * prospective gate is simply pending. Any other lifecycle keeps the 14-day
+ * stale rule.
+ */
+export const CONTRACT_FROZEN_LIFECYCLE_STATUSES: ReadonlySet<string> = new Set([
+  'contract_frozen_prospective_pending',
+  'frozen_historical_evidence_prospective_pending',
+]);
+
+export function isContractFrozen(
+  run: Pick<GovernedRunSummary, 'lifecycleStatus'>,
+): boolean {
+  return Boolean(
+    run.lifecycleStatus && CONTRACT_FROZEN_LIFECYCLE_STATUSES.has(run.lifecycleStatus),
+  );
+}
+
 /** Display policy for one horizon. `value` is null whenever it must not render. */
 export interface RankingCell {
   value: number | null;
@@ -83,6 +102,10 @@ interface RankingRowBase {
   evidenceCutoff: string;
   stale: boolean;
   staleDays: number;
+  /** True when the run declares a contract-frozen historical trace. */
+  contractFrozen: boolean;
+  /** Last sealed trace session for a contract-frozen run; null otherwise. */
+  contractFrozenThrough: string | null;
   cells: Record<HorizonPeriod, RankingCell>;
   excess?: RankingExcess;
   maxDrawdown?: number | null;
@@ -415,6 +438,7 @@ export function strategyRowsFromNav(
   const last = nav[nav.length - 1];
   const asOf = last?.date ?? '';
   const staleDays = last ? Math.max(0, calendarDaysBetween(last.date, run.evidenceCutoff)) : 0;
+  const contractFrozen = isContractFrozen(run);
   const drawdownMetric = summaryMetric(run, 'max_drawdown');
   const maxDrawdown = availableNumber(drawdownMetric);
   const { benchmarkNav, benchmarkField } = declaredBenchmarkWealth(run, rows);
@@ -431,8 +455,10 @@ export function strategyRowsFromNav(
     href: `/strategies/${encodeURIComponent(run.modelVersionId)}`,
     asOf,
     evidenceCutoff: run.evidenceCutoff,
-    stale: Boolean(last) && staleDays > STALE_AFTER_DAYS,
+    stale: !contractFrozen && Boolean(last) && staleDays > STALE_AFTER_DAYS,
     staleDays,
+    contractFrozen,
+    contractFrozenThrough: contractFrozen ? (run.contractFrozenThrough ?? asOf) : null,
     cells: cellsFor(nav),
     maxDrawdown,
     maxDrawdownReason: maxDrawdown === null
@@ -487,6 +513,8 @@ export function indexRowsFromBars(
     evidenceCutoff: cutoff,
     stale: Boolean(last) && staleDays > STALE_AFTER_DAYS,
     staleDays,
+    contractFrozen: false,
+    contractFrozenThrough: null,
     cells: cellsFor(nav),
     excess: {
       value: null,

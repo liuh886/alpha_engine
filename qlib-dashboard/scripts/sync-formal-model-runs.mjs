@@ -210,6 +210,69 @@ for (const runDirectory of runDirectories) {
   );
 }
 
+// Disposable lifecycle projection for the UI. The model contract/registry
+// declares the lifecycle; the published lineage supplies the actual gate state.
+// This file is never evidence: a missing or malformed projection leaves every
+// run on the existing stale rule.
+const registryLifecycle = new Map();
+try {
+  const registry = JSON.parse(await readFile(join(repositoryRoot, 'configs', 'strategies', 'registry.json'), 'utf8'));
+  for (const strategy of Array.isArray(registry?.strategies) ? registry.strategies : []) {
+    const lifecycle = strategy?.formal_lifecycle;
+    if (lifecycle && typeof lifecycle === 'object' && !Array.isArray(lifecycle)) {
+      registryLifecycle.set(String(strategy.model_version_id), lifecycle);
+    }
+  }
+} catch {
+  // No registry lifecycle means the published lineage remains the only signal.
+}
+
+const lifecycleRecords = [];
+for (const runDirectory of runDirectories) {
+  let lineage;
+  try {
+    lineage = JSON.parse(await readFile(join(sourceRoot, runDirectory, 'lineage.json'), 'utf8'));
+  } catch {
+    continue;
+  }
+  const freshness = lineage?.source_freshness;
+  const sourceStatus = typeof freshness?.status === 'string' ? freshness.status : null;
+  if (!sourceStatus) continue;
+  const manifestPath = join(runDirectory, 'manifest.json').replace(/\\/g, '/');
+  const record = publicCatalog.records.find((candidate) => candidate.manifest_path === manifestPath);
+  if (!record) throw new Error(`Active run directory not found in catalog records: ${runDirectory}`);
+  const lifecycle = registryLifecycle.get(record.model_version_id) ?? {};
+  const lifecycleStatus = sourceStatus === 'frozen_historical_evidence_prospective_pending'
+    ? (typeof lifecycle.lifecycle_status === 'string'
+      ? lifecycle.lifecycle_status
+      : 'contract_frozen_prospective_pending')
+    : sourceStatus;
+  lifecycleRecords.push({
+    model_version_id: record.model_version_id,
+    run_id: record.run_id,
+    lifecycle_status: lifecycleStatus,
+    contract_frozen_through: typeof lifecycle.contract_frozen_through === 'string'
+      ? lifecycle.contract_frozen_through
+      : (typeof freshness.prospective_observation_start_strictly_after === 'string'
+        ? freshness.prospective_observation_start_strictly_after
+        : null),
+    source_freshness_status: sourceStatus,
+    prospective_gate_status: typeof freshness.prospective_gate_status === 'string'
+      ? freshness.prospective_gate_status
+      : null,
+  });
+}
+lifecycleRecords.sort((left, right) => (
+  `${left.model_version_id}:${left.run_id}`.localeCompare(`${right.model_version_id}:${right.run_id}`)
+));
+await writeFile(join(targetRoot, 'lifecycle.json'), canonicalJson({
+  schema_version: 'formal_model_lifecycle_v1',
+  generated_at: String(sourceCatalog.generated_at ?? ''),
+  research_only: true,
+  trade_ready: false,
+  records: lifecycleRecords,
+}), 'utf8');
+
 // Publish the public catalog and every top-level policy read model.
 const publicCatalogEncoded = canonicalJson(publicCatalog);
 await writeFile(join(targetRoot, 'catalog.json'), publicCatalogEncoded, 'utf8');

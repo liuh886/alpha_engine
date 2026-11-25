@@ -11,6 +11,33 @@ interface PublishedRun {
   modelVersionId: string;
   asOf: string;
   staleDays: number;
+  contractFrozen: boolean;
+  contractFrozenThrough: string | null;
+}
+
+interface LifecycleRecord {
+  model_version_id?: string;
+  run_id?: string;
+  lifecycle_status?: string;
+  contract_frozen_through?: string | null;
+}
+
+type LifecycleIndex = { records?: LifecycleRecord[] };
+
+/** Lifecycle states whose sealed trace must not be labeled stale. */
+const CONTRACT_FROZEN_STATUSES = new Set([
+  'contract_frozen_prospective_pending',
+  'frozen_historical_evidence_prospective_pending',
+]);
+
+async function loadLifecycle(page: Page): Promise<Map<string, LifecycleRecord>> {
+  const response = await page.request.get('/data/formal-model-runs/lifecycle.json');
+  if (!response.ok()) return new Map();
+  const index = await response.json() as LifecycleIndex;
+  return new Map((index.records ?? []).map(record => [
+    `${String(record.model_version_id)}:${String(record.run_id)}`,
+    record,
+  ]));
 }
 
 const ROUTES = [
@@ -25,7 +52,8 @@ const ROUTES = [
 async function loadPublishedRuns(page: Page): Promise<PublishedRun[]> {
   const response = await page.request.get('/data/formal-model-runs/catalog.json');
   expect(response.ok()).toBeTruthy();
-  const catalog = await response.json() as { records?: Array<{ manifest_path?: string; model_version_id?: string }> };
+  const catalog = await response.json() as { records?: Array<{ manifest_path?: string; model_version_id?: string; run_id?: string }> };
+  const lifecycle = await loadLifecycle(page);
   const runs: PublishedRun[] = [];
   for (const record of catalog.records ?? []) {
     const base = '/data/formal-model-runs/' + String(record.manifest_path).replace(/manifest\.json$/, '');
@@ -34,10 +62,15 @@ async function loadPublishedRuns(page: Page): Promise<PublishedRun[]> {
     const nav = await navResponse.json() as { evidence_cutoff: string; rows: Array<{ date: string }> };
     const last = nav.rows[nav.rows.length - 1];
     expect(last?.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const modelVersionId = String(record.model_version_id);
+    const lifecycleRecord = lifecycle.get(`${modelVersionId}:${String(record.run_id)}`);
+    const lifecycleStatus = String(lifecycleRecord?.lifecycle_status ?? '');
     runs.push({
-      modelVersionId: String(record.model_version_id),
+      modelVersionId,
       asOf: last.date,
       staleDays: Math.round((Date.parse(`${nav.evidence_cutoff}T00:00:00Z`) - Date.parse(`${last.date}T00:00:00Z`)) / 86_400_000),
+      contractFrozen: CONTRACT_FROZEN_STATUSES.has(lifecycleStatus),
+      contractFrozenThrough: lifecycleRecord?.contract_frozen_through ?? null,
     });
   }
   expect(runs.length).toBeGreaterThan(0);
@@ -73,7 +106,16 @@ test('every product route keeps one heading, one research boundary and no overfl
         const row = page.getByTestId('fleet-' + run.modelVersionId);
         await expect(row, `${route.name}: ${run.modelVersionId} row`).toBeVisible();
         await expect(row).toContainText(`As of ${run.asOf}`);
-        await expect(row).toHaveAttribute('data-stale', run.staleDays > 14 ? 'true' : 'false');
+        if (run.contractFrozen) {
+          // A sealed historical trace is not stale when only the manifest
+          // cutoff advances; assert the truthful lifecycle label instead.
+          await expect(row, `${route.name}: ${run.modelVersionId} frozen row`).toHaveAttribute('data-stale', 'false');
+          await expect(row.getByTestId('frozen-' + run.modelVersionId), `${route.name}: ${run.modelVersionId} frozen label`)
+            .toContainText(`Frozen historical evidence through ${run.contractFrozenThrough ?? run.asOf} · prospective validation pending`);
+        } else {
+          await expect(row, `${route.name}: ${run.modelVersionId} stale state`)
+            .toHaveAttribute('data-stale', run.staleDays > 14 ? 'true' : 'false');
+        }
       }
     }
 

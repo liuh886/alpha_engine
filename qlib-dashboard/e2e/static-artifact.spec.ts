@@ -1,10 +1,33 @@
 import { expect, test, type Page } from '@playwright/test';
 import { installMembershipFixture } from './membership-fixture';
 
-type FormalCatalog = { records?: Array<{ manifest_path?: string; model_version_id?: string; evidence_cutoff?: string }> };
+type FormalCatalog = { records?: Array<{ manifest_path?: string; model_version_id?: string; run_id?: string; evidence_cutoff?: string }> };
 type FormalManifest = { comparability_key?: { start: string; end: string }; sections?: Array<{ section_id?: string; availability_status?: string; path?: string }> };
 type FormalSummary = { display_name?: string; model_version_id?: string };
 type MarketEvidenceCatalog = { symbols?: Array<{ symbol?: string }> };
+type FormalLifecycleRecord = {
+  model_version_id?: string;
+  run_id?: string;
+  lifecycle_status?: string;
+  contract_frozen_through?: string | null;
+};
+type FormalLifecycleIndex = { records?: FormalLifecycleRecord[] };
+
+/** Lifecycle states whose sealed trace must not be labeled stale. */
+const CONTRACT_FROZEN_STATUSES = new Set([
+  'contract_frozen_prospective_pending',
+  'frozen_historical_evidence_prospective_pending',
+]);
+
+async function loadFormalLifecycle(page: Page): Promise<Map<string, FormalLifecycleRecord>> {
+  const response = await page.request.get('/data/formal-model-runs/lifecycle.json');
+  if (!response.ok()) return new Map();
+  const index = await response.json() as FormalLifecycleIndex;
+  return new Map((index.records ?? []).map(record => [
+    `${String(record.model_version_id)}:${String(record.run_id)}`,
+    record,
+  ]));
+}
 
 type StockRankingCatalog = { cutoff?: string; symbols?: Array<{ symbol?: string; roles?: string[] }> };
 type StockRankingProjection = {
@@ -263,6 +286,7 @@ test('fleet horizons disclose retained coverage, per-row as-of dates and stale e
   await expect(fleet.locator('[data-kind="index"]')).toHaveCount(spxPublished ? 3 : 2);
 
   const catalog = await (await page.request.get('/data/formal-model-runs/catalog.json')).json() as FormalCatalog;
+  const lifecycle = await loadFormalLifecycle(page);
   const sources = await Promise.all((catalog.records ?? []).map(async record => {
     const base = '/data/formal-model-runs/' + String(record.manifest_path).replace(/manifest\.json$/, '');
     const navResponse = await page.request.get(base + 'nav.json');
@@ -274,17 +298,33 @@ test('fleet horizons disclose retained coverage, per-row as-of dates and stale e
     const last = nav.rows[nav.rows.length - 1];
     expect(last?.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     const staleDays = Math.round((Date.parse(`${nav.evidence_cutoff}T00:00:00Z`) - Date.parse(`${last.date}T00:00:00Z`)) / 86_400_000);
-    return { record, last: last.date, staleDays };
+    const lifecycleRecord = lifecycle.get(`${String(record.model_version_id)}:${String(record.run_id)}`);
+    return {
+      record,
+      last: last.date,
+      staleDays,
+      contractFrozen: CONTRACT_FROZEN_STATUSES.has(String(lifecycleRecord?.lifecycle_status ?? '')),
+      contractFrozenThrough: lifecycleRecord?.contract_frozen_through ?? null,
+    };
   }));
 
-  for (const { record, last, staleDays } of sources) {
+  for (const { record, last, staleDays, contractFrozen, contractFrozenThrough } of sources) {
     const id = String(record.model_version_id);
     const row = fleet.getByTestId('fleet-' + id);
     await expect(row).toBeVisible();
     await expect(row).toContainText(`As of ${last}`);
-    await expect(row).toHaveAttribute('data-stale', staleDays > 14 ? 'true' : 'false');
-    if (staleDays > 14) {
-      await expect(row.getByTestId('stale-' + id)).toContainText(`Stale · ${staleDays}d behind cutoff`);
+    if (contractFrozen) {
+      // The manifest evidence cutoff advances as refresh metadata, while the
+      // sealed historical trace stays at its contract-frozen boundary.
+      await expect(row).toHaveAttribute('data-stale', 'false');
+      await expect(row.getByTestId('frozen-' + id))
+        .toContainText(`Frozen historical evidence through ${contractFrozenThrough ?? last} · prospective validation pending`);
+      await expect(row.getByTestId('stale-' + id)).toHaveCount(0);
+    } else {
+      await expect(row).toHaveAttribute('data-stale', staleDays > 14 ? 'true' : 'false');
+      if (staleDays > 14) {
+        await expect(row.getByTestId('stale-' + id)).toContainText(`Stale · ${staleDays}d behind cutoff`);
+      }
     }
     for (const period of ['1w', '1m', '3m', '1y', '2y', '3y']) {
       const cell = row.getByTestId(`cell-${id}-${period}`);
@@ -309,9 +349,15 @@ test('fleet horizons disclose retained coverage, per-row as-of dates and stale e
   const cn = sources.find(source => String(source.record.model_version_id).startsWith('cn_27'));
   expect(cn).toBeTruthy();
   expect(cn!.staleDays).toBeGreaterThan(14);
-  await expect(fleet.getByTestId('fleet-' + cn!.record.model_version_id))
-    .toContainText(`Stale · ${cn!.staleDays}d behind cutoff`);
-  await expect(fleet.getByTestId('fleet-' + cn!.record.model_version_id)).toContainText(`As of ${cn!.last}`);
+  // Explicit boundary pin for the Owner-approved CN_27 V1.3 lifecycle.
+  expect(cn!.contractFrozen).toBe(true);
+  expect(cn!.contractFrozenThrough).toBe('2026-09-04');
+  const cnRow = fleet.getByTestId('fleet-' + cn!.record.model_version_id);
+  await expect(cnRow).toHaveAttribute('data-stale', 'false');
+  await expect(cnRow.getByTestId('frozen-' + cn!.record.model_version_id))
+    .toContainText('Frozen historical evidence through 2026-09-04 · prospective validation pending');
+  await expect(cnRow.getByTestId('stale-' + cn!.record.model_version_id)).toHaveCount(0);
+  await expect(cnRow).toContainText(`As of ${cn!.last}`);
 
   const us = sources.find(source => String(source.record.model_version_id).startsWith('us_x'));
   expect(us).toBeTruthy();

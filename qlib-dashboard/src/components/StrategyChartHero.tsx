@@ -33,6 +33,7 @@ import {
   modelIdentityColors,
   type ModelWindowInput,
 } from '@/lib/model-comparison';
+import { isContractFrozen } from '@/lib/model-ranking';
 import { alignNavSeries, joinNavMarkers, navFromReport, type NavMarker, type NavPoint } from '@/lib/nav-series';
 import { navHorizonCoverage, navSeriesForPeriod } from '@/lib/nav-returns';
 import type { ReportRow } from '@/lib/types';
@@ -492,7 +493,8 @@ export function StrategyChartHero({
   const periodDisplay = metricDisplay(coverage, returns.strategy);
   const drawdownDisplay = metricDisplay(coverage, maximumDrawdown(effectivePoints));
   const provisional = provisionalObservationCount(rows, returns.startDate, returns.endDate);
-  const stale = isStale(run.evidenceCutoff, effectiveCoverage.asOf);
+  const contractFrozen = isContractFrozen(run);
+  const stale = !contractFrozen && isStale(run.evidenceCutoff, effectiveCoverage.asOf);
   const staleBy = staleDays(run.evidenceCutoff, effectiveCoverage.asOf);
   const horizonLabel = CHART_HORIZONS.find(horizon => horizon.period === period)?.label ?? period.toUpperCase();
   const baselineReturnDisplay = baselineSelected && returns.baseline !== null
@@ -815,6 +817,15 @@ export function StrategyChartHero({
                     className="rounded bg-warning/10 px-1.5 py-0.5 font-semibold text-warning"
                   >
                     Stale by {staleBy} day{staleBy === 1 ? '' : 's'}
+                  </span>
+                )}
+                {contractFrozen && (
+                  <span
+                    data-testid="hero-window-frozen"
+                    title="The historical evidence trace is contractually frozen at its declared window; prospective validation is pending, so an advancing evidence cutoff is not a stale trace."
+                    className="rounded bg-muted/50 px-1.5 py-0.5 font-medium text-muted-foreground"
+                  >
+                    Frozen historical evidence through {run.contractFrozenThrough ?? effectiveCoverage.asOf ?? 'the sealed trace end'} · prospective validation pending
                   </span>
                 )}
               </p>

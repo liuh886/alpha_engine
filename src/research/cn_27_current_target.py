@@ -33,6 +33,8 @@ ADAPTER_ID = "cn_27_current_target_v1"
 BENCHMARK = "000300"
 DEFENSIVE_SLEEVE = "515180"
 FROZEN_EVIDENCE_CUTOFF = "2026-09-04"
+LIFECYCLE_STATUS = "contract_frozen_prospective_pending"
+CURRENT_OPERATIONS = "dormant"
 REBALANCE_SESSIONS = 30
 
 
@@ -73,6 +75,15 @@ def _load_model_contract(repository_root: Path) -> dict[str, Any]:
     ):
         if payload.get(field) != expected:
             raise _invalid(f"CN_27 model contract drifted: {field}")
+    lifecycle = payload.get("formal_lifecycle")
+    if not isinstance(lifecycle, Mapping):
+        raise _invalid("CN_27 model contract formal_lifecycle is missing")
+    if lifecycle.get("lifecycle_status") != LIFECYCLE_STATUS:
+        raise _invalid("CN_27 model contract lifecycle status drifted")
+    if lifecycle.get("contract_frozen_through") != FROZEN_EVIDENCE_CUTOFF:
+        raise _invalid("CN_27 model contract frozen boundary drifted")
+    if lifecycle.get("current_operations") != CURRENT_OPERATIONS:
+        raise _invalid("CN_27 current operations must remain dormant")
     return payload
 
 
@@ -351,10 +362,18 @@ def score_cn_27_current_target(
 def prospective_source_status(
     *, formal_root: Path, repository_root: Path
 ) -> dict[str, Any]:
-    """Report whether a governed prospective source exists, without publishing."""
+    """Report contract lifecycle and prospective evidence without publishing.
+
+    An advanced manifest ``evidence_cutoff`` is refresh metadata, not proof that
+    a prospective source exists. This read reports the declared lifecycle and
+    only claims a prospective source when manifest-bound evidence (the sealed
+    operating state or refreshed positions) actually covers that cutoff.
+    """
 
     root = repository_root.resolve()
     contract = _load_model_contract(root)
+    lifecycle = contract["formal_lifecycle"]
+    lifecycle_status = str(lifecycle["lifecycle_status"])
     activation = _activation_reason(contract)
     formal_dir = Path(formal_root).resolve()
     try:
@@ -365,37 +384,66 @@ def prospective_source_status(
         active = load_formal_run(root, MODEL_ID, relative_root=relative_root)
     except FormalBundleReadError as exc:
         raise _invalid(f"CN_27 active formal run is unreadable: {exc}") from exc
-    available = bool(active.evidence_cutoff > FROZEN_EVIDENCE_CUTOFF)
     try:
         state = active.refresh_state()
     except FormalBundleReadError as exc:
         raise _invalid(f"CN_27 refreshed state is incomplete: {exc}") from exc
-    positions = state.get("positions") if isinstance(state, Mapping) else None
+    if not isinstance(state, Mapping):
+        raise _invalid("CN_27 refreshed state is invalid")
+    freshness = state.get("freshness")
+    freshness_status = (
+        str(freshness["status"])
+        if isinstance(freshness, Mapping) and freshness.get("status")
+        else lifecycle_status
+    )
+    prospective_gate_status = (
+        str(freshness["prospective_gate_status"])
+        if isinstance(freshness, Mapping) and freshness.get("prospective_gate_status")
+        else None
+    )
+    positions = state.get("positions")
+    cutoff_advanced = bool(active.evidence_cutoff > FROZEN_EVIDENCE_CUTOFF)
     target_available = False
-    blocking_reason = "no governed source beyond the frozen evidence cutoff"
-    if available:
+    blocking_reason = (
+        f"contract frozen at {FROZEN_EVIDENCE_CUTOFF}; "
+        "prospective evidence is pending"
+    )
+    if cutoff_advanced:
         operating = _operating_state(state, active.evidence_cutoff)
         if operating:
             target_available = True
             blocking_reason = ""
         elif not isinstance(positions, list) or not positions:
-            blocking_reason = "manifest-bound refreshed positions are unavailable"
+            blocking_reason = (
+                f"contract frozen at {FROZEN_EVIDENCE_CUTOFF}; prospective "
+                "evidence is pending and manifest-bound refreshed positions "
+                "are unavailable"
+            )
         else:
             try:
                 _target_at_cutoff(positions, active.evidence_cutoff)
             except CN27CurrentTargetError as exc:
                 if exc.status != "data_blocked":
                     raise
-                blocking_reason = str(exc)
+                blocking_reason = (
+                    f"contract frozen at {FROZEN_EVIDENCE_CUTOFF}; prospective "
+                    f"evidence is pending ({exc})"
+                )
             else:
                 target_available = True
                 blocking_reason = ""
     return {
         "model_version_id": MODEL_ID,
         "adapter_id": ADAPTER_ID,
+        "lifecycle_status": lifecycle_status,
+        "source_freshness_status": freshness_status,
+        "prospective_gate_status": prospective_gate_status,
+        "current_operations": str(lifecycle["current_operations"]),
+        "contract_frozen_through": FROZEN_EVIDENCE_CUTOFF,
         "frozen_evidence_cutoff": FROZEN_EVIDENCE_CUTOFF,
         "active_evidence_cutoff": active.evidence_cutoff,
-        "prospective_source_available": available,
+        "evidence_cutoff_advanced": cutoff_advanced,
+        "prospective_source_available": target_available,
         "current_target_available": target_available,
         "current_target_blocking_reason": blocking_reason,
         "current_target_activation": activation,
