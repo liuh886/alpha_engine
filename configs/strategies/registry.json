@@ -47,7 +47,12 @@
       "decision_cadence": "Every 30 completed CN market sessions",
       "next_decision_policy": "Evaluate at close; locked target applies to the next eligible open with daily retry.",
       "signal_ledger": "data/research/strategy_signal_ledgers/cn_27_v1_3",
-      "historical_evidence_access": "public"
+      "historical_evidence_access": "public",
+      "formal_lifecycle": {
+        "lifecycle_status": "contract_frozen_prospective_pending",
+        "contract_frozen_through": "2026-09-04",
+        "current_operations": "dormant"
+      }
     },
     {
       "strategy_id": "byd",

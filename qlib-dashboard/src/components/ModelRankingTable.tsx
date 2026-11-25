@@ -302,6 +302,16 @@ function Row({ row, density, selected, sort, expanded, onToggle, onInspectSignal
               Stale · {row.staleDays}d behind cutoff
             </span>
           )}
+          {row.contractFrozen && (
+            <span
+              data-testid={`frozen-${row.id}`}
+              title={`The historical evidence trace is contractually frozen through ${row.contractFrozenThrough}; prospective validation is pending, so the advancing evidence cutoff is not a stale trace.`}
+              className="inline-flex max-w-full items-start gap-1 whitespace-normal rounded border border-border bg-muted/40 px-1.5 py-0.5 text-left text-[10px] font-medium text-muted-foreground"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" aria-hidden="true" />
+              Frozen historical evidence through {row.contractFrozenThrough} · prospective validation pending
+            </span>
+          )}
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
           <span>{RANKING_MARKET_LABELS[row.market]}</span>
@@ -489,6 +499,16 @@ function RankingCard({ row, density, selected, sort, expanded, onToggle, onInspe
         >
           <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden="true" />
           Stale · {row.staleDays}d behind cutoff
+        </span>
+      )}
+      {row.contractFrozen && (
+        <span
+          data-testid={`frozen-${row.id}`}
+          title={`The historical evidence trace is contractually frozen through ${row.contractFrozenThrough}; prospective validation is pending, so the advancing evidence cutoff is not a stale trace.`}
+          className="mt-1.5 inline-flex max-w-full items-start gap-1 whitespace-normal rounded border border-border bg-muted/40 px-1.5 py-0.5 text-left text-[10px] font-medium text-muted-foreground"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" aria-hidden="true" />
+          Frozen historical evidence through {row.contractFrozenThrough} · prospective validation pending
         </span>
       )}
       <dl className="mt-2 grid grid-cols-3 gap-1.5">

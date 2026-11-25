@@ -170,6 +170,28 @@ describe('model ranking staleness', () => {
     expect(rows.stale).toBe(true);
     expect(rows.staleDays).toBe(69);
   });
+
+  it('keeps a contract-frozen run out of the stale state and exposes its sealed boundary', () => {
+    const frozen = strategyRowsFromNav(run({
+      key: 'cn_27_v1_3',
+      modelVersionId: 'cn_27_v1_3',
+      title: 'CN_27 V1.3',
+      market: 'cn',
+      benchmark: '000300',
+      evidenceCutoff: '2026-11-24',
+      lifecycleStatus: 'contract_frozen_prospective_pending',
+      contractFrozenThrough: '2026-09-04',
+      prospectiveGateStatus: 'pending',
+    }), navRows([
+      ['2023-09-01', 100],
+      ['2026-09-04', 140],
+    ]))[0];
+    expect(frozen.evidenceCutoff).toBe('2026-11-24');
+    expect(frozen.staleDays).toBe(81);
+    expect(frozen.stale).toBe(false);
+    expect(frozen.contractFrozen).toBe(true);
+    expect(frozen.contractFrozenThrough).toBe('2026-09-04');
+  });
 });
 
 describe('index rows', () => {

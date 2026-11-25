@@ -96,6 +96,25 @@ function cnStrategy(): ModelRankingRow {
   ]))[0];
 }
 
+function frozenCnStrategy(): ModelRankingRow {
+  return strategyRowsFromNav(run({
+    key: 'cn_27_v1_3',
+    modelFamilyId: 'cn_27',
+    modelVersionId: 'cn_27_v1_3',
+    runId: 'cn_27_v1_3-formal',
+    title: 'CN_27 V1.3',
+    market: 'cn',
+    benchmark: '000300',
+    evidenceCutoff: '2026-11-24',
+    lifecycleStatus: 'contract_frozen_prospective_pending',
+    contractFrozenThrough: '2026-09-04',
+    prospectiveGateStatus: 'pending',
+  }), nav([
+    ['2023-09-01', 100],
+    ['2026-09-04', 140],
+  ]))[0];
+}
+
 function qqqIndex(): ModelRankingRow {
   return indexRowsFromBars('us', 'QQQ', 'QQQ', [
     bar('2026-11-04', 110),
@@ -301,6 +320,18 @@ describe('ModelRankingTable', () => {
     expect(within(row).getByTestId('stale-cn_27_v1_3')).toHaveTextContent('Stale · 69d behind cutoff');
     expect(within(row).getByText('As of 2026-09-04')).toBeInTheDocument();
     expect(within(row).getByRole('link', { name: 'CN_27 V1.3' })).toHaveAttribute('href', '/strategies/cn_27_v1_3');
+  });
+
+  it('renders contract-frozen lifecycle wording instead of a stale chip', () => {
+    renderTable([frozenCnStrategy()]);
+    const row = screen.getByTestId('fleet-cn_27_v1_3');
+    expect(row).toHaveAttribute('data-stale', 'false');
+    expect(row).not.toHaveClass('bg-warning/[0.04]');
+    expect(within(row).getByTestId('frozen-cn_27_v1_3')).toHaveTextContent(
+      'Frozen historical evidence through 2026-09-04 · prospective validation pending',
+    );
+    expect(within(row).queryByTestId('stale-cn_27_v1_3')).not.toBeInTheDocument();
+    expect(within(row).getByText('As of 2026-09-04')).toBeInTheDocument();
   });
 
   it('never renders a missing horizon as 0.0% and explains the gap', () => {

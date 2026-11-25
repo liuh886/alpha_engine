@@ -100,8 +100,44 @@ describe('formal-only console reader', () => {
       channel: 'formal', publicationStatus: 'accepted_formal_baseline',
       bundleId: manifest.bundle_id, evidenceStatus: 'blocked', summary: summaryFixture,
     });
-    expect(fetcher).toHaveBeenCalledTimes(3);
+    // catalog + lifecycle projection + manifest + summary
+    expect(fetcher).toHaveBeenCalledTimes(4);
     expect(fetcher.mock.calls.every(([url]) => url.startsWith('/data/formal-model-runs/'))).toBe(true);
+  });
+
+  it('projects a contract-frozen lifecycle without altering verified evidence', async () => {
+    const { assets, manifest } = await formalAssets();
+    assets.set('/data/formal-model-runs/lifecycle.json', JSON.stringify({
+      schema_version: 'formal_model_lifecycle_v1',
+      generated_at: manifest.generated_at,
+      research_only: true,
+      trade_ready: false,
+      records: [{
+        model_version_id: manifest.model_version_id,
+        run_id: manifest.run_id,
+        lifecycle_status: 'contract_frozen_prospective_pending',
+        contract_frozen_through: '2026-07-31',
+        source_freshness_status: 'frozen_historical_evidence_prospective_pending',
+        prospective_gate_status: 'pending',
+      }],
+    }));
+    const result = await loadFormalRuns();
+    expect(result.errors).toEqual([]);
+    expect(result.runs[0]).toMatchObject({
+      lifecycleStatus: 'contract_frozen_prospective_pending',
+      contractFrozenThrough: '2026-07-31',
+      prospectiveGateStatus: 'pending',
+    });
+    expect(result.runs[0].bundleId).toBe(manifest.bundle_id);
+  });
+
+  it('ignores a malformed lifecycle projection without hiding formal evidence', async () => {
+    const { assets } = await formalAssets();
+    assets.set('/data/formal-model-runs/lifecycle.json', '{not json');
+    const result = await loadFormalRuns();
+    expect(result.errors).toEqual([]);
+    expect(result.runs).toHaveLength(1);
+    expect(result.runs[0].lifecycleStatus).toBeNull();
   });
 
   it.each(['preview', 'local'])('rejects a %s catalog without falling back to another reader', async channel => {

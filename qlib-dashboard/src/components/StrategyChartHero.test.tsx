@@ -329,6 +329,21 @@ describe('StrategyChartHero', () => {
     expect(screen.getByText(/As of 2026-01-11/)).toBeInTheDocument();
   });
 
+  it('shows contract-frozen lifecycle wording instead of the stale chip', async () => {
+    renderHero(makeRun({
+      evidenceCutoff: '2026-03-01',
+      lifecycleStatus: 'contract_frozen_prospective_pending',
+      contractFrozenThrough: '2026-01-11',
+      prospectiveGateStatus: 'pending',
+    }));
+    await screen.findByTestId('strategy-nav-chart');
+
+    expect(screen.getByTestId('hero-window-frozen')).toHaveTextContent(
+      'Frozen historical evidence through 2026-01-11 · prospective validation pending',
+    );
+    expect(screen.queryByTestId('hero-window-stale')).not.toBeInTheDocument();
+  });
+
   it('keeps an unavailable declared baseline visible and defaults a CN run to none', async () => {
     const cnRows: ReportRow[] = rows.map((row, index) => ({
       date: row.date,

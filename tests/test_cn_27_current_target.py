@@ -82,27 +82,35 @@ def _sealed_prospective_root(tmp_path: Path, *, cover_positions: bool = True) ->
     return formal
 
 
-def test_prospective_source_is_available_on_current_main() -> None:
+def test_contract_frozen_status_does_not_claim_prospective_source() -> None:
     status = prospective_source_status(
         formal_root=REAL_FORMAL_ROOT, repository_root=ROOT
     )
-    assert status["prospective_source_available"] is True
-    if status["current_target_available"]:
-        assert status["current_target_blocking_reason"] == ""
-    else:
-        assert "positions do not cover" in status["current_target_blocking_reason"]
+    assert status["lifecycle_status"] == "contract_frozen_prospective_pending"
+    assert status["contract_frozen_through"] == FROZEN_EVIDENCE_CUTOFF
+    assert status["current_operations"] == "dormant"
+    assert status["source_freshness_status"] == (
+        "frozen_historical_evidence_prospective_pending"
+    )
+    assert status["prospective_gate_status"] == "pending"
     assert status["active_evidence_cutoff"] > FROZEN_EVIDENCE_CUTOFF
+    # The advancing manifest cutoff is refresh metadata, not a prospective
+    # source. Do not claim availability the sealed positions do not provide.
+    assert status["evidence_cutoff_advanced"] is True
+    assert status["prospective_source_available"] is False
+    assert status["current_target_available"] is False
+    assert "contract frozen" in status["current_target_blocking_reason"]
+    assert "positions do not cover" in status["current_target_blocking_reason"]
     assert status["adapter_id"] == ADAPTER_ID
 
 
 def test_build_requires_positions_covering_signal_date_on_current_main(
     tmp_path: Path,
 ) -> None:
-    # Prospective source is available (09-09 refresh), but the refreshed
-    # positions still end at the frozen cutoff, so no signal date can be
-    # scored yet. This pins the exact remaining data gap: the formal
-    # refresh must extend cn27 positions past the frozen cutoff (or the
-    # first monthly rebalance must publish them).
+    # The manifest cutoff advanced, but the refreshed positions still end at
+    # the frozen cutoff, so no signal date can be scored yet. This pins the
+    # exact remaining data gap: the formal refresh must extend cn27 positions
+    # past the frozen cutoff (or the first monthly rebalance must publish them).
     formal = _sealed_prospective_root(tmp_path, cover_positions=False)
     cutoff = PROSPECTIVE_CUTOFF
     with pytest.raises(CN27CurrentTargetError) as excinfo:
@@ -198,13 +206,15 @@ def _run_command(*argv: str) -> tuple[int, Path, Path]:
     return completed.returncode, output, completed.stdout
 
 
-def test_runner_status_reports_available_source() -> None:
+def test_runner_status_reports_contract_frozen() -> None:
     code, output, _ = _run_command(
         "status", "--formal-root", "data/research/formal_model_runs"
     )
     assert code == 0
     payload = json.loads(output.read_text(encoding="utf-8"))
-    assert payload["prospective_source_available"] is True
+    assert payload["lifecycle_status"] == "contract_frozen_prospective_pending"
+    assert payload["prospective_source_available"] is False
+    assert payload["current_target_available"] is False
 
 
 def test_runner_build_reports_missing_positions_on_current_main() -> None:
