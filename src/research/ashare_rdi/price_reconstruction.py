@@ -15,6 +15,20 @@ from pathlib import Path
 
 from .price_renewal import FIELDS, PRICE_RESOLUTION, audit_price_renewal
 
+# Sealed captures pin the adapter module digest that existed when they were
+# recorded. Later legitimate, source-neutral adapter changes (the CN fund/ETF
+# volume-basis work in #1472/#1479/#1486) moved the live module digest without
+# changing any captured archive, raw provider response or normalized CSV byte.
+# Replay therefore accepts a manifest's decoder identity from this exact,
+# immutable set of historical module digests in addition to the current one.
+# This is a decoder-identity compatibility statement only: every replay still
+# has to satisfy archive_sha256, raw_response_sha256 and adapter_csv_sha256, so
+# an accepted historical identity cannot bypass content integrity.
+HISTORICAL_ADAPTER_MODULE_SHA256 = frozenset({
+    # 2026-10-31 Sina CSI300 capture; adapter module at commit 9e666bb7527b.
+    "0b35eca2497c4409ef32262255b964c6c98c1f3ec0396c5eef447b667bbef94b",
+})
+
 
 def sha256(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
@@ -75,6 +89,8 @@ def replay_source(root: Path, manifest: dict) -> bytes:
 
     from src.data.adapters.akshare_adapter import _normalize_index_frame
 
+    current_adapter_sha256 = sha256(
+        (root / "src/data/adapters/akshare_adapter.py").read_bytes())
     if not (manifest["canonical_symbol"] == "000300.SH"
             and manifest["provider_symbol"] == "sh000300"
             and manifest["source_family"] == "sina"
@@ -83,8 +99,8 @@ def replay_source(root: Path, manifest: dict) -> bytes:
             and manifest["akshare_version"] == akshare.__version__
             and manifest["vendor_decoder_sha256"] == sha256(
                 inspect.getsource(akshare.stock_zh_index_daily).encode())
-            and manifest["adapter_module_sha256"] == sha256(
-                (root / "src/data/adapters/akshare_adapter.py").read_bytes())
+            and (manifest["adapter_module_sha256"] == current_adapter_sha256
+                 or manifest["adapter_module_sha256"] in HISTORICAL_ADAPTER_MODULE_SHA256)
             and re.fullmatch("[0-9a-f]{64}", manifest["uv_lock_git_sha256"])
             and manifest["historical_first_availability_verified"] is False
             and manifest["research_only"] is True and manifest["trade_ready"] is False):
