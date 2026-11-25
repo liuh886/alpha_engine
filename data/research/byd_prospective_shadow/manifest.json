@@ -9,10 +9,10 @@
     40
   ],
   "first_signal_date": "2026-08-04",
-  "last_signal_date": "2026-11-24",
-  "last_updated_at_utc": "2026-11-24T19:11:01.851962+00:00",
-  "ledger_sha256": "11ad7e97840e169224ca182471f7671cf3c172031fffa0c919513e82ac1f4148",
-  "observation_count": 75,
+  "last_signal_date": "2026-11-25",
+  "last_updated_at_utc": "2026-11-25T18:17:07.033660+00:00",
+  "ledger_sha256": "fd9c6f2acde5284f545f851f8682c9aa07a8b7d89b744ca57bd8625d46058af3",
+  "observation_count": 76,
   "observation_sha256": {
     "2026-08-04": "18c9505ec03d71a934717c7d47112bec2d7a74c18946bb07e786bac930a61376",
     "2026-08-05": "cad816db7049353f0aad7bedf0aba0e2d273a0502f03231b9d8d3143524cea70",
@@ -88,7 +88,8 @@
     "2026-11-19": "1ee8d69c2f65f2bc10f050fa17a8720ac0f4661176602cb21ca56675c15bf0f1",
     "2026-11-20": "e0cd3c613c8307b21cee565a391562d9b5a8569a4215759856d31f3be97fc9ac",
     "2026-11-23": "67e7e84cee226ea14b08683dcba79d7949b9d071d53d65aecb4865369a4ae48a",
-    "2026-11-24": "e8c6afcbb08495881a9f6c3eb3ef96012a2d6250f175662ee08789d0d4a85510"
+    "2026-11-24": "e8c6afcbb08495881a9f6c3eb3ef96012a2d6250f175662ee08789d0d4a85510",
+    "2026-11-25": "d7fd43fa8c8d7fc5aef578e41d672162ee7f9719c49643ce330d0729d594b824"
   },
   "outcome_count": 93,
   "outcome_settlement": "immutable_daily_observations_only",
