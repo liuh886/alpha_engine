@@ -569,14 +569,22 @@ def _fund_provenance(provider: str = "akshare_sina_fund") -> dict[str, object]:
         "source_schema": "date,open,high,low,close,volume,amount,postVol,postAmt",
         "source_date_format": "date",
         "price_basis": "provider_reported_raw",
-        "volume_basis": "withheld_sina_reported_shares",
-        "amount_basis": "withheld_vendor_reported_cny_not_mixed",
+        "volume_basis": "lots_normalized_from_sina_shares_100_to_1",
+        "amount_basis": "CNY_vendor_reported",
+        "volume_normalization_factor": 0.01,
+        "sina_shares_per_lot": 100.0,
+        "sina_volume_unit": "shares_cny",
+        "median_amount_over_volume_times_close": 1.0,
+        "reconciled_rows": 2,
         "requested_start": "2026-11-20",
         "requested_end": "2026-11-21",
         "first_date": "2026-11-20",
         "last_date": "2026-11-21",
         "rows": 2,
-        "terms_caveat": "Volume and amount withheld: Sina shares/CNY do not match the governed lot basis.",
+        "terms_caveat": (
+            "Sina shares are normalized to governed lots (shares / 100, 100:1) "
+            "with provider-reported CNY amount."
+        ),
         "research_only": True,
         "trade_ready": False,
     }
@@ -608,7 +616,7 @@ def _with_sina_fund_record(source: dict[str, object]) -> dict[str, object]:
     return source
 
 
-def test_sina_fund_fallback_is_publication_ready_with_withheld_volume_basis() -> None:
+def test_sina_fund_fallback_is_publication_ready_with_normalized_lot_basis() -> None:
     source = _with_sina_fund_record(_source("cn"))
 
     publication = build_selected_pool_price_publication_manifest(source)
@@ -618,14 +626,17 @@ def test_sina_fund_fallback_is_publication_ready_with_withheld_volume_basis() ->
         row for row in publication["records"] if row["symbol"] == "515180"
     )
     assert record["source_provenance"]["volume_basis"] == (
-        "withheld_sina_reported_shares"
+        "lots_normalized_from_sina_shares_100_to_1"
     )
+    assert record["source_provenance"]["amount_basis"] == "CNY_vendor_reported"
     assert record["source_provenance"]["price_basis"] == "provider_reported_raw"
-    # The withheld basis is a declared provider contract, not an unknown side channel.
+    assert record["source_provenance"]["volume_normalization_factor"] == 0.01
+    # The normalized basis is a declared provider contract, not an unknown side channel.
     contract = publication["provider_architecture"]["selected_provider_contracts"][
         "akshare_sina_fund"
     ]
-    assert contract["volume_unit"] == "withheld_vendor_basis_conflict"
+    assert contract["volume_unit"] == "lots"
+    assert contract["amount_unit"] == "CNY"
     assert contract["price_mode"] == "raw_unadjusted"
 
 

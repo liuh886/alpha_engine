@@ -6,14 +6,16 @@ and it is deliberately narrow:
 
 * prices are used exactly as the provider reports them (the endpoint has no
   adjustment parameter), and the raw basis is recorded in provenance;
-* volume and amount are **withheld** (NaN) rather than mixed into the governed
-  series. Sina reports volume in shares and amount in CNY, while the governed
-  515180 series is produced by the pinned Tencent transport in provider-reported
-  lots with a synthetic ``close * volume`` amount. Reconciling
-  ``volume * close`` with ``amount`` proves Sina's unit (median ratio ~= 1.0),
-  but it does not prove equivalence to the governed lot/synthetic-amount basis,
-  so writing a scaled or synthesized series would fabricate a basis change.
-  Withholding keeps the fallback out of every volume-derived factor path.
+* Sina reports volume in **shares** and amount in **CNY**. The governed CN ETF
+  series (515180) is provider-reported **lots** (1 lot = 100 shares), so volume
+  is normalized by dividing reported shares by 100. Amount stays
+  provider-reported CNY. The payload unit is reconciled from
+  ``amount / (volume * close)`` and must classify as ``shares_cny``; a payload
+  that already reports lots (or 100-CNY units) fails closed rather than silently
+  mixing bases;
+* the refresh layer validates the normalized lots against the sealed governed
+  overlap at a 0.001 relative tolerance, which is equivalent to requiring the
+  raw Sina shares / governed lots ratio to be exactly 100:1.
 
 The caller must preserve the governed history and append only strictly newer
 sessions; the refresh enforces that boundary.
@@ -42,6 +44,10 @@ _SOURCE_URL_TEMPLATE = (
     "hisdata_klc2/klc_kl.js"
 )
 _PRICE_BASIS = "provider_reported_raw"
+_SINA_SHARES_PER_LOT = 100.0
+_VOLUME_NORMALIZATION_FACTOR = 1.0 / _SINA_SHARES_PER_LOT
+_VOLUME_BASIS = "lots_normalized_from_sina_shares_100_to_1"
+_AMOUNT_BASIS = "CNY_vendor_reported"
 # ``amount / (volume * close)`` is ~1.0 when volume is shares and amount is CNY,
 # ~0.01 when volume is lots, and ~100 when amount is quoted in 100-CNY units.
 _UNIT_BANDS = (
@@ -73,10 +79,11 @@ def _normalize_sina_fund_frame(
     start: str,
     end: str | None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Validate a Sina ETF/fund payload and withhold its volume basis.
+    """Validate a Sina ETF/fund payload and normalize shares to governed lots.
 
-    Returns the canonical price frame (volume/amount set to NaN) plus the unit
-    reconciliation evidence used in provenance.
+    Returns the canonical price frame with volume divided by 100 (shares ->
+    lots) and provider-reported CNY amount, plus the unit reconciliation
+    evidence used in provenance.
     """
 
     if frame is None or frame.empty:
@@ -151,17 +158,19 @@ def _normalize_sina_fund_frame(
     ratios = out.loc[reconciled, "amount"] / implied.loc[reconciled]
     median_ratio = float(ratios.median())
     unit_basis = _classify_volume_unit(median_ratio)
-    if unit_basis is None:
+    if unit_basis != "shares_cny":
         raise DataFetchError(
-            "Sina fund payload has an unrecognized volume/amount unit basis for "
-            f"{symbol}: median amount/(volume*close)={median_ratio:.6g}"
+            "Sina fund payload is not on a reconcilable shares/CNY basis for "
+            f"{symbol}: median amount/(volume*close)={median_ratio:.6g} "
+            f"-> {unit_basis or 'unrecognized'}; refusing to normalize a "
+            "non-share volume into the governed lot basis"
         )
 
     normalised = out.copy()
-    # Do not fabricate or scale a different volume basis. NaN keeps the fallback
-    # sessions out of volume-derived factor paths while preserving prices.
-    normalised["volume"] = np.nan
-    normalised["amount"] = np.nan
+    # Sina reports shares; the governed CN ETF series is provider-reported lots
+    # (1 lot = 100 shares). Amount is provider-reported CNY and is not rescaled.
+    normalised["volume"] = out["volume"] / _SINA_SHARES_PER_LOT
+    normalised["amount"] = out["amount"]
     normalised["factor"] = 1.0
     normalised = normalised[_BAR_COLUMNS]
 
@@ -181,8 +190,10 @@ def _normalize_sina_fund_frame(
         "median_amount_over_volume_times_close": median_ratio,
         "reconciled_rows": int(reconciled.sum()),
         "sina_volume_unit": unit_basis,
+        "sina_shares_per_lot": _SINA_SHARES_PER_LOT,
         "source_date_type": raw_date_type,
         "source_schema": source_schema,
+        "volume_normalization_factor": _VOLUME_NORMALIZATION_FACTOR,
     }
     return normalised, evidence
 
@@ -196,42 +207,44 @@ def _provenance(
     evidence: dict[str, Any],
 ) -> dict[str, Any]:
     median_ratio = float(evidence["median_amount_over_volume_times_close"])
-    volume_basis = (
-        "withheld_sina_reported_shares"
-        if evidence["sina_volume_unit"] == "shares_cny"
-        else f"withheld_sina_reported_{evidence['sina_volume_unit']}"
-    )
     caveat = (
         "Sina ETF/fund history is used only after the Eastmoney fund endpoint "
         "exhausts its bounded retry. Prices are provider-reported raw (the "
-        "endpoint has no adjustment parameter). Volume/amount are withheld: "
-        f"reconciling amount/(volume*close) over {evidence['reconciled_rows']} "
-        f"rows gives a median of {median_ratio:.6f} -> {evidence['sina_volume_unit']}; "
-        "the governed CN ETF series is provider-reported lots with a synthetic "
-        "close*volume amount, so silently scaling or synthesizing would fabricate "
-        "a basis change and mix vendor turnover. Withheld rows stay out of "
-        "volume-derived factor paths."
+        "endpoint has no adjustment parameter). Sina reports volume in shares "
+        f"and amount in CNY; reconciling amount/(volume*close) over "
+        f"{evidence['reconciled_rows']} rows gives a median of "
+        f"{median_ratio:.6f} -> {evidence['sina_volume_unit']}. Volume is "
+        f"normalized by dividing reported shares by "
+        f"{int(evidence['sina_shares_per_lot'])} to the governed CN ETF lot basis "
+        "(raw shares / governed lots = 100:1); amount remains provider-reported "
+        "CNY. The refresh validates the normalized lots against the sealed "
+        "governed overlap at 0.001 relative tolerance and fails closed on drift."
     )
     return {
-        "amount_basis": "withheld_vendor_reported_cny_not_mixed",
+        "amount_basis": _AMOUNT_BASIS,
         "fetched_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "first_date": pd.Timestamp(frame["date"].min()).strftime("%Y-%m-%d"),
         "last_date": pd.Timestamp(frame["date"].max()).strftime("%Y-%m-%d"),
+        "median_amount_over_volume_times_close": median_ratio,
         "price_basis": _PRICE_BASIS,
         "provider": "akshare_sina_fund",
         "provider_symbol": provider_symbol,
+        "reconciled_rows": int(evidence["reconciled_rows"]),
         "requested_end": str(end) if end else None,
         "requested_start": str(start),
         "research_only": True,
         "response_bytes": int(evidence["content_bytes"]),
         "response_sha256": str(evidence["content_hash"]),
         "rows": int(len(frame)),
+        "sina_shares_per_lot": evidence["sina_shares_per_lot"],
+        "sina_volume_unit": evidence["sina_volume_unit"],
         "source_date_format": evidence["source_date_type"],
         "source_schema": evidence["source_schema"],
         "source_url": _SOURCE_URL_TEMPLATE.format(provider_symbol=provider_symbol),
         "terms_caveat": caveat,
         "trade_ready": False,
-        "volume_basis": volume_basis,
+        "volume_basis": _VOLUME_BASIS,
+        "volume_normalization_factor": evidence["volume_normalization_factor"],
     }
 
 

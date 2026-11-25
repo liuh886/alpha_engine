@@ -147,13 +147,15 @@ def build_hardened_router(market: str) -> MarketDataRouter:
                 BaoStockAdapter(),
                 EFinanceAdapter(),
                 YFinanceAdapter(),
-                # The Sina ETF/fund transport is an explicit, volume-withholding
-                # last resort. It runs only after the Eastmoney fund endpoint
-                # (akshare) exhausts its bounded transport retry AND after the
-                # governed Yahoo formal-auxiliary fallback. Keeping it last
-                # preserves the existing Yahoo fallback authorization, which
-                # requires every preferred provider ahead of Yahoo to fail.
-                # It rejects non-ETF symbols without a network call.
+                # The Sina ETF/fund transport is an explicit last resort. It runs
+                # only after the Eastmoney fund endpoint (akshare) exhausts its
+                # bounded transport retry AND after the governed Yahoo
+                # formal-auxiliary fallback. Keeping it last preserves the
+                # existing Yahoo fallback authorization, which requires every
+                # preferred provider ahead of Yahoo to fail. It rejects non-ETF
+                # symbols without a network call, normalizes Sina shares to the
+                # governed CN ETF lot basis, and the refresh fails closed if the
+                # sealed overlap does not reproduce the governed lots at 100:1.
                 AkShareSinaFundAdapter(),
             ]
         )

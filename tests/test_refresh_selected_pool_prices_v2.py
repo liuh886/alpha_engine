@@ -728,8 +728,9 @@ def test_cn_auxiliary_515180_materializes_from_fund_etf_fixture(
     materialized = pd.read_csv(output / "data" / "csv_source" / "515180.csv")
     assert materialized["date"].tolist() == ["2021-01-04", "2021-01-05", "2021-01-06"]
     assert materialized["close"].tolist() == [1.340, 1.352, 1.373]
-    # Eastmoney lots become canonical shares, matching the stock path.
-    assert materialized["volume"].tolist() == [100000.0, 110000.0, 120000.0]
+    # The fund endpoint retains provider lots on the governed CN ETF basis.
+    assert materialized["volume"].tolist() == [1000.0, 1100.0, 1200.0]
+    assert materialized["amount"].tolist() == [100000.0, 110000.0, 120000.0]
     assert materialized["factor"].eq(1.0).all()
 
 
@@ -805,7 +806,7 @@ def _no_delay_retry(max_attempts: int = 3):
     )
 
 
-def test_cn_515180_retry_exhaustion_falls_back_to_sina_with_withheld_volume(
+def test_cn_515180_retry_exhaustion_falls_back_to_sina_with_normalized_lot_volume(
     tmp_path: Path, monkeypatch
 ) -> None:
     import datetime as dt
@@ -909,8 +910,11 @@ def test_cn_515180_retry_exhaustion_falls_back_to_sina_with_withheld_volume(
     provenance = record["source_provenance"]
     assert provenance["provider"] == "akshare_sina_fund"
     assert provenance["price_basis"] == "provider_reported_raw"
-    assert provenance["volume_basis"] == "withheld_sina_reported_shares"
-    assert provenance["amount_basis"].startswith("withheld_")
+    assert (
+        provenance["volume_basis"]
+        == "lots_normalized_from_sina_shares_100_to_1"
+    )
+    assert provenance["amount_basis"] == "CNY_vendor_reported"
     assert provenance["research_only"] is True
     assert provenance["trade_ready"] is False
 
@@ -922,17 +926,21 @@ def test_cn_515180_retry_exhaustion_falls_back_to_sina_with_withheld_volume(
         row for row in publication["records"] if row["symbol"] == "515180"
     )
     assert published_record["source_provenance"]["volume_basis"] == (
-        "withheld_sina_reported_shares"
+        "lots_normalized_from_sina_shares_100_to_1"
+    )
+    assert published_record["source_provenance"]["amount_basis"] == (
+        "CNY_vendor_reported"
     )
 
     materialized = pd.read_csv(output / "data" / "csv_source" / "515180.csv")
     assert materialized["date"].tolist() == ["2021-01-04", "2021-01-05", "2021-01-06"]
     assert materialized["close"].tolist() == [1.340, 1.352, 1.373]
     # The governed overlap is preserved exactly; only the new session is appended.
+    # Sina reported shares are divided by 100 onto the governed lot basis.
     assert materialized["volume"].iloc[:2].tolist() == [1000.0, 1100.0]
-    assert pd.isna(materialized["volume"].iloc[2])
+    assert materialized["volume"].iloc[2] == pytest.approx(1200.0)
     assert materialized["amount"].iloc[:2].tolist() == [1340.0, 1487.2]
-    assert pd.isna(materialized["amount"].iloc[2])
+    assert materialized["amount"].iloc[2] == pytest.approx(164760.0)
 
 
 def test_cn_515180_sina_fallback_cannot_replace_governed_history(
