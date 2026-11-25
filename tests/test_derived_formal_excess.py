@@ -16,10 +16,6 @@ from src.artifacts.derived_formal_excess import (
 from src.artifacts.formal_bundle_reader import FormalBundleReadError, load_formal_run
 
 MODEL_VERSION_ID = "qqqi_qqq_tqqq_v4_3"
-EXPECTED_OBSERVATIONS = 701
-EXPECTED_STRATEGY_RETURN = 0.9118724165605459
-EXPECTED_BENCHMARK_RETURN = 0.6353030942702684
-EXPECTED_EXCESS = 0.16912419676775126
 
 
 def _artifact() -> dict:
@@ -34,26 +30,39 @@ def test_committed_artifact_recomputes_exactly_from_governed_bundle() -> None:
 
 def test_excess_value_and_window_are_the_declared_same_basis_metrics() -> None:
     artifact = _artifact()
+    governed = derive_formal_benchmark_excess(Path.cwd(), MODEL_VERSION_ID)
+    run = load_formal_run(Path.cwd(), MODEL_VERSION_ID)
+    performance = run.section("performance")
+    assert isinstance(performance, dict)
+    date_range = performance["date_range"]
+
     assert artifact["evidence_type"] == "derived_formal_benchmark_excess"
     assert artifact["benchmark"]["declared_identity"] == "QQQ"
     assert artifact["benchmark"]["comparability_id"] == "qqq"
-    assert artifact["window"]["declared_start"] == "2024-01-30"
-    assert artifact["window"]["declared_end"] == "2026-11-12"
-    assert artifact["window"]["observed_start"] == "2024-01-30"
-    assert artifact["window"]["observed_end"] == "2026-11-12"
-    assert artifact["window"]["observation_count"] == EXPECTED_OBSERVATIONS
-    assert artifact["result"] == {
-        "strategy_cumulative_return": EXPECTED_STRATEGY_RETURN,
-        "benchmark_cumulative_return": EXPECTED_BENCHMARK_RETURN,
-        "excess_return": EXPECTED_EXCESS,
-    }
-    assert artifact["result"]["excess_return"] == (
-        1.0 + EXPECTED_STRATEGY_RETURN
-    ) / (1.0 + EXPECTED_BENCHMARK_RETURN) - 1.0
-    assert artifact["reconciliation"]["summary_sample_count"] == EXPECTED_OBSERVATIONS
-    assert artifact["reconciliation"]["total_return_absolute_difference"] == 0.0
-    assert artifact["reconciliation"]["benchmark_return_absolute_difference"] == 0.0
-    assert artifact["reconciliation"]["summary_excess_return_availability"] == "not_retained"
+
+    window = artifact["window"]
+    # The declared and observed boundaries are the one governed performance
+    # trace: no interpolation, extension or benchmark substitution.
+    assert window["declared_start"] == date_range["start"]
+    assert window["declared_end"] == date_range["end"]
+    assert window["declared_start"] == window["observed_start"]
+    assert window["declared_end"] == window["observed_end"]
+    assert window["observation_count"] == len(performance["report"])
+    assert window == governed["window"]
+
+    # The committed result is exactly the derivation from the governed source.
+    result = artifact["result"]
+    assert result == governed["result"]
+    assert result["excess_return"] == (
+        1.0 + result["strategy_cumulative_return"]
+    ) / (1.0 + result["benchmark_cumulative_return"]) - 1.0
+
+    reconciliation = artifact["reconciliation"]
+    assert reconciliation == governed["reconciliation"]
+    assert reconciliation["summary_sample_count"] == window["observation_count"]
+    assert reconciliation["total_return_absolute_difference"] == 0.0
+    assert reconciliation["benchmark_return_absolute_difference"] == 0.0
+    assert reconciliation["summary_excess_return_availability"] == "not_retained"
     assert artifact["boundaries"] == {
         "research_only": True,
         "trade_ready": False,

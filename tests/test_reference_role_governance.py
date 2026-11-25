@@ -14,7 +14,9 @@ from pathlib import Path
 import pytest
 import yaml
 
+from src.artifacts.formal_provider_cache import DEFAULT_AUXILIARIES
 from src.common.runtime_settings import PROJECT_ROOT
+from src.data.auxiliary_scope import all_governed_auxiliaries
 
 REGISTRY = PROJECT_ROOT / "configs/pools/reference_instrument_registry_v1.yaml"
 
@@ -93,18 +95,28 @@ def test_sp500_is_the_real_index_and_never_a_tracking_etf() -> None:
 
 
 def test_provider_cache_auxiliaries_are_governed() -> None:
-    source = (
-        PROJECT_ROOT / "src/artifacts/formal_provider_cache.py"
-    ).read_text(encoding="utf-8")
-    import re
+    consumed = DEFAULT_AUXILIARIES["us"]
+    assert consumed, "provider cache must consume governed US auxiliaries"
+    # The cache consumes exactly the maintained governed auxiliary set, not a
+    # stale local tuple that can drift from the registry.
+    assert consumed == all_governed_auxiliaries("us")
 
-    match = re.search(r'"us":\s*\(([^)]*)\)', source)
-    assert match, "provider cache us auxiliary tuple not found"
-    symbols = {
-        piece.strip().strip('"\'')
-        for piece in match.group(1).split(",")
-        if piece.strip().strip('"\'')
-    }
     instruments = _us_instruments()
-    for symbol in symbols:
+    for symbol in consumed:
+        # Governance gate: every consumed symbol resolves to a registered
+        # instrument with at least one declared role.
         _roles_for(symbol, instruments)
+
+    # A reference index is consumed as the real index, never substituted by a
+    # tracking ETF.
+    index_symbols = {
+        symbol
+        for symbol in consumed
+        if instruments[symbol].get("instrument_type") == "equity_index"
+    }
+    assert index_symbols, "provider cache must consume the governed index reference"
+    for symbol in index_symbols:
+        assert instruments[symbol]["executable"] is False
+        assert "benchmark" not in instruments[symbol]["roles"]
+    for tracking_etf in ("SPY", "VOO", "IVV"):
+        assert tracking_etf not in consumed
