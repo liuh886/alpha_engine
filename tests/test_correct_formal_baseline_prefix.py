@@ -634,12 +634,28 @@ def _restore_preview_baseline(preview_run: Path, repository: Path) -> None:
     catalog_path.write_bytes(canonical_json_bytes(catalog))
 
 
+def _active_preview_run(preview_root: Path, model_version_id: str) -> Path:
+    """Return the one active preview run directory declared by its catalog."""
+
+    catalog = json.loads((preview_root / "catalog.json").read_text(encoding="utf-8"))
+    validate_catalog(catalog)
+    matches = [
+        row
+        for row in catalog["records"]
+        if str(row["model_version_id"]) == model_version_id
+    ]
+    assert len(matches) == 1, f"expected one preview record for {model_version_id}"
+    return (preview_root / str(matches[0]["manifest_path"])).parent
+
+
 def test_sync_promotes_corrected_report_and_positions(tmp_path: Path) -> None:
     """Integration: the governed sync promotes report and position corrections."""
 
     repository = Path.cwd().resolve()
     for relative in ("data/research/model_runs", "data/research/formal_model_runs", "configs"):
         shutil.copytree(repository / relative, tmp_path / relative)
+    preview_root = tmp_path / "data/research/model_runs"
+    preview_run = _active_preview_run(preview_root, "qqqi_qqq_tqqq_v4_3")
 
     freshness_input = tmp_path / "artifacts" / "freshness-input"
     freshness_input.mkdir(parents=True)
@@ -648,11 +664,6 @@ def test_sync_promotes_corrected_report_and_positions(tmp_path: Path) -> None:
         freshness_input / "freshness.json",
     )
 
-    preview_run = (
-        tmp_path
-        / "data/research/model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3"
-        / "qqqi_qqq_tqqq_v4_3-through-2026_11_13"
-    )
     _restore_preview_baseline(preview_run, tmp_path)
     performance = json.loads((preview_run / "performance.json").read_text())
     replay = copy.deepcopy(performance)
@@ -676,7 +687,7 @@ def test_sync_promotes_corrected_report_and_positions(tmp_path: Path) -> None:
     output_a = tmp_path / "artifacts" / "bundle-a"
     output_b = tmp_path / "artifacts" / "bundle-b"
     kwargs = dict(
-        native_root=tmp_path / "data/research/model_runs",
+        native_root=preview_root,
         retained_root=tmp_path / "data/research/formal_model_runs",
         strategy_catalog=tmp_path / "configs/strategies/registry.json",
         repository_root=tmp_path,
@@ -684,10 +695,8 @@ def test_sync_promotes_corrected_report_and_positions(tmp_path: Path) -> None:
     sync(freshness_input, output_a, **kwargs)
     sync(freshness_input, output_b, **kwargs)
 
-    formal_run = (
-        output_a
-        / "qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_11_13"
-    )
+    # Promotion preserves the active preview run identity discovered above.
+    formal_run = output_a / preview_run.relative_to(preview_root)
     formal_performance = json.loads((formal_run / "performance.json").read_text())
     for date, field, _before, after in REAL_CORRECTIONS:
         row = next(item for item in formal_performance["report"] if item["date"] == date)
