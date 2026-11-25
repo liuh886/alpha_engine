@@ -20,7 +20,13 @@ from src.research.ashare_rdi.phase2 import build_pit_panel, evaluate_blocked_oos
 from src.research.ashare_rdi.phase2_audit import source_readiness
 from src.research.ashare_rdi.price_baseline import descriptive_drawdown_comparison
 from src.research.ashare_rdi.price_renewal import audit_price_renewal
-from src.research.ashare_rdi.price_reconstruction import repair_prices, replay_source, recompute, repo_file
+from src.research.ashare_rdi.price_reconstruction import (
+    HISTORICAL_ADAPTER_MODULE_SHA256,
+    repair_prices,
+    replay_source,
+    recompute,
+    repo_file,
+)
 from src.research.ashare_rdi.sector_etfs import SectorETFCandidate, audit_sector_etf
 
 
@@ -134,6 +140,24 @@ def test_source_replay_rejects_archive_tampering(tmp_path):
     manifest = json.loads((root / "data/research/ashare_rdi/price_sources/sina_2026-10-31/manifest.json").read_bytes())
     manifest["archive_sha256"] = "0" * 64
     with pytest.raises(ValueError, match="archive digest"):
+        replay_source(root, manifest)
+
+
+def test_replay_accepts_governed_historical_decoder_identity():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "data/research/ashare_rdi/price_sources/sina_2026-10-31/manifest.json").read_bytes())
+    # The sealed capture predates the source-neutral CN fund/ETF volume-basis
+    # changes; only this exact historical digest is admitted for replay.
+    assert manifest["adapter_module_sha256"] in HISTORICAL_ADAPTER_MODULE_SHA256
+    data = replay_source(root, manifest)
+    assert hashlib.sha256(data).hexdigest() == manifest["adapter_csv_sha256"]
+
+
+def test_replay_rejects_unknown_decoder_identity():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "data/research/ashare_rdi/price_sources/sina_2026-10-31/manifest.json").read_bytes())
+    manifest["adapter_module_sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="source identity, basis or decoder mismatch"):
         replay_source(root, manifest)
 
 
