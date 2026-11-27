@@ -72,3 +72,4 @@ signal_date,observation_sha256,prelaunch_seed,prospective_eligible,common_open_e
 2026-11-24,cbf8faaac87f23db717f2c350017341a189baf29ee60bdd189404976d6963f8b,False,False,False,False,False,False,0,False,0,False,0.000000000000,bear,low,0.000000000000
 2026-11-25,b177c33edee36717ffcdc81546b2f89337b34befcfb34415325712bebd7e8a57,False,False,False,False,False,False,0,False,0,False,0.000000000000,bear,low,0.000000000000
 2026-11-26,4714c85e24108bbe3839556b815172086918330c6f30fc795aaaedb8422162b0,False,False,False,False,False,False,0,False,0,False,0.000000000000,bear,low,0.000000000000
+2026-11-27,f9f8ef0ea217007b933032c1904c1452b5b272a2527c6663fc6db47cc952784b,False,False,False,True,True,False,0,False,0,False,0.000000000000,bear,high,0.030117344988
