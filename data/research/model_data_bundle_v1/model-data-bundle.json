@@ -1,6 +1,6 @@
 {
-  "built_at": "2026-11-26T18:45:36+00:00",
-  "bundle_id": "55746988c6efa83c2b98d75f82940d9bf3933b405b4635ce303e238882171815",
+  "built_at": "2026-11-27T18:37:35+00:00",
+  "bundle_id": "9ee3ad706335fe7a832e32cbcb15ca8996cdb6e5c51a0ceb95cb17f11ae3ec4f",
   "components": [
     {
       "component_id": "corporate_actions.cn_selected_equities_v3",
@@ -206,23 +206,23 @@
       "coverage_ratio": 1.0,
       "details": {
         "benchmark": "000300",
-        "candidate_observation_cutoff": "2026-11-26",
+        "candidate_observation_cutoff": "2026-11-27",
         "candidate_observation_start": "2026-04-16",
         "promotion_blocker": null,
         "promotion_eligible": true,
-        "provider_identity_sha256": "c961ab85a79e2fa49779ffaa5438dbf7cc2802a6ad3b52acb6516a0f0389353b",
-        "requested_cutoff": "2026-11-26",
-        "retained_common_history_end": "2026-11-26",
+        "provider_identity_sha256": "0f475060c6755efa508609ca55ead1c27dc7c7978b7c46d74e0bac086d704c33",
+        "requested_cutoff": "2026-11-27",
+        "retained_common_history_end": "2026-11-27",
         "source_status": "selected_pool_price_refresh_ready",
         "terminal_history_symbols": []
       },
-      "evidence_cutoff": "2026-11-26",
+      "evidence_cutoff": "2026-11-27",
       "expected_symbol_count": 130,
       "first_date": "2026-04-16",
       "invalid_symbols": [],
-      "last_date": "2026-11-26",
+      "last_date": "2026-11-27",
       "manifest_path": "components/cn-selected-pool-prices.json",
-      "manifest_sha256": "75e51e7f5adca2e961724d93a3c11232a6c7c2703ba78ce9bcedcc99eb4ac649",
+      "manifest_sha256": "e8e9d39f1198cd1d5f37b14a10a3c0c546ba250ddfc352d7a2ceaa7584776b4a",
       "market": "cn",
       "missing_symbols": [],
       "not_yet_applicable_symbols": [],
@@ -231,7 +231,9 @@
       "providers": [
         "AKSHARE",
         "AKSHARE_SINA",
-        "TENCENT_QFQ_HISTORY"
+        "AKSHARE_SINA_FUND",
+        "TENCENT_QFQ_HISTORY",
+        "TUSHARE"
       ],
       "quarantined_symbols": [],
       "ready_symbol_count": 130,
@@ -321,19 +323,19 @@
   "contract_id": "model_data_bundle_v1",
   "contract_path": "configs/data_contracts/model_data_bundle_v1.yaml",
   "contract_sha256": "a4f7d3e352adcd994e74e1152e27a9a241ea307c04578b6f1ca2258fa81b7ac5",
-  "evidence_cutoff": "2026-11-26",
+  "evidence_cutoff": "2026-11-27",
   "frontend_indexes": {
     "data_components": {
       "path": "data-components.json",
-      "sha256": "552f2e5ef56f3b1514dba99c2b5561acf49c8dff983248a522f4ed718d3efc9f"
+      "sha256": "ff9a06dcc1f6a5bd6b1669583c1cc3fbcf2b7d8eed4f6ded00e3dacea2297f0a"
     },
     "model_data_readiness": {
       "path": "model-data-readiness.json",
-      "sha256": "4675c4a1f320f694a73be21fcdce77c0429e035bf7953876422d453529d50eda"
+      "sha256": "6e53c7361b7882fdd372d51718ae422331d21a1890d48aa5b79bc24a918dc8c1"
     },
     "training_profiles": {
       "path": "training-profiles.json",
-      "sha256": "90bc17a9d88780d89fab24b1d8002fd58760e4020e8a979e5d7499cbc124a925"
+      "sha256": "1dec1eb7a76346da54ae9e7b81d3bece90606d86dd8d6e192df8b837164f19cf"
     }
   },
   "research_only": true,
@@ -397,23 +399,23 @@
             "coverage_ratio": 1.0,
             "details": {
               "benchmark": "000300",
-              "candidate_observation_cutoff": "2026-11-26",
+              "candidate_observation_cutoff": "2026-11-27",
               "candidate_observation_start": "2026-04-16",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "c961ab85a79e2fa49779ffaa5438dbf7cc2802a6ad3b52acb6516a0f0389353b",
-              "requested_cutoff": "2026-11-26",
-              "retained_common_history_end": "2026-11-26",
+              "provider_identity_sha256": "0f475060c6755efa508609ca55ead1c27dc7c7978b7c46d74e0bac086d704c33",
+              "requested_cutoff": "2026-11-27",
+              "retained_common_history_end": "2026-11-27",
               "source_status": "selected_pool_price_refresh_ready",
               "terminal_history_symbols": []
             },
-            "evidence_cutoff": "2026-11-26",
+            "evidence_cutoff": "2026-11-27",
             "expected_symbol_count": 130,
             "first_date": "2026-04-16",
             "invalid_symbols": [],
-            "last_date": "2026-11-26",
+            "last_date": "2026-11-27",
             "manifest_path": "components/cn-selected-pool-prices.json",
-            "manifest_sha256": "75e51e7f5adca2e961724d93a3c11232a6c7c2703ba78ce9bcedcc99eb4ac649",
+            "manifest_sha256": "e8e9d39f1198cd1d5f37b14a10a3c0c546ba250ddfc352d7a2ceaa7584776b4a",
             "market": "cn",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -422,7 +424,9 @@
             "providers": [
               "AKSHARE",
               "AKSHARE_SINA",
-              "TENCENT_QFQ_HISTORY"
+              "AKSHARE_SINA_FUND",
+              "TENCENT_QFQ_HISTORY",
+              "TUSHARE"
             ],
             "quarantined_symbols": [],
             "ready_symbol_count": 130,
@@ -502,23 +506,23 @@
             "coverage_ratio": 1.0,
             "details": {
               "benchmark": "000300",
-              "candidate_observation_cutoff": "2026-11-26",
+              "candidate_observation_cutoff": "2026-11-27",
               "candidate_observation_start": "2026-04-16",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "c961ab85a79e2fa49779ffaa5438dbf7cc2802a6ad3b52acb6516a0f0389353b",
-              "requested_cutoff": "2026-11-26",
-              "retained_common_history_end": "2026-11-26",
+              "provider_identity_sha256": "0f475060c6755efa508609ca55ead1c27dc7c7978b7c46d74e0bac086d704c33",
+              "requested_cutoff": "2026-11-27",
+              "retained_common_history_end": "2026-11-27",
               "source_status": "selected_pool_price_refresh_ready",
               "terminal_history_symbols": []
             },
-            "evidence_cutoff": "2026-11-26",
+            "evidence_cutoff": "2026-11-27",
             "expected_symbol_count": 130,
             "first_date": "2026-04-16",
             "invalid_symbols": [],
-            "last_date": "2026-11-26",
+            "last_date": "2026-11-27",
             "manifest_path": "components/cn-selected-pool-prices.json",
-            "manifest_sha256": "75e51e7f5adca2e961724d93a3c11232a6c7c2703ba78ce9bcedcc99eb4ac649",
+            "manifest_sha256": "e8e9d39f1198cd1d5f37b14a10a3c0c546ba250ddfc352d7a2ceaa7584776b4a",
             "market": "cn",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -527,7 +531,9 @@
             "providers": [
               "AKSHARE",
               "AKSHARE_SINA",
-              "TENCENT_QFQ_HISTORY"
+              "AKSHARE_SINA_FUND",
+              "TENCENT_QFQ_HISTORY",
+              "TUSHARE"
             ],
             "quarantined_symbols": [],
             "ready_symbol_count": 130,
@@ -568,23 +574,23 @@
             "coverage_ratio": 1.0,
             "details": {
               "benchmark": "000300",
-              "candidate_observation_cutoff": "2026-11-26",
+              "candidate_observation_cutoff": "2026-11-27",
               "candidate_observation_start": "2026-04-16",
               "promotion_blocker": null,
               "promotion_eligible": true,
-              "provider_identity_sha256": "c961ab85a79e2fa49779ffaa5438dbf7cc2802a6ad3b52acb6516a0f0389353b",
-              "requested_cutoff": "2026-11-26",
-              "retained_common_history_end": "2026-11-26",
+              "provider_identity_sha256": "0f475060c6755efa508609ca55ead1c27dc7c7978b7c46d74e0bac086d704c33",
+              "requested_cutoff": "2026-11-27",
+              "retained_common_history_end": "2026-11-27",
               "source_status": "selected_pool_price_refresh_ready",
               "terminal_history_symbols": []
             },
-            "evidence_cutoff": "2026-11-26",
+            "evidence_cutoff": "2026-11-27",
             "expected_symbol_count": 130,
             "first_date": "2026-04-16",
             "invalid_symbols": [],
-            "last_date": "2026-11-26",
+            "last_date": "2026-11-27",
             "manifest_path": "components/cn-selected-pool-prices.json",
-            "manifest_sha256": "75e51e7f5adca2e961724d93a3c11232a6c7c2703ba78ce9bcedcc99eb4ac649",
+            "manifest_sha256": "e8e9d39f1198cd1d5f37b14a10a3c0c546ba250ddfc352d7a2ceaa7584776b4a",
             "market": "cn",
             "missing_symbols": [],
             "not_yet_applicable_symbols": [],
@@ -593,7 +599,9 @@
             "providers": [
               "AKSHARE",
               "AKSHARE_SINA",
-              "TENCENT_QFQ_HISTORY"
+              "AKSHARE_SINA_FUND",
+              "TENCENT_QFQ_HISTORY",
+              "TUSHARE"
             ],
             "quarantined_symbols": [],
             "ready_symbol_count": 130,
